@@ -456,3 +456,72 @@ every phase boundary, each committed to git individually.
 `npm run smoke -- <label> [urlParams]` for a headless verification
 screenshot (dev-only URL hooks: `autoplace=N`, `coinboost=N`, `autobuild=1`,
 `autodefend=1`, `flood=N`, `cyclone=N` — see `src/main.ts`'s bottom section).
+
+## v2.1 — fixed map + claim loop rework — DONE
+
+The build prompt was revised (v2.1) on top of the completed v1-through-v5
+build above: the terrain map is now fixed and pre-generated (Section 4
+rewrite), not player-drawn — the hand-of-3 terrain-tile-draw mechanic is
+gone, replaced by claiming an already-authored Goa-shaped map one hex at a
+time. Full detail, including a bug found in manual testing and three more
+caught by this rework's own tests/screenshots, is in `NEXT_STEPS.md` (the
+living punch list this revision introduced — read it alongside this file).
+
+**Summary of what changed:**
+- `/tools/mapgen/generate.ts` (`npm run mapgen`) — a WFC-lite solver run
+  once, offline: coast/estuary confined to the west band, laterite
+  plateau/forest to the east band, exactly 2 continuous river paths
+  east-to-west sharing one estuary mouth, khazan flatland/village
+  plains/forest filling the midland band via a greedy edge-compatible fill
+  (biased to place khazan flatland near rivers — see the bug list below).
+  Output is checked in at `src/data/map.json`, loaded once at boot, never
+  regenerated live.
+- `GameState`'s `placed` now holds the *entire* fixed map from construction
+  instead of growing tile-by-tile — `src/core/hazard.ts` needed zero
+  changes as a result, since it already just spread across whatever was in
+  `placed`. Added `claimed`/`claimFrontier()`/`claim()` (small flat Coin
+  cost, counts as a turn); removed the hand-drawing/edge-legality runtime
+  machinery entirely (that logic now lives only in mapgen's offline solver).
+- Render: the whole map renders at boot, unclaimed tiles desaturated and
+  slightly sunken; claiming triggers a rise+brighten reveal reusing the
+  existing settle-animation feel. The old "ghost hex at an empty coord"
+  frontier concept doesn't apply anymore (every coord already has real
+  terrain) — replaced by `ClaimRingMeshManager`, a thin glowing ring
+  overlay over currently-claimable tiles, visual-only and decoupled from
+  raycasting (clicks raycast the terrain tiles directly; `GameState`
+  answers whether that coord is claimed/claimable).
+- HUD: the hand strip is gone (there's no choice of *what* to place
+  anymore, only *where* to claim next) — replaced by Section 3's small
+  "N hexes to claim — cost each" prompt.
+- Fixed the manual-testing bug: the build popover dismissed itself via a
+  capture-phase listener that ran *before* the canvas's own click handler,
+  so a click meant to dismiss could land on a different buildable tile,
+  close the old popover, and silently open a new one under the cursor —
+  a second dismiss-click could then confirm an unintended purchase.
+  Removed the popover's own listener; the single canvas click handler now
+  checks `isOpen` first and, if true, closes and consumes that click.
+
+**Three more bugs this rework's own verification caught** (detailed in
+`NEXT_STEPS.md`): the camera was hard-framed on axial `(0,0)`, an arbitrary
+point in the middle of the map, while the player's actual starting cluster
+could be far off-frame (fixed with `scene.ts`'s new `focusOn`); khazan
+flatland had no bias toward river/estuary adjacency in the generator despite
+the khazan defense requiring it, making khazan nearly unbuildable in a full
+playthrough (`tests/balance.test.ts` caught it — fixed via a generator
+bias); and `computeEraScore`'s Biodiversity/Carbon terms were unbounded
+accumulators weighted high enough that a large defense count could swing
+the score by over a thousand points, silently recreating the "never build
+engineered wins" collapse Section 7 warns against (fixed by clamping them
+before weighting).
+
+**Verification:** 47/47 tests passing across 9 files (added
+`tests/mapgen.test.ts` — independently re-verifies the checked-in map
+satisfies every Section 4 constraint — and reworked the claim-mechanic
+tests in `tests/gameState.test.ts`). Production build succeeds. Screenshots
+below: the fresh map with the camera correctly framed on the starting
+cluster and its 7-hex claim frontier glowing, and a grown 15-tile claim
+with buildings, defenses, and a 12-hex frontier — both via the real
+click-path code, zero console errors.
+
+![v2.1 fresh map, camera framed on the starting claim](tools/screenshots/v21_fresh_map.png)
+![v2.1 grown claim with buildings and defenses](tools/screenshots/v21_growth.png)

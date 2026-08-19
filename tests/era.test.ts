@@ -1,29 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { GameState } from "../src/core/gameState";
+import { GameState, type PlacedTile } from "../src/core/gameState";
 import { resolveMonsoonFlood, resolveCyclone } from "../src/core/hazard";
+import mapData from "../src/data/map.json";
 
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+interface MapFile {
+  tiles: { q: number; r: number; terrainId: string }[];
 }
+const mapTiles: PlacedTile[] = (mapData as MapFile).tiles.map((t) => ({
+  coord: { q: t.q, r: t.r },
+  terrainId: t.terrainId
+}));
 
 describe("Era loop (Section 2/9: soft-loss, no hard game-over, no stuck state)", () => {
   it("an undefended era eventually reaches isEraOver via repeated hazards, with no crash", () => {
-    const rng = mulberry32(11);
-    const state = new GameState({ coord: { q: 0, r: 0 }, terrainId: "estuary" }, rng);
-
-    for (let i = 0; i < 40; i++) {
-      const handIdx = state.hand.findIndex((t) => state.legalFrontierFor(t).length > 0);
-      if (handIdx === -1) break;
-      const coord = state.legalFrontierFor(state.hand[handIdx])[0];
-      state.placeFromHand(handIdx, coord);
-    }
+    // v2.1: hazards spread across the whole fixed map (`placed`), not just
+    // claimed land, so no claiming is needed to set this scenario up — but
+    // it does need the real map's many river/coast/estuary source tiles to
+    // deal enough cumulative damage per event (a single-tile fixture barely
+    // dents Resilience at all).
+    const state = new GameState(mapTiles);
 
     expect(state.resilience).toBe(100);
     let guard = 0;
@@ -39,7 +34,7 @@ describe("Era loop (Section 2/9: soft-loss, no hard game-over, no stuck state)",
   });
 
   it("severityBaseline only ever increases within an era", () => {
-    const state = new GameState({ coord: { q: 0, r: 0 }, terrainId: "estuary" });
+    const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "estuary" }]);
     expect(state.severityBaseline).toBe(0);
     resolveMonsoonFlood(state, 1.0);
     const afterFirst = state.severityBaseline;
@@ -48,13 +43,14 @@ describe("Era loop (Section 2/9: soft-loss, no hard game-over, no stuck state)",
     expect(state.severityBaseline).toBeGreaterThan(afterFirst);
   });
 
-  it("startNewEra resets play state but preserves erasCompleted and keeps the map playable", () => {
-    const state = new GameState({ coord: { q: 0, r: 0 }, terrainId: "estuary" });
+  it("startNewEra resets play state but preserves erasCompleted, keeping the fixed map intact", () => {
+    const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "estuary" }], [{ q: 0, r: 0 }]);
     state.debugForcePlace({ q: 5, r: 5 }, "forest");
     state.resilience = 0;
     state.trust = 5;
     state.severityBaseline = 3;
     expect(state.erasCompleted).toBe(0);
+    expect(state.placed.size).toBe(2); // estuary seed + the forest tile added via debugForcePlace
 
     state.startNewEra();
 
@@ -63,8 +59,10 @@ describe("Era loop (Section 2/9: soft-loss, no hard game-over, no stuck state)",
     expect(state.trust).toBe(50);
     expect(state.severityBaseline).toBe(0);
     expect(state.turn).toBe(0);
-    expect(state.placed.size).toBe(1); // just the fresh seed tile
-    expect(state.handHasAnyLegalPlacement()).toBe(true);
+    expect(state.placed.size).toBe(2); // the fixed map itself is untouched by a new era
+    expect(state.claimed.size).toBe(1); // back to just the original starting claim
+    expect(state.claimed.has("0,0")).toBe(true);
+    expect(state.claimed.has("5,5")).toBe(false); // debugForcePlace's auto-claim doesn't survive a reset
 
     state.startNewEra();
     expect(state.erasCompleted).toBe(2);

@@ -23,6 +23,7 @@ const SOFT_PAIRS: [EdgeType, EdgeType][] = [
   ["ROCK", "GRASS"],
   ["FARM", "WATER"],
   ["FARM", "SAND"],
+  ["FARM", "FOREST"], // farmland at a forest's edge is a common, natural transition
   ["FOREST", "WATER"]
 ];
 

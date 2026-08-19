@@ -8,7 +8,12 @@ export interface KhazanScene {
   sun: THREE.DirectionalLight;
   start: (onFrame?: (nowMs: number) => void) => void;
   onResize: () => void;
+  /** Re-centers the camera on a world (x, z) point, keeping the same distance/elevation. v2.1: the fixed map's own (0,0) is arbitrary relative to where the player actually starts. */
+  focusOn: (x: number, z: number) => void;
 }
+
+const CAM_DISTANCE = 18;
+const CAM_ELEVATION_DEG = 58; // slight top-down, not hard isometric
 
 /**
  * Dorfromantik-style camera: a slight top-down perspective, pan/zoom only,
@@ -20,11 +25,13 @@ export function createScene(container: HTMLElement): KhazanScene {
   scene.fog = new THREE.Fog(PALETTE.fog.getHex(), 18, 46);
 
   const camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 200);
-  const camDistance = 18;
-  const camElevationDeg = 58; // slight top-down, not hard isometric
-  const rad = THREE.MathUtils.degToRad(camElevationDeg);
-  camera.position.set(0, Math.sin(rad) * camDistance, Math.cos(rad) * camDistance);
-  camera.lookAt(0, 0, 0);
+  const rad = THREE.MathUtils.degToRad(CAM_ELEVATION_DEG);
+
+  function focusOn(x: number, z: number): void {
+    camera.position.set(x, Math.sin(rad) * CAM_DISTANCE, z + Math.cos(rad) * CAM_DISTANCE);
+    camera.lookAt(x, 0, z);
+  }
+  focusOn(0, 0);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -54,5 +61,5 @@ export function createScene(container: HTMLElement): KhazanScene {
     });
   }
 
-  return { scene, camera, renderer, sun, start, onResize };
+  return { scene, camera, renderer, sun, start, onResize, focusOn };
 }

@@ -8,6 +8,8 @@ import { SettleAnimator } from "./settleAnimation";
 
 export const HEX_SIZE = 1.0;
 const MAX_INSTANCES_PER_TYPE = 400;
+const UNCLAIMED_SINK = 0.15; // unclaimed tiles sit slightly lower, like they're still in the fog
+const UNCLAIMED_DESATURATE = 0.55; // how far toward gray an unclaimed tile's color is pulled
 
 const TIER_HEIGHT: Record<TerrainDef["elevationTier"], number> = {
   coastal: 0.45,
@@ -19,9 +21,25 @@ interface TerrainInstance {
   coord: AxialCoord;
   index: number;
   terrainId: string;
-  baseColor: THREE.Color;
+  fullColor: THREE.Color;
+  dimColor: THREE.Color;
+  claimed: boolean;
 }
 
+function dim(color: THREE.Color): THREE.Color {
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  const dimmed = color.clone();
+  dimmed.setHSL(hsl.h, hsl.s * (1 - UNCLAIMED_DESATURATE), THREE.MathUtils.lerp(hsl.l, 0.55, 0.35));
+  return dimmed;
+}
+
+/**
+ * v2.1: the terrain map is fixed (Section 4) — `loadMap` renders the whole
+ * authored map at boot, unclaimed tiles dimmed and slightly sunken.
+ * `claimTile` reveals one in place (rise + brighten), reusing the same
+ * settle-animation feel the old player-drawn tiles had.
+ */
 export class TerrainMeshManager {
   readonly group = new THREE.Group();
   private meshes = new Map<string, THREE.InstancedMesh>();
@@ -63,44 +81,64 @@ export class TerrainMeshManager {
     return this.placed.has(`${coord.q},${coord.r}`);
   }
 
-  /** Places a tile. When `animate` is true it drops/settles into place over ~SETTLE_DURATION_MS. */
-  placeTile(coord: AxialCoord, terrainId: string, options: { animate?: boolean } = {}): void {
-    const terrain = TERRAIN_BY_ID.get(terrainId);
-    if (!terrain) throw new Error(`Unknown terrain id: ${terrainId}`);
-    const mesh = this.meshes.get(terrainId)!;
-    const index = this.counts.get(terrainId)!;
-    if (index >= MAX_INSTANCES_PER_TYPE) throw new Error(`Terrain instance cap exceeded for ${terrainId}`);
+  /** Renders the entire fixed map at once, every tile dimmed/sunken (unclaimed) except `claimedCoords`. */
+  loadMap(mapTiles: { coord: AxialCoord; terrainId: string }[], claimedCoords: Iterable<AxialCoord>): void {
+    const claimedKeys = new Set(Array.from(claimedCoords, (c) => `${c.q},${c.r}`));
 
-    const { x, z } = axialToWorld(coord, HEX_SIZE);
+    for (const { coord, terrainId } of mapTiles) {
+      const terrain = TERRAIN_BY_ID.get(terrainId);
+      if (!terrain) throw new Error(`Unknown terrain id: ${terrainId}`);
+      const mesh = this.meshes.get(terrainId)!;
+      const index = this.counts.get(terrainId)!;
+      if (index >= MAX_INSTANCES_PER_TYPE) throw new Error(`Terrain instance cap exceeded for ${terrainId}`);
 
-    if (options.animate) {
-      this.animator.begin(mesh, index, x, z, 0, performance.now());
-    } else {
-      const matrix = new THREE.Matrix4().makeTranslation(x, 0, z);
-      mesh.setMatrixAt(index, matrix);
-      mesh.instanceMatrix.needsUpdate = true;
+      const { x, z } = axialToWorld(coord, HEX_SIZE);
+      const key = `${coord.q},${coord.r}`;
+      const claimed = claimedKeys.has(key);
+      const seed = coord.q * 31 + coord.r * 17;
+      const fullColor = jitterColor(paletteColor(terrain.colorKey), seed);
+      const dimColor = dim(fullColor);
+
+      const y = claimed ? 0 : -UNCLAIMED_SINK;
+      mesh.setMatrixAt(index, new THREE.Matrix4().makeTranslation(x, y, z));
+      mesh.setColorAt(index, claimed ? fullColor : dimColor);
+
+      this.counts.set(terrainId, index + 1);
+      mesh.count = index + 1;
+
+      this.placed.set(key, { coord, index, terrainId, fullColor, dimColor, claimed });
     }
 
-    const seed = coord.q * 31 + coord.r * 17;
-    const color = jitterColor(paletteColor(terrain.colorKey), seed);
-    mesh.setColorAt(index, color);
+    for (const mesh of this.meshes.values()) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+  }
 
-    this.counts.set(terrainId, index + 1);
-    mesh.count = index + 1;
+  /** Reveals a tile: rises to its resting height and brightens to full color, over ~SETTLE_DURATION_MS. */
+  claimTile(coord: AxialCoord): void {
+    const inst = this.placed.get(`${coord.q},${coord.r}`);
+    if (!inst || inst.claimed) return;
+    inst.claimed = true;
+
+    const mesh = this.meshes.get(inst.terrainId)!;
+    const { x, z } = axialToWorld(coord, HEX_SIZE);
+    this.animator.begin(mesh, inst.index, x, z, 0, performance.now());
+    mesh.setColorAt(inst.index, inst.fullColor);
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-
-    this.placed.set(`${coord.q},${coord.r}`, { coord, index, terrainId, baseColor: color.clone() });
   }
 
   /**
    * Overrides a tile's color (e.g. the flood telegraph darkening river
-   * tiles). Pass `null` to restore its normal palette color.
+   * tiles), blending from whatever its current resting color is (dimmed if
+   * still unclaimed, full if claimed). Pass `null` to restore that resting color.
    */
   setTint(coord: AxialCoord, tint: THREE.Color | null, blend = 0.6): void {
     const inst = this.placed.get(`${coord.q},${coord.r}`);
     if (!inst) return;
     const mesh = this.meshes.get(inst.terrainId)!;
-    const color = tint ? inst.baseColor.clone().lerp(tint, blend) : inst.baseColor;
+    const resting = inst.claimed ? inst.fullColor : inst.dimColor;
+    const color = tint ? resting.clone().lerp(tint, blend) : resting;
     mesh.setColorAt(inst.index, color);
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
@@ -110,12 +148,20 @@ export class TerrainMeshManager {
     this.animator.tick(nowMs);
   }
 
-  /** Clears every placed tile (a new era starting a fresh map). Instances are simply hidden via count=0, not destroyed. */
-  reset(): void {
-    this.placed.clear();
-    for (const terrainId of this.counts.keys()) {
-      this.counts.set(terrainId, 0);
-      this.meshes.get(terrainId)!.count = 0;
+  /** Re-dims every tile back to unclaimed (a new era resetting the player's footprint — the map itself stays). */
+  resetClaims(claimedCoords: Iterable<AxialCoord> = []): void {
+    const claimedKeys = new Set(Array.from(claimedCoords, (c) => `${c.q},${c.r}`));
+    for (const inst of this.placed.values()) {
+      const mesh = this.meshes.get(inst.terrainId)!;
+      inst.claimed = claimedKeys.has(`${inst.coord.q},${inst.coord.r}`);
+      const { x, z } = axialToWorld(inst.coord, HEX_SIZE);
+      const y = inst.claimed ? 0 : -UNCLAIMED_SINK;
+      mesh.setMatrixAt(inst.index, new THREE.Matrix4().makeTranslation(x, y, z));
+      mesh.setColorAt(inst.index, inst.claimed ? inst.fullColor : inst.dimColor);
+    }
+    for (const mesh of this.meshes.values()) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
   }
 
@@ -134,6 +180,10 @@ export class TerrainMeshManager {
 
   terrainIdAt(coord: AxialCoord): string | undefined {
     return this.placed.get(`${coord.q},${coord.r}`)?.terrainId;
+  }
+
+  isClaimedVisually(coord: AxialCoord): boolean {
+    return this.placed.get(`${coord.q},${coord.r}`)?.claimed ?? false;
   }
 
   /** World-space Y a building/prop should sit at on this tile (its top surface). */

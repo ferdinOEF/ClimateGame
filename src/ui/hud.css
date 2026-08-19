@@ -107,34 +107,12 @@ html, body {
   font-weight: 700;
 }
 
-.hand-strip {
-  display: flex;
-  gap: 10px;
-  pointer-events: auto;
-}
-
-.hand-slot {
-  pointer-events: auto;
-  cursor: pointer;
-  border: 2px solid transparent;
-  border-radius: 10px;
-  padding: 10px 16px;
-  background: var(--slot-color, #888);
-  color: #10201a;
-  font-weight: 600;
+.claim-prompt {
+  background: rgba(20, 30, 26, 0.7);
+  border-radius: 8px;
+  padding: 6px 14px;
   font-size: 12px;
-  text-shadow: none;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
-  transition: transform 0.15s ease, border-color 0.15s ease;
-}
-
-.hand-slot:hover {
-  transform: translateY(-3px);
-}
-
-.hand-slot.selected {
-  border-color: #fff3c4;
-  box-shadow: 0 0 0 3px rgba(255, 243, 196, 0.5), 0 3px 8px rgba(0, 0, 0, 0.35);
+  font-weight: 600;
 }
 
 /*

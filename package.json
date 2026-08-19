@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "tsx tools/smoke.ts"
+    "smoke": "tsx tools/smoke.ts",
+    "mapgen": "tsx tools/mapgen/generate.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",

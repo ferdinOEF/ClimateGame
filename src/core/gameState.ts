@@ -1,6 +1,5 @@
-import { type AxialCoord, axialKey, neighbor, oppositeEdge } from "./hex";
-import { TERRAIN_BY_ID, TERRAIN_IDS, isWaterFamily } from "./terrain";
-import { edgesCompatible } from "./edgeTypes";
+import { type AxialCoord, axialKey, neighbor } from "./hex";
+import { isWaterFamily } from "./terrain";
 import { BUILDING_BY_ID, type BuildingDef } from "./buildings";
 import { DEFENSE_BY_ID, type DefenseDef } from "./defenses";
 
@@ -16,33 +15,29 @@ export interface DefenseInstance {
   degradeAmount: number;
 }
 
-const HAND_SIZE = 3;
-const MAX_HAND_DRAW_ATTEMPTS = 50;
 const STARTING_COIN = 50;
 const STARTING_TRUST = 50;
 const STARTING_RESILIENCE = 100;
 const RESILIENCE_DAMAGE_FACTOR = 0.5;
 const CATASTROPHIC_TRUST_PENALTY = 8; // per destroyed engineered defense — stings more than an NBS shortfall
 const WEATHERED_TRUST_BONUS = 2;
+const CLAIM_COST = 4; // Section 2: "costs a small amount of Coin"
 
 function isCoastOrEstuary(terrainId: string): boolean {
   return terrainId === "coast" || terrainId === "estuary";
 }
 
-export interface RandomSource {
-  (): number; // like Math.random, injectable for deterministic tests
-}
-
 /**
- * Pure game-logic state: placed tiles, the open frontier, and the current
- * hand. No Three.js here — the render layer mirrors this to draw the scene.
+ * Pure game-logic state (v2.1): the terrain map is fixed at construction —
+ * `placed` holds every tile from the authored map.json, not something the
+ * player grows. What the player grows is `claimed`, a subset of `placed`.
+ * No Three.js here — the render layer mirrors this to draw the scene.
  */
 export class GameState {
   readonly placed = new Map<string, PlacedTile>();
-  readonly frontier = new Set<string>();
+  readonly claimed = new Set<string>();
   readonly buildings = new Map<string, string>(); // coord key -> building id
   readonly defenses = new Map<string, DefenseInstance>();
-  hand: string[] = [];
   coin = STARTING_COIN;
   turn = 0;
   /** Section 7's four meters. Biodiversity/Carbon are derived (see the getters below); Trust and Resilience are running totals. */
@@ -52,127 +47,81 @@ export class GameState {
   severityBaseline = 0;
   /** Section 2's light meta-progression hook: preserved across `startNewEra()`. */
   erasCompleted = 0;
-  private random: RandomSource;
+  private readonly startingClaim: AxialCoord[];
 
-  constructor(seed: PlacedTile, random: RandomSource = Math.random) {
-    this.random = random;
-    this.placeInternal(seed);
-    this.hand = this.drawLegalHand();
+  /**
+   * @param mapTiles The fixed, pre-generated map (Section 4) — every tile
+   *   that exists, loaded once from map.json in real play.
+   * @param startingClaim The player's initial claimed cluster. Defaults to
+   *   claiming every tile passed in, which is convenient for small
+   *   hand-built test fixtures; real play always passes an explicit small
+   *   (2-3 hex) cluster.
+   */
+  constructor(mapTiles: PlacedTile[], startingClaim?: AxialCoord[]) {
+    for (const tile of mapTiles) this.placed.set(axialKey(tile.coord), tile);
+    this.startingClaim = startingClaim ?? mapTiles.map((t) => t.coord);
+    for (const coord of this.startingClaim) {
+      if (this.placed.has(axialKey(coord))) this.claimed.add(axialKey(coord));
+    }
   }
 
   /**
-   * Test/scenario-only: places a tile at an exact coord bypassing legality
-   * and the hand. Used to build deterministic hazard-resolution fixtures;
-   * never called from the real play path (Section 10's sanctioned debug
-   * escape hatch, same spirit as the ?autoplace URL hook).
+   * Test/scenario-only: adds a tile to the fixed map (bypassing mapgen) and
+   * immediately claims it, for building deterministic hazard-resolution
+   * fixtures. Never called from the real play path (Section 10's sanctioned
+   * debug escape hatch, same spirit as the ?autoclaim URL hook).
    */
   debugForcePlace(coord: AxialCoord, terrainId: string): void {
-    this.placeInternal({ coord, terrainId });
-  }
-
-  private placeInternal(tile: PlacedTile): void {
-    const key = axialKey(tile.coord);
-    this.placed.set(key, tile);
-    this.frontier.delete(key);
-    for (let dir = 0; dir < 6; dir++) {
-      const n = neighbor(tile.coord, dir);
-      const nKey = axialKey(n);
-      if (!this.placed.has(nKey)) this.frontier.add(nKey);
-    }
-  }
-
-  /** Is `terrainId` legal at `coord`? Requires touching >=1 placed tile with compatible edges. */
-  isLegal(coord: AxialCoord, terrainId: string): boolean {
     const key = axialKey(coord);
-    if (this.placed.has(key)) return false;
-    const candidate = TERRAIN_BY_ID.get(terrainId);
-    if (!candidate) return false;
-
-    let touchesAny = false;
-    for (let dir = 0; dir < 6; dir++) {
-      const n = neighbor(coord, dir);
-      const np = this.placed.get(axialKey(n));
-      if (!np) continue;
-      touchesAny = true;
-      const neighborDef = TERRAIN_BY_ID.get(np.terrainId)!;
-      const candidateEdge = candidate.edgeTypes[dir];
-      const neighborEdge = neighborDef.edgeTypes[oppositeEdge(dir)];
-      if (!edgesCompatible(candidateEdge, neighborEdge)) return false;
-    }
-    if (!touchesAny) return false;
-
-    // River-continuity, simplified for the pilot (see PROGRESS.md): a new
-    // water-family tile must touch the existing water network.
-    if (isWaterFamily(terrainId)) {
-      let touchesWater = false;
-      for (let dir = 0; dir < 6; dir++) {
-        const n = neighbor(coord, dir);
-        const np = this.placed.get(axialKey(n));
-        if (np && isWaterFamily(np.terrainId)) {
-          touchesWater = true;
-          break;
-        }
-      }
-      if (!touchesWater) return false;
-    }
-
-    return true;
+    this.placed.set(key, { coord, terrainId });
+    this.claimed.add(key);
   }
 
-  legalFrontierFor(terrainId: string): AxialCoord[] {
-    const results: AxialCoord[] = [];
-    for (const key of this.frontier) {
+  /** Unclaimed tiles adjacent to the current claimed footprint — the only ones claimable right now. */
+  claimFrontier(): AxialCoord[] {
+    const seen = new Set<string>();
+    const result: AxialCoord[] = [];
+    for (const key of this.claimed) {
       const [q, r] = key.split(",").map(Number);
-      const coord = { q, r };
-      if (this.isLegal(coord, terrainId)) results.push(coord);
+      for (let dir = 0; dir < 6; dir++) {
+        const n = neighbor({ q, r }, dir);
+        const nKey = axialKey(n);
+        if (this.claimed.has(nKey) || seen.has(nKey) || !this.placed.has(nKey)) continue;
+        seen.add(nKey);
+        result.push(n);
+      }
     }
-    return results;
+    return result;
   }
 
-  handHasAnyLegalPlacement(): boolean {
-    return this.hand.some((t) => this.legalFrontierFor(t).length > 0);
-  }
-
-  private randomTerrainId(): string {
-    return TERRAIN_IDS[Math.floor(this.random() * TERRAIN_IDS.length)];
-  }
-
-  /** A terrain id guaranteed to have a legal placement right now (same-type-adjacent is always compatible). */
-  private guaranteedLegalTerrainId(): string {
-    for (const tile of this.placed.values()) {
-      if (this.legalFrontierFor(tile.terrainId).length > 0) return tile.terrainId;
+  isClaimable(coord: AxialCoord): boolean {
+    const key = axialKey(coord);
+    if (this.claimed.has(key) || !this.placed.has(key)) return false;
+    for (let dir = 0; dir < 6; dir++) {
+      if (this.claimed.has(axialKey(neighbor(coord, dir)))) return true;
     }
-    return this.randomTerrainId();
+    return false;
   }
 
-  private drawLegalHand(size = HAND_SIZE): string[] {
-    for (let attempt = 0; attempt < MAX_HAND_DRAW_ATTEMPTS; attempt++) {
-      const hand = Array.from({ length: size }, () => this.randomTerrainId());
-      if (hand.some((t) => this.legalFrontierFor(t).length > 0)) return hand;
-    }
-    const hand = [this.guaranteedLegalTerrainId()];
-    while (hand.length < size) hand.push(this.randomTerrainId());
-    return hand;
+  canClaim(coord: AxialCoord): boolean {
+    return this.coin >= CLAIM_COST && this.isClaimable(coord);
   }
 
-  /** Places `hand[handIndex]` at `coord` if legal. Returns false (no-op) if illegal. */
-  placeFromHand(handIndex: number, coord: AxialCoord): boolean {
-    const terrainId = this.hand[handIndex];
-    if (!terrainId || !this.isLegal(coord, terrainId)) return false;
-
-    this.placeInternal({ coord, terrainId });
-    this.hand.splice(handIndex, 1, this.randomTerrainId());
-    if (!this.handHasAnyLegalPlacement()) this.hand = this.drawLegalHand();
+  /** Claims `coord` if adjacent to owned land and affordable. Counts as a turn, same cadence as the old tile-placement loop. */
+  claim(coord: AxialCoord): boolean {
+    if (!this.canClaim(coord)) return false;
+    this.coin -= CLAIM_COST;
+    this.claimed.add(axialKey(coord));
     this.advanceTurn();
     return true;
   }
 
   /**
-   * One tile placement = one turn (Section 2's Calm-phase cadence):
-   * buildings pay out, and defenses with upkeep either get paid or silently
-   * weaken (the khazan/river-embankment "neglect decays it" tradeoff).
-   * Public because the hazard/turn system also needs to advance it directly
-   * (e.g. maintenance still ticks between hazard events).
+   * One claim = one turn (Section 2's Calm-phase cadence): buildings pay
+   * out, and defenses with upkeep either get paid or silently weaken (the
+   * khazan/river-embankment "neglect decays it" tradeoff). Public because
+   * the hazard/turn system also needs to advance it directly (e.g.
+   * maintenance still ticks between hazard events).
    */
   advanceTurn(): void {
     this.turn++;
@@ -208,11 +157,11 @@ export class GameState {
     return false;
   }
 
-  /** Defense options valid at `coord` right now (terrain + water adjacency), regardless of affordability. */
+  /** Defense options valid at `coord` right now (must be claimed, terrain + water adjacency), regardless of affordability. */
   buildableDefensesAt(coord: AxialCoord): DefenseDef[] {
     const key = axialKey(coord);
     const tile = this.placed.get(key);
-    if (!tile || this.defenses.has(key)) return [];
+    if (!tile || !this.claimed.has(key) || this.defenses.has(key)) return [];
 
     const results: DefenseDef[] = [];
     for (const def of DEFENSE_BY_ID.values()) {
@@ -311,12 +260,16 @@ export class GameState {
 
   /**
    * Section 2: "a new era keeps light meta-progression ... and starts a
-   * fresh map." Resets play state in place but preserves erasCompleted.
+   * fresh map." The map itself (`placed`) is fixed and persists — v2.1's
+   * scope note: "a new seed per era is a reasonable later enhancement, not
+   * required now." What resets is the player's footprint on it.
    */
   startNewEra(): void {
     this.erasCompleted++;
-    this.placed.clear();
-    this.frontier.clear();
+    this.claimed.clear();
+    for (const coord of this.startingClaim) {
+      if (this.placed.has(axialKey(coord))) this.claimed.add(axialKey(coord));
+    }
     this.buildings.clear();
     this.defenses.clear();
     this.coin = STARTING_COIN;
@@ -324,15 +277,13 @@ export class GameState {
     this.resilience = STARTING_RESILIENCE;
     this.severityBaseline = 0;
     this.turn = 0;
-    this.placeInternal({ coord: { q: 0, r: 0 }, terrainId: "estuary" });
-    this.hand = this.drawLegalHand();
   }
 
-  /** Building options valid at `coord` right now (terrain + adjacency), regardless of affordability. */
+  /** Building options valid at `coord` right now (must be claimed, terrain + adjacency), regardless of affordability. */
   buildableAt(coord: AxialCoord): BuildingDef[] {
     const key = axialKey(coord);
     const tile = this.placed.get(key);
-    if (!tile || this.buildings.has(key)) return [];
+    if (!tile || !this.claimed.has(key) || this.buildings.has(key)) return [];
 
     const results: BuildingDef[] = [];
     for (const def of BUILDING_BY_ID.values()) {

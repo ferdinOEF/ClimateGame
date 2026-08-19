@@ -1,97 +1,78 @@
 import { describe, expect, it } from "vitest";
-import { GameState } from "../src/core/gameState";
-import { TERRAIN_BY_ID, isWaterFamily } from "../src/core/terrain";
-import { axialKey, neighbor, oppositeEdge } from "../src/core/hex";
-import { edgesCompatible } from "../src/core/edgeTypes";
+import { GameState, type PlacedTile } from "../src/core/gameState";
+import { axialKey, hexSpiral } from "../src/core/hex";
 
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+/** A small synthetic fixed map for claim-mechanic tests — terrain id doesn't matter here (that's mapgen's job now). */
+function smallTestMap(radius = 3): PlacedTile[] {
+  return hexSpiral({ q: 0, r: 0 }, radius).map((coord) => ({ coord, terrainId: "village_plains" }));
 }
 
-describe("GameState placement legality", () => {
-  it("never offers a dead hand across 30+ scripted placements", () => {
-    const rng = mulberry32(42);
-    const state = new GameState({ coord: { q: 0, r: 0 }, terrainId: "estuary" }, rng);
-    expect(state.handHasAnyLegalPlacement()).toBe(true);
+describe("GameState claim mechanic (v2.1: claiming, not drawing)", () => {
+  it("starts with only the given starting cluster claimed, everything else unclaimed", () => {
+    const map = smallTestMap();
+    const state = new GameState(map, [{ q: 0, r: 0 }]);
+    expect(state.claimed.size).toBe(1);
+    expect(state.claimed.has(axialKey({ q: 0, r: 0 }))).toBe(true);
+    expect(state.placed.size).toBe(map.length); // the whole map exists regardless of claim status
+  });
 
-    let placements = 0;
+  it("claimFrontier only ever offers unclaimed tiles adjacent to claimed land", () => {
+    const map = smallTestMap();
+    const state = new GameState(map, [{ q: 0, r: 0 }]);
+    for (const coord of state.claimFrontier()) {
+      expect(state.claimed.has(axialKey(coord))).toBe(false);
+      expect(state.isClaimable(coord)).toBe(true);
+    }
+  });
+
+  it("rejects claiming a non-adjacent tile, an already-claimed tile, or a tile outside the map", () => {
+    const map = smallTestMap();
+    const state = new GameState(map, [{ q: 0, r: 0 }]);
+    expect(state.claim({ q: 0, r: 0 })).toBe(false); // already claimed
+    expect(state.claim({ q: 3, r: 3 })).toBe(false); // not adjacent to claimed land
+    expect(state.claim({ q: 99, r: 99 })).toBe(false); // not part of the fixed map at all
+  });
+
+  it("claiming deducts coin, marks the tile claimed, and counts as a turn", () => {
+    const map = smallTestMap();
+    const state = new GameState(map, [{ q: 0, r: 0 }]);
+    const before = state.coin;
+    const target = state.claimFrontier()[0];
+
+    expect(state.claim(target)).toBe(true);
+    expect(state.coin).toBeLessThan(before);
+    expect(state.claimed.has(axialKey(target))).toBe(true);
+    expect(state.turn).toBe(1);
+  });
+
+  it("never runs out of a claimable frontier across 30+ sequential claims (no dead click)", () => {
+    const map = smallTestMap(4); // generous radius so coin never runs out before tiles do
+    const state = new GameState(map, [{ q: 0, r: 0 }]);
+    state.coin = 1000;
+
+    let claims = 0;
     let guard = 0;
-    while (placements < 35 && guard < 5000) {
+    while (claims < 30 && guard < 500) {
       guard++;
-      expect(state.handHasAnyLegalPlacement()).toBe(true);
-
-      let placedThisRound = false;
-      for (let i = 0; i < state.hand.length && !placedThisRound; i++) {
-        const legal = state.legalFrontierFor(state.hand[i]);
-        if (legal.length > 0) {
-          const ok = state.placeFromHand(i, legal[0]);
-          expect(ok).toBe(true);
-          placedThisRound = true;
-          placements++;
-        }
-      }
-      expect(placedThisRound).toBe(true);
-      expect(state.handHasAnyLegalPlacement()).toBe(true);
+      const frontier = state.claimFrontier();
+      expect(frontier.length).toBeGreaterThan(0);
+      expect(state.claim(frontier[0])).toBe(true);
+      claims++;
     }
 
-    expect(placements).toBeGreaterThanOrEqual(30);
+    expect(claims).toBeGreaterThanOrEqual(30);
   });
 
-  it("rejects placement on an already-occupied coord", () => {
-    const state = new GameState({ coord: { q: 0, r: 0 }, terrainId: "estuary" });
-    expect(state.isLegal({ q: 0, r: 0 }, "coast")).toBe(false);
-  });
+  it("buildableAt/buildableDefensesAt require the tile to be claimed first", () => {
+    const map: PlacedTile[] = [
+      { coord: { q: 0, r: 0 }, terrainId: "estuary" },
+      { coord: { q: 1, r: 0 }, terrainId: "khazan_flatland" }
+    ];
+    const state = new GameState(map, [{ q: 0, r: 0 }]); // (1,0) intentionally left unclaimed
+    expect(state.buildableAt({ q: 1, r: 0 })).toHaveLength(0);
+    expect(state.buildableDefensesAt({ q: 1, r: 0 })).toHaveLength(0);
 
-  it("rejects an edge-incompatible neighbor (rock straight into water)", () => {
-    const state = new GameState({ coord: { q: 0, r: 0 }, terrainId: "estuary" });
-    const n = neighbor({ q: 0, r: 0 }, 0);
-    expect(state.isLegal(n, "laterite_plateau")).toBe(false);
-  });
-
-  it("enforces water-continuity: a river/estuary tile must touch existing water", () => {
-    const state = new GameState({ coord: { q: 0, r: 0 }, terrainId: "khazan_flatland" }, mulberry32(7));
-    // khazan_flatland's edges are FARM-only; find a frontier cell and confirm
-    // river/estuary are illegal there since nothing water-family exists yet.
-    for (const key of state.frontier) {
-      const [q, r] = key.split(",").map(Number);
-      expect(state.isLegal({ q, r }, "river")).toBe(false);
-      expect(state.isLegal({ q, r }, "estuary")).toBe(false);
-    }
-  });
-
-  it("every successful placement keeps every touching edge pair compatible", () => {
-    const rng = mulberry32(99);
-    const state = new GameState({ coord: { q: 0, r: 0 }, terrainId: "coast" }, rng);
-    for (let round = 0; round < 25; round++) {
-      const i = state.hand.findIndex((t) => state.legalFrontierFor(t).length > 0);
-      if (i === -1) break;
-      const coord = state.legalFrontierFor(state.hand[i])[0];
-      const terrainId = state.hand[i];
-      state.placeFromHand(i, coord);
-
-      const def = TERRAIN_BY_ID.get(terrainId)!;
-      for (let dir = 0; dir < 6; dir++) {
-        const n = neighbor(coord, dir);
-        const np = state.placed.get(axialKey(n));
-        if (!np) continue;
-        const neighborDef = TERRAIN_BY_ID.get(np.terrainId)!;
-        const ok = edgesCompatible(def.edgeTypes[dir], neighborDef.edgeTypes[oppositeEdge(dir)]);
-        expect(ok).toBe(true);
-      }
-      if (isWaterFamily(terrainId)) {
-        const hasWaterNeighbor = [0, 1, 2, 3, 4, 5].some((dir) => {
-          const np = state.placed.get(axialKey(neighbor(coord, dir)));
-          return np && isWaterFamily(np.terrainId);
-        });
-        expect(hasWaterNeighbor).toBe(true);
-      }
-    }
+    state.claim({ q: 1, r: 0 });
+    expect(state.buildableAt({ q: 1, r: 0 }).length).toBeGreaterThan(0);
   });
 });

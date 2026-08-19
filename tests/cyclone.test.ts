@@ -6,7 +6,7 @@ import { neighbor, axialKey } from "../src/core/hex";
 const COAST = { q: 0, r: 0 };
 
 function freshState(): GameState {
-  const state = new GameState({ coord: COAST, terrainId: "coast" });
+  const state = new GameState([{ coord: COAST, terrainId: "coast" }]);
   state.coin = 500;
   return state;
 }

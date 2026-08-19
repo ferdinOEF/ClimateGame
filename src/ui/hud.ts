@@ -1,16 +1,9 @@
-import { TERRAIN_BY_ID } from "@core/terrain";
-import { PALETTE } from "@render/palette";
-
-export interface HudCallbacks {
-  onSelectHand: (index: number) => void;
-}
-
 /**
- * The only persistent UI: a corner tile counter, one compact meter strip
- * (Coin + Section 7's four meters), and a bottom-center hand strip. No
- * full-width panel — Section 3's non-negotiable rule. The four meters share
- * a single small block rather than stacking separate corner elements, so
- * the corner stays one unobtrusive strip, not a growing pile of them.
+ * The only persistent UI (v2.1): a corner tile counter, one compact meter
+ * strip (Coin + Section 7's four meters), a small "next hex to claim"
+ * prompt, and a brief non-blocking era banner. No full-width panel, and no
+ * hand strip anymore — Section 2/3: there's no longer a choice of *what* to
+ * place, only *where* to claim next, so there's nothing to hand-pick from.
  */
 export class Hud {
   private tileCountEl: HTMLElement;
@@ -19,13 +12,13 @@ export class Hud {
   private resilienceEl: HTMLElement;
   private biodiversityEl: HTMLElement;
   private carbonEl: HTMLElement;
-  private handEl: HTMLElement;
+  private claimPromptEl: HTMLElement;
   private bannerEl: HTMLElement;
 
-  constructor(container: HTMLElement, private callbacks: HudCallbacks) {
+  constructor(container: HTMLElement) {
     const tileCounter = document.createElement("div");
     tileCounter.className = "hud-corner top-right";
-    tileCounter.innerHTML = `<div>Tiles placed</div><div class="tile-count-value">0</div>`;
+    tileCounter.innerHTML = `<div>Tiles claimed</div><div class="tile-count-value">0</div>`;
     container.appendChild(tileCounter);
     this.tileCountEl = tileCounter.querySelector(".tile-count-value")!;
 
@@ -46,10 +39,10 @@ export class Hud {
     this.biodiversityEl = meters.querySelector(".biodiversity-value")!;
     this.carbonEl = meters.querySelector(".carbon-value")!;
 
-    const hand = document.createElement("div");
-    hand.className = "hud-corner bottom-center hand-strip";
-    container.appendChild(hand);
-    this.handEl = hand;
+    const claimPrompt = document.createElement("div");
+    claimPrompt.className = "hud-corner bottom-center claim-prompt";
+    container.appendChild(claimPrompt);
+    this.claimPromptEl = claimPrompt;
 
     const banner = document.createElement("div");
     banner.className = "hud-corner top-center era-banner";
@@ -82,18 +75,9 @@ export class Hud {
     this.carbonEl.textContent = String(Math.round(meters.carbon));
   }
 
-  renderHand(hand: string[], selectedIndex: number): void {
-    this.handEl.innerHTML = "";
-    hand.forEach((terrainId, i) => {
-      const def = TERRAIN_BY_ID.get(terrainId);
-      const color = def ? PALETTE[def.colorKey] : undefined;
-      const slot = document.createElement("button");
-      slot.className = "hand-slot" + (i === selectedIndex ? " selected" : "");
-      slot.style.setProperty("--slot-color", color ? `#${color.getHexString()}` : "#888");
-      slot.title = def?.name ?? terrainId;
-      slot.textContent = def?.name ?? terrainId;
-      slot.addEventListener("click", () => this.callbacks.onSelectHand(i));
-      this.handEl.appendChild(slot);
-    });
+  /** Section 3's "next hex to claim" prompt — a glowing ring count, not a form. */
+  setClaimable(count: number, claimCost: number): void {
+    this.claimPromptEl.textContent =
+      count > 0 ? `${count} hex${count === 1 ? "" : "es"} to claim — ${claimCost}c each` : "Nothing left to claim";
   }
 }
