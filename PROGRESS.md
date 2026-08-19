@@ -132,7 +132,58 @@ added `GRASS<->WATER` to the soft-pair list in `edgeTypes.ts`. A follow-up
 
 ![Phase 1 cluster, 41 tiles](tools/screenshots/phase1.png)
 
-## Next: Phase 2 — Town buildings + economy
+## Phase 2 — Town buildings + economy — DONE
 
-Contextual tile popover for the 4 Section 4 buildings, Coin economy, low-poly
-building props rendered on their tile (not list icons).
+**What's here:**
+- `src/core/buildings.ts` + `src/data/buildings.json` — the 4 Section 4
+  buildings (Village Hut, Paddy Field, Coconut & Areca Grove, Fishing Dock),
+  each with a build cost, per-turn Coin income, valid terrain ids, and (for
+  Fishing Dock only) a coast/estuary-adjacency requirement.
+- `GameState` gained `coin`, `turn`, and `buildings` (coord -> building id):
+  `buildableAt(coord)` filters by terrain + adjacency, `canBuild`/`build`
+  handle affordability, and each successful tile placement now also counts
+  as a turn — `advanceTurn()` pays out every built building's income. One
+  building per tile, matching Section 2 ("you may build **one** thing").
+- `src/render/buildingMeshManager.ts` + `buildingGeometry.ts` — one
+  `InstancedMesh` per building category (same rule Section 8 applies to
+  terrain), each a small merged low-poly shape: hut = box + pyramid roof,
+  paddy = a shallow raised patch, grove = two trunk+canopy trees, dock = a
+  plank pier with a mooring post. Buildings sit on their tile's actual top
+  surface (`TerrainMeshManager.heightAt`), which varies by elevation tier.
+- Factored the tile-settle animation out of `TerrainMeshManager` into
+  `settleAnimation.ts` (`SettleAnimator`) so buildings reuse the same
+  drop-and-settle feel instead of duplicating the tween code.
+- `src/ui/buildPopover.ts` — the contextual build menu: a small popover
+  anchored to the clicked tile's *screen* position (world-to-NDC-to-pixel
+  projection each time), listing only the options valid for that tile,
+  dimmed if unaffordable. Closes on an outside click or after a selection.
+  Never a persistent panel — Section 3's rule holds.
+- Click handling now raycasts frontier ghosts and placed terrain instances
+  together; a hit on an owned tile with no building yet opens the popover,
+  a hit on the frontier places a tile (unchanged from Phase 1).
+- HUD gained a top-left Coin counter alongside the existing tile counter and
+  hand strip — still only small corner strips, no panel.
+
+**A real readability bug the first screenshot caught:** Paddy Field's
+`colorKey` was `paddyGreen` — identical to the khazan_flatland terrain it's
+built on, so the building was nearly invisible against its own tile. Added a
+dedicated `paddyRipe` (golden amber) palette entry for it; re-verified it
+reads clearly now.
+
+**Verification:**
+- `npm test` — 21/21 passing (`tests/buildings.test.ts` covers terrain
+  gating, coast/estuary adjacency, cost deduction/affordability rejection,
+  and turn-based income payout).
+- `npm run smoke -- <label> "autoplace=45&coinboost=300&autobuild=1"` — dev-only
+  URL hooks (Section 10's sanctioned debug overlay, no UI button) drive real
+  placements and builds through the same code paths clicks use. 46 tiles,
+  11 buildings across all 4 types, zero console errors.
+
+![Phase 2 settlement](tools/screenshots/phase2.png)
+
+## Next: Phase 3 — Monsoon Flood hazard + defense trio
+
+Telegraph → downhill spread → damage resolution; all three defense
+categories (NBS, engineered, khazan hybrid) implemented and data-driven,
+including the catastrophic engineered-failure redirect and the khazan's
+graceful degrade.

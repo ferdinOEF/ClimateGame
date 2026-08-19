@@ -22,7 +22,10 @@ export const PALETTE: Record<string, THREE.Color> = {
   seaDeep: new THREE.Color("#0E3F57"),
   seaTurquoise: new THREE.Color("#2FA6A2"),
   fog: new THREE.Color("#D9E6E0"),
-  sky: new THREE.Color("#CFE6E8")
+  sky: new THREE.Color("#CFE6E8"),
+  // Building accent colors — deliberately distinct from every terrain
+  // colorKey above so a prop never blends into the tile it sits on.
+  paddyRipe: new THREE.Color("#D9A63E") // golden amber, ripening rice
 };
 
 export function paletteColor(key: string): THREE.Color {

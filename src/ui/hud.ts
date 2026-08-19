@@ -11,6 +11,7 @@ export interface HudCallbacks {
  */
 export class Hud {
   private tileCountEl: HTMLElement;
+  private coinEl: HTMLElement;
   private handEl: HTMLElement;
 
   constructor(container: HTMLElement, private callbacks: HudCallbacks) {
@@ -20,6 +21,12 @@ export class Hud {
     container.appendChild(tileCounter);
     this.tileCountEl = tileCounter.querySelector(".tile-count-value")!;
 
+    const coin = document.createElement("div");
+    coin.className = "hud-corner top-left";
+    coin.innerHTML = `<div>Coin</div><div class="tile-count-value coin-value">0</div>`;
+    container.appendChild(coin);
+    this.coinEl = coin.querySelector(".coin-value")!;
+
     const hand = document.createElement("div");
     hand.className = "hud-corner bottom-center hand-strip";
     container.appendChild(hand);
@@ -28,6 +35,10 @@ export class Hud {
 
   setTileCount(n: number): void {
     this.tileCountEl.textContent = String(n);
+  }
+
+  setCoin(n: number): void {
+    this.coinEl.textContent = String(n);
   }
 
   renderHand(hand: string[], selectedIndex: number): void {

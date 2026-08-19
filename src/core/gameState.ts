@@ -1,6 +1,7 @@
 import { type AxialCoord, axialKey, neighbor, oppositeEdge } from "./hex";
 import { TERRAIN_BY_ID, TERRAIN_IDS, isWaterFamily } from "./terrain";
 import { edgesCompatible } from "./edgeTypes";
+import { BUILDING_BY_ID, type BuildingDef } from "./buildings";
 
 export interface PlacedTile {
   coord: AxialCoord;
@@ -9,6 +10,11 @@ export interface PlacedTile {
 
 const HAND_SIZE = 3;
 const MAX_HAND_DRAW_ATTEMPTS = 50;
+const STARTING_COIN = 50;
+
+function isCoastOrEstuary(terrainId: string): boolean {
+  return terrainId === "coast" || terrainId === "estuary";
+}
 
 export interface RandomSource {
   (): number; // like Math.random, injectable for deterministic tests
@@ -21,7 +27,10 @@ export interface RandomSource {
 export class GameState {
   readonly placed = new Map<string, PlacedTile>();
   readonly frontier = new Set<string>();
+  readonly buildings = new Map<string, string>(); // coord key -> building id
   hand: string[] = [];
+  coin = STARTING_COIN;
+  turn = 0;
   private random: RandomSource;
 
   constructor(seed: PlacedTile, random: RandomSource = Math.random) {
@@ -123,6 +132,55 @@ export class GameState {
     this.placeInternal({ coord, terrainId });
     this.hand.splice(handIndex, 1, this.randomTerrainId());
     if (!this.handHasAnyLegalPlacement()) this.hand = this.drawLegalHand();
+    this.advanceTurn();
+    return true;
+  }
+
+  /** One tile placement = one turn (Section 2's Calm-phase cadence): buildings pay out. */
+  private advanceTurn(): void {
+    this.turn++;
+    for (const buildingId of this.buildings.values()) {
+      const def = BUILDING_BY_ID.get(buildingId);
+      if (def) this.coin += def.coinPerTurn;
+    }
+  }
+
+  private isCoastOrEstuaryAdjacent(coord: AxialCoord): boolean {
+    for (let dir = 0; dir < 6; dir++) {
+      const np = this.placed.get(axialKey(neighbor(coord, dir)));
+      if (np && isCoastOrEstuary(np.terrainId)) return true;
+    }
+    return false;
+  }
+
+  /** Building options valid at `coord` right now (terrain + adjacency), regardless of affordability. */
+  buildableAt(coord: AxialCoord): BuildingDef[] {
+    const key = axialKey(coord);
+    const tile = this.placed.get(key);
+    if (!tile || this.buildings.has(key)) return [];
+
+    const results: BuildingDef[] = [];
+    for (const def of BUILDING_BY_ID.values()) {
+      if (!def.validTerrainIds.includes(tile.terrainId)) continue;
+      if (def.requiresCoastOrEstuaryAdjacent && !this.isCoastOrEstuaryAdjacent(coord)) continue;
+      results.push(def);
+    }
+    return results;
+  }
+
+  canBuild(coord: AxialCoord, buildingId: string): boolean {
+    const def = BUILDING_BY_ID.get(buildingId);
+    if (!def) return false;
+    if (this.coin < def.buildCost) return false;
+    return this.buildableAt(coord).some((d) => d.id === buildingId);
+  }
+
+  /** Builds `buildingId` at `coord`, deducting its cost. Returns false (no-op) if illegal/unaffordable. */
+  build(coord: AxialCoord, buildingId: string): boolean {
+    if (!this.canBuild(coord, buildingId)) return false;
+    const def = BUILDING_BY_ID.get(buildingId)!;
+    this.coin -= def.buildCost;
+    this.buildings.set(axialKey(coord), buildingId);
     return true;
   }
 }

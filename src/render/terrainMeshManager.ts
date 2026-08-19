@@ -4,11 +4,10 @@ import { axialToWorld } from "@core/hex";
 import { TERRAIN_DEFS, TERRAIN_BY_ID, type TerrainDef } from "@core/terrain";
 import { createHexPrismGeometry } from "./hexGeometry";
 import { jitterColor, paletteColor } from "./palette";
+import { SettleAnimator } from "./settleAnimation";
 
 export const HEX_SIZE = 1.0;
 const MAX_INSTANCES_PER_TYPE = 400;
-const SETTLE_DURATION_MS = 420;
-const SETTLE_DROP_HEIGHT = 2.5;
 
 const TIER_HEIGHT: Record<TerrainDef["elevationTier"], number> = {
   coastal: 0.45,
@@ -19,23 +18,7 @@ const TIER_HEIGHT: Record<TerrainDef["elevationTier"], number> = {
 interface TerrainInstance {
   coord: AxialCoord;
   index: number;
-}
-
-interface SettleAnim {
-  mesh: THREE.InstancedMesh;
-  index: number;
-  x: number;
-  z: number;
-  finalHeight: number;
-  startTime: number;
-}
-
-/** t in [0,1] -> eased [0,1] with a slight overshoot, for a "click into place" feel. */
-function easeOutBack(t: number): number {
-  const c1 = 1.70158;
-  const c3 = c1 + 1;
-  const u = t - 1;
-  return 1 + c3 * u * u * u + c1 * u * u;
+  terrainId: string;
 }
 
 export class TerrainMeshManager {
@@ -43,7 +26,7 @@ export class TerrainMeshManager {
   private meshes = new Map<string, THREE.InstancedMesh>();
   private counts = new Map<string, number>();
   private placed = new Map<string, TerrainInstance>();
-  private activeAnims: SettleAnim[] = [];
+  private animator = new SettleAnimator();
 
   constructor() {
     for (const terrain of TERRAIN_DEFS) {
@@ -90,14 +73,11 @@ export class TerrainMeshManager {
     const { x, z } = axialToWorld(coord, HEX_SIZE);
 
     if (options.animate) {
-      const matrix = new THREE.Matrix4()
-        .makeScale(0.4, 0.4, 0.4)
-        .setPosition(x, SETTLE_DROP_HEIGHT, z);
-      mesh.setMatrixAt(index, matrix);
-      this.activeAnims.push({ mesh, index, x, z, finalHeight: 0, startTime: performance.now() });
+      this.animator.begin(mesh, index, x, z, 0, performance.now());
     } else {
       const matrix = new THREE.Matrix4().makeTranslation(x, 0, z);
       mesh.setMatrixAt(index, matrix);
+      mesh.instanceMatrix.needsUpdate = true;
     }
 
     const seed = coord.q * 31 + coord.r * 17;
@@ -106,31 +86,36 @@ export class TerrainMeshManager {
 
     this.counts.set(terrainId, index + 1);
     mesh.count = index + 1;
-    mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
-    this.placed.set(`${coord.q},${coord.r}`, { coord, index });
+    this.placed.set(`${coord.q},${coord.r}`, { coord, index, terrainId });
   }
 
   /** Advances any in-flight settle animations. Call once per rendered frame. */
   tick(nowMs: number): void {
-    if (this.activeAnims.length === 0) return;
-    const stillActive: SettleAnim[] = [];
-    for (const anim of this.activeAnims) {
-      const t = Math.min(1, (nowMs - anim.startTime) / SETTLE_DURATION_MS);
-      const eased = easeOutBack(t);
-      const y = anim.finalHeight + (SETTLE_DROP_HEIGHT - anim.finalHeight) * (1 - eased);
-      const scale = THREE.MathUtils.clamp(0.4 + 0.6 * eased, 0, 1.08);
-      const matrix = new THREE.Matrix4().makeScale(scale, scale, scale).setPosition(anim.x, y, anim.z);
-      anim.mesh.setMatrixAt(anim.index, matrix);
-      anim.mesh.instanceMatrix.needsUpdate = true;
-      if (t < 1) stillActive.push(anim);
-      else {
-        const settled = new THREE.Matrix4().makeTranslation(anim.x, anim.finalHeight, anim.z);
-        anim.mesh.setMatrixAt(anim.index, settled);
-        anim.mesh.instanceMatrix.needsUpdate = true;
-      }
+    this.animator.tick(nowMs);
+  }
+
+  /** Objects to include when raycasting for tile clicks. */
+  get raycastTargets(): THREE.Object3D[] {
+    return Array.from(this.meshes.values());
+  }
+
+  /** Maps a raycast hit (mesh + instanceId) back to the axial coord it represents. */
+  coordForHit(object: THREE.Object3D, instanceId: number): AxialCoord | null {
+    for (const inst of this.placed.values()) {
+      if (this.meshes.get(inst.terrainId) === object && inst.index === instanceId) return inst.coord;
     }
-    this.activeAnims = stillActive;
+    return null;
+  }
+
+  terrainIdAt(coord: AxialCoord): string | undefined {
+    return this.placed.get(`${coord.q},${coord.r}`)?.terrainId;
+  }
+
+  /** World-space Y a building/prop should sit at on this tile (its top surface). */
+  heightAt(coord: AxialCoord): number {
+    const terrainId = this.terrainIdAt(coord);
+    return terrainId ? this.height(terrainId) : 0;
   }
 }
