@@ -130,7 +130,15 @@ export function resolveMonsoonFlood(state: GameState, baseSeverity = 1.0): Hazar
     return toTier <= fromTier; // never flows uphill
   };
 
-  return resolveHazardWave(state, "monsoon_flood", sources, FLOOD_DECAY, canPropagate, (t) => t === "river");
+  const result = resolveHazardWave(state, "monsoon_flood", sources, FLOOD_DECAY, canPropagate, (t) => t === "river");
+  state.applyHazardOutcome(sumDamage(result), result.destroyedDefenses.length);
+  return result;
+}
+
+function sumDamage(result: HazardResult): number {
+  let total = 0;
+  for (const d of result.tileDamage.values()) total += d;
+  return total;
 }
 
 const CYCLONE_DECAY = 0.6; // attenuates faster than the flood — a sudden, more localized hazard
@@ -160,6 +168,7 @@ export function resolveCyclone(state: GameState, baseSeverity = 1.0): CycloneRes
   }
 
   const result = resolveHazardWave(state, "cyclone", sources, CYCLONE_DECAY, () => true, () => false);
+  state.applyHazardOutcome(sumDamage(result), result.destroyedDefenses.length);
 
   const shelterCoords: AxialCoord[] = [];
   for (const [key, inst] of state.defenses) {

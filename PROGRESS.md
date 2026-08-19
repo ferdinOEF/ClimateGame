@@ -351,10 +351,108 @@ in `tests/cyclone.test.ts`'s dedicated comparative test instead.
   since Phase 1 (frontier highlighting + the settle animation), unchanged
   by this phase.
 
-## Next: Phase 5 — Era loop, scoring, polish
+## Phase 5 — Era loop, scoring, polish — DONE
 
-Standing severity baseline escalation (Section 2's "rest of the era"
-modifier), era retire/soft-loss + score banking, light meta-progression
-hook, the remaining 3 meters (Biodiversity, Carbon, Resilience) and full HUD
-meter display, grayscale-readability re-check across the now-complete
-palette, audio hooks.
+**What's here:**
+- The remaining 3 of Section 7's 4 meters: `GameState.resilience` (starts
+  100, drops with every hazard's unmitigated damage via
+  `applyHazardOutcome`), and `biodiversity`/`carbon` as **derived getters**
+  rather than accumulated totals — the sum of every standing defense's
+  `coBenefits`, weighted by maturity. A destroyed engineered defense simply
+  stops contributing; no separate bookkeeping needed to "undo" its effect.
+  Trust (from Phase 4) now also reacts generally to hazard outcomes, not
+  just Cyclone Shelter: a flat `WEATHERED_TRUST_BONUS` for coming through
+  clean, an extra `CATASTROPHIC_TRUST_PENALTY` per destroyed engineered
+  defense — the balance test's own numbers now show this directly (see
+  below), not just the isolated unit tests.
+- `severityBaseline`: Section 2's "slowly rising monsoon intensity / cyclone
+  season modifier that never decreases within an era" — `+0.04` after every
+  hazard resolution, folded into the random severity roll for the next one.
+- `GameState.isEraOver` (Resilience <= 0) and `startNewEra()`: soft-ends the
+  era in place — no hard game-over — resetting tiles/buildings/defenses/
+  coin/meters/turn while preserving `erasCompleted` (Section 2's light
+  meta-progression hook: a counter that survives the reset, ready for
+  future unlock content to key off).
+- `src/core/scoring.ts` — `computeEraScore`: Trust + Resilience +
+  Biodiversity×4 + Carbon×3 + turns×0.5 + map-size×0.3. Map-size and turn
+  terms are weighted well below the meters on purpose (Section 7: don't let
+  score collapse to "biggest map wins"); "never build engineered wins" is
+  avoided structurally, not by formula-fudging — Biodiversity/Carbon already
+  penalize engineered defenses in their own data, while Trust/Resilience
+  reward the stronger protection engineered buys, so the tradeoff is real
+  on both sides of the formula.
+- `terrain.reset()` / `buildings.reset()` / `defenses.reset()`: added to let
+  a new era visually clear the map (InstancedMesh instances are simply
+  hidden via `count = 0`, not destroyed — cheap and instant).
+- HUD polish: the four meters now share one compact strip with Coin (`T/R/B/C`
+  chips) instead of stacking separate corner blocks — still one small
+  corner element, not a growing pile of them. A brief, non-blocking
+  top-center banner (`hud.showBanner`) announces era retirement with its
+  score, auto-hiding after ~3.5s — never a modal, matching Section 3.
+- `src/ui/audioHooks.ts`: placeholder audio hooks (Section 9's "audio
+  hooks, placeholder SFX fine") wired at every meaningful moment — tile
+  settle, build, hazard telegraph, hazard resolve, era end — so real SFX
+  can be dropped in later without threading call sites through the
+  codebase retroactively.
+- Final grayscale-readability check across the now-complete palette
+  (terrain + buildings + defenses together): prop silhouettes (hut,
+  embankment, Cyclone Shelter's flag, mangrove clusters) stay
+  distinguishable by shape alone in addition to the luma-separated terrain
+  colors from Phase 0 — a stronger readability guarantee than color alone.
+
+**Verification:**
+- `npm test` — 42/42 passing across 8 test files, including
+  `tests/era.test.ts` (an undefended era reaches `isEraOver` via repeated
+  hazards, `severityBaseline` only ever increases within an era,
+  `startNewEra` resets correctly while preserving `erasCompleted`) and
+  `tests/scoring.test.ts` (score responds to defenses built, isn't
+  dominated by map size alone).
+- `npm run smoke -- <label> "autoplace=200"` — a long dev-hook run that
+  crossed several full era cycles end to end (visible in the screenshot
+  below: **"Era 3 retired — score 110. A new era begins,"** with the map,
+  meters, and Coin all correctly reset afterward) with zero console errors
+  and no stuck state — directly satisfying this phase's DoD.
+- A separate, richer `"autoplace=18&coinboost=800&autobuild=1&autodefend=1"`
+  run (kept short enough to stay inside one era) shows the full current
+  palette together: all 7 terrain types, both buildings with distinct
+  props, and defenses from all 3 categories, immediately followed by its
+  grayscale conversion.
+
+![Phase 5 era loop cycling](tools/screenshots/phase5_era.png)
+![Phase 5 full palette](tools/screenshots/phase5.png)
+![Phase 5 grayscale check](tools/screenshots/phase5_grayscale.png)
+
+**Section 10 self-assessment, final:**
+- *Does at least one hazard create a real NBS-vs-engineered-vs-khazan
+  decision?* Yes (Phase 4's balance table, now with Trust differentiated:
+  NBS/khazan ended at Trust 60, engineered at 32 after taking a real
+  catastrophic-failure hit — three different strategies, genuinely
+  different but non-landslide outcomes).
+- *Does a catastrophic engineered failure feel like a real setback?*
+  Structurally yes — visible collapse, an amplified redirected spike proven
+  via comparative control runs, and now a distinct, larger Trust penalty
+  than an equivalent NBS shortfall gets, all proven in automated tests.
+  Not yet felt through actual human play — this pilot was verified through
+  code paths and screenshots, not a playtest session.
+- *Is there a Dorfromantik-style "that tile fit perfectly" moment?* Yes,
+  present since Phase 1 and unchanged since: frontier highlighting plus the
+  settle-in animation.
+
+**Honestly out of scope for this pilot** (logged per Section 11's escape
+hatches, not silently dropped): voluntary era retirement (only the
+automatic Resilience-hits-zero soft-loss exists — no UI action to retire
+early); actual unlock *content* keyed off `erasCompleted` (the counter
+exists and persists correctly, but nothing consumes it yet); real audio
+assets (hooks only); mobile/Capacitor (explicitly deferred per Section 8);
+a third hazard or further defense variants (Section 11: "the natural next
+expansion once the two-hazard pilot is proven").
+
+## Build complete: Phases 0-5
+
+All six phases from the build brief are implemented, tested (42 tests
+across 8 files, `npm test`), and verified through headless screenshots at
+every phase boundary, each committed to git individually.
+`npm run dev` for interactive play, `npm test` for the full suite,
+`npm run smoke -- <label> [urlParams]` for a headless verification
+screenshot (dev-only URL hooks: `autoplace=N`, `coinboost=N`, `autobuild=1`,
+`autodefend=1`, `flood=N`, `cyclone=N` — see `src/main.ts`'s bottom section).

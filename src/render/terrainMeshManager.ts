@@ -110,6 +110,15 @@ export class TerrainMeshManager {
     this.animator.tick(nowMs);
   }
 
+  /** Clears every placed tile (a new era starting a fresh map). Instances are simply hidden via count=0, not destroyed. */
+  reset(): void {
+    this.placed.clear();
+    for (const terrainId of this.counts.keys()) {
+      this.counts.set(terrainId, 0);
+      this.meshes.get(terrainId)!.count = 0;
+    }
+  }
+
   /** Objects to include when raycasting for tile clicks. */
   get raycastTargets(): THREE.Object3D[] {
     return Array.from(this.meshes.values());

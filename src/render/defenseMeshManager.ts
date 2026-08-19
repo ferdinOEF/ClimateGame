@@ -94,4 +94,13 @@ export class DefenseMeshManager {
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
   }
+
+  /** Clears every placed defense (a new era starting a fresh map). */
+  reset(): void {
+    this.byCoord.clear();
+    for (const defenseId of this.counts.keys()) {
+      this.counts.set(defenseId, 0);
+      this.meshes.get(defenseId)!.count = 0;
+    }
+  }
 }

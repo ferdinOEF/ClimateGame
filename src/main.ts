@@ -8,8 +8,10 @@ import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS } fr
 import { GameState } from "@core/gameState";
 import { axialToWorld } from "@core/hex";
 import { resolveMonsoonFlood, resolveCyclone } from "@core/hazard";
+import { computeEraScore } from "@core/scoring";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
+import { playSound } from "@ui/audioHooks";
 
 const container = document.getElementById("app")!;
 const { scene, camera, renderer, start } = createScene(container);
@@ -68,7 +70,12 @@ function refreshFrontierHighlight(): void {
 function refreshHud(): void {
   hud.setTileCount(state.placed.size);
   hud.setCoin(state.coin);
-  hud.setTrust(state.trust);
+  hud.setMeters({
+    trust: state.trust,
+    resilience: state.resilience,
+    biodiversity: state.biodiversity,
+    carbon: state.carbon
+  });
   hud.renderHand(state.hand, selectedHandIndex);
 }
 
@@ -123,9 +130,13 @@ const FLOOD_INTERVAL_TURNS = 15;
 const FLOOD_TELEGRAPH_TURNS = 2;
 let nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
 
+let floodTelegraphing = false;
+
 function updateFloodTelegraph(): void {
   const turnsUntil = nextFloodAtTurn - state.turn;
   const telegraphing = turnsUntil > 0 && turnsUntil <= FLOOD_TELEGRAPH_TURNS;
+  if (telegraphing && !floodTelegraphing) playSound("hazard_telegraph");
+  floodTelegraphing = telegraphing;
   for (const coord of tilesOfType("river")) terrain.setTint(coord, telegraphing ? FLOOD_TELEGRAPH_COLOR : null);
 }
 
@@ -134,7 +145,11 @@ function triggerFlood(baseSeverity: number): void {
   const result = resolveMonsoonFlood(state, baseSeverity);
   applyHazardResult(result, floodOverlay, performance.now());
   for (const coord of tilesOfType("river")) terrain.setTint(coord, null);
+  floodTelegraphing = false;
   nextFloodAtTurn = state.turn + FLOOD_INTERVAL_TURNS;
+  playSound("hazard_resolve");
+  refreshHud();
+  checkEraEnd();
 }
 
 // --- Cyclone telegraph + resolution -------------------------------------------
@@ -157,9 +172,13 @@ function coastalCentroid(): { x: number; z: number } | null {
   return { x: x / coords.length, z: z / coords.length };
 }
 
+let cycloneTelegraphing = false;
+
 function updateCycloneTelegraph(): void {
   const turnsUntil = nextCycloneAtTurn - state.turn;
   const telegraphing = turnsUntil > 0 && turnsUntil <= CYCLONE_TELEGRAPH_TURNS;
+  if (telegraphing && !cycloneTelegraphing) playSound("hazard_telegraph");
+  cycloneTelegraphing = telegraphing;
   for (const coord of tilesOfType("coast", "estuary")) {
     terrain.setTint(coord, telegraphing ? CYCLONE_TELEGRAPH_COLOR : null, 0.45);
   }
@@ -174,8 +193,42 @@ function triggerCyclone(baseSeverity: number): void {
   applyHazardResult(result, cycloneOverlay, performance.now());
   for (const coord of tilesOfType("coast", "estuary")) terrain.setTint(coord, null);
   cycloneIcon.visible = false;
+  cycloneTelegraphing = false;
   nextCycloneAtTurn = state.turn + CYCLONE_INTERVAL_TURNS;
+  playSound("hazard_resolve");
   refreshHud();
+  checkEraEnd();
+}
+
+// --- Era loop ------------------------------------------------------------------
+
+/** Section 2: era soft-ends when Resilience hits zero — banked score, no hard game-over screen. */
+function checkEraEnd(): void {
+  if (!state.isEraOver) return;
+  const score = Math.round(computeEraScore(state));
+  const erasSoFar = state.erasCompleted + 1;
+  playSound("era_end");
+  hud.showBanner(`Era ${erasSoFar} retired — score ${score}. A new era begins.`);
+
+  terrain.reset();
+  buildings.reset();
+  defenses.reset();
+  floodOverlay.reset();
+  cycloneOverlay.reset();
+
+  state.startNewEra();
+  terrain.placeTile(SEED_COORD, "estuary");
+  nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
+  nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
+  selectedHandIndex = 0;
+
+  refreshFrontierHighlight();
+  refreshHud();
+}
+
+/** Section 2: "a slowly rising monsoon intensity / cyclone season modifier" biases future severity upward within an era. */
+function rolledSeverity(): number {
+  return 1.0 + Math.random() * 0.6 + state.severityBaseline;
 }
 
 function tryPlace(handIndex: number, coord: { q: number; r: number }): boolean {
@@ -184,15 +237,16 @@ function tryPlace(handIndex: number, coord: { q: number; r: number }): boolean {
 
   state.placeFromHand(handIndex, coord);
   terrain.placeTile(coord, terrainId, { animate: true });
+  playSound("tile_settle");
 
   if (selectedHandIndex >= state.hand.length) selectedHandIndex = 0;
   refreshFrontierHighlight();
   refreshHud();
 
-  if (state.turn >= nextFloodAtTurn) triggerFlood(1.0 + Math.random() * 0.6);
+  if (state.turn >= nextFloodAtTurn) triggerFlood(rolledSeverity());
   else updateFloodTelegraph();
 
-  if (state.turn >= nextCycloneAtTurn) triggerCyclone(1.0 + Math.random() * 0.6);
+  if (state.turn >= nextCycloneAtTurn) triggerCyclone(rolledSeverity());
   else updateCycloneTelegraph();
 
   return true;
@@ -225,6 +279,7 @@ function openBuildPopover(coord: { q: number; r: number }): void {
       if (!state.buildDefense(coord, id)) return;
       defenses.place(coord, id, terrain.heightAt(coord), { animate: true });
     }
+    playSound("build");
     refreshHud();
   });
 }

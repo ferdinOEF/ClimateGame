@@ -20,6 +20,10 @@ const HAND_SIZE = 3;
 const MAX_HAND_DRAW_ATTEMPTS = 50;
 const STARTING_COIN = 50;
 const STARTING_TRUST = 50;
+const STARTING_RESILIENCE = 100;
+const RESILIENCE_DAMAGE_FACTOR = 0.5;
+const CATASTROPHIC_TRUST_PENALTY = 8; // per destroyed engineered defense — stings more than an NBS shortfall
+const WEATHERED_TRUST_BONUS = 2;
 
 function isCoastOrEstuary(terrainId: string): boolean {
   return terrainId === "coast" || terrainId === "estuary";
@@ -41,13 +45,13 @@ export class GameState {
   hand: string[] = [];
   coin = STARTING_COIN;
   turn = 0;
-  /**
-   * A first, minimal slice of Section 7's meter system — just enough for
-   * Cyclone Shelter's distinguishing mechanic (it protects Trust, not land)
-   * to be real and testable. Biodiversity/Carbon/Resilience and the full
-   * HUD meter display are Phase 5 work.
-   */
+  /** Section 7's four meters. Biodiversity/Carbon are derived (see the getters below); Trust and Resilience are running totals. */
   trust = STARTING_TRUST;
+  resilience = STARTING_RESILIENCE;
+  /** Section 2's standing severity baseline: never decreases within an era, biases future hazard rolls upward. */
+  severityBaseline = 0;
+  /** Section 2's light meta-progression hook: preserved across `startNewEra()`. */
+  erasCompleted = 0;
   private random: RandomSource;
 
   constructor(seed: PlacedTile, random: RandomSource = Math.random) {
@@ -255,6 +259,73 @@ export class GameState {
   /** Used by the hazard resolver: removes a catastrophically-failed engineered defense. */
   destroyDefense(coord: AxialCoord): void {
     this.defenses.delete(axialKey(coord));
+  }
+
+  /**
+   * Biodiversity and Carbon (Section 7) are derived, not accumulated: the
+   * sum of every standing defense's coBenefits, weighted by how mature it
+   * is. NBS/hybrid structures contribute positively, engineered negatively
+   * (its coBenefits are negative in the data) — a destroyed defense simply
+   * stops contributing, no separate bookkeeping needed.
+   */
+  private coBenefitTotal(key: "biodiversity" | "carbon"): number {
+    let total = 0;
+    for (const inst of this.defenses.values()) {
+      const def = DEFENSE_BY_ID.get(inst.defenseId);
+      if (!def) continue;
+      const maturityFrac =
+        def.matureTurns > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / def.matureTurns)) : 1;
+      total += def.coBenefits[key] * maturityFrac;
+    }
+    return total;
+  }
+
+  get biodiversity(): number {
+    return this.coBenefitTotal("biodiversity");
+  }
+
+  get carbon(): number {
+    return this.coBenefitTotal("carbon");
+  }
+
+  /**
+   * Called by the hazard resolvers after resolving: Resilience drops with
+   * unmitigated damage, Trust takes an extra hit per catastrophic
+   * engineered failure (stings more than an NBS shortfall) or a small
+   * recovery for weathering the hazard cleanly.
+   */
+  applyHazardOutcome(totalDamage: number, destroyedDefenseCount: number): void {
+    this.resilience = Math.max(0, this.resilience - totalDamage * RESILIENCE_DAMAGE_FACTOR);
+    if (destroyedDefenseCount > 0) {
+      this.trust = Math.max(0, this.trust - destroyedDefenseCount * CATASTROPHIC_TRUST_PENALTY);
+    } else {
+      this.trust = Math.min(100, this.trust + WEATHERED_TRUST_BONUS);
+    }
+    this.severityBaseline += 0.04;
+  }
+
+  /** Era soft-ends when Resilience hits zero (Section 2) — no hard game-over, just this. */
+  get isEraOver(): boolean {
+    return this.resilience <= 0;
+  }
+
+  /**
+   * Section 2: "a new era keeps light meta-progression ... and starts a
+   * fresh map." Resets play state in place but preserves erasCompleted.
+   */
+  startNewEra(): void {
+    this.erasCompleted++;
+    this.placed.clear();
+    this.frontier.clear();
+    this.buildings.clear();
+    this.defenses.clear();
+    this.coin = STARTING_COIN;
+    this.trust = STARTING_TRUST;
+    this.resilience = STARTING_RESILIENCE;
+    this.severityBaseline = 0;
+    this.turn = 0;
+    this.placeInternal({ coord: { q: 0, r: 0 }, terrainId: "estuary" });
+    this.hand = this.drawLegalHand();
   }
 
   /** Building options valid at `coord` right now (terrain + adjacency), regardless of affordability. */

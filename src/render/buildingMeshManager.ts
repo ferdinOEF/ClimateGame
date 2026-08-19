@@ -65,4 +65,12 @@ export class BuildingMeshManager {
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
   }
+
+  /** Clears every placed building (a new era starting a fresh map). */
+  reset(): void {
+    for (const buildingId of this.counts.keys()) {
+      this.counts.set(buildingId, 0);
+      this.meshes.get(buildingId)!.count = 0;
+    }
+  }
 }
