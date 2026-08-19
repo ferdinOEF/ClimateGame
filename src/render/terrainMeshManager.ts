@@ -1,25 +1,14 @@
 import * as THREE from "three";
 import type { AxialCoord } from "@core/hex";
 import { axialToWorld } from "@core/hex";
+import { TERRAIN_DEFS, TERRAIN_BY_ID, type TerrainDef } from "@core/terrain";
 import { createHexPrismGeometry } from "./hexGeometry";
 import { jitterColor, paletteColor } from "./palette";
-import terrainData from "@data/terrain.json";
-
-export interface TerrainDef {
-  id: string;
-  name: string;
-  edgeTypes: string[];
-  elevationTier: "coastal" | "midland" | "highland";
-  flammability: number;
-  decorationDensityRange: [number, number];
-  colorKey: string;
-}
-
-export const TERRAIN_DEFS: TerrainDef[] = terrainData as TerrainDef[];
-export const TERRAIN_BY_ID = new Map(TERRAIN_DEFS.map((t) => [t.id, t]));
 
 export const HEX_SIZE = 1.0;
 const MAX_INSTANCES_PER_TYPE = 400;
+const SETTLE_DURATION_MS = 420;
+const SETTLE_DROP_HEIGHT = 2.5;
 
 const TIER_HEIGHT: Record<TerrainDef["elevationTier"], number> = {
   coastal: 0.45,
@@ -32,11 +21,29 @@ interface TerrainInstance {
   index: number;
 }
 
+interface SettleAnim {
+  mesh: THREE.InstancedMesh;
+  index: number;
+  x: number;
+  z: number;
+  finalHeight: number;
+  startTime: number;
+}
+
+/** t in [0,1] -> eased [0,1] with a slight overshoot, for a "click into place" feel. */
+function easeOutBack(t: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  const u = t - 1;
+  return 1 + c3 * u * u * u + c1 * u * u;
+}
+
 export class TerrainMeshManager {
   readonly group = new THREE.Group();
   private meshes = new Map<string, THREE.InstancedMesh>();
   private counts = new Map<string, number>();
   private placed = new Map<string, TerrainInstance>();
+  private activeAnims: SettleAnim[] = [];
 
   constructor() {
     for (const terrain of TERRAIN_DEFS) {
@@ -72,7 +79,8 @@ export class TerrainMeshManager {
     return this.placed.has(`${coord.q},${coord.r}`);
   }
 
-  placeTile(coord: AxialCoord, terrainId: string): void {
+  /** Places a tile. When `animate` is true it drops/settles into place over ~SETTLE_DURATION_MS. */
+  placeTile(coord: AxialCoord, terrainId: string, options: { animate?: boolean } = {}): void {
     const terrain = TERRAIN_BY_ID.get(terrainId);
     if (!terrain) throw new Error(`Unknown terrain id: ${terrainId}`);
     const mesh = this.meshes.get(terrainId)!;
@@ -80,8 +88,17 @@ export class TerrainMeshManager {
     if (index >= MAX_INSTANCES_PER_TYPE) throw new Error(`Terrain instance cap exceeded for ${terrainId}`);
 
     const { x, z } = axialToWorld(coord, HEX_SIZE);
-    const matrix = new THREE.Matrix4().makeTranslation(x, 0, z);
-    mesh.setMatrixAt(index, matrix);
+
+    if (options.animate) {
+      const matrix = new THREE.Matrix4()
+        .makeScale(0.4, 0.4, 0.4)
+        .setPosition(x, SETTLE_DROP_HEIGHT, z);
+      mesh.setMatrixAt(index, matrix);
+      this.activeAnims.push({ mesh, index, x, z, finalHeight: 0, startTime: performance.now() });
+    } else {
+      const matrix = new THREE.Matrix4().makeTranslation(x, 0, z);
+      mesh.setMatrixAt(index, matrix);
+    }
 
     const seed = coord.q * 31 + coord.r * 17;
     const color = jitterColor(paletteColor(terrain.colorKey), seed);
@@ -93,5 +110,27 @@ export class TerrainMeshManager {
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
     this.placed.set(`${coord.q},${coord.r}`, { coord, index });
+  }
+
+  /** Advances any in-flight settle animations. Call once per rendered frame. */
+  tick(nowMs: number): void {
+    if (this.activeAnims.length === 0) return;
+    const stillActive: SettleAnim[] = [];
+    for (const anim of this.activeAnims) {
+      const t = Math.min(1, (nowMs - anim.startTime) / SETTLE_DURATION_MS);
+      const eased = easeOutBack(t);
+      const y = anim.finalHeight + (SETTLE_DROP_HEIGHT - anim.finalHeight) * (1 - eased);
+      const scale = THREE.MathUtils.clamp(0.4 + 0.6 * eased, 0, 1.08);
+      const matrix = new THREE.Matrix4().makeScale(scale, scale, scale).setPosition(anim.x, y, anim.z);
+      anim.mesh.setMatrixAt(anim.index, matrix);
+      anim.mesh.instanceMatrix.needsUpdate = true;
+      if (t < 1) stillActive.push(anim);
+      else {
+        const settled = new THREE.Matrix4().makeTranslation(anim.x, anim.finalHeight, anim.z);
+        anim.mesh.setMatrixAt(anim.index, settled);
+        anim.mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+    this.activeAnims = stillActive;
   }
 }

@@ -18,6 +18,7 @@ const SOFT_PAIRS: [EdgeType, EdgeType][] = [
   ["GRASS", "FARM"],
   ["GRASS", "FOREST"],
   ["GRASS", "SAND"],
+  ["GRASS", "WATER"], // riverside/estuary-side open plains are common
   ["ROCK", "FOREST"],
   ["ROCK", "GRASS"],
   ["FARM", "WATER"],

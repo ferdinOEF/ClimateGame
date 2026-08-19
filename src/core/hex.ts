@@ -72,6 +72,31 @@ export function axialToWorld(coord: AxialCoord, hexSize: number): { x: number; z
   return { x, z };
 }
 
+/** Rounds fractional cube coordinates to the nearest valid hex (redblobgames cube-round). */
+function cubeRound(q: number, r: number, s: number): AxialCoord {
+  let rq = Math.round(q);
+  let rr = Math.round(r);
+  const rs = Math.round(s);
+
+  const qDiff = Math.abs(rq - q);
+  const rDiff = Math.abs(rr - r);
+  const sDiff = Math.abs(rs - s);
+
+  if (qDiff > rDiff && qDiff > sDiff) {
+    rq = -rr - rs;
+  } else if (rDiff > sDiff) {
+    rr = -rq - rs;
+  }
+  return { q: rq, r: rr };
+}
+
+/** World-space (x, z) -> nearest axial hex. Inverse of axialToWorld, for click-picking. */
+export function worldToAxial(x: number, z: number, hexSize: number): AxialCoord {
+  const r = (2 / 3) * (z / hexSize);
+  const q = x / (hexSize * Math.sqrt(3)) - r / 2;
+  return cubeRound(q, r, -q - r);
+}
+
 export function hexRing(center: AxialCoord, radius: number): AxialCoord[] {
   if (radius === 0) return [center];
   const results: AxialCoord[] = [];

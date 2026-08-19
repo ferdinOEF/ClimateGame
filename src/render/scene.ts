@@ -6,7 +6,7 @@ export interface KhazanScene {
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   sun: THREE.DirectionalLight;
-  start: () => void;
+  start: (onFrame?: (nowMs: number) => void) => void;
   onResize: () => void;
 }
 
@@ -47,8 +47,9 @@ export function createScene(container: HTMLElement): KhazanScene {
   }
   window.addEventListener("resize", onResize);
 
-  function start(): void {
-    renderer.setAnimationLoop(() => {
+  function start(onFrame?: (nowMs: number) => void): void {
+    renderer.setAnimationLoop((nowMs: number) => {
+      onFrame?.(nowMs);
       renderer.render(scene, camera);
     });
   }

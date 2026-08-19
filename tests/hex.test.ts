@@ -4,10 +4,12 @@ import {
   axialDistance,
   axialEqual,
   axialKey,
+  axialToWorld,
   edgeIndexTo,
   neighbor,
   neighbors,
-  oppositeEdge
+  oppositeEdge,
+  worldToAxial
 } from "../src/core/hex";
 
 describe("hex neighbor math", () => {
@@ -80,3 +82,30 @@ describe("edge adjacency", () => {
     }
   });
 });
+
+describe("world <-> axial round trip (click-picking)", () => {
+  const hexSize = 1.0;
+
+  it("recovers the exact coord for a range of hexes via a spiral", () => {
+    const coords: AxialCoordLike[] = [];
+    for (let q = -5; q <= 5; q++) {
+      for (let r = -5; r <= 5; r++) {
+        if (Math.abs(-q - r) <= 5) coords.push({ q, r });
+      }
+    }
+    for (const c of coords) {
+      const { x, z } = axialToWorld(c, hexSize);
+      const back = worldToAxial(x, z, hexSize);
+      expect(back).toEqual(c);
+    }
+  });
+
+  it("snaps a point near a hex center back to that hex, not a neighbor", () => {
+    const target = { q: 3, r: -2 };
+    const { x, z } = axialToWorld(target, hexSize);
+    const nudged = worldToAxial(x + 0.15, z - 0.1, hexSize);
+    expect(nudged).toEqual(target);
+  });
+});
+
+type AxialCoordLike = { q: number; r: number };

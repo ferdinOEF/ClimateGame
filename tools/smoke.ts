@@ -56,10 +56,11 @@ async function main(): Promise<void> {
     });
     page.on("pageerror", (err) => consoleErrors.push(String(err)));
 
-    await page.goto(DEV_URL, { waitUntil: "networkidle" });
+    const query = process.argv[3] ? `?${process.argv[3]}` : "";
+    await page.goto(DEV_URL + query, { waitUntil: "networkidle" });
     await page.waitForSelector("canvas", { timeout: 10000 });
-    // Let a few frames render.
-    await page.waitForTimeout(500);
+    // Let a few frames render (and any dev autoplace / settle animations finish).
+    await page.waitForTimeout(800);
 
     const label = process.argv[2] ?? "phase0";
     const screenshotPath = path.join(SCREENSHOT_DIR, `${label}.png`);

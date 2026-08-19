@@ -74,8 +74,65 @@ clean, zero console errors — done.
   Phase 1 simple; can add mixed-edge variants later if the frontier feels too
   permissive.
 
-## Next: Phase 1 — Dorfromantik placement loop
+## Phase 1 — Dorfromantik placement loop — DONE
 
-Hand-of-2-3 draw with placeability filtering, click-to-place in the 3D
-frontier, edge-matching (incl. water continuity), tile-settle animation,
-corner-only HUD.
+**What's here:**
+- `src/core/gameState.ts` — pure-logic `GameState`: placed-tile map, frontier
+  set (all empty neighbors of placed tiles), hand of 3, and `isLegal()` /
+  `placeFromHand()`. No Three.js import — matches the core/render split the
+  folder structure calls for (also moved terrain data loading out of the
+  render layer into `src/core/terrain.ts`, where it belongs).
+- Legality = every touching edge pair compatible (`edgeTypes.ts`) **and**,
+  for river/estuary, at least one already-placed neighbor is also
+  water-family — the simplified river-continuity rule logged as a Phase 0
+  escape hatch.
+- Hand drawing guarantees at least one legal placement exists: draws
+  randomly up to 50 times, and if that fails, falls back to a terrain id
+  known to have a legal spot (any already-placed tile's own type, which is
+  always self-compatible). After each placement the used slot refills, and
+  the whole hand is redrawn if that refill ever leaves it dead.
+- `src/core/hex.ts` gained `worldToAxial` (cube-rounded inverse of
+  `axialToWorld`) for click-picking; round-trip tested.
+- `src/render/frontierMeshManager.ts` — the frontier rendered as translucent
+  ghost hexes (same idea as Dorfromantik's own open-slot presentation),
+  bright for cells legal for the selected hand tile, dim otherwise.
+- Click-to-place: raycast against the frontier `InstancedMesh` directly and
+  read `instanceId` back to an axial coord — no separate ground-plane hack
+  needed.
+- Tile-settle animation lives in `TerrainMeshManager` itself (`placeTile(...,
+  {animate:true})` + a per-frame `tick()`): drops from above with a slight
+  `easeOutBack` overshoot on both position and scale, the "click into place"
+  feel the brief asks for.
+- `src/ui/hud.ts` — the only two persistent UI pieces: a top-right tile
+  counter and a bottom-center hand strip of 3 buttons (click to select,
+  selected one gets a highlighted border). No full-width panel.
+- A dev-only `?autoplace=N` URL param (Section 10's sanctioned debug
+  overlay — no button, not part of the real UI) drives real placements
+  through the exact same code path a click does, so Phase 1's "no dead hand
+  across 30+ placements" bar can be checked against the actual render loop,
+  not just the unit tests.
+
+**A real design gap the first cluster screenshot caught:** a 21-tile
+autoplace run showed only 4 of 7 terrain types (estuary/river/forest/coast) —
+`village_plains` (GRASS edges) had no compatibility pair with `WATER`, so it
+couldn't attach anywhere near the water-heavy cluster growing from the
+estuary seed. Real riverside plains do sit right at the water's edge, so
+added `GRASS<->WATER` to the soft-pair list in `edgeTypes.ts`. A follow-up
+41-tile run shows 5-6 visibly distinct terrain types.
+
+**Verification:**
+- `npm test` — 17/17 passing, including `tests/gameState.test.ts`'s scripted
+  35-placement run asserting `handHasAnyLegalPlacement()` never goes false,
+  every touching edge stays compatible, and water-continuity holds.
+- `npm run smoke -- <label> autoplace=40` — 41 tiles placed through the real
+  click-path code with zero console errors; screenshot below.
+- The internal gap visible in the screenshot (a frontier cell surrounded by
+  placed tiles, not yet filled) is correct Dorfromantik-style behavior, not a
+  bug — that cell stays in the frontier until a compatible tile is drawn.
+
+![Phase 1 cluster, 41 tiles](tools/screenshots/phase1.png)
+
+## Next: Phase 2 — Town buildings + economy
+
+Contextual tile popover for the 4 Section 4 buildings, Coin economy, low-poly
+building props rendered on their tile (not list icons).
