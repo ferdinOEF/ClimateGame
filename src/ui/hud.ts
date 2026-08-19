@@ -12,6 +12,7 @@ export interface HudCallbacks {
 export class Hud {
   private tileCountEl: HTMLElement;
   private coinEl: HTMLElement;
+  private trustEl: HTMLElement;
   private handEl: HTMLElement;
 
   constructor(container: HTMLElement, private callbacks: HudCallbacks) {
@@ -27,6 +28,12 @@ export class Hud {
     container.appendChild(coin);
     this.coinEl = coin.querySelector(".coin-value")!;
 
+    const trust = document.createElement("div");
+    trust.className = "hud-corner top-left trust-corner";
+    trust.innerHTML = `<div>Trust</div><div class="tile-count-value trust-value">0</div>`;
+    container.appendChild(trust);
+    this.trustEl = trust.querySelector(".trust-value")!;
+
     const hand = document.createElement("div");
     hand.className = "hud-corner bottom-center hand-strip";
     container.appendChild(hand);
@@ -39,6 +46,10 @@ export class Hud {
 
   setCoin(n: number): void {
     this.coinEl.textContent = String(n);
+  }
+
+  setTrust(n: number): void {
+    this.trustEl.textContent = String(Math.round(n));
   }
 
   renderHand(hand: string[], selectedIndex: number): void {

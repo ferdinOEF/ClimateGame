@@ -6,24 +6,37 @@ import { SettleAnimator } from "./settleAnimation";
 
 const MAX_INSTANCES = 400;
 const OVERLAY_HEIGHT = 0.14;
-const SHALLOW_COLOR = new THREE.Color("#8fbfd6"); // light — a shin-deep splash
-const DEEP_COLOR = new THREE.Color("#0d3752"); // dark, saturated — a serious inundation
 const OVERLAY_LIFETIME_MS = 2200;
+
+export interface HazardOverlayColors {
+  shallow: string;
+  deep: string;
+}
+
+/** Flood: pale shin-deep splash to a dark, saturated inundation. */
+export const FLOOD_OVERLAY_COLORS: HazardOverlayColors = { shallow: "#8fbfd6", deep: "#0d3752" };
+/** Cyclone: wind-swept dust/debris tan to a bruised storm gray — visibly not water. */
+export const CYCLONE_OVERLAY_COLORS: HazardOverlayColors = { shallow: "#d8c9a3", deep: "#4a4550" };
 
 /**
  * Visible hazard resolution (Section 2/9's non-negotiable: the event must be
- * seen on the map, not just reflected in meter numbers). A translucent
- * rising-water disc appears on each damaged tile — both its height *and*
- * its color saturation scale with how much damage it took, so a light
- * splash reads differently from a serious inundation at a glance, not just
- * as "more of the same blue" — then it recedes and fades.
+ * seen on the map, not just reflected in meter numbers). A translucent disc
+ * appears on each damaged tile — both its height *and* its color saturation
+ * scale with how much damage it took, so light damage reads differently
+ * from severe damage at a glance — then it recedes and fades. One instance
+ * per hazard type (different color language) sharing the same mechanics.
  */
-export class FloodOverlayManager {
+export class HazardOverlayManager {
   readonly mesh: THREE.InstancedMesh;
   private count = 0;
   private animator = new SettleAnimator();
+  private shallow: THREE.Color;
+  private deep: THREE.Color;
 
-  constructor() {
+  constructor(colors: HazardOverlayColors, name: string) {
+    this.shallow = new THREE.Color(colors.shallow);
+    this.deep = new THREE.Color(colors.deep);
+
     const geometry = createHexPrismGeometry(0.9, OVERLAY_HEIGHT);
     const material = new THREE.MeshStandardMaterial({
       transparent: true,
@@ -34,10 +47,10 @@ export class FloodOverlayManager {
     this.mesh = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
     this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES * 3), 3);
     this.mesh.count = 0;
-    this.mesh.name = "flood-overlay";
+    this.mesh.name = name;
   }
 
-  /** Shows a rising-water overlay on `coord`, sized and colored by `severity`, that recedes after ~2s. */
+  /** Shows an overlay on `coord`, sized and colored by `severity`, that recedes after ~2s. */
   show(coord: AxialCoord, terrainTopY: number, severity: number, nowMs: number): void {
     if (this.count >= MAX_INSTANCES) return;
     const index = this.count++;
@@ -48,7 +61,7 @@ export class FloodOverlayManager {
     const peakY = terrainTopY + 0.06 + intensity * 0.44;
     this.animator.begin(this.mesh, index, x, z, peakY, nowMs);
 
-    const color = SHALLOW_COLOR.clone().lerp(DEEP_COLOR, intensity);
+    const color = this.shallow.clone().lerp(this.deep, intensity);
     this.mesh.setColorAt(index, color);
     if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
 

@@ -14,6 +14,13 @@ function cone(radius: number, h: number, segments: number, x: number, y: number,
   return g;
 }
 
+function squashedSphere(radius: number, squash: number, x: number, y: number, z: number): THREE.BufferGeometry {
+  const g = new THREE.SphereGeometry(radius, 8, 5);
+  g.scale(1, squash, 1);
+  g.translate(x, y, z);
+  return g;
+}
+
 /** Mangrove Buffer: a cluster of low, twisted shrub blobs fringing the tile. */
 function mangroveBufferGeometry(): THREE.BufferGeometry {
   const spots: [number, number][] = [
@@ -56,11 +63,41 @@ function khazanGeometry(): THREE.BufferGeometry {
   return mergeGeometries([...sides, gate]);
 }
 
+/** Coastal Dune & Windbreak: a low sandy mound with a few wind-bent grass tufts. */
+function coastalDuneGeometry(): THREE.BufferGeometry {
+  const mound = squashedSphere(0.42, 0.45, 0, 0.12, 0);
+  const tufts = [
+    cone(0.05, 0.22, 4, -0.15, 0.28, 0.05),
+    cone(0.05, 0.2, 4, 0.1, 0.26, -0.1),
+    cone(0.04, 0.18, 4, 0.2, 0.24, 0.12)
+  ];
+  return mergeGeometries([mound, ...tufts]);
+}
+
+/** Seawall: taller and more imposing than the river embankment — the coast's hard engineered line. */
+function seawallGeometry(): THREE.BufferGeometry {
+  const wall = box(1.55, 0.5, 0.24, 0, 0.25, 0.34);
+  const base = box(1.65, 0.12, 0.4, 0, 0.06, 0.34);
+  return mergeGeometries([wall, base]);
+}
+
+/** Cyclone Shelter: a small flat-roofed refuge with a high-visibility flag — protects people, not land. */
+function cycloneShelterGeometry(): THREE.BufferGeometry {
+  const body = box(0.52, 0.34, 0.52, 0, 0.17, 0);
+  const roof = box(0.6, 0.05, 0.6, 0, 0.365, 0);
+  const pole = cone(0.02, 0.3, 4, 0, 0.34 + 0.15, 0);
+  const flag = box(0.16, 0.1, 0.02, 0.08, 0.34 + 0.26, 0);
+  return mergeGeometries([body, roof, pole, flag]);
+}
+
 const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   mangrove_buffer: mangroveBufferGeometry,
   riparian_forest_buffer: riparianForestBufferGeometry,
   river_embankment: riverEmbankmentGeometry,
-  khazan: khazanGeometry
+  khazan: khazanGeometry,
+  coastal_dune_windbreak: coastalDuneGeometry,
+  seawall: seawallGeometry,
+  cyclone_shelter: cycloneShelterGeometry
 };
 
 export function createDefenseGeometry(defenseId: string): THREE.BufferGeometry {

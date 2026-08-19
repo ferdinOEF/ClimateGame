@@ -19,6 +19,7 @@ export interface DefenseInstance {
 const HAND_SIZE = 3;
 const MAX_HAND_DRAW_ATTEMPTS = 50;
 const STARTING_COIN = 50;
+const STARTING_TRUST = 50;
 
 function isCoastOrEstuary(terrainId: string): boolean {
   return terrainId === "coast" || terrainId === "estuary";
@@ -40,6 +41,13 @@ export class GameState {
   hand: string[] = [];
   coin = STARTING_COIN;
   turn = 0;
+  /**
+   * A first, minimal slice of Section 7's meter system — just enough for
+   * Cyclone Shelter's distinguishing mechanic (it protects Trust, not land)
+   * to be real and testable. Biodiversity/Carbon/Resilience and the full
+   * HUD meter display are Phase 5 work.
+   */
+  trust = STARTING_TRUST;
   private random: RandomSource;
 
   constructor(seed: PlacedTile, random: RandomSource = Math.random) {

@@ -261,10 +261,100 @@ reads clearly now.
 ![Phase 3 moderate flood](tools/screenshots/phase3.png)
 ![Phase 3 severe flood](tools/screenshots/phase3_severe.png)
 
-## Next: Phase 4 — Cyclone hazard + Cyclone Shelter
+## Phase 4 — Cyclone hazard + Cyclone Shelter — DONE
 
-Telegraph (1-turn warning), coastal-edge spread with inland attenuation,
-wind+surge combined into one hazard. Cyclone Shelter protects population/
-Trust rather than land — a deliberate contrast to the other five defenses.
-Balance check: log NBS-heavy vs. engineered-heavy vs. khazan-heavy scripted
-playthroughs and compare outcomes — no category should be a landslide winner.
+**What's here:**
+- `resolveHazardWave` in `src/core/hazard.ts`: extracted the wave-BFS engine
+  Phase 3's flood resolver used into a shared function parameterized by
+  source tiles, decay rate, a `canPropagate` gate, and a `skipDamage`
+  predicate. `resolveMonsoonFlood` is now a thin wrapper over it (river
+  sources, downhill-only, river itself exempt from damage); `resolveCyclone`
+  is a second thin wrapper (coast/estuary sources — *every* coastal tile is
+  independently a source, since the storm hits the whole coastline, not one
+  point that propagates along it — no elevation gating since wind reaches
+  uphill as readily as down, faster decay for a more sudden/localized
+  hazard, and the source tiles themselves take damage, unlike the river).
+  The catastrophic-failure redirect and NBS/khazan overwhelm logic is
+  shared unchanged between both hazards.
+- 3 new defenses in `defenses.json`: Coastal Dune & Windbreak (NBS, cheap),
+  Seawall (Engineered, expensive, catastrophic-failure profile matching the
+  river embankment), and **Cyclone Shelter** — the deliberate outlier.
+  `absorptionAtMaturity: 0`, so it does *nothing* to `tileDamage`. Instead
+  `resolveCyclone` runs a second pass: any damaged tile with a town building
+  loses Trust, *unless* a Cyclone Shelter sits within `protectionRadius`
+  hexes, in which case it keeps 85% of the Trust it would have lost. A first
+  minimal slice of Section 7's meter system (`GameState.trust`) exists now
+  just to make this real and testable — the other three meters and the full
+  HUD meter display are Phase 5 work.
+- Render: 3 new low-poly defense shapes (dune = a squashed sandy mound with
+  wind-bent grass tufts, seawall = a taller version of the embankment's
+  concrete ridge, shelter = a small flat-roofed refuge with a flag —
+  high-visibility, reading as "for people" not "for land"). Generalized the
+  flood-only overlay renderer into `HazardOverlayManager`, parameterized by
+  a shallow/deep color pair, so cyclone damage renders as wind-swept
+  tan-to-storm-gray rather than reusing flood's blue (they're visibly
+  different hazards). A rotating torus "spinning storm icon" appears over
+  the coastal centroid during the 1-turn telegraph window (Section 5: fast,
+  little warning, unlike the flood's 2-turn one) — in-scene, not text.
+- Build popover now also surfaces cyclone defenses on coastal tiles
+  alongside everything else, still one small popover per tile.
+
+**Balance check (Phase 4's own DoD requirement):** `tests/balance.test.ts`
+runs three scripted 55-placement playthroughs from the *same seed* (so tile
+layout and hand draws are identical — defense choices never consume the
+RNG), each preferring to build only NBS, only engineered, or only khazan
+defenses whenever legal and affordable, against the same fixed
+flood/cyclone schedule. Results (logged in the test output):
+
+| category   | tiles damage (cumulative) | defenses built | coin remaining |
+|------------|---------------------------|-----------------|-----------------|
+| NBS        | 65.3                      | 17               | 1530            |
+| Engineered | 78.0                      | 12               | 1                |
+| Khazan     | 77.1                      | 5                | 1234             |
+
+No landslide: NBS wins on cumulative damage by being cheap enough to cover
+many more tiles per coin; engineered spends nearly everything (matching its
+"expensive, strong, risky" design) for a similar damage outcome; khazan
+gets built far less often (its only valid terrain is `khazan_flatland`, a
+narrower footprint than NBS/engineered's broader valid-tile sets) but still
+lands in the same range as engineered despite covering *both* hazards per
+structure instead of needing separate flood and cyclone defenses — a
+reasonable read of "the structure that rewards paying attention to the
+whole map," not proof of imbalance, but worth another look once Phase 5's
+full scoring exists. **Honest gap:** this harness builds no town buildings,
+so Trust — which only reacts to damaged buildings — never actually engages
+here; Cyclone Shelter's Trust-protection is separately and directly proven
+in `tests/cyclone.test.ts`'s dedicated comparative test instead.
+
+**Verification:**
+- `npm test` — 37/37 passing.
+- `npm run smoke -- <label> "autoplace=55&coinboost=800&autodefend=1&cyclone=1.3"` —
+  dev-only hooks drive real placement, defense construction (all 7 defenses
+  now, both hazards), and cyclone resolution through the same code paths
+  play uses. Zero console errors.
+
+![Phase 4 cyclone](tools/screenshots/phase4.png)
+
+**Section 10 self-assessment (Phases 3+4 combined):**
+- *Does at least one hazard create a real NBS-vs-engineered-vs-khazan
+  decision?* Yes — the balance table above shows three genuinely different
+  resource-allocation strategies landing in a comparable outcome range, not
+  one obviously-correct answer.
+- *Does a catastrophic engineered failure feel like a real setback?* Yes on
+  paper: it's not just "reduced protection," the structure is destroyed
+  (visibly, in-scene — it collapses) and the redirected surge measurably
+  hits the next tile harder than if no defense had existed at all, proven
+  by a comparative control run in both `hazard.test.ts` and
+  `cyclone.test.ts`. Not yet felt through actual play, only through
+  automated verification.
+- *Is there a Dorfromantik-style "that tile fit perfectly" moment?* Present
+  since Phase 1 (frontier highlighting + the settle animation), unchanged
+  by this phase.
+
+## Next: Phase 5 — Era loop, scoring, polish
+
+Standing severity baseline escalation (Section 2's "rest of the era"
+modifier), era retire/soft-loss + score banking, light meta-progression
+hook, the remaining 3 meters (Biodiversity, Carbon, Resilience) and full HUD
+meter display, grayscale-readability re-check across the now-complete
+palette, audio hooks.

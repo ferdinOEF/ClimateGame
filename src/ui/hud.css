@@ -36,6 +36,10 @@ html, body {
   left: 12px;
 }
 
+.hud-corner.top-left.trust-corner {
+  top: 70px;
+}
+
 .hud-corner.top-right {
   top: 12px;
   right: 12px;

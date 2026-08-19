@@ -1,6 +1,6 @@
 import defenseData from "@data/defenses.json";
 
-export type DefenseCategory = "nbs" | "engineered" | "hybrid";
+export type DefenseCategory = "nbs" | "engineered" | "hybrid" | "shelter";
 
 export interface DefenseDef {
   id: string;
@@ -21,6 +21,8 @@ export interface DefenseDef {
   failureRedirectMultiplier?: number;
   degradeGracefully?: boolean;
   gracefulDegradeStep?: number;
+  /** Cyclone Shelter only: hex radius within which it protects Trust (not land — see failureMode). */
+  protectionRadius?: number;
   colorKey: string;
   coBenefits: { biodiversity: number; carbon: number; trust: number };
   failureMode: string;

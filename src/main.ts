@@ -4,10 +4,10 @@ import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { FrontierMeshManager } from "@render/frontierMeshManager";
 import { BuildingMeshManager } from "@render/buildingMeshManager";
 import { DefenseMeshManager } from "@render/defenseMeshManager";
-import { FloodOverlayManager } from "@render/floodOverlayManager";
+import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS } from "@render/floodOverlayManager";
 import { GameState } from "@core/gameState";
 import { axialToWorld } from "@core/hex";
-import { resolveMonsoonFlood } from "@core/hazard";
+import { resolveMonsoonFlood, resolveCyclone } from "@core/hazard";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 
@@ -18,12 +18,23 @@ const terrain = new TerrainMeshManager();
 const frontier = new FrontierMeshManager();
 const buildings = new BuildingMeshManager();
 const defenses = new DefenseMeshManager();
-const floodOverlay = new FloodOverlayManager();
+const floodOverlay = new HazardOverlayManager(FLOOD_OVERLAY_COLORS, "flood-overlay");
+const cycloneOverlay = new HazardOverlayManager(CYCLONE_OVERLAY_COLORS, "cyclone-overlay");
 scene.add(terrain.group);
 scene.add(frontier.mesh);
 scene.add(buildings.group);
 scene.add(defenses.group);
 scene.add(floodOverlay.mesh);
+scene.add(cycloneOverlay.mesh);
+
+/** A spinning storm marker over the coast — Section 5's "spinning storm icon approaching," in-scene, not text. */
+const cycloneIcon = new THREE.Mesh(
+  new THREE.TorusGeometry(0.6, 0.12, 6, 5),
+  new THREE.MeshStandardMaterial({ color: "#3a3440", flatShading: true, roughness: 0.6 })
+);
+cycloneIcon.visible = false;
+cycloneIcon.rotation.x = Math.PI / 2;
+scene.add(cycloneIcon);
 
 /**
  * Seed at the river mouth per Section 4's geography gradient: estuary,
@@ -57,6 +68,7 @@ function refreshFrontierHighlight(): void {
 function refreshHud(): void {
   hud.setTileCount(state.placed.size);
   hud.setCoin(state.coin);
+  hud.setTrust(state.trust);
   hud.renderHand(state.hand, selectedHandIndex);
 }
 
@@ -73,34 +85,19 @@ function worldToScreen(x: number, y: number, z: number): { x: number; y: number 
   };
 }
 
-// --- Hazard telegraph + resolution -----------------------------------------
-
-const TELEGRAPH_COLOR = new THREE.Color("#0b2033");
-const FLOOD_INTERVAL_TURNS = 15;
-const FLOOD_TELEGRAPH_TURNS = 2;
-let nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
-
-function riverCoords(): { q: number; r: number }[] {
+function tilesOfType(...terrainIds: string[]): { q: number; r: number }[] {
   const coords: { q: number; r: number }[] = [];
   for (const tile of state.placed.values()) {
-    if (tile.terrainId === "river") coords.push(tile.coord);
+    if (terrainIds.includes(tile.terrainId)) coords.push(tile.coord);
   }
   return coords;
 }
 
-function updateFloodTelegraph(): void {
-  const turnsUntil = nextFloodAtTurn - state.turn;
-  const telegraphing = turnsUntil > 0 && turnsUntil <= FLOOD_TELEGRAPH_TURNS;
-  for (const coord of riverCoords()) {
-    terrain.setTint(coord, telegraphing ? TELEGRAPH_COLOR : null);
-  }
-}
-
-/** Resolves the flood: visible in-scene (rising water, defenses absorbing/failing/degrading), not just meter numbers. */
-function triggerFlood(baseSeverity: number): void {
-  const result = resolveMonsoonFlood(state, baseSeverity);
-  const now = performance.now();
-
+function applyHazardResult(
+  result: { tileDamage: Map<string, number>; destroyedDefenses: string[]; overwhelmedDefenses: string[] },
+  overlay: HazardOverlayManager,
+  now: number
+): void {
   for (const key of result.destroyedDefenses) {
     const [q, r] = key.split(",").map(Number);
     defenses.destroy({ q, r });
@@ -115,11 +112,70 @@ function triggerFlood(baseSeverity: number): void {
     if (damage < 0.08) continue;
     const [q, r] = key.split(",").map(Number);
     const coord = { q, r };
-    floodOverlay.show(coord, terrain.heightAt(coord), damage, now);
+    overlay.show(coord, terrain.heightAt(coord), damage, now);
   }
+}
 
-  for (const coord of riverCoords()) terrain.setTint(coord, null);
+// --- Monsoon Flood telegraph + resolution ------------------------------------
+
+const FLOOD_TELEGRAPH_COLOR = new THREE.Color("#0b2033");
+const FLOOD_INTERVAL_TURNS = 15;
+const FLOOD_TELEGRAPH_TURNS = 2;
+let nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
+
+function updateFloodTelegraph(): void {
+  const turnsUntil = nextFloodAtTurn - state.turn;
+  const telegraphing = turnsUntil > 0 && turnsUntil <= FLOOD_TELEGRAPH_TURNS;
+  for (const coord of tilesOfType("river")) terrain.setTint(coord, telegraphing ? FLOOD_TELEGRAPH_COLOR : null);
+}
+
+/** Resolves the flood: visible in-scene (rising water, defenses absorbing/failing/degrading), not just meter numbers. */
+function triggerFlood(baseSeverity: number): void {
+  const result = resolveMonsoonFlood(state, baseSeverity);
+  applyHazardResult(result, floodOverlay, performance.now());
+  for (const coord of tilesOfType("river")) terrain.setTint(coord, null);
   nextFloodAtTurn = state.turn + FLOOD_INTERVAL_TURNS;
+}
+
+// --- Cyclone telegraph + resolution -------------------------------------------
+
+const CYCLONE_TELEGRAPH_COLOR = new THREE.Color("#3a3348");
+const CYCLONE_INTERVAL_TURNS = 11;
+const CYCLONE_TELEGRAPH_TURNS = 1; // fast — little warning, per Section 5
+let nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
+
+function coastalCentroid(): { x: number; z: number } | null {
+  const coords = tilesOfType("coast", "estuary");
+  if (coords.length === 0) return null;
+  let x = 0;
+  let z = 0;
+  for (const c of coords) {
+    const w = axialToWorld(c, 1.0);
+    x += w.x;
+    z += w.z;
+  }
+  return { x: x / coords.length, z: z / coords.length };
+}
+
+function updateCycloneTelegraph(): void {
+  const turnsUntil = nextCycloneAtTurn - state.turn;
+  const telegraphing = turnsUntil > 0 && turnsUntil <= CYCLONE_TELEGRAPH_TURNS;
+  for (const coord of tilesOfType("coast", "estuary")) {
+    terrain.setTint(coord, telegraphing ? CYCLONE_TELEGRAPH_COLOR : null, 0.45);
+  }
+  const centroid = coastalCentroid();
+  cycloneIcon.visible = telegraphing && centroid !== null;
+  if (telegraphing && centroid) cycloneIcon.position.set(centroid.x, 2.2, centroid.z);
+}
+
+/** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. */
+function triggerCyclone(baseSeverity: number): void {
+  const result = resolveCyclone(state, baseSeverity);
+  applyHazardResult(result, cycloneOverlay, performance.now());
+  for (const coord of tilesOfType("coast", "estuary")) terrain.setTint(coord, null);
+  cycloneIcon.visible = false;
+  nextCycloneAtTurn = state.turn + CYCLONE_INTERVAL_TURNS;
+  refreshHud();
 }
 
 function tryPlace(handIndex: number, coord: { q: number; r: number }): boolean {
@@ -135,6 +191,9 @@ function tryPlace(handIndex: number, coord: { q: number; r: number }): boolean {
 
   if (state.turn >= nextFloodAtTurn) triggerFlood(1.0 + Math.random() * 0.6);
   else updateFloodTelegraph();
+
+  if (state.turn >= nextCycloneAtTurn) triggerCyclone(1.0 + Math.random() * 0.6);
+  else updateCycloneTelegraph();
 
   return true;
 }
@@ -201,6 +260,8 @@ start((nowMs) => {
   buildings.tick(nowMs);
   defenses.tick(nowMs);
   floodOverlay.tick(nowMs);
+  cycloneOverlay.tick(nowMs);
+  if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 });
 
 /**
@@ -235,7 +296,7 @@ function devAutoBuild(): void {
   refreshHud();
 }
 
-/** Prefers a defense type not yet built anywhere, so a dev screenshot shows all 3 categories at once. */
+/** Prefers a defense type not yet built anywhere, so a dev screenshot shows every category at once. */
 function devAutoDefend(): void {
   const builtTypes = new Set<string>();
   for (const key of state.placed.keys()) {
@@ -265,3 +326,5 @@ if (params.has("autobuild")) devAutoBuild();
 if (params.has("autodefend")) devAutoDefend();
 const floodParam = params.get("flood");
 if (floodParam) triggerFlood(Number(floodParam));
+const cycloneParam = params.get("cyclone");
+if (cycloneParam) triggerCyclone(Number(cycloneParam));

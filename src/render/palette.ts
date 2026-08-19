@@ -32,7 +32,9 @@ export const PALETTE: Record<string, THREE.Color> = {
   defenseMangrove: new THREE.Color("#4FAE6E"),
   defenseRiparian: new THREE.Color("#5FA84A"),
   defenseEngineered: new THREE.Color("#7C8277"),
-  defenseKhazanBund: new THREE.Color("#8C6A3F")
+  defenseKhazanBund: new THREE.Color("#8C6A3F"),
+  defenseDune: new THREE.Color("#C9B071"),
+  defenseShelter: new THREE.Color("#D9622B")
 };
 
 export function paletteColor(key: string): THREE.Color {
