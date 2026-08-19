@@ -1,0 +1,49 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1512;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+#app canvas {
+  display: block;
+}
+
+/*
+  The map is the interface (Section 3). HUD elements are small,
+  corner-anchored strips only — never a panel competing with the map.
+*/
+.hud-corner {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  color: #fdf6e6;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  font-size: 13px;
+}
+
+.hud-corner.top-left {
+  top: 12px;
+  left: 12px;
+}
+
+.hud-corner.top-right {
+  top: 12px;
+  right: 12px;
+  text-align: right;
+}
+
+.hud-corner.bottom-center {
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+}

@@ -1,0 +1,26 @@
+{
+  "west": 73.77633057542245,
+  "east": 73.94345953567566,
+  "south": 15.436409600796932,
+  "north": 15.563669058201727,
+  "note": "Axis-aligned WGS84 bounding box derived from the source raster's EPSG:32643 corner coordinates reprojected with pyproj. The source raster is a north-up rectangle in UTM 43N; reprojecting an ~16km x 14km rectangle to WGS84 introduces sub-pixel meridian-convergence distortion, acceptable for a reference/visual overlay only -- this image is never used as a calculation input.",
+  "source_crs": "EPSG:32643",
+  "corners_utm": {
+    "NW": [
+      368788.19947033224,
+      1720952.470101389
+    ],
+    "NE": [
+      386642.5687962506,
+      1720952.470101389
+    ],
+    "SE": [
+      386642.5687962506,
+      1706968.519518428
+    ],
+    "SW": [
+      368788.19947033224,
+      1706968.519518428
+    ]
+  }
+}
