@@ -25,7 +25,14 @@ export const PALETTE: Record<string, THREE.Color> = {
   sky: new THREE.Color("#CFE6E8"),
   // Building accent colors — deliberately distinct from every terrain
   // colorKey above so a prop never blends into the tile it sits on.
-  paddyRipe: new THREE.Color("#D9A63E") // golden amber, ripening rice
+  paddyRipe: new THREE.Color("#D9A63E"), // golden amber, ripening rice
+  // Defense accent colors — same rule, plus a hue/material language of
+  // their own: organic greens for NBS, flat concrete gray for engineered,
+  // earthy bund-brown for the hybrid khazan.
+  defenseMangrove: new THREE.Color("#4FAE6E"),
+  defenseRiparian: new THREE.Color("#5FA84A"),
+  defenseEngineered: new THREE.Color("#7C8277"),
+  defenseKhazanBund: new THREE.Color("#8C6A3F")
 };
 
 export function paletteColor(key: string): THREE.Color {

@@ -48,7 +48,7 @@
     "id": "forest",
     "name": "Forest (Ghats Foothill)",
     "edgeTypes": ["FOREST", "FOREST", "FOREST", "FOREST", "FOREST", "FOREST"],
-    "elevationTier": "highland",
+    "elevationTier": "midland",
     "flammability": 0,
     "decorationDensityRange": [3, 6],
     "colorKey": "forestDeep"

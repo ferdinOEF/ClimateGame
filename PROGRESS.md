@@ -181,9 +181,90 @@ reads clearly now.
 
 ![Phase 2 settlement](tools/screenshots/phase2.png)
 
-## Next: Phase 3 — Monsoon Flood hazard + defense trio
+## Phase 3 — Monsoon Flood hazard + defense trio — DONE
 
-Telegraph → downhill spread → damage resolution; all three defense
-categories (NBS, engineered, khazan hybrid) implemented and data-driven,
-including the catastrophic engineered-failure redirect and the khazan's
-graceful degrade.
+**What's here:**
+- `src/core/defenses.ts` + `src/data/defenses.json` — 4 structures covering
+  all 3 categories against flood: Mangrove Buffer + Riparian Forest Buffer
+  (NBS), River Embankment & Pump Station (Engineered), Khazan (Hybrid, the
+  signature mechanic). `GameState` gained a parallel `defenses` map (coord ->
+  `{defenseId, builtOnTurn, degradeAmount}`) alongside `buildings` — a tile
+  can carry one of each, matching how a real khazan protects farmland behind
+  it. `buildableDefensesAt`/`canBuildDefense`/`buildDefense` mirror the
+  building API; `effectiveAbsorption(coord)` factors in maturity progress
+  (`matureTurns`) and any permanent degrade.
+- `src/core/hazard.ts` — `resolveMonsoonFlood`: a wave-by-wave BFS from every
+  river tile, decaying 0.72x per hop, refusing to flow onto a higher
+  elevation tier. A tile's own defense (if it targets flood) absorbs a
+  fraction of the arriving severity; engineered defenses above
+  `failureThreshold` are destroyed and pass an *amplified* spike onward
+  (`failureRedirectMultiplier`) instead of the normal decayed leftover —
+  the redirect falls out of the same wave propagation rather than needing
+  special-cased "inland neighbor" logic. NBS/hybrid defenses above
+  `overwhelmSeverity` lose most of their absorption for that event only;
+  khazan additionally takes a permanent `gracefulDegradeStep` (its
+  "no catastrophic breach, but neglect and overwhelm both cost you
+  effectiveness" tradeoff). `GameState.advanceTurn()` also now processes
+  defense upkeep: paid if affordable, or a silent permanent weakening if not
+  (`maintenanceNeglectPenaltyPerTurn`) — decays even with no hazard involved.
+- Render: `defenseMeshManager.ts`/`defenseGeometry.ts` (mangrove = shrub
+  cluster, riparian = a tree hedge, embankment = a raised concrete ridge,
+  khazan = a bund ring + sluice-gate marker — engineered reads angular/gray,
+  NBS reads organic/green, khazan reads earthy-brown, on purpose).
+  `floodOverlayManager.ts` shows a rising-water disc on every damaged tile,
+  sized *and* colored by how much damage it took (pale shin-deep splash to
+  dark serious inundation — a first pass used one fixed color/opacity and
+  read as "everything is equally flooded," fixed after the first screenshot
+  made that illegible). A catastrophic engineered failure collapses its
+  prop to nothing (`SettleAnimator.collapse`, factored out alongside the
+  existing settle-in tween); khazan overwhelm tints its bund toward a patchy
+  weathered brown proportional to its degrade.
+- Telegraph: 2 turns before an automatic flood, every river tile's color
+  blends toward a dark storm tint (`TerrainMeshManager.setTint`) — in-scene,
+  no text warning. Floods auto-trigger on a 15-turn cadence at a randomized
+  moderate severity (1.0-1.6); `?flood=N` (dev-only) forces one immediately
+  at a chosen severity for testing.
+- The build popover now lists buildings and defenses together, tagged by
+  category (`building`/`nbs`/`engineered`/`hybrid`), still one small
+  popover — no second panel.
+
+**Two real bugs/gaps the verification screenshots caught:**
+1. `forest`'s elevation tier was `highland`, one tier above `river`
+   (`midland`) — under the downhill-only flow rule, flood could *never*
+   reach a forest tile adjacent to the river that spawned it, which broke
+   the riparian buffer entirely (its own unit test caught this before any
+   screenshot did). Reassigned forest to `midland` — Ghats-foothill forest
+   sitting at a transitional elevation near the river is also more accurate
+   than "as high as the laterite plateau."
+2. The flood overlay's fixed color/opacity made a severe, map-wide flood
+   screenshot unreadable — every tile looked equally flooded regardless of
+   actual damage. Added per-instance color intensity (pale to deep blue)
+   scaled by severity; a follow-up moderate-severity screenshot shows the
+   falloff clearly.
+
+**Verification:**
+- `npm test` — 30/30 passing. `tests/hazard.test.ts` covers the DoD's exact
+  scenario matrix: no-defense baseline, NBS absorbing normally, NBS
+  overwhelmed-but-surviving, engineered absorbing below threshold, engineered
+  catastrophic failure (destroyed + a comparative control run proving the
+  redirected spike deals *more* downstream damage than no defense at all),
+  khazan overwhelmed-but-never-destroyed, khazan's degrade persisting into a
+  second event (measurably more damage the second time), and maintenance
+  neglect decaying a defense with no hazard involved.
+- `npm run smoke -- <label> "autoplace=N&coinboost=N&autodefend=1&flood=N"` —
+  dev-only hooks drive real placements, defense construction, and hazard
+  resolution through the same code paths play uses. Two screenshots: a
+  moderate flood (clear severity gradient, all defenses surviving) and a
+  severe one (map-wide coverage, engineered structures destroyed). Zero
+  console errors both runs.
+
+![Phase 3 moderate flood](tools/screenshots/phase3.png)
+![Phase 3 severe flood](tools/screenshots/phase3_severe.png)
+
+## Next: Phase 4 — Cyclone hazard + Cyclone Shelter
+
+Telegraph (1-turn warning), coastal-edge spread with inland attenuation,
+wind+surge combined into one hazard. Cyclone Shelter protects population/
+Trust rather than land — a deliberate contrast to the other five defenses.
+Balance check: log NBS-heavy vs. engineered-heavy vs. khazan-heavy scripted
+playthroughs and compare outcomes — no category should be a landslide winner.

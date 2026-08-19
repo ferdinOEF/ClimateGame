@@ -2,10 +2,18 @@ import { type AxialCoord, axialKey, neighbor, oppositeEdge } from "./hex";
 import { TERRAIN_BY_ID, TERRAIN_IDS, isWaterFamily } from "./terrain";
 import { edgesCompatible } from "./edgeTypes";
 import { BUILDING_BY_ID, type BuildingDef } from "./buildings";
+import { DEFENSE_BY_ID, type DefenseDef } from "./defenses";
 
 export interface PlacedTile {
   coord: AxialCoord;
   terrainId: string;
+}
+
+export interface DefenseInstance {
+  defenseId: string;
+  builtOnTurn: number;
+  /** Permanent absorption reduction from graceful-degrade events or unpaid maintenance. */
+  degradeAmount: number;
 }
 
 const HAND_SIZE = 3;
@@ -28,6 +36,7 @@ export class GameState {
   readonly placed = new Map<string, PlacedTile>();
   readonly frontier = new Set<string>();
   readonly buildings = new Map<string, string>(); // coord key -> building id
+  readonly defenses = new Map<string, DefenseInstance>();
   hand: string[] = [];
   coin = STARTING_COIN;
   turn = 0;
@@ -37,6 +46,16 @@ export class GameState {
     this.random = random;
     this.placeInternal(seed);
     this.hand = this.drawLegalHand();
+  }
+
+  /**
+   * Test/scenario-only: places a tile at an exact coord bypassing legality
+   * and the hand. Used to build deterministic hazard-resolution fixtures;
+   * never called from the real play path (Section 10's sanctioned debug
+   * escape hatch, same spirit as the ?autoplace URL hook).
+   */
+  debugForcePlace(coord: AxialCoord, terrainId: string): void {
+    this.placeInternal({ coord, terrainId });
   }
 
   private placeInternal(tile: PlacedTile): void {
@@ -136,12 +155,28 @@ export class GameState {
     return true;
   }
 
-  /** One tile placement = one turn (Section 2's Calm-phase cadence): buildings pay out. */
-  private advanceTurn(): void {
+  /**
+   * One tile placement = one turn (Section 2's Calm-phase cadence):
+   * buildings pay out, and defenses with upkeep either get paid or silently
+   * weaken (the khazan/river-embankment "neglect decays it" tradeoff).
+   * Public because the hazard/turn system also needs to advance it directly
+   * (e.g. maintenance still ticks between hazard events).
+   */
+  advanceTurn(): void {
     this.turn++;
     for (const buildingId of this.buildings.values()) {
       const def = BUILDING_BY_ID.get(buildingId);
       if (def) this.coin += def.coinPerTurn;
+    }
+    for (const [key, inst] of this.defenses) {
+      const def = DEFENSE_BY_ID.get(inst.defenseId);
+      if (!def || def.maintenanceCostPerTurn <= 0) continue;
+      if (this.coin >= def.maintenanceCostPerTurn) {
+        this.coin -= def.maintenanceCostPerTurn;
+      } else if (def.maintenanceNeglectPenaltyPerTurn) {
+        inst.degradeAmount += def.maintenanceNeglectPenaltyPerTurn;
+        this.defenses.set(key, inst);
+      }
     }
   }
 
@@ -151,6 +186,67 @@ export class GameState {
       if (np && isCoastOrEstuary(np.terrainId)) return true;
     }
     return false;
+  }
+
+  private isWaterFamilyAdjacent(coord: AxialCoord): boolean {
+    for (let dir = 0; dir < 6; dir++) {
+      const np = this.placed.get(axialKey(neighbor(coord, dir)));
+      if (np && isWaterFamily(np.terrainId)) return true;
+    }
+    return false;
+  }
+
+  /** Defense options valid at `coord` right now (terrain + water adjacency), regardless of affordability. */
+  buildableDefensesAt(coord: AxialCoord): DefenseDef[] {
+    const key = axialKey(coord);
+    const tile = this.placed.get(key);
+    if (!tile || this.defenses.has(key)) return [];
+
+    const results: DefenseDef[] = [];
+    for (const def of DEFENSE_BY_ID.values()) {
+      if (!def.validTerrainIds.includes(tile.terrainId)) continue;
+      if (def.requiresWaterFamilyAdjacent && !this.isWaterFamilyAdjacent(coord)) continue;
+      results.push(def);
+    }
+    return results;
+  }
+
+  canBuildDefense(coord: AxialCoord, defenseId: string): boolean {
+    const def = DEFENSE_BY_ID.get(defenseId);
+    if (!def) return false;
+    if (this.coin < def.buildCost) return false;
+    return this.buildableDefensesAt(coord).some((d) => d.id === defenseId);
+  }
+
+  buildDefense(coord: AxialCoord, defenseId: string): boolean {
+    if (!this.canBuildDefense(coord, defenseId)) return false;
+    const def = DEFENSE_BY_ID.get(defenseId)!;
+    this.coin -= def.buildCost;
+    this.defenses.set(axialKey(coord), { defenseId, builtOnTurn: this.turn, degradeAmount: 0 });
+    return true;
+  }
+
+  /** Current absorption fraction [0,1] a defense provides right now, factoring maturity and any degrade. */
+  effectiveAbsorption(coord: AxialCoord): number {
+    const inst = this.defenses.get(axialKey(coord));
+    if (!inst) return 0;
+    const def = DEFENSE_BY_ID.get(inst.defenseId);
+    if (!def) return 0;
+    const maturityFrac = def.matureTurns > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / def.matureTurns)) : 1;
+    const base = def.absorptionAtMaturity * maturityFrac;
+    return Math.max(0, base - inst.degradeAmount);
+  }
+
+  /** Used by the hazard resolver: permanently weakens a graceful (NBS/hybrid) defense in place. */
+  degradeDefense(coord: AxialCoord, amount: number): void {
+    const key = axialKey(coord);
+    const inst = this.defenses.get(key);
+    if (inst) inst.degradeAmount += amount;
+  }
+
+  /** Used by the hazard resolver: removes a catastrophically-failed engineered defense. */
+  destroyDefense(coord: AxialCoord): void {
+    this.defenses.delete(axialKey(coord));
   }
 
   /** Building options valid at `coord` right now (terrain + adjacency), regardless of affordability. */

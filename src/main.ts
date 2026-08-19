@@ -3,10 +3,13 @@ import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { FrontierMeshManager } from "@render/frontierMeshManager";
 import { BuildingMeshManager } from "@render/buildingMeshManager";
+import { DefenseMeshManager } from "@render/defenseMeshManager";
+import { FloodOverlayManager } from "@render/floodOverlayManager";
 import { GameState } from "@core/gameState";
 import { axialToWorld } from "@core/hex";
+import { resolveMonsoonFlood } from "@core/hazard";
 import { Hud } from "@ui/hud";
-import { BuildPopover } from "@ui/buildPopover";
+import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 
 const container = document.getElementById("app")!;
 const { scene, camera, renderer, start } = createScene(container);
@@ -14,9 +17,13 @@ const { scene, camera, renderer, start } = createScene(container);
 const terrain = new TerrainMeshManager();
 const frontier = new FrontierMeshManager();
 const buildings = new BuildingMeshManager();
+const defenses = new DefenseMeshManager();
+const floodOverlay = new FloodOverlayManager();
 scene.add(terrain.group);
 scene.add(frontier.mesh);
 scene.add(buildings.group);
+scene.add(defenses.group);
+scene.add(floodOverlay.mesh);
 
 /**
  * Seed at the river mouth per Section 4's geography gradient: estuary,
@@ -56,19 +63,6 @@ function refreshHud(): void {
 refreshFrontierHighlight();
 refreshHud();
 
-function tryPlace(handIndex: number, coord: { q: number; r: number }): boolean {
-  const terrainId = state.hand[handIndex];
-  if (!state.isLegal(coord, terrainId)) return false;
-
-  state.placeFromHand(handIndex, coord);
-  terrain.placeTile(coord, terrainId, { animate: true });
-
-  if (selectedHandIndex >= state.hand.length) selectedHandIndex = 0;
-  refreshFrontierHighlight();
-  refreshHud();
-  return true;
-}
-
 /** Projects a world position to CSS pixel coords within the canvas, for anchoring the build popover. */
 function worldToScreen(x: number, y: number, z: number): { x: number; y: number } {
   const v = new THREE.Vector3(x, y, z).project(camera);
@@ -79,8 +73,83 @@ function worldToScreen(x: number, y: number, z: number): { x: number; y: number 
   };
 }
 
+// --- Hazard telegraph + resolution -----------------------------------------
+
+const TELEGRAPH_COLOR = new THREE.Color("#0b2033");
+const FLOOD_INTERVAL_TURNS = 15;
+const FLOOD_TELEGRAPH_TURNS = 2;
+let nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
+
+function riverCoords(): { q: number; r: number }[] {
+  const coords: { q: number; r: number }[] = [];
+  for (const tile of state.placed.values()) {
+    if (tile.terrainId === "river") coords.push(tile.coord);
+  }
+  return coords;
+}
+
+function updateFloodTelegraph(): void {
+  const turnsUntil = nextFloodAtTurn - state.turn;
+  const telegraphing = turnsUntil > 0 && turnsUntil <= FLOOD_TELEGRAPH_TURNS;
+  for (const coord of riverCoords()) {
+    terrain.setTint(coord, telegraphing ? TELEGRAPH_COLOR : null);
+  }
+}
+
+/** Resolves the flood: visible in-scene (rising water, defenses absorbing/failing/degrading), not just meter numbers. */
+function triggerFlood(baseSeverity: number): void {
+  const result = resolveMonsoonFlood(state, baseSeverity);
+  const now = performance.now();
+
+  for (const key of result.destroyedDefenses) {
+    const [q, r] = key.split(",").map(Number);
+    defenses.destroy({ q, r });
+  }
+  for (const key of result.overwhelmedDefenses) {
+    const inst = state.defenses.get(key);
+    if (!inst) continue;
+    const [q, r] = key.split(",").map(Number);
+    defenses.setDegradeVisual({ q, r }, inst.degradeAmount);
+  }
+  for (const [key, damage] of result.tileDamage) {
+    if (damage < 0.08) continue;
+    const [q, r] = key.split(",").map(Number);
+    const coord = { q, r };
+    floodOverlay.show(coord, terrain.heightAt(coord), damage, now);
+  }
+
+  for (const coord of riverCoords()) terrain.setTint(coord, null);
+  nextFloodAtTurn = state.turn + FLOOD_INTERVAL_TURNS;
+}
+
+function tryPlace(handIndex: number, coord: { q: number; r: number }): boolean {
+  const terrainId = state.hand[handIndex];
+  if (!state.isLegal(coord, terrainId)) return false;
+
+  state.placeFromHand(handIndex, coord);
+  terrain.placeTile(coord, terrainId, { animate: true });
+
+  if (selectedHandIndex >= state.hand.length) selectedHandIndex = 0;
+  refreshFrontierHighlight();
+  refreshHud();
+
+  if (state.turn >= nextFloodAtTurn) triggerFlood(1.0 + Math.random() * 0.6);
+  else updateFloodTelegraph();
+
+  return true;
+}
+
+// --- Build / defend popover --------------------------------------------------
+
 function openBuildPopover(coord: { q: number; r: number }): void {
-  const options = state.buildableAt(coord);
+  const buildingOptions: PopoverOption[] = state
+    .buildableAt(coord)
+    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: "building" }));
+  const defenseOptions: PopoverOption[] = state
+    .buildableDefensesAt(coord)
+    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: d.category }));
+  const options = [...buildingOptions, ...defenseOptions];
+
   if (options.length === 0) {
     buildPopover.hide();
     return;
@@ -89,12 +158,19 @@ function openBuildPopover(coord: { q: number; r: number }): void {
   const { x: wx, z: wz } = axialToWorld(coord, 1.0);
   const screen = worldToScreen(wx, worldTop + 0.3, wz);
 
-  buildPopover.show(screen.x, screen.y, options, state.coin, (buildingId) => {
-    if (!state.build(coord, buildingId)) return;
-    buildings.place(coord, buildingId, terrain.heightAt(coord), { animate: true });
+  buildPopover.show(screen.x, screen.y, options, state.coin, (id) => {
+    if (buildingOptions.some((o) => o.id === id)) {
+      if (!state.build(coord, id)) return;
+      buildings.place(coord, id, terrain.heightAt(coord), { animate: true });
+    } else {
+      if (!state.buildDefense(coord, id)) return;
+      defenses.place(coord, id, terrain.heightAt(coord), { animate: true });
+    }
     refreshHud();
   });
 }
+
+// --- Input -------------------------------------------------------------------
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -123,6 +199,8 @@ renderer.domElement.addEventListener("click", (event: MouseEvent) => {
 start((nowMs) => {
   terrain.tick(nowMs);
   buildings.tick(nowMs);
+  defenses.tick(nowMs);
+  floodOverlay.tick(nowMs);
 });
 
 /**
@@ -157,6 +235,24 @@ function devAutoBuild(): void {
   refreshHud();
 }
 
+/** Prefers a defense type not yet built anywhere, so a dev screenshot shows all 3 categories at once. */
+function devAutoDefend(): void {
+  const builtTypes = new Set<string>();
+  for (const key of state.placed.keys()) {
+    const [q, r] = key.split(",").map(Number);
+    const coord = { q, r };
+    const options = state.buildableDefensesAt(coord);
+    const affordable = options.filter((o) => o.buildCost <= state.coin);
+    if (affordable.length === 0) continue;
+    const pick = affordable.find((o) => !builtTypes.has(o.id)) ?? affordable[0];
+    if (state.buildDefense(coord, pick.id)) {
+      defenses.place(coord, pick.id, terrain.heightAt(coord), { animate: true });
+      builtTypes.add(pick.id);
+    }
+  }
+  refreshHud();
+}
+
 const params = new URLSearchParams(location.search);
 const autoplaceParam = params.get("autoplace");
 if (autoplaceParam) devAutoplace(Number(autoplaceParam));
@@ -166,3 +262,6 @@ if (coinBoost) {
   refreshHud();
 }
 if (params.has("autobuild")) devAutoBuild();
+if (params.has("autodefend")) devAutoDefend();
+const floodParam = params.get("flood");
+if (floodParam) triggerFlood(Number(floodParam));

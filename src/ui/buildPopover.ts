@@ -1,4 +1,10 @@
-import type { BuildingDef } from "@core/buildings";
+export interface PopoverOption {
+  id: string;
+  name: string;
+  buildCost: number;
+  /** Shown as a small tag so a defense reads differently from a town building at a glance. */
+  kindLabel?: string;
+}
 
 /**
  * The contextual build menu: a small popover anchored to the clicked tile's
@@ -26,9 +32,9 @@ export class BuildPopover {
   show(
     screenX: number,
     screenY: number,
-    options: BuildingDef[],
+    options: PopoverOption[],
     coin: number,
-    onSelect: (buildingId: string) => void
+    onSelect: (id: string) => void
   ): void {
     this.el.innerHTML = "";
     if (options.length === 0) {
@@ -39,7 +45,8 @@ export class BuildPopover {
       const btn = document.createElement("button");
       const affordable = coin >= def.buildCost;
       btn.className = "build-option" + (affordable ? "" : " disabled");
-      btn.innerHTML = `<span>${def.name}</span><span class="cost">${def.buildCost}c</span>`;
+      const label = def.kindLabel ? `${def.name} <em>${def.kindLabel}</em>` : def.name;
+      btn.innerHTML = `<span>${label}</span><span class="cost">${def.buildCost}c</span>`;
       if (affordable) {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();

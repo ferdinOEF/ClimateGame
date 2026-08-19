@@ -19,6 +19,7 @@ interface TerrainInstance {
   coord: AxialCoord;
   index: number;
   terrainId: string;
+  baseColor: THREE.Color;
 }
 
 export class TerrainMeshManager {
@@ -88,7 +89,20 @@ export class TerrainMeshManager {
     mesh.count = index + 1;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
-    this.placed.set(`${coord.q},${coord.r}`, { coord, index, terrainId });
+    this.placed.set(`${coord.q},${coord.r}`, { coord, index, terrainId, baseColor: color.clone() });
+  }
+
+  /**
+   * Overrides a tile's color (e.g. the flood telegraph darkening river
+   * tiles). Pass `null` to restore its normal palette color.
+   */
+  setTint(coord: AxialCoord, tint: THREE.Color | null, blend = 0.6): void {
+    const inst = this.placed.get(`${coord.q},${coord.r}`);
+    if (!inst) return;
+    const mesh = this.meshes.get(inst.terrainId)!;
+    const color = tint ? inst.baseColor.clone().lerp(tint, blend) : inst.baseColor;
+    mesh.setColorAt(inst.index, color);
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
 
   /** Advances any in-flight settle animations. Call once per rendered frame. */

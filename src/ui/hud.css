@@ -130,3 +130,13 @@ html, body {
   color: #ffe9a8;
   font-weight: 700;
 }
+
+.build-option em {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 10px;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
