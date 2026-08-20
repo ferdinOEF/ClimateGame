@@ -23,7 +23,7 @@ const MAP = mapData as MapFile;
 const mapTiles = MAP.tiles.map((t) => ({ coord: { q: t.q, r: t.r }, terrainId: t.terrainId }));
 
 const container = document.getElementById("app")!;
-const { scene, camera, renderer, start, focusOn } = createScene(container);
+const { scene, camera, renderer, start, focusOn, wasDrag } = createScene(container);
 
 const terrain = new TerrainMeshManager();
 const claimRing = new ClaimRingMeshManager();
@@ -82,12 +82,6 @@ terrain.loadMap(mapTiles, keysToCoords(state.claimed));
 const hud = new Hud(container);
 const buildPopover = new BuildPopover(container);
 
-function refreshClaimRing(): void {
-  const claimable = state.claimFrontier().map((coord) => ({ coord, topY: terrain.heightAt(coord) }));
-  claimRing.update(claimable);
-  hud.setClaimable(claimable.length, 4);
-}
-
 function refreshHud(): void {
   hud.setTileCount(state.claimed.size);
   hud.setCoin(state.coin);
@@ -97,9 +91,9 @@ function refreshHud(): void {
     biodiversity: state.biodiversity,
     carbon: state.carbon
   });
+  hud.setClaimable(state.claimableCount, 4);
 }
 
-refreshClaimRing();
 refreshHud();
 
 /** Projects a world position to CSS pixel coords within the canvas, for anchoring the build popover. */
@@ -240,7 +234,7 @@ function checkEraEnd(): void {
   nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
   nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
 
-  refreshClaimRing();
+  claimRing.update([]);
   refreshHud();
 }
 
@@ -249,13 +243,13 @@ function rolledSeverity(): number {
   return 1.0 + Math.random() * 0.6 + state.severityBaseline;
 }
 
-/** Claims one adjacent hex (Section 2's replacement for tile-drawing): costs Coin, reveals it, counts as a turn. */
+/** Claims any unclaimed hex (Section 2, v2.2: claim-anywhere, not adjacency-gated): costs Coin, reveals it, counts as a turn. */
 function claimTile(coord: AxialCoord): boolean {
   if (!state.claim(coord)) return false;
   terrain.claimTile(coord);
   playSound("tile_settle");
+  claimRing.update([]); // that tile is no longer claimable; the next pointermove will re-show hover state
 
-  refreshClaimRing();
   refreshHud();
 
   if (state.turn >= nextFloodAtTurn) triggerFlood(rolledSeverity());
@@ -307,6 +301,8 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
 renderer.domElement.addEventListener("click", (event: MouseEvent) => {
+  if (wasDrag()) return; // a pan, not a click — don't also claim/open a popover at the drag's end point
+
   if (buildPopover.isOpen) {
     buildPopover.hide();
     return;
@@ -326,7 +322,35 @@ renderer.domElement.addEventListener("click", (event: MouseEvent) => {
   const key = `${coord.q},${coord.r}`;
   if (state.claimed.has(key)) openBuildPopover(coord);
   else if (state.isClaimable(coord)) claimTile(coord);
-  // else: unclaimed and not yet reachable — no-op, matches Section 3's "no dead click" spirit.
+  // else: unreachable in practice under v2.2 (every unclaimed tile is
+  // claimable), kept as a no-op guard rather than an assumption.
+});
+
+/**
+ * v2.2 (Section 2): claiming is no longer adjacency-gated, so there's no
+ * single "frontier" for the game to point at. Instead, any unclaimed hex
+ * should read as inviting via a hover affordance alone — a ring appears
+ * under the cursor only while it's over a claimable tile.
+ */
+let hoveredClaimable: string | null = null;
+renderer.domElement.addEventListener("pointermove", (event: MouseEvent) => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(terrain.raycastTargets);
+  const coord = hits.length > 0 && hits[0].instanceId !== undefined
+    ? terrain.coordForHit(hits[0].object, hits[0].instanceId)
+    : null;
+
+  const key = coord ? `${coord.q},${coord.r}` : null;
+  const claimable = coord && state.isClaimable(coord) ? coord : null;
+  const claimableKey = claimable ? key : null;
+  if (claimableKey === hoveredClaimable) return;
+  hoveredClaimable = claimableKey;
+
+  claimRing.update(claimable ? [{ coord: claimable, topY: terrain.heightAt(claimable) }] : []);
 });
 
 start((nowMs) => {
@@ -346,9 +370,9 @@ start((nowMs) => {
  */
 function devAutoClaim(count: number): void {
   for (let i = 0; i < count; i++) {
-    const options = state.claimFrontier();
-    if (options.length === 0) break;
-    claimTile(options[0]);
+    const next = mapTiles.find((t) => state.isClaimable(t.coord));
+    if (!next) break;
+    if (!claimTile(next.coord)) break; // out of coin — further attempts would just retry the same unaffordable tile
   }
 }
 
@@ -389,16 +413,32 @@ function devAutoDefend(): void {
 }
 
 const params = new URLSearchParams(location.search);
-const autoclaimParam = params.get("autoclaim");
-if (autoclaimParam) devAutoClaim(Number(autoclaimParam));
+// coinboost first: autoclaim/autobuild/autodefend below spend coin, so a
+// boost given after them would arrive too late to fund what they just did.
 const coinBoost = params.get("coinboost");
 if (coinBoost) {
   state.coin += Number(coinBoost);
   refreshHud();
 }
+const autoclaimParam = params.get("autoclaim");
+if (autoclaimParam) devAutoClaim(Number(autoclaimParam));
 if (params.has("autobuild")) devAutoBuild();
 if (params.has("autodefend")) devAutoDefend();
 const floodParam = params.get("flood");
 if (floodParam) triggerFlood(Number(floodParam));
 const cycloneParam = params.get("cyclone");
 if (cycloneParam) triggerCyclone(Number(cycloneParam));
+
+/** Dev-only: forces the popover open at a screen corner to verify Bucket A's viewport-clamping fix. */
+if (params.has("testpopoverclip")) {
+  const corner = params.get("testpopoverclip");
+  const fakeOptions: PopoverOption[] = [
+    { id: "a", name: "Test Option One", buildCost: 10 },
+    { id: "b", name: "Test Option Two (Longer Name)", buildCost: 20 }
+  ];
+  const [x, y] =
+    corner === "bottom-right"
+      ? [window.innerWidth - 4, window.innerHeight - 4]
+      : [4, 4];
+  buildPopover.show(x, y, fakeOptions, 999, () => {});
+}

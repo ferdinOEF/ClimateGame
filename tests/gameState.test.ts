@@ -7,7 +7,7 @@ function smallTestMap(radius = 3): PlacedTile[] {
   return hexSpiral({ q: 0, r: 0 }, radius).map((coord) => ({ coord, terrainId: "village_plains" }));
 }
 
-describe("GameState claim mechanic (v2.1: claiming, not drawing)", () => {
+describe("GameState claim mechanic (v2.2: claim-anywhere, no adjacency gate)", () => {
   it("starts with only the given starting cluster claimed, everything else unclaimed", () => {
     const map = smallTestMap();
     const state = new GameState(map, [{ q: 0, r: 0 }]);
@@ -16,28 +16,28 @@ describe("GameState claim mechanic (v2.1: claiming, not drawing)", () => {
     expect(state.placed.size).toBe(map.length); // the whole map exists regardless of claim status
   });
 
-  it("claimFrontier only ever offers unclaimed tiles adjacent to claimed land", () => {
+  it("isClaimable is true for every unclaimed tile on the map, not just ones adjacent to claimed land", () => {
     const map = smallTestMap();
     const state = new GameState(map, [{ q: 0, r: 0 }]);
-    for (const coord of state.claimFrontier()) {
-      expect(state.claimed.has(axialKey(coord))).toBe(false);
-      expect(state.isClaimable(coord)).toBe(true);
-    }
+    const farCoord = { q: 3, r: -3 }; // deliberately not adjacent to the starting cluster
+    expect(map.some((t) => t.coord.q === farCoord.q && t.coord.r === farCoord.r)).toBe(true);
+    expect(state.claimed.has(axialKey(farCoord))).toBe(false);
+    expect(state.isClaimable(farCoord)).toBe(true);
   });
 
-  it("rejects claiming a non-adjacent tile, an already-claimed tile, or a tile outside the map", () => {
+  it("rejects claiming an already-claimed tile or a tile outside the map, but allows a distant unclaimed one", () => {
     const map = smallTestMap();
     const state = new GameState(map, [{ q: 0, r: 0 }]);
     expect(state.claim({ q: 0, r: 0 })).toBe(false); // already claimed
-    expect(state.claim({ q: 3, r: 3 })).toBe(false); // not adjacent to claimed land
     expect(state.claim({ q: 99, r: 99 })).toBe(false); // not part of the fixed map at all
+    expect(state.claim({ q: 3, r: -3 })).toBe(true); // far from claimed land, but v2.2 allows it
   });
 
   it("claiming deducts coin, marks the tile claimed, and counts as a turn", () => {
     const map = smallTestMap();
     const state = new GameState(map, [{ q: 0, r: 0 }]);
     const before = state.coin;
-    const target = state.claimFrontier()[0];
+    const target = map.find((t) => !state.claimed.has(axialKey(t.coord)))!.coord;
 
     expect(state.claim(target)).toBe(true);
     expect(state.coin).toBeLessThan(before);
@@ -45,7 +45,7 @@ describe("GameState claim mechanic (v2.1: claiming, not drawing)", () => {
     expect(state.turn).toBe(1);
   });
 
-  it("never runs out of a claimable frontier across 30+ sequential claims (no dead click)", () => {
+  it("never runs out of claimable tiles across 30+ sequential claims (no dead click)", () => {
     const map = smallTestMap(4); // generous radius so coin never runs out before tiles do
     const state = new GameState(map, [{ q: 0, r: 0 }]);
     state.coin = 1000;
@@ -54,9 +54,9 @@ describe("GameState claim mechanic (v2.1: claiming, not drawing)", () => {
     let guard = 0;
     while (claims < 30 && guard < 500) {
       guard++;
-      const frontier = state.claimFrontier();
-      expect(frontier.length).toBeGreaterThan(0);
-      expect(state.claim(frontier[0])).toBe(true);
+      const next = map.find((t) => state.isClaimable(t.coord));
+      expect(next).toBeDefined();
+      expect(state.claim(next!.coord)).toBe(true);
       claims++;
     }
 

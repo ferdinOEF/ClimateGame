@@ -9,7 +9,17 @@ import { SettleAnimator } from "./settleAnimation";
 export const HEX_SIZE = 1.0;
 const MAX_INSTANCES_PER_TYPE = 400;
 const UNCLAIMED_SINK = 0.15; // unclaimed tiles sit slightly lower, like they're still in the fog
-const UNCLAIMED_DESATURATE = 0.55; // how far toward gray an unclaimed tile's color is pulled
+// How far each terrain's own color is pulled toward the shared `fog` palette
+// tone. Playtest flagged the earlier HSL-desaturate approach (scale
+// saturation down, nudge lightness toward mid-gray) as not distinct enough:
+// two terrain types with very different base lightness (e.g. sun-bleached
+// sand vs. deep forest) still read as clearly different colors even dimmed,
+// so "is this claimed?" was legible only tile-by-tile, not at a glance
+// across the map. Blending hard toward one shared neutral tone instead makes
+// every unclaimed tile converge on roughly the same hazy color regardless of
+// its terrain, so claimed tiles — the only ones still showing a full,
+// saturated per-terrain color — stand out as a group.
+const UNCLAIMED_FOG_BLEND = 0.72;
 
 const TIER_HEIGHT: Record<TerrainDef["elevationTier"], number> = {
   coastal: 0.45,
@@ -27,11 +37,7 @@ interface TerrainInstance {
 }
 
 function dim(color: THREE.Color): THREE.Color {
-  const hsl = { h: 0, s: 0, l: 0 };
-  color.getHSL(hsl);
-  const dimmed = color.clone();
-  dimmed.setHSL(hsl.h, hsl.s * (1 - UNCLAIMED_DESATURATE), THREE.MathUtils.lerp(hsl.l, 0.55, 0.35));
-  return dimmed;
+  return color.clone().lerp(paletteColor("fog"), UNCLAIMED_FOG_BLEND);
 }
 
 /**

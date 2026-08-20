@@ -6,6 +6,8 @@ export interface PopoverOption {
   kindLabel?: string;
 }
 
+const VIEWPORT_MARGIN = 8;
+
 /**
  * The contextual build menu: a small popover anchored to the clicked tile's
  * screen position — never a persistent sidebar. Section 3's non-negotiable
@@ -62,9 +64,25 @@ export class BuildPopover {
       }
       this.el.appendChild(btn);
     }
+    // Position first (needed to get real measurements below), then clamp
+    // within the viewport — near a map edge the anchor point can otherwise
+    // push the popover partly or fully off-screen. `hidden = false` and the
+    // measurement both happen before the browser's next paint, so there's
+    // no visible flash at the wrong position.
     this.el.style.left = `${screenX}px`;
     this.el.style.top = `${screenY}px`;
     this.el.hidden = false;
+
+    const rect = this.el.getBoundingClientRect();
+    let left = screenX;
+    let top = screenY;
+    const halfWidth = rect.width / 2;
+    if (rect.left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN + halfWidth;
+    if (rect.right > window.innerWidth - VIEWPORT_MARGIN) left = window.innerWidth - VIEWPORT_MARGIN - halfWidth;
+    if (rect.top < VIEWPORT_MARGIN) top = VIEWPORT_MARGIN + rect.height;
+    if (rect.bottom > window.innerHeight - VIEWPORT_MARGIN) top = window.innerHeight - VIEWPORT_MARGIN;
+    this.el.style.left = `${left}px`;
+    this.el.style.top = `${top}px`;
   }
 
   hide(): void {

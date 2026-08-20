@@ -525,3 +525,58 @@ click-path code, zero console errors.
 
 ![v2.1 fresh map, camera framed on the starting claim](tools/screenshots/v21_fresh_map.png)
 ![v2.1 grown claim with buildings and defenses](tools/screenshots/v21_growth.png)
+
+## v2.2 — Bucket A: UI/UX & playability — DONE
+
+The v2.2 revision (Section 0.1) set a standing sequencing rule: no more
+mechanical depth (hazards, terrain, elements) until every playability gap
+found in review of the v2.1 build is fixed and verified. Full detail is in
+`NEXT_STEPS.md`; summary here.
+
+**Camera pan/zoom** (`src/render/scene.ts`): the camera was framed once at
+boot and never moved again. Added pointer-drag pan (`panScale` tied to
+camera distance so pan speed stays consistent at any zoom) and wheel zoom,
+clamped to `[8, 40]` world units, no rotation (Section 6). Verified via
+`tools/smoke.ts`'s `simpan` dev flag, which simulates a drag + wheel-zoom
+headlessly and screenshots before/after.
+
+**Popover clipping** (`src/ui/buildPopover.ts`): the build popover had no
+viewport-bounds check, so it could render partly or fully off-screen near a
+map edge. `show()` now positions it, measures itself with
+`getBoundingClientRect()` in the same synchronous task before the browser's
+next paint (no visible flash), and clamps within an 8px margin. Verified at
+both top-left and bottom-right screen corners via the `testpopoverclip` dev
+hook.
+
+**Claim-anywhere** (`src/core/gameState.ts`, `src/main.ts`): Section 2's one
+deliberate departure from Dorfromantik's adjacency rule — any unclaimed hex
+anywhere on the fixed map can now be claimed directly, not just one
+touching the existing footprint. `isClaimable`/`canClaim`/`claim` dropped
+the adjacency check entirely; the old always-on frontier-ring display
+(pointing at every claimable tile at once) is replaced by a single
+hover-only ring, shown only under the cursor while it's over a claimable
+tile and cleared immediately on claim. `tests/gameState.test.ts` and
+`tests/balance.test.ts`'s scripted-playthrough harness (previously built
+around the now-removed `claimFrontier()`) were reworked to match. Verified
+with a headless Playwright click on a tile deliberately far from the
+starting cluster (unclaimed count dropped 240 → 239, zero console errors)
+and a screenshot of the hover ring rendering under the cursor at that
+distant tile before the click.
+
+**Unclaimed-tile visual distinction** (`src/render/terrainMeshManager.ts`):
+the earlier dimming approach (scale HSL saturation down, nudge lightness
+toward mid-gray) dimmed each tile *relative to its own terrain color*, so a
+naturally light terrain (sand) dimmed still read lighter than a naturally
+dark terrain (forest) at full color — legible tile-by-tile but not at a
+glance across a mixed-terrain map, exactly what playtest flagged. Fixed by
+blending unclaimed tiles hard (72%) toward the shared `fog` palette tone
+instead of desaturating in place, so every unclaimed tile converges on
+roughly the same hazy color regardless of terrain and claimed tiles stand
+out as a group. Verified via default-zoom and zoomed-out screenshots.
+
+**Verification:** 47/47 tests passing across 9 files, `tsc --noEmit` clean,
+production build succeeds, zero console errors across every smoke-test and
+one-off Playwright check run during this work.
+
+![Unclaimed tiles read as a uniform hazy field; the 3-tile claimed cluster stands out](tools/screenshots/unclaimed_fog.png)
+![Hover ring over a claimable tile far from the claimed cluster, proving no adjacency gate](tools/screenshots/hover_ring.png)

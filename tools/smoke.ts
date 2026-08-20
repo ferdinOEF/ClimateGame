@@ -62,6 +62,18 @@ async function main(): Promise<void> {
     // Let a few frames render (and any dev autoplace / settle animations finish).
     await page.waitForTimeout(800);
 
+    // Tool-only flag (not read by the app): simulate a drag-pan + wheel-zoom
+    // to verify Bucket A's camera controls, since there's no other headless
+    // way to exercise pointer/wheel-driven camera movement.
+    if (process.argv[4] === "simpan") {
+      await page.mouse.move(760, 500);
+      await page.mouse.down();
+      await page.mouse.move(500, 300, { steps: 12 });
+      await page.mouse.up();
+      await page.mouse.wheel(0, -400); // zoom in
+      await page.waitForTimeout(200);
+    }
+
     const label = process.argv[2] ?? "phase0";
     const screenshotPath = path.join(SCREENSHOT_DIR, `${label}.png`);
     await page.screenshot({ path: screenshotPath });

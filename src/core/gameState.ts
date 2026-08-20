@@ -77,37 +77,27 @@ export class GameState {
     this.claimed.add(key);
   }
 
-  /** Unclaimed tiles adjacent to the current claimed footprint — the only ones claimable right now. */
-  claimFrontier(): AxialCoord[] {
-    const seen = new Set<string>();
-    const result: AxialCoord[] = [];
-    for (const key of this.claimed) {
-      const [q, r] = key.split(",").map(Number);
-      for (let dir = 0; dir < 6; dir++) {
-        const n = neighbor({ q, r }, dir);
-        const nKey = axialKey(n);
-        if (this.claimed.has(nKey) || seen.has(nKey) || !this.placed.has(nKey)) continue;
-        seen.add(nKey);
-        result.push(n);
-      }
-    }
-    return result;
-  }
-
+  /**
+   * v2.2: claiming is no longer adjacency-gated — any unclaimed hex
+   * anywhere on the fixed map can be claimed directly, the one deliberate
+   * departure from Dorfromantik's own "must touch the frontier" rule
+   * (Section 2). `isClaimable` is just "unclaimed and part of the map."
+   */
   isClaimable(coord: AxialCoord): boolean {
     const key = axialKey(coord);
-    if (this.claimed.has(key) || !this.placed.has(key)) return false;
-    for (let dir = 0; dir < 6; dir++) {
-      if (this.claimed.has(axialKey(neighbor(coord, dir)))) return true;
-    }
-    return false;
+    return this.placed.has(key) && !this.claimed.has(key);
+  }
+
+  /** Total number of unclaimed tiles left to claim, for the HUD prompt. */
+  get claimableCount(): number {
+    return this.placed.size - this.claimed.size;
   }
 
   canClaim(coord: AxialCoord): boolean {
     return this.coin >= CLAIM_COST && this.isClaimable(coord);
   }
 
-  /** Claims `coord` if adjacent to owned land and affordable. Counts as a turn, same cadence as the old tile-placement loop. */
+  /** Claims `coord` if unclaimed and affordable — no adjacency requirement. Counts as a turn, same cadence as the old tile-placement loop. */
   claim(coord: AxialCoord): boolean {
     if (!this.canClaim(coord)) return false;
     this.coin -= CLAIM_COST;
