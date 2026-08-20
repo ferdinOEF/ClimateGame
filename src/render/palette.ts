@@ -1,40 +1,32 @@
 import * as THREE from "three";
 
 /**
- * Goan color palette (Section 6): laterite red/roof-tile, Arabian Sea
- * turquoise-to-deep-blue, paddy green, sun-bleached sand gold, mangrove
- * teal-green. Deliberately not a flat postcard tropical green/blue-only set.
+ * Goan coastal color palette (Section 6, v2.2 trimmed scope): Arabian Sea
+ * turquoise, sun-bleached sand gold, river blue, mangrove teal-green.
+ * Deliberately not a flat postcard tropical green/blue-only set.
  *
- * Lightness is deliberately spread ~20-26 luma points apart across the 7
- * terrain colors (checked against the 0.3R+0.59G+0.11B luma the Section 6
- * grayscale QA method uses) so adjacent tiles stay distinguishable with all
- * color removed, not just by hue. Two same-hue-family colors that sat only
- * ~4 luma points apart (laterite vs. river) were the failure caught here.
+ * Lightness is deliberately spread across the 4 terrain colors (checked
+ * against the 0.3R+0.59G+0.11B luma the Section 6 grayscale QA method uses)
+ * so adjacent tiles stay distinguishable with all color removed, not just
+ * by hue: mangroveTeal ~88, seaTurquoise ~130, riverBlue ~137, sandGold ~208.
  */
 export const PALETTE: Record<string, THREE.Color> = {
-  forestDeep: new THREE.Color("#274D2C"), // luma ~62
-  mangroveTeal: new THREE.Color("#2C6E5E"), // luma ~88
-  lateriteRed: new THREE.Color("#C25730"), // luma ~115
-  riverBlue: new THREE.Color("#4B9FBD"), // luma ~137
-  paddyGreen: new THREE.Color("#8ABE4E"), // luma ~162
-  plainsGreen: new THREE.Color("#A7CE5E"), // luma ~182
-  sandGold: new THREE.Color("#EAD08A"), // luma ~208
-  seaDeep: new THREE.Color("#0E3F57"),
-  seaTurquoise: new THREE.Color("#2FA6A2"),
+  mangroveTeal: new THREE.Color("#2C6E5E"), // estuary
+  seaTurquoise: new THREE.Color("#2FA6A2"), // coast
+  riverBlue: new THREE.Color("#4B9FBD"), // river
+  sandGold: new THREE.Color("#EAD08A"), // beach
   fog: new THREE.Color("#D9E6E0"),
   sky: new THREE.Color("#CFE6E8"),
-  // Building accent colors — deliberately distinct from every terrain
-  // colorKey above so a prop never blends into the tile it sits on.
-  paddyRipe: new THREE.Color("#D9A63E"), // golden amber, ripening rice
-  // Defense accent colors — same rule, plus a hue/material language of
-  // their own: organic greens for NBS, flat concrete gray for engineered,
-  // earthy bund-brown for the hybrid khazan.
-  defenseMangrove: new THREE.Color("#4FAE6E"),
-  defenseRiparian: new THREE.Color("#5FA84A"),
-  defenseEngineered: new THREE.Color("#7C8277"),
-  defenseKhazanBund: new THREE.Color("#8C6A3F"),
+  // Element accent colors — deliberately distinct from every terrain
+  // colorKey above so a prop never blends into the tile it sits on. Organic
+  // greens for NBS, flat concrete gray for engineered, earthy bund-brown
+  // for the hybrid khazan, warm gold for the one income building.
   defenseDune: new THREE.Color("#C9B071"),
-  defenseShelter: new THREE.Color("#D9622B")
+  defenseSandyVegetation: new THREE.Color("#5FA84A"),
+  resortGold: new THREE.Color("#D9A63E"),
+  defenseEngineered: new THREE.Color("#7C8277"),
+  defenseMangrove: new THREE.Color("#4FAE6E"),
+  defenseKhazanBund: new THREE.Color("#8C6A3F")
 };
 
 export function paletteColor(key: string): THREE.Color {

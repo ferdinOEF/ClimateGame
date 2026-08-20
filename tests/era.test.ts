@@ -45,12 +45,12 @@ describe("Era loop (Section 2/9: soft-loss, no hard game-over, no stuck state)",
 
   it("startNewEra resets play state but preserves erasCompleted, keeping the fixed map intact", () => {
     const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "estuary" }], [{ q: 0, r: 0 }]);
-    state.debugForcePlace({ q: 5, r: 5 }, "forest");
+    state.debugForcePlace({ q: 5, r: 5 }, "beach");
     state.resilience = 0;
     state.trust = 5;
     state.severityBaseline = 3;
     expect(state.erasCompleted).toBe(0);
-    expect(state.placed.size).toBe(2); // estuary seed + the forest tile added via debugForcePlace
+    expect(state.placed.size).toBe(2); // estuary seed + the beach tile added via debugForcePlace
 
     state.startNewEra();
 
@@ -63,6 +63,7 @@ describe("Era loop (Section 2/9: soft-loss, no hard game-over, no stuck state)",
     expect(state.claimed.size).toBe(1); // back to just the original starting claim
     expect(state.claimed.has("0,0")).toBe(true);
     expect(state.claimed.has("5,5")).toBe(false); // debugForcePlace's auto-claim doesn't survive a reset
+
 
     state.startNewEra();
     expect(state.erasCompleted).toBe(2);

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { AxialCoord } from "@core/hex";
 import { axialToWorld } from "@core/hex";
-import { TERRAIN_DEFS, TERRAIN_BY_ID, type TerrainDef } from "@core/terrain";
+import { TERRAIN_DEFS, TERRAIN_BY_ID } from "@core/terrain";
 import { createHexPrismGeometry } from "./hexGeometry";
 import { jitterColor, paletteColor } from "./palette";
 import { SettleAnimator } from "./settleAnimation";
@@ -20,12 +20,6 @@ const UNCLAIMED_SINK = 0.15; // unclaimed tiles sit slightly lower, like they're
 // its terrain, so claimed tiles — the only ones still showing a full,
 // saturated per-terrain color — stand out as a group.
 const UNCLAIMED_FOG_BLEND = 0.72;
-
-const TIER_HEIGHT: Record<TerrainDef["elevationTier"], number> = {
-  coastal: 0.45,
-  midland: 0.85,
-  highland: 1.35
-};
 
 interface TerrainInstance {
   coord: AxialCoord;
@@ -55,8 +49,7 @@ export class TerrainMeshManager {
 
   constructor() {
     for (const terrain of TERRAIN_DEFS) {
-      const height = TIER_HEIGHT[terrain.elevationTier];
-      const geometry = createHexPrismGeometry(HEX_SIZE * 0.98, height);
+      const geometry = createHexPrismGeometry(HEX_SIZE * 0.98, terrain.height);
       // Per-instance tint comes from InstancedMesh.instanceColor, which the
       // renderer picks up automatically — vertexColors is for a per-vertex
       // `color` geometry attribute we don't have, and would otherwise force
@@ -79,8 +72,7 @@ export class TerrainMeshManager {
   }
 
   height(terrainId: string): number {
-    const terrain = TERRAIN_BY_ID.get(terrainId);
-    return terrain ? TIER_HEIGHT[terrain.elevationTier] : TIER_HEIGHT.midland;
+    return TERRAIN_BY_ID.get(terrainId)?.height ?? 0.5;
   }
 
   hasTile(coord: AxialCoord): boolean {

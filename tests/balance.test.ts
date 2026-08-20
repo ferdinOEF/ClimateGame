@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { GameState, type PlacedTile } from "../src/core/gameState";
 import { resolveMonsoonFlood, resolveCyclone } from "../src/core/hazard";
 import { computeEraScore } from "../src/core/scoring";
-import { DEFENSE_BY_ID } from "../src/core/defenses";
-import { axialKey, neighbor, type AxialCoord } from "../src/core/hex";
+import { ELEMENT_BY_ID } from "../src/core/elements";
+import { axialKey, type AxialCoord } from "../src/core/hex";
 import mapData from "../src/data/map.json";
 
 interface MapFile {
@@ -16,8 +16,8 @@ const mapTiles: PlacedTile[] = MAP.tiles.map((t) => ({ coord: { q: t.q, r: t.r }
 type Category = "nbs" | "engineered" | "hybrid";
 
 const CATEGORY_DEFENSE_IDS: Record<Category, string[]> = {
-  nbs: ["mangrove_buffer", "riparian_forest_buffer", "coastal_dune_windbreak"],
-  engineered: ["river_embankment", "seawall"],
+  nbs: ["mangrove", "dune", "sandy_vegetation"],
+  engineered: ["seawall", "small_dam"],
   hybrid: ["khazan"]
 };
 
@@ -56,18 +56,13 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Pre-claim check (mirrors GameState.buildableDefensesAt's own terrain/adjacency rules) for whether `coord` would let this category build something once claimed. */
+/** Pre-claim check (mirrors GameState.buildableAt's own terrain rule) for whether `coord` would let this category build something once claimed. */
 function coordQualifiesFor(state: GameState, coord: AxialCoord, defenseIds: Set<string>): boolean {
   const tile = state.placed.get(axialKey(coord));
   if (!tile) return false;
   for (const id of defenseIds) {
-    const def = DEFENSE_BY_ID.get(id)!;
-    if (!def.validTerrainIds.includes(tile.terrainId)) continue;
-    if (!def.requiresWaterFamilyAdjacent) return true;
-    for (let dir = 0; dir < 6; dir++) {
-      const nTerrain = state.placed.get(axialKey(neighbor(coord, dir)))?.terrainId;
-      if (nTerrain === "river" || nTerrain === "estuary") return true;
-    }
+    const def = ELEMENT_BY_ID.get(id)!;
+    if (def.validTerrainIds.includes(tile.terrainId)) return true;
   }
   return false;
 }
@@ -94,6 +89,21 @@ function runScriptedPlaythrough(category: Category, seed: number): PlaythroughRe
   let hazardIndex = 0;
   let defensesBuilt = 0;
 
+  // v2.2: Mangrove/Khazan are Estuary-only, and the fixed map has exactly
+  // one Estuary tile (Section 4: "a single Estuary tile") — which is
+  // already part of the starting claim by construction, so the main loop
+  // below (which only ever builds on the tile it *just* claimed) would
+  // never revisit it. A real player would simply open the popover on their
+  // own starting tile; do the same opportunistic pass here before claiming
+  // anything else.
+  for (const key of state.claimed) {
+    const [q, r] = key.split(",").map(Number);
+    const coord = { q, r };
+    const options = state.buildableAt(coord).filter((d) => preferredIds.has(d.id));
+    const affordable = options.find((d) => d.buildCost <= state.coin);
+    if (affordable && state.build(coord, affordable.id)) defensesBuilt++;
+  }
+
   for (let i = 0; i < 150; i++) {
     const unclaimed = mapTiles.map((t) => t.coord).filter((c) => state.isClaimable(c));
     if (unclaimed.length === 0) break;
@@ -102,9 +112,9 @@ function runScriptedPlaythrough(category: Category, seed: number): PlaythroughRe
     const coord = pool[Math.floor(rng() * pool.length)];
     state.claim(coord);
 
-    const options = state.buildableDefensesAt(coord).filter((d) => preferredIds.has(d.id));
+    const options = state.buildableAt(coord).filter((d) => preferredIds.has(d.id));
     const affordable = options.find((d) => d.buildCost <= state.coin);
-    if (affordable && state.buildDefense(coord, affordable.id)) defensesBuilt++;
+    if (affordable && state.build(coord, affordable.id)) defensesBuilt++;
 
     while (hazardIndex < HAZARD_SCHEDULE.length && state.turn >= HAZARD_SCHEDULE[hazardIndex].turn) {
       const h = HAZARD_SCHEDULE[hazardIndex++];

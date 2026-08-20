@@ -8,8 +8,9 @@ contradicts, until the prompt is next revised.
 Until Bucket A is empty, do not add hazard simulation, additional terrain,
 or additional elements, no matter how tempting.
 
-**Bucket A is now clear (all four items below fixed and verified) — Bucket B
-work may begin.**
+**Both buckets are now clear** — every item in Bucket A and Bucket B below is
+fixed and verified. This file has no open punch-list items; the next
+revision of the build prompt (or a fresh playtest) is what should add more.
 
 ## Bucket A — UI/UX & Playability (do this first)
 
@@ -53,29 +54,65 @@ Gaps found by playtest/review of the v2.1 build:
 Scope narrowed on purpose (v2.2/v2.3) — small enough to fully polish before
 anything wider gets added back:
 
-- [ ] **Coastal-only terrain.** Retire khazan_flatland, village_plains,
-      laterite_plateau, forest, and the 3-tier elevation system. Only
-      Coast (sea edge, not buildable), Beach, River, Estuary remain.
-      Rewrite `/tools/mapgen`: one sea-facing edge, Beach fronting it, one
-      continuous River path reaching the sea at a single Estuary tile.
-      Hazard spread moves from elevation-tier-based to distance/adjacency
-      from the hazard's source (the sea for cyclone, the river for flood).
-- [ ] **Generic effects schema (standing architectural requirement, not a
-      one-time task).** Every buildable element gets an open
-      `effects: { key: delta }` map; one generic accumulator applies
-      whatever keys are present (`for (const [key, delta] of
-      Object.entries(element.effects)) meters[key] += delta`) — never a
-      hardcoded per-meter branch in engine code. `buildings.json` +
-      `defenses.json` merge into one `elements.json`.
-- [ ] **7-element roster**, replacing the entire earlier defense/building
+- [x] **Coastal-only terrain.** Retired khazan_flatland, village_plains,
+      laterite_plateau, forest, and the 3-tier elevation system entirely —
+      `TerrainDef` now carries a direct `height` field instead of an
+      `elevationTier` indirection. Only Coast (sea edge, not buildable),
+      Beach, River, Estuary remain. `/tools/mapgen` rewritten: finds the
+      sea-facing edge via a narrow world-X band (so it renders as a
+      straight coastline despite axial skew), carves one continuous River
+      from a single inland source to the nearest shore tile (which becomes
+      the one Estuary), and fills everything else Beach — no more WFC
+      edge-matching (`edgeTypes.ts` deleted, nothing needed it once there's
+      only one land terrain). Hazard spread moved from elevation-tier
+      gating to pure adjacency/distance decay — flood's old
+      `toTier <= fromTier` gate is simply gone, since the underlying wave
+      engine was already hop-decay-based (a form of graph distance); cyclone
+      needed no change at all, it was already tier-agnostic. Verified via
+      `tests/mapgen.test.ts` (rewritten: single sea edge, exactly one
+      Estuary reachable from Coast, one connected River, Beach fills
+      everything else) and fresh/zoomed screenshots.
+- [x] **Generic effects schema (standing architectural requirement, not a
+      one-time task).** `buildings.json` + `defenses.json` merged into one
+      `src/data/elements.json` / `src/core/elements.ts`, each element
+      carrying an open `effects: { key: delta }` map. `GameState.meterTotal
+      (key)` is the one generic accumulator — sums every standing element's
+      `effects[key]` weighted by maturity fraction, with zero hardcoded
+      meter names. `biodiversity`/`carbon` getters and even Coin's per-turn
+      income (`advanceTurn(): this.coin += this.meterTotal("coinPerTurn")`)
+      all go through this same function now; adding a new meter anywhere in
+      the game means adding a key to an element's `effects`, never new
+      engine code. Absorption/failure/maintenance fields stay explicit
+      (they're conditional mechanics, not simple additive deltas).
+- [x] **7-element roster**, replacing the entire earlier defense/building
       list: Dune, Sandy Vegetation (Pandanus), Beachside Resort, Seawall
-      (Beach); Mangrove, Khazan (Estuary); Small Dam (River). Each needs
-      its own distinct, legible flat-silhouette icon (Section 6) — not
-      placeholder low-poly props.
-- [ ] **Meters simplified**: Resilience (the only hazard-facing property
-      now — v2.3 removed the separate Risk value introduced in v2.2),
-      Biodiversity, Money/Coin. Trust carried forward but untouched by this
-      roster, no HUD prominence needed yet. Carbon deprioritized.
+      (Beach); Mangrove, Khazan (Estuary); Small Dam (River). Cyclone
+      Shelter is retired along with it (not in the new roster) — its
+      Trust-shielding special case is gone from `resolveCyclone`, which now
+      just charges Trust per damaged building uniformly. Each element gets
+      its own distinct flat-silhouette icon in `src/render/elementGeometry.ts`
+      (a 2D outline extruded a shallow depth) rather than a low-poly prop —
+      viable specifically because Section 6's camera never rotates, so a
+      flat cutout's front face always faces the viewer. Old
+      `defenseGeometry.ts`/`buildingGeometry.ts` and their mesh managers
+      merged into `elementGeometry.ts`/`elementMeshManager.ts`. One real bug
+      found and fixed during verification: Small Dam sits directly on River
+      terrain, but every River tile was unconditionally treated as a
+      damage-skipping hazard source, so a dam built there could never
+      actually engage its absorption/failure logic — fixed by only skipping
+      an undefended river tile (`hazard.ts`'s flood `skipDamage` now checks
+      `!state.elements.has(key)` too). Verified via screenshots showing
+      Mangrove's canopy-blob icon, Small Dam's blocky-barrier icon, and
+      Beachside Resort's cabana-and-umbrella icon all rendering distinctly
+      with zero console errors.
+- [x] **Meters simplified**: Resilience (the only hazard-facing property
+      now — v2.3 already removed the separate Risk value introduced in
+      v2.2, and grepping the codebase found no remaining trace of it
+      anywhere). Biodiversity and Coin/Money are the effects the new roster
+      actually grants; Trust is carried forward untouched by it (none of
+      the 7 elements' `effects` maps set a `trust` key); Carbon stays wired
+      through the same generic accumulator but deprioritized — nothing in
+      the new roster sets it, so it reads 0 unless re-introduced later.
 
 ## Resolved (kept for history)
 

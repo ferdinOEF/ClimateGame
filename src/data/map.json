@@ -10,20 +10,20 @@
   ],
   "estuary": {
     "q": -13,
-    "r": 0
+    "r": -1
   },
   "startingClaim": [
     {
       "q": -13,
-      "r": 0
-    },
-    {
-      "q": -12,
-      "r": 0
+      "r": -1
     },
     {
       "q": -12,
       "r": -1
+    },
+    {
+      "q": -12,
+      "r": -2
     }
   ],
   "tiles": [
@@ -35,42 +35,42 @@
     {
       "q": -13,
       "r": -3,
-      "terrainId": "estuary"
-    },
-    {
-      "q": -13,
-      "r": -2,
       "terrainId": "coast"
     },
     {
       "q": -13,
-      "r": -1,
+      "r": -2,
       "terrainId": "coast"
     },
     {
       "q": -13,
-      "r": 0,
+      "r": -1,
       "terrainId": "estuary"
     },
     {
       "q": -13,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -13,
       "r": 1,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -13,
       "r": 2,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -13,
       "r": 3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -13,
       "r": 4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -12,
@@ -80,957 +80,957 @@
     {
       "q": -12,
       "r": -3,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -12,
       "r": -2,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -12,
       "r": -1,
-      "terrainId": "estuary"
-    },
-    {
-      "q": -12,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -12,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -12,
       "r": 1,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -12,
       "r": 2,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -12,
       "r": 3,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -12,
       "r": 4,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -11,
       "r": -4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -11,
       "r": -3,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -11,
       "r": -2,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -11,
       "r": -1,
-      "terrainId": "coast"
-    },
-    {
-      "q": -11,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -11,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -11,
       "r": 1,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -11,
       "r": 2,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -11,
       "r": 3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -11,
       "r": 4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -10,
       "r": -4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -10,
       "r": -3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -10,
       "r": -2,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -10,
       "r": -1,
-      "terrainId": "estuary"
-    },
-    {
-      "q": -10,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -10,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -10,
       "r": 1,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -10,
       "r": 2,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -10,
       "r": 3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -10,
       "r": 4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -9,
       "r": -4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -9,
       "r": -3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -9,
       "r": -2,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -9,
       "r": -1,
-      "terrainId": "coast"
-    },
-    {
-      "q": -9,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -9,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -9,
       "r": 1,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -9,
       "r": 2,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -9,
       "r": 3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -9,
       "r": 4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -8,
       "r": -4,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -8,
       "r": -3,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -8,
       "r": -2,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -8,
       "r": -1,
-      "terrainId": "estuary"
-    },
-    {
-      "q": -8,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -8,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -8,
       "r": 1,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -8,
       "r": 2,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -8,
       "r": 3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -8,
       "r": 4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -7,
       "r": -4,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -7,
       "r": -3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -7,
       "r": -2,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -7,
       "r": -1,
-      "terrainId": "coast"
-    },
-    {
-      "q": -7,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -7,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -7,
       "r": 1,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -7,
       "r": 2,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -7,
       "r": 3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -7,
       "r": 4,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -6,
       "r": -4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -6,
       "r": -3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -6,
       "r": -2,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -6,
       "r": -1,
-      "terrainId": "coast"
-    },
-    {
-      "q": -6,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -6,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -6,
       "r": 1,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -6,
       "r": 2,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -6,
       "r": 3,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -6,
       "r": 4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": -5,
       "r": -4,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -5,
       "r": -3,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -5,
       "r": -2,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -5,
       "r": -1,
-      "terrainId": "estuary"
-    },
-    {
-      "q": -5,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -5,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -5,
       "r": 1,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": -5,
       "r": 2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -5,
       "r": 3,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": -5,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": -4,
       "r": -4,
-      "terrainId": "coast"
+      "terrainId": "beach"
     },
     {
       "q": -4,
       "r": -3,
-      "terrainId": "estuary"
+      "terrainId": "beach"
     },
     {
       "q": -4,
       "r": -2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -4,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": -4,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -4,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -4,
       "r": 1,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -4,
       "r": 2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -4,
       "r": 3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": -4,
       "r": 4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": -3,
       "r": -4,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -3,
       "r": -3,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -3,
       "r": -2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -3,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": -3,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -3,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -3,
       "r": 1,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": -3,
       "r": 2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -3,
       "r": 3,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -3,
       "r": 4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": -2,
       "r": -4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": -2,
       "r": -3,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -2,
       "r": -2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -2,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": -2,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -2,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -2,
       "r": 1,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -2,
       "r": 2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -2,
       "r": 3,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": -2,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": -1,
       "r": -4,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -1,
       "r": -3,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -1,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": -1,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": -1,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": -1,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": -1,
       "r": 1,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": -1,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": -1,
       "r": 3,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": -1,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 0,
       "r": -4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 0,
       "r": -3,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 0,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 0,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": 0,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 0,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 0,
       "r": 1,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 0,
       "r": 2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 0,
       "r": 3,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 0,
       "r": 4,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 1,
       "r": -4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 1,
       "r": -3,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 1,
       "r": -2,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 1,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": 1,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 1,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 1,
       "r": 1,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 1,
       "r": 2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 1,
       "r": 3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 1,
       "r": 4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 2,
       "r": -4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 2,
       "r": -3,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 2,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 2,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": 2,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 2,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 2,
       "r": 1,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 2,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 2,
       "r": 3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 2,
       "r": 4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 3,
       "r": -4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 3,
       "r": -3,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 3,
       "r": -2,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 3,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": 3,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 3,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 3,
       "r": 1,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 3,
       "r": 2,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 3,
       "r": 3,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 3,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 4,
       "r": -4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 4,
       "r": -3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 4,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 4,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": 4,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 4,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 4,
       "r": 1,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 4,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 4,
       "r": 3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 4,
       "r": 4,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 5,
       "r": -4,
-      "terrainId": "khazan_flatland"
+      "terrainId": "beach"
     },
     {
       "q": 5,
       "r": -3,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 5,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 5,
       "r": -1,
-      "terrainId": "khazan_flatland"
-    },
-    {
-      "q": 5,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 5,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 5,
       "r": 1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 5,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 5,
       "r": 3,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 5,
       "r": 4,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 6,
       "r": -4,
-      "terrainId": "village_plains"
+      "terrainId": "beach"
     },
     {
       "q": 6,
       "r": -3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 6,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 6,
       "r": -1,
-      "terrainId": "forest"
-    },
-    {
-      "q": 6,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 6,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 6,
       "r": 1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 6,
       "r": 2,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 6,
       "r": 3,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 6,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 7,
       "r": -4,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 7,
       "r": -3,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 7,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 7,
       "r": -1,
-      "terrainId": "forest"
-    },
-    {
-      "q": 7,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 7,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 7,
       "r": 1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 7,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 7,
       "r": 3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 7,
       "r": 4,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 8,
       "r": -4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 8,
       "r": -3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 8,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 8,
       "r": -1,
-      "terrainId": "forest"
-    },
-    {
-      "q": 8,
-      "r": 0,
       "terrainId": "river"
     },
     {
       "q": 8,
+      "r": 0,
+      "terrainId": "beach"
+    },
+    {
+      "q": 8,
       "r": 1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 8,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 8,
       "r": 3,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 8,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 9,
       "r": -4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 9,
       "r": -3,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 9,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 9,
@@ -1040,42 +1040,42 @@
     {
       "q": 9,
       "r": 0,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 9,
       "r": 1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 9,
       "r": 2,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 9,
       "r": 3,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 9,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 10,
       "r": -4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 10,
       "r": -3,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 10,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 10,
@@ -1090,42 +1090,42 @@
     {
       "q": 10,
       "r": 1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 10,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 10,
       "r": 3,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 10,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 11,
       "r": -4,
-      "terrainId": "laterite_plateau"
+      "terrainId": "beach"
     },
     {
       "q": 11,
       "r": -3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 11,
       "r": -2,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 11,
       "r": -1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 11,
@@ -1135,112 +1135,112 @@
     {
       "q": 11,
       "r": 1,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 11,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 11,
       "r": 3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 11,
       "r": 4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 12,
       "r": -4,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 12,
       "r": -3,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 12,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 12,
       "r": -1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 12,
       "r": 0,
-      "terrainId": "forest"
+      "terrainId": "river"
     },
     {
       "q": 12,
       "r": 1,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 12,
       "r": 2,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 12,
       "r": 3,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 12,
       "r": 4,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 13,
       "r": -4,
-      "terrainId": "river"
+      "terrainId": "beach"
     },
     {
       "q": 13,
       "r": -3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 13,
       "r": -2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 13,
       "r": -1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 13,
       "r": 0,
-      "terrainId": "forest"
+      "terrainId": "river"
     },
     {
       "q": 13,
       "r": 1,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 13,
       "r": 2,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 13,
       "r": 3,
-      "terrainId": "forest"
+      "terrainId": "beach"
     },
     {
       "q": 13,
       "r": 4,
-      "terrainId": "river"
+      "terrainId": "beach"
     }
   ]
 }

@@ -3,14 +3,14 @@ import { GameState } from "../src/core/gameState";
 import { computeEraScore } from "../src/core/scoring";
 
 describe("computeEraScore (Section 7: not just biggest-map, not just never-build-engineered)", () => {
-  it("increases when biodiversity/carbon-positive defenses are built", () => {
+  it("increases when a biodiversity-positive defense is built", () => {
     const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "estuary" }]);
     state.coin = 500;
     const before = computeEraScore(state);
 
     const target = { q: 0, r: -1 };
     state.debugForcePlace(target, "estuary");
-    state.buildDefense(target, "mangrove_buffer"); // positive biodiversity/carbon coBenefits
+    state.build(target, "mangrove"); // positive biodiversity effect
 
     expect(computeEraScore(state)).toBeGreaterThan(before);
   });
@@ -23,7 +23,7 @@ describe("computeEraScore (Section 7: not just biggest-map, not just never-build
     const big = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "estuary" }]);
     big.trust = 5;
     big.resilience = 5;
-    for (let i = 1; i <= 40; i++) big.debugForcePlace({ q: i, r: 0 }, "village_plains");
+    for (let i = 1; i <= 40; i++) big.debugForcePlace({ q: i, r: 0 }, "beach");
 
     // A huge, but otherwise-devastated, map should not automatically outscore
     // a small, thriving one.

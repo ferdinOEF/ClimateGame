@@ -580,3 +580,96 @@ one-off Playwright check run during this work.
 
 ![Unclaimed tiles read as a uniform hazy field; the 3-tile claimed cluster stands out](tools/screenshots/unclaimed_fog.png)
 ![Hover ring over a claimable tile far from the claimed cluster, proving no adjacency gate](tools/screenshots/hover_ring.png)
+
+## v2.2 — Bucket B: trimmed content — DONE
+
+With Bucket A clear, the v2.2/v2.3 revision's other standing requirement —
+narrow the scope to coastal-only terrain, put a generic effects schema in
+place as permanent architecture, and rebuild the roster around it — could
+start. Full detail in `NEXT_STEPS.md`; summary here.
+
+**Coastal-only terrain.** `src/data/terrain.json` now holds exactly four
+terrains: Coast (sea, not buildable), Beach, River, Estuary. The 3-tier
+elevation system (`coastal`/`midland`/`highland`) is gone along with every
+terrain that needed it — `TerrainDef` carries a direct `height` field
+instead. `/tools/mapgen/generate.ts` was rewritten from a WFC-lite
+edge-matching solver into a deterministic authored layout: it finds the
+sea-facing edge as a narrow band of world-X (so it renders as a straight
+coastline despite axial skew — the same technique the old generator used
+for its region bands), carves one continuous River with a near-greedy walk
+from a single inland source to the nearest shore tile (which becomes the
+one Estuary, "reaching the sea" per Section 4), and fills every remaining
+tile Beach. `src/core/edgeTypes.ts` and its compatibility matrix are
+deleted — nothing needs edge-matching once there's only one land terrain.
+
+**Hazard spread moved from elevation to distance/adjacency.** The shared
+BFS wave-propagation engine in `hazard.ts` already decayed by hop-count per
+step, which is a form of graph distance — the only thing tying it to
+elevation was flood's `canPropagate` gate (`toTier <= fromTier`, "never
+flows uphill"). With no elevation tiers left, that gate is simply gone;
+flood now spreads by adjacency/decay exactly like cyclone always did
+(cyclone needed no change — Section 5 already specified no elevation
+gating for it).
+
+**Generic effects schema.** `buildings.json` + `defenses.json` merged into
+one `src/data/elements.json` / `src/core/elements.ts`. Every element
+carries an open `effects: { key: delta }` map instead of the old
+building-only `coinPerTurn` field and defense-only `coBenefits: {
+biodiversity, carbon, trust }` struct. `GameState.meterTotal(key)` is the
+one generic accumulator — sums every standing element's `effects[key]`
+weighted by maturity fraction, with no hardcoded meter names anywhere in
+engine code. `biodiversity`/`carbon` are thin getters over it; Coin's
+per-turn income goes through the identical path
+(`this.coin += this.meterTotal("coinPerTurn")` in `advanceTurn()`). Adding
+a new meter to the game means adding a key to an element's `effects` in
+data, never new engine code. Absorption/failure/maintenance fields stay
+explicit, structured fields — they're conditional mechanics (thresholds,
+redirects, graceful degrade), not simple additive deltas, so folding them
+into `effects` would have hidden real branching logic behind a
+misleadingly generic-looking key instead of actually generalizing it.
+
+**7-element roster + flat-silhouette icons.** The entire earlier
+building/defense list is retired, replaced by: Dune, Sandy Vegetation
+(Pandanus), Beachside Resort, Seawall (Beach); Mangrove, Khazan (Estuary);
+Small Dam (River). Cyclone Shelter goes with the old roster — it's not in
+the new one, so `resolveCyclone`'s Trust-shielding special case for it is
+gone too; Trust is now charged uniformly per damaged building. Each element
+gets a distinct flat-silhouette icon (`src/render/elementGeometry.ts`): a
+2D outline built with `THREE.Shape`, extruded a shallow depth along Z. This
+reads clearly specifically because Section 6's camera never rotates (pan/
+zoom only) — a flat cutout's front face always faces the same fixed
+viewing angle, unlike a rotating-camera game where it would go edge-on and
+vanish. `defenseGeometry.ts`/`buildingGeometry.ts` and their near-identical
+mesh managers merged into `elementGeometry.ts`/`elementMeshManager.ts`.
+
+**One real bug found and fixed during verification:** Small Dam sits
+directly on River terrain (Section 4's terrain assignment), but the flood
+resolver unconditionally treated every River tile as a damage-skipping
+hazard source ("the river never takes damage, it's the source") — so a dam
+built there could never actually engage its absorption or failure-threshold
+logic; `result.tileDamage.get(key)` came back `undefined` and
+`destroyedDefenses` never included it, caught by the rewritten
+`tests/hazard.test.ts`. Fixed by narrowing the skip condition:
+`hazard.ts`'s flood `skipDamage` now only skips an undefended river tile
+(`t === "river" && !state.elements.has(key)`), so a dammed river tile goes
+through the normal defense-check branch at the source's full, undecayed
+severity instead. A related, smaller gap: Mangrove and Khazan are
+Estuary-only, and the fixed map has exactly one Estuary tile (Section 4:
+"a single Estuary tile") which is already part of the starting claim by
+construction — the balance-test harness's per-turn "build on the tile just
+claimed" loop would never revisit it, so a hybrid-category scripted run
+built zero defenses. Fixed with an opportunistic build pass over the
+starting claim before the main loop starts, mirroring what a real player
+would naturally do by opening the popover on their own starting tile.
+
+**Verification:** 46/46 tests passing across 9 files (mapgen.test.ts,
+hazard.test.ts, cyclone.test.ts, gameState.test.ts, buildings.test.ts,
+scoring.test.ts, balance.test.ts, era.test.ts all reworked for the new
+terrain/element model), `tsc --noEmit` clean, production build succeeds.
+Screenshots below: a fresh map reading as a clean coastal strip with no
+elevation stepping, and a built-out claim showing Mangrove's canopy-blob
+icon, Small Dam's blocky-barrier icon, and Beachside Resort's
+cabana-and-umbrella icon all rendering distinctly, zero console errors.
+
+![Fresh coastal map: Coast/Estuary/Beach reading as flat, distinct colors with no elevation tiers](tools/screenshots/bucketb_fresh.png)
+![Built elements: Mangrove, Small Dam, and Beachside Resort icons rendering distinctly on their tiles](tools/screenshots/bucketb_elements2.png)

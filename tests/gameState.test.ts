@@ -4,7 +4,7 @@ import { axialKey, hexSpiral } from "../src/core/hex";
 
 /** A small synthetic fixed map for claim-mechanic tests — terrain id doesn't matter here (that's mapgen's job now). */
 function smallTestMap(radius = 3): PlacedTile[] {
-  return hexSpiral({ q: 0, r: 0 }, radius).map((coord) => ({ coord, terrainId: "village_plains" }));
+  return hexSpiral({ q: 0, r: 0 }, radius).map((coord) => ({ coord, terrainId: "beach" }));
 }
 
 describe("GameState claim mechanic (v2.2: claim-anywhere, no adjacency gate)", () => {
@@ -63,14 +63,13 @@ describe("GameState claim mechanic (v2.2: claim-anywhere, no adjacency gate)", (
     expect(claims).toBeGreaterThanOrEqual(30);
   });
 
-  it("buildableAt/buildableDefensesAt require the tile to be claimed first", () => {
+  it("buildableAt requires the tile to be claimed first", () => {
     const map: PlacedTile[] = [
       { coord: { q: 0, r: 0 }, terrainId: "estuary" },
-      { coord: { q: 1, r: 0 }, terrainId: "khazan_flatland" }
+      { coord: { q: 1, r: 0 }, terrainId: "beach" }
     ];
     const state = new GameState(map, [{ q: 0, r: 0 }]); // (1,0) intentionally left unclaimed
     expect(state.buildableAt({ q: 1, r: 0 })).toHaveLength(0);
-    expect(state.buildableDefensesAt({ q: 1, r: 0 })).toHaveLength(0);
 
     state.claim({ q: 1, r: 0 });
     expect(state.buildableAt({ q: 1, r: 0 }).length).toBeGreaterThan(0);

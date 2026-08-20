@@ -1,13 +1,6 @@
-import { type AxialCoord, axialDistance, axialKey, neighbor } from "./hex";
-import { TERRAIN_BY_ID, type TerrainDef } from "./terrain";
-import { DEFENSE_BY_ID } from "./defenses";
+import { type AxialCoord, axialKey, neighbor } from "./hex";
+import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
-
-const TIER_RANK: Record<TerrainDef["elevationTier"], number> = {
-  coastal: 0,
-  midland: 1,
-  highland: 2
-};
 
 export interface HazardResult {
   /** Effective damage dealt at each affected tile (coord key -> severity). */
@@ -24,19 +17,21 @@ interface WaveNode {
 }
 
 /**
- * Shared wave-by-wave BFS spread engine: a hazard originates at `sources`,
- * decays by `decay` per hop, and only continues onto a neighbor when
- * `canPropagate` allows it (flood: downhill/level only; cyclone: anywhere).
- * A catastrophic engineered failure's redirected spike falls out of this
- * same propagation — no special-cased "inland neighbor" step needed.
+ * Shared wave-by-wave BFS spread engine: a hazard originates at `sources`
+ * and decays by `decay` per hop across adjacent tiles — v2.2 (Section 4)
+ * retired the elevation-tier system along with every non-coastal terrain,
+ * so there is no longer any uphill/downhill gate to apply; every hazard now
+ * spreads by adjacency/distance from its source alone, which is exactly
+ * what hop-count decay over a hex-adjacency graph already models. A
+ * catastrophic engineered failure's redirected spike falls out of this same
+ * propagation — no special-cased "inland neighbor" step needed.
  */
 function resolveHazardWave(
   state: GameState,
   hazardId: string,
   sources: Map<string, WaveNode>,
   decay: number,
-  canPropagate: (fromCoord: AxialCoord, toCoord: AxialCoord) => boolean,
-  skipDamage: (terrainId: string) => boolean
+  skipDamage: (terrainId: string, key: string) => boolean
 ): HazardResult {
   const tileDamage = new Map<string, number>();
   const destroyedDefenses: string[] = [];
@@ -58,12 +53,12 @@ function resolveHazardWave(
       if (!tile) continue;
       let outgoing: number;
 
-      if (skipDamage(tile.terrainId)) {
+      if (skipDamage(tile.terrainId, key)) {
         outgoing = severity * decay;
       } else {
-        const instDefenseId = state.defenses.get(key)?.defenseId;
-        const def = instDefenseId ? DEFENSE_BY_ID.get(instDefenseId) : undefined;
-        const targets = def?.targetsHazards.includes(hazardId);
+        const instElementId = state.elements.get(key)?.elementId;
+        const def = instElementId ? ELEMENT_BY_ID.get(instElementId) : undefined;
+        const targets = def?.targetsHazards?.includes(hazardId);
 
         if (def && targets && def.category === "engineered" && def.failureThreshold !== undefined && severity > def.failureThreshold) {
           tileDamage.set(key, severity);
@@ -94,7 +89,6 @@ function resolveHazardWave(
         const n = neighbor(coord, dir);
         const nKey = axialKey(n);
         if (visited.has(nKey) || !state.placed.has(nKey)) continue;
-        if (!canPropagate(coord, n)) continue;
 
         const existing = nextWave.get(nKey);
         if (!existing || outgoing > existing.severity) {
@@ -112,9 +106,13 @@ function resolveHazardWave(
 const FLOOD_DECAY = 0.72;
 
 /**
- * Monsoon Flood (Section 5): originates at river tiles, flows downhill/level
- * along elevation tiers toward the coastal plain, decaying with distance.
- * The river itself never "takes damage" — it's the source, not a victim.
+ * Monsoon Flood (Section 5): originates at the river, spreads outward by
+ * adjacency, decaying with distance. An undefended river tile never "takes
+ * damage" — it's the source, not a victim — but a Small Dam is built
+ * directly on the river itself (Section 4's terrain roster), so a dammed
+ * river tile is the one exception: it stops being skipped and goes through
+ * the normal defense check instead, engaging at the source's full,
+ * undecayed severity.
  */
 export function resolveMonsoonFlood(state: GameState, baseSeverity = 1.0): HazardResult {
   const sources = new Map<string, WaveNode>();
@@ -122,15 +120,13 @@ export function resolveMonsoonFlood(state: GameState, baseSeverity = 1.0): Hazar
     if (tile.terrainId === "river") sources.set(axialKey(tile.coord), { coord: tile.coord, severity: baseSeverity });
   }
 
-  const canPropagate = (from: AxialCoord, to: AxialCoord): boolean => {
-    const fromTile = state.placed.get(axialKey(from))!;
-    const toTile = state.placed.get(axialKey(to))!;
-    const fromTier = TIER_RANK[TERRAIN_BY_ID.get(fromTile.terrainId)!.elevationTier];
-    const toTier = TIER_RANK[TERRAIN_BY_ID.get(toTile.terrainId)!.elevationTier];
-    return toTier <= fromTier; // never flows uphill
-  };
-
-  const result = resolveHazardWave(state, "monsoon_flood", sources, FLOOD_DECAY, canPropagate, (t) => t === "river");
+  const result = resolveHazardWave(
+    state,
+    "monsoon_flood",
+    sources,
+    FLOOD_DECAY,
+    (t, key) => t === "river" && !state.elements.has(key)
+  );
   state.applyHazardOutcome(sumDamage(result), result.destroyedDefenses.length);
   return result;
 }
@@ -143,21 +139,16 @@ function sumDamage(result: HazardResult): number {
 
 const CYCLONE_DECAY = 0.6; // attenuates faster than the flood — a sudden, more localized hazard
 const TRUST_LOSS_PER_DAMAGED_BUILDING = 3;
-const SHELTER_PROTECTION_FACTOR = 0.15; // sheltered buildings keep 85% of the trust they'd otherwise lose
 const DAMAGE_TRUST_THRESHOLD = 0.3;
 
 export interface CycloneResult extends HazardResult {
   trustLost: number;
-  shelteredBuildings: string[];
 }
 
 /**
  * Cyclone (Section 5): hits coast/estuary tiles first (wind+surge combined
- * into one hazard for this pilot), attenuates inland — no elevation gating,
- * since wind reaches uphill just as readily as down. Cyclone Shelter is
- * deliberately unlike every other defense here: it does nothing to
- * `tileDamage` (see its `absorptionAtMaturity: 0`) and instead protects
- * Trust for buildings within its radius.
+ * into one hazard for this pilot), attenuates inland by distance from the
+ * sea.
  */
 export function resolveCyclone(state: GameState, baseSeverity = 1.0): CycloneResult {
   const sources = new Map<string, WaveNode>();
@@ -167,34 +158,15 @@ export function resolveCyclone(state: GameState, baseSeverity = 1.0): CycloneRes
     }
   }
 
-  const result = resolveHazardWave(state, "cyclone", sources, CYCLONE_DECAY, () => true, () => false);
+  const result = resolveHazardWave(state, "cyclone", sources, CYCLONE_DECAY, () => false);
   state.applyHazardOutcome(sumDamage(result), result.destroyedDefenses.length);
 
-  const shelterCoords: AxialCoord[] = [];
-  for (const [key, inst] of state.defenses) {
-    if (inst.defenseId === "cyclone_shelter") {
-      const [q, r] = key.split(",").map(Number);
-      shelterCoords.push({ q, r });
-    }
-  }
-  const shelterRadius = DEFENSE_BY_ID.get("cyclone_shelter")?.protectionRadius ?? 0;
-
   let trustLost = 0;
-  const shelteredBuildings: string[] = [];
   for (const [key, damage] of result.tileDamage) {
-    if (damage < DAMAGE_TRUST_THRESHOLD || !state.buildings.has(key)) continue;
-    const [q, r] = key.split(",").map(Number);
-    const coord = { q, r };
-    const sheltered = shelterCoords.some((s) => axialDistance(s, coord) <= shelterRadius);
-    if (sheltered) {
-      shelteredBuildings.push(key);
-      trustLost += TRUST_LOSS_PER_DAMAGED_BUILDING * SHELTER_PROTECTION_FACTOR;
-    } else {
-      trustLost += TRUST_LOSS_PER_DAMAGED_BUILDING;
-    }
+    if (damage < DAMAGE_TRUST_THRESHOLD || !state.hasBuildingAt(key)) continue;
+    trustLost += TRUST_LOSS_PER_DAMAGED_BUILDING;
   }
-
   state.trust = Math.max(0, state.trust - trustLost);
 
-  return { ...result, trustLost, shelteredBuildings };
+  return { ...result, trustLost };
 }

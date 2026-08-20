@@ -1,15 +1,13 @@
-import { type AxialCoord, axialKey, neighbor } from "./hex";
-import { isWaterFamily } from "./terrain";
-import { BUILDING_BY_ID, type BuildingDef } from "./buildings";
-import { DEFENSE_BY_ID, type DefenseDef } from "./defenses";
+import { type AxialCoord, axialKey } from "./hex";
+import { ELEMENT_BY_ID, type ElementDef } from "./elements";
 
 export interface PlacedTile {
   coord: AxialCoord;
   terrainId: string;
 }
 
-export interface DefenseInstance {
-  defenseId: string;
+export interface ElementInstance {
+  elementId: string;
   builtOnTurn: number;
   /** Permanent absorption reduction from graceful-degrade events or unpaid maintenance. */
   degradeAmount: number;
@@ -23,24 +21,21 @@ const CATASTROPHIC_TRUST_PENALTY = 8; // per destroyed engineered defense — st
 const WEATHERED_TRUST_BONUS = 2;
 const CLAIM_COST = 4; // Section 2: "costs a small amount of Coin"
 
-function isCoastOrEstuary(terrainId: string): boolean {
-  return terrainId === "coast" || terrainId === "estuary";
-}
-
 /**
  * Pure game-logic state (v2.1): the terrain map is fixed at construction —
  * `placed` holds every tile from the authored map.json, not something the
  * player grows. What the player grows is `claimed`, a subset of `placed`.
- * No Three.js here — the render layer mirrors this to draw the scene.
+ * v2.2 merged buildings and defenses into one `elements.json` roster — a
+ * single `elements` map replaces the old separate `buildings`/`defenses`
+ * maps. No Three.js here — the render layer mirrors this to draw the scene.
  */
 export class GameState {
   readonly placed = new Map<string, PlacedTile>();
   readonly claimed = new Set<string>();
-  readonly buildings = new Map<string, string>(); // coord key -> building id
-  readonly defenses = new Map<string, DefenseInstance>();
+  readonly elements = new Map<string, ElementInstance>(); // coord key -> instance
   coin = STARTING_COIN;
   turn = 0;
-  /** Section 7's four meters. Biodiversity/Carbon are derived (see the getters below); Trust and Resilience are running totals. */
+  /** Section 7's meters. Biodiversity is derived (see `meterTotal`); Trust and Resilience are running totals. */
   trust = STARTING_TRUST;
   resilience = STARTING_RESILIENCE;
   /** Section 2's standing severity baseline: never decreases within an era, biases future hazard rolls upward. */
@@ -106,125 +101,116 @@ export class GameState {
     return true;
   }
 
+  private maturityFraction(inst: ElementInstance, def: ElementDef): number {
+    return def.matureTurns > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / def.matureTurns)) : 1;
+  }
+
   /**
-   * One claim = one turn (Section 2's Calm-phase cadence): buildings pay
-   * out, and defenses with upkeep either get paid or silently weaken (the
-   * khazan/river-embankment "neglect decays it" tradeoff). Public because
-   * the hazard/turn system also needs to advance it directly (e.g.
-   * maintenance still ticks between hazard events).
+   * One claim = one turn (Section 2's Calm-phase cadence): elements pay out
+   * their `effects.coinPerTurn` (the same generic accumulator that drives
+   * every other meter — see `meterTotal`), and defenses with upkeep either
+   * get paid or silently weaken (the khazan/small-dam "neglect decays it"
+   * tradeoff). Public because the hazard/turn system also needs to advance
+   * it directly (e.g. maintenance still ticks between hazard events).
    */
   advanceTurn(): void {
     this.turn++;
-    for (const buildingId of this.buildings.values()) {
-      const def = BUILDING_BY_ID.get(buildingId);
-      if (def) this.coin += def.coinPerTurn;
-    }
-    for (const [key, inst] of this.defenses) {
-      const def = DEFENSE_BY_ID.get(inst.defenseId);
-      if (!def || def.maintenanceCostPerTurn <= 0) continue;
+    this.coin += this.meterTotal("coinPerTurn");
+    for (const [key, inst] of this.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def || !def.maintenanceCostPerTurn || def.maintenanceCostPerTurn <= 0) continue;
       if (this.coin >= def.maintenanceCostPerTurn) {
         this.coin -= def.maintenanceCostPerTurn;
       } else if (def.maintenanceNeglectPenaltyPerTurn) {
         inst.degradeAmount += def.maintenanceNeglectPenaltyPerTurn;
-        this.defenses.set(key, inst);
+        this.elements.set(key, inst);
       }
     }
   }
 
-  private isCoastOrEstuaryAdjacent(coord: AxialCoord): boolean {
-    for (let dir = 0; dir < 6; dir++) {
-      const np = this.placed.get(axialKey(neighbor(coord, dir)));
-      if (np && isCoastOrEstuary(np.terrainId)) return true;
-    }
-    return false;
-  }
-
-  private isWaterFamilyAdjacent(coord: AxialCoord): boolean {
-    for (let dir = 0; dir < 6; dir++) {
-      const np = this.placed.get(axialKey(neighbor(coord, dir)));
-      if (np && isWaterFamily(np.terrainId)) return true;
-    }
-    return false;
-  }
-
-  /** Defense options valid at `coord` right now (must be claimed, terrain + water adjacency), regardless of affordability. */
-  buildableDefensesAt(coord: AxialCoord): DefenseDef[] {
+  /** Element options valid at `coord` right now (must be claimed, terrain-matched, nothing already built there), regardless of affordability. */
+  buildableAt(coord: AxialCoord): ElementDef[] {
     const key = axialKey(coord);
     const tile = this.placed.get(key);
-    if (!tile || !this.claimed.has(key) || this.defenses.has(key)) return [];
-
-    const results: DefenseDef[] = [];
-    for (const def of DEFENSE_BY_ID.values()) {
-      if (!def.validTerrainIds.includes(tile.terrainId)) continue;
-      if (def.requiresWaterFamilyAdjacent && !this.isWaterFamilyAdjacent(coord)) continue;
-      results.push(def);
+    if (!tile || !this.claimed.has(key) || this.elements.has(key)) return [];
+    const results: ElementDef[] = [];
+    for (const def of ELEMENT_BY_ID.values()) {
+      if (def.validTerrainIds.includes(tile.terrainId)) results.push(def);
     }
     return results;
   }
 
-  canBuildDefense(coord: AxialCoord, defenseId: string): boolean {
-    const def = DEFENSE_BY_ID.get(defenseId);
+  canBuild(coord: AxialCoord, elementId: string): boolean {
+    const def = ELEMENT_BY_ID.get(elementId);
     if (!def) return false;
     if (this.coin < def.buildCost) return false;
-    return this.buildableDefensesAt(coord).some((d) => d.id === defenseId);
+    return this.buildableAt(coord).some((d) => d.id === elementId);
   }
 
-  buildDefense(coord: AxialCoord, defenseId: string): boolean {
-    if (!this.canBuildDefense(coord, defenseId)) return false;
-    const def = DEFENSE_BY_ID.get(defenseId)!;
+  /** Builds `elementId` at `coord`, deducting its cost. Returns false (no-op) if illegal/unaffordable. */
+  build(coord: AxialCoord, elementId: string): boolean {
+    if (!this.canBuild(coord, elementId)) return false;
+    const def = ELEMENT_BY_ID.get(elementId)!;
     this.coin -= def.buildCost;
-    this.defenses.set(axialKey(coord), { defenseId, builtOnTurn: this.turn, degradeAmount: 0 });
+    this.elements.set(axialKey(coord), { elementId, builtOnTurn: this.turn, degradeAmount: 0 });
     return true;
+  }
+
+  /** True if a building-kind element (not a defense) is standing at this coord key — used by cyclone's Trust penalty. */
+  hasBuildingAt(key: string): boolean {
+    const inst = this.elements.get(key);
+    if (!inst) return false;
+    return ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
   }
 
   /** Current absorption fraction [0,1] a defense provides right now, factoring maturity and any degrade. */
   effectiveAbsorption(coord: AxialCoord): number {
-    const inst = this.defenses.get(axialKey(coord));
+    const inst = this.elements.get(axialKey(coord));
     if (!inst) return 0;
-    const def = DEFENSE_BY_ID.get(inst.defenseId);
-    if (!def) return 0;
-    const maturityFrac = def.matureTurns > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / def.matureTurns)) : 1;
-    const base = def.absorptionAtMaturity * maturityFrac;
+    const def = ELEMENT_BY_ID.get(inst.elementId);
+    if (!def || def.absorptionAtMaturity === undefined) return 0;
+    const base = def.absorptionAtMaturity * this.maturityFraction(inst, def);
     return Math.max(0, base - inst.degradeAmount);
   }
 
   /** Used by the hazard resolver: permanently weakens a graceful (NBS/hybrid) defense in place. */
   degradeDefense(coord: AxialCoord, amount: number): void {
     const key = axialKey(coord);
-    const inst = this.defenses.get(key);
+    const inst = this.elements.get(key);
     if (inst) inst.degradeAmount += amount;
   }
 
   /** Used by the hazard resolver: removes a catastrophically-failed engineered defense. */
   destroyDefense(coord: AxialCoord): void {
-    this.defenses.delete(axialKey(coord));
+    this.elements.delete(axialKey(coord));
   }
 
   /**
-   * Biodiversity and Carbon (Section 7) are derived, not accumulated: the
-   * sum of every standing defense's coBenefits, weighted by how mature it
-   * is. NBS/hybrid structures contribute positively, engineered negatively
-   * (its coBenefits are negative in the data) — a destroyed defense simply
-   * stops contributing, no separate bookkeeping needed.
+   * The generic effects accumulator (v2.2's standing architectural
+   * requirement): sums every standing element's `effects[key]`, weighted by
+   * how mature it is. Nothing in this function knows what "biodiversity" or
+   * "coinPerTurn" mean — a new meter is added entirely in elements.json,
+   * never here. A destroyed defense simply stops contributing, no separate
+   * bookkeeping needed.
    */
-  private coBenefitTotal(key: "biodiversity" | "carbon"): number {
+  meterTotal(key: string): number {
     let total = 0;
-    for (const inst of this.defenses.values()) {
-      const def = DEFENSE_BY_ID.get(inst.defenseId);
+    for (const inst of this.elements.values()) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
       if (!def) continue;
-      const maturityFrac =
-        def.matureTurns > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / def.matureTurns)) : 1;
-      total += def.coBenefits[key] * maturityFrac;
+      const delta = def.effects[key];
+      if (delta === undefined) continue;
+      total += delta * this.maturityFraction(inst, def);
     }
     return total;
   }
 
   get biodiversity(): number {
-    return this.coBenefitTotal("biodiversity");
+    return this.meterTotal("biodiversity");
   }
 
   get carbon(): number {
-    return this.coBenefitTotal("carbon");
+    return this.meterTotal("carbon");
   }
 
   /**
@@ -260,43 +246,11 @@ export class GameState {
     for (const coord of this.startingClaim) {
       if (this.placed.has(axialKey(coord))) this.claimed.add(axialKey(coord));
     }
-    this.buildings.clear();
-    this.defenses.clear();
+    this.elements.clear();
     this.coin = STARTING_COIN;
     this.trust = STARTING_TRUST;
     this.resilience = STARTING_RESILIENCE;
     this.severityBaseline = 0;
     this.turn = 0;
-  }
-
-  /** Building options valid at `coord` right now (must be claimed, terrain + adjacency), regardless of affordability. */
-  buildableAt(coord: AxialCoord): BuildingDef[] {
-    const key = axialKey(coord);
-    const tile = this.placed.get(key);
-    if (!tile || !this.claimed.has(key) || this.buildings.has(key)) return [];
-
-    const results: BuildingDef[] = [];
-    for (const def of BUILDING_BY_ID.values()) {
-      if (!def.validTerrainIds.includes(tile.terrainId)) continue;
-      if (def.requiresCoastOrEstuaryAdjacent && !this.isCoastOrEstuaryAdjacent(coord)) continue;
-      results.push(def);
-    }
-    return results;
-  }
-
-  canBuild(coord: AxialCoord, buildingId: string): boolean {
-    const def = BUILDING_BY_ID.get(buildingId);
-    if (!def) return false;
-    if (this.coin < def.buildCost) return false;
-    return this.buildableAt(coord).some((d) => d.id === buildingId);
-  }
-
-  /** Builds `buildingId` at `coord`, deducting its cost. Returns false (no-op) if illegal/unaffordable. */
-  build(coord: AxialCoord, buildingId: string): boolean {
-    if (!this.canBuild(coord, buildingId)) return false;
-    const def = BUILDING_BY_ID.get(buildingId)!;
-    this.coin -= def.buildCost;
-    this.buildings.set(axialKey(coord), buildingId);
-    return true;
   }
 }

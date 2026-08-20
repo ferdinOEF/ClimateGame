@@ -2,64 +2,25 @@
   {
     "id": "coast",
     "name": "Coast",
-    "edgeTypes": ["SAND", "SAND", "SAND", "SAND", "SAND", "SAND"],
-    "elevationTier": "coastal",
-    "flammability": 0,
-    "decorationDensityRange": [0, 2],
-    "colorKey": "sandGold"
+    "colorKey": "seaTurquoise",
+    "height": 0.3
   },
   {
-    "id": "estuary",
-    "name": "Estuary / Backwater",
-    "edgeTypes": ["WATER", "WATER", "WATER", "WATER", "WATER", "WATER"],
-    "elevationTier": "coastal",
-    "flammability": 0,
-    "decorationDensityRange": [0, 3],
-    "colorKey": "mangroveTeal"
+    "id": "beach",
+    "name": "Beach",
+    "colorKey": "sandGold",
+    "height": 0.55
   },
   {
     "id": "river",
     "name": "River",
-    "edgeTypes": ["WATER", "WATER", "WATER", "WATER", "WATER", "WATER"],
-    "elevationTier": "midland",
-    "flammability": 0,
-    "decorationDensityRange": [0, 1],
-    "colorKey": "riverBlue"
+    "colorKey": "riverBlue",
+    "height": 0.3
   },
   {
-    "id": "khazan_flatland",
-    "name": "Khazan Flatland",
-    "edgeTypes": ["FARM", "FARM", "FARM", "FARM", "FARM", "FARM"],
-    "elevationTier": "coastal",
-    "flammability": 0,
-    "decorationDensityRange": [1, 4],
-    "colorKey": "paddyGreen"
-  },
-  {
-    "id": "laterite_plateau",
-    "name": "Laterite Plateau",
-    "edgeTypes": ["ROCK", "ROCK", "ROCK", "ROCK", "ROCK", "ROCK"],
-    "elevationTier": "highland",
-    "flammability": 0,
-    "decorationDensityRange": [0, 2],
-    "colorKey": "lateriteRed"
-  },
-  {
-    "id": "forest",
-    "name": "Forest (Ghats Foothill)",
-    "edgeTypes": ["FOREST", "FOREST", "FOREST", "FOREST", "FOREST", "FOREST"],
-    "elevationTier": "midland",
-    "flammability": 0,
-    "decorationDensityRange": [3, 6],
-    "colorKey": "forestDeep"
-  },
-  {
-    "id": "village_plains",
-    "name": "Village Plains",
-    "edgeTypes": ["GRASS", "GRASS", "GRASS", "GRASS", "GRASS", "GRASS"],
-    "elevationTier": "midland",
-    "flammability": 0,
-    "decorationDensityRange": [1, 3],
-    "colorKey": "plainsGreen"
+    "id": "estuary",
+    "name": "Estuary",
+    "colorKey": "mangroveTeal",
+    "height": 0.3
   }
 ]

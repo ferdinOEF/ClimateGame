@@ -1,16 +1,16 @@
 import * as THREE from "three";
 import type { AxialCoord } from "@core/hex";
 import { axialToWorld } from "@core/hex";
-import { DEFENSE_DEFS, DEFENSE_BY_ID } from "@core/defenses";
+import { ELEMENT_DEFS, ELEMENT_BY_ID } from "@core/elements";
 import { HEX_SIZE } from "./terrainMeshManager";
-import { createDefenseGeometry } from "./defenseGeometry";
+import { createElementGeometry } from "./elementGeometry";
 import { jitterColor, paletteColor } from "./palette";
 import { SettleAnimator } from "./settleAnimation";
 
-const MAX_INSTANCES_PER_TYPE = 150;
+const MAX_INSTANCES_PER_TYPE = 200;
 const DEGRADED_TINT = new THREE.Color("#5b4a36"); // dull, patchy brown — a visibly weakened structure
 
-interface DefenseInstanceRef {
+interface ElementInstanceRef {
   mesh: THREE.InstancedMesh;
   index: number;
   x: number;
@@ -20,38 +20,41 @@ interface DefenseInstanceRef {
 }
 
 /**
- * Defense structures render the same way buildings do — one InstancedMesh
- * per category, small low-poly props sitting on their tile — but also need
- * to be destroyed (engineered catastrophic failure) or visually degraded
- * (khazan graceful decay) after a hazard resolves.
+ * v2.2: buildings and defenses merged into one `elements.json` roster
+ * (Section 0.1's generic-effects requirement), so their render-side
+ * bookkeeping — near-identical between the old BuildingMeshManager and
+ * DefenseMeshManager — merges into one manager too. One InstancedMesh per
+ * element type, small flat-silhouette icon props sitting on their tile.
+ * `destroy()`/`setDegradeVisual()` only ever get called for defense-kind
+ * elements in practice (a hazard event), but work uniformly either way.
  */
-export class DefenseMeshManager {
+export class ElementMeshManager {
   readonly group = new THREE.Group();
   private meshes = new Map<string, THREE.InstancedMesh>();
   private counts = new Map<string, number>();
-  private byCoord = new Map<string, DefenseInstanceRef>();
+  private byCoord = new Map<string, ElementInstanceRef>();
   private animator = new SettleAnimator();
 
   constructor() {
-    for (const defense of DEFENSE_DEFS) {
-      const geometry = createDefenseGeometry(defense.id);
+    for (const element of ELEMENT_DEFS) {
+      const geometry = createElementGeometry(element.id);
       const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.85 });
       const mesh = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES_PER_TYPE);
       mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES_PER_TYPE * 3), 3);
       mesh.count = 0;
-      mesh.name = `defense-${defense.id}`;
-      this.meshes.set(defense.id, mesh);
-      this.counts.set(defense.id, 0);
+      mesh.name = `element-${element.id}`;
+      this.meshes.set(element.id, mesh);
+      this.counts.set(element.id, 0);
       this.group.add(mesh);
     }
   }
 
-  place(coord: AxialCoord, defenseId: string, terrainTopY: number, options: { animate?: boolean } = {}): void {
-    const def = DEFENSE_BY_ID.get(defenseId);
-    if (!def) throw new Error(`Unknown defense id: ${defenseId}`);
-    const mesh = this.meshes.get(defenseId)!;
-    const index = this.counts.get(defenseId)!;
-    if (index >= MAX_INSTANCES_PER_TYPE) throw new Error(`Defense instance cap exceeded for ${defenseId}`);
+  place(coord: AxialCoord, elementId: string, terrainTopY: number, options: { animate?: boolean } = {}): void {
+    const def = ELEMENT_BY_ID.get(elementId);
+    if (!def) throw new Error(`Unknown element id: ${elementId}`);
+    const mesh = this.meshes.get(elementId)!;
+    const index = this.counts.get(elementId)!;
+    if (index >= MAX_INSTANCES_PER_TYPE) throw new Error(`Element instance cap exceeded for ${elementId}`);
 
     const { x, z } = axialToWorld(coord, HEX_SIZE);
 
@@ -66,7 +69,7 @@ export class DefenseMeshManager {
     const baseColor = jitterColor(paletteColor(def.colorKey), seed);
     mesh.setColorAt(index, baseColor);
 
-    this.counts.set(defenseId, index + 1);
+    this.counts.set(elementId, index + 1);
     mesh.count = index + 1;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
@@ -95,12 +98,12 @@ export class DefenseMeshManager {
     this.animator.tick(nowMs);
   }
 
-  /** Clears every placed defense (a new era starting a fresh map). */
+  /** Clears every placed element (a new era starting a fresh map). */
   reset(): void {
     this.byCoord.clear();
-    for (const defenseId of this.counts.keys()) {
-      this.counts.set(defenseId, 0);
-      this.meshes.get(defenseId)!.count = 0;
+    for (const elementId of this.counts.keys()) {
+      this.counts.set(elementId, 0);
+      this.meshes.get(elementId)!.count = 0;
     }
   }
 }

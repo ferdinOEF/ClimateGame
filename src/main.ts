@@ -2,8 +2,7 @@ import * as THREE from "three";
 import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ClaimRingMeshManager } from "@render/claimRingMeshManager";
-import { BuildingMeshManager } from "@render/buildingMeshManager";
-import { DefenseMeshManager } from "@render/defenseMeshManager";
+import { ElementMeshManager } from "@render/elementMeshManager";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS } from "@render/floodOverlayManager";
 import { GameState } from "@core/gameState";
 import { axialToWorld, type AxialCoord } from "@core/hex";
@@ -27,14 +26,12 @@ const { scene, camera, renderer, start, focusOn, wasDrag } = createScene(contain
 
 const terrain = new TerrainMeshManager();
 const claimRing = new ClaimRingMeshManager();
-const buildings = new BuildingMeshManager();
-const defenses = new DefenseMeshManager();
+const elements = new ElementMeshManager();
 const floodOverlay = new HazardOverlayManager(FLOOD_OVERLAY_COLORS, "flood-overlay");
 const cycloneOverlay = new HazardOverlayManager(CYCLONE_OVERLAY_COLORS, "cyclone-overlay");
 scene.add(terrain.group);
 scene.add(claimRing.mesh);
-scene.add(buildings.group);
-scene.add(defenses.group);
+scene.add(elements.group);
 scene.add(floodOverlay.mesh);
 scene.add(cycloneOverlay.mesh);
 
@@ -121,13 +118,13 @@ function applyHazardResult(
 ): void {
   for (const key of result.destroyedDefenses) {
     const [q, r] = key.split(",").map(Number);
-    defenses.destroy({ q, r });
+    elements.destroy({ q, r });
   }
   for (const key of result.overwhelmedDefenses) {
-    const inst = state.defenses.get(key);
+    const inst = state.elements.get(key);
     if (!inst) continue;
     const [q, r] = key.split(",").map(Number);
-    defenses.setDegradeVisual({ q, r }, inst.degradeAmount);
+    elements.setDegradeVisual({ q, r }, inst.degradeAmount);
   }
   for (const [key, damage] of result.tileDamage) {
     if (damage < 0.08) continue;
@@ -224,8 +221,7 @@ function checkEraEnd(): void {
   playSound("era_end");
   hud.showBanner(`Era ${erasSoFar} retired — score ${score}. A new era begins.`);
 
-  buildings.reset();
-  defenses.reset();
+  elements.reset();
   floodOverlay.reset();
   cycloneOverlay.reset();
 
@@ -264,13 +260,9 @@ function claimTile(coord: AxialCoord): boolean {
 // --- Build / defend popover --------------------------------------------------
 
 function openBuildPopover(coord: AxialCoord): void {
-  const buildingOptions: PopoverOption[] = state
+  const options: PopoverOption[] = state
     .buildableAt(coord)
-    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: "building" }));
-  const defenseOptions: PopoverOption[] = state
-    .buildableDefensesAt(coord)
-    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: d.category }));
-  const options = [...buildingOptions, ...defenseOptions];
+    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: d.kind === "building" ? "building" : d.category }));
 
   if (options.length === 0) return;
   const worldTop = terrain.heightAt(coord);
@@ -278,13 +270,8 @@ function openBuildPopover(coord: AxialCoord): void {
   const screen = worldToScreen(wx, worldTop + 0.3, wz);
 
   buildPopover.show(screen.x, screen.y, options, state.coin, (id) => {
-    if (buildingOptions.some((o) => o.id === id)) {
-      if (!state.build(coord, id)) return;
-      buildings.place(coord, id, terrain.heightAt(coord), { animate: true });
-    } else {
-      if (!state.buildDefense(coord, id)) return;
-      defenses.place(coord, id, terrain.heightAt(coord), { animate: true });
-    }
+    if (!state.build(coord, id)) return;
+    elements.place(coord, id, terrain.heightAt(coord), { animate: true });
     playSound("build");
     refreshHud();
   });
@@ -355,8 +342,7 @@ renderer.domElement.addEventListener("pointermove", (event: MouseEvent) => {
 
 start((nowMs) => {
   terrain.tick(nowMs);
-  buildings.tick(nowMs);
-  defenses.tick(nowMs);
+  elements.tick(nowMs);
   floodOverlay.tick(nowMs);
   cycloneOverlay.tick(nowMs);
   claimRing.tick(nowMs);
@@ -376,36 +362,18 @@ function devAutoClaim(count: number): void {
   }
 }
 
-/** Prefers a building type not yet built anywhere, so a dev screenshot shows variety rather than one type repeated. */
-function devAutoBuild(): void {
+/** Prefers an element type not yet built anywhere, so a dev screenshot shows variety rather than one type repeated. */
+function devAutoBuild(kind: "building" | "defense"): void {
   const builtTypes = new Set<string>();
   for (const key of state.claimed) {
     const [q, r] = key.split(",").map(Number);
     const coord = { q, r };
-    const options = state.buildableAt(coord);
+    const options = state.buildableAt(coord).filter((o) => o.kind === kind);
     const affordable = options.filter((o) => o.buildCost <= state.coin);
     if (affordable.length === 0) continue;
     const pick = affordable.find((o) => !builtTypes.has(o.id)) ?? affordable[0];
     if (state.build(coord, pick.id)) {
-      buildings.place(coord, pick.id, terrain.heightAt(coord), { animate: true });
-      builtTypes.add(pick.id);
-    }
-  }
-  refreshHud();
-}
-
-/** Prefers a defense type not yet built anywhere, so a dev screenshot shows every category at once. */
-function devAutoDefend(): void {
-  const builtTypes = new Set<string>();
-  for (const key of state.claimed) {
-    const [q, r] = key.split(",").map(Number);
-    const coord = { q, r };
-    const options = state.buildableDefensesAt(coord);
-    const affordable = options.filter((o) => o.buildCost <= state.coin);
-    if (affordable.length === 0) continue;
-    const pick = affordable.find((o) => !builtTypes.has(o.id)) ?? affordable[0];
-    if (state.buildDefense(coord, pick.id)) {
-      defenses.place(coord, pick.id, terrain.heightAt(coord), { animate: true });
+      elements.place(coord, pick.id, terrain.heightAt(coord), { animate: true });
       builtTypes.add(pick.id);
     }
   }
@@ -422,8 +390,8 @@ if (coinBoost) {
 }
 const autoclaimParam = params.get("autoclaim");
 if (autoclaimParam) devAutoClaim(Number(autoclaimParam));
-if (params.has("autobuild")) devAutoBuild();
-if (params.has("autodefend")) devAutoDefend();
+if (params.has("autobuild")) devAutoBuild("building");
+if (params.has("autodefend")) devAutoBuild("defense");
 const floodParam = params.get("flood");
 if (floodParam) triggerFlood(Number(floodParam));
 const cycloneParam = params.get("cyclone");
