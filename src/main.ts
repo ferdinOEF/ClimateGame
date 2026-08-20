@@ -5,6 +5,7 @@ import { ClaimRingMeshManager } from "@render/claimRingMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS } from "@render/floodOverlayManager";
 import { GameState } from "@core/gameState";
+import { ELEMENT_BY_ID } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
 import { resolveMonsoonFlood, resolveCyclone } from "@core/hazard";
 import { computeEraScore } from "@core/scoring";
@@ -259,15 +260,34 @@ function claimTile(coord: AxialCoord): boolean {
 
 // --- Build / defend popover --------------------------------------------------
 
-function openBuildPopover(coord: AxialCoord): void {
-  const options: PopoverOption[] = state
-    .buildableAt(coord)
-    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: d.kind === "building" ? "building" : d.category }));
-
-  if (options.length === 0) return;
+/**
+ * Section 3's "one tile, one element": a tile that already has something
+ * built on it shows that element's info (name, category, effects) instead
+ * of ever offering a second build menu — the UI should never let a player
+ * attempt (or appear to attempt) building a second thing on an occupied tile.
+ */
+function openTilePopover(coord: AxialCoord): void {
+  const key = `${coord.q},${coord.r}`;
   const worldTop = terrain.heightAt(coord);
   const { x: wx, z: wz } = axialToWorld(coord, 1.0);
   const screen = worldToScreen(wx, worldTop + 0.3, wz);
+
+  const built = state.elements.get(key);
+  if (built) {
+    const def = ELEMENT_BY_ID.get(built.elementId);
+    if (!def) return;
+    buildPopover.showInfo(screen.x, screen.y, {
+      name: def.name,
+      kindLabel: def.kind === "building" ? "building" : def.category,
+      effects: def.effects
+    });
+    return;
+  }
+
+  const options: PopoverOption[] = state
+    .buildableAt(coord)
+    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: d.kind === "building" ? "building" : d.category }));
+  if (options.length === 0) return;
 
   buildPopover.show(screen.x, screen.y, options, state.coin, (id) => {
     if (!state.build(coord, id)) return;
@@ -279,10 +299,12 @@ function openBuildPopover(coord: AxialCoord): void {
 
 // --- Input ---------------------------------------------------------------------
 //
-// Single source of truth for dismissal (NEXT_STEPS.md): if the popover is
-// open, the first click anywhere just closes it and does nothing else — a
-// second, separate click is needed to claim a tile or open a different
-// tile's popover. No same-click close-and-reopen chains.
+// Dismissal (NEXT_STEPS.md): if the popover is open, the first click
+// anywhere just closes it and does nothing else — a second, separate click
+// is needed to claim a tile or open a different tile's popover. No
+// same-click close-and-reopen chains. The canvas's own listener handles
+// canvas clicks; the document-level listener further down catches clicks
+// that land outside the canvas entirely (the HUD, say).
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -307,10 +329,29 @@ renderer.domElement.addEventListener("click", (event: MouseEvent) => {
   if (!coord) return;
 
   const key = `${coord.q},${coord.r}`;
-  if (state.claimed.has(key)) openBuildPopover(coord);
+  if (state.claimed.has(key)) openTilePopover(coord);
   else if (state.isClaimable(coord)) claimTile(coord);
   // else: unreachable in practice under v2.2 (every unclaimed tile is
   // claimable), kept as a no-op guard rather than an assumption.
+});
+
+// Canvas clicks are handled above; a click on the HUD or any other
+// non-canvas area of the page never reaches that listener at all, so the
+// popover would otherwise stay open forever if a player clicked there.
+// This one, on `document`, catches exactly that gap — for a canvas click
+// it always fires *after* the canvas's own listener already closed the
+// popover, so `isOpen` is already false and this is a no-op; for a click
+// inside the popover itself (its own buttons stop propagation, but its
+// background doesn't) `contains` keeps it open.
+document.addEventListener("click", (event: MouseEvent) => {
+  if (!buildPopover.isOpen) return;
+  const target = event.target as Node | null;
+  if (renderer.domElement.contains(target) || buildPopover.contains(target)) return;
+  buildPopover.hide();
+});
+
+document.addEventListener("keydown", (event: KeyboardEvent) => {
+  if (event.key === "Escape" && buildPopover.isOpen) buildPopover.hide();
 });
 
 /**

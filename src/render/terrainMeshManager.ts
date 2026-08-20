@@ -9,17 +9,25 @@ import { SettleAnimator } from "./settleAnimation";
 export const HEX_SIZE = 1.0;
 const MAX_INSTANCES_PER_TYPE = 400;
 const UNCLAIMED_SINK = 0.15; // unclaimed tiles sit slightly lower, like they're still in the fog
-// How far each terrain's own color is pulled toward the shared `fog` palette
-// tone. Playtest flagged the earlier HSL-desaturate approach (scale
-// saturation down, nudge lightness toward mid-gray) as not distinct enough:
-// two terrain types with very different base lightness (e.g. sun-bleached
-// sand vs. deep forest) still read as clearly different colors even dimmed,
-// so "is this claimed?" was legible only tile-by-tile, not at a glance
-// across the map. Blending hard toward one shared neutral tone instead makes
-// every unclaimed tile converge on roughly the same hazy color regardless of
-// its terrain, so claimed tiles — the only ones still showing a full,
-// saturated per-terrain color — stand out as a group.
-const UNCLAIMED_FOG_BLEND = 0.72;
+// Two playtest passes landed on opposite failure modes here. First, the
+// original per-terrain HSL desaturate (scale saturation down, nudge
+// lightness toward mid-gray) read fine tile-by-tile but not at a glance:
+// two terrain types with very different base lightness (sun-bleached sand
+// vs. deep forest) still read as clearly different colors even dimmed, so
+// "is this claimed?" wasn't legible across a mixed-terrain map. The fix for
+// that — blending *hard* toward one shared neutral fog tone — overshot:
+// a second playtest found unclaimed tiles now converge on one flat,
+// near-indistinguishable tan regardless of terrain, which reads as broken
+// in its own way once a claimed cluster isn't right there for contrast, and
+// unclaimed Beach/Estuary/River/Coast were no longer recognizably different
+// hues from each other. This is the middle ground: desaturate first (so
+// each terrain keeps a fraction of its own hue/lightness, staying
+// distinguishable from its neighbors), *then* blend a smaller amount toward
+// fog (so the whole unclaimed field still reads as hazy/muted next to a
+// claimed tile's full saturation). Tune both knobs together if this still
+// doesn't land — they're solving two different problems, not one.
+const UNCLAIMED_SATURATION_SCALE = 0.55; // how much of the terrain's own saturation survives
+const UNCLAIMED_FOG_BLEND = 0.32; // how far the desaturated color is then pulled toward `fog`
 
 interface TerrainInstance {
   coord: AxialCoord;
@@ -31,7 +39,10 @@ interface TerrainInstance {
 }
 
 function dim(color: THREE.Color): THREE.Color {
-  return color.clone().lerp(paletteColor("fog"), UNCLAIMED_FOG_BLEND);
+  const hsl = { h: 0, s: 0, l: 0 };
+  color.getHSL(hsl);
+  const desaturated = color.clone().setHSL(hsl.h, hsl.s * UNCLAIMED_SATURATION_SCALE, hsl.l);
+  return desaturated.lerp(paletteColor("fog"), UNCLAIMED_FOG_BLEND);
 }
 
 /**

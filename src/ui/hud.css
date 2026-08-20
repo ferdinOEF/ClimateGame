@@ -172,3 +172,20 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+/* Read-only "what's built here" card (BuildPopover.showInfo) — same row
+   look as a build option, minus anything implying it's clickable. */
+.built-info-header {
+  cursor: default;
+}
+
+.built-info-header:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.built-info-effects {
+  padding: 0 10px 4px;
+  font-size: 11px;
+  color: #cfe6d8;
+  white-space: nowrap;
+}

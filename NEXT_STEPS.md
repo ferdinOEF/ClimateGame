@@ -1,129 +1,200 @@
-# Khazan — Next Steps (living punch list)
+# Khazan — Next Steps (running punch list)
 
-Per the build prompt's revision log, this file is the running, step-by-step
-punch list and takes precedence over the build prompt on anything it
-contradicts, until the prompt is next revised.
+This is the step-by-step queue for the gauntlet loop, kept separate from
+`GAUNTLET_PROMPT.md` (the design spec) on purpose: the spec says what the
+game is, this file says what to do right now, one item at a time. Read
+`GAUNTLET_PROMPT.md`'s Revision log first, especially v2.4 and Section 0.1.
 
-**Section 0.1's standing sequencing rule: Bucket A before Bucket B, always.**
-Until Bucket A is empty, do not add hazard simulation, additional terrain,
-or additional elements, no matter how tempting.
+**Note (this revision):** only v2.3 copies of `GAUNTLET_PROMPT` could be
+found on disk (Downloads: `.docx` and two `.md` exports, all describing
+v2.2/v2.3 — Risk still present or just-removed, no Land terrain, House,
+Food, or Population). No v2.4 document exists yet. This file is detailed
+enough to act on directly (exact effects values, terrain lists, starting
+state) — proceeding from it rather than blocking. Cross-check against a
+real v2.4 doc later if one turns up.
 
-**Both buckets are now clear** — every item in Bucket A and Bucket B below is
-fixed and verified. This file has no open punch-list items; the next
-revision of the build prompt (or a fresh playtest) is what should add more.
+Work Bucket A in order before touching Bucket B. Explicit sequencing
+directive, Section 0.1: get the existing loop feeling good to actually
+play before adding or expanding content.
 
-## Bucket A — UI/UX & Playability (do this first)
+Don't start the next item until the current one's "Verify" step is
+actually done and noted in the Log (date + one line), not just assumed.
 
-Gaps found by playtest/review of the v2.1 build:
+**Bucket A is effectively clear as of 2026-08-20** — A1 and A2 fully
+closed, A3 closed for every element that currently exists (7/8; the 8th,
+House, is genuinely blocked on B2 introducing it, not skipped). Proceeding
+into Bucket B.
 
-- [x] **No camera pan/zoom.** Fixed: pointer-drag pan and wheel zoom added
-      to `src/render/scene.ts` (`updateTransform`, `panScale`, distance
-      clamped to `[8, 40]`). Verified via `tools/smoke.ts`'s `simpan` hook
-      (simulated drag + wheel) and before/after screenshots.
-- [x] **Popover clipping.** Fixed: `BuildPopover.show()` measures itself
-      via `getBoundingClientRect()` after unhide-but-before-paint and clamps
-      to the viewport with an 8px margin. Verified at both top-left and
-      bottom-right screen corners via the `testpopoverclip` dev hook.
-- [x] **Claiming is adjacency-gated; v2.2 changes this.** Fixed:
-      `GameState.isClaimable`/`canClaim`/`claim` no longer check adjacency
-      — any unclaimed tile on the fixed map is claimable. The old
-      always-on frontier-ring display is replaced by a single hover-only
-      ring (`main.ts` `pointermove` listener + `ClaimRingMeshManager`,
-      cleared on claim). `devAutoClaim` and the `tests/gameState.test.ts` /
-      `tests/balance.test.ts` scripted-playthrough harness were updated to
-      match (no more `claimFrontier()`, which was removed). Verified via a
-      headless Playwright click at a tile far from the starting cluster
-      (unclaimed count 240 → 239, no console errors) and via the hover-ring
-      screenshot showing the ring rendering under the cursor at that
-      distant tile before the click.
-- [x] **Unclaimed-tile visual distinction needs to actually read clearly.**
-      Root cause found via screenshot check: the old dimming (scale HSL
-      saturation down, nudge lightness toward mid-gray) dimmed each tile
-      *relative to its own terrain color*, so a light terrain (sun-bleached
-      sand) dimmed still read lighter than a dark terrain (deep forest)
-      shown at full color — legible tile-by-tile, not at a glance across a
-      mixed-terrain map. Fixed in `src/render/terrainMeshManager.ts`:
-      unclaimed tiles now blend hard (72%) toward the shared `fog` palette
-      tone instead, so every unclaimed tile converges on roughly the same
-      hazy color regardless of terrain, and claimed tiles — the only ones
-      still showing full per-terrain saturation — read as a group at any
-      zoom level. Verified via default-zoom and zoomed-out screenshots.
+## Bucket A — UI/UX & Playability (work this first)
 
-## Bucket B — Trimmed content (only after Bucket A is clear)
+### A1. Fix: build popover doesn't auto-close after a successful build, and doesn't reflect a tile's already-built state — top priority
 
-Scope narrowed on purpose (v2.2/v2.3) — small enough to fully polish before
-anything wider gets added back:
+Status: closed (see Log). Root-caused with a live Playwright session rather
+than guessing from the repro text: point 1 (auto-close) actually already
+worked — `BuildPopover`'s own button handler always called `hide()` after
+`onSelect`. The real, confirmed gap was point 2: clicking an *occupied*
+tile just silently did nothing (`buildableAt` correctly returns `[]` for a
+built tile, and `show()` calls `hide()` on zero options with no other
+feedback), which reads exactly like "the popover never closed / never
+registered the build" to a player re-clicking to check — almost certainly
+what the original report was actually seeing. Points 3 (outside-click/
+Escape) were genuinely missing entirely. Also confirmed at the data layer:
+`state.build()` was deducting Coin and writing to `state.elements`
+correctly the whole time — this was purely a UI-feedback gap, never a
+double-charge risk.
 
-- [x] **Coastal-only terrain.** Retired khazan_flatland, village_plains,
-      laterite_plateau, forest, and the 3-tier elevation system entirely —
-      `TerrainDef` now carries a direct `height` field instead of an
-      `elevationTier` indirection. Only Coast (sea edge, not buildable),
-      Beach, River, Estuary remain. `/tools/mapgen` rewritten: finds the
-      sea-facing edge via a narrow world-X band (so it renders as a
-      straight coastline despite axial skew), carves one continuous River
-      from a single inland source to the nearest shore tile (which becomes
-      the one Estuary), and fills everything else Beach — no more WFC
-      edge-matching (`edgeTypes.ts` deleted, nothing needed it once there's
-      only one land terrain). Hazard spread moved from elevation-tier
-      gating to pure adjacency/distance decay — flood's old
-      `toTier <= fromTier` gate is simply gone, since the underlying wave
-      engine was already hop-decay-based (a form of graph distance); cyclone
-      needed no change at all, it was already tier-agnostic. Verified via
-      `tests/mapgen.test.ts` (rewritten: single sea edge, exactly one
-      Estuary reachable from Coast, one connected River, Beach fills
-      everything else) and fresh/zoomed screenshots.
-- [x] **Generic effects schema (standing architectural requirement, not a
-      one-time task).** `buildings.json` + `defenses.json` merged into one
-      `src/data/elements.json` / `src/core/elements.ts`, each element
-      carrying an open `effects: { key: delta }` map. `GameState.meterTotal
-      (key)` is the one generic accumulator — sums every standing element's
-      `effects[key]` weighted by maturity fraction, with zero hardcoded
-      meter names. `biodiversity`/`carbon` getters and even Coin's per-turn
-      income (`advanceTurn(): this.coin += this.meterTotal("coinPerTurn")`)
-      all go through this same function now; adding a new meter anywhere in
-      the game means adding a key to an element's `effects`, never new
-      engine code. Absorption/failure/maintenance fields stay explicit
-      (they're conditional mechanics, not simple additive deltas).
-- [x] **7-element roster**, replacing the entire earlier defense/building
-      list: Dune, Sandy Vegetation (Pandanus), Beachside Resort, Seawall
-      (Beach); Mangrove, Khazan (Estuary); Small Dam (River). Cyclone
-      Shelter is retired along with it (not in the new roster) — its
-      Trust-shielding special case is gone from `resolveCyclone`, which now
-      just charges Trust per damaged building uniformly. Each element gets
-      its own distinct flat-silhouette icon in `src/render/elementGeometry.ts`
-      (a 2D outline extruded a shallow depth) rather than a low-poly prop —
-      viable specifically because Section 6's camera never rotates, so a
-      flat cutout's front face always faces the viewer. Old
-      `defenseGeometry.ts`/`buildingGeometry.ts` and their mesh managers
-      merged into `elementGeometry.ts`/`elementMeshManager.ts`. One real bug
-      found and fixed during verification: Small Dam sits directly on River
-      terrain, but every River tile was unconditionally treated as a
-      damage-skipping hazard source, so a dam built there could never
-      actually engage its absorption/failure logic — fixed by only skipping
-      an undefended river tile (`hazard.ts`'s flood `skipDamage` now checks
-      `!state.elements.has(key)` too). Verified via screenshots showing
-      Mangrove's canopy-blob icon, Small Dam's blocky-barrier icon, and
-      Beachside Resort's cabana-and-umbrella icon all rendering distinctly
-      with zero console errors.
-- [x] **Meters simplified**: Resilience (the only hazard-facing property
-      now — v2.3 already removed the separate Risk value introduced in
-      v2.2, and grepping the codebase found no remaining trace of it
-      anywhere). Biodiversity and Coin/Money are the effects the new roster
-      actually grants; Trust is carried forward untouched by it (none of
-      the 7 elements' `effects` maps set a `trust` key); Carbon stays wired
-      through the same generic accumulator but deprioritized — nothing in
-      the new roster sets it, so it reads 0 unless re-introduced later.
+Fix, all in one pass since it's the same state-management code path:
+1. On a successful build, close the popover immediately — no lingering, no re-showing the same list. (Already worked; verified, not changed.)
+2. Clicking a tile that already has an element built on it now shows a read-only info card (name, category, effects) via `BuildPopover.showInfo()` instead of silently doing nothing or offering a build menu — Section 3's "one tile, one element" is now enforced at the UI level, not just the data layer.
+3. A new `document`-level click listener in `main.ts` closes the popover on any click that lands outside both the canvas and the popover itself (the HUD, previously unreachable by the canvas-only listener); a `keydown` listener closes it on Escape. Neither charges Coin.
+4. Popover position still clamps to stay within the viewport — re-verified after refactoring the clamp math into a shared `positionAndReveal()` helper used by both the build menu and the new info card.
 
-## Resolved (kept for history)
+Verify: build an element on a tile, confirm the popover closes immediately
+and the tile now renders that element; click the same tile again, confirm
+it shows the built element's info, not a build menu; open a popover on any
+tile, click outside (on the HUD)/press Escape, confirm it closes with no
+Coin change; repeat near a viewport edge and confirm nothing clips. All
+four confirmed via a live Playwright session against the running dev
+server (not just static code reading) — see Log.
 
-- **Build popover had no reliable dismiss path and could silently confirm
-  a purchase on an unrelated click** (found in manual testing of v2).
-  Root cause: `BuildPopover` dismissed itself via a `capture: true`
-  listener on the shared container that ran *before* the canvas's own
-  click handler, so a dismiss-click landing on a different buildable tile
-  closed the old popover and silently opened a new one under the cursor.
-  Fixed in the v2.1 commit: the popover has no listeners of its own now;
-  the single canvas click handler checks `isOpen` first and, if true,
-  closes it and does nothing else on that click.
+### A2. Unclaimed-but-visible hexes should read as visually distinct from claimed ones
 
-See `PROGRESS.md` for the phase-by-phase build history this sits on top of.
+Status: closed (see Log). The previous pass over-corrected: chasing an
+earlier "unclaimed doesn't read as unclaimed" bug, the fix blended every
+unclaimed tile 72% toward one shared neutral `fog` tone — which does keep
+claimed vs. unclaimed obvious, but pushes different unclaimed *terrain*
+types close enough together that a wide, mostly-Beach view reads as one
+flat tan field, exactly what this pass's playtest flagged. `dim()` in
+`terrainMeshManager.ts` now does both things it needs to, in order:
+desaturate each terrain's own color first (`hsl.s * 0.55`, so it keeps
+enough of its own hue/lightness to stay distinguishable from other
+terrains), *then* blend a smaller amount (32%, down from 72%) toward `fog`
+(so the whole unclaimed field still reads as muted next to a claimed
+tile's full saturation). Re-screenshotted at both close and wide zoom:
+unclaimed Coast now reads as a clear blue-teal distinct from unclaimed
+Beach's tan, and the claimed cluster still pops via saturation alone.
+
+One caveat worth logging honestly: at today's coastal-only scope, the
+*interior* of the map is almost entirely Beach by design (Land doesn't
+exist until B1), so a screenshot panned deep inland will still look
+fairly monotonous — that's the map's actual terrain composition, not a
+color-treatment bug, and should resolve on its own once B1 adds Land.
+
+Verify: a screenshot where claimed vs. unclaimed is obviously
+distinguishable by color/saturation alone, and where unclaimed Coast and
+unclaimed Beach read as recognizably different hues rather than
+converging on one flat tone (confirmed via `a2_rebalanced_close.png` /
+`a2_rebalanced_far.png`). Full Beach/Estuary/River/Land variety in one
+frame isn't checkable yet — Land doesn't exist until B1 — but the
+underlying `dim()` treatment is terrain-agnostic and applies identically
+to whichever terrain a tile has, so there's no reason to expect it to
+behave differently once Land exists.
+
+### A3. Add: thoughtfully designed icons for each buildable element
+
+Status: 7/8 closed, 1 blocked on B2 (see Log). Dune, Sandy Vegetation
+(Pandanus — a spiky radiating-blade rosette, not a generic palm), Seawall,
+Mangrove, Khazan, Small Dam, and Beachside Resort each already have a
+distinct flat-silhouette icon (`src/render/elementGeometry.ts`, done in the
+earlier trimmed-roster pass) — confirmed readable and distinguishable from
+each other via screenshot (`bucketb_elements2.png`: Mangrove's rounded
+canopy blob, Small Dam's blocky notched barrier, and Beachside Resort's
+cabana-plus-umbrella all clearly read apart at actual in-game size). House
+is the 8th and doesn't exist as an element yet — it's defined in B2, which
+hasn't landed. Genuinely can't design/verify its icon before the element
+itself exists with real terrain/effects to inform the silhouette, and
+Section 0.1's own sequencing rule says Bucket A shouldn't reach into
+Bucket B content to manufacture a placeholder just to check this box.
+Deferred: House's icon is now folded into B2's own Verify step rather than
+tracked here twice.
+
+Verify: 7 of 8 icons visible together and distinguishable from each other
+at actual UI size (done); House's icon to be verified alongside its
+element in B2.
+
+## Bucket B — Content: coastal-only scope (work this after Bucket A is solid)
+
+### B1. Fix: map generation doesn't match the explicit left/right orientation — plus add the Land terrain type
+
+Status: open, and this is now a correction against a live build, not a
+fresh spec. This pass's playtest panned across the current generated map
+and found: sea wraps around a map corner (visible on both the left edge
+and, after panning, the bottom edge), with the river-like band cutting
+across horizontally near one edge — not the clean, explicit layout below.
+
+The intended layout (`GAUNTLET_PROMPT.md` Section 4, v2.4): left to right
+— Sea → Beach → Land (interior) → Estuary/River, with the river continuing
+further right/inland past the estuary. Land is a new terrain type
+(interior/inland, generic buildable ground, hosts the residential area and
+House elements, Section 5) that didn't exist in v2.2/v2.3's coastal-only
+set — add it to `terrain.json` and to the mapgen region rules (Coast/Beach
+fill the left portion, Land fills the middle, Estuary/River are toward the
+right).
+
+Also new: a real Goa reference is worth pulling in for shape/proportion —
+Goa's actual coastline (visible on OpenStreetMap or Wikipedia) has a
+gently curved shore and a distinctively wide, branching estuary where two
+rivers meet the sea close together near a peninsula. Borrow those
+proportions (a wide/branching estuary relative to the coastline, a gentle
+coastal curve) in the region rules — don't trace or ship any copyrighted
+map image as a game asset, the shape can be expressed in generation rules
+and hex proportions.
+
+Fix: update `/tools/mapgen`'s region constraints to the explicit
+left/right layout above; add `land` to `terrain.json`'s terrain types;
+regenerate `map.json`.
+
+Verify: a screenshot (with camera pan) shows Sea on the left, Beach
+fronting it, a Land interior, and Estuary/River toward the right, in that
+order, legibly; the estuary reads as noticeably wide/branching rather than
+a single narrow notch.
+
+### B2. Finish: the 8-element roster — House/Land is new, Resort's eligibility widens, Mangrove/Khazan gain a Food effect
+
+Status: partially landed, confirmed by live playtest — clicking a claimed
+Estuary tile correctly offered exactly "Mangrove" and "Khazan," no terrain
+mismatches (the old Laterite-Plateau-offering-Seawall class of bug appears
+fixed for the original 3-terrain roster). What's still needed:
+1. Add House (`GAUNTLET_PROMPT.md` Section 5/8): terrain `["land"]`, category economic, effects `{ money: +5, food: -1 }` — these exact numbers are explicitly placeholder (only `food: -1` was actually specified, at the requested default value of 1; `buildCost` and `money` are invented placeholders, flag them as such in `PROGRESS.md`, don't treat them as final).
+2. Widen Beachside Resort's terrain eligibility from `["beach"]` to `["beach", "estuary", "river"]`.
+3. Add a Food effect to Mangrove and Khazan (`{ food: +1 }` each, default value 1 per the same instruction as House's food cost).
+
+Fix: update `elements.json` per the three points above; wire the popover
+to House/Land the same way it's already correctly wired for the other
+three terrain types (per B1's new Land terrain).
+
+Verify: a Land tile's popover offers House (and only House, until more
+Land elements exist); a Beach, Estuary, or River tile's popover all
+correctly include Beachside Resort as an option; building Mangrove or
+Khazan visibly increases the Food value in the HUD. Also covers A3's
+deferred 8th icon: House needs its own distinct flat-silhouette icon,
+verified the same way the other 7 already were (visible and
+distinguishable at actual popover size).
+
+### B3. Add: Population/Food economy and the new starting state
+
+Status: open, new (`GAUNTLET_PROMPT.md` Section 4/7/8). Three pieces:
+1. Food as a tracked resource, produced by Mangrove/Khazan, consumed by House, at the default value of 1 per unit on both sides (per B2 above). What a Food deficit actually does is explicitly not decided yet — for this pass, just track the number accurately and show it in the HUD; don't hard-block House construction on it without being told to.
+2. Population as a tracked value, starting at 50. Population growth mechanics beyond "tied to House count" aren't specified — don't invent a detailed growth curve, a simple placeholder (e.g. population scales with House count) is fine for now.
+3. New starting state: the player begins already owning a small coastal claim and a pre-built residential area of 10 Houses on Land, inland from the coastal claim — not something the player builds turn one. Starting Coin is 1,000, explicitly a temporary testing value (see the `startingState.json` example in `GAUNTLET_PROMPT.md` Section 8) — not tuned game balance.
+
+Fix: add `food` and `population` to the tracked-meters accumulator; add a
+`startingState.json` (or equivalent) config driving the initial claim, the
+10 pre-built Houses, starting Population (50), and starting Coin (1,000);
+wire the HUD to show Food and Coin at minimum (Population display is
+nice-to-have, not blocking).
+
+Verify: a fresh game load shows Coin at 1,000, a visible residential
+cluster of 10 Houses already built on Land near the starting claim, and
+Food/Population values present (even if 0/50 respectively) in tracked
+state.
+
+## Log
+
+- Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
+- Camera pan: closed. Confirmed by live playtest this pass — click-drag pans the view smoothly in all directions; previously reported as completely non-functional (neither scroll nor drag worked), now working via drag. Zoom still not verified/may not exist — low priority, drag-pan alone is enough to satisfy the original blocker (reaching and seeing the full map).
+- Claim-anywhere: closed. Confirmed by live playtest this pass — the claimable-hex count jumped from a small adjacent ring (~9) to the full visible unclaimed map (240), and a hex far from any claimed tile, with no claimed neighbor at all, showed the claimable hover outline correctly. Matches the v2.2/v2.4 spec.
+- Defense-eligibility-by-terrain filtering (original Bucket B item): closed for the pre-v2.4 3-terrain roster. Confirmed by live playtest — an Estuary tile now correctly offers only Mangrove and Khazan, no coastal/river mismatches. Superseded by B2 above for the v2.4 roster additions (House, widened Resort eligibility).
+- 2026-08-20, A1: closed. Root-caused live via Playwright (not static reading) — auto-close already worked; the real gap was clicking an occupied tile doing nothing instead of showing info. Added `BuildPopover.showInfo()` for built-tile info cards, a `document`-level outside-click listener (the old canvas-only listener couldn't see clicks on the HUD), and an Escape-key listener. All 4 sub-checks (auto-close, occupied-tile info, outside-click, Escape) confirmed via a live Playwright session against the running dev server, plus viewport-clamp re-verified via `testpopoverclip` screenshots.
+- 2026-08-20, A2: closed. The 72%-toward-shared-fog blend from the previous pass over-corrected — different unclaimed terrains converged too close together. Rebalanced `terrainMeshManager.ts`'s `dim()` to desaturate each terrain's own color first (keeping its hue/lightness distinguishable), then blend a smaller 32% toward fog. Verified via `a2_rebalanced_close.png`/`a2_rebalanced_far.png` — unclaimed Coast now reads as clearly different from unclaimed Beach, claimed cluster still pops. Noted: the interior still looks Beach-monotonous at wide zoom because it genuinely is almost all Beach right now — that's B1's terrain-diversity job, not a color bug.
+- 2026-08-20, A3: 7/8 closed. Confirmed the existing 7-element roster's icons (built in the earlier trimmed-roster pass) are legible and distinguishable via `bucketb_elements2.png`. House (the 8th) doesn't exist as an element until B2 lands — deferred its icon check to B2's own Verify step rather than jump ahead of Bucket A's own sequencing rule to manufacture a placeholder element early.

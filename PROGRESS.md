@@ -673,3 +673,65 @@ cabana-and-umbrella icon all rendering distinctly, zero console errors.
 
 ![Fresh coastal map: Coast/Estuary/Beach reading as flat, distinct colors with no elevation tiers](tools/screenshots/bucketb_fresh.png)
 ![Built elements: Mangrove, Small Dam, and Beachside Resort icons rendering distinctly on their tiles](tools/screenshots/bucketb_elements2.png)
+
+## v2.4 — Bucket A re-pass: popover state, dimming rebalance — DONE
+
+A fresh live playtest against the committed build (`NEXT_STEPS.md`, no
+v2.4 `GAUNTLET_PROMPT.md` found on disk — only stale v2.2/v2.3 copies in
+Downloads, so this pass worked directly from the punch list's own detail)
+re-opened two Bucket A items thought closed, plus found a genuine gap.
+
+**A1 — build popover state management.** Root-caused with a live
+Playwright session against the running dev server instead of guessing from
+the bug report, which turned up something the report got slightly wrong:
+auto-close-on-build already worked (`BuildPopover`'s button handler always
+called `hide()`). The actual bug was that clicking an *already-built* tile
+did nothing at all — `buildableAt()` correctly returns `[]` for an
+occupied tile, and `show()` silently calls `hide()` on zero options, no
+feedback either way. To a player re-clicking to check whether their build
+"took," that reads exactly like "the popover never closed" — almost
+certainly what the original report actually saw. Fixed by giving
+`BuildPopover` a real `showInfo()` mode (name, category, effects, no
+buttons) for occupied tiles, replacing the previous silent no-op — Section
+3's "one tile, one element" is now enforced at the UI level, not just
+inferred from the data layer never double-charging. Also added two
+listeners that were missing outright: a `document`-level click listener in
+`main.ts` (the old dismissal only lived on the canvas element, so a click
+on the HUD — which sits on top of the canvas but isn't part of it — never
+reached it) and an Escape `keydown` listener. All four behaviors
+(auto-close, occupied-tile info, outside-click, Escape) verified via a
+live Playwright session reading actual DOM state, not just source code.
+
+**A2 — unclaimed-tile dimming, rebalanced.** The previous pass's fix
+(blend 72% toward one shared `fog` tone) solved the problem it was aimed
+at — claimed vs. unclaimed being obvious — a little too well: different
+*unclaimed* terrain types converged close enough together that a wide,
+mostly-Beach view read as one flat tan field, which is what this pass's
+playtest flagged. `terrainMeshManager.ts`'s `dim()` now desaturates each
+terrain's own color first (`saturation * 0.55`, keeping enough of its own
+hue to stay distinguishable from other terrains) before blending a smaller
+32% toward fog — both problems solved by the same function instead of
+trading one for the other. Screenshots confirm unclaimed Coast now reads
+as clearly blue-teal against unclaimed Beach's tan. Logged honestly: the
+map's *interior* still looks Beach-monotonous at wide zoom because it
+genuinely is almost all Beach at today's coastal-only scope — that's
+Bucket B's job (adding Land), not a color bug.
+
+**A3 — icon roster: 7/8, one genuinely blocked.** The 7 elements that
+exist today already have distinct icons from the earlier trimmed-roster
+pass, reconfirmed legible via screenshot. The 8th, House, doesn't exist as
+an element until Bucket B's B2 item adds it — deferred rather than
+manufacturing a placeholder element early just to check a box, which would
+have meant reaching into Bucket B content before Bucket A was actually
+done, the exact ordering Section 0.1 exists to prevent.
+
+**Verification:** 46/46 tests passing, `tsc --noEmit` clean, production
+build succeeds. All three items confirmed via live Playwright sessions and
+screenshots, not static code reading alone — A1 in particular would have
+been reported "fixed" wrongly if verified only by re-reading the source,
+since the actual bug (occupied-tile click) looked identical to the
+originally-reported one (stale popover) from the outside.
+
+![Build popover viewport-clamped at the top-left corner](tools/screenshots/a1_clip_topleft.png)
+![Info card for an already-built Dune, replacing the old silent no-op](tools/screenshots/a1_built_info_card.png)
+![Unclaimed Coast and Beach reading as distinct hues after the dimming rebalance](tools/screenshots/a2_rebalanced_far.png)
