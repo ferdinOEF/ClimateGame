@@ -4,7 +4,7 @@ import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ClaimRingMeshManager } from "@render/claimRingMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS } from "@render/floodOverlayManager";
-import { GameState } from "@core/gameState";
+import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
 import { resolveMonsoonFlood, resolveCyclone } from "@core/hazard";
@@ -13,6 +13,7 @@ import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { playSound } from "@ui/audioHooks";
 import mapData from "@data/map.json";
+import startingStateData from "@data/startingState.json";
 
 interface MapFile {
   estuary: AxialCoord;
@@ -21,6 +22,14 @@ interface MapFile {
 }
 const MAP = mapData as MapFile;
 const mapTiles = MAP.tiles.map((t) => ({ coord: { q: t.q, r: t.r }, terrainId: t.terrainId }));
+
+interface StartingStateFile {
+  startingCoin: number;
+  startingPopulation: number;
+  prebuiltHouses: AxialCoord[];
+}
+const STARTING_STATE = startingStateData as StartingStateFile;
+const startingElements: StartingElementSeed[] = STARTING_STATE.prebuiltHouses.map((coord) => ({ coord, elementId: "house" }));
 
 const container = document.getElementById("app")!;
 const { scene, camera, renderer, start, focusOn, wasDrag } = createScene(container);
@@ -59,8 +68,16 @@ function keysToCoords(keys: Iterable<string>): AxialCoord[] {
  * /tools/mapgen, not player-drawn. `placed` holds the whole map from
  * construction; `claimed` is the player's growing footprint on it.
  */
-const state = new GameState(mapTiles, MAP.startingClaim);
+const state = new GameState(mapTiles, MAP.startingClaim, startingElements, STARTING_STATE.startingCoin);
 terrain.loadMap(mapTiles, keysToCoords(state.claimed));
+
+// Section 4/8's new starting state: the player already owns a small
+// residential cluster of pre-built Houses on Land, inland from the coastal
+// claim — render them in place at boot, no settle animation (they were
+// never "just built," they're already there).
+for (const coord of STARTING_STATE.prebuiltHouses) {
+  elements.place(coord, "house", terrain.heightAt(coord));
+}
 
 // Section 4/6: the fixed map's own (0,0) is an arbitrary point somewhere in
 // the middle of a wide east-west strip — the player's actual starting
@@ -87,7 +104,9 @@ function refreshHud(): void {
     trust: state.trust,
     resilience: state.resilience,
     biodiversity: state.biodiversity,
-    carbon: state.carbon
+    carbon: state.carbon,
+    food: state.food,
+    population: state.population
   });
   hud.setClaimable(state.claimableCount, 4);
 }
@@ -226,8 +245,11 @@ function checkEraEnd(): void {
   floodOverlay.reset();
   cycloneOverlay.reset();
 
-  state.startNewEra(); // resets state.claimed back to the starting cluster
+  state.startNewEra(); // resets state.claimed back to the starting cluster + re-seeds the pre-built Houses
   terrain.resetClaims(keysToCoords(state.claimed));
+  for (const coord of STARTING_STATE.prebuiltHouses) {
+    elements.place(coord, "house", terrain.heightAt(coord));
+  }
   nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
   nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
 

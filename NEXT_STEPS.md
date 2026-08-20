@@ -20,10 +20,10 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
-**Bucket A is effectively clear as of 2026-08-20** — A1 and A2 fully
-closed, A3 closed for every element that currently exists (7/8; the 8th,
-House, is genuinely blocked on B2 introducing it, not skipped). Proceeding
-into Bucket B.
+**Both buckets are clear as of 2026-08-20** — A1-A3 (A3's deferred 8th
+icon closed out by B2 adding House) and B1-B3 all closed. This file has no
+open punch-list items; the next revision of the build prompt (or a fresh
+playtest) is what should add more.
 
 ## Bucket A — UI/UX & Playability (work this first)
 
@@ -116,78 +116,85 @@ element in B2.
 
 ### B1. Fix: map generation doesn't match the explicit left/right orientation — plus add the Land terrain type
 
-Status: open, and this is now a correction against a live build, not a
-fresh spec. This pass's playtest panned across the current generated map
-and found: sea wraps around a map corner (visible on both the left edge
-and, after panning, the bottom edge), with the river-like band cutting
-across horizontally near one edge — not the clean, explicit layout below.
+Status: closed (see Log). Root-caused the "sea wraps around a corner" bug
+precisely: `/tools/mapgen` banded terrain by a *global* world-X threshold
+(`worldX < xMin + depth`), but `xMin` is only achieved at one grid corner
+(`q=Q_MIN, r=R_MIN`) — each row's own local x-range is itself shifted by
+the same axial-skew term (`x = sqrt3*(q + r/2)`), so a narrow global
+threshold selects lots of tiles from the rows near that one corner and
+almost none from the rows near the opposite corner. Fixed by banding on
+axial `q` directly instead: the same q-range is selected in every row, so
+every row gets an identical-depth Coast/Beach edge — the resulting edge is
+a smooth, gentle diagonal (rows drift together as r changes, following the
+hex grid's own natural skew) rather than a corner-hugging wedge, which
+also happens to read as a reasonable stand-in for "Goa's gently curved
+shore." Added `land` to `terrain.json`, rewrote the region rules for the
+explicit Sea → Beach → Land → Estuary/River order, and made the estuary a
+genuine multi-tile branching blob (two river arms from separate sources
+converging inland, not a single tile) confined to the eastern ~38% of the
+map. Verified two ways: `tests/mapgen.test.ts` independently re-checks
+every row's left-to-right order and the estuary's connectivity/region
+bounds from the checked-in `map.json` (not just trusting the generator's
+own self-check), and a live screenshot shows a clean Coast → Beach → Land
+band with no corner artifact.
 
-The intended layout (`GAUNTLET_PROMPT.md` Section 4, v2.4): left to right
-— Sea → Beach → Land (interior) → Estuary/River, with the river continuing
-further right/inland past the estuary. Land is a new terrain type
-(interior/inland, generic buildable ground, hosts the residential area and
-House elements, Section 5) that didn't exist in v2.2/v2.3's coastal-only
-set — add it to `terrain.json` and to the mapgen region rules (Coast/Beach
-fill the left portion, Land fills the middle, Estuary/River are toward the
-right).
+Goa's real geography (a gently curved shore, a wide branching estuary
+where rivers meet the sea near a peninsula) was used for proportion only —
+the estuary blob and diagonal coastline are expressed entirely in
+generation rules and hex math, nothing traced from a map image.
 
-Also new: a real Goa reference is worth pulling in for shape/proportion —
-Goa's actual coastline (visible on OpenStreetMap or Wikipedia) has a
-gently curved shore and a distinctively wide, branching estuary where two
-rivers meet the sea close together near a peninsula. Borrow those
-proportions (a wide/branching estuary relative to the coastline, a gentle
-coastal curve) in the region rules — don't trace or ship any copyrighted
-map image as a game asset, the shape can be expressed in generation rules
-and hex proportions.
-
-Fix: update `/tools/mapgen`'s region constraints to the explicit
-left/right layout above; add `land` to `terrain.json`'s terrain types;
-regenerate `map.json`.
-
-Verify: a screenshot (with camera pan) shows Sea on the left, Beach
-fronting it, a Land interior, and Estuary/River toward the right, in that
-order, legibly; the estuary reads as noticeably wide/branching rather than
-a single narrow notch.
+Verify: `tests/mapgen.test.ts` confirms every row reads Coast → Beach →
+Land before any Estuary/River tile (0/9 rows violate this), the estuary is
+a ≥3-tile connected blob confined to the eastern ~38% of the map, and the
+starting claim sits near the coast (not the now-inland estuary). Screenshot
+confirmation: `b1_fresh_map.png` (clean Coast/Beach/Land bands, claimed
+cluster popping via A2's dimming rebalance) — the estuary itself sits far
+enough east that it fell outside every attempted screenshot pan, so it's
+verified by the test above reading the actual map data instead of by eye.
 
 ### B2. Finish: the 8-element roster — House/Land is new, Resort's eligibility widens, Mangrove/Khazan gain a Food effect
 
 Status: partially landed, confirmed by live playtest — clicking a claimed
 Estuary tile correctly offered exactly "Mangrove" and "Khazan," no terrain
 mismatches (the old Laterite-Plateau-offering-Seawall class of bug appears
-fixed for the original 3-terrain roster). What's still needed:
-1. Add House (`GAUNTLET_PROMPT.md` Section 5/8): terrain `["land"]`, category economic, effects `{ money: +5, food: -1 }` — these exact numbers are explicitly placeholder (only `food: -1` was actually specified, at the requested default value of 1; `buildCost` and `money` are invented placeholders, flag them as such in `PROGRESS.md`, don't treat them as final).
-2. Widen Beachside Resort's terrain eligibility from `["beach"]` to `["beach", "estuary", "river"]`.
-3. Add a Food effect to Mangrove and Khazan (`{ food: +1 }` each, default value 1 per the same instruction as House's food cost).
+fixed for the original 3-terrain roster). Now closed (see Log):
+1. Added House (`terrain: ["land"]`, `kind: "building"`, `effects: { money: 5, food: -1, population: 5 }`). `buildCost: 25` and `money: 5` are invented placeholders (no value was specified for either) — flagged here and in `PROGRESS.md`, not tuned balance. The `population` key is an extra beyond what B2 literally specified — added because it's the cleanest way to satisfy B3's "population scales with House count" through the *same* generic effects accumulator every other meter already uses, rather than a one-off hardcoded id check.
+2. Widened Beachside Resort's `validTerrainIds` to `["beach", "estuary", "river"]`.
+3. Added `food: 1` to both Mangrove and Khazan's effects.
 
-Fix: update `elements.json` per the three points above; wire the popover
-to House/Land the same way it's already correctly wired for the other
-three terrain types (per B1's new Land terrain).
+Also renamed the generic effects key `coinPerTurn` → `money` throughout
+(`elements.json`, `GameState.advanceTurn`, docs) to match this document's
+own terminology — the two were the same concept under different names,
+and one name should win.
 
-Verify: a Land tile's popover offers House (and only House, until more
-Land elements exist); a Beach, Estuary, or River tile's popover all
-correctly include Beachside Resort as an option; building Mangrove or
-Khazan visibly increases the Food value in the HUD. Also covers A3's
-deferred 8th icon: House needs its own distinct flat-silhouette icon,
-verified the same way the other 7 already were (visible and
-distinguishable at actual popover size).
+Verify: `tests/buildings.test.ts` confirms House is Land-only, Beachside
+Resort is buildable on beach/estuary/river but not coast, and Mangrove
+raises `state.food` once mature. House's icon (a wide gable-roofed
+silhouette with a chimney, distinct from Resort's cabana-and-umbrella)
+closes A3's deferred 8th icon — confirmed via `b3_fresh_start.png`.
 
 ### B3. Add: Population/Food economy and the new starting state
 
-Status: open, new (`GAUNTLET_PROMPT.md` Section 4/7/8). Three pieces:
-1. Food as a tracked resource, produced by Mangrove/Khazan, consumed by House, at the default value of 1 per unit on both sides (per B2 above). What a Food deficit actually does is explicitly not decided yet — for this pass, just track the number accurately and show it in the HUD; don't hard-block House construction on it without being told to.
-2. Population as a tracked value, starting at 50. Population growth mechanics beyond "tied to House count" aren't specified — don't invent a detailed growth curve, a simple placeholder (e.g. population scales with House count) is fine for now.
-3. New starting state: the player begins already owning a small coastal claim and a pre-built residential area of 10 Houses on Land, inland from the coastal claim — not something the player builds turn one. Starting Coin is 1,000, explicitly a temporary testing value (see the `startingState.json` example in `GAUNTLET_PROMPT.md` Section 8) — not tuned game balance.
+Status: closed (see Log). `GameState` gained a `food` getter (thin wrapper
+over `meterTotal("food")`, same pattern as biodiversity/carbon) and a
+`population` getter (`STARTING_POPULATION + meterTotal("population")`) —
+both fully generic, no hardcoded element-id checks anywhere in engine code.
+The constructor gained two new optional parameters, `startingElements`
+(pre-built elements claimed and placed for free, not purchased) and
+`startingCoin`, both re-applied on `startNewEra()` too so the pre-built
+Houses and 1,000 starting Coin survive an era transition rather than only
+appearing once at first boot. `/tools/mapgen` now also writes
+`src/data/startingState.json` (`startingCoin: 1000`, `startingPopulation:
+50`, `prebuiltHouses`: 10 Land tiles in a compact cluster just inland from
+the coastal claim, computed from the same generated map so they're
+guaranteed to actually be Land) — `main.ts` loads it and seeds/renders the
+Houses at boot with no settle animation (they were never "just built").
+HUD gained Food and Population chips alongside the existing four.
 
-Fix: add `food` and `population` to the tracked-meters accumulator; add a
-`startingState.json` (or equivalent) config driving the initial claim, the
-10 pre-built Houses, starting Population (50), and starting Coin (1,000);
-wire the HUD to show Food and Coin at minimum (Population display is
-nice-to-have, not blocking).
-
-Verify: a fresh game load shows Coin at 1,000, a visible residential
-cluster of 10 Houses already built on Land near the starting claim, and
-Food/Population values present (even if 0/50 respectively) in tracked
-state.
+Verify: `b3_fresh_start.png` — fresh load shows Coin 1000, HUD reading
+"F -10" (10 Houses × -1) and "P 100" (50 + 10×5), "Tiles claimed: 13"
+(3 coastal + 10 Houses), and 10 House icons visibly clustered on Land,
+inland from the coastal claim.
 
 ## Log
 
@@ -198,3 +205,6 @@ state.
 - 2026-08-20, A1: closed. Root-caused live via Playwright (not static reading) — auto-close already worked; the real gap was clicking an occupied tile doing nothing instead of showing info. Added `BuildPopover.showInfo()` for built-tile info cards, a `document`-level outside-click listener (the old canvas-only listener couldn't see clicks on the HUD), and an Escape-key listener. All 4 sub-checks (auto-close, occupied-tile info, outside-click, Escape) confirmed via a live Playwright session against the running dev server, plus viewport-clamp re-verified via `testpopoverclip` screenshots.
 - 2026-08-20, A2: closed. The 72%-toward-shared-fog blend from the previous pass over-corrected — different unclaimed terrains converged too close together. Rebalanced `terrainMeshManager.ts`'s `dim()` to desaturate each terrain's own color first (keeping its hue/lightness distinguishable), then blend a smaller 32% toward fog. Verified via `a2_rebalanced_close.png`/`a2_rebalanced_far.png` — unclaimed Coast now reads as clearly different from unclaimed Beach, claimed cluster still pops. Noted: the interior still looks Beach-monotonous at wide zoom because it genuinely is almost all Beach right now — that's B1's terrain-diversity job, not a color bug.
 - 2026-08-20, A3: 7/8 closed. Confirmed the existing 7-element roster's icons (built in the earlier trimmed-roster pass) are legible and distinguishable via `bucketb_elements2.png`. House (the 8th) doesn't exist as an element until B2 lands — deferred its icon check to B2's own Verify step rather than jump ahead of Bucket A's own sequencing rule to manufacture a placeholder element early.
+- 2026-08-20, B1: closed. Root cause of "sea wraps around a corner": mapgen banded by a global world-X threshold, which is only correct near the one grid corner where that global min/max is actually achieved — every other row's local x-range is shifted by the same axial-skew term. Fixed by banding on axial `q` directly (uniform per row). Added `land` terrain, rewrote region rules for Sea → Beach → Land → Estuary/River, made the estuary a real multi-tile branching blob. `tests/mapgen.test.ts` rewritten to independently verify the new layout from the checked-in map.json (not just trust the generator's own self-check).
+- 2026-08-20, B2: closed. Added House (`land`, `{money:5, food:-1, population:5}` — cost/money placeholders, flagged in PROGRESS.md), widened Beachside Resort to beach/estuary/river, added `food:1` to Mangrove/Khazan. Renamed the generic effects key `coinPerTurn` → `money` throughout for consistency with this document's own terminology. House's icon closes A3's deferred 8th slot.
+- 2026-08-20, B3: closed. Added `food`/`population` getters to GameState (both routed through the same generic `meterTotal` accumulator everything else uses — population's House-scaling is a `population` effect key, not a hardcoded id check). GameState's constructor gained `startingElements`/`startingCoin` params, re-applied on `startNewEra()` too. mapgen now also writes `startingState.json` (1000 coin, 10 pre-built Houses on Land near the coastal claim); `main.ts` seeds and renders them at boot. HUD gained Food/Population chips. Verified via `b3_fresh_start.png`: Coin 1000, F -10, P 100, 13 tiles claimed, 10 House icons visible on Land.

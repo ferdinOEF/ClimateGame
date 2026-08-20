@@ -735,3 +735,86 @@ originally-reported one (stale popover) from the outside.
 ![Build popover viewport-clamped at the top-left corner](tools/screenshots/a1_clip_topleft.png)
 ![Info card for an already-built Dune, replacing the old silent no-op](tools/screenshots/a1_built_info_card.png)
 ![Unclaimed Coast and Beach reading as distinct hues after the dimming rebalance](tools/screenshots/a2_rebalanced_far.png)
+
+## v2.4 — Bucket B: Land terrain, House/Food/Population, new starting state — DONE
+
+With Bucket A clear, this pass worked through the punch list's Bucket B:
+a real map-generation bug, a wider element roster, and a new starting
+state. Full detail in `NEXT_STEPS.md`; summary here.
+
+**B1 — the "sea wraps around a corner" bug, root-caused.** `/tools/mapgen`
+banded Coast/Beach by comparing each tile's world-X against a single
+*global* threshold derived from `xMin` — but `xMin` (the minimum world-X
+across the whole grid) is only actually achieved at one corner
+(`q=Q_MIN, r=R_MIN`), because `axialToWorld`'s `x = sqrt3*(q + r/2)` means
+every row's own local x-range is shifted by that same `r/2` term. A
+narrow global threshold therefore selects lots of tiles from the rows near
+that one corner and almost none from the rows near the opposite corner —
+exactly "sea wraps around a corner," and a bug that predates this pass
+(the v2.2 coastal-only mapgen rewrite had the same threshold logic, just
+never caught). Fixed by banding on axial `q` directly instead: identical
+q-range selected in every row, so the edge reads as one smooth line (a
+gentle diagonal, since the hex grid's own skew makes same-q hexes drift
+together row to row — a reasonable stand-in for "Goa's gently curved
+shore," which was the aesthetic goal anyway). Added `land` as a 5th
+terrain (`src/data/terrain.json`, new `landGreen` palette color), rewrote
+the region rules for the explicit Sea → Beach → Land → Estuary/River
+order, and made the estuary a genuine branching blob — two river arms
+from separate east-edge sources converging on a shared confluence inland,
+the confluence plus its neighbor ring becoming Estuary — confined to the
+eastern ~38% of the map rather than touching the coast. `tests/mapgen.test.ts`
+was rewritten to independently re-verify the new layout by reading the
+checked-in `map.json` directly (every row's terrain order, the estuary's
+connectivity and region bounds), not just trusting the generator's own
+self-check.
+
+**B2 — the 8-element roster.** Added House (`validTerrainIds: ["land"]`,
+`kind: "building"`, `effects: { money: 5, food: -1, population: 5 }`) —
+`buildCost: 25` and `money: 5` are invented placeholders, no value was
+specified for either, flagged here as such, not tuned balance. The
+`population` key goes beyond what was literally specified for House, added
+because it lets B3's "population scales with House count" go through the
+exact same generic `meterTotal` accumulator every other meter already
+uses, instead of a one-off hardcoded element-id check breaking the
+pattern. Widened Beachside Resort to `["beach", "estuary", "river"]`, and
+added `food: 1` to both Mangrove and Khazan. Renamed the generic effects
+key `coinPerTurn` → `money` everywhere (`elements.json`, `GameState.
+advanceTurn`) — the two were the same concept under different names, and
+this document's own terminology should win. House's icon (a wide
+gable-roofed silhouette with a chimney — squatter and plainer than
+Resort's cabana-and-umbrella, reading as "ordinary residential" rather
+than "beach amenity") closes out A3's deferred 8th icon.
+
+**B3 — Population/Food and a new starting state.** `GameState` gained
+`food` and `population` getters, both thin wrappers over `meterTotal`
+(the same pattern as `biodiversity`/`carbon` — no new hardcoded engine
+logic for either). The constructor gained two new optional parameters,
+`startingElements` (pre-built elements claimed and placed for free, not
+purchased — a `{coord, elementId}` seed list) and `startingCoin`, both
+re-applied inside `startNewEra()` too, so the pre-built Houses and the
+1,000 starting Coin survive an era transition rather than only existing
+once at first boot. `/tools/mapgen` now also writes
+`src/data/startingState.json` (`startingCoin: 1000`, `startingPopulation:
+50`, and 10 `prebuiltHouses` coordinates — a compact Land-tile cluster
+computed from the same generated map, just inland from the coastal
+starting claim, guaranteed to actually be Land rather than hand-picked
+blind). `main.ts` loads this file, passes it into `GameState`'s
+constructor, and renders the pre-built Houses at boot with no settle
+animation (they were never "just built" — the player already owns them).
+`Hud` gained Food and Population chips alongside the existing four.
+
+**Verification:** 49/49 tests passing across 9 files, `tsc --noEmit`
+clean, production build succeeds. `b1_fresh_map.png` shows a clean
+Coast → Beach → Land band with no corner artifact; the branching
+river/estuary system itself is far enough east that it fell outside every
+attempted screenshot pan, so it's verified by `tests/mapgen.test.ts`
+reading the checked-in map data directly instead (connectivity, region
+bounds, ≥3-tile blob size) rather than by eye. `b3_fresh_start.png` shows
+a fresh load with Coin 1000, HUD reading "F -10" / "P 100" (10 Houses ×
+their food/population effects), "Tiles claimed: 13" (3 coastal + 10
+Houses), and 10 House icons visibly clustered on Land just inland from the
+coastal claim — every number and every visual matching what the
+starting-state config actually contains, not just "looks about right."
+
+![Fresh map: clean Coast/Beach/Land bands, no corner-wrap artifact](tools/screenshots/b1_fresh_map.png)
+![Fresh starting state: Coin 1000, Food/Population in the HUD, 10 House icons on Land inland from the coastal claim](tools/screenshots/b3_fresh_start.png)

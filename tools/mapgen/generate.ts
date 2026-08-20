@@ -1,27 +1,37 @@
 /**
- * Section 4 (v2.2): the terrain map is fixed and pre-generated, not
- * player-drawn, and — since the trimmed-content revision — coastal-only:
- * one sea-facing edge (Coast), Beach filling everything else, and one
- * continuous River reaching the sea at a single Estuary tile. This script
- * runs ONCE, offline, and serializes the result to src/data/map.json. It is
- * never run at app runtime — `npm run mapgen`, check the output in, done.
+ * Section 4 (v2.4): the terrain map is fixed and pre-generated, not
+ * player-drawn. This script runs ONCE, offline, and serializes the result
+ * to src/data/map.json. It is never run at app runtime — `npm run mapgen`,
+ * check the output in, done.
  *
- * Layout: a wide, short strip (west-to-east wider than north-to-south),
- * reading as "a stretch of coast" rather than a blob, sea on the west edge.
- * World-space X is used to find that edge (axial q alone doesn't track
- * world-space west/east cleanly — see axialToWorld), so the edge is a
- * straight line in the rendered scene regardless of axial skew.
+ * Layout (v2.4, explicit left-to-right): Sea → Beach → Land (interior) →
+ * Estuary/River, with the river continuing further right/inland past the
+ * estuary. A wide, short strip (west-to-east wider than north-to-south).
+ *
+ * Bands are chosen by axial `q` alone, not world-space X. This looks
+ * backwards at first — `axialToWorld`'s x = sqrt3*(q + r/2), so a fixed-q
+ * "column" drifts diagonally in world space as r changes — but that
+ * uniform per-row drift is exactly what makes it correct here: every row
+ * gets the *same number* of coast/beach columns, so the edge reads as one
+ * smooth (if gently diagonal) line. A world-X threshold looks more
+ * "correct" on paper but picks a *global* min/max across every row at
+ * once, which — since each row's own local x-range is itself shifted by
+ * that same r/2 term — ends up selecting lots of tiles from the rows near
+ * one corner and almost none from the rows near the opposite corner: the
+ * sea "wraps around a map corner" instead of forming a single edge, which
+ * is exactly the bug an earlier version of this script had (caught by a
+ * live playtest, not by eye). A gentle diagonal is a fine stand-in for
+ * Goa's real "gently curved shore" for this pilot's purposes anyway.
  */
 import fs from "node:fs";
 import path from "node:path";
-import { type AxialCoord, axialKey, axialToWorld, neighbor, axialDistance } from "../../src/core/hex";
+import { type AxialCoord, axialKey, neighbor, axialDistance, hexRing, hexSpiral } from "../../src/core/hex";
 import { TERRAIN_DEFS } from "../../src/core/terrain";
 
 const Q_MIN = -13;
 const Q_MAX = 13;
 const R_MIN = -4;
 const R_MAX = 4;
-const HEX_SIZE = 1.0;
 const SEED = 20260819; // fixed seed for this pilot (Section 4: "a fixed seed is fine ... a new seed per era is a later enhancement")
 
 function mulberry32(seed: number) {
@@ -36,7 +46,7 @@ function mulberry32(seed: number) {
 }
 const rng = mulberry32(SEED);
 
-// --- 1. Build the grid, find the sea-facing edge -----------------------------
+// --- 1. Build the grid, define the left-to-right band boundaries by q ------
 
 const allCoords: AxialCoord[] = [];
 for (let q = Q_MIN; q <= Q_MAX; q++) {
@@ -51,49 +61,45 @@ function inGrid(c: AxialCoord): boolean {
   return grid.has(axialKey(c));
 }
 
-const worldX = new Map<string, number>();
-for (const c of allCoords) worldX.set(axialKey(c), axialToWorld(c, HEX_SIZE).x);
-const xs = Array.from(worldX.values());
-const xMin = Math.min(...xs);
+const TOTAL_COLS = Q_MAX - Q_MIN + 1; // 27
+const COAST_COLS = 1;
+const BEACH_COLS = 3;
+const coastMaxQ = Q_MIN + COAST_COLS - 1; // q <= this: Sea
+const beachMaxQ = coastMaxQ + BEACH_COLS; // q in (coastMaxQ, beachMaxQ]: Beach
+const waterZoneMinQ = Q_MIN + Math.floor(TOTAL_COLS * 0.62); // Estuary/River confined to the eastern ~38%
 
-// One hex-column's world-x spacing, so the coast reads as a single sea-edge
-// column regardless of axial skew across rows.
-const COAST_DEPTH = Math.sqrt(3) * HEX_SIZE * 1.05;
-const coastThreshold = xMin + COAST_DEPTH;
-
-const coastCoords = allCoords.filter((c) => worldX.get(axialKey(c))! < coastThreshold);
+const coastCoords = allCoords.filter((c) => c.q <= coastMaxQ);
 const coastSet = new Set(coastCoords.map(axialKey));
-const landCoords = allCoords.filter((c) => !coastSet.has(axialKey(c)));
+const beachCoords = allCoords.filter((c) => c.q > coastMaxQ && c.q <= beachMaxQ);
+const beachSet = new Set(beachCoords.map(axialKey));
+const waterZoneCoords = allCoords.filter((c) => c.q >= waterZoneMinQ);
+const waterZoneSet = new Set(waterZoneCoords.map(axialKey));
 
-// --- 2. Carve one continuous river from an inland source to the sea ---------
+// --- 2. Carve a wide, branching estuary: two river arms meeting inland -----
 
-function isCoastAdjacent(c: AxialCoord): boolean {
-  for (let dir = 0; dir < 6; dir++) {
-    if (coastSet.has(axialKey(neighbor(c, dir)))) return true;
-  }
-  return false;
-}
+// Two sources at the far east edge (the map's inland extreme), offset
+// north/south, so the two arms read as distinct tributaries rather than
+// one straight line.
+const eastEdgeCoords = allCoords.filter((c) => c.q === Q_MAX);
+const riverSourceA = eastEdgeCoords.reduce((best, c) => (c.r < best.r ? c : best), eastEdgeCoords[0]);
+const riverSourceB = eastEdgeCoords.reduce((best, c) => (c.r > best.r ? c : best), eastEdgeCoords[0]);
 
-// A single inland source near the east edge (the far side of the map from
-// the sea), close to the coastal midline (r near 0) so the river reads as a
-// natural, mostly-direct run down to the coast rather than a long diagonal.
-const maxQ = Math.max(...landCoords.map((c) => c.q));
-const eastEdgeCoords = landCoords.filter((c) => c.q === maxQ);
-const riverSource = eastEdgeCoords.reduce((best, c) => (Math.abs(c.r) < Math.abs(best.r) ? c : best), eastEdgeCoords[0]);
-
-// The river's mouth: the shore-fronting Beach tile nearest the source's row
-// — this tile becomes the Estuary once the river reaches it.
-const shoreCoords = landCoords.filter(isCoastAdjacent);
-const riverTarget = shoreCoords.reduce((best, c) =>
-  Math.abs(c.r - riverSource.r) < Math.abs(best.r - riverSource.r) ? c : best
-);
+// The confluence sits toward the *west* edge of the water zone (not all the
+// way back to Beach/Land — Land still separates it from the coast), close
+// to the coastal midline, so there's a real stretch of river continuing
+// further east/inland past it once the arms join.
+const confluence = waterZoneCoords.reduce((best, c) => {
+  const score = (c.q - waterZoneMinQ) + Math.abs(c.r) * 0.5;
+  const bestScore = (best.q - waterZoneMinQ) + Math.abs(best.r) * 0.5;
+  return score < bestScore ? c : best;
+}, waterZoneCoords[0]);
 
 /**
- * A near-greedy walk from `start` toward `target`, staying on land (never
- * routing through Coast — the river reaches the sea only at its final
- * tile, the Estuary): always moves strictly closer (ties broken by a small
- * random jitter for a natural wiggle, not a detour), so path length stays
- * close to the true hex distance instead of wandering.
+ * A near-greedy walk from `start` toward `target`, staying within the water
+ * zone (so the estuary/river system doesn't spill into Land): always moves
+ * strictly closer (ties broken by a small random jitter for a natural
+ * wiggle, not a detour), so path length stays close to the true hex
+ * distance instead of wandering.
  */
 function walkRiver(start: AxialCoord, target: AxialCoord): AxialCoord[] {
   const path: AxialCoord[] = [start];
@@ -107,7 +113,7 @@ function walkRiver(start: AxialCoord, target: AxialCoord): AxialCoord[] {
     for (let dir = 0; dir < 6; dir++) {
       const n = neighbor(current, dir);
       const key = axialKey(n);
-      if (!inGrid(n) || coastSet.has(key) || visited.has(key)) continue;
+      if (!waterZoneSet.has(key) || visited.has(key)) continue;
       candidates.push({ coord: n, score: -axialDistance(n, target) + rng() * 0.2 });
     }
     if (candidates.length === 0) break; // boxed in; stop where we are
@@ -116,22 +122,31 @@ function walkRiver(start: AxialCoord, target: AxialCoord): AxialCoord[] {
     visited.add(axialKey(current));
     path.push(current);
   }
-  if (axialDistance(current, target) > 0) path.push(target); // guarantee it actually reaches the shore
+  if (axialDistance(current, target) > 0) path.push(target); // guarantee it actually reaches the confluence
   return path;
 }
 
-const riverPath = walkRiver(riverSource, riverTarget);
-const estuaryCoord = riverPath[riverPath.length - 1];
+const riverArmA = walkRiver(riverSourceA, confluence);
+const riverArmB = walkRiver(riverSourceB, confluence);
 
-// --- 3. Assign terrain: Coast / River / Estuary fixed, everything else Beach -
+// The estuary itself: the confluence plus a ring of neighbors still inside
+// the water zone — a small branching blob, not a single tile.
+const estuaryCoords = [confluence, ...hexRing(confluence, 1).filter((c) => waterZoneSet.has(axialKey(c)))];
+const estuarySet = new Set(estuaryCoords.map(axialKey));
+
+// --- 3. Assign terrain: Coast / Beach / Estuary / River fixed, rest Land ---
 
 const terrainOf = new Map<string, string>();
 for (const c of coastCoords) terrainOf.set(axialKey(c), "coast");
-for (const c of riverPath.slice(0, -1)) terrainOf.set(axialKey(c), "river");
-terrainOf.set(axialKey(estuaryCoord), "estuary");
+for (const c of beachCoords) terrainOf.set(axialKey(c), "beach");
+for (const c of estuaryCoords) terrainOf.set(axialKey(c), "estuary");
+for (const c of [...riverArmA, ...riverArmB]) {
+  const key = axialKey(c);
+  if (!estuarySet.has(key)) terrainOf.set(key, "river");
+}
 for (const c of allCoords) {
   const key = axialKey(c);
-  if (!terrainOf.has(key)) terrainOf.set(key, "beach");
+  if (!terrainOf.has(key)) terrainOf.set(key, "land");
 }
 
 // --- 4. Serialize -------------------------------------------------------------
@@ -144,16 +159,21 @@ interface MapTile {
 
 const tiles: MapTile[] = allCoords.map((c) => ({ q: c.q, r: c.r, terrainId: terrainOf.get(axialKey(c))! }));
 
+// The player's initial claim is a small coastal footprint (Section 4/8,
+// v2.4: "the player begins already owning a small coastal claim") — near
+// the shore, not the (now-inland) estuary. Centered on a Beach tile close
+// to the coastal midline.
+const coastalClaimSeed = beachCoords.reduce((best, c) => (Math.abs(c.r) < Math.abs(best.r) ? c : best), beachCoords[0]);
 const startingClaim: AxialCoord[] = [
-  estuaryCoord,
-  ...[0, 1, 2, 3, 4, 5].map((dir) => neighbor(estuaryCoord, dir)).filter(inGrid)
+  coastalClaimSeed,
+  ...[0, 1, 2, 3, 4, 5].map((dir) => neighbor(coastalClaimSeed, dir)).filter(inGrid)
 ].slice(0, 3);
 
 const output = {
   seed: SEED,
   qRange: [Q_MIN, Q_MAX],
   rRange: [R_MIN, R_MAX],
-  estuary: estuaryCoord,
+  estuary: confluence,
   startingClaim,
   tiles
 };
@@ -161,27 +181,71 @@ const output = {
 const outPath = path.resolve(import.meta.dirname, "../../src/data/map.json");
 fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
 
+// A pre-built residential cluster of 10 Houses on Land, inland from the
+// coastal claim (Section 4/8, v2.4's new starting state) — the player owns
+// this from turn one, they don't build it. Seeded from the first Land tile
+// on the coastal claim's own row, so it reads as "just inland" rather than
+// scattered.
+const houseClusterSeed = allCoords
+  .filter((c) => c.r === coastalClaimSeed.r && terrainOf.get(axialKey(c)) === "land")
+  .reduce((best, c) => (c.q < best.q ? c : best));
+const houseCoords = hexSpiral(houseClusterSeed, 2)
+  .filter((c) => inGrid(c) && terrainOf.get(axialKey(c)) === "land")
+  .slice(0, 10);
+
+const startingState = {
+  startingCoin: 1000, // explicitly a temporary testing value (Section 8), not tuned balance
+  startingPopulation: 50,
+  populationPerHouse: 5, // placeholder growth hook — "population scales with House count," no curve specified beyond that yet
+  prebuiltHouses: houseCoords
+};
+const startingStatePath = path.resolve(import.meta.dirname, "../../src/data/startingState.json");
+fs.writeFileSync(startingStatePath, JSON.stringify(startingState, null, 2));
+
 // --- 5. Sanity-check the constraints before declaring success ---------------
 
 const terrainIdSet = new Set(TERRAIN_DEFS.map((t) => t.id));
 const badTerrainIds = tiles.filter((t) => !terrainIdSet.has(t.terrainId));
 const riverTileCount = tiles.filter((t) => t.terrainId === "river").length;
 const estuaryTileCount = tiles.filter((t) => t.terrainId === "estuary").length;
-let riverDisconnected = 0;
-for (let i = 1; i < riverPath.length; i++) {
-  if (axialDistance(riverPath[i - 1], riverPath[i]) !== 1) riverDisconnected++;
+const landTileCount = tiles.filter((t) => t.terrainId === "land").length;
+
+// Order check: every row should read Coast, then Beach, then Land, before
+// any Estuary/River tile ever appears — confirms every row sees the same
+// left-to-right order (Sea -> Beach -> Land -> Estuary/River), not just
+// "these terrains exist somewhere on the map."
+let orderViolations = 0;
+for (let r = R_MIN; r <= R_MAX; r++) {
+  const row = tiles.filter((t) => t.r === r).sort((a, b) => a.q - b.q);
+  const order: string[] = [];
+  for (const t of row) {
+    if (order[order.length - 1] !== t.terrainId) order.push(t.terrainId);
+  }
+  const macro = order.filter((id, i) => id !== order[i - 1]);
+  const coastIdx = macro.indexOf("coast");
+  const beachIdx = macro.indexOf("beach");
+  const landIdx = macro.indexOf("land");
+  const waterIdx = Math.min(
+    ...["estuary", "river"].map((id) => macro.indexOf(id)).filter((i) => i >= 0)
+  );
+  if (coastIdx !== 0 || beachIdx !== 1 || landIdx < 0 || (waterIdx >= 0 && landIdx > waterIdx)) orderViolations++;
 }
-const estuaryReachesSea = isCoastAdjacent(estuaryCoord);
 
 console.log(`map.json written: ${tiles.length} tiles`);
-console.log(`  coast tiles: ${coastCoords.length}`);
-console.log(`  river tiles: ${riverTileCount}, estuary tiles: ${estuaryTileCount} (should be exactly 1)`);
-console.log(`  river path disconnected hops: ${riverDisconnected} (should be 0)`);
-console.log(`  estuary reaches the sea (coast-adjacent): ${estuaryReachesSea}`);
+console.log(`  coast: ${coastCoords.length}, beach: ${beachCoords.length}, land: ${landTileCount}, river: ${riverTileCount}, estuary: ${estuaryTileCount}`);
+console.log(`  rows with a left-to-right order violation: ${orderViolations} / ${R_MAX - R_MIN + 1} (should be 0)`);
 console.log(`  unknown terrain ids: ${badTerrainIds.length}`);
-console.log(`  starting claim: ${startingClaim.map((c) => `(${c.q},${c.r})`).join(", ")}`);
+console.log(`  starting claim (coastal): ${startingClaim.map((c) => `(${c.q},${c.r})`).join(", ")}`);
+console.log(`  estuary center: (${confluence.q},${confluence.r})`);
+console.log(`startingState.json written: ${houseCoords.length} pre-built Houses (should be 10), all on Land: ${houseCoords.every((c) => terrainOf.get(axialKey(c)) === "land")}`);
 
-if (badTerrainIds.length > 0 || estuaryTileCount !== 1 || riverDisconnected > 0 || !estuaryReachesSea) {
+if (
+  badTerrainIds.length > 0 ||
+  estuaryTileCount < 3 ||
+  riverTileCount === 0 ||
+  orderViolations > 0 ||
+  houseCoords.length !== 10
+) {
   console.error("mapgen sanity check FAILED");
   process.exitCode = 1;
 }

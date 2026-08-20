@@ -37,11 +37,21 @@
     "id": "beachside_resort",
     "name": "Beachside Resort",
     "kind": "building",
-    "validTerrainIds": ["beach"],
+    "validTerrainIds": ["beach", "estuary", "river"],
     "buildCost": 40,
     "matureTurns": 0,
     "colorKey": "resortGold",
-    "effects": { "coinPerTurn": 5, "biodiversity": -2 }
+    "effects": { "money": 5, "biodiversity": -2 }
+  },
+  {
+    "id": "house",
+    "name": "House",
+    "kind": "building",
+    "validTerrainIds": ["land"],
+    "buildCost": 25,
+    "matureTurns": 0,
+    "colorKey": "houseTerracotta",
+    "effects": { "money": 5, "food": -1, "population": 5 }
   },
   {
     "id": "seawall",
@@ -75,7 +85,7 @@
     "overwhelmSeverity": 1.4,
     "overwhelmedAbsorptionMultiplier": 0.4,
     "colorKey": "defenseMangrove",
-    "effects": { "biodiversity": 3 },
+    "effects": { "biodiversity": 3, "food": 1 },
     "failureMode": "No destruction. Above overwhelmSeverity, absorption is cut to overwhelmedAbsorptionMultiplier for that hazard, but the buffer survives to the next one."
   },
   {
@@ -95,7 +105,7 @@
     "degradeGracefully": true,
     "gracefulDegradeStep": 0.12,
     "colorKey": "defenseKhazanBund",
-    "effects": { "biodiversity": 2, "coinPerTurn": 1 },
+    "effects": { "biodiversity": 2, "money": 1, "food": 1 },
     "failureMode": "No catastrophic breach. Above capacity, or after sustained maintenance neglect, effectiveness degrades gradually rather than the structure being destroyed."
   },
   {

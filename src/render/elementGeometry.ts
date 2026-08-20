@@ -143,6 +143,28 @@ function smallDamGeometry(): THREE.BufferGeometry {
   ]);
 }
 
+/** House: a wide gable-roofed silhouette with a chimney — simpler and squatter than Resort's cabana, reads as plain residential. */
+function houseGeometry(): THREE.BufferGeometry {
+  const body = flatIcon([
+    [-0.42, 0],
+    [-0.48, 0.28],
+    [0, 0.54],
+    [0.48, 0.28],
+    [0.42, 0],
+    [0.3, 0],
+    [0.3, 0.16],
+    [-0.3, 0.16],
+    [-0.3, 0]
+  ]);
+  const chimney = flatIcon([
+    [0.22, 0.22],
+    [0.22, 0.46],
+    [0.32, 0.46],
+    [0.32, 0.3]
+  ]);
+  return mergeGeometries([body, chimney]);
+}
+
 const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   dune: duneGeometry,
   sandy_vegetation: sandyVegetationGeometry,
@@ -150,7 +172,8 @@ const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   seawall: seawallGeometry,
   mangrove: mangroveGeometry,
   khazan: khazanGeometry,
-  small_dam: smallDamGeometry
+  small_dam: smallDamGeometry,
+  house: houseGeometry
 };
 
 export function createElementGeometry(elementId: string): THREE.BufferGeometry {

@@ -37,5 +37,5 @@ export interface ElementDef {
   failureMode?: string;
 }
 
-export const ELEMENT_DEFS: ElementDef[] = elementData as ElementDef[];
+export const ELEMENT_DEFS: ElementDef[] = elementData as unknown as ElementDef[];
 export const ELEMENT_BY_ID = new Map(ELEMENT_DEFS.map((e) => [e.id, e]));

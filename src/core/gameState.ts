@@ -13,9 +13,16 @@ export interface ElementInstance {
   degradeAmount: number;
 }
 
+/** A world-init element the player owns from turn one — pre-built, not purchased (Section 4/8's "small coastal claim + 10 pre-built Houses" starting state). */
+export interface StartingElementSeed {
+  coord: AxialCoord;
+  elementId: string;
+}
+
 const STARTING_COIN = 50;
 const STARTING_TRUST = 50;
 const STARTING_RESILIENCE = 100;
+const STARTING_POPULATION = 50;
 const RESILIENCE_DAMAGE_FACTOR = 0.5;
 const CATASTROPHIC_TRUST_PENALTY = 8; // per destroyed engineered defense — stings more than an NBS shortfall
 const WEATHERED_TRUST_BONUS = 2;
@@ -33,7 +40,7 @@ export class GameState {
   readonly placed = new Map<string, PlacedTile>();
   readonly claimed = new Set<string>();
   readonly elements = new Map<string, ElementInstance>(); // coord key -> instance
-  coin = STARTING_COIN;
+  coin: number; // set from `startingCoin` in the constructor
   turn = 0;
   /** Section 7's meters. Biodiversity is derived (see `meterTotal`); Trust and Resilience are running totals. */
   trust = STARTING_TRUST;
@@ -43,6 +50,8 @@ export class GameState {
   /** Section 2's light meta-progression hook: preserved across `startNewEra()`. */
   erasCompleted = 0;
   private readonly startingClaim: AxialCoord[];
+  private readonly startingElements: StartingElementSeed[];
+  private readonly startingCoin: number;
 
   /**
    * @param mapTiles The fixed, pre-generated map (Section 4) — every tile
@@ -51,12 +60,35 @@ export class GameState {
    *   claiming every tile passed in, which is convenient for small
    *   hand-built test fixtures; real play always passes an explicit small
    *   (2-3 hex) cluster.
+   * @param startingElements Pre-built elements the player owns from turn
+   *   one (Section 4/8, v2.4: 10 Houses on Land) — claimed and placed for
+   *   free, on top of `startingClaim`, both now and on every `startNewEra()`.
+   * @param startingCoin Overrides the default starting Coin (Section 8:
+   *   "explicitly a temporary testing value," e.g. 1000 in real play).
    */
-  constructor(mapTiles: PlacedTile[], startingClaim?: AxialCoord[]) {
+  constructor(
+    mapTiles: PlacedTile[],
+    startingClaim?: AxialCoord[],
+    startingElements: StartingElementSeed[] = [],
+    startingCoin: number = STARTING_COIN
+  ) {
     for (const tile of mapTiles) this.placed.set(axialKey(tile.coord), tile);
     this.startingClaim = startingClaim ?? mapTiles.map((t) => t.coord);
+    this.startingElements = startingElements;
+    this.startingCoin = startingCoin;
+    this.coin = startingCoin;
     for (const coord of this.startingClaim) {
       if (this.placed.has(axialKey(coord))) this.claimed.add(axialKey(coord));
+    }
+    this.applyStartingElements();
+  }
+
+  private applyStartingElements(): void {
+    for (const seed of this.startingElements) {
+      const key = axialKey(seed.coord);
+      if (!this.placed.has(key)) continue;
+      this.claimed.add(key);
+      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0 });
     }
   }
 
@@ -107,15 +139,15 @@ export class GameState {
 
   /**
    * One claim = one turn (Section 2's Calm-phase cadence): elements pay out
-   * their `effects.coinPerTurn` (the same generic accumulator that drives
-   * every other meter — see `meterTotal`), and defenses with upkeep either
-   * get paid or silently weaken (the khazan/small-dam "neglect decays it"
+   * their `effects.money` (the same generic accumulator that drives every
+   * other meter — see `meterTotal`), and defenses with upkeep either get
+   * paid or silently weaken (the khazan/small-dam "neglect decays it"
    * tradeoff). Public because the hazard/turn system also needs to advance
    * it directly (e.g. maintenance still ticks between hazard events).
    */
   advanceTurn(): void {
     this.turn++;
-    this.coin += this.meterTotal("coinPerTurn");
+    this.coin += this.meterTotal("money");
     for (const [key, inst] of this.elements) {
       const def = ELEMENT_BY_ID.get(inst.elementId);
       if (!def || !def.maintenanceCostPerTurn || def.maintenanceCostPerTurn <= 0) continue;
@@ -189,7 +221,7 @@ export class GameState {
    * The generic effects accumulator (v2.2's standing architectural
    * requirement): sums every standing element's `effects[key]`, weighted by
    * how mature it is. Nothing in this function knows what "biodiversity" or
-   * "coinPerTurn" mean — a new meter is added entirely in elements.json,
+   * "money" mean — a new meter is added entirely in elements.json,
    * never here. A destroyed defense simply stops contributing, no separate
    * bookkeeping needed.
    */
@@ -211,6 +243,16 @@ export class GameState {
 
   get carbon(): number {
     return this.meterTotal("carbon");
+  }
+
+  /** v2.4 (Section 4/7/8): Food, produced by Mangrove/Khazan and consumed by House — tracked, not yet gated on (a deficit doesn't block anything until a hazard/outcome pass decides what it should do). */
+  get food(): number {
+    return this.meterTotal("food");
+  }
+
+  /** v2.4 (Section 4/7/8): a simple placeholder growth hook — population scales with House count via the same generic effects accumulator as every other meter, no growth curve specified beyond that yet. */
+  get population(): number {
+    return STARTING_POPULATION + this.meterTotal("population");
   }
 
   /**
@@ -247,7 +289,8 @@ export class GameState {
       if (this.placed.has(axialKey(coord))) this.claimed.add(axialKey(coord));
     }
     this.elements.clear();
-    this.coin = STARTING_COIN;
+    this.applyStartingElements();
+    this.coin = this.startingCoin;
     this.trust = STARTING_TRUST;
     this.resilience = STARTING_RESILIENCE;
     this.severityBaseline = 0;

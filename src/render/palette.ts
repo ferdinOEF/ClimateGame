@@ -1,19 +1,22 @@
 import * as THREE from "three";
 
 /**
- * Goan coastal color palette (Section 6, v2.2 trimmed scope): Arabian Sea
- * turquoise, sun-bleached sand gold, river blue, mangrove teal-green.
- * Deliberately not a flat postcard tropical green/blue-only set.
+ * Goan coastal color palette (Section 6, v2.4 layout: Sea/Beach/Land/
+ * Estuary/River): Arabian Sea turquoise, sun-bleached sand gold, inland
+ * plains green, river blue, mangrove teal-green. Deliberately not a flat
+ * postcard tropical green/blue-only set.
  *
- * Lightness is deliberately spread across the 4 terrain colors (checked
+ * Lightness is deliberately spread across the 5 terrain colors (checked
  * against the 0.3R+0.59G+0.11B luma the Section 6 grayscale QA method uses)
  * so adjacent tiles stay distinguishable with all color removed, not just
- * by hue: mangroveTeal ~88, seaTurquoise ~130, riverBlue ~137, sandGold ~208.
+ * by hue: mangroveTeal ~88, seaTurquoise ~130, riverBlue ~137,
+ * landGreen ~182, sandGold ~208.
  */
 export const PALETTE: Record<string, THREE.Color> = {
   mangroveTeal: new THREE.Color("#2C6E5E"), // estuary
   seaTurquoise: new THREE.Color("#2FA6A2"), // coast
   riverBlue: new THREE.Color("#4B9FBD"), // river
+  landGreen: new THREE.Color("#A7CE5E"), // land (interior)
   sandGold: new THREE.Color("#EAD08A"), // beach
   fog: new THREE.Color("#D9E6E0"),
   sky: new THREE.Color("#CFE6E8"),
@@ -26,7 +29,8 @@ export const PALETTE: Record<string, THREE.Color> = {
   resortGold: new THREE.Color("#D9A63E"),
   defenseEngineered: new THREE.Color("#7C8277"),
   defenseMangrove: new THREE.Color("#4FAE6E"),
-  defenseKhazanBund: new THREE.Color("#8C6A3F")
+  defenseKhazanBund: new THREE.Color("#8C6A3F"),
+  houseTerracotta: new THREE.Color("#C25730") // laterite-tile roof red
 };
 
 export function paletteColor(key: string): THREE.Color {

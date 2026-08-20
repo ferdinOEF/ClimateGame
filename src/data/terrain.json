@@ -12,6 +12,12 @@
     "height": 0.55
   },
   {
+    "id": "land",
+    "name": "Land",
+    "colorKey": "landGreen",
+    "height": 0.55
+  },
+  {
     "id": "river",
     "name": "River",
     "colorKey": "riverBlue",

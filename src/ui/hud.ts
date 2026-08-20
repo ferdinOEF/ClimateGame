@@ -1,9 +1,10 @@
 /**
  * The only persistent UI (v2.1): a corner tile counter, one compact meter
- * strip (Coin + Section 7's four meters), a small "next hex to claim"
- * prompt, and a brief non-blocking era banner. No full-width panel, and no
- * hand strip anymore — Section 2/3: there's no longer a choice of *what* to
- * place, only *where* to claim next, so there's nothing to hand-pick from.
+ * strip (Coin + Section 7's meters — Trust/Resilience/Biodiversity/Carbon,
+ * plus v2.4's Food/Population), a small "next hex to claim" prompt, and a
+ * brief non-blocking era banner. No full-width panel, and no hand strip
+ * anymore — Section 2/3: there's no longer a choice of *what* to place,
+ * only *where* to claim next, so there's nothing to hand-pick from.
  */
 export class Hud {
   private tileCountEl: HTMLElement;
@@ -12,6 +13,8 @@ export class Hud {
   private resilienceEl: HTMLElement;
   private biodiversityEl: HTMLElement;
   private carbonEl: HTMLElement;
+  private foodEl: HTMLElement;
+  private populationEl: HTMLElement;
   private claimPromptEl: HTMLElement;
   private bannerEl: HTMLElement;
 
@@ -31,6 +34,8 @@ export class Hud {
         <span class="meter-chip" title="Resilience">R <b class="resilience-value">0</b></span>
         <span class="meter-chip" title="Biodiversity">B <b class="biodiversity-value">0</b></span>
         <span class="meter-chip" title="Carbon">C <b class="carbon-value">0</b></span>
+        <span class="meter-chip" title="Food">F <b class="food-value">0</b></span>
+        <span class="meter-chip" title="Population">P <b class="population-value">0</b></span>
       </div>`;
     container.appendChild(meters);
     this.coinEl = meters.querySelector(".coin-value")!;
@@ -38,6 +43,8 @@ export class Hud {
     this.resilienceEl = meters.querySelector(".resilience-value")!;
     this.biodiversityEl = meters.querySelector(".biodiversity-value")!;
     this.carbonEl = meters.querySelector(".carbon-value")!;
+    this.foodEl = meters.querySelector(".food-value")!;
+    this.populationEl = meters.querySelector(".population-value")!;
 
     const claimPrompt = document.createElement("div");
     claimPrompt.className = "hud-corner bottom-center claim-prompt";
@@ -68,11 +75,20 @@ export class Hud {
     this.coinEl.textContent = String(n);
   }
 
-  setMeters(meters: { trust: number; resilience: number; biodiversity: number; carbon: number }): void {
+  setMeters(meters: {
+    trust: number;
+    resilience: number;
+    biodiversity: number;
+    carbon: number;
+    food: number;
+    population: number;
+  }): void {
     this.trustEl.textContent = String(Math.round(meters.trust));
     this.resilienceEl.textContent = String(Math.round(meters.resilience));
     this.biodiversityEl.textContent = String(Math.round(meters.biodiversity));
     this.carbonEl.textContent = String(Math.round(meters.carbon));
+    this.foodEl.textContent = String(Math.round(meters.food));
+    this.populationEl.textContent = String(Math.round(meters.population));
   }
 
   /** Section 3's "next hex to claim" prompt — a glowing ring count, not a form. */
