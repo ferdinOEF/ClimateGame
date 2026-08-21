@@ -53,7 +53,11 @@ export function createScene(container: HTMLElement): KhazanScene {
   }
   focusOn(0, 0);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // preserveDrawingBuffer: readPixels-based readability verification
+  // (tools/verify_readability.ts) needs the completed frame still present
+  // in the default framebuffer when it reads it from outside the render
+  // loop — without this the browser is free to clear/swap it away.
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(container.clientWidth, container.clientHeight);
   container.appendChild(renderer.domElement);

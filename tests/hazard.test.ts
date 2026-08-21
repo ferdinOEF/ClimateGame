@@ -97,6 +97,25 @@ describe("resolveMonsoonFlood — engineered (small dam)", () => {
     expect(state.elements.has(key)).toBe(true);
   });
 
+  it("reduces downstream flood damage relative to an undefended river source — helps, not hurts (STEP_PROMPT_visuals_map_river.md item 3: resilience sign flip)", () => {
+    const withDam = freshState();
+    const damTarget = neighbor(RIVER, 0);
+    withDam.debugForcePlace(damTarget, "beach");
+    withDam.build(RIVER, "small_dam");
+
+    const withoutDam = freshState();
+    const bareTarget = neighbor(RIVER, 0);
+    withoutDam.debugForcePlace(bareTarget, "beach");
+    // (no build — matches "resolveMonsoonFlood — no defense"'s baseline above)
+
+    const resultWithDam = resolveMonsoonFlood(withDam, 1.0);
+    const resultWithoutDam = resolveMonsoonFlood(withoutDam, 1.0);
+
+    const downstreamWithDam = resultWithDam.tileDamage.get(axialKey(damTarget))!;
+    const downstreamWithoutDam = resultWithoutDam.tileDamage.get(axialKey(bareTarget))!;
+    expect(downstreamWithDam).toBeLessThan(downstreamWithoutDam);
+  });
+
   it("catastrophically fails above threshold and redirects an amplified surge onward", () => {
     // With the dam: destroyed, and the tile behind it takes MORE damage
     // than an equivalent undefended run — the "safe until, spectacularly,

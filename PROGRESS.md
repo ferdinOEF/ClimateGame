@@ -937,3 +937,130 @@ from the code alone.
 
 ![A2: claimed vs. unclaimed Beach and Land side by side](tools/screenshots/a2_beach_claimed_vs_unclaimed.png)
 ![A2: claimed vs. unclaimed Estuary](tools/screenshots/a2_estuary_claimed_vs_unclaimed.png)
+
+## Step prompt — readability pass, Panaji/Taleigao reference map, River roster change — DONE
+
+Worked `STEP_PROMPT_visuals_map_river.md`'s three items in order (1 and 2
+first as instructed, since they're cheaper); each independent of the
+others.
+
+**1 — Color theme & readability.** The step prompt's own grayscale
+measurement of the live build was damning: claimed vs. unclaimed Beach
+differed by exactly 1 point of luminance (178 vs. 179) — invisible in
+grayscale and a real accessibility failure, not a subjective complaint.
+Root-caused to two compounding problems, both fixed:
+1. **`palette.ts`'s base colors were under-saturated** for a "Goan, not generic-tropical" palette — deepened/punched up every terrain color and re-spread their grayscale luminance further apart (mangroveTeal ~72, seaTurquoise ~93, riverBlue ~117, landGreen ~162, sandGold ~189 — these are the CLAIMED/full-color values).
+2. **`terrainMeshManager.ts`'s `dim()` function was structurally incapable of guaranteeing a real gap.** Its "blend toward `fog`" approach can never darken a terrain that's already close to `fog`'s own brightness (exactly Beach's problem). Rewrote it to drop lightness by a *proportional* multiplicative factor instead (`l * 0.3`) rather than blending toward anything or subtracting a fixed amount — a flat-subtraction version was tried first and hit a second, subtler bug: `THREE.Color.getHSL()` runs in a color-managed working space where mangroveTeal's actual `l` measures ~0.06, *below* that version's own floor meant to protect dark colors from crushing to black, which made the floor clamp mangrove's *unclaimed* state brighter than its *claimed* state. A proportional cut sidesteps the whole bug class — multiplying any positive `l` by a factor < 1 always reduces it, no floor needed, regardless of which color space or absolute range `l` lives in.
+
+Built `tools/verify_readability.ts` (new, permanent — `npm run
+verify:readability`) as the "scripted, repeatable part of the test suite"
+item 1 explicitly asked for: it claims one tile of each buildable terrain
+type, pans the camera via a small always-present `window.
+__focusOnForTest` hook (harmless, costs one property assignment) so the
+tile sits at screen center, and reads the REAL rendered pixel color
+straight off the live WebGL canvas via `gl.readPixels` — needs
+`preserveDrawingBuffer: true` on the renderer (`scene.ts`, added this
+pass) since a completed frame isn't guaranteed to survive outside the
+render loop otherwise. Asserts every terrain's claimed/unclaimed
+grayscale luminance delta clears 30 points. Getting this tool itself
+correct took real debugging — an early version sampled at world Y=0
+(ground level) instead of each terrain's actual top-surface height,
+which can catch a taller neighbor's face instead of the intended short
+tile (River/Estuary sit at height 0.3, squeezed next to Land's 0.55); a
+later version picked candidate tile pairs by array index rather than hex
+distance, which for a small feature like Estuary (every tile mutually
+adjacent) risked anti-aliased edge-bleed from the just-claimed tile
+corrupting the "unclaimed" reading right next to it. Both fixed by
+sampling at the correct world Y and picking the maximum-hex-distance
+pair among candidates.
+
+Final measured deltas (all comfortably over the 30-point threshold):
+Beach 63.8, Land 52.8, River 34.5, Estuary 31.1.
+
+![Readability: claimed Estuary vs. its unclaimed neighbors, dramatic contrast](tools/screenshots/readability_estuary_contrast.png)
+
+**2 — Smaller map, Panaji/Taleigao likeness.** Cut the generated map from
+243 hexes (27×9) down to **105 hexes (15×7)** — comfortably inside the
+suggested 80-120 range, still "wider than tall" per Section 8. Baked the
+reference schematic's most distinctive feature — a wide, rounded estuary
+mouth with the Land plateau curving around it rather than a flat
+rectangle — into the region rules: the Land/water-zone boundary column
+now varies per row via a "bulge" function, pulling the water zone west
+(narrowing Land) near the estuary's own latitude and tapering back to
+the baseline a couple of rows either side, clamped so Land never drops
+below a minimum width even at the bulge's peak. The estuary ring itself
+was also relaxed to bite into what the column bands alone would call
+Land (rather than being confined strictly to the pre-computed water
+zone), so the mouth reads as a genuine wide blob (7 tiles) rather than a
+narrow 2-tile notch on this smaller map. `tests/mapgen.test.ts`'s
+"eastern ~38%" check was loosened from a fixed global percentage to a
+generic "eastern third" bound, since the exact per-row boundary is now
+an internal tuning knob the test shouldn't hardcode — the real invariant
+(Coast→Beach→Land before any Estuary/River, independently re-verified
+per row) was already covered by a separate test and needed no change.
+New counts: coast 7, beach 14, land 65, river 12, estuary 7.
+
+![Full map, zoomed out: compact, no island-wrap, wide rounded estuary mouth, Land plateau curving around it](tools/screenshots/b2_map_shape_full.png)
+
+**3 — River roster: Small Dam + Sand Mining only.** Reverted Beachside
+Resort's v2.4 River eligibility (back to `["beach", "estuary"]`). Small
+Dam's role flipped from "trades away flood defense for income" to a real
+flood-control structure: added `effects.resilience: 5` (positive) and
+`effects.money: 8` — the latter wasn't actually present in the live data
+despite being described in both `GAUNTLET_PROMPT.md` Section 4 and this
+step prompt's own "unchanged from earlier revisions" phrasing, so this
+pass added it to match the documented role, not just flip a sign that
+turned out not to exist yet. Its `absorptionAtMaturity`/`failureThreshold`
+fields (0.75 / 1.15) — the fields hazard.ts actually reads today — were
+left unchanged; they were already strong, i.e. Small Dam was *already*
+mechanically flood-positive in practice, just not reflected in its
+`effects` map. The new `effects.resilience` key isn't consumed by any
+code yet (the generic-effects-driven local/zone resolution model is a
+documented but not-yet-built v3.0 phase — see `GAUNTLET_PROMPT.md`
+Section 0.1/12) — it's forward-compatible data, added because the
+standing architectural rule is that every element's impact goes through
+that one generic map, not because it changes today's hazard math.
+
+Added **Sand Mining** (`buildCost: 35`, `matureTurns: 0`, `effects:
+{money: 14, biodiversity: -3, resilience: -4}`, all placeholder
+magnitudes) as the "pure income at a real cost" role Small Dam used to
+carry alone. Its actual in-engine flood behavior comes from a genuinely
+mechanical (not just cosmetic) choice: giving it `targetsHazards:
+["monsoon_flood"]` with a near-zero `absorptionAtMaturity` (0.1) means
+building it on a river tile makes that tile stop being treated as an
+undamaged flood *source* (which `hazard.ts`'s `skipDamage` rule exempts
+entirely — an untouched river tile takes zero damage, since it *is* the
+flood, not a victim of it) and start taking near-full flood damage
+instead — a real, engine-verified "resilience −" outcome using existing
+mechanics, not just a label. New icon (a jagged sand-pile-with-scoop
+silhouette, distinct from Dune's smooth mound and Small Dam's low flat
+barrier) and a new warm sandy-orange `defenseSandMining` palette color
+(distinct from the cool-gray `defenseEngineered` family Small
+Dam/Seawall share) — both needed for `createElementGeometry` not to
+throw when a player actually tries to build it.
+
+The step prompt itself flagged a real, not-yet-settled balance question:
+as specified, Small Dam is close to strictly better than Sand Mining
+(money either way, plus a Resilience benefit instead of a cost, for the
+same Biodiversity cost). This pass's answer — Sand Mining costs less to
+build (35c vs. 55c) and returns meaningfully more Money (14 vs. 8) — is a
+first-pass placeholder tuning, not a balance-tested one; a new test
+(`tests/buildings.test.ts`) checks these two levers specifically, not
+that the wider balance question is resolved.
+
+Verified live: a claimed River tile's popover now offers exactly Small
+Dam and Sand Mining (no Beachside Resort); building Sand Mining and
+re-clicking shows its info card with `money +14 · biodiversity -3 ·
+resilience -4` — the popover picked up the new `resilience` key with no
+UI code changes at all, confirming the generic-effects display really is
+fully data-driven. A new scripted flood test confirms a Small-Dam-
+defended river tile now reduces downstream damage relative to an
+undefended one (`tests/hazard.test.ts`) — the reverse of the "trades
+away defense" framing from earlier revisions.
+
+![River roster: Sand Mining's new icon on a claimed River tile, Small Dam and Land visible alongside it](tools/screenshots/river_roster_sand_mining.png)
+
+**Verification:** 53/53 tests passing across 9 files (3 new: River's
+exactly-two-options menu, Small Dam/Sand Mining's effect directions and
+relative tuning, and the downstream-damage comparison), `tsc --noEmit`
+clean, production build succeeds.

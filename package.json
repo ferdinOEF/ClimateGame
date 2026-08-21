@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "tsx tools/smoke.ts",
+    "verify:readability": "tsx tools/verify_readability.ts",
     "mapgen": "tsx tools/mapgen/generate.ts"
   },
   "devDependencies": {

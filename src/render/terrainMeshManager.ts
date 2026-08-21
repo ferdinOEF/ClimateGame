@@ -9,25 +9,45 @@ import { SettleAnimator } from "./settleAnimation";
 export const HEX_SIZE = 1.0;
 const MAX_INSTANCES_PER_TYPE = 400;
 const UNCLAIMED_SINK = 0.15; // unclaimed tiles sit slightly lower, like they're still in the fog
-// Two playtest passes landed on opposite failure modes here. First, the
-// original per-terrain HSL desaturate (scale saturation down, nudge
-// lightness toward mid-gray) read fine tile-by-tile but not at a glance:
-// two terrain types with very different base lightness (sun-bleached sand
-// vs. deep forest) still read as clearly different colors even dimmed, so
-// "is this claimed?" wasn't legible across a mixed-terrain map. The fix for
-// that — blending *hard* toward one shared neutral fog tone — overshot:
-// a second playtest found unclaimed tiles now converge on one flat,
-// near-indistinguishable tan regardless of terrain, which reads as broken
-// in its own way once a claimed cluster isn't right there for contrast, and
-// unclaimed Beach/Estuary/River/Coast were no longer recognizably different
-// hues from each other. This is the middle ground: desaturate first (so
-// each terrain keeps a fraction of its own hue/lightness, staying
-// distinguishable from its neighbors), *then* blend a smaller amount toward
-// fog (so the whole unclaimed field still reads as hazy/muted next to a
-// claimed tile's full saturation). Tune both knobs together if this still
-// doesn't land — they're solving two different problems, not one.
-const UNCLAIMED_SATURATION_SCALE = 0.55; // how much of the terrain's own saturation survives
-const UNCLAIMED_FOG_BLEND = 0.32; // how far the desaturated color is then pulled toward `fog`
+// Three playtest passes on this function now. First, the original
+// per-terrain HSL desaturate (scale saturation down, nudge lightness toward
+// mid-gray) read fine tile-by-tile but not at a glance: two terrain types
+// with very different base lightness (sun-bleached sand vs. deep forest)
+// still read as clearly different colors even dimmed, so "is this claimed?"
+// wasn't legible across a mixed-terrain map. The fix for that — blending
+// *hard* toward one shared neutral fog tone — overshot in the opposite
+// direction: unclaimed tiles converged on one flat, near-indistinguishable
+// tan regardless of terrain. Worse, `STEP_PROMPT_visuals_map_river.md` item
+// 1 measured the ACTUAL rendered luminance (screenshot -> grayscale ->
+// sample) and found that "blend toward fog" approach doesn't even reliably
+// solve the original problem it was written for: for an already-light
+// terrain like Beach, `fog` (itself a bright, near-white tone) is barely
+// darker than the terrain's own full color, so claimed-vs-unclaimed Beach
+// came out ONE point of luminance apart — invisible in grayscale, and a
+// real accessibility failure for color-vision-deficient players, not just
+// a subjective "looks kinda samey" complaint.
+//
+// The actual fix has to guarantee a real luminance gap structurally,
+// regardless of how light or dark a given terrain's full color happens to
+// be — blending toward a fixed *lighter* reference color can never do that
+// for terrains already close to that reference. A flat HSL-lightness
+// *subtraction* (an earlier version of this function, see git history)
+// turned out to have the same class of problem one level down: THREE.js's
+// `Color.getHSL()` runs in a color-managed working space, not naive sRGB
+// hex math, so a hand-picked absolute lightness target doesn't mean what
+// it looks like on paper — mangroveTeal's actual `l` there measures
+// ~0.06, *below* a flat-subtraction version's own "floor" meant to
+// protect already-dark colors from crushing to black, which made that
+// floor clamp mangrove's unclaimed state *brighter* than its claimed
+// state instead of darker. A *proportional* (multiplicative) lightness
+// cut sidesteps the whole class of bug: multiplying any positive `l` by a
+// fixed factor < 1 always reduces it and never needs a separate floor,
+// regardless of which color space or absolute range `l` actually lives
+// in. Verified against `tools/verify_readability.ts`, which reads real
+// rendered pixels off the live WebGL canvas rather than trusting this
+// math on paper — see that script for the actual measured deltas.
+const UNCLAIMED_SATURATION_SCALE = 0.62; // how much of the terrain's own saturation survives — still reads "muted," not grayscale
+const UNCLAIMED_LIGHTNESS_FACTOR = 0.3; // unclaimed lightness = claimed lightness * this — the real source of the claimed/unclaimed gap
 
 interface TerrainInstance {
   coord: AxialCoord;
@@ -41,8 +61,7 @@ interface TerrainInstance {
 function dim(color: THREE.Color): THREE.Color {
   const hsl = { h: 0, s: 0, l: 0 };
   color.getHSL(hsl);
-  const desaturated = color.clone().setHSL(hsl.h, hsl.s * UNCLAIMED_SATURATION_SCALE, hsl.l);
-  return desaturated.lerp(paletteColor("fog"), UNCLAIMED_FOG_BLEND);
+  return color.clone().setHSL(hsl.h, hsl.s * UNCLAIMED_SATURATION_SCALE, hsl.l * UNCLAIMED_LIGHTNESS_FACTOR);
 }
 
 /**

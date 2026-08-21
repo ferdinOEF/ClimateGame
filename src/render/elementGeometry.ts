@@ -143,6 +143,27 @@ function smallDamGeometry(): THREE.BufferGeometry {
   ]);
 }
 
+/** Sand Mining: a jagged double-mound sand pile with a dredge scoop rising from it — distinct from Dune's smooth single mound and Small Dam's low flat barrier. */
+function sandMiningGeometry(): THREE.BufferGeometry {
+  const pile = flatIcon([
+    [-0.42, 0],
+    [-0.2, 0.4],
+    [0.05, 0.15],
+    [0.28, 0.42],
+    [0.42, 0]
+  ]);
+  const scoop = flatIcon([
+    [0.1, 0.15],
+    [0.1, 0.55],
+    [0.2, 0.62],
+    [0.34, 0.5],
+    [0.3, 0.4],
+    [0.18, 0.45],
+    [0.18, 0.15]
+  ]);
+  return mergeGeometries([pile, scoop]);
+}
+
 /**
  * House: the classic "pitched-roof-over-a-box" pentagon silhouette (walls
  * flat-topped at the eaves, a triangular roof rising to a peak above them)
@@ -177,6 +198,7 @@ const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   mangrove: mangroveGeometry,
   khazan: khazanGeometry,
   small_dam: smallDamGeometry,
+  sand_mining: sandMiningGeometry,
   house: houseGeometry
 };
 

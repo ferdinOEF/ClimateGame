@@ -226,6 +226,53 @@ Status: closed (see Log). Three pieces, all confirmed:
 2. Population as a tracked value — confirmed at game start: HUD shows `P 100`, which is exactly 50 (spec's starting Population) + 10×5 (10 pre-built Houses at population +5 each) = 100. The "population scales with House count" placeholder is working as intended. Closed — see Log.
 3. Starting state — Coin confirmed at exactly 1,000 on a fresh load this pass, and the 10-House residential cluster on Land is present and visibly built (not something the player has to build). Closed — see Log.
 
+## Bucket C — Step prompt: readability, Panaji/Taleigao map, river roster
+
+Source: `STEP_PROMPT_visuals_map_river.md`, worked as a scoped addition
+once Bucket A/B closed out. All three items independent of each other,
+all closed this pass — see PROGRESS.md's "Step prompt" section for full
+detail (root causes, exact numbers, screenshots).
+
+### C1. Color theme & readability
+
+Status: closed. Root cause was two-part: `palette.ts`'s base colors were
+under-saturated, and `terrainMeshManager.ts`'s `dim()` function (a
+"blend toward `fog`" approach) could never guarantee a real lightness
+gap for a terrain already close to `fog`'s own brightness — exactly
+Beach's problem, measured at 1 point of luminance apart pre-fix.
+Rewrote `dim()` as a proportional lightness cut instead. Built
+`tools/verify_readability.ts` (new, permanent — `npm run
+verify:readability`) to read real rendered pixels off the live canvas
+and assert the claimed/unclaimed luminance delta clears 30 points for
+every buildable terrain — now passing with real margin (Beach 63.8,
+Land 52.8, River 34.5, Estuary 31.1).
+
+### C2. Regenerate the map: smaller, Panaji/Taleigao-shaped
+
+Status: closed. Cut from 243 hexes (27×9) to 105 (15×7). The Land/water
+boundary now bulges per-row (narrows near the estuary's own latitude,
+widens away from it) so the plateau reads as curving around a wide,
+rounded estuary mouth rather than a flat rectangle — the reference
+schematic's most distinctive feature. New counts: coast 7, beach 14,
+land 65, river 12, estuary 7. Sea-left/Beach/Land/Estuary-River-right
+ordering independently re-verified per row, unchanged.
+
+### C3. River roster: Small Dam + Sand Mining only
+
+Status: closed. Beachside Resort's River eligibility (v2.4) reverted.
+Small Dam gained `effects.money`/`effects.resilience` (both positive) —
+re-framed as a flood-control structure; its `absorptionAtMaturity`/
+`failureThreshold` fields (what `hazard.ts` actually reads) were already
+strong and unchanged. Added Sand Mining (new element, new icon, new
+palette color) as the purely-extractive option — its "resilience −"
+framing is a real engine effect, not just a label: building it on a
+river tile makes that tile stop being exempt from flood damage (an
+untouched river tile is the flood's own source and takes none) while
+providing almost no absorption in return. Verified live: River's
+popover now offers exactly these two options; a new scripted test
+confirms Small Dam now reduces downstream flood damage relative to an
+undefended river tile.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -243,3 +290,6 @@ Status: closed (see Log). Three pieces, all confirmed:
 - 2026-08-21, A5 (Mangrove-on-Estuary charges Coin but doesn't build): closed. Root cause was a third, previously-undiscovered bug, not a build-flow issue: `THREE.InstancedMesh.boundingSphere` is computed lazily and cached forever, so a mesh whose bounding sphere happened to be first computed mid-settle-animation (exactly what `?autoclaim=N` triggers) silently fails all future raycasts against it — clicks that look correct but produce no game action. Fixed by invalidating each touched mesh's cached bounding sphere every animation tick in `SettleAnimator`, plus at the two other places instance matrices are written directly. Re-verified the original repro end-to-end after the fix: Coin -30, popover auto-closes, re-click shows a proper Mangrove info card with `food +1`.
 - 2026-08-21, B1 (map reads as an island, diagonal estuary vein): closed. Root cause: `axialToWorld`'s shear term (`x = √3·(q + r/2)`) makes a plain axial-rectangle coordinate range render as a parallelogram in world space, not a rectangle — with a non-yawing camera this reads exactly as a wedge-shaped island with diagonal seams. Fixed with row-offset coordinates (`rowQMin(r) = Q_MIN - floor(r/2)`) that cancel the shear; verified both by a new automated rectangle test (measured world-space drift matches the theoretical half-hex stagger exactly) and by screenshots at multiple zoom levels.
 - 2026-08-21, B2 (8-element roster) and B3 (Food/Population economy): both closed. The one previously-blocked piece (Mangrove/Khazan's Food effect) is confirmed working now that A5 is fixed.
+- 2026-08-21, C1 (readability): closed. `dim()` rewritten from a fog-blend to a proportional lightness cut; palette re-saturated and re-spread. New permanent tool `tools/verify_readability.ts` (`npm run verify:readability`) reads real WebGL pixel values and asserts a 30-point claimed/unclaimed luminance floor — currently passing for all four buildable terrain types.
+- 2026-08-21, C2 (map reshape): closed. Map cut from 243 to 105 hexes; Land/water boundary now bulges per-row for a Panaji/Taleigao-like wide, rounded estuary mouth. No longer an island wrapped by sea; Sea-left/Beach/Land/Estuary-River-right order re-verified.
+- 2026-08-21, C3 (river roster): closed. Small Dam is now flood-resilience-positive (`effects.money`/`effects.resilience` added, its already-strong `absorptionAtMaturity` unchanged); new Sand Mining element added as the extractive option; Beachside Resort's River eligibility reverted. Verified live and via a new scripted flood-comparison test.

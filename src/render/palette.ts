@@ -6,18 +6,24 @@ import * as THREE from "three";
  * plains green, river blue, mangrove teal-green. Deliberately not a flat
  * postcard tropical green/blue-only set.
  *
- * Lightness is deliberately spread across the 5 terrain colors (checked
- * against the 0.3R+0.59G+0.11B luma the Section 6 grayscale QA method uses)
- * so adjacent tiles stay distinguishable with all color removed, not just
- * by hue: mangroveTeal ~88, seaTurquoise ~130, riverBlue ~137,
- * landGreen ~182, sandGold ~208.
+ * `STEP_PROMPT_visuals_map_river.md` item 1 found the previous version of
+ * this palette read as a narrow olive/khaki/tan band once actually
+ * rendered and grayscale-sampled (claimed vs. unclaimed Beach only ~1
+ * point of luminance apart) — under-saturated hues alone weren't doing the
+ * "Goan, not generic-tropical" job either. Deepened/punched up every base
+ * color and re-spread their grayscale luminance (0.3R+0.59G+0.11B) further
+ * apart: mangroveTeal ~72, seaTurquoise ~93, riverBlue ~117,
+ * landGreen ~162, sandGold ~189. These are the CLAIMED/full-color values;
+ * `terrainMeshManager.ts`'s `dim()` is what's actually responsible for the
+ * claimed-vs-unclaimed gap now (a real lightness drop, not a blend toward
+ * this file's `fog`) — see its comment.
  */
 export const PALETTE: Record<string, THREE.Color> = {
-  mangroveTeal: new THREE.Color("#2C6E5E"), // estuary
-  seaTurquoise: new THREE.Color("#2FA6A2"), // coast
-  riverBlue: new THREE.Color("#4B9FBD"), // river
-  landGreen: new THREE.Color("#A7CE5E"), // land (interior)
-  sandGold: new THREE.Color("#EAD08A"), // beach
+  mangroveTeal: new THREE.Color("#1F5C4E"), // estuary — deep mangrove teal
+  seaTurquoise: new THREE.Color("#167C77"), // coast — Arabian Sea turquoise
+  riverBlue: new THREE.Color("#3E86B0"), // river
+  landGreen: new THREE.Color("#8FBF3E"), // land (interior)
+  sandGold: new THREE.Color("#F0B94A"), // beach — sun-bleached sand gold
   fog: new THREE.Color("#D9E6E0"),
   sky: new THREE.Color("#CFE6E8"),
   // Element accent colors — deliberately distinct from every terrain
@@ -28,6 +34,7 @@ export const PALETTE: Record<string, THREE.Color> = {
   defenseSandyVegetation: new THREE.Color("#5FA84A"),
   resortGold: new THREE.Color("#D9A63E"),
   defenseEngineered: new THREE.Color("#7C8277"),
+  defenseSandMining: new THREE.Color("#C68A3D"), // warm sandy-orange — distinct from the cool-gray engineered family
   defenseMangrove: new THREE.Color("#4FAE6E"),
   defenseKhazanBund: new THREE.Color("#8C6A3F"),
   houseTerracotta: new THREE.Color("#C25730") // laterite-tile roof red

@@ -37,7 +37,7 @@
     "id": "beachside_resort",
     "name": "Beachside Resort",
     "kind": "building",
-    "validTerrainIds": ["beach", "estuary", "river"],
+    "validTerrainIds": ["beach", "estuary"],
     "buildCost": 40,
     "matureTurns": 0,
     "colorKey": "resortGold",
@@ -123,7 +123,24 @@
     "failureThreshold": 1.15,
     "failureRedirectMultiplier": 1.4,
     "colorKey": "defenseEngineered",
-    "effects": { "biodiversity": -1 },
-    "failureMode": "Breaches above failureThreshold: destroyed, redirects unabsorbed surge onward at failureRedirectMultiplier."
+    "effects": { "money": 8, "biodiversity": -1, "resilience": 5 },
+    "failureMode": "Breaches above failureThreshold: destroyed, redirects unabsorbed surge onward at failureRedirectMultiplier.",
+    "note": "PLACEHOLDER money/resilience magnitudes (STEP_PROMPT_visuals_map_river.md item 3 / PROGRESS.md). resilience is POSITIVE as of this pass — earlier revisions had it negative; re-framed as a flood-control structure, not a flood-defense-trading one. absorptionAtMaturity/failureThreshold (unchanged, already strong) are what hazard.ts actually reads today — effects.resilience is forward-compatible data for the not-yet-built zone-based resolution model (GAUNTLET_PROMPT.md v3.0 Section 2/11)."
+  },
+  {
+    "id": "sand_mining",
+    "name": "Sand Mining",
+    "kind": "defense",
+    "category": "engineered",
+    "targetsHazards": ["monsoon_flood"],
+    "validTerrainIds": ["river"],
+    "buildCost": 35,
+    "maintenanceCostPerTurn": 0,
+    "matureTurns": 0,
+    "absorptionAtMaturity": 0.1,
+    "colorKey": "defenseSandMining",
+    "effects": { "money": 14, "biodiversity": -3, "resilience": -4 },
+    "failureMode": "No catastrophic breach — it simply offers almost no flood protection (absorptionAtMaturity 0.1, far below Small Dam's 0.75). An untouched river tile is the flood's own source and is skipped entirely (zero damage); building anything on it — Sand Mining included — makes it start taking damage instead, and Sand Mining's near-absent absorption means that damage is close to the full undefended amount.",
+    "note": "PLACEHOLDER NUMBERS (STEP_PROMPT_visuals_map_river.md item 3): only the direction of each effect is specified (money up, biodiversity down, resilience down). Tuned here — cheaper to build than Small Dam, no maintenance cost, meaningfully higher Money return — so it isn't simply worse than Small Dam in every respect, per that file's explicit balance flag; not a settled/tested number."
   }
 ]

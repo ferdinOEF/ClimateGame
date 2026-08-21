@@ -37,10 +37,16 @@ import path from "node:path";
 import { type AxialCoord, axialKey, neighbor, axialDistance, hexRing, hexSpiral } from "../../src/core/hex";
 import { TERRAIN_DEFS } from "../../src/core/terrain";
 
-const Q_MIN = -13;
-const Q_MAX = 13;
-const R_MIN = -4;
-const R_MAX = 4;
+// STEP_PROMPT_visuals_map_river.md item 2: cut total map size down
+// substantially for this pilot (~80-120 hex target — see that file's
+// reasoning) from the previous 243-hex/27x9 map, and shape it with a bit
+// of Panaji/Taleigao likeness — see `panaji_taleigao_reference_schematic.
+// png`, a proportions/shape reference, never a traced map. 15x7 = 105
+// hexes, still "wider than tall" per Section 8.
+const Q_MIN = -7;
+const Q_MAX = 7;
+const R_MIN = -3;
+const R_MAX = 3;
 const SEED = 20260819; // fixed seed for this pilot (Section 4: "a fixed seed is fine ... a new seed per era is a later enhancement")
 
 function mulberry32(seed: number) {
@@ -86,16 +92,37 @@ function colIndex(c: AxialCoord): number {
 // --- 2. Define the left-to-right bands by column index, not raw q ----------
 
 const COAST_COLS = 1;
-const BEACH_COLS = 3;
+const BEACH_COLS = 2;
 const coastMaxCol = COAST_COLS - 1; // colIndex <= this: Sea
 const beachMaxCol = coastMaxCol + BEACH_COLS; // colIndex in (coastMaxCol, beachMaxCol]: Beach
-const waterZoneMinCol = Math.floor(TOTAL_COLS * 0.62); // Estuary/River confined to the eastern ~38%
+const BASE_WATER_ZONE_MIN_COL = Math.floor(TOTAL_COLS * 0.6); // Estuary/River's baseline east-side start, away from the bulge
+
+// The reference schematic's single most distinctive feature: the estuary
+// mouth isn't a uniform-width band running the map's full height — the
+// Land plateau curves/bulges around it, narrowing near the river mouth's
+// latitude and widening away from it (Taleigao plateau wrapping a wide,
+// rounded Mandovi-like mouth, not a flat rectangle — see the step
+// prompt's item 2). Modeled by shifting the water zone's start column
+// WEST (more water, less Land) for rows near `BULGE_CENTER_ROW`, tapering
+// back to the baseline within `BULGE_RADIUS` rows either side. Clamped so
+// Land never drops below `MIN_LAND_COLS` even at the bulge's peak — this
+// is still buildable interior terrain, not something that should vanish.
+const BULGE_CENTER_ROW = 0;
+const BULGE_RADIUS = 2;
+const BULGE_AMOUNT_COLS = 3;
+const MIN_LAND_COLS = 2;
+
+function rowWaterZoneMinCol(r: number): number {
+  const falloff = Math.max(0, 1 - Math.abs(r - BULGE_CENTER_ROW) / BULGE_RADIUS);
+  const bulge = Math.round(BULGE_AMOUNT_COLS * falloff);
+  return Math.max(beachMaxCol + 1 + MIN_LAND_COLS, BASE_WATER_ZONE_MIN_COL - bulge);
+}
 
 const coastCoords = allCoords.filter((c) => colIndex(c) <= coastMaxCol);
 const coastSet = new Set(coastCoords.map(axialKey));
 const beachCoords = allCoords.filter((c) => colIndex(c) > coastMaxCol && colIndex(c) <= beachMaxCol);
 const beachSet = new Set(beachCoords.map(axialKey));
-const waterZoneCoords = allCoords.filter((c) => colIndex(c) >= waterZoneMinCol);
+const waterZoneCoords = allCoords.filter((c) => colIndex(c) >= rowWaterZoneMinCol(c.r));
 const waterZoneSet = new Set(waterZoneCoords.map(axialKey));
 
 // --- 3. Carve a wide, branching estuary: two river arms meeting inland -----
@@ -112,8 +139,8 @@ const riverSourceB = eastEdgeCoords.reduce((best, c) => (c.r > best.r ? c : best
 // to the coastal midline, so there's a real stretch of river continuing
 // further east/inland past it once the arms join.
 const confluence = waterZoneCoords.reduce((best, c) => {
-  const score = (colIndex(c) - waterZoneMinCol) + Math.abs(c.r) * 0.5;
-  const bestScore = (colIndex(best) - waterZoneMinCol) + Math.abs(best.r) * 0.5;
+  const score = (colIndex(c) - rowWaterZoneMinCol(c.r)) + Math.abs(c.r) * 0.5;
+  const bestScore = (colIndex(best) - rowWaterZoneMinCol(best.r)) + Math.abs(best.r) * 0.5;
   return score < bestScore ? c : best;
 }, waterZoneCoords[0]);
 
@@ -152,9 +179,13 @@ function walkRiver(start: AxialCoord, target: AxialCoord): AxialCoord[] {
 const riverArmA = walkRiver(riverSourceA, confluence);
 const riverArmB = walkRiver(riverSourceB, confluence);
 
-// The estuary itself: the confluence plus a ring of neighbors still inside
-// the water zone — a small branching blob, not a single tile.
-const estuaryCoords = [confluence, ...hexRing(confluence, 1).filter((c) => waterZoneSet.has(axialKey(c)))];
+// The estuary itself: the confluence plus a ring of neighbors — a small
+// branching blob, not a single tile, deliberately allowed to bite into
+// what the column bands alone would call Land (constrained to the grid,
+// not to `waterZoneSet`) so the mouth reads as wide/rounded even on this
+// pilot's small map — this is the Land plateau "wrapping around" the
+// estuary mouth from the reference schematic, not a modeling error.
+const estuaryCoords = [confluence, ...hexRing(confluence, 1).filter((c) => inGrid(c))];
 const estuarySet = new Set(estuaryCoords.map(axialKey));
 
 // --- 4. Assign terrain: Coast / Beach / Estuary / River fixed, rest Land ---

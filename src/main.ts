@@ -427,6 +427,13 @@ function devAutoBuild(kind: "building" | "defense"): void {
   refreshHud();
 }
 
+// A tiny, always-present, inert-unless-called test hook — lets
+// tools/verify_readability.ts (and any future script needing exact camera
+// framing) pan straight to a world coordinate via the scene's own
+// `focusOn`, instead of reverse-engineering the pan-drag pixel math. Costs
+// nothing at runtime beyond one property assignment.
+(window as unknown as Record<string, unknown>).__focusOnForTest = focusOn;
+
 const params = new URLSearchParams(location.search);
 // coinboost first: autoclaim/autobuild/autodefend below spend coin, so a
 // boost given after them would arrive too late to fund what they just did.
