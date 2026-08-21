@@ -143,24 +143,28 @@ function smallDamGeometry(): THREE.BufferGeometry {
   ]);
 }
 
-/** House: a wide gable-roofed silhouette with a chimney — simpler and squatter than Resort's cabana, reads as plain residential. */
+/**
+ * House: the classic "pitched-roof-over-a-box" pentagon silhouette (walls
+ * flat-topped at the eaves, a triangular roof rising to a peak above them)
+ * plus a small chimney — the standard "home" pictogram shape, deliberately
+ * plain rather than the earlier version's flared eaves + a notch cut into
+ * the base, which had no distinct wall section at all and read as
+ * furniture (a bench/couch/wagon) instead of a dwelling — see
+ * NEXT_STEPS.md's A3.
+ */
 function houseGeometry(): THREE.BufferGeometry {
   const body = flatIcon([
-    [-0.42, 0],
-    [-0.48, 0.28],
-    [0, 0.54],
-    [0.48, 0.28],
-    [0.42, 0],
-    [0.3, 0],
-    [0.3, 0.16],
-    [-0.3, 0.16],
-    [-0.3, 0]
+    [-0.36, 0],
+    [-0.36, 0.3],
+    [0, 0.58],
+    [0.36, 0.3],
+    [0.36, 0]
   ]);
   const chimney = flatIcon([
-    [0.22, 0.22],
-    [0.22, 0.46],
-    [0.32, 0.46],
-    [0.32, 0.3]
+    [0.16, 0.3],
+    [0.16, 0.75],
+    [0.26, 0.75],
+    [0.26, 0.3]
   ]);
   return mergeGeometries([body, chimney]);
 }

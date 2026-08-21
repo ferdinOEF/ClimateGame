@@ -321,23 +321,22 @@ function openTilePopover(coord: AxialCoord): void {
 
 // --- Input ---------------------------------------------------------------------
 //
-// Dismissal (NEXT_STEPS.md): if the popover is open, the first click
-// anywhere just closes it and does nothing else — a second, separate click
-// is needed to claim a tile or open a different tile's popover. No
-// same-click close-and-reopen chains. The canvas's own listener handles
-// canvas clicks; the document-level listener further down catches clicks
-// that land outside the canvas entirely (the HUD, say).
+// Dismissal (NEXT_STEPS.md's A1): BuildPopover's own full-viewport backdrop
+// now does the heavy lifting — while a popover is open, it physically sits
+// above the canvas (and the HUD) and intercepts every click, so this
+// canvas listener can no longer even fire for a "click elsewhere while a
+// popover is open" case; the `isOpen` check below is a harmless leftover
+// safety net, not the real mechanism anymore. No same-click
+// close-and-reopen chains: a click that closes the popover is consumed by
+// the backdrop and never reaches the raycast/claim/build logic below on
+// that same click.
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
 renderer.domElement.addEventListener("click", (event: MouseEvent) => {
   if (wasDrag()) return; // a pan, not a click — don't also claim/open a popover at the drag's end point
-
-  if (buildPopover.isOpen) {
-    buildPopover.hide();
-    return;
-  }
+  if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
 
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -355,21 +354,6 @@ renderer.domElement.addEventListener("click", (event: MouseEvent) => {
   else if (state.isClaimable(coord)) claimTile(coord);
   // else: unreachable in practice under v2.2 (every unclaimed tile is
   // claimable), kept as a no-op guard rather than an assumption.
-});
-
-// Canvas clicks are handled above; a click on the HUD or any other
-// non-canvas area of the page never reaches that listener at all, so the
-// popover would otherwise stay open forever if a player clicked there.
-// This one, on `document`, catches exactly that gap — for a canvas click
-// it always fires *after* the canvas's own listener already closed the
-// popover, so `isOpen` is already false and this is a no-op; for a click
-// inside the popover itself (its own buttons stop propagation, but its
-// background doesn't) `contains` keeps it open.
-document.addEventListener("click", (event: MouseEvent) => {
-  if (!buildPopover.isOpen) return;
-  const target = event.target as Node | null;
-  if (renderer.domElement.contains(target) || buildPopover.contains(target)) return;
-  buildPopover.hide();
 });
 
 document.addEventListener("keydown", (event: KeyboardEvent) => {
@@ -449,6 +433,14 @@ const params = new URLSearchParams(location.search);
 const coinBoost = params.get("coinboost");
 if (coinBoost) {
   state.coin += Number(coinBoost);
+  refreshHud();
+}
+// Same reasoning as coinboost: needed before autoclaim below, since enough
+// autoclaimed turns will otherwise trigger a real flood/cyclone and reset
+// the era (via checkEraEnd) partway through a scripted scenario.
+const resilienceBoost = params.get("resilienceboost");
+if (resilienceBoost) {
+  state.resilience += Number(resilienceBoost);
   refreshHud();
 }
 const autoclaimParam = params.get("autoclaim");

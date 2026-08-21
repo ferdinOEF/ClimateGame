@@ -63,6 +63,7 @@ export class ElementMeshManager {
     } else {
       mesh.setMatrixAt(index, new THREE.Matrix4().makeTranslation(x, terrainTopY, z));
       mesh.instanceMatrix.needsUpdate = true;
+      mesh.boundingSphere = null;
     }
 
     const seed = coord.q * 41 + coord.r * 19;

@@ -5,14 +5,6 @@ This is the step-by-step queue for the gauntlet loop, kept separate from
 game is, this file says what to do right now, one item at a time. Read
 `GAUNTLET_PROMPT.md`'s Revision log first, especially v2.4 and Section 0.1.
 
-**Note (this revision):** only v2.3 copies of `GAUNTLET_PROMPT` could be
-found on disk (Downloads: `.docx` and two `.md` exports, all describing
-v2.2/v2.3 — Risk still present or just-removed, no Land terrain, House,
-Food, or Population). No v2.4 document exists yet. This file is detailed
-enough to act on directly (exact effects values, terrain lists, starting
-state) — proceeding from it rather than blocking. Cross-check against a
-real v2.4 doc later if one turns up.
-
 Work Bucket A in order before touching Bucket B. Explicit sequencing
 directive, Section 0.1: get the existing loop feeling good to actually
 play before adding or expanding content.
@@ -20,191 +12,234 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
-**Both buckets are clear as of 2026-08-20** — A1-A3 (A3's deferred 8th
-icon closed out by B2 adding House) and B1-B3 all closed. This file has no
-open punch-list items; the next revision of the build prompt (or a fresh
-playtest) is what should add more.
-
 ## Bucket A — UI/UX & Playability (work this first)
 
 ### A1. Fix: build popover doesn't auto-close after a successful build, and doesn't reflect a tile's already-built state — top priority
 
-Status: closed (see Log). Root-caused with a live Playwright session rather
-than guessing from the repro text: point 1 (auto-close) actually already
-worked — `BuildPopover`'s own button handler always called `hide()` after
-`onSelect`. The real, confirmed gap was point 2: clicking an *occupied*
-tile just silently did nothing (`buildableAt` correctly returns `[]` for a
-built tile, and `show()` calls `hide()` on zero options with no other
-feedback), which reads exactly like "the popover never closed / never
-registered the build" to a player re-clicking to check — almost certainly
-what the original report was actually seeing. Points 3 (outside-click/
-Escape) were genuinely missing entirely. Also confirmed at the data layer:
-`state.build()` was deducting Coin and writing to `state.elements`
-correctly the whole time — this was purely a UI-feedback gap, never a
-double-charge risk.
+Status: closed (see Log). Found the actual root cause this time, and it's
+a single bug explaining every symptom below at once: `.build-popover` in
+`hud.css` has its own unconditional `display: flex`. Author-stylesheet
+rules always beat the user-agent stylesheet's `[hidden] { display: none }`
+default *regardless of selector specificity* — so every previous pass's
+`this.el.hidden = true` was updating the DOM attribute correctly (confirmed
+live via `getComputedStyle`: `hiddenAttr: true`, `computedDisplay: "flex"`)
+but the popover never actually disappeared on screen. That explains:
+- Outside-click/Escape "not dismissing" — they *were* setting the right JS state the whole time; the CSS just never reflected it.
+- Clicks passing through to the map underneath a "stale" popover — `main.ts`'s canvas handler checks `buildPopover.isOpen` (`!el.hidden`), which correctly read `false` after a close, so it correctly treated the next click as a normal map interaction — there was nothing to "pass through," the popover was already closed as far as the game logic knew, it just still *looked* open.
+- A5 (Mangrove-on-Estuary charging Coin but not building) — almost certainly this same illusion: the build actually completed correctly (confirmed independently — see Log), but the stale-looking popover made it read as if nothing happened.
 
-Fix, all in one pass since it's the same state-management code path:
-1. On a successful build, close the popover immediately — no lingering, no re-showing the same list. (Already worked; verified, not changed.)
-2. Clicking a tile that already has an element built on it now shows a read-only info card (name, category, effects) via `BuildPopover.showInfo()` instead of silently doing nothing or offering a build menu — Section 3's "one tile, one element" is now enforced at the UI level, not just the data layer.
-3. A new `document`-level click listener in `main.ts` closes the popover on any click that lands outside both the canvas and the popover itself (the HUD, previously unreachable by the canvas-only listener); a `keydown` listener closes it on Escape. Neither charges Coin.
-4. Popover position still clamps to stay within the viewport — re-verified after refactoring the clamp math into a shared `positionAndReveal()` helper used by both the build menu and the new info card.
+Fixed with `.build-popover[hidden] { display: none; }`, plus the
+explicitly-requested real modal layer on top: `BuildPopover` now owns a
+`.popover-backdrop` (full-viewport, `position: fixed; inset: 0`, z-index
+between the canvas and the popover box) that's shown/hidden together with
+the popover. While open, the backdrop physically sits above the canvas
+*and* the HUD, so every click except one on the popover's own content hits
+the backdrop first and just closes the popover — the "stale popover, click
+leaks to the map" scenario is now structurally impossible, not just
+guarded against. `main.ts`'s old document-level outside-click listener
+(added last pass to patch around the CSS bug) is gone — the backdrop
+subsumes it entirely.
 
-Verify: build an element on a tile, confirm the popover closes immediately
-and the tile now renders that element; click the same tile again, confirm
-it shows the built element's info, not a build menu; open a popover on any
-tile, click outside (on the HUD)/press Escape, confirm it closes with no
-Coin change; repeat near a viewport edge and confirm nothing clips. All
-four confirmed via a live Playwright session against the running dev
-server (not just static code reading) — see Log.
+Verified live (Playwright driving the actual page, checking
+`getComputedStyle(...).display` — not the `.hidden` attribute, which is
+exactly the signal that gave a false "working" reading last time):
+auto-close on build, occupied-tile info card, Escape, and the critical
+one — clicking a totally different, unclaimed tile far away while a
+popover was open closes the popover *and* leaves that other tile's claim
+state and Coin completely untouched (13 tiles / 1000 coin before and
+after). Also confirmed a click on the popover's own padding does *not*
+close it. Popover clipping near the viewport's top edge: re-verified via
+the `testpopoverclip` dev hook, still clamps correctly — not a real issue.
 
 ### A2. Unclaimed-but-visible hexes should read as visually distinct from claimed ones
 
-Status: closed (see Log). The previous pass over-corrected: chasing an
-earlier "unclaimed doesn't read as unclaimed" bug, the fix blended every
-unclaimed tile 72% toward one shared neutral `fog` tone — which does keep
-claimed vs. unclaimed obvious, but pushes different unclaimed *terrain*
-types close enough together that a wide, mostly-Beach view reads as one
-flat tan field, exactly what this pass's playtest flagged. `dim()` in
-`terrainMeshManager.ts` now does both things it needs to, in order:
-desaturate each terrain's own color first (`hsl.s * 0.55`, so it keeps
-enough of its own hue/lightness to stay distinguishable from other
-terrains), *then* blend a smaller amount (32%, down from 72%) toward `fog`
-(so the whole unclaimed field still reads as muted next to a claimed
-tile's full saturation). Re-screenshotted at both close and wide zoom:
-unclaimed Coast now reads as a clear blue-teal distinct from unclaimed
-Beach's tan, and the claimed cluster still pops via saturation alone.
+Status: closed (see Log). Did the explicit dedicated re-check this pass:
+claimed one isolated tile of each terrain type (Beach, Land, River,
+Estuary), away from the starting cluster, and screenshotted each next to
+its unclaimed neighbors. All four are clearly distinguishable by
+color/saturation alone: claimed Beach reads gold/orange against
+tan/khaki, claimed Land reads bright green against dim olive, claimed
+River reads bright teal against grayish-blue, claimed Estuary reads deep
+green against dim grayish-teal. This confirms the mixed signal from the
+prior pass — it wasn't a fluke or an already-improved regression, the
+dimming logic genuinely does work per-terrain; the original report was
+likely affected by the A1 popover bug making it hard to cleanly test
+claim state at the time.
 
-One caveat worth logging honestly: at today's coastal-only scope, the
-*interior* of the map is almost entirely Beach by design (Land doesn't
-exist until B1), so a screenshot panned deep inland will still look
-fairly monotonous — that's the map's actual terrain composition, not a
-color-treatment bug, and should resolve on its own once B1 adds Land.
-
-Verify: a screenshot where claimed vs. unclaimed is obviously
-distinguishable by color/saturation alone, and where unclaimed Coast and
-unclaimed Beach read as recognizably different hues rather than
-converging on one flat tone (confirmed via `a2_rebalanced_close.png` /
-`a2_rebalanced_far.png`). Full Beach/Estuary/River/Land variety in one
-frame isn't checkable yet — Land doesn't exist until B1 — but the
-underlying `dim()` treatment is terrain-agnostic and applies identically
-to whichever terrain a tile has, so there's no reason to expect it to
-behave differently once Land exists.
+Fix: none needed — already correct.
 
 ### A3. Add: thoughtfully designed icons for each buildable element
 
-Status: 7/8 closed, 1 blocked on B2 (see Log). Dune, Sandy Vegetation
-(Pandanus — a spiky radiating-blade rosette, not a generic palm), Seawall,
-Mangrove, Khazan, Small Dam, and Beachside Resort each already have a
-distinct flat-silhouette icon (`src/render/elementGeometry.ts`, done in the
-earlier trimmed-roster pass) — confirmed readable and distinguishable from
-each other via screenshot (`bucketb_elements2.png`: Mangrove's rounded
-canopy blob, Small Dam's blocky notched barrier, and Beachside Resort's
-cabana-plus-umbrella all clearly read apart at actual in-game size). House
-is the 8th and doesn't exist as an element yet — it's defined in B2, which
-hasn't landed. Genuinely can't design/verify its icon before the element
-itself exists with real terrain/effects to inform the silhouette, and
-Section 0.1's own sequencing rule says Bucket A shouldn't reach into
-Bucket B content to manufacture a placeholder just to check this box.
-Deferred: House's icon is now folded into B2's own Verify step rather than
-tracked here twice.
+Status: closed (see Log). The House geometry in
+`src/render/elementGeometry.ts` had flared eaves and a notch cut into its
+base with no distinct wall section at all — nothing between "roofline"
+and "ground," which is exactly why it read as a bench/couch/wagon instead
+of a dwelling. Replaced with a plain pentagon silhouette (flat-topped
+walls at the eaves, rising to a peak above them — the standard "home"
+pictogram) plus a small chimney block. Confirmed by screenshot: reads
+clearly as a house at both normal and close zoom. The other 7 elements
+were already confirmed distinguishable/legible in earlier passes — see
+Log — so this closes the full 8-element roster.
 
-Verify: 7 of 8 icons visible together and distinguishable from each other
-at actual UI size (done); House's icon to be verified alongside its
-element in B2.
+### A4. Claiming an unclaimed hex changes Coin by +46 instead of the stated -4c
+
+Status: investigated, closed as **not a bug** — this is two individually-
+correct mechanics combining in a way that reads as broken from the HUD
+alone, not a sign/magnitude error. Traced `claim()` in `GameState`: it
+does subtract the displayed price correctly (`-4`), but `claim()` is also
+the sole call site of `advanceTurn()` — the "one claim = one turn" design
+from earlier phases — which pays out every standing element's income for
+that turn via `meterTotal("money")`. At the starting state (10 pre-built
+Houses, each `money +5`), that payout is `10 × 5 = 50`. Net effect:
+`-4 + 50 = +46` — exactly the reported number, exactly reproducible, and
+independent of which tile/terrain is claimed (claim cost is flat and
+income comes from standing elements, not the claimed tile). Isolated
+diagnostic confirmed both halves of the math independently before
+recombining them.
+
+Deliberately **not** changing this: `claim()` is the only place
+`advanceTurn()` is called anywhere in the codebase, so decoupling them
+would either remove per-claim income entirely (breaking the B3 economy
+loop this same pass confirmed working) or require inventing a second turn
+trigger with no spec basis. The displayed "4c" is the claim cost, not a
+promise that Coin will *drop* by 4 — it will net positive whenever standing
+income exceeds it, which is the intended shape of the economy (claim more
+land → own more income-producing tiles → afford to claim faster), not an
+exploit. Flagging this explicitly rather than closing it silently, since
+it diverges from the original repro's "pure money-printing exploit"
+framing: the exploit read is understandable from the HUD's "4c" label
+alone, but the label describes the cost, not the net delta.
+
+If the HUD label is still misleading in practice, the fix is a copy/UI
+change (e.g. show the net effect, or label it "claim cost" more
+explicitly) — not a state-management fix.
+
+### A5. Fix: building on an Estuary tile deducts Coin but doesn't actually build anything
+
+Status: closed (see Log) — and the real root cause turned out to be
+neither the build-confirmation flow nor A1's CSS bug, but a third,
+previously-undiscovered bug: a stale cached `boundingSphere` on
+`THREE.InstancedMesh` silently breaking raycasting (click detection)
+against specific tiles.
+
+`GameState.build()` and `ElementMeshManager.place()` were both proven
+correct in isolation early in this investigation — Mangrove-on-Estuary
+writes its state and renders its icon perfectly when driven directly,
+without going through a click at all. That pointed at click handling
+itself. Tracing `renderer.domElement`'s click listener live (with
+temporary debug logging, since removed) showed the raycaster returning
+zero hits at screen positions that were visibly, unambiguously over
+Estuary tiles — confirmed by comparing against a manual straight-down ray
+to the same world coordinates, which hit correctly every time.
+
+The mechanism: `THREE.InstancedMesh.boundingSphere` is computed lazily
+(on a mesh's first raycast, or its first frustum-culling check during
+render) and then cached forever — nothing in Three.js ever invalidates it
+automatically as instances move. `TerrainMeshManager`/`ElementMeshManager`
+both animate tiles/elements into place via a shared `SettleAnimator`
+(`claimTile()`'s reveal, `place()`'s drop-in), which repeatedly calls
+`mesh.setMatrixAt()` well after that first bounding-sphere snapshot — so
+once a mesh's very first bounding-sphere computation happens to land
+mid-animation (or, as in this repro, during a burst of many claims fired
+synchronously by `?autoclaim=N` before the first render frame even runs,
+freezing several instances at their elevated "drop-in" starting
+transform), every later click against that mesh gets silently rejected by
+a broad-phase bounds check against a sphere that no longer describes
+where the geometry actually is. This is a general engine-level bug, not
+specific to Mangrove, Estuary, or even terrain — it happened to surface
+on Estuary in this repro because of autoclaim's specific timing, and
+would affect any tile or built element whose mesh's bounding sphere is
+first computed while something on that mesh is still mid-settle.
+
+Fixed in `src/render/settleAnimation.ts`: `SettleAnimator.tick()` now
+invalidates (`mesh.boundingSphere = null`) every mesh it touches each
+tick an animation is in flight, so the cached sphere is always
+recomputed fresh once things stop moving (cheap — a null assignment,
+and only while something is actually animating). Also invalidated
+defensively at the other two places `TerrainMeshManager`/
+`ElementMeshManager` write instance matrices directly outside the
+animator: `TerrainMeshManager.resetClaims()` (era reset) and
+`ElementMeshManager.place()`'s non-animated branch.
+
+Verified live: re-ran the exact original repro (claim an Estuary tile,
+open its popover, build Mangrove) after the fix — Coin drops by exactly
+30, the popover closes immediately, and re-clicking the tile now shows
+a proper info card ("Mangrove — biodiversity +3 · food +1"), confirming
+both B2's Mangrove Food effect and A1's auto-close behavior were already
+correct all along; they just couldn't be reached because the click
+that should have re-selected the tile was the one silently swallowed.
 
 ## Bucket B — Content: coastal-only scope (work this after Bucket A is solid)
 
 ### B1. Fix: map generation doesn't match the explicit left/right orientation — plus add the Land terrain type
 
-Status: closed (see Log). Root-caused the "sea wraps around a corner" bug
-precisely: `/tools/mapgen` banded terrain by a *global* world-X threshold
-(`worldX < xMin + depth`), but `xMin` is only achieved at one grid corner
-(`q=Q_MIN, r=R_MIN`) — each row's own local x-range is itself shifted by
-the same axial-skew term (`x = sqrt3*(q + r/2)`), so a narrow global
-threshold selects lots of tiles from the rows near that one corner and
-almost none from the rows near the opposite corner. Fixed by banding on
-axial `q` directly instead: the same q-range is selected in every row, so
-every row gets an identical-depth Coast/Beach edge — the resulting edge is
-a smooth, gentle diagonal (rows drift together as r changes, following the
-hex grid's own natural skew) rather than a corner-hugging wedge, which
-also happens to read as a reasonable stand-in for "Goa's gently curved
-shore." Added `land` to `terrain.json`, rewrote the region rules for the
-explicit Sea → Beach → Land → Estuary/River order, and made the estuary a
-genuine multi-tile branching blob (two river arms from separate sources
-converging inland, not a single tile) confined to the eastern ~38% of the
-map. Verified two ways: `tests/mapgen.test.ts` independently re-checks
-every row's left-to-right order and the estuary's connectivity/region
-bounds from the checked-in `map.json` (not just trusting the generator's
-own self-check), and a live screenshot shows a clean Coast → Beach → Land
-band with no corner artifact.
+Status: closed (see Log). This was a real, deeper bug than the earlier
+q-banding fix addressed — not a near-miss. Root cause: `axialToWorld`'s
+formula (`x = √3·(q + r/2)`) has a shear term in `r`, so a plain
+rectangular range of axial coordinates (`q ∈ [min,max]` for every `r`)
+does not render as a rectangle in world space — it renders as a
+*parallelogram*, sheared further sideways the more `r` moves from 0. With
+a fixed, non-yawing camera, that shear reads exactly as this pass
+described it: a landmass that looks wedge-shaped/triangular, with a
+"diagonal vein" running through the middle instead of a straight band,
+and Sea appearing to wrap around every side because the parallelogram's
+slanted edges cut across what should be uniform west/east boundaries.
 
-Goa's real geography (a gently curved shore, a wide branching estuary
-where rivers meet the sea near a peninsula) was used for proportion only —
-the estuary blob and diagonal coastline are expressed entirely in
-generation rules and hex math, nothing traced from a map image.
+Fixed with row-offset coordinates in `tools/mapgen/generate.ts`: each
+row's q-range now starts at `rowQMin(r) = Q_MIN - floor(r/2)`, which
+exactly cancels the shear term, so every row's west edge lands on the
+same world-space x (within one natural half-hex stagger — confirmed by a
+new sanity check computing per-row west-edge world-x drift, which came
+back at exactly 0.866, i.e. √3/2, the theoretical half-hex value — not
+approximately right, exactly right). All banding logic (coast/beach/
+water-zone thresholds, confluence scoring) now keys off `colIndex(c)`
+(position within its own row) rather than raw `q`, since raw `q` is no
+longer comparable across rows once each row starts at a different offset.
 
-Verify: `tests/mapgen.test.ts` confirms every row reads Coast → Beach →
-Land before any Estuary/River tile (0/9 rows violate this), the estuary is
-a ≥3-tile connected blob confined to the eastern ~38% of the map, and the
-starting claim sits near the coast (not the now-inland estuary). Screenshot
-confirmation: `b1_fresh_map.png` (clean Coast/Beach/Land bands, claimed
-cluster popping via A2's dimming rebalance) — the estuary itself sits far
-enough east that it fell outside every attempted screenshot pan, so it's
-verified by the test above reading the actual map data instead of by eye.
+Verified via `tests/mapgen.test.ts`'s new rectangle test (checks the
+world-space drift claim programmatically) and visually via screenshots at
+multiple zoom levels: a clean vertical Coast edge on the west side, and a
+fully zoomed-out view with straight top/bottom map boundaries and no
+wrap-around. Regenerated `map.json`/`startingState.json`; new estuary
+center is `{q:3, r:0}`. Full 50/50 test suite passes.
 
 ### B2. Finish: the 8-element roster — House/Land is new, Resort's eligibility widens, Mangrove/Khazan gain a Food effect
 
-Status: partially landed, confirmed by live playtest — clicking a claimed
-Estuary tile correctly offered exactly "Mangrove" and "Khazan," no terrain
-mismatches (the old Laterite-Plateau-offering-Seawall class of bug appears
-fixed for the original 3-terrain roster). Now closed (see Log):
-1. Added House (`terrain: ["land"]`, `kind: "building"`, `effects: { money: 5, food: -1, population: 5 }`). `buildCost: 25` and `money: 5` are invented placeholders (no value was specified for either) — flagged here and in `PROGRESS.md`, not tuned balance. The `population` key is an extra beyond what B2 literally specified — added because it's the cleanest way to satisfy B3's "population scales with House count" through the *same* generic effects accumulator every other meter already uses, rather than a one-off hardcoded id check.
-2. Widened Beachside Resort's `validTerrainIds` to `["beach", "estuary", "river"]`.
-3. Added `food: 1` to both Mangrove and Khazan's effects.
+Status: closed (see Log). All three pieces confirmed:
+1. House — confirmed working correctly. Land tile shows House-only in its build menu; building it (from earlier rounds) applies effects correctly; clicking a built House tile shows a clean info card ("House / BUILDING / money +5 · food -1 · population +5"), not a build menu. Closed — see Log.
+2. Beachside Resort's widened eligibility — confirmed working. This pass directly observed a River tile's popover offering "Beachside Resort 40c" alongside "Small Dam 55c", and separately an Estuary tile's popover offering "Beachside Resort 40c" alongside "Mangrove 30c" and "Khazan 65c (Bundh & Sluice)". Beach was not re-tested this pass (already covered by original roster) but River and Estuary are now both directly confirmed. Closed — see Log.
+3. Mangrove/Khazan Food effect — initially unverifiable, blocked by A5's click-detection bug (not a real build-flow bug — see A5 for the full story). With A5 fixed, re-tested and confirmed: building Mangrove on a claimed Estuary tile correctly shows `food +1` on its re-click info card. Closed — see Log.
 
-Also renamed the generic effects key `coinPerTurn` → `money` throughout
-(`elements.json`, `GameState.advanceTurn`, docs) to match this document's
-own terminology — the two were the same concept under different names,
-and one name should win.
+Fix: none needed beyond A5 itself — with the click-detection bug fixed,
+re-testing confirmed Mangrove's Food effect was already correctly wired
+in `elements.json` all along. Closed — see Log.
 
-Verify: `tests/buildings.test.ts` confirms House is Land-only, Beachside
-Resort is buildable on beach/estuary/river but not coast, and Mangrove
-raises `state.food` once mature. House's icon (a wide gable-roofed
-silhouette with a chimney, distinct from Resort's cabana-and-umbrella)
-closes A3's deferred 8th icon — confirmed via `b3_fresh_start.png`.
+Verify: build Mangrove on an Estuary tile, confirm Coin -30, the tile
+shows a Mangrove info card on re-click with `food +1` listed among its
+effects. (Khazan not independently spot-checked this pass, but goes
+through the identical code path — low risk.)
 
 ### B3. Add: Population/Food economy and the new starting state
 
-Status: closed (see Log). `GameState` gained a `food` getter (thin wrapper
-over `meterTotal("food")`, same pattern as biodiversity/carbon) and a
-`population` getter (`STARTING_POPULATION + meterTotal("population")`) —
-both fully generic, no hardcoded element-id checks anywhere in engine code.
-The constructor gained two new optional parameters, `startingElements`
-(pre-built elements claimed and placed for free, not purchased) and
-`startingCoin`, both re-applied on `startNewEra()` too so the pre-built
-Houses and 1,000 starting Coin survive an era transition rather than only
-appearing once at first boot. `/tools/mapgen` now also writes
-`src/data/startingState.json` (`startingCoin: 1000`, `startingPopulation:
-50`, `prebuiltHouses`: 10 Land tiles in a compact cluster just inland from
-the coastal claim, computed from the same generated map so they're
-guaranteed to actually be Land) — `main.ts` loads it and seeds/renders the
-Houses at boot with no settle animation (they were never "just built").
-HUD gained Food and Population chips alongside the existing four.
-
-Verify: `b3_fresh_start.png` — fresh load shows Coin 1000, HUD reading
-"F -10" (10 Houses × -1) and "P 100" (50 + 10×5), "Tiles claimed: 13"
-(3 coastal + 10 Houses), and 10 House icons visibly clustered on Land,
-inland from the coastal claim.
+Status: closed (see Log). Three pieces, all confirmed:
+1. Food as a tracked resource — present in the HUD (`F -10` at game start, consistent with 10 pre-built Houses each costing food -1). Producer side (Mangrove/Khazan) confirmed end-to-end once A5's click-detection bug was fixed — see A5/B2.
+2. Population as a tracked value — confirmed at game start: HUD shows `P 100`, which is exactly 50 (spec's starting Population) + 10×5 (10 pre-built Houses at population +5 each) = 100. The "population scales with House count" placeholder is working as intended. Closed — see Log.
+3. Starting state — Coin confirmed at exactly 1,000 on a fresh load this pass, and the 10-House residential cluster on Land is present and visibly built (not something the player has to build). Closed — see Log.
 
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
-- Camera pan: closed. Confirmed by live playtest this pass — click-drag pans the view smoothly in all directions; previously reported as completely non-functional (neither scroll nor drag worked), now working via drag. Zoom still not verified/may not exist — low priority, drag-pan alone is enough to satisfy the original blocker (reaching and seeing the full map).
-- Claim-anywhere: closed. Confirmed by live playtest this pass — the claimable-hex count jumped from a small adjacent ring (~9) to the full visible unclaimed map (240), and a hex far from any claimed tile, with no claimed neighbor at all, showed the claimable hover outline correctly. Matches the v2.2/v2.4 spec.
-- Defense-eligibility-by-terrain filtering (original Bucket B item): closed for the pre-v2.4 3-terrain roster. Confirmed by live playtest — an Estuary tile now correctly offers only Mangrove and Khazan, no coastal/river mismatches. Superseded by B2 above for the v2.4 roster additions (House, widened Resort eligibility).
-- 2026-08-20, A1: closed. Root-caused live via Playwright (not static reading) — auto-close already worked; the real gap was clicking an occupied tile doing nothing instead of showing info. Added `BuildPopover.showInfo()` for built-tile info cards, a `document`-level outside-click listener (the old canvas-only listener couldn't see clicks on the HUD), and an Escape-key listener. All 4 sub-checks (auto-close, occupied-tile info, outside-click, Escape) confirmed via a live Playwright session against the running dev server, plus viewport-clamp re-verified via `testpopoverclip` screenshots.
-- 2026-08-20, A2: closed. The 72%-toward-shared-fog blend from the previous pass over-corrected — different unclaimed terrains converged too close together. Rebalanced `terrainMeshManager.ts`'s `dim()` to desaturate each terrain's own color first (keeping its hue/lightness distinguishable), then blend a smaller 32% toward fog. Verified via `a2_rebalanced_close.png`/`a2_rebalanced_far.png` — unclaimed Coast now reads as clearly different from unclaimed Beach, claimed cluster still pops. Noted: the interior still looks Beach-monotonous at wide zoom because it genuinely is almost all Beach right now — that's B1's terrain-diversity job, not a color bug.
-- 2026-08-20, A3: 7/8 closed. Confirmed the existing 7-element roster's icons (built in the earlier trimmed-roster pass) are legible and distinguishable via `bucketb_elements2.png`. House (the 8th) doesn't exist as an element until B2 lands — deferred its icon check to B2's own Verify step rather than jump ahead of Bucket A's own sequencing rule to manufacture a placeholder element early.
-- 2026-08-20, B1: closed. Root cause of "sea wraps around a corner": mapgen banded by a global world-X threshold, which is only correct near the one grid corner where that global min/max is actually achieved — every other row's local x-range is shifted by the same axial-skew term. Fixed by banding on axial `q` directly (uniform per row). Added `land` terrain, rewrote region rules for Sea → Beach → Land → Estuary/River, made the estuary a real multi-tile branching blob. `tests/mapgen.test.ts` rewritten to independently verify the new layout from the checked-in map.json (not just trust the generator's own self-check).
-- 2026-08-20, B2: closed. Added House (`land`, `{money:5, food:-1, population:5}` — cost/money placeholders, flagged in PROGRESS.md), widened Beachside Resort to beach/estuary/river, added `food:1` to Mangrove/Khazan. Renamed the generic effects key `coinPerTurn` → `money` throughout for consistency with this document's own terminology. House's icon closes A3's deferred 8th slot.
-- 2026-08-20, B3: closed. Added `food`/`population` getters to GameState (both routed through the same generic `meterTotal` accumulator everything else uses — population's House-scaling is a `population` effect key, not a hardcoded id check). GameState's constructor gained `startingElements`/`startingCoin` params, re-applied on `startNewEra()` too. mapgen now also writes `startingState.json` (1000 coin, 10 pre-built Houses on Land near the coastal claim); `main.ts` seeds and renders them at boot. HUD gained Food/Population chips. Verified via `b3_fresh_start.png`: Coin 1000, F -10, P 100, 13 tiles claimed, 10 House icons visible on Land.
+- Camera pan: closed. Confirmed by live playtest — click-drag pans the view smoothly in all directions.
+- Camera zoom: closed, new this pass. Scroll wheel zooms the camera in/out smoothly; zooming all the way out reveals the entire map at once. Previously marked "not verified/may not exist, low priority" — now confirmed working and was in fact essential to finding this pass's B1 evidence.
+- Claim-anywhere: closed. Confirmed by live playtest — the claimable-hex count jumped from a small adjacent ring (~9) to the full visible unclaimed map (240), and a hex far from any claimed tile showed the claimable hover outline correctly.
+- Defense-eligibility-by-terrain filtering (original Bucket B item): closed for the pre-v2.4 3-terrain roster, and this pass extended the confirmation to the v2.4 additions — see B2.
+- House element (build B2.1): closed this pass. Effects, occupant info-card on re-click, and icon rendering (see A3 for the icon's quality) all confirmed working end-to-end.
+- Beachside Resort widened eligibility (build B2.2): closed this pass. Confirmed offered on River and Estuary tiles in addition to Beach.
+- Starting Coin = 1,000 and Population = 50 baseline (build B3.3): closed this pass. Confirmed via HUD on a fresh load (`Coin 1000`, `P 100` = 50 base + 10 Houses × 5).
+- 2026-08-21, A1 (popover doesn't dismiss / no modal backdrop): closed. Root cause: `.build-popover`'s own `display: flex` (author CSS) silently overrode the `[hidden]` user-agent default, so `.hidden = true` never actually hid it on screen despite correct JS state. Fixed with an explicit `[hidden]` override plus a real full-viewport modal backdrop. Verified live via `getComputedStyle`, including the exact "click a distant unrelated tile while a popover is open" repro (no unintended claim/coin change).
+- 2026-08-21, A2 (unclaimed vs. claimed contrast): closed. Dedicated re-check — claimed one isolated tile of each terrain type and screenshotted against its unclaimed neighbors; all four (Beach, Land, River, Estuary) are clearly distinguishable by color/saturation.
+- 2026-08-21, A3 (House icon reads as furniture): closed. Replaced the geometry (flared eaves + a baseless notch) with a plain pentagon-plus-chimney "home" pictogram. Confirmed by screenshot — reads clearly as a house.
+- 2026-08-21, A4 (claiming nets +46 instead of -4): investigated and closed as **not a bug** — `claim()` is the sole call site of `advanceTurn()`, so a claim both pays the -4 cost and collects that turn's income from all standing elements (10 Houses × `money +5` = +50 at game start); net +46 is correct, reproducible, and intentional. Flagged to the user as a finding that diverges from the original "money-printing exploit" framing, not silently closed.
+- 2026-08-21, A5 (Mangrove-on-Estuary charges Coin but doesn't build): closed. Root cause was a third, previously-undiscovered bug, not a build-flow issue: `THREE.InstancedMesh.boundingSphere` is computed lazily and cached forever, so a mesh whose bounding sphere happened to be first computed mid-settle-animation (exactly what `?autoclaim=N` triggers) silently fails all future raycasts against it — clicks that look correct but produce no game action. Fixed by invalidating each touched mesh's cached bounding sphere every animation tick in `SettleAnimator`, plus at the two other places instance matrices are written directly. Re-verified the original repro end-to-end after the fix: Coin -30, popover auto-closes, re-click shows a proper Mangrove info card with `food +1`.
+- 2026-08-21, B1 (map reads as an island, diagonal estuary vein): closed. Root cause: `axialToWorld`'s shear term (`x = √3·(q + r/2)`) makes a plain axial-rectangle coordinate range render as a parallelogram in world space, not a rectangle — with a non-yawing camera this reads exactly as a wedge-shaped island with diagonal seams. Fixed with row-offset coordinates (`rowQMin(r) = Q_MIN - floor(r/2)`) that cancel the shear; verified both by a new automated rectangle test (measured world-space drift matches the theoretical half-hex stagger exactly) and by screenshots at multiple zoom levels.
+- 2026-08-21, B2 (8-element roster) and B3 (Food/Population economy): both closed. The one previously-blocked piece (Mangrove/Khazan's Food effect) is confirmed working now that A5 is fixed.

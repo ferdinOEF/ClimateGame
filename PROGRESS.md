@@ -818,3 +818,122 @@ starting-state config actually contains, not just "looks about right."
 
 ![Fresh map: clean Coast/Beach/Land bands, no corner-wrap artifact](tools/screenshots/b1_fresh_map.png)
 ![Fresh starting state: Coin 1000, Food/Population in the HUD, 10 House icons on Land inland from the coastal claim](tools/screenshots/b3_fresh_start.png)
+
+## v2.4 re-pass 2 — a second fresh playtest found deeper bugs under the surface — DONE
+
+A second live playtest (more thorough than the first) re-confirmed A1 with a
+new, worse symptom (clicks passing through a stale-looking popover to the
+map underneath), and reported two new critical items: A4 ("claiming prints
+money") and A5 ("Mangrove-on-Estuary charges Coin, builds nothing"). B1 also
+came back with much stronger evidence that the previous corner-wrap fix
+hadn't actually fixed the underlying geometry problem. All five investigated
+this pass; three were genuine bugs with real root causes, one turned out not
+to be a bug at all, and one (A5) turned out to be a *different*, deeper bug
+than anyone had diagnosed.
+
+**A1, for real this time.** The previous "fix" tracked open/closed state
+correctly the whole time — the bug was CSS: `.build-popover { display: flex; }`
+is an author-origin rule, and author rules always beat the user-agent
+`[hidden] { display: none }` default regardless of selector specificity. So
+`el.hidden = true` updated the DOM attribute but the popover kept rendering
+at full opacity. Fixed with an explicit `.build-popover[hidden] { display:
+none; }` override, plus the modal backdrop the user explicitly asked for: a
+full-viewport `.popover-backdrop` that intercepts every click while a
+popover is open, so a click anywhere except the popover's own content always
+just closes it — the "stale popover, click leaks to an unrelated tile"
+scenario is now structurally impossible rather than merely guarded against.
+`BuildPopover` was restructured around this (`isOpen` now reads the
+backdrop's `hidden`, not the popover box's), and `main.ts`'s old
+document-level outside-click listener (a patch around the CSS bug from the
+previous pass) was removed — the backdrop subsumes it.
+
+**A4 — investigated, not a bug.** Claiming a hex nets +46 Coin instead of
+charging the displayed 4c. Traced it: `claim()` is the sole call site of
+`advanceTurn()` (the "one claim = one turn" design from earlier phases),
+so a claim both pays the -4 cost *and* collects that turn's income from
+every standing element — at the starting state, 10 Houses × `money +5` =
++50. Net `-4 + 50 = +46`, exactly the reported number, independent of
+which tile/terrain is claimed. Both halves are individually correct and
+intentional; decoupling them would either kill per-claim income (breaking
+the just-verified B3 economy loop) or require inventing a second turn
+trigger with no spec basis. Left the mechanic alone and documented the
+math in `NEXT_STEPS.md` rather than silently redesigning turn cadence —
+this is a case where the investigation's conclusion diverges from the
+original bug report's framing, so it's flagged explicitly rather than
+folded in as a quiet fix.
+
+**A5 — the actual find of this pass.** The reported symptom (Mangrove
+build charges Coin, renders nothing, re-click still shows a build menu)
+looked at first like a build-confirmation bug. Isolated tests proved
+otherwise: `GameState.build()` and `ElementMeshManager.place()` both work
+perfectly for Mangrove when driven directly, no click involved. That
+pushed the investigation into click handling itself, where live debug
+tracing (temporary, since removed) found the raycaster returning zero
+hits at screen positions visibly, unambiguously over Estuary tiles —
+confirmed by comparing against a manual straight-down ray to the same
+world coordinates, which hit correctly every time, with an unstale camera
+matrix and correct instance positions on both sides.
+
+The actual mechanism: `THREE.InstancedMesh.boundingSphere` is computed
+lazily on a mesh's first raycast or first frustum-culling check, then
+cached forever — nothing in Three.js invalidates it as instances move.
+`TerrainMeshManager` and `ElementMeshManager` both animate tiles/elements
+into place via a shared `SettleAnimator`, which keeps calling
+`setMatrixAt()` well after that first snapshot. When a mesh's first
+bounding-sphere computation happens to land mid-animation — as it
+reliably does under `?autoclaim=N`, which fires many claims synchronously
+before the first render frame, freezing several instances at their
+elevated "drop-in" starting transform — every later click against that
+mesh gets silently rejected by a broad-phase bounds check against a
+sphere that no longer describes where the geometry is. This is a general
+engine-level bug, not specific to Mangrove or Estuary; it surfaced there
+because of this repro's specific claim timing. Fixed in
+`SettleAnimator.tick()`, which now invalidates (`mesh.boundingSphere =
+null`) every mesh it touches each tick an animation is in flight, plus
+defensively at the two other places `TerrainMeshManager`/
+`ElementMeshManager` write instance matrices directly
+(`resetClaims()`, `place()`'s non-animated branch). Re-verified the
+original repro end-to-end after the fix: Coin -30, popover auto-closes,
+re-click shows a Mangrove info card with `food +1` — confirming B2's
+Mangrove Food effect and A1's auto-close were both already correct; they
+just couldn't be reached because the click that should have re-selected
+the tile was the one being silently swallowed.
+
+**B1, actually fixed this time.** The previous corner-wrap fix addressed
+a narrower symptom but left the deeper cause untouched:
+`axialToWorld`'s formula (`x = √3·(q + r/2)`) has a shear term in `r`, so
+a plain rectangular range of axial coordinates does not render as a
+rectangle in world space — it renders as a parallelogram, sheared further
+the more `r` moves from 0. With a fixed, non-yawing camera, that reads
+exactly as this pass's report: a wedge-shaped landmass with Sea on every
+side and a diagonal "vein" instead of a straight band. Fixed with
+row-offset coordinates in `tools/mapgen/generate.ts`
+(`rowQMin(r) = Q_MIN - floor(r/2)`), which exactly cancels the shear, so
+every row's west edge lands on the same world-space x within one natural
+half-hex stagger — confirmed by a new sanity check whose measured drift
+came back at exactly √3/2, the theoretical value. All banding/scoring
+logic was ported from raw `q` to a new `colIndex(c)` (position within its
+own row), since raw `q` is no longer comparable across rows once each
+starts at a different offset. `tests/mapgen.test.ts` gained a matching
+rectangle test.
+
+**A2 and A3 re-checks.** A2 (unclaimed-vs-claimed contrast) got the
+dedicated side-by-side re-check the user explicitly asked for: claimed one
+isolated tile of each terrain type and screenshotted it against its
+unclaimed neighbors — all four (Beach, Land, River, Estuary) are clearly
+distinguishable by color/saturation, closing this out for real rather than
+on a hopeful note. A3's House icon (previously deferred, then reported as
+reading like "a bench, a couch, or a wagon") was rebuilt from a flared-eave
+shape with a baseless notch to a plain pentagon-plus-chimney "home"
+pictogram — confirmed by screenshot.
+
+**Verification:** 50/50 tests passing across 9 files, `tsc --noEmit`
+clean, production build succeeds. All fixes re-verified live via headless
+Playwright against the actual running game (not just unit tests) — the
+A1 backdrop's click-interception, A5's raycast fix end-to-end through a
+real build, and A2's four-terrain contrast were each confirmed by
+screenshot or `getComputedStyle` inspection of the live DOM, not assumed
+from the code alone.
+
+![A2: claimed vs. unclaimed Beach and Land side by side](tools/screenshots/a2_beach_claimed_vs_unclaimed.png)
+![A2: claimed vs. unclaimed Estuary](tools/screenshots/a2_estuary_claimed_vs_unclaimed.png)

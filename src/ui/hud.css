@@ -116,6 +116,23 @@ html, body {
 }
 
 /*
+  Full-viewport modal backdrop behind the popover (A1, NEXT_STEPS.md):
+  while a popover is open, this sits above the canvas and intercepts every
+  click, so a click anywhere except the popover box itself always just
+  closes the popover (see BuildPopover's own click listener) rather than
+  reaching the 3D scene underneath a still-open popover. Deliberately no
+  `display` property here — leave the `[hidden]` user-agent default
+  (`display: none`) alone rather than risk the same author-styles-beat-
+  user-agent-styles trap `.build-popover` itself had (see its comment).
+*/
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: transparent;
+}
+
+/*
   Contextual build popover: anchored to a clicked tile's screen position,
   never a persistent panel. Transform centers it just above the tile.
 */
@@ -132,6 +149,21 @@ html, body {
   padding: 6px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
+}
+
+/*
+  The `hidden` HTML attribute alone doesn't win here: `display: flex` above
+  is an author-stylesheet rule, and author styles always beat the
+  user-agent stylesheet's `[hidden] { display: none }` regardless of
+  selector specificity — so without this override, setting `.hidden = true`
+  in JS updates the attribute but the popover keeps rendering at full
+  opacity, still capturing clicks at its own position. This was the actual
+  root cause behind A1's whole family of "doesn't dismiss" symptoms
+  (NEXT_STEPS.md): the JS-side open/closed state was correct the entire
+  time, the CSS just never reflected it.
+*/
+.build-popover[hidden] {
+  display: none;
 }
 
 .build-option {

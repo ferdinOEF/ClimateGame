@@ -121,6 +121,7 @@ export class TerrainMeshManager {
     for (const mesh of this.meshes.values()) {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.boundingSphere = null;
     }
   }
 
@@ -171,6 +172,7 @@ export class TerrainMeshManager {
     for (const mesh of this.meshes.values()) {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.boundingSphere = null;
     }
   }
 

@@ -49,6 +49,8 @@ export class SettleAnimator {
   }
 
   tick(nowMs: number): void {
+    const touchedMeshes = new Set<THREE.InstancedMesh>();
+
     if (this.active.length > 0) {
       const stillActive: SettleAnim[] = [];
       for (const anim of this.active) {
@@ -62,6 +64,7 @@ export class SettleAnimator {
             : new THREE.Matrix4().makeTranslation(anim.x, anim.finalY, anim.z);
         anim.mesh.setMatrixAt(anim.index, matrix);
         anim.mesh.instanceMatrix.needsUpdate = true;
+        touchedMeshes.add(anim.mesh);
         if (t < 1) stillActive.push(anim);
       }
       this.active = stillActive;
@@ -75,9 +78,25 @@ export class SettleAnimator {
         const matrix = new THREE.Matrix4().makeScale(scale, scale, scale).setPosition(anim.x, anim.y, anim.z);
         anim.mesh.setMatrixAt(anim.index, matrix);
         anim.mesh.instanceMatrix.needsUpdate = true;
+        touchedMeshes.add(anim.mesh);
         if (t < 1) stillCollapsing.push(anim);
       }
       this.collapsing = stillCollapsing;
     }
+
+    // InstancedMesh.boundingSphere is computed lazily (on first raycast or
+    // first frustum-culling check) and then cached forever — it's never
+    // auto-recomputed as instances move. Without this, a bounding sphere
+    // computed while a tile/element is mid-flight (e.g. still at its
+    // elevated "drop-in" position, or several tiles claimed in one burst
+    // before the first render frame — exactly what happens under
+    // `?autoclaim=N`) freezes at that stale, wrong-shaped volume, and
+    // every later raycast against that instance silently reports zero
+    // hits even though the mesh is clearly visible on screen — a click
+    // that looks correct but produces no game action. Invalidating here
+    // every tick an animation is in flight keeps it self-correcting once
+    // the animation settles, at near-zero cost (a null assignment) and
+    // only while something is actually moving.
+    for (const mesh of touchedMeshes) mesh.boundingSphere = null;
   }
 }

@@ -6,22 +6,31 @@
  *
  * Layout (v2.4, explicit left-to-right): Sea → Beach → Land (interior) →
  * Estuary/River, with the river continuing further right/inland past the
- * estuary. A wide, short strip (west-to-east wider than north-to-south).
+ * estuary. A wide, short strip (west-to-east wider than north-to-south),
+ * sea fixed to one side — not an island wrapped by sea on every side.
  *
- * Bands are chosen by axial `q` alone, not world-space X. This looks
- * backwards at first — `axialToWorld`'s x = sqrt3*(q + r/2), so a fixed-q
- * "column" drifts diagonally in world space as r changes — but that
- * uniform per-row drift is exactly what makes it correct here: every row
- * gets the *same number* of coast/beach columns, so the edge reads as one
- * smooth (if gently diagonal) line. A world-X threshold looks more
- * "correct" on paper but picks a *global* min/max across every row at
- * once, which — since each row's own local x-range is itself shifted by
- * that same r/2 term — ends up selecting lots of tiles from the rows near
- * one corner and almost none from the rows near the opposite corner: the
- * sea "wraps around a map corner" instead of forming a single edge, which
- * is exactly the bug an earlier version of this script had (caught by a
- * live playtest, not by eye). A gentle diagonal is a fine stand-in for
- * Goa's real "gently curved shore" for this pilot's purposes anyway.
+ * The grid is NOT a plain axial rectangle (q in [Q_MIN,Q_MAX], r in
+ * [R_MIN,R_MAX]). `axialToWorld`'s x = sqrt3*(q + r/2) means a plain axial
+ * rectangle renders as a *parallelogram* in world space, not a rectangle —
+ * each row is shifted sideways from the last by the r/2 shear term, so
+ * over R_MAX-R_MIN rows the accumulated drift is several hex-widths. With
+ * a camera that never yaws (Section 6), a tilted world-space edge reads as
+ * a diagonal on screen no matter how it's framed — which is exactly what a
+ * live playtest found: Sea "wrapping" around a corner, and the
+ * Estuary/River band reading as "a diagonal vein" instead of a coherent
+ * side. (An earlier version tried banding by axial q directly to fix a
+ * different, narrower bug — see git history — which produces a
+ * *consistent* diagonal, better than the original worldX-threshold bug's
+ * inconsistent one, but still a visible diagonal, not the fix.)
+ *
+ * The actual fix: build the grid with a per-row q-offset that cancels the
+ * shear (`rowQMin(r) = Q_MIN - floor(r/2)`), the standard "offset
+ * coordinates" trick for laying out a rectangular hex region. This leaves
+ * only the natural half-hex stagger between adjacent rows (the normal,
+ * expected brick-like offset every hex grid has) instead of an
+ * accumulating drift — the result is an actual rectangle in world space,
+ * so Sea/Beach/Land/Estuary bands read as straight sides regardless of
+ * pan, zoom, or which row you look at.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -46,11 +55,19 @@ function mulberry32(seed: number) {
 }
 const rng = mulberry32(SEED);
 
-// --- 1. Build the grid, define the left-to-right band boundaries by q ------
+// --- 1. Build a TRUE-rectangle grid via per-row offset coordinates --------
+
+const TOTAL_COLS = Q_MAX - Q_MIN + 1; // 27, same for every row by construction
+
+/** The q of the westmost hex in row `r`, shifted to cancel axialToWorld's r/2 shear. */
+function rowQMin(r: number): number {
+  return Q_MIN - Math.floor(r / 2);
+}
 
 const allCoords: AxialCoord[] = [];
-for (let q = Q_MIN; q <= Q_MAX; q++) {
-  for (let r = R_MIN; r <= R_MAX; r++) {
+for (let r = R_MIN; r <= R_MAX; r++) {
+  const qMin = rowQMin(r);
+  for (let q = qMin; q < qMin + TOTAL_COLS; q++) {
     allCoords.push({ q, r });
   }
 }
@@ -61,26 +78,32 @@ function inGrid(c: AxialCoord): boolean {
   return grid.has(axialKey(c));
 }
 
-const TOTAL_COLS = Q_MAX - Q_MIN + 1; // 27
+/** 0-based column index of `c` within its own row — the west-to-east position bands are actually defined by. */
+function colIndex(c: AxialCoord): number {
+  return c.q - rowQMin(c.r);
+}
+
+// --- 2. Define the left-to-right bands by column index, not raw q ----------
+
 const COAST_COLS = 1;
 const BEACH_COLS = 3;
-const coastMaxQ = Q_MIN + COAST_COLS - 1; // q <= this: Sea
-const beachMaxQ = coastMaxQ + BEACH_COLS; // q in (coastMaxQ, beachMaxQ]: Beach
-const waterZoneMinQ = Q_MIN + Math.floor(TOTAL_COLS * 0.62); // Estuary/River confined to the eastern ~38%
+const coastMaxCol = COAST_COLS - 1; // colIndex <= this: Sea
+const beachMaxCol = coastMaxCol + BEACH_COLS; // colIndex in (coastMaxCol, beachMaxCol]: Beach
+const waterZoneMinCol = Math.floor(TOTAL_COLS * 0.62); // Estuary/River confined to the eastern ~38%
 
-const coastCoords = allCoords.filter((c) => c.q <= coastMaxQ);
+const coastCoords = allCoords.filter((c) => colIndex(c) <= coastMaxCol);
 const coastSet = new Set(coastCoords.map(axialKey));
-const beachCoords = allCoords.filter((c) => c.q > coastMaxQ && c.q <= beachMaxQ);
+const beachCoords = allCoords.filter((c) => colIndex(c) > coastMaxCol && colIndex(c) <= beachMaxCol);
 const beachSet = new Set(beachCoords.map(axialKey));
-const waterZoneCoords = allCoords.filter((c) => c.q >= waterZoneMinQ);
+const waterZoneCoords = allCoords.filter((c) => colIndex(c) >= waterZoneMinCol);
 const waterZoneSet = new Set(waterZoneCoords.map(axialKey));
 
-// --- 2. Carve a wide, branching estuary: two river arms meeting inland -----
+// --- 3. Carve a wide, branching estuary: two river arms meeting inland -----
 
 // Two sources at the far east edge (the map's inland extreme), offset
 // north/south, so the two arms read as distinct tributaries rather than
 // one straight line.
-const eastEdgeCoords = allCoords.filter((c) => c.q === Q_MAX);
+const eastEdgeCoords = allCoords.filter((c) => colIndex(c) === TOTAL_COLS - 1);
 const riverSourceA = eastEdgeCoords.reduce((best, c) => (c.r < best.r ? c : best), eastEdgeCoords[0]);
 const riverSourceB = eastEdgeCoords.reduce((best, c) => (c.r > best.r ? c : best), eastEdgeCoords[0]);
 
@@ -89,8 +112,8 @@ const riverSourceB = eastEdgeCoords.reduce((best, c) => (c.r > best.r ? c : best
 // to the coastal midline, so there's a real stretch of river continuing
 // further east/inland past it once the arms join.
 const confluence = waterZoneCoords.reduce((best, c) => {
-  const score = (c.q - waterZoneMinQ) + Math.abs(c.r) * 0.5;
-  const bestScore = (best.q - waterZoneMinQ) + Math.abs(best.r) * 0.5;
+  const score = (colIndex(c) - waterZoneMinCol) + Math.abs(c.r) * 0.5;
+  const bestScore = (colIndex(best) - waterZoneMinCol) + Math.abs(best.r) * 0.5;
   return score < bestScore ? c : best;
 }, waterZoneCoords[0]);
 
@@ -134,7 +157,7 @@ const riverArmB = walkRiver(riverSourceB, confluence);
 const estuaryCoords = [confluence, ...hexRing(confluence, 1).filter((c) => waterZoneSet.has(axialKey(c)))];
 const estuarySet = new Set(estuaryCoords.map(axialKey));
 
-// --- 3. Assign terrain: Coast / Beach / Estuary / River fixed, rest Land ---
+// --- 4. Assign terrain: Coast / Beach / Estuary / River fixed, rest Land ---
 
 const terrainOf = new Map<string, string>();
 for (const c of coastCoords) terrainOf.set(axialKey(c), "coast");
@@ -149,7 +172,7 @@ for (const c of allCoords) {
   if (!terrainOf.has(key)) terrainOf.set(key, "land");
 }
 
-// --- 4. Serialize -------------------------------------------------------------
+// --- 5. Serialize -------------------------------------------------------------
 
 interface MapTile {
   q: number;
@@ -169,9 +192,14 @@ const startingClaim: AxialCoord[] = [
   ...[0, 1, 2, 3, 4, 5].map((dir) => neighbor(coastalClaimSeed, dir)).filter(inGrid)
 ].slice(0, 3);
 
+// The true q extent now varies by row (the offset grid isn't a plain
+// rectangle in q,r terms even though it is one in world space), so record
+// the actual min/max across every generated tile rather than the nominal
+// Q_MIN/Q_MAX — those are the row-0 baseline only.
+const allQs = allCoords.map((c) => c.q);
 const output = {
   seed: SEED,
-  qRange: [Q_MIN, Q_MAX],
+  qRange: [Math.min(...allQs), Math.max(...allQs)],
   rRange: [R_MIN, R_MAX],
   estuary: confluence,
   startingClaim,
@@ -202,7 +230,7 @@ const startingState = {
 const startingStatePath = path.resolve(import.meta.dirname, "../../src/data/startingState.json");
 fs.writeFileSync(startingStatePath, JSON.stringify(startingState, null, 2));
 
-// --- 5. Sanity-check the constraints before declaring success ---------------
+// --- 6. Sanity-check the constraints before declaring success ---------------
 
 const terrainIdSet = new Set(TERRAIN_DEFS.map((t) => t.id));
 const badTerrainIds = tiles.filter((t) => !terrainIdSet.has(t.terrainId));
@@ -211,9 +239,7 @@ const estuaryTileCount = tiles.filter((t) => t.terrainId === "estuary").length;
 const landTileCount = tiles.filter((t) => t.terrainId === "land").length;
 
 // Order check: every row should read Coast, then Beach, then Land, before
-// any Estuary/River tile ever appears — confirms every row sees the same
-// left-to-right order (Sea -> Beach -> Land -> Estuary/River), not just
-// "these terrains exist somewhere on the map."
+// any Estuary/River tile ever appears.
 let orderViolations = 0;
 for (let r = R_MIN; r <= R_MAX; r++) {
   const row = tiles.filter((t) => t.r === r).sort((a, b) => a.q - b.q);
@@ -231,9 +257,26 @@ for (let r = R_MIN; r <= R_MAX; r++) {
   if (coastIdx !== 0 || beachIdx !== 1 || landIdx < 0 || (waterIdx >= 0 && landIdx > waterIdx)) orderViolations++;
 }
 
+// Rectangle check: every row's westmost hex should sit at (approximately)
+// the same world-X as every other row's — confirms the shear-cancelling
+// offset actually worked, not just that terrain assignment is internally
+// consistent. Half a hex-width of residual stagger between adjacent rows
+// is the normal/expected brick-like hex offset, not an error; anything
+// bigger accumulating across rows would mean the offset math is wrong.
+function worldXOf(c: AxialCoord): number {
+  return Math.sqrt(3) * (c.q + c.r / 2);
+}
+const westEdgeXs = [];
+for (let r = R_MIN; r <= R_MAX; r++) {
+  westEdgeXs.push(worldXOf({ q: rowQMin(r), r }));
+}
+const maxWestEdgeDrift = Math.max(...westEdgeXs) - Math.min(...westEdgeXs);
+const HALF_HEX = Math.sqrt(3) / 2;
+
 console.log(`map.json written: ${tiles.length} tiles`);
 console.log(`  coast: ${coastCoords.length}, beach: ${beachCoords.length}, land: ${landTileCount}, river: ${riverTileCount}, estuary: ${estuaryTileCount}`);
 console.log(`  rows with a left-to-right order violation: ${orderViolations} / ${R_MAX - R_MIN + 1} (should be 0)`);
+console.log(`  west-edge world-X drift across all rows: ${maxWestEdgeDrift.toFixed(3)} (should be <= ${HALF_HEX.toFixed(3)}, one half-hex stagger, not several hex-widths)`);
 console.log(`  unknown terrain ids: ${badTerrainIds.length}`);
 console.log(`  starting claim (coastal): ${startingClaim.map((c) => `(${c.q},${c.r})`).join(", ")}`);
 console.log(`  estuary center: (${confluence.q},${confluence.r})`);
@@ -244,7 +287,8 @@ if (
   estuaryTileCount < 3 ||
   riverTileCount === 0 ||
   orderViolations > 0 ||
-  houseCoords.length !== 10
+  houseCoords.length !== 10 ||
+  maxWestEdgeDrift > HALF_HEX + 0.01
 ) {
   console.error("mapgen sanity check FAILED");
   process.exitCode = 1;

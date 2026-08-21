@@ -20,30 +20,47 @@ const VIEWPORT_MARGIN = 8;
  * screen position — never a persistent sidebar. Section 3's non-negotiable
  * rule: build choices appear at the tile, in place, and disappear when done.
  *
- * Dismissal is handled entirely by the caller (main.ts's unified canvas
- * click handler checks `isOpen` first and, if true, closes and consumes
- * that click rather than also acting on it; a separate document-level
- * listener handles clicks that land outside the canvas entirely — on the
- * HUD, say — plus Escape). An earlier version dismissed itself
- * via its own outside-click listener running *before* the canvas's own
- * click handler in the capture phase — a single click meant to dismiss
- * could land on a different buildable tile, closing the old popover and
- * silently opening a new one in a nearby position on the same click,
- * making a second dismiss-click land on a build-option button instead
- * (NEXT_STEPS.md). No listeners of its own now — one source of truth.
+ * Backed by a full-viewport transparent backdrop (NEXT_STEPS.md's A1: a
+ * "real modal layer" was the explicit ask, not just an outside-click
+ * listener) that sits above the canvas and below the popover box itself
+ * while open, so a click anywhere except the popover can never reach the
+ * 3D scene underneath a still-open popover — it always just closes the
+ * popover instead, with no side effect on whatever tile happens to be
+ * under the cursor. The backdrop's own click handler only fires when the
+ * click's `target` is the backdrop element itself, not a descendant, so a
+ * click on the popover's own content never closes it.
+ *
+ * A prior version had none of this and relied on the caller checking
+ * `isOpen`/`contains()` before acting — that depended on `this.el.hidden`
+ * actually hiding the element, which it silently didn't: `.build-popover`
+ * has its own unconditional `display: flex` in hud.css, an author-origin
+ * rule that overrides the `[hidden]` user-agent default regardless of
+ * selector specificity, so setting `.hidden = true` updated the attribute
+ * correctly but never changed what was on screen. That CSS gap (now fixed
+ * with an explicit `.build-popover[hidden] { display: none }` rule) was
+ * the actual root cause of A1's whole "doesn't dismiss" symptom family —
+ * the JS-side open/closed state was correct the entire time.
  */
 export class BuildPopover {
+  private backdrop: HTMLElement;
   private el: HTMLElement;
 
   constructor(container: HTMLElement) {
+    this.backdrop = document.createElement("div");
+    this.backdrop.className = "popover-backdrop";
+    this.backdrop.hidden = true;
+    this.backdrop.addEventListener("click", (e) => {
+      if (e.target === this.backdrop) this.hide();
+    });
+
     this.el = document.createElement("div");
     this.el.className = "build-popover";
-    this.el.hidden = true;
-    container.appendChild(this.el);
+    this.backdrop.appendChild(this.el);
+    container.appendChild(this.backdrop);
   }
 
   get isOpen(): boolean {
-    return !this.el.hidden;
+    return !this.backdrop.hidden;
   }
 
   /** True if `target` is this popover or one of its descendants — lets a caller tell an outside click from one on the popover itself. */
@@ -108,14 +125,14 @@ export class BuildPopover {
   /**
    * Positions the popover at (screenX, screenY), then clamps within the
    * viewport — near a map edge the anchor point can otherwise push it
-   * partly or fully off-screen. `hidden = false` and the measurement both
-   * happen before the browser's next paint, so there's no visible flash at
-   * the wrong position.
+   * partly or fully off-screen. Revealing the backdrop and the measurement
+   * both happen before the browser's next paint, so there's no visible
+   * flash at the wrong position.
    */
   private positionAndReveal(screenX: number, screenY: number): void {
     this.el.style.left = `${screenX}px`;
     this.el.style.top = `${screenY}px`;
-    this.el.hidden = false;
+    this.backdrop.hidden = false;
 
     const rect = this.el.getBoundingClientRect();
     let left = screenX;
@@ -130,6 +147,6 @@ export class BuildPopover {
   }
 
   hide(): void {
-    this.el.hidden = true;
+    this.backdrop.hidden = true;
   }
 }
