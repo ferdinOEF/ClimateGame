@@ -1140,3 +1140,105 @@ no silhouette reading as a flat colored blob) and close range
 
 **Verification:** 53/53 tests passing (unchanged — confirms no data
 fields moved), `tsc --noEmit` clean, production build succeeds.
+
+## Step prompt — economy expansion, food pressure, estuary widening, Yacht achievement — DONE
+
+Worked `STEP_PROMPT_economy_food_yacht.md`'s four items. Per that
+document's own instruction, this lands *before* re-running/refining
+`STEP_PROMPT_balance_tuning.md`'s harness — the numbers below are all
+explicitly placeholder, same convention as every prior pass, meant as
+the harness's next input, not a finished tuning.
+
+**A stale-assumption finding worth flagging up front.** Item 3 asked to
+widen the Estuary region to "roughly 4-6 tiles," citing `tests/
+balance.test.ts`'s comment that the map has "exactly one Estuary tile."
+Checked directly against the live map before touching mapgen: the
+current map already has **7 Estuary tiles** (from the earlier Panaji/
+Taleigao mapgen reshape — see that pass's own PROGRESS.md entry), and
+they're no longer even part of the starting claim (that's a separate
+coastal Beach cluster now). The step prompt's premise was accurate for
+an older map, not the current one — `tests/balance.test.ts`'s comment
+was simply never updated when that earlier pass landed. Closed this item
+by fixing the stale comment (and confirming the actual test logic never
+hardcoded the assumption — it already searches the whole map generically
+for qualifying tiles) rather than re-touching mapgen for a difference of
+0-3 tiles from an approximate target, which would just undo already-
+screenshotted, already-approved region shape work for no real gain. 7
+tiles comfortably satisfies the item's actual goal ("enough room for
+several Khazans plus at least one Mangrove").
+
+**1 — Mangrove earns Coin too.** Added `effects.money: 1` to Mangrove
+(previously had no money key at all) and bumped Khazan `1 -> 2`, so all
+four money-generating elements now land on distinct values: Sand Mining
+14 > Beachside Resort 5 > Khazan 2 > Mangrove 1. **Placeholder
+magnitudes** — the point of this pass is the ordering and the fact all
+four differ, not that `2`/`1` are correct; feeds into the balance-tuning
+harness next.
+
+**2 — Food pressure.** `GameState.advanceTurn()` now drains Trust
+(`deficit * 0.4`) and Resilience (`deficit * 0.15`) every turn a Food
+deficit is running — both **placeholder factors**. Deliberately never a
+hard block: claiming and building both stay fully available regardless
+of how deep the deficit runs, per the design brief's explicit "12-year-
+old can play this" constraint. Updated the `food` getter's now-stale
+comment (it used to say a deficit "doesn't block anything until a
+hazard/outcome pass decides what it should do" — that pass is this one).
+HUD: the Food chip (`hud.ts`/`hud.css`) now switches to a warm red-orange
+warning color whenever `food < 0`, confirmed live in actual play (not
+just a scripted check) — the starting state's 10 pre-built Houses with
+no Mangrove/Khazan yet is itself a real deficit, and the chip lit up
+correctly from a fresh load.
+
+**3 — Estuary widening.** Already satisfied — see the stale-assumption
+finding above. No mapgen changes this pass.
+
+**4 — Yacht: a pure cosmetic achievement.** New `ElementKind` member,
+`"cosmetic"` (`core/elements.ts`) — zero category/targetsHazards/
+absorption fields, an empty `effects` map, confirmed via a new test that
+`meterTotal()` reads identically with or without one placed. Lives on
+Coast (`validTerrainIds: ["coast"]`), the one terrain nothing else builds
+on, so it doesn't compete for tile space with anything. `buildCost: 750`
+is a **placeholder** — "a genuine long-run savings target," not tuned.
+
+New hull/mast/sail construction in `elementGeometry.ts`, and a new
+primitive, `primitives3d.ts`'s `plan()` — every earlier primitive builds
+a shape in the XY plane extruded along depth (a wall, a standing-upright
+panel), the wrong orientation for something meant to sit flat and low
+like a hull; `plan()` takes a top-down (X,Z) footprint and extrudes it
+upward instead. Found and fixed a real bug building the sail: a first
+attempt rotated it 90° around Y, which — since `blade()`'s flat face
+normal points along Z — turned it exactly edge-on to a camera that looks
+in mostly along -Z, making it invisible in the actual rendered scene
+despite looking correct on paper. Fixed with a small angle (0.35 rad)
+instead, keeping the flat face mostly toward the camera while still
+reading as "angled." Screenshotted before and after to confirm — this is
+exactly the kind of thing that only shows up by actually looking at the
+render, not by reading the geometry code.
+
+New persistent HUD corner widget (`hud.ts`'s `setYachtGoal`, bottom-
+right, previously unused corner) — visible from the very first frame,
+independent of whether a Coast tile has ever been claimed: dimmed/muted
+progress ("320 / 750c") while unaffordable, a lit gold highlight the
+moment Coin crosses the cost, a distinct "✓ Achieved" treatment once one
+exists anywhere on the map (stops showing the countdown entirely rather
+than freezing it at "750/750c"). Also fixed a real bug this surfaced:
+the popover's `kindLabel` ternary (`main.ts`) fell through to
+`def.category` for any non-"building" kind — fine when the only other
+kind was "defense" (which always has a category), silently wrong the
+moment "cosmetic" existed (no category, so it would have printed
+"undefined" right in the build menu). Replaced with a small shared
+`kindLabel()` helper that handles all three kinds explicitly.
+
+Verified live end-to-end: fresh load shows the Yacht widget correctly
+reflecting starting Coin (1000) against cost (750) — already affordable
+from turn one at these placeholder numbers, which is itself useful
+tuning signal for the balance pass to consider; a Coast tile's popover
+offers exactly "Yacht / COSMETIC / 750c," nothing else; building it
+flips the HUD widget to "✓ Achieved" immediately.
+
+![Yacht: hull, mast, and sail on a claimed Coast tile, HUD widget showing "Achieved" bottom-right, Food chip showing its warning color from real Food-deficit gameplay](tools/screenshots/yacht_icon.png)
+
+**Verification:** 57/57 tests passing (4 new: money ordering/
+distinctness, food-deficit-drains-but-never-blocks, food-at-or-above-
+zero-does-nothing, Yacht buildability+zero-effects), `tsc --noEmit`
+clean, production build succeeds.

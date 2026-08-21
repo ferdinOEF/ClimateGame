@@ -1,6 +1,14 @@
 import elementData from "@data/elements.json";
 
-export type ElementKind = "building" | "defense";
+/**
+ * "cosmetic" (STEP_PROMPT_economy_food_yacht.md item 4): zero gameplay
+ * effect by design — no category, no targetsHazards, no absorption/
+ * failure fields, an empty `effects` map. Exists purely as a Coin sink a
+ * player saves toward; kept as its own kind rather than shoehorned into
+ * "building" so `hasBuildingAt()` (the cyclone Trust-penalty check) and
+ * any future kind-specific logic never has to special-case it by id.
+ */
+export type ElementKind = "building" | "defense" | "cosmetic";
 export type ElementCategory = "nbs" | "engineered" | "hybrid";
 
 export interface ElementDef {

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { box, taperedSlab, coneFrustum, dome, blade, rotate, move } from "./primitives3d";
+import { box, taperedSlab, coneFrustum, dome, blade, plan, rotate, move } from "./primitives3d";
 
 /**
  * Element-icon redesign pass (see PROGRESS.md): every element rebuilt from
@@ -298,6 +298,69 @@ function houseGeometry(): THREE.BufferGeometry {
   return mergeGeometries([wall, roof, fascia, veranda, window(-0.18), window(0.18)]);
 }
 
+/** Yacht (STEP_PROMPT_economy_food_yacht.md item 4): a low, both-ends-tapered hull, a thin mast, one angled sail, a gold waterline trim — a single small accent piece, not a scene centerpiece. Purely cosmetic (Coast-only, zero effects). */
+function yachtGeometry(): THREE.BufferGeometry {
+  const hull = plan(
+    [
+      [-0.42, 0],
+      [-0.28, 0.1],
+      [0, 0.14],
+      [0.28, 0.1],
+      [0.42, 0],
+      [0.28, -0.1],
+      [0, -0.14],
+      [-0.28, -0.1]
+    ],
+    0.1,
+    "#f2ede0",
+    0
+  );
+  const waterline = plan(
+    [
+      [-0.4, 0],
+      [-0.26, 0.09],
+      [0, 0.125],
+      [0.26, 0.09],
+      [0.4, 0],
+      [0.26, -0.09],
+      [0, -0.125],
+      [-0.26, -0.09]
+    ],
+    0.02,
+    "#d8b158",
+    0
+  );
+
+  const mast = coneFrustum(0.012, 0.02, 0.5, 6, "#7c6a4f", 0.1);
+  // blade()'s shape lies in the local XY plane (its flat face normal
+  // along Z) — a 90° rotateY, tried first, turned that face edge-on to a
+  // camera that looks in mostly along -Z, making the sail vanish. A small
+  // angle instead keeps the flat face mostly toward the camera (reads as
+  // a real sail, not a sliver) while still looking "angled," not flat-on.
+  const sail = blade(
+    [
+      [0, 0.56],
+      [0.26, 0.42],
+      [0, 0.2]
+    ],
+    "#e7e2cf",
+    0.02
+  );
+  rotate(sail, 0, 0.35, 0);
+  const sailTrim = blade(
+    [
+      [0, 0.56],
+      [0.03, 0.545],
+      [0, 0.2]
+    ],
+    "#d8b158",
+    0.022
+  );
+  rotate(sailTrim, 0, 0.35, 0);
+
+  return mergeGeometries([hull, waterline, mast, sail, sailTrim]);
+}
+
 const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   dune: duneGeometry,
   sandy_vegetation: sandyVegetationGeometry,
@@ -307,7 +370,8 @@ const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   khazan: khazanGeometry,
   small_dam: smallDamGeometry,
   sand_mining: sandMiningGeometry,
-  house: houseGeometry
+  house: houseGeometry,
+  yacht: yachtGeometry
 };
 
 export function createElementGeometry(elementId: string): THREE.BufferGeometry {

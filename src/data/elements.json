@@ -85,8 +85,9 @@
     "overwhelmSeverity": 1.4,
     "overwhelmedAbsorptionMultiplier": 0.4,
     "colorKey": "defenseMangrove",
-    "effects": { "biodiversity": 3, "food": 1 },
-    "failureMode": "No destruction. Above overwhelmSeverity, absorption is cut to overwhelmedAbsorptionMultiplier for that hazard, but the buffer survives to the next one."
+    "effects": { "biodiversity": 3, "food": 1, "money": 1 },
+    "failureMode": "No destruction. Above overwhelmSeverity, absorption is cut to overwhelmedAbsorptionMultiplier for that hazard, but the buffer survives to the next one.",
+    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) — deliberately the smallest of the four money-generating elements (Sand Mining 14 > Beachside Resort 5 > Khazan 2 > Mangrove 1): Mangrove's value proposition is Biodiversity/Food, income is a bonus, not its purpose. Feed into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster."
   },
   {
     "id": "khazan",
@@ -105,8 +106,9 @@
     "degradeGracefully": true,
     "gracefulDegradeStep": 0.12,
     "colorKey": "defenseKhazanBund",
-    "effects": { "biodiversity": 2, "money": 1, "food": 1 },
-    "failureMode": "No catastrophic breach. Above capacity, or after sustained maintenance neglect, effectiveness degrades gradually rather than the structure being destroyed."
+    "effects": { "biodiversity": 2, "money": 2, "food": 1 },
+    "failureMode": "No catastrophic breach. Above capacity, or after sustained maintenance neglect, effectiveness degrades gradually rather than the structure being destroyed.",
+    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) — nudged 1->2, modest but clearly ahead of Mangrove's 1 without approaching Beachside Resort's 5, reflecting Khazan's already-well-rounded hybrid profile (Biodiversity +2, Food +1). Feed into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster."
   },
   {
     "id": "small_dam",
@@ -142,5 +144,17 @@
     "effects": { "money": 14, "biodiversity": -3, "resilience": -4 },
     "failureMode": "No catastrophic breach — it simply offers almost no flood protection (absorptionAtMaturity 0.1, far below Small Dam's 0.75). An untouched river tile is the flood's own source and is skipped entirely (zero damage); building anything on it — Sand Mining included — makes it start taking damage instead, and Sand Mining's near-absent absorption means that damage is close to the full undefended amount.",
     "note": "PLACEHOLDER NUMBERS (STEP_PROMPT_visuals_map_river.md item 3): only the direction of each effect is specified (money up, biodiversity down, resilience down). Tuned here — cheaper to build than Small Dam, no maintenance cost, meaningfully higher Money return — so it isn't simply worse than Small Dam in every respect, per that file's explicit balance flag; not a settled/tested number."
+  },
+  {
+    "id": "yacht",
+    "name": "Yacht",
+    "kind": "cosmetic",
+    "validTerrainIds": ["coast"],
+    "buildCost": 750,
+    "maintenanceCostPerTurn": 0,
+    "matureTurns": 0,
+    "colorKey": "yachtHull",
+    "effects": {},
+    "note": "PLACEHOLDER buildCost (STEP_PROMPT_economy_food_yacht.md item 4). Purely cosmetic — zero effects, by design (confirm via meterTotal(): every key should read the same with or without a placed Yacht). Should read as a genuine long-run savings target reachable only through several turns of well-managed income, not something a player stumbles into early. Tune alongside the rest of the economy pass in STEP_PROMPT_balance_tuning.md."
   }
 ]

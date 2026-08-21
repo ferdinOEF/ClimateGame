@@ -104,4 +104,55 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     state.elements.get("0,0")!.builtOnTurn = -1000;
     expect(state.food).toBeGreaterThan(0);
   });
+
+  it("all four money-generating elements land on distinct, correctly-ordered values (STEP_PROMPT_economy_food_yacht.md item 1)", () => {
+    // Sand Mining > Beachside Resort > Khazan > Mangrove, all strictly
+    // positive and all different — the whole point is that none of the
+    // four are interchangeable income sources.
+    const sandMining = ELEMENT_BY_ID.get("sand_mining")!.effects.money;
+    const resort = ELEMENT_BY_ID.get("beachside_resort")!.effects.money;
+    const khazan = ELEMENT_BY_ID.get("khazan")!.effects.money;
+    const mangrove = ELEMENT_BY_ID.get("mangrove")!.effects.money;
+
+    for (const v of [sandMining, resort, khazan, mangrove]) expect(v).toBeGreaterThan(0);
+    expect(sandMining).toBeGreaterThan(resort);
+    expect(resort).toBeGreaterThan(khazan);
+    expect(khazan).toBeGreaterThan(mangrove);
+
+    const values = [sandMining, resort, khazan, mangrove];
+    expect(new Set(values).size, "all four money values should be distinct").toBe(values.length);
+  });
+
+  it("Yacht is buildable only on Coast, has zero effects, and contributes nothing to any meter", () => {
+    const coastState = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "coast" }]);
+    const coastOptions = coastState.buildableAt({ q: 0, r: 0 }).map((d) => d.id);
+    expect(coastOptions).toEqual(["yacht"]); // Coast has no other eligible elements today
+
+    for (const terrainId of ["beach", "land", "river", "estuary"]) {
+      const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId }]);
+      expect(state.buildableAt({ q: 0, r: 0 }).map((d) => d.id), `yacht should not be buildable on ${terrainId}`).not.toContain("yacht");
+    }
+
+    const yacht = ELEMENT_BY_ID.get("yacht")!;
+    expect(yacht.kind).toBe("cosmetic");
+    expect(Object.keys(yacht.effects)).toHaveLength(0);
+
+    // Confirm via meterTotal, not just the empty effects map on paper —
+    // every tracked key should read identically with or without a placed Yacht.
+    const before = new GameState(
+      [
+        { coord: { q: 0, r: 0 }, terrainId: "coast" },
+        { coord: { q: 1, r: 0 }, terrainId: "land" }
+      ],
+      [{ q: 0, r: 0 }, { q: 1, r: 0 }]
+    );
+    before.coin = 2000;
+    before.build({ q: 1, r: 0 }, "house"); // something else standing, so the meters aren't trivially zero either way
+    const metersBefore = { money: before.meterTotal("money"), food: before.food, biodiversity: before.biodiversity, population: before.population };
+
+    before.build({ q: 0, r: 0 }, "yacht");
+    const metersAfter = { money: before.meterTotal("money"), food: before.food, biodiversity: before.biodiversity, population: before.population };
+
+    expect(metersAfter).toEqual(metersBefore);
+  });
 });

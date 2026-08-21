@@ -27,6 +27,13 @@ const RESILIENCE_DAMAGE_FACTOR = 0.5;
 const CATASTROPHIC_TRUST_PENALTY = 8; // per destroyed engineered defense — stings more than an NBS shortfall
 const WEATHERED_TRUST_BONUS = 2;
 const CLAIM_COST = 4; // Section 2: "costs a small amount of Coin"
+// STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit costs
+// Trust and (less directly) Resilience every turn — a soft, non-blocking
+// consequence, never a hard build/claim block. Both PLACEHOLDER
+// magnitudes, same convention as every other flagged number in this
+// codebase — feed into STEP_PROMPT_balance_tuning.md's harness.
+const FOOD_DEFICIT_TRUST_FACTOR = 0.4;
+const FOOD_DEFICIT_RESILIENCE_FACTOR = 0.15;
 
 /**
  * Pure game-logic state (v2.1): the terrain map is fixed at construction —
@@ -158,6 +165,16 @@ export class GameState {
         this.elements.set(key, inst);
       }
     }
+
+    // STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit
+    // (more Houses than Mangrove/Khazan can feed) visibly costs Trust and
+    // Resilience every turn — real pressure to build enough food
+    // production, but never a hard block on claiming or building.
+    const deficit = Math.max(0, -this.food);
+    if (deficit > 0) {
+      this.trust = Math.max(0, this.trust - deficit * FOOD_DEFICIT_TRUST_FACTOR);
+      this.resilience = Math.max(0, this.resilience - deficit * FOOD_DEFICIT_RESILIENCE_FACTOR);
+    }
   }
 
   /** Element options valid at `coord` right now (must be claimed, terrain-matched, nothing already built there), regardless of affordability. */
@@ -193,6 +210,14 @@ export class GameState {
     const inst = this.elements.get(key);
     if (!inst) return false;
     return ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
+  }
+
+  /** True if at least one instance of `elementId` exists anywhere on the map — e.g. the Yacht HUD goal's "achieved" state (STEP_PROMPT_economy_food_yacht.md item 4), which only cares that one exists, not where. */
+  hasElement(elementId: string): boolean {
+    for (const inst of this.elements.values()) {
+      if (inst.elementId === elementId) return true;
+    }
+    return false;
   }
 
   /** Current absorption fraction [0,1] a defense provides right now, factoring maturity and any degrade. */
@@ -245,7 +270,15 @@ export class GameState {
     return this.meterTotal("carbon");
   }
 
-  /** v2.4 (Section 4/7/8): Food, produced by Mangrove/Khazan and consumed by House — tracked, not yet gated on (a deficit doesn't block anything until a hazard/outcome pass decides what it should do). */
+  /**
+   * v2.4 (Section 4/7/8): Food, produced by Mangrove/Khazan and consumed
+   * by House. A deficit never hard-blocks a claim or build — Section 2's
+   * design brief is explicit that's too harsh a wall for the "12-year-old
+   * can play this" end of the game — but `advanceTurn()` does drain Trust
+   * and Resilience every turn a deficit is running (STEP_PROMPT_economy_
+   * food_yacht.md item 2), so building enough Mangrove/Khazan to sustain
+   * the Houses already standing is a real, felt part of play now.
+   */
   get food(): number {
     return this.meterTotal("food");
   }

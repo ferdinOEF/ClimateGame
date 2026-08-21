@@ -54,6 +54,12 @@ html, body {
   transform: translateX(-50%);
 }
 
+.hud-corner.bottom-right {
+  bottom: 16px;
+  right: 12px;
+  text-align: right;
+}
+
 .era-banner {
   background: rgba(20, 30, 26, 0.85);
   border: 1px solid rgba(255, 243, 196, 0.4);
@@ -107,12 +113,71 @@ html, body {
   font-weight: 700;
 }
 
+/*
+  STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit now
+  drains Trust/Resilience every turn — this is the at-a-glance warning
+  for it, toggled by Hud.setMeters() whenever food < 0. Warm red-orange
+  rather than the meter strip's usual cream, so it reads as "this number
+  is actively hurting you," not just "this number is negative."
+*/
+.meter-chip-warning {
+  color: #ff8a5c;
+  opacity: 1;
+}
+
+.meter-chip-warning b {
+  color: #ffb199;
+}
+
 .claim-prompt {
   background: rgba(20, 30, 26, 0.7);
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
+}
+
+/*
+  STEP_PROMPT_economy_food_yacht.md item 4: the Yacht goal, always
+  visible. Three states: dimmed/muted default (a distant savings target),
+  a lit gold highlight the instant Coin crosses the cost (a clear "you
+  can do this now" signal, well before the player has to open a Coast
+  tile's popover to find out), and a distinct achieved treatment once one
+  actually exists on the map.
+*/
+.yacht-goal {
+  background: rgba(20, 30, 26, 0.7);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.55;
+  transition: opacity 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.yacht-goal .yacht-value {
+  font-size: 13px;
+  margin-top: 1px;
+}
+
+.yacht-goal.affordable {
+  opacity: 1;
+  background: rgba(216, 177, 88, 0.28);
+  box-shadow: 0 0 10px rgba(216, 177, 88, 0.5);
+}
+
+.yacht-goal.affordable .yacht-value {
+  color: #ffe9a8;
+}
+
+.yacht-goal.achieved {
+  opacity: 1;
+  background: rgba(216, 177, 88, 0.4);
+  border: 1px solid rgba(255, 233, 168, 0.6);
+}
+
+.yacht-goal.achieved .yacht-value {
+  color: #ffe9a8;
 }
 
 /*

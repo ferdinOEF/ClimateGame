@@ -5,7 +5,7 @@ import { ClaimRingMeshManager } from "@render/claimRingMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS } from "@render/floodOverlayManager";
 import { GameState, type StartingElementSeed } from "@core/gameState";
-import { ELEMENT_BY_ID } from "@core/elements";
+import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
 import { resolveMonsoonFlood, resolveCyclone } from "@core/hazard";
 import { computeEraScore } from "@core/scoring";
@@ -97,6 +97,8 @@ for (const coord of STARTING_STATE.prebuiltHouses) {
 const hud = new Hud(container);
 const buildPopover = new BuildPopover(container);
 
+const YACHT_COST = ELEMENT_BY_ID.get("yacht")!.buildCost;
+
 function refreshHud(): void {
   hud.setTileCount(state.claimed.size);
   hud.setCoin(state.coin);
@@ -109,6 +111,7 @@ function refreshHud(): void {
     population: state.population
   });
   hud.setClaimable(state.claimableCount, 4);
+  hud.setYachtGoal(state.coin, YACHT_COST, state.hasElement("yacht"));
 }
 
 refreshHud();
@@ -283,6 +286,18 @@ function claimTile(coord: AxialCoord): boolean {
 // --- Build / defend popover --------------------------------------------------
 
 /**
+ * Small tag shown beside an element's name in its popover row. `category`
+ * only exists on defense-kind elements — falling through to it for
+ * anything else (as an earlier version of this ternary did) silently
+ * printed "undefined" for Yacht's cosmetic kind once that was added
+ * (STEP_PROMPT_economy_food_yacht.md item 4), since it has no category.
+ */
+function kindLabel(def: ElementDef): string | undefined {
+  if (def.kind === "building" || def.kind === "cosmetic") return def.kind;
+  return def.category;
+}
+
+/**
  * Section 3's "one tile, one element": a tile that already has something
  * built on it shows that element's info (name, category, effects) instead
  * of ever offering a second build menu — the UI should never let a player
@@ -300,7 +315,7 @@ function openTilePopover(coord: AxialCoord): void {
     if (!def) return;
     buildPopover.showInfo(screen.x, screen.y, {
       name: def.name,
-      kindLabel: def.kind === "building" ? "building" : def.category,
+      kindLabel: kindLabel(def),
       effects: def.effects
     });
     return;
@@ -308,7 +323,7 @@ function openTilePopover(coord: AxialCoord): void {
 
   const options: PopoverOption[] = state
     .buildableAt(coord)
-    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: d.kind === "building" ? "building" : d.category }));
+    .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d) }));
   if (options.length === 0) return;
 
   buildPopover.show(screen.x, screen.y, options, state.coin, (id) => {

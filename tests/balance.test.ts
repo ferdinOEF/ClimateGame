@@ -89,13 +89,21 @@ function runScriptedPlaythrough(category: Category, seed: number): PlaythroughRe
   let hazardIndex = 0;
   let defensesBuilt = 0;
 
-  // v2.2: Mangrove/Khazan are Estuary-only, and the fixed map has exactly
-  // one Estuary tile (Section 4: "a single Estuary tile") — which is
-  // already part of the starting claim by construction, so the main loop
-  // below (which only ever builds on the tile it *just* claimed) would
-  // never revisit it. A real player would simply open the popover on their
-  // own starting tile; do the same opportunistic pass here before claiming
-  // anything else.
+  // STEP_PROMPT_visuals_map_river.md's mapgen reshape widened Estuary to a
+  // multi-tile region (7 tiles as of that pass, comfortably within
+  // STEP_PROMPT_economy_food_yacht.md item 3's "roughly 4-6" target — see
+  // PROGRESS.md, that item was found already satisfied by the earlier
+  // pass rather than needing further mapgen changes), and it's no longer
+  // part of the starting claim (that's a small coastal Beach cluster now,
+  // separate from the inland-ish estuary). This opportunistic pre-pass —
+  // check the starting claim's own tiles for a category-matching build
+  // before claiming anything else, same as a real player opening the
+  // popover on land they already own — is still harmless and still
+  // correct to keep: for `nbs` it can pick up a Dune/Sandy Vegetation on
+  // the starting Beach tiles; the main loop below independently seeks out
+  // every qualifying Estuary tile (Mangrove/Khazan) as it claims, so
+  // Estuary having several tiles rather than one just means the `nbs`/
+  // `hybrid` runs get more chances to build there, not fewer.
   for (const key of state.claimed) {
     const [q, r] = key.split(",").map(Number);
     const coord = { q, r };

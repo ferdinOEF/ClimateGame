@@ -75,3 +75,55 @@ describe("GameState claim mechanic (v2.2: claim-anywhere, no adjacency gate)", (
     expect(state.buildableAt({ q: 1, r: 0 }).length).toBeGreaterThan(0);
   });
 });
+
+describe("Food deficit — a soft consequence, never a hard block (STEP_PROMPT_economy_food_yacht.md item 2)", () => {
+  it("drains Trust and Resilience every turn a Food deficit runs, but never blocks claiming or building", () => {
+    const map: PlacedTile[] = [
+      { coord: { q: 0, r: 0 }, terrainId: "land" },
+      { coord: { q: 1, r: 0 }, terrainId: "land" },
+      { coord: { q: 2, r: 0 }, terrainId: "land" },
+      { coord: { q: 3, r: 0 }, terrainId: "land" } // left unclaimed, claimed later to force a turn
+    ];
+    const state = new GameState(map, [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }]);
+    state.coin = 500;
+
+    // Three Houses, no Mangrove/Khazan anywhere — a guaranteed Food deficit (food: -1 each).
+    for (const coord of [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }]) {
+      expect(state.build(coord, "house")).toBe(true);
+    }
+    expect(state.food).toBeLessThan(0);
+
+    const trustBefore = state.trust;
+    const resilienceBefore = state.resilience;
+
+    // claim() is the only call site of advanceTurn() in real play — use
+    // it, not advanceTurn() directly, so this exercises the actual path a
+    // player's action takes.
+    const claimed = state.claim({ q: 3, r: 0 });
+
+    expect(claimed, "a running Food deficit must never block a claim").toBe(true);
+    expect(state.trust).toBeLessThan(trustBefore);
+    expect(state.resilience).toBeLessThan(resilienceBefore);
+
+    // And building on the newly-claimed tile is still possible too — the
+    // deficit is a meter drain, not a build/claim gate anywhere.
+    expect(state.build({ q: 3, r: 0 }, "house")).toBe(true);
+  });
+
+  it("does nothing to Trust/Resilience when Food is at or above zero", () => {
+    const map: PlacedTile[] = [
+      { coord: { q: 0, r: 0 }, terrainId: "estuary" },
+      { coord: { q: 1, r: 0 }, terrainId: "land" }
+    ];
+    const state = new GameState(map, [{ q: 0, r: 0 }]);
+    state.coin = 500;
+    expect(state.build({ q: 0, r: 0 }, "mangrove")).toBe(true); // food +1, no Houses yet — Food stays >= 0
+
+    const trustBefore = state.trust;
+    const resilienceBefore = state.resilience;
+    state.claim({ q: 1, r: 0 });
+
+    expect(state.trust).toBe(trustBefore);
+    expect(state.resilience).toBe(resilienceBefore);
+  });
+});

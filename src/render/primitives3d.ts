@@ -101,6 +101,25 @@ export function blade(points: [number, number][], color: string, thickness = 0.0
   return paint(g, color);
 }
 
+/**
+ * A shallow solid built from a top-down (X,Z) footprint extruded upward
+ * by `height` — the Yacht hull's lens/canoe shape (tapered at both ends,
+ * low profile) is the first thing that needed this: `taperedSlab`/`blade`
+ * both build a shape in the XY plane extruded along depth (a wall or a
+ * standing-upright panel), the wrong orientation for something meant to
+ * sit flat and low like a hull. `points` are (x, z) pairs.
+ */
+export function plan(points: [number, number][], height: number, color: string, baseY = 0): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0][0], points[0][1]);
+  for (const [x, z] of points.slice(1)) shape.lineTo(x, z);
+  shape.closePath();
+  const g = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2); // (x, y, z) -> (x, z, -y): the shape's own plane becomes the (X,Z) footprint, its extrusion becomes height (+Y)
+  g.translate(0, baseY, 0);
+  return paint(g, color);
+}
+
 /** Rotates a geometry in place (radians) — for angling struts, fronds, tufts, arms. Returns the same geometry for chaining. */
 export function rotate(g: THREE.BufferGeometry, x = 0, y = 0, z = 0): THREE.BufferGeometry {
   g.rotateX(x);

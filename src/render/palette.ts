@@ -37,7 +37,8 @@ export const PALETTE: Record<string, THREE.Color> = {
   defenseSandMining: new THREE.Color("#C68A3D"), // warm sandy-orange — distinct from the cool-gray engineered family
   defenseMangrove: new THREE.Color("#4FAE6E"),
   defenseKhazanBund: new THREE.Color("#8C6A3F"),
-  houseTerracotta: new THREE.Color("#C25730") // laterite-tile roof red
+  houseTerracotta: new THREE.Color("#C25730"), // laterite-tile roof red
+  yachtHull: new THREE.Color("#F2EDE0") // Yacht — crisp whitewash, same "premium" family as Beachside Resort's wall
 };
 
 export function paletteColor(key: string): THREE.Color {

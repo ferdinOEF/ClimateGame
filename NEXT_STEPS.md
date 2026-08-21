@@ -304,6 +304,21 @@ roster, not a performance concern at this project's scale, but a real
 increase worth naming. Every other element also grew 2-4x, an expected
 consequence of real 3D volumes vs. thin flat cutouts.
 
+## Bucket E — Step prompt: economy expansion, food pressure, estuary widening, Yacht
+
+Source: `STEP_PROMPT_economy_food_yacht.md`. Explicitly ordered before
+re-running `STEP_PROMPT_balance_tuning.md` — this pass changes the
+roster and mechanics that harness plays against. See PROGRESS.md's
+"economy expansion" section for full detail, numbers, and screenshots.
+
+### E1. Mangrove earns Coin too; E2. Food pressure; E3. Estuary widening; E4. Yacht achievement
+
+Status: all closed.
+- **E1** — Mangrove gained `effects.money: 1` (was absent), Khazan bumped `1 -> 2`; all four money-generating elements (Sand Mining 14 > Resort 5 > Khazan 2 > Mangrove 1) now distinct. Placeholder magnitudes.
+- **E2** — `GameState.advanceTurn()` drains Trust/Resilience every turn a Food deficit runs (placeholder factors 0.4/0.15), never blocking claims or builds. HUD Food chip warns in red-orange when `food < 0`, confirmed live from a fresh load's own starting deficit.
+- **E3** — **Found already satisfied.** The step prompt's "exactly one Estuary tile" premise traced to a stale `tests/balance.test.ts` comment from before the Panaji/Taleigao mapgen reshape — the live map already has 7 Estuary tiles. Fixed the stale comment; no mapgen changes needed.
+- **E4** — New `ElementKind` "cosmetic" for the Yacht (Coast-only, 750c placeholder cost, zero effects — confirmed via `meterTotal()`). New hull/mast/sail geometry (new `plan()` primitive for flat top-down-footprint shapes) and a persistent "always visible" HUD goal widget (dimmed/affordable/achieved states). Found and fixed two real bugs along the way: the sail was invisible at first (a 90° rotation put its flat face edge-on to the camera — only caught by actually looking at the render), and the popover's kind-label ternary printed "undefined" for the new cosmetic kind (fixed with a shared `kindLabel()` helper).
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -325,3 +340,4 @@ consequence of real 3D volumes vs. thin flat cutouts.
 - 2026-08-21, C2 (map reshape): closed. Map cut from 243 to 105 hexes; Land/water boundary now bulges per-row for a Panaji/Taleigao-like wide, rounded estuary mouth. No longer an island wrapped by sea; Sea-left/Beach/Land/Estuary-River-right order re-verified.
 - 2026-08-21, C3 (river roster): closed. Small Dam is now flood-resilience-positive (`effects.money`/`effects.resilience` added, its already-strong `absorptionAtMaturity` unchanged); new Sand Mining element added as the extractive option; Beachside Resort's River eligibility reverted. Verified live and via a new scripted flood-comparison test.
 - 2026-08-21, D1 (element icon redesign, all 9): closed. Every element rebuilt from real 3D primitives (boxes/prisms/cones/domes) with per-vertex color, replacing the flat-cutout technique entirely; found and fixed a `mergeGeometries` indexed/non-indexed bug along the way. Beachside Resort's height increased (0.62→0.95) after a first pass read as "different kind, not obviously bigger" than House. Verified live via screenshots at normal zoom (all nine) and close range (House vs. Resort specifically).
+- 2026-08-21, E1-E4 (economy expansion, food pressure, estuary widening, Yacht): all closed. E1: Mangrove/Khazan money added/bumped, all four income elements now distinct. E2: Food deficit now drains Trust/Resilience every turn, never blocks play; HUD warning confirmed live. E3: found already satisfied (7 Estuary tiles already exist from the earlier mapgen reshape) — fixed a stale test comment rather than re-touching mapgen. E4: new "cosmetic" ElementKind, Yacht built on Coast with a new `plan()` geometry primitive, persistent HUD goal widget; found and fixed two real bugs (an invisible sail from a bad rotation, an "undefined" kind label for the new cosmetic kind).
