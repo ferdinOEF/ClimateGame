@@ -273,6 +273,37 @@ popover now offers exactly these two options; a new scripted test
 confirms Small Dam now reduces downstream flood damage relative to an
 undefended river tile.
 
+## Bucket D — Step prompt: element icon redesign (all 9 elements)
+
+Source: `STEP_PROMPT_icons.md`. Visual/geometry only — no
+`elements.json` field moved (confirmed by the unchanged 53/53 test
+suite). See PROGRESS.md's "element icon redesign" section for full
+per-element detail and screenshots.
+
+### D1. Replace all nine placeholder meshes with the designed ones
+
+Status: closed. Every element rebuilt from real low-poly 3D primitives
+(boxes, tapered prisms, cones, domes, thin angled blades — new
+`src/render/primitives3d.ts`) with baked-in per-vertex color, replacing
+the earlier flat-cutout-icon technique entirely. Found and fixed a real
+bug along the way: `mergeGeometries()` silently fails when mixing
+indexed (`Box`/`Cylinder`/`Sphere`) and non-indexed (`Extrude`)
+geometries in one call — exactly what nearly every element does now —
+fixed centrally in the shared color-baking helper.
+
+Beachside Resort vs. House (the step prompt's explicit verify item) took
+a second pass: the first live side-by-side check found the flat-roof/
+window-grid cues read as a different *kind* of building but not
+obviously *bigger*. Increased Resort's block height (0.62 → 0.95) and
+rescaled its window grid to match; re-verified as unmistakable.
+
+Flagged in PROGRESS.md per that document's own ask: Beachside Resort's
+new mesh (388 triangles) is meaningfully heavier than what it replaced
+(~7x its old ~56-triangle version) — the most detailed silhouette in the
+roster, not a performance concern at this project's scale, but a real
+increase worth naming. Every other element also grew 2-4x, an expected
+consequence of real 3D volumes vs. thin flat cutouts.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -293,3 +324,4 @@ undefended river tile.
 - 2026-08-21, C1 (readability): closed. `dim()` rewritten from a fog-blend to a proportional lightness cut; palette re-saturated and re-spread. New permanent tool `tools/verify_readability.ts` (`npm run verify:readability`) reads real WebGL pixel values and asserts a 30-point claimed/unclaimed luminance floor — currently passing for all four buildable terrain types.
 - 2026-08-21, C2 (map reshape): closed. Map cut from 243 to 105 hexes; Land/water boundary now bulges per-row for a Panaji/Taleigao-like wide, rounded estuary mouth. No longer an island wrapped by sea; Sea-left/Beach/Land/Estuary-River-right order re-verified.
 - 2026-08-21, C3 (river roster): closed. Small Dam is now flood-resilience-positive (`effects.money`/`effects.resilience` added, its already-strong `absorptionAtMaturity` unchanged); new Sand Mining element added as the extractive option; Beachside Resort's River eligibility reverted. Verified live and via a new scripted flood-comparison test.
+- 2026-08-21, D1 (element icon redesign, all 9): closed. Every element rebuilt from real 3D primitives (boxes/prisms/cones/domes) with per-vertex color, replacing the flat-cutout technique entirely; found and fixed a `mergeGeometries` indexed/non-indexed bug along the way. Beachside Resort's height increased (0.62→0.95) after a first pass read as "different kind, not obviously bigger" than House. Verified live via screenshots at normal zoom (all nine) and close range (House vs. Resort specifically).

@@ -1064,3 +1064,79 @@ away defense" framing from earlier revisions.
 exactly-two-options menu, Small Dam/Sand Mining's effect directions and
 relative tuning, and the downstream-damage comparison), `tsc --noEmit`
 clean, production build succeeds.
+
+## Step prompt — element icon redesign (all 9 elements) — DONE
+
+Replaced every buildable element's placeholder mesh with a properly
+designed one, per `STEP_PROMPT_icons.md`'s 2D-silhouette-first
+design review. Visual/geometry only — confirmed via the full test suite
+(53/53, unchanged) that no `elements.json` field (`effects`, `terrain`,
+`buildCost`, or anything else) moved.
+
+**Construction technique changed, not just the shapes.** Every earlier
+icon (this project's whole history so far) was a thin flat cutout — a 2D
+polygon extruded a shallow ~0.09 depth, standing upright on the tile like
+a cardboard sign. This pass's brief was explicit: real low-poly 3D
+volumes (boxes, tapered prisms, cones, domes), matching the construction
+language the hex-prism terrain already uses, not more of the same
+cutout technique with fancier outlines. New `src/render/primitives3d.ts`
+holds the reusable pieces (`box`, `taperedSlab`, `coneFrustum`, `dome`,
+`blade` for the remaining thin angled parts — grass tufts, fronds, prop
+roots, arms — plus `rotate`/`move` helpers), each baking a real
+per-vertex `color` attribute so a single element can have multiple
+distinctly-colored parts (a dune's paler back ridge vs. darker front
+ridge, a house's cream wall vs. laterite roof) without needing a
+separate material or draw call per part — `ElementMeshManager`'s material
+gained `vertexColors: true` to read it, composed with the existing
+per-instance `jitterColor` tint (still applies on top, multiplicatively,
+for the same "not perfectly uniform" variety as before).
+
+**A real bug surfaced building this, not just new shapes:**
+`THREE.BufferGeometryUtils.mergeGeometries()` silently returns `null`
+(logs a console error, doesn't throw) when mixing indexed and
+non-indexed geometries in one call — `ExtrudeGeometry` (used by
+`taperedSlab`/`blade`, for the trapezoid/wall/wedge shapes) comes out
+non-indexed, while `BoxGeometry`/`CylinderGeometry`/`SphereGeometry`
+come out indexed, so any element mixing both families — nearly every one
+of the nine — would have failed to merge, throwing downstream ("Cannot
+read properties of null") the first time `ElementMeshManager` tried to
+construct its meshes at boot, not at the specific broken element's build
+site. Fixed once, centrally, in `primitives3d.ts`'s shared `paint()`
+helper (`geometry.toNonIndexed()` before every geometry gets its color
+attribute) rather than requiring every individual builder function to
+know about it.
+
+**Per-element notes, only where something needed a second pass:**
+- **Beachside Resort vs. House** — the step prompt's own explicit ask. First live side-by-side screenshot found the flat-roof/window-grid cues read as a different *kind* of building but not obviously *bigger* — a real, worth-catching gap between "the geometry is technically taller" and "a player glancing at the map would call it taller." Pushed the main block height from 0.62 to 0.95 (vs. House's wall-plus-roof-peak total of ~0.58) and rescaled the window grid proportionally so three rows stay spread across the now-taller face rather than clustering in the lower half. Re-verified: the height difference reads as unmistakable now, alongside the flat parapet roofline (vs. House's peaked gable) and the 3×3-minus-one window grid.
+- **Sandy Vegetation (Pandanus)** — built exactly to the settled "minimal single" spec: one tapered trunk, an 8-blade rosette drooping outward/downward (alternating two leaf tones), two angled prop-root struts. Reads as a distinct spiky plant, not a bush or a palm, at both close and normal zoom.
+- **House** — the "Goan cottage": wall block under a gable roof genuinely wider than the wall (the overhang is the point), a lean-to veranda slab at the front, two window insets. The pre-existing starting cluster (10 pre-built Houses) picked this up automatically with no other code changes, since it's the same shared geometry.
+- Every other element (Dune, Seawall, Mangrove, Khazan, Small Dam, Sand Mining) built to its spec's silhouette/color description directly — no second-pass issues found in live verification.
+
+**Poly counts** (triangles per instance, read directly off the live
+meshes): dune 196, sandy_vegetation 144, beachside_resort 388, seawall
+48, mangrove 240, khazan 144, small_dam 60, sand_mining 168, house 72.
+**Flagging Beachside Resort as meaningfully heavier than what it
+replaced** (its old flat-cutout version — cabana + pole + canopy — was
+roughly 56 triangles; the new hotel is ~7x that), a direct consequence
+of it being the most detailed silhouette in the roster (8 windows +
+sills, parapet + trim, awning + door, pennant pole + flag, pool +
+highlight, a full palm). Every other element also grew (roughly 2-4x
+their old flat-cutout versions) simply from being built as real 3D
+volumes with multiple parts instead of thin single-depth cutouts. None
+of this is a real performance concern at this project's scale — even at
+the per-type instance cap (200), Resort's worst case is ~78k triangles,
+comfortably within budget for any target hardware this pilot cares
+about — but flagged as asked, since the increase is real and Beachside
+Resort specifically is the standout case.
+
+Verified live: built all nine elements via a scripted playthrough and
+screenshotted at both normal-zoom (all nine visible, terrain-adjacent,
+no silhouette reading as a flat colored blob) and close range
+(House-vs-Resort specifically, per that item's explicit verify note).
+
+![All nine elements built and visible together at normal zoom](tools/screenshots/icons_overview.png)
+![Mangrove, Khazan, Small Dam, and Sand Mining close up](tools/screenshots/icons_estuary_mangrove_khazan.png)
+![House vs. Beachside Resort: height, roofline shape, and window grid all reading as distinct at a glance](tools/screenshots/icons_house_vs_resort.png)
+
+**Verification:** 53/53 tests passing (unchanged — confirms no data
+fields moved), `tsc --noEmit` clean, production build succeeds.

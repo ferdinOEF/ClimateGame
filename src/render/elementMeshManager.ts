@@ -38,7 +38,12 @@ export class ElementMeshManager {
   constructor() {
     for (const element of ELEMENT_DEFS) {
       const geometry = createElementGeometry(element.id);
-      const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.85 });
+      // vertexColors: true — the element-icon redesign pass bakes real
+      // per-part color into each geometry's `color` attribute (see
+      // primitives3d.ts), which Three.js multiplies against the
+      // per-instance `instanceColor` set below (jitterColor's subtle
+      // per-tile variation still applies on top of every part uniformly).
+      const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.85, vertexColors: true });
       const mesh = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES_PER_TYPE);
       mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES_PER_TYPE * 3), 3);
       mesh.count = 0;
