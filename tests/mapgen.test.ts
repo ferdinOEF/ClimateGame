@@ -14,9 +14,12 @@ interface MapFile {
   estuary: { q: number; r: number };
   startingClaim: { q: number; r: number }[];
   tiles: MapTile[];
+  /** Set by the hand-paintable map editor's export — see STEP_PROMPT_remove_claiming.md's note that it "still writes [startingClaim] through unchanged." A hand-painted map is deliberately not bound by the procedural generator's own shape rules (row-offset rectangle, single-column Coast, Estuary patch count/distribution, House-cluster distance target, etc.) — those checks below are skipped for one, not silently loosened for the generated map too. */
+  handEdited?: boolean;
 }
 const MAP = mapData as unknown as MapFile;
 const STARTING_STATE = startingStateData as unknown as { prebuiltHouses: { q: number; r: number }[] };
+const skipIfHandEdited = it.skipIf(MAP.handEdited === true);
 
 const byKey = new Map(MAP.tiles.map((t) => [axialKey({ q: t.q, r: t.r }), t.terrainId]));
 const [R_MIN, R_MAX] = MAP.rRange;
@@ -34,7 +37,7 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land, winding River/Es
     }
   });
 
-  it("is an actual rectangle in world space, not a parallelogram — every row's west edge aligns within one half-hex stagger", () => {
+  skipIfHandEdited("is an actual rectangle in world space, not a parallelogram — every row's west edge aligns within one half-hex stagger", () => {
     // A plain axial rectangle (q in a fixed range for every r) renders as a
     // parallelogram once axialToWorld's r/2 shear is applied, which is
     // exactly the bug this test guards against: a "diagonal" coastline
@@ -52,7 +55,7 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land, winding River/Es
     expect(drift, "west edge should align within one half-hex stagger across all rows, not several hex-widths of diagonal drift").toBeLessThanOrEqual(halfHex + 0.01);
   });
 
-  it("confines Coast to a single column on the west edge, present in every row", () => {
+  skipIfHandEdited("confines Coast to a single column on the west edge, present in every row", () => {
     for (let r = R_MIN; r <= R_MAX; r++) {
       const row = MAP.tiles.filter((t) => t.r === r);
       const westmostQ = Math.min(...row.map((t) => t.q));
@@ -62,7 +65,7 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land, winding River/Es
     }
   });
 
-  it("every row reads Coast then Beach at its west edge", () => {
+  skipIfHandEdited("every row reads Coast then Beach at its west edge", () => {
     // STEP_PROMPT_map_reshape_veg_icons.md: the River now winds across the
     // full width of the interior instead of staying confined to an eastern
     // band, so it can legitimately appear immediately after Beach on rows
@@ -81,7 +84,7 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land, winding River/Es
     }
   });
 
-  it("never lets River or Estuary touch the Coast/Beach columns", () => {
+  skipIfHandEdited("never lets River or Estuary touch the Coast/Beach columns", () => {
     for (const t of MAP.tiles) {
       if (t.terrainId !== "river" && t.terrainId !== "estuary") continue;
       const row = MAP.tiles.filter((x) => x.r === t.r);
@@ -91,7 +94,7 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land, winding River/Es
     }
   });
 
-  it("gives the Estuary as several distinct patches strung along the River, not one blob", () => {
+  skipIfHandEdited("gives the Estuary as several distinct patches strung along the River, not one blob", () => {
     const estuaryTiles = MAP.tiles.filter((t) => t.terrainId === "estuary");
     expect(estuaryTiles.length, "estuary tile count should land in the 6-9 range").toBeGreaterThanOrEqual(6);
     expect(estuaryTiles.length).toBeLessThanOrEqual(9);
@@ -168,7 +171,7 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land, winding River/Es
     }
   });
 
-  it("places the pre-built Houses (the main Residential cluster) clearly apart from the River/Estuary network, on Land", () => {
+  skipIfHandEdited("places the pre-built Houses (the main Residential cluster) clearly apart from the River/Estuary network, on Land", () => {
     const waterCoords = MAP.tiles.filter((t) => t.terrainId === "river" || t.terrainId === "estuary");
     expect(STARTING_STATE.prebuiltHouses.length).toBe(10);
     for (const house of STARTING_STATE.prebuiltHouses) {

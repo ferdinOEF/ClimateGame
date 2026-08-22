@@ -11,6 +11,13 @@ export interface ElementInstance {
   builtOnTurn: number;
   /** Permanent absorption reduction from graceful-degrade events or unpaid maintenance. */
   degradeAmount: number;
+  /**
+   * STEP_PROMPT_hazard_science.md Section 4: how much of a `floodBufferCapacityM3`
+   * reservoir (Khazan only, today) is currently filled — 0 when empty/fully
+   * available. Meaningless for elements without that field; always present
+   * (default 0) rather than optional, so callers never need an undefined check.
+   */
+  floodBufferFilled: number;
 }
 
 /** A world-init element the player owns from turn one — pre-built, not purchased (Section 4/8's "small coastal claim + 10 pre-built Houses" starting state). */
@@ -33,6 +40,13 @@ const WEATHERED_TRUST_BONUS = 2;
 // codebase — feed into STEP_PROMPT_balance_tuning.md's harness.
 const FOOD_DEFICIT_TRUST_FACTOR = 0.4;
 const FOOD_DEFICIT_RESILIENCE_FACTOR = 0.15;
+// STEP_PROMPT_hazard_science.md Section 4: a Khazan's flood buffer refills
+// gradually across turns rather than resetting instantly, so back-to-back
+// floods before it's recovered are meaningfully more dangerous — itself
+// realistic (a saturated wetland genuinely offers less protection against a
+// second event soon after the first). PLACEHOLDER rate, within the step
+// prompt's own suggested 10-20%/turn range — feed into the balance harness.
+const FLOOD_BUFFER_RECOVERY_RATE = 0.15;
 
 /**
  * Pure game-logic state. `placed` holds every tile from the authored
@@ -88,7 +102,7 @@ export class GameState {
       const key = axialKey(seed.coord);
       if (!this.placed.has(key)) continue;
       this.claimed.add(key);
-      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0 });
+      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0 });
     }
   }
 
@@ -145,6 +159,16 @@ export class GameState {
       this.trust = Math.max(0, this.trust - deficit * FOOD_DEFICIT_TRUST_FACTOR);
       this.resilience = Math.max(0, this.resilience - deficit * FOOD_DEFICIT_RESILIENCE_FACTOR);
     }
+
+    // STEP_PROMPT_hazard_science.md Section 4: any standing flood-buffer
+    // reservoir (Khazan) gradually drains back toward empty/fully-available
+    // every turn, same cadence as everything else advanceTurn() ticks.
+    for (const inst of this.elements.values()) {
+      if (inst.floodBufferFilled <= 0) continue;
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def || def.floodBufferCapacityM3 === undefined) continue;
+      inst.floodBufferFilled = Math.max(0, inst.floodBufferFilled - def.floodBufferCapacityM3 * FLOOD_BUFFER_RECOVERY_RATE);
+    }
   }
 
   /** Element options valid at `coord` right now (must be claimed, terrain-matched, nothing already built there), regardless of affordability. */
@@ -180,7 +204,7 @@ export class GameState {
     if (!this.canBuild(coord, elementId)) return false;
     const def = ELEMENT_BY_ID.get(elementId)!;
     this.coin -= def.buildCost;
-    this.elements.set(axialKey(coord), { elementId, builtOnTurn: this.turn, degradeAmount: 0 });
+    this.elements.set(axialKey(coord), { elementId, builtOnTurn: this.turn, degradeAmount: 0, floodBufferFilled: 0 });
     this.advanceTurn();
     return true;
   }
@@ -220,6 +244,24 @@ export class GameState {
   /** Used by the hazard resolver: removes a catastrophically-failed engineered defense. */
   destroyDefense(coord: AxialCoord): void {
     this.elements.delete(axialKey(coord));
+  }
+
+  /**
+   * Used by the hazard resolver (STEP_PROMPT_hazard_science.md Section 4):
+   * draws down a flood-buffer reservoir (Khazan) at `coord` by `volume` m³,
+   * returning the volume that overflowed — i.e. exceeded the tile's
+   * remaining capacity, and so still needs to pass through as damage. A
+   * tile with no such element (or no `floodBufferCapacityM3`) has no
+   * buffer at all, so the full volume overflows.
+   */
+  drawDownFloodBuffer(coord: AxialCoord, volume: number): number {
+    const inst = this.elements.get(axialKey(coord));
+    const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
+    if (!inst || !def || def.floodBufferCapacityM3 === undefined) return volume;
+    const remaining = Math.max(0, def.floodBufferCapacityM3 - inst.floodBufferFilled);
+    const absorbed = Math.min(volume, remaining);
+    inst.floodBufferFilled += absorbed;
+    return volume - absorbed;
   }
 
   /**

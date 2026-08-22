@@ -2,11 +2,12 @@ import * as THREE from "three";
 import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
-import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS } from "@render/floodOverlayManager";
+import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
+import { CloudLayerManager } from "@render/cloudLayerManager";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
-import { resolveMonsoonFlood, resolveCyclone } from "@core/hazard";
+import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
 import { computeEraScore } from "@core/scoring";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
@@ -35,12 +36,16 @@ const { scene, camera, renderer, start, focusOn, wasDrag } = createScene(contain
 
 const terrain = new TerrainMeshManager();
 const elements = new ElementMeshManager();
-const floodOverlay = new HazardOverlayManager(FLOOD_OVERLAY_COLORS, "flood-overlay");
-const cycloneOverlay = new HazardOverlayManager(CYCLONE_OVERLAY_COLORS, "cyclone-overlay");
+// STEP_PROMPT_hazard_science.md Section 6: one shared manager (not a
+// separate instance per hazard type) so it can tell whether a tile is
+// CURRENTLY showing the other hazard's overlay and blend to a genuine
+// compound color — see floodOverlayManager.ts's own comment.
+const hazardOverlay = new HazardOverlayManager(FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS);
+const cloudLayer = new CloudLayerManager();
 scene.add(terrain.group);
 scene.add(elements.group);
-scene.add(floodOverlay.mesh);
-scene.add(cycloneOverlay.mesh);
+scene.add(hazardOverlay.mesh);
+scene.add(cloudLayer.group);
 
 /** A spinning storm marker over the coast — Section 5's "spinning storm icon approaching," in-scene, not text. */
 const cycloneIcon = new THREE.Mesh(
@@ -134,11 +139,21 @@ function tilesOfType(...terrainIds: string[]): AxialCoord[] {
   return coords;
 }
 
-function applyHazardResult(
-  result: { tileDamage: Map<string, number>; destroyedDefenses: string[]; overwhelmedDefenses: string[] },
-  overlay: HazardOverlayManager,
-  now: number
-): void {
+// STEP_PROMPT_hazard_science.md Section 6: how long one BFS round gets on
+// screen before the next round's tiles light up — ported from khazan_
+// hazard_prototype.html's HOP_DURATION. PLACEHOLDER, same "flag it, let
+// balance/feel tuning refine it" convention as every other number here.
+const ROUND_DURATION_MS = 550;
+
+/**
+ * Applies a resolved hazard's game-state side effects immediately (defense
+ * destruction/degrade visuals), then reveals each damaged tile's overlay
+ * staggered by `result.arrivalRound` — so the sweep visually matches the
+ * real hop-by-hop BFS resolution (Section 6 item 1/2) instead of every
+ * damaged tile popping in at once regardless of how far it was from the
+ * source.
+ */
+function applyHazardResult(kind: HazardKind, result: HazardResult, now: number): void {
   for (const key of result.destroyedDefenses) {
     const [q, r] = key.split(",").map(Number);
     elements.destroy({ q, r });
@@ -153,7 +168,9 @@ function applyHazardResult(
     if (damage < 0.08) continue;
     const [q, r] = key.split(",").map(Number);
     const coord = { q, r };
-    overlay.show(coord, terrain.heightAt(coord), damage, now);
+    const delayMs = (result.arrivalRound.get(key) ?? 0) * ROUND_DURATION_MS;
+    if (delayMs <= 0) hazardOverlay.show(kind, coord, terrain.heightAt(coord), damage, now);
+    else setTimeout(() => hazardOverlay.show(kind, coord, terrain.heightAt(coord), damage, performance.now()), delayMs);
   }
 }
 
@@ -166,20 +183,41 @@ let nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
 
 let floodTelegraphing = false;
 
+/** Section 6 item 3: the cloud layer telegraphs either hazard, independent of the HUD/terrain-tint telegraph. */
+function updateCloudVisibility(): void {
+  cloudLayer.setVisible(floodTelegraphing || cycloneTelegraphing);
+}
+
 function updateFloodTelegraph(): void {
   const turnsUntil = nextFloodAtTurn - state.turn;
   const telegraphing = turnsUntil > 0 && turnsUntil <= FLOOD_TELEGRAPH_TURNS;
   if (telegraphing && !floodTelegraphing) playSound("hazard_telegraph");
   floodTelegraphing = telegraphing;
   for (const coord of tilesOfType("river")) terrain.setTint(coord, telegraphing ? FLOOD_TELEGRAPH_COLOR : null);
+  updateCloudVisibility();
 }
+
+/**
+ * STEP_PROMPT_hazard_science.md Section 5: the compound mechanic isn't just
+ * calendar overlap (both hazards already trigger on independent schedules
+ * and can coincidentally land close together, unchanged) — it's the Flood
+ * resolver actually checking whether a Storm Surge Wave is concurrently
+ * active before adding its downstream/tidal-push source (Section 3).
+ * "Concurrently active" is generous on purpose: currently telegraphing (a
+ * surge visibly imminent) OR resolved within the last couple of turns
+ * (its surge is still realistically working through the system) both
+ * count — not just "resolving on the exact same turn."
+ */
+const STORM_SURGE_COMPOUND_WINDOW_TURNS = 2;
 
 /** Resolves the flood: visible in-scene (rising water, defenses absorbing/failing/degrading), not just meter numbers. */
 function triggerFlood(baseSeverity: number): void {
-  const result = resolveMonsoonFlood(state, baseSeverity);
-  applyHazardResult(result, floodOverlay, performance.now());
+  const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
+  const result = resolveMonsoonFlood(state, baseSeverity, stormSurgeActive);
+  applyHazardResult("flood", result, performance.now());
   for (const coord of tilesOfType("river")) terrain.setTint(coord, null);
   floodTelegraphing = false;
+  updateCloudVisibility();
   nextFloodAtTurn = state.turn + FLOOD_INTERVAL_TURNS;
   playSound("hazard_resolve");
   refreshHud();
@@ -207,6 +245,8 @@ function coastalCentroid(): { x: number; z: number } | null {
 }
 
 let cycloneTelegraphing = false;
+/** Section 5's compound-mechanic window (see STORM_SURGE_COMPOUND_WINDOW_TURNS above) — the turn a Storm Surge Wave last actually resolved, so a Flood shortly after still counts as concurrent. */
+let lastStormSurgeResolvedTurn = -Infinity;
 
 function updateCycloneTelegraph(): void {
   const turnsUntil = nextCycloneAtTurn - state.turn;
@@ -219,15 +259,18 @@ function updateCycloneTelegraph(): void {
   const centroid = coastalCentroid();
   cycloneIcon.visible = telegraphing && centroid !== null;
   if (telegraphing && centroid) cycloneIcon.position.set(centroid.x, 2.2, centroid.z);
+  updateCloudVisibility();
 }
 
 /** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. */
 function triggerCyclone(baseSeverity: number): void {
   const result = resolveCyclone(state, baseSeverity);
-  applyHazardResult(result, cycloneOverlay, performance.now());
+  applyHazardResult("storm", result, performance.now());
   for (const coord of tilesOfType("coast", "estuary")) terrain.setTint(coord, null);
   cycloneIcon.visible = false;
   cycloneTelegraphing = false;
+  updateCloudVisibility();
+  lastStormSurgeResolvedTurn = state.turn;
   nextCycloneAtTurn = state.turn + CYCLONE_INTERVAL_TURNS;
   playSound("hazard_resolve");
   refreshHud();
@@ -245,8 +288,7 @@ function checkEraEnd(): void {
   hud.showBanner(`Era ${erasSoFar} retired — score ${score}. A new era begins.`);
 
   elements.reset();
-  floodOverlay.reset();
-  cycloneOverlay.reset();
+  hazardOverlay.reset();
 
   state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
   terrain.resetClaims(keysToCoords(state.claimed));
@@ -377,8 +419,8 @@ document.addEventListener("keydown", (event: KeyboardEvent) => {
 start((nowMs) => {
   terrain.tick(nowMs);
   elements.tick(nowMs);
-  floodOverlay.tick(nowMs);
-  cycloneOverlay.tick(nowMs);
+  hazardOverlay.tick(nowMs);
+  cloudLayer.tick(nowMs);
   if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 });
 
@@ -412,6 +454,10 @@ function devAutoBuild(kind: "building" | "defense"): void {
 // `focusOn`, instead of reverse-engineering the pan-drag pixel math. Costs
 // nothing at runtime beyond one property assignment.
 (window as unknown as Record<string, unknown>).__focusOnForTest = focusOn;
+// Same spirit as __focusOnForTest — a harmless, inert-unless-called hook so
+// a verification script can force the cloud layer visible without waiting
+// for a real telegraph window (turns only advance via build()).
+(window as unknown as Record<string, unknown>).__cloudLayerForTest = cloudLayer;
 
 const params = new URLSearchParams(location.search);
 // coinboost first: autobuild/autodefend below spend coin, so a boost given

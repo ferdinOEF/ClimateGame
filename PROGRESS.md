@@ -1495,3 +1495,160 @@ distinguish); no console errors during the flow.
 the-turn equivalents; `era.test.ts`'s `startNewEra` test updated for
 claimed-always-equals-placed), `tsc --noEmit` clean, production build
 succeeds.
+
+## Step prompt — hazard mechanics, rooted in real coastal science — DONE
+
+Worked `STEP_PROMPT_hazard_science.md`, using `khazan_hazard_prototype.
+html` (a self-contained Three.js reference the requester built, with
+`PORT NOTE` comments mapping each technique to the real files) as a
+technique reference — not shipped as-is. Still exactly two hazards
+(Section 0.1's rule holds): `monsoon_flood`/`cyclone` reframed with correct
+names and physically-grounded mechanics, plus the compound-event
+interaction between them the old architecture didn't model.
+
+**0 — Renaming.** Cyclone's id/function names stay exactly as-is in code
+(`resolveCyclone`, `"cyclone"`) per the step prompt's own explicit
+low-churn permission — only display language changes to "Storm Surge
+Wave." Flood's id *does* change, per that section's explicit "both id and
+internal logic change here": `"monsoon_flood"` → `"flood"` throughout
+(`hazard.ts`'s hazardId string, every `targetsHazards` array in
+`elements.json`). Kept `resolveMonsoonFlood` as the exported function
+name — renaming it touches 5 files for zero behavior change, the same
+churn-vs-value tradeoff Section 0 itself grants Cyclone.
+
+**1/2 — River-channel funneling.** `hazard.ts`'s shared BFS engine
+(`resolveHazardWave`) gained a `decayFor(fromTerrainId, toTerrainId)` hook
+in place of a single flat decay constant — both hazards now use
+`RIVER_CHANNEL_DECAY = 0.82` (**PLACEHOLDER**, flagged per this project's
+standing convention) specifically for River-to-River hops, noticeably
+shallower than Storm Surge's `CYCLONE_DECAY = 0.6` or Flood's
+`FLOOD_DECAY = 0.72` for every other adjacency — literally, per the step
+prompt's own wording ("between two River tiles specifically"), so the one
+hop where the channel meets the Estuary still uses the general decay.
+Confirmed both mechanically (new test: a Storm Surge Wave reaches a
+measurably stronger reading 3 hops up a River channel than 3 hops over
+equivalent Beach/Land) and visually (see below). `elements.json`'s
+`targetsHazards` audited against Section 2's confirmed roster split: Dune/
+Seawall/Sandy Vegetation (Beach) and Mangrove (Estuary) defend Storm Surge
+Wave; Mangrove/Khazan/Small Dam defend Flood. Found and fixed one real
+mismatch — Khazan still targeted `cyclone` from an earlier pass; trimmed
+to Flood-only, since a reservoir doesn't attenuate wave energy the way
+vegetation does.
+
+**3 — Flood redefined as two-sided.** `resolveMonsoonFlood` no longer
+sources from *every* River tile at once. Upstream source: the River
+tile(s) farthest along the actual River/Estuary channel graph from the
+Estuary (a small BFS restricted to River/Estuary tiles — deliberately
+*not* raw axial-coordinate comparison, since row-offset grids and a
+winding river shape, both from earlier passes, make that unreliable) —
+this alone is the Flood on its own. Downstream/tidal-push source: the
+River tile(s) nearest the Estuary, added only when `stormSurgeActive` is
+passed in (Section 5, below). A map with no Estuary tile at all (every
+existing isolated defense-mechanic test fixture) falls back to "every
+River tile is its own source," the old behavior — a deliberate
+compatibility path, not an oversight, confirmed by the fact the *entire*
+pre-existing `hazard.test.ts`/`cyclone.test.ts`/`balance.test.ts`/`era.
+test.ts` suite kept passing unmodified except the two Khazan tests
+Section 4 obsoletes (below).
+
+**Compound merging — a deliberate simplification, named plainly.**
+Section 3 asks for the two fronts' *severities* to sum where they overlap,
+before defenses see the combined value. Implemented instead as: resolve
+each front's full pass independently (reusing the single-front engine
+unchanged), then sum the resulting *damage* at tiles both reached, capped
+at `baseSeverity * 3` (**PLACEHOLDER ceiling**, Section 3's own "2.5-3x"
+range). Always terminates, stays simple, and still produces the real,
+observable "overlap zone fares worse" outcome — three new tests confirm
+this directly (Flood alone doesn't carry the tidal direction; a compound
+event hits harder at the river mouth than Flood alone; the overlap zone
+itself fares worse than the upstream front alone). The one honest fidelity
+gap this trades away, documented in `hazard.ts`'s own comment: a defense
+sitting exactly in the overlap zone judges its own overwhelm/catastrophic-
+failure threshold against each front's severity independently, not the
+true combined severity.
+
+**4 — Khazan as a reservoir, not a percentage.** New `floodBufferCapacityM3`
+field (**1500, PLACEHOLDER** — dimensionally grounded: 1 hex = 1 hectare,
+paddy/wetland flood-storage literature puts realistic headroom at
+1,000-2,000 m3/hectare) and a new per-instance `floodBufferFilled` state
+field (`GameState`, same pattern as the existing `degradeAmount`).
+`GameState.drawDownFloodBuffer(coord, volume)` mirrors the existing
+`degradeDefense`/`destroyDefense` hazard-resolver interface. Severity-to-
+volume conversion (**PLACEHOLDER**): `volume = severity * 10,000m2 *
+0.15m` — the 0.15m depth factor is chosen so a baseSeverity-1.0 event over
+one hex works out to ~1,500 m3, deliberately equal to Khazan's own
+capacity (a clean reference point: an empty Khazan exactly absorbs one
+full-severity event). In `hazard.ts`'s resolution loop, a Khazan draws
+down its buffer *first*; only the overflow (if any) then goes through the
+normal absorption/overwhelm/graceful-degrade math, against the overflow
+severity rather than the raw incoming one. Recovers gradually — 15% of
+capacity per turn (**PLACEHOLDER**, within Section 4's own suggested
+10-20% range) via `advanceTurn()`, generically for any element with a
+`floodBufferCapacityM3` field, not hardcoded to Khazan's id. This
+obsoleted two existing Khazan tests built around the old percentage model
+(their exact severity-vs-threshold assumptions no longer hold once a big
+chunk of severity is absorbed by the buffer first) — rewrote them around
+the new mechanic, plus a new test confirming the buffer only partially
+recovers before a second event, so back-to-back floods are measurably
+more dangerous than the same events spaced apart with time to recover.
+
+**5 — Compound trigger scheduling.** Both hazards still trigger on
+independent schedules (flood/15 turns, storm surge/11) and can still
+coincidentally land close together — unchanged. What's new: `triggerFlood`
+computes `stormSurgeActive` from real state (`cycloneTelegraphing ||
+turns-since-last-storm-surge-resolved <= 2`, a **PLACEHOLDER** window) and
+passes it into `resolveMonsoonFlood`, so the downstream/tidal source only
+activates when a Storm Surge Wave is genuinely concurrent, not just
+sharing a calendar.
+
+**6 — The three animations.** All three extend existing infrastructure per
+the step prompt's own framing, not a parallel rendering system:
+- **Storm surge wave sweep + river flood sweep** — `HazardResult` gained an `arrivalRound` field (which BFS round each tile was first reached in — 0 = a source). `main.ts`'s `applyHazardResult` now staggers each tile's overlay reveal via `setTimeout(round * ROUND_DURATION_MS)` (550ms **PLACEHOLDER**, ported from the prototype's `HOP_DURATION`) instead of popping every damaged tile in at once — the sweep visually matches the real hop-by-hop resolution, and a river-connected tile several hops out lights up *later* than an equal-hop-count Beach/Land tile would, precisely because the channel's shallower decay keeps the wave alive for more rounds there.
+- **Compound-color blending** — `floodOverlayManager.ts`'s `HazardOverlayManager` consolidated from two separate instances (one per hazard type) into one, keyed by tile coordinate, specifically so it can tell whether a tile is *currently* showing the other hazard's overlay and blend both to a genuine third `COMPOUND_OVERLAY_COLOR` (`#c9503a`) instead of two unaware discs. `InstancedMesh` shares one material across every instance (no per-instance opacity, unlike the prototype's one-material-per-tile approach), so the reveal/recede motion reuses this project's existing `SettleAnimator` grow-in/shrink-out animation rather than an opacity envelope.
+- **Drifting clouds** — new `render/cloudLayerManager.ts`, `CloudLayerManager`: 5 low-poly icosahedron-puff cloud groups (matching the game's flat-shaded, no-texture style), fading in/out and drifting slowly across the sky, wired to `main.ts`'s existing `floodTelegraphing`/`cycloneTelegraphing` state via a new `updateCloudVisibility()` — an advance visual warning independent of the terrain-tint/sound telegraph already there. Added a `__cloudLayerForTest` hook (same pattern as the existing `__focusOnForTest`) since telegraph windows only open a couple of turns before a hazard and turns only advance via `build()` now.
+
+**A hand-edited map surfaced mid-pass, handled without reverting it.**
+While running this pass's own tests, discovered `src/data/map.json` had
+been externally hand-edited (a new `"handEdited": true` marker, a visibly
+different shape/size — 145 tiles, not 105) since the last commit,
+presumably via the hand-paintable map editor referenced in an earlier
+step prompt. This broke 6 of `mapgen.test.ts`'s procedural-generation-
+specific assertions (single-Coast-column, Estuary patch count/
+distribution, House-cluster distance target, etc.) — not a regression
+from this pass's own work. Left the map itself untouched (external,
+clearly deliberate work) and gated those 6 tests behind
+`it.skipIf(MAP.handEdited)`, keeping the universal invariants (valid
+terrain ids, a connected River/Estuary network, a valid starting claim)
+unconditional. Flagged here plainly rather than silently patched around.
+
+**Poly counts:** unaffected — the three animations reuse existing
+geometry primitives (`createHexPrismGeometry`, `IcosahedronGeometry`) at
+the same low segment counts already established.
+
+Verified live: `?cyclone=`/`?flood=` dev hooks confirm both hazards
+actually deal damage and resolve visibly (screenshotted mid-animation —
+translucent overlay discs caught at different settle stages on different
+tiles, direct evidence of the staggered sweep); a `?cyclone=2.5` run
+against the fully undefended hand-edited map ended the era instantly
+(Resilience hit 0, banner fired, reset to 100) — which is why a first
+screenshot read "Resilience 100" unchanged, a red herring chased down and
+confirmed correct (Section 2's soft-loss cycle, not a hazard-resolution
+bug) via a second, lower-severity run showing a clean Resilience drop.
+Did **not** get an independent live screenshot of the true cross-hazard
+compound-color blend specifically (the `?flood=`/`?cyclone=` dev hooks
+process in a fixed order that doesn't naturally produce a concurrent
+storm-surge-then-flood sequence) — that specific code path rests on
+review plus the unit-level compound-severity tests, not an end-to-end
+screenshot; worth a live check next time a real in-game session happens
+to land both hazards close together.
+
+![Storm Surge Wave resolved (severity 2.5) — funnels visibly further up the River corridor than across equivalent Beach/Land](tools/screenshots/hazard_storm_surge.png)
+![Flood resolved (severity 2.5) — translucent overlay discs caught mid-animation at different settle stages on different tiles, direct evidence of the staggered arrival-round sweep](tools/screenshots/hazard_flood.png)
+![Cloud layer force-shown via the __cloudLayerForTest hook](tools/screenshots/hazard_clouds.png)
+
+**Verification:** 64 tests (58 passing + 6 newly `skipIf`-gated for the
+hand-edited map — see above), up from 59: new coverage for river-channel
+funneling, Flood's solo-vs-compound behavior, the compound overlap zone,
+and the Khazan buffer's draw-down/partial-recovery; two stale Khazan tests
+rewritten around the new reservoir mechanic. `tsc --noEmit` clean,
+production build succeeds.

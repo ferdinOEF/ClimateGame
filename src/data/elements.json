@@ -31,7 +31,8 @@
     "overwhelmedAbsorptionMultiplier": 0.3,
     "colorKey": "defenseSandyVegetation",
     "effects": { "biodiversity": 2 },
-    "failureMode": "No destruction. Weaker physical protection than a Dune, but the cheapest defense on the roster and the best biodiversity return per Coin."
+    "failureMode": "No destruction. Weaker physical protection than a Dune, but the cheapest defense on the roster and the best biodiversity return per Coin.",
+    "note": "absorptionAtMaturity (0.2) is REASONED EXTRAPOLATION, not directly cited (STEP_PROMPT_hazard_science.md Section 1) — Pandanus wasn't in McIvor et al. (2012)'s studied species (that citation is Mangrove's, a different tangled-stilt canopy structure). Kept meaningfully below Mangrove's ceiling (0.55) deliberately; don't raise it toward Mangrove's number without real species-specific wave-attenuation data."
   },
   {
     "id": "beachside_resort",
@@ -76,7 +77,7 @@
     "name": "Mangrove",
     "kind": "defense",
     "category": "nbs",
-    "targetsHazards": ["monsoon_flood", "cyclone"],
+    "targetsHazards": ["flood", "cyclone"],
     "validTerrainIds": ["estuary"],
     "buildCost": 30,
     "maintenanceCostPerTurn": 0,
@@ -94,7 +95,7 @@
     "name": "Khazan (Bundh & Sluice)",
     "kind": "defense",
     "category": "hybrid",
-    "targetsHazards": ["monsoon_flood", "cyclone"],
+    "targetsHazards": ["flood"],
     "validTerrainIds": ["estuary"],
     "buildCost": 65,
     "maintenanceCostPerTurn": 3,
@@ -105,17 +106,18 @@
     "overwhelmedAbsorptionMultiplier": 0.5,
     "degradeGracefully": true,
     "gracefulDegradeStep": 0.12,
+    "floodBufferCapacityM3": 1500,
     "colorKey": "defenseKhazanBund",
     "effects": { "biodiversity": 2, "money": 2, "food": 1 },
-    "failureMode": "No catastrophic breach. Above capacity, or after sustained maintenance neglect, effectiveness degrades gradually rather than the structure being destroyed.",
-    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) — nudged 1->2, modest but clearly ahead of Mangrove's 1 without approaching Beachside Resort's 5, reflecting Khazan's already-well-rounded hybrid profile (Biodiversity +2, Food +1). Feed into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster."
+    "failureMode": "No catastrophic breach. A reservoir, not a wave-attenuator (STEP_PROMPT_hazard_science.md Section 4) — floodBufferCapacityM3 draws down first each Flood event; only once that buffer is exhausted does the old percentage-absorption/graceful-degrade math take over for the overflow. Recovers gradually across subsequent turns, not instantly, so back-to-back floods before it's recovered are meaningfully more dangerous.",
+    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) — nudged 1->2, modest but clearly ahead of Mangrove's 1 without approaching Beachside Resort's 5, reflecting Khazan's already-well-rounded hybrid profile (Biodiversity +2, Food +1). floodBufferCapacityM3 (1500) is a separate PLACEHOLDER (STEP_PROMPT_hazard_science.md Section 4): dimensionally grounded (1 hex = 100m x 100m = 1 hectare; paddy/wetland flood-storage literature — Japan's NARO \"paddy-field-dam\" studies — puts realistic headroom at ~1,000-2,000 m3/hectare), not a literal measured figure. No longer targets cyclone (Section 2: a reservoir doesn't attenuate wave energy the way vegetation does — Storm Surge Wave defense is Dune/Seawall/Sandy Vegetation/Mangrove only). Feed both numbers into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster."
   },
   {
     "id": "small_dam",
     "name": "Small Dam",
     "kind": "defense",
     "category": "engineered",
-    "targetsHazards": ["monsoon_flood"],
+    "targetsHazards": ["flood"],
     "validTerrainIds": ["river"],
     "buildCost": 55,
     "maintenanceCostPerTurn": 4,
@@ -134,7 +136,7 @@
     "name": "Sand Mining",
     "kind": "defense",
     "category": "engineered",
-    "targetsHazards": ["monsoon_flood"],
+    "targetsHazards": ["flood"],
     "validTerrainIds": ["river"],
     "buildCost": 35,
     "maintenanceCostPerTurn": 0,

@@ -32,6 +32,15 @@ export interface ElementDef {
   failureRedirectMultiplier?: number;
   degradeGracefully?: boolean;
   gracefulDegradeStep?: number;
+  /**
+   * STEP_PROMPT_hazard_science.md Section 4: a reservoir capacity in cubic
+   * meters (Khazan only, today) — a fundamentally different mechanic from
+   * `absorptionAtMaturity`'s percentage-of-wave-energy model. When present,
+   * the hazard resolver draws down this tile's remaining buffer before any
+   * damage passes through, rather than (or in addition to) the usual
+   * percentage math. See `GameState.drawDownFloodBuffer`.
+   */
+  floodBufferCapacityM3?: number;
   colorKey: string;
   /**
    * v2.2's standing architectural requirement: every meter/income effect an
