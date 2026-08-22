@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { axialKey, neighbor } from "../src/core/hex";
+import { axialKey, axialDistance, neighbor } from "../src/core/hex";
 import { TERRAIN_BY_ID } from "../src/core/terrain";
 import mapData from "../src/data/map.json";
+import startingStateData from "../src/data/startingState.json";
 
 interface MapTile {
   q: number;
@@ -15,6 +16,7 @@ interface MapFile {
   tiles: MapTile[];
 }
 const MAP = mapData as unknown as MapFile;
+const STARTING_STATE = startingStateData as unknown as { prebuiltHouses: { q: number; r: number }[] };
 
 const byKey = new Map(MAP.tiles.map((t) => [axialKey({ q: t.q, r: t.r }), t.terrainId]));
 const [R_MIN, R_MAX] = MAP.rRange;
@@ -24,7 +26,7 @@ function worldX(c: { q: number; r: number }): number {
   return Math.sqrt(3) * (c.q + c.r / 2);
 }
 
-describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land -> Estuary/River) — independent re-verification", () => {
+describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land, winding River/Estuary) — independent re-verification", () => {
   it("uses only the five terrain ids", () => {
     for (const t of MAP.tiles) {
       expect(TERRAIN_BY_ID.has(t.terrainId), `unknown terrain id ${t.terrainId}`).toBe(true);
@@ -60,7 +62,13 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land -> Estuary/River)
     }
   });
 
-  it("every row reads Coast, then Beach, then Land, before any Estuary/River tile — the explicit left-to-right layout", () => {
+  it("every row reads Coast then Beach at its west edge", () => {
+    // STEP_PROMPT_map_reshape_veg_icons.md: the River now winds across the
+    // full width of the interior instead of staying confined to an eastern
+    // band, so it can legitimately appear immediately after Beach on rows
+    // near its entry column — there's no "Land always precedes water"
+    // invariant left to check per-row. Coast-then-Beach at the west edge is
+    // the one ordering guarantee the reshape doesn't touch.
     for (let r = R_MIN; r <= R_MAX; r++) {
       const row = MAP.tiles.filter((t) => t.r === r).sort((a, b) => a.q - b.q);
       const order: string[] = [];
@@ -70,23 +78,60 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land -> Estuary/River)
       const macro = order.filter((id, i) => id !== order[i - 1]);
       expect(macro[0], `row r=${r}`).toBe("coast");
       expect(macro[1], `row r=${r}`).toBe("beach");
-      const landIdx = macro.indexOf("land");
-      expect(landIdx, `row r=${r} should have Land after Beach`).toBeGreaterThan(0);
-      const waterIndices = ["estuary", "river"].map((id) => macro.indexOf(id)).filter((i) => i >= 0);
-      for (const wi of waterIndices) {
-        expect(wi, `row r=${r}: Land should come before any Estuary/River`).toBeGreaterThan(landIdx);
-      }
     }
   });
 
-  it("has a wide, branching Estuary (multiple connected tiles) feeding from a continuous River, confined to the eastern portion of each row", () => {
+  it("never lets River or Estuary touch the Coast/Beach columns", () => {
+    for (const t of MAP.tiles) {
+      if (t.terrainId !== "river" && t.terrainId !== "estuary") continue;
+      const row = MAP.tiles.filter((x) => x.r === t.r);
+      const westmostQ = Math.min(...row.map((x) => x.q));
+      const colIndex = t.q - westmostQ;
+      expect(colIndex, `River/Estuary tile (${t.q},${t.r}) should be in the interior, past Beach`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("gives the Estuary as several distinct patches strung along the River, not one blob", () => {
     const estuaryTiles = MAP.tiles.filter((t) => t.terrainId === "estuary");
-    expect(estuaryTiles.length, "estuary should be a multi-tile blob, not a single tile").toBeGreaterThanOrEqual(3);
+    expect(estuaryTiles.length, "estuary tile count should land in the 6-9 range").toBeGreaterThanOrEqual(6);
+    expect(estuaryTiles.length).toBeLessThanOrEqual(9);
+
+    // Flood-fill Estuary-only tiles (not River) and count connected
+    // components — the whole point of the reshape is several separate
+    // patches, not one contiguous region.
+    const estuaryKeys = new Set(estuaryTiles.map((t) => axialKey({ q: t.q, r: t.r })));
+    const seen = new Set<string>();
+    let components = 0;
+    for (const t of estuaryTiles) {
+      const key = axialKey({ q: t.q, r: t.r });
+      if (seen.has(key)) continue;
+      components++;
+      const queue = [{ q: t.q, r: t.r }];
+      seen.add(key);
+      while (queue.length > 0) {
+        const cur = queue.shift()!;
+        for (let dir = 0; dir < 6; dir++) {
+          const n = neighbor(cur, dir);
+          const nKey = axialKey(n);
+          if (!estuaryKeys.has(nKey) || seen.has(nKey)) continue;
+          seen.add(nKey);
+          queue.push(n);
+        }
+      }
+    }
+    expect(components, "Estuary should form several distinct patches, not one contiguous blob").toBeGreaterThanOrEqual(3);
+  });
+
+  it("has a continuous River/Estuary network reachable from a single point, with a real River connecting the patches", () => {
+    const riverTileCount = MAP.tiles.filter((t) => t.terrainId === "river").length;
+    expect(riverTileCount, "river should be a real, multi-tile watercourse").toBeGreaterThan(0);
 
     const estuaryKey = axialKey(MAP.estuary);
     expect(byKey.get(estuaryKey)).toBe("estuary");
 
-    // Flood-fill the whole estuary+river network from the estuary center.
+    // Flood-fill the whole river+estuary network from the recorded estuary
+    // anchor — every patch should be reachable via the winding River, since
+    // that's what strings the distinct patches together into one system.
     const visited = new Set<string>([estuaryKey]);
     const queue = [MAP.estuary];
     while (queue.length > 0) {
@@ -101,26 +146,8 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land -> Estuary/River)
         queue.push(n);
       }
     }
-    const riverTileCount = MAP.tiles.filter((t) => t.terrainId === "river").length;
-    expect(visited.size).toBe(riverTileCount + estuaryTiles.length); // every river/estuary tile reachable from the estuary center, none isolated
-
-    // Every estuary/river tile should sit in (at least) the eastern third
-    // of its own row — a looser, generic bound than earlier revisions'
-    // fixed ~62%, deliberately: item 2 of STEP_PROMPT_visuals_map_river.md
-    // has the Land/water boundary bulge per-row (the plateau narrowing
-    // near the estuary's own latitude, widening away from it, so the
-    // river mouth reads as wide/rounded rather than a flat rectangle) —
-    // the exact per-row boundary is an internal mapgen tuning knob this
-    // test shouldn't hardcode, but "still confined to the east side, never
-    // creeping into the Beach/coast half of the map" is the real invariant
-    // worth independently re-checking here.
-    for (const t of [...MAP.tiles.filter((x) => x.terrainId === "river"), ...estuaryTiles]) {
-      const row = MAP.tiles.filter((x) => x.r === t.r);
-      const westmostQ = Math.min(...row.map((x) => x.q));
-      const colIndex = t.q - westmostQ;
-      const eastBoundary = Math.floor(row.length / 3);
-      expect(colIndex, `estuary/river tile (${t.q},${t.r}) should be east of the Land interior`).toBeGreaterThanOrEqual(eastBoundary);
-    }
+    const estuaryTileCount = MAP.tiles.filter((t) => t.terrainId === "estuary").length;
+    expect(visited.size, "every River/Estuary tile should be reachable from the estuary anchor — no isolated patch").toBe(riverTileCount + estuaryTileCount);
   });
 
   it("fills every non-Coast/Beach/River/Estuary tile with Land", () => {
@@ -130,14 +157,24 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land -> Estuary/River)
     }
   });
 
-  it("gives the player a small (2-3 hex) starting claim on the coast, not at the (now-inland) estuary", () => {
+  it("gives the player a small (2-3 hex) starting claim on the coast, not at the (interior) river/estuary", () => {
     expect(MAP.startingClaim.length).toBeGreaterThanOrEqual(2);
     expect(MAP.startingClaim.length).toBeLessThanOrEqual(3);
     for (const coord of MAP.startingClaim) {
       expect(byKey.has(axialKey(coord))).toBe(true);
       const row = MAP.tiles.filter((t) => t.r === coord.r);
       const westmostQ = Math.min(...row.map((t) => t.q));
-      expect(coord.q - westmostQ, "starting claim should be near the coast (low column index), not the eastern estuary").toBeLessThan(5);
+      expect(coord.q - westmostQ, "starting claim should be near the coast (low column index)").toBeLessThan(5);
+    }
+  });
+
+  it("places the pre-built Houses (the main Residential cluster) clearly apart from the River/Estuary network, on Land", () => {
+    const waterCoords = MAP.tiles.filter((t) => t.terrainId === "river" || t.terrainId === "estuary");
+    expect(STARTING_STATE.prebuiltHouses.length).toBe(10);
+    for (const house of STARTING_STATE.prebuiltHouses) {
+      expect(byKey.get(axialKey(house)), `House at (${house.q},${house.r}) should sit on Land`).toBe("land");
+      const minDist = Math.min(...waterCoords.map((w) => axialDistance(house, { q: w.q, r: w.r })));
+      expect(minDist, `House at (${house.q},${house.r}) should read as set apart from the river, not adjacent to it`).toBeGreaterThanOrEqual(2);
     }
   });
 });

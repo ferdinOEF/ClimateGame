@@ -4,10 +4,19 @@
  * to src/data/map.json. It is never run at app runtime — `npm run mapgen`,
  * check the output in, done.
  *
- * Layout (v2.4, explicit left-to-right): Sea → Beach → Land (interior) →
- * Estuary/River, with the river continuing further right/inland past the
- * estuary. A wide, short strip (west-to-east wider than north-to-south),
- * sea fixed to one side — not an island wrapped by sea on every side.
+ * Layout (v2.4, explicit left-to-right): Sea -> Beach -> Land (interior),
+ * with a winding River entering the interior just past Beach and bending
+ * through several turns as it crosses east off the map's edge (per
+ * STEP_PROMPT_map_reshape_veg_icons.md, superseding the earlier single
+ * two-arm-confluence mouth shape — see git history). Estuary is no longer
+ * one blob at a river mouth: it's several distinct patches strung along the
+ * river's bends (one larger patch at the widest/southernmost bend, several
+ * smaller ones elsewhere), reading as a floodplain wetland threaded through
+ * the terrain rather than a single delta. Land fills everything else,
+ * reading as two clusters: a modest pocket near the estuary (wherever the
+ * river's bends leave gaps) and a larger, deliberately separate Residential
+ * cluster placed at the Land tile farthest from any River/Estuary tile —
+ * where the starting claim's prebuilt Houses continue to sit.
  *
  * The grid is NOT a plain axial rectangle (q in [Q_MIN,Q_MAX], r in
  * [R_MIN,R_MAX]). `axialToWorld`'s x = sqrt3*(q + r/2) means a plain axial
@@ -29,8 +38,9 @@
  * only the natural half-hex stagger between adjacent rows (the normal,
  * expected brick-like offset every hex grid has) instead of an
  * accumulating drift — the result is an actual rectangle in world space,
- * so Sea/Beach/Land/Estuary bands read as straight sides regardless of
- * pan, zoom, or which row you look at.
+ * so Sea/Beach/Land bands read as straight sides regardless of pan, zoom,
+ * or which row you look at (the River/Estuary no longer form a "band" at
+ * all — see below).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -39,10 +49,8 @@ import { TERRAIN_DEFS } from "../../src/core/terrain";
 
 // STEP_PROMPT_visuals_map_river.md item 2: cut total map size down
 // substantially for this pilot (~80-120 hex target — see that file's
-// reasoning) from the previous 243-hex/27x9 map, and shape it with a bit
-// of Panaji/Taleigao likeness — see `panaji_taleigao_reference_schematic.
-// png`, a proportions/shape reference, never a traced map. 15x7 = 105
-// hexes, still "wider than tall" per Section 8.
+// reasoning) from the previous 243-hex/27x9 map. 15x7 = 105 hexes, still
+// "wider than tall" per Section 8.
 const Q_MIN = -7;
 const Q_MAX = 7;
 const R_MIN = -3;
@@ -63,7 +71,7 @@ const rng = mulberry32(SEED);
 
 // --- 1. Build a TRUE-rectangle grid via per-row offset coordinates --------
 
-const TOTAL_COLS = Q_MAX - Q_MIN + 1; // 27, same for every row by construction
+const TOTAL_COLS = Q_MAX - Q_MIN + 1; // 15, same for every row by construction
 
 /** The q of the westmost hex in row `r`, shifted to cancel axialToWorld's r/2 shear. */
 function rowQMin(r: number): number {
@@ -84,78 +92,60 @@ function inGrid(c: AxialCoord): boolean {
   return grid.has(axialKey(c));
 }
 
-/** 0-based column index of `c` within its own row — the west-to-east position bands are actually defined by. */
+/** 0-based column index of `c` within its own row — the west-to-east position Coast/Beach are banded by. */
 function colIndex(c: AxialCoord): number {
   return c.q - rowQMin(c.r);
 }
 
-// --- 2. Define the left-to-right bands by column index, not raw q ----------
+/** The coordinate at a given (row-relative column index, row) — the inverse of colIndex, used to place river waypoints by their intended west-to-east position regardless of row shear. */
+function coordAt(colIdx: number, r: number): AxialCoord {
+  return { q: rowQMin(r) + colIdx, r };
+}
+
+// --- 2. Coast / Beach are still fixed left-to-right bands -------------------
 
 const COAST_COLS = 1;
 const BEACH_COLS = 2;
 const coastMaxCol = COAST_COLS - 1; // colIndex <= this: Sea
 const beachMaxCol = coastMaxCol + BEACH_COLS; // colIndex in (coastMaxCol, beachMaxCol]: Beach
-const BASE_WATER_ZONE_MIN_COL = Math.floor(TOTAL_COLS * 0.6); // Estuary/River's baseline east-side start, away from the bulge
-
-// The reference schematic's single most distinctive feature: the estuary
-// mouth isn't a uniform-width band running the map's full height — the
-// Land plateau curves/bulges around it, narrowing near the river mouth's
-// latitude and widening away from it (Taleigao plateau wrapping a wide,
-// rounded Mandovi-like mouth, not a flat rectangle — see the step
-// prompt's item 2). Modeled by shifting the water zone's start column
-// WEST (more water, less Land) for rows near `BULGE_CENTER_ROW`, tapering
-// back to the baseline within `BULGE_RADIUS` rows either side. Clamped so
-// Land never drops below `MIN_LAND_COLS` even at the bulge's peak — this
-// is still buildable interior terrain, not something that should vanish.
-const BULGE_CENTER_ROW = 0;
-const BULGE_RADIUS = 2;
-const BULGE_AMOUNT_COLS = 3;
-const MIN_LAND_COLS = 2;
-
-function rowWaterZoneMinCol(r: number): number {
-  const falloff = Math.max(0, 1 - Math.abs(r - BULGE_CENTER_ROW) / BULGE_RADIUS);
-  const bulge = Math.round(BULGE_AMOUNT_COLS * falloff);
-  return Math.max(beachMaxCol + 1 + MIN_LAND_COLS, BASE_WATER_ZONE_MIN_COL - bulge);
-}
 
 const coastCoords = allCoords.filter((c) => colIndex(c) <= coastMaxCol);
 const coastSet = new Set(coastCoords.map(axialKey));
 const beachCoords = allCoords.filter((c) => colIndex(c) > coastMaxCol && colIndex(c) <= beachMaxCol);
 const beachSet = new Set(beachCoords.map(axialKey));
-const waterZoneCoords = allCoords.filter((c) => colIndex(c) >= rowWaterZoneMinCol(c.r));
-const waterZoneSet = new Set(waterZoneCoords.map(axialKey));
 
-// --- 3. Carve a wide, branching estuary: two river arms meeting inland -----
+// --- 3. Carve a winding River with distributed Estuary patches -------------
 
-// Two sources at the far east edge (the map's inland extreme), offset
-// north/south, so the two arms read as distinct tributaries rather than
-// one straight line.
-const eastEdgeCoords = allCoords.filter((c) => colIndex(c) === TOTAL_COLS - 1);
-const riverSourceA = eastEdgeCoords.reduce((best, c) => (c.r < best.r ? c : best), eastEdgeCoords[0]);
-const riverSourceB = eastEdgeCoords.reduce((best, c) => (c.r > best.r ? c : best), eastEdgeCoords[0]);
-
-// The confluence sits toward the *west* edge of the water zone (not all the
-// way back to Beach/Land — Land still separates it from the coast), close
-// to the coastal midline, so there's a real stretch of river continuing
-// further east/inland past it once the arms join.
-const confluence = waterZoneCoords.reduce((best, c) => {
-  const score = (colIndex(c) - rowWaterZoneMinCol(c.r)) + Math.abs(c.r) * 0.5;
-  const bestScore = (colIndex(best) - rowWaterZoneMinCol(best.r)) + Math.abs(best.r) * 0.5;
-  return score < bestScore ? c : best;
-}, waterZoneCoords[0]);
+// The river's route as a sequence of (column index, row) waypoints: it
+// enters the interior immediately past Beach, swings south through a wide
+// bend (the deepest point, col 8/r 2 — the widest/southernmost bend, where
+// the larger Estuary patch sits), then swings back north before exiting off
+// the map's east edge. Unlike the old two-arm-to-confluence river, this is
+// NOT confined to an eastern "water zone" band — it's meant to cross the
+// full width of the interior, which is the whole point of "winding."
+const RIVER_WAYPOINT_SPEC: { col: number; r: number }[] = [
+  { col: 3, r: -2 }, // entry, just past Beach
+  { col: 5, r: -2 },
+  { col: 6, r: 0 },
+  { col: 8, r: 2 }, // widest/southernmost bend — the big Estuary patch anchors here
+  { col: 9, r: 1 },
+  { col: 11, r: -1 },
+  { col: 12, r: -2 },
+  { col: 14, r: -1 } // exits off the east edge
+];
+const riverWaypoints: AxialCoord[] = RIVER_WAYPOINT_SPEC.map((w) => coordAt(w.col, w.r));
 
 /**
- * A near-greedy walk from `start` toward `target`, staying within the water
- * zone (so the estuary/river system doesn't spill into Land): always moves
- * strictly closer (ties broken by a small random jitter for a natural
- * wiggle, not a detour), so path length stays close to the true hex
- * distance instead of wandering.
+ * A near-greedy walk from `start` toward `target` (always moves strictly
+ * closer, ties broken by a small random jitter for a natural wiggle rather
+ * than a detour), avoiding Coast/Beach (the river only ever touches the
+ * interior) and any hex already used earlier in the path (so the winding
+ * route doesn't cross or double back on itself).
  */
-function walkRiver(start: AxialCoord, target: AxialCoord): AxialCoord[] {
-  const path: AxialCoord[] = [start];
-  const visited = new Set<string>([axialKey(start)]);
+function walkSegment(start: AxialCoord, target: AxialCoord, visited: Set<string>): AxialCoord[] {
+  const segPath: AxialCoord[] = [];
   let current = start;
-  const maxSteps = axialDistance(start, target) + 6;
+  const maxSteps = axialDistance(start, target) * 2 + 10;
 
   for (let step = 0; step < maxSteps; step++) {
     if (axialDistance(current, target) === 0) break;
@@ -163,29 +153,40 @@ function walkRiver(start: AxialCoord, target: AxialCoord): AxialCoord[] {
     for (let dir = 0; dir < 6; dir++) {
       const n = neighbor(current, dir);
       const key = axialKey(n);
-      if (!waterZoneSet.has(key) || visited.has(key)) continue;
-      candidates.push({ coord: n, score: -axialDistance(n, target) + rng() * 0.2 });
+      if (!inGrid(n) || coastSet.has(key) || beachSet.has(key) || visited.has(key)) continue;
+      candidates.push({ coord: n, score: -axialDistance(n, target) + rng() * 0.3 });
     }
     if (candidates.length === 0) break; // boxed in; stop where we are
     candidates.sort((a, b) => b.score - a.score);
     current = candidates[0].coord;
     visited.add(axialKey(current));
-    path.push(current);
+    segPath.push(current);
   }
-  if (axialDistance(current, target) > 0) path.push(target); // guarantee it actually reaches the confluence
-  return path;
+  if (axialDistance(current, target) > 0 && inGrid(target) && !visited.has(axialKey(target))) {
+    segPath.push(target); // guarantee the segment actually reaches its waypoint
+    visited.add(axialKey(target));
+  }
+  return segPath;
 }
 
-const riverArmA = walkRiver(riverSourceA, confluence);
-const riverArmB = walkRiver(riverSourceB, confluence);
+const riverVisited = new Set<string>([axialKey(riverWaypoints[0])]);
+const riverPath: AxialCoord[] = [riverWaypoints[0]];
+for (let i = 0; i < riverWaypoints.length - 1; i++) {
+  riverPath.push(...walkSegment(riverWaypoints[i], riverWaypoints[i + 1], riverVisited));
+}
 
-// The estuary itself: the confluence plus a ring of neighbors — a small
-// branching blob, not a single tile, deliberately allowed to bite into
-// what the column bands alone would call Land (constrained to the grid,
-// not to `waterZoneSet`) so the mouth reads as wide/rounded even on this
-// pilot's small map — this is the Land plateau "wrapping around" the
-// estuary mouth from the reference schematic, not a modeling error.
-const estuaryCoords = [confluence, ...hexRing(confluence, 1).filter((c) => inGrid(c))];
+// Estuary patches: the interior waypoints (excluding the entry/exit points)
+// each anchor one patch. The widest/southernmost bend (col 8, r 2) gets a
+// larger patch (itself plus two ring neighbors); every other interior
+// waypoint gets a single-tile patch. This reads as a floodplain wetland
+// strung along the river's bends, not one blob at a single mouth.
+const bigPatchAnchor = riverWaypoints[3]; // col 8, r 2
+const bigPatchExtra = hexRing(bigPatchAnchor, 1)
+  .filter((c) => inGrid(c) && !coastSet.has(axialKey(c)) && !beachSet.has(axialKey(c)))
+  .slice(0, 2);
+const smallPatchAnchors = [1, 2, 4, 5, 6].map((i) => riverWaypoints[i]); // the other 5 interior waypoints
+
+const estuaryCoords: AxialCoord[] = [bigPatchAnchor, ...bigPatchExtra, ...smallPatchAnchors];
 const estuarySet = new Set(estuaryCoords.map(axialKey));
 
 // --- 4. Assign terrain: Coast / Beach / Estuary / River fixed, rest Land ---
@@ -194,7 +195,7 @@ const terrainOf = new Map<string, string>();
 for (const c of coastCoords) terrainOf.set(axialKey(c), "coast");
 for (const c of beachCoords) terrainOf.set(axialKey(c), "beach");
 for (const c of estuaryCoords) terrainOf.set(axialKey(c), "estuary");
-for (const c of [...riverArmA, ...riverArmB]) {
+for (const c of riverPath) {
   const key = axialKey(c);
   if (!estuarySet.has(key)) terrainOf.set(key, "river");
 }
@@ -215,8 +216,8 @@ const tiles: MapTile[] = allCoords.map((c) => ({ q: c.q, r: c.r, terrainId: terr
 
 // The player's initial claim is a small coastal footprint (Section 4/8,
 // v2.4: "the player begins already owning a small coastal claim") — near
-// the shore, not the (now-inland) estuary. Centered on a Beach tile close
-// to the coastal midline.
+// the shore, unrelated to the (now-interior) river. Centered on a Beach
+// tile close to the coastal midline. Unchanged by the river reshape.
 const coastalClaimSeed = beachCoords.reduce((best, c) => (Math.abs(c.r) < Math.abs(best.r) ? c : best), beachCoords[0]);
 const startingClaim: AxialCoord[] = [
   coastalClaimSeed,
@@ -232,7 +233,7 @@ const output = {
   seed: SEED,
   qRange: [Math.min(...allQs), Math.max(...allQs)],
   rRange: [R_MIN, R_MAX],
-  estuary: confluence,
+  estuary: bigPatchAnchor, // the larger patch's anchor — a stable single-coord handle for tooling that just needs "a" estuary tile
   startingClaim,
   tiles
 };
@@ -240,14 +241,26 @@ const output = {
 const outPath = path.resolve(import.meta.dirname, "../../src/data/map.json");
 fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
 
-// A pre-built residential cluster of 10 Houses on Land, inland from the
-// coastal claim (Section 4/8, v2.4's new starting state) — the player owns
-// this from turn one, they don't build it. Seeded from the first Land tile
-// on the coastal claim's own row, so it reads as "just inland" rather than
-// scattered.
-const houseClusterSeed = allCoords
-  .filter((c) => c.r === coastalClaimSeed.r && terrainOf.get(axialKey(c)) === "land")
-  .reduce((best, c) => (c.q < best.q ? c : best));
+// A pre-built residential cluster of 10 Houses on Land (Section 4/8, v2.4's
+// new starting state) — the player owns this from turn one, they don't
+// build it. Per the map reshape, this is the "main Residential cluster, set
+// apart from the river": seeded from the Land tile that maximizes distance
+// to the nearest River/Estuary tile, so it's demonstrably the land pocket
+// farthest from the water, not just "the first Land tile found."
+const waterCoords = tiles.filter((t) => t.terrainId === "river" || t.terrainId === "estuary").map((t) => ({ q: t.q, r: t.r }));
+const landCoords = allCoords.filter((c) => terrainOf.get(axialKey(c)) === "land");
+function minDistToWater(c: AxialCoord): number {
+  return Math.min(...waterCoords.map((w) => axialDistance(c, w)));
+}
+// Only consider seeds whose radius-2 spiral actually has 10 Land tiles to
+// give — otherwise "farthest from the river" could pick a pocket too small
+// to hold the full cluster (e.g. clipped by the grid edge).
+const viableSeeds = landCoords.filter(
+  (c) => hexSpiral(c, 2).filter((n) => inGrid(n) && terrainOf.get(axialKey(n)) === "land").length >= 10
+);
+const houseClusterSeed = (viableSeeds.length > 0 ? viableSeeds : landCoords).reduce((best, c) =>
+  minDistToWater(c) > minDistToWater(best) ? c : best
+);
 const houseCoords = hexSpiral(houseClusterSeed, 2)
   .filter((c) => inGrid(c) && terrainOf.get(axialKey(c)) === "land")
   .slice(0, 10);
@@ -269,8 +282,12 @@ const riverTileCount = tiles.filter((t) => t.terrainId === "river").length;
 const estuaryTileCount = tiles.filter((t) => t.terrainId === "estuary").length;
 const landTileCount = tiles.filter((t) => t.terrainId === "land").length;
 
-// Order check: every row should read Coast, then Beach, then Land, before
-// any Estuary/River tile ever appears.
+// Coast/Beach order check: every row should still read Coast then Beach at
+// its west edge (unchanged by the reshape — the River/Estuary now wind
+// through the interior and are no longer confined to a per-row band, so
+// there's no "Land before water" invariant left to check here: on rows
+// near the river's entry column, the river can legitimately appear right
+// after Beach with no Land tile ahead of it in that row).
 let orderViolations = 0;
 for (let r = R_MIN; r <= R_MAX; r++) {
   const row = tiles.filter((t) => t.r === r).sort((a, b) => a.q - b.q);
@@ -279,14 +296,36 @@ for (let r = R_MIN; r <= R_MAX; r++) {
     if (order[order.length - 1] !== t.terrainId) order.push(t.terrainId);
   }
   const macro = order.filter((id, i) => id !== order[i - 1]);
-  const coastIdx = macro.indexOf("coast");
-  const beachIdx = macro.indexOf("beach");
-  const landIdx = macro.indexOf("land");
-  const waterIdx = Math.min(
-    ...["estuary", "river"].map((id) => macro.indexOf(id)).filter((i) => i >= 0)
-  );
-  if (coastIdx !== 0 || beachIdx !== 1 || landIdx < 0 || (waterIdx >= 0 && landIdx > waterIdx)) orderViolations++;
+  if (macro.indexOf("coast") !== 0 || macro.indexOf("beach") !== 1) orderViolations++;
 }
+
+// Estuary-patch check: the patches should read as several distinct clumps,
+// not one contiguous blob (the whole point of the reshape) — flood-fill
+// estuary-only tiles (not river) and count connected components.
+function estuaryComponentCount(): number {
+  const estuaryKeys = new Set(estuaryCoords.map(axialKey));
+  const seen = new Set<string>();
+  let components = 0;
+  for (const c of estuaryCoords) {
+    const key = axialKey(c);
+    if (seen.has(key)) continue;
+    components++;
+    const queue = [c];
+    seen.add(key);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (let dir = 0; dir < 6; dir++) {
+        const n = neighbor(cur, dir);
+        const nKey = axialKey(n);
+        if (!estuaryKeys.has(nKey) || seen.has(nKey)) continue;
+        seen.add(nKey);
+        queue.push(n);
+      }
+    }
+  }
+  return components;
+}
+const estuaryPatchCount = estuaryComponentCount();
 
 // Rectangle check: every row's westmost hex should sit at (approximately)
 // the same world-X as every other row's — confirms the shear-cancelling
@@ -304,18 +343,24 @@ for (let r = R_MIN; r <= R_MAX; r++) {
 const maxWestEdgeDrift = Math.max(...westEdgeXs) - Math.min(...westEdgeXs);
 const HALF_HEX = Math.sqrt(3) / 2;
 
+const minHouseToWaterDist = Math.min(...houseCoords.map((h) => Math.min(...waterCoords.map((w) => axialDistance(h, w)))));
+
 console.log(`map.json written: ${tiles.length} tiles`);
 console.log(`  coast: ${coastCoords.length}, beach: ${beachCoords.length}, land: ${landTileCount}, river: ${riverTileCount}, estuary: ${estuaryTileCount}`);
-console.log(`  rows with a left-to-right order violation: ${orderViolations} / ${R_MAX - R_MIN + 1} (should be 0)`);
+console.log(`  estuary patches (connected components): ${estuaryPatchCount} (should be several, not 1)`);
+console.log(`  rows with a Coast/Beach order violation: ${orderViolations} / ${R_MAX - R_MIN + 1} (should be 0)`);
 console.log(`  west-edge world-X drift across all rows: ${maxWestEdgeDrift.toFixed(3)} (should be <= ${HALF_HEX.toFixed(3)}, one half-hex stagger, not several hex-widths)`);
 console.log(`  unknown terrain ids: ${badTerrainIds.length}`);
 console.log(`  starting claim (coastal): ${startingClaim.map((c) => `(${c.q},${c.r})`).join(", ")}`);
-console.log(`  estuary center: (${confluence.q},${confluence.r})`);
+console.log(`  big estuary patch anchor: (${bigPatchAnchor.q},${bigPatchAnchor.r})`);
+console.log(`  house cluster seed: (${houseClusterSeed.q},${houseClusterSeed.r}), min distance from any prebuilt House to River/Estuary: ${minHouseToWaterDist}`);
 console.log(`startingState.json written: ${houseCoords.length} pre-built Houses (should be 10), all on Land: ${houseCoords.every((c) => terrainOf.get(axialKey(c)) === "land")}`);
 
 if (
   badTerrainIds.length > 0 ||
-  estuaryTileCount < 3 ||
+  estuaryTileCount < 6 ||
+  estuaryTileCount > 9 ||
+  estuaryPatchCount < 3 ||
   riverTileCount === 0 ||
   orderViolations > 0 ||
   houseCoords.length !== 10 ||

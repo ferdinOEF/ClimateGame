@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { box, taperedSlab, coneFrustum, dome, blade, plan, rotate, move } from "./primitives3d";
+import { box, taperedSlab, coneFrustum, dome, blade, plan, rotate, move, scale } from "./primitives3d";
 
 /**
  * Element-icon redesign pass (see PROGRESS.md): every element rebuilt from
@@ -50,8 +50,8 @@ function seawallGeometry(): THREE.BufferGeometry {
   ]);
 }
 
-/** Sandy Vegetation (Pandanus): a single tapered trunk topped by an 8-blade spiky rosette, braced by two prop-root struts. */
-function sandyVegetationGeometry(): THREE.BufferGeometry {
+/** A single Pandanus plant: a tapered trunk topped by an 8-blade spiky rosette, braced by two prop-root struts. */
+function pandanusClump(): THREE.BufferGeometry {
   const trunk = coneFrustum(0.05, 0.09, 0.5, 6, "#7c6a4f", 0);
 
   const parts: THREE.BufferGeometry[] = [trunk];
@@ -93,6 +93,24 @@ function sandyVegetationGeometry(): THREE.BufferGeometry {
   parts.push(strut(-1), strut(1));
 
   return mergeGeometries(parts);
+}
+
+/**
+ * Sandy Vegetation (Pandanus): STEP_PROMPT_map_reshape_veg_icons.md item 3
+ * — a single plant read as sparse ground cover at normal zoom, not a
+ * barrier. Now a fused 3-plant stand: one full-size center plant plus two
+ * ~65%-scale flanking plants, staggered along Z (perpendicular to the
+ * wave's east-travelling path) so their rosettes overlap into one
+ * continuous mass on the wave-facing side, instead of reading as three
+ * separated dots. Geometry-only — no effects/buildCost/data fields touched.
+ */
+function sandyVegetationGeometry(): THREE.BufferGeometry {
+  const center = pandanusClump();
+  const left = scale(pandanusClump(), 0.65);
+  move(left, -0.08, 0, -0.28);
+  const right = scale(pandanusClump(), 0.65);
+  move(right, 0.06, 0, 0.3);
+  return mergeGeometries([center, left, right]);
 }
 
 /** Beachside Resort's palm — same trunk+frond construction, simpler than the Pandanus (fewer, broader fronds, no prop roots). */
@@ -182,8 +200,8 @@ function beachsideResortGeometry(): THREE.BufferGeometry {
   return mergeGeometries(parts);
 }
 
-/** Mangrove: four angled stilt roots converging upward into a two-tone rounded canopy. */
-function mangroveGeometry(): THREE.BufferGeometry {
+/** A single Mangrove tree: four angled stilt roots converging upward into a two-tone rounded canopy. */
+function mangroveClump(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const rootAngles = [-0.55, -0.2, 0.2, 0.55];
   for (const angle of rootAngles) {
@@ -197,6 +215,22 @@ function mangroveGeometry(): THREE.BufferGeometry {
   move(canopyHighlight, 0.08, 0, -0.04);
   parts.push(canopyBase, canopyHighlight);
   return mergeGeometries(parts);
+}
+
+/**
+ * Mangrove: STEP_PROMPT_map_reshape_veg_icons.md item 3 — same fused-stand
+ * treatment as Sandy Vegetation: one full-size center tree plus two
+ * smaller (70%-scale) flanking trees, staggered along Z so their canopies
+ * overlap into one continuous mass on the wave-facing side. Geometry-only
+ * — no effects/buildCost/data fields touched.
+ */
+function mangroveGeometry(): THREE.BufferGeometry {
+  const center = mangroveClump();
+  const left = scale(mangroveClump(), 0.7);
+  move(left, -0.1, 0, -0.24);
+  const right = scale(mangroveClump(), 0.7);
+  move(right, 0.08, 0, 0.26);
+  return mergeGeometries([center, left, right]);
 }
 
 /** Khazan: a low earthen bund enclosing a split interior — water on one side, paddy rows on the other — with a slatted sluice gate at the front-center. */

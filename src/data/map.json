@@ -9,8 +9,8 @@
     3
   ],
   "estuary": {
-    "q": -1,
-    "r": 0
+    "q": 0,
+    "r": 2
   },
   "startingClaim": [
     {
@@ -100,7 +100,7 @@
     {
       "q": 9,
       "r": -3,
-      "terrainId": "river"
+      "terrainId": "land"
     },
     {
       "q": -6,
@@ -120,17 +120,17 @@
     {
       "q": -3,
       "r": -2,
-      "terrainId": "land"
+      "terrainId": "river"
     },
     {
       "q": -2,
       "r": -2,
-      "terrainId": "land"
+      "terrainId": "river"
     },
     {
       "q": -1,
       "r": -2,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 0,
@@ -165,7 +165,7 @@
     {
       "q": 6,
       "r": -2,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 7,
@@ -175,7 +175,7 @@
     {
       "q": 8,
       "r": -2,
-      "terrainId": "river"
+      "terrainId": "land"
     },
     {
       "q": -6,
@@ -205,12 +205,12 @@
     {
       "q": -1,
       "r": -1,
-      "terrainId": "estuary"
+      "terrainId": "river"
     },
     {
       "q": 0,
       "r": -1,
-      "terrainId": "estuary"
+      "terrainId": "land"
     },
     {
       "q": 1,
@@ -235,12 +235,12 @@
     {
       "q": 5,
       "r": -1,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 6,
       "r": -1,
-      "terrainId": "land"
+      "terrainId": "river"
     },
     {
       "q": 7,
@@ -250,7 +250,7 @@
     {
       "q": 8,
       "r": -1,
-      "terrainId": "land"
+      "terrainId": "river"
     },
     {
       "q": -7,
@@ -280,7 +280,7 @@
     {
       "q": -2,
       "r": 0,
-      "terrainId": "estuary"
+      "terrainId": "land"
     },
     {
       "q": -1,
@@ -290,17 +290,17 @@
     {
       "q": 0,
       "r": 0,
-      "terrainId": "estuary"
+      "terrainId": "river"
     },
     {
       "q": 1,
       "r": 0,
-      "terrainId": "river"
+      "terrainId": "land"
     },
     {
       "q": 2,
       "r": 0,
-      "terrainId": "river"
+      "terrainId": "land"
     },
     {
       "q": 3,
@@ -315,12 +315,12 @@
     {
       "q": 5,
       "r": 0,
-      "terrainId": "river"
+      "terrainId": "land"
     },
     {
       "q": 6,
       "r": 0,
-      "terrainId": "river"
+      "terrainId": "land"
     },
     {
       "q": 7,
@@ -355,27 +355,27 @@
     {
       "q": -2,
       "r": 1,
-      "terrainId": "estuary"
+      "terrainId": "land"
     },
     {
       "q": -1,
       "r": 1,
-      "terrainId": "estuary"
+      "terrainId": "land"
     },
     {
       "q": 0,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "river"
     },
     {
       "q": 1,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "river"
     },
     {
       "q": 2,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 3,
@@ -395,7 +395,7 @@
     {
       "q": 6,
       "r": 1,
-      "terrainId": "river"
+      "terrainId": "land"
     },
     {
       "q": 7,
@@ -445,7 +445,7 @@
     {
       "q": 0,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 1,
@@ -475,7 +475,7 @@
     {
       "q": 6,
       "r": 2,
-      "terrainId": "river"
+      "terrainId": "land"
     },
     {
       "q": -8,
@@ -515,12 +515,12 @@
     {
       "q": -1,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 0,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 1,
@@ -550,7 +550,7 @@
     {
       "q": 6,
       "r": 3,
-      "terrainId": "river"
+      "terrainId": "land"
     }
   ]
 }

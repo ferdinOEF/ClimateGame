@@ -133,3 +133,9 @@ export function move(g: THREE.BufferGeometry, x = 0, y = 0, z = 0): THREE.Buffer
   g.translate(x, y, z);
   return g;
 }
+
+/** Scales a geometry in place about the local origin — every primitive here already sits base-at-y=0, so a uniform scale shrinks a whole clump (trunk, roots, canopy) without lifting it off the ground. Returns the same geometry for chaining. */
+export function scale(g: THREE.BufferGeometry, x: number, y = x, z = x): THREE.BufferGeometry {
+  g.scale(x, y, z);
+  return g;
+}

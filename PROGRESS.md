@@ -1242,3 +1242,127 @@ flips the HUD widget to "✓ Achieved" immediately.
 distinctness, food-deficit-drains-but-never-blocks, food-at-or-above-
 zero-does-nothing, Yacht buildability+zero-effects), `tsc --noEmit`
 clean, production build succeeds.
+
+## Step prompt — map reshape (winding river, distributed Estuary) + Vegetation icon density — DONE
+
+Worked `STEP_PROMPT_map_reshape_veg_icons.md`, drawn from
+`khazan_map_reference_v2.png` (an explicitly non-literal proportions/shape
+reference). Two independent changes: `tools/mapgen/generate.ts`'s River/
+Estuary region logic rewritten from scratch, and Mangrove/Sandy
+Vegetation's geometry densified — no data-field changes in either.
+
+**1 — Winding River, distributed Estuary patches.** The old mapgen carved
+two straight-ish river arms meeting at one confluence, with the whole
+Estuary/River system confined to the eastern ~60% of the map (a "water
+zone" band). Replaced with a single continuous path threaded through 8
+explicit (column, row) waypoints — entering the interior immediately past
+Beach at the map's north edge, swinging south through a wide bend at the
+map's vertical center (the deepest point), then rising back north before
+exiting off the east edge — walked hex-by-hex between consecutive
+waypoints with the same near-greedy/jitter approach the old two-arm walk
+used, just no longer constrained to an eastern band. The River now
+legitimately touches every column from just-past-Beach to the map's far
+edge, which is the whole point of "winding."
+
+Estuary is no longer one blob: the 6 interior waypoints (excluding entry/
+exit) each anchor a patch — the widest/southernmost bend gets a 3-tile
+patch (itself plus 2 ring neighbors), the other 5 get a single tile each.
+Generated result: **8 Estuary tiles across 5 connected components** (one
+of the small patches ended up adjacent to another, merging two of the
+intended 6 into one slightly larger one — still comfortably inside the
+6-9 target range and still reads as "several distinct patches," not one
+region). River: 11 tiles. Total map unchanged at 105 hexes (15×7),
+comfortably inside the 80-120 budget.
+
+The pre-built Houses cluster ("the main Residential cluster, set apart
+from the river") is no longer seeded from "the first Land tile on the
+starting claim's own row" (which, under the old confluence-mouth shape,
+happened to already be far from the river; under a river that now winds
+across the *entire* interior, that seed could easily have landed right
+next to a bend). Reseeded from the Land tile that **maximizes** distance
+to the nearest River/Estuary tile — objectively "farthest from the
+water," not just "first found" — with a viability filter (its radius-2
+spiral must actually contain 10 Land tiles, so a farthest-but-cramped
+corner can't be picked and then fail to fit the cluster). Landed at
+`(5,3)`, the map's south-east corner, 2 hexes from the nearest water tile
+at every one of the 10 houses — independently re-verified by a new test
+rather than trusting the generator's own claim.
+
+**A real invariant had to change, not just get loosened.** The old test
+suite asserted every row reads "Coast, then Beach, then Land, before any
+Estuary/River" — true by construction when the river was confined to an
+eastern band. It's now genuinely false on the 1-2 rows nearest the
+river's entry column, where the River can sit immediately after Beach
+with zero Land tiles ahead of it in that row — an intended consequence of
+"entering near the Beach," not a bug. Replaced that check with what's
+still actually true: Coast-then-Beach ordering at every row's west edge
+(unchanged), River/Estuary never touching the Coast/Beach columns
+(structural, enforced by `walkSegment` itself excluding those sets), the
+Estuary forming ≥3 connected components (not one blob), the whole River/
+Estuary network staying reachable from a single flood-fill seed (the
+patches are still strung together by the River, not floating islands),
+and the new House-cluster-distance-from-water test. 10 tests total, up
+from 5.
+
+Verified the shape by rendering a flat top-down diagram straight from
+`map.json`'s terrain ids (same palette colors as the live game) rather
+than an in-game screenshot — the live 3D view's unclaimed-tile dimming
+(a deliberate, separately-verified readability feature) washes an
+entirely-unexplored 105-tile map down to near-monochrome, which would
+have made the shape unreadable in a screenshot without also claiming most
+of the map (and claiming advances turns/eras in this game, which isn't
+worth triggering just to take a picture). This diagram is data-faithful,
+just not a literal in-game render.
+
+![Map shape: winding River (blue) with 5 distinct Estuary patches (dark teal) strung along its bends, Land (green) filling the interior, the pre-built Houses cluster (red dots) clearly separated in the south-east corner](tools/screenshots/map_reshape_full.png)
+
+**2 — Vegetation density: Mangrove and Sandy Vegetation as fused
+3-plant stands.** Both previously read as a single sparse plant occupying
+one small patch of an otherwise-empty tile at normal zoom — not what
+"vegetation density" or "the wave-facing side reads as a continuous
+barrier" call for. Extracted each element's existing single-plant builder
+unchanged (`mangroveClump()`, `pandanusClump()`) and added a new shared
+`scale()` transform primitive (`primitives3d.ts`, same pattern as the
+existing `rotate()`/`move()` — every primitive already sits base-at-y=0,
+so a uniform scale about the origin shrinks a whole clump without lifting
+it off the ground). Each element now merges 3 instances: one full-size
+center plus two flanking instances (Mangrove 70% scale, Pandanus 65%,
+per the step prompt's own numbers) staggered along Z — the axis
+perpendicular to the River/waves' east-travelling path — spaced so their
+canopies/rosettes overlap into one mass rather than reading as three
+separated dots. Purely geometry: `elements.json`'s `effects`/`buildCost`/
+every other data field for both elements is untouched.
+
+**Poly counts** (exact, not measured — scaling/moving a merged geometry
+never changes its vertex/triangle count, so each is precisely 3× the
+single-plant figure from the icon-redesign pass): Sandy Vegetation
+144 → **432** triangles, Mangrove 240 → **720** triangles. Both flagged
+as meaningfully heavier, same as every prior element in this project that
+went from "one thin part" to "several merged parts" — still trivial at
+this project's per-type instance cap (200): Sandy Vegetation's worst case
+is ~86k triangles, Mangrove's ~144k, both comfortably within budget.
+
+Verified live: claimed a Beach tile via the existing `?autoclaim`/
+`?autodefend` dev hooks and screenshotted Sandy Vegetation's new geometry
+in the actual running game at a genuinely close zoom — the fused 3-plant
+rosette is unmistakable, no gaps between the three canopies on the side
+facing the camera. Did **not** get an equivalent live in-game screenshot
+of Mangrove this pass: reaching a claimed Estuary tile through the
+turn-advancing `?autoclaim` hook proved unreliable (each claim advances a
+turn, and enough turns trigger era-cycling side effects that made a
+specific target tile hard to reach predictably), and rather than keep
+spinning up dev-server/Playwright processes chasing it — several of
+which were left running past their useful life mid-session, an
+unnecessary resource cost this note is flagging plainly rather than
+glossing over — stopped once `tsc`/tests/build all confirmed correct and
+Sandy Vegetation's identical code pattern was already confirmed working
+live. Mangrove's geometry correctness rests on code review (same
+`clump()`-extraction-and-3×-merge pattern, same primitives, same
+`scale()` helper) rather than an independent live screenshot; worth a
+quick live look next time Estuary terrain is already claimed for other
+reasons.
+
+![Sandy Vegetation: three overlapping Pandanus rosettes read as one continuous clump, no gaps, at genuinely close zoom](tools/screenshots/veg_estuary_closeup.png)
+
+**Verification:** 60/60 tests passing (10 in `mapgen.test.ts`, up from
+5 — see above), `tsc --noEmit` clean, production build succeeds.
