@@ -1652,3 +1652,89 @@ funneling, Flood's solo-vs-compound behavior, the compound overlap zone,
 and the Khazan buffer's draw-down/partial-recovery; two stale Khazan tests
 rewritten around the new reservoir mechanic. `tsc --noEmit` clean,
 production build succeeds.
+
+## Step prompt — hazard-strength test sliders — DONE
+
+Worked `STEP_PROMPT_hazard_test_sliders.md`: a testing/tuning aid to
+manually trigger a Storm Surge Wave or a Flood at a chosen severity on
+demand, instead of only ever seeing whatever `rolledSeverity()` rolls on
+schedule — how the balance work and the hazard science both get driven
+interactively rather than only through the scripted harness or by waiting
+out an 11/15-turn schedule.
+
+**Low-risk by construction, as the step prompt itself argued.**
+`resolveCyclone`/`resolveMonsoonFlood` already took `baseSeverity` as a
+parameter, so nothing in `hazard.ts` changed at all. New `src/ui/
+hazardTestPanel.ts`'s `HazardTestPanel` calls straight into `main.ts`'s
+existing `triggerCyclone(severity)`/`triggerFlood(severity)` — not a
+parallel code path — so a manual trigger clears the telegraph tint,
+updates the cloud layer, resets `nextCycloneAtTurn`/`nextFloodAtTurn`,
+plays the resolve sound, refreshes the HUD, and checks era-end exactly
+like a scheduled one. One deliberate consequence, not worked around:
+`triggerFlood()`'s `stormSurgeActive` check still runs normally, so
+manually triggering Storm Surge and then Flood within
+`STORM_SURGE_COMPOUND_WINDOW_TURNS` genuinely exercises the compound-
+flooding path (STEP_PROMPT_hazard_science.md Section 3/5) on demand —
+confirmed live (see below), closing a gap the hazard-science pass itself
+flagged as unverified ("did not get an independent live screenshot of the
+true cross-hazard compound-color blend").
+
+**UI.** Two labeled sliders (0-3, step 0.1, default 1.0 — matching
+`rolledSeverity()`'s own floor, deliberately not 0, which would silently
+do nothing on a stray click), live readout on `input` (not `change`, so
+dragging feels responsive), a "Trigger now" button reading the slider's
+value at click time. Color-coded via a left-border accent per the step
+prompt's own citation: Storm Surge `#3E86B0` (`PALETTE.riverBlue`), Flood
+`#8C6A3F` (`PALETTE.defenseKhazanBund`) — no new palette tokens
+introduced. Included the "next scheduled in N turns" nice-to-have (reading
+`nextCycloneAtTurn`/`nextFloodAtTurn` minus `state.turn`) since it turned
+out to be a small addition, not meaningfully more wiring than the sliders
+themselves — one new `updateHazardTestSchedule()` function, called
+wherever `main.ts` already updates the telegraph/trigger state.
+
+Placement: a collapsible panel, closed on load, toggled by a small "Test
+hazards" tab in the one HUD corner nothing else uses (bottom-left) — the
+step prompt's own fallback default, since `STEP_PROMPT_hud_layout.md`
+(the companion piece deciding the HUD's final direction from
+`khazan_hud_options.html`) hasn't landed yet.
+
+**One real ordering bug caught before it shipped.** The panel's schedule
+readout needs `nextFloodAtTurn`/`nextCycloneAtTurn`, but those are `let`
+bindings declared well after `main.ts`'s very first `refreshHud()` call —
+folding the schedule update into `refreshHud()` itself would have thrown
+a temporal-dead-zone `ReferenceError` on that first call. Kept
+`updateHazardTestSchedule()` as its own function instead, called from
+every *other* site that already updates hazard-schedule state
+(`updateFloodTelegraph`, `updateCycloneTelegraph`, `triggerFlood`,
+`triggerCyclone`, and once manually right after its own declaration) —
+never from the early call. `hazardTestPanel.reset()` wired into
+`checkEraEnd()`'s reset block per the Verify checklist: panel state
+(open/closed, slider positions) doesn't persist across an era reset.
+
+**Not gated behind a build flag or URL param this pass**, per the step
+prompt's own explicit instruction — the game isn't in front of outside
+testers yet, and hiding it would just add friction to the tuning work it
+exists for. **Flagging for later**, as asked: worth a `?debug` URL param
+(same convention as the retired `?autoclaim`) once the game is shared
+with someone who shouldn't see a test panel — not built now.
+
+Verified live (screenshotted): panel closed by default; opening it alone
+leaves Resilience untouched at 100; dragging the Storm Surge slider to
+2.5 updates the readout live without triggering anything; triggering at
+2.5x against a fully undefended fresh map deals catastrophic damage and
+ends the era instantly (same confirmed behavior as the hazard-science
+pass's own live check); a fresh run triggering Storm Surge at 0.3x deals a
+small, non-catastrophic drop (Resilience 100 → 86); triggering Flood
+immediately after (same page session, well within the compound window)
+drops Resilience further to 47 — a bigger hit than Flood alone would deal
+at the same severity, and the screenshot shows why: genuine
+`COMPOUND_OVERLAY_COLOR` (reddish) tiles scattered across the coast/
+estuary/river overlap zone, real live confirmation of the cross-hazard
+color blend the hazard-science pass could only verify by code review.
+
+![Panel open at default (1.0x each), color-coded left-border accents, "next scheduled in N turns" readouts](tools/screenshots/hazard_sliders_open.png)
+![After Storm Surge (0.3x) then Flood (1.0x) shortly after: genuine compound-color (reddish) overlay tiles visible across the overlap zone — the cross-hazard blend confirmed live for the first time](tools/screenshots/hazard_sliders_after_trigger.png)
+
+**Verification:** no test-suite changes needed (UI-only feature, calling
+existing already-tested trigger functions) — 58/58 passing + 6 `skipIf`-
+gated unchanged, `tsc --noEmit` clean, production build succeeds.

@@ -365,6 +365,36 @@ Status: all closed.
 
 A hand-edited `map.json` (145 tiles, `"handEdited": true`) was discovered mid-pass, external to this work — left untouched, with `mapgen.test.ts`'s 6 procedural-generation-specific assertions gated behind `it.skipIf(MAP.handEdited)` rather than reverting someone else's in-progress work.
 
+## Bucket I — Step prompt: hazard-strength test sliders
+
+Source: `STEP_PROMPT_hazard_test_sliders.md`. A testing/tuning aid — manually
+trigger a Storm Surge Wave or Flood at a chosen severity, calling straight
+into the existing `triggerCyclone`/`triggerFlood`, not a parallel path. See
+PROGRESS.md's "hazard-strength test sliders" section for full detail and
+screenshots.
+
+### I1. Two color-coded sliders + trigger buttons, collapsible panel
+
+Status: closed. New `src/ui/hazardTestPanel.ts` (`HazardTestPanel`):
+0-3 range/0.1 step, default 1.0, live readout on `input`, "Trigger now"
+calling `triggerCyclone`/`triggerFlood` with the slider's value at click
+time — so a manual trigger clears the telegraph, updates clouds, resets
+the schedule, plays the resolve sound, and checks era-end exactly like a
+scheduled hazard. Confirmed live that this also correctly exercises the
+compound-flooding path on demand (Storm Surge then Flood within the
+compound window) — closing a verification gap the hazard-science pass
+itself had flagged (no live screenshot of the true cross-hazard compound
+color blend; now confirmed live, screenshotted). Color-coded via left-
+border accents (Storm Surge `PALETTE.riverBlue`, Flood
+`PALETTE.defenseKhazanBund`, no new tokens). Collapsible, closed on load,
+bottom-left tab — the step prompt's own fallback default pending the
+separate HUD-layout decision. Caught and fixed one real bug before it
+shipped: the schedule readout needs `let` bindings not yet initialized at
+`main.ts`'s very first `refreshHud()` call — folding it into `refreshHud`
+would have thrown; kept it as its own function instead. Not gated behind
+a build flag/URL param this pass, per explicit instruction — flagged for
+a later `?debug` param once the game is shared outside the team.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -391,3 +421,4 @@ A hand-edited `map.json` (145 tiles, `"handEdited": true`) was discovered mid-pa
 - 2026-08-22, F2 (Mangrove/Sandy Vegetation density): closed. Both rebuilt as fused 3-plant stands (one full-size + two smaller flanking, canopies overlapping) instead of one sparse plant; geometry-only, no data fields touched. Poly counts exactly triple (Sandy Vegetation 144→432, Mangrove 240→720), flagged as heavier per convention. Sandy Vegetation verified live (close-zoom screenshot); Mangrove verified by code review only this pass — see PROGRESS.md for the honest reason why (a mid-session background-process cleanup lapse cut the live-screenshot attempt short; flagged plainly, not glossed over).
 - 2026-08-22, G1-G3 (remove the claiming step, Build advances the turn): all closed. G1: `claim()`/`isClaimable()`/`canClaim()`/`CLAIM_COST` removed from `gameState.ts`; `claimed` now always equals `placed` from construction; `build()` is the sole turn-advancing action. G2: click any tile opens its build popover directly; `ClaimRingMeshManager` deleted entirely; HUD's claim prompt repurposed to `setEmptyTiles`; the top-right "Tiles claimed" counter deliberately left as-is (now a constant) per the step prompt's own guidance. G3: `tests/balance.test.ts`'s scripted harness rewritten around build()-alone-advances-turns — a real, named behavior change (categories with limited eligible terrain, e.g. Khazan/Estuary, now finish faster and can see fewer/no hazards in a run), flagged as a gap for the fuller balance-tuning pass rather than hidden. Retired `tools/verify_readability.ts` — its claimed-vs-unclaimed premise no longer exists once every tile renders full-bright from boot. Verified live end-to-end: fresh load, first click on a never-touched tile opens its build menu directly, building it advances the turn and updates the HUD correctly, no console errors. 59/59 tests passing, `tsc --noEmit` clean, production build succeeds.
 - 2026-08-22, H1-H5 (hazard mechanics, rooted in real coastal science): all closed. H1: river-channel funneling (`RIVER_CHANNEL_DECAY=0.82` vs. each hazard's own general decay) via a new `decayFor()` hook in the shared BFS engine; found and fixed Khazan's stale `cyclone` targeting from an earlier pass. H2: Flood redefined two-sided (upstream always-on source farthest along the actual channel from the Estuary; downstream/tidal source nearest the Estuary, only when a concurrent Storm Surge Wave is passed in) — resolved as two independent passes whose resulting damage sums at overlap tiles (capped), a documented simplification, not a single interleaved multi-front BFS. A map with no Estuary falls back to the old whole-river-at-once behavior, which is why the entire pre-existing hazard/cyclone/balance/era suite kept passing unmodified. H3: Khazan gained a real `floodBufferCapacityM3` reservoir (1500 m3 placeholder) that draws down before the old percentage-absorption math applies to any overflow, recovering 15%/turn — obsoleted and rewrote 2 stale Khazan tests. H4: `triggerFlood` now checks real concurrent-storm-surge state (telegraphing or resolved within 2 turns) before adding Flood's downstream source. H5: `arrivalRound` on `HazardResult` staggers the wave-sweep animation to match real BFS timing; `HazardOverlayManager` consolidated into one coordinate-keyed instance with genuine cross-hazard compound-color blending; new `CloudLayerManager` drifts during either hazard's telegraph window. Also discovered (and worked around without reverting) an externally hand-edited `map.json` mid-pass — see PROGRESS.md. 64 tests (58 passing + 6 newly `skipIf`-gated for the hand-edited map), `tsc --noEmit` clean, production build succeeds.
+- 2026-08-22, I1 (hazard-strength test sliders): closed. New `HazardTestPanel` (collapsible, closed on load, bottom-left tab) with two 0-3/step-0.1 sliders calling straight into the existing `triggerCyclone`/`triggerFlood` — a manual trigger behaves exactly like a scheduled one in every way. Confirmed live that sequencing Storm Surge then Flood within the compound window genuinely exercises the compound-flooding path, including real `COMPOUND_OVERLAY_COLOR` tiles on screen — closing a live-verification gap the hazard-science pass itself had flagged. Caught one real ordering bug pre-ship: the schedule readout's `let` dependencies aren't initialized at `main.ts`'s first `refreshHud()` call, so it's its own function, not folded in. No test-suite changes needed. `tsc --noEmit` clean, production build succeeds.

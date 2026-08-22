@@ -11,6 +11,7 @@ import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/ha
 import { computeEraScore } from "@core/scoring";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
+import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { playSound } from "@ui/audioHooks";
 import mapData from "@data/map.json";
 import startingStateData from "@data/startingState.json";
@@ -101,6 +102,14 @@ for (const coord of STARTING_STATE.prebuiltHouses) {
 
 const hud = new Hud(container);
 const buildPopover = new BuildPopover(container);
+// STEP_PROMPT_hazard_test_sliders.md: calls straight into triggerCyclone/
+// triggerFlood below (function declarations — hoisted, safe to reference
+// here) so a manual trigger behaves exactly like a scheduled one in every
+// way except where the severity number came from.
+const hazardTestPanel = new HazardTestPanel(container, {
+  onTriggerStorm: (severity) => triggerCyclone(severity),
+  onTriggerFlood: (severity) => triggerFlood(severity)
+});
 
 const YACHT_COST = ELEMENT_BY_ID.get("yacht")!.buildCost;
 
@@ -195,6 +204,7 @@ function updateFloodTelegraph(): void {
   floodTelegraphing = telegraphing;
   for (const coord of tilesOfType("river")) terrain.setTint(coord, telegraphing ? FLOOD_TELEGRAPH_COLOR : null);
   updateCloudVisibility();
+  updateHazardTestSchedule();
 }
 
 /**
@@ -219,6 +229,7 @@ function triggerFlood(baseSeverity: number): void {
   floodTelegraphing = false;
   updateCloudVisibility();
   nextFloodAtTurn = state.turn + FLOOD_INTERVAL_TURNS;
+  updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
   checkEraEnd();
@@ -260,6 +271,7 @@ function updateCycloneTelegraph(): void {
   cycloneIcon.visible = telegraphing && centroid !== null;
   if (telegraphing && centroid) cycloneIcon.position.set(centroid.x, 2.2, centroid.z);
   updateCloudVisibility();
+  updateHazardTestSchedule();
 }
 
 /** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. */
@@ -272,10 +284,24 @@ function triggerCyclone(baseSeverity: number): void {
   updateCloudVisibility();
   lastStormSurgeResolvedTurn = state.turn;
   nextCycloneAtTurn = state.turn + CYCLONE_INTERVAL_TURNS;
+  updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
   checkEraEnd();
 }
+
+/**
+ * STEP_PROMPT_hazard_test_sliders.md's nice-to-have: orients whoever's
+ * testing without them needing to wait out the schedule. Deliberately its
+ * own function (not folded into `refreshHud()`) — `refreshHud()` is first
+ * called before `nextFloodAtTurn`/`nextCycloneAtTurn` exist yet (both are
+ * `let` bindings declared further down this file), so referencing them
+ * there would throw on that very first call.
+ */
+function updateHazardTestSchedule(): void {
+  hazardTestPanel.setScheduleInfo(nextCycloneAtTurn - state.turn, nextFloodAtTurn - state.turn);
+}
+updateHazardTestSchedule();
 
 // --- Era loop ------------------------------------------------------------------
 
@@ -289,6 +315,7 @@ function checkEraEnd(): void {
 
   elements.reset();
   hazardOverlay.reset();
+  hazardTestPanel.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across an era reset
 
   state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
   terrain.resetClaims(keysToCoords(state.claimed));
@@ -297,6 +324,7 @@ function checkEraEnd(): void {
   }
   nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
   nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
+  updateHazardTestSchedule();
 
   refreshHud();
 }

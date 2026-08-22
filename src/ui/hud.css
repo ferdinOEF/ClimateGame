@@ -286,3 +286,124 @@ html, body {
   color: #cfe6d8;
   white-space: nowrap;
 }
+
+/*
+  STEP_PROMPT_hazard_test_sliders.md: a testing/tuning aid, closed on load
+  so a normal playtest looks unchanged unless someone deliberately opens
+  it — bottom-left is the one HUD corner nothing else uses.
+*/
+.hazard-test-tab {
+  position: absolute;
+  bottom: 16px;
+  left: 12px;
+  z-index: 10;
+  background: rgba(20, 30, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fdf6e6;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.hazard-test-tab:hover {
+  background: rgba(20, 30, 26, 0.9);
+}
+
+.hazard-test-tab.active {
+  background: rgba(216, 177, 88, 0.28);
+  border-color: rgba(216, 177, 88, 0.5);
+}
+
+.hazard-test-panel {
+  position: absolute;
+  bottom: 54px;
+  left: 12px;
+  z-index: 10;
+  width: 230px;
+  background: rgba(20, 30, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.hazard-test-panel[hidden] {
+  display: none;
+}
+
+.hazard-test-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 3px solid transparent;
+  padding-left: 8px;
+}
+
+/* Storm Surge blue: PALETTE.riverBlue, the closest existing token — there's no dedicated "storm" color yet. Flood brown: PALETTE.defenseKhazanBund, close enough to read as "flood/earth" without a new unreferenced hex value. */
+.hazard-test-row.storm {
+  border-left-color: #3e86b0;
+}
+
+.hazard-test-row.flood {
+  border-left-color: #8c6a3f;
+}
+
+.hazard-test-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fdf6e6;
+}
+
+.hazard-test-schedule {
+  font-size: 10px;
+  opacity: 0.6;
+  color: #cfe6d8;
+}
+
+.hazard-test-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hazard-test-slider {
+  flex: 1;
+  accent-color: #d8b158;
+}
+
+.hazard-test-readout {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffe9a8;
+  min-width: 30px;
+  text-align: right;
+}
+
+.hazard-test-trigger {
+  align-self: flex-start;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fdf6e6;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hazard-test-row.storm .hazard-test-trigger:hover {
+  background: rgba(62, 134, 176, 0.35);
+}
+
+.hazard-test-row.flood .hazard-test-trigger:hover {
+  background: rgba(140, 106, 63, 0.35);
+}
