@@ -45,7 +45,11 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     const def = ELEMENT_BY_ID.get("beachside_resort")!;
 
     expect(state.build({ q: 0, r: 0 }, "beachside_resort")).toBe(true);
-    expect(state.coin).toBe(before - def.buildCost);
+    // STEP_PROMPT_remove_claiming.md: build() now advances a turn itself,
+    // and the just-placed Resort is already standing when that turn's
+    // income pays out — so coin nets the build cost against that income,
+    // not just the raw cost.
+    expect(state.coin).toBe(before - def.buildCost + def.effects.money);
 
     // Already has an element on that tile now.
     expect(state.build({ q: 0, r: 0 }, "beachside_resort")).toBe(false);
@@ -55,20 +59,27 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     expect(state2.build({ q: 1, r: 0 }, "beachside_resort")).toBe(false);
   });
 
-  it("each claim (turn) pays out building income via the generic effects accumulator", () => {
+  it("build() (STEP_PROMPT_remove_claiming.md: now the sole turn-advancing action) pays out standing building income via the generic effects accumulator", () => {
     const map = [
       { coord: { q: 0, r: 0 }, terrainId: "beach" },
       { coord: { q: 1, r: 0 }, terrainId: "beach" }
     ];
-    const state = new GameState(map, [{ q: 0, r: 0 }]); // (1,0) starts unclaimed, on purpose
-    state.build({ q: 0, r: 0 }, "beachside_resort");
+    const state = new GameState(map);
+    state.coin = 500;
     const def = ELEMENT_BY_ID.get("beachside_resort")!;
-    const coinAfterBuild = state.coin;
 
-    expect(state.claim({ q: 1, r: 0 })).toBe(true);
-
+    const before = state.coin;
+    expect(state.build({ q: 0, r: 0 }, "beachside_resort")).toBe(true);
     expect(state.turn).toBe(1);
-    expect(state.coin).toBe(coinAfterBuild - 4 + def.effects.money); // CLAIM_COST is 4
+    // build() places the element *before* calling advanceTurn(), so the
+    // just-built Resort is already standing when that same turn's income
+    // pays out.
+    expect(state.coin).toBe(before - def.buildCost + def.effects.money);
+
+    const coinAfterFirstBuild = state.coin;
+    expect(state.build({ q: 1, r: 0 }, "beachside_resort")).toBe(true);
+    expect(state.turn).toBe(2);
+    expect(state.coin).toBe(coinAfterFirstBuild - def.buildCost + def.effects.money * 2); // both Resorts now pay out
   });
 
   it("Small Dam is money+/biodiversity-/resilience+ and Sand Mining is money+/biodiversity-/resilience-", () => {
@@ -139,13 +150,10 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
 
     // Confirm via meterTotal, not just the empty effects map on paper —
     // every tracked key should read identically with or without a placed Yacht.
-    const before = new GameState(
-      [
-        { coord: { q: 0, r: 0 }, terrainId: "coast" },
-        { coord: { q: 1, r: 0 }, terrainId: "land" }
-      ],
-      [{ q: 0, r: 0 }, { q: 1, r: 0 }]
-    );
+    const before = new GameState([
+      { coord: { q: 0, r: 0 }, terrainId: "coast" },
+      { coord: { q: 1, r: 0 }, terrainId: "land" }
+    ]);
     before.coin = 2000;
     before.build({ q: 1, r: 0 }, "house"); // something else standing, so the meters aren't trivially zero either way
     const metersBefore = { money: before.meterTotal("money"), food: before.food, biodiversity: before.biodiversity, population: before.population };

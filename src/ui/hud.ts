@@ -1,10 +1,10 @@
 /**
  * The only persistent UI (v2.1): a corner tile counter, one compact meter
  * strip (Coin + Section 7's meters — Trust/Resilience/Biodiversity/Carbon,
- * plus v2.4's Food/Population), a small "next hex to claim" prompt, and a
- * brief non-blocking era banner. No full-width panel, and no hand strip
- * anymore — Section 2/3: there's no longer a choice of *what* to place,
- * only *where* to claim next, so there's nothing to hand-pick from.
+ * plus v2.4's Food/Population), a small "tiles still empty" soft-progress
+ * prompt, and a brief non-blocking era banner. No full-width panel — every
+ * tile is already active (STEP_PROMPT_remove_claiming.md), so there's
+ * nothing to hand-pick from, only where to build next.
  */
 export class Hud {
   private tileCountEl: HTMLElement;
@@ -16,7 +16,7 @@ export class Hud {
   private foodEl: HTMLElement;
   private foodChipEl: HTMLElement;
   private populationEl: HTMLElement;
-  private claimPromptEl: HTMLElement;
+  private emptyPromptEl: HTMLElement;
   private bannerEl: HTMLElement;
   private yachtGoalEl: HTMLElement;
   private yachtValueEl: HTMLElement;
@@ -50,10 +50,10 @@ export class Hud {
     this.foodChipEl = meters.querySelector(".food-chip")!;
     this.populationEl = meters.querySelector(".population-value")!;
 
-    const claimPrompt = document.createElement("div");
-    claimPrompt.className = "hud-corner bottom-center claim-prompt";
-    container.appendChild(claimPrompt);
-    this.claimPromptEl = claimPrompt;
+    const emptyPrompt = document.createElement("div");
+    emptyPrompt.className = "hud-corner bottom-center empty-prompt";
+    container.appendChild(emptyPrompt);
+    this.emptyPromptEl = emptyPrompt;
 
     const banner = document.createElement("div");
     banner.className = "hud-corner top-center era-banner";
@@ -126,9 +126,8 @@ export class Hud {
     this.foodChipEl.classList.toggle("meter-chip-warning", meters.food < 0);
   }
 
-  /** Section 3's "next hex to claim" prompt — a glowing ring count, not a form. */
-  setClaimable(count: number, claimCost: number): void {
-    this.claimPromptEl.textContent =
-      count > 0 ? `${count} hex${count === 1 ? "" : "es"} to claim — ${claimCost}c each` : "Nothing left to claim";
+  /** STEP_PROMPT_remove_claiming.md: a soft progress indicator, not a gate — every tile is already buildable, this just orients the player toward how much map is still untouched. */
+  setEmptyTiles(count: number): void {
+    this.emptyPromptEl.textContent = count > 0 ? `${count} hex${count === 1 ? "" : "es"} still empty` : "Every hex has something built on it";
   }
 }

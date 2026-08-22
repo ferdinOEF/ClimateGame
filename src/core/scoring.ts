@@ -30,6 +30,16 @@ function clamp(value: number, limit: number): number {
  * v2.1: "map size" means `claimed`, the player's own footprint — `placed`
  * is now the whole fixed map (Section 4), constant regardless of play, so
  * it would be meaningless as a progress signal here.
+ *
+ * STEP_PROMPT_remove_claiming.md: `claimed` is now itself always exactly
+ * `placed` (every tile is buildable from turn one, not a player-grown
+ * footprint anymore) — so the `state.claimed.size * 0.3` term below is now
+ * a *constant*, identical across every playthrough on a given map, no
+ * longer differentiating anything. Not broken, just inert; left as-is
+ * deliberately (removing it is a scoring-formula change, out of scope for
+ * that pass) but flagged here for whenever scoring next gets tuned — a
+ * build-density ratio or elements-built count would be a live signal in
+ * its place.
  */
 export function computeEraScore(state: GameState): number {
   return (

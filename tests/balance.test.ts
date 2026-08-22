@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 import { GameState, type PlacedTile } from "../src/core/gameState";
 import { resolveMonsoonFlood, resolveCyclone } from "../src/core/hazard";
 import { computeEraScore } from "../src/core/scoring";
-import { ELEMENT_BY_ID } from "../src/core/elements";
-import { axialKey, type AxialCoord } from "../src/core/hex";
+import { axialKey } from "../src/core/hex";
 import mapData from "../src/data/map.json";
 
 interface MapFile {
-  startingClaim: { q: number; r: number }[];
   tiles: { q: number; r: number; terrainId: string }[];
 }
 const MAP = mapData as MapFile;
@@ -36,9 +34,9 @@ interface PlaythroughResult {
   biodiversity: number;
   carbon: number;
   coinRemaining: number;
-  /** Damage summed over the whole map — dominated by unclaimed wilderness every run touches equally, kept for reference only. */
+  /** Damage summed over the whole map. */
   totalDamage: number;
-  /** Damage summed only over tiles the player actually claimed — how well this strategy protected its own land, on that axis alone. */
+  /** STEP_PROMPT_remove_claiming.md: `claimed` is now always the whole map, so this is always identical to totalDamage — kept only for the console dump's continuity with earlier runs, not a distinct signal anymore. */
   claimedTileDamage: number;
   defensesBuilt: number;
   /** The same composite score the game itself reports at era-end (Section 7) — the real "how did this run actually do" signal. */
@@ -56,31 +54,25 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Pre-claim check (mirrors GameState.buildableAt's own terrain rule) for whether `coord` would let this category build something once claimed. */
-function coordQualifiesFor(state: GameState, coord: AxialCoord, defenseIds: Set<string>): boolean {
-  const tile = state.placed.get(axialKey(coord));
-  if (!tile) return false;
-  for (const id of defenseIds) {
-    const def = ELEMENT_BY_ID.get(id)!;
-    if (def.validTerrainIds.includes(tile.terrainId)) return true;
-  }
-  return false;
-}
-
 /**
- * v2.1: the map is fixed (no more per-run RNG for terrain), so what the RNG
- * now drives is *which* frontier tile gets claimed each turn. A strategic
- * player pursuing a given category would steer toward land useful to that
- * category when it's within reach, not wander purely at random — so each
- * turn, prefer a random *qualifying* frontier tile if one exists, falling
- * back to any random frontier tile otherwise. Still fully deterministic and
- * identical in spirit across all three category runs (each just prefers its
- * own useful land), so it's still a fair, controlled comparison — now
- * against the actual shipped map rather than a synthetic one.
+ * STEP_PROMPT_remove_claiming.md: every tile is buildable from turn one —
+ * there's no more "claim a frontier tile, then optionally build there" two
+ * step; `build()` alone is now the sole turn-advancing action. Each turn,
+ * the scripted player picks a random empty tile that currently offers an
+ * affordable, category-preferred option and builds it — playing each
+ * category *pure* (100% NBS-only, 100% engineered-only, ...), same as the
+ * old harness's intent. Once no tile anywhere still offers one (this
+ * category has nothing left it wants to build, or can no longer afford
+ * to), the run stops — nothing else in `state` can change without a
+ * build, so further iterations would be no-ops. This means different
+ * categories can now legitimately survive different numbers of turns
+ * (e.g. `hybrid`/Khazan is capped by Estuary's small tile count) — an
+ * intended consequence of build() alone carrying the turn forward, not a
+ * bug to work around.
  */
 function runScriptedPlaythrough(category: Category, seed: number): PlaythroughResult {
   const rng = mulberry32(seed);
-  const state = new GameState(mapTiles, MAP.startingClaim);
+  const state = new GameState(mapTiles);
   state.coin = 2000; // ample budget so category choice, not affordability, drives the outcome
 
   const preferredIds = new Set(CATEGORY_DEFENSE_IDS[category]);
@@ -89,46 +81,28 @@ function runScriptedPlaythrough(category: Category, seed: number): PlaythroughRe
   let hazardIndex = 0;
   let defensesBuilt = 0;
 
-  // STEP_PROMPT_visuals_map_river.md's mapgen reshape widened Estuary to a
-  // multi-tile region (7 tiles as of that pass, comfortably within
-  // STEP_PROMPT_economy_food_yacht.md item 3's "roughly 4-6" target — see
-  // PROGRESS.md, that item was found already satisfied by the earlier
-  // pass rather than needing further mapgen changes), and it's no longer
-  // part of the starting claim (that's a small coastal Beach cluster now,
-  // separate from the inland-ish estuary). This opportunistic pre-pass —
-  // check the starting claim's own tiles for a category-matching build
-  // before claiming anything else, same as a real player opening the
-  // popover on land they already own — is still harmless and still
-  // correct to keep: for `nbs` it can pick up a Dune/Sandy Vegetation on
-  // the starting Beach tiles; the main loop below independently seeks out
-  // every qualifying Estuary tile (Mangrove/Khazan) as it claims, so
-  // Estuary having several tiles rather than one just means the `nbs`/
-  // `hybrid` runs get more chances to build there, not fewer.
-  for (const key of state.claimed) {
-    const [q, r] = key.split(",").map(Number);
-    const coord = { q, r };
-    const options = state.buildableAt(coord).filter((d) => preferredIds.has(d.id));
-    const affordable = options.find((d) => d.buildCost <= state.coin);
-    if (affordable && state.build(coord, affordable.id)) defensesBuilt++;
-  }
-
   for (let i = 0; i < 150; i++) {
-    const unclaimed = mapTiles.map((t) => t.coord).filter((c) => state.isClaimable(c));
-    if (unclaimed.length === 0) break;
-    const qualifying = unclaimed.filter((c) => coordQualifiesFor(state, c, preferredIds));
-    const pool = qualifying.length > 0 ? qualifying : unclaimed;
-    const coord = pool[Math.floor(rng() * pool.length)];
-    state.claim(coord);
+    const empty = mapTiles.map((t) => t.coord).filter((c) => !state.elements.has(axialKey(c)));
+    if (empty.length === 0) break;
 
-    const options = state.buildableAt(coord).filter((d) => preferredIds.has(d.id));
-    const affordable = options.find((d) => d.buildCost <= state.coin);
-    if (affordable && state.build(coord, affordable.id)) defensesBuilt++;
+    const preferredCandidates = empty.filter((c) =>
+      state.buildableAt(c).some((d) => preferredIds.has(d.id) && d.buildCost <= state.coin)
+    );
+    if (preferredCandidates.length === 0) break; // nothing this category wants (and can afford) to build anywhere left
+
+    const coord = preferredCandidates[Math.floor(rng() * preferredCandidates.length)];
+    const option = state.buildableAt(coord).find((d) => preferredIds.has(d.id) && d.buildCost <= state.coin)!;
+    if (state.build(coord, option.id)) defensesBuilt++;
 
     while (hazardIndex < HAZARD_SCHEDULE.length && state.turn >= HAZARD_SCHEDULE[hazardIndex].turn) {
       const h = HAZARD_SCHEDULE[hazardIndex++];
       const result = h.kind === "flood" ? resolveMonsoonFlood(state, h.severity) : resolveCyclone(state, h.severity);
       for (const [key, d] of result.tileDamage) {
         totalDamage += d;
+        // `claimed` is now always the whole map (STEP_PROMPT_remove_
+        // claiming.md — see scoring.ts's analogous flag), so this is now
+        // identical to totalDamage; kept for the console dump below, not
+        // load-bearing in any assertion.
         if (state.claimed.has(key)) claimedTileDamage += d;
       }
     }
@@ -183,14 +157,13 @@ describe("Defense category balance (Phase 4 DoD: no landslide winner)", () => {
     const maxAbs = Math.max(...scores.map(Math.abs));
     expect(spread, `Era score spread across categories was ${spread} (values: ${scores}) — investigate if this looks like a landslide`).toBeLessThan(maxAbs * 1.5);
 
-    // v2.2 (claim-anywhere): the scripted harness now draws each turn's
-    // candidate from every qualifying unclaimed tile on the whole map
-    // rather than a small adjacency-limited frontier, which changed this
-    // fixed seed's exact claim/build order enough that engineered and
-    // hybrid land on the same Trust value for this one seed. The invariant
-    // that actually matters — engineered's catastrophic-failure penalty
-    // never leaves it strictly ahead of the non-catastrophic categories —
-    // still holds, so the assertion is <= rather than <.
+    // The scripted harness draws each turn's candidate from every
+    // qualifying empty tile on the whole map rather than a small
+    // adjacency-limited frontier, which can land engineered and hybrid on
+    // the same Trust value for a given fixed seed. The invariant that
+    // actually matters — engineered's catastrophic-failure penalty never
+    // leaves it strictly ahead of the non-catastrophic categories — still
+    // holds, so the assertion is <= rather than <.
     expect(
       results.engineered.trust,
       "engineered's catastrophic-failure Trust penalty should never leave it ahead of the non-catastrophic categories"

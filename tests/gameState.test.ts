@@ -2,126 +2,87 @@ import { describe, expect, it } from "vitest";
 import { GameState, type PlacedTile } from "../src/core/gameState";
 import { axialKey, hexSpiral } from "../src/core/hex";
 
-/** A small synthetic fixed map for claim-mechanic tests — terrain id doesn't matter here (that's mapgen's job now). */
+/** A small synthetic fixed map — terrain id doesn't matter here (that's mapgen's job now). */
 function smallTestMap(radius = 3): PlacedTile[] {
   return hexSpiral({ q: 0, r: 0 }, radius).map((coord) => ({ coord, terrainId: "beach" }));
 }
 
-describe("GameState claim mechanic (v2.2: claim-anywhere, no adjacency gate)", () => {
-  it("starts with only the given starting cluster claimed, everything else unclaimed", () => {
+describe("GameState: every tile is buildable from turn one (STEP_PROMPT_remove_claiming.md — no separate claim step)", () => {
+  it("claimed always equals placed, for the whole map, from construction", () => {
     const map = smallTestMap();
-    const state = new GameState(map, [{ q: 0, r: 0 }]);
-    expect(state.claimed.size).toBe(1);
-    expect(state.claimed.has(axialKey({ q: 0, r: 0 }))).toBe(true);
-    expect(state.placed.size).toBe(map.length); // the whole map exists regardless of claim status
+    const state = new GameState(map);
+    expect(state.claimed.size).toBe(state.placed.size);
+    for (const key of state.placed.keys()) expect(state.claimed.has(key)).toBe(true);
   });
 
-  it("isClaimable is true for every unclaimed tile on the map, not just ones adjacent to claimed land", () => {
+  it("buildableAt returns options for any tile immediately, including ones far from the map's origin", () => {
     const map = smallTestMap();
-    const state = new GameState(map, [{ q: 0, r: 0 }]);
-    const farCoord = { q: 3, r: -3 }; // deliberately not adjacent to the starting cluster
+    const state = new GameState(map);
+    const farCoord = { q: 3, r: -3 }; // deliberately far from (0,0)
     expect(map.some((t) => t.coord.q === farCoord.q && t.coord.r === farCoord.r)).toBe(true);
-    expect(state.claimed.has(axialKey(farCoord))).toBe(false);
-    expect(state.isClaimable(farCoord)).toBe(true);
+    expect(state.buildableAt(farCoord).length).toBeGreaterThan(0);
   });
 
-  it("rejects claiming an already-claimed tile or a tile outside the map, but allows a distant unclaimed one", () => {
+  it("build() deducts cost, places the element, and counts as a turn", () => {
     const map = smallTestMap();
-    const state = new GameState(map, [{ q: 0, r: 0 }]);
-    expect(state.claim({ q: 0, r: 0 })).toBe(false); // already claimed
-    expect(state.claim({ q: 99, r: 99 })).toBe(false); // not part of the fixed map at all
-    expect(state.claim({ q: 3, r: -3 })).toBe(true); // far from claimed land, but v2.2 allows it
-  });
-
-  it("claiming deducts coin, marks the tile claimed, and counts as a turn", () => {
-    const map = smallTestMap();
-    const state = new GameState(map, [{ q: 0, r: 0 }]);
-    const before = state.coin;
-    const target = map.find((t) => !state.claimed.has(axialKey(t.coord)))!.coord;
-
-    expect(state.claim(target)).toBe(true);
-    expect(state.coin).toBeLessThan(before);
-    expect(state.claimed.has(axialKey(target))).toBe(true);
-    expect(state.turn).toBe(1);
-  });
-
-  it("never runs out of claimable tiles across 30+ sequential claims (no dead click)", () => {
-    const map = smallTestMap(4); // generous radius so coin never runs out before tiles do
-    const state = new GameState(map, [{ q: 0, r: 0 }]);
+    const state = new GameState(map);
     state.coin = 1000;
+    const target = map[0].coord;
+    const before = state.coin;
 
-    let claims = 0;
-    let guard = 0;
-    while (claims < 30 && guard < 500) {
-      guard++;
-      const next = map.find((t) => state.isClaimable(t.coord));
-      expect(next).toBeDefined();
-      expect(state.claim(next!.coord)).toBe(true);
-      claims++;
-    }
-
-    expect(claims).toBeGreaterThanOrEqual(30);
+    expect(state.build(target, "dune")).toBe(true); // beach-valid, no separate claim needed first
+    expect(state.turn).toBe(1);
+    expect(state.elements.has(axialKey(target))).toBe(true);
+    expect(state.coin).not.toBe(before); // cost deducted (net of that turn's own income, if any)
   });
 
-  it("buildableAt requires the tile to be claimed first", () => {
-    const map: PlacedTile[] = [
-      { coord: { q: 0, r: 0 }, terrainId: "estuary" },
-      { coord: { q: 1, r: 0 }, terrainId: "beach" }
-    ];
-    const state = new GameState(map, [{ q: 0, r: 0 }]); // (1,0) intentionally left unclaimed
-    expect(state.buildableAt({ q: 1, r: 0 })).toHaveLength(0);
+  it("rejects building on an already-occupied tile or without enough coin", () => {
+    const map = smallTestMap();
+    const state = new GameState(map);
+    state.coin = 1000;
+    const target = map[0].coord;
+    expect(state.build(target, "dune")).toBe(true);
+    expect(state.build(target, "dune")).toBe(false); // occupied now
 
-    state.claim({ q: 1, r: 0 });
-    expect(state.buildableAt({ q: 1, r: 0 }).length).toBeGreaterThan(0);
+    const state2 = new GameState(map);
+    state2.coin = 0;
+    expect(state2.build(map[1].coord, "dune")).toBe(false);
+  });
+
+  it("an idle session (no builds) never advances past turn 0", () => {
+    const state = new GameState(smallTestMap());
+    expect(state.turn).toBe(0);
   });
 });
 
 describe("Food deficit — a soft consequence, never a hard block (STEP_PROMPT_economy_food_yacht.md item 2)", () => {
-  it("drains Trust and Resilience every turn a Food deficit runs, but never blocks claiming or building", () => {
-    const map: PlacedTile[] = [
-      { coord: { q: 0, r: 0 }, terrainId: "land" },
-      { coord: { q: 1, r: 0 }, terrainId: "land" },
-      { coord: { q: 2, r: 0 }, terrainId: "land" },
-      { coord: { q: 3, r: 0 }, terrainId: "land" } // left unclaimed, claimed later to force a turn
-    ];
-    const state = new GameState(map, [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }]);
+  it("drains Trust and Resilience the moment a Food deficit exists, but never blocks building", () => {
+    const map: PlacedTile[] = [{ coord: { q: 0, r: 0 }, terrainId: "land" }];
+    const state = new GameState(map);
     state.coin = 500;
-
-    // Three Houses, no Mangrove/Khazan anywhere — a guaranteed Food deficit (food: -1 each).
-    for (const coord of [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }]) {
-      expect(state.build(coord, "house")).toBe(true);
-    }
-    expect(state.food).toBeLessThan(0);
-
     const trustBefore = state.trust;
     const resilienceBefore = state.resilience;
 
-    // claim() is the only call site of advanceTurn() in real play — use
-    // it, not advanceTurn() directly, so this exercises the actual path a
-    // player's action takes.
-    const claimed = state.claim({ q: 3, r: 0 });
+    // A House alone (food -1, no offsetting Mangrove/Khazan) is a guaranteed
+    // deficit — and build() is now the sole call site of advanceTurn(), so
+    // this single build already exercises the real path a player's action
+    // takes, same as the old claim()-based version of this test did.
+    const built = state.build({ q: 0, r: 0 }, "house");
 
-    expect(claimed, "a running Food deficit must never block a claim").toBe(true);
+    expect(built, "a running Food deficit must never block a build").toBe(true);
+    expect(state.food).toBeLessThan(0);
     expect(state.trust).toBeLessThan(trustBefore);
     expect(state.resilience).toBeLessThan(resilienceBefore);
-
-    // And building on the newly-claimed tile is still possible too — the
-    // deficit is a meter drain, not a build/claim gate anywhere.
-    expect(state.build({ q: 3, r: 0 }, "house")).toBe(true);
   });
 
   it("does nothing to Trust/Resilience when Food is at or above zero", () => {
-    const map: PlacedTile[] = [
-      { coord: { q: 0, r: 0 }, terrainId: "estuary" },
-      { coord: { q: 1, r: 0 }, terrainId: "land" }
-    ];
-    const state = new GameState(map, [{ q: 0, r: 0 }]);
+    const map: PlacedTile[] = [{ coord: { q: 0, r: 0 }, terrainId: "estuary" }];
+    const state = new GameState(map);
     state.coin = 500;
-    expect(state.build({ q: 0, r: 0 }, "mangrove")).toBe(true); // food +1, no Houses yet — Food stays >= 0
-
     const trustBefore = state.trust;
     const resilienceBefore = state.resilience;
-    state.claim({ q: 1, r: 0 });
+
+    expect(state.build({ q: 0, r: 0 }, "mangrove")).toBe(true); // food +1, no Houses yet — Food stays >= 0
 
     expect(state.trust).toBe(trustBefore);
     expect(state.resilience).toBe(resilienceBefore);

@@ -1366,3 +1366,132 @@ reasons.
 
 **Verification:** 60/60 tests passing (10 in `mapgen.test.ts`, up from
 5 — see above), `tsc --noEmit` clean, production build succeeds.
+
+## Step prompt — remove the claiming step, Build advances the turn — DONE
+
+Worked `STEP_PROMPT_remove_claiming.md`: every tile is now buildable from
+turn one — no separate "claim it first" step — and `build()` is now the
+sole action that advances a turn, a job that used to belong to the
+removed `claim()`.
+
+**`gameState.ts`.** Removed `claim()`, `isClaimable()`, `canClaim()`, and
+`CLAIM_COST` entirely. Per the step prompt's own explicit "minimal,
+low-risk" guidance, `claimed` stays in the codebase as a real field —
+every place that already reads it (`buildableAt()`, the HUD tile
+counter, `computeEraScore()`) keeps working unchanged — but it's now
+always initialized to exactly every key in `placed`, both in the
+constructor and in `startNewEra()`, rather than a small starting
+cluster. Went one step further than the letter of "minimal" in one
+place: dropped the now-fully-inert `startingClaim` constructor
+parameter entirely rather than keeping it silently ignored, since every
+call site either needed touching anyway (the claim-mechanic tests being
+removed) or could drop the argument with zero behavior change. `build()`
+now calls `this.advanceTurn()` right after placing the element instance
+(same internals — pays `meterTotal("money")`, ticks maintenance, drains
+for a Food deficit — just a different trigger); one real consequence
+worth naming: since the element is placed *before* `advanceTurn()`
+runs, a just-built element already counts toward that same turn's
+income the moment it's built, not starting from the turn after.
+
+**`main.ts`/`hud.ts`/UI.** A click on any tile now opens `openTilePopover`
+directly — a build menu if the tile is empty, an info card if something's
+already standing there — with no intermediate claim click, ring, or cost
+anywhere in the flow. Deleted `ClaimRingMeshManager` entirely (its file,
+import, instantiation, and every call site) — it had no remaining job
+once there's no claimable-tile hover state left to visualize. Removed
+the whole `pointermove` listener that existed solely to drive it. HUD's
+"next hex to claim" prompt (`Hud.setClaimable`) is now `Hud.setEmptyTiles`
+— "N hexes still empty" / "Every hex has something built on it," backed
+by a new `GameState.emptyTileCount` getter (`placed.size - elements.size`)
+in place of the now-permanently-zero `claimableCount`. Per the step
+prompt's explicit guidance, deliberately left the top-right "Tiles
+claimed" counter's wording alone (still reads `state.claimed.size`,
+which is now always the full map size, 105) — flagged below alongside
+the analogous scoring-formula note, not silently redesigned. The
+`?autoclaim` dev URL param and its `devAutoClaim` helper are gone
+(nothing left for them to do); `devAutoBuild`/`autobuild`/`autodefend`
+are untouched and now work immediately with no claim step needed first.
+Extracted the flood/cyclone schedule check the old `claimTile()` wrapper
+used to run into a small `checkHazardSchedule()` function, called after
+every successful build.
+
+**Cross-cutting: `tests/balance.test.ts`'s harness.** This was the one
+place flagged as likely to silently break, and it did — its scripted
+playthrough loop called `state.claim(coord)` every iteration as both
+"take this tile" and "advance a turn" in one call. Rewrote the loop per
+the step prompt's own description: each iteration now picks a random
+empty tile that currently offers an affordable, category-preferred
+option and builds it, with `build()` alone carrying the turn forward; a
+category that's built everything it wants (or can afford) everywhere
+simply stops, since nothing else in `state` can change without a build.
+This is a real, intentional behavior change worth naming: different
+categories can now legitimately survive different numbers of turns —
+`hybrid`/Khazan, capped by Estuary's small tile count (8 tiles), now
+finishes its run in 8 builds/turns rather than running the full 150-turn
+schedule, so it can end a run having drawn zero hazards at all (as
+happened in this pass's own run: `hybrid` finished at `resilience: 100,
+totalDamage: 0`). This weakens what the `hybrid` category's balance
+check actually exercises compared to before (it no longer meaningfully
+tests Khazan's hazard resilience under repeated hazard load) — flagging
+this honestly as a known gap for whenever `STEP_PROMPT_balance_tuning.md`'s
+fuller pass runs, rather than silently shipping a quietly-weakened check.
+The existing assertions (defenses built > 0 per category, era-score
+spread under a landslide threshold, engineered's Trust never ahead of
+the non-catastrophic categories) all still pass against the new numbers.
+
+**Retired `tools/verify_readability.ts`** (and its `npm run
+verify:readability` script) rather than adapting it. Its entire premise —
+claim one tile, compare its color against an unclaimed neighbor of the
+same terrain — no longer has anything to test: every tile now renders at
+full brightness from boot (`claimed` ≡ `placed`), so there's no unclaimed
+state left to sample, and the tool's own click-to-claim step would now
+instead open a build popover, breaking its "did the claim register" HUD
+check outright. The underlying `dim()`/palette code in
+`terrainMeshManager.ts` is untouched and still technically present, just
+permanently unreachable in real play now — not something this pass
+touched, since it wasn't named in the step prompt's scope and ripping it
+out is a separate, unscoped cleanup. `tools/mapgen/generate.ts` needed no
+changes: it still writes `startingClaim` to `map.json` (now vestigial
+for the claim mechanic, but still reused as a camera-framing anchor in
+`main.ts` — see below) and has no other claim-related logic.
+
+**Worth flagging, not fixed this pass (per the step prompt's own
+instruction).** `computeEraScore()`'s `state.claimed.size * 0.3` term
+(`scoring.ts`) is now a constant — every playthrough on a given map
+scores identically on this term, since `claimed` no longer varies. Left
+as-is deliberately; noted in `scoring.ts` itself and here for whenever
+scoring next gets tuned, where a build-density ratio or elements-built
+count would be a live signal in its place. Same story for the HUD's
+top-right "Tiles claimed: 105" counter (see above) — always the fixed
+map size now, not a growing count, kept unchanged per the step prompt's
+own explicit example of what *not* to rip out.
+
+**A process note, named rather than buried.** Mid-verification for this
+pass, several dev-server/Playwright processes from an *earlier* step
+prompt's vegetation-screenshot chase were found still running well past
+their useful life — a real, avoidable resource cost, not a phantom
+concern. Killed them, then made a point of confirming zero orphaned
+`node.exe` processes remained tied to this project both mid-pass and
+again at the very end, rather than assuming a `finally { devServer.kill()
+}` block was sufficient (it frequently isn't, on Windows, for a
+`shell: true` child process — a recurring theme this whole project, see
+this file's earlier entries).
+
+Verified live end-to-end (screenshotted): a fresh load with no claim
+wording anywhere except the one explicitly-preserved HUD label; clicking
+a never-touched River tile opens its build popover on the very first
+click, offering Small Dam/Sand Mining directly; building Small Dam
+leaves the top-right tile counter unchanged at 105 (the fixed map size)
+while the bottom "hexes still empty" prompt correctly decrements
+95 → 94; the whole map now renders at full color immediately from boot
+(the claimed/unclaimed dimming distinction has nothing left to
+distinguish); no console errors during the flow.
+
+![Every tile already active from boot: full-color map, one click opens a build menu directly, "94 hexes still empty" replacing the old claim prompt, "Tiles claimed: 105" kept as the fixed map size](tools/screenshots/no_claim_after_build.png)
+
+**Verification:** 59/59 tests passing (`balance.test.ts` and
+`buildings.test.ts` updated for build()-pays-that-turn's-income;
+`gameState.test.ts`'s claim-mechanic tests replaced with build-advances-
+the-turn equivalents; `era.test.ts`'s `startNewEra` test updated for
+claimed-always-equals-placed), `tsc --noEmit` clean, production build
+succeeds.

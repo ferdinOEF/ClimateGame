@@ -26,7 +26,6 @@ const STARTING_POPULATION = 50;
 const RESILIENCE_DAMAGE_FACTOR = 0.5;
 const CATASTROPHIC_TRUST_PENALTY = 8; // per destroyed engineered defense — stings more than an NBS shortfall
 const WEATHERED_TRUST_BONUS = 2;
-const CLAIM_COST = 4; // Section 2: "costs a small amount of Coin"
 // STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit costs
 // Trust and (less directly) Resilience every turn — a soft, non-blocking
 // consequence, never a hard build/claim block. Both PLACEHOLDER
@@ -36,9 +35,12 @@ const FOOD_DEFICIT_TRUST_FACTOR = 0.4;
 const FOOD_DEFICIT_RESILIENCE_FACTOR = 0.15;
 
 /**
- * Pure game-logic state (v2.1): the terrain map is fixed at construction —
- * `placed` holds every tile from the authored map.json, not something the
- * player grows. What the player grows is `claimed`, a subset of `placed`.
+ * Pure game-logic state. `placed` holds every tile from the authored
+ * map.json — the fixed map, never grown or shrunk by play. STEP_PROMPT_
+ * remove_claiming.md: every tile is buildable from turn one, no separate
+ * "claim it first" step — `claimed` stays in the codebase (every existing
+ * check that reads it, e.g. `buildableAt()`, keeps working unchanged) but
+ * is now always exactly equal to `placed`, not a growing subset of it.
  * v2.2 merged buildings and defenses into one `elements.json` roster — a
  * single `elements` map replaces the old separate `buildings`/`defenses`
  * maps. No Three.js here — the render layer mirrors this to draw the scene.
@@ -56,37 +58,28 @@ export class GameState {
   severityBaseline = 0;
   /** Section 2's light meta-progression hook: preserved across `startNewEra()`. */
   erasCompleted = 0;
-  private readonly startingClaim: AxialCoord[];
   private readonly startingElements: StartingElementSeed[];
   private readonly startingCoin: number;
 
   /**
    * @param mapTiles The fixed, pre-generated map (Section 4) — every tile
-   *   that exists, loaded once from map.json in real play.
-   * @param startingClaim The player's initial claimed cluster. Defaults to
-   *   claiming every tile passed in, which is convenient for small
-   *   hand-built test fixtures; real play always passes an explicit small
-   *   (2-3 hex) cluster.
+   *   that exists, loaded once from map.json in real play. Every tile
+   *   starts claimed (see class comment).
    * @param startingElements Pre-built elements the player owns from turn
-   *   one (Section 4/8, v2.4: 10 Houses on Land) — claimed and placed for
-   *   free, on top of `startingClaim`, both now and on every `startNewEra()`.
+   *   one (Section 4/8, v2.4: 10 Houses on Land) — placed for free, both
+   *   now and on every `startNewEra()`.
    * @param startingCoin Overrides the default starting Coin (Section 8:
    *   "explicitly a temporary testing value," e.g. 1000 in real play).
    */
-  constructor(
-    mapTiles: PlacedTile[],
-    startingClaim?: AxialCoord[],
-    startingElements: StartingElementSeed[] = [],
-    startingCoin: number = STARTING_COIN
-  ) {
-    for (const tile of mapTiles) this.placed.set(axialKey(tile.coord), tile);
-    this.startingClaim = startingClaim ?? mapTiles.map((t) => t.coord);
+  constructor(mapTiles: PlacedTile[], startingElements: StartingElementSeed[] = [], startingCoin: number = STARTING_COIN) {
+    for (const tile of mapTiles) {
+      const key = axialKey(tile.coord);
+      this.placed.set(key, tile);
+      this.claimed.add(key);
+    }
     this.startingElements = startingElements;
     this.startingCoin = startingCoin;
     this.coin = startingCoin;
-    for (const coord of this.startingClaim) {
-      if (this.placed.has(axialKey(coord))) this.claimed.add(axialKey(coord));
-    }
     this.applyStartingElements();
   }
 
@@ -103,7 +96,7 @@ export class GameState {
    * Test/scenario-only: adds a tile to the fixed map (bypassing mapgen) and
    * immediately claims it, for building deterministic hazard-resolution
    * fixtures. Never called from the real play path (Section 10's sanctioned
-   * debug escape hatch, same spirit as the ?autoclaim URL hook).
+   * debug escape hatch).
    */
   debugForcePlace(coord: AxialCoord, terrainId: string): void {
     const key = axialKey(coord);
@@ -111,33 +104,9 @@ export class GameState {
     this.claimed.add(key);
   }
 
-  /**
-   * v2.2: claiming is no longer adjacency-gated — any unclaimed hex
-   * anywhere on the fixed map can be claimed directly, the one deliberate
-   * departure from Dorfromantik's own "must touch the frontier" rule
-   * (Section 2). `isClaimable` is just "unclaimed and part of the map."
-   */
-  isClaimable(coord: AxialCoord): boolean {
-    const key = axialKey(coord);
-    return this.placed.has(key) && !this.claimed.has(key);
-  }
-
-  /** Total number of unclaimed tiles left to claim, for the HUD prompt. */
-  get claimableCount(): number {
-    return this.placed.size - this.claimed.size;
-  }
-
-  canClaim(coord: AxialCoord): boolean {
-    return this.coin >= CLAIM_COST && this.isClaimable(coord);
-  }
-
-  /** Claims `coord` if unclaimed and affordable — no adjacency requirement. Counts as a turn, same cadence as the old tile-placement loop. */
-  claim(coord: AxialCoord): boolean {
-    if (!this.canClaim(coord)) return false;
-    this.coin -= CLAIM_COST;
-    this.claimed.add(axialKey(coord));
-    this.advanceTurn();
-    return true;
+  /** Total number of tiles nothing has been built on yet, for the HUD's soft progress prompt (STEP_PROMPT_remove_claiming.md). */
+  get emptyTileCount(): number {
+    return this.placed.size - this.elements.size;
   }
 
   private maturityFraction(inst: ElementInstance, def: ElementDef): number {
@@ -145,7 +114,8 @@ export class GameState {
   }
 
   /**
-   * One claim = one turn (Section 2's Calm-phase cadence): elements pay out
+   * One build = one turn (STEP_PROMPT_remove_claiming.md; previously one
+   * claim = one turn, before claiming was removed): elements pay out
    * their `effects.money` (the same generic accumulator that drives every
    * other meter — see `meterTotal`), and defenses with upkeep either get
    * paid or silently weaken (the khazan/small-dam "neglect decays it"
@@ -196,12 +166,22 @@ export class GameState {
     return this.buildableAt(coord).some((d) => d.id === elementId);
   }
 
-  /** Builds `elementId` at `coord`, deducting its cost. Returns false (no-op) if illegal/unaffordable. */
+  /**
+   * Builds `elementId` at `coord`, deducting its cost. Returns false (no-op)
+   * if illegal/unaffordable. STEP_PROMPT_remove_claiming.md: Build is now
+   * the sole action that advances a turn (Claim used to own this job) —
+   * same cadence (pays income, ticks maintenance, drains for a Food
+   * deficit), just triggered by placing an element instead of claiming
+   * land. `builtOnTurn` reads `this.turn` from *before* the advance, same
+   * as it always did (a just-built element starts at 0% maturity, not
+   * already one turn matured).
+   */
   build(coord: AxialCoord, elementId: string): boolean {
     if (!this.canBuild(coord, elementId)) return false;
     const def = ELEMENT_BY_ID.get(elementId)!;
     this.coin -= def.buildCost;
     this.elements.set(axialKey(coord), { elementId, builtOnTurn: this.turn, degradeAmount: 0 });
+    this.advanceTurn();
     return true;
   }
 
@@ -318,9 +298,7 @@ export class GameState {
   startNewEra(): void {
     this.erasCompleted++;
     this.claimed.clear();
-    for (const coord of this.startingClaim) {
-      if (this.placed.has(axialKey(coord))) this.claimed.add(axialKey(coord));
-    }
+    for (const key of this.placed.keys()) this.claimed.add(key);
     this.elements.clear();
     this.applyStartingElements();
     this.coin = this.startingCoin;

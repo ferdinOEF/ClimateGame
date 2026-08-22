@@ -43,14 +43,17 @@ describe("Era loop (Section 2/9: soft-loss, no hard game-over, no stuck state)",
     expect(state.severityBaseline).toBeGreaterThan(afterFirst);
   });
 
-  it("startNewEra resets play state but preserves erasCompleted, keeping the fixed map intact", () => {
-    const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "estuary" }], [{ q: 0, r: 0 }]);
+  it("startNewEra resets play state but preserves erasCompleted, keeping the fixed map (and its claimed status) intact", () => {
+    const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "estuary" }]);
     state.debugForcePlace({ q: 5, r: 5 }, "beach");
+    state.coin = 500;
+    state.build({ q: 0, r: 0 }, "mangrove");
     state.resilience = 0;
     state.trust = 5;
     state.severityBaseline = 3;
     expect(state.erasCompleted).toBe(0);
     expect(state.placed.size).toBe(2); // estuary seed + the beach tile added via debugForcePlace
+    expect(state.elements.size).toBe(1);
 
     state.startNewEra();
 
@@ -60,10 +63,14 @@ describe("Era loop (Section 2/9: soft-loss, no hard game-over, no stuck state)",
     expect(state.severityBaseline).toBe(0);
     expect(state.turn).toBe(0);
     expect(state.placed.size).toBe(2); // the fixed map itself is untouched by a new era
-    expect(state.claimed.size).toBe(1); // back to just the original starting claim
+    expect(state.elements.size).toBe(0); // built elements don't survive a reset
+    // STEP_PROMPT_remove_claiming.md: claimed is always every placed tile
+    // now, not a shrinking-back-to-a-starting-cluster set — both tiles
+    // (including the one added via debugForcePlace) stay claimed across
+    // the reset.
+    expect(state.claimed.size).toBe(2);
     expect(state.claimed.has("0,0")).toBe(true);
-    expect(state.claimed.has("5,5")).toBe(false); // debugForcePlace's auto-claim doesn't survive a reset
-
+    expect(state.claimed.has("5,5")).toBe(true);
 
     state.startNewEra();
     expect(state.erasCompleted).toBe(2);

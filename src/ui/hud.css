@@ -129,7 +129,7 @@ html, body {
   color: #ffb199;
 }
 
-.claim-prompt {
+.empty-prompt {
   background: rgba(20, 30, 26, 0.7);
   border-radius: 8px;
   padding: 6px 14px;
