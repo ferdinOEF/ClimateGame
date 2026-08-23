@@ -35,6 +35,13 @@ const startingElements: StartingElementSeed[] = STARTING_STATE.prebuiltHouses.ma
 const container = document.getElementById("app")!;
 const { scene, camera, renderer, start, focusOn, wasDrag } = createScene(container);
 
+// Declared this early (rather than down with the rest of Section 10's dev
+// hooks) so the Test Hazards panel's own construction, below, can gate on
+// it too — STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: same "no visible
+// affordance without an explicit URL param" bar every other dev tool here
+// already holds itself to (see devAutoBuild's own comment further down).
+const params = new URLSearchParams(location.search);
+
 const terrain = new TerrainMeshManager();
 const elements = new ElementMeshManager();
 // STEP_PROMPT_hazard_science.md Section 6: one shared manager (not a
@@ -102,33 +109,77 @@ for (const coord of STARTING_STATE.prebuiltHouses) {
 
 const hud = new Hud(container);
 const buildPopover = new BuildPopover(container);
-// STEP_PROMPT_hazard_test_sliders.md: calls straight into triggerCyclone/
-// triggerFlood below (function declarations — hoisted, safe to reference
-// here) so a manual trigger behaves exactly like a scheduled one in every
-// way except where the severity number came from.
-const hazardTestPanel = new HazardTestPanel(container, {
-  onTriggerStorm: (severity) => triggerCyclone(severity),
-  onTriggerFlood: (severity) => triggerFlood(severity)
-});
+/**
+ * STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: the same category of tool
+ * as `devAutoBuild`/`?coinboost`/`?resilienceboost` — testing-only, not
+ * meant for players — so it gets the same "no visible affordance without
+ * the URL param" treatment those already have, instead of shipping as an
+ * always-present button. `null` when the param is absent; every call site
+ * below uses `?.`, so a normal visit constructs nothing extra at all.
+ *
+ * Calls straight into triggerCyclone/triggerFlood below (function
+ * declarations — hoisted, safe to reference here) so a manual trigger
+ * behaves exactly like a scheduled one in every way except where the
+ * severity number came from — and, per Bug 2, except that it skips the
+ * era-end check, so testing a hazard doesn't cost you the board you built
+ * to test it on.
+ */
+const hazardTestPanel = params.has("debughazards")
+  ? new HazardTestPanel(container, {
+      onTriggerStorm: (severity) => triggerCyclone(severity, { skipEraCheck: true }),
+      onTriggerFlood: (severity) => triggerFlood(severity, { skipEraCheck: true })
+    })
+  : null;
 
 const YACHT_COST = ELEMENT_BY_ID.get("yacht")!.buildCost;
+
+/**
+ * STEP_PROMPT_hud_instrument_cluster.md: reads `nextCycloneAtTurn`/
+ * `nextFloodAtTurn` (both `let` bindings declared later in this file) so
+ * this — and therefore `refreshHud()` itself — can't safely run until
+ * those exist. That's why `refreshHud()`'s own first call moved from
+ * right after its definition (this file's old convention) to just past
+ * the Cyclone section below, alongside `updateHazardTestSchedule()`'s
+ * identical constraint.
+ */
+function hazardIncomingInfo(): { kind: "Storm Surge" | "Flood"; turnsUntil: number; imminent: boolean }[] {
+  const stormTurnsUntil = nextCycloneAtTurn - state.turn;
+  const floodTurnsUntil = nextFloodAtTurn - state.turn;
+  const stormImminent = stormTurnsUntil > 0 && stormTurnsUntil <= CYCLONE_TELEGRAPH_TURNS;
+  const floodImminent = floodTurnsUntil > 0 && floodTurnsUntil <= FLOOD_TELEGRAPH_TURNS;
+
+  // Once at least one hazard is genuinely imminent (same condition the
+  // terrain-tint/cloud telegraph already use), show every imminent
+  // hazard's own line, urgent — never collapsed to one, since a compound
+  // event (both imminent at once) is exactly the case worth surfacing
+  // clearly, not hiding.
+  if (stormImminent || floodImminent) {
+    const lines: { kind: "Storm Surge" | "Flood"; turnsUntil: number; imminent: boolean }[] = [];
+    if (stormImminent) lines.push({ kind: "Storm Surge", turnsUntil: stormTurnsUntil, imminent: true });
+    if (floodImminent) lines.push({ kind: "Flood", turnsUntil: floodTurnsUntil, imminent: true });
+    return lines;
+  }
+
+  // Neither imminent yet — a single neutral line for whichever is closer.
+  return stormTurnsUntil <= floodTurnsUntil
+    ? [{ kind: "Storm Surge", turnsUntil: stormTurnsUntil, imminent: false }]
+    : [{ kind: "Flood", turnsUntil: floodTurnsUntil, imminent: false }];
+}
 
 function refreshHud(): void {
   hud.setTileCount(state.claimed.size);
   hud.setCoin(state.coin);
   hud.setMeters({
-    trust: state.trust,
     resilience: state.resilience,
     biodiversity: state.biodiversity,
     carbon: state.carbon,
     food: state.food,
     population: state.population
   });
+  hud.setHazardIncoming(hazardIncomingInfo());
   hud.setEmptyTiles(state.emptyTileCount);
   hud.setYachtGoal(state.coin, YACHT_COST, state.hasElement("yacht"));
 }
-
-refreshHud();
 
 /** Projects a world position to CSS pixel coords within the canvas, for anchoring the build popover. */
 function worldToScreen(x: number, y: number, z: number): { x: number; y: number } {
@@ -220,8 +271,21 @@ function updateFloodTelegraph(): void {
  */
 const STORM_SURGE_COMPOUND_WINDOW_TURNS = 2;
 
-/** Resolves the flood: visible in-scene (rising water, defenses absorbing/failing/degrading), not just meter numbers. */
-function triggerFlood(baseSeverity: number): void {
+/**
+ * Resolves the flood: visible in-scene (rising water, defenses absorbing/
+ * failing/degrading), not just meter numbers.
+ *
+ * STEP_PROMPT_hazard_mechanics_fixes.md Bug 2: `skipEraCheck` exists
+ * purely for the Test Hazards panel and the `?flood=` dev param — a
+ * manually-fired hazard that happens to cross Resilience to zero
+ * shouldn't wipe the board the player is testing against. The hazard
+ * still resolves fully (damage, absorption, meter changes, the visual
+ * sweep); only the era-reset *consequence* is suppressed, and only on
+ * this path. The two real call sites (`checkHazardSchedule()`'s scheduled
+ * firing, `openTilePopover()`'s post-build check) never set it, so a
+ * genuinely-scheduled hazard still ends an era exactly as before.
+ */
+function triggerFlood(baseSeverity: number, options: { skipEraCheck?: boolean } = {}): void {
   const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
   const result = resolveMonsoonFlood(state, baseSeverity, stormSurgeActive);
   applyHazardResult("flood", result, performance.now());
@@ -232,7 +296,7 @@ function triggerFlood(baseSeverity: number): void {
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
-  checkEraEnd();
+  if (!options.skipEraCheck) checkEraEnd();
 }
 
 // --- Cyclone telegraph + resolution -------------------------------------------
@@ -274,8 +338,8 @@ function updateCycloneTelegraph(): void {
   updateHazardTestSchedule();
 }
 
-/** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. */
-function triggerCyclone(baseSeverity: number): void {
+/** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. `skipEraCheck` — see triggerFlood's own comment (Bug 2). */
+function triggerCyclone(baseSeverity: number, options: { skipEraCheck?: boolean } = {}): void {
   const result = resolveCyclone(state, baseSeverity);
   applyHazardResult("storm", result, performance.now());
   for (const coord of tilesOfType("coast", "estuary")) terrain.setTint(coord, null);
@@ -287,21 +351,29 @@ function triggerCyclone(baseSeverity: number): void {
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
-  checkEraEnd();
+  if (!options.skipEraCheck) checkEraEnd();
 }
 
 /**
  * STEP_PROMPT_hazard_test_sliders.md's nice-to-have: orients whoever's
- * testing without them needing to wait out the schedule. Deliberately its
- * own function (not folded into `refreshHud()`) — `refreshHud()` is first
- * called before `nextFloodAtTurn`/`nextCycloneAtTurn` exist yet (both are
- * `let` bindings declared further down this file), so referencing them
- * there would throw on that very first call.
+ * testing without them needing to wait out the schedule. Kept as its own
+ * function (not folded into `refreshHud()`, unlike `hazardIncomingInfo()`
+ * above) purely because the Test Hazards panel is optional (`null` unless
+ * `?debughazards` is set) — folding an always-needed `?.`-guarded call
+ * into every `refreshHud()` invocation is fine either way, but keeping it
+ * separate here means `refreshHud()` itself never needs to know the panel
+ * might not exist.
  */
 function updateHazardTestSchedule(): void {
-  hazardTestPanel.setScheduleInfo(nextCycloneAtTurn - state.turn, nextFloodAtTurn - state.turn);
+  hazardTestPanel?.setScheduleInfo(nextCycloneAtTurn - state.turn, nextFloodAtTurn - state.turn);
 }
 updateHazardTestSchedule();
+
+// Both this and `hazardIncomingInfo()` (called from inside `refreshHud()`)
+// need `nextFloodAtTurn`/`nextCycloneAtTurn` to already exist — this is
+// the first point in the file where that's guaranteed, so `refreshHud()`'s
+// very first call lives here now, not right after its own definition.
+refreshHud();
 
 // --- Era loop ------------------------------------------------------------------
 
@@ -315,7 +387,7 @@ function checkEraEnd(): void {
 
   elements.reset();
   hazardOverlay.reset();
-  hazardTestPanel.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across an era reset
+  hazardTestPanel?.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across an era reset
 
   state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
   terrain.resetClaims(keysToCoords(state.claimed));
@@ -487,7 +559,6 @@ function devAutoBuild(kind: "building" | "defense"): void {
 // for a real telegraph window (turns only advance via build()).
 (window as unknown as Record<string, unknown>).__cloudLayerForTest = cloudLayer;
 
-const params = new URLSearchParams(location.search);
 // coinboost first: autobuild/autodefend below spend coin, so a boost given
 // after them would arrive too late to fund what they just did.
 const coinBoost = params.get("coinboost");
@@ -505,10 +576,14 @@ if (resilienceBoost) {
 }
 if (params.has("autobuild")) devAutoBuild("building");
 if (params.has("autodefend")) devAutoBuild("defense");
+// Bug 2: these are dev-only test fires (same category as the panel above),
+// so they skip the era-end consequence too — a `?flood=3` link for a quick
+// screenshot shouldn't reset the board any more than clicking the panel's
+// own "Trigger now" should.
 const floodParam = params.get("flood");
-if (floodParam) triggerFlood(Number(floodParam));
+if (floodParam) triggerFlood(Number(floodParam), { skipEraCheck: true });
 const cycloneParam = params.get("cyclone");
-if (cycloneParam) triggerCyclone(Number(cycloneParam));
+if (cycloneParam) triggerCyclone(Number(cycloneParam), { skipEraCheck: true });
 
 /** Dev-only: forces the popover open at a screen corner to verify Bucket A's viewport-clamping fix. */
 if (params.has("testpopoverclip")) {

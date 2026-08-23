@@ -95,6 +95,71 @@ html, body {
   opacity: 0.75;
 }
 
+/*
+  STEP_PROMPT_hud_instrument_cluster.md: Resilience is the one meter that
+  actually threatens an era (GameState.isEraOver reads resilience <= 0
+  only, never Trust), so it's the only one promoted to a real gauge — a
+  labeled bar, not just a numeric chip. Trust is dropped from the HUD
+  entirely (still tracked in the data model, just not surfaced here).
+*/
+.resilience-gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.resilience-gauge-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.resilience-gauge-header span:last-child {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.resilience-gauge-track {
+  width: 140px;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.resilience-gauge-fill {
+  height: 100%;
+  background: #7bd4c4;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Same warning family as .meter-chip-warning below — Resilience reads as actively critical, not just "some damage taken." */
+.resilience-gauge-fill.critical {
+  background: #ff8a5c;
+}
+
+/*
+  STEP_PROMPT_hud_instrument_cluster.md: which hazard(s) are coming and how
+  soon, read straight off the main HUD card — real players shouldn't need
+  debug tooling to see a storm surge or flood telegraphing. Sits between
+  the Resilience gauge and the secondary meter chips on purpose: it's the
+  thing about to affect the life-meter directly above it.
+*/
+.hazard-incoming {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+}
+
+.hazard-incoming-line {
+  font-size: 10px;
+  opacity: 0.75;
+}
+
 .meter-row {
   display: flex;
   gap: 8px;

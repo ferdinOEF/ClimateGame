@@ -1738,3 +1738,150 @@ color blend the hazard-science pass could only verify by code review.
 **Verification:** no test-suite changes needed (UI-only feature, calling
 existing already-tested trigger functions) — 58/58 passing + 6 `skipIf`-
 gated unchanged, `tsc --noEmit` clean, production build succeeds.
+
+## Step prompt — hazard mechanics fixes (flood defenses, test-trigger reset, test panel visibility) — 2/3 DONE, 1/3 already fixed
+
+Worked `STEP_PROMPT_hazard_mechanics_fixes.md`. **Bug 1, as described,
+does not exist in this repo.** The step prompt claimed `elements.json`
+still used `"monsoon_flood"` in four `targetsHazards` entries, mismatched
+against `hazard.ts`'s `"flood"` id. Checked directly (`grep
+targetsHazards src/data/elements.json`, and `git show` on the commit that
+last touched the file) before changing anything: all four entries already
+read `"flood"` — fixed during the hazard-science pass itself
+(`d5772b8`), confirmed by that commit's own diff. The step prompt's own
+live-testing methodology (fetching the *deployed* Vercel bundle) was
+sound, but the deployed build it tested against was evidently running an
+older commit than what's on GitHub/local now — this is a stale-deployment
+gap, not a code bug, and nothing needed to change in `elements.json` or
+`hazard.ts`. Flagging this plainly rather than silently "fixing" code
+that already matched, which would have miscredited a real fix from the
+prior pass as new work.
+
+**Bug 2 (confirmed real, fixed).** `triggerFlood()`/`triggerCyclone()` in
+`main.ts` gained an optional `options: { skipEraCheck?: boolean }`
+parameter — when set, the hazard still resolves fully (damage, absorption,
+meter changes, the visual sweep) but the trailing `checkEraEnd()` call is
+skipped, so a manually-fired test hazard that happens to cross Resilience
+to zero no longer wipes the board. The Test Hazards panel's own callbacks
+and the `?flood=`/`?cyclone=` dev URL params both pass `skipEraCheck:
+true`; the two real call sites (`checkHazardSchedule()`'s scheduled
+firing, `openTilePopover()`'s post-build check) never set it, so a
+genuinely-scheduled hazard still ends an era exactly as before —
+`checkEraEnd()`'s own trigger condition (`state.isEraOver`) is untouched,
+only whether it gets *called* on this one path changed.
+
+**Bug 3 (confirmed real, fixed).** The Test Hazards panel now only
+constructs at all when `?debughazards` is present in the URL — same "no
+visible affordance without the param" bar `devAutoBuild`/`?coinboost`/
+`?resilienceboost` already hold themselves to (Section 10). `hazardTestPanel`
+is `HazardTestPanel | null`; every call site (`updateHazardTestSchedule()`,
+`checkEraEnd()`'s reset) uses `?.`. Moving `params` (previously declared
+near the bottom of `main.ts`, with the rest of the dev-hook handling) to
+right after `container` so the panel's construction — which happens much
+earlier in the file — could gate on it was the only structural change
+needed; the rest of the existing param-handling code stayed exactly where
+it was.
+
+Verified live: bare URL shows no "Test Hazards" tab anywhere; `?debughazards`
+shows it exactly as before. Drove Resilience to a large negative value via
+`?resilienceboost=-999` (confirms `state.isEraOver` was already true —
+`resilience <= 0`), then used the panel to fire Flood: era banner never
+appeared, tile count stayed at the full map size (145, unchanged), and the
+Yacht widget stayed at its prior value — the map genuinely did not reset.
+Screenshotted mid-animation with the panel still open. Did not attempt a
+live A/B for the (already-fixed, not actually broken) Flood-absorption
+question — `hazard.test.ts`'s existing Khazan/Mangrove describe blocks
+already assert this directly (backdated maturity, compare defended vs.
+undefended damage) and all pass.
+
+**Flagging per the step prompt's own ask:** now that Flood-targeting
+defenses have been confirmed actually engaging (they always were, per the
+above — this isn't newly true this pass, but is newly *verified*), their
+absorption/reservoir numbers are still the same placeholders flagged
+throughout `STEP_PROMPT_hazard_science.md` — worth a `STEP_PROMPT_
+balance_tuning.md` pass once that's run, not assumed already tuned.
+
+**Verification:** 58/58 tests passing + 6 `skipIf`-gated unchanged (no
+test changes needed — this pass touched `main.ts` control flow, not
+`hazard.ts`/`gameState.ts`), `tsc --noEmit` clean, production build
+succeeds.
+
+## Step prompt — HUD v3 (Instrument Cluster, Resilience-only, hazard incoming) — DONE
+
+Worked `STEP_PROMPT_hud_instrument_cluster.md`, the user's pick ("Option
+A") from `khazan_hud_options.html` (not present in this repo — followed
+the written spec's layout notes directly rather than the mockup file
+itself).
+
+**Trust dropped from the display, not the data model.** `hud.ts`'s
+`trustEl` and its markup row are gone; `Hud.setMeters()`'s parameter type
+no longer accepts a `trust` field, and `main.ts`'s call site no longer
+passes one. `gameState.ts`'s `trust` field, `applyHazardOutcome()`, and
+the Food-deficit drain are completely untouched — `git grep trust` outside
+`hud.ts`/`main.ts`'s now-removed reference confirms nothing else reads the
+HUD's old display of it. Matches the actual mechanics: `GameState.
+isEraOver` reads `resilience <= 0` only, Trust has never been the meter
+that ends an era.
+
+**Resilience promoted to a real gauge.** A labeled bar (`.resilience-gauge`)
+replaces the old numeric-only chip — width tracks Resilience directly,
+clamped to `[0, 100]` for the *fill* only (the number beside it can still
+read above 100 or negative, matching what `?resilienceboost` can already
+do to the raw value). Went one small step past the letter of the ask: the
+fill shifts to the same warning color the Food chip uses once Resilience
+is `<= 25`, so the bar reads as a genuine gauge (something that visibly
+changes character near the danger zone) rather than a static-colored bar
+with a number next to it — a low-risk, one-threshold addition in the
+spirit of "worth promoting to a real gauge."
+
+**Hazard-incoming line(s), read off the main HUD card.** New `main.ts`
+function `hazardIncomingInfo()` reads the exact same `nextCycloneAtTurn`/
+`nextFloodAtTurn`/`state.turn`/`*_TELEGRAPH_TURNS` values the terrain-tint
+telegraph already computes — no new state, no changes to the scheduling
+or telegraph systems themselves. Display logic: once at least one hazard
+is genuinely imminent (identical condition to the terrain tint), show
+every imminent hazard's own line, urgent-styled — both simultaneously if
+both are imminent, never collapsed to one, so a compound event reads as
+one on the HUD too. Otherwise, a single neutral line for whichever hazard
+is closer. `Hud.setHazardIncoming()` just renders whatever array it's
+handed; `main.ts` owns the decision logic, matching how the rest of this
+class already works (`setMeters`, `setYachtGoal` — dumb rendering over
+pre-computed values).
+
+**One structural fix this needed, not asked for directly but necessary
+to do it safely.** `hazardIncomingInfo()` depends on `nextCycloneAtTurn`/
+`nextFloodAtTurn`, both `let` bindings declared well after `main.ts`'s
+original very-first `refreshHud()` call (right after its own definition,
+this file's long-standing convention). Folding the new logic straight
+into `refreshHud()` as the step prompt suggests ("call it from wherever
+refreshHud() already runs") would have thrown a temporal-dead-zone
+`ReferenceError` on that first call. Fixed at the root this time instead
+of adding another parallel `updateXSchedule()`-style workaround (the
+pattern `STEP_PROMPT_hazard_test_sliders.md` used for the same class of
+problem): moved `refreshHud()`'s own first call to just past the Cyclone
+section, alongside `updateHazardTestSchedule()`'s identical first call —
+verified harmless, since nothing paints until the whole synchronous
+script finishes regardless of exactly where mid-script a HUD-priming call
+sits.
+
+**Layout:** kept the Coin row as the card's header exactly as it existed
+before. The spec's non-binding layout note ("Coin + Turn/Era header row")
+reads as if it wants a Turn/Era readout added to that row, but no such
+display exists anywhere in the current HUD, and adding one isn't among
+the prompt's two explicitly-enumerated "what changes" items — treated it
+as reflecting the (unavailable) mockup's own content rather than a
+requirement, and didn't add it. Worth a quick confirm-or-build-it follow-up
+once `khazan_hud_options.html` (or its chosen-direction successor) is
+actually in the repo to check against.
+
+Verified live: a fresh load shows the Resilience gauge, the "Storm Surge
+in 11 turns" neutral hazard-incoming line (Storm Surge's 11-turn interval
+is shorter than Flood's 15, so it's the closer/shown hazard at boot), and
+confirmed no "T " Trust marker appears anywhere in the HUD's rendered
+text.
+
+![Fresh load: Coin row, Resilience gauge, "Storm Surge in 11 turns" hazard-incoming line, no Trust anywhere in the secondary chip row](tools/screenshots/hud_instrument_cluster.png)
+
+**Verification:** 58/58 tests passing + 6 `skipIf`-gated unchanged (UI-only
+change, no test-suite dependency on HUD markup), `tsc --noEmit` clean,
+production build succeeds.

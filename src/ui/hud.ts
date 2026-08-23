@@ -1,16 +1,24 @@
 /**
- * The only persistent UI (v2.1): a corner tile counter, one compact meter
- * strip (Coin + Section 7's meters — Trust/Resilience/Biodiversity/Carbon,
- * plus v2.4's Food/Population), a small "tiles still empty" soft-progress
- * prompt, and a brief non-blocking era banner. No full-width panel — every
- * tile is already active (STEP_PROMPT_remove_claiming.md), so there's
- * nothing to hand-pick from, only where to build next.
+ * STEP_PROMPT_hud_instrument_cluster.md (v3, "Instrument Cluster"): the
+ * top-left card evolves from a flat meter-chip strip into Coin, a real
+ * Resilience gauge (the one meter that actually threatens an era —
+ * `GameState.isEraOver` reads `resilience <= 0` only, never Trust — so
+ * it's the only one promoted to a labeled bar), the hazard-incoming
+ * readout, then the remaining secondary meters as chips. Trust stays in
+ * the data model exactly as before (`gameState.ts`, `applyHazardOutcome`,
+ * the Food-deficit drain) — only this HUD's *display* of it goes away.
+ * The rest of the persistent UI (v2.1): a corner tile counter, a small
+ * "tiles still empty" soft-progress prompt, and a brief non-blocking era
+ * banner. No full-width panel — every tile is already active
+ * (STEP_PROMPT_remove_claiming.md), so there's nothing to hand-pick from,
+ * only where to build next.
  */
 export class Hud {
   private tileCountEl: HTMLElement;
   private coinEl: HTMLElement;
-  private trustEl: HTMLElement;
   private resilienceEl: HTMLElement;
+  private resilienceFillEl: HTMLElement;
+  private hazardIncomingEl: HTMLElement;
   private biodiversityEl: HTMLElement;
   private carbonEl: HTMLElement;
   private foodEl: HTMLElement;
@@ -32,9 +40,12 @@ export class Hud {
     meters.className = "hud-corner top-left meters-panel";
     meters.innerHTML = `
       <div class="coin-row"><span>Coin</span><span class="coin-value">0</span></div>
+      <div class="resilience-gauge">
+        <div class="resilience-gauge-header"><span>Resilience</span><span class="resilience-value">100</span></div>
+        <div class="resilience-gauge-track"><div class="resilience-gauge-fill"></div></div>
+      </div>
+      <div class="hazard-incoming"></div>
       <div class="meter-row">
-        <span class="meter-chip" title="Trust">T <b class="trust-value">0</b></span>
-        <span class="meter-chip" title="Resilience">R <b class="resilience-value">0</b></span>
         <span class="meter-chip" title="Biodiversity">B <b class="biodiversity-value">0</b></span>
         <span class="meter-chip" title="Carbon">C <b class="carbon-value">0</b></span>
         <span class="meter-chip food-chip" title="Food">F <b class="food-value">0</b></span>
@@ -42,8 +53,9 @@ export class Hud {
       </div>`;
     container.appendChild(meters);
     this.coinEl = meters.querySelector(".coin-value")!;
-    this.trustEl = meters.querySelector(".trust-value")!;
     this.resilienceEl = meters.querySelector(".resilience-value")!;
+    this.resilienceFillEl = meters.querySelector(".resilience-gauge-fill")!;
+    this.hazardIncomingEl = meters.querySelector(".hazard-incoming")!;
     this.biodiversityEl = meters.querySelector(".biodiversity-value")!;
     this.carbonEl = meters.querySelector(".carbon-value")!;
     this.foodEl = meters.querySelector(".food-value")!;
@@ -105,25 +117,58 @@ export class Hud {
     this.coinEl.textContent = String(n);
   }
 
+  /**
+   * STEP_PROMPT_hud_instrument_cluster.md: no `trust` field — the HUD no
+   * longer displays it (the data model and everything that reads it
+   * outside this class are untouched; see the class comment).
+   */
   setMeters(meters: {
-    trust: number;
     resilience: number;
     biodiversity: number;
     carbon: number;
     food: number;
     population: number;
   }): void {
-    this.trustEl.textContent = String(Math.round(meters.trust));
     this.resilienceEl.textContent = String(Math.round(meters.resilience));
+    // Resilience isn't hard-capped at 100 (a `?resilienceboost` above the
+    // starting value, or simply never having taken damage yet, can exceed
+    // it) — clamp only the *gauge fill*, so the bar never visually
+    // overflows its track even though the raw number beside it can still
+    // read above 100.
+    const fillPercent = Math.max(0, Math.min(100, meters.resilience));
+    this.resilienceFillEl.style.width = `${fillPercent}%`;
+    // A real gauge should read as one at a glance, not just a static bar
+    // with a number next to it — shift to the same warning color the Food
+    // chip uses once Resilience is critically low, not just "some damage."
+    this.resilienceFillEl.classList.toggle("critical", meters.resilience <= 25);
     this.biodiversityEl.textContent = String(Math.round(meters.biodiversity));
     this.carbonEl.textContent = String(Math.round(meters.carbon));
     this.foodEl.textContent = String(Math.round(meters.food));
     this.populationEl.textContent = String(Math.round(meters.population));
     // STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit now
     // drains Trust/Resilience every turn (GameState.advanceTurn) — this
-    // warning color is the "why is my Trust dropping" answer, legible at
-    // a glance without opening a popover or doing mental math.
+    // warning color is the "why is my Resilience dropping" answer, legible
+    // at a glance without opening a popover or doing mental math.
     this.foodChipEl.classList.toggle("meter-chip-warning", meters.food < 0);
+  }
+
+  /**
+   * STEP_PROMPT_hud_instrument_cluster.md: which hazard(s) are coming and
+   * how soon — `main.ts`'s `hazardIncomingInfo()` decides which lines to
+   * include and whether each is "imminent" (its real telegraph window,
+   * matching the terrain-tint/cloud-layer telegraph exactly); this method
+   * just renders whatever it's handed, 0-2 lines, urgent-styled ones using
+   * the same `meter-chip-warning` treatment as the Food chip.
+   */
+  setHazardIncoming(hazards: { kind: string; turnsUntil: number; imminent: boolean }[]): void {
+    this.hazardIncomingEl.innerHTML = "";
+    for (const hazard of hazards) {
+      const line = document.createElement("div");
+      line.className = "hazard-incoming-line" + (hazard.imminent ? " meter-chip-warning" : "");
+      const turns = Math.max(0, hazard.turnsUntil);
+      line.textContent = `${hazard.kind} in ${turns} turn${turns === 1 ? "" : "s"}`;
+      this.hazardIncomingEl.appendChild(line);
+    }
   }
 
   /** STEP_PROMPT_remove_claiming.md: a soft progress indicator, not a gate — every tile is already buildable, this just orients the player toward how much map is still untouched. */
