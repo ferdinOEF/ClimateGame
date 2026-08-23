@@ -1,5 +1,5 @@
 {
-  "startingCoin": 1000,
+  "startingCoin": 10000,
   "startingPopulation": 50,
   "populationPerHouse": 5,
   "prebuiltHouses": [
