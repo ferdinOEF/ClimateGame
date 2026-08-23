@@ -73,25 +73,31 @@ function resolveHazardWave(
         const def = instElementId ? ELEMENT_BY_ID.get(instElementId) : undefined;
         const targets = def?.targetsHazards?.includes(hazardId);
 
-        if (def && targets && def.category === "engineered" && def.failureThreshold !== undefined && severity > def.failureThreshold) {
-          tileDamage.set(key, severity);
-          state.destroyDefense(tile.coord);
-          destroyedDefenses.push(key);
-          passthrough = severity * (def.failureRedirectMultiplier ?? 1);
-        } else if (def && targets && def.floodBufferCapacityM3 !== undefined) {
-          // Reservoir mechanic (STEP_PROMPT_hazard_science.md Section 4): a
-          // Khazan doesn't attenuate a wave's energy the way vegetation
-          // does, it STORES water up to a capacity — draw that down first;
-          // only the overflow (if any) then goes through the normal
-          // absorption/overwhelm/graceful-degrade math below, same as
-          // every other defense, just against whatever severity the buffer
-          // didn't catch rather than the raw incoming severity.
+        if (def && targets && def.floodBufferCapacityM3 !== undefined) {
+          // Reservoir mechanic (STEP_PROMPT_hazard_science.md Section 4,
+          // extended to engineered structures by STEP_PROMPT_small_dam_
+          // reservoir.md): a Khazan or Small Dam doesn't attenuate a wave's
+          // energy the way vegetation does, it STORES water up to a
+          // capacity — draw that down first, regardless of category. Only
+          // once you know what actually overtopped the buffer does a
+          // catastrophic-breach test make physical sense, so an engineered
+          // reservoir's own failureThreshold check moves in here too,
+          // evaluated against the post-buffer overflowSeverity rather than
+          // the raw incoming severity — a dam breach releases what
+          // overtopped it, not the raw incoming pulse. Khazan has no
+          // failureThreshold, so it always falls to the plain overwhelm/
+          // absorption branch below, unaffected by this restructuring.
           const volume = severity * HEX_AREA_M2 * FLOOD_VOLUME_DEPTH_M;
           const overflowVolume = state.drawDownFloodBuffer(tile.coord, volume);
           const overflowSeverity = severity * (overflowVolume / volume);
 
           if (overflowSeverity < MIN_SEVERITY) {
             passthrough = 0; // fully absorbed by the reservoir this event — no damage, nothing propagates onward
+          } else if (def.category === "engineered" && def.failureThreshold !== undefined && overflowSeverity > def.failureThreshold) {
+            tileDamage.set(key, overflowSeverity);
+            state.destroyDefense(tile.coord);
+            destroyedDefenses.push(key);
+            passthrough = overflowSeverity * (def.failureRedirectMultiplier ?? 1);
           } else {
             let absorption = state.effectiveAbsorption(tile.coord);
             if (def.overwhelmSeverity !== undefined && overflowSeverity > def.overwhelmSeverity) {
@@ -105,6 +111,14 @@ function resolveHazardWave(
             tileDamage.set(key, dealt);
             passthrough = dealt;
           }
+        } else if (def && targets && def.category === "engineered" && def.failureThreshold !== undefined && severity > def.failureThreshold) {
+          // Unchanged — Seawall's own path (no floodBufferCapacityM3, so
+          // it never enters the branch above). Still tests against raw
+          // severity exactly as before.
+          tileDamage.set(key, severity);
+          state.destroyDefense(tile.coord);
+          destroyedDefenses.push(key);
+          passthrough = severity * (def.failureRedirectMultiplier ?? 1);
         } else if (def && targets) {
           let absorption = state.effectiveAbsorption(tile.coord);
           if (def.overwhelmSeverity !== undefined && severity > def.overwhelmSeverity) {

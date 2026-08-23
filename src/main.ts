@@ -530,6 +530,12 @@ function devAutoBuild(kind: "building" | "defense"): void {
   state.resilience = 0;
   checkEraEnd();
 };
+// STEP_PROMPT_small_dam_reservoir.md Verify: reads a tile's raw
+// ElementInstance (floodBufferFilled in particular) so a verification
+// script can confirm the reservoir is actually drawing down before any
+// percentage-absorption math runs, the same way Khazan's was checked.
+(window as unknown as Record<string, unknown>).__elementStateForTest = (q: number, r: number) =>
+  state.elements.get(`${q},${r}`) ?? null;
 
 // coinboost first: autobuild/autodefend below spend coin, so a boost given
 // after them would arrive too late to fund what they just did.

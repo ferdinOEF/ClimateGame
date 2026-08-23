@@ -126,10 +126,11 @@
     "absorptionAtMaturity": 0.75,
     "failureThreshold": 1.15,
     "failureRedirectMultiplier": 1.4,
+    "floodBufferCapacityM3": 800,
     "colorKey": "defenseEngineered",
     "effects": { "money": 8, "biodiversity": -1, "resilience": 5 },
-    "failureMode": "Breaches above failureThreshold: destroyed, redirects unabsorbed surge onward at failureRedirectMultiplier.",
-    "note": "PLACEHOLDER money/resilience magnitudes (STEP_PROMPT_visuals_map_river.md item 3 / PROGRESS.md). resilience is POSITIVE as of this pass — earlier revisions had it negative; re-framed as a flood-control structure, not a flood-defense-trading one. absorptionAtMaturity/failureThreshold (unchanged, already strong) are what hazard.ts actually reads today — effects.resilience is forward-compatible data for the not-yet-built zone-based resolution model (GAUNTLET_PROMPT.md v3.0 Section 2/11)."
+    "failureMode": "STEP_PROMPT_small_dam_reservoir.md: a storage-and-release structure, not a wave-attenuator — floodBufferCapacityM3 draws down first each Flood event, same reservoir mechanic Khazan uses, before absorptionAtMaturity/failureThreshold ever see the input. Breaches above failureThreshold are now tested against the post-buffer overflow severity, not the raw incoming severity: a genuine overtopping destroys the dam and redirects the overflow onward at failureRedirectMultiplier — a dam breach releases what overtopped it, not the raw incoming pulse.",
+    "note": "PLACEHOLDER money/resilience magnitudes (STEP_PROMPT_visuals_map_river.md item 3 / PROGRESS.md). resilience is POSITIVE as of this pass — earlier revisions had it negative; re-framed as a flood-control structure, not a flood-defense-trading one. floodBufferCapacityM3 (800) is a separate PLACEHOLDER (STEP_PROMPT_small_dam_reservoir.md): deliberately smaller than Khazan's 1500 — a small engineered check-dam on a River tile is a much smaller structure than a hectare-scale wetland/paddy system. absorptionAtMaturity/failureThreshold are unchanged numbers but now exercised against post-buffer overflow rather than raw severity, so failureThreshold's effective trigger rate has shifted — both, plus the new capacity, need a fresh look in STEP_PROMPT_balance_tuning.md's harness once it's re-run against this roster. effects.resilience is forward-compatible data for the not-yet-built zone-based resolution model (GAUNTLET_PROMPT.md v3.0 Section 2/11)."
   },
   {
     "id": "sand_mining",

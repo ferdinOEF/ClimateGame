@@ -79,7 +79,7 @@ describe("resolveMonsoonFlood — NBS (mangrove)", () => {
 });
 
 describe("resolveMonsoonFlood — engineered (small dam)", () => {
-  it("absorbs most damage and survives below its failure threshold", () => {
+  it("draws down its reservoir first, then absorbs the overflow and survives below its failure threshold (STEP_PROMPT_small_dam_reservoir.md)", () => {
     const state = freshState();
     const target = neighbor(RIVER, 0);
     state.debugForcePlace(target, "river");
@@ -89,10 +89,19 @@ describe("resolveMonsoonFlood — engineered (small dam)", () => {
     // makes that tile a flood source in its own right (every river tile
     // is), not a downstream tile reached via propagation — so it engages
     // at the full, undecayed baseSeverity, not baseSeverity*FLOOD_DECAY.
-    const result = resolveMonsoonFlood(state, 1.0); // 1.0, under failureThreshold 1.15
+    //
+    // STEP_PROMPT_small_dam_reservoir.md: the buffer draws down BEFORE the
+    // absorption/breach math now, same reservoir-first order as Khazan.
+    // volume = 1.0*10000*0.15 = 1500 m3; the 800 m3 buffer (empty) absorbs
+    // 800 of it, leaving overflowVolume=700 -> overflowSeverity =
+    // 1.0*(700/1500) = 0.4667, still well under failureThreshold (1.15),
+    // so it falls to the plain absorption branch against THAT figure, not
+    // the raw incoming 1.0.
+    const result = resolveMonsoonFlood(state, 1.0); // 1.0, and 0.4667 post-buffer overflow, both under failureThreshold 1.15
     const key = axialKey(target);
 
-    expect(result.tileDamage.get(key)).toBeCloseTo(1.0 * (1 - 0.75), 5);
+    const expectedOverflowSeverity = 1.0 * ((1500 - 800) / 1500);
+    expect(result.tileDamage.get(key)).toBeCloseTo(expectedOverflowSeverity * (1 - 0.75), 5);
     expect(result.destroyedDefenses).toHaveLength(0);
     expect(state.elements.has(key)).toBe(true);
   });
@@ -116,7 +125,7 @@ describe("resolveMonsoonFlood — engineered (small dam)", () => {
     expect(downstreamWithDam).toBeLessThan(downstreamWithoutDam);
   });
 
-  it("catastrophically fails above threshold and redirects an amplified surge onward", () => {
+  it("catastrophically fails above threshold (tested against post-buffer overflow, not raw severity) and redirects an amplified overflow onward (STEP_PROMPT_small_dam_reservoir.md)", () => {
     // With the dam: destroyed, and the tile behind it takes MORE damage
     // than an equivalent undefended run — the "safe until, spectacularly,
     // it isn't" behavior the brief calls for.
@@ -127,13 +136,19 @@ describe("resolveMonsoonFlood — engineered (small dam)", () => {
     withDefense.debugForcePlace(downstreamTile, "beach");
     withDefense.build(damTile, "small_dam");
 
-    const resultWithDefense = resolveMonsoonFlood(withDefense, 2.0); // 2.0 (a source tile, undecayed), over failureThreshold 1.15
+    // volume = 2.0*10000*0.15 = 3000 m3; the empty 800 m3 buffer absorbs
+    // 800, leaving overflowVolume=2200 -> overflowSeverity =
+    // 2.0*(2200/3000) = 1.4667 — over failureThreshold (1.15), so THIS is
+    // what the breach test (and the redirected passthrough) is now
+    // computed from, not the raw incoming 2.0.
+    const resultWithDefense = resolveMonsoonFlood(withDefense, 2.0);
     const damKey = axialKey(damTile);
     const downKey = axialKey(downstreamTile);
+    const expectedOverflowSeverity = 2.0 * ((3000 - 800) / 3000);
 
     expect(resultWithDefense.destroyedDefenses).toContain(damKey);
     expect(withDefense.elements.has(damKey)).toBe(false);
-    expect(resultWithDefense.tileDamage.get(damKey)).toBeCloseTo(2.0, 5); // full source severity, defense gave no protection this time
+    expect(resultWithDefense.tileDamage.get(damKey)).toBeCloseTo(expectedOverflowSeverity, 5); // post-buffer overflow severity, not the raw incoming severity — the reservoir still drew down first even though the dam went on to breach
 
     const control = freshState();
     control.debugForcePlace(damTile, "river");
