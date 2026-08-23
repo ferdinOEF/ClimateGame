@@ -55,8 +55,8 @@ describe("GameState: every tile is buildable from turn one (STEP_PROMPT_remove_c
   });
 });
 
-describe("Food deficit — a soft consequence, never a hard block (STEP_PROMPT_economy_food_yacht.md item 2)", () => {
-  it("drains Trust and Resilience the moment a Food deficit exists, but never blocks building", () => {
+describe("Food — a pure live read with no automatic consequence (STEP_PROMPT_economy_food_yacht.md item 2's drain removed by STEP_PROMPT_manual_only_mode.md)", () => {
+  it("can read negative on a deficit, and never blocks building, but no longer drains Trust or Resilience on its own", () => {
     const map: PlacedTile[] = [{ coord: { q: 0, r: 0 }, terrainId: "land" }];
     const state = new GameState(map);
     state.coin = 500;
@@ -71,11 +71,15 @@ describe("Food deficit — a soft consequence, never a hard block (STEP_PROMPT_e
 
     expect(built, "a running Food deficit must never block a build").toBe(true);
     expect(state.food).toBeLessThan(0);
-    expect(state.trust).toBeLessThan(trustBefore);
-    expect(state.resilience).toBeLessThan(resilienceBefore);
+    // STEP_PROMPT_manual_only_mode.md: advanceTurn()'s automatic Food-
+    // deficit Trust/Resilience drain is gone — Food itself still reads
+    // negative (a pure meterTotal() computation), but state now only
+    // changes via an explicit action (build, remove, trigger, reset).
+    expect(state.trust).toBe(trustBefore);
+    expect(state.resilience).toBe(resilienceBefore);
   });
 
-  it("does nothing to Trust/Resilience when Food is at or above zero", () => {
+  it("does nothing to Trust/Resilience when Food is at or above zero either", () => {
     const map: PlacedTile[] = [{ coord: { q: 0, r: 0 }, terrainId: "estuary" }];
     const state = new GameState(map);
     state.coin = 500;

@@ -11,6 +11,8 @@ export interface BuiltElementInfo {
   kindLabel?: string;
   /** Rendered as "key +delta" / "key delta" chips — whatever's in the element's effects map. */
   effects: Record<string, number>;
+  /** STEP_PROMPT_manual_only_mode.md Part C: removing what you built is a natural counterpart to building it — no confirm here, unlike the dev panel's board-wide reset, since this only ever affects the one tile already in view. */
+  onRemove: () => void;
 }
 
 const VIEWPORT_MARGIN = 8;
@@ -99,10 +101,12 @@ export class BuildPopover {
   }
 
   /**
-   * Read-only info card for a tile that already has an element built on it
-   * (Section 3's "one tile, one element" — the UI should never offer a
-   * second build menu there). Shows what's built and its effects; no
-   * buttons, dismissed the same way the build menu is.
+   * Info card for a tile that already has an element built on it (Section
+   * 3's "one tile, one element" — the UI should never offer a second build
+   * menu there). Shows what's built and its effects, plus — STEP_PROMPT_
+   * manual_only_mode.md Part C — a "Remove" button, the natural counterpart
+   * to building it. Dismissed the same way the build menu is (or by
+   * `onRemove` itself, which the caller wires to close this popover too).
    */
   showInfo(screenX: number, screenY: number, info: BuiltElementInfo): void {
     this.el.innerHTML = "";
@@ -119,6 +123,17 @@ export class BuildPopover {
       effectsRow.textContent = effectEntries.map(([key, delta]) => `${key} ${delta > 0 ? "+" : ""}${delta}`).join("  ·  ");
       this.el.appendChild(effectsRow);
     }
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "built-info-remove";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      info.onRemove();
+    });
+    this.el.appendChild(removeBtn);
+
     this.positionAndReveal(screenX, screenY);
   }
 

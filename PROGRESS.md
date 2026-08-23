@@ -2304,3 +2304,148 @@ pushed — following this repo's "commit locally, wait for an explicit push
 instruction" convention from earlier in the session, not a Vercel-side
 problem at all. Pushing the backlog of local commits (this one included)
 will close the gap; no Vercel configuration change is needed.
+
+## Step prompt: manual-only mode — DONE
+
+Source: `STEP_PROMPT_manual_only_mode.md`. Direct user instruction: *"Remove
+the end of era. Do not reset the board. Provide a button to reset manually.
+Provide button to remove an element. Do not trigger any turn based events...
+we are doing everything manually right now."* A design change, not a bug
+fix — supersedes `STEP_PROMPT_gameplay_stability_test.md`'s `checkEraEnd()`
+audit (that pass confirmed the auto-reset fired correctly; this pass
+removes it entirely).
+
+**Part A — automatic era-end/board-reset removed entirely.** `checkEraEnd()`
+is gone; `triggerFlood()`/`triggerCyclone()` no longer have (or need) a
+`skipEraCheck` option — every real call site already effectively skipped
+it, so this just makes that permanent and drops the now-pointless plumbing
+everywhere it appeared (both trigger functions' signatures, the Test
+Hazards panel's callbacks, the `?flood=`/`?cyclone=` dev params,
+`__triggerHazardForTest`). The unconditional `checkEraEnd()` call at the
+end of the build popover's callback is gone too. `checkEraEnd()` itself is
+repurposed into `resetBoard()` — same proven sequence (`elements.reset()`,
+`hazardOverlay.reset()`, `hazardTestPanel?.reset()`, `state.startNewEra()`,
+re-placing the starting Houses, resetting the hazard-schedule reference
+numbers, `refreshHud()`), minus the `isEraOver` guard (a manual reset
+always runs) and the score/"Era N retired" banner (a player who just
+clicked Reset Board already knows what they did — replaced with a short
+neutral `"Board reset."`). `computeEraScore()`'s import dropped from
+`main.ts` since it has no remaining caller there; `scoring.ts` itself
+untouched, per the step prompt's own instruction.
+
+**Part B — manual "Reset Board" button.** Added to `HazardTestPanel`
+(`?debughazards`-gated, same dev-tooling category as the rest of that
+panel), wired to `resetBoard()`, gated behind a plain `window.confirm()`
+since it's destructive and can't be undone. Styled with the project's
+existing warning color (`#ff8a5c`, same family as the Food-deficit chip and
+the critical-Resilience gauge fill) so it reads as visually distinct from
+the two trigger buttons above it.
+
+**Part C — manual "Remove element" control.** Added to the tile-info
+popover (`BuildPopover.showInfo()`), not the dev panel — removing what you
+built is the natural counterpart to building it, not a hidden testing tool,
+and the popover already has exactly the right context. `BuiltElementInfo`
+gained a required `onRemove: () => void`; a new `main.ts` function
+`removeElement(coord)` does exactly what `__destroyForTest` used to do
+inline (`elements.destroy()` + `state.elements.delete()`), plus the two
+things a manual removal also needs that the test hook didn't: `refreshHud()`
+and `buildPopover.hide()` so the popover doesn't linger showing info for a
+tile that's now empty. **Consolidated, not duplicated**: `__destroyForTest`
+now calls the real `removeElement()` instead of repeating its two lines,
+matching how `__triggerHazardForTest` already calls straight into the real
+`triggerCyclone`/`triggerFlood`. No coin refund on removal — a deliberate
+placeholder policy matching the current sandbox/testing framing, flagged
+here for `STEP_PROMPT_balance_tuning.md` to revisit if a partial refund
+ever makes sense for player-facing design.
+
+**Part D — every automatic turn-based side effect removed from
+`GameState.advanceTurn()`.** Stripped from a ~40-line function to two:
+
+```ts
+advanceTurn(): void {
+  this.turn++;
+}
+```
+
+`this.turn` still has to advance on every `build()` — it drives element
+maturity, a consequence of the build action itself, not background drift.
+**Everything else removed, in full, so the list is easy to find in one
+place later:**
+- **Income** — Coin now only changes via build cost, a hazard's outcome (it
+  never touched coin anyway), or `?coinboost`.
+- **Maintenance/neglect degrade** — no defense weakens from unpaid upkeep
+  on its own anymore; `degradeAmount` now only changes via the hazard
+  resolver's own graceful-degrade path (`state.degradeDefense()`, an actual
+  triggered event overwhelming a defense) — untouched, still a manual-
+  action consequence.
+- **Food-deficit Trust/Resilience drain** — gone. Food itself is
+  unchanged: still a pure live read (`get food()`, a `meterTotal()`
+  computation), can still read negative — only the automatic *consequence*
+  of a negative number is gone.
+- **Flood-buffer recovery** — Khazan/Small Dam's `floodBufferFilled` now
+  only changes via `drawDownFloodBuffer()` (an actual triggered Flood); it
+  no longer drains back toward empty on its own between turns. A manual
+  "drain the buffer" control wasn't asked for and would be scope creep —
+  **flagged here as a possible future addition** if testing shows it's
+  actually needed, not built preemptively.
+
+`FOOD_DEFICIT_TRUST_FACTOR`, `FOOD_DEFICIT_RESILIENCE_FACTOR`, and
+`FLOOD_BUFFER_RECOVERY_RATE` have no remaining call site. `tsc --noEmit`
+(this repo's `noUnusedLocals`/`noUnusedParameters` are both `false`) is
+fine with that, so per the step prompt's own instruction they're kept in
+place with a comment explaining why, rather than deleted — same "don't
+delete useful plumbing" convention already used for the retired hazard
+schedule.
+
+**Live-verified end to end** (`?debughazards`, via `__buildForTest`/
+`__triggerHazardForTest`/`__resetBoardForTest`/`__elementStateForTest`):
+- Six House builds (a guaranteed Food deficit, no offsetting Mangrove/
+  Khazan) left the HUD's Resilience readout at exactly **100**, unchanged.
+- Two severity-5.0 Storm Surges (would previously have cratered Resilience
+  well past zero and auto-reset the board) left Resilience reading **0**
+  and the board fully intact — the first manually-built House was still
+  standing, nothing cleared, no banner.
+- Reset Board (via the same code path the panel's button calls) then
+  restored Resilience to **100** and cleared that House, confirming the
+  manual reset works regardless of Resilience's current value, including
+  from 0.
+- A mature Small Dam's `floodBufferFilled` read **800** immediately after
+  a Flood, then read **800** again — unchanged — after five more builds
+  (turns) with nothing else triggered, confirming the buffer no longer
+  drains on its own.
+
+**One honest verification gap:** the new "Remove" button's DOM wiring was
+confirmed by direct code review (identical pattern to the already-proven
+build-option buttons, calling into the same `removeElement()` the live-
+tested `__destroyForTest` hook now also calls) and the "Reset Board"
+button's presence/label was confirmed via the DOM tree, but neither was
+click-tested with a pixel-accurate screenshot this pass — the Browser pane
+wasn't in a displayed state this session to calibrate coordinate clicks
+against the 3D canvas. Flagged plainly rather than claimed as fully
+screenshot-verified; worth a quick manual click-through on the next live
+pass.
+
+Two existing test files needed updating (not reverting) to match the
+new, correct behavior — the same real, expected consequence pattern as the
+Small Dam reservoir pass's test updates:
+- `tests/buildings.test.ts`: two tests asserted standing income paying out
+  via `advanceTurn()` — updated to confirm coin now only moves by build
+  cost, income no longer applies automatically.
+- `tests/gameState.test.ts`: the Food-deficit describe block's core test
+  asserted Trust/Resilience draining on a deficit — updated to confirm
+  Food still reads negative but Trust/Resilience no longer move at all.
+- `tests/hazard.test.ts`: the maintenance-neglect test asserted
+  `degradeAmount` rising from unpaid upkeep — updated to confirm it no
+  longer does. The Khazan buffer-recovery test asserted a spaced-apart
+  repeat event landing lighter than a back-to-back one — updated to
+  confirm both now land identically, since nothing recovers the buffer
+  between them anymore.
+
+`tsc --noEmit` clean, 58/58 tests + 6 `skipIf`-gated unchanged (4 tests
+updated across 3 files, documented above — no test count change),
+production build succeeds. Verification script
+(`tools/verify_manual_only.ts`) was temporary — deleted after its output
+was read, per this repo's convention. One new permanent test hook,
+`__resetBoardForTest` (replacing the retired `__forceEraEndForTest`, which
+no longer made sense once `resetBoard()` has no `isEraOver` guard to force
+past).

@@ -8,7 +8,6 @@ import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
 import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
-import { computeEraScore } from "@core/scoring";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
@@ -110,15 +109,16 @@ const buildPopover = new BuildPopover(container);
  *
  * Calls straight into triggerCyclone/triggerFlood below (function
  * declarations — hoisted, safe to reference here) so a manual trigger
- * behaves exactly like a scheduled one in every way except where the
- * severity number came from — and, per Bug 2, except that it skips the
- * era-end check, so testing a hazard doesn't cost you the board you built
- * to test it on.
+ * behaves exactly like clicking "Trigger now" in every way. STEP_PROMPT_
+ * manual_only_mode.md: neither function has an era-end consequence to
+ * skip anymore — nothing auto-resets the board now, ever — so there's no
+ * `skipEraCheck` option left to pass here.
  */
 const hazardTestPanel = params.has("debughazards")
   ? new HazardTestPanel(container, {
-      onTriggerStorm: (severity) => triggerCyclone(severity, { skipEraCheck: true }),
-      onTriggerFlood: (severity) => triggerFlood(severity, { skipEraCheck: true })
+      onTriggerStorm: (severity) => triggerCyclone(severity),
+      onTriggerFlood: (severity) => triggerFlood(severity),
+      onResetBoard: () => resetBoard()
     })
   : null;
 
@@ -264,15 +264,13 @@ const STORM_SURGE_COMPOUND_WINDOW_TURNS = 2;
  * Resolves the flood: visible in-scene (rising water, defenses absorbing/
  * failing/degrading), not just meter numbers.
  *
- * STEP_PROMPT_hazard_mechanics_fixes.md Bug 2: `skipEraCheck` exists
- * purely for the Test Hazards panel and the `?flood=` dev param — a
- * manually-fired hazard that happens to cross Resilience to zero
- * shouldn't wipe the board the player is testing against. The hazard
- * still resolves fully (damage, absorption, meter changes, the visual
- * sweep); only the era-reset *consequence* is suppressed, and only on
- * this path.
+ * STEP_PROMPT_manual_only_mode.md: no era-end consequence to skip anymore
+ * — a triggered hazard resolves fully (damage, absorption, meter changes,
+ * the visual sweep) and never wipes the board on its own, regardless of
+ * what Resilience ends up at. The board only ever resets via the manual
+ * "Reset Board" control (`resetBoard()` below).
  */
-function triggerFlood(baseSeverity: number, options: { skipEraCheck?: boolean } = {}): void {
+function triggerFlood(baseSeverity: number): void {
   const stormSurgeActive = state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
   const result = resolveMonsoonFlood(state, baseSeverity, stormSurgeActive);
   applyHazardResult("flood", result, performance.now());
@@ -280,7 +278,6 @@ function triggerFlood(baseSeverity: number, options: { skipEraCheck?: boolean } 
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
-  if (!options.skipEraCheck) checkEraEnd();
 }
 
 // --- Cyclone resolution -----------------------------------------------------------
@@ -292,8 +289,8 @@ let nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
 /** Section 5's compound-mechanic window (see STORM_SURGE_COMPOUND_WINDOW_TURNS above) — the turn a Storm Surge Wave last actually resolved, so a Flood shortly after still counts as concurrent. */
 let lastStormSurgeResolvedTurn = -Infinity;
 
-/** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. `skipEraCheck` — see triggerFlood's own comment (Bug 2). */
-function triggerCyclone(baseSeverity: number, options: { skipEraCheck?: boolean } = {}): void {
+/** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. No era-end consequence — see triggerFlood's own comment. */
+function triggerCyclone(baseSeverity: number): void {
   const result = resolveCyclone(state, baseSeverity);
   applyHazardResult("storm", result, performance.now());
   lastStormSurgeResolvedTurn = state.turn;
@@ -301,7 +298,6 @@ function triggerCyclone(baseSeverity: number, options: { skipEraCheck?: boolean 
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
-  if (!options.skipEraCheck) checkEraEnd();
 }
 
 /**
@@ -326,19 +322,28 @@ updateHazardTestSchedule();
 // no benefit to moving it, and this spot is already proven safe.
 refreshHud();
 
-// --- Era loop ------------------------------------------------------------------
+// --- Board reset -----------------------------------------------------------------
 
-/** Section 2: era soft-ends when Resilience hits zero — banked score, no hard game-over screen. */
-function checkEraEnd(): void {
-  if (!state.isEraOver) return;
-  const score = Math.round(computeEraScore(state));
-  const erasSoFar = state.erasCompleted + 1;
+/**
+ * STEP_PROMPT_manual_only_mode.md: formerly `checkEraEnd()` — fired
+ * automatically the instant Resilience hit zero (Section 2's original
+ * soft-era-loop). Repurposed into a manual-only action: no `isEraOver`
+ * guard, so it always runs when called, regardless of what Resilience
+ * currently reads; the only caller now is the Test Hazards panel's
+ * "Reset Board" button. The reset sequence itself is unchanged — already
+ * correct and tested — just no longer self-triggering. Dropped the old
+ * score/era-retired banner: a player who just clicked "Reset Board"
+ * already knows what they did, so a surprise-event narrative doesn't fit
+ * anymore (and `computeEraScore()` has no other caller now that this is
+ * gone — see the dropped `@core/scoring` import above).
+ */
+function resetBoard(): void {
   playSound("era_end");
-  hud.showBanner(`Era ${erasSoFar} retired — score ${score}. A new era begins.`);
+  hud.showBanner("Board reset.");
 
   elements.reset();
   hazardOverlay.reset();
-  hazardTestPanel?.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across an era reset
+  hazardTestPanel?.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across a reset
 
   state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
   terrain.resetClaims(keysToCoords(state.claimed));
@@ -367,6 +372,27 @@ function kindLabel(def: ElementDef): string | undefined {
 }
 
 /**
+ * STEP_PROMPT_manual_only_mode.md Part C: the tile-info popover's own
+ * "Remove" button, and — consolidated, not duplicated — the same logic
+ * `__destroyForTest` below now calls into instead of repeating. Does
+ * exactly what a catastrophic engineered-defense failure's own destroy
+ * path does render-side (`elements.destroy()`) and state-side
+ * (`state.elements.delete()`), plus the UI cleanup a manual removal also
+ * needs: refresh the HUD (the tile's gone from `emptyTileCount`, any
+ * meter it contributed to shifts) and close the popover so it doesn't
+ * linger showing info for a tile that's now empty. No coin refund —
+ * matches the current sandbox/testing framing; flagged in PROGRESS.md as
+ * a placeholder policy for `STEP_PROMPT_balance_tuning.md` to revisit.
+ */
+function removeElement(coord: AxialCoord): void {
+  const key = `${coord.q},${coord.r}`;
+  elements.destroy(coord);
+  state.elements.delete(key);
+  refreshHud();
+  buildPopover.hide();
+}
+
+/**
  * Section 3's "one tile, one element": a tile that already has something
  * built on it shows that element's info (name, category, effects) instead
  * of ever offering a second build menu — the UI should never let a player
@@ -385,7 +411,8 @@ function openTilePopover(coord: AxialCoord): void {
     buildPopover.showInfo(screen.x, screen.y, {
       name: def.name,
       kindLabel: kindLabel(def),
-      effects: def.effects
+      effects: def.effects,
+      onRemove: () => removeElement(coord)
     });
     return;
   }
@@ -400,13 +427,9 @@ function openTilePopover(coord: AxialCoord): void {
     elements.place(coord, id, terrain.heightAt(coord), { animate: true });
     playSound("build");
     refreshHud();
-    // STEP_PROMPT_remove_schedule_confirm_shadowing.md Part A: no hazard
-    // auto-fires on build anymore (see the Flood/Cyclone resolution
-    // section above) — only a Food deficit (advanceTurn(), no hazard
-    // involved) can drain Resilience to zero here, but check unconditionally
-    // so an era can't silently end without the banner/reset firing.
-    // Idempotent: checkEraEnd itself no-ops when the era isn't actually over.
-    checkEraEnd();
+    // STEP_PROMPT_manual_only_mode.md: no automatic era-end check anymore
+    // — nothing resets the board on its own, ever. The board only ever
+    // resets via the manual "Reset Board" control.
   });
 }
 
@@ -505,30 +528,25 @@ function devAutoBuild(kind: "building" | "defense"): void {
   return true;
 };
 (window as unknown as Record<string, unknown>).__triggerHazardForTest = {
-  cyclone: (severity: number) => triggerCyclone(severity, { skipEraCheck: true }),
-  flood: (severity: number) => triggerFlood(severity, { skipEraCheck: true })
+  cyclone: (severity: number) => triggerCyclone(severity),
+  flood: (severity: number) => triggerFlood(severity)
 };
 (window as unknown as Record<string, unknown>).__lastHazardResultForTest = () =>
   lastHazardResult ? Object.fromEntries(lastHazardResult.tileDamage) : null;
-// STEP_PROMPT_gameplay_stability_test.md Part A: mirrors the real
-// destroy path a catastrophic engineered-defense failure takes
-// (elements.destroy() + removing the tile from state.elements so it's
-// buildable again) — lets a verification script script a rapid
-// build/destroy cycle on one tile without needing a hazard severity roll
-// to actually land above failureThreshold each time.
+// STEP_PROMPT_manual_only_mode.md Part C: consolidated to call the real
+// removeElement() rather than repeating its two lines — same pattern
+// __triggerHazardForTest already follows, calling straight into the real
+// triggerCyclone/triggerFlood instead of a parallel test-only path.
 (window as unknown as Record<string, unknown>).__destroyForTest = (q: number, r: number): void => {
-  const coord = { q, r };
-  elements.destroy(coord);
-  state.elements.delete(`${q},${r}`);
+  removeElement({ q, r });
 };
-// STEP_PROMPT_gameplay_stability_test.md Part A: drives a real era reset
-// (checkEraEnd(), same path a genuine "Resilience hit 0" build takes) on
-// demand, so a verification script can force many repeated era-reset
-// cycles to check for a cross-era leak without needing to script a full
-// hazard-damage-to-zero sequence each time.
-(window as unknown as Record<string, unknown>).__forceEraEndForTest = (): void => {
-  state.resilience = 0;
-  checkEraEnd();
+// STEP_PROMPT_manual_only_mode.md: drives a real board reset (resetBoard(),
+// same path the panel's "Reset Board" button takes) on demand, so a
+// verification script can force many repeated reset cycles to check for a
+// cross-era leak without needing to interact with the panel's own confirm
+// dialog each time.
+(window as unknown as Record<string, unknown>).__resetBoardForTest = (): void => {
+  resetBoard();
 };
 // STEP_PROMPT_small_dam_reservoir.md Verify: reads a tile's raw
 // ElementInstance (floodBufferFilled in particular) so a verification
@@ -544,31 +562,26 @@ if (coinBoost) {
   state.coin += Number(coinBoost);
   refreshHud();
 }
-// Same reasoning as coinboost: needed before autobuild/autodefend below,
-// since enough builds will otherwise trigger a real flood/cyclone and
-// reset the era (via checkEraEnd) partway through a scripted scenario.
+// Same reasoning as coinboost: a convenience for scripted scenarios that
+// want to start from a specific Resilience value.
 const resilienceBoost = params.get("resilienceboost");
 if (resilienceBoost) {
   // STEP_PROMPT_gameplay_stability_test.md Part B audit: every other
-  // resilience-modifying path (applyHazardOutcome, the Food-deficit drain)
-  // clamps at 0 — this dev-only one didn't, so a negative boost (e.g. the
-  // step prompt's own suggested `?resilienceboost=-999`) left the HUD
-  // showing a large negative Resilience number instead of 0. Cosmetic only
-  // (isEraOver already correctly triggers either way, and no real player
-  // touches this param), but worth matching the same invariant everywhere.
+  // resilience-modifying path (applyHazardOutcome; the old, now-removed
+  // Food-deficit drain used to as well) clamps at 0 — this dev-only one
+  // didn't, so a negative boost (e.g. `?resilienceboost=-999`) left the
+  // HUD showing a large negative Resilience number instead of 0. Cosmetic
+  // only (no real player touches this param), but worth matching the same
+  // invariant everywhere.
   state.resilience = Math.max(0, state.resilience + Number(resilienceBoost));
   refreshHud();
 }
 if (params.has("autobuild")) devAutoBuild("building");
 if (params.has("autodefend")) devAutoBuild("defense");
-// Bug 2: these are dev-only test fires (same category as the panel above),
-// so they skip the era-end consequence too — a `?flood=3` link for a quick
-// screenshot shouldn't reset the board any more than clicking the panel's
-// own "Trigger now" should.
 const floodParam = params.get("flood");
-if (floodParam) triggerFlood(Number(floodParam), { skipEraCheck: true });
+if (floodParam) triggerFlood(Number(floodParam));
 const cycloneParam = params.get("cyclone");
-if (cycloneParam) triggerCyclone(Number(cycloneParam), { skipEraCheck: true });
+if (cycloneParam) triggerCyclone(Number(cycloneParam));
 
 /** Dev-only: forces the popover open at a screen corner to verify Bucket A's viewport-clamping fix. */
 if (params.has("testpopoverclip")) {

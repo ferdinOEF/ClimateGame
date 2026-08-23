@@ -193,23 +193,26 @@ describe("resolveMonsoonFlood — hybrid (khazan): flood-buffer reservoir (STEP_
     expect(state.elements.has(key)).toBe(true);
   });
 
-  it("the buffer only partially recovers before a second event — back-to-back floods are meaningfully more dangerous than the same events spaced apart", () => {
+  it("the buffer no longer recovers on its own between turns — back-to-back and turn-spaced repeats of the same event now land identically (STEP_PROMPT_manual_only_mode.md removed the automatic per-turn recovery)", () => {
     const backToBack = freshState();
     const target1 = neighbor(RIVER, 0);
     setupKhazan(backToBack, target1);
     const key1 = axialKey(target1);
     resolveMonsoonFlood(backToBack, 5.0); // first event fills the buffer
-    const secondImmediate = resolveMonsoonFlood(backToBack, 5.0); // no turns passed to recover
+    const secondImmediate = resolveMonsoonFlood(backToBack, 5.0); // no turns passed
 
     const spaced = freshState();
     const target2 = neighbor(RIVER, 0);
     setupKhazan(spaced, target2);
     const key2 = axialKey(target2);
     resolveMonsoonFlood(spaced, 5.0); // the same first event
-    for (let i = 0; i < 5; i++) spaced.advanceTurn(); // several turns of recovery in between
+    for (let i = 0; i < 5; i++) spaced.advanceTurn(); // several turns pass, but nothing recovers the buffer anymore
     const secondSpaced = resolveMonsoonFlood(spaced, 5.0);
 
-    expect(secondImmediate.tileDamage.get(key1)!).toBeGreaterThan(secondSpaced.tileDamage.get(key2)!);
+    // Only a real triggered Flood (drawDownFloodBuffer()) changes
+    // floodBufferFilled now — advanceTurn() no longer does, so turns
+    // passing between events makes no difference to the outcome.
+    expect(secondImmediate.tileDamage.get(key1)!).toBeCloseTo(secondSpaced.tileDamage.get(key2)!, 5);
   });
 });
 
@@ -314,8 +317,8 @@ describe("Flood — two-sided compound mechanic (STEP_PROMPT_hazard_science.md S
   });
 });
 
-describe("Maintenance neglect (Section 5's khazan/engineered upkeep tradeoff)", () => {
-  it("silently weakens a defense whose upkeep goes unpaid, with no hazard involved", () => {
+describe("Maintenance neglect (Section 5's khazan/engineered upkeep tradeoff) — automatic degrade removed by STEP_PROMPT_manual_only_mode.md", () => {
+  it("no longer weakens a defense from unpaid upkeep on its own — degradeAmount only changes via an actual triggered hazard's graceful-degrade path", () => {
     const state = freshState();
     const target = neighbor(RIVER, 0);
     state.debugForcePlace(target, "estuary");
@@ -323,9 +326,9 @@ describe("Maintenance neglect (Section 5's khazan/engineered upkeep tradeoff)", 
     const key = axialKey(target);
     expect(state.elements.get(key)!.degradeAmount).toBe(0);
 
-    state.coin = 0; // can't afford the next upkeep payment
+    state.coin = 0; // can't afford upkeep, if advanceTurn() still charged it — it no longer does
     state.advanceTurn();
 
-    expect(state.elements.get(key)!.degradeAmount).toBeGreaterThan(0);
+    expect(state.elements.get(key)!.degradeAmount).toBe(0);
   });
 });

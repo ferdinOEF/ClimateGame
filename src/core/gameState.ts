@@ -33,19 +33,22 @@ const STARTING_POPULATION = 50;
 const RESILIENCE_DAMAGE_FACTOR = 0.5;
 const CATASTROPHIC_TRUST_PENALTY = 8; // per destroyed engineered defense — stings more than an NBS shortfall
 const WEATHERED_TRUST_BONUS = 2;
-// STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit costs
-// Trust and (less directly) Resilience every turn — a soft, non-blocking
-// consequence, never a hard build/claim block. Both PLACEHOLDER
-// magnitudes, same convention as every other flagged number in this
-// codebase — feed into STEP_PROMPT_balance_tuning.md's harness.
+// STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit used to
+// cost Trust and (less directly) Resilience every turn in `advanceTurn()`.
+// STEP_PROMPT_manual_only_mode.md removed that automatic drain (state now
+// only changes via an explicit action) — these two constants have no
+// remaining call site, kept rather than deleted per this project's "don't
+// delete useful plumbing" convention, in case a manual equivalent (or the
+// automatic drain itself) comes back once the mode question is revisited.
 const FOOD_DEFICIT_TRUST_FACTOR = 0.4;
 const FOOD_DEFICIT_RESILIENCE_FACTOR = 0.15;
-// STEP_PROMPT_hazard_science.md Section 4: a Khazan's flood buffer refills
-// gradually across turns rather than resetting instantly, so back-to-back
-// floods before it's recovered are meaningfully more dangerous — itself
-// realistic (a saturated wetland genuinely offers less protection against a
-// second event soon after the first). PLACEHOLDER rate, within the step
-// prompt's own suggested 10-20%/turn range — feed into the balance harness.
+// STEP_PROMPT_hazard_science.md Section 4: a Khazan/Small Dam's flood
+// buffer used to refill gradually across turns in `advanceTurn()`.
+// STEP_PROMPT_manual_only_mode.md removed that automatic recovery —
+// `floodBufferFilled` now only changes via `drawDownFloodBuffer()` (an
+// actual triggered Flood). Kept rather than deleted for the same reason as
+// the two constants above; a manual "drain the buffer" control was
+// explicitly flagged as possible future scope, not built this pass.
 const FLOOD_BUFFER_RECOVERY_RATE = 0.15;
 
 /**
@@ -128,47 +131,19 @@ export class GameState {
   }
 
   /**
-   * One build = one turn (STEP_PROMPT_remove_claiming.md; previously one
-   * claim = one turn, before claiming was removed): elements pay out
-   * their `effects.money` (the same generic accumulator that drives every
-   * other meter — see `meterTotal`), and defenses with upkeep either get
-   * paid or silently weaken (the khazan/small-dam "neglect decays it"
-   * tradeoff). Public because the hazard/turn system also needs to advance
-   * it directly (e.g. maintenance still ticks between hazard events).
+   * STEP_PROMPT_manual_only_mode.md: stripped down to just the turn
+   * counter — every background side effect that used to fire here on its
+   * own (income, maintenance/neglect degrade, Food-deficit Trust/
+   * Resilience drain, flood-buffer recovery) is gone. State now only
+   * changes in response to an explicit action: build, remove, trigger a
+   * hazard, or hit Reset Board. `this.turn` itself still has to advance on
+   * every `build()` call, though — it's what drives element maturity
+   * (`maturityFraction()`'s `this.turn - inst.builtOnTurn`), a consequence
+   * of the build action itself, not background drift. Public because the
+   * hazard/turn system also needs to advance it directly.
    */
   advanceTurn(): void {
     this.turn++;
-    this.coin += this.meterTotal("money");
-    for (const [key, inst] of this.elements) {
-      const def = ELEMENT_BY_ID.get(inst.elementId);
-      if (!def || !def.maintenanceCostPerTurn || def.maintenanceCostPerTurn <= 0) continue;
-      if (this.coin >= def.maintenanceCostPerTurn) {
-        this.coin -= def.maintenanceCostPerTurn;
-      } else if (def.maintenanceNeglectPenaltyPerTurn) {
-        inst.degradeAmount += def.maintenanceNeglectPenaltyPerTurn;
-        this.elements.set(key, inst);
-      }
-    }
-
-    // STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit
-    // (more Houses than Mangrove/Khazan can feed) visibly costs Trust and
-    // Resilience every turn — real pressure to build enough food
-    // production, but never a hard block on claiming or building.
-    const deficit = Math.max(0, -this.food);
-    if (deficit > 0) {
-      this.trust = Math.max(0, this.trust - deficit * FOOD_DEFICIT_TRUST_FACTOR);
-      this.resilience = Math.max(0, this.resilience - deficit * FOOD_DEFICIT_RESILIENCE_FACTOR);
-    }
-
-    // STEP_PROMPT_hazard_science.md Section 4: any standing flood-buffer
-    // reservoir (Khazan) gradually drains back toward empty/fully-available
-    // every turn, same cadence as everything else advanceTurn() ticks.
-    for (const inst of this.elements.values()) {
-      if (inst.floodBufferFilled <= 0) continue;
-      const def = ELEMENT_BY_ID.get(inst.elementId);
-      if (!def || def.floodBufferCapacityM3 === undefined) continue;
-      inst.floodBufferFilled = Math.max(0, inst.floodBufferFilled - def.floodBufferCapacityM3 * FLOOD_BUFFER_RECOVERY_RATE);
-    }
   }
 
   /** Element options valid at `coord` right now (must be claimed, terrain-matched, nothing already built there), regardless of affordability. */

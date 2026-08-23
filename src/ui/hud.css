@@ -384,6 +384,24 @@ html, body {
   white-space: nowrap;
 }
 
+/* STEP_PROMPT_manual_only_mode.md Part C: lower-stakes than the dev panel's board-wide Reset (only this one tile, no confirm needed), so a lighter tint of the same warning family rather than the full .hazard-test-reset treatment. */
+.built-info-remove {
+  margin: 4px 10px 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 138, 92, 0.3);
+  background: rgba(255, 138, 92, 0.1);
+  color: #ffb199;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.built-info-remove:hover {
+  background: rgba(255, 138, 92, 0.24);
+}
+
 /*
   STEP_PROMPT_hazard_test_sliders.md: a testing/tuning aid, closed on load
   so a normal playtest looks unchanged unless someone deliberately opens
@@ -503,4 +521,29 @@ html, body {
 
 .hazard-test-row.flood .hazard-test-trigger:hover {
   background: rgba(140, 106, 63, 0.35);
+}
+
+/* STEP_PROMPT_manual_only_mode.md Part B: same warning color .meter-chip-warning/.resilience-gauge-fill.critical already use — destructive and can't be undone, so it should read as visually distinct from the two trigger buttons above it, not just another row. */
+.hazard-test-row.reset {
+  border-left-color: #ff8a5c;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hazard-test-reset {
+  align-self: flex-start;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 138, 92, 0.4);
+  background: rgba(255, 138, 92, 0.12);
+  color: #ffb199;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hazard-test-reset:hover {
+  background: rgba(255, 138, 92, 0.28);
 }

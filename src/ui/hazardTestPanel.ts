@@ -3,21 +3,23 @@ const DEFAULT_SEVERITY = 1.0;
 export interface HazardTestPanelCallbacks {
   onTriggerStorm: (severity: number) => void;
   onTriggerFlood: (severity: number) => void;
+  /** STEP_PROMPT_manual_only_mode.md Part B: wipes the whole board back to a fresh start. Destructive and can't be undone, so the panel confirms before calling this. */
+  onResetBoard: () => void;
 }
 
 /**
  * STEP_PROMPT_hazard_test_sliders.md: a testing/tuning aid — trigger a
- * Storm Surge Wave or a Flood at a chosen severity on demand, instead of
- * only ever seeing whatever `rolledSeverity()` happens to roll on
- * schedule. Deliberately calls back into `main.ts`'s own `triggerCyclone`/
- * `triggerFlood` (not a parallel code path), so a manual trigger behaves
- * exactly like a scheduled one — telegraph clears, cloud layer updates,
- * `nextCycloneAtTurn`/`nextFloodAtTurn` reset, resolve sound plays, HUD
- * refreshes, era-end is checked — in every way except where the severity
- * number came from. That includes Flood's own `stormSurgeActive` check
- * still running normally, so triggering Storm Surge then Flood within the
- * compound window correctly exercises the compound-flooding path on
- * demand.
+ * Storm Surge Wave or a Flood at a chosen severity on demand. Deliberately
+ * calls back into `main.ts`'s own `triggerCyclone`/`triggerFlood` (not a
+ * parallel code path), so a manual trigger behaves exactly like clicking
+ * "Trigger now" in every way — nextCycloneAtTurn/nextFloodAtTurn reset,
+ * resolve sound plays, HUD refreshes. That includes Flood's own
+ * `stormSurgeActive` check still running normally, so triggering Storm
+ * Surge then Flood within the compound window correctly exercises the
+ * compound-flooding path on demand.
+ *
+ * STEP_PROMPT_manual_only_mode.md Part B added the "Reset Board" button —
+ * the only way the board resets now, ever (see `main.ts`'s `resetBoard()`).
  *
  * Not gated behind a build flag or URL param this pass, per the step
  * prompt's own explicit instruction — flagged in PROGRESS.md as a later
@@ -65,6 +67,10 @@ export class HazardTestPanel {
         </div>
         <button type="button" class="hazard-test-trigger flood-trigger">Trigger now</button>
       </div>
+      <div class="hazard-test-row reset">
+        <div class="hazard-test-label">Board</div>
+        <button type="button" class="hazard-test-reset">Reset Board</button>
+      </div>
     `;
     container.appendChild(panel);
     this.panelEl = panel;
@@ -92,6 +98,14 @@ export class HazardTestPanel {
     });
     panel.querySelector(".flood-trigger")!.addEventListener("click", () => {
       callbacks.onTriggerFlood(Number(this.floodSlider.value));
+    });
+    // STEP_PROMPT_manual_only_mode.md Part B: destructive and can't be
+    // undone, so a plain confirm() before firing — this control lives
+    // inside an already-interactive dev panel, not behind a scripted flow.
+    panel.querySelector(".hazard-test-reset")!.addEventListener("click", () => {
+      if (window.confirm("Reset the board? This clears everything built and can't be undone.")) {
+        callbacks.onResetBoard();
+      }
     });
   }
 
