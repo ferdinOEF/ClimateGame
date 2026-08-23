@@ -510,6 +510,26 @@ function devAutoBuild(kind: "building" | "defense"): void {
 };
 (window as unknown as Record<string, unknown>).__lastHazardResultForTest = () =>
   lastHazardResult ? Object.fromEntries(lastHazardResult.tileDamage) : null;
+// STEP_PROMPT_gameplay_stability_test.md Part A: mirrors the real
+// destroy path a catastrophic engineered-defense failure takes
+// (elements.destroy() + removing the tile from state.elements so it's
+// buildable again) — lets a verification script script a rapid
+// build/destroy cycle on one tile without needing a hazard severity roll
+// to actually land above failureThreshold each time.
+(window as unknown as Record<string, unknown>).__destroyForTest = (q: number, r: number): void => {
+  const coord = { q, r };
+  elements.destroy(coord);
+  state.elements.delete(`${q},${r}`);
+};
+// STEP_PROMPT_gameplay_stability_test.md Part A: drives a real era reset
+// (checkEraEnd(), same path a genuine "Resilience hit 0" build takes) on
+// demand, so a verification script can force many repeated era-reset
+// cycles to check for a cross-era leak without needing to script a full
+// hazard-damage-to-zero sequence each time.
+(window as unknown as Record<string, unknown>).__forceEraEndForTest = (): void => {
+  state.resilience = 0;
+  checkEraEnd();
+};
 
 // coinboost first: autobuild/autodefend below spend coin, so a boost given
 // after them would arrive too late to fund what they just did.
@@ -523,7 +543,14 @@ if (coinBoost) {
 // reset the era (via checkEraEnd) partway through a scripted scenario.
 const resilienceBoost = params.get("resilienceboost");
 if (resilienceBoost) {
-  state.resilience += Number(resilienceBoost);
+  // STEP_PROMPT_gameplay_stability_test.md Part B audit: every other
+  // resilience-modifying path (applyHazardOutcome, the Food-deficit drain)
+  // clamps at 0 — this dev-only one didn't, so a negative boost (e.g. the
+  // step prompt's own suggested `?resilienceboost=-999`) left the HUD
+  // showing a large negative Resilience number instead of 0. Cosmetic only
+  // (isEraOver already correctly triggers either way, and no real player
+  // touches this param), but worth matching the same invariant everywhere.
+  state.resilience = Math.max(0, state.resilience + Number(resilienceBoost));
   refreshHud();
 }
 if (params.has("autobuild")) devAutoBuild("building");

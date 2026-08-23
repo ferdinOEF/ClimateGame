@@ -2043,3 +2043,160 @@ build succeeds. Verification scripts (`tools/verify_shadowing.ts`,
 `tools/verify_shadowing2.ts`) were temporary — deleted after their output
 was read, per this repo's convention; the three test hooks they drove stay
 in `main.ts` for any future re-check.
+
+## Step prompt: gameplay stability pass (hanging, map reset, leftover Bug 1) — DONE
+
+Source: `STEP_PROMPT_gameplay_stability_test.md`. Three items, addressed in
+the order given below.
+
+### Bug 1 (`elements.json`'s `"monsoon_flood"` → `"flood"`)
+
+Status: **already fixed, confirmed again — not a local code bug.** `grep`
+for `monsoon_flood` anywhere in `src/` returns zero matches; `git log --
+src/data/elements.json` shows the fix landed in `d5772b8`, already on
+`origin/master` well before this pass. The step prompt's own live test
+against `https://climate-game-psi.vercel.app/?debughazards` is almost
+certainly hitting a **stale Vercel deployment** — there's no `vercel.json`
+or GitHub Actions workflow in this repo, so the production deploy is
+whatever Vercel's dashboard/GitHub integration is configured to build, and
+that's outside what a local `git`/code check can diagnose or fix. Worth
+checking the Vercel dashboard directly for a stuck/failed/pinned deployment
+— this isn't a repo issue.
+
+### "Hanging" — root cause found and fixed
+
+Investigated the step prompt's three ordered hypotheses in turn, using a
+headless Chromium + the real Long Tasks API and `performance.memory` (the
+programmatic equivalent of DevTools' Performance/Memory tabs — reliable,
+scriptable, and reusable, versus a one-off interactive recording) rather
+than guessing from the console alone.
+
+**Found and fixed: a real bug, matching hypothesis 1's shape but manifesting
+as a same-era cumulative cap rather than literal unbounded growth.** Both
+`HazardOverlayManager.show()` and `ElementMeshManager.place()` used a
+strictly-increasing per-type instance-index counter that a `destroy()`/
+collapse-timeout never gave back — so a destroyed instance's slot was
+burned forever, not freed for reuse.
+
+- **`HazardOverlayManager`** (`MAX_INSTANCES = 400`, shared across both
+  hazard kinds): after 400 cumulative `show()` calls *within one era* —
+  easily reached by a handful of hazard triggers across a well-populated
+  map — every further call silently no-ops. No error, no console output,
+  just hazard visuals quietly stopping. This is dev-tooling-adjacent (needs
+  repeated triggers, most reachable via `?debughazards`) but the resolve
+  logic runs the same way for a scheduled hazard too — this was a real,
+  reachable defect, not purely theoretical.
+- **`ElementMeshManager`** (`MAX_INSTANCES_PER_TYPE = 200` per element
+  type): far more serious. **Live-reproduced directly**: a script cycling
+  build+destroy of Seawall on one Beach tile via two new test hooks
+  (`__buildForTest`, `__destroyForTest`) hit exactly 200 successful
+  `place()` calls, then threw `Error: Element instance cap exceeded for
+  seawall` on the 201st, uncaught. Traced the blast radius: that throw
+  happens *inside* `openTilePopover()`'s build callback — the popover
+  button's own click handler is `onSelect(def.id); this.hide();`, so an
+  exception inside `onSelect` (which is when `state.build()` — already
+  succeeded, coin already deducted — flows into `elements.place()`) aborts
+  the handler **before `this.hide()` runs**. The modal backdrop stays up
+  forever, blocking every further click on the canvas. That reads exactly
+  like "the game hangs" — coin was spent, nothing visibly happened, and the
+  UI stops responding, with only a console error (easy to miss) explaining
+  why. With Coin now bumped to 10,000 (previous commit) and Storm Surge
+  able to catastrophically breach a rebuilt Seawall repeatedly, this is
+  meaningfully easier to hit in an aggressive testing/exploration session
+  than it would have been before that bump.
+
+**Fix:** both managers now draw a freed index from a `freeIndices` pool
+(populated by `destroy()`, or by an overlay's own collapse `setTimeout`)
+before growing the high-water-mark counter, so a destroyed/expired
+instance's slot is actually reusable. `HazardOverlayManager` also gained a
+`generation` counter, bumped by `reset()`, so a stale pending collapse
+`setTimeout` scheduled just before an era ends can tell its slot was
+already reclaimed wholesale rather than double-freeing an index a brand
+new era's overlay might already be using — a real edge case the fix
+surfaced along the way, not present before since indices were never reused
+at all. **Re-ran the live reproduction after the fix**: 205 build/destroy
+cycles now complete with zero throws.
+
+**The other two hypotheses did not reproduce, with real evidence either
+way, not just "seems fine":**
+- **Cross-era Three.js leak (hypothesis 2):** not found. Read `Terrain
+  MeshManager`, `ElementMeshManager`, `HazardOverlayManager`, and `Cloud
+  LayerManager` — none of them allocate any new Three.js resource (geometry,
+  material, `InstancedMesh`) inside `reset()`/era-end; every one is a
+  fixed-capacity pool created once in the constructor and reused for the
+  game's whole lifetime, just index-reset per era. Confirmed live too: 10
+  forced era resets (new `__forceEraEndForTest` hook) with an explicit
+  `--expose-gc` GC call between each sample moved the JS heap from 6.49MB
+  to 6.65MB — a ~2.5% drift over 10 cycles, consistent with ordinary
+  allocation noise, not a leak signature (no accelerating/monotonic growth
+  pattern).
+- **`devAutoBuild` at scale (hypothesis 3):** *partially* reproduces, but
+  as dev-tooling-only, not a player-facing issue. `?autobuild&autodefend`
+  together on page load (145-tile map) produced a genuine **875ms** single
+  long task via the real Long Tasks API, plus 13 more in the 50-166ms
+  range right after — a real, measurable freeze if you were watching the
+  frame rate. But no real player ever calls `devAutoBuild()`: it's a
+  synchronous loop over the *entire* claimed map in one JS call, reachable
+  only via these two URL params with no UI affordance; normal play only
+  ever builds one tile per click. Noted, not fixed this pass — chunking the
+  loop across frames would be a reasonable follow-up if this tooling sees
+  more use, but it doesn't explain the user-facing "hanging" report the way
+  the instance-cap bug does.
+- The staggered-overlay-pileup stress test itself (8 hazard triggers fired
+  back-to-back with no waiting, high severity, full map) produced 36 long
+  tasks (max 203ms) but the JS heap went *down* slightly (8.62MB→8MB) —
+  busy, bounded BFS-resolution work, not runaway growth, confirming the
+  instance-recycling fix above is holding under exactly this stress
+  pattern.
+
+### "Map getting reset"
+
+Status: **confirmed as the intended soft era-loop; audited for (and did not
+find) a premature-reset bug; fixed one small related inconsistency.**
+
+- Audited every call site of `state.startNewEra()`: there is exactly one,
+  inside `checkEraEnd()`, and it's unconditionally guarded by `if (!state.
+  isEraOver) return;` at the top of that function — every one of
+  `checkEraEnd()`'s three call sites (`triggerFlood`, `triggerCyclone`, the
+  post-build check) re-checks this every time, so calling it repeatedly
+  (idempotent) or from multiple places can't cause a reset while Resilience
+  is genuinely above zero. This is a structural guarantee from reading the
+  code, not just a sample of scenarios that happened not to trigger it.
+- Audited the build popover for double-fire risk (rapid clicks, clicking
+  mid-animation): `BuildPopover.show()` fully replaces its buttons (and
+  their listeners) via `innerHTML = ""` on every call, the backdrop's own
+  click listener is attached exactly once in the constructor, and the
+  canvas's own click listener bails immediately if the popover is already
+  open (the backdrop physically intercepts the click first regardless).
+  No path found where a single interaction could fire `state.build()` or
+  `checkEraEnd()` more than once.
+- **Found and fixed one real inconsistency**, per the step prompt's own
+  suggested checkpoint: `?resilienceboost` (dev-only, e.g. the step
+  prompt's own suggested `?resilienceboost=-999`) added directly to `state.
+  resilience` with no floor, unlike every other resilience-modifying path
+  (`applyHazardOutcome`, the Food-deficit drain in `advanceTurn()`), which
+  all clamp at 0. A large negative boost left the HUD showing a big
+  negative Resilience number instead of 0 — cosmetic only (`isEraOver`
+  already correctly triggers either way, and no real player touches this
+  param), but now matches the same invariant everywhere else. Fixed with
+  the same `Math.max(0, ...)` clamp.
+- **UX note, not a code fix this pass** (per the step prompt's own framing):
+  the era-end banner (`hud.showBanner`, 3.5s, non-blocking, top-center) is
+  easy to miss if you're not looking at that exact spot when Resilience
+  crosses zero — a genuine mechanic firing correctly can still *feel* like
+  unexplained data loss if the explanation flashes by unseen. Worth a
+  longer duration or a more prominent treatment in a future UI pass; not
+  addressed here since Part B was explicitly about confirming/auditing,
+  not redesigning the banner.
+
+### Verification
+
+`tsc --noEmit` clean, 58/58 tests + 6 `skipIf`-gated unchanged, production
+build succeeds. Live-reproduced the instance-cap bug before fixing it and
+re-confirmed the fix holds (205/205 build/destroy cycles, zero throws) via
+a temporary Playwright script, since deleted per this repo's convention.
+Two new test hooks stay in `main.ts` for future re-checks: `__destroyForTest`
+(mirrors the real catastrophic-defense-failure destroy path) and
+`__forceEraEndForTest` (drives a real `checkEraEnd()` on demand) — alongside
+`__buildForTest`/`__triggerHazardForTest`/`__lastHazardResultForTest` from
+the previous pass.

@@ -54,7 +54,12 @@ interface ActiveOverlay {
  */
 export class HazardOverlayManager {
   readonly mesh: THREE.InstancedMesh;
-  private count = 0;
+  /** High-water mark — only ever grows, capped at MAX_INSTANCES. */
+  private nextIndex = 0;
+  /** Indices whose collapse timeout has fired, ready to be reused. */
+  private freeIndices: number[] = [];
+  /** Bumped by reset() so any pending collapse setTimeout from the prior era's overlays knows its slot was already reclaimed wholesale. */
+  private generation = 0;
   private animator = new SettleAnimator();
   private flood: { shallow: THREE.Color; deep: THREE.Color };
   private storm: { shallow: THREE.Color; deep: THREE.Color };
@@ -84,12 +89,27 @@ export class HazardOverlayManager {
    * ~2s lifetime), both instances blend to `COMPOUND_OVERLAY_COLOR` —
    * the compound event genuinely visible, not just present in the
    * underlying damage numbers.
+   *
+   * STEP_PROMPT_gameplay_stability_test.md Part A: the instance index used
+   * to be a strictly-increasing counter that never gave back a slot once
+   * its ~2s lifetime expired, so `show()` silently stopped doing anything
+   * at all — no error, just no more overlays — after MAX_INSTANCES (400)
+   * cumulative calls within a single era, easily hit by a handful of
+   * hazard triggers on a well-populated map. Now draws from `freeIndices`
+   * (populated once a shown overlay's own collapse timeout fires) before
+   * growing `nextIndex`, so a long-expired overlay's slot is reusable.
    */
   show(kind: HazardKind, coord: AxialCoord, terrainTopY: number, severity: number, nowMs: number): void {
-    if (this.count >= MAX_INSTANCES) return;
+    let index: number;
+    if (this.freeIndices.length > 0) {
+      index = this.freeIndices.pop()!;
+    } else if (this.nextIndex < MAX_INSTANCES) {
+      index = this.nextIndex++;
+    } else {
+      return; // truly MAX_INSTANCES concurrently live at once — vanishingly unlikely, same bail as before
+    }
+    this.mesh.count = Math.max(this.mesh.count, index + 1);
     const key = `${coord.q},${coord.r}`;
-    const index = this.count++;
-    this.mesh.count = this.count;
 
     const { x, z } = axialToWorld(coord, 1.0);
     const intensity = THREE.MathUtils.clamp(severity / 1.6, 0, 1);
@@ -107,15 +127,24 @@ export class HazardOverlayManager {
     const expiresAtMs = nowMs + OVERLAY_LIFETIME_MS;
     this.activeByKey.set(key, { kind, index, expiresAtMs });
 
+    // Captured so a reset() (era end) between now and this timeout firing
+    // can tell this callback its slot was already reclaimed wholesale —
+    // otherwise a stale collapse could double-free an index reset() already
+    // handed out to a brand new era's overlay, corrupting it visually.
+    const myGeneration = this.generation;
     setTimeout(() => {
+      if (myGeneration !== this.generation) return;
       this.animator.collapse(this.mesh, index, x, peakY, z, performance.now());
       if (this.activeByKey.get(key)?.index === index) this.activeByKey.delete(key);
+      this.freeIndices.push(index);
     }, OVERLAY_LIFETIME_MS);
   }
 
   /** Clears all overlays instantly (e.g. starting a fresh hazard event). */
   reset(): void {
-    this.count = 0;
+    this.generation++;
+    this.nextIndex = 0;
+    this.freeIndices = [];
     this.mesh.count = 0;
     this.activeByKey.clear();
   }

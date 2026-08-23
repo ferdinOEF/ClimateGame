@@ -11,6 +11,7 @@ const MAX_INSTANCES_PER_TYPE = 200;
 const DEGRADED_TINT = new THREE.Color("#5b4a36"); // dull, patchy brown — a visibly weakened structure
 
 interface ElementInstanceRef {
+  elementId: string;
   mesh: THREE.InstancedMesh;
   index: number;
   x: number;
@@ -31,7 +32,10 @@ interface ElementInstanceRef {
 export class ElementMeshManager {
   readonly group = new THREE.Group();
   private meshes = new Map<string, THREE.InstancedMesh>();
-  private counts = new Map<string, number>();
+  /** High-water mark per type — only ever grows, capped at MAX_INSTANCES_PER_TYPE. */
+  private nextIndex = new Map<string, number>();
+  /** Indices freed by destroy() — drawn from before nextIndex grows further. */
+  private freeIndices = new Map<string, number[]>();
   private byCoord = new Map<string, ElementInstanceRef>();
   private animator = new SettleAnimator();
 
@@ -49,17 +53,38 @@ export class ElementMeshManager {
       mesh.count = 0;
       mesh.name = `element-${element.id}`;
       this.meshes.set(element.id, mesh);
-      this.counts.set(element.id, 0);
+      this.nextIndex.set(element.id, 0);
+      this.freeIndices.set(element.id, []);
       this.group.add(mesh);
     }
   }
 
+  /**
+   * STEP_PROMPT_gameplay_stability_test.md Part A: `index` used to be a
+   * strictly-increasing per-type counter that never gave back a destroyed
+   * instance's slot — live-reproduced that a rapid rebuild/catastrophic-
+   * failure cycle on the same tile (a real scenario once a Storm Surge can
+   * repeatedly breach a rebuilt Seawall) hits MAX_INSTANCES_PER_TYPE and
+   * throws well within a single era, uncaught, from inside the build
+   * popover's click handler — which aborts that handler before it reaches
+   * `this.hide()`, leaving the modal backdrop stuck open and the game
+   * reading as hung. Now draws from `freeIndices` (populated by `destroy()`)
+   * before growing `nextIndex`, so a destroyed instance's slot is actually
+   * reusable instead of burning one more of the fixed 200 forever.
+   */
   place(coord: AxialCoord, elementId: string, terrainTopY: number, options: { animate?: boolean } = {}): void {
     const def = ELEMENT_BY_ID.get(elementId);
     if (!def) throw new Error(`Unknown element id: ${elementId}`);
     const mesh = this.meshes.get(elementId)!;
-    const index = this.counts.get(elementId)!;
-    if (index >= MAX_INSTANCES_PER_TYPE) throw new Error(`Element instance cap exceeded for ${elementId}`);
+    const free = this.freeIndices.get(elementId)!;
+    let index: number;
+    if (free.length > 0) {
+      index = free.pop()!;
+    } else {
+      index = this.nextIndex.get(elementId)!;
+      if (index >= MAX_INSTANCES_PER_TYPE) throw new Error(`Element instance cap exceeded for ${elementId}`);
+      this.nextIndex.set(elementId, index + 1);
+    }
 
     const { x, z } = axialToWorld(coord, HEX_SIZE);
 
@@ -75,19 +100,20 @@ export class ElementMeshManager {
     const baseColor = jitterColor(paletteColor(def.colorKey), seed);
     mesh.setColorAt(index, baseColor);
 
-    this.counts.set(elementId, index + 1);
-    mesh.count = index + 1;
+    mesh.count = Math.max(mesh.count, index + 1);
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
-    this.byCoord.set(`${coord.q},${coord.r}`, { mesh, index, x, y: terrainTopY, z, baseColor });
+    this.byCoord.set(`${coord.q},${coord.r}`, { elementId, mesh, index, x, y: terrainTopY, z, baseColor });
   }
 
-  /** Catastrophic engineered failure: collapses and permanently hides the instance. */
+  /** Catastrophic engineered failure: collapses and permanently hides the instance, freeing its slot for reuse. */
   destroy(coord: AxialCoord): void {
-    const ref = this.byCoord.get(`${coord.q},${coord.r}`);
+    const key = `${coord.q},${coord.r}`;
+    const ref = this.byCoord.get(key);
     if (!ref) return;
     this.animator.collapse(ref.mesh, ref.index, ref.x, ref.y, ref.z, performance.now());
-    this.byCoord.delete(`${coord.q},${coord.r}`);
+    this.byCoord.delete(key);
+    this.freeIndices.get(ref.elementId)!.push(ref.index);
   }
 
   /** Khazan graceful degrade: tints the structure toward a patchy, weathered brown as degradeAmount grows. */
@@ -107,8 +133,9 @@ export class ElementMeshManager {
   /** Clears every placed element (a new era starting a fresh map). */
   reset(): void {
     this.byCoord.clear();
-    for (const elementId of this.counts.keys()) {
-      this.counts.set(elementId, 0);
+    for (const elementId of this.nextIndex.keys()) {
+      this.nextIndex.set(elementId, 0);
+      this.freeIndices.set(elementId, []);
       this.meshes.get(elementId)!.count = 0;
     }
   }
