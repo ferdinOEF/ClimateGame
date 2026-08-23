@@ -1,21 +1,24 @@
 /**
  * STEP_PROMPT_hud_instrument_cluster.md (v3, "Instrument Cluster"): the
- * top-left card evolves from a flat meter-chip strip into Coin, a real
- * Resilience gauge (the one meter that actually threatens an era —
+ * top-left corner is a real card now (background/border/padding, not bare
+ * text floating over the 3D scene) — a header row (Coin + Turn/Era), a
+ * real Resilience gauge (the one meter that actually threatens an era —
  * `GameState.isEraOver` reads `resilience <= 0` only, never Trust — so
  * it's the only one promoted to a labeled bar), the hazard-incoming
- * readout, then the remaining secondary meters as chips. Trust stays in
- * the data model exactly as before (`gameState.ts`, `applyHazardOutcome`,
- * the Food-deficit drain) — only this HUD's *display* of it goes away.
- * The rest of the persistent UI (v2.1): a corner tile counter, a small
- * "tiles still empty" soft-progress prompt, and a brief non-blocking era
- * banner. No full-width panel — every tile is already active
- * (STEP_PROMPT_remove_claiming.md), so there's nothing to hand-pick from,
- * only where to build next.
+ * readout, then the remaining secondary meters as an actual chip grid.
+ * Trust stays in the data model exactly as before (`gameState.ts`,
+ * `applyHazardOutcome`, the Food-deficit drain) — only this HUD's
+ * *display* of it goes away. The rest of the persistent UI (v2.1): a
+ * corner tile counter, a small "tiles still empty" soft-progress prompt,
+ * and a brief non-blocking era banner. No full-width panel — every tile
+ * is already active (STEP_PROMPT_remove_claiming.md), so there's nothing
+ * to hand-pick from, only where to build next.
  */
 export class Hud {
   private tileCountEl: HTMLElement;
   private coinEl: HTMLElement;
+  private turnValueEl: HTMLElement;
+  private eraValueEl: HTMLElement;
   private resilienceEl: HTMLElement;
   private resilienceFillEl: HTMLElement;
   private hazardIncomingEl: HTMLElement;
@@ -36,31 +39,42 @@ export class Hud {
     container.appendChild(tileCounter);
     this.tileCountEl = tileCounter.querySelector(".tile-count-value")!;
 
-    const meters = document.createElement("div");
-    meters.className = "hud-corner top-left meters-panel";
-    meters.innerHTML = `
-      <div class="coin-row"><span>Coin</span><span class="coin-value">0</span></div>
+    // STEP_PROMPT_hud_instrument_cluster.md: a real card (background,
+    // border, padding — matching the same dark-translucent language
+    // `.build-popover`/`.empty-prompt`/`.yacht-goal` already use elsewhere
+    // in this file), not bare text floating over the 3D scene. Header row
+    // (Coin + Turn/Era) → Resilience gauge → hazard-incoming line(s) →
+    // the secondary meters as an actual chip grid below.
+    const cluster = document.createElement("div");
+    cluster.className = "hud-corner top-left instrument-cluster";
+    cluster.innerHTML = `
+      <div class="cluster-header">
+        <div class="coin-row"><span>Coin</span><span class="coin-value">0</span></div>
+        <div class="turn-era-row">Turn <span class="turn-value">0</span> · Era <span class="era-value">1</span></div>
+      </div>
       <div class="resilience-gauge">
         <div class="resilience-gauge-header"><span>Resilience</span><span class="resilience-value">100</span></div>
         <div class="resilience-gauge-track"><div class="resilience-gauge-fill"></div></div>
       </div>
       <div class="hazard-incoming"></div>
-      <div class="meter-row">
+      <div class="chip-grid">
         <span class="meter-chip" title="Biodiversity">B <b class="biodiversity-value">0</b></span>
         <span class="meter-chip" title="Carbon">C <b class="carbon-value">0</b></span>
         <span class="meter-chip food-chip" title="Food">F <b class="food-value">0</b></span>
         <span class="meter-chip" title="Population">P <b class="population-value">0</b></span>
       </div>`;
-    container.appendChild(meters);
-    this.coinEl = meters.querySelector(".coin-value")!;
-    this.resilienceEl = meters.querySelector(".resilience-value")!;
-    this.resilienceFillEl = meters.querySelector(".resilience-gauge-fill")!;
-    this.hazardIncomingEl = meters.querySelector(".hazard-incoming")!;
-    this.biodiversityEl = meters.querySelector(".biodiversity-value")!;
-    this.carbonEl = meters.querySelector(".carbon-value")!;
-    this.foodEl = meters.querySelector(".food-value")!;
-    this.foodChipEl = meters.querySelector(".food-chip")!;
-    this.populationEl = meters.querySelector(".population-value")!;
+    container.appendChild(cluster);
+    this.coinEl = cluster.querySelector(".coin-value")!;
+    this.turnValueEl = cluster.querySelector(".turn-value")!;
+    this.eraValueEl = cluster.querySelector(".era-value")!;
+    this.resilienceEl = cluster.querySelector(".resilience-value")!;
+    this.resilienceFillEl = cluster.querySelector(".resilience-gauge-fill")!;
+    this.hazardIncomingEl = cluster.querySelector(".hazard-incoming")!;
+    this.biodiversityEl = cluster.querySelector(".biodiversity-value")!;
+    this.carbonEl = cluster.querySelector(".carbon-value")!;
+    this.foodEl = cluster.querySelector(".food-value")!;
+    this.foodChipEl = cluster.querySelector(".food-chip")!;
+    this.populationEl = cluster.querySelector(".population-value")!;
 
     const emptyPrompt = document.createElement("div");
     emptyPrompt.className = "hud-corner bottom-center empty-prompt";
@@ -115,6 +129,12 @@ export class Hud {
 
   setCoin(n: number): void {
     this.coinEl.textContent = String(n);
+  }
+
+  /** STEP_PROMPT_hud_instrument_cluster.md: the header row's second half — `era` is 1-based ("Era 1" from turn one), matching the "Era N retired" banner's own `erasCompleted + 1` convention. */
+  setTurnEra(turn: number, era: number): void {
+    this.turnValueEl.textContent = String(turn);
+    this.eraValueEl.textContent = String(era);
   }
 
   /**

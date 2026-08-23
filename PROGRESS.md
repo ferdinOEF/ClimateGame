@@ -1885,3 +1885,50 @@ text.
 **Verification:** 58/58 tests passing + 6 `skipIf`-gated unchanged (UI-only
 change, no test-suite dependency on HUD markup), `tsc --noEmit` clean,
 production build succeeds.
+
+## Follow-up — HUD card treatment + confirming the Test Hazards panel is intact — DONE
+
+Two corrections after the pass above landed, both user-reported.
+
+**1 — the "Instrument Cluster" name was true of the data, not the
+visuals.** The top-left corner had the right *content* (Coin, the
+Resilience gauge, the hazard-incoming line, the secondary meters) but
+none of the actual card treatment — `.hud-corner`'s own base CSS has no
+background, border, or padding at all, so it was still reading as bare
+text floating over the 3D scene, same as before the HUD v3 pass. Fixed:
+renamed `.meters-panel` → `.instrument-cluster` and gave it a real card
+(`background: rgba(20,30,26,0.85)`, `border`, `border-radius: 12px`,
+`padding: 14px 16px`, `box-shadow`) — the same dark-translucent language
+`.build-popover`/`.empty-prompt`/`.yacht-goal` already use elsewhere in
+this file, just never applied to this specific corner. Added the header
+row the original spec's layout notes described but this pass had
+previously skipped (reasoned, at the time, that it wasn't among the two
+explicitly-required changes and no Turn/Era display existed yet to add) —
+new `Hud.setTurnEra(turn, era)`, reading `state.turn`/`state.erasCompleted
++ 1` (1-based, matching the "Era N retired" banner's own convention),
+sitting beside Coin in a `.cluster-header` row. The secondary B/C/F/P row
+is now an actual 2×2 `.chip-grid` with each chip its own small pill
+(background, padding, rounded corners) rather than four plain inline-flex
+text spans — "a tidy chip grid," not a flat row.
+
+**2 — the Test Hazards panel was never removed.** Checked before
+changing anything: `hazardTestPanel`'s conditional construction behind
+`params.has("debughazards")` (from the mechanics-fixes pass) was fully
+intact — `git grep debughazards` and a direct read of `main.ts` both
+confirmed it. The likely explanation: testing the bare URL (post-Bug-3-fix,
+correctly) reads as "the panel is gone" if you don't already know the
+gate exists. No code change needed for this half — just confirming and
+clearly stating the URL: **append `?debughazards` to the URL** (e.g.
+`https://climate-game-psi.vercel.app/?debughazards`, or the same param on
+whatever local dev URL is running) to get the "Test hazards" tab back,
+exactly as it worked before Bug 3's fix, just no longer visible without
+that param.
+
+Verified live: screenshotted the card close-up (header row, gauge,
+hazard-incoming line, 2×2 pill grid all visible together); confirmed
+`?debughazards` still renders both sliders and both "Trigger now" buttons.
+
+![Instrument Cluster card, close-up: Coin + Turn/Era header, Resilience gauge, "Storm Surge in 11 turns," and a real 2x2 chip grid below](tools/screenshots/instrument_cluster_card.png)
+
+**Verification:** 58/58 tests passing + 6 `skipIf`-gated unchanged,
+`tsc --noEmit` clean, production build succeeds.

@@ -169,6 +169,7 @@ function hazardIncomingInfo(): { kind: "Storm Surge" | "Flood"; turnsUntil: numb
 function refreshHud(): void {
   hud.setTileCount(state.claimed.size);
   hud.setCoin(state.coin);
+  hud.setTurnEra(state.turn, state.erasCompleted + 1); // 1-based, matching the "Era N retired" banner's own convention
   hud.setMeters({
     resilience: state.resilience,
     biodiversity: state.biodiversity,
