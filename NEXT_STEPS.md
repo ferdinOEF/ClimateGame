@@ -415,6 +415,41 @@ Status: both closed.
 - **J4** — Trust dropped from `hud.ts`'s display only (`gameState.ts`'s `trust` field and everything else that reads it, e.g. `scoring.ts`, untouched — confirmed via `grep`). Resilience promoted to a labeled gauge bar; fill clamped to `[0,100]` visually even though the raw number can exceed that range; shifts to the Food-chip's warning color once Resilience `<= 25` (a small addition beyond the letter of the ask, in the spirit of "a real gauge").
 - **J5** — new `hazardIncomingInfo()` in `main.ts` reads the same schedule numbers the terrain-tint telegraph already computes (no new state); shows one neutral "closer hazard" line normally, or every imminent hazard's own urgent line simultaneously once any is genuinely imminent — a compound event shows both, never collapsed to one. Required moving `refreshHud()`'s first call past the point where `nextCycloneAtTurn`/`nextFloodAtTurn` are declared (previously a temporal-dead-zone trap waiting to happen for exactly this kind of addition) — fixed at the root instead of adding another parallel workaround function.
 
+## Bucket K — Step prompt: remove auto-scheduled hazards, confirm & harden defense shadowing
+
+Source: `STEP_PROMPT_remove_schedule_confirm_shadowing.md`. See PROGRESS.md's
+own section for full detail, including the exact before/after damage numbers.
+
+### K1. Remove the turn-based auto-trigger and its telegraph systems
+
+Status: closed. Hazards no longer fire (or telegraph) on their own — the
+Test Hazards panel (`?debughazards`) is the only way one happens now.
+`checkHazardSchedule()`, the terrain-tint telegraphs, the schedule-driven
+cloud layer, and the spinning storm icon are all removed. `hazardIncomingInfo()`/
+`Hud.setHazardIncoming()`/CSS/`nextFloodAtTurn`/`nextCycloneAtTurn` were
+deliberately left intact but unwired, per the step prompt's own instruction,
+for a cheap re-enable once a real trigger design exists. **Known gap,
+flagged plainly:** real players currently have no way to experience a hazard
+at all — the trigger panel is dev-gated and the schedule is gone. Fine for
+this mechanics-testing phase, not fine to ship silently.
+
+### K2. Confirm and harden defense shadowing
+
+Status: closed. Added three dev-only test hooks (`__buildForTest`,
+`__triggerHazardForTest`, `__lastHazardResultForTest`) to drive a precise
+live verification. Confirmed with real numbers that a defense's absorption
+reduces both its own tile's damage and what it relays onward (e.g. Mangrove
+cut a flanking tile from `0.72` to `0.324`, and the tile one hop further in
+dropped in lockstep) — the mechanic itself is correct and working exactly as
+designed, no changes made to the propagation math. But on this real,
+hand-edited map, a single Beach column or single Estuary tile isn't a fully
+enclosing perimeter — the Estuary sits close enough to offer Storm Surge an
+unguarded second front through ordinary Land (which has zero absorption for
+a hazard it isn't defended against), so a "one column, one saved pocket"
+demo doesn't read cleanly here without also defending that flank. Worth
+carrying into future balance-tuning or tutorial-design work on this
+mechanic — not a bug, but a real property of this map's geometry.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -444,3 +479,4 @@ Status: both closed.
 - 2026-08-22, I1 (hazard-strength test sliders): closed. New `HazardTestPanel` (collapsible, closed on load, bottom-left tab) with two 0-3/step-0.1 sliders calling straight into the existing `triggerCyclone`/`triggerFlood` — a manual trigger behaves exactly like a scheduled one in every way. Confirmed live that sequencing Storm Surge then Flood within the compound window genuinely exercises the compound-flooding path, including real `COMPOUND_OVERLAY_COLOR` tiles on screen — closing a live-verification gap the hazard-science pass itself had flagged. Caught one real ordering bug pre-ship: the schedule readout's `let` dependencies aren't initialized at `main.ts`'s first `refreshHud()` call, so it's its own function, not folded in. No test-suite changes needed. `tsc --noEmit` clean, production build succeeds.
 - 2026-08-23, J1-J5 (hazard mechanics fixes + HUD v3): J1 investigated and found already fixed (elements.json's targetsHazards already said "flood", not "monsoon_flood" — the step prompt's deployed-bundle test was against a stale build); no code change, flagged rather than silently no-op'd. J2/J3 closed: `triggerFlood`/`triggerCyclone` gained a `skipEraCheck` option the Test Hazards panel and `?flood=`/`?cyclone=` now pass, so a manual test trigger no longer wipes the map on crossing Resilience to zero; the panel itself now only constructs behind `?debughazards`, matching the rest of Section 10's dev-tooling convention. J4/J5 closed: Trust dropped from the HUD (data model untouched), Resilience promoted to a real gauge with a critical-threshold color shift, and a new hazard-incoming readout on the main card shows the closer hazard normally or every imminent hazard's own urgent line at once for a genuine compound event. Fixed a temporal-dead-zone risk at the root by moving `refreshHud()`'s first call rather than adding another workaround function. Verified live end-to-end (screenshotted): map survives a test-triggered hazard at deeply negative Resilience; fresh-load HUD shows the gauge and hazard-incoming line with no Trust anywhere. 58/58 tests passing + 6 `skipIf`-gated unchanged, `tsc --noEmit` clean, production build succeeds.
 - 2026-08-23, follow-up (HUD card treatment + confirming the Test Hazards panel is intact): closed, both user-reported. The top-left corner had the Instrument Cluster's content but none of its visual treatment (`.hud-corner` has no background/border/padding at all) — fixed with a real card (`.instrument-cluster`), a Coin + Turn/Era header row (new `Hud.setTurnEra()`), and the secondary meters as an actual 2x2 pill `.chip-grid` instead of plain inline text. Confirmed the Test Hazards panel was never removed — `?debughazards` still shows it exactly as before, just clearly re-stated since the bare-URL Bug-3 fix reads as "it's gone" without knowing the gate exists. Screenshotted the card close-up. 58/58 tests passing, `tsc --noEmit` clean, production build succeeds.
+- 2026-08-23, K1-K2 (remove auto-scheduled hazards, confirm & harden defense shadowing): both closed. K1: hazards no longer fire or telegraph on a turn-based schedule — `checkHazardSchedule()`, both terrain-tint telegraphs, the schedule-driven cloud layer, and the spinning storm icon are all removed; the Test Hazards panel (`?debughazards`) is now the only way a hazard fires. `hazardIncomingInfo()`/`Hud.setHazardIncoming()`/its CSS/`nextFloodAtTurn`/`nextCycloneAtTurn` deliberately left intact but unwired, per the step prompt, for a cheap re-enable later. Flagged plainly: real players have no way to trigger a hazard at all right now. K2: added three dev-only test hooks and live-verified defense shadowing with real per-tile damage numbers (not just overlay visibility) — confirmed absorption reduces both a tile's own damage and what it relays onward (Mangrove cut a flanking tile from 0.72 to 0.324, and the tile one hop further in dropped in lockstep), no changes made to the propagation math itself. Found and reported honestly, not glossed over: on this real hand-edited map, a single Beach column isn't a fully enclosing perimeter — the adjacent Estuary offers Storm Surge an unguarded second front through zero-absorption Land, so "one column, one saved pocket" doesn't demo cleanly without also defending that flank. 58/58 tests passing + 6 `skipIf`-gated unchanged, `tsc --noEmit` clean, production build succeeds.

@@ -1932,3 +1932,114 @@ hazard-incoming line, 2×2 pill grid all visible together); confirmed
 
 **Verification:** 58/58 tests passing + 6 `skipIf`-gated unchanged,
 `tsc --noEmit` clean, production build succeeds.
+
+## Step prompt: remove auto-scheduled hazards, confirm & harden defense shadowing — DONE
+
+Source: `STEP_PROMPT_remove_schedule_confirm_shadowing.md`.
+
+### Part A — remove the turn-based auto-trigger
+
+Status: closed. `checkHazardSchedule()` and its call site in `openTilePopover()`'s
+build callback are gone — a hazard no longer fires (or telegraphs) on its
+own; the Test Hazards panel (`?debughazards`) is now the *only* way one
+happens. The systems that only existed to warn about the retired schedule
+went with it: `updateFloodTelegraph()`/`updateCycloneTelegraph()` (river/coast
+terrain tint), `updateCloudVisibility()` (schedule-driven cloud layer), the
+spinning storm icon (`cycloneIcon`, deleted — nothing will ever set it visible
+again), and `rolledSeverity()`/`tilesOfType()` (both orphaned once their only
+callers were gone). **Deliberately not deleted**, per the step prompt's own
+instruction: `hazardIncomingInfo()`, `Hud.setHazardIncoming()` and its CSS,
+and `nextFloodAtTurn`/`nextCycloneAtTurn` themselves — `refreshHud()` simply
+stopped calling `hazardIncomingInfo()`, leaving the function fully intact
+and one line away from being wired back in once a real player-facing trigger
+design exists. The Test Hazards panel's own "next scheduled in N turns"
+readout stayed (my call, per the prompt's explicit either-way), reworded to
+"auto-fire retired — would've been in N turns" so it can't read as a live
+countdown. `stormSurgeActive`'s compound-detection check in `triggerFlood`
+lost its now-permanently-false `cycloneTelegraphing ||` clause and now runs
+on the `lastStormSurgeResolvedTurn` window alone — unchanged in effect, since
+that half of the check never depended on the telegraph anyway.
+
+**Flag, as required:** real players currently have no way to experience a
+hazard at all. The Test Hazards panel is dev-gated behind `?debughazards`,
+and the auto-schedule that used to fire hazards for everyone is gone. This
+is fine for the current mechanics-testing phase but is a real gap before
+this goes in front of anyone else — what should trigger a hazard for a real
+player is an explicit open question the step prompt itself deferred, not
+something this pass answers.
+
+`tsc --noEmit` clean, 58/58 tests + 6 `skipIf`-gated unchanged, production
+build succeeds.
+
+### Part B — confirm and harden defense shadowing
+
+Status: closed — mechanic confirmed live at the point of contact, with a
+real, honestly-reported caveat about what "protects everything behind it"
+actually requires on this specific map.
+
+Added three small dev-only test hooks (same "inert unless called" category
+as `__focusOnForTest`/`__cloudLayerForTest`) so a verification script could
+drive this precisely rather than reverse-engineering popover clicks:
+`__buildForTest(q, r, elementId)`, `__triggerHazardForTest.{cyclone,flood}`,
+and `__lastHazardResultForTest()` (the most recent resolved hazard's raw
+per-tile damage, captured in a new `lastHazardResult` module variable).
+
+**Storm Surge / Beach / Seawall.** Built a mature (`matureTurns: 0`) Seawall
+on all 13 Beach tiles, triggered Storm Surge at 1.2x, and read back the real
+`tileDamage` map. The defended Beach tiles themselves showed exactly the
+expected ~90% reduction (e.g. `0.259` undefended vs. `0.026` defended at the
+same tile, swapped by leaving one tile as a deliberate gap) — the absorption
+half of the mechanic is unambiguously working. But the Land tiles immediately
+behind the line showed **identical** damage whether the line was contiguous
+or gapped. Root cause, traced via the real `tileDamage` numbers plus a
+from-scratch BFS over the map data: those Land tiles are equally reachable
+(same hop count) via a Land tile that borders the **Estuary** directly
+(`-4,1`, adjacent to `-3,0`/`-4,0`) — and Estuary is *also* a Storm Surge
+source. Since Land has no inherent absorption for a hazard it isn't defended
+against, that flank relays severity at full strength, and the shared-BFS
+"take the max severity across all incoming neighbors" rule (explicitly
+untouched, per "What NOT to change") means the higher, undefended arrival
+always wins over the lower, defended one at any tile reachable by both.
+Building Mangrove on the two Estuary tiles bordering that flank confirmed
+the mechanism precisely: `-4,1`'s damage dropped from `0.72` to `0.324`
+(exactly `0.72 × (1 − 0.55)`, Mangrove's own absorption), and the tile one
+hop further in dropped from `0.432` to `0.194` in lockstep — the same
+"reduced value relays onward" behavior working a second hop out. Two other
+Land tiles in the test set still showed unchanged damage even with that
+flank closed, meaning at least one more undefended route exists somewhere
+else in this real, irregular, hand-edited map's geometry.
+
+**Flood / Estuary / Khazan.** Built a mature (2-turn) Khazan on an Estuary
+tile with exactly one Land neighbor (`-3,2`'s only Estuary neighbor is
+`-2,1`), then triggered Flood at 1.5x. The Khazan tile itself fully absorbed
+the event — `floodBufferCapacityM3`'s reservoir drew the whole incoming
+volume down before any percentage-absorption math even ran, so the tile
+shows zero damage and (per `resolveHazardWave`'s own logic) never relays
+anything onward at all. But `-3,2` itself showed identical damage with or
+without the Khazan, for the same reason as the Storm Surge case: it has
+other Land neighbors that reach a flood source via a shorter or equally
+undefended route the Khazan alone doesn't touch.
+
+**Conclusion, reported honestly rather than glossed over:** the propagation
+math is correct and doing exactly what Section 6/the step prompt describes
+— absorption reduces both a tile's own damage and what it relays onward,
+confirmed with real before/after numbers at up to two hops of distance. But
+on this real map (not a clean rectangular test fixture), "one Beach column"
+or "one Estuary tile" is not, by itself, a fully enclosing perimeter — the
+Estuary sits close enough to this stretch of coast that it offers Storm
+Surge a second, unguarded front, and Land's zero-absorption relay means a
+single open flank anywhere nearby can dominate the result at a shared tile
+several hops in. This is a sharper, concrete version of the caveat the step
+prompt itself already flagged ("a single Seawall tile with open Beach on
+either side won't read as working") — it generalizes to any nearby unguarded
+frontage, not just a gap in the same terrain line, which is worth carrying
+into any future balance-tuning or player-facing tutorial work on this
+mechanic. No changes made to absorption values, decay constants,
+`MIN_SEVERITY`, or the max-severity merge rule, per the step prompt's own
+explicit "What NOT to change."
+
+`tsc --noEmit` clean, 58/58 tests + 6 `skipIf`-gated unchanged, production
+build succeeds. Verification scripts (`tools/verify_shadowing.ts`,
+`tools/verify_shadowing2.ts`) were temporary — deleted after their output
+was read, per this repo's convention; the three test hooks they drove stay
+in `main.ts` for any future re-check.
