@@ -1,4 +1,14 @@
-export type SoundId = "tile_settle" | "build" | "hazard_telegraph" | "hazard_resolve" | "era_end";
+// STEP_PROMPT_pacing_telegraph_preview.md Section 1: "hazard_arrival"
+// is the countdown-hits-zero beat itself (distinct from "hazard_telegraph",
+// which plays once when the countdown *window* opens) — see Hud.
+// flashArrival()'s matching visual beat in main.ts's checkHazardSchedule().
+export type SoundId =
+  | "tile_settle"
+  | "build"
+  | "hazard_telegraph"
+  | "hazard_arrival"
+  | "hazard_resolve"
+  | "era_end";
 
 /**
  * Placeholder audio hooks (Section 9's Phase 5 milestone: "audio hooks,

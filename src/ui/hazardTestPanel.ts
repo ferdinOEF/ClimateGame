@@ -116,18 +116,19 @@ export class HazardTestPanel {
   }
 
   /**
-   * STEP_PROMPT_remove_schedule_confirm_shadowing.md Part A: the auto-fire
-   * schedule itself is retired (nothing fires on its own anymore — only
-   * "Trigger now" does), but `nextCycloneAtTurn`/`nextFloodAtTurn` still
-   * tick along in `main.ts` unused otherwise, so this stays as a purely
-   * informational reference point while testing. Wording says so plainly,
-   * so it doesn't read as a live countdown that's about to fire on its own.
+   * STEP_PROMPT_pacing_telegraph_preview.md: the auto-fire schedule is
+   * genuinely live again (the real game's pacing loop, not dormant) — this
+   * is a real countdown once more, same as before STEP_PROMPT_remove_
+   * schedule_confirm_shadowing.md's testing-phase removal. Manually firing
+   * from this panel still resets `nextCycloneAtTurn`/`nextFloodAtTurn` (via
+   * `triggerCyclone`/`triggerFlood` themselves), so this readout stays
+   * accurate regardless of which path actually fires next.
    */
   setScheduleInfo(stormTurnsUntil: number, floodTurnsUntil: number): void {
     const clampedStorm = Math.max(0, stormTurnsUntil);
     const clampedFlood = Math.max(0, floodTurnsUntil);
-    this.stormSchedule.textContent = `auto-fire retired — would've been in ${clampedStorm} turn${clampedStorm === 1 ? "" : "s"}`;
-    this.floodSchedule.textContent = `auto-fire retired — would've been in ${clampedFlood} turn${clampedFlood === 1 ? "" : "s"}`;
+    this.stormSchedule.textContent = `next scheduled in ${clampedStorm} turn${clampedStorm === 1 ? "" : "s"}`;
+    this.floodSchedule.textContent = `next scheduled in ${clampedFlood} turn${clampedFlood === 1 ? "" : "s"}`;
   }
 
   /** Verify checklist: the panel's own state doesn't need to persist across an era reset — closed/default-severity is fine and simpler than preserving it. */

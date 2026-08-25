@@ -19,6 +19,40 @@ html, body {
 }
 
 /*
+  STEP_PROMPT_pacing_telegraph_preview.md Section 1: a brief full-
+  viewport tint, edge-weighted (a radial gradient, transparent center so it
+  never obscures gameplay), so "the storm has arrived" reads as its own
+  discrete moment rather than a build action that happens to also trigger
+  a hazard with no transition. `--arrival-flash-color` is set per-hazard-
+  kind in JS (Hud.flashArrival). pointer-events: none — it's a beat, not a
+  modal, never blocks input while it plays.
+*/
+.hazard-arrival-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, var(--arrival-flash-color, #3a3348) 140%);
+}
+
+.hazard-arrival-flash.flashing {
+  animation: hazard-arrival-flash 550ms ease-out;
+}
+
+@keyframes hazard-arrival-flash {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/*
   The map is the interface (Section 3). HUD elements are small,
   corner-anchored strips only — never a panel competing with the map.
 */

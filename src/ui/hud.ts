@@ -35,6 +35,7 @@ export class Hud {
   private bannerEl: HTMLElement;
   private yachtGoalEl: HTMLElement;
   private yachtValueEl: HTMLElement;
+  private arrivalFlashEl: HTMLElement;
 
   constructor(container: HTMLElement) {
     const tileCounter = document.createElement("div");
@@ -102,6 +103,30 @@ export class Hud {
     container.appendChild(yachtGoal);
     this.yachtGoalEl = yachtGoal;
     this.yachtValueEl = yachtGoal.querySelector(".yacht-value")!;
+
+    // STEP_PROMPT_pacing_telegraph_preview.md Section 1's "give the
+    // countdown-hits-zero moment its own beat": a full-viewport tinted
+    // flash, briefly, so a hazard's actual arrival reads as a discrete
+    // event distinct from the wave-sweep that follows it — not a build
+    // action that happens to also trigger a hazard with no transition.
+    const arrivalFlash = document.createElement("div");
+    arrivalFlash.className = "hazard-arrival-flash";
+    container.appendChild(arrivalFlash);
+    this.arrivalFlashEl = arrivalFlash;
+  }
+
+  /**
+   * Fires the arrival-beat flash in `color` (a CSS color string). Restarts
+   * cleanly even if called again before the previous flash's animation
+   * finished — removing then re-adding the animating class in the same
+   * tick wouldn't restart a CSS animation on its own, so this forces a
+   * reflow in between.
+   */
+  flashArrival(color: string): void {
+    this.arrivalFlashEl.style.setProperty("--arrival-flash-color", color);
+    this.arrivalFlashEl.classList.remove("flashing");
+    void this.arrivalFlashEl.offsetWidth; // force reflow so re-adding the class restarts the animation
+    this.arrivalFlashEl.classList.add("flashing");
   }
 
   /**

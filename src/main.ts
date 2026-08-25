@@ -54,6 +54,22 @@ scene.add(elements.group);
 scene.add(hazardOverlay.mesh);
 scene.add(cloudLayer.group);
 
+/**
+ * A spinning storm marker over the coast — Section 5's "spinning storm
+ * icon approaching," in-scene, not text. STEP_PROMPT_pacing_telegraph_
+ * preview.md: reactivated alongside the rest of the telegraph system
+ * (see updateCycloneTelegraph() below) — this was deleted, not just
+ * disconnected, when the schedule was removed, so it's rebuilt here from
+ * the pre-removal version (git history), not a one-line reconnection.
+ */
+const cycloneIcon = new THREE.Mesh(
+  new THREE.TorusGeometry(0.6, 0.12, 6, 5),
+  new THREE.MeshStandardMaterial({ color: "#3a3440", flatShading: true, roughness: 0.6 })
+);
+cycloneIcon.visible = false;
+cycloneIcon.rotation.x = Math.PI / 2;
+scene.add(cycloneIcon);
+
 function keysToCoords(keys: Iterable<string>): AxialCoord[] {
   const coords: AxialCoord[] = [];
   for (const key of keys) {
@@ -113,6 +129,16 @@ const buildPopover = new BuildPopover(container);
  * manual_only_mode.md: neither function has an era-end consequence to
  * skip anymore — nothing auto-resets the board now, ever — so there's no
  * `skipEraCheck` option left to pass here.
+ *
+ * STEP_PROMPT_pacing_telegraph_preview.md: stays exactly as it is,
+ * permanently, alongside the now-live scheduled/telegraphed loop — a
+ * separate testing tool, not a placeholder for it. A manual trigger mid-
+ * telegraph can't produce a confusing double-telegraph: triggerFlood()/
+ * triggerCyclone() themselves clear all telegraph state (tint, cloud
+ * layer, the storm icon, `pendingFloodSeverity`/`pendingCycloneSeverity`)
+ * and reset `nextFloodAtTurn`/`nextCycloneAtTurn` regardless of which path
+ * called them, so the schedule can never end up telegraphing toward an
+ * event that already happened.
  */
 const hazardTestPanel = params.has("debughazards")
   ? new HazardTestPanel(container, {
@@ -125,17 +151,13 @@ const hazardTestPanel = params.has("debughazards")
 const YACHT_COST = ELEMENT_BY_ID.get("yacht")!.buildCost;
 
 /**
- * STEP_PROMPT_remove_schedule_confirm_shadowing.md Part A: no longer called
- * from `refreshHud()` — there's no auto-schedule left for it to report a
- * countdown against, and a stale/nonsensical countdown next to a hazard
- * that will never fire on its own is worse than showing nothing. Left
- * fully intact (not deleted, not gutted to `return []`) on purpose: a real
- * scheduling/telegraph design is likely coming back once the actual
- * player-facing trigger mechanism gets designed, and this — plus
- * `Hud.setHazardIncoming()` and its CSS, and `nextFloodAtTurn`/
- * `nextCycloneAtTurn` themselves, all still here unchanged — is exactly
- * the plumbing that reactivation would need. Re-wiring it back into
- * `refreshHud()` is a one-line change, not a rebuild.
+ * STEP_PROMPT_pacing_telegraph_preview.md Section 1: re-wired back
+ * into `refreshHud()` below — the scheduled/telegraphed loop is the real
+ * game's pacing now (confirmed directly with the project owner; STEP_
+ * PROMPT_remove_schedule_confirm_shadowing.md's removal was a testing-
+ * phase choice, not the shipped design). This genuinely was close to a
+ * one-line reconnection, exactly as that pass's own comment predicted —
+ * the function itself needed no changes, only its call site.
  */
 function hazardIncomingInfo(): { kind: "Storm Surge" | "Flood"; turnsUntil: number; imminent: boolean }[] {
   const stormTurnsUntil = nextCycloneAtTurn - state.turn;
@@ -172,8 +194,7 @@ function refreshHud(): void {
     food: state.food,
     population: state.population
   });
-  // hazardIncomingInfo() is intentionally not called here — see its own
-  // comment above (STEP_PROMPT_remove_schedule_confirm_shadowing.md Part A).
+  hud.setHazardIncoming(hazardIncomingInfo());
   hud.setEmptyTiles(state.emptyTileCount);
   hud.setYachtGoal(state.coin, YACHT_COST, state.hasElement("yacht"));
 }
@@ -186,6 +207,20 @@ function worldToScreen(x: number, y: number, z: number): { x: number; y: number 
     x: ((v.x + 1) / 2) * rect.width,
     y: ((-v.y + 1) / 2) * rect.height
   };
+}
+
+/**
+ * STEP_PROMPT_pacing_telegraph_preview.md: reactivated alongside the
+ * telegraph system below (deleted, not just disconnected, by the schedule
+ * removal — see cycloneIcon's own comment above for why this is a rebuild
+ * from git history, not a reconnection).
+ */
+function tilesOfType(...terrainIds: string[]): AxialCoord[] {
+  const coords: AxialCoord[] = [];
+  for (const tile of state.placed.values()) {
+    if (terrainIds.includes(tile.terrainId)) coords.push(tile.coord);
+  }
+  return coords;
 }
 
 // STEP_PROMPT_hazard_science.md Section 6: how long one BFS round gets on
@@ -226,73 +261,147 @@ function applyHazardResult(kind: HazardKind, result: HazardResult, now: number):
     const [q, r] = key.split(",").map(Number);
     const coord = { q, r };
     const delayMs = (result.arrivalRound.get(key) ?? 0) * ROUND_DURATION_MS;
-    if (delayMs <= 0) hazardOverlay.show(kind, coord, terrain.heightAt(coord), damage, now);
-    else setTimeout(() => hazardOverlay.show(kind, coord, terrain.heightAt(coord), damage, performance.now()), delayMs);
+    const reveal = (revealNow: number) => hazardOverlay.show(kind, coord, terrain.heightAt(coord), damage, revealNow);
+    if (delayMs <= 0) reveal(now);
+    else setTimeout(() => reveal(performance.now()), delayMs);
   }
 }
 
 // --- Monsoon Flood + Cyclone resolution -----------------------------------------
 //
-// STEP_PROMPT_remove_schedule_confirm_shadowing.md Part A: hazards no
-// longer fire on a turn-based schedule, so there's nothing left to
-// telegraph either — the river/coast terrain tint, the cloud layer's
-// schedule-driven visibility, and the spinning storm icon are all retired
-// along with it (a telegraph that never resolves into anything reads as
-// broken, not suspenseful). The Test Hazards panel (`?debughazards`) is
-// the only way a hazard fires right now. `nextFloodAtTurn`/
-// `nextCycloneAtTurn` themselves stay — see hazardIncomingInfo()'s comment
-// above for why.
+// STEP_PROMPT_pacing_telegraph_preview.md: the scheduled/telegraphed
+// loop is the real game's actual pacing loop — confirmed directly with the
+// project owner. STEP_PROMPT_remove_schedule_confirm_shadowing.md's
+// removal was a testing-phase choice, not the shipped design; this section
+// is rebuilt from that pass's pre-removal git history (the functions were
+// genuinely deleted, not just disconnected — see cycloneIcon's/
+// tilesOfType()'s own comments above). The Test Hazards panel
+// (`?debughazards`) stays exactly as it was: a separate, permanent manual
+// trigger, not a placeholder for this.
 
+const FLOOD_TELEGRAPH_COLOR = new THREE.Color("#0b2033");
 const FLOOD_INTERVAL_TURNS = 15;
 const FLOOD_TELEGRAPH_TURNS = 2;
 let nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
 
+let floodTelegraphing = false;
+/**
+ * STEP_PROMPT_pacing_telegraph_preview.md Section 1: rolled once, the
+ * moment the telegraph window opens, not re-rolled again when the
+ * countdown actually reaches zero — what gets telegraphed is what
+ * happens; `checkHazardSchedule()` below uses this exact value (falling
+ * back to a fresh roll only if it's somehow unset) rather than calling
+ * `rolledSeverity()` a second time.
+ */
+let pendingFloodSeverity: number | null = null;
+
+/** Section 6 item 3: the cloud layer telegraphs either hazard, independent of the HUD/terrain-tint telegraph. */
+function updateCloudVisibility(): void {
+  cloudLayer.setVisible(floodTelegraphing || cycloneTelegraphing);
+}
+
+function updateFloodTelegraph(): void {
+  const turnsUntil = nextFloodAtTurn - state.turn;
+  const telegraphing = turnsUntil > 0 && turnsUntil <= FLOOD_TELEGRAPH_TURNS;
+  if (telegraphing && !floodTelegraphing) {
+    playSound("hazard_telegraph");
+    pendingFloodSeverity = rolledSeverity();
+  }
+  floodTelegraphing = telegraphing;
+  for (const coord of tilesOfType("river")) terrain.setTint(coord, telegraphing ? FLOOD_TELEGRAPH_COLOR : null);
+  updateCloudVisibility();
+  updateHazardTestSchedule();
+}
+
 /**
  * STEP_PROMPT_hazard_science.md Section 5: the compound mechanic isn't just
- * calendar overlap — it's the Flood resolver actually checking whether a
- * Storm Surge Wave is concurrently active before adding its downstream/
- * tidal-push source (Section 3). With the telegraph gone (Part A), there's
- * no more "currently telegraphing" state to also check — "concurrently
- * active" now means "resolved within the last couple of turns," which is
- * still generous: a real surge's water is realistically still working
- * through the system for a bit after it resolves, not just on the exact
- * same turn.
+ * calendar overlap (both hazards already trigger on independent schedules
+ * and can coincidentally land close together, unchanged) — it's the Flood
+ * resolver actually checking whether a Storm Surge Wave is concurrently
+ * active before adding its downstream/tidal-push source (Section 3).
+ * "Concurrently active" is generous on purpose: currently telegraphing (a
+ * surge visibly imminent) OR resolved within the last couple of turns
+ * (its surge is still realistically working through the system) both
+ * count — not just "resolving on the exact same turn."
  */
 const STORM_SURGE_COMPOUND_WINDOW_TURNS = 2;
 
 /**
  * Resolves the flood: visible in-scene (rising water, defenses absorbing/
- * failing/degrading), not just meter numbers.
- *
- * STEP_PROMPT_manual_only_mode.md: no era-end consequence to skip anymore
- * — a triggered hazard resolves fully (damage, absorption, meter changes,
- * the visual sweep) and never wipes the board on its own, regardless of
- * what Resilience ends up at. The board only ever resets via the manual
- * "Reset Board" control (`resetBoard()` below).
+ * failing/degrading), not just meter numbers. Called either by the real
+ * schedule (`checkHazardSchedule()`, via `scheduleHazardArrival()`'s
+ * delayed callback) or by the Test Hazards panel / dev URL params, which
+ * behave identically in every way except where the severity number came
+ * from — STEP_PROMPT_manual_only_mode.md already removed the only thing
+ * that used to differ (an era-end consequence to skip).
  */
 function triggerFlood(baseSeverity: number): void {
-  const stormSurgeActive = state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
+  const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
   const result = resolveMonsoonFlood(state, baseSeverity, stormSurgeActive);
   applyHazardResult("flood", result, performance.now());
+  for (const coord of tilesOfType("river")) terrain.setTint(coord, null);
+  floodTelegraphing = false;
+  pendingFloodSeverity = null;
+  updateCloudVisibility();
   nextFloodAtTurn = state.turn + FLOOD_INTERVAL_TURNS;
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
 }
 
-// --- Cyclone resolution -----------------------------------------------------------
+// --- Cyclone telegraph + resolution -------------------------------------------
 
+const CYCLONE_TELEGRAPH_COLOR = new THREE.Color("#3a3348");
 const CYCLONE_INTERVAL_TURNS = 11;
 const CYCLONE_TELEGRAPH_TURNS = 1;
 let nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
 
+function coastalCentroid(): { x: number; z: number } | null {
+  const coords = tilesOfType("coast", "estuary");
+  if (coords.length === 0) return null;
+  let x = 0;
+  let z = 0;
+  for (const c of coords) {
+    const w = axialToWorld(c, 1.0);
+    x += w.x;
+    z += w.z;
+  }
+  return { x: x / coords.length, z: z / coords.length };
+}
+
+let cycloneTelegraphing = false;
+/** Same pinning reasoning as pendingFloodSeverity above. */
+let pendingCycloneSeverity: number | null = null;
 /** Section 5's compound-mechanic window (see STORM_SURGE_COMPOUND_WINDOW_TURNS above) — the turn a Storm Surge Wave last actually resolved, so a Flood shortly after still counts as concurrent. */
 let lastStormSurgeResolvedTurn = -Infinity;
 
-/** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. No era-end consequence — see triggerFlood's own comment. */
+function updateCycloneTelegraph(): void {
+  const turnsUntil = nextCycloneAtTurn - state.turn;
+  const telegraphing = turnsUntil > 0 && turnsUntil <= CYCLONE_TELEGRAPH_TURNS;
+  if (telegraphing && !cycloneTelegraphing) {
+    playSound("hazard_telegraph");
+    pendingCycloneSeverity = rolledSeverity();
+  }
+  cycloneTelegraphing = telegraphing;
+  for (const coord of tilesOfType("coast", "estuary")) {
+    terrain.setTint(coord, telegraphing ? CYCLONE_TELEGRAPH_COLOR : null, 0.45);
+  }
+  const centroid = coastalCentroid();
+  cycloneIcon.visible = telegraphing && centroid !== null;
+  if (telegraphing && centroid) cycloneIcon.position.set(centroid.x, 2.2, centroid.z);
+  updateCloudVisibility();
+  updateHazardTestSchedule();
+}
+
+/** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. See triggerFlood's own comment for who calls this and why they behave identically. */
 function triggerCyclone(baseSeverity: number): void {
   const result = resolveCyclone(state, baseSeverity);
   applyHazardResult("storm", result, performance.now());
+  for (const coord of tilesOfType("coast", "estuary")) terrain.setTint(coord, null);
+  cycloneIcon.visible = false;
+  cycloneTelegraphing = false;
+  pendingCycloneSeverity = null;
+  updateCloudVisibility();
   lastStormSurgeResolvedTurn = state.turn;
   nextCycloneAtTurn = state.turn + CYCLONE_INTERVAL_TURNS;
   updateHazardTestSchedule();
@@ -308,18 +417,22 @@ function triggerCyclone(baseSeverity: number): void {
  * `?debughazards` is set) — folding an always-needed `?.`-guarded call
  * into every `refreshHud()` invocation is fine either way, but keeping it
  * separate here means `refreshHud()` itself never needs to know the panel
- * might not exist.
+ * might not exist. STEP_PROMPT_pacing_telegraph_preview.md: now that
+ * the schedule is genuinely live again, this readout is a real countdown
+ * once more, not an informational "would've been" note.
  */
 function updateHazardTestSchedule(): void {
   hazardTestPanel?.setScheduleInfo(nextCycloneAtTurn - state.turn, nextFloodAtTurn - state.turn);
 }
 updateHazardTestSchedule();
 
-// refreshHud() itself no longer needs anything declared this late (its
-// hazardIncomingInfo() call is gone — see that function's own comment
-// above), but its first call stays here, right after updateHazardTestSchedule()'s
-// own first call, rather than moving back up next to its definition —
-// no benefit to moving it, and this spot is already proven safe.
+// refreshHud() calls hazardIncomingInfo() (see above), which reads
+// nextCycloneAtTurn/nextFloodAtTurn — both `let` bindings declared earlier
+// in this section, so this is safe. Its first call stays here, right after
+// updateHazardTestSchedule()'s own first call, matching that function's
+// identical constraint — no benefit to moving it, and this spot is already
+// proven safe (a real TDZ bug here was caught and fixed once already, in
+// STEP_PROMPT_hud_instrument_cluster.md).
 refreshHud();
 
 // --- Board reset -----------------------------------------------------------------
@@ -355,6 +468,63 @@ function resetBoard(): void {
   updateHazardTestSchedule();
 
   refreshHud();
+}
+
+// --- Hazard schedule --------------------------------------------------------------
+
+/** Section 2: "a slowly rising monsoon intensity / cyclone season modifier" biases future severity upward within an era. */
+function rolledSeverity(): number {
+  return 1.0 + Math.random() * 0.6 + state.severityBaseline;
+}
+
+// STEP_PROMPT_pacing_telegraph_preview.md Section 1: how long the
+// arrival beat (flash + sound) plays before the actual resolution/wave-
+// sweep starts — long enough to read as its own discrete moment, short
+// enough not to feel like a loading delay. PLACEHOLDER pacing number, same
+// "flag it, let feel-tuning refine it" convention as ROUND_DURATION_MS.
+const HAZARD_ARRIVAL_BEAT_MS = 450;
+
+/**
+ * The countdown-hits-zero moment, distinct from the wave-sweep that
+ * follows it: a screen-edge flash + sound immediately, then the real
+ * resolution (and its own wave-sweep spectacle) after a short beat. Only
+ * used by the scheduled path (`checkHazardSchedule()` below) — the Test
+ * Hazards panel's "Trigger now" stays instant-resolve-on-click, exactly as
+ * it already was, since there's no telegraphed anticipation to pay off
+ * there.
+ */
+function scheduleHazardArrival(kind: "flood" | "storm", fire: () => void): void {
+  playSound("hazard_arrival");
+  hud.flashArrival(kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
+  setTimeout(fire, HAZARD_ARRIVAL_BEAT_MS);
+}
+
+/**
+ * STEP_PROMPT_remove_claiming.md: Build is now the sole action that
+ * advances a turn (Claim used to own this job, including this check) —
+ * called once after any successful `state.build()`, so a hazard fires (or
+ * its telegraph updates) the moment the schedule's turn is actually
+ * reached, regardless of which tile/element triggered it. The player
+ * controls their own pace entirely (turns only advance via their own
+ * build actions) but not the exact moment a telegraphed hazard lands,
+ * once its countdown reaches zero — that's the actual source of the
+ * tension, preserved here deliberately: resolution happens inside this
+ * same call, not on a separate hidden tick.
+ */
+function checkHazardSchedule(): void {
+  if (state.turn >= nextFloodAtTurn) {
+    const severity = pendingFloodSeverity ?? rolledSeverity();
+    scheduleHazardArrival("flood", () => triggerFlood(severity));
+  } else {
+    updateFloodTelegraph();
+  }
+
+  if (state.turn >= nextCycloneAtTurn) {
+    const severity = pendingCycloneSeverity ?? rolledSeverity();
+    scheduleHazardArrival("storm", () => triggerCyclone(severity));
+  } else {
+    updateCycloneTelegraph();
+  }
 }
 
 // --- Build / defend popover --------------------------------------------------
@@ -426,6 +596,12 @@ function openTilePopover(coord: AxialCoord): void {
     if (!state.build(coord, id)) return;
     elements.place(coord, id, terrain.heightAt(coord), { animate: true });
     playSound("build");
+    // STEP_PROMPT_pacing_telegraph_preview.md: checkHazardSchedule() now
+    // runs BEFORE refreshHud() (was the other way around) — it's what
+    // updates the telegraph state (tint, cloud layer, pending severity)
+    // for this turn, so the HUD should reflect that immediately, not one
+    // build-cycle stale.
+    checkHazardSchedule();
     refreshHud();
     // STEP_PROMPT_manual_only_mode.md: no automatic era-end check anymore
     // — nothing resets the board on its own, ever. The board only ever
@@ -475,6 +651,7 @@ start((nowMs) => {
   elements.tick(nowMs);
   hazardOverlay.tick(nowMs);
   cloudLayer.tick(nowMs);
+  if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 });
 
 /**
@@ -527,6 +704,15 @@ function devAutoBuild(kind: "building" | "defense"): void {
   refreshHud();
   return true;
 };
+// STEP_PROMPT_pacing_telegraph_preview.md Section 1 Verify: exposes
+// checkHazardSchedule() directly rather than folding it into
+// __buildForTest above — several existing tests (Small Dam reservoir,
+// defense-shadowing) deliberately rely on __buildForTest NOT touching the
+// schedule, so a scripted build sequence can't accidentally trigger a
+// random-severity hazard mid-setup. A verification script that DOES want
+// the full real-build behavior (build, then check the schedule — exactly
+// what openTilePopover()'s build callback does) calls both explicitly.
+(window as unknown as Record<string, unknown>).__checkHazardScheduleForTest = checkHazardSchedule;
 (window as unknown as Record<string, unknown>).__triggerHazardForTest = {
   cyclone: (severity: number) => triggerCyclone(severity),
   flood: (severity: number) => triggerFlood(severity)
