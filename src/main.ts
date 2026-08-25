@@ -236,6 +236,13 @@ const ROUND_DURATION_MS = 550;
  * real hop-by-hop BFS resolution (Section 6 item 1/2) instead of every
  * damaged tile popping in at once regardless of how far it was from the
  * source.
+ *
+ * STEP_PROMPT_pacing_telegraph_preview.md Section 2: each tile's
+ * reveal also plays a sound scoped to what actually happened there — a
+ * catastrophic breach doesn't sound the same as a defense quietly holding.
+ * Deliberately NOT one sound per damaged tile (a severe event can damage
+ * dozens at once; a sound per tile would be noise, literally) — only the
+ * two dramatic, comparatively rare outcomes get their own cue.
  */
 // STEP_PROMPT_remove_schedule_confirm_shadowing.md Part B: the most recent
 // resolved hazard's raw per-tile damage, exposed read-only via
@@ -261,10 +268,42 @@ function applyHazardResult(kind: HazardKind, result: HazardResult, now: number):
     const [q, r] = key.split(",").map(Number);
     const coord = { q, r };
     const delayMs = (result.arrivalRound.get(key) ?? 0) * ROUND_DURATION_MS;
-    const reveal = (revealNow: number) => hazardOverlay.show(kind, coord, terrain.heightAt(coord), damage, revealNow);
+    const reveal = (revealNow: number) => {
+      hazardOverlay.show(kind, coord, terrain.heightAt(coord), damage, revealNow);
+      if (result.destroyedDefenses.includes(key)) playSound("hazard_breach");
+      else if (result.overwhelmedDefenses.includes(key)) playSound("hazard_overwhelmed");
+    };
     if (delayMs <= 0) reveal(now);
     else setTimeout(() => reveal(performance.now()), delayMs);
   }
+}
+
+/** STEP_PROMPT_pacing_telegraph_preview.md Section 2: how long the wave-sweep takes to visually finish (the last tile's staggered reveal, plus a buffer for its own reveal/settle animation) — used to time the aftermath summary so it appears right as the sweep actually ends, not mid-sweep or with an awkward gap after. */
+function sweepDurationMs(result: HazardResult): number {
+  let maxRound = 0;
+  for (const round of result.arrivalRound.values()) maxRound = Math.max(maxRound, round);
+  return maxRound * ROUND_DURATION_MS + 500;
+}
+
+/**
+ * A short narrated aftermath beat (Section 2's third polish item) once the
+ * sweep visually finishes, rather than the sweep ending and meters just
+ * silently updating in the corner — Resilience delta, Trust delta (only
+ * shown if it actually moved — Flood alone never touches Trust), and how
+ * many defenses breached/overwhelmed.
+ */
+function describeAftermath(kind: "Flood" | "Storm Surge", result: HazardResult, resilienceBefore: number, trustBefore: number): string {
+  const resilienceDelta = Math.round(state.resilience - resilienceBefore);
+  const trustDelta = Math.round(state.trust - trustBefore);
+  const parts = [`${kind} resolved`, `Resilience ${resilienceDelta <= 0 ? resilienceDelta : `+${resilienceDelta}`}`];
+  if (trustDelta !== 0) parts.push(`Trust ${trustDelta <= 0 ? trustDelta : `+${trustDelta}`}`);
+  if (result.destroyedDefenses.length > 0) {
+    parts.push(`${result.destroyedDefenses.length} defense${result.destroyedDefenses.length === 1 ? "" : "s"} breached`);
+  }
+  if (result.overwhelmedDefenses.length > 0) {
+    parts.push(`${result.overwhelmedDefenses.length} overwhelmed`);
+  }
+  return parts.join(" · ");
 }
 
 // --- Monsoon Flood + Cyclone resolution -----------------------------------------
@@ -336,6 +375,8 @@ const STORM_SURGE_COMPOUND_WINDOW_TURNS = 2;
  * that used to differ (an era-end consequence to skip).
  */
 function triggerFlood(baseSeverity: number): void {
+  const resilienceBefore = state.resilience;
+  const trustBefore = state.trust;
   const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
   const result = resolveMonsoonFlood(state, baseSeverity, stormSurgeActive);
   applyHazardResult("flood", result, performance.now());
@@ -347,6 +388,7 @@ function triggerFlood(baseSeverity: number): void {
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
+  setTimeout(() => hud.showBanner(describeAftermath("Flood", result, resilienceBefore, trustBefore), 4000), sweepDurationMs(result));
 }
 
 // --- Cyclone telegraph + resolution -------------------------------------------
@@ -395,6 +437,8 @@ function updateCycloneTelegraph(): void {
 
 /** Resolves the cyclone: wind+surge combined, Cyclone Shelter protecting Trust rather than land. See triggerFlood's own comment for who calls this and why they behave identically. */
 function triggerCyclone(baseSeverity: number): void {
+  const resilienceBefore = state.resilience;
+  const trustBefore = state.trust;
   const result = resolveCyclone(state, baseSeverity);
   applyHazardResult("storm", result, performance.now());
   for (const coord of tilesOfType("coast", "estuary")) terrain.setTint(coord, null);
@@ -407,6 +451,7 @@ function triggerCyclone(baseSeverity: number): void {
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
+  setTimeout(() => hud.showBanner(describeAftermath("Storm Surge", result, resilienceBefore, trustBefore), 4000), sweepDurationMs(result));
 }
 
 /**

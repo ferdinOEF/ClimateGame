@@ -2,12 +2,19 @@
 // is the countdown-hits-zero beat itself (distinct from "hazard_telegraph",
 // which plays once when the countdown *window* opens) — see Hud.
 // flashArrival()'s matching visual beat in main.ts's checkHazardSchedule().
+// Section 2: "hazard_breach"/"hazard_overwhelmed" play per-tile, as each
+// tile's staggered reveal fires in applyHazardResult() — a catastrophic
+// engineered failure shouldn't sound the same as a defense quietly holding
+// (the existing "hazard_resolve" cue, unchanged, stays the once-per-event
+// "something happened" sound).
 export type SoundId =
   | "tile_settle"
   | "build"
   | "hazard_telegraph"
   | "hazard_arrival"
   | "hazard_resolve"
+  | "hazard_breach"
+  | "hazard_overwhelmed"
   | "era_end";
 
 /**
