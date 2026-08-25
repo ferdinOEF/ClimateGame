@@ -21,6 +21,7 @@
 export class Hud {
   private tileCountEl: HTMLElement;
   private coinEl: HTMLElement;
+  private incomeEl: HTMLElement;
   private turnValueEl: HTMLElement;
   private eraValueEl: HTMLElement;
   private resilienceEl: HTMLElement;
@@ -58,6 +59,7 @@ export class Hud {
         <div class="coin-row"><span>Coin</span><span class="coin-value">0</span></div>
         <div class="turn-era-row">Turn <span class="turn-value">0</span> · Era <span class="era-value">1</span></div>
       </div>
+      <div class="income-row">Income <span class="income-value">+0</span>/turn</div>
       <div class="resilience-gauge">
         <div class="resilience-gauge-header"><span>Resilience</span><span class="resilience-value">100</span></div>
         <div class="resilience-gauge-track"><div class="resilience-gauge-fill"></div></div>
@@ -65,13 +67,14 @@ export class Hud {
       <div class="hazard-incoming"></div>
       <button type="button" class="preview-toggle" hidden>Preview path</button>
       <div class="chip-grid">
-        <span class="meter-chip" title="Biodiversity">B <b class="biodiversity-value">0</b></span>
-        <span class="meter-chip" title="Carbon">C <b class="carbon-value">0</b></span>
-        <span class="meter-chip food-chip" title="Food">F <b class="food-value">0</b></span>
-        <span class="meter-chip" title="Population">P <b class="population-value">0</b></span>
+        <span class="meter-chip">Biodiversity <b class="biodiversity-value">0</b></span>
+        <span class="meter-chip">Carbon <b class="carbon-value">0</b></span>
+        <span class="meter-chip food-chip">Food <b class="food-value">0</b></span>
+        <span class="meter-chip">Population <b class="population-value">0</b></span>
       </div>`;
     container.appendChild(cluster);
     this.coinEl = cluster.querySelector(".coin-value")!;
+    this.incomeEl = cluster.querySelector(".income-value")!;
     this.turnValueEl = cluster.querySelector(".turn-value")!;
     this.eraValueEl = cluster.querySelector(".era-value")!;
     this.resilienceEl = cluster.querySelector(".resilience-value")!;
@@ -160,8 +163,18 @@ export class Hud {
     this.tileCountEl.textContent = String(n);
   }
 
-  setCoin(n: number): void {
-    this.coinEl.textContent = String(n);
+  /**
+   * `n` can be fractional now that a standing element's Coin income
+   * (`income`) accrues by maturity fraction, same as every other meter —
+   * rounded for display, same convention `setMeters()` already uses.
+   * `income` is what the next turn will add, shown alongside it so the
+   * player can see where Coin is headed, not just where it is.
+   */
+  setCoin(n: number, income: number): void {
+    this.coinEl.textContent = String(Math.round(n));
+    const roundedIncome = Math.round(income);
+    this.incomeEl.textContent = roundedIncome > 0 ? `+${roundedIncome}` : String(roundedIncome);
+    this.incomeEl.classList.toggle("negative", roundedIncome < 0);
   }
 
   /** STEP_PROMPT_hud_instrument_cluster.md: the header row's second half — `era` is 1-based ("Era 1" from turn one), matching `GameState.erasCompleted + 1`'s own convention (the same expression `main.ts`'s `refreshHud()` passes in here). */

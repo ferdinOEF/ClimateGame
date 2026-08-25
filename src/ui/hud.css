@@ -127,7 +127,7 @@ html, body {
   border-radius: 12px;
   padding: 14px 16px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  width: 190px;
+  width: 225px;
 }
 
 .cluster-header {
@@ -155,6 +155,23 @@ html, body {
   font-size: 10px;
   opacity: 0.6;
   white-space: nowrap;
+}
+
+/* What the next turn will add to Coin — shown alongside Coin itself so the player can see where it's headed, not just where it is. */
+.income-row {
+  font-size: 10px;
+  opacity: 0.75;
+  margin-top: -2px;
+}
+
+.income-value {
+  color: #7bd4c4;
+  font-weight: 700;
+}
+
+/* Same warning family as .meter-chip-warning — a shrinking Coin trend is worth flagging the same way a Food deficit is. */
+.income-value.negative {
+  color: #ff8a5c;
 }
 
 /*
@@ -260,19 +277,19 @@ html, body {
   display: none;
 }
 
-/* STEP_PROMPT_hud_instrument_cluster.md: "a tidy chip grid," not a single flowing row — 2x2, each chip its own small pill instead of plain inline text. */
+/* A stacked list of full-label rows, not an abbreviated 2x2 grid — each meter's name spelled out in full, value right-aligned, matching the resilience-gauge-header's label-left/value-right pattern above. */
 .chip-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
 }
 
 .meter-chip {
-  font-size: 10px;
+  font-size: 11px;
   opacity: 0.85;
   display: flex;
-  gap: 3px;
-  align-items: baseline;
+  justify-content: space-between;
+  align-items: center;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 6px;
   padding: 4px 8px;

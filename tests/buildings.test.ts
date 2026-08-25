@@ -45,9 +45,11 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     const def = ELEMENT_BY_ID.get("beachside_resort")!;
 
     expect(state.build({ q: 0, r: 0 }, "beachside_resort")).toBe(true);
-    // STEP_PROMPT_manual_only_mode.md: advanceTurn() no longer pays out
-    // standing income automatically — coin only moves by the build cost.
-    expect(state.coin).toBe(before - def.buildCost);
+    // STEP_PROMPT_pacing_telegraph_preview.md follow-up: income is back —
+    // build()'s own advanceTurn() now also collects this turn's Coin
+    // income, so a Resort (matureTurns: 0, so it earns immediately) nets
+    // out the build cost minus its own effects.money the same call.
+    expect(state.coin).toBe(before - def.buildCost + def.effects.money!);
 
     // Already has an element on that tile now.
     expect(state.build({ q: 0, r: 0 }, "beachside_resort")).toBe(false);
@@ -57,7 +59,7 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     expect(state2.build({ q: 1, r: 0 }, "beachside_resort")).toBe(false);
   });
 
-  it("build() (STEP_PROMPT_remove_claiming.md: now the sole turn-advancing action) still advances the turn, but no longer pays out standing income automatically (STEP_PROMPT_manual_only_mode.md)", () => {
+  it("build() (STEP_PROMPT_remove_claiming.md: now the sole turn-advancing action) still advances the turn, and now also pays out standing income (reactivated on direct request; see GameState.advanceTurn())", () => {
     const map = [
       { coord: { q: 0, r: 0 }, terrainId: "beach" },
       { coord: { q: 1, r: 0 }, terrainId: "beach" }
@@ -65,19 +67,21 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     const state = new GameState(map);
     state.coin = 500;
     const def = ELEMENT_BY_ID.get("beachside_resort")!;
+    const resortIncome = def.effects.money!;
 
     const before = state.coin;
     expect(state.build({ q: 0, r: 0 }, "beachside_resort")).toBe(true);
     expect(state.turn).toBe(1);
-    // STEP_PROMPT_manual_only_mode.md: advanceTurn() is stripped to just
-    // the turn counter now — a standing Resort's effects.money no longer
-    // pays out on its own; coin only moves by the build cost itself.
-    expect(state.coin).toBe(before - def.buildCost);
+    // Resort's matureTurns is 0, so it earns its full income the same
+    // turn it's built — build cost out, that turn's income back in.
+    expect(state.coin).toBe(before - def.buildCost + resortIncome);
 
     const coinAfterFirstBuild = state.coin;
     expect(state.build({ q: 1, r: 0 }, "beachside_resort")).toBe(true);
     expect(state.turn).toBe(2);
-    expect(state.coin).toBe(coinAfterFirstBuild - def.buildCost); // still no income paid, even with two Resorts standing
+    // Both Resorts are standing (and instantly mature) by the second
+    // advanceTurn(), so this turn's income is double the first's.
+    expect(state.coin).toBe(coinAfterFirstBuild - def.buildCost + resortIncome * 2);
   });
 
   it("Small Dam is money+/biodiversity-/resilience+ and Sand Mining is money+/biodiversity-/resilience-", () => {

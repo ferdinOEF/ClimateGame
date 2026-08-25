@@ -166,18 +166,23 @@ export class GameState {
   }
 
   /**
-   * STEP_PROMPT_manual_only_mode.md: stripped down to just the turn
-   * counter — every background side effect that used to fire here on its
-   * own (income, maintenance/neglect degrade, Food-deficit Trust/
-   * Resilience drain, flood-buffer recovery) is gone. State now only
-   * changes in response to an explicit action: build, remove, trigger a
-   * hazard, or hit Reset Board. `this.turn` itself still has to advance on
-   * every `build()` call, though — it's what drives element maturity
-   * (`maturityFraction()`'s `this.turn - inst.builtOnTurn`), a consequence
-   * of the build action itself, not background drift. Public because the
-   * hazard/turn system also needs to advance it directly.
+   * STEP_PROMPT_manual_only_mode.md stripped this down to just the turn
+   * counter — maintenance/neglect degrade, Food-deficit Trust/Resilience
+   * drain, and flood-buffer recovery are still gone; state still only
+   * changes in response to an explicit action (build, remove, trigger a
+   * hazard, Reset Board), never on a hidden background tick. Coin income
+   * is the one exception, reactivated on direct request: every `build()`
+   * call (the sole action that ever advances a turn) now also collects
+   * `this.income` first, using this turn's maturity fractions before they
+   * shift — the same "a just-built element starts at 0% maturity, not
+   * already one turn matured" convention every other meter already
+   * follows. `this.turn` itself still has to advance on every `build()`
+   * call regardless — it's what drives element maturity in the first
+   * place. Public because the hazard/turn system also needs to advance it
+   * directly (those callers don't collect income; only a real build does).
    */
   advanceTurn(): void {
+    this.coin += this.income;
     this.turn++;
   }
 
@@ -322,6 +327,18 @@ export class GameState {
   /** v2.4 (Section 4/7/8): a simple placeholder growth hook — population scales with House count via the same generic effects accumulator as every other meter, no growth curve specified beyond that yet. */
   get population(): number {
     return STARTING_POPULATION + this.meterTotal("population");
+  }
+
+  /**
+   * How much Coin the next `advanceTurn()` will add — same live
+   * maturity-weighted `meterTotal()` read as every other meter, over
+   * `effects.money` (currently only positive across elements.json, but
+   * nothing here assumes that). Exposed as its own getter, not just
+   * folded silently into `advanceTurn()`, so the HUD can show the player
+   * what to expect before it lands.
+   */
+  get income(): number {
+    return this.meterTotal("money");
   }
 
   /**
