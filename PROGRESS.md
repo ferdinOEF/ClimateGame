@@ -1,7 +1,11 @@
 # Khazan — Build Progress
 
-v2 build. v1 (a Leaflet sidebar-panel prototype with no 3D world) is archived at
-`_archive_v1_panjim_digital_twin/`, not deleted, per the v2 brief's Section 0.
+v2 build. v1 (a Leaflet sidebar-panel prototype with no 3D world) was
+archived at `_archive_v1_panjim_digital_twin/` in this repo per the v2
+brief's Section 0; moved out to the parent directory (sibling to this
+`code/` repo, still on disk, no longer git-tracked here) in the
+`STEP_PROMPT_code_review_cleanup.md` pass's repo-housekeeping cleanup —
+not deleted, just no longer living inside the live repo.
 
 ## Phase 0 — Scaffold + visual proof of life — DONE
 
@@ -2603,3 +2607,26 @@ CSS rule, together — both are Section 2's "dead/orphaned code audit,"
 not two separate concerns), and this write-up's own commit (the three
 Remove-button screenshots + this entry). No mechanics, balance numbers,
 or hazard math touched anywhere in this pass.
+
+## Follow-up — Section 4's two open questions, resolved by the user — DONE
+
+Both of Section 4's "ask before acting" items came back with a decision:
+delete the 12 unlinked screenshots, move the v1 archive out.
+
+- **Screenshots**: the 12 PNGs tallied above (`a1_clip_bottomright.png`
+  through `veg_beach_closeup.png`) removed via `git rm`, own commit
+  (`17129ec`). `tools/screenshots/` now holds 42.
+- **`_archive_v1_panjim_digital_twin/`**: moved (not deleted — files
+  preserved, `mv` not `rm`) to `panjim-digital-twin/_archive_v1_panjim_
+  digital_twin/`, a sibling of this `code/` repo, then untracked from git
+  here. It's outside this repo's working tree entirely now — `git status`
+  no longer sees it at all, rather than showing it clean. The top-of-file
+  reference in this document (just below the title) updated to point at
+  its new location instead of claiming it's still archived inside this
+  repo.
+
+`tsc --noEmit`, `npm test`, and the production build are all unaffected
+by either change (neither touched `src/`, `tests/`, or any file the build
+actually reads) — re-run anyway to confirm nothing broke from removing/
+relocating files a build script might have unexpectedly depended on; all
+three still pass/succeed identically.
