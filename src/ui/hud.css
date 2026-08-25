@@ -124,11 +124,13 @@ html, body {
 }
 
 /*
-  STEP_PROMPT_hud_instrument_cluster.md: Resilience is the one meter that
-  actually threatens an era (GameState.isEraOver reads resilience <= 0
-  only, never Trust), so it's the only one promoted to a real gauge — a
-  labeled bar, not just a numeric chip. Trust is dropped from the HUD
-  entirely (still tracked in the data model, just not surfaced here).
+  STEP_PROMPT_hud_instrument_cluster.md: Resilience is the one meter tied
+  to GameState.isEraOver (reads resilience <= 0 only, never Trust — still
+  the condition worth watching even though STEP_PROMPT_manual_only_mode.md
+  means nothing auto-triggers on it anymore, only the manual Reset Board
+  button does), so it's the only one promoted to a real gauge — a labeled
+  bar, not just a numeric chip. Trust is dropped from the HUD entirely
+  (still tracked in the data model, just not surfaced here).
 */
 .resilience-gauge {
   display: flex;
@@ -211,11 +213,13 @@ html, body {
 }
 
 /*
-  STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit now
-  drains Trust/Resilience every turn — this is the at-a-glance warning
-  for it, toggled by Hud.setMeters() whenever food < 0. Warm red-orange
-  rather than the meter strip's usual cream, so it reads as "this number
-  is actively hurting you," not just "this number is negative."
+  STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit used to
+  drain Trust/Resilience every turn — STEP_PROMPT_manual_only_mode.md
+  removed that automatic drain, but the warning stays, toggled by
+  Hud.setMeters() whenever food < 0, as "you're not sustaining your Houses"
+  rather than "this is actively costing you Resilience right now." Warm
+  red-orange rather than the meter strip's usual cream, so it still reads
+  as a real warning, not just "this number is negative."
 */
 .meter-chip-warning {
   color: #ff8a5c;
@@ -311,21 +315,6 @@ html, body {
   padding: 6px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
-}
-
-/*
-  The `hidden` HTML attribute alone doesn't win here: `display: flex` above
-  is an author-stylesheet rule, and author styles always beat the
-  user-agent stylesheet's `[hidden] { display: none }` regardless of
-  selector specificity — so without this override, setting `.hidden = true`
-  in JS updates the attribute but the popover keeps rendering at full
-  opacity, still capturing clicks at its own position. This was the actual
-  root cause behind A1's whole family of "doesn't dismiss" symptoms
-  (NEXT_STEPS.md): the JS-side open/closed state was correct the entire
-  time, the CSS just never reflected it.
-*/
-.build-popover[hidden] {
-  display: none;
 }
 
 .build-option {

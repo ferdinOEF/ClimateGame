@@ -38,10 +38,16 @@ const VIEWPORT_MARGIN = 8;
  * has its own unconditional `display: flex` in hud.css, an author-origin
  * rule that overrides the `[hidden]` user-agent default regardless of
  * selector specificity, so setting `.hidden = true` updated the attribute
- * correctly but never changed what was on screen. That CSS gap (now fixed
- * with an explicit `.build-popover[hidden] { display: none }` rule) was
- * the actual root cause of A1's whole "doesn't dismiss" symptom family —
- * the JS-side open/closed state was correct the entire time.
+ * correctly but never changed what was on screen. That was the actual root
+ * cause of A1's whole "doesn't dismiss" symptom family — the JS-side
+ * open/closed state was correct the entire time. Once hiding moved to
+ * `this.backdrop.hidden` (below) instead of `this.el.hidden`, the problem
+ * stopped applying at all — `.popover-backdrop` has no competing `display`
+ * override, so the browser's own `[hidden]` default just works, and a
+ * hidden ancestor hides `.build-popover` regardless of its own `display`.
+ * The `.build-popover[hidden]` CSS override this originally needed became
+ * dead weight once nothing set that attribute on `.build-popover` itself
+ * anymore — removed in the STEP_PROMPT_code_review_cleanup.md pass.
  */
 export class BuildPopover {
   private backdrop: HTMLElement;

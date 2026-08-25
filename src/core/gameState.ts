@@ -169,11 +169,12 @@ export class GameState {
    * Builds `elementId` at `coord`, deducting its cost. Returns false (no-op)
    * if illegal/unaffordable. STEP_PROMPT_remove_claiming.md: Build is now
    * the sole action that advances a turn (Claim used to own this job) —
-   * same cadence (pays income, ticks maintenance, drains for a Food
-   * deficit), just triggered by placing an element instead of claiming
-   * land. `builtOnTurn` reads `this.turn` from *before* the advance, same
-   * as it always did (a just-built element starts at 0% maturity, not
-   * already one turn matured).
+   * `advanceTurn()` itself is just the turn counter now (STEP_PROMPT_
+   * manual_only_mode.md stripped its old background side effects), so this
+   * is really just "placing an element also ticks the turn counter,"
+   * triggered by placing an element instead of claiming land. `builtOnTurn`
+   * reads `this.turn` from *before* the advance, same as it always did (a
+   * just-built element starts at 0% maturity, not already one turn matured).
    */
   build(coord: AxialCoord, elementId: string): boolean {
     if (!this.canBuild(coord, elementId)) return false;
@@ -271,10 +272,13 @@ export class GameState {
    * v2.4 (Section 4/7/8): Food, produced by Mangrove/Khazan and consumed
    * by House. A deficit never hard-blocks a claim or build — Section 2's
    * design brief is explicit that's too harsh a wall for the "12-year-old
-   * can play this" end of the game — but `advanceTurn()` does drain Trust
-   * and Resilience every turn a deficit is running (STEP_PROMPT_economy_
-   * food_yacht.md item 2), so building enough Mangrove/Khazan to sustain
-   * the Houses already standing is a real, felt part of play now.
+   * can play this" end of the game. `advanceTurn()` used to also drain
+   * Trust and Resilience every turn a deficit was running (STEP_PROMPT_
+   * economy_food_yacht.md item 2); STEP_PROMPT_manual_only_mode.md removed
+   * that automatic drain — Food itself is still this same live
+   * `meterTotal()` read and can still go negative, it just no longer has
+   * an automatic consequence. `applyHazardOutcome()` (an actual triggered
+   * hazard) is Trust/Resilience's only automatic mover now.
    */
   get food(): number {
     return this.meterTotal("food");

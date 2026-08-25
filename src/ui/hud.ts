@@ -2,17 +2,21 @@
  * STEP_PROMPT_hud_instrument_cluster.md (v3, "Instrument Cluster"): the
  * top-left corner is a real card now (background/border/padding, not bare
  * text floating over the 3D scene) — a header row (Coin + Turn/Era), a
- * real Resilience gauge (the one meter that actually threatens an era —
- * `GameState.isEraOver` reads `resilience <= 0` only, never Trust — so
- * it's the only one promoted to a labeled bar), the hazard-incoming
- * readout, then the remaining secondary meters as an actual chip grid.
- * Trust stays in the data model exactly as before (`gameState.ts`,
- * `applyHazardOutcome`, the Food-deficit drain) — only this HUD's
- * *display* of it goes away. The rest of the persistent UI (v2.1): a
- * corner tile counter, a small "tiles still empty" soft-progress prompt,
- * and a brief non-blocking era banner. No full-width panel — every tile
- * is already active (STEP_PROMPT_remove_claiming.md), so there's nothing
- * to hand-pick from, only where to build next.
+ * real Resilience gauge (the one meter tied to `GameState.isEraOver`,
+ * which reads `resilience <= 0` only, never Trust — so it's the only one
+ * promoted to a labeled bar), the hazard-incoming readout, then the
+ * remaining secondary meters as an actual chip grid. Trust stays in the
+ * data model exactly as before (`gameState.ts`, `applyHazardOutcome`) —
+ * only this HUD's *display* of it goes away. (STEP_PROMPT_manual_only_
+ * mode.md later removed the automatic Food-deficit drain that used to
+ * touch Trust every turn — `applyHazardOutcome` is now Trust's only
+ * automatic mover, from an actual triggered hazard.) The rest of the
+ * persistent UI (v2.1): a corner tile counter, a small "tiles still
+ * empty" soft-progress prompt, and a brief non-blocking banner (originally
+ * an auto era-retired announcement; now a manual "Board reset." confirmation
+ * — see `main.ts`'s `resetBoard()`). No full-width panel — every tile is
+ * already active (STEP_PROMPT_remove_claiming.md), so there's nothing to
+ * hand-pick from, only where to build next.
  */
 export class Hud {
   private tileCountEl: HTMLElement;
@@ -114,7 +118,7 @@ export class Hud {
     this.yachtValueEl.textContent = built ? "✓ Achieved" : `${Math.min(Math.floor(coin), cost)} / ${cost}c`;
   }
 
-  /** A brief, non-blocking announcement (era retired/soft-lost) — never a modal. */
+  /** A brief, non-blocking announcement — originally an auto era-retired narrative, now the manual "Board reset." confirmation (STEP_PROMPT_manual_only_mode.md) — never a modal. */
   showBanner(text: string, durationMs = 3500): void {
     this.bannerEl.textContent = text;
     this.bannerEl.hidden = false;
@@ -131,7 +135,7 @@ export class Hud {
     this.coinEl.textContent = String(n);
   }
 
-  /** STEP_PROMPT_hud_instrument_cluster.md: the header row's second half — `era` is 1-based ("Era 1" from turn one), matching the "Era N retired" banner's own `erasCompleted + 1` convention. */
+  /** STEP_PROMPT_hud_instrument_cluster.md: the header row's second half — `era` is 1-based ("Era 1" from turn one), matching `GameState.erasCompleted + 1`'s own convention (the same expression `main.ts`'s `refreshHud()` passes in here). */
   setTurnEra(turn: number, era: number): void {
     this.turnValueEl.textContent = String(turn);
     this.eraValueEl.textContent = String(era);
@@ -165,10 +169,12 @@ export class Hud {
     this.carbonEl.textContent = String(Math.round(meters.carbon));
     this.foodEl.textContent = String(Math.round(meters.food));
     this.populationEl.textContent = String(Math.round(meters.population));
-    // STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit now
-    // drains Trust/Resilience every turn (GameState.advanceTurn) — this
-    // warning color is the "why is my Resilience dropping" answer, legible
-    // at a glance without opening a popover or doing mental math.
+    // STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit used
+    // to drain Trust/Resilience every turn (GameState.advanceTurn) — that
+    // automatic drain is gone (STEP_PROMPT_manual_only_mode.md), but the
+    // warning color stays: a negative Food number is still worth flagging
+    // at a glance, now as "you're not sustaining your Houses" rather than
+    // "this is actively costing you Resilience right now."
     this.foodChipEl.classList.toggle("meter-chip-warning", meters.food < 0);
   }
 
