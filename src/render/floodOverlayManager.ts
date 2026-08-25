@@ -27,6 +27,16 @@ export const CYCLONE_OVERLAY_COLORS: HazardOverlayColors = { shallow: "#d8c9a3",
  * not just two independent discs happening to sit in the same place.
  */
 const COMPOUND_OVERLAY_COLOR = new THREE.Color("#c9503a");
+/**
+ * STEP_PROMPT_pacing_telegraph_preview.md Section 3: one consistent
+ * "this is a hypothetical preview" color regardless of hazard kind —
+ * deliberately unlike either real palette (flood's blue-to-dark-blue,
+ * storm's tan-to-gray) so a preview tile can never be mistaken for a real
+ * damage reveal mid-fade, even briefly.
+ */
+const PREVIEW_OVERLAY_COLOR = new THREE.Color("#7fe0ff");
+const PREVIEW_PULSE_HEIGHT = 0.04;
+const PREVIEW_PULSE_PERIOD_MS = 900;
 
 interface ActiveOverlay {
   kind: HazardKind;
@@ -64,6 +74,17 @@ export class HazardOverlayManager {
   private flood: { shallow: THREE.Color; deep: THREE.Color };
   private storm: { shallow: THREE.Color; deep: THREE.Color };
   private activeByKey = new Map<string, ActiveOverlay>();
+  /**
+   * STEP_PROMPT_pacing_telegraph_preview.md Section 3: preview tiles
+   * share this mesh/index pool with real reveals (so combined capacity is
+   * still bounded by MAX_INSTANCES) but are tracked entirely separately —
+   * no SettleAnimator grow-in/collapse (a preview should appear/update
+   * instantly, not drop-and-settle), no `OVERLAY_LIFETIME_MS` expiry (a
+   * preview persists exactly as long as the toggle is on), no compound-
+   * color blending with real overlays (a preview is hypothetical, it
+   * shouldn't visually merge with something actually happening).
+   */
+  private previewByKey = new Map<string, { index: number; x: number; z: number; baseY: number }>();
 
   constructor(floodColors: HazardOverlayColors, stormColors: HazardOverlayColors) {
     this.flood = { shallow: new THREE.Color(floodColors.shallow), deep: new THREE.Color(floodColors.deep) };
@@ -147,9 +168,58 @@ export class HazardOverlayManager {
     this.freeIndices = [];
     this.mesh.count = 0;
     this.activeByKey.clear();
+    this.clearPreview();
+  }
+
+  /**
+   * STEP_PROMPT_pacing_telegraph_preview.md Section 3: shows (or
+   * updates, if this tile already has a preview showing) a ghost overlay
+   * at `coord`, sized by `severity` the same way a real reveal is. The
+   * caller is expected to call `clearPreview()` then re-call this for
+   * every tile in a fresh `HazardResult` on each update (a defense placed/
+   * removed while previewing) — simpler and safer than diffing the old
+   * preview set against the new one tile-by-tile.
+   */
+  showPreview(coord: AxialCoord, terrainTopY: number, severity: number): void {
+    const key = `${coord.q},${coord.r}`;
+    let index = this.previewByKey.get(key)?.index;
+    if (index === undefined) {
+      if (this.freeIndices.length > 0) index = this.freeIndices.pop()!;
+      else if (this.nextIndex < MAX_INSTANCES) index = this.nextIndex++;
+      else return; // out of shared capacity — same bail as show()
+    }
+    this.mesh.count = Math.max(this.mesh.count, index + 1);
+
+    const { x, z } = axialToWorld(coord, 1.0);
+    const intensity = THREE.MathUtils.clamp(severity / 1.6, 0, 1);
+    const baseY = terrainTopY + 0.06 + intensity * 0.44;
+    this.mesh.setMatrixAt(index, new THREE.Matrix4().makeTranslation(x, baseY, z));
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.mesh.setColorAt(index, PREVIEW_OVERLAY_COLOR);
+    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+
+    this.previewByKey.set(key, { index, x, z, baseY });
+  }
+
+  /** Clears every preview tile instantly — must leave zero ghost tiles behind, since a leftover one reads as "something is still dangerous here" when it isn't. */
+  clearPreview(): void {
+    if (this.previewByKey.size === 0) return;
+    for (const { index } of this.previewByKey.values()) {
+      this.mesh.setMatrixAt(index, new THREE.Matrix4().makeScale(0, 0, 0));
+      this.freeIndices.push(index);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.previewByKey.clear();
   }
 
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
+    if (this.previewByKey.size > 0) {
+      for (const { index, x, z, baseY } of this.previewByKey.values()) {
+        const y = baseY + Math.sin(nowMs / PREVIEW_PULSE_PERIOD_MS) * PREVIEW_PULSE_HEIGHT;
+        this.mesh.setMatrixAt(index, new THREE.Matrix4().makeTranslation(x, y, z));
+      }
+      this.mesh.instanceMatrix.needsUpdate = true;
+    }
   }
 }

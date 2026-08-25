@@ -110,6 +110,41 @@ export class GameState {
   }
 
   /**
+   * STEP_PROMPT_pacing_telegraph_preview.md Section 3: a real, deep-
+   * enough copy for the hazard-preview toggle. `resolveHazardWave()` and
+   * its callers (`resolveMonsoonFlood`/`resolveCyclone`) read like they
+   * might be pure — they return a `HazardResult` without touching
+   * anything — but they aren't: they call `destroyDefense()`/
+   * `degradeDefense()`/`drawDownFloodBuffer()`/`applyHazardOutcome()`
+   * directly on whatever `GameState` they're given. Running a resolver
+   * against a clone, then discarding it, is what actually makes a preview
+   * read-only — not calling the resolver against the real state and
+   * hoping only some "mutating half" lives elsewhere (it doesn't; it's
+   * baked into the resolvers themselves). `placed` tiles are plain data
+   * hazard resolution never writes to, so sharing those references is
+   * safe; `elements` entries ARE mutated in place (`degradeAmount`,
+   * `floodBufferFilled`), so each one is shallow-copied — sharing the Map
+   * but not the objects inside it would let a preview's degrade/drawdown
+   * corrupt the real game's defenses.
+   */
+  clone(): GameState {
+    const copy = new GameState([], [], this.startingCoin);
+    copy.placed.clear();
+    for (const [key, tile] of this.placed) copy.placed.set(key, tile);
+    copy.claimed.clear();
+    for (const key of this.claimed) copy.claimed.add(key);
+    copy.elements.clear();
+    for (const [key, inst] of this.elements) copy.elements.set(key, { ...inst });
+    copy.coin = this.coin;
+    copy.turn = this.turn;
+    copy.trust = this.trust;
+    copy.resilience = this.resilience;
+    copy.severityBaseline = this.severityBaseline;
+    copy.erasCompleted = this.erasCompleted;
+    return copy;
+  }
+
+  /**
    * Test/scenario-only: adds a tile to the fixed map (bypassing mapgen) and
    * immediately claims it, for building deterministic hazard-resolution
    * fixtures. Never called from the real play path (Section 10's sanctioned

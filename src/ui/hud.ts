@@ -36,8 +36,9 @@ export class Hud {
   private yachtGoalEl: HTMLElement;
   private yachtValueEl: HTMLElement;
   private arrivalFlashEl: HTMLElement;
+  private previewToggleEl: HTMLButtonElement;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, onPreviewToggle: () => void) {
     const tileCounter = document.createElement("div");
     tileCounter.className = "hud-corner top-right";
     tileCounter.innerHTML = `<div>Tiles claimed</div><div class="tile-count-value">0</div>`;
@@ -62,6 +63,7 @@ export class Hud {
         <div class="resilience-gauge-track"><div class="resilience-gauge-fill"></div></div>
       </div>
       <div class="hazard-incoming"></div>
+      <button type="button" class="preview-toggle" hidden>Preview path</button>
       <div class="chip-grid">
         <span class="meter-chip" title="Biodiversity">B <b class="biodiversity-value">0</b></span>
         <span class="meter-chip" title="Carbon">C <b class="carbon-value">0</b></span>
@@ -80,6 +82,8 @@ export class Hud {
     this.foodEl = cluster.querySelector(".food-value")!;
     this.foodChipEl = cluster.querySelector(".food-chip")!;
     this.populationEl = cluster.querySelector(".population-value")!;
+    this.previewToggleEl = cluster.querySelector(".preview-toggle")!;
+    this.previewToggleEl.addEventListener("click", () => onPreviewToggle());
 
     const emptyPrompt = document.createElement("div");
     emptyPrompt.className = "hud-corner bottom-center empty-prompt";
@@ -220,6 +224,23 @@ export class Hud {
       line.textContent = `${hazard.kind} in ${turns} turn${turns === 1 ? "" : "s"}`;
       this.hazardIncomingEl.appendChild(line);
     }
+  }
+
+  /**
+   * STEP_PROMPT_pacing_telegraph_preview.md Section 3: shown only while at
+   * least one hazard is genuinely imminent — the only moment previewing is
+   * decision-relevant. `main.ts`'s `syncHudPreviewAvailability()` also
+   * force-clears an active preview the instant this flips to unavailable,
+   * so the button hiding and the ghost tiles disappearing happen together.
+   */
+  setPreviewAvailable(available: boolean): void {
+    this.previewToggleEl.hidden = !available;
+  }
+
+  /** Just the button's own pressed/label state — `main.ts` owns whether a preview is actually active and what it shows. */
+  setPreviewActive(active: boolean): void {
+    this.previewToggleEl.classList.toggle("active", active);
+    this.previewToggleEl.textContent = active ? "Hide preview" : "Preview path";
   }
 
   /** STEP_PROMPT_remove_claiming.md: a soft progress indicator, not a gate — every tile is already buildable, this just orients the player toward how much map is still untouched. */

@@ -5,6 +5,8 @@ export interface HazardTestPanelCallbacks {
   onTriggerFlood: (severity: number) => void;
   /** STEP_PROMPT_manual_only_mode.md Part B: wipes the whole board back to a fresh start. Destructive and can't be undone, so the panel confirms before calling this. */
   onResetBoard: () => void;
+  /** STEP_PROMPT_pacing_telegraph_preview.md Section 3: fires whenever this row's own preview checkbox is toggled, or while it's checked and the row's slider moves — `active` false always means "clear this row's preview," regardless of severity. */
+  onPreviewChange: (kind: "storm" | "flood", active: boolean, severity: number) => void;
 }
 
 /**
@@ -32,9 +34,11 @@ export class HazardTestPanel {
   private stormSlider: HTMLInputElement;
   private stormReadout: HTMLElement;
   private stormSchedule: HTMLElement;
+  private stormPreview: HTMLInputElement;
   private floodSlider: HTMLInputElement;
   private floodReadout: HTMLElement;
   private floodSchedule: HTMLElement;
+  private floodPreview: HTMLInputElement;
   private open = false;
 
   constructor(container: HTMLElement, callbacks: HazardTestPanelCallbacks) {
@@ -56,7 +60,10 @@ export class HazardTestPanel {
           <input type="range" min="0" max="3" step="0.1" value="${DEFAULT_SEVERITY}" class="hazard-test-slider storm-slider" aria-label="Storm Surge severity" />
           <span class="hazard-test-readout storm-readout">${DEFAULT_SEVERITY.toFixed(1)}×</span>
         </div>
-        <button type="button" class="hazard-test-trigger storm-trigger">Trigger now</button>
+        <div class="hazard-test-actions">
+          <button type="button" class="hazard-test-trigger storm-trigger">Trigger now</button>
+          <label class="hazard-test-preview-label"><input type="checkbox" class="hazard-test-preview storm-preview" /> Preview</label>
+        </div>
       </div>
       <div class="hazard-test-row flood">
         <div class="hazard-test-label">Flood</div>
@@ -65,7 +72,10 @@ export class HazardTestPanel {
           <input type="range" min="0" max="3" step="0.1" value="${DEFAULT_SEVERITY}" class="hazard-test-slider flood-slider" aria-label="Flood severity" />
           <span class="hazard-test-readout flood-readout">${DEFAULT_SEVERITY.toFixed(1)}×</span>
         </div>
-        <button type="button" class="hazard-test-trigger flood-trigger">Trigger now</button>
+        <div class="hazard-test-actions">
+          <button type="button" class="hazard-test-trigger flood-trigger">Trigger now</button>
+          <label class="hazard-test-preview-label"><input type="checkbox" class="hazard-test-preview flood-preview" /> Preview</label>
+        </div>
       </div>
       <div class="hazard-test-row reset">
         <div class="hazard-test-label">Board</div>
@@ -78,19 +88,27 @@ export class HazardTestPanel {
     this.stormSlider = panel.querySelector(".storm-slider")!;
     this.stormReadout = panel.querySelector(".storm-readout")!;
     this.stormSchedule = panel.querySelector(".storm-schedule")!;
+    this.stormPreview = panel.querySelector(".storm-preview")!;
     this.floodSlider = panel.querySelector(".flood-slider")!;
     this.floodReadout = panel.querySelector(".flood-readout")!;
     this.floodSchedule = panel.querySelector(".flood-schedule")!;
+    this.floodPreview = panel.querySelector(".flood-preview")!;
 
     tab.addEventListener("click", () => this.setOpen(!this.open));
 
     // Update on `input` (fires continuously while dragging), not `change`
-    // (fires once on release) — dragging should feel responsive.
+    // (fires once on release) — dragging should feel responsive. While the
+    // row's Preview checkbox is checked, an active preview re-fires at the
+    // new severity on every drag tick too — a ghost overlay showing a stale
+    // severity while the slider keeps moving would be worse than not
+    // previewing at all.
     this.stormSlider.addEventListener("input", () => {
       this.stormReadout.textContent = `${Number(this.stormSlider.value).toFixed(1)}×`;
+      if (this.stormPreview.checked) callbacks.onPreviewChange("storm", true, Number(this.stormSlider.value));
     });
     this.floodSlider.addEventListener("input", () => {
       this.floodReadout.textContent = `${Number(this.floodSlider.value).toFixed(1)}×`;
+      if (this.floodPreview.checked) callbacks.onPreviewChange("flood", true, Number(this.floodSlider.value));
     });
 
     panel.querySelector(".storm-trigger")!.addEventListener("click", () => {
@@ -98,6 +116,12 @@ export class HazardTestPanel {
     });
     panel.querySelector(".flood-trigger")!.addEventListener("click", () => {
       callbacks.onTriggerFlood(Number(this.floodSlider.value));
+    });
+    this.stormPreview.addEventListener("change", () => {
+      callbacks.onPreviewChange("storm", this.stormPreview.checked, Number(this.stormSlider.value));
+    });
+    this.floodPreview.addEventListener("change", () => {
+      callbacks.onPreviewChange("flood", this.floodPreview.checked, Number(this.floodSlider.value));
     });
     // STEP_PROMPT_manual_only_mode.md Part B: destructive and can't be
     // undone, so a plain confirm() before firing — this control lives
@@ -131,12 +155,21 @@ export class HazardTestPanel {
     this.floodSchedule.textContent = `next scheduled in ${clampedFlood} turn${clampedFlood === 1 ? "" : "s"}`;
   }
 
-  /** Verify checklist: the panel's own state doesn't need to persist across an era reset — closed/default-severity is fine and simpler than preserving it. */
+  /**
+   * Verify checklist: the panel's own state doesn't need to persist across
+   * an era reset — closed/default-severity is fine and simpler than
+   * preserving it. Just unchecks the preview boxes visually — the caller
+   * (`main.ts`'s `resetBoard()`) is responsible for actually clearing the
+   * preview overlay itself via `clearAllPreviews()`, since this panel has
+   * no reference to the overlay manager.
+   */
   reset(): void {
     this.setOpen(false);
     this.stormSlider.value = String(DEFAULT_SEVERITY);
     this.stormReadout.textContent = `${DEFAULT_SEVERITY.toFixed(1)}×`;
+    this.stormPreview.checked = false;
     this.floodSlider.value = String(DEFAULT_SEVERITY);
     this.floodReadout.textContent = `${DEFAULT_SEVERITY.toFixed(1)}×`;
+    this.floodPreview.checked = false;
   }
 }

@@ -113,7 +113,7 @@ for (const coord of STARTING_STATE.prebuiltHouses) {
   focusOn(startWorld.x / MAP.startingClaim.length, startWorld.z / MAP.startingClaim.length);
 }
 
-const hud = new Hud(container);
+const hud = new Hud(container, () => toggleHudPreview());
 const buildPopover = new BuildPopover(container);
 /**
  * STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: the same category of tool
@@ -144,7 +144,16 @@ const hazardTestPanel = params.has("debughazards")
   ? new HazardTestPanel(container, {
       onTriggerStorm: (severity) => triggerCyclone(severity),
       onTriggerFlood: (severity) => triggerFlood(severity),
-      onResetBoard: () => resetBoard()
+      onResetBoard: () => resetBoard(),
+      // STEP_PROMPT_pacing_telegraph_preview.md Section 3: the panel's own
+      // per-row checkboxes preview at whatever severity the slider is
+      // currently set to, independent of the real schedule — a separate
+      // registry key ("panel-*") from the HUD's own toggle ("hud-*"), so
+      // both can preview at once without one clobbering the other.
+      onPreviewChange: (kind, active, severity) => {
+        setPreviewSource(`panel-${kind}`, active ? { kind, severity } : null);
+        refreshPreview();
+      }
     })
   : null;
 
@@ -194,7 +203,9 @@ function refreshHud(): void {
     food: state.food,
     population: state.population
   });
-  hud.setHazardIncoming(hazardIncomingInfo());
+  const incoming = hazardIncomingInfo();
+  hud.setHazardIncoming(incoming);
+  syncHudPreviewAvailability(incoming);
   hud.setEmptyTiles(state.emptyTileCount);
   hud.setYachtGoal(state.coin, YACHT_COST, state.hasElement("yacht"));
 }
@@ -471,6 +482,107 @@ function updateHazardTestSchedule(): void {
 }
 updateHazardTestSchedule();
 
+// --- Hazard preview --------------------------------------------------------------
+//
+// STEP_PROMPT_pacing_telegraph_preview.md Section 3: read-only —
+// resolveMonsoonFlood()/resolveCyclone() are NOT pure (they call
+// destroyDefense()/degradeDefense()/drawDownFloodBuffer()/
+// applyHazardOutcome() directly on whatever GameState they're given), so
+// every preview here runs against a throwaway `state.clone()`, never the
+// real `state` — see GameState.clone()'s own comment for why this matters.
+//
+// Two independent source registries, unioned into one set of ghost tiles
+// by refreshPreview(): "hud-*" (the main HUD's single toggle, tracking
+// whichever hazard(s) are currently imminent) and "panel-*" (the Test
+// Hazards panel's own per-row checkboxes, independent of the schedule).
+// Both can be active at once without conflict.
+
+const activePreviewSources = new Map<string, { kind: "flood" | "storm"; severity: number }>();
+
+/**
+ * Re-clones state and re-resolves for every currently active preview
+ * source, replacing every ghost tile with a fresh set. Cheap enough (the
+ * same resolver a real trigger uses, against a throwaway clone, over a
+ * ~150-tile map) to call on every build/remove while a preview is active —
+ * which is exactly what makes "what if I add one more Dune here" genuinely
+ * live instead of a static one-shot snapshot.
+ */
+function refreshPreview(): void {
+  hazardOverlay.clearPreview();
+  if (activePreviewSources.size === 0) return;
+  const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
+  for (const source of activePreviewSources.values()) {
+    const previewState = state.clone();
+    const result =
+      source.kind === "flood"
+        ? resolveMonsoonFlood(previewState, source.severity, stormSurgeActive)
+        : resolveCyclone(previewState, source.severity);
+    for (const [key, damage] of result.tileDamage) {
+      if (damage < 0.08) continue;
+      const [q, r] = key.split(",").map(Number);
+      const coord = { q, r };
+      hazardOverlay.showPreview(coord, terrain.heightAt(coord), damage);
+    }
+  }
+}
+
+/** Sets or clears one named preview source. Callers batch multiple changes then call `refreshPreview()` once, rather than each `set` re-resolving independently. */
+function setPreviewSource(key: string, source: { kind: "flood" | "storm"; severity: number } | null): void {
+  if (source) activePreviewSources.set(key, source);
+  else activePreviewSources.delete(key);
+}
+
+/** Clears every preview source and tile — used by resetBoard() and whenever the HUD toggle turns off. */
+function clearAllPreviews(): void {
+  activePreviewSources.clear();
+  hazardOverlay.clearPreview();
+  hudPreviewOn = false;
+  hud.setPreviewActive(false);
+}
+
+let hudPreviewOn = false;
+
+/** The main HUD's own toggle button — see `Hud`'s constructor callback above. */
+function toggleHudPreview(): void {
+  hudPreviewOn = !hudPreviewOn;
+  hud.setPreviewActive(hudPreviewOn);
+  syncHudPreviewSources();
+}
+
+/**
+ * Keeps the "hud-flood"/"hud-storm" preview sources matched to whatever's
+ * currently imminent, at the exact severity the real resolution will use
+ * (`pendingFloodSeverity`/`pendingCycloneSeverity` — see those variables'
+ * own comment for why a pre-rolled, pinned value is what makes this a true
+ * preview rather than an approximation). Called whenever telegraph state
+ * might have changed (every build) so an active preview keeps pace with
+ * the schedule — including clearing itself if the window closes.
+ */
+function syncHudPreviewSources(): void {
+  if (!hudPreviewOn) {
+    setPreviewSource("hud-flood", null);
+    setPreviewSource("hud-storm", null);
+  } else {
+    setPreviewSource("hud-flood", floodTelegraphing && pendingFloodSeverity !== null ? { kind: "flood", severity: pendingFloodSeverity } : null);
+    setPreviewSource("hud-storm", cycloneTelegraphing && pendingCycloneSeverity !== null ? { kind: "storm", severity: pendingCycloneSeverity } : null);
+  }
+  refreshPreview();
+}
+
+/** Called from `refreshHud()`: hides the HUD toggle (and force-clears it, not just its label) once nothing is imminent to preview anymore. */
+function syncHudPreviewAvailability(incoming: { imminent: boolean }[]): void {
+  const available = incoming.some((h) => h.imminent);
+  hud.setPreviewAvailable(available);
+  if (!available && hudPreviewOn) {
+    hudPreviewOn = false;
+    setPreviewSource("hud-flood", null);
+    setPreviewSource("hud-storm", null);
+    refreshPreview();
+  } else if (available && hudPreviewOn) {
+    syncHudPreviewSources();
+  }
+}
+
 // refreshHud() calls hazardIncomingInfo() (see above), which reads
 // nextCycloneAtTurn/nextFloodAtTurn — both `let` bindings declared earlier
 // in this section, so this is safe. Its first call stays here, right after
@@ -502,6 +614,7 @@ function resetBoard(): void {
   elements.reset();
   hazardOverlay.reset();
   hazardTestPanel?.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across a reset
+  clearAllPreviews(); // STEP_PROMPT_pacing_telegraph_preview.md Section 3: a stale preview from before the reset shouldn't survive it
 
   state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
   terrain.resetClaims(keysToCoords(state.claimed));
@@ -604,6 +717,7 @@ function removeElement(coord: AxialCoord): void {
   elements.destroy(coord);
   state.elements.delete(key);
   refreshHud();
+  refreshPreview(); // STEP_PROMPT_pacing_telegraph_preview.md Section 3: removing a defense can change what an active preview would show, same as building one does
   buildPopover.hide();
 }
 
@@ -648,6 +762,7 @@ function openTilePopover(coord: AxialCoord): void {
     // build-cycle stale.
     checkHazardSchedule();
     refreshHud();
+    refreshPreview(); // STEP_PROMPT_pacing_telegraph_preview.md Section 3: covers a "panel-*" preview source too — refreshHud() above only re-syncs the HUD's own "hud-*" sources
     // STEP_PROMPT_manual_only_mode.md: no automatic era-end check anymore
     // — nothing resets the board on its own, ever. The board only ever
     // resets via the manual "Reset Board" control.
@@ -733,6 +848,11 @@ function devAutoBuild(kind: "building" | "defense"): void {
 // a verification script can force the cloud layer visible without waiting
 // for a real telegraph window (turns only advance via build()).
 (window as unknown as Record<string, unknown>).__cloudLayerForTest = cloudLayer;
+// STEP_PROMPT_pacing_telegraph_preview.md Section 3 Verify: lets a
+// verification script read back how many preview ghost tiles are currently
+// showing (via `.["previewByKey"].size`) without needing to reverse-engineer
+// the render mesh directly.
+(window as unknown as Record<string, unknown>).__hazardOverlayForTest = hazardOverlay;
 
 // STEP_PROMPT_remove_schedule_confirm_shadowing.md Part B: same "inert
 // unless called" category as the two hooks above — lets a verification

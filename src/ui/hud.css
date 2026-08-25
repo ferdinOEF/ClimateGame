@@ -223,6 +223,43 @@ html, body {
   opacity: 0.75;
 }
 
+/*
+  STEP_PROMPT_pacing_telegraph_preview.md Section 3: the only interactive
+  control inside `.instrument-cluster` — everything else in the card is
+  `pointer-events: none` (inherited from `.hud-corner`), so this one
+  explicitly opts back in. Hidden by default (Hud.setPreviewAvailable) —
+  only shown during an active telegraph window, the one moment previewing
+  is actually decision-relevant.
+*/
+.preview-toggle {
+  align-self: flex-start;
+  margin-top: -2px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fdf6e6;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.preview-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.preview-toggle.active {
+  background: rgba(127, 224, 255, 0.28);
+  border-color: rgba(127, 224, 255, 0.5);
+  color: #d6f5ff;
+}
+
+.preview-toggle[hidden] {
+  display: none;
+}
+
 /* STEP_PROMPT_hud_instrument_cluster.md: "a tidy chip grid," not a single flowing row — 2x2, each chip its own small pill instead of plain inline text. */
 .chip-grid {
   display: grid;
@@ -525,8 +562,15 @@ html, body {
   text-align: right;
 }
 
-.hazard-test-trigger {
+/* STEP_PROMPT_pacing_telegraph_preview.md Section 3: wraps the trigger button and the new Preview checkbox on one row — the alignment .hazard-test-trigger used to own by itself now belongs to this wrapper instead. */
+.hazard-test-actions {
   align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hazard-test-trigger {
   padding: 5px 10px;
   border-radius: 6px;
   border: none;
@@ -544,6 +588,21 @@ html, body {
 
 .hazard-test-row.flood .hazard-test-trigger:hover {
   background: rgba(140, 106, 63, 0.35);
+}
+
+/* STEP_PROMPT_pacing_telegraph_preview.md Section 3: this panel's own per-row preview checkbox — same ghost-overlay preview the HUD's own toggle drives, but at whatever severity the row's slider is currently set to, independent of the real schedule. */
+.hazard-test-preview-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #cfe6d8;
+  cursor: pointer;
+}
+
+.hazard-test-preview {
+  accent-color: #7fe0ff;
+  cursor: pointer;
 }
 
 /* STEP_PROMPT_manual_only_mode.md Part B: same warning color .meter-chip-warning/.resilience-gauge-fill.critical already use — destructive and can't be undone, so it should read as visually distinct from the two trigger buttons above it, not just another row. */
