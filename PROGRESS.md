@@ -2630,3 +2630,199 @@ by either change (neither touched `src/`, `tests/`, or any file the build
 actually reads) — re-run anyway to confirm nothing broke from removing/
 relocating files a build script might have unexpectedly depended on; all
 three still pass/succeed identically.
+
+## Step prompt: scheduled pacing loop, wave spectacle, hazard preview — DONE
+
+`STEP_PROMPT_pacing_telegraph_preview.md`. Reactivates the scheduled/
+telegraphed hazard loop as the game's real pacing mechanism, permanently
+alongside (not instead of) the `?debughazards` Test Hazards panel's
+manual trigger — confirmed directly with the project owner that Manual-
+Only Mode (`STEP_PROMPT_manual_only_mode.md`) was a testing-phase choice,
+not the shipped design.
+
+### Two false premises in Section 0, corrected before writing any code
+
+The step prompt itself asked to confirm its own claims rather than take
+them on faith — both turned out wrong:
+
+- **"Substantially built already, just disconnected"** — the telegraph/
+  schedule system (`hazardIncomingInfo()`, `nextFloodAtTurn`/
+  `nextCycloneAtTurn`, the terrain-tint/cloud-layer hooks, the storm icon,
+  `CYCLONE_TELEGRAPH_TURNS`/`FLOOD_TELEGRAPH_TURNS`) was **fully deleted**
+  by `STEP_PROMPT_remove_schedule_confirm_shadowing.md` (`cd16e90`), not
+  dormant. Rebuilt from that commit's pre-removal state (`git show
+  cd16e90^:src/main.ts`) as a faithful reconstruction reference, not
+  reinvented from the step prompt's description.
+- **"`resolveHazardWave()`/`resolveCyclone()`/`resolveMonsoonFlood()` are
+  pure"** — they are not. They call `destroyDefense()`/`degradeDefense()`/
+  `drawDownFloodBuffer()`/`applyHazardOutcome()` directly on whatever
+  `GameState` they're handed, and set `state.trust` themselves. Section
+  3's preview, as the step prompt literally described it, would have been
+  a severe bug (real destroyed defenses, real drained Trust) if built as
+  written. Solved with a new `GameState.clone()` (`src/core/gameState.ts`)
+  instead — every preview resolves against a throwaway clone and is
+  discarded, never the live state.
+
+### Section 1 — scheduled + telegraphed pacing loop
+
+Re-wired `hazardIncomingInfo()` into `refreshHud()`, the terrain-tint/
+cloud-layer telegraph and `hazard_telegraph` sound onto the same imminent-
+window condition, and hazard resolution into the same `build()` call that
+crosses the schedule threshold (`checkHazardSchedule()`, called from
+`openTilePopover()`'s build callback — now *before* `refreshHud()`, so the
+HUD reflects a threshold crossing immediately rather than one build-cycle
+stale). The player controls their own pace entirely; they don't choose
+the exact moment a telegraphed hazard lands once its countdown reaches
+zero — preserved deliberately, no separate hidden tick.
+
+Severity is pinned the moment a telegraph window opens
+(`pendingFloodSeverity`/`pendingCycloneSeverity`, rolled once by
+`rolledSeverity()`), not re-rolled at arrival — what's telegraphed is
+what happens.
+
+The countdown-hits-zero moment got its own beat, distinct from the wave-
+sweep that follows: `scheduleHazardArrival()` plays a `hazard_arrival`
+sound and a screen-edge radial flash (`Hud.flashArrival()`, a new
+`.hazard-arrival-flash` div with a 550ms CSS keyframe), then the real
+resolution fires after a short `HAZARD_ARRIVAL_BEAT_MS` (450ms,
+placeholder pacing) delay. Deliberately only used by the scheduled path —
+the Test Hazards panel's "Trigger now" stays instant-resolve-on-click,
+unchanged in every way.
+
+**`?debughazards` gate reconsidered, left as-is.** Now that there's a
+real schedule to potentially collide with, re-checked whether the panel
+is "not reachable by accident": it's still URL-param-gated with zero UI
+affordance otherwise, same bar every other dev tool here holds itself to
+(`devAutoBuild`, `?coinboost`, etc.) — judged adequately obscure without
+building flag infrastructure, per the step prompt's own explicit
+allowance to skip that if already true.
+
+### Section 2 — wave-sweep spectacle polish
+
+The existing `arrivalRound`-staggered reveal (`applyHazardResult()`) was
+verified to look right reached via the real scheduled trigger, not just
+the test panel — confirmed live (see Verification below). Of the
+priority-ordered polish list:
+
+- **Done** — distinct sounds per outcome: the staggered reveal now plays
+  `hazard_breach` for a destroyed defense or `hazard_overwhelmed` for a
+  degraded one, not one shared `hazard_resolve` cue for every tile.
+  Deliberately not one sound per damaged tile (a severe event can damage
+  dozens at once — noise, not spectacle).
+- **Done** — a narrated aftermath beat: `describeAftermath()` formats a
+  HUD banner (Resilience delta, Trust delta if it moved, defenses
+  breached/overwhelmed counts), shown via `hud.showBanner()` timed to
+  `sweepDurationMs()` (the last tile's reveal plus a settle buffer) so it
+  lands right as the sweep visually finishes.
+- **Deferred** — camera pull-back during the sweep. Not attempted this
+  pass: the real risk (explicitly flagged in the step prompt itself) is
+  fighting the player's own camera control, and doing it well — a subtle
+  nudge that doesn't feel like the camera was yanked away — is real
+  camera-choreography work, not a small addition on top of what's here.
+  Worth a dedicated pass with its own verification, not a rushed add-on
+  to this one.
+
+`ROUND_DURATION_MS` left unchanged (550ms) — no reason from live
+verification to adjust it by feel this pass.
+
+### Section 3 — hazard-path preview toggle (the one genuinely new build)
+
+Two independent entry points, unioned into one set of ghost tiles: a HUD
+button (`Hud.setPreviewAvailable`/`setPreviewActive`, a new `.preview-
+toggle` in the instrument cluster) shown only while a hazard is genuinely
+telegraphing, and the Test Hazards panel's own per-row checkbox
+(`onPreviewChange` callback) for previewing at whatever severity its
+slider is currently set to, independent of the real schedule.
+
+True preview, not approximation: both resolve through the exact same
+`resolveMonsoonFlood`/`resolveCyclone` the real event uses (the HUD path
+at the real pinned severity), against a `state.clone()` — see the
+Section-0 correction above for why cloning, not the real state, is
+required. Renders through a new preview mode on the existing
+`HazardOverlayManager` (`showPreview()`/`clearPreview()`, a distinct
+pulsing `#7fe0ff` ghost color, sharing the same instance pool as real
+damage reveals rather than a parallel rendering path) — never touches
+`applyHazardResult()`'s mutating half.
+
+Updates live: `refreshPreview()` re-clones and re-resolves on every
+build/remove while a preview source is active (`openTilePopover()`'s
+build callback and `removeElement()` both call it) — "what if I add one
+more Dune here" is genuinely live, not a static snapshot, confirmed by
+the live verification below. Toggling off, the telegraph window closing
+mid-preview (`syncHudPreviewAvailability()` force-clears it), or
+resetting the board (`clearAllPreviews()`) all clear every preview tile
+cleanly.
+
+`tests/preview.test.ts` (new, 4 tests) is the single most load-bearing
+test added this pass, per the step prompt's own instruction: two tests
+assert previewing a severe multi-defense-failure scenario (Seawall
+catastrophic failure, Mangrove overwhelm, both via a resolved clone)
+leaves the real `GameState` — coin, turn, trust, resilience,
+severityBaseline, and every element's `degradeAmount`/`floodBufferFilled`
+— byte-for-byte identical to a pre-snapshot, while confirming the clone
+itself *was* mutated (so the test isn't vacuous). Two more cover
+`GameState.clone()` directly: primitive fields copied by value, element
+instances copied as distinct objects so mutating a clone's copy never
+touches the original.
+
+### Commit split: three, as asked
+
+First landed as two commits (`c2e0e35` Sections 1+2 combined, `005a5dc`
+Section 3), with the combination reasoned through and documented here as
+a deliberate call — `src/main.ts`'s `triggerFlood`/`triggerCyclone`
+interleave Section 1 (telegraph clearing, schedule reset) and Section 2
+(aftermath timing, `resilienceBefore`/`trustBefore` capture) in the same
+few lines. Asked again explicitly for the literal three-way split, so
+redone properly: since neither commit had been pushed, the local history
+was safely rewound (`git reset`, no `--hard`, nothing discarded) and
+re-split by rebuilding each intermediate file state directly — Section
+1 only, then Section 1+2, then the full Section 1+2+3 state — staging
+and committing each in turn, rather than trying to hand-split diff hunks
+after the fact. `tsc`/`vitest` verified clean at both new intermediate
+checkpoints (Section 1 alone: 58/58 baseline unaffected; Section 1+2:
+same), and the final tree confirmed byte-for-byte identical to the
+already-verified two-commit result (`git diff --quiet` against the prior
+`a6c84da` state on every touched file). Final history: `f70df16`
+(Section 1), `2392b81` (Section 2), `f09ff5d` (Section 3).
+
+### Live verification (headless Playwright, script discarded after use)
+
+- Scheduled loop end to end: built repeatedly via `__buildForTest` +
+  `__checkHazardScheduleForTest` (mirroring `openTilePopover()`'s real
+  call order) until each schedule threshold was crossed with zero test-
+  panel interaction — confirmed the HUD banner/tint/cloud/sound sequence
+  during telegraph, the arrival beat firing, the wave-sweep animating,
+  and the aftermath banner appearing, via console audio-log sequence
+  `hazard_telegraph` → `hazard_arrival` → `hazard_resolve`.
+- Preview toggle: HUD button appeared only once Flood was genuinely
+  imminent; ghost tile count changed (82 → 125) after building one more
+  house while still active, confirming the live-update path; toggling
+  off dropped the count to exactly 0; resilience read identically before
+  and after the whole toggle/build/toggle-off sequence (0 → 0, no drift).
+- Panel checkbox: previewed a Storm Surge at 2.5× with no telegraph
+  active at all (145 ghost tiles — a severe, whole-map-affecting
+  severity); unchecking cleared to 0; real resilience stayed at 100
+  throughout.
+- Manual trigger / double-telegraph check: clicking "Trigger now" logged
+  only `hazard_resolve` in the audio sequence — no `hazard_arrival` —
+  confirming the manual path genuinely skips the scheduled path's arrival
+  beat and can't produce a confusing double-telegraph against a live
+  schedule. Resilience changed for real (100 → 53), confirming the
+  trigger itself still works exactly as before.
+- Also caught and fixed a bug in the verification script itself, not the
+  app: the first pass built into an already-cyclone-telegraphing turn and
+  used a coordinate list that overlapped `STARTING_STATE.prebuiltHouses`
+  (14 of 15 scripted "builds" silently failed as already-occupied tiles),
+  producing a misleading read before the actual behavior was confirmed
+  correct on a corrected run.
+
+### Verification
+
+`tsc --noEmit` clean at every checkpoint. `npx vitest run`: 58 baseline +
+4 new (`tests/preview.test.ts`) = 62 passing, 6 `skipIf`-gated unchanged,
+both before Section 3 was restored (58) and after (62). Production build
+(`vite build`) succeeds at both checkpoints. No hazard math, decay
+curves, or `elements.json` balance numbers touched anywhere in this pass.
+The Test Hazards panel comes out byte-for-byte identical in every
+existing behavior, just coexisting with a live schedule now — confirmed
+live, not just by code inspection.
