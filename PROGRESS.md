@@ -2449,3 +2449,157 @@ was read, per this repo's convention. One new permanent test hook,
 `__resetBoardForTest` (replacing the retired `__forceEraEndForTest`, which
 no longer made sense once `resetBoard()` has no `isEraOver` guard to force
 past).
+
+## Step prompt: code review & cleanup pass — DONE
+
+Source: `STEP_PROMPT_code_review_cleanup.md`. A hygiene pass, not a fix —
+verified every claim in the document directly rather than taking it on
+faith, per its own instruction. Findings below, section by section.
+
+### Section 1 — line-ending drift
+
+**Could not reproduce the specific reported diff** (`15 files changed,
+6597 insertions(+), 6597 deletions(-)`) in this session — `git status`/
+`git diff --stat` were already clean before any change, and `git
+hash-object` on the working-tree `src/main.ts` (CRLF on disk, confirmed
+via `file`) matched the committed blob's hash exactly, because this
+session's `core.autocrlf=true` (set at the Git-for-Windows *system*
+config level, not repo or user level — confirmed via `git config
+--system --get core.autocrlf`) was transparently normalizing CRLF↔LF on
+every git operation the whole time. The step prompt's author most likely
+observed this in a different tool/environment where that system-level
+setting wasn't in effect. Reported honestly as "not reproducible in this
+session," not silently dropped.
+
+**Fixed anyway, since it's real protective value regardless**: added
+`.gitattributes` (`* text=auto eol=lf`) so LF is enforced by the repo
+itself, not by whichever contributor's environment happens to have
+`core.autocrlf` set a particular way. `git add --renormalize .`
+afterward produced zero changes (nothing needed renormalizing, consistent
+with the "not reproducible" finding above) — committed in isolation as
+`41d1522`, its own commit before any of the sections below, per the step
+prompt's own instruction.
+
+### Section 2 — dead/orphaned code audit
+
+The three already-flagged inert constants (`FOOD_DEFICIT_TRUST_FACTOR`,
+`FOOD_DEFICIT_RESILIENCE_FACTOR`, `FLOOD_BUFFER_RECOVERY_RATE`) were
+re-checked: comments above them are accurate and still point at the right
+step prompts. **Not touched, per the guardrails.**
+
+**Found and fixed, beyond what was already flagged:**
+- **Six stale comments** across `hud.ts`, `hud.css`, `main.ts`, and
+  `gameState.ts` still described automatic turn-based behavior that
+  Manual-Only Mode already removed — the "Era N retired" banner (now
+  "Board reset."), `advanceTurn()` paying income/ticking maintenance/
+  draining Trust on a Food deficit, and the Food-chip warning's own
+  framing ("this is costing you Resilience right now" → "you're not
+  sustaining your Houses"). Every one rewritten to describe current
+  behavior; no logic touched.
+- **One genuinely dead CSS rule**: `.build-popover[hidden] { display:
+  none; }` (the original A1 bug fix) had no remaining trigger —
+  confirmed via exhaustive `grep` that nothing sets the `hidden`
+  attribute on `.build-popover` itself anymore, only on its parent
+  `.popover-backdrop`, which the browser's own default `[hidden]` rule
+  already handles correctly (no competing `display` override on that
+  element, and a hidden ancestor hides its children regardless of their
+  own `display`). Removed, with `buildPopover.ts`'s own class comment
+  updated to explain why it's gone rather than just deleting the
+  historical context.
+- **No commented-out code blocks found** (checked via a targeted grep for
+  `//`-prefixed lines matching common statement syntax — `function`,
+  `const`, `if (`, etc. — zero hits).
+- Swept `render/` specifically, per the step prompt's own instruction —
+  every "era"/turn-based mention there (`resetClaims`'s "a new era
+  resetting the player's footprint," `elementMeshManager.ts`'s "a new era
+  starting a fresh map") describes what `state.startNewEra()` itself
+  structurally does, which is unchanged — Manual-Only Mode only changed
+  *who calls it*, not what it does. Nothing stale found there.
+
+**One new finding worth flagging, not fixed this pass** (data, not
+code — out of scope per the guardrails' "not a number in elements.json"):
+`ElementDef.maintenanceCostPerTurn`/`maintenanceNeglectPenaltyPerTurn`
+are still declared in `core/elements.ts`'s interface and still populated
+in `elements.json` for several elements, but — confirmed via grep — **no
+code reads either field anymore**, since `advanceTurn()`'s maintenance
+loop was removed. Same "kept but inert" category as the three constants
+above, just never explicitly flagged as such when Manual-Only Mode
+shipped. Left exactly as-is (touching `elements.json`'s schema is a
+mechanics-adjacent call this pass's guardrails put out of scope); noting
+it here so it's not rediscovered from scratch next time.
+
+### Section 3 — test-suite audit
+
+`tests/era.test.ts` and `tests/cyclone.test.ts` read fresh: **both
+genuinely didn't need any changes.** Neither test file's comments imply
+automatic triggering — `era.test.ts` calls `resolveMonsoonFlood`/
+`resolveCyclone` directly in an explicit loop to reach `isEraOver`, and
+calls `state.startNewEra()` directly; `cyclone.test.ts` only exercises
+`resolveCyclone()` (hazard.ts, untouched by Manual-Only Mode either way).
+Confirms the step prompt's own prediction.
+
+The 6 `skipIf`-gated `mapgen.test.ts` tests were re-checked: `MAP.
+handEdited` is still `true` in the live `map.json`, and `skipIfHandEdited
+= it.skipIf(MAP.handEdited === true)` still reads that same flag — still
+skipped for exactly the reason they were gated, not silently rotting.
+
+**Closed the honest gap `PROGRESS.md` flagged from the Manual-Only Mode
+pass**: the "Remove" button's DOM wiring had been verified by code review
+only, never with a real screenshot, since the Browser pane wasn't in a
+displayed state that session. Same blocker recurred this session — so
+used a headless Playwright script instead (deleted after its output was
+read, per convention) to build a House, focus the camera on it via
+`__focusOnForTest`, click it for real, and screenshot before/during/after
+clicking "Remove." **Genuinely confirmed, not just re-asserted**: the
+popover showed the House's name/effects/Remove button correctly; after
+clicking Remove, the popover closed, "hexes still empty" went 134→135,
+Population dropped 105→100, and the tile was buildable again — all
+visible directly in the screenshots (`tools/screenshots/manual_only_
+remove_before_click.png`, `..._popover_open.png`, `..._after_click.png`,
+committed). **This gap is now closed**, not still open.
+
+### Section 4 — repo housekeeping (findings only, no unilateral action per the step prompt's own instruction)
+
+- **`tools/screenshots/`**: 54 PNGs (51 pre-existing + 3 new from closing
+  the Remove-button gap above). Cross-referenced against every `.md` file
+  at repo root: **39 are linked from at least one doc, 12 are not** —
+  `a1_clip_bottomright.png`, `a2_land_claimed_vs_unclaimed.png`,
+  `a2_rebalanced_close.png`, `a2_river_claimed_vs_unclaimed.png`,
+  `b1v2_fresh.png`, `b1v2_maxzoom.png`, `b1v2_zoomedout.png`, `hazard_
+  test_trigger_no_reset.png`, `no_claim_popover_open.png`, `play_4_
+  flood.png`, `play_start.png`, `veg_beach_closeup.png`. Most of these
+  are companion/sibling shots of ones that *are* linked (e.g. the other
+  corner of a `testpopoverclip` pair, the other terrain type of an A2
+  claimed-vs-unclaimed set, other zoom levels of B1) — likely captured as
+  part of the same verification but only one image per set got linked
+  inline. **Not deleted** — the step prompt explicitly asked to tally and
+  ask, not mass-delete, since some may be intentional before/after
+  history.
+- **`_archive_v1_panjim_digital_twin/`**: shows zero modified files in
+  `git status` right now (the CRLF churn the step prompt predicted for it
+  isn't reproducing here either, consistent with Section 1's finding).
+  Its purpose (keep as historical reference in this live repo, vs. move
+  out entirely) is a call for the user, not decided here.
+- **Step-prompt file organization**: 15 `STEP_PROMPT_*.md` files now live
+  at repo root alongside `PROGRESS.md`/`NEXT_STEPS.md`/`GAUNTLET_PROMPT.
+  md`. A `docs/step-prompts/` subfolder is a reasonable option once
+  there's this many, but purely organizational — not done here, flagged
+  for the user to decide.
+- **Linter/formatter**: confirmed none configured (`package.json` has
+  only `tsc`/`vite`/`vitest`), and `tsconfig.json`'s `noUnusedLocals`/
+  `noUnusedParameters` are both confirmed `false` — deliberately, since
+  that's what lets the "kept but inert" convention (the three constants,
+  and now the `maintenanceCostPerTurn` fields noted above) exist without
+  compiler noise. Not changed, per explicit instruction — noted as a
+  question worth raising separately if useful going forward.
+
+### Verification
+
+`tsc --noEmit` clean, 58/58 tests + 6 `skipIf`-gated unchanged (no test
+file needed changing this pass), production build succeeds. Three
+commits, each an isolated concern per the guardrails: `41d1522`
+(`.gitattributes`, alone), `4ac0a01` (stale-comment fixes + the one dead
+CSS rule, together — both are Section 2's "dead/orphaned code audit,"
+not two separate concerns), and this write-up's own commit (the three
+Remove-button screenshots + this entry). No mechanics, balance numbers,
+or hazard math touched anywhere in this pass.

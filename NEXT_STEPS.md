@@ -553,6 +553,49 @@ updated (not reverted) to match the new, correct behavior — see PROGRESS.md
 for exactly which and why. `tsc --noEmit` clean, 58/58 tests + 6
 `skipIf`-gated unchanged, production build succeeds.
 
+## Bucket O — Step prompt: code review & cleanup pass
+
+Source: `STEP_PROMPT_code_review_cleanup.md`. A hygiene pass — see
+PROGRESS.md's own section for full detail on what was checked and why.
+
+Status: closed, with two open questions handed back to the user (Section
+4's "ask before acting" items) rather than decided unilaterally.
+
+- **Section 1 (line-ending drift)**: the specific reported diff didn't
+  reproduce in this session (`core.autocrlf=true` at the Git-for-Windows
+  system-config level was already normalizing everything transparently) —
+  reported honestly, not silently dropped. Added `.gitattributes` anyway
+  as real protective value regardless of any given environment's autocrlf
+  setting. Isolated commit, first, per instruction.
+- **Section 2 (dead code)**: the three already-flagged inert constants
+  re-checked, still accurate, not touched. Found and fixed six stale
+  comments describing automatic behavior Manual-Only Mode already
+  removed, plus one genuinely dead CSS rule (`.build-popover[hidden]`,
+  superseded once hiding moved to the backdrop element) — confirmed dead
+  via exhaustive grep before removing. New finding, flagged not fixed:
+  `maintenanceCostPerTurn`/`maintenanceNeglectPenaltyPerTurn` are still
+  in `elements.json`/`core/elements.ts` but read by zero code — touching
+  `elements.json` was out of scope for this pass.
+- **Section 3 (tests)**: `era.test.ts`/`cyclone.test.ts` read fresh, both
+  genuinely needed no changes (confirms the step prompt's own
+  prediction). The 6 `skipIf`-gated tests re-confirmed still gated for
+  the live reason (`MAP.handEdited === true`). **Closed the Remove-button
+  screenshot gap** flagged in Bucket N — a real headless click-through
+  with before/during/after screenshots confirms it works end to end
+  (popover shows correctly, Remove closes it, tile count/Population/Food
+  all update, tile is buildable again).
+- **Section 4 (housekeeping)**: findings only, no unilateral action.
+  `tools/screenshots/`: 12 of 54 PNGs aren't linked from any doc (listed
+  in PROGRESS.md), mostly companion shots of ones that are — not deleted,
+  handed back as a tally. `_archive_v1_panjim_digital_twin/` shows no
+  modified files (same non-reproduction as Section 1) — its fate (keep as
+  history vs. move out) is the user's call. Step-prompt file organization
+  (15 files at repo root) and adding a linter are both noted as questions
+  worth raising, not acted on.
+
+`tsc --noEmit` clean, 58/58 tests + 6 `skipIf`-gated unchanged (no test
+file needed changing), production build succeeds. Three isolated commits.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -586,3 +629,4 @@ for exactly which and why. `tsc --noEmit` clean, 58/58 tests + 6
 - 2026-08-23, L1-L3 (gameplay stability pass: hanging, map reset, leftover Bug 1): all closed. L1: Bug 1 re-confirmed already fixed locally (zero `monsoon_flood` occurrences, landed in d5772b8, already pushed) — the deployed Vercel build tested against is stale, not a repo issue. L2: found and fixed the real "hanging" bug — `HazardOverlayManager`/`ElementMeshManager` both used a never-recycled per-type instance-index counter; live-reproduced `ElementMeshManager` hitting its 200-cap after 200 build/destroy cycles of one element, throwing uncaught from inside the build popover's click handler and leaving the modal backdrop stuck open (coin spent, no visual result, every further click dead) — exactly what "hanging" would look like. Fixed with a freed-index pool in both managers plus a generation guard against a stale collapse timeout double-freeing across an era reset; re-verified live, 205/205 cycles now succeed. Cross-era Three.js leak and `devAutoBuild`-at-scale hypotheses were checked with real Long Tasks API/heap data — no cross-era leak found (nothing allocates new Three.js resources per era); `devAutoBuild` does block for ~875ms but only via dev-only URL params no real player reaches, so left as-is. L3: confirmed the era-reset behavior is by design (audited the sole, always-guarded `startNewEra()` call site and the popover for double-fire risk — found neither issue); fixed one real inconsistency (`?resilienceboost` didn't clamp at 0 like every other resilience path); noted the era-end banner's easy-to-miss 3.5s duration as a UX follow-up, not fixed this pass. 58/58 tests passing + 6 `skipIf`-gated unchanged, `tsc --noEmit` clean, production build succeeds.
 - 2026-08-23, M1 (Small Dam gets a real reservoir): closed. Added `floodBufferCapacityM3: 800` (placeholder, ~half of Khazan's 1500) to Small Dam and restructured `resolveHazardWave()`'s branch order in `hazard.ts` so the buffer draws down before the catastrophic-breach check, which now runs against the post-buffer overflow severity instead of raw incoming severity — a dam breach releases what overtopped it, matching real dam failure. Confirmed Khazan/Seawall byte-for-byte unchanged (their own branch conditions are unaffected; all existing tests passed unmodified). Live-verified on the real map: Flood 1.0x left the dam at 0.072 damage with its buffer full (800); Flood 3.0x immediately after breached it at 2.46 damage, computed from the overflow. Updated (not reverted) two tests to match the new, legitimately-correct behavior — `hazard.test.ts`'s Small-Dam numbers, and `balance.test.ts`'s "engineered never strictly ahead" invariant, widened to a documented 10-point tolerance rather than hand-tuning elements.json to force a tie, per the step prompt's explicit instruction to defer real tuning to `STEP_PROMPT_balance_tuning.md`. Separately confirmed Vercel's auto-deploy is healthy (not stuck/misconfigured) — the "missing fixes" gap the user saw was simply an unpushed local commit (90f9861) from the prior pass, verified via GitHub's commit-status API and the live JS bundle directly. 58/58 tests passing + 6 `skipIf`-gated unchanged, `tsc --noEmit` clean, production build succeeds.
 - 2026-08-23, N1 (manual-only mode): closed, direct user instruction to remove all automatic/turn-based state changes. `checkEraEnd()` repurposed into always-runs `resetBoard()`, no longer auto-called anywhere (dropped the now-pointless `skipEraCheck` option from `triggerFlood`/`triggerCyclone` and every call site); new confirm-gated "Reset Board" button on the `?debughazards` Test Hazards panel. New "Remove" button on the tile-info popover (not dev-gated), wired to a new `removeElement()` that `__destroyForTest` now calls into instead of duplicating its logic — no coin refund, flagged as a placeholder policy for balance tuning. `GameState.advanceTurn()` stripped to just `this.turn++` — income, maintenance/neglect degrade, Food-deficit Trust/Resilience drain, and flood-buffer recovery are all gone; the three now-unused constants kept in place with an explanatory comment rather than deleted. Live-verified: a guaranteed Food deficit across 6 builds left Resilience untouched; two severity-5.0 Storm Surges cratered Resilience to 0 with the board fully intact; Reset Board then restored it from that 0; a Small Dam's buffer stayed put across 5 more builds with nothing else triggered. Four tests across 3 files updated (not reverted) to match the new, correct behavior. One honest gap: the Remove button wasn't pixel-screenshotted this pass (Browser pane wasn't in a displayed state to calibrate clicks) — verified by code review and via its shared underlying function instead. 58/58 tests passing + 6 `skipIf`-gated unchanged, `tsc --noEmit` clean, production build succeeds.
+- 2026-08-23, O1 (code review & cleanup pass): closed, with two questions handed back to the user rather than decided unilaterally. Section 1's reported line-ending diff didn't reproduce this session (system-level `core.autocrlf=true` was already normalizing everything) — reported honestly, `.gitattributes` added anyway as real protective value, isolated commit first. Section 2: the three already-flagged inert constants re-confirmed accurate, not touched; fixed six stale comments describing automatic behavior Manual-Only Mode already removed; found and removed one genuinely dead CSS rule (`.build-popover[hidden]`, confirmed via exhaustive grep before deleting); flagged (not fixed, elements.json out of scope) that `maintenanceCostPerTurn`/`maintenanceNeglectPenaltyPerTurn` are now read by zero code. Section 3: `era.test.ts`/`cyclone.test.ts` needed no changes (confirms the step prompt's own prediction); the 6 `skipIf`-gated tests re-confirmed still gated for the live reason; closed the Remove-button screenshot gap from N1 with a real headless click-through (popover shows correctly, Remove closes it, tile count/Population/Food update, tile buildable again — all visible in the committed screenshots). Section 4: 12 of 54 `tools/screenshots/` PNGs aren't linked from any doc (tallied, not deleted); `_archive_v1_panjim_digital_twin/` shows no modified files; step-prompt reorg and adding a linter both flagged as questions, not acted on. `tsc --noEmit` clean, 58/58 tests + 6 `skipIf`-gated unchanged, production build succeeds. Three isolated commits.
