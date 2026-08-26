@@ -3165,3 +3165,65 @@ Section 1 constant. No changes to `map.json`'s `tiles` array, `qRange`/
 `rRange`, or anything that would put the Ghats backdrop in
 `GameState.placed`. Telegraph/tint/cloud-layer system and both hazards'
 Test Hazards panel manual triggers untouched.
+
+## Follow-up: new hand-authored map + remove starting Houses — DONE
+
+User-supplied replacement `map.json` (198 tiles, `qRange [-11,10]`,
+`rRange [-5,6]`, `handEdited: true`) swapped in for the previous
+145-tile map, plus `startingState.json`'s `prebuiltHouses` cleared to
+`[]` — both requested directly, not from a step prompt.
+
+**"Incorporate the Western Ghats" needed no code change.**
+`GhatsBackdropManager` (from `STEP_PROMPT_ghats_wave_demo.md`) already
+computes its four columns from whichever `mapTiles` it's constructed
+with — each row's own real eastern edge, not a hardcoded `q` — so
+swapping the map file alone makes the backdrop line up with the new
+shape automatically.
+
+**Before swapping, checked the one real risk**: `tests/mapgen.test.ts`
+gates most of its shape-invariant checks behind `handEdited === true`
+(this map sets that flag, same as the outgoing one, so those stay
+correctly skipped), but two checks are *not* gated — the River/Estuary
+network connectivity flood-fill from `MAP.estuary`, and the starting-
+claim placement check. Verified both against the new file with a
+throwaway script before touching anything in the repo: the flood-fill
+from `(0,2)` reaches all 75 river+estuary tiles (23 river + 52
+estuary), and all three `startingClaim` coordinates exist and sit near
+the coast. Also confirmed the old `prebuiltHouses` coordinates aren't
+even all valid on the new map's shape (e.g. `(4,2)` is now Estuary,
+not Land) — removing them outright sidesteps that mismatch rather than
+needing a remap.
+
+Removing the Houses is a real gameplay-state change, not just data
+deletion: starting Population drops from 100 to the bare
+`startingPopulation` baseline (50, no `+5`-per-House bonus), starting
+Food goes from a guaranteed `-10` deficit to a clean `0`, and starting
+Income goes from `+50/turn` to `0/turn` (STEP_PROMPT_balance_tuning_
+findings.md's income mechanic has nothing to accrue from with no
+buildings standing). All are the honest, expected consequence of zero
+starting Houses, not something to compensate for — the player now
+starts from a genuinely blank slate.
+
+`tools/balance_sim/index.ts` also reads `startingState.json` for its
+own bot's seed elements — it will now simulate from zero starting
+Houses too, consistently with the real game; not re-run as part of
+this change since no code/mechanic changed, only starting content.
+
+Live-verified: fresh load shows 198 tiles claimed, Income `0/turn`,
+Food `0`, Population `50`; the two `prebuiltHouses` coordinates that
+are still Land in the new map (`(5,3)`, `(6,3)`) came back
+unoccupied (`__elementStateForTest` returned `null`) and accepted a
+real build, confirming no leftover House survived the swap; canvas
+render confirmed alive (`GhatsBackdropManager`'s constructor runs
+before the render loop starts, so a thrown error there would have
+prevented the canvas from sizing at all). Visual screenshot of the
+Ghats backdrop against the new shape wasn't captured this pass — the
+Browser pane wasn't in a displayed state this session — verified by
+data/render-liveness checks instead; worth a quick visual spot-check
+next time the pane's available, though the backdrop's own logic is
+unchanged from the already-screenshotted prior pass.
+
+`tsc --noEmit` clean, all 65 tests pass unmodified against the new map
+(including the two previously-ungated `mapgen.test.ts` checks and
+`balance.test.ts`'s adaptive cross-category assertions), production
+build succeeds.
