@@ -705,6 +705,26 @@ reveal anything new.
 `tsc --noEmit` clean, all 65 tests pass unmodified against the new map,
 production build succeeds.
 
+## Follow-up — HUD collapse/expand toggle (Section 4)
+
+The step prompt was updated after the first three-commit pass shipped
+and pushed: a new Section 4 (mobile HUD collapse/expand toggle),
+Orientation renumbered to Section 5, Guardrails bumped to four
+commits. Full detail in PROGRESS.md.
+
+Status: closed. One real bug found and fixed during verification (the
+collapsible cluster rows' "expanded" `max-height` of 100px was
+actually smaller than their real content at the bumped mobile font
+size, silently clipping the last meter chip even when nothing was
+collapsed — bumped to a generous 220px). One honest testing-
+environment wrinkle, not a code gap: this session's Browser pane tab
+reports `document.hidden`, which appears to pause CSS transitions
+outright — worked around by temporarily disabling transitions to
+confirm every element's correct end-state value directly.
+
+`tsc --noEmit` clean, 65/71 tests passing (unchanged), production
+build succeeds.
+
 ## Follow-up — mobile browser responsiveness
 
 `STEP_PROMPT_mobile_responsive.md` executed in full, three commits per
@@ -766,3 +786,4 @@ build succeeds.
 - 2026-08-26, follow-up (new hand-authored map + remove starting Houses): closed, direct user request (not a step prompt). Full detail in PROGRESS.md; log line added here for completeness alongside the other dated entries.
 - 2026-08-26, S1-S3 (mobile browser responsiveness): all closed. S1: `viewport-fit=cover` + `100dvh`-with-`100vh`-fallback + `overscroll-behavior:none` + canvas-scoped `touch-action:none` + `env(safe-area-inset-*)` on every HUD corner. S2: two-finger pinch-to-zoom added alongside the existing wheel path in `scene.ts` (desktop mouse/wheel behavior untouched), reusing the same `distance`/`CAM_DISTANCE_MIN/MAX` the wheel handler already governs; new `__cameraForTest` hook. S3: `hud.css`'s first `@media` queries — a `820px OR pointer:coarse` tier for ~44px touch targets (the `pointer:coarse` half a deliberate addition beyond spec, to catch landscape phones by touch type rather than width alone) and a `600px` tier capping `BuildPopover`/instrument-cluster/`EraEndScreen` at `min(px, ~92vw)` plus bumped HUD text. Found and fixed a real bug live during landscape verification: `EraEndScreen`'s ~440px-tall card was clipping off both edges of a short viewport (e.g. 667×375) with no way to reach the cut-off content — fixed with a `max-height:500px`-scoped query (a first attempt that put the fix on the base rule instead was caught shrinking the card's *desktop* width too, and corrected). Live-verified the full required matrix — 375×667/390×844/412×915/768×1024, each in both portrait and landscape (8 combinations) — plus a specific re-confirmation that desktop (1440×900) is byte-for-byte unaffected by Commit 3's new rules. One honest tooling caveat, not a code gap: the browser-automation tool doesn't emulate a coarse pointer at custom widths ≥768px, so the landscape-only, ≥768px-wide case of the `pointer:coarse` tap-target rule couldn't be exercised live — worth a real-device spot-check. 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. Three commits (`41db390`, `1971088`, `681cd75`).
 - 2026-08-26, follow-up (new hand-authored map + remove starting Houses): closed, user-supplied directly. Swapped in a new 198-tile `map.json` (`handEdited: true`) and cleared `startingState.json`'s `prebuiltHouses` to `[]`. "Incorporate the Western Ghats" needed zero code change — `GhatsBackdropManager` already computes its columns from whichever map it's given. Before swapping, verified the two `mapgen.test.ts` checks NOT gated behind `handEdited` (River/Estuary connectivity flood-fill, starting-claim placement) against the new file with a throwaway script — both pass; also confirmed some old `prebuiltHouses` coordinates weren't even valid Land anymore on the new shape, so removing them outright sidesteps a remap rather than needing one. Live-verified: fresh load shows 198 tiles, Income `0/turn`, Food `0`, Population `50` (all correct with zero Houses); the two old House coordinates still Land on the new map came back unoccupied and accepted a real build. One deferred item: no visual screenshot of the Ghats against the new map shape this pass (Browser pane wasn't displayed this session) — verified via data/render-liveness checks instead. `tsc --noEmit` clean, all 65 tests pass unmodified, production build succeeds.
+- 2026-08-26, S4 (HUD collapse/expand toggle, mobile responsiveness follow-up): closed. New bottom-left toggle button (mobile-only, hidden entirely on desktop) shrinks the corner strips down on a small screen — tile counter/yacht goal/empty-tiles prompt fade fully out, the instrument cluster shrinks to a thin strip that deliberately keeps the Coin/Turn/Era header and the hazard-incoming line visible (the one genuinely load-bearing piece, a live hazard countdown), per the step prompt's own "don't collapse anything load-bearing" instruction. Default expanded on every fresh load; respects `prefers-reduced-motion`. Found and fixed a real bug live: the collapsible rows' "expanded" `max-height` (100px) was smaller than their real content (125px at the mobile font-bump), silently clipping the last meter chip even when never collapsed — fixed with a generous 220px bound. Verified the toggle button's position/sizing at all four required breakpoints plus the tightest landscape case, and round-tripped the actual collapse/expand click twice confirming every element's correct end state (worked around this session's Browser-pane-tab-reports-`document.hidden` quirk, which appears to pause live CSS transitions, by temporarily disabling transitions for the check). Confirmed the guardrail live: toggling collapse doesn't move or close an open `BuildPopover`, and a build completes normally while the HUD is collapsed. 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. One commit (`dcfba3b`).

@@ -3336,3 +3336,97 @@ case specifically, next time one's available.
 `tsc --noEmit` clean, 65/71 tests passing (unchanged — no
 hazard/balance/map logic touched, matching the guardrails), production
 build succeeds.
+
+## STEP_PROMPT_mobile_responsive.md follow-up (Section 4: HUD collapse/expand toggle) — DONE
+
+The step prompt was updated after the first pass shipped: a new Section
+4 ("the HUD's corner strips still occupy a meaningful fraction of a
+small phone screen simultaneously with the map underneath") and
+Orientation renumbered to Section 5, with the Guardrails' commit split
+bumped from three to four. Sections 1-3 were already committed and
+pushed; this is the fourth commit (`dcfba3b`).
+
+**Design**: a single circular toggle button in the one HUD corner
+nothing else occupies — bottom-left (top-left: instrument cluster,
+top-right: tile counter, bottom-right: yacht goal, bottom-center: empty
+prompt, top-center: era banner, all already spoken for). Hidden
+entirely (`display: none`) outside the same `820px`/`pointer: coarse`
+tier Section 3 introduced, so desktop never renders it and
+`hud-collapsed` can never become true there. Default state is
+expanded — no persisted preference, resets fresh every load, exactly
+as the step prompt allows.
+
+Collapsing doesn't treat every corner strip the same. The step prompt
+explicitly warned against hiding anything "load-bearing... the only way
+to see a live countdown" — the hazard-incoming line (inside the
+instrument cluster) is exactly that during a telegraph window. So:
+tile counter, yacht goal, and the empty-tiles prompt fade to fully
+hidden (`opacity: 0` + `pointer-events: none`) — none of them carry
+time-critical information. The instrument cluster instead shrinks to a
+thin strip: its income row, Resilience gauge, and meter chip grid
+collapse (`opacity`/`max-height` transition to 0), but the Coin/Turn/
+Era header and the hazard-incoming line stay fully visible throughout
+— a countdown never disappears behind the collapse. The preview-toggle
+button (shown only during an active telegraph) was deliberately left
+out of the collapse set for the same reason. `prefers-reduced-motion`
+gets the same instant-snap treatment (`transition: none`) every other
+animated addition in this codebase already respects.
+
+**Real bug found and fixed during verification**: the "expanded"
+resting `max-height` on the three collapsible cluster sections was set
+to a round `100px`, intended purely as a transition-friendly upper
+bound — but the chip-grid's actual content height at the 600px tier's
+bumped font-size measures 125px, so that 100px cap was *itself*
+silently clipping the last meter chip (Population) even when the HUD
+was never touched, let alone collapsed. Caught by comparing
+`scrollHeight` vs `clientHeight` directly rather than trusting the
+visual "opacity: 1, so it must be fine" read. Fixed by bumping the
+bound to a deliberately generous 220px — still functions purely as an
+upper bound (real content is always shorter), just no longer smaller
+than the real content itself.
+
+**A live-verification wrinkle, worth recording honestly**: this
+session's Browser pane tab reports `document.hidden === true`
+throughout (matches the recurring "Screenshot timed out — Browser pane
+is not displayed" errors noted in earlier passes this session). A
+backgrounded/non-composited tab appears to pause CSS transitions
+outright rather than merely skip visual paint — so clicking the real
+toggle button correctly flipped the `hud-collapsed` class and the
+correct CSS rule (confirmed present via direct CSSOM inspection,
+`opacity: 0; max-height: 0px`) was demonstrably the higher-specificity
+match for the affected elements, yet `getComputedStyle` kept reporting
+the pre-transition values indefinitely. Diagnosed by temporarily
+injecting a `* { transition: none !important; }` override, re-running
+the exact same toggle click, and reading `getComputedStyle` again —
+confirmed every element lands on its correct end-state value (tile
+counter/yacht goal/empty prompt at `opacity: 0`; income-row/resilience-
+gauge/chip-grid at `opacity: 0, max-height: 0px`; header and hazard-
+incoming staying at `opacity: 1`), then removed the override. This is
+a testing-environment limitation (the same family as this session's
+repeated screenshot-unavailability caveats), not a defect in the
+shipped CSS — a real, foregrounded browser tab runs CSS transitions
+normally regardless.
+
+**Verification**: live end-to-end. Toggle button confirmed present, in
+44×44px (comfortable touch target), correctly positioned with no
+overlap against any neighboring corner element at all four required
+breakpoints (375×667, 390×844, 412×915, 768×1024) plus the tightest
+landscape case from Section 3's own bug fix (667×375, where vertical
+room is scarcest) — `display: none` re-confirmed at desktop (1440×900).
+Full click-through round trip verified via the real button (not just
+class manipulation): first click sets `hud-collapsed` + flips
+`aria-label` to "Expand HUD"; second click removes the class and
+restores "Collapse HUD", with every collapsed element's opacity/
+max-height correctly back to its expanded value (confirmed via the
+transition-disabled technique above). Confirmed the toggle is inert
+with respect to game/UI state per the guardrails: opened a
+`BuildPopover`, toggled collapse, and the popover's `hidden` state and
+position (`left`/`top`) were byte-for-byte unchanged; then completed an
+actual build (tile info card showed the new element with a working
+Remove button afterward) while the HUD was still collapsed, confirming
+build/tile-tap interactions with the map are unaffected in either HUD
+state.
+
+`tsc --noEmit` clean, 65/71 tests passing (unchanged — this is a pure
+HUD-visibility addition, no hazard/balance/map/game-logic code
+touched), production build succeeds.
