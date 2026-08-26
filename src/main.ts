@@ -957,6 +957,11 @@ function devAutoBuild(kind: "building" | "defense"): void {
 // `focusOn`, instead of reverse-engineering the pan-drag pixel math. Costs
 // nothing at runtime beyond one property assignment.
 (window as unknown as Record<string, unknown>).__focusOnForTest = focusOn;
+// STEP_PROMPT_mobile_responsive.md Section 2 Verify: exposes the real
+// THREE.Camera so a verification script can read back its actual
+// position after a simulated pinch/pan/wheel gesture, rather than
+// guessing camera distance from screen-space effects.
+(window as unknown as Record<string, unknown>).__cameraForTest = camera;
 // Same spirit as __focusOnForTest — a harmless, inert-unless-called hook so
 // a verification script can force the cloud layer visible without waiting
 // for a real telegraph window (turns only advance via build()).

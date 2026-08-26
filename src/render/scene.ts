@@ -20,6 +20,15 @@ const CAM_DISTANCE_MAX = 40;
 const CAM_ELEVATION_DEG = 58; // slight top-down, not hard isometric
 const DRAG_THRESHOLD_PX = 5;
 const ZOOM_SPEED = 0.02;
+// STEP_PROMPT_mobile_responsive.md Section 2: converts a frame-to-frame
+// two-finger distance delta (in CSS px) into the same `distance` units
+// ZOOM_SPEED already governs for the wheel path — a different constant
+// because a pinch's pixel-delta scale has nothing to do with a wheel
+// event's deltaY scale, not because pinch has its own separate zoom
+// range (it reuses CAM_DISTANCE_MIN/MAX below, unchanged). PLACEHOLDER,
+// same "flag it, tune by feel" convention as every other pacing number
+// in this codebase.
+const PINCH_ZOOM_SPEED = 0.045;
 
 /**
  * Dorfromantik-style camera: a slight top-down perspective, pan/zoom only,
@@ -69,18 +78,63 @@ export function createScene(container: HTMLElement): KhazanScene {
   const ambient = new THREE.HemisphereLight(PALETTE.sky.getHex(), 0x3a3a2a, 0.65);
   scene.add(ambient);
 
-  // --- Pan (pointer drag) + zoom (wheel) --------------------------------------
+  // --- Pan (pointer drag) + zoom (wheel, or pinch on touch) -------------------
 
   let pointerDown: { x: number; y: number } | null = null;
   let didDrag = false;
 
+  // STEP_PROMPT_mobile_responsive.md Section 2: tracks every currently-
+  // down touch pointer by id (mouse/pen never enter this map — Pointer
+  // Events give each simultaneous touch contact its own pointerId, which
+  // is exactly what a two-finger gesture needs and a single `pointerDown`
+  // anchor can't represent). `pinchLastDistance` is the previous frame's
+  // inter-finger distance, not the gesture's starting distance — zoom
+  // tracks the frame-to-frame delta, the same incremental model the wheel
+  // handler already uses per scroll tick.
+  const activeTouches = new Map<number, { x: number; y: number }>();
+  let pinchLastDistance: number | null = null;
+
+  function touchPairDistance(): number {
+    const pts = [...activeTouches.values()];
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  }
+
   renderer.domElement.addEventListener("pointerdown", (e: PointerEvent) => {
+    if (e.pointerType === "touch") {
+      activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activeTouches.size === 2) {
+        // A second finger touching down mid-pan hands off to pinch mode
+        // cleanly: drop the pan anchor so the existing single-pointer
+        // move logic can't also fire and cause a jump, and treat this
+        // moment as definitely not a tap — a two-finger touch (even one
+        // that never moves) is never a valid single-tile selection.
+        pointerDown = null;
+        didDrag = true;
+        pinchLastDistance = touchPairDistance();
+        return;
+      }
+      if (activeTouches.size > 2) return; // a third+ finger is ignored entirely
+    }
     if (e.button !== 0) return;
     pointerDown = { x: e.clientX, y: e.clientY };
     didDrag = false;
   });
 
   window.addEventListener("pointermove", (e: PointerEvent) => {
+    if (e.pointerType === "touch" && activeTouches.has(e.pointerId)) {
+      activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activeTouches.size === 2 && pinchLastDistance !== null) {
+        const dist = touchPairDistance();
+        // Fingers spreading apart (dist growing) should zoom in, i.e.
+        // shrink `distance` — the same sign convention the wheel handler
+        // uses (scrolling up/deltaY<0 also shrinks distance).
+        distance = THREE.MathUtils.clamp(distance - (dist - pinchLastDistance) * PINCH_ZOOM_SPEED, CAM_DISTANCE_MIN, CAM_DISTANCE_MAX);
+        updateTransform();
+        pinchLastDistance = dist;
+        return;
+      }
+    }
+
     if (!pointerDown || e.buttons !== 1) return;
     const dx = e.clientX - pointerDown.x;
     const dy = e.clientY - pointerDown.y;
@@ -95,7 +149,21 @@ export function createScene(container: HTMLElement): KhazanScene {
     pointerDown = { x: e.clientX, y: e.clientY };
   });
 
-  window.addEventListener("pointerup", () => {
+  function endTouch(e: PointerEvent): void {
+    if (e.pointerType !== "touch") return;
+    activeTouches.delete(e.pointerId);
+    // Lifting one finger of a pinch back to one doesn't resume panning —
+    // simpler and sufficient for this pass, per the step prompt's own
+    // allowance not to over-build gesture continuity nothing asked for.
+    // A fresh single-finger press starts a new pan normally.
+    if (activeTouches.size < 2) pinchLastDistance = null;
+  }
+  window.addEventListener("pointerup", (e: PointerEvent) => {
+    endTouch(e);
+    pointerDown = null;
+  });
+  window.addEventListener("pointercancel", (e: PointerEvent) => {
+    endTouch(e);
     pointerDown = null;
   });
 
