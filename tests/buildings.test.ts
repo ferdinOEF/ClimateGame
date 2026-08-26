@@ -139,7 +139,12 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
   it("Yacht is buildable only on Coast, has zero effects, and contributes nothing to any meter", () => {
     const coastState = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "coast" }]);
     const coastOptions = coastState.buildableAt({ q: 0, r: 0 }).map((d) => d.id);
-    expect(coastOptions).toEqual(["yacht"]); // Coast has no other eligible elements today
+    // STEP_PROMPT_balance_tuning_findings.md Section 3 (decision point,
+    // Option B): Coast used to offer only the purely cosmetic Yacht —
+    // every Storm-Surge-exposed Coast tile took full, undefended damage,
+    // forever, no matter how the player played. Breakwater closes that
+    // content gap; Yacht is still Coast's only cosmetic/non-defense option.
+    expect(coastOptions.sort()).toEqual(["breakwater", "yacht"]);
 
     for (const terrainId of ["beach", "land", "river", "estuary"]) {
       const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId }]);

@@ -159,5 +159,24 @@
     "colorKey": "yachtHull",
     "effects": {},
     "note": "PLACEHOLDER buildCost (STEP_PROMPT_economy_food_yacht.md item 4). Purely cosmetic — zero effects, by design (confirm via meterTotal(): every key should read the same with or without a placed Yacht). Should read as a genuine long-run savings target reachable only through several turns of well-managed income, not something a player stumbles into early. Tune alongside the rest of the economy pass in STEP_PROMPT_balance_tuning.md."
+  },
+  {
+    "id": "breakwater",
+    "name": "Breakwater",
+    "kind": "defense",
+    "category": "engineered",
+    "targetsHazards": ["cyclone"],
+    "validTerrainIds": ["coast"],
+    "buildCost": 85,
+    "maintenanceCostPerTurn": 5,
+    "maintenanceNeglectPenaltyPerTurn": 0.08,
+    "matureTurns": 0,
+    "absorptionAtMaturity": 0.7,
+    "failureThreshold": 1.25,
+    "failureRedirectMultiplier": 1.4,
+    "colorKey": "defenseEngineered",
+    "effects": { "biodiversity": -2 },
+    "failureMode": "Breaches above failureThreshold: destroyed, redirects unabsorbed surge onward at failureRedirectMultiplier — same engineered-structure failure model as Seawall.",
+    "note": "STEP_PROMPT_balance_tuning_findings.md Section 3 (decision point, Option B): before this, Coast was permanently undefendable — 18 of 52 Storm-Surge-exposed tiles with zero valid defense, only the purely cosmetic Yacht. A detached/rubble-mound breakwater is a real, established coastal-engineering structure for exactly this exposure (open sea frontage, not a beach/estuary mouth), so this closes a content gap rather than inventing a mechanic. PLACEHOLDER numbers, same convention as every other estimated element on this roster: costed and mainained like Seawall (a comparable engineered marine structure) but with somewhat lower absorptionAtMaturity (0.7 vs 0.9) since a detached breakwater dissipates wave energy rather than fully blocking it, and a proportionally higher failureThreshold (1.25 vs 1.2) reflecting a massive rubble-mound structure's real robustness. Not simulation-tuned — feed into a future balance_sim.ts sweep once Coast coverage is worth testing."
   }
 ]

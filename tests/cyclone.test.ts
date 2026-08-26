@@ -52,6 +52,32 @@ describe("resolveCyclone — dune (NBS)", () => {
   });
 });
 
+describe("resolveCyclone — breakwater (STEP_PROMPT_balance_tuning_findings.md Section 3: Coast's first-ever defense option)", () => {
+  it("reduces damage on the Coast source tile itself when not overwhelmed, and survives", () => {
+    const state = freshState();
+    state.build(COAST, "breakwater"); // Coast is itself the cyclone source tile — no neighbor decay to account for here
+    forceMature(state, COAST);
+
+    const result = resolveCyclone(state, 1.0); // below failureThreshold (1.25) — should absorb, not breach
+    const dealt = result.tileDamage.get(axialKey(COAST))!;
+
+    expect(dealt).toBeCloseTo(1.0 * (1 - 0.7), 5);
+    expect(state.elements.has(axialKey(COAST))).toBe(true);
+    expect(result.destroyedDefenses).not.toContain(axialKey(COAST));
+  });
+
+  it("catastrophically fails above failureThreshold, same engineered-structure model as Seawall", () => {
+    const state = freshState();
+    state.build(COAST, "breakwater");
+    forceMature(state, COAST);
+
+    const result = resolveCyclone(state, 2.0); // well past failureThreshold (1.25)
+
+    expect(result.destroyedDefenses).toContain(axialKey(COAST));
+    expect(state.elements.has(axialKey(COAST))).toBe(false);
+  });
+});
+
 describe("resolveCyclone — seawall (engineered)", () => {
   it("catastrophically fails above threshold and redirects an amplified surge onward", () => {
     const withDefense = freshState();

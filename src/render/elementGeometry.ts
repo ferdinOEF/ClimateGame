@@ -50,6 +50,31 @@ function seawallGeometry(): THREE.BufferGeometry {
   ]);
 }
 
+/**
+ * Breakwater (STEP_PROMPT_balance_tuning_findings.md Section 3): a low
+ * rubble-mound of irregular rock blocks along the tile's exposed edge —
+ * deliberately lower-profile and rougher than Seawall's tall, smooth
+ * concrete taperedSlab, reading as a detached rock pile dissipating open-
+ * sea wave energy rather than a solid vertical barrier.
+ */
+function breakwaterGeometry(): THREE.BufferGeometry {
+  const rockColors = ["#7d7568", "#8f8676", "#6d6558", "#847a68"];
+  const rocks: [number, number, number, number][] = [
+    [-0.32, 0.02, 0.22, 0.24],
+    [-0.1, -0.03, 0.26, 0.26],
+    [0.14, 0.03, 0.24, 0.22],
+    [0.34, -0.02, 0.2, 0.24]
+  ];
+  const parts = rocks.map(([x, z, w, d], i) => {
+    const rock = box(w, 0.15 + (i % 2 === 0 ? 0.03 : 0), d, rockColors[i % rockColors.length], 0);
+    rotate(rock, 0, (i - 1.5) * 0.12, 0);
+    move(rock, x, 0, z);
+    return rock;
+  });
+  const crest = box(0.9, 0.05, 0.14, "#a49a86", 0.17);
+  return mergeGeometries([...parts, crest]);
+}
+
 /** A single Pandanus plant: a tapered trunk topped by an 8-blade spiky rosette, braced by two prop-root struts. */
 function pandanusClump(): THREE.BufferGeometry {
   const trunk = coneFrustum(0.05, 0.09, 0.5, 6, "#7c6a4f", 0);
@@ -400,6 +425,7 @@ const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   sandy_vegetation: sandyVegetationGeometry,
   beachside_resort: beachsideResortGeometry,
   seawall: seawallGeometry,
+  breakwater: breakwaterGeometry,
   mangrove: mangroveGeometry,
   khazan: khazanGeometry,
   small_dam: smallDamGeometry,
