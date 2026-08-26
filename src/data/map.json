@@ -1,12 +1,12 @@
 {
   "seed": 20260819,
   "qRange": [
-    -10,
-    9
+    -11,
+    10
   ],
   "rRange": [
-    -3,
-    5
+    -5,
+    6
   ],
   "estuary": {
     "q": 0,
@@ -28,6 +28,181 @@
   ],
   "handEdited": true,
   "tiles": [
+    {
+      "q": -6,
+      "r": -5,
+      "terrainId": "coast"
+    },
+    {
+      "q": -5,
+      "r": -5,
+      "terrainId": "coast"
+    },
+    {
+      "q": -4,
+      "r": -5,
+      "terrainId": "beach"
+    },
+    {
+      "q": -3,
+      "r": -5,
+      "terrainId": "beach"
+    },
+    {
+      "q": -2,
+      "r": -5,
+      "terrainId": "estuary"
+    },
+    {
+      "q": -1,
+      "r": -5,
+      "terrainId": "estuary"
+    },
+    {
+      "q": 0,
+      "r": -5,
+      "terrainId": "estuary"
+    },
+    {
+      "q": 1,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 2,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 3,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 4,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 5,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 6,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 7,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 8,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 9,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": 10,
+      "r": -5,
+      "terrainId": "land"
+    },
+    {
+      "q": -6,
+      "r": -4,
+      "terrainId": "coast"
+    },
+    {
+      "q": -5,
+      "r": -4,
+      "terrainId": "coast"
+    },
+    {
+      "q": -4,
+      "r": -4,
+      "terrainId": "river"
+    },
+    {
+      "q": -3,
+      "r": -4,
+      "terrainId": "river"
+    },
+    {
+      "q": -2,
+      "r": -4,
+      "terrainId": "estuary"
+    },
+    {
+      "q": -1,
+      "r": -4,
+      "terrainId": "estuary"
+    },
+    {
+      "q": 0,
+      "r": -4,
+      "terrainId": "estuary"
+    },
+    {
+      "q": 1,
+      "r": -4,
+      "terrainId": "estuary"
+    },
+    {
+      "q": 2,
+      "r": -4,
+      "terrainId": "land"
+    },
+    {
+      "q": 3,
+      "r": -4,
+      "terrainId": "land"
+    },
+    {
+      "q": 4,
+      "r": -4,
+      "terrainId": "land"
+    },
+    {
+      "q": 5,
+      "r": -4,
+      "terrainId": "land"
+    },
+    {
+      "q": 6,
+      "r": -4,
+      "terrainId": "land"
+    },
+    {
+      "q": 7,
+      "r": -4,
+      "terrainId": "land"
+    },
+    {
+      "q": 8,
+      "r": -4,
+      "terrainId": "land"
+    },
+    {
+      "q": 9,
+      "r": -4,
+      "terrainId": "land"
+    },
+    {
+      "q": -7,
+      "r": -3,
+      "terrainId": "coast"
+    },
+    {
+      "q": -6,
+      "r": -3,
+      "terrainId": "coast"
+    },
     {
       "q": -5,
       "r": -3,
@@ -104,6 +279,11 @@
       "terrainId": "land"
     },
     {
+      "q": -7,
+      "r": -2,
+      "terrainId": "coast"
+    },
+    {
       "q": -6,
       "r": -2,
       "terrainId": "coast"
@@ -156,7 +336,7 @@
     {
       "q": 4,
       "r": -2,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 5,
@@ -179,6 +359,16 @@
       "terrainId": "estuary"
     },
     {
+      "q": -8,
+      "r": -1,
+      "terrainId": "coast"
+    },
+    {
+      "q": -7,
+      "r": -1,
+      "terrainId": "coast"
+    },
+    {
       "q": -6,
       "r": -1,
       "terrainId": "coast"
@@ -215,6 +405,16 @@
     },
     {
       "q": 1,
+      "r": -1,
+      "terrainId": "estuary"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrainId": "estuary"
+    },
+    {
+      "q": 3,
       "r": -1,
       "terrainId": "estuary"
     },
@@ -244,6 +444,11 @@
       "terrainId": "river"
     },
     {
+      "q": -8,
+      "r": 0,
+      "terrainId": "coast"
+    },
+    {
       "q": -7,
       "r": 0,
       "terrainId": "coast"
@@ -319,6 +524,16 @@
       "terrainId": "estuary"
     },
     {
+      "q": -9,
+      "r": 1,
+      "terrainId": "coast"
+    },
+    {
+      "q": -8,
+      "r": 1,
+      "terrainId": "coast"
+    },
+    {
       "q": -7,
       "r": 1,
       "terrainId": "coast"
@@ -336,12 +551,12 @@
     {
       "q": -4,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": -3,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": -2,
@@ -371,7 +586,7 @@
     {
       "q": 3,
       "r": 1,
-      "terrainId": "estuary"
+      "terrainId": "river"
     },
     {
       "q": 4,
@@ -394,6 +609,11 @@
       "terrainId": "land"
     },
     {
+      "q": -9,
+      "r": 2,
+      "terrainId": "coast"
+    },
+    {
       "q": -8,
       "r": 2,
       "terrainId": "coast"
@@ -426,7 +646,7 @@
     {
       "q": -2,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": -1,
@@ -451,12 +671,12 @@
     {
       "q": 3,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 4,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 5,
@@ -469,6 +689,16 @@
       "terrainId": "land"
     },
     {
+      "q": -10,
+      "r": 3,
+      "terrainId": "coast"
+    },
+    {
+      "q": -9,
+      "r": 3,
+      "terrainId": "coast"
+    },
+    {
       "q": -8,
       "r": 3,
       "terrainId": "coast"
@@ -501,7 +731,7 @@
     {
       "q": -2,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": -1,
@@ -516,17 +746,17 @@
     {
       "q": 1,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 2,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 3,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "estuary"
     },
     {
       "q": 4,
@@ -544,6 +774,31 @@
       "terrainId": "land"
     },
     {
+      "q": -10,
+      "r": 4,
+      "terrainId": "coast"
+    },
+    {
+      "q": -9,
+      "r": 4,
+      "terrainId": "coast"
+    },
+    {
+      "q": -8,
+      "r": 4,
+      "terrainId": "beach"
+    },
+    {
+      "q": -7,
+      "r": 4,
+      "terrainId": "beach"
+    },
+    {
+      "q": -6,
+      "r": 4,
+      "terrainId": "land"
+    },
+    {
       "q": -5,
       "r": 4,
       "terrainId": "land"
@@ -599,82 +854,32 @@
       "terrainId": "land"
     },
     {
-      "q": -7,
-      "r": 4,
+      "q": -11,
+      "r": 5,
+      "terrainId": "coast"
+    },
+    {
+      "q": -10,
+      "r": 5,
+      "terrainId": "coast"
+    },
+    {
+      "q": -9,
+      "r": 5,
       "terrainId": "beach"
     },
     {
       "q": -8,
-      "r": 4,
+      "r": 5,
       "terrainId": "beach"
     },
     {
-      "q": -9,
-      "r": 4,
-      "terrainId": "coast"
+      "q": -7,
+      "r": 5,
+      "terrainId": "beach"
     },
     {
       "q": -6,
-      "r": 4,
-      "terrainId": "land"
-    },
-    {
-      "q": 3,
-      "r": -1,
-      "terrainId": "land"
-    },
-    {
-      "q": 2,
-      "r": -1,
-      "terrainId": "land"
-    },
-    {
-      "q": 5,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": 4,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": 3,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": 2,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": 1,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": 0,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": -1,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": -2,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": -3,
-      "r": 5,
-      "terrainId": "land"
-    },
-    {
-      "q": -4,
       "r": 5,
       "terrainId": "land"
     },
@@ -684,74 +889,134 @@
       "terrainId": "land"
     },
     {
-      "q": -6,
+      "q": -4,
       "r": 5,
       "terrainId": "land"
     },
     {
-      "q": -7,
+      "q": -3,
       "r": 5,
-      "terrainId": "beach"
+      "terrainId": "land"
     },
     {
-      "q": -8,
+      "q": -2,
       "r": 5,
-      "terrainId": "beach"
+      "terrainId": "land"
     },
     {
-      "q": -9,
+      "q": -1,
       "r": 5,
-      "terrainId": "beach"
+      "terrainId": "land"
+    },
+    {
+      "q": 0,
+      "r": 5,
+      "terrainId": "land"
+    },
+    {
+      "q": 1,
+      "r": 5,
+      "terrainId": "land"
+    },
+    {
+      "q": 2,
+      "r": 5,
+      "terrainId": "land"
+    },
+    {
+      "q": 3,
+      "r": 5,
+      "terrainId": "land"
+    },
+    {
+      "q": 4,
+      "r": 5,
+      "terrainId": "land"
+    },
+    {
+      "q": 5,
+      "r": 5,
+      "terrainId": "land"
+    },
+    {
+      "q": -11,
+      "r": 6,
+      "terrainId": "coast"
     },
     {
       "q": -10,
-      "r": 5,
-      "terrainId": "coast"
-    },
-    {
-      "q": -10,
-      "r": 4,
+      "r": 6,
       "terrainId": "coast"
     },
     {
       "q": -9,
-      "r": 3,
-      "terrainId": "coast"
-    },
-    {
-      "q": -9,
-      "r": 2,
-      "terrainId": "coast"
+      "r": 6,
+      "terrainId": "beach"
     },
     {
       "q": -8,
-      "r": 1,
-      "terrainId": "coast"
-    },
-    {
-      "q": -8,
-      "r": 0,
-      "terrainId": "coast"
+      "r": 6,
+      "terrainId": "beach"
     },
     {
       "q": -7,
-      "r": -1,
-      "terrainId": "coast"
-    },
-    {
-      "q": -7,
-      "r": -2,
-      "terrainId": "coast"
+      "r": 6,
+      "terrainId": "land"
     },
     {
       "q": -6,
-      "r": -3,
-      "terrainId": "coast"
+      "r": 6,
+      "terrainId": "land"
     },
     {
-      "q": -7,
-      "r": -3,
-      "terrainId": "coast"
+      "q": -5,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": -4,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": -3,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": -2,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": -1,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": 0,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": 1,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": 2,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": 3,
+      "r": 6,
+      "terrainId": "land"
+    },
+    {
+      "q": 4,
+      "r": 6,
+      "terrainId": "land"
     }
   ]
 }
