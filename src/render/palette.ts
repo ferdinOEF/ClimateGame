@@ -38,7 +38,18 @@ export const PALETTE: Record<string, THREE.Color> = {
   defenseMangrove: new THREE.Color("#4FAE6E"),
   defenseKhazanBund: new THREE.Color("#8C6A3F"),
   houseTerracotta: new THREE.Color("#C25730"), // laterite-tile roof red
-  yachtHull: new THREE.Color("#F2EDE0") // Yacht — crisp whitewash, same "premium" family as Beachside Resort's wall
+  yachtHull: new THREE.Color("#F2EDE0"), // Yacht — crisp whitewash, same "premium" family as Beachside Resort's wall
+  // STEP_PROMPT_ghats_wave_demo.md Section 1: the Western Ghats backdrop's
+  // four rising columns — deliberately a deep, cool forest green rather
+  // than `landGreen`'s bright cultivated tone (these read as distant
+  // forested hills, not buildable land), shifting toward `fog`/`sky` as
+  // the columns rise, the same atmospheric-perspective principle the
+  // scene's own THREE.Fog already uses for depth cueing. PLACEHOLDER
+  // exact hues — chosen by eye absent a reference render, adjust freely.
+  ghatsNear: new THREE.Color("#3F6B4A"),
+  ghatsMid: new THREE.Color("#6E8F72"),
+  ghatsFar: new THREE.Color("#9DB4AC"),
+  ghatsDistant: new THREE.Color("#C7D9D6")
 };
 
 export function paletteColor(key: string): THREE.Color {
@@ -54,4 +65,17 @@ export function jitterColor(base: THREE.Color, seed: number): THREE.Color {
   const delta = (jitter - Math.floor(jitter) - 0.5) * 0.06;
   c.setHSL(hsl.h, THREE.MathUtils.clamp(hsl.s, 0, 1), THREE.MathUtils.clamp(hsl.l + delta, 0, 1));
   return c;
+}
+
+/**
+ * Same deterministic-seed pseudo-random approach as `jitterColor()`'s own
+ * `delta` above, generalized to a plain signed scalar rather than a color —
+ * STEP_PROMPT_ghats_wave_demo.md Section 1 uses this for per-tile height
+ * variation (a ridge of individually-varied hills reads as natural; a
+ * perfectly uniform column reads as a mesa). Returns a value in
+ * `[-magnitude/2, magnitude/2)`, deterministic for a given `seed`.
+ */
+export function jitterScalar(seed: number, magnitude: number): number {
+  const jitter = (Math.sin(seed * 12.9898) * 43758.5453) % 1;
+  return (jitter - Math.floor(jitter) - 0.5) * magnitude;
 }

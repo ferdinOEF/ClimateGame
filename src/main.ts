@@ -4,6 +4,7 @@ import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
 import { CloudLayerManager } from "@render/cloudLayerManager";
+import { GhatsBackdropManager } from "@render/ghatsBackdropManager";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
@@ -51,10 +52,15 @@ const elements = new ElementMeshManager();
 // compound color — see floodOverlayManager.ts's own comment.
 const hazardOverlay = new HazardOverlayManager(FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS);
 const cloudLayer = new CloudLayerManager();
+// STEP_PROMPT_ghats_wave_demo.md Section 1: purely cosmetic, deliberately
+// never fed into GameState/mapTiles — see the manager's own comment for
+// why that separation is load-bearing, not incidental.
+const ghatsBackdrop = new GhatsBackdropManager(mapTiles);
 scene.add(terrain.group);
 scene.add(elements.group);
 scene.add(hazardOverlay.mesh);
 scene.add(cloudLayer.group);
+scene.add(ghatsBackdrop.group);
 
 /**
  * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -183,8 +189,18 @@ const YACHT_COST = ELEMENT_BY_ID.get("yacht")!.buildCost;
  */
 function hazardIncomingInfo(): { kind: "Storm Surge" | "Flood"; turnsUntil: number; imminent: boolean }[] {
   const stormTurnsUntil = nextCycloneAtTurn - state.turn;
-  const floodTurnsUntil = nextFloodAtTurn - state.turn;
   const stormImminent = stormTurnsUntil > 0 && stormTurnsUntil <= CYCLONE_TELEGRAPH_TURNS;
+
+  // STEP_PROMPT_ghats_wave_demo.md Section 1: with the Flood schedule
+  // disabled, nextFloodAtTurn never advances — without this guard, once
+  // state.turn passed it, this would show a stale/frozen "Flood in 0
+  // turns" forever (turnsUntil clamps to 0 for display) instead of just
+  // not mentioning a hazard that was never going to fire.
+  if (!FLOOD_HAZARD_ENABLED) {
+    return [{ kind: "Storm Surge", turnsUntil: stormTurnsUntil, imminent: stormImminent }];
+  }
+
+  const floodTurnsUntil = nextFloodAtTurn - state.turn;
   const floodImminent = floodTurnsUntil > 0 && floodTurnsUntil <= FLOOD_TELEGRAPH_TURNS;
 
   // Once at least one hazard is genuinely imminent (same condition the
@@ -359,6 +375,21 @@ function showAftermathAndCheckEraEnd(kind: "Flood" | "Storm Surge", result: Haza
 // trigger, not a placeholder for this.
 
 const FLOOD_TELEGRAPH_COLOR = new THREE.Color("#0b2033");
+/**
+ * STEP_PROMPT_ghats_wave_demo.md Section 1: Storm Surge only, for now —
+ * both the open-water wave and the inland channel-push the demo in
+ * Section 2/3 shows already come out of one `resolveCyclone()` call (see
+ * that pass's own Section 0), so Flood isn't needed to demo them. Disabled
+ * here, not deleted — same "commented as intentionally inert, brought back
+ * later" convention this project used for the whole telegraph system once
+ * already (`STEP_PROMPT_pacing_telegraph_preview.md`). Gates only the
+ * scheduled path in `checkHazardSchedule()` below and the HUD's incoming-
+ * hazard readout (`hazardIncomingInfo()`) — the Test Hazards panel's manual
+ * Flood trigger and the `?flood=` dev param are deliberately untouched,
+ * per that same step prompt's own rule that the manual tool stays
+ * independent of the schedule.
+ */
+const FLOOD_HAZARD_ENABLED = false;
 /**
  * STEP_PROMPT_balance_tuning_findings.md Section 1: the original 15/11
  * pair was simulation-confirmed broken — with 52 Storm-Surge-exposed
@@ -720,11 +751,13 @@ function scheduleHazardArrival(kind: "flood" | "storm", fire: () => void): void 
  * same call, not on a separate hidden tick.
  */
 function checkHazardSchedule(): void {
-  if (state.turn >= nextFloodAtTurn) {
-    const severity = pendingFloodSeverity ?? rolledSeverity();
-    scheduleHazardArrival("flood", () => triggerFlood(severity));
-  } else {
-    updateFloodTelegraph();
+  if (FLOOD_HAZARD_ENABLED) {
+    if (state.turn >= nextFloodAtTurn) {
+      const severity = pendingFloodSeverity ?? rolledSeverity();
+      scheduleHazardArrival("flood", () => triggerFlood(severity));
+    } else {
+      updateFloodTelegraph();
+    }
   }
 
   if (state.turn >= nextCycloneAtTurn) {
