@@ -2877,3 +2877,147 @@ with the readout updating to "+55" immediately. Screenshotted.
 `tsc --noEmit` clean, 62/68 tests passing (unchanged pass/skip count —
 only assertions inside existing tests changed), production build
 succeeds.
+
+## Step prompt: balance tuning (simulation-backed findings) — DONE
+
+`STEP_PROMPT_balance_tuning_findings.md`. Five independent changes,
+landed as five separate commits per the step prompt's own guardrail:
+`18aaec6` (Section 1), `67a20d4` (Section 2), `2b32339` (Section 3, a
+decision point), Section 4 (a decision point with no code change), and
+`806d154` (Section 5).
+
+### Section 1 — retune hazard pacing
+
+Changed exactly what the document specified: `FLOOD_INTERVAL_TURNS`
+15→45, `CYCLONE_INTERVAL_TURNS` 11→33, `rolledSeverity()`'s base term
+1.0→0.5 (spread and `severityBaseline`'s own creep rate untouched).
+`RESILIENCE_DAMAGE_FACTOR`/`CATASTROPHIC_TRUST_PENALTY`/
+`WEATHERED_TRUST_BONUS` left alone, per the document's explicit
+instruction — not implicated by this pass.
+
+**Played it, per the step prompt's own instruction not to ship this
+unplayed.** Scripted a live, real-app comparison (headless Playwright,
+`__buildForTest`/`__checkHazardScheduleForTest` — the same call
+sequence `openTilePopover()`'s real build callback makes) mirroring the
+simulation's own defense-first-vs-scattershot bots: defense-first
+survived to **turn 132**, scattershot died at **turn 90** — both
+comfortably past the old, deterministic 22-turn death, and in the
+right relative order (defense clearly outlasting scattershot), not
+just "both survive longer than before."
+
+Along the way, found and deliberately did **not** fix a real edge
+case, per the guardrail against touching pacing/telegraph/trigger-
+timing logic in this pass: consecutive builds inside the ~450ms
+arrival-beat window (`HAZARD_ARRIVAL_BEAT_MS`) can each independently
+see `state.turn >= nextFloodAtTurn` still true (the pending
+`triggerFlood()` callback hasn't fired yet to reset it) and each queue
+their own `scheduleHazardArrival()` call — the same hazard can resolve
+more than once in a row at unrealistically fast build cadences. A real
+player clicking through the popover can't reproduce this (each click
+already takes longer than 450ms in practice), but a scripted or very
+fast player conceivably could. Flagged here, not fixed — worth a look
+if `STEP_PROMPT_pacing_telegraph_preview.md`'s trigger-timing logic is
+ever revisited.
+
+### Section 2 — end-of-era score/reset screen
+
+New `EraEndScreen` (`src/ui/eraEndScreen.ts`): a centered modal shown
+from `triggerFlood()`/`triggerCyclone()` themselves (not the build
+callback — resilience only actually changes inside those two
+functions, and the scheduled path resolves asynchronously after its
+own arrival beat, so checking there is what actually catches every
+case, scheduled or manual). Shows turns survived, the total score, and
+a full breakdown — `scoring.ts` refactored so `computeEraScoreBreakdown()`
+returns every term `computeEraScore()` used to compute silently, with
+`computeEraScore()` now just summing it (one formula, not two).
+"Start New Era" reuses `resetBoard()` directly, unchanged.
+
+**Found and fixed a real bug during live verification**, not a design
+gap: `.era-end-backdrop`'s own unconditional `display: flex` (needed
+to center the card) overrode the `[hidden]` user-agent default —
+exactly the same root cause `NEXT_STEPS.md`'s A1 already diagnosed for
+`.build-popover` (see that file's own long comment). `.hidden = true`
+updated the DOM attribute correctly the whole time; the modal simply
+never left the screen. Fixed with an explicit `.era-end-backdrop[hidden]`
+override (the popover's own fix moved `display` off its backdrop
+entirely instead, since it never needed flex-centering — this backdrop
+does, so the targeted override was the right fix here specifically).
+Live-verified after the fix: triggering a severity-15 cyclone on a
+fresh board correctly showed the modal with a live (non-stale) score;
+clicking "Start New Era" hid it immediately and genuinely reset the
+board (era counter incremented, Resilience back to 100).
+
+### Section 3 — decision: Coast is permanently undefendable
+
+**Decision: Option B (content gap), not Option A (intentional).** A
+Storm-Surge-exposed terrain with zero non-cosmetic options read as an
+oversight rather than a deliberate design statement, especially given
+this game's own "rooted in real coastal science" framing elsewhere
+(`STEP_PROMPT_hazard_science.md`) — a detached/rubble-mound breakwater
+is a real, established structure for exactly this exposure (open sea
+frontage, not a beach/estuary mouth), so adding one closes a gap rather
+than inventing a mechanic from nothing.
+
+New `breakwater` element: engineered category, targets cyclone only
+(Coast has no flood exposure), costed/maintained like Seawall (a
+comparable engineered marine structure) but `absorptionAtMaturity` 0.7
+(vs. Seawall's 0.9 — a detached breakwater dissipates wave energy
+rather than fully blocking it) and `failureThreshold` 1.25 (vs. 1.2 —
+a massive rubble-mound structure's real robustness). PLACEHOLDER
+numbers, flagged as such in the element's own `note`, same convention
+as every other estimated element on this roster — genuinely not
+simulation-tuned, per the guardrail's "keep it small" scope. New
+low-profile rubble-mound geometry, deliberately lower/rougher than
+Seawall's tall smooth wall so the two read as visually distinct
+structures despite sharing the `defenseEngineered` color family.
+
+### Section 4 — decision: is Coin meant to be a real constraint?
+
+**Decision: Option A (leave it).** Two reasons, not just "the document
+allowed it": first, Option B's own guardrail requires re-running the
+simulation harness against new cost numbers before shipping — but
+Section 5 (porting that harness into the repo) hadn't landed yet at
+this point in the prescribed section order, so acting on Option B here
+would mean either reordering the document's own sections or shipping
+an unverified rebalance, neither of which this pass should do
+unilaterally. Second, and more fundamentally: Section 1's pacing retune
+is the real difficulty lever this pass already pulled hard on — turn
+count and map coverage are what actually kill a run, confirmed by
+finding after finding in this same document. Re-running
+`tools/balance_sim/index.ts`'s `finalCoinStats()` after Section 1's retune
+and Section 3's Breakwater addition (median ~32,536 leftover Coin,
+40 seeds) shows the original finding holds unchanged at the new
+numbers, not just the old ones — Coin still isn't the binding
+constraint, and nothing about this pass's other changes moved that.
+
+### Section 5 — permanent balance-testing harness
+
+`tools/balance_sim/index.ts` (`npm run balance-sim`), ported from the
+sandbox reference implementation in the step prompt itself. Uses
+relative imports into `src/` (matching `tools/mapgen/generate.ts`'s
+own established convention for plain-`tsx`-run scripts), not the
+`@core/*`/`@data/*` aliases `main.ts` uses — those are resolved by
+Vite's bundler, which nothing under `tools/` runs through. Kept
+`coverageAtTurn()`/`finalCoinStats()` as documented reusable exports;
+folded Section 3's new Breakwater into the bot's own Coast priority
+list rather than leaving it stale. Removed the placeholder
+`tools/balance_sim/smoketest.ts` (a 2-line "does tsx resolve
+`GameState`" check) — the real harness supersedes its whole purpose.
+Added `tools/README.md`, since this repo didn't have one yet, covering
+all three `tools/` scripts.
+
+Ran it once against this repo's own toolchain, no sandbox workaround
+needed: balanced/defense-first turn survival (66–118 / 99–132 across
+40 seeds) closely reproduces the document's own reference sweep.
+
+### Verification
+
+`tsc --noEmit` clean at every commit. `npx vitest run`: 65 passing
+(63 baseline + 2 new `cyclone.test.ts` Breakwater cases), 6
+`skipIf`-gated unchanged. Two existing assertions updated (not
+reverted) to match genuinely-changed, correct behavior: `buildings.
+test.ts`'s Coast-options list (now `["breakwater", "yacht"]`, not just
+`["yacht"]`). Production build succeeds. `npm run balance-sim` runs
+clean via this repo's own `tsx` invocation. End-of-era screen and Test
+Hazards panel's own "Reset Board" both confirmed working, independently,
+live.
