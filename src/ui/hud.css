@@ -467,6 +467,21 @@ html, body {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
+/* STEP_PROMPT_mobile_responsive.md Section 3/verify: a landscape phone
+   (e.g. 667x375) is short enough that the card's natural ~440px content
+   height no longer fits between the top and bottom of the viewport at
+   all, clipping the title above y=0 with no way to reach it. Scoped to
+   a max-height query (not folded into the base rule above) so it can
+   only ever engage on a genuinely short viewport — common desktop
+   window heights are well clear of 500px, so this is a no-op there. */
+@media (max-height: 500px) {
+  .era-end-card {
+    max-height: 90vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+}
+
 .era-end-title {
   font-size: 20px;
   font-weight: 700;
@@ -779,4 +794,186 @@ html, body {
 
 .hazard-test-reset:hover {
   background: rgba(255, 138, 92, 0.28);
+}
+
+/* =========================================================================
+   STEP_PROMPT_mobile_responsive.md Section 3: responsive HUD, popover, and
+   modal sizing. Purely additive — every rule below lives inside a media
+   query, so nothing here changes desktop's appearance above these
+   breakpoints (Sections 1/2's own changes are the only non-media-scoped
+   additions, and those are fallback-safe fundamentals, not desktop
+   redesigns). Explicitly excludes the `?debughazards` Test Hazards panel
+   (`.hazard-test-*`) — a developer tool, not something a real mobile
+   player ever sees, per the step prompt's own "low priority, don't spend
+   effort" instruction.
+
+   Two breakpoints, layered:
+   - 820px OR a coarse (touch) pointer catches any touch-sized viewport
+     broadly, including an iPad in portrait — tap targets grow here across
+     the board, since mobile needs *larger* touch targets than desktop,
+     not smaller ones, regardless of exactly how narrow the screen is.
+     The `pointer: coarse` half of the condition matters specifically for
+     a phone in *landscape*: a modern phone's landscape width (667px+) can
+     exceed 820px on its own, but it's still a touchscreen and still needs
+     the bigger targets — a plain desktop browser window narrowed below
+     820px still matches too (an intentional, harmless overlap: a narrow
+     desktop window benefiting from bigger buttons isn't a regression).
+   - 600px (phones in portrait) layers stricter width caps and larger HUD
+     text on top — a 375px-wide screen needs more than bigger buttons, the
+     cards actually have to fit, and desktop-tuned 10-13px text reads as
+     too small at arm's length on a phone. Width-only, not pointer-aware —
+     this is a "does it physically fit" concern, and a landscape phone
+     already has ample width for these particular elements regardless of
+     input type.
+   ========================================================================= */
+
+@media (max-width: 820px), (pointer: coarse) {
+  /* Comfortable ~44px (iOS/Android guidance) touch targets — padding is
+     the lever, not font-size, so the visible content doesn't have to grow
+     just to make its hit area big enough. */
+  .build-option {
+    padding: 13px 14px;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .built-info-remove {
+    padding: 12px 14px;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .era-end-restart {
+    padding: 14px;
+    min-height: 48px;
+    box-sizing: border-box;
+  }
+
+  .preview-toggle {
+    padding: 8px 12px;
+    min-height: 40px;
+    box-sizing: border-box;
+  }
+
+  .yacht-goal,
+  .empty-prompt {
+    padding: 10px 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  /*
+    Every fixed-px card width audited (BuildPopover's own comment: it
+    already viewport-clamps *position*, this is the remaining *size* gap)
+    and swapped for a cap that can't exceed a narrow phone screen —
+    min(original px, a generous vw ceiling) rather than a bare fixed
+    pixel width. At any width above this breakpoint (including exactly
+    600px itself, and every desktop size) these evaluate to the original
+    px values unchanged, since the vw side of each min() only binds
+    below ~600-700px.
+  */
+  .instrument-cluster {
+    max-width: min(225px, 92vw);
+  }
+
+  .build-popover {
+    max-width: min(280px, 92vw);
+  }
+
+  /* .build-option/.built-info-effects's own `white-space: nowrap` (fine
+     at desktop widths, every element name/effects string fits on one
+     line there) would otherwise force this card wider than the max-width
+     cap just added above — the longest names ("Sandy Vegetation
+     (Pandanus)", a multi-effect string) don't reliably fit in 280px at
+     the bumped mobile font-size on one line. Wrapping to two lines (the
+     button grows taller, not wider) is the simpler fix than shrinking
+     text further or truncating real information. */
+  .build-option,
+  .built-info-effects {
+    white-space: normal;
+  }
+
+  .era-end-card {
+    width: min(280px, 92vw);
+    padding: 24px 20px;
+    box-sizing: border-box;
+  }
+
+  /* Desktop-tuned 10-13px text reads as too small at arm's length on a
+     phone — bumped here specifically, not globally, so desktop's own
+     sizing (above this breakpoint) is untouched. */
+  .hud-corner {
+    font-size: 15px;
+  }
+
+  .tile-count-value {
+    font-size: 24px;
+  }
+
+  .coin-row {
+    font-size: 22px;
+  }
+
+  .coin-row span:first-child {
+    font-size: 13px;
+  }
+
+  .turn-era-row,
+  .income-row,
+  .resilience-gauge-header,
+  .hazard-incoming-line {
+    font-size: 12px;
+  }
+
+  .resilience-gauge-header span:last-child {
+    font-size: 14px;
+  }
+
+  .meter-chip {
+    font-size: 13px;
+  }
+
+  .meter-chip b {
+    font-size: 14px;
+  }
+
+  .empty-prompt {
+    font-size: 14px;
+  }
+
+  .yacht-goal {
+    font-size: 13px;
+  }
+
+  .yacht-goal .yacht-value {
+    font-size: 15px;
+  }
+
+  .build-option {
+    font-size: 14px;
+  }
+
+  .build-option em {
+    font-size: 11px;
+  }
+
+  .built-info-effects {
+    font-size: 13px;
+  }
+
+  .era-end-title {
+    font-size: 22px;
+  }
+
+  .era-end-subtitle {
+    font-size: 14px;
+  }
+
+  .era-end-row {
+    font-size: 14px;
+  }
+
+  .era-end-restart {
+    font-size: 15px;
+  }
 }
