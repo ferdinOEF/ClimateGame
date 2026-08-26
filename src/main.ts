@@ -11,7 +11,9 @@ import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/ha
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
+import { EraEndScreen } from "@ui/eraEndScreen";
 import { playSound } from "@ui/audioHooks";
+import { computeEraScoreBreakdown } from "@core/scoring";
 import mapData from "@data/map.json";
 import startingStateData from "@data/startingState.json";
 
@@ -115,6 +117,17 @@ for (const coord of STARTING_STATE.prebuiltHouses) {
 
 const hud = new Hud(container, () => toggleHudPreview());
 const buildPopover = new BuildPopover(container);
+/**
+ * STEP_PROMPT_balance_tuning_findings.md Section 2: the missing half of
+ * an already-working `isEraOver`/`computeEraScore()` — see EraEndScreen's
+ * own comment for the gap this closes. Shown from `triggerFlood()`/
+ * `triggerCyclone()` themselves (both real hazard-resolution paths,
+ * scheduled and manual/test-panel), not the build callback below —
+ * `state.resilience` only actually changes inside those two functions,
+ * and the scheduled path resolves asynchronously after the arrival beat,
+ * so checking here is what actually catches every case.
+ */
+const eraEndScreen = new EraEndScreen(container);
 /**
  * STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: the same category of tool
  * as `devAutoBuild`/`?coinboost`/`?resilienceboost` — testing-only, not
@@ -317,6 +330,22 @@ function describeAftermath(kind: "Flood" | "Storm Surge", result: HazardResult, 
   return parts.join(" · ");
 }
 
+/**
+ * Fires once the wave-sweep visually finishes: the aftermath banner, then
+ * — STEP_PROMPT_balance_tuning_findings.md Section 2 — the end-of-era
+ * screen if this hazard was the one that took Resilience to zero. Reads
+ * `state.isEraOver` fresh at fire time (not a value captured earlier),
+ * since this callback runs after a real delay and resilience is exactly
+ * what could have changed during it.
+ */
+function showAftermathAndCheckEraEnd(kind: "Flood" | "Storm Surge", result: HazardResult, resilienceBefore: number, trustBefore: number): void {
+  hud.showBanner(describeAftermath(kind, result, resilienceBefore, trustBefore), 4000);
+  if (state.isEraOver) {
+    buildPopover.hide(); // defensive — shouldn't still be open, but the era-end screen should never have to fight another modal for the top z-index
+    eraEndScreen.show(state.turn, computeEraScoreBreakdown(state), () => resetBoard());
+  }
+}
+
 // --- Monsoon Flood + Cyclone resolution -----------------------------------------
 //
 // STEP_PROMPT_pacing_telegraph_preview.md: the scheduled/telegraphed
@@ -413,7 +442,7 @@ function triggerFlood(baseSeverity: number): void {
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
-  setTimeout(() => hud.showBanner(describeAftermath("Flood", result, resilienceBefore, trustBefore), 4000), sweepDurationMs(result));
+  setTimeout(() => showAftermathAndCheckEraEnd("Flood", result, resilienceBefore, trustBefore), sweepDurationMs(result));
 }
 
 // --- Cyclone telegraph + resolution -------------------------------------------
@@ -477,7 +506,7 @@ function triggerCyclone(baseSeverity: number): void {
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
-  setTimeout(() => hud.showBanner(describeAftermath("Storm Surge", result, resilienceBefore, trustBefore), 4000), sweepDurationMs(result));
+  setTimeout(() => showAftermathAndCheckEraEnd("Storm Surge", result, resilienceBefore, trustBefore), sweepDurationMs(result));
 }
 
 /**
@@ -614,13 +643,11 @@ refreshHud();
  * automatically the instant Resilience hit zero (Section 2's original
  * soft-era-loop). Repurposed into a manual-only action: no `isEraOver`
  * guard, so it always runs when called, regardless of what Resilience
- * currently reads; the only caller now is the Test Hazards panel's
- * "Reset Board" button. The reset sequence itself is unchanged — already
- * correct and tested — just no longer self-triggering. Dropped the old
- * score/era-retired banner: a player who just clicked "Reset Board"
- * already knows what they did, so a surprise-event narrative doesn't fit
- * anymore (and `computeEraScore()` has no other caller now that this is
- * gone — see the dropped `@core/scoring` import above).
+ * currently reads. Callers now: the Test Hazards panel's "Reset Board"
+ * button, and — STEP_PROMPT_balance_tuning_findings.md Section 2 —
+ * `EraEndScreen`'s "Start New Era" button, the real player-facing path
+ * now that one exists. The reset sequence itself is unchanged — already
+ * correct and tested — just no longer self-triggering.
  */
 function resetBoard(): void {
   playSound("era_end");
@@ -630,6 +657,7 @@ function resetBoard(): void {
   hazardOverlay.reset();
   hazardTestPanel?.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across a reset
   clearAllPreviews(); // STEP_PROMPT_pacing_telegraph_preview.md Section 3: a stale preview from before the reset shouldn't survive it
+  eraEndScreen.hide(); // defensive — "Start New Era" already hides it before calling here, but a future caller shouldn't have to remember to
 
   state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
   terrain.resetClaims(keysToCoords(state.claimed));
@@ -809,6 +837,7 @@ const pointer = new THREE.Vector2();
 renderer.domElement.addEventListener("click", (event: MouseEvent) => {
   if (wasDrag()) return; // a pan, not a click — don't also open a popover at the drag's end point
   if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
+  if (eraEndScreen.isOpen) return; // same — its own backdrop already blocks this; a harmless safety net, same as buildPopover.isOpen above
 
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;

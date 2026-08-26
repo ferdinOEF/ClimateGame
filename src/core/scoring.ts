@@ -41,13 +41,35 @@ function clamp(value: number, limit: number): number {
  * build-density ratio or elements-built count would be a live signal in
  * its place.
  */
+/** Every term `computeEraScore()` sums, already clamped/weighted — what the end-of-era screen (STEP_PROMPT_balance_tuning_findings.md Section 2) shows broken down, rather than just a single opaque total. */
+export interface EraScoreBreakdown {
+  trust: number;
+  resilience: number;
+  biodiversity: number;
+  carbon: number;
+  turnsSurvived: number;
+  mapFootprint: number;
+  total: number;
+}
+
+export function computeEraScoreBreakdown(state: GameState): EraScoreBreakdown {
+  const trust = state.trust;
+  const resilience = state.resilience;
+  const biodiversity = clamp(state.biodiversity, CO_BENEFIT_CLAMP) * 1.5;
+  const carbon = clamp(state.carbon, CO_BENEFIT_CLAMP) * 1.5;
+  const turnsSurvived = state.turn * 0.5;
+  const mapFootprint = state.claimed.size * 0.3;
+  return {
+    trust,
+    resilience,
+    biodiversity,
+    carbon,
+    turnsSurvived,
+    mapFootprint,
+    total: trust + resilience + biodiversity + carbon + turnsSurvived + mapFootprint
+  };
+}
+
 export function computeEraScore(state: GameState): number {
-  return (
-    state.trust +
-    state.resilience +
-    clamp(state.biodiversity, CO_BENEFIT_CLAMP) * 1.5 +
-    clamp(state.carbon, CO_BENEFIT_CLAMP) * 1.5 +
-    state.turn * 0.5 +
-    state.claimed.size * 0.3
-  );
+  return computeEraScoreBreakdown(state).total;
 }

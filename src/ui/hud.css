@@ -387,6 +387,104 @@ html, body {
 }
 
 /*
+  STEP_PROMPT_balance_tuning_findings.md Section 2: same full-viewport
+  click-blocking backdrop `.popover-backdrop` uses, but opaque enough to
+  dim the 3D scene behind it — a whole-run "this is over" moment, not a
+  transparent click-catcher for a small contextual menu. Highest z-index
+  in the app: this should win over a still-open build popover or the
+  hazard-arrival flash if either happens to be mid-animation.
+*/
+.era-end-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(10, 16, 14, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+/*
+  Same root cause NEXT_STEPS.md's A1 fixed for `.build-popover` (see
+  BuildPopover's own comment): an unconditional `display` here is an
+  author-origin rule that overrides the `[hidden]` user-agent default
+  regardless of selector specificity, so `.hidden = true` updates the
+  attribute correctly but silently never hides anything on screen. Unlike
+  `.build-popover` (which was fixed by moving `display` off the backdrop
+  entirely), this backdrop genuinely needs `display: flex` to center the
+  card when visible — so the fix here is the explicit `[hidden]` override
+  instead, restoring the default the unconditional rule above defeats.
+*/
+.era-end-backdrop[hidden] {
+  display: none;
+}
+
+.era-end-card {
+  background: rgba(20, 30, 26, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 28px 32px;
+  width: 280px;
+  text-align: center;
+  color: #fdf6e6;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.era-end-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.era-end-subtitle {
+  font-size: 12px;
+  opacity: 0.75;
+  margin-top: 6px;
+}
+
+.era-end-score {
+  font-size: 40px;
+  font-weight: 700;
+  color: #ffe9a8;
+  margin: 16px 0;
+}
+
+.era-end-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.era-end-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+.era-end-restart {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(216, 177, 88, 0.5);
+  background: rgba(216, 177, 88, 0.28);
+  color: #ffe9a8;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.era-end-restart:hover {
+  background: rgba(216, 177, 88, 0.42);
+}
+
+/*
   Contextual build popover: anchored to a clicked tile's screen position,
   never a persistent panel. Transform centers it just above the tile.
 */
