@@ -3021,3 +3021,147 @@ test.ts`'s Coast-options list (now `["breakwater", "yacht"]`, not just
 clean via this repo's own `tsx` invocation. End-of-era screen and Test
 Hazards panel's own "Reset Board" both confirmed working, independently,
 live.
+
+## Step prompt: Western Ghats backdrop + Storm Surge wave-front spectacle — DONE
+
+`STEP_PROMPT_ghats_wave_demo.md`. Two commits, in order: `8b1eb06`
+(disable scheduled Flood + Ghats backdrop), `c04752a` (the wave-front
+demo itself).
+
+### Section 0's premise, confirmed before building anything
+
+Storm Surge (`resolveCyclone()`) already computes both visual
+components the requester described — an open-water wave and an inland
+push up the river channel — as one BFS call: its sources are every
+Coast + Estuary tile, and its spread already walks into any River tile
+connected to a hit Estuary tile via the same `RIVER_CHANNEL_DECAY`
+channel-funneling `resolveMonsoonFlood()` uses. Section 2/3's demo
+needed zero new hazard-resolution logic as a result — purely a render
+layer reading `tileDamage`/`arrivalRound` two different ways.
+
+### Section 1 — disable scheduled Flood, Western Ghats backdrop
+
+**Flood disabled, not deleted**: new `FLOOD_HAZARD_ENABLED = false`
+gate in `checkHazardSchedule()` (`main.ts`, next to
+`FLOOD_INTERVAL_TURNS`) — same "commented as intentionally inert,
+brought back later" convention this project already used once for the
+whole telegraph system. Only the scheduled path is gated; the Test
+Hazards panel's manual Flood trigger and `?flood=` stay untouched, per
+`STEP_PROMPT_pacing_telegraph_preview.md`'s own rule that the manual
+tool is independent of the schedule. Also gated `hazardIncomingInfo()`'s
+flood branch — without that, `nextFloodAtTurn` never advancing would
+eventually show a stale "Flood in 0 turns" HUD line forever. **Deferred,
+per the step prompt's own explicit "reasonable, not required" allowance**:
+the Test Hazards panel's own "next scheduled in 45 turns" readout for
+Flood stays frozen at that number rather than being visually flagged as
+disabled — a small addition, not done this pass.
+
+**Pacing consequence, flagged not fixed** (the step prompt's own closing
+note): `STEP_PROMPT_balance_tuning_findings.md`'s Section 1 numbers
+(Flood every 45 turns, Storm every 33) were tuned assuming both hazards
+compounding. With only Storm Surge active, the game's actual difficulty
+is different from what that simulation found — likely gentler, one
+fewer thing chipping away at Resilience. Not re-tuned as part of this
+pass, per explicit instruction.
+
+New `GhatsBackdropManager` (`render/ghatsBackdropManager.ts`): four
+`InstancedMesh` columns of hex prisms, placed immediately past each
+row's *real* eastern edge — computed from the actual map tile data
+(each row's own max `q`), not a fixed `q` value, since the map isn't a
+plain axial rectangle (`tools/mapgen/generate.ts`'s own row-offset shear
+correction). Heights 0.9→2.7 rising with `q`, four new palette entries
+(`ghatsNear`/`Mid`/`Far`/`Distant`) shifting toward `PALETTE.fog`/`sky`
+as they rise, small per-tile height jitter (new `jitterScalar()` in
+`palette.ts`, generalizing `jitterColor()`'s own deterministic-seed
+approach) so a column reads as a ridge, not a mesa. Deliberately
+independent of `TerrainMeshManager`/`GameState`/raycasting — never added
+to `map.json`'s `tiles` array, since `resolveHazardWave()`'s BFS walks
+every neighbor present in `state.placed` with no terrain-type filter on
+traversal, only on decay rate; a hill tile there would get swept into
+Storm Surge's BFS and show damage, exactly what this feature promises
+not to do.
+
+Live-verified: zoomed-out screenshot confirms four visibly rising,
+increasingly hazy columns on the east edge; clicking a Ghats tile
+produces no popover, no highlight. Building past turn 45 (realistic
+~550ms pacing between builds — see the flagged pre-existing race
+condition below) showed no flood telegraph/tint/resolution and a clean,
+non-stale HUD countdown throughout. Manual Flood trigger confirmed
+working via both the raw test hook and the actual Test Hazards panel
+button.
+
+**A pre-existing issue re-confirmed, not introduced by this pass**:
+consecutive builds faster than `HAZARD_ARRIVAL_BEAT_MS` (450ms) apart
+can each independently see the schedule threshold still crossed (the
+pending arrival hasn't fired yet to reset it) and queue their own extra
+hazard resolution — first found during `STEP_PROMPT_balance_tuning_
+findings.md`'s own live-play verification, reproduced again here by an
+early, too-fast version of this pass's own verification script. Not a
+real player risk (no human clicks faster than 450ms repeatedly) and
+explicitly out of scope for this pass's guardrails (no trigger-timing
+changes) — flagged again here for whenever the pacing/telegraph logic
+is next revisited.
+
+### Section 2/3 — the wave-front demo
+
+New `WaveFrontManager` (`render/waveFrontManager.ts`), triggered
+alongside `applyHazardResult()` inside `triggerCyclone()` only (Storm
+Surge is the only hazard demoed, per Section 0), layered on top of —
+not replacing — the existing per-tile overlay reveals:
+
+- An expanding ring centered on `coastalCentroid()` (the same origin
+  the telegraph icon already uses), covering damaged Coast/Beach/Land/
+  Estuary tiles. Its radius grows between round-indexed checkpoints
+  (each round's farthest affected tile from the origin), reaching a
+  given ring of tiles at roughly the real moment those tiles' own
+  overlay pops.
+- Small markers along the actual River-tile path the channel-funneled
+  damage took, fading in once elapsed time passes each tile's own
+  `arrivalRound` — a distinct hue (`channelPush`) from the open-water
+  ring (`waveFoam`), reading as a narrower push up a channel rather
+  than a second copy of the same wave.
+
+Both reuse `sweepDurationMs(result)`/`ROUND_DURATION_MS` — passed in
+from `main.ts`, never recomputed — and self-clean once that duration
+elapses.
+
+**Found and fixed a real bug during live verification, not a design
+issue**: both components were positioned at a fixed, low world-space Y
+(~0.07), but real terrain height varies by type (Coast/River sit at
+0.3, Beach/Land at 0.55) — they were rendering fully occluded *inside*
+the terrain geometry almost everywhere, despite the scene graph itself
+being entirely correct (confirmed via direct instrumentation — active
+state, checkpoint data, opacity progression were all already right
+before this was found). Fixed with a `heightAt()` callback
+(`TerrainMeshManager.heightAt()`, the same one `elements.place()`
+already uses) so each component floats just above the real terrain
+surface at its location. Also added a modest emissive term and raised
+base opacity on both materials once properly unburied — a purely lit
+translucent surface read as barely-there against the scene's ambient
+lighting, and this is meant to be a spectacle, not a subtle hint.
+
+New `__hazardOverlayForTest`-style hook, `__waveFrontForTest`, exposes
+the manager for verification scripts — needed here specifically because
+catching a ~2s real animation with a precisely-timed screenshot proved
+unreliable; direct instrumentation (ring radius/opacity, channel-marker
+fade state sampled across the sweep) was what actually confirmed the
+timing synced correctly and what caught the Y-position bug in the
+first place.
+
+Live-verified end to end: a real Test-Hazards-panel-triggered Storm
+Surge shows both the existing per-tile impact discs and the new ring/
+channel layer together; zoomed-out screenshots after the height fix
+clearly show the ring's leading edge and distinctly-colored glowing
+channel markers sitting on River tiles, not buried under them.
+
+### Verification
+
+`tsc --noEmit` clean at every commit. `npx vitest run`: 65/71 passing,
+unchanged from before this pass — no hazard-resolution logic touched,
+so no test needed updating. Production build succeeds. No changes to
+`FLOOD_DECAY`/`CYCLONE_DECAY`/`RIVER_CHANNEL_DECAY`/severity formulas/
+`RESILIENCE_DAMAGE_FACTOR`/any `STEP_PROMPT_balance_tuning_findings.md`
+Section 1 constant. No changes to `map.json`'s `tiles` array, `qRange`/
+`rRange`, or anything that would put the Ghats backdrop in
+`GameState.placed`. Telegraph/tint/cloud-layer system and both hazards'
+Test Hazards panel manual triggers untouched.

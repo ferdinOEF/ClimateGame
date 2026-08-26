@@ -656,6 +656,38 @@ its own guardrail).
 `WEATHERED_TRUST_BONUS` changes — not implicated by this pass's own
 findings.
 
+## Bucket R — Step prompt: Western Ghats backdrop + Storm Surge wave-front spectacle
+
+Source: `STEP_PROMPT_ghats_wave_demo.md`. Full detail (the Section-0
+premise check, both live-verified bugs found and fixed) in PROGRESS.md.
+
+Status: closed. Two deferred/flagged items, neither required by the
+step prompt's own guardrails:
+
+- **Test Hazards panel's Flood readout stays frozen** at "next
+  scheduled in 45 turns" rather than being visually flagged as
+  disabled — the step prompt's own explicit "reasonable, not required"
+  allowance.
+- **Pacing consequence of Flood being off**: `STEP_PROMPT_balance_
+  tuning_findings.md`'s Section 1 numbers were tuned assuming both
+  hazards compounding — actual difficulty with only Storm Surge active
+  is likely gentler. Not re-tuned, per this pass's own explicit
+  instruction not to.
+
+Two commits: `8b1eb06` (disable scheduled Flood via a new
+`FLOOD_HAZARD_ENABLED` flag in `main.ts`, next to
+`FLOOD_INTERVAL_TURNS` + the Western Ghats decorative backdrop, new
+`GhatsBackdropManager`), `c04752a` (the wave-front demo itself, new
+`WaveFrontManager` — an expanding open-water ring plus a river-channel
+push, both driven by real `arrivalRound` data, no new hazard-resolution
+logic needed since `resolveCyclone()` already computes both). Both
+commits found and fixed a real bug live, not a design gap — see
+PROGRESS.md.
+
+`tsc --noEmit` clean at both commits, 65/71 tests unchanged (no
+hazard-resolution logic touched), production build succeeds. No
+`map.json`/hazard-math/telegraph-system changes.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -694,3 +726,4 @@ findings.
 - 2026-08-23, O1 follow-up: both of Section 4's open questions resolved by the user — "Delete them" (the 12 unlinked screenshots) and "Move it out" (the v1 archive). 12 PNGs removed via `git rm` (own commit, `17129ec`) — `tools/screenshots/` now holds 42. `_archive_v1_panjim_digital_twin/` moved (not deleted, `mv`) to a sibling of this `code/` repo and untracked from git here — it's outside the working tree entirely now, not just clean. Updated the stale top-of-PROGRESS.md reference to its old location. `tsc --noEmit`, 58/58 tests, and the production build all re-confirmed unaffected.
 - 2026-08-26, follow-up (full meter labels, reactivate Coin income): closed, both user-reported. HUD's secondary meter chips spelled out in full (Biodiversity/Carbon/Food/Population, not B/C/F/P) as a stacked list, matching the Resilience gauge's label-left/value-right pattern; cluster widened 190px → 225px, confirmed no wrapping via computed `scrollWidth`. Asked the user directly whether "income field" meant informational-only or reactivating real collection — answer was the latter. Manual-Only Mode (N1) had genuinely killed it, not just hidden it: `effects.money` was read by zero code. `GameState.advanceTurn()` (still solely called by `build()`) now collects a new `income` getter (the existing maturity-weighted `meterTotal()` pattern, over `effects.money`) before advancing the turn — the other automatic effects N1 removed stay dormant, scope was income only. New "Income +N/turn" HUD line, warning-colored if ever negative. Two `buildings.test.ts` assertions that checked "no income paid" updated to the new correct math (a Resort's `matureTurns: 0` means it earns immediately). Live-verified: fresh load shows +50/turn (10 Houses × 5); building an 11th moved Coin +30 net (−25 cost, +55 new income) with the readout updating live. 62/68 tests passing (same pass/skip count, only assertions changed), `tsc --noEmit` clean, production build succeeds.
 - 2026-08-26, Q1-Q5 (balance tuning, simulation-backed findings): all closed. Q1: retuned hazard pacing to the simulation-confirmed survivable zone (Flood 15→45, Storm Surge 11→33, severity base 1.0→0.5) — the old numbers made 100% of simulated runs die at exactly turn 22, deterministically, regardless of strategy. Played it live (not shipped unplayed, per the step prompt's own instruction): a scripted defense-first-vs-scattershot comparison in the real app survived to turn 132 vs. turn 90 respectively, both far past the old 22-turn death and in the right relative order. Found (flagged, not fixed — out of scope) a real edge case: builds inside the ~450ms hazard-arrival-beat window can double-queue the same hazard's resolution; not reachable at real click speed. Q2: built the missing `EraEndScreen` — `isEraOver`/`computeEraScore()` both already worked but nothing ever showed the player when a run ended; new centered modal with a full score breakdown (`scoring.ts` refactored to expose `computeEraScoreBreakdown()`) and a "Start New Era" button reusing `resetBoard()`. Found and fixed a real bug live: the modal's own unconditional `display: flex` overrode `[hidden]`, the exact same root cause NEXT_STEPS.md's A1 diagnosed for `.build-popover` — fixed with an explicit `[hidden]` override. Q3 (decision): added a real Coast defense, `breakwater` (engineered, targets cyclone, absorption 0.7/failureThreshold 1.25 vs. Seawall's 0.9/1.2), closing the "18 of 52 exposed tiles have zero defense option" gap rather than declaring it intentional — new low-profile rubble-mound geometry, distinct from Seawall's tall wall. Q4 (decision): left Coin as a non-binding light economy — re-running the new harness after Q1/Q3's changes reconfirms median ~32,536 leftover Coin, same finding as before those changes, and Option B's own guardrail needed a harness that didn't exist yet at that point in the section order. Q5: ported the standalone simulation harness into `tools/balance_sim/index.ts` (`npm run balance-sim`), relative-importing `src/` the same way `tools/mapgen/generate.ts` already does; ran it clean against this repo's own toolchain, reproducing the reference sweep's numbers (66-118 / 99-132 turns survived). 65/71 tests passing (2 new), `tsc --noEmit` clean, production build succeeds. Five commits, one per section (Section 4 was decision-only, no code).
+- 2026-08-26, R1-R2 (Western Ghats backdrop + Storm Surge wave-front spectacle): both closed. R1: confirmed the requester's "two water components" premise for free — `resolveCyclone()` already sources from every Coast+Estuary tile and its BFS already funnels into connected River tiles via the same channel decay Flood uses, so the demo needed zero new hazard logic. Disabled scheduled Flood (new `FLOOD_HAZARD_ENABLED` flag, Test Hazards panel's manual trigger left untouched) and added a purely decorative `GhatsBackdropManager` — four rising, increasingly hazy hill columns computed from the map's own real eastern edge per row (not a fixed q, since the map isn't a plain rectangle), deliberately never added to `map.json`/`GameState.placed` so Storm Surge's BFS can never sweep them in. R2: new `WaveFrontManager` — an expanding open-water ring plus a river-channel push, both timed to the real `arrivalRound` data, layered on top of (not replacing) the existing per-tile impact reveals. Found and fixed a real bug live in each commit: R1's HUD would have shown a stale frozen Flood countdown without an explicit guard; R2's ring/markers were rendering fully buried inside the terrain geometry (fixed low Y vs. real per-terrain-type height, 0.3-0.55) — confirmed via direct scene-graph instrumentation before finding the fix, since a ~2s real animation proved unreliable to catch with timed screenshots. 65/71 tests unchanged (no hazard-resolution logic touched), `tsc --noEmit` clean, production build succeeds. Two commits (`8b1eb06`, `c04752a`).
