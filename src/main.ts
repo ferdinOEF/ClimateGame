@@ -330,7 +330,21 @@ function describeAftermath(kind: "Flood" | "Storm Surge", result: HazardResult, 
 // trigger, not a placeholder for this.
 
 const FLOOD_TELEGRAPH_COLOR = new THREE.Color("#0b2033");
-const FLOOD_INTERVAL_TURNS = 15;
+/**
+ * STEP_PROMPT_balance_tuning_findings.md Section 1: the original 15/11
+ * pair was simulation-confirmed broken — with 52 Storm-Surge-exposed
+ * tiles and an 11-turn Cyclone clock, fewer than 10% of them can
+ * possibly be defended before the first hit, so 100% of simulated runs
+ * (any bot strategy) died at exactly turn 22, regardless of how well the
+ * player built. Tripling both intervals and halving the severity
+ * baseline (see `rolledSeverity()` below) was the empirically-best zone
+ * found by sweeping interval × severity together: real spread (66-118
+ * turns survived) where a defense-first strategy's floor clearly beats a
+ * scattershot one's, instead of an identical death every time. This is a
+ * feel-tuning starting point, not a final answer — nudge from this zone
+ * if it plays too slow or too generous, not back toward the original.
+ */
+const FLOOD_INTERVAL_TURNS = 45;
 const FLOOD_TELEGRAPH_TURNS = 2;
 let nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
 
@@ -405,7 +419,8 @@ function triggerFlood(baseSeverity: number): void {
 // --- Cyclone telegraph + resolution -------------------------------------------
 
 const CYCLONE_TELEGRAPH_COLOR = new THREE.Color("#3a3348");
-const CYCLONE_INTERVAL_TURNS = 11;
+/** STEP_PROMPT_balance_tuning_findings.md Section 1: same retune as `FLOOD_INTERVAL_TURNS` above, same reasoning — see that constant's comment. */
+const CYCLONE_INTERVAL_TURNS = 33;
 const CYCLONE_TELEGRAPH_TURNS = 1;
 let nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
 
@@ -630,9 +645,16 @@ function resetBoard(): void {
 
 // --- Hazard schedule --------------------------------------------------------------
 
-/** Section 2: "a slowly rising monsoon intensity / cyclone season modifier" biases future severity upward within an era. */
+/**
+ * Section 2: "a slowly rising monsoon intensity / cyclone season
+ * modifier" biases future severity upward within an era. STEP_PROMPT_
+ * balance_tuning_findings.md Section 1: the base term dropped 1.0 → 0.5
+ * (the spread and the permanent `severityBaseline` creep are untouched —
+ * only the floor moved) as part of the same interval retune above; see
+ * `FLOOD_INTERVAL_TURNS`'s comment for the simulation finding behind it.
+ */
 function rolledSeverity(): number {
-  return 1.0 + Math.random() * 0.6 + state.severityBaseline;
+  return 0.5 + Math.random() * 0.6 + state.severityBaseline;
 }
 
 // STEP_PROMPT_pacing_telegraph_preview.md Section 1: how long the
