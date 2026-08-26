@@ -2826,3 +2826,54 @@ curves, or `elements.json` balance numbers touched anywhere in this pass.
 The Test Hazards panel comes out byte-for-byte identical in every
 existing behavior, just coexisting with a live schedule now — confirmed
 live, not just by code inspection.
+
+## Follow-up: full meter labels, reactivate Coin income — DONE
+
+User-reported: the HUD's secondary meter chips showed single-letter
+abbreviations (B/C/F/P), full name only on hover; also asked for an
+income field.
+
+- **Labels**: `Hud`'s chip grid switched from a 2x2 grid of
+  abbreviation-plus-value pills to a stacked list of full labels
+  (Biodiversity/Carbon/Food/Population), value right-aligned — same
+  pattern the Resilience gauge already used. Widened `.instrument-
+  cluster` 190px → 225px so nothing wraps; confirmed via computed
+  `scrollWidth`/`clientWidth` in a live page (no overflow at any chip).
+- **Income was genuinely dead, not just hidden**: Manual-Only Mode
+  (Bucket N) had stripped `GameState.advanceTurn()` to just the turn
+  counter — Coin only ever decreased via build costs, and every
+  element's `effects.money` field was unread by any code. Asked the
+  user directly whether "add an income field" meant a purely
+  informational readout or actually reactivating collection; answer was
+  the latter — a real mechanics change, not cosmetic.
+- **What came back, and what didn't**: `advanceTurn()` (still the sole
+  turn-advancing action, still only ever called by `build()`) now also
+  does `this.coin += this.income` before advancing the turn, where the
+  new `income` getter is the same maturity-weighted `meterTotal()` read
+  every other meter already uses, over `effects.money`. The other
+  automatic effects Manual-Only Mode removed — maintenance/neglect
+  degrade, Food-deficit Trust/Resilience drain, flood-buffer recovery —
+  are untouched and stay dormant; scope was income only, not a full
+  revert of that mode.
+- **HUD**: new "Income +N/turn" line under Coin (`Hud.setCoin()` now
+  takes both), teal when positive, the same warning orange as the Food
+  chip if it ever goes negative (every `effects.money` value in
+  `elements.json` is positive today, but the code doesn't assume that).
+  Coin's own display is now `Math.round()`ed too, since it can be
+  fractional mid-maturity (matching every other meter's existing
+  rounding convention) — it wasn't before because it could never be
+  anything but a whole number.
+- **Tests**: two `buildings.test.ts` assertions that explicitly checked
+  "building a Beachside Resort moves Coin by exactly its build cost, no
+  income" were updated (not reverted) to the new, correct math — a
+  Resort's `matureTurns` is 0, so it earns its full income the same
+  turn it's built. Found via a full `vitest run` after the change, not
+  anticipated in advance.
+
+Live-verified: fresh load shows "Income +50/turn" (10 prebuilt Houses ×
+5 each); building an 11th House via `__buildForTest` moved Coin
+10000 → 10030 (−25 build cost, +55 that turn's now-11-House income),
+with the readout updating to "+55" immediately. Screenshotted.
+`tsc --noEmit` clean, 62/68 tests passing (unchanged pass/skip count —
+only assertions inside existing tests changed), production build
+succeeds.
