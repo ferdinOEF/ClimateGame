@@ -3430,3 +3430,123 @@ state.
 `tsc --noEmit` clean, 65/71 tests passing (unchanged — this is a pure
 HUD-visibility addition, no hazard/balance/map/game-logic code
 touched), production build succeeds.
+
+## STEP_PROMPT_mobile_responsive.md follow-up (Section 4 rebuild: "Status Pill") — DONE
+
+The step prompt's Section 4 was rewritten a second time, after the
+previous pass's bottom-left circular toggle shipped and pushed — this
+time with a fully specified design (exact colors, sizing, layout,
+behavior) chosen from a 4-option mockup the user signed off on before
+writing the section. This is a full replacement of the previous
+implementation's *shape*, not the underlying collapse concept: same
+guardrails, same "the smaller corner pieces stay untouched, only
+`.instrument-cluster` collapses" scope, same "default expanded, no
+persistence" behavior — just a completely different visual and
+interaction design. One commit (`7cc874d`).
+
+**What changed from the previous implementation**: the standalone
+bottom-left button and its `#app.hud-collapsed` class are gone
+entirely. In their place:
+
+- **Expanded (unchanged layout)**: a small chevron-up glyph now lives
+  inline inside `.cluster-header`, to the right of the Turn/Era text
+  (wrapped in a new `.cluster-header-right` sub-container so
+  `.cluster-header`'s existing `justify-content: space-between`
+  two-item layout didn't need restructuring for a third item). Tapping
+  it collapses the cluster. Its visible glyph stays a small
+  border-corner chevron (the same reliable CSS technique the previous
+  pass's icon used), but the actual clickable region reaches ~44px via
+  `padding: 16px` paired with an equal `margin: -16px` — a standard
+  trick that expands the hit-testable padding-box without expanding
+  the element's footprint in the surrounding flex layout, confirmed
+  live: `.coin-row`'s right edge and `.turn-era-row`'s left edge sit
+  exactly `10px` apart (the header's own `gap`), unchanged by the
+  much-larger invisible tap target sitting on top of the small glyph.
+- **Collapsed**: `.instrument-cluster` reshapes *itself* in place —
+  same `top-left` anchor (never repositions, matching the step
+  prompt's "same top-left position" instruction literally) — into a
+  34px pill (`border-radius: 17px`, `background: rgba(20, 30, 26,
+  0.9)`, `border: 1px solid rgba(255, 255, 255, 0.14)`, `box-shadow: 0
+  6px 16px rgba(0, 0, 0, 0.4)`, `width: fit-content` so it hugs its
+  content instead of staying the expanded card's fixed 225px). A new
+  `.cluster-pill` element (`display: none` at rest, revealed only
+  under `.collapsed`) holds the actual row of content: a coin glyph
+  (stroke `#ffe9a8`) + amount, a resilience-colored dot (`#7bd4c4`
+  normal / `#ff8a5c` critical — the exact same classes/colors
+  `.resilience-gauge-fill`/`.resilience-gauge-fill.critical` already
+  use) + percentage, a wave glyph + turns-until-next-hazard, and a
+  trailing chevron. The whole pill (not just its chevron) is the tap
+  target to re-expand.
+- **Live data sync**: `hud.ts`'s existing `setCoin()`/`setMeters()`/
+  `setHazardIncoming()` now each write to the pill's own text
+  nodes/dot class in the same call that updates the expanded view — no
+  separate pill-refresh path to fall out of sync. The hazard number is
+  pulled from `hazardIncomingInfo()`'s own structured `turnsUntil`
+  field (the minimum across however many hazard lines are currently
+  shown, for the eventual 2-hazard compound case), never re-parsed out
+  of `hazard-incoming-line`'s rendered sentence, per the step prompt's
+  explicit instruction.
+- **Animation**: the six detail rows (header, income, resilience
+  gauge, hazard-incoming, preview-toggle, chip-grid) fade/shrink via
+  `opacity`/`max-height` transitions, kept at `display: flex`/`block`
+  throughout rather than toggled to `none` — animating `display`
+  itself isn't smoothly transitionable without leaning on
+  `@starting-style`/`transition-behavior: allow-discrete`, a
+  reasonably recent CSS feature this codebase doesn't use anywhere
+  else; a first draft of this pass tried it and only got the
+  collapsing direction right (no starting-style for the reverse), so
+  it was backed out in favor of the same reliable opacity/max-height
+  pattern the previous pass already validated. `.cluster-pill` itself
+  stays a genuine `display: none ↔ flex` swap at rest, since nothing
+  needs it to animate *in* — per the step prompt's own implementation
+  note ("a summary-pill row that's `display: none` in the normal
+  state"). `.instrument-cluster.collapsed`'s own `gap: 0` prevents the
+  now-zero-height (but still `display`-present) detail rows from each
+  still contributing a flex-gap above the visible pill — the same fix
+  the previous pass's chip-grid-clipping bug taught.
+
+**A design decision worth recording**: the step prompt's own explicit
+pill styling (`border-radius: 17px`, that specific `rgba(20, 30, 26,
+0.9)` background, etc.) reads two ways — a small pill nested inside
+the still-fully-padded 225px card, or the outer card itself reshaping
+into the pill. Nesting would have meant two overlapping sets of
+card-like chrome (the outer card's own background/border/shadow, plus
+the pill's), which doesn't match "same top-left position" as literally
+(the pill's box wouldn't actually start at `top: 12px; left: 12px` if
+it were nested inside the card's own padding) and would read as a
+visibly doubled border/shadow. Went with the outer-card-reshapes
+model instead: `.instrument-cluster.collapsed` itself carries the
+pill's `padding`/`border-radius`/`background`/`border`/`box-shadow`,
+and `.cluster-pill` is purely a flex row of content with no chrome of
+its own — avoiding the double-chrome problem by construction rather
+than by catching it after the fact.
+
+**Verification**: live end-to-end, reusing the previous pass's own
+transition-disabled workaround (this session's Browser pane tab still
+reports `document.hidden`, still appears to pause CSS transitions
+outright) to confirm true end-state values at every step rather than
+trusting a possibly-still-mid-transition read. Confirmed at 375×667,
+390×844, 412×915, 768×1024 (portrait) and the previous pass's own
+tightest landscape case (667×375): the toggle's hit area, the
+collapsed pill's exact geometry (no horizontal overflow at any width),
+and a full collapse→expand round trip landing back on the *exact*
+pre-collapse card styling (`border-radius: 12px`,
+`background-color: rgba(20, 30, 26, 0.85)`, real content heights, not
+the pill's values). Confirmed the resilience dot's color tracks the
+real gauge exactly during an actual triggered hazard — both read
+`rgb(123, 212, 196)` (`#7bd4c4`) normally and both flipped to
+`rgb(255, 138, 92)` (`#ff8a5c`) together once a test-triggered cyclone
+cratered Resilience to 0. Confirmed the pill's coin/resilience/hazard
+numbers match the expanded view's own numbers exactly (not just
+independently plausible values) at every check, including a live
+"Storm Surge in 33 turns" case where the pill correctly showed bare
+`33`. Re-confirmed desktop (1440×900): the toggle never renders
+(`display: none`), the card never reshapes (`clusterHasCollapsed:
+false`, full 225px-plus-padding width). Confirmed the guardrail live:
+toggling collapse while a `BuildPopover` was open left its `hidden`
+state and position byte-for-byte unchanged, and a build completed
+normally (a new element's info card, with a working Remove button)
+while the HUD stayed collapsed throughout.
+
+`tsc --noEmit` clean, 65/71 tests passing (unchanged — no hazard/
+balance/map/game-logic code touched), production build succeeds.
