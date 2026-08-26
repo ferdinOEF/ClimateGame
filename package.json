@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "tsx tools/smoke.ts",
-    "mapgen": "tsx tools/mapgen/generate.ts"
+    "mapgen": "tsx tools/mapgen/generate.ts",
+    "balance-sim": "tsx tools/balance_sim/index.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",
