@@ -1,9 +1,24 @@
+/*
+  STEP_PROMPT_mobile_responsive.md Section 1: `100vh` on a mobile browser
+  includes space the address bar/toolbar occupies even while hidden,
+  causing a jumpy/oversized layout as the toolbar shows and hides during
+  interaction. `100dvh` (dynamic viewport height) tracks the *actual*
+  visible area instead — declared after `100vh` so an unsupported `dvh`
+  value is simply ignored by the parser, leaving the `100vh` declaration
+  above it as the effective value (a real fallback, not a guess). Same
+  `overscroll-behavior: none`: without it, a touch drag that reaches a
+  page edge can trigger a rubber-band bounce or pull-to-refresh, which
+  reads as a bug mid-game, not a browser being helpful — the in-game
+  camera should be the only thing that ever moves.
+*/
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #0b1512;
   font-family: "Segoe UI", system-ui, sans-serif;
 }
@@ -12,10 +27,21 @@ html, body {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
 }
 
+/*
+  touch-action: none scoped to the canvas specifically, not the whole
+  document — without it, a mobile browser can interpret a single-finger
+  drag over the canvas as an attempt to scroll the page, fighting
+  scene.ts's own pointer-drag pan (and swallowing the multi-touch data a
+  pinch gesture needs before scene.ts ever sees it). Scoped this narrowly
+  so HUD buttons (separate DOM elements, not children of canvas) keep
+  their normal tap behavior untouched.
+*/
 #app canvas {
   display: block;
+  touch-action: none;
 }
 
 /*
@@ -65,32 +91,42 @@ html, body {
   font-size: 13px;
 }
 
+/*
+  STEP_PROMPT_mobile_responsive.md Section 1: `env(safe-area-inset-*)`
+  (0 wherever it isn't relevant — desktop, a non-notched phone — so this
+  is additive everywhere, not mobile-only) keeps each corner clear of a
+  notch/gesture-bar/rounded-corner cutout a desktop browser never has to
+  account for. Added to the base offset via `calc()`, not a media query,
+  since `viewport-fit=cover` (index.html) is what actually lets the page
+  extend under those areas in the first place — without both together,
+  this padding would just be inert.
+*/
 .hud-corner.top-left {
-  top: 12px;
-  left: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
 }
 
 .hud-corner.top-right {
-  top: 12px;
-  right: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
   text-align: right;
 }
 
 .hud-corner.bottom-center {
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
 }
 
 .hud-corner.top-center {
-  top: 14px;
+  top: calc(14px + env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
 }
 
 .hud-corner.bottom-right {
-  bottom: 16px;
-  right: 12px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  right: calc(12px + env(safe-area-inset-right));
   text-align: right;
 }
 
@@ -584,8 +620,8 @@ html, body {
 */
 .hazard-test-tab {
   position: absolute;
-  bottom: 16px;
-  left: 12px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: calc(12px + env(safe-area-inset-left));
   z-index: 10;
   background: rgba(20, 30, 26, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.15);
