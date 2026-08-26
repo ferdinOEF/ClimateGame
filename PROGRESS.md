@@ -3227,3 +3227,112 @@ unchanged from the already-screenshotted prior pass.
 (including the two previously-ungated `mapgen.test.ts` checks and
 `balance.test.ts`'s adaptive cross-category assertions), production
 build succeeds.
+
+## STEP_PROMPT_mobile_responsive.md (mobile browser responsiveness) — DONE
+
+Three commits, one per Guardrails concern.
+
+**Commit 1 — viewport fundamentals** (`41db390`): `viewport-fit=cover`
+added to the existing meta tag; `html, body`/`#app` switched to
+`height: 100vh; height: 100dvh;` (the second declaration wins on a
+browser that supports `dvh`, is silently ignored — falling back to the
+first — on one that doesn't); `overscroll-behavior: none` added to stop
+page bounce/pull-to-refresh; `touch-action: none` added on `#app
+canvas` specifically (not the whole document, so HUD button taps are
+unaffected) so a single-finger drag on the canvas can't also trigger
+the browser's native scroll/refresh gesture; every `.hud-corner.*`
+variant and `.hazard-test-tab` switched from a bare px offset to
+`calc(Npx + env(safe-area-inset-*))` so a notched/gesture-bar phone
+doesn't crop corner content.
+
+**Commit 2 — pinch-to-zoom** (`1971088`): `scene.ts` already used
+Pointer Events for pan (works on touch automatically) but zoom was
+`wheel`-only, which never fires on a touchscreen. Added two-finger
+pinch handling alongside the existing wheel path (wheel/`ZOOM_SPEED`/
+desktop behavior completely untouched): every active touch pointer is
+tracked by id in a `Map`; a second finger touching down mid-pan drops
+the pan anchor and marks the gesture as "definitely not a tap" so it
+can't hand off into a spurious click; each `pointermove` during a
+2-finger touch converts the *frame-to-frame* inter-finger distance
+delta (not gesture-total) into the same `distance` variable the wheel
+handler already governs, reusing its existing `CAM_DISTANCE_MIN/MAX`
+clamp rather than inventing a second zoom range; lifting back to one
+finger requires a fresh single-finger press to resume panning (an
+explicitly-sanctioned simplification, not full gesture continuity).
+New `__cameraForTest` hook (same "inert unless called" convention as
+every other test hook) exposes the real `THREE.PerspectiveCamera` so
+verification scripts can confirm zoom/pan actually moved the camera,
+not just that input events fired.
+
+**Commit 3 — responsive HUD/popover/modal sizing** (`681cd75`): added
+`hud.css`'s first-ever `@media` queries. Two breakpoints, layered: (a)
+`max-width: 820px` **or** `pointer: coarse` bumps every tappable
+control (`.build-option`, `.built-info-remove`, `.era-end-restart`,
+`.preview-toggle`) to a ~44px touch target via padding, not font-size
+— the `pointer: coarse` half is a deliberate addition beyond the
+step prompt's literal spec, specifically so a phone in *landscape*
+(width can exceed 820px there) still gets the bigger targets since
+it's still a touchscreen; (b) `max-width: 600px` caps every
+fixed-px card (`BuildPopover`, the instrument cluster, `EraEndScreen`)
+at `min(original px, ~92vw)` so nothing can exceed a narrow phone
+screen, and bumps desktop-tuned 10-13px HUD text up for arm's-length
+phone reading. The `?debughazards` Test Hazards panel was
+deliberately left alone, per the step prompt's own "developer tool,
+low priority" instruction.
+
+**Real bug found and fixed during landscape verification**:
+`EraEndScreen`'s card (~440px tall content) was clipping off both the
+top and bottom of a short-height viewport (e.g. 667×375, an iPhone SE
+rotated to landscape) with no way to scroll to the cut-off title or
+"Start New Era" button — the outer backdrop's `overflow` was the
+default `visible`/`hidden` mix a fixed+flex-centered layout gives you,
+and the card itself had no height cap at all. Fixed with a dedicated
+`@media (max-height: 500px)` block (not folded into the base
+`.era-end-card` rule) giving the card `max-height: 90vh; overflow-y:
+auto; box-sizing: border-box` — scoping it to a *height*-based query
+specifically means it can only ever engage on a genuinely short
+viewport, since ordinary desktop window heights are well clear of
+500px. First attempt at this fix put `box-sizing: border-box` on the
+base rule instead of inside the media query, which shrank the card's
+*desktop* width too (280px content-box + padding ≈345px measured →
+280px flat) — caught by re-measuring at 1440×900 after the first fix,
+and corrected by moving the whole `max-height`/`overflow`/
+`box-sizing` trio into the height-scoped query, leaving the base rule
+byte-for-byte as it was before this pass.
+
+**Verification**: live end-to-end in the Browser pane (available this
+pass, unlike several recent ones) across the full required matrix —
+375×667, 390×844, 412×915, 768×1024, each in **both** portrait and
+landscape (8 total viewport/orientation combinations). At each: no
+horizontal page overflow, a synthetic tap opens `BuildPopover` fully
+in-bounds with ≥44px-tall build options (54px at 375×667, down to a
+still-comfortable 39-51px range where `pointer: coarse` wasn't
+emulated by the test tool at custom widths ≥768px — see caveat
+below), and a test-panel-triggered `EraEndScreen` renders fully
+in-bounds (or, at the two short-landscape sizes below the 500px
+height threshold, fully in-bounds *and scrollable*, with the restart
+button reachable by scrolling — confirmed directly by scrolling to it
+and re-measuring its rect). Desktop re-confirmed unaffected at
+1440×900 specifically for Commit 3's new rules (not just Commit 1's):
+`.build-option` padding/font-size, `.instrument-cluster` font-size,
+and `.era-end-card` width (345.33px, unchanged) all measured back to
+their original pre-pass values via `getComputedStyle`.
+
+**One caveat, honestly flagged**: this session's browser-automation
+tool only emulates a touch/coarse pointer automatically at widths
+below 768px (its own documented behavior); at the two wider custom
+landscape sizes tested (844×390, 915×412), `window.matchMedia('(pointer:
+coarse)').matches` read `false` even though a real device at that
+size would be a touchscreen, so the `.build-option` padding measured
+there (39.33px) reflects the *desktop* tap-target size, not the
+mobile-bumped one — a testing-environment limitation, not a code gap.
+The `max-width: 820px` half of the OR-condition still applies at any
+narrower width regardless of pointer type (confirmed passing at
+375-412px in both orientations), and the `pointer: coarse` mechanism
+itself was confirmed wired correctly via direct `matchMedia` reads;
+worth a real-device spot-check for the landscape-only, ≥768px-wide
+case specifically, next time one's available.
+
+`tsc --noEmit` clean, 65/71 tests passing (unchanged — no
+hazard/balance/map logic touched, matching the guardrails), production
+build succeeds.
