@@ -5,6 +5,7 @@ import { ElementMeshManager } from "@render/elementMeshManager";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
 import { CloudLayerManager } from "@render/cloudLayerManager";
 import { GhatsBackdropManager } from "@render/ghatsBackdropManager";
+import { WaveFrontManager } from "@render/waveFrontManager";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
@@ -56,11 +57,16 @@ const cloudLayer = new CloudLayerManager();
 // never fed into GameState/mapTiles — see the manager's own comment for
 // why that separation is load-bearing, not incidental.
 const ghatsBackdrop = new GhatsBackdropManager(mapTiles);
+// STEP_PROMPT_ghats_wave_demo.md Section 2/3: the wave-front spectacle —
+// layered on top of hazardOverlay's own per-tile reveals, not a
+// replacement for them (see WaveFrontManager's own comment).
+const waveFront = new WaveFrontManager();
 scene.add(terrain.group);
 scene.add(elements.group);
 scene.add(hazardOverlay.mesh);
 scene.add(cloudLayer.group);
 scene.add(ghatsBackdrop.group);
+scene.add(waveFront.group);
 
 /**
  * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -527,6 +533,28 @@ function triggerCyclone(baseSeverity: number): void {
   const trustBefore = state.trust;
   const result = resolveCyclone(state, baseSeverity);
   applyHazardResult("storm", result, performance.now());
+  const sweepMs = sweepDurationMs(result);
+  // STEP_PROMPT_ghats_wave_demo.md Section 2/3: the wave-front spectacle,
+  // layered on top of applyHazardResult()'s own per-tile reveals above —
+  // an expanding open-water ring plus a river-channel push, both synced to
+  // this same result's real arrivalRound data (see WaveFrontManager's own
+  // comment). coastalCentroid() is the same origin point the telegraph
+  // icon already uses; skipped entirely (rather than falling back to some
+  // arbitrary point) on the same map-has-no-coast/estuary edge case that
+  // already makes the icon itself not appear.
+  const origin = coastalCentroid();
+  if (origin) {
+    waveFront.trigger({
+      result,
+      originWorld: origin,
+      terrainIdAt: (coord) => terrain.terrainIdAt(coord),
+      heightAt: (coord) => terrain.heightAt(coord),
+      hexSize: 1.0,
+      roundDurationMs: ROUND_DURATION_MS,
+      nowMs: performance.now(),
+      durationMs: sweepMs
+    });
+  }
   for (const coord of tilesOfType("coast", "estuary")) terrain.setTint(coord, null);
   cycloneIcon.visible = false;
   cycloneTelegraphing = false;
@@ -537,7 +565,7 @@ function triggerCyclone(baseSeverity: number): void {
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
-  setTimeout(() => showAftermathAndCheckEraEnd("Storm Surge", result, resilienceBefore, trustBefore), sweepDurationMs(result));
+  setTimeout(() => showAftermathAndCheckEraEnd("Storm Surge", result, resilienceBefore, trustBefore), sweepMs);
 }
 
 /**
@@ -895,6 +923,7 @@ start((nowMs) => {
   elements.tick(nowMs);
   hazardOverlay.tick(nowMs);
   cloudLayer.tick(nowMs);
+  waveFront.tick(nowMs);
   if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 });
 
@@ -937,6 +966,11 @@ function devAutoBuild(kind: "building" | "defense"): void {
 // showing (via `.["previewByKey"].size`) without needing to reverse-engineer
 // the render mesh directly.
 (window as unknown as Record<string, unknown>).__hazardOverlayForTest = hazardOverlay;
+// STEP_PROMPT_ghats_wave_demo.md Section 2/3 Verify: lets a verification
+// script read back the wave-front's current in-scene state (ring present,
+// how many channel-push markers exist and their live opacity) without
+// needing precisely-timed screenshots to catch it mid-sweep.
+(window as unknown as Record<string, unknown>).__waveFrontForTest = waveFront;
 
 // STEP_PROMPT_remove_schedule_confirm_shadowing.md Part B: same "inert
 // unless called" category as the two hooks above — lets a verification

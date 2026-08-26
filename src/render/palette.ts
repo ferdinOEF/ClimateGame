@@ -49,7 +49,16 @@ export const PALETTE: Record<string, THREE.Color> = {
   ghatsNear: new THREE.Color("#3F6B4A"),
   ghatsMid: new THREE.Color("#6E8F72"),
   ghatsFar: new THREE.Color("#9DB4AC"),
-  ghatsDistant: new THREE.Color("#C7D9D6")
+  ghatsDistant: new THREE.Color("#C7D9D6"),
+  // STEP_PROMPT_ghats_wave_demo.md Section 2/3: the wave-front spectacle
+  // layer, distinct from `HazardOverlayManager`'s own flood/cyclone impact
+  // colors — this is motion, not outcome, so it reads as a bright foam/
+  // surge tone rather than the muted damage-severity palette. waveFoam is
+  // the broad open-water front; channelPush is deliberately a different
+  // hue (not just a narrower shape) so the river push reads as distinct
+  // water, not the same wave arriving twice.
+  waveFoam: new THREE.Color("#E8F4F0"),
+  channelPush: new THREE.Color("#5FA8C4")
 };
 
 export function paletteColor(key: string): THREE.Color {
