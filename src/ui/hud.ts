@@ -38,8 +38,13 @@ export class Hud {
   private yachtValueEl: HTMLElement;
   private arrivalFlashEl: HTMLElement;
   private previewToggleEl: HTMLButtonElement;
-  private hudToggleEl: HTMLButtonElement;
-  private hudCollapsed = false;
+  private clusterEl: HTMLElement;
+  private clusterCollapseToggleEl: HTMLButtonElement;
+  private clusterPillEl: HTMLButtonElement;
+  private pillCoinEl: HTMLElement;
+  private pillResilienceValueEl: HTMLElement;
+  private pillResilienceDotEl: HTMLElement;
+  private pillHazardValueEl: HTMLElement;
 
   constructor(container: HTMLElement, onPreviewToggle: () => void) {
     const tileCounter = document.createElement("div");
@@ -59,7 +64,12 @@ export class Hud {
     cluster.innerHTML = `
       <div class="cluster-header">
         <div class="coin-row"><span>Coin</span><span class="coin-value">0</span></div>
-        <div class="turn-era-row">Turn <span class="turn-value">0</span> · Era <span class="era-value">1</span></div>
+        <div class="cluster-header-right">
+          <div class="turn-era-row">Turn <span class="turn-value">0</span> · Era <span class="era-value">1</span></div>
+          <button type="button" class="cluster-collapse-toggle" aria-label="Collapse HUD">
+            <span class="chevron-glyph chevron-up"></span>
+          </button>
+        </div>
       </div>
       <div class="income-row">Income <span class="income-value">+0</span>/turn</div>
       <div class="resilience-gauge">
@@ -73,8 +83,31 @@ export class Hud {
         <span class="meter-chip">Carbon <b class="carbon-value">0</b></span>
         <span class="meter-chip food-chip">Food <b class="food-value">0</b></span>
         <span class="meter-chip">Population <b class="population-value">0</b></span>
-      </div>`;
+      </div>
+      <button type="button" class="cluster-pill" aria-label="Expand HUD">
+        <span class="pill-item pill-coin">
+          <svg class="pill-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+            <circle cx="8" cy="8" r="6" fill="none" stroke="#ffe9a8" stroke-width="1.4"></circle>
+            <line x1="3.5" y1="8" x2="12.5" y2="8" stroke="#ffe9a8" stroke-width="1.4"></line>
+          </svg>
+          <span class="pill-coin-value">0</span>
+        </span>
+        <span class="pill-divider"></span>
+        <span class="pill-item pill-resilience">
+          <span class="pill-resilience-dot"></span>
+          <span class="pill-resilience-value">100</span>
+        </span>
+        <span class="pill-divider"></span>
+        <span class="pill-item pill-hazard">
+          <svg class="pill-icon" viewBox="0 0 16 10" width="14" height="9" aria-hidden="true">
+            <path d="M1 5c1.5-4 3-4 4.5 0s3 4 4.5 0 3-4 4.5 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+          </svg>
+          <span class="pill-hazard-value">–</span>
+        </span>
+        <span class="chevron-glyph chevron-right"></span>
+      </button>`;
     container.appendChild(cluster);
+    this.clusterEl = cluster;
     this.coinEl = cluster.querySelector(".coin-value")!;
     this.incomeEl = cluster.querySelector(".income-value")!;
     this.turnValueEl = cluster.querySelector(".turn-value")!;
@@ -89,6 +122,24 @@ export class Hud {
     this.populationEl = cluster.querySelector(".population-value")!;
     this.previewToggleEl = cluster.querySelector(".preview-toggle")!;
     this.previewToggleEl.addEventListener("click", () => onPreviewToggle());
+
+    // STEP_PROMPT_mobile_responsive.md Section 4 ("Status Pill" direction,
+    // signed off from a 4-option mockup): the chevron in the header
+    // collapses `.instrument-cluster` down to a single-row pill; the pill
+    // itself (its own tap target, not just its trailing chevron) expands
+    // it back. Both live inside the cluster, so neither needs its own
+    // corner-positioning class — `.instrument-cluster`'s own `top-left`
+    // offset is what both states share ("same top-left position"), which
+    // is why the collapsed state reshapes the card in place rather than
+    // introducing a second, separately-positioned element.
+    this.clusterCollapseToggleEl = cluster.querySelector(".cluster-collapse-toggle")!;
+    this.clusterPillEl = cluster.querySelector(".cluster-pill")!;
+    this.pillCoinEl = cluster.querySelector(".pill-coin-value")!;
+    this.pillResilienceValueEl = cluster.querySelector(".pill-resilience-value")!;
+    this.pillResilienceDotEl = cluster.querySelector(".pill-resilience-dot")!;
+    this.pillHazardValueEl = cluster.querySelector(".pill-hazard-value")!;
+    this.clusterCollapseToggleEl.addEventListener("click", () => this.setClusterCollapsed(true));
+    this.clusterPillEl.addEventListener("click", () => this.setClusterCollapsed(false));
 
     const emptyPrompt = document.createElement("div");
     emptyPrompt.className = "hud-corner bottom-center empty-prompt";
@@ -112,28 +163,6 @@ export class Hud {
     container.appendChild(yachtGoal);
     this.yachtGoalEl = yachtGoal;
     this.yachtValueEl = yachtGoal.querySelector(".yacht-value")!;
-
-    // STEP_PROMPT_mobile_responsive.md Section 4: a single toggle that
-    // shrinks the corner strips down on a small screen, purely a
-    // visibility concern — no coupling to game state, BuildPopover,
-    // EraEndScreen, or camera controls (per the guardrails). Bottom-left
-    // is the one corner nothing else above already occupies (top-left:
-    // instrument cluster, top-right: tile counter, bottom-right: yacht
-    // goal, bottom-center: empty prompt, top-center: era banner). Hidden
-    // entirely above the mobile breakpoint (hud.css) — desktop never sees
-    // it, so `hudCollapsed` can never become true there either.
-    const hudToggle = document.createElement("button");
-    hudToggle.type = "button";
-    hudToggle.className = "hud-corner bottom-left hud-toggle";
-    hudToggle.setAttribute("aria-label", "Collapse HUD");
-    hudToggle.innerHTML = `<span class="hud-toggle-icon"></span>`;
-    hudToggle.addEventListener("click", () => {
-      this.hudCollapsed = !this.hudCollapsed;
-      container.classList.toggle("hud-collapsed", this.hudCollapsed);
-      hudToggle.setAttribute("aria-label", this.hudCollapsed ? "Expand HUD" : "Collapse HUD");
-    });
-    container.appendChild(hudToggle);
-    this.hudToggleEl = hudToggle;
 
     // STEP_PROMPT_pacing_telegraph_preview.md Section 1's "give the
     // countdown-hits-zero moment its own beat": a full-viewport tinted
@@ -195,7 +224,9 @@ export class Hud {
    * player can see where Coin is headed, not just where it is.
    */
   setCoin(n: number, income: number): void {
-    this.coinEl.textContent = String(Math.round(n));
+    const rounded = Math.round(n);
+    this.coinEl.textContent = String(rounded);
+    this.pillCoinEl.textContent = String(rounded);
     const roundedIncome = Math.round(income);
     this.incomeEl.textContent = roundedIncome > 0 ? `+${roundedIncome}` : String(roundedIncome);
     this.incomeEl.classList.toggle("negative", roundedIncome < 0);
@@ -219,7 +250,9 @@ export class Hud {
     food: number;
     population: number;
   }): void {
-    this.resilienceEl.textContent = String(Math.round(meters.resilience));
+    const roundedResilience = Math.round(meters.resilience);
+    this.resilienceEl.textContent = String(roundedResilience);
+    this.pillResilienceValueEl.textContent = String(roundedResilience);
     // Resilience isn't hard-capped at 100 (a `?resilienceboost` above the
     // starting value, or simply never having taken damage yet, can exceed
     // it) — clamp only the *gauge fill*, so the bar never visually
@@ -230,7 +263,12 @@ export class Hud {
     // A real gauge should read as one at a glance, not just a static bar
     // with a number next to it — shift to the same warning color the Food
     // chip uses once Resilience is critically low, not just "some damage."
-    this.resilienceFillEl.classList.toggle("critical", meters.resilience <= 25);
+    // The pill's own resilience dot (Section 4) carries the identical
+    // signal — it's a summary, so "is this actually fine" has to survive
+    // the collapse, not just the number.
+    const critical = meters.resilience <= 25;
+    this.resilienceFillEl.classList.toggle("critical", critical);
+    this.pillResilienceDotEl.classList.toggle("critical", critical);
     this.biodiversityEl.textContent = String(Math.round(meters.biodiversity));
     this.carbonEl.textContent = String(Math.round(meters.carbon));
     this.foodEl.textContent = String(Math.round(meters.food));
@@ -261,6 +299,25 @@ export class Hud {
       line.textContent = `${hazard.kind} in ${turns} turn${turns === 1 ? "" : "s"}`;
       this.hazardIncomingEl.appendChild(line);
     }
+    // Section 4's pill shows "turns until next hazard" as a bare number
+    // next to its wave glyph — the same underlying number the line(s)
+    // above are built from (whichever is soonest, when there are two for
+    // a compound event), not re-parsed out of the rendered sentence.
+    this.pillHazardValueEl.textContent = hazards.length > 0 ? String(Math.max(0, Math.min(...hazards.map((h) => h.turnsUntil)))) : "–";
+  }
+
+  /**
+   * STEP_PROMPT_mobile_responsive.md Section 4: purely a visibility swap
+   * on `.instrument-cluster` — the CSS class does the actual work (see
+   * hud.css), this just tracks state and keeps both toggle controls'
+   * `aria-label`s in sync. Deliberately doesn't touch anything outside
+   * the cluster (BuildPopover, EraEndScreen, camera, game state).
+   */
+  private setClusterCollapsed(collapsed: boolean): void {
+    this.clusterEl.classList.toggle("collapsed", collapsed);
+    const label = collapsed ? "Expand HUD" : "Collapse HUD";
+    this.clusterCollapseToggleEl.setAttribute("aria-label", label);
+    this.clusterPillEl.setAttribute("aria-label", label);
   }
 
   /**

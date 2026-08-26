@@ -130,49 +130,6 @@ html, body {
   text-align: right;
 }
 
-.hud-corner.bottom-left {
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  left: calc(12px + env(safe-area-inset-left));
-}
-
-/*
-  STEP_PROMPT_mobile_responsive.md Section 4: hidden by default (`display:
-  none`) — only shown inside the same mobile breakpoint Section 3 already
-  introduced (see the `@media (max-width: 820px), (pointer: coarse)` block
-  below), so desktop never sees it at all. `.hud-corner`'s base
-  `pointer-events: none` is opted back out of here, same pattern
-  `.preview-toggle` already uses for its one clickable control.
-*/
-.hud-toggle {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(20, 30, 26, 0.85);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  padding: 0;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.hud-toggle-icon {
-  display: block;
-  width: 9px;
-  height: 9px;
-  border-right: 2px solid #fdf6e6;
-  border-bottom: 2px solid #fdf6e6;
-  transform: rotate(45deg) translate(-1px, -1px);
-  transition: transform 0.25s ease;
-}
-
-/* Chevron flips to point the opposite way once collapsed — the same visual language as any other expand/collapse disclosure control. */
-#app.hud-collapsed .hud-toggle-icon {
-  transform: rotate(225deg) translate(-1px, -1px);
-}
-
 .era-banner {
   background: rgba(20, 30, 26, 0.85);
   border: 1px solid rgba(255, 243, 196, 0.4);
@@ -193,9 +150,20 @@ html, body {
   padding, drop shadow — same dark-translucent language `.build-popover`/
   `.empty-prompt`/`.yacht-goal` already use elsewhere in this file, not
   bare text floating over the 3D scene (`.hud-corner`'s own base styling
-  has neither). `pointer-events` stays `none` (inherited from `.hud-corner`
-  — the card is read-only, nothing in it is clickable), so the panel
-  underneath the map remains fully interactive through it.
+  has neither). `pointer-events` stays `none` (inherited from `.hud-corner`),
+  so the map underneath remains fully interactive through it — the handful
+  of controls that need clicks (`.preview-toggle`, and Section 4's collapse
+  toggle/pill) each opt back in individually.
+
+  STEP_PROMPT_mobile_responsive.md Section 4 ("Status Pill"): the collapsed
+  state reshapes this same card in place — `.instrument-cluster.collapsed`
+  overrides padding/border-radius/background/border/box-shadow directly
+  below the base rule here (kept immediately alongside it so the two states
+  read as one property list, not scattered) — rather than nesting a
+  separately-styled pill element inside the card's own unchanged chrome.
+  `top-left`'s own position offset is untouched either way, matching the
+  step prompt's "same top-left position" instruction literally: the whole
+  element just gets smaller in place, it never moves.
 */
 .instrument-cluster {
   display: flex;
@@ -207,6 +175,23 @@ html, body {
   padding: 14px 16px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   width: 225px;
+  transition: background-color 0.25s ease, border-color 0.25s ease, border-radius 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease, width 0.25s ease;
+}
+
+.instrument-cluster.collapsed {
+  gap: 0;
+  padding: 0 12px;
+  border-radius: 17px;
+  background: rgba(20, 30, 26, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  width: fit-content;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .instrument-cluster {
+    transition: none;
+  }
 }
 
 .cluster-header {
@@ -214,6 +199,56 @@ html, body {
   justify-content: space-between;
   align-items: baseline;
   gap: 10px;
+}
+
+.cluster-header-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/*
+  The visible glyph stays small (per the step prompt: "don't inflate the
+  icon itself to 44px, it'll look oversized"), but the clickable region
+  reaches the ~44px comfortable-touch-target guidance via padding — the
+  matching negative margin cancels padding's effect on the header's own
+  flex layout, so the enlarged hit area doesn't visually push `.coin-row`
+  and `.turn-era-row` further apart than the small glyph alone would.
+  `display: none` at rest — only revealed inside the mobile breakpoint
+  (see the `@media (max-width: 820px), (pointer: coarse)` block below),
+  matching the step prompt's "hide the chevron toggle above the
+  breakpoint" — desktop never sees it at all.
+*/
+.cluster-collapse-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  margin: -16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.chevron-glyph {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #fdf6e6;
+  border-bottom: 2px solid #fdf6e6;
+}
+
+.chevron-up {
+  opacity: 0.7;
+  transform: rotate(-135deg);
+}
+
+.chevron-right {
+  width: 6px;
+  height: 6px;
+  opacity: 0.65;
+  transform: rotate(-45deg);
 }
 
 .coin-row {
@@ -395,6 +430,62 @@ html, body {
 
 .meter-chip-warning b {
   color: #ffb199;
+}
+
+/*
+  STEP_PROMPT_mobile_responsive.md Section 4 ("Status Pill"): the collapsed
+  summary row. No independent background/border/radius/shadow of its own —
+  `.instrument-cluster.collapsed` (above) already reshapes the *card* into
+  the pill shape; this is just the flex row of icon+value content filling
+  it. `pointer-events: auto` opts back out of `.hud-corner`'s base `none`,
+  same precedent `.preview-toggle` already set — the whole pill is the tap
+  target to re-expand, not just its trailing chevron.
+*/
+.cluster-pill {
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 34px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #fdf6e6;
+  font-family: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.pill-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pill-icon {
+  flex: none;
+}
+
+.pill-divider {
+  flex: none;
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Same normal/critical colors as `.resilience-gauge-fill`/`.resilience-gauge-fill.critical` above — a summary should carry the same "is this actually fine" signal the full gauge does, not just a bare number. */
+.pill-resilience-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7bd4c4;
+}
+
+.pill-resilience-dot.critical {
+  background: #ff8a5c;
 }
 
 .empty-prompt {
@@ -841,7 +932,8 @@ html, body {
 
 /* =========================================================================
    STEP_PROMPT_mobile_responsive.md Sections 3-4: responsive HUD, popover,
-   and modal sizing, plus the HUD collapse/expand toggle. Purely additive —
+   and modal sizing, plus the "Status Pill" HUD collapse/expand toggle.
+   Purely additive —
    every rule below lives inside a media query, so nothing here changes
    desktop's appearance above these breakpoints (Sections 1/2's own changes
    are the only non-media-scoped additions, and those are fallback-safe
@@ -861,8 +953,9 @@ html, body {
      the bigger targets — a plain desktop browser window narrowed below
      820px still matches too (an intentional, harmless overlap: a narrow
      desktop window benefiting from bigger buttons isn't a regression).
-     Section 4's HUD collapse toggle and its collapsed-state rules also
-     live in this tier — the toggle itself doesn't exist above it at all.
+     Section 4's chevron collapse toggle and its collapsed-state rules
+     also live in this tier — the toggle itself doesn't exist above it
+     at all.
    - 600px (phones in portrait) layers stricter width caps and larger HUD
      text on top — a 375px-wide screen needs more than bigger buttons, the
      cards actually have to fit, and desktop-tuned 10-13px text reads as
@@ -906,83 +999,74 @@ html, body {
   }
 
   /*
-    Section 4: the toggle only ever exists inside this same mobile
-    breakpoint — desktop's `.hud-toggle { display: none; }` base rule is
-    left completely alone above this width/pointer-type.
+    Section 4 ("Status Pill"): the chevron toggle only exists inside this
+    same mobile breakpoint — `.cluster-collapse-toggle { display: none; }`
+    above (base rule) is left completely alone above this width/pointer-
+    type, matching the step prompt's "hide the chevron toggle above the
+    breakpoint... don't build a desktop-specific treatment."
   */
-  .hud-toggle {
+  .cluster-collapse-toggle {
     display: flex;
   }
 
   /*
-    Collapsing hides the purely-informational corner strips entirely
-    (tile counter, yacht goal, empty-tiles prompt — nothing time-critical
-    in any of them) and shrinks the instrument cluster to a thin strip
-    that keeps the header (Coin/Turn/Era) and the hazard-incoming line
-    visible — the one piece of corner-strip info that's genuinely
-    load-bearing mid-telegraph (a live countdown), per the step prompt's
-    own "don't collapse anything load-bearing" instruction. Opacity+
-    max-height (not `display: none`) so the collapse can animate; the
-    `max-height` values below are generous upper bounds on each row's own
-    real height, not a tight fit.
+    Collapsing fades/shrinks every detail row via opacity+max-height (kept
+    `display: flex`/`block` throughout, not toggled to `none` — `display`
+    can't itself be transitioned smoothly, so animating it would either
+    snap instantly or need `@starting-style`/`transition-behavior:
+    allow-discrete`, which this codebase doesn't lean on elsewhere) while
+    `.cluster-pill` — genuinely `display: none` at rest, per the step
+    prompt's own implementation note, since nothing needs it to animate
+    in — appears once the rows have visually cleared out. `gap: 0` on the
+    collapsed card kills the flex-gap the zero-height (but still
+    `display`-present) rows would otherwise still contribute between
+    themselves and the pill.
   */
-  .hud-corner.top-right,
-  .yacht-goal,
-  .empty-prompt {
-    transition: opacity 0.25s ease, transform 0.25s ease;
-  }
-
-  #app.hud-collapsed .hud-corner.top-right,
-  #app.hud-collapsed .yacht-goal,
-  #app.hud-collapsed .empty-prompt {
-    opacity: 0;
-    transform: scale(0.85);
-    pointer-events: none;
-  }
-
-  .instrument-cluster .income-row,
-  .instrument-cluster .resilience-gauge,
-  .instrument-cluster .chip-grid {
+  .instrument-cluster > .cluster-header,
+  .instrument-cluster > .income-row,
+  .instrument-cluster > .resilience-gauge,
+  .instrument-cluster > .hazard-incoming,
+  .instrument-cluster > .preview-toggle,
+  .instrument-cluster > .chip-grid {
     opacity: 1;
-    /* A deliberately generous upper bound, not a tight fit — max-height
-       only ever constrains the *expanded* state if it's smaller than the
-       real content (the chip-grid's own 4 rows measure ~125px at the
-       600px tier's bumped font-size), which would silently clip it even
-       when not collapsed. 220px clears every real row here at both font
-       tiers with headroom; the transition-to-0 collapse behavior below
-       doesn't depend on this being a close match. */
+    /* Generous upper bound, not a tight fit — see the chip-grid clipping
+       bug this exact pattern caught and fixed in the previous pass at
+       this bound (220px): a tighter number here would clip the real
+       content of the *expanded* state, not just fail to shrink cleanly
+       when collapsed. */
     max-height: 220px;
     overflow: hidden;
-    transition: opacity 0.25s ease, max-height 0.25s ease;
+    transition: opacity 0.2s ease, max-height 0.2s ease;
   }
 
-  #app.hud-collapsed .instrument-cluster .income-row,
-  #app.hud-collapsed .instrument-cluster .resilience-gauge,
-  #app.hud-collapsed .instrument-cluster .chip-grid {
+  .instrument-cluster.collapsed > .cluster-header,
+  .instrument-cluster.collapsed > .income-row,
+  .instrument-cluster.collapsed > .resilience-gauge,
+  .instrument-cluster.collapsed > .hazard-incoming,
+  .instrument-cluster.collapsed > .preview-toggle,
+  .instrument-cluster.collapsed > .chip-grid {
     opacity: 0;
     max-height: 0;
   }
 
-  /* Closes the flex-column `gap` that would otherwise leave a visible sliver between the collapsed (zero-height but still gapped) rows. */
-  #app.hud-collapsed .instrument-cluster {
-    gap: 0;
+  .cluster-pill {
+    display: none;
   }
 
-  #app.hud-collapsed .instrument-cluster .cluster-header,
-  #app.hud-collapsed .instrument-cluster .hazard-incoming:not(:empty) {
-    margin-bottom: 8px;
+  .instrument-cluster.collapsed .cluster-pill {
+    display: flex;
   }
 }
 
 /* Respect the same motion preference as every other animated addition in this file — an instant snap instead of a transition. */
 @media (prefers-reduced-motion: reduce) {
-  .hud-toggle-icon,
-  .hud-corner.top-right,
-  .yacht-goal,
-  .empty-prompt,
-  .instrument-cluster .income-row,
-  .instrument-cluster .resilience-gauge,
-  .instrument-cluster .chip-grid {
+  .instrument-cluster,
+  .instrument-cluster > .cluster-header,
+  .instrument-cluster > .income-row,
+  .instrument-cluster > .resilience-gauge,
+  .instrument-cluster > .hazard-incoming,
+  .instrument-cluster > .preview-toggle,
+  .instrument-cluster > .chip-grid {
     transition: none;
   }
 }
