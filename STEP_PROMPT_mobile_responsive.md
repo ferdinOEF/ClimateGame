@@ -39,9 +39,25 @@
 
 ---
 
-## 4. Orientation
+## 4. HUD collapse/expand toggle (mobile)
 
-Don't force a specific orientation (no Screen Orientation API lock, no "please rotate your device" gate) — the game is a pan/zoom camera over a fixed map, which has no inherent portrait-vs-landscape requirement the way a side-scroller would. Just make sure Section 3's layout work is checked in both orientations, not only one.
+**The problem:** even with Section 3's breakpoint sizing applied, the HUD's corner strips (instrument/meter cluster, schedule readouts, whatever else `hud.css`/the HUD controller currently renders as corner-anchored elements) still occupy a meaningful fraction of a small phone screen simultaneously with the map underneath — "responsive" isn't the same as "out of the way." Give the player a way to shrink it down to reclaim screen space, without removing the information entirely.
+
+- Add a single toggle button — a small, fixed-position control (a corner is fine; pick whichever corner doesn't collide with Section 1's safe-area-inset padding or an existing element) that collapses the HUD to a minimal state and expands it back. A simple chevron/caret icon that flips direction, or a two-state icon (e.g. compress/expand glyph), is enough — this doesn't need new iconography beyond what's easy to render in CSS/inline SVG.
+- **Default state is expanded** — same HUD layout as today, unchanged, until the player taps the toggle. Don't persist a collapsed preference across reloads unless it turns out to be trivial; resetting to expanded each fresh load is the simpler and acceptable behavior for this pass.
+- "Collapsed" means the corner strips (instrument cluster, schedule/meter readouts, and similar informational HUD elements) shrink or hide down to something unobtrusive — a thin edge strip, or fully hidden with just the toggle button itself remaining visible, whichever reads better once it's actually on screen. Whatever the collapsed form is, the toggle button itself must always stay visible and tappable in both states, so the player can always get the HUD back.
+- Don't collapse anything that's actively load-bearing for play at that moment — if there's a HUD element that's the only way to see a live countdown or an urgent state (check what's actually in the corner strips today before deciding), consider whether it should stay visible even when collapsed, or whether collapsing it is fine because the information isn't time-critical. Use judgment once you can see what's actually being hidden.
+- Scope this to the mobile breakpoint(s) from Section 3 — this is explicitly a response to the HUD feeling intrusive on a small screen, not a desktop feature. Either hide the toggle button entirely above the breakpoint, or leave it available but expect it won't matter much on a full-size display; don't spend extra effort making it a polished desktop feature.
+- Animate the collapse/expand transition (a simple CSS transition on transform/opacity/height is enough) rather than an instant snap — respect `prefers-reduced-motion` same as anywhere else motion is added.
+- This is purely a HUD visibility toggle — it must not affect `BuildPopover`, `EraEndScreen`, camera controls, or any game logic. Toggling it while a popover is open shouldn't close or move the popover.
+
+**Verify (this section):** at each mobile breakpoint from Section 3, confirm the HUD starts expanded on load, the toggle button collapses it to a visibly smaller footprint, the toggle button itself remains tappable and visible in both states, tapping again restores the exact original expanded layout, and the transition doesn't clip or flash. Confirm build/remove/tile-tap interactions with the map are unaffected in either HUD state. Confirm desktop is unchanged (or, if the toggle is left visible there too, that it doesn't regress the existing desktop HUD).
+
+---
+
+## 5. Orientation
+
+Don't force a specific orientation (no Screen Orientation API lock, no "please rotate your device" gate) — the game is a pan/zoom camera over a fixed map, which has no inherent portrait-vs-landscape requirement the way a side-scroller would. Just make sure Section 3 and Section 4's layout work is checked in both orientations, not only one.
 
 ---
 
@@ -49,8 +65,8 @@ Don't force a specific orientation (no Screen Orientation API lock, no "please r
 
 - No changes to hazard math, balance constants, map data, or anything covered by `STEP_PROMPT_balance_tuning_findings.md` or `STEP_PROMPT_ghats_wave_demo.md`.
 - No changes to desktop mouse/wheel/keyboard behavior — every change here is additive (new touch handling, new `@media`-scoped CSS) or a fallback-safe fundamental (dvh-with-vh-fallback), not a replacement of the existing desktop experience.
-- Don't rebuild the HUD's architecture — it's already the right shape (small corner strips, not a desktop panel). This is a sizing/breakpoint/input pass on top of the existing structure, not a redesign.
-- One concern per commit is a reasonable split here too: (1) viewport fundamentals, (2) pinch-to-zoom, (3) responsive HUD/popover/modal sizing. Orientation (Section 4) is really just a verification step across sections 1-3, not its own code change.
+- Don't rebuild the HUD's architecture — it's already the right shape (small corner strips, not a desktop panel). Sections 3 and 4 are a sizing/breakpoint/collapse pass on top of the existing structure, not a redesign.
+- One concern per commit is a reasonable split here too: (1) viewport fundamentals, (2) pinch-to-zoom, (3) responsive HUD/popover/modal sizing, (4) HUD collapse/expand toggle. Orientation (Section 5) is really just a verification step across sections 1-4, not its own code change.
 
 ## Verify
 
@@ -58,7 +74,8 @@ Don't force a specific orientation (no Screen Orientation API lock, no "please r
 - In each: confirm single-finger drag pans the camera, two-finger pinch zooms it (both directions), and a clean tap on a tile still opens the build popover/info card — with no spurious popover opening after a pan or pinch ends.
 - Confirm the page itself never scrolls, bounces, or double-tap-zooms — only the in-game camera moves.
 - Confirm `BuildPopover`, `EraEndScreen`, and the HUD's meter strip/corner elements are all fully visible (no overflow off-screen, no text clipped) and comfortably tappable at the narrowest tested width (375px).
+- Confirm the HUD collapse toggle behaves per Section 4's checklist at each breakpoint.
 - Confirm the layout holds in both portrait and landscape at each breakpoint.
 - Confirm nothing changed on desktop — same viewport meta behavior, same mouse/wheel camera controls, same HUD sizing above the new breakpoint's threshold.
 - `tsc --noEmit` clean; existing test suite passing at current baseline or better.
-- `PROGRESS.md` gets the usual entry, including which breakpoint widths were actually landed on.
+- `PROGRESS.md` gets the usual entry, including which breakpoint widths were actually landed on and how the collapsed HUD state was implemented.

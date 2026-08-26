@@ -38,6 +38,8 @@ export class Hud {
   private yachtValueEl: HTMLElement;
   private arrivalFlashEl: HTMLElement;
   private previewToggleEl: HTMLButtonElement;
+  private hudToggleEl: HTMLButtonElement;
+  private hudCollapsed = false;
 
   constructor(container: HTMLElement, onPreviewToggle: () => void) {
     const tileCounter = document.createElement("div");
@@ -110,6 +112,28 @@ export class Hud {
     container.appendChild(yachtGoal);
     this.yachtGoalEl = yachtGoal;
     this.yachtValueEl = yachtGoal.querySelector(".yacht-value")!;
+
+    // STEP_PROMPT_mobile_responsive.md Section 4: a single toggle that
+    // shrinks the corner strips down on a small screen, purely a
+    // visibility concern — no coupling to game state, BuildPopover,
+    // EraEndScreen, or camera controls (per the guardrails). Bottom-left
+    // is the one corner nothing else above already occupies (top-left:
+    // instrument cluster, top-right: tile counter, bottom-right: yacht
+    // goal, bottom-center: empty prompt, top-center: era banner). Hidden
+    // entirely above the mobile breakpoint (hud.css) — desktop never sees
+    // it, so `hudCollapsed` can never become true there either.
+    const hudToggle = document.createElement("button");
+    hudToggle.type = "button";
+    hudToggle.className = "hud-corner bottom-left hud-toggle";
+    hudToggle.setAttribute("aria-label", "Collapse HUD");
+    hudToggle.innerHTML = `<span class="hud-toggle-icon"></span>`;
+    hudToggle.addEventListener("click", () => {
+      this.hudCollapsed = !this.hudCollapsed;
+      container.classList.toggle("hud-collapsed", this.hudCollapsed);
+      hudToggle.setAttribute("aria-label", this.hudCollapsed ? "Expand HUD" : "Collapse HUD");
+    });
+    container.appendChild(hudToggle);
+    this.hudToggleEl = hudToggle;
 
     // STEP_PROMPT_pacing_telegraph_preview.md Section 1's "give the
     // countdown-hits-zero moment its own beat": a full-viewport tinted
