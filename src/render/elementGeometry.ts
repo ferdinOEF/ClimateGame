@@ -138,34 +138,7 @@ function sandyVegetationGeometry(): THREE.BufferGeometry {
   return mergeGeometries([center, left, right]);
 }
 
-/** Beachside Resort's palm — same trunk+frond construction, simpler than the Pandanus (fewer, broader fronds, no prop roots). */
-function palmGeometry(baseX: number, baseZ: number): THREE.BufferGeometry {
-  const trunk = coneFrustum(0.035, 0.06, 0.4, 6, "#7c6a4f", 0);
-  const parts: THREE.BufferGeometry[] = [trunk];
-  const frondCount = 5;
-  for (let i = 0; i < frondCount; i++) {
-    const yaw = (i / frondCount) * Math.PI * 2;
-    const g = blade(
-      [
-        [-0.03, 0],
-        [0.03, 0],
-        [0.012, 0.3],
-        [-0.012, 0.3]
-      ],
-      "#3f6b3a",
-      0.025
-    );
-    rotate(g, -0.7, 0, 0);
-    rotate(g, 0, yaw, 0);
-    move(g, 0, 0.4, 0);
-    parts.push(g);
-  }
-  const merged = mergeGeometries(parts);
-  move(merged, baseX, 0, baseZ);
-  return merged;
-}
-
-/** Beachside Resort: a tall whitewashed block, flat parapet roofline, 3x3 window grid, ground-floor awning + door, rooftop pennant, plus a pool and a lone palm beside it. */
+/** Beachside Resort: a tall whitewashed block, flat parapet roofline, 3x3 window grid, ground-floor awning + door, rooftop pennant, plus a pool. */
 function beachsideResortGeometry(): THREE.BufferGeometry {
   // Deliberately much taller than House's 0.32 wall (+ ~0.26 roof peak,
   // ~0.58 total) — a live side-by-side check found the flat-roof/window-
@@ -220,7 +193,6 @@ function beachsideResortGeometry(): THREE.BufferGeometry {
   const poolHighlight = box(0.32, 0.022, 0.08, "#8fc0c2", 0);
   move(poolHighlight, 0.55, 0, -0.22);
   parts.push(pool, poolHighlight);
-  parts.push(palmGeometry(0.78, 0.15));
 
   return mergeGeometries(parts);
 }
