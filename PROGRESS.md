@@ -3586,3 +3586,106 @@ was never meant to touch.
 
 `tsc --noEmit` clean, 65/71 tests unchanged (CSS-only fix), production
 build succeeds.
+
+## STEP_PROMPT_test_slider_resort_damage.md (severity rescale, resort icon, storm-damaged buildings) — DONE
+
+Three independent sections, three commits, per the step prompt's own
+guardrails.
+
+### Section 1: Test Hazards panel severity rescale — `59e570f`
+
+The panel was tuned to strong hazards — both sliders ran `min="0"
+max="3"` with the raw value passed straight through as `baseSeverity`
+at all six call sites (two trigger buttons, two live-drag preview
+updates, two preview-checkbox toggles). Capped both sliders at
+`max="2"` and added `sliderToSeverity = (v) => v / 2`, applied at all
+six sites — the displayed readout stays the raw, un-halved slider
+value exactly as before; only the number actually handed to
+`triggerCyclone`/`triggerFlood`/the preview path is halved. The
+strongest severity now reachable from either slider is `1.0` (used to
+be `3.0`). `DEFAULT_SEVERITY` left at `1.0` per the step prompt's own
+"judgment call, leave unless it feels wrong" — nothing in this pass
+suggested otherwise.
+
+Live-verified, not just read from the code: triggered the panel's own
+`storm-trigger` button at slider position `1.0×` and compared the
+resulting `__lastHazardResultForTest()` tile-damage map against a
+direct `triggerCyclone(0.5)` call on a freshly reset board — byte-for-
+byte identical (same 194 keys, same sample values). Confirmed the
+browser itself clamps the slider's value to `2` even when set
+programmatically past it. Preview and the real trigger read the exact
+same `sliderToSeverity()`-converted number from the same call site, so
+they can't disagree by construction, not just by testing one instance.
+
+### Section 2: remove the palm tree from Beachside Resort's icon — `3e95188`
+
+Dropped `parts.push(palmGeometry(0.78, 0.15))` from
+`beachsideResortGeometry()` — the icon is now just the block, parapet,
+window grid, awning/door, pennant, and pool. `palmGeometry()` had no
+other caller anywhere in the file, so it's deleted too rather than
+left dead, matching this project's established cleanup convention.
+`tsc --noEmit` confirms nothing else still references it.
+
+One honest verification gap: no live screenshot of the resulting icon
+this pass — the Browser pane wasn't in a displayed/compositing state
+this session (the same recurring gap noted in several earlier passes).
+Confirmed instead by code review (a clean, self-contained subtraction
+with zero interaction with the rest of the function) and by building a
+real Beachside Resort instance in the live app (`__buildForTest`) to
+confirm the element still constructs and renders without error — worth
+a quick visual spot-check next time the pane's available.
+
+### Section 3: storm-damaged building visual — `dc1c815`
+
+House/Resort are building-kind elements with no `targetsHazards`, so
+`resolveHazardWave()`'s plain `else` branch let them take full damage
+with zero visual consequence beyond a numeric Trust deduction.
+`resolveCyclone()` already computed exactly the right condition for
+that deduction (`damage >= DAMAGE_TRUST_THRESHOLD && hasBuildingAt`) —
+`CycloneResult` now exposes the same set of coord keys as
+`damagedBuildings`, populated in the same loop, no new logic branch.
+
+Went with the tint approach the step prompt recommended by default
+(not the alternative "genuinely distinct damaged mesh" option) —
+`ElementMeshManager.setBuildingDamagedVisual(coord)` reuses
+`setDegradeVisual`'s own tint-toward-`DEGRADED_TINT` blend math at its
+own maximum (the same `0.7` ceiling a fully-degraded defense reaches),
+kept as its own purpose-named method rather than calling
+`setDegradeVisual(coord, 0.5)` with a magic number, since that
+method's own name and doc comment are specifically about graceful
+*defense* degradation, not a discrete "this building was hit" event.
+No repair mechanic exists anywhere in this codebase, so the tint
+persists until `destroy()`+`place()` (a rebuild) or `reset()` (a new
+era) restores the clean `baseColor` — exactly the step prompt's own
+specified behavior, nothing new built.
+
+New `__elementsForTest` hook (same "inert unless called" convention as
+`__cameraForTest`/`__waveFrontForTest`) exposes the whole manager for
+verification — needed here specifically because confirming a real
+color *change* (not just that a function was called) means reading the
+actual rendered `InstancedMesh.instanceColor` buffer, not the data
+model.
+
+Live-verified against real pixels, not just call counts: built 78
+Houses across the entire map, triggered a max-severity (`1.0`, the new
+Section-1 cap) Storm Surge, and read every house's actual
+`instanceColor` array entry directly. 51 houses crossed the 0.3 damage
+threshold and showed a clearly shifted color (e.g. one tile's red
+channel went `0.511 → 0.227`); the other 27, under the threshold,
+matched their `baseColor` to within floating-point noise. Built a
+Seawall on a Coast tile, confirmed it took real damage
+(`tileDamage: 0.06`) but its rendered color stayed exactly at
+`baseColor` — defenses are structurally untouched by this section, not
+just untested. Confirmed the tint survives past the wave-sweep and the
+aftermath/era-end sequence (checked again once `EraEndScreen` was
+showing — color unchanged). Confirmed `__destroyForTest` +
+`__buildForTest` on the same coordinate restores the exact original
+`baseColor`, not an approximation.
+
+### Whole-pass verification
+
+`tsc --noEmit` clean at every commit, 65/71 tests unchanged throughout
+(no hazard-math constant, `DAMAGE_TRUST_THRESHOLD`, or
+`TRUST_LOSS_PER_DAMAGED_BUILDING` touched — Section 3 only adds a
+read of an existing condition, never a new one), production build
+succeeds.
