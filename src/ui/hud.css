@@ -442,6 +442,17 @@ html, body {
   target to re-expand, not just its trailing chevron.
 */
 .cluster-pill {
+  /* Bug fix (STEP_PROMPT_hud_pill_overflow_fix.md): this rule set every
+     other property but never `display` itself, so outside the mobile
+     breakpoint below (which is the only place that ever declared
+     `display: none`) the browser's own <button> default (`inline-block`)
+     took over — rendering the pill unconditionally, with each `.pill-item`
+     child blockifying itself via its own `display: flex` and stacking
+     vertically instead of laying out as the intended single row. `none`
+     here is the real resting state; the media query's `.collapsed`
+     override below still flips it to `flex` exactly as before.
+  */
+  display: none;
   align-items: center;
   gap: 6px;
   width: 100%;
@@ -1049,10 +1060,10 @@ html, body {
     max-height: 0;
   }
 
-  .cluster-pill {
-    display: none;
-  }
-
+  /* `.cluster-pill`'s own base rule (above `.pill-item`) now sets
+     `display: none` directly — no need to redeclare it here too
+     (STEP_PROMPT_hud_pill_overflow_fix.md). This override is the only
+     rule that still needs to live in this breakpoint. */
   .instrument-cluster.collapsed .cluster-pill {
     display: flex;
   }

@@ -3550,3 +3550,39 @@ while the HUD stayed collapsed throughout.
 
 `tsc --noEmit` clean, 65/71 tests passing (unchanged — no hazard/
 balance/map/game-logic code touched), production build succeeds.
+
+## STEP_PROMPT_hud_pill_overflow_fix.md (Status Pill overflow hotfix) — DONE
+
+Root cause exactly as the step prompt diagnosed it: `.cluster-pill`'s
+base rule set every other property (`align-items`, `gap`, `width`,
+`height`, etc.) but never `display` itself — the only `display: none`
+for it lived inside `@media (max-width: 820px), (pointer: coarse)`,
+paired with `.instrument-cluster.collapsed .cluster-pill { display:
+flex; }`. Outside that breakpoint (any normal desktop window), the
+pill fell back to a bare `<button>`'s default `inline-block` and
+rendered unconditionally regardless of whether `.instrument-cluster`
+had `.collapsed` on it — and since each `.pill-item` child sets its
+*own* `display: flex`, blockifying itself, the four items (coin,
+resilience dot+%, hazard wave+turns, chevron) stacked vertically
+instead of laying out as a row, exactly matching the reported "coin /
+resilience / hazard, each on its own line, ending in a lone `>`"
+symptom.
+
+Fixed with one line: `display: none;` added directly to `.cluster-pill`'s
+base rule. Also removed the now-redundant `.cluster-pill { display:
+none; }` inside the media query (the base rule already covers it),
+keeping only the `.instrument-cluster.collapsed .cluster-pill {
+display: flex; }` override there, unchanged.
+
+Live-verified: at 1440×900, `getComputedStyle(.cluster-pill).display`
+reads `none` and the card's rendered bottom edge sits exactly 15px
+below the chip grid (matching its own bottom padding, not stray
+content) — no visible pill content at all outside the mobile
+breakpoint. At 375×667, the pill correctly stays `display: none` until
+the chevron is tapped, then renders as a genuine single row (all three
+`.pill-item` children measured at the identical `top` coordinate) once
+collapsed — confirming the fix didn't regress the mobile behavior it
+was never meant to touch.
+
+`tsc --noEmit` clean, 65/71 tests unchanged (CSS-only fix), production
+build succeeds.
