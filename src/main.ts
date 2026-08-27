@@ -533,6 +533,13 @@ function triggerCyclone(baseSeverity: number): void {
   const trustBefore = state.trust;
   const result = resolveCyclone(state, baseSeverity);
   applyHazardResult("storm", result, performance.now());
+  // STEP_PROMPT_test_slider_resort_damage.md Section 3: Storm Surge only,
+  // building-kind elements only — `damagedBuildings` is already exactly
+  // "a House/Resort that just crossed the same damage threshold the Trust
+  // deduction above uses," reused directly rather than a second check.
+  for (const coord of keysToCoords(result.damagedBuildings)) {
+    elements.setBuildingDamagedVisual(coord);
+  }
   const sweepMs = sweepDurationMs(result);
   // STEP_PROMPT_ghats_wave_demo.md Section 2/3: the wave-front spectacle,
   // layered on top of applyHazardResult()'s own per-tile reveals above —
@@ -1028,6 +1035,11 @@ function devAutoBuild(kind: "building" | "defense"): void {
 // percentage-absorption math runs, the same way Khazan's was checked.
 (window as unknown as Record<string, unknown>).__elementStateForTest = (q: number, r: number) =>
   state.elements.get(`${q},${r}`) ?? null;
+// STEP_PROMPT_test_slider_resort_damage.md Section 3: same "inert unless
+// called" convention as __cameraForTest/__waveFrontForTest — exposes the
+// whole manager so a verification script can read a damaged tile's actual
+// rendered instance color, not just infer it from the data model.
+(window as unknown as Record<string, unknown>).__elementsForTest = elements;
 
 // coinboost first: autobuild/autodefend below spend coin, so a boost given
 // after them would arrive too late to fund what they just did.

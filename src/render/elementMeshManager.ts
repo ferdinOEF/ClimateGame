@@ -126,6 +126,27 @@ export class ElementMeshManager {
     if (ref.mesh.instanceColor) ref.mesh.instanceColor.needsUpdate = true;
   }
 
+  /**
+   * STEP_PROMPT_test_slider_resort_damage.md Section 3: House/Beachside
+   * Resort took real Storm Surge damage (a discrete "this building was
+   * hit" state, not a defense's gradual wear) — reuses `setDegradeVisual`'s
+   * own tint-toward-`DEGRADED_TINT` blend math at its own maximum (the same
+   * 0.7 ceiling a fully degraded defense reaches), rather than a second,
+   * separately named color for the same visual idea. Kept as its own
+   * method (not `setDegradeVisual(coord, 0.5)` with a magic number) since
+   * that method's own name/doc comment are specifically about graceful
+   * defense degradation — persists until `destroy()`/`place()` (a rebuild)
+   * or `reset()` (a new era) restores the clean `baseColor`; there's no
+   * repair mechanic in this codebase to clear it any other way.
+   */
+  setBuildingDamagedVisual(coord: AxialCoord): void {
+    const ref = this.byCoord.get(`${coord.q},${coord.r}`);
+    if (!ref) return;
+    const tinted = ref.baseColor.clone().lerp(DEGRADED_TINT, 0.7);
+    ref.mesh.setColorAt(ref.index, tinted);
+    if (ref.mesh.instanceColor) ref.mesh.instanceColor.needsUpdate = true;
+  }
+
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
   }

@@ -351,6 +351,15 @@ const DAMAGE_TRUST_THRESHOLD = 0.3;
 
 export interface CycloneResult extends HazardResult {
   trustLost: number;
+  /**
+   * STEP_PROMPT_test_slider_resort_damage.md Section 3: coord keys of
+   * every House/Resort tile that just took meaningful damage — the exact
+   * same condition (`damage >= DAMAGE_TRUST_THRESHOLD` and `hasBuildingAt`)
+   * that already deducts Trust below, reused directly rather than
+   * computing a second, possibly-inconsistent notion of "damaged enough
+   * to show."
+   */
+  damagedBuildings: string[];
 }
 
 /**
@@ -375,11 +384,13 @@ export function resolveCyclone(state: GameState, baseSeverity = 1.0): CycloneRes
   state.applyHazardOutcome(sumDamage(result), result.destroyedDefenses.length);
 
   let trustLost = 0;
+  const damagedBuildings: string[] = [];
   for (const [key, damage] of result.tileDamage) {
     if (damage < DAMAGE_TRUST_THRESHOLD || !state.hasBuildingAt(key)) continue;
     trustLost += TRUST_LOSS_PER_DAMAGED_BUILDING;
+    damagedBuildings.push(key);
   }
   state.trust = Math.max(0, state.trust - trustLost);
 
-  return { ...result, trustLost };
+  return { ...result, trustLost, damagedBuildings };
 }
