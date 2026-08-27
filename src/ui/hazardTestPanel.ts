@@ -1,4 +1,15 @@
 const DEFAULT_SEVERITY = 1.0;
+/**
+ * STEP_PROMPT_test_slider_resort_damage.md Section 1: the panel was tuned
+ * to strong hazards — a slider position that used to produce `baseSeverity
+ * 0.5` now needs to be set to `1.0×` to produce that same `0.5`. The
+ * displayed readout (`.storm-readout`/`.flood-readout`) stays the raw,
+ * un-halved slider value exactly as before; only the number actually
+ * handed to `triggerCyclone`/`triggerFlood`/the preview path is halved.
+ * Combined with the slider's own `max="2"` (down from `3`), the strongest
+ * severity now reachable from either slider is `1.0`, not `1.5`.
+ */
+const sliderToSeverity = (v: number): number => v / 2;
 
 export interface HazardTestPanelCallbacks {
   onTriggerStorm: (severity: number) => void;
@@ -57,7 +68,7 @@ export class HazardTestPanel {
         <div class="hazard-test-label">Storm Surge</div>
         <div class="hazard-test-schedule storm-schedule"></div>
         <div class="hazard-test-controls">
-          <input type="range" min="0" max="3" step="0.1" value="${DEFAULT_SEVERITY}" class="hazard-test-slider storm-slider" aria-label="Storm Surge severity" />
+          <input type="range" min="0" max="2" step="0.1" value="${DEFAULT_SEVERITY}" class="hazard-test-slider storm-slider" aria-label="Storm Surge severity" />
           <span class="hazard-test-readout storm-readout">${DEFAULT_SEVERITY.toFixed(1)}×</span>
         </div>
         <div class="hazard-test-actions">
@@ -69,7 +80,7 @@ export class HazardTestPanel {
         <div class="hazard-test-label">Flood</div>
         <div class="hazard-test-schedule flood-schedule"></div>
         <div class="hazard-test-controls">
-          <input type="range" min="0" max="3" step="0.1" value="${DEFAULT_SEVERITY}" class="hazard-test-slider flood-slider" aria-label="Flood severity" />
+          <input type="range" min="0" max="2" step="0.1" value="${DEFAULT_SEVERITY}" class="hazard-test-slider flood-slider" aria-label="Flood severity" />
           <span class="hazard-test-readout flood-readout">${DEFAULT_SEVERITY.toFixed(1)}×</span>
         </div>
         <div class="hazard-test-actions">
@@ -104,24 +115,24 @@ export class HazardTestPanel {
     // previewing at all.
     this.stormSlider.addEventListener("input", () => {
       this.stormReadout.textContent = `${Number(this.stormSlider.value).toFixed(1)}×`;
-      if (this.stormPreview.checked) callbacks.onPreviewChange("storm", true, Number(this.stormSlider.value));
+      if (this.stormPreview.checked) callbacks.onPreviewChange("storm", true, sliderToSeverity(Number(this.stormSlider.value)));
     });
     this.floodSlider.addEventListener("input", () => {
       this.floodReadout.textContent = `${Number(this.floodSlider.value).toFixed(1)}×`;
-      if (this.floodPreview.checked) callbacks.onPreviewChange("flood", true, Number(this.floodSlider.value));
+      if (this.floodPreview.checked) callbacks.onPreviewChange("flood", true, sliderToSeverity(Number(this.floodSlider.value)));
     });
 
     panel.querySelector(".storm-trigger")!.addEventListener("click", () => {
-      callbacks.onTriggerStorm(Number(this.stormSlider.value));
+      callbacks.onTriggerStorm(sliderToSeverity(Number(this.stormSlider.value)));
     });
     panel.querySelector(".flood-trigger")!.addEventListener("click", () => {
-      callbacks.onTriggerFlood(Number(this.floodSlider.value));
+      callbacks.onTriggerFlood(sliderToSeverity(Number(this.floodSlider.value)));
     });
     this.stormPreview.addEventListener("change", () => {
-      callbacks.onPreviewChange("storm", this.stormPreview.checked, Number(this.stormSlider.value));
+      callbacks.onPreviewChange("storm", this.stormPreview.checked, sliderToSeverity(Number(this.stormSlider.value)));
     });
     this.floodPreview.addEventListener("change", () => {
-      callbacks.onPreviewChange("flood", this.floodPreview.checked, Number(this.floodSlider.value));
+      callbacks.onPreviewChange("flood", this.floodPreview.checked, sliderToSeverity(Number(this.floodSlider.value)));
     });
     // STEP_PROMPT_manual_only_mode.md Part B: destructive and can't be
     // undone, so a plain confirm() before firing — this control lives
