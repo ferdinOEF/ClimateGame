@@ -747,12 +747,13 @@ html, body {
 /*
   STEP_PROMPT_hazard_test_sliders.md: a testing/tuning aid, closed on load
   so a normal playtest looks unchanged unless someone deliberately opens
-  it — bottom-left is the one HUD corner nothing else uses.
+  it. STEP_PROMPT_knowledge_nuggets.md Part B: moved from bottom-left to
+  bottom-right — bottom-left is Part C's Discovery Badge corner now.
 */
 .hazard-test-tab {
   position: absolute;
   bottom: calc(16px + env(safe-area-inset-bottom));
-  left: calc(12px + env(safe-area-inset-left));
+  right: calc(12px + env(safe-area-inset-right));
   z-index: 10;
   background: rgba(20, 30, 26, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -778,7 +779,7 @@ html, body {
 .hazard-test-panel {
   position: absolute;
   bottom: 54px;
-  left: 12px;
+  right: 12px;
   z-index: 10;
   width: 230px;
   background: rgba(20, 30, 26, 0.92);
