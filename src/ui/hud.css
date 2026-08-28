@@ -137,7 +137,21 @@ html, body {
   padding: 8px 18px;
   font-size: 14px;
   font-weight: 600;
-  white-space: nowrap;
+  /* QA Gauntlet finding: this was `white-space: nowrap` with no width
+     limit — fine for a short "Board reset." message, but
+     describeAftermath()'s real hazard-resolution text (e.g. "Storm Surge
+     resolved · Resilience -12 · Trust -9 · 3 defenses breached") is much
+     longer, and `.hud-corner.top-center`'s `left: 50%; transform:
+     translateX(-50%)` centering let the un-wrapped box grow past the
+     viewport and overflow off both edges equally on every mobile
+     breakpoint. Capping width and allowing wrap keeps it fully on-screen
+     (and still renders as one line whenever it fits, unchanged from
+     before). Matches the `.hud-corner.top-left`/`.top-right` 12px side
+     inset so the banner never touches the same edges those corners are
+     kept clear of. */
+  max-width: calc(100vw - 24px);
+  white-space: normal;
+  text-align: center;
 }
 
 .tile-count-value {
