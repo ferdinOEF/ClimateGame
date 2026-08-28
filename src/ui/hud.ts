@@ -313,4 +313,21 @@ export class Hud {
   setEmptyTiles(count: number): void {
     this.emptyPromptEl.textContent = count > 0 ? `${count} hex${count === 1 ? "" : "es"} still empty` : "Every hex has something built on it";
   }
+
+  /**
+   * STEP_PROMPT_knowledge_nuggets.md Part C: `.empty-prompt` (bottom-
+   * center) and the Discovery Badge (bottom-left) both anchor near the
+   * bottom of the viewport — confirmed live to measurably overlap at
+   * every required mobile breakpoint once the badge's real content is on
+   * screen, a low-priority "N hexes still empty" nudge being the one that
+   * yields for the few seconds a just-discovered fact is showing. `main.ts`
+   * wires this to `NuggetPopup`'s own show/auto-dismiss timing via its
+   * constructor callback — the plain `hidden` attribute is safe here since
+   * `.empty-prompt` has no unconditional `display` override of its own to
+   * fight it (unlike this file's own well-documented `.build-popover`/
+   * `.era-end-backdrop`/`.cluster-pill` history).
+   */
+  setEmptyPromptSuppressed(suppressed: boolean): void {
+    this.emptyPromptEl.hidden = suppressed;
+  }
 }

@@ -14,6 +14,7 @@ import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { EraEndScreen } from "@ui/eraEndScreen";
+import { NuggetPopup } from "@ui/nuggetPopup";
 import { playSound } from "@ui/audioHooks";
 import { computeEraScoreBreakdown } from "@core/scoring";
 import mapData from "@data/map.json";
@@ -140,6 +141,18 @@ const buildPopover = new BuildPopover(container);
  * so checking here is what actually catches every case.
  */
 const eraEndScreen = new EraEndScreen(container);
+/**
+ * STEP_PROMPT_knowledge_nuggets.md Part C: the "Discovery Badge" —
+ * appears from `openTilePopover()`'s build callback below, on any
+ * successful build of a nugget-eligible element. A player-facing
+ * moment, not something a scripted bulk-build should spam — the
+ * `devAutoBuild`/`__buildForTest` dev-only paths deliberately don't
+ * call `nuggetPopup.show()`. The visibility callback suppresses
+ * `.empty-prompt` (bottom-center) for exactly as long as the badge
+ * itself is showing — see `Hud.setEmptyPromptSuppressed()`'s own
+ * comment for the real overlap this fixes.
+ */
+const nuggetPopup = new NuggetPopup(container, (visible) => hud.setEmptyPromptSuppressed(visible));
 /**
  * STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: the same category of tool
  * as `devAutoBuild`/`?coinboost`/`?resilienceboost` — testing-only, not
@@ -719,6 +732,7 @@ function resetBoard(): void {
   elements.reset();
   hazardOverlay.reset();
   hazardTestPanel?.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across a reset
+  nuggetPopup.reset(); // STEP_PROMPT_knowledge_nuggets.md Part C: same "doesn't need to persist across a reset" convention
   clearAllPreviews(); // STEP_PROMPT_pacing_telegraph_preview.md Section 3: a stale preview from before the reset shouldn't survive it
   eraEndScreen.hide(); // defensive — "Start New Era" already hides it before calling here, but a future caller shouldn't have to remember to
 
@@ -869,6 +883,7 @@ function openTilePopover(coord: AxialCoord): void {
   buildPopover.show(screen.x, screen.y, options, state.coin, (id) => {
     if (!state.build(coord, id)) return;
     elements.place(coord, id, terrain.heightAt(coord), { animate: true });
+    nuggetPopup.show(id);
     playSound("build");
     // STEP_PROMPT_pacing_telegraph_preview.md: checkHazardSchedule() now
     // runs BEFORE refreshHud() (was the other way around) — it's what
@@ -1037,6 +1052,12 @@ function devAutoBuild(kind: "building" | "defense"): void {
 // whole manager so a verification script can read a damaged tile's actual
 // rendered instance color, not just infer it from the data model.
 (window as unknown as Record<string, unknown>).__elementsForTest = elements;
+// STEP_PROMPT_knowledge_nuggets.md Part C: same "inert unless called"
+// convention as __elementsForTest/__waveFrontForTest — exposes the whole
+// manager so a verification script can drive its pick-order/discovered-
+// count logic directly (repeated show() calls) without needing a real
+// tile click through the popover for every check.
+(window as unknown as Record<string, unknown>).__nuggetPopupForTest = nuggetPopup;
 
 // coinboost first: autobuild/autodefend below spend coin, so a boost given
 // after them would arrive too late to fund what they just did.

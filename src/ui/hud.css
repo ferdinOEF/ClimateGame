@@ -551,6 +551,7 @@ html, body {
   gap: 10px;
   width: min(280px, 92vw);
   padding: 12px 14px;
+  box-sizing: border-box;
   border-radius: 12px;
   background: rgba(20, 30, 26, 0.9);
   border: 1px solid transparent;

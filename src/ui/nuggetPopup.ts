@@ -61,8 +61,22 @@ export class NuggetPopup {
   private pickState = new Map<string, { order: number[]; cursor: number }>();
   /** `"<elementId>#<factIndex>"` keys — a Set, not a raw counter, so a repeat shown again can be told apart from a genuinely new fact for the progress bar. */
   private discovered = new Set<string>();
+  private onVisibilityChange?: (visible: boolean) => void;
 
-  constructor(container: HTMLElement) {
+  /**
+   * `onVisibilityChange` (optional — not part of the step prompt's own
+   * constructor sketch, added to fix a real bug the sketch didn't
+   * anticipate): the badge and `.empty-prompt` (bottom-center, "N hexes
+   * still empty") both anchor near the bottom of the viewport and
+   * measurably overlap at every required mobile breakpoint once the
+   * badge's real multi-line content is on screen — confirmed live, not a
+   * hypothetical. `main.ts` wires this to `Hud.setEmptyPromptSuppressed`,
+   * the single source of truth for "is a badge currently showing" rather
+   * than a second, independently-timed 5000ms guess in main.ts that could
+   * drift out of sync with `DISMISS_MS` below.
+   */
+  constructor(container: HTMLElement, onVisibilityChange?: (visible: boolean) => void) {
+    this.onVisibilityChange = onVisibilityChange;
     const el = document.createElement("div");
     el.className = "hud-corner bottom-left nugget-badge";
     el.hidden = true;
@@ -109,6 +123,7 @@ export class NuggetPopup {
 
     if (this.dismissTimer !== null) window.clearTimeout(this.dismissTimer);
     this.el.hidden = false;
+    this.onVisibilityChange?.(true);
     // Same "restart cleanly" pattern Hud.flashArrival() already uses —
     // remove the animating class, force a reflow, re-add it — so a
     // second nugget built while one is still showing replaces the
@@ -121,6 +136,7 @@ export class NuggetPopup {
     this.dismissTimer = window.setTimeout(() => {
       this.el.hidden = true;
       this.dismissTimer = null;
+      this.onVisibilityChange?.(false);
     }, DISMISS_MS);
   }
 
@@ -132,7 +148,9 @@ export class NuggetPopup {
     }
     this.pickState.clear();
     this.discovered.clear();
+    const wasVisible = !this.el.hidden;
     this.el.hidden = true;
     this.el.classList.remove("entering");
+    if (wasVisible) this.onVisibilityChange?.(false);
   }
 }
