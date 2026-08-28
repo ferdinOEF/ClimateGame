@@ -130,6 +130,12 @@ html, body {
   text-align: right;
 }
 
+/* STEP_PROMPT_knowledge_nuggets.md Part C: didn't exist before this pass — Part C's Discovery Badge is the first thing to claim the bottom-left corner, freed by Parts A (Yacht goal box removed) and B (Test Hazards panel moved to bottom-right). */
+.hud-corner.bottom-left {
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: calc(12px + env(safe-area-inset-left));
+}
+
 .era-banner {
   background: rgba(20, 30, 26, 0.85);
   border: 1px solid rgba(255, 243, 196, 0.4);
@@ -519,6 +525,145 @@ html, body {
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
+}
+
+/*
+  STEP_PROMPT_knowledge_nuggets.md Part C: the "Discovery Badge" — appears
+  the instant a player builds one of the ten nugget-eligible elements, one
+  of that element's three pre-written facts plus a running "N of 30 facts
+  found" progress bar. Same dark-translucent card language every other HUD
+  card already uses, plus a colored border + soft outer glow in a
+  positive/negative tint (not a per-element color) — `NuggetPopup` decides
+  which of the two `.tint-*` classes applies. `min(280px, 92vw)` (not a
+  bare fixed width) so it can't overflow a narrow phone screen on its own,
+  same pattern `.build-popover`/`.era-end-card` already use at the mobile
+  breakpoint. `display: flex` is needed unconditionally for the icon+body
+  row layout, same as `.era-end-backdrop`'s own centering need — so this
+  follows that exact precedent: an explicit `[hidden]` override below
+  restores the user-agent default the unconditional `display` above would
+  otherwise silently defeat (this file's own well-documented bug class,
+  hit three times already — `.build-popover`, `.era-end-backdrop`,
+  `.cluster-pill`).
+*/
+.nugget-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: min(280px, 92vw);
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(20, 30, 26, 0.9);
+  border: 1px solid transparent;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.nugget-badge[hidden] {
+  display: none;
+}
+
+/* hud.css can't import PALETTE from palette.ts (different module systems) — both hex values duplicated here as literals, matching #4FAE6E/#C68A3D from PALETTE.defenseMangrove/PALETTE.defenseSandMining exactly, same as `.hazard-test-row.storm`'s own `#3e86b0` already does elsewhere in this file. */
+.nugget-badge.tint-positive {
+  border-color: #4fae6e;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 18px 2px rgba(79, 174, 110, 0.35);
+}
+
+.nugget-badge.tint-caution {
+  border-color: #c68a3d;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 18px 2px rgba(198, 138, 61, 0.35);
+}
+
+/* Entrance: fade + slide up, ~300ms — `.entering` is added fresh (remove/reflow/re-add, same as Hud.flashArrival()) every time `NuggetPopup.show()` runs, including a replace-in-place while a previous card is still showing. */
+.nugget-badge.entering {
+  animation: nugget-badge-in 300ms ease-out;
+}
+
+@keyframes nugget-badge-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nugget-badge.entering {
+    animation: none;
+  }
+}
+
+.nugget-badge-icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nugget-badge.tint-positive .nugget-badge-icon {
+  background: #4fae6e;
+}
+
+.nugget-badge.tint-caution .nugget-badge-icon {
+  background: #c68a3d;
+}
+
+.nugget-badge-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nugget-badge-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+.nugget-badge-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.nugget-badge-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+.nugget-badge-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.nugget-badge-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.nugget-badge.tint-positive .nugget-badge-fill {
+  background: #4fae6e;
+}
+
+.nugget-badge.tint-caution .nugget-badge-fill {
+  background: #c68a3d;
+}
+
+.nugget-badge-progress {
+  font-size: 10px;
+  opacity: 0.6;
 }
 
 /*
