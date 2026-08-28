@@ -3907,3 +3907,155 @@ entry above. All temporary `tools/qa_*.ts` driver scripts from both
 this pass and the parallel one (none were ever meant to be committed,
 same convention as every other one-off verification script this
 project has used) deleted before this write-up's own commit.
+
+## STEP_PROMPT_knowledge_nuggets.md (Discovery Badge + two HUD corner changes) — DONE
+
+Before writing any code, checked every line/color reference the step
+prompt cited against the actual files — all of them matched exactly
+(hud.ts's `yachtGoalEl`/`setYachtGoal()` line ranges, main.ts's
+`YACHT_COST`/`refreshHud()`/`openTilePopover()`/`resetBoard()` line
+ranges, hud.css's `.yacht-goal`/`.hazard-test-tab`/`.hazard-test-panel`
+line ranges, both `PALETTE.defenseMangrove`/`PALETTE.defenseSandMining`
+hex values, and all ten `elements.json` ids against `nuggets.json`'s
+own keys). Nothing to flag back — the doc's own citations were
+precise enough to implement directly. Five commits: Part A, Part B,
+then Part C split into data file / component+styles / wiring, matching
+the step prompt's own explicit "whatever this repo's usual granularity
+is" suggestion.
+
+### Part A — delete the Yacht goal box — `c6c5ec9`
+
+Removed entirely (not hidden): `yachtGoalEl`/`yachtValueEl`, the DOM
+construction block, and `setYachtGoal()` from `hud.ts`; the
+`hud.setYachtGoal(...)` call and the now-unused `YACHT_COST` constant
+from `main.ts`; `.yacht-goal` and its two mobile touch-ups from
+`hud.css`. Also fixed two stale comments (in `hud.ts` and `hud.css`)
+that still cited `.yacht-goal` as a styling precedent after its own
+removal — caught by `grep`, not left dangling. The Yacht element
+itself is untouched, still buildable at 750 coin, still purely
+cosmetic — a player can see the cost from the build popover.
+
+### Part B — move Test Hazards tab + panel to bottom-right — `a3175e1`
+
+Both rules' `left` declaration swapped for the equivalent `right` one,
+every other property (including `bottom`) unchanged, exactly as
+specified — `hazardTestPanel.ts` itself needed no change. Updated the
+tab's own stale "bottom-left is the one HUD corner nothing else uses"
+comment, now false on two counts (moved here, and Part C claims
+bottom-left next). Live-verified at 375×667 and 1280×800 with
+`?debughazards`: tab renders on the right half, panel opens without
+clipping either edge, bottom-left visibly empty at rest.
+
+### Part C — the knowledge nugget popup
+
+**C.1 (data) — `1ad902d`**: `src/data/nuggets.json` copied verbatim
+from the step prompt, byte-for-byte — the 30 facts are content that
+was already signed off, not something to rewrite. `house` has no
+entry, deliberately.
+
+**C.2/C.3 (component + styles) — `2602f9b`**: new `src/ui/nuggetPopup.ts`
+and the full "Discovery Badge" CSS. The open design question the step
+prompt flagged — pick order per element, no immediate repeat, reshuffle
+once exhausted — resolved with a Fisher-Yates shuffle per element,
+handed out in order, and an `avoidFirst` parameter on the *reshuffle*
+specifically: without it, a fresh shuffle's own first pick could
+coincidentally equal whatever was just shown last, defeating the
+"never immediately repeats" guarantee right at the seam between one
+cycle and the next. Discovered-count uses a `Set<"elementId#factIndex">`
+(not a raw counter) so a repeat can be told apart from a genuinely new
+fact; the "N of 30" denominator sums `nuggets.json`'s own array
+lengths rather than a hardcoded 30, so the count stays correct if the
+file ever grows. Tint is the signed-off positive/negative framing
+(`PALETTE.defenseMangrove`/`PALETTE.defenseSandMining`, duplicated as
+CSS literals since `hud.css` can't import `palette.ts`), not a
+per-element color. `display: flex` + an explicit `.nugget-badge[hidden]`
+override follows this file's own three-times-already-documented
+`[hidden]`-vs-unconditional-`display` bug class precedent
+(`.build-popover`, `.era-end-backdrop`, `.cluster-pill`) rather than
+risking a fourth instance of it.
+
+**C.4 (wiring) — `fbc1861`**: constructed alongside the other corner
+widgets; `nuggetPopup.show(id)` called from `openTilePopover()`'s
+build callback right after `elements.place()`; `nuggetPopup.reset()`
+added alongside `elements.reset()`/`hazardOverlay.reset()` in
+`resetBoard()`. `devAutoBuild`/`__buildForTest` deliberately untouched,
+per the step prompt's own instruction — a player-facing moment, not
+something a scripted bulk-build should spam.
+
+**Two real bugs found and fixed during wiring/verification, both in
+this same commit rather than shipped silently:**
+
+1. `.nugget-badge` was missing `box-sizing: border-box` — with
+   `width: min(280px, 92vw)` and real padding, the rendered box came
+   out ~30px wider than intended at every breakpoint. The exact trap
+   `.era-end-card`'s own mobile-breakpoint rule already guards against
+   elsewhere in this same file (`width: min(280px, 92vw); padding: 24px
+   20px; box-sizing: border-box;`) — missed it when writing the new
+   rule from scratch instead of copying that precedent's full property
+   list.
+2. Even after that fix, the badge (~160px tall once real multi-line
+   content renders) and `.empty-prompt` (bottom-center, "N hexes still
+   empty") both anchor near the bottom of the viewport and measurably
+   overlapped at **every** required mobile breakpoint — confirmed live
+   via real bounding-rect intersection checks, not assumed. No
+   reasonable amount of pixel-tuning clears it without either visibly
+   compressing the signed-off card design or breaking the flush-corner
+   positioning every other HUD card uses (both of which read as worse
+   fixes than the actual problem). Fixed by suppressing `.empty-prompt`
+   for exactly as long as the badge is showing: `NuggetPopup` takes an
+   optional `onVisibilityChange` callback — not part of the step
+   prompt's own constructor sketch, added specifically because that
+   sketch couldn't have anticipated a bug only visible once the real
+   component existed — wired in `main.ts` to a new
+   `Hud.setEmptyPromptSuppressed()`. Kept `NuggetPopup`'s own
+   show/auto-dismiss timing as the single source of truth (the
+   callback fires from inside `show()`'s timer and `reset()`) rather
+   than a second, independently-timed 5000ms guess in `main.ts` that
+   could silently drift out of sync with `DISMISS_MS`.
+
+**Verification**, all live against a real headless Chromium (Playwright,
+already a dependency in this repo) driving the actual app, not code
+review: a genuine build via a real tile click through the popover
+(not `__buildForTest`, which bypasses `openTilePopover`'s callback
+entirely) confirmed the wiring itself fires — Dune's badge appeared
+with a real fact, correct `tint-positive` class, `"1 of 30 facts
+found"`; auto-dismissed after ~5s. Building a House via the same real
+click path confirmed the badge never appears (silently no-ops, matching
+`nuggets.json`'s deliberately missing `house` key) — no throw, no
+console error. A new `__nuggetPopupForTest` hook (same "inert unless
+called" convention as `__elementsForTest`/`__waveFrontForTest`) let the
+pick-order/discovered-count logic itself be exercised directly and
+repeatedly rather than needing a slow real-tile-scan for every check:
+four consecutive `show("dune")` calls produced 3 distinct facts across
+the first 3, zero adjacent repeats anywhere (including right at the
+reshuffle seam between the 3rd and 4th call), and the 4th call reused
+the set cleanly without erroring; progress correctly read `"3 of 30"`
+after that 4th (repeat) call and only advanced to `"4 of 30"` once a
+genuinely new fact (Yacht's first) was shown; a caution-family element
+(Yacht) correctly got `tint-caution` instead of `tint-positive`;
+`show("house")` (no `nuggets.json` entry) confirmed silently inert —
+no throw, no state change; `reset()` confirmed it actually clears the
+discovered-count (a fresh `dune` show after `reset()` read `"1 of 30"`
+again, not `"5 of 30"`). Note on this pass's own real-vs-hook split:
+didn't repeat the full real-click coordinate scan three more times to
+build the *same* element on three separate tiles end-to-end (each
+scan for one matching tile took a genuinely long time against this
+~200-tile map) — the wiring itself was already proven with one real
+build, and the pick-order logic was proven exhaustively via the hook,
+so the combination stands in for a slower literal repeat rather than
+actually re-running it three more times; noted here plainly rather
+than implied as done.
+
+All four required mobile breakpoints (375×667, 390×844, 412×915,
+768×1024) re-verified after the two-bug fix: badge never overflows the
+right edge, `.empty-prompt` is genuinely `hidden` (not just visually
+avoided) while a badge shows, and reappears correctly once the badge's
+own timer fires — zero console errors across all four. Fresh load with
+no `?debughazards`: bottom-right genuinely empty (canvas only, no
+lingering `.yacht-goal` anywhere in the DOM), bottom-left's Discovery
+Badge hidden at rest. With `?debughazards`: Test Hazards tab renders on
+the right half as Part B intended.
+
+`tsc --noEmit` clean, 65/71 tests passing (unchanged — no hazard math,
+no `elements.json` balance values touched by any part of this pass),
+production build succeeds.
