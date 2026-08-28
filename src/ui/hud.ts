@@ -34,8 +34,6 @@ export class Hud {
   private populationEl: HTMLElement;
   private emptyPromptEl: HTMLElement;
   private bannerEl: HTMLElement;
-  private yachtGoalEl: HTMLElement;
-  private yachtValueEl: HTMLElement;
   private arrivalFlashEl: HTMLElement;
   private previewToggleEl: HTMLButtonElement;
   private clusterEl: HTMLElement;
@@ -55,8 +53,8 @@ export class Hud {
 
     // STEP_PROMPT_hud_instrument_cluster.md: a real card (background,
     // border, padding — matching the same dark-translucent language
-    // `.build-popover`/`.empty-prompt`/`.yacht-goal` already use elsewhere
-    // in this file), not bare text floating over the 3D scene. Header row
+    // `.build-popover`/`.empty-prompt` already use elsewhere in this
+    // file), not bare text floating over the 3D scene. Header row
     // (Coin + Turn/Era) → Resilience gauge → hazard-incoming line(s) →
     // the secondary meters as an actual chip grid below.
     const cluster = document.createElement("div");
@@ -152,18 +150,6 @@ export class Hud {
     container.appendChild(banner);
     this.bannerEl = banner;
 
-    // STEP_PROMPT_economy_food_yacht.md item 4: "always visible as a
-    // goal" — a persistent corner widget, not something tucked inside a
-    // popover the player has to go looking for. Present from the very
-    // first frame, before the player has claimed or even reached a Coast
-    // tile.
-    const yachtGoal = document.createElement("div");
-    yachtGoal.className = "hud-corner bottom-right yacht-goal";
-    yachtGoal.innerHTML = `<div>Yacht</div><div class="yacht-value">0 / 0c</div>`;
-    container.appendChild(yachtGoal);
-    this.yachtGoalEl = yachtGoal;
-    this.yachtValueEl = yachtGoal.querySelector(".yacht-value")!;
-
     // STEP_PROMPT_pacing_telegraph_preview.md Section 1's "give the
     // countdown-hits-zero moment its own beat": a full-viewport tinted
     // flash, briefly, so a hazard's actual arrival reads as a discrete
@@ -187,20 +173,6 @@ export class Hud {
     this.arrivalFlashEl.classList.remove("flashing");
     void this.arrivalFlashEl.offsetWidth; // force reflow so re-adding the class restarts the animation
     this.arrivalFlashEl.classList.add("flashing");
-  }
-
-  /**
-   * Three states (STEP_PROMPT_economy_food_yacht.md item 4): dimmed/muted
-   * progress ("320 / 750c") while unaffordable, lit/highlighted the
-   * moment Coin crosses `cost` (independent of whether a Coast tile has
-   * even been claimed yet), and a distinct achieved treatment once one
-   * actually exists on the map — that last state stops showing the
-   * countdown entirely rather than freezing it at "750 / 750c".
-   */
-  setYachtGoal(coin: number, cost: number, built: boolean): void {
-    this.yachtGoalEl.classList.toggle("achieved", built);
-    this.yachtGoalEl.classList.toggle("affordable", !built && coin >= cost);
-    this.yachtValueEl.textContent = built ? "✓ Achieved" : `${Math.min(Math.floor(coin), cost)} / ${cost}c`;
   }
 
   /** A brief, non-blocking announcement — originally an auto era-retired narrative, now the manual "Board reset." confirmation (STEP_PROMPT_manual_only_mode.md) — never a modal. */

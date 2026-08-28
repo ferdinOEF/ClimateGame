@@ -182,8 +182,6 @@ const hazardTestPanel = params.has("debughazards")
     })
   : null;
 
-const YACHT_COST = ELEMENT_BY_ID.get("yacht")!.buildCost;
-
 /**
  * STEP_PROMPT_pacing_telegraph_preview.md Section 1: re-wired back
  * into `refreshHud()` below — the scheduled/telegraphed loop is the real
@@ -242,7 +240,6 @@ function refreshHud(): void {
   hud.setHazardIncoming(incoming);
   syncHudPreviewAvailability(incoming);
   hud.setEmptyTiles(state.emptyTileCount);
-  hud.setYachtGoal(state.coin, YACHT_COST, state.hasElement("yacht"));
 }
 
 /** Projects a world position to CSS pixel coords within the canvas, for anchoring the build popover. */

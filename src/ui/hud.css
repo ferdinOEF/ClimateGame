@@ -162,7 +162,7 @@ html, body {
 /*
   STEP_PROMPT_hud_instrument_cluster.md: a real card — background, border,
   padding, drop shadow — same dark-translucent language `.build-popover`/
-  `.empty-prompt`/`.yacht-goal` already use elsewhere in this file, not
+  `.empty-prompt` already use elsewhere in this file, not
   bare text floating over the 3D scene (`.hud-corner`'s own base styling
   has neither). `pointer-events` stays `none` (inherited from `.hud-corner`),
   so the map underneath remains fully interactive through it — the handful
@@ -519,49 +519,6 @@ html, body {
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
-}
-
-/*
-  STEP_PROMPT_economy_food_yacht.md item 4: the Yacht goal, always
-  visible. Three states: dimmed/muted default (a distant savings target),
-  a lit gold highlight the instant Coin crosses the cost (a clear "you
-  can do this now" signal, well before the player has to open a Coast
-  tile's popover to find out), and a distinct achieved treatment once one
-  actually exists on the map.
-*/
-.yacht-goal {
-  background: rgba(20, 30, 26, 0.7);
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 11px;
-  font-weight: 600;
-  opacity: 0.55;
-  transition: opacity 0.2s, background 0.2s, box-shadow 0.2s;
-}
-
-.yacht-goal .yacht-value {
-  font-size: 13px;
-  margin-top: 1px;
-}
-
-.yacht-goal.affordable {
-  opacity: 1;
-  background: rgba(216, 177, 88, 0.28);
-  box-shadow: 0 0 10px rgba(216, 177, 88, 0.5);
-}
-
-.yacht-goal.affordable .yacht-value {
-  color: #ffe9a8;
-}
-
-.yacht-goal.achieved {
-  opacity: 1;
-  background: rgba(216, 177, 88, 0.4);
-  border: 1px solid rgba(255, 233, 168, 0.6);
-}
-
-.yacht-goal.achieved .yacht-value {
-  color: #ffe9a8;
 }
 
 /*
@@ -1018,7 +975,6 @@ html, body {
     box-sizing: border-box;
   }
 
-  .yacht-goal,
   .empty-prompt {
     padding: 10px 16px;
   }
@@ -1174,14 +1130,6 @@ html, body {
 
   .empty-prompt {
     font-size: 14px;
-  }
-
-  .yacht-goal {
-    font-size: 13px;
-  }
-
-  .yacht-goal .yacht-value {
-    font-size: 15px;
   }
 
   .build-option {
