@@ -3689,3 +3689,221 @@ showing — color unchanged). Confirmed `__destroyForTest` +
 `TRUST_LOSS_PER_DAMAGED_BUILDING` touched — Section 3 only adds a
 read of an existing condition, never a new one), production build
 succeeds.
+
+## Step prompt: QA Gauntlet (UI/UX/gameplay self-looping pass) — one real bug found and fixed, one pass through Sections 1–3 complete
+
+Source: `STEP_PROMPT_qa_gauntlet.md`. Backlog check first, per the step
+prompt's own instruction: both `STEP_PROMPT_hud_pill_overflow_fix.md`
+and `STEP_PROMPT_test_slider_resort_damage.md` were already confirmed
+DONE (previous two entries above) — nothing to rediscover there.
+
+**Environment note:** this pass ran from a fresh `npm install` against
+a snapshot of the real repo (`tsc --noEmit` clean, 65/71 tests passing
+— matching the baseline every prior entry in this file reports), with
+`npm run dev` + a real headless Chromium driving the live app via the
+existing `__*ForTest` hooks, same approach every prior QA-style pass in
+this file already used.
+
+### Section 1 (UI) — real bug found and fixed: era-banner overflow on mobile
+
+Ran the same real-screenshot + DOM overflow-rect sweep the previous
+mobile-responsive passes used, across all four required breakpoints
+(375×667, 390×844, 412×915, 768×1024) plus desktop (1280×800), for the
+fresh HUD, the collapsed instrument-cluster pill, an open BuildPopover,
+the EraEndScreen, and the Test Hazards panel.
+
+**Found:** `.era-banner` (the top-center `hud.showBanner()` element —
+`describeAftermath()`'s real text, e.g. `"Storm Surge resolved ·
+Resilience -12 · Trust -9 · 3 defenses breached"`, not just the short
+"Board reset." message) had `white-space: nowrap` with no width limit.
+`.hud-corner.top-center` centers via `left: 50%; transform:
+translateX(-50%)`, so once the real aftermath text was wider than the
+viewport, the un-wrapped box grew past both edges symmetrically —
+confirmed live at exactly this shape on all three phone-class
+breakpoints (e.g. at 412×915: `left: -21, right: 433` against a
+412px-wide viewport). iPad portrait and desktop never triggered it
+(enough width for the longest real message). This is the same bug
+*class* the step prompt asked to hunt for (a corner HUD element with no
+correct unconditional base state) even though the specific defect here
+is a missing width constraint, not a missing `display: none`.
+
+**Fix:** added `max-width: calc(100vw - 24px)` (matching the 12px side
+inset every other `.hud-corner` element already keeps) and changed
+`white-space: nowrap` to `normal` with `text-align: center`, so a long
+message wraps onto a second line instead of overflowing — a short
+message (e.g. "Board reset.") still renders as one line, unchanged.
+Re-ran the same overflow sweep after the fix: zero offenders across all
+five viewports and all five states (fresh, collapsed, popover, era-end,
+test panel).
+
+No other overflow found in this sweep — instrument-cluster (expanded
+and collapsed), tile-count-value, yacht-goal, empty-prompt,
+hazard-test-panel, BuildPopover, and EraEndScreen all held their
+correct bounds at every breakpoint.
+
+### Section 2 (UX) — build popover / HUD pill / schedule / dead-ends: verified correct, two test-script false positives run down and ruled out
+
+Live-verified: popover opens on tile click, closes on outside click
+(confirmed via `.popover-backdrop`'s own `hidden` state — the actual
+visibility control per `BuildPopover`'s own doc comment; `.build-popover`
+itself never has `.hidden` set, by design), closes on Escape (a real
+`document.addEventListener("keydown", ...)` in `main.ts` checks
+`buildPopover.isOpen` and calls `.hide()` — confirmed firing), no coin
+charge on a cancelled build, and a re-click on an already-built tile
+shows the info/Remove card. HUD collapse pill's coin/resilience values
+matched the expanded view exactly, including staying in sync through a
+live triggered hazard while collapsed. Hazard-test-panel schedule
+readout present and sane. Reset-board confirm's Cancel path correctly
+leaves the board untouched (no dead end).
+
+Two checks in this pass's own first-draft verification script initially
+read as failures and were run down before trusting them, per the step
+prompt's own "confirm it's real" instruction — both turned out to be
+the script's own selector mistakes, not app bugs:
+- It read `.build-popover`'s own `.hidden` property to decide whether
+  the popover was open/closed. Per `BuildPopover`'s own doc comment
+  (from the NEXT_STEPS.md A1 fix), that property is never actually set
+  by the app — only `.popover-backdrop`'s `.hidden` is. Re-checked
+  against the correct element and outside-click/Escape both close the
+  popover exactly as expected.
+- It counted `.build-option` elements to confirm the build menu wasn't
+  still showing after a build — but `BuildPopover.showInfo()`'s own
+  header intentionally reuses the `.build-option` class for its visual
+  styling (padding/look), so the count is never 0 even on a correct
+  info card. A header with no `.cost` child (vs. a real buildable
+  option, which always has one) is the actual distinguishing signal.
+
+Not exercised this pass: real multi-touch pinch/pan gesture
+disambiguation (a pinch shouldn't spuriously open a build popover; a
+pan shouldn't leave the camera stuck) — Playwright's synthetic
+multi-touch support wasn't reliable enough in this environment to trust
+a result either way, flagged honestly rather than reported as checked.
+Single-finger tap-to-build works (exercised as part of the popover
+checks above, with `hasTouch`/`isMobile` contexts).
+
+### Section 3 (gameplay) — spot-checked, no new issues
+
+Storm Surge at a few severities against a built Seawall: damage scaled
+linearly with severity as expected for the absorption branch at the
+severities this spot-check happened to land on; didn't independently
+re-derive the exact breach threshold crossing (that's already
+rigorously verified with real per-tile numbers in the defense-shadowing
+pass earlier in this file) since a single arbitrarily-chosen Beach tile
+isn't a reliable way to control how many hops of channel-decay separate
+it from a Coast/Estuary source. Compound Storm-Surge-then-Flood
+triggered back to back without throwing, produced a large (175-tile)
+damage map. Economy sanity: built 40 Houses, triggered a high-severity
+Storm Surge then Flood back to back, read every displayed meter
+(Coin/Resilience/Biodiversity/Carbon/Population/Food/tile count) —
+all real numbers, no `NaN`/`undefined` anywhere. No console errors
+during any of this beyond one intermittent, non-reproducing 404 (seen
+once on one viewport across several runs, gone on every isolated
+re-check) — treated as dev-server/test-harness flakiness per the step
+prompt's own "reload and retry once" guidance, not a product bug.
+
+### Whole-pass verification
+
+`tsc --noEmit` clean, 65/71 tests passing (unchanged — only
+`hud.css` touched this pass), production build not re-run this entry
+(no build-affecting change, CSS-only fix).
+
+A full second pass through Sections 1–3 after the fix found zero new
+issues, per the step prompt's own stopping condition.
+
+**Housekeeping flag:** this pass's temporary verification scripts
+(`tools/qa_icons.ts`, `qa_scratch.ts`, `qa_ux.ts`, `qa_zoom.ts`, plus a
+`tools/_qa_run/` scratch copy) should be deleted, matching this
+project's established temporary-tooling convention — they were removed
+from the sandbox this pass ran in, but this pass's write access back to
+the real repo couldn't delete files (write-only), only add/replace
+them, so they're still sitting in `tools/` on the real repo and need a
+manual `rm` there.
+
+### Independent second confirmation pass
+
+A second, independently-run pass through this same step prompt (own
+`chromium.launch()`-driven Playwright scripts, `tools/qa_*.ts` — since
+deleted, see below) landed on the same conclusions above without
+having read them first, which is worth recording as real corroboration
+rather than just repetition:
+
+- Hit the **exact same two false-positive test-script mistakes**
+  independently — reading `.build-popover`'s own (never-set) `.hidden`
+  instead of `.popover-backdrop`'s, and counting `.build-option`
+  without excluding `showInfo()`'s `.built-info-header` (which
+  intentionally reuses that class for styling only, no click handler).
+  Both self-diagnosed and corrected the same way, landing on 12/12
+  UX-behavior checks passing (popover open/close/outside-click/Escape/
+  no-click-through/no-charge-on-cancel/info-not-menu-on-rebuild, pill
+  live-sync, schedule readout, reset-confirm-dismiss-doesn't-reset).
+- Found the **era-banner overflow independently too**, before reading
+  this entry — confirmed the already-applied fix live at 412×915 with
+  a real triggered Storm Surge (`"Storm Surge resolved · Resilience
+  -66 · Trust +2"` renders fully on-screen, `left:103, right:309`
+  against a 412px viewport, wraps to two lines instead of overflowing).
+- Went further on Section 3 than "spot-checked": built a Seawall,
+  confirmed the panel's own new post-rescale max severity (`1.0`, from
+  `STEP_PROMPT_test_slider_resort_damage.md` Section 1) sits *below*
+  every engineered defense's `failureThreshold` (Seawall 1.2,
+  Breakwater 1.25, Small Dam 1.15) — the Seawall correctly does **not**
+  breach at the panel's own ceiling, and correctly **does** breach at a
+  direct `triggerCyclone(2.5)` well above threshold, confirming the
+  breach mechanic itself is intact even though the dev panel can no
+  longer reach it post-rescale. Worth flagging back (not fixing —
+  changing the panel's own intentionally-tightened range is a
+  judgment call belonging to whoever made that rescale decision, not
+  this pass): "Seawall/Breakwater/Small Dam breaching above
+  failureThreshold" is no longer directly demonstrable through the
+  Test Hazards panel UI itself, only through a direct `triggerCyclone`/
+  `triggerFlood` call bypassing it. Also confirmed compound flooding
+  numerically, not just "didn't throw": Flood's own damage at all 30
+  sampled overlap tiles measured strictly higher when a Storm Surge
+  had just resolved vs. Flood alone (H4's downstream compound source),
+  and confirmed the storm-damaged-building tint against real rendered
+  `instanceColor` pixel values (51/78 built Houses crossing the 0.3
+  threshold showed a measurably shifted color, e.g. `0.511 → 0.227`
+  red channel; the other 27 matched `baseColor` to floating-point
+  noise; a damaged Seawall's own color stayed exactly at `baseColor`,
+  confirming the building-kind-only scope holds).
+- One additional item flagged, not fixed — a genuine design judgment
+  call, not a bug: `BuildPopover`'s backdrop is deliberately
+  `background: transparent` (a documented, intentional choice — a
+  click-catcher, not a dimmer, unlike `EraEndScreen`'s own opaque
+  backdrop). At narrow mobile widths, a popover anchored near the
+  top-left corner tile can end up visually overlapping
+  `.instrument-cluster`, and since both cards use a translucent
+  (0.85-0.92 alpha) background — the same "dark-translucent language"
+  every card in this app deliberately shares — a faint ghost of the
+  cluster's own text (e.g. "Turn 0 · Era 1") is visible bleeding
+  through the popover's corner at high zoom. The actionable content
+  (the build option list itself) stays fully legible in every case
+  checked; this is cosmetic bleed-through from a consistent, deliberate
+  design choice, not overflow or illegible text, so it wasn't changed
+  under this pass's own "don't touch visual direction unless something
+  is actually broken" guardrail. Whether `positionAndReveal()` should
+  actively steer clear of other HUD corners is a real product decision
+  someone should make, not something to guess at here.
+- One transient false alarm run down and resolved, not left open: a
+  handful of early runs showed the Era Retired screen intermittently
+  *not* appearing even once Resilience visibly clamped to 0% — reads
+  exactly like a race condition worth taking seriously. A fine-grained
+  100ms-interval timeline poll (rather than one fixed-delay check)
+  showed the real, fully-deterministic transition consistently landing
+  around 3.3–3.6s after triggering (`sweepMs`'s own formula,
+  `maxRound * ROUND_DURATION_MS + 500`, has no real-time dependency —
+  confirmed by re-deriving it), while the earlier checks used a fixed
+  3200ms wait — close enough to that real boundary that ordinary
+  browser/GPU scheduling variance (real `GL Driver Message... GPU
+  stall due to ReadPixels` warnings showed up in the console on one of
+  the slower runs) pushed the actual fire time past the fixed wait
+  often enough to look like a coin flip. Confirmed real by margin, not
+  fixed in the app: a start-to-finish timeline poll (not a fixed
+  guess) reliably caught the correct, always-eventually-consistent
+  transition in every one of several follow-up runs.
+
+`tsc --noEmit` clean, 65/71 tests passing (unchanged), production
+build succeeds — re-confirmed independently, not just trusted from the
+entry above. All temporary `tools/qa_*.ts` driver scripts from both
+this pass and the parallel one (none were ever meant to be committed,
+same convention as every other one-off verification script this
+project has used) deleted before this write-up's own commit.

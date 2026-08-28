@@ -748,6 +748,40 @@ the damaged/undamaged split and a same-hazard defense control.
 `tsc --noEmit` clean throughout, 65/71 tests unchanged, production
 build succeeds. Four commits total (one hotfix + three sections).
 
+## Follow-up — QA Gauntlet (self-looping UI/UX/gameplay pass)
+
+`STEP_PROMPT_qa_gauntlet.md`: backlog check confirmed both prior fixes
+(pill overflow, slider/resort/damage) already landed; looped Sections
+1-3 (UI rendering, UX behavior, gameplay mechanics) against the live
+dev server via real Playwright automation until a full pass found
+nothing new. Full detail in PROGRESS.md, including an independently-run
+second confirmation pass that landed on the same findings without
+reading the first.
+
+Status: closed. One real bug found and fixed: `.era-banner` (the
+aftermath banner, e.g. "Storm Surge resolved · Resilience -12 · Trust
+-9") had `white-space: nowrap` with no width limit — fine for the
+short "Board reset." message it was originally sized for, but the
+much longer real hazard-resolution text overflowed both edges of the
+viewport on every phone-class breakpoint once centered via `left:50%;
+transform:translateX(-50%)`. Fixed with `max-width:calc(100vw - 24px)`
++ `white-space:normal` + `text-align:center` — wraps instead of
+overflowing, unchanged for short messages. One item flagged as a
+genuine design judgment call, not fixed: `BuildPopover`'s deliberately
+transparent backdrop can let it visually overlap `.instrument-cluster`
+at narrow widths, with a faint text bleed-through from the app's own
+consistent translucent-card language — cosmetic, not overflow/
+illegibility, so left for a product decision rather than guessed at.
+Confirmed the Test Hazards panel's post-rescale severity cap (max 1.0)
+sits below every engineered defense's `failureThreshold` (1.15-1.25),
+so breach behavior is no longer directly demonstrable through the
+panel UI alone (though the breach mechanic itself is confirmed intact
+via a direct trigger) — flagged back, not silently reverted, since the
+rescale was itself a deliberate prior decision.
+
+`tsc --noEmit` clean, 65/71 tests unchanged (CSS-only fix), production
+build succeeds. One commit.
+
 ## Follow-up — Section 4 rebuild: "Status Pill"
 
 The step prompt's Section 4 was rewritten a second time with a fully
@@ -834,3 +868,4 @@ build succeeds.
 - 2026-08-26, S5 (Section 4 rebuild: "Status Pill"): closed. Step prompt's Section 4 rewritten with a fully specified design chosen from a signed-off 4-option mockup, replacing S4's bottom-left toggle button entirely — same collapse concept, completely different shape. Chevron toggle now lives inline in `.cluster-header` (comfortable ~44px tap area via a padding+negative-margin pair that doesn't stretch the header's own layout); collapsing reshapes `.instrument-cluster` itself in place (same top-left anchor) into a 34px pill showing coin/resilience/hazard-countdown summaries plus a trailing chevron, the whole pill tappable to re-expand. Resilience dot reuses the exact same normal/critical colors and class-toggle condition as the real gauge fill, confirmed live to flip in lockstep with it during an actual triggered hazard. Hazard number pulled from the same structured `turnsUntil` data `hazard-incoming-line` is built from, not re-parsed from rendered text — `hud.ts`'s existing setCoin/setMeters/setHazardIncoming now also write the pill's own nodes, so it can't go stale. One design tradeoff (nested pill-in-card vs. the card reshaping into the pill itself) resolved during design, not caught as a live bug afterward — the outer-reshapes model was chosen specifically because it matches "same top-left position" literally and avoids doubled card chrome by construction. Live-verified round-trip collapse/expand at all four required breakpoints plus the tightest landscape case, exact value parity between pill and expanded view at every check, and re-confirmed the BuildPopover/build-while-collapsed guardrail and desktop-untouched. 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. One commit (`7cc874d`).
 - 2026-08-27, hotfix (Status Pill rendering unconditionally on desktop): closed. Real bug shipped in S5 — `.cluster-pill`'s base rule set every other property but never `display`, so outside the mobile breakpoint (the only place `display: none` existed) it fell back to a bare `<button>`'s `inline-block` default and rendered always, with each `.pill-item` child stacking on its own line (each sets its own `display: flex`, blockifying itself) — exactly the reported "coin/resilience/hazard each on its own line, ending in a lone `>`" symptom on a normal desktop window. One-line fix: `display: none;` added to the base rule; the now-redundant duplicate inside the media query removed, its `.collapsed` override left as the only surviving rule there. Live-verified at 1440×900 (`display: none`, card's bottom edge exactly 15px past the chip grid — its own padding, nothing extra) and re-confirmed the mobile collapse path still renders a genuine single row (all three `.pill-item` children at identical `top`). 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. One commit.
 - 2026-08-27, T1-T3 (Test Hazards panel severity rescale, resort icon, storm-damaged buildings): all closed. T1: both sliders now cap at `2.0×` and pass `sliderValue / 2` as the actual `baseSeverity` (readout stays raw/un-halved) — verified the panel's own trigger button at `1.0×` produces byte-for-byte identical hazard results to a direct `triggerCyclone(0.5)` call. T2: removed Beachside Resort's palm tree (`parts.push(palmGeometry(...))`) and the now-dead `palmGeometry()` function with it; no live screenshot this pass (Browser pane not displayed), verified by code review + a real in-app build instead. T3: House/Resort now visibly tint (reusing `setDegradeVisual`'s own blend math via a new, purpose-named `setBuildingDamagedVisual`) when Storm Surge deals real damage — `CycloneResult` gained `damagedBuildings`, the exact same coord set the existing Trust-loss loop already computed, reused directly rather than a second check. Verified against real rendered pixels (not just the data model): built 78 Houses, triggered a max-severity Storm Surge, and confirmed the 51 tiles crossing the 0.3 damage threshold showed a measurably shifted `instanceColor` while the other 27 matched `baseColor` exactly; confirmed a damaged Seawall's color stayed untouched (defenses out of scope); confirmed the tint survives the aftermath sequence and clears on destroy+rebuild. New `__elementsForTest` hook. 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. Three commits (`59e570f`, `3e95188`, `dc1c815`).
+- 2026-08-27, QA Gauntlet (self-looping UI/UX/gameplay pass): closed. Real Chromium via Playwright (not the flaky Browser pane) driven through the app's own `__*ForTest` hooks across Sections 1-3 until a full pass found nothing new; an independently-run second confirmation pass (own Playwright scripts, same step prompt, findings not read first) landed on the same conclusions. One real bug found and fixed: `.era-banner` (the aftermath text, e.g. "Storm Surge resolved · Resilience -12 · Trust -9") had unbounded `white-space: nowrap`, overflowing both edges on every phone breakpoint once real hazard text (much longer than the short "Board reset." message it was sized for) got centered via `left:50%; transform:translateX(-50%)` — fixed with a `max-width` cap + `white-space:normal` wrap, matching every other `.hud-corner`'s 12px side inset. Confirmed independently at 412×915 with a real triggered storm. Two flagged, not fixed: `BuildPopover`'s deliberately transparent backdrop can let it visually overlap `.instrument-cluster` at narrow widths (cosmetic text bleed-through from the app's own consistent translucent-card language, not overflow/illegibility — a product decision, not a bug); the Test Hazards panel's post-`STEP_PROMPT_test_slider_resort_damage.md` severity cap (max 1.0) now sits below every engineered defense's `failureThreshold` (1.15-1.25), so a breach can no longer be demonstrated through the panel UI alone even though the breach mechanic itself is confirmed intact via a direct trigger — worth a decision from whoever owns that rescale, not silently reverted here. One transient "flaky" result chased down and resolved as a test-margin issue, not an app race: a fixed 3200ms wait sat too close to the real (fully deterministic, re-derived from `sweepMs`'s own formula) ~3.3-3.6s Era-Retired transition time, occasionally losing the margin to ordinary GPU/browser scheduling variance — a fine-grained timeline poll confirmed the transition is always eventually consistent. All temporary `tools/qa_*.ts` driver scripts deleted (never meant to be committed). 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. One commit.
