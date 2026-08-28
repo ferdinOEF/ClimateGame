@@ -1,0 +1,52 @@
+{
+  "mangrove": [
+    "Mangroves can cut wave height by up to 66%. Plant a strong belt and even a monster storm surge arrives exhausted.",
+    "A mangrove forest is a coastal nursery. Baby fish, crabs, and prawns hide in those roots until they're big enough for open water.",
+    "Mangroves lock away carbon faster than almost any rainforest on Earth. You're not just building a defense, you're building a climate superweapon."
+  ],
+  "sandy_vegetation": [
+    "Pandanus roots grip the sand tight enough to blunt an incoming storm surge, right where mangroves can't even grow.",
+    "Goan families have woven Pandanus leaves into mats, baskets, and festival decorations for generations. This plant works just as hard on land as it does on the coast.",
+    "It's the cheapest defense you can build, and it pays back the most biodiversity per coin in the game. Small investment, big return."
+  ],
+  "dune": [
+    "A dune doesn't fight the wave. It sacrifices its own sand to soak up the energy, then slowly rebuilds itself.",
+    "Sea turtles and shorebirds nest in the sand a healthy dune protects. Keep the dune standing and you're keeping their nursery too.",
+    "A dune that takes a beating is still there tomorrow. Smaller, but standing, and ready for the next storm."
+  ],
+  "seawall": [
+    "A solid seawall can bounce back up to 90% of an incoming wave's force. That's serious muscle for a wall of concrete.",
+    "Push it too far and it doesn't bend, it breaks. Overwhelm a seawall and it fails all at once, sending the wave crashing through anyway.",
+    "Nothing grows on a seawall. It's the toughest defense in the game and the one with zero room for wildlife."
+  ],
+  "breakwater": [
+    "A breakwater doesn't even touch the shore. It sits out at sea and shatters the wave's power before it gets anywhere near land.",
+    "Give a breakwater enough time and barnacles, oysters, and coral move in. Today's concrete slab becomes tomorrow's reef.",
+    "Before breakwaters existed, open coastline had nowhere to hide from a storm surge. Now it does."
+  ],
+  "khazan": [
+    "The Khazan is one of the oldest engineered landscapes in India, holding back the sea with nothing but earth bunds and sluice gates since ancient times.",
+    "A single Khazan field grows rice and raises fish at the same time. Open the sluice gates, let the fish swim in with the tide, close them, harvest both.",
+    "A Khazan doesn't block a flood, it drinks it. It soaks up an entire flood's worth of water like a giant sponge before any damage gets through."
+  ],
+  "small_dam": [
+    "A dam holds the line right up until it can't. Push it past its limit and it fails all at once, releasing everything it was holding back.",
+    "Skip the maintenance and a dam quietly weakens every turn. Real flood protection needs upkeep, not just concrete.",
+    "A dam actually earns its keep, storing floodwater and boosting resilience at the same time. That's a rare two for one."
+  ],
+  "beachside_resort": [
+    "A resort pays out coin every single turn, but every pool and sun deck replaces habitat that used to be there.",
+    "Goa's coastline has lived this trade for real. Mangroves and wetlands cleared for waterfront rooms, one resort at a time.",
+    "A resort brings in cash but can't defend itself from anything. Take a direct hit and you'll see the damage in the paint."
+  ],
+  "sand_mining": [
+    "Sand Mining can bring in a lot of money, but it weakens the land around it. Fast money, imminent destruction.",
+    "Every truckload of sand pulled from a riverbed is a truckload of natural flood buffer gone with it.",
+    "Strip enough sand from a river and the sea starts creeping upstream to fill the gap. You're not just weakening the bank, you're inviting the ocean further inland."
+  ],
+  "yacht": [
+    "The Yacht does absolutely nothing for your economy, your defenses, or your resilience. It exists purely to be seen.",
+    "Every time a yacht drops anchor, it can flatten the seagrass meadow underneath it. All that status comes with a quiet cost beneath the waterline.",
+    "At 750 coin, the Yacht is the single most expensive thing you can build in this whole game, and it does less than a single House."
+  ]
+}
