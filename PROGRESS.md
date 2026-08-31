@@ -4059,3 +4059,7 @@ the right half as Part B intended.
 `tsc --noEmit` clean, 65/71 tests passing (unchanged — no hazard math,
 no `elements.json` balance values touched by any part of this pass),
 production build succeeds.
+
+## STEP_PROMPT_how_to_play_button.md (How to Play button) — DONE
+
+Small round "?" button added inside the existing top-right `.hud-corner` element (above "Tiles claimed"), opening the published player manual (`https://claude.ai/code/artifact/80fe2ad5-e961-45e6-b2cc-b10ecab61a7b`) in a new tab via `window.open(..., "_blank", "noopener,noreferrer")` — exactly as specified, no new HUD corner, nothing else in the HUD touched. Live-verified at desktop and 375×667 (real Playwright, not code review): button renders correctly above the counter at both sizes with no overflow, a real click reliably opens a new tab to the exact manual URL (not silently blocked), the click has zero side effects on the game underneath (Coin unchanged, no popover opened), zero console errors. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.

@@ -47,7 +47,18 @@ export class Hud {
   constructor(container: HTMLElement, onPreviewToggle: () => void) {
     const tileCounter = document.createElement("div");
     tileCounter.className = "hud-corner top-right";
-    tileCounter.innerHTML = `<div>Tiles claimed</div><div class="tile-count-value">0</div>`;
+    tileCounter.innerHTML = `
+      <button type="button" class="help-button" aria-label="How to play">?</button>
+      <div>Tiles claimed</div>
+      <div class="tile-count-value">0</div>
+    `;
+    tileCounter.querySelector(".help-button")!.addEventListener("click", () => {
+      window.open(
+        "https://claude.ai/code/artifact/80fe2ad5-e961-45e6-b2cc-b10ecab61a7b",
+        "_blank",
+        "noopener,noreferrer"
+      );
+    });
     container.appendChild(tileCounter);
     this.tileCountEl = tileCounter.querySelector(".tile-count-value")!;
 

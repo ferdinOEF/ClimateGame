@@ -165,6 +165,29 @@ html, body {
   font-weight: 600;
 }
 
+/* STEP_PROMPT_how_to_play_button.md: a small round "?" opening the published player manual in a new tab — sits above "Tiles claimed" in the same top-right .hud-corner element, not a second corner widget. `pointer-events: auto` opts back out of `.hud-corner`'s base `none`, same pattern `.preview-toggle`/the instrument cluster's collapse toggle already use. */
+.help-button {
+  pointer-events: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(20, 30, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fdf6e6;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.help-button:hover,
+.help-button:focus-visible {
+  background: rgba(20, 30, 26, 0.95);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
 /*
   STEP_PROMPT_hud_instrument_cluster.md: a real card — background, border,
   padding, drop shadow — same dark-translucent language `.build-popover`/
