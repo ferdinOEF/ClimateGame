@@ -853,6 +853,35 @@ be exercised live at the two wider landscape sizes (844×390, 915×412)
 `tsc --noEmit` clean, 65/71 tests passing (unchanged), production
 build succeeds.
 
+## Follow-up — How to Play button, rewritten (in-game dialog)
+
+`STEP_PROMPT_how_to_play_button.md` was rewritten to replace the
+external-tab version from the prior pass — `window.open()` was the
+wrong call for a game, no return path, no visual continuity. Every
+code citation (EraEndScreen's backdrop/card/`hidden` mechanics,
+BuildPopover's click-outside-to-close listener, the prior `window.open`
+implementation, `.help-button`'s existing CSS) checked against the
+actual code first — all matched exactly, nothing to flag back. Full
+detail in PROGRESS.md.
+
+Status: closed. `window.open()` and the hardcoded manual URL removed
+completely from `hud.ts` (confirmed via a full `src/` grep — no
+external link anywhere in the feature). New `HelpModal`
+(`src/ui/helpModal.ts`) combines the EraEndScreen backdrop/card
+pattern with BuildPopover's click-outside-to-close behavior; content
+embedded as real DOM markup, copied verbatim from the step prompt.
+Zero game-state coupling, so `Hud` owns the instance directly — no
+`main.ts` changes needed. Live-verified end to end via real Playwright:
+"?" opens the dialog dimmed with no navigation/popup; × closes it with
+no side effects on the game underneath; clicking the backdrop outside
+the card closes it; clicking inside the card does not (the negative
+case); internal scroll confirmed via computed `overflow-y`/scrollHeight
+vs clientHeight; 375×667 renders a genuine full-width/full-height
+sheet with `border-radius: 0`. Screenshots taken at both sizes.
+
+`tsc --noEmit` clean, 65/71 tests unchanged (no hazard/balance/data-
+model code touched), production build succeeds.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -902,3 +931,4 @@ build succeeds.
 - 2026-08-27, QA Gauntlet (self-looping UI/UX/gameplay pass): closed. Real Chromium via Playwright (not the flaky Browser pane) driven through the app's own `__*ForTest` hooks across Sections 1-3 until a full pass found nothing new; an independently-run second confirmation pass (own Playwright scripts, same step prompt, findings not read first) landed on the same conclusions. One real bug found and fixed: `.era-banner` (the aftermath text, e.g. "Storm Surge resolved · Resilience -12 · Trust -9") had unbounded `white-space: nowrap`, overflowing both edges on every phone breakpoint once real hazard text (much longer than the short "Board reset." message it was sized for) got centered via `left:50%; transform:translateX(-50%)` — fixed with a `max-width` cap + `white-space:normal` wrap, matching every other `.hud-corner`'s 12px side inset. Confirmed independently at 412×915 with a real triggered storm. Two flagged, not fixed: `BuildPopover`'s deliberately transparent backdrop can let it visually overlap `.instrument-cluster` at narrow widths (cosmetic text bleed-through from the app's own consistent translucent-card language, not overflow/illegibility — a product decision, not a bug); the Test Hazards panel's post-`STEP_PROMPT_test_slider_resort_damage.md` severity cap (max 1.0) now sits below every engineered defense's `failureThreshold` (1.15-1.25), so a breach can no longer be demonstrated through the panel UI alone even though the breach mechanic itself is confirmed intact via a direct trigger — worth a decision from whoever owns that rescale, not silently reverted here. One transient "flaky" result chased down and resolved as a test-margin issue, not an app race: a fixed 3200ms wait sat too close to the real (fully deterministic, re-derived from `sweepMs`'s own formula) ~3.3-3.6s Era-Retired transition time, occasionally losing the margin to ordinary GPU/browser scheduling variance — a fine-grained timeline poll confirmed the transition is always eventually consistent. All temporary `tools/qa_*.ts` driver scripts deleted (never meant to be committed). 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. One commit.
 - 2026-08-27, Knowledge Nugget popup + two HUD corner changes (Parts A-C): all closed. A: `.yacht-goal` (fields, DOM, `setYachtGoal()`, CSS, two stale comments citing it as a precedent) removed entirely, not hidden — the Yacht element itself untouched. B: `.hazard-test-tab`/`.hazard-test-panel` moved bottom-left → bottom-right (one `left`→`right` swap each, no TS change needed), freeing bottom-left for Part C. C: new `nuggets.json` (30 facts, verbatim, `house` deliberately excluded) + new `NuggetPopup` component (the "Discovery Badge") + wiring into `openTilePopover()`'s build callback and `resetBoard()`. Per-element Fisher-Yates pick order with an `avoidFirst` guard on reshuffle so the "never immediately repeats" guarantee holds even across the reshuffle seam, not just within one cycle; discovered-count as a `Set<"id#factIndex">` (not a raw counter) so a repeat can't inflate the "N of 30" progress bar; the 30 stays computed from `nuggets.json`'s own lengths, never hardcoded. Two real bugs found and fixed during wiring, not shipped silently: `.nugget-badge` missing `box-sizing: border-box` (rendered ~30px wider than its `min(280px, 92vw)` intended); and even after that fix, the badge and `.empty-prompt` measurably overlapping at every required mobile breakpoint, fixed by suppressing `.empty-prompt` for exactly as long as the badge shows via a `NuggetPopup` constructor callback the step prompt's own sketch didn't include (added because that sketch couldn't have anticipated a bug only visible once the real component existed). Verified end to end against a real headless Chromium: a genuine build via a real tile click (not the `__buildForTest` bypass) fired the badge correctly with the right fact/tint/progress; the pick-order/discovered-count logic exercised directly and repeatedly via a new `__nuggetPopupForTest` hook (4 consecutive same-element shows: 3 distinct facts, zero adjacent repeats including at the reshuffle seam, 4th reused cleanly, progress only advanced on genuinely new facts); all four required breakpoints re-verified clean after the two-bug fix, zero console errors throughout. 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. Five commits (`c6c5ec9`, `a3175e1`, `1ad902d`, `2602f9b`, `fbc1861` — Part C split into data/component+styles/wiring).
 - 2026-08-27, How to Play button: closed. Small round "?" button added inside the existing top-right `.hud-corner` (above "Tiles claimed"), opening the published player manual in a new tab. Every code citation in the step prompt checked against the actual files first — matched exactly, nothing to flag back. Live-verified at desktop and 375×667: renders correctly at both, a real click reliably opens a new tab to the exact manual URL, zero side effects on the game underneath, zero console errors. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. One commit.
+- 2026-08-31, How to Play button, rewritten (in-game dialog): closed. Supersedes the 2026-08-27 entry above — `window.open()` was the wrong call for a game, so it and the hardcoded manual URL were removed entirely. New `HelpModal` combines EraEndScreen's backdrop/card pattern with BuildPopover's click-outside-to-close behavior; content is real embedded DOM markup, no external link anywhere. Live-verified via real Playwright: opens dimmed with no popup/navigation, × closes with no side effects, backdrop-click closes, inside-card click does not, internal scroll confirmed via computed styles, 375×667 renders a genuine full-width sheet with zero border-radius. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.

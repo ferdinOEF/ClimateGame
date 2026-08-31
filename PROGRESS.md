@@ -4063,3 +4063,51 @@ production build succeeds.
 ## STEP_PROMPT_how_to_play_button.md (How to Play button) — DONE
 
 Small round "?" button added inside the existing top-right `.hud-corner` element (above "Tiles claimed"), opening the published player manual (`https://claude.ai/code/artifact/80fe2ad5-e961-45e6-b2cc-b10ecab61a7b`) in a new tab via `window.open(..., "_blank", "noopener,noreferrer")` — exactly as specified, no new HUD corner, nothing else in the HUD touched. Live-verified at desktop and 375×667 (real Playwright, not code review): button renders correctly above the counter at both sizes with no overflow, a real click reliably opens a new tab to the exact manual URL (not silently blocked), the click has zero side effects on the game underneath (Coin unchanged, no popover opened), zero console errors. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
+
+## STEP_PROMPT_how_to_play_button.md (rewritten — in-game dialog) — DONE
+
+Supersedes the entry directly above. The step prompt was rewritten to
+replace the external-tab approach entirely: `window.open()` punted the
+player out of the browser tab with no return path and no visual
+continuity, which is the wrong call for a game. The `window.open` call
+and the hardcoded manual URL string were removed from `hud.ts`
+completely (confirmed via a full `src/` grep — the only remaining
+"window" hits are unrelated hazard "telegraph window" comments).
+
+In their place: a new `HelpModal` class (`src/ui/helpModal.ts`)
+combining two existing precedents rather than reinventing either —
+`EraEndScreen`'s full-viewport-backdrop + centered-card + `hidden`
+handling (toggled on the backdrop only, never the card), and
+`BuildPopover`'s click-outside-to-close backdrop listener
+(`e.target === this.backdrop`). Neither `EraEndScreen` nor
+`BuildPopover` was touched — only their pattern was copied. Content
+(Objective / The Loop / What You Can Build by terrain / meters / the
+two threats / tips) is embedded as real DOM markup via an innerHTML
+template, copied verbatim from the step prompt with no edits — no
+external link anywhere in the feature. `HelpModal` has zero
+game-state coupling, so `Hud` constructs and owns the instance
+directly in its own constructor; unlike `EraEndScreen`'s
+`onStartNewEra` callback or the prior pass's `NuggetPopup` wiring,
+`main.ts` needed zero changes.
+
+New CSS follows this session's established `[hidden]`-vs-unconditional-
+`display` fix pattern (`.help-backdrop` needs `display: flex` for
+centering, so `.help-backdrop[hidden] { display: none; }` is added
+explicitly rather than relying on `[hidden]` alone), plus a
+`@media (max-width: 560px)` override making the card a full-viewport
+sheet.
+
+Live-verified end to end with a real Playwright script (not code
+review): clicking "?" opens the dialog over the dimmed game with no
+navigation and no popup fired; the × close button closes it with no
+side effects on the game underneath; clicking the backdrop outside
+`.help-card` closes it; clicking *inside* the card (the title) does
+**not** close it — the negative case, not just the positive one;
+`.help-card` computed `overflow-y: auto` with `scrollHeight` (1385px)
+exceeding `clientHeight` (680px, i.e. 85vh) confirms internal scrolling
+engages rather than the dialog overflowing the viewport; at the
+375×667 mobile breakpoint the card renders as a genuine full-width/
+full-height sheet (`{width:375, height:669}`, `border-radius: 0px`).
+Screenshots taken at both sizes confirm the visuals match. `tsc
+--noEmit` clean, 65/71 tests unchanged (no hazard/balance/data-model
+code touched), production build succeeds.
