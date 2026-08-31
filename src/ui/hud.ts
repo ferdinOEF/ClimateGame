@@ -1,3 +1,5 @@
+import { HelpModal } from "./helpModal";
+
 /**
  * STEP_PROMPT_hud_instrument_cluster.md (v3, "Instrument Cluster"): the
  * top-left corner is a real card now (background/border/padding, not bare
@@ -45,6 +47,12 @@ export class Hud {
   private pillHazardValueEl: HTMLElement;
 
   constructor(container: HTMLElement, onPreviewToggle: () => void) {
+    // STEP_PROMPT_how_to_play_button.md: static content, no game-state
+    // coupling — unlike EraEndScreen (which needs an onStartNewEra
+    // callback into main.ts), this never needs to reach outside itself,
+    // so Hud owns the instance directly with no wiring through main.ts.
+    const helpModal = new HelpModal(container);
+
     const tileCounter = document.createElement("div");
     tileCounter.className = "hud-corner top-right";
     tileCounter.innerHTML = `
@@ -53,11 +61,7 @@ export class Hud {
       <div class="tile-count-value">0</div>
     `;
     tileCounter.querySelector(".help-button")!.addEventListener("click", () => {
-      window.open(
-        "https://claude.ai/code/artifact/80fe2ad5-e961-45e6-b2cc-b10ecab61a7b",
-        "_blank",
-        "noopener,noreferrer"
-      );
+      helpModal.show();
     });
     container.appendChild(tileCounter);
     this.tileCountEl = tileCounter.querySelector(".tile-count-value")!;

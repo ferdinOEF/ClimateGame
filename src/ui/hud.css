@@ -165,7 +165,7 @@ html, body {
   font-weight: 600;
 }
 
-/* STEP_PROMPT_how_to_play_button.md: a small round "?" opening the published player manual in a new tab — sits above "Tiles claimed" in the same top-right .hud-corner element, not a second corner widget. `pointer-events: auto` opts back out of `.hud-corner`'s base `none`, same pattern `.preview-toggle`/the instrument cluster's collapse toggle already use. */
+/* STEP_PROMPT_how_to_play_button.md: a small round "?" opening the in-game How to Play dialog (HelpModal) — sits above "Tiles claimed" in the same top-right .hud-corner element, not a second corner widget. `pointer-events: auto` opts back out of `.hud-corner`'s base `none`, same pattern `.preview-toggle`/the instrument cluster's collapse toggle already use. */
 .help-button {
   pointer-events: auto;
   width: 28px;
@@ -186,6 +186,181 @@ html, body {
 .help-button:focus-visible {
   background: rgba(20, 30, 26, 0.95);
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+/*
+  STEP_PROMPT_how_to_play_button.md: the in-game "How to Play" dialog —
+  EraEndScreen's own backdrop+centered-card pattern (same dark HUD card
+  language, same `hidden`-on-the-backdrop-never-the-card handling) plus
+  BuildPopover's click-outside-to-close behavior. See HelpModal's own
+  comment for exactly which precedent supplies which half.
+*/
+.help-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(10, 16, 14, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.help-backdrop[hidden] {
+  display: none;
+}
+
+.help-card {
+  background: rgba(20, 30, 26, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  width: min(520px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  color: #fdf6e6;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.help-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  background: rgba(20, 30, 26, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.help-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.help-close {
+  pointer-events: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fdf6e6;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.help-close:hover,
+.help-close:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.help-body {
+  padding: 4px 22px 22px;
+}
+
+.help-section {
+  margin-top: 20px;
+}
+
+.help-section h3 {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(253, 246, 230, 0.7);
+  margin: 0 0 8px;
+}
+
+.help-section p {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.help-note {
+  font-size: 12.5px;
+  color: rgba(253, 246, 230, 0.6);
+}
+
+.help-steps {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.help-roster-group {
+  margin-top: 10px;
+}
+
+.help-roster-terrain {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8fbf3e;
+  margin-bottom: 4px;
+}
+
+.help-roster-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13.5px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.help-roster-item span:first-child {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.help-roster-item span:last-child {
+  color: rgba(253, 246, 230, 0.75);
+  text-align: right;
+}
+
+.help-meter {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13.5px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.help-meter span:first-child { font-weight: 600; }
+.help-meter span:last-child { color: rgba(253, 246, 230, 0.75); text-align: right; }
+
+.help-threat {
+  font-size: 13.5px;
+  margin-bottom: 6px;
+}
+
+.help-tips {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .help-card {
+    width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  .help-roster-item,
+  .help-meter {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .help-roster-item span:last-child,
+  .help-meter span:last-child {
+    text-align: left;
+  }
 }
 
 /*
