@@ -15,6 +15,7 @@ import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { EraEndScreen } from "@ui/eraEndScreen";
 import { NuggetPopup } from "@ui/nuggetPopup";
+import { WelcomeModal } from "@ui/welcomeModal";
 import { playSound } from "@ui/audioHooks";
 import { computeEraScoreBreakdown } from "@core/scoring";
 import mapData from "@data/map.json";
@@ -194,6 +195,15 @@ const hazardTestPanel = params.has("debughazards")
       }
     })
   : null;
+
+/**
+ * STEP_PROMPT_welcome_dialog.md: a title moment shown on every load, after
+ * the rest of the HUD/UI above is already constructed — so it draws on top
+ * of an already-assembled screen, not a half-built one. No localStorage/
+ * dismissal-memory logic (shows every load, per the doc's own default).
+ */
+const welcomeModal = new WelcomeModal(container);
+welcomeModal.show();
 
 /**
  * STEP_PROMPT_pacing_telegraph_preview.md Section 1: re-wired back
