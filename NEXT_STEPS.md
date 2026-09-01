@@ -882,6 +882,39 @@ sheet with `border-radius: 0`. Screenshots taken at both sizes.
 `tsc --noEmit` clean, 65/71 tests unchanged (no hazard/balance/data-
 model code touched), production build succeeds.
 
+## Follow-up — Welcome dialog (Laterite Earth)
+
+`STEP_PROMPT_welcome_dialog.md`: a title-moment dialog shown on every
+load, before the player touches anything — "Root & Ruin," approved
+copy, a pointer to the "?" help button, "IKUZO!" to dismiss. Every
+citation (EraEndScreen/HelpModal's backdrop-card-`hidden` mechanics,
+BuildPopover's click-outside-to-close listener, `index.html`'s lack of
+any prior font-loading convention) checked against the actual code
+first — all matched exactly, nothing to flag back. Full detail in
+PROGRESS.md.
+
+Status: closed. New `WelcomeModal` (`src/ui/welcomeModal.ts`) reuses
+the EraEndScreen/HelpModal backdrop-card pattern and BuildPopover's
+click-outside-to-close behavior without touching either file; content
+copied verbatim. Deliberately its own rust-red "laterite" palette, not
+the green/cream card language elsewhere — new CSS scoped entirely to
+`.welcome-*` selectors in `hud.css`. One new font ("Fraunces," title
+only) added via a Google Fonts `<link>` in `index.html`'s `<head>`,
+since no existing font-loading convention was in place to match. Shows
+every load, no localStorage/dismissal-memory logic, per the doc's own
+default. Live-verified end to end via real Playwright: fresh load
+shows the dialog centered over the fully-built game (not a blank
+screen behind it); IKUZO, the corner ×, and an outside-the-card
+backdrop click all close it; a click inside the card does not; the
+font check went past "looks serif-ish" — computed `font-family`,
+an actual `fonts.gstatic.com` woff2 fetch, and `document.fonts`
+reporting `"Fraunces 700 loaded"` all confirmed; at 375×667 the corner
+× sits fully inside the viewport per the mobile media query and is
+genuinely clickable there, not just positioned correctly on paper.
+
+`tsc --noEmit` clean, 65/71 tests unchanged (no hazard/balance/data-
+model code touched), production build succeeds.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -932,3 +965,4 @@ model code touched), production build succeeds.
 - 2026-08-27, Knowledge Nugget popup + two HUD corner changes (Parts A-C): all closed. A: `.yacht-goal` (fields, DOM, `setYachtGoal()`, CSS, two stale comments citing it as a precedent) removed entirely, not hidden — the Yacht element itself untouched. B: `.hazard-test-tab`/`.hazard-test-panel` moved bottom-left → bottom-right (one `left`→`right` swap each, no TS change needed), freeing bottom-left for Part C. C: new `nuggets.json` (30 facts, verbatim, `house` deliberately excluded) + new `NuggetPopup` component (the "Discovery Badge") + wiring into `openTilePopover()`'s build callback and `resetBoard()`. Per-element Fisher-Yates pick order with an `avoidFirst` guard on reshuffle so the "never immediately repeats" guarantee holds even across the reshuffle seam, not just within one cycle; discovered-count as a `Set<"id#factIndex">` (not a raw counter) so a repeat can't inflate the "N of 30" progress bar; the 30 stays computed from `nuggets.json`'s own lengths, never hardcoded. Two real bugs found and fixed during wiring, not shipped silently: `.nugget-badge` missing `box-sizing: border-box` (rendered ~30px wider than its `min(280px, 92vw)` intended); and even after that fix, the badge and `.empty-prompt` measurably overlapping at every required mobile breakpoint, fixed by suppressing `.empty-prompt` for exactly as long as the badge shows via a `NuggetPopup` constructor callback the step prompt's own sketch didn't include (added because that sketch couldn't have anticipated a bug only visible once the real component existed). Verified end to end against a real headless Chromium: a genuine build via a real tile click (not the `__buildForTest` bypass) fired the badge correctly with the right fact/tint/progress; the pick-order/discovered-count logic exercised directly and repeatedly via a new `__nuggetPopupForTest` hook (4 consecutive same-element shows: 3 distinct facts, zero adjacent repeats including at the reshuffle seam, 4th reused cleanly, progress only advanced on genuinely new facts); all four required breakpoints re-verified clean after the two-bug fix, zero console errors throughout. 65/71 tests unchanged, `tsc --noEmit` clean, production build succeeds. Five commits (`c6c5ec9`, `a3175e1`, `1ad902d`, `2602f9b`, `fbc1861` — Part C split into data/component+styles/wiring).
 - 2026-08-27, How to Play button: closed. Small round "?" button added inside the existing top-right `.hud-corner` (above "Tiles claimed"), opening the published player manual in a new tab. Every code citation in the step prompt checked against the actual files first — matched exactly, nothing to flag back. Live-verified at desktop and 375×667: renders correctly at both, a real click reliably opens a new tab to the exact manual URL, zero side effects on the game underneath, zero console errors. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. One commit.
 - 2026-08-31, How to Play button, rewritten (in-game dialog): closed. Supersedes the 2026-08-27 entry above — `window.open()` was the wrong call for a game, so it and the hardcoded manual URL were removed entirely. New `HelpModal` combines EraEndScreen's backdrop/card pattern with BuildPopover's click-outside-to-close behavior; content is real embedded DOM markup, no external link anywhere. Live-verified via real Playwright: opens dimmed with no popup/navigation, × closes with no side effects, backdrop-click closes, inside-card click does not, internal scroll confirmed via computed styles, 375×667 renders a genuine full-width sheet with zero border-radius. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
+- 2026-09-01, Welcome dialog (Laterite Earth): closed. New `WelcomeModal` shown on every load, before the player touches anything — reuses EraEndScreen/HelpModal's backdrop-card pattern and BuildPopover's click-outside-to-close behavior, but with its own rust-red laterite palette (not the green/cream card language elsewhere) and one new font (Fraunces, title only) loaded via a Google Fonts `<link>` in `index.html`. Live-verified via real Playwright: dialog appears over the fully-built game, IKUZO/corner ×/outside-backdrop-click all close it, inside-card click does not, font load confirmed via computed style + network fetch + `document.fonts`, 375×667 corner × sits fully inside the viewport and is genuinely clickable there. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.

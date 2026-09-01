@@ -4111,3 +4111,53 @@ full-height sheet (`{width:375, height:669}`, `border-radius: 0px`).
 Screenshots taken at both sizes confirm the visuals match. `tsc
 --noEmit` clean, 65/71 tests unchanged (no hazard/balance/data-model
 code touched), production build succeeds.
+
+## STEP_PROMPT_welcome_dialog.md (Laterite Earth welcome dialog) — DONE
+
+A title-moment dialog shown on every game load, before the player
+touches anything: "Root & Ruin," the approved welcome copy, a pointer
+to the "?" help button, and an "IKUZO!" button that closes it (the
+corner × does too). New `WelcomeModal` (`src/ui/welcomeModal.ts`)
+reuses the same backdrop-and-card mechanism as `EraEndScreen`/
+`HelpModal` (`hidden` toggled on the backdrop only, never the card)
+plus `BuildPopover`/`HelpModal`'s click-outside-to-close listener
+(`e.target === this.backdrop`) — neither of those files was touched,
+only the pattern copied, per the doc's own guardrail. Constructed in
+`main.ts` after the rest of the top-level UI (hud, buildPopover,
+eraEndScreen, nuggetPopup, hazardTestPanel) so it draws over an
+already-assembled screen; `.show()` called immediately after. No
+localStorage/dismissal-memory logic — shows every load, exactly as the
+doc's own default specifies. Content copied verbatim, unedited.
+
+Deliberately its own rust-red "laterite" palette (Goa's real soil
+color) rather than the green/cream HUD card language every other
+dialog uses — new CSS added to `hud.css` only, `HelpModal`/
+`EraEndScreen` untouched. Follows this file's own established
+`[hidden]`-vs-unconditional-`display` fix pattern: `.welcome-backdrop`
+needs `display: flex` to center the card, so an explicit
+`.welcome-backdrop[hidden] { display: none; }` override restores what
+that unconditional rule would otherwise silently defeat. One new font
+("Fraunces," a display serif, title only) added globally via a Google
+Fonts `<link>` in `index.html`'s `<head>` — `index.html` had no prior
+font-loading convention to match (no `@font-face`, no bundler plugin),
+so the doc's own suggested `<link>` approach was used as-is.
+
+Live-verified end to end with a real Playwright script (not code
+review): on fresh load the dialog appears centered over the fully-
+built game screen (HUD and canvas both present and visible behind the
+dimmed backdrop, not a blank/half-loaded one); "IKUZO!" closes it,
+the corner × closes it, clicking the dimmed backdrop outside the card
+closes it, clicking inside the card (the title) does not; the font
+check went past "looks serif-ish" — computed `font-family` on
+`.welcome-title` reads `Fraunces, Georgia, serif`, a real network
+fetch to `fonts.gstatic.com` for the Fraunces woff2 was observed, and
+`document.fonts` reports `"Fraunces 700 loaded"`. At 375×667 the
+corner × sits fully inside the viewport per the `@media (max-width:
+560px)` rule (bounding box `{x:338, width:26}` against a 375px-wide
+viewport, pulled to `top:10px; right:10px` instead of the desktop
+badge position) and remains genuinely clickable there — confirmed by
+actually clicking it and re-checking the `hidden` attribute, not just
+reading the CSS rule. Screenshots taken at both sizes confirm the
+visuals match the approved concept. `tsc --noEmit` clean, 65/71 tests
+unchanged (no hazard/balance/data-model code touched), production
+build succeeds.
