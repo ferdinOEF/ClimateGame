@@ -915,6 +915,48 @@ genuinely clickable there, not just positioned correctly on paper.
 `tsc --noEmit` clean, 65/71 tests unchanged (no hazard/balance/data-
 model code touched), production build succeeds.
 
+## Follow-up — Icon legibility pass (Breakwater / Sand Mining / Khazan)
+
+`STEP_PROMPT_icon_legibility_pass.md` (moved here from an untracked
+`Claude outputs/` folder to match every other step prompt's location):
+a geometry-only refinement of the three weakest results from the
+original icon redesign. Pre-verified code from a separate sandbox was
+applied directly per the doc's own instruction, plus an addendum
+(previously only in the pasted code's comments, now folded into the
+`.md` itself) explaining two color corrections found necessary once
+actually rendered. Full detail in PROGRESS.md.
+
+Status: closed, with one flagged-and-accepted limitation. Breakwater
+(no more continuous `crest` bar, 7 rocks in two staggered rows, full
+3-axis tilt) and Sand Mining (wider tier gaps, dredge arm/scoop scaled
+~1.7x with a lightness-contrast recolor) both confirmed live —
+side-by-side screenshots against Seawall and Dune respectively show
+them tellable apart from silhouette alone, pixel-sampled to confirm
+the color contrast is real, not assumed. Khazan's height fix
+(`frontBund`/`gate` lowered so the interior isn't hidden behind two
+wall-height near-camera shapes) also confirmed live. Khazan's *color*
+fix did not hold up under its own verification claim, though: the
+addendum's cyan water color (`#5fe8e0`) was pixel-sampled on the real
+built tile and comes back as plain green (`RGB(49,85,46)`), not
+water-blue — `defenseKhazanBund`'s tint (`#8C6A3F`) has too little
+blue channel (0.247) for any vertex color to survive the multiply as
+a cool tone. A lightness-contrast fix (the same trick that worked for
+Sand Mining's scoop) was offered and explicitly declined — colors
+left exactly as pasted, flagged as a known limitation rather than
+silently fixed or silently accepted as working.
+
+Live-verified against a real running instance: all eleven roster
+elements built via `__buildForTest` at real terrain-correct map
+coordinates (found by scanning `map.json`, since claiming no longer
+exists as a separate step), camera framed with the existing
+`__focusOnForTest` hook plus real wheel-zoom events — the game's own
+zoom mechanism, not a synthetic debug view. Khazan specifically
+checked at the real 58° camera angle per the doc's own Verify note,
+not a top-down view.
+
+`tsc --noEmit` clean, 65/71 tests unchanged (geometry-only), production
+build succeeds.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -966,3 +1008,4 @@ model code touched), production build succeeds.
 - 2026-08-27, How to Play button: closed. Small round "?" button added inside the existing top-right `.hud-corner` (above "Tiles claimed"), opening the published player manual in a new tab. Every code citation in the step prompt checked against the actual files first — matched exactly, nothing to flag back. Live-verified at desktop and 375×667: renders correctly at both, a real click reliably opens a new tab to the exact manual URL, zero side effects on the game underneath, zero console errors. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. One commit.
 - 2026-08-31, How to Play button, rewritten (in-game dialog): closed. Supersedes the 2026-08-27 entry above — `window.open()` was the wrong call for a game, so it and the hardcoded manual URL were removed entirely. New `HelpModal` combines EraEndScreen's backdrop/card pattern with BuildPopover's click-outside-to-close behavior; content is real embedded DOM markup, no external link anywhere. Live-verified via real Playwright: opens dimmed with no popup/navigation, × closes with no side effects, backdrop-click closes, inside-card click does not, internal scroll confirmed via computed styles, 375×667 renders a genuine full-width sheet with zero border-radius. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
 - 2026-09-01, Welcome dialog (Laterite Earth): closed. New `WelcomeModal` shown on every load, before the player touches anything — reuses EraEndScreen/HelpModal's backdrop-card pattern and BuildPopover's click-outside-to-close behavior, but with its own rust-red laterite palette (not the green/cream card language elsewhere) and one new font (Fraunces, title only) loaded via a Google Fonts `<link>` in `index.html`. Live-verified via real Playwright: dialog appears over the fully-built game, IKUZO/corner ×/outside-backdrop-click all close it, inside-card click does not, font load confirmed via computed style + network fetch + `document.fonts`, 375×667 corner × sits fully inside the viewport and is genuinely clickable there. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
+- 2026-09-03, Icon legibility pass (Breakwater/Sand Mining/Khazan): closed, one limitation flagged and accepted. Pre-verified geometry from a separate sandbox applied directly. Breakwater's continuous crest bar replaced with a 7-rock two-row tumbled pile; Sand Mining's tiers widened and its dredge arm/scoop scaled ~1.7x with a lightness-contrast recolor — both pixel-sampled live to confirm real contrast against Seawall/Dune respectively. Khazan's front-bund/gate height fix confirmed live, but its color fix didn't hold up: the addendum's cyan water (`#5fe8e0`) pixel-samples as plain green (`RGB(49,85,46)`) against the real `defenseKhazanBund` tint, not water-blue — a lightness-contrast alternative was offered and declined, so the colors stand exactly as pasted, flagged as a known limitation rather than silently accepted as working. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.

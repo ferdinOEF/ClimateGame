@@ -4161,3 +4161,81 @@ reading the CSS rule. Screenshots taken at both sizes confirm the
 visuals match the approved concept. `tsc --noEmit` clean, 65/71 tests
 unchanged (no hazard/balance/data-model code touched), production
 build succeeds.
+
+## STEP_PROMPT_icon_legibility_pass.md (Breakwater / Sand Mining / Khazan) — DONE
+
+A follow-up geometry pass on the three weakest results from the
+original icon redesign (`STEP_PROMPT_icons.md`), refining
+`breakwaterGeometry()`, `sandMiningGeometry()`, and `khazanGeometry()`
+in `elementGeometry.ts` only — no other builder, `primitives3d.ts`, or
+`elements.json` field touched. The step prompt (moved here from an
+untracked `Claude outputs/` folder to the repo root, matching every
+other step prompt's location) had already been implemented and
+screenshot-verified against real renders in a separate sandbox, so the
+exact code was applied rather than re-derived from the doc's own
+diagnosis section — which its addendum (appended to the doc as part of
+this pass, since it existed only as narrative baked into the new code's
+comments, not in the `.md` file itself) partially corrects.
+
+**Breakwater:** the single continuous `crest` bar — which collapsed
+its silhouette toward Seawall's own "wall + cap slab" read — is gone.
+Replaced with 7 boulders across two staggered rows (4 front, 3 back
+peeking through the gaps), a fifth rock tone added, and rotation
+extended from Y-only to all three axes so each box reads as tumbled
+rock rather than a placed block. Poly count rises from 4 rocks to 7
+(~75% more parts) — flagged per the doc's own guardrail, not silently
+absorbed.
+
+**Sand Mining:** tier colors pushed apart with a wider inter-tier
+radius gap (steps instead of one smoothly-shaded cone), and the dredge
+arm+scoop scaled up ~1.7x and recolored. The doc's original
+construction-yellow scoop spec didn't survive contact with this
+element's flat instance tint (`defenseSandMining`, `#C68A3D`) — a
+sandbox screenshot showed it landing as just another dark orange, so
+the addendum swapped hue-contrast for lightness-contrast instead
+(near-white scoop, near-black arm mast). Pixel-sampled against the
+live render to confirm, not just eyeballed: scoop `RGB(148,99,39)`
+against the mound's `(114,49,19)` and the arm's `(42,30,18)` — a real,
+visible split.
+
+**Khazan:** `frontBund` (nearest camera) lowered from `0.16` to `0.06`
+and `gate` from `0.22` to `0.16`, so the water/paddy interior and the
+gate are no longer hidden behind two roughly wall-height, opaque
+near-camera shapes — `backBund`/`sideBund` stay full height, a
+deliberate legibility cheat the doc itself names as one. This part
+worked exactly as specified once rendered.
+
+The addendum's *color* fix for the same element did not, and this was
+caught live in this pass, not assumed from the doc: the addendum
+recolors water to `#5fe8e0` (cyan) on the theory that it survives the
+multiply against `defenseKhazanBund`'s tint (`#8C6A3F`) as a
+distinguishable cool tone. Pixel-sampling the actual built tile found
+otherwise — the water patch renders as `RGB(49,85,46)`, a plain
+saturated green, barely different in hue from the paddy rows'
+`(53–78, 53–76, 17–25)` olive tone, and nowhere near blue/cyan. The
+math explains why: this tint's blue channel (0.247, the lowest of its
+three) caps any vertex color's contribution to final on-screen blue at
+roughly that same fraction, regardless of how blue the source color is
+— there's no vertex color that survives this particular multiply as
+"water-blue." Flagged back rather than silently accepted; the fix
+tried (pushing lightness instead of hue, the same trick that worked
+for Sand Mining's scoop) was offered and explicitly declined — the
+colors stand exactly as pasted. The split still reads geometrically
+(a solid block vs. three striped rows, not two of the same texture),
+just not as "water" specifically at close zoom; not revisited further
+per that decision.
+
+Live-verified against a real running instance, not code review: all
+eleven roster elements built via `__buildForTest` on real
+terrain-correct, clustered map coordinates (found by scanning
+`map.json` for adjacent tiles of the right terrain, since claiming was
+removed by `STEP_PROMPT_remove_claiming.md` and `build()` alone is
+now sufficient); camera framed via the existing `__focusOnForTest`
+hook plus real mouse-wheel zoom events, matching this game's actual
+zoom mechanism rather than a synthetic top-down debug view.
+Breakwater-vs-Seawall and Sand-Mining-vs-Dune both confirmed tellable
+apart from silhouette alone in a real side-by-side screenshot; Khazan
+confirmed at the game's real 58° camera angle, not a top-down view, per
+the doc's own Verify note. `tsc --noEmit` clean, 65/71 tests unchanged
+(geometry-only, no hazard/balance/data-model code touched), production
+build succeeds.
