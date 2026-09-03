@@ -51,28 +51,36 @@ function seawallGeometry(): THREE.BufferGeometry {
 }
 
 /**
- * Breakwater (STEP_PROMPT_balance_tuning_findings.md Section 3): a low
- * rubble-mound of irregular rock blocks along the tile's exposed edge —
- * deliberately lower-profile and rougher than Seawall's tall, smooth
- * concrete taperedSlab, reading as a detached rock pile dissipating open-
- * sea wave energy rather than a solid vertical barrier.
+ * Breakwater (STEP_PROMPT_icon_legibility_pass.md item 1): a jagged
+ * two-row rubble mound, deliberately with NO continuous top edge —
+ * earlier version had a `crest` bar spanning all rocks, which at this
+ * game's fairly steep top-down camera made it collapse toward Seawall's
+ * own "wall + cap slab" silhouette. Front row carries the main
+ * silhouette; a smaller staggered back row peeks up through the front
+ * row's gaps so the skyline zigzags instead of reading as a flat course.
+ * Each rock gets small non-zero rotation on all three axes (not just Y,
+ * as before) so an axis-aligned box reads as a tumbled boulder rather
+ * than a placed block.
  */
 function breakwaterGeometry(): THREE.BufferGeometry {
-  const rockColors = ["#7d7568", "#8f8676", "#6d6558", "#847a68"];
-  const rocks: [number, number, number, number][] = [
-    [-0.32, 0.02, 0.22, 0.24],
-    [-0.1, -0.03, 0.26, 0.26],
-    [0.14, 0.03, 0.24, 0.22],
-    [0.34, -0.02, 0.2, 0.24]
+  const rockColors = ["#7d7568", "#8f8676", "#6d6558", "#847a68", "#a89878"];
+  // x, z, w, d, h, colorIndex, [rx, ry, rz]
+  const rocks: { x: number; z: number; w: number; d: number; h: number; c: number; r: [number, number, number] }[] = [
+    { x: -0.34, z: 0.12, w: 0.24, d: 0.24, h: 0.1, c: 0, r: [0.08, -0.25, -0.06] },
+    { x: -0.1, z: 0.16, w: 0.26, d: 0.26, h: 0.2, c: 1, r: [-0.06, 0.15, 0.1] },
+    { x: 0.14, z: 0.1, w: 0.22, d: 0.24, h: 0.14, c: 2, r: [0.1, -0.12, -0.08] },
+    { x: 0.36, z: 0.14, w: 0.2, d: 0.22, h: 0.22, c: 3, r: [-0.09, 0.22, 0.07] },
+    { x: -0.22, z: -0.12, w: 0.2, d: 0.2, h: 0.16, c: 4, r: [0.07, -0.18, 0.09] },
+    { x: 0.02, z: -0.12, w: 0.22, d: 0.2, h: 0.24, c: 0, r: [-0.1, 0.1, -0.07] },
+    { x: 0.26, z: -0.12, w: 0.18, d: 0.2, h: 0.12, c: 2, r: [0.06, -0.2, 0.08] }
   ];
-  const parts = rocks.map(([x, z, w, d], i) => {
-    const rock = box(w, 0.15 + (i % 2 === 0 ? 0.03 : 0), d, rockColors[i % rockColors.length], 0);
-    rotate(rock, 0, (i - 1.5) * 0.12, 0);
+  const parts = rocks.map(({ x, z, w, d, h, c, r }) => {
+    const rock = box(w, h, d, rockColors[c], 0);
+    rotate(rock, r[0], r[1], r[2]);
     move(rock, x, 0, z);
     return rock;
   });
-  const crest = box(0.9, 0.05, 0.14, "#a49a86", 0.17);
-  return mergeGeometries([...parts, crest]);
+  return mergeGeometries(parts);
 }
 
 /** A single Pandanus plant: a tapered trunk topped by an 8-blade spiky rosette, braced by two prop-root struts. */
@@ -230,12 +238,26 @@ function mangroveGeometry(): THREE.BufferGeometry {
   return mergeGeometries([center, left, right]);
 }
 
-/** Khazan: a low earthen bund enclosing a split interior — water on one side, paddy rows on the other — with a slatted sluice gate at the front-center. */
+/**
+ * Khazan (STEP_PROMPT_icon_legibility_pass.md item 3): a low earthen bund
+ * enclosing a split interior — water on one side, paddy rows on the
+ * other — with a slatted sluice gate at the front-center. The bund's
+ * genuinely distinctive shape (a full ring, unlike anything else in the
+ * roster) was getting hidden by its own front wall: at this game's fixed
+ * camera angle, a same-height front bund plus an even-taller gate sitting
+ * just outside it were both opaque and roughly wall-height, blocking the
+ * one sightline into the water/paddy split that's the whole point.
+ * `frontBund` (nearest camera) and `gate` are both lowered here —
+ * `backBund`/`sideBund` stay full height, so the ring still reads as a
+ * raised border from every side except the one the camera would
+ * otherwise see straight through as a wall. This is a deliberate
+ * legibility cheat (a real bund is uniform height) — flagged, not hidden.
+ */
 function khazanGeometry(): THREE.BufferGeometry {
   const bundColor = "#a9793f";
   const parts: THREE.BufferGeometry[] = [];
 
-  const frontBund = taperedSlab(0.9, 0.7, 0.16, 0.1, bundColor, 0);
+  const frontBund = taperedSlab(0.9, 0.7, 0.06, 0.1, bundColor, 0);
   move(frontBund, 0, 0, 0.4);
   const backBund = taperedSlab(0.9, 0.7, 0.16, 0.1, bundColor, 0);
   move(backBund, 0, 0, -0.4);
@@ -247,22 +269,38 @@ function khazanGeometry(): THREE.BufferGeometry {
   };
   parts.push(frontBund, backBund, sideBund(-0.4), sideBund(0.4));
 
-  const water = box(0.62, 0.03, 0.7, "#4a90a4", 0);
+  // Small lip above the tile surface — reads as contained water/planted
+  // bed rather than flush paint on the ground, and gives both a sliver of
+  // visible side-face now that the front bund no longer hides them.
+  //
+  // Verified-in-render correction to the original STEP_PROMPT: the
+  // water/paddy split is the one thing that's supposed to make Khazan
+  // identifiable, and it was invisible in a fresh screenshot even after
+  // the front-bund fix above — `ElementMeshManager` multiplies every
+  // vertex color here against this element's flat `defenseKhazanBund`
+  // instance tint (`#8C6A3F`, a warm brown with very little blue), which
+  // crushed the water's blue-teal (`#4a90a4`) down to a dark, near-
+  // indistinguishable green — almost the same result as the paddy rows'
+  // green. Literal blue isn't achievable under this tint; what still
+  // works is a genuine hue split either side of it — water pushed
+  // cool/cyan, paddy pushed warm/yellow-green — confirmed against a
+  // fresh render, not assumed. See the same finding on Sand Mining below.
+  const water = box(0.62, 0.03, 0.7, "#5fe8e0", 0.015);
   move(water, -0.17, 0, 0);
   parts.push(water);
 
   for (let i = 0; i < 3; i++) {
-    const tone = i % 2 === 0 ? "#3f6b3a" : "#6fa24a";
-    const row = box(0.28, 0.035, 0.14, tone, 0);
+    const tone = i % 2 === 0 ? "#8fc25a" : "#a0d060";
+    const row = box(0.28, 0.035, 0.14, tone, 0.015);
     move(row, 0.24, 0, -0.2 + i * 0.2);
     parts.push(row);
   }
 
-  const gate = box(0.16, 0.22, 0.06, "#8a8f91", 0);
+  const gate = box(0.16, 0.16, 0.06, "#8a8f91", 0);
   move(gate, 0, 0, 0.42);
   parts.push(gate);
   for (let i = 0; i < 3; i++) {
-    const slat = box(0.02, 0.18, 0.01, "#6f7476", 0.02);
+    const slat = box(0.02, 0.13, 0.01, "#6f7476", 0.02);
     move(slat, -0.05 + i * 0.05, 0, 0.455);
     parts.push(slat);
   }
@@ -286,24 +324,51 @@ function smallDamGeometry(): THREE.BufferGeometry {
   return mergeGeometries([wall, ridgeCap, spillway, buttress(-1), buttress(1)]);
 }
 
-/** Sand Mining: an irregular stepped/terraced excavation mound plus a small dredge arm-and-scoop beside it. */
+/**
+ * Sand Mining (STEP_PROMPT_icon_legibility_pass.md item 2): a stepped
+ * terraced mound plus a dredge arm-and-scoop. Two changes from the
+ * earlier version: tier colors are pushed apart (not just a lightness
+ * ramp on one hue, which read as one smoothly-lit cone rather than three
+ * deliberate steps) with a wider radius gap between tiers so each step
+ * leaves a visible flat shelf, and the dredge arm/scoop — the one shape
+ * that signals "active excavation" over "natural dune" — is scaled up
+ * ~1.7x and repainted for contrast.
+ *
+ * Verified-in-render correction to the original STEP_PROMPT: a
+ * "construction-yellow" scoop was the first thing tried, on the
+ * assumption the vertex colors below render as-authored. They don't —
+ * `ElementMeshManager` multiplies every vertex color against this
+ * element's flat `defenseSandMining` instance tint (`#C68A3D`, see
+ * `palette.ts`), so a low-blue orange-gold tint gets multiplied through
+ * every part; a screenshot showed the intended yellow scoop landing as
+ * just another dark orange, barely different from the mound. Hue
+ * contrast is a lost cause under this tint — what still works is
+ * *lightness* contrast: the scoop below is near-white so it multiplies
+ * up to the brightest thing on the model, and the arm mast is near-black
+ * so it reads as a shadowed dark strut — confirmed against a fresh
+ * render, not assumed.
+ */
 function sandMiningGeometry(): THREE.BufferGeometry {
-  const bottom = coneFrustum(0.34, 0.42, 0.14, 7, "#c9832e", 0);
-  const middle = coneFrustum(0.22, 0.3, 0.12, 7, "#d5972e", 0.14);
+  const bottom = coneFrustum(0.3, 0.42, 0.14, 7, "#b06f2a", 0);
+  const middle = coneFrustum(0.2, 0.26, 0.12, 7, "#d5972e", 0.14);
   move(middle, 0.03, 0, -0.02);
-  const top = coneFrustum(0.09, 0.2, 0.1, 6, "#e0a857", 0.26);
+  const top = coneFrustum(0.08, 0.17, 0.1, 6, "#eccb8f", 0.26);
   move(top, -0.02, 0, 0.02);
 
-  const grooveRing = (y: number, r: number) => coneFrustum(r + 0.01, r + 0.01, 0.015, 7, "#a9661d", y);
-  const groove1 = grooveRing(0.135, 0.35);
-  const groove2 = grooveRing(0.255, 0.24);
+  // Shadow bands right at each tier transition — thicker and darker than
+  // before so the step reads as a real ledge, not a hairline.
+  const grooveRing = (y: number, r: number, color: string) => coneFrustum(r, r, 0.03, 7, color, y);
+  const groove1 = grooveRing(0.11, 0.31, "#a9661d");
+  const groove2 = grooveRing(0.23, 0.205, "#8f5a1a");
 
-  const armBase = coneFrustum(0.035, 0.05, 0.3, 5, "#8a8f91", 0);
-  rotate(armBase, 0, 0, -0.7);
-  move(armBase, 0.36, 0.02, 0);
-  const scoop = taperedSlab(0.16, 0.06, 0.1, 0.12, "#8a8f91", 0);
-  rotate(scoop, 0, 0, -0.5);
-  move(scoop, 0.5, 0.24, 0);
+  let armBase = coneFrustum(0.035, 0.05, 0.3, 5, "#3a352e", 0);
+  armBase = scale(armBase, 1.7);
+  rotate(armBase, 0, 0, -0.75);
+  move(armBase, 0.44, 0.03, 0);
+  let scoop = taperedSlab(0.16, 0.06, 0.1, 0.12, "#fdf6e8", 0);
+  scoop = scale(scoop, 1.7);
+  rotate(scoop, 0, 0, -0.55);
+  move(scoop, 0.66, 0.4, 0);
 
   return mergeGeometries([bottom, middle, top, groove1, groove2, armBase, scoop]);
 }
