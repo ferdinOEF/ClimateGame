@@ -56,14 +56,13 @@ const HELP_CONTENT = `
 
     <section class="help-section">
       <h3>Objective</h3>
-      <p>Build a coastal town that survives. Every tile you claim either strengthens your defenses or grows your economy &mdash; usually not both. Balance the two, and hold the line when a Cyclone or a Flood arrives.</p>
+      <p>Build a coastal town that survives. Every tile you build on either strengthens your defenses or grows your economy &mdash; usually not both. Balance the two, and hold the line when a Cyclone or a Flood arrives.</p>
     </section>
 
     <section class="help-section">
       <h3>The Loop</h3>
       <ol class="help-steps">
-        <li><strong>Claim land.</strong> Click any unclaimed tile. Costs Coin, reveals the terrain.</li>
-        <li><strong>Build.</strong> Click a claimed tile to choose one element suited to that terrain.</li>
+        <li><strong>Build.</strong> Click any tile to choose one element suited to that terrain.</li>
         <li><strong>Weather the hazard.</strong> Cyclones and Floods strike on their own schedule. What you've built absorbs the hit, or doesn't.</li>
         <li><strong>Recover and grow.</strong> Check your meters, repair what broke, keep expanding.</li>
       </ol>
@@ -111,7 +110,7 @@ const HELP_CONTENT = `
 
     <section class="help-section">
       <h3>Reading Your Meters</h3>
-      <div class="help-meter"><span>Coin</span><span>Spend it to claim and build. Earned back through income elements.</span></div>
+      <div class="help-meter"><span>Coin</span><span>Spend it to build. Earned back through income elements.</span></div>
       <div class="help-meter"><span>Resilience</span><span>Your settlement's overall defense. Runs out, the era ends.</span></div>
       <div class="help-meter"><span>Food</span><span>Produced by Mangrove and Khazan, consumed by every House.</span></div>
       <div class="help-meter"><span>Population</span><span>Grows with Houses. Falls if people go hungry or unprotected.</span></div>

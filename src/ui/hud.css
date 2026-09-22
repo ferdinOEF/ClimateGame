@@ -165,7 +165,7 @@ html, body {
   font-weight: 600;
 }
 
-/* STEP_PROMPT_how_to_play_button.md: a small round "?" opening the in-game How to Play dialog (HelpModal) — sits above "Tiles claimed" in the same top-right .hud-corner element, not a second corner widget. `pointer-events: auto` opts back out of `.hud-corner`'s base `none`, same pattern `.preview-toggle`/the instrument cluster's collapse toggle already use. */
+/* STEP_PROMPT_how_to_play_button.md: a small round "?" opening the in-game How to Play dialog (HelpModal) — sits above "Tiles built" in the same top-right .hud-corner element, not a second corner widget. `pointer-events: auto` opts back out of `.hud-corner`'s base `none`, same pattern `.preview-toggle`/the instrument cluster's collapse toggle already use. */
 .help-button {
   pointer-events: auto;
   width: 28px;

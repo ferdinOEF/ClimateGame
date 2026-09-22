@@ -258,7 +258,7 @@ function hazardIncomingInfo(): { kind: "Storm Surge" | "Flood"; turnsUntil: numb
 }
 
 function refreshHud(): void {
-  hud.setTileCount(state.claimed.size);
+  hud.setBuiltCount(state.elements.size);
   hud.setCoin(state.coin, state.income);
   hud.setTurnEra(state.turn, state.erasCompleted + 1); // 1-based ("Era 1" from turn one)
   hud.setMeters({

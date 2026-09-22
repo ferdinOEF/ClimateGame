@@ -57,7 +57,7 @@ export class Hud {
     tileCounter.className = "hud-corner top-right";
     tileCounter.innerHTML = `
       <button type="button" class="help-button" aria-label="How to play">?</button>
-      <div>Tiles claimed</div>
+      <div>Tiles built</div>
       <div class="tile-count-value">0</div>
     `;
     tileCounter.querySelector(".help-button")!.addEventListener("click", () => {
@@ -199,7 +199,18 @@ export class Hud {
     }, durationMs);
   }
 
-  setTileCount(n: number): void {
+  /**
+   * STEP_PROMPT_liquid_glass_hud.md item 1.2: was `setTileCount`, fed by
+   * `state.claimed.size` — dead ever since `STEP_PROMPT_remove_claiming.md`
+   * made `claimed` always exactly equal to the whole map (every tile is
+   * claimable from turn one, so nothing ever grows that set again), which
+   * is why this corner stat visibly never moved. Repurposed to the one
+   * thing this corner can show that's both live and meaningful: how many
+   * tiles have something built on them — the exact complement of the
+   * `.empty-prompt` bottom-center counter (`placed.size - elements.size`),
+   * so the two together always sum to the whole map.
+   */
+  setBuiltCount(n: number): void {
     this.tileCountEl.textContent = String(n);
   }
 
