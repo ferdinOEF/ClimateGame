@@ -4239,3 +4239,125 @@ confirmed at the game's real 58° camera angle, not a top-down view, per
 the doc's own Verify note. `tsc --noEmit` clean, 65/71 tests unchanged
 (geometry-only, no hazard/balance/data-model code touched), production
 build succeeds.
+
+## STEP_PROMPT_creature_reactions.md (Element Tap Reactions & Khazan's Living Paddy Cycle) — DONE
+
+Ports "Khazan Feel" — a standalone CSS/SVG UX study validating a tap-
+reaction language (grow → hold → exit, one signature reaction per
+element, then quiet again) — into the real Three.js engine. The doc
+itself was missing from the repo at the start of this pass (flagged
+back; the user re-supplied its content and it was saved to the repo
+root, matching every other step prompt's location). Two more doc-vs-
+code mismatches were caught before writing any code, not silently
+worked around:
+
+- **The doc's own "9-element real roster, Breakwater doesn't exist —
+  skip it" premise was stale.** `elements.json` actually has 11
+  elements; Breakwater (`STEP_PROMPT_icon_legibility_pass.md`, the
+  immediately-prior pass) and Yacht both exist and the doc's list
+  covers neither. Flagged back — user chose to give Breakwater the
+  cormorant reaction its own "don't invent a Breakwater element" text
+  implied the artifact already had, and to design Yacht a fresh, small,
+  minimal reaction (two waterline ripples) since it wasn't in the
+  artifact's 10-item catalog at all. Final roster: all 11 elements get
+  a reaction, not 9.
+- **Section 4's "Season" loop (Calm → Forecast → Hazard → Aftermath)
+  was never actually built.** `GAUNTLET_PROMPT.md` itself marks that
+  loop a v3.0 design proposal, not shipped work — the real game runs
+  on a turn counter plus one independent telegraph/trigger schedule per
+  hazard, and Flood is currently disabled (`FLOOD_HAZARD_ENABLED =
+  false`). Flagged back — user chose to treat one **Cyclone interval**
+  (the only hazard actually cycling right now) as the real "Season"
+  substitute: telegraph start → paddy tall, `triggerCyclone()` firing →
+  paddy gold, the aftermath banner → farmer walks if that Khazan's
+  coord shows no damage in the real `HazardResult.tileDamage`, then
+  stubble → shoots on a short delay chain (no further real event exists
+  to hang those last two transitions on). Documented in full in
+  `khazanPaddyManager.ts`'s own comment.
+
+**Shared infrastructure**, built before any per-element work
+(`reactionAnimator.ts`, `creatureGeometry.ts`): a `ReactionAnimator`
+mirroring `SettleAnimator`'s tick-driven pattern but with an explicit
+grow(25%)→hold(35%)→exit(40%) plateau, capped at 9 concurrent
+reactions (oldest force-finished on overflow); a `Cycle<T>` helper for
+deterministic (not `Math.random()`) variety — Mangrove's bird combos
+and Khazan's three creatures both step through a fixed array rather
+than rolling fresh each tap, exactly the "visibly clusters/repeats"
+problem the doc's own `BIRD_CYCLE` precedent was designed to avoid;
+~16 new low-poly flat-shaded creature/prop geometries (kingfisher,
+egret, Brahminy kite, generic shorebird, pigeon, cormorant, dragonfly,
+prawn, mudskipper, garden lizard, ghost crab, leaping fish, cat, beach
+ball, palm frond, farmer figure), all built from the existing
+`primitives3d.ts` vocabulary. One real bug caught and fixed while
+building these: mirroring a part via `geometry.scale(-1,1,1)` (used for
+symmetric wings/claws/ears) silently inverts triangle winding, which
+this codebase's `FrontSide`-culled flat-shaded materials render as
+invisible — no prior geometry in this repo needed a mirrored part, so
+there was no existing precedent to catch this. Fixed with a proper
+`mirrorX()` helper that re-winds each de-indexed triangle after the
+flip.
+
+**Tint-multiply gotcha (Section 1's re-check):** confirmed by
+construction, not assumed — every reaction/prop mesh is its own
+standalone `Mesh` with its own material, never added to
+`ElementMeshManager`'s per-type `InstancedMesh` pool, so none of them
+ever receive that manager's per-instance palette tint multiply (the
+`STEP_PROMPT_icon_legibility_pass.md` addendum's finding). Verified via
+screenshot per the doc's Verify item regardless.
+
+**Two real integration bugs found during live verification, not
+assumed away:**
+
+1. The occupant info-card popover (`buildPopover.showInfo`) anchors at
+   a fixed `worldTop + 0.3` — tuned for hovering just above an EMPTY
+   tile for the build-menu case, reused unchanged for the info-card
+   case too. Nearly every reaction's spawn height (a Seawall pigeon
+   perched on the cap course, birds swooping near a canopy) landed at
+   or above that same height, so the 2D DOM card rendered directly in
+   front of the reaction, hiding it. Root-caused via the real
+   `worldToScreen()` (exposed as a new `__worldToScreenForTest` hook)
+   rather than guessed at from screenshots. Fixed by giving the
+   already-built-tile info-card path its own taller anchor
+   (`worldTop + 0.75`) — the empty-tile build-menu anchor is untouched.
+2. Mangrove's bird reaction spawned inside the solid volume of its own
+   canopy geometry — `mangroveClump()`'s center canopy dome actually
+   reaches local Y ≈ 0.76 (baseY 0.28 + 2×radiusY 0.24), well above
+   where the bird's old y+0.45 spawn point sat, so it rendered fully
+   occluded by the tree's own opaque geometry. Caught by a systematic
+   check (pixel-sampling every element's exact computed screen position
+   against its background — Mangrove was the one outlier with almost
+   no color deviation, every other element showed a strong one) rather
+   than trusting a screenshot glance. Fixed by moving the bird to the
+   side of the canopy's footprint instead of trying to float above it
+   (which would only re-collide with the popover-anchor fix above,
+   since the canopy top and the new anchor ceiling are coincidentally
+   almost the same height).
+
+**Khazan's paddy-row half moved out of `elementGeometry.ts`'s static,
+merged `khazanGeometry()`** into a new `KhazanPaddyManager` — a
+single-merged-geometry-per-type `InstancedMesh` can't toggle part of
+itself per-tile, which four independently-swappable growth stages
+need. Every other part of Khazan (bund, water, gate, slats) is
+untouched. Four shared stage geometries (shoots/full/gold/stubble)
+built once; every built Khazan tile gets its own small group
+referencing them, toggling visibility — confirmed all Khazan tiles on
+the map agree on the current stage, by construction (one shared stage
+index, not per-tile state).
+
+Live-verified end to end via real Playwright, not code review: all 11
+elements' reactions triggered and screenshotted; systematically pixel-
+sampled every reaction's real computed screen position against
+background to catch the Mangrove occlusion bug objectively rather than
+by eye; Mangrove/Khazan tapped 5 times each, confirmed a genuine
+deterministic cycle (not repeats, not clustering) via a new
+`__reactionsForTest.lastCombo` hook; Khazan's paddy cycle driven
+through a full stage sequence via `__khazanPaddyForTest`'s real
+transition methods (`onTelegraphStart`/`onHazardTrigger`/`onAftermath`)
+and confirmed against precise `performance.now()`-timestamped polling
+(0 → 1 tall → 2 gold → farmer walks mid-cycle → 3 stubble → 0 shoots,
+matching the doc's intended sequence exactly); a damaged-tile
+`onAftermath` call confirmed it correctly suppresses the farmer;
+per-tile visible-stage-mesh count confirmed exactly one stage visible
+at a time, never zero or two. Zero console errors across the entire
+run. `tsc --noEmit` clean, 65/71 tests unchanged, no diff anywhere in
+`elements.json` or `/src/core`, production build succeeds.

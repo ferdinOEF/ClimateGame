@@ -957,6 +957,44 @@ not a top-down view.
 `tsc --noEmit` clean, 65/71 tests unchanged (geometry-only), production
 build succeeds.
 
+## Follow-up — Element tap reactions & Khazan's living paddy cycle
+
+`STEP_PROMPT_creature_reactions.md` (missing from the repo at first —
+flagged back, user re-supplied it): ports the "Khazan Feel" CSS/SVG UX
+study's tap-reaction language into the real engine. Two doc premises
+were stale and flagged before writing code: the "9-element roster,
+skip Breakwater" framing (Breakwater and Yacht both exist now — user
+chose to give Breakwater the cormorant reaction and design Yacht a
+fresh minimal one) and Section 4's "Season" loop (never actually
+built — user chose to treat one real Cyclone interval as the
+substitute clock). Full detail in PROGRESS.md.
+
+Status: closed. Shared `ReactionAnimator` (grow→hold→exit plateau,
+capped concurrency) and ~16 new low-poly creature/prop geometries,
+all 11 roster elements wired with their own reaction, deterministic
+(not random) cycling for Mangrove/Khazan confirmed via a real 5-tap
+sequence. Khazan's paddy-row half moved out of `elementGeometry.ts`'s
+static geometry into a new `KhazanPaddyManager` (four swappable
+growth-stage groups, synced across every Khazan tile) since a single
+merged per-type `InstancedMesh` can't toggle part of itself per-tile.
+
+Two real integration bugs caught live, not assumed away: the built-
+tile info-card popover anchored at the same height most reactions
+spawned at, hiding them behind the card — fixed with a taller anchor
+for that one path only; and Mangrove's bird spawned inside its own
+canopy's actual (taller-than-estimated) solid geometry, fully
+occluded — caught by systematically pixel-sampling every element's
+real computed screen position against background rather than eyeballing
+screenshots, and only Mangrove came back with near-zero color
+deviation. Fixed by moving the bird beside the canopy instead of
+above it. A separate winding-order bug (mirroring parts via negative
+scale silently backface-culls under this codebase's `FrontSide`
+materials) was caught and fixed while building the creature geometry,
+before it ever reached a screenshot.
+
+`tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`
+or `/src/core`, production build succeeds.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -1009,3 +1047,4 @@ build succeeds.
 - 2026-08-31, How to Play button, rewritten (in-game dialog): closed. Supersedes the 2026-08-27 entry above — `window.open()` was the wrong call for a game, so it and the hardcoded manual URL were removed entirely. New `HelpModal` combines EraEndScreen's backdrop/card pattern with BuildPopover's click-outside-to-close behavior; content is real embedded DOM markup, no external link anywhere. Live-verified via real Playwright: opens dimmed with no popup/navigation, × closes with no side effects, backdrop-click closes, inside-card click does not, internal scroll confirmed via computed styles, 375×667 renders a genuine full-width sheet with zero border-radius. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
 - 2026-09-01, Welcome dialog (Laterite Earth): closed. New `WelcomeModal` shown on every load, before the player touches anything — reuses EraEndScreen/HelpModal's backdrop-card pattern and BuildPopover's click-outside-to-close behavior, but with its own rust-red laterite palette (not the green/cream card language elsewhere) and one new font (Fraunces, title only) loaded via a Google Fonts `<link>` in `index.html`. Live-verified via real Playwright: dialog appears over the fully-built game, IKUZO/corner ×/outside-backdrop-click all close it, inside-card click does not, font load confirmed via computed style + network fetch + `document.fonts`, 375×667 corner × sits fully inside the viewport and is genuinely clickable there. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
 - 2026-09-03, Icon legibility pass (Breakwater/Sand Mining/Khazan): closed, one limitation flagged and accepted. Pre-verified geometry from a separate sandbox applied directly. Breakwater's continuous crest bar replaced with a 7-rock two-row tumbled pile; Sand Mining's tiers widened and its dredge arm/scoop scaled ~1.7x with a lightness-contrast recolor — both pixel-sampled live to confirm real contrast against Seawall/Dune respectively. Khazan's front-bund/gate height fix confirmed live, but its color fix didn't hold up: the addendum's cyan water (`#5fe8e0`) pixel-samples as plain green (`RGB(49,85,46)`) against the real `defenseKhazanBund` tint, not water-blue — a lightness-contrast alternative was offered and declined, so the colors stand exactly as pasted, flagged as a known limitation rather than silently accepted as working. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
+- 2026-09-22, Element tap reactions & Khazan's living paddy cycle: closed. Ported the "Khazan Feel" CSS/SVG UX study into the real engine — all 11 roster elements (doc said 9, skip Breakwater; Breakwater and Yacht both turned out to be real, flagged back, both given reactions) get a grow→hold→exit tap reaction via a new shared `ReactionAnimator` and ~16 new low-poly creatures; Khazan additionally cycles a four-stage ambient paddy (shoots/tall/gold/stubble) driven off the real Cyclone telegraph/trigger/aftermath cycle, since `GAUNTLET_PROMPT.md`'s "Season" loop this doc assumed was never actually built (flagged back, user approved the Cyclone-interval substitute). Two real bugs caught live: the built-tile info popover was hiding most reactions behind its own card (fixed with a taller anchor for that path only), and Mangrove's bird was spawning inside its own canopy's solid geometry (fixed by repositioning beside it) — caught via systematic pixel-sampling of every element's real screen position, not by eyeballing screenshots. `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`/`/src/core`, production build succeeds.
