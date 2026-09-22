@@ -1045,6 +1045,27 @@ succeeds. Pushed straight to `master` per the user's instruction.
 
 Remaining: 1.4 (Mangrove legibility pass), 1.5, then 2.1-2.5.
 
+## Follow-up — Liquid-glass HUD pass: items 1.4 + 1.5
+
+`STEP_PROMPT_liquid_glass_hud.md` item 1.4: Mangrove's canopy
+highlight color was too close in hue to its base to survive the real
+`defenseMangrove` tint multiply (checked, not guessed — same lesson as
+the icon-legibility pass) — swapped for a genuinely warmer
+yellow-green, added a second highlight lobe to break up the
+single-sphere silhouette, thickened the stilt roots. Item 1.5: `IKUZO!`
+→ `BEGIN`; the Carbon HUD stat removed — confirmed dead (zero elements
+define a `carbon` effect, so it always read 0), not part of
+`GAUNTLET_PROMPT.md`'s five-meter schema; the underlying generic
+`GameState.carbon` accumulator stays, only the always-zero display
+goes.
+
+Status: closed. Full reasoning and live-verification detail in
+PROGRESS.md. `tsc --noEmit` clean, 65/71 tests unchanged, production
+build succeeds. Pushed straight to `master` per the user's instruction.
+
+Section 1 is now fully closed. Section 2 (the liquid-glass radial
+build menu + HUD redesign, items 2.1-2.5) is next.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -1100,3 +1121,4 @@ Remaining: 1.4 (Mangrove legibility pass), 1.5, then 2.1-2.5.
 - 2026-09-22, Element tap reactions & Khazan's living paddy cycle: closed. Ported the "Khazan Feel" CSS/SVG UX study into the real engine — all 11 roster elements (doc said 9, skip Breakwater; Breakwater and Yacht both turned out to be real, flagged back, both given reactions) get a grow→hold→exit tap reaction via a new shared `ReactionAnimator` and ~16 new low-poly creatures; Khazan additionally cycles a four-stage ambient paddy (shoots/tall/gold/stubble) driven off the real Cyclone telegraph/trigger/aftermath cycle, since `GAUNTLET_PROMPT.md`'s "Season" loop this doc assumed was never actually built (flagged back, user approved the Cyclone-interval substitute). Two real bugs caught live: the built-tile info popover was hiding most reactions behind its own card (fixed with a taller anchor for that path only), and Mangrove's bird was spawning inside its own canopy's solid geometry (fixed by repositioning beside it) — caught via systematic pixel-sampling of every element's real screen position, not by eyeballing screenshots. `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`/`/src/core`, production build succeeds.
 - 2026-09-22, Liquid-glass HUD pass, Section 0 + item 1.2: closed. Section 0's zoom/Mangrove discrepancy checked live against the deployed build with Playwright — neither a regression nor a stale deploy: the welcome modal (a later, unrelated pass) legitimately blocks scroll while open, confirmed via byte-identical `__cameraForTest.position` before/after scrolling with it up; Mangrove's redesign is deployed and matches its own spec, it just doesn't read well at gameplay zoom (a legibility follow-up, not a missing ship). Item 1.2: `state.claimed` has been a constant equal to the whole map since claiming was removed as a step, so "Tiles claimed" was correctly displaying a dead value — repurposed to `state.elements.size` ("Tiles built"), plus a stale "Claim land" Help step removed. First pushed to a feature branch per the doc's own preview-first protocol; user then explicitly asked to skip that for this item and merge straight to production — done (`de63942`), live at `climate-game-psi.vercel.app/?debughazards`.
 - 2026-09-22, Liquid-glass HUD pass, item 1.3: closed. Tried to reproduce "tap on a distant tile does nothing" with real raycast clicks on five far-corner tiles — every one worked; every terrain type already has a buildable element, so the underlying silent-no-op branch can't currently fire either, same "stale mental model" shape as Section 0. Built the requested affordance anyway (the doc explicitly anticipated this outcome): new `BuildPopover.showRejection()`, a small non-modal grow→hold→fade toast wired to the one real silent-return site in `openTilePopover()`, verified via a new `__buildPopoverForTest` hook. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. Pushed straight to `master` per the user's instruction.
+- 2026-09-22, Liquid-glass HUD pass, items 1.4 + 1.5: closed, Section 1 fully done. Mangrove's canopy highlight color was too hue-close to its base to survive the real `defenseMangrove` tint multiply (checked, not guessed) — swapped for a genuinely warmer yellow-green, added a second highlight lobe, thickened the stilt roots; verified live via a cropped/upscaled screenshot, a real improvement over the "crude blobby pinecone" the live playtest described. `IKUZO!` → `BEGIN`; Carbon HUD stat removed (confirmed dead — zero elements define a `carbon` effect, so it always read 0; the underlying generic accumulator stays). `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. Pushed straight to `master`.

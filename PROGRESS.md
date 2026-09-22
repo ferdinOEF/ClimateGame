@@ -4478,3 +4478,52 @@ breaking or stacking. `tsc --noEmit` clean, 65/71 tests unchanged,
 production build succeeds. Per the user's explicit instruction, pushed
 straight to `master` (skipping the feature-branch/preview step for
 this item too).
+
+## STEP_PROMPT_liquid_glass_hud.md items 1.4 + 1.5 — DONE
+
+**Item 1.4 (Mangrove legibility).** Root-caused against the real
+`defenseMangrove` instance tint (`#4FAE6E`), not guessed: the old
+canopy highlight (`#3c9c8e`) is close enough in hue to the base
+(`#1f6e66`) that post-tint they land only ~25 RGB units apart
+(`#1f6e66`→≈(10,75,44), `#3c9c8e`→≈(19,106,61)) — real but reads as
+ordinary facet shading, not a deliberate two-tone canopy. Swapped the
+highlight for a genuinely warmer yellow-green (`#6fc95a`→≈(34,137,39),
+60-90 units apart on every channel), added a second smaller highlight
+bump off-axis from the first so the silhouette shows distinct lobes
+instead of one smooth sphere, and thickened the four stilt roots
+(0.02-0.045 radius → 0.035-0.075) so the one visual cue no other
+roster element has — aerial prop roots — actually registers at
+gameplay scale. Same "push lightness/hue harder, hue-matching alone
+doesn't survive this tint" fix already validated on Sand Mining's
+scoop and Khazan's water in the icon-legibility pass. The 3-clump
+fused-stand construction itself (`STEP_PROMPT_map_reshape_veg_icons.md`)
+is untouched — this is a color/thickness pass on top of it, not a
+redesign.
+
+Live-verified: built, focused, zoomed to max, screenshotted, then
+cropped/upscaled 4x for close inspection — the two-tone canopy and
+the clustered-lobe silhouette are both now clearly visible, a real
+improvement over the flat, nearly-uniform blob the live playtest
+described as "a small, crude, blobby pinecone-on-a-stick." Root
+visibility is better but still modest from the game's actual 58°
+camera angle — inherent to that steep an elevation foreshortening
+anything at the very base of a tile, not something thickness alone
+fully solves; noted rather than claimed as fully fixed.
+
+**Item 1.5.** `IKUZO!` → `BEGIN` (`welcomeModal.ts`, matching the
+existing button's own bold/letter-spaced all-caps style, no CSS
+change needed). Carbon HUD stat: confirmed dead, not intentional —
+grepped `elements.json`, zero elements define a `carbon` effect, so
+`state.carbon` (`meterTotal("carbon")`) has always read exactly 0.
+Not part of `GAUNTLET_PROMPT.md`'s documented five-meter schema
+either. Removed the HUD chip and its bindings (`Hud.setMeters()`'s
+signature, the `.carbon-value` element/field, `main.ts`'s
+`refreshHud()` call) — left `GameState.carbon`/`meterTotal("carbon")`
+itself completely untouched, since that's real, generic, reusable
+accumulator infrastructure for the day some element actually has a
+carbon effect, not the thing that was actually dead.
+
+Live-verified: welcome dialog reads "BEGIN"; the HUD's chip grid shows
+exactly `Biodiversity / Food / Population`, no Carbon row, immediately
+after dismissing the dialog. `tsc --noEmit` clean, 65/71 tests
+unchanged, production build succeeds.
