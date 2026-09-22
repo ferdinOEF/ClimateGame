@@ -924,7 +924,16 @@ function openTilePopover(coord: AxialCoord): void {
   const options: PopoverOption[] = state
     .buildableAt(coord)
     .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d) }));
-  if (options.length === 0) return;
+  if (options.length === 0) {
+    // STEP_PROMPT_liquid_glass_hud.md item 1.3: every terrain on the current
+    // map has at least one valid element (confirmed against elements.json),
+    // so this is a defensive branch rather than one reachable today — but
+    // if a future terrain/roster change ever reintroduces a tile with
+    // nothing buildable, a tap on it should say so instead of doing nothing
+    // silently, the same as every other tap already does.
+    buildPopover.showRejection(screen.x, screen.y, "Nothing buildable here");
+    return;
+  }
 
   buildPopover.show(screen.x, screen.y, options, state.coin, (id) => {
     if (!state.build(coord, id)) return;
@@ -1047,6 +1056,11 @@ function devAutoBuild(kind: "building" | "defense"): void {
   openTilePopover({ q, r });
 };
 (window as unknown as Record<string, unknown>).__worldToScreenForTest = worldToScreen;
+// STEP_PROMPT_liquid_glass_hud.md item 1.3: the real trigger (a tap on a
+// tile with zero buildable options) isn't reachable with the current
+// roster — every terrain has at least one valid element — so this exposes
+// the shared mechanism directly for a verification script to exercise.
+(window as unknown as Record<string, unknown>).__buildPopoverForTest = buildPopover;
 // Same spirit as __focusOnForTest — a harmless, inert-unless-called hook so
 // a verification script can force the cloud layer visible without waiting
 // for a real telegraph window (turns only advance via build()).

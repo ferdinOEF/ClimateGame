@@ -52,6 +52,8 @@ const VIEWPORT_MARGIN = 8;
 export class BuildPopover {
   private backdrop: HTMLElement;
   private el: HTMLElement;
+  private rejectionEl: HTMLElement;
+  private rejectionTimer: number | undefined;
 
   constructor(container: HTMLElement) {
     this.backdrop = document.createElement("div");
@@ -65,6 +67,17 @@ export class BuildPopover {
     this.el.className = "build-popover";
     this.backdrop.appendChild(this.el);
     container.appendChild(this.backdrop);
+
+    // STEP_PROMPT_liquid_glass_hud.md item 1.3: a tap that reaches
+    // openTilePopover() but finds nothing buildable there currently just
+    // returns, with zero on-screen response — appended directly to
+    // `container`, deliberately outside `this.backdrop`, since a rejection
+    // is a passive, auto-dismissing beat, not a modal — it must never
+    // block a click the way the real popover's backdrop intentionally does.
+    this.rejectionEl = document.createElement("div");
+    this.rejectionEl.className = "rejection-toast";
+    this.rejectionEl.hidden = true;
+    container.appendChild(this.rejectionEl);
   }
 
   get isOpen(): boolean {
@@ -169,5 +182,29 @@ export class BuildPopover {
 
   hide(): void {
     this.backdrop.hidden = true;
+  }
+
+  /**
+   * A brief, non-blocking "nothing happened, here's why" beat for a tap
+   * that lands on a real tile with nothing buildable on it — so a tap
+   * always produces some visible response, never silence. Grow-in, hold,
+   * fade — same shape `STEP_PROMPT_creature_reactions.md` already
+   * validated for the world noticing a tap, applied here to a rejection
+   * instead of a creature. Re-triggering while already showing (a rapid
+   * double-tap on the same dead tile) restarts the animation rather than
+   * queuing a second toast — there's only ever one of these on screen.
+   */
+  showRejection(screenX: number, screenY: number, message: string): void {
+    window.clearTimeout(this.rejectionTimer);
+    this.rejectionEl.textContent = message;
+    this.rejectionEl.style.left = `${screenX}px`;
+    this.rejectionEl.style.top = `${screenY}px`;
+    this.rejectionEl.hidden = false;
+    this.rejectionEl.classList.remove("showing");
+    void this.rejectionEl.offsetWidth; // force reflow so re-adding the class below restarts the CSS animation
+    this.rejectionEl.classList.add("showing");
+    this.rejectionTimer = window.setTimeout(() => {
+      this.rejectionEl.hidden = true;
+    }, 1200);
   }
 }
