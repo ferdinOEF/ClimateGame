@@ -4361,3 +4361,72 @@ per-tile visible-stage-mesh count confirmed exactly one stage visible
 at a time, never zero or two. Zero console errors across the entire
 run. `tsc --noEmit` clean, 65/71 tests unchanged, no diff anywhere in
 `elements.json` or `/src/core`, production build succeeds.
+
+## STEP_PROMPT_liquid_glass_hud.md — Section 0 investigation + item 1.2 (Tiles built counter) — IN PROGRESS
+
+**Section 0's discrepancy, resolved — neither a regression nor a stale
+deploy.** Checked live against `climate-game-psi.vercel.app/?debughazards`
+with real Playwright (not the flaky Claude_Browser pane, which timed
+out on this URL exactly as it has all session). The deployed build is
+current — it has the Root & Ruin welcome dialog and every
+`__xxxForTest` hook through the creature-reactions pass, so it's
+running at or very near HEAD. `git log -- src/render/scene.ts` shows
+the wheel handler untouched since `1971088`, well before the "camera
+zoom confirmed working" log entry. Read `__cameraForTest.position`
+before and after a wheel event fired while the welcome modal was still
+open: byte-identical (`[-9.526, 15.265, 9.039]` both times) — the
+modal's full-viewport backdrop (added in a later, unrelated pass)
+correctly intercepts all pointer/wheel input while open, exactly as a
+modal should. The identical event fired again immediately after
+dismissing moved the camera exactly as expected (Y: 15.26 → 8.48,
+matching `CAM_DISTANCE_MIN`). So: zoom was never broken. The live
+playtest almost certainly scrolled to test the map before clicking
+"IKUZO!," which the modal correctly ate. No code change filed for
+this — noted in the step prompt's own Verify section instead.
+
+Mangrove checked the same way — built one live via `__buildForTest`
+and screenshotted it. The 3-clump/stilt-root/two-tone-canopy redesign
+from `STEP_PROMPT_map_reshape_veg_icons.md` **is** deployed and
+matches its own construction exactly; it's real, shipped code, not a
+missing or stale deploy. It just doesn't read well at actual gameplay
+zoom — the second of the two outcomes that section's own text
+anticipated. Left open as a real follow-up legibility pass (not filed
+under this pass's numbered items — `STEP_PROMPT_liquid_glass_hud.md`
+doesn't include it as one of 1.1-1.5), flagged in `NEXT_STEPS.md`.
+
+**Item 1.2 — "Tiles claimed" HUD stat.** Root cause: `state.claimed`
+was made permanently equal to `state.placed` (the whole map) by
+`STEP_PROMPT_remove_claiming.md` — every tile has been claimable from
+turn one ever since, so nothing has grown that set again since that
+pass landed. The HUD wasn't failing to update a live value; it was
+correctly displaying a value that had already become a constant,
+under a label that no longer meant anything. Fixed by repurposing the
+same corner stat to `state.elements.size` (Hud.`setTileCount` renamed
+to `setBuiltCount`, label "Tiles claimed" → "Tiles built") — the exact
+live complement of the `.empty-prompt` bottom-center counter
+(`placed.size - elements.size`), refreshed from the same `refreshHud()`
+call already firing after every build. While in the area: the in-game
+Help modal's "The Loop" section still described a "Claim land" step
+that hasn't existed since `STEP_PROMPT_remove_claiming.md` — removed
+(loop is now Build → Weather the hazard → Recover and grow), and the
+Coin meter's "Spend it to claim and build" line trimmed to "Spend it
+to build."
+
+Live-verified: fresh load reads `0 built` / `198 hexes still empty`;
+a build attempt on the wrong terrain (house on Estuary) correctly
+no-ops both counters; each subsequent successful build increments
+"Tiles built" and decrements the empty count in lockstep, always
+summing to 198. Help modal's Loop and Coin-meter text re-read live,
+confirmed no remaining reference to claiming. `tsc --noEmit` clean,
+65/71 tests unchanged, production build succeeds.
+
+Per this step prompt's own Section 3 protocol (new for this pass):
+committed to a feature branch, not `master` — pushed for a Vercel
+preview deploy rather than merged straight to production. **Preview
+URL not yet in hand:** this environment has no Vercel API/dashboard
+access and `gh` isn't installed, so the branch's auto-generated preview
+URL couldn't be fetched programmatically — flagged to the user directly
+rather than guessed at. Per the doc's own rule, this item isn't
+"Verified" until a separate session confirms it live at that preview
+URL; status kept as IN PROGRESS here until that happens and the URL is
+recorded below.

@@ -995,6 +995,34 @@ before it ever reached a screenshot.
 `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`
 or `/src/core`, production build succeeds.
 
+## Follow-up — Liquid-glass HUD pass: Section 0 + item 1.2 (in progress)
+
+`STEP_PROMPT_liquid_glass_hud.md`: Section 0's zoom/Mangrove
+discrepancy investigated and resolved (neither a regression nor a
+stale deploy — see the doc's own Verify section and PROGRESS.md for
+the full live-checked reasoning). Item 1.2 ("Tiles claimed" frozen)
+fixed: `state.claimed` has been a constant equal to the whole map
+since `STEP_PROMPT_remove_claiming.md`, so the stat was correctly
+displaying a dead value under a stale label — repurposed to the live,
+meaningful `state.elements.size` ("Tiles built"), plus a related Help-
+text cleanup (a "Claim land" step that hasn't existed for a while).
+
+**New for this pass:** per the doc's own Section 3 protocol, this is
+on a feature branch, not merged to `master` — pushed for a Vercel
+preview deploy, to be confirmed live by a separate session before
+merging. Preview URL: **not yet available** — this environment has no
+Vercel dashboard/API access and no `gh` CLI to fetch it
+programmatically; flagged to the user directly. Branch name and commit
+recorded once pushed. Status: implemented and locally verified
+(`tsc`/tests/build all clean, behavior re-checked live against
+`localhost`), but not yet "closed" per this doc's own rule — that
+needs the external preview-URL confirmation this section's protocol
+calls for.
+
+Remaining items 1.1 (no code change needed, see Section 0), 1.3, 1.4
+(Mangrove legibility pass), 1.5, then 2.1-2.5, still to come — one at
+a time, each its own branch/preview/confirmation cycle, per the doc.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
