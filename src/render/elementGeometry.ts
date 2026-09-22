@@ -289,13 +289,15 @@ function khazanGeometry(): THREE.BufferGeometry {
   move(water, -0.17, 0, 0);
   parts.push(water);
 
-  for (let i = 0; i < 3; i++) {
-    const tone = i % 2 === 0 ? "#8fc25a" : "#a0d060";
-    const row = box(0.28, 0.035, 0.14, tone, 0.015);
-    move(row, 0.24, 0, -0.2 + i * 0.2);
-    parts.push(row);
-  }
-
+  // The paddy-row half (previously a static 3-box loop right here, same
+  // "#8fc25a"/"#a0d060" colors, local x=0.24, z=-0.2/0/0.2, each
+  // 0.28x0.035x0.14 at baseY 0.015) moved out to `KhazanPaddyManager`
+  // (STEP_PROMPT_creature_reactions.md Section 4): it now needs four
+  // swappable growth-stage variants (shoots/full/gold/stubble) tied to
+  // real hazard-cycle state, which a single merged, static per-type
+  // `InstancedMesh` geometry (what every other part of this function
+  // still is) can't do per-tile. Every other part of Khazan — bund,
+  // water, gate, slats — is unchanged and still lives here.
   const gate = box(0.16, 0.16, 0.06, "#8a8f91", 0);
   move(gate, 0, 0, 0.42);
   parts.push(gate);

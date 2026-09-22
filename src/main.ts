@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
+import { ElementReactions } from "@render/elementReactions";
+import { KhazanPaddyManager } from "@render/khazanPaddyManager";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
 import { CloudLayerManager } from "@render/cloudLayerManager";
 import { GhatsBackdropManager } from "@render/ghatsBackdropManager";
@@ -63,12 +65,19 @@ const ghatsBackdrop = new GhatsBackdropManager(mapTiles);
 // layered on top of hazardOverlay's own per-tile reveals, not a
 // replacement for them (see WaveFrontManager's own comment).
 const waveFront = new WaveFrontManager();
+// STEP_PROMPT_creature_reactions.md: tap-triggered creature/particle
+// reactions (Section 1-3) and Khazan's ambient paddy-stage cycle
+// (Section 4) — both purely additive/visual, no `/src/core` state written.
+const reactions = new ElementReactions();
+const khazanPaddy = new KhazanPaddyManager();
 scene.add(terrain.group);
 scene.add(elements.group);
 scene.add(hazardOverlay.mesh);
 scene.add(cloudLayer.group);
 scene.add(ghatsBackdrop.group);
 scene.add(waveFront.group);
+scene.add(reactions.group);
+scene.add(khazanPaddy.group);
 
 /**
  * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -322,6 +331,7 @@ function applyHazardResult(kind: HazardKind, result: HazardResult, now: number):
   for (const key of result.destroyedDefenses) {
     const [q, r] = key.split(",").map(Number);
     elements.destroy({ q, r });
+    khazanPaddy.destroy({ q, r }); // no-op unless this coord was actually a tracked Khazan
   }
   for (const key of result.overwhelmedDefenses) {
     const inst = state.elements.get(key);
@@ -382,6 +392,11 @@ function describeAftermath(kind: "Flood" | "Storm Surge", result: HazardResult, 
  */
 function showAftermathAndCheckEraEnd(kind: "Flood" | "Storm Surge", result: HazardResult, resilienceBefore: number, trustBefore: number): void {
   hud.showBanner(describeAftermath(kind, result, resilienceBefore, trustBefore), 4000);
+  // STEP_PROMPT_creature_reactions.md Section 4: the "Aftermath" analog —
+  // farmer walks any tracked Khazan whose coord shows no damage in this
+  // hazard's own real per-tile result, then stubble/shoots follow on a
+  // short delay chain (see khazanPaddyManager.ts's own comment for why).
+  khazanPaddy.onAftermath(new Set(result.tileDamage.keys()));
   if (state.isEraOver) {
     buildPopover.hide(); // defensive — shouldn't still be open, but the era-end screen should never have to fight another modal for the top z-index
     eraEndScreen.show(state.turn, computeEraScoreBreakdown(state), () => resetBoard());
@@ -535,6 +550,11 @@ function updateCycloneTelegraph(): void {
   if (telegraphing && !cycloneTelegraphing) {
     playSound("hazard_telegraph");
     pendingCycloneSeverity = rolledSeverity();
+    // STEP_PROMPT_creature_reactions.md Section 4: the "Forecast" analog —
+    // no real Season boundary exists to hang this on (see khazanPaddyManager.ts's
+    // own comment), so Khazan's paddy grows tall on the same real telegraph
+    // event the HUD/cloud-layer/tint already react to above.
+    khazanPaddy.onTelegraphStart();
   }
   cycloneTelegraphing = telegraphing;
   for (const coord of tilesOfType("coast", "estuary")) {
@@ -551,6 +571,7 @@ function updateCycloneTelegraph(): void {
 function triggerCyclone(baseSeverity: number): void {
   const resilienceBefore = state.resilience;
   const trustBefore = state.trust;
+  khazanPaddy.onHazardTrigger(); // STEP_PROMPT_creature_reactions.md Section 4: the "Hazard" analog — paddy turns gold
   const result = resolveCyclone(state, baseSeverity);
   applyHazardResult("storm", result, performance.now());
   // STEP_PROMPT_test_slider_resort_damage.md Section 3: Storm Surge only,
@@ -740,6 +761,7 @@ function resetBoard(): void {
   hud.showBanner("Board reset.");
 
   elements.reset();
+  khazanPaddy.reset();
   hazardOverlay.reset();
   hazardTestPanel?.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across a reset
   nuggetPopup.reset(); // STEP_PROMPT_knowledge_nuggets.md Part C: same "doesn't need to persist across a reset" convention
@@ -854,6 +876,7 @@ function kindLabel(def: ElementDef): string | undefined {
 function removeElement(coord: AxialCoord): void {
   const key = `${coord.q},${coord.r}`;
   elements.destroy(coord);
+  khazanPaddy.destroy(coord); // no-op unless this coord was actually a tracked Khazan
   state.elements.delete(key);
   refreshHud();
   refreshPreview(); // STEP_PROMPT_pacing_telegraph_preview.md Section 3: removing a defense can change what an active preview would show, same as building one does
@@ -876,7 +899,20 @@ function openTilePopover(coord: AxialCoord): void {
   if (built) {
     const def = ELEMENT_BY_ID.get(built.elementId);
     if (!def) return;
-    buildPopover.showInfo(screen.x, screen.y, {
+    // STEP_PROMPT_creature_reactions.md Section 2: fires alongside (never
+    // instead of) the occupant info card below, once per tap — this whole
+    // branch already only runs once per click, gated on a built element
+    // already standing here.
+    reactions.trigger(built.elementId, wx, worldTop, wz);
+    // `screen` above (worldTop + 0.3) anchors just over an EMPTY tile's flat
+    // surface, tuned for the build-menu case below — too low to clear a
+    // reaction perched at a built element's own feature height (a Seawall's
+    // cap course, a canopy), so the info card would render directly behind
+    // it. A taller anchor here only affects the already-built info-card
+    // path; the empty-tile build-menu anchor (`screen`, used below) is
+    // untouched.
+    const infoScreen = worldToScreen(wx, worldTop + 0.75, wz);
+    buildPopover.showInfo(infoScreen.x, infoScreen.y, {
       name: def.name,
       kindLabel: kindLabel(def),
       effects: def.effects,
@@ -893,6 +929,7 @@ function openTilePopover(coord: AxialCoord): void {
   buildPopover.show(screen.x, screen.y, options, state.coin, (id) => {
     if (!state.build(coord, id)) return;
     elements.place(coord, id, terrain.heightAt(coord), { animate: true });
+    if (id === "khazan") khazanPaddy.place(coord, terrain.heightAt(coord));
     nuggetPopup.show(id);
     playSound("build");
     // STEP_PROMPT_pacing_telegraph_preview.md: checkHazardSchedule() now
@@ -953,6 +990,8 @@ start((nowMs) => {
   hazardOverlay.tick(nowMs);
   cloudLayer.tick(nowMs);
   waveFront.tick(nowMs);
+  reactions.tick(nowMs);
+  khazanPaddy.tick(nowMs);
   if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 });
 
@@ -974,6 +1013,7 @@ function devAutoBuild(kind: "building" | "defense"): void {
     const pick = affordable.find((o) => !builtTypes.has(o.id)) ?? affordable[0];
     if (state.build(coord, pick.id)) {
       elements.place(coord, pick.id, terrain.heightAt(coord), { animate: true });
+      if (pick.id === "khazan") khazanPaddy.place(coord, terrain.heightAt(coord));
       builtTypes.add(pick.id);
     }
   }
@@ -991,6 +1031,22 @@ function devAutoBuild(kind: "building" | "defense"): void {
 // position after a simulated pinch/pan/wheel gesture, rather than
 // guessing camera distance from screen-space effects.
 (window as unknown as Record<string, unknown>).__cameraForTest = camera;
+// STEP_PROMPT_creature_reactions.md Verify: lets a script read back which
+// creature(s) the last Mangrove/Khazan tap actually chose (`.lastCombo`),
+// and drive/inspect Khazan's paddy-stage cycle directly — real turns would
+// need a full CYCLONE_INTERVAL_TURNS-length playthrough (33 turns) per
+// cycle to exercise this for real, same "inert unless called" category as
+// every other hook here.
+(window as unknown as Record<string, unknown>).__reactionsForTest = reactions;
+(window as unknown as Record<string, unknown>).__khazanPaddyForTest = khazanPaddy;
+// Same "bypass pixel-perfect raycasting" reasoning as __buildForTest above
+// — calls the real tap handler directly (info card AND reaction trigger
+// both fire exactly as a real click would), just addressed by axial coord
+// instead of a screen point.
+(window as unknown as Record<string, unknown>).__tapForTest = (q: number, r: number): void => {
+  openTilePopover({ q, r });
+};
+(window as unknown as Record<string, unknown>).__worldToScreenForTest = worldToScreen;
 // Same spirit as __focusOnForTest — a harmless, inert-unless-called hook so
 // a verification script can force the cloud layer visible without waiting
 // for a real telegraph window (turns only advance via build()).
@@ -1018,6 +1074,7 @@ function devAutoBuild(kind: "building" | "defense"): void {
   const coord = { q, r };
   if (!state.build(coord, elementId)) return false;
   elements.place(coord, elementId, terrain.heightAt(coord));
+  if (elementId === "khazan") khazanPaddy.place(coord, terrain.heightAt(coord));
   refreshHud();
   return true;
 };
