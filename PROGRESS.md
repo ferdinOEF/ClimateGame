@@ -4527,3 +4527,105 @@ Live-verified: welcome dialog reads "BEGIN"; the HUD's chip grid shows
 exactly `Biodiversity / Food / Population`, no Carbon row, immediately
 after dismissing the dialog. `tsc --noEmit` clean, 65/71 tests
 unchanged, production build succeeds.
+
+## STEP_PROMPT_liquid_glass_hud.md Section 2 (liquid-glass radial build menu + HUD) — DONE
+
+Ports the Khazan Interface Study artifact's liquid-glass/radial/spring
+interaction language into `BuildPopover`/`Hud` — DOM/CSS chrome, not
+Three.js, exactly as the doc frames it. Values throughout are the ones
+the doc states it copied straight from the artifact's own CSS.
+
+**2.1 (anchor to the tapped tile).** Already true — `BuildPopover.show()`
+was already called with `screen.x/screen.y` from `worldToScreen()` on
+the tapped tile's own world position, not a fixed corner. Doc's premise
+was stale, same shape as Section 0/1.1/1.3's findings this pass. No
+code change; noted in `buildPopover.ts`'s own class comment instead of
+silently skipped.
+
+**2.2 + 2.3 (radial layout + spring entrance).** `BuildPopover.show()`
+rewritten: `.build-popover` is now a zero-size anchor point, each
+`.build-option` chip individually absolutely-positioned around it via
+`radialOffset()` — a 130° arc at 108px radius, `-65°` to `+65°`
+measured from "up" (the doc's own raw formula, read literally with
+`cos`/`sin` at 0°=+x, fans out sideways, not above — rotated -90°
+here to match the doc's own prose, "centered above the tile"). Chips
+spring in via `cubic-bezier(.22, 1.7, .32, 1)`, staggered 70ms apart,
+~500ms each, using a CSS custom-property pair (`--chip-tx`/`--chip-ty`)
+so the fan offset and the spring's own scale animate together as one
+`transform`, not two competing declarations. One real bug caught and
+fixed before it shipped: a disabled (unaffordable) chip's dimming
+would have lost to the spring animation's own `forwards`-filled
+`opacity: 1` end state for the same property — fixed by baking the
+target opacity into a `--chip-target-opacity` custom property the
+keyframes read, rather than a separate static `.disabled` rule that
+can't win against an active animation on the same property. A second
+real bug: `.build-option`'s new `position: absolute` was initially
+unscoped, which would have broken `showInfo()`'s single flowing card
+(the occupant-info path, which stays a normal vertical card, not a
+radial fan of one) — caught before verifying live, scoped to
+`.build-popover.radial .build-option` specifically.
+`positionAndRevealRadial()` clamps the anchor point directly (radius +
+a chip's rough half-width) instead of the old rect-based clamp, since
+`.build-popover` itself is zero-size now and has no rendered rect to
+measure.
+
+**2.4 (glass HUD panel + icons).** `.instrument-cluster`'s and
+`.build-popover.card`'s opaque backgrounds replaced with the doc's
+glass recipe (`rgba(20,40,34,.42)` + `blur(14px) saturate(1.3)`) — one
+material, reused everywhere translucency shows up in this UI, per the
+doc's own explicit ask, not a second recipe for the popover vs. the
+HUD. Four small inline flat SVG stat icons added (coin/shield/leaf/
+grain, exactly the four the doc names) to the Coin row, Resilience
+gauge header, and the Biodiversity/Food chips — Population
+deliberately left bare, matching the doc's 4-icon list. Same minimal
+stroke-only style the HUD pill's own coin icon already established,
+just reused at the full card's own labels too.
+
+**2.5 (diegetic build confirmation).** Three pieces, all fired from
+the one real build-confirm callback in `openTilePopover()`:
+- The built element's own settle-in: `SettleAnimator` gains
+  `beginBuildConfirm()` — the doc's literal 5-keyframe scale sequence
+  (`.3,1.7 → 1.32,.72 → .92,1.1 → 1.04,.97 → 1,1`, linearly
+  interpolated between keyframes) over 620ms, in place (no drop from
+  above, unlike `begin()`'s existing behavior) — a "pop into existence
+  and jiggle to rest," not a fall-in. `ElementMeshManager.place()`'s
+  `animate: true` path now calls this instead of `begin()` — confirmed
+  both of `animate: true`'s only two real callers (the real build path,
+  `devAutoBuild`'s scripted one) are genuine build-confirm moments
+  before making the swap, not guessed.
+- `Hud.pulse()`: one soft expanding/fading gold ring layered onto
+  `.instrument-cluster`'s existing box-shadow (additive, not
+  replacing the card's own grounding shadow), 700ms.
+- `BuildPopover.showConfirmPill()`: a small gold-accented pill showing
+  the just-built element's real `effects` map in words (e.g.
+  "biodiversity +3 · food +1 · money +1", read directly off
+  `ELEMENT_BY_ID`, not hand-written per element), grow→hold(~1/3s, per
+  the doc's own wording — keyframe timing tuned so the hold window
+  lands at ~325ms of 1300ms)→fade, the same shape validated for
+  creature reactions applied to UI feedback instead.
+
+Live-verified end to end, not per-piece in isolation: tapped an
+Estuary tile (3 options — a real N=3 arc), confirmed exactly 3 chips
+render with the glass material genuinely translucent (map colors
+visible through the blur in a real screenshot); clicked a real chip
+(not a bypass) and confirmed the build actually commits (`Tiles built`
+count moved); confirmed `.instrument-cluster` gains `.pulsing`
+immediately after; confirmed the confirm pill's real text
+(`"biodiversity +3 · food +1 · money +1"`); screenshotted the built
+Mangrove mid-animation (visibly squashed/stretched, not its resting
+shape) and again ~700ms later (fully settled) to confirm the new
+keyframe sequence is actually playing, not just declared in CSS. Also
+checked at 375px mobile width: the radial fan's own edge-clamp keeps
+every chip on-screen (verified via real bounding rects, none past 0 or
+375px), though near the map's own corner the clamped fan can slightly
+overlap the top-left HUD panel — the clamp only accounts for viewport
+edges, not the HUD's own footprint. Not fixed — full HUD-aware
+collision avoidance is a meaningfully bigger feature than this pass
+asked for, and the old vertical-list popover had comparable risk in
+the same corner; flagged honestly rather than either overbuilding or
+staying silent about it.
+
+`tsc --noEmit` clean, 65/71 tests unchanged, production build
+succeeds, no diff in `elements.json`/`/src/core`. This closes
+`STEP_PROMPT_liquid_glass_hud.md` in full — Sections 0, 1, and 2 all
+done.

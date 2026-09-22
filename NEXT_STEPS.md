@@ -1066,6 +1066,37 @@ build succeeds. Pushed straight to `master` per the user's instruction.
 Section 1 is now fully closed. Section 2 (the liquid-glass radial
 build menu + HUD redesign, items 2.1-2.5) is next.
 
+## Follow-up — Liquid-glass HUD pass: Section 2 (build menu + HUD redesign)
+
+`STEP_PROMPT_liquid_glass_hud.md` Section 2, all five items: 2.1
+(anchor to tapped tile) was already true — stale doc premise, no code
+change. 2.2/2.3: `BuildPopover.show()` rewritten to fan chips in a
+130° arc at 108px radius with a genuine spring entrance
+(`cubic-bezier(.22,1.7,.32,1)`, staggered 70ms), `showInfo()`'s single
+card untouched in layout. 2.4: `.instrument-cluster`/`.build-popover`
+both get the doc's glass recipe (translucent + backdrop-filter blur),
+plus four new inline coin/shield/leaf/grain stat icons. 2.5: three
+pieces on every real build-confirm — the built element's own
+squash-and-stretch settle (new `SettleAnimator.beginBuildConfirm()`,
+the doc's literal 5-keyframe scale sequence), one soft gold pulse
+ring on the HUD panel, and a floating "biodiversity +3 · food +1"
+stat-delta pill, grow→hold→fade.
+
+Status: closed. Full detail, including two real bugs caught and fixed
+before they ever reached a screenshot (a disabled chip's dimming
+losing to the spring animation's own forwards-filled opacity; the new
+`position: absolute` briefly leaking into `showInfo()`'s card layout),
+in PROGRESS.md. One known, unfixed minor edge case: near the map's
+own corner, the radial fan's viewport-edge clamp doesn't yet account
+for the top-left HUD panel's own footprint, so the two can slightly
+overlap there — full HUD-aware collision avoidance is a bigger feature
+than this pass asked for; flagged rather than silently left or
+over-built.
+
+`tsc --noEmit` clean, 65/71 tests unchanged, production build
+succeeds, no diff in `elements.json`/`/src/core`. This closes
+`STEP_PROMPT_liquid_glass_hud.md` in full.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -1122,3 +1153,4 @@ build menu + HUD redesign, items 2.1-2.5) is next.
 - 2026-09-22, Liquid-glass HUD pass, Section 0 + item 1.2: closed. Section 0's zoom/Mangrove discrepancy checked live against the deployed build with Playwright — neither a regression nor a stale deploy: the welcome modal (a later, unrelated pass) legitimately blocks scroll while open, confirmed via byte-identical `__cameraForTest.position` before/after scrolling with it up; Mangrove's redesign is deployed and matches its own spec, it just doesn't read well at gameplay zoom (a legibility follow-up, not a missing ship). Item 1.2: `state.claimed` has been a constant equal to the whole map since claiming was removed as a step, so "Tiles claimed" was correctly displaying a dead value — repurposed to `state.elements.size` ("Tiles built"), plus a stale "Claim land" Help step removed. First pushed to a feature branch per the doc's own preview-first protocol; user then explicitly asked to skip that for this item and merge straight to production — done (`de63942`), live at `climate-game-psi.vercel.app/?debughazards`.
 - 2026-09-22, Liquid-glass HUD pass, item 1.3: closed. Tried to reproduce "tap on a distant tile does nothing" with real raycast clicks on five far-corner tiles — every one worked; every terrain type already has a buildable element, so the underlying silent-no-op branch can't currently fire either, same "stale mental model" shape as Section 0. Built the requested affordance anyway (the doc explicitly anticipated this outcome): new `BuildPopover.showRejection()`, a small non-modal grow→hold→fade toast wired to the one real silent-return site in `openTilePopover()`, verified via a new `__buildPopoverForTest` hook. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. Pushed straight to `master` per the user's instruction.
 - 2026-09-22, Liquid-glass HUD pass, items 1.4 + 1.5: closed, Section 1 fully done. Mangrove's canopy highlight color was too hue-close to its base to survive the real `defenseMangrove` tint multiply (checked, not guessed) — swapped for a genuinely warmer yellow-green, added a second highlight lobe, thickened the stilt roots; verified live via a cropped/upscaled screenshot, a real improvement over the "crude blobby pinecone" the live playtest described. `IKUZO!` → `BEGIN`; Carbon HUD stat removed (confirmed dead — zero elements define a `carbon` effect, so it always read 0; the underlying generic accumulator stays). `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. Pushed straight to `master`.
+- 2026-09-22, Liquid-glass HUD pass, Section 2 (radial build menu + HUD redesign): closed, whole step prompt now done. `BuildPopover.show()` fans chips in a 130° arc at 108px radius with a genuine spring entrance (staggered 70ms); `.instrument-cluster`/`.build-popover` get the doc's glass material (translucent + backdrop blur) plus four new coin/shield/leaf/grain stat icons; every real build-confirm now plays a squash-and-stretch settle (new `SettleAnimator.beginBuildConfirm()`), a soft HUD pulse ring, and a floating stat-delta pill. Two real bugs caught and fixed before reaching a screenshot (a disabled chip's dimming losing to the spring animation's forwards-filled opacity; `position: absolute` briefly leaking into the single-card info popover). One known minor edge case left unfixed and flagged: near the map's corner, the fan's clamp doesn't account for the HUD panel's own footprint. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
