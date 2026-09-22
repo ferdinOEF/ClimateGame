@@ -995,7 +995,7 @@ before it ever reached a screenshot.
 `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`
 or `/src/core`, production build succeeds.
 
-## Follow-up — Liquid-glass HUD pass: Section 0 + item 1.2 (in progress)
+## Follow-up — Liquid-glass HUD pass: Section 0 + item 1.2
 
 `STEP_PROMPT_liquid_glass_hud.md`: Section 0's zoom/Mangrove
 discrepancy investigated and resolved (neither a regression nor a
@@ -1007,17 +1007,17 @@ displaying a dead value under a stale label — repurposed to the live,
 meaningful `state.elements.size` ("Tiles built"), plus a related Help-
 text cleanup (a "Claim land" step that hasn't existed for a while).
 
-**New for this pass:** per the doc's own Section 3 protocol, this is
-on a feature branch, not merged to `master` — pushed for a Vercel
-preview deploy, to be confirmed live by a separate session before
-merging. Preview URL: **not yet available** — this environment has no
-Vercel dashboard/API access and no `gh` CLI to fetch it
-programmatically; flagged to the user directly. Branch name and commit
-recorded once pushed. Status: implemented and locally verified
-(`tsc`/tests/build all clean, behavior re-checked live against
-`localhost`), but not yet "closed" per this doc's own rule — that
-needs the external preview-URL confirmation this section's protocol
-calls for.
+Status: closed. Per the doc's own Section 3 protocol this first went
+to a feature branch (`step/liquid-glass-hud-1.2-tiles-built`) for a
+Vercel preview deploy — this environment has no Vercel dashboard/API
+access or `gh` CLI to fetch that URL programmatically, flagged to the
+user directly. The user then explicitly asked to skip the preview step
+for this item and land it on production directly; fast-forward merged
+to `master` and pushed (`de63942`), live now at
+`climate-game-psi.vercel.app/?debughazards`. One-time deviation from
+the doc's "preview first" rule, made explicitly by the user for this
+item only — the rest of this pass (1.3 onward) still follows the
+doc's branch-then-preview-then-confirm protocol by default.
 
 Remaining items 1.1 (no code change needed, see Section 0), 1.3, 1.4
 (Mangrove legibility pass), 1.5, then 2.1-2.5, still to come — one at
@@ -1076,3 +1076,4 @@ a time, each its own branch/preview/confirmation cycle, per the doc.
 - 2026-09-01, Welcome dialog (Laterite Earth): closed. New `WelcomeModal` shown on every load, before the player touches anything — reuses EraEndScreen/HelpModal's backdrop-card pattern and BuildPopover's click-outside-to-close behavior, but with its own rust-red laterite palette (not the green/cream card language elsewhere) and one new font (Fraunces, title only) loaded via a Google Fonts `<link>` in `index.html`. Live-verified via real Playwright: dialog appears over the fully-built game, IKUZO/corner ×/outside-backdrop-click all close it, inside-card click does not, font load confirmed via computed style + network fetch + `document.fonts`, 375×667 corner × sits fully inside the viewport and is genuinely clickable there. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
 - 2026-09-03, Icon legibility pass (Breakwater/Sand Mining/Khazan): closed, one limitation flagged and accepted. Pre-verified geometry from a separate sandbox applied directly. Breakwater's continuous crest bar replaced with a 7-rock two-row tumbled pile; Sand Mining's tiers widened and its dredge arm/scoop scaled ~1.7x with a lightness-contrast recolor — both pixel-sampled live to confirm real contrast against Seawall/Dune respectively. Khazan's front-bund/gate height fix confirmed live, but its color fix didn't hold up: the addendum's cyan water (`#5fe8e0`) pixel-samples as plain green (`RGB(49,85,46)`) against the real `defenseKhazanBund` tint, not water-blue — a lightness-contrast alternative was offered and declined, so the colors stand exactly as pasted, flagged as a known limitation rather than silently accepted as working. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
 - 2026-09-22, Element tap reactions & Khazan's living paddy cycle: closed. Ported the "Khazan Feel" CSS/SVG UX study into the real engine — all 11 roster elements (doc said 9, skip Breakwater; Breakwater and Yacht both turned out to be real, flagged back, both given reactions) get a grow→hold→exit tap reaction via a new shared `ReactionAnimator` and ~16 new low-poly creatures; Khazan additionally cycles a four-stage ambient paddy (shoots/tall/gold/stubble) driven off the real Cyclone telegraph/trigger/aftermath cycle, since `GAUNTLET_PROMPT.md`'s "Season" loop this doc assumed was never actually built (flagged back, user approved the Cyclone-interval substitute). Two real bugs caught live: the built-tile info popover was hiding most reactions behind its own card (fixed with a taller anchor for that path only), and Mangrove's bird was spawning inside its own canopy's solid geometry (fixed by repositioning beside it) — caught via systematic pixel-sampling of every element's real screen position, not by eyeballing screenshots. `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`/`/src/core`, production build succeeds.
+- 2026-09-22, Liquid-glass HUD pass, Section 0 + item 1.2: closed. Section 0's zoom/Mangrove discrepancy checked live against the deployed build with Playwright — neither a regression nor a stale deploy: the welcome modal (a later, unrelated pass) legitimately blocks scroll while open, confirmed via byte-identical `__cameraForTest.position` before/after scrolling with it up; Mangrove's redesign is deployed and matches its own spec, it just doesn't read well at gameplay zoom (a legibility follow-up, not a missing ship). Item 1.2: `state.claimed` has been a constant equal to the whole map since claiming was removed as a step, so "Tiles claimed" was correctly displaying a dead value — repurposed to `state.elements.size` ("Tiles built"), plus a stale "Claim land" Help step removed. First pushed to a feature branch per the doc's own preview-first protocol; user then explicitly asked to skip that for this item and merge straight to production — done (`de63942`), live at `climate-game-psi.vercel.app/?debughazards`.

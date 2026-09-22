@@ -4362,7 +4362,7 @@ at a time, never zero or two. Zero console errors across the entire
 run. `tsc --noEmit` clean, 65/71 tests unchanged, no diff anywhere in
 `elements.json` or `/src/core`, production build succeeds.
 
-## STEP_PROMPT_liquid_glass_hud.md — Section 0 investigation + item 1.2 (Tiles built counter) — IN PROGRESS
+## STEP_PROMPT_liquid_glass_hud.md — Section 0 investigation + item 1.2 (Tiles built counter) — DONE
 
 **Section 0's discrepancy, resolved — neither a regression nor a stale
 deploy.** Checked live against `climate-game-psi.vercel.app/?debughazards`
@@ -4420,13 +4420,15 @@ summing to 198. Help modal's Loop and Coin-meter text re-read live,
 confirmed no remaining reference to claiming. `tsc --noEmit` clean,
 65/71 tests unchanged, production build succeeds.
 
-Per this step prompt's own Section 3 protocol (new for this pass):
-committed to a feature branch, not `master` — pushed for a Vercel
-preview deploy rather than merged straight to production. **Preview
-URL not yet in hand:** this environment has no Vercel API/dashboard
-access and `gh` isn't installed, so the branch's auto-generated preview
-URL couldn't be fetched programmatically — flagged to the user directly
-rather than guessed at. Per the doc's own rule, this item isn't
-"Verified" until a separate session confirms it live at that preview
-URL; status kept as IN PROGRESS here until that happens and the URL is
-recorded below.
+Per this step prompt's own Section 3 protocol (new for this pass),
+this was first committed to a feature branch (`step/liquid-glass-hud-
+1.2-tiles-built`), not `master`, and pushed there for a Vercel preview
+deploy. This environment has no Vercel API/dashboard access and `gh`
+isn't installed, so the branch's auto-generated preview URL couldn't
+be fetched programmatically — flagged to the user directly rather than
+guessed at. The user then explicitly asked to skip the preview-URL
+step for this item and get it onto the production URL directly
+(`climate-game-psi.vercel.app/?debughazards`) — fast-forward merged to
+`master` and pushed (`de63942`), a deliberate one-time deviation from
+the doc's own "preview first" rule, not a default going forward for
+the rest of this pass.
