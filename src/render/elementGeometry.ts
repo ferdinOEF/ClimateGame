@@ -205,20 +205,48 @@ function beachsideResortGeometry(): THREE.BufferGeometry {
   return mergeGeometries(parts);
 }
 
-/** A single Mangrove tree: four angled stilt roots converging upward into a two-tone rounded canopy. */
+/**
+ * A single Mangrove tree: four angled stilt roots converging upward into a
+ * two-tone rounded canopy.
+ *
+ * STEP_PROMPT_liquid_glass_hud.md item 1.4: read live as "a small, crude,
+ * blobby pinecone-on-a-stick" — this construction was already correct
+ * (the fused 3-clump stand, stilt roots, two-tone canopy all match
+ * STEP_PROMPT_map_reshape_veg_icons.md's own spec exactly), just not
+ * legible at gameplay scale/tint. Two real causes, both checked against
+ * the actual `defenseMangrove` instance tint (`#4FAE6E`) rather than
+ * guessed at:
+ * - The roots (0.02-0.045 radius) are thin enough to be functionally
+ *   invisible at this zoom — thickened below so the one visual cue no
+ *   other roster element has (aerial prop roots) actually registers.
+ * - The old highlight color (`#3c9c8e`) is close enough in hue to the
+ *   base (`#1f6e66`) that post-tint they land only ~25 RGB units apart
+ *   (checked: `#1f6e66`*tint ≈ (10,75,44), `#3c9c8e`*tint ≈ (19,106,61))
+ *   — real but subtle, reading as ordinary facet shading rather than a
+ *   deliberate two-tone canopy. Swapped for a genuinely warmer
+ *   yellow-green (`#6fc95a`*tint ≈ (34,137,39), ~60-90 units apart on
+ *   every channel) — the same "push lightness/hue harder, hue-matching
+ *   alone doesn't survive this tint" fix already validated on Sand
+ *   Mining's scoop and Khazan's water in the icon-legibility pass. A
+ *   second, smaller highlight bump added off-axis from the first breaks
+ *   up the single-smooth-sphere "pinecone" silhouette into a clustered,
+ *   foliage-like one instead.
+ */
 function mangroveClump(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const rootAngles = [-0.55, -0.2, 0.2, 0.55];
+  const rootAngles = [-0.6, -0.22, 0.22, 0.6];
   for (const angle of rootAngles) {
-    const root = coneFrustum(0.02, 0.045, 0.32, 5, "#5a4632", 0);
+    const root = coneFrustum(0.035, 0.075, 0.34, 5, "#5a4632", 0);
     rotate(root, 0, 0, angle);
-    move(root, Math.sin(angle) * 0.05, 0, 0);
+    move(root, Math.sin(angle) * 0.07, 0, 0);
     parts.push(root);
   }
   const canopyBase = dome(0.32, 0.24, 0.3, "#1f6e66", 0.28);
-  const canopyHighlight = dome(0.2, 0.16, 0.2, "#3c9c8e", 0.4);
-  move(canopyHighlight, 0.08, 0, -0.04);
-  parts.push(canopyBase, canopyHighlight);
+  const canopyHighlight = dome(0.2, 0.17, 0.21, "#6fc95a", 0.42);
+  move(canopyHighlight, 0.09, 0, -0.05);
+  const canopyBump = dome(0.14, 0.12, 0.15, "#6fc95a", 0.4);
+  move(canopyBump, -0.13, 0, 0.1);
+  parts.push(canopyBase, canopyHighlight, canopyBump);
   return mergeGeometries(parts);
 }
 

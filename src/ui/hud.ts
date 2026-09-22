@@ -30,7 +30,6 @@ export class Hud {
   private resilienceFillEl: HTMLElement;
   private hazardIncomingEl: HTMLElement;
   private biodiversityEl: HTMLElement;
-  private carbonEl: HTMLElement;
   private foodEl: HTMLElement;
   private foodChipEl: HTMLElement;
   private populationEl: HTMLElement;
@@ -93,7 +92,6 @@ export class Hud {
       <button type="button" class="preview-toggle" hidden>Preview path</button>
       <div class="chip-grid">
         <span class="meter-chip">Biodiversity <b class="biodiversity-value">0</b></span>
-        <span class="meter-chip">Carbon <b class="carbon-value">0</b></span>
         <span class="meter-chip food-chip">Food <b class="food-value">0</b></span>
         <span class="meter-chip">Population <b class="population-value">0</b></span>
       </div>
@@ -129,7 +127,6 @@ export class Hud {
     this.resilienceFillEl = cluster.querySelector(".resilience-gauge-fill")!;
     this.hazardIncomingEl = cluster.querySelector(".hazard-incoming")!;
     this.biodiversityEl = cluster.querySelector(".biodiversity-value")!;
-    this.carbonEl = cluster.querySelector(".carbon-value")!;
     this.foodEl = cluster.querySelector(".food-value")!;
     this.foodChipEl = cluster.querySelector(".food-chip")!;
     this.populationEl = cluster.querySelector(".population-value")!;
@@ -241,10 +238,18 @@ export class Hud {
    * longer displays it (the data model and everything that reads it
    * outside this class are untouched; see the class comment).
    */
+  /**
+   * STEP_PROMPT_liquid_glass_hud.md item 1.5: `carbon` dropped from this
+   * signature — no element in the current roster has a `carbon` effect
+   * (confirmed against elements.json), so it always read 0 and was never
+   * part of GAUNTLET_PROMPT.md's documented five-meter schema. The generic
+   * `GameState.carbon`/`meterTotal("carbon")` accumulator stays exactly as
+   * it is — real, reusable infrastructure for the day some element
+   * actually has a carbon effect — only this always-zero HUD display goes.
+   */
   setMeters(meters: {
     resilience: number;
     biodiversity: number;
-    carbon: number;
     food: number;
     population: number;
   }): void {
@@ -268,7 +273,6 @@ export class Hud {
     this.resilienceFillEl.classList.toggle("critical", critical);
     this.pillResilienceDotEl.classList.toggle("critical", critical);
     this.biodiversityEl.textContent = String(Math.round(meters.biodiversity));
-    this.carbonEl.textContent = String(Math.round(meters.carbon));
     this.foodEl.textContent = String(Math.round(meters.food));
     this.populationEl.textContent = String(Math.round(meters.population));
     // STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit used

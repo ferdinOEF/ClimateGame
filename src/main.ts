@@ -264,7 +264,6 @@ function refreshHud(): void {
   hud.setMeters({
     resilience: state.resilience,
     biodiversity: state.biodiversity,
-    carbon: state.carbon,
     food: state.food,
     population: state.population
   });
