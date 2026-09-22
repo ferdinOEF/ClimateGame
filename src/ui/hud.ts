@@ -1,6 +1,25 @@
 import { HelpModal } from "./helpModal";
 
 /**
+ * STEP_PROMPT_liquid_glass_hud.md item 2.4: small flat inline stat icons —
+ * coin/shield/leaf/grain, exactly the four the doc names — replacing the
+ * bare-number labels these four rows/chips had before. Same minimal
+ * stroke-only style the HUD pill's own coin icon already established
+ * (`.pill-coin`'s `<svg>` below), just reused at the full-size cluster's
+ * own labels too, one icon language for the whole HUD rather than "the
+ * pill has icons, the expanded card doesn't." Population is deliberately
+ * left without one — the doc names four, not five.
+ */
+const ICON_COIN =
+  '<svg class="stat-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="#ffe9a8" stroke-width="1.4"></circle><line x1="3.5" y1="8" x2="12.5" y2="8" stroke="#ffe9a8" stroke-width="1.4"></line></svg>';
+const ICON_SHIELD =
+  '<svg class="stat-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M8 1.5 13 3.5V7.5C13 10.8 10.9 13.4 8 14.5 5.1 13.4 3 10.8 3 7.5V3.5Z" fill="none" stroke="#7bd4c4" stroke-width="1.4" stroke-linejoin="round"></path></svg>';
+const ICON_LEAF =
+  '<svg class="stat-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M3 13C3 7 7 3 13 3 13 9 9 13 3 13Z" fill="none" stroke="#8fc25a" stroke-width="1.4" stroke-linejoin="round"></path><line x1="3.6" y1="12.4" x2="10" y2="6" stroke="#8fc25a" stroke-width="1.2"></line></svg>';
+const ICON_GRAIN =
+  '<svg class="stat-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><line x1="8" y1="2" x2="8" y2="14" stroke="#d8b158" stroke-width="1.4"></line><path d="M8 4 5.5 5.8M8 4 10.5 5.8M8 7 5.5 8.8M8 7 10.5 8.8M8 10 5.5 11.8M8 10 10.5 11.8" fill="none" stroke="#d8b158" stroke-width="1.2" stroke-linecap="round"></path></svg>';
+
+/**
  * STEP_PROMPT_hud_instrument_cluster.md (v3, "Instrument Cluster"): the
  * top-left corner is a real card now (background/border/padding, not bare
  * text floating over the 3D scene) — a header row (Coin + Turn/Era), a
@@ -75,7 +94,7 @@ export class Hud {
     cluster.className = "hud-corner top-left instrument-cluster";
     cluster.innerHTML = `
       <div class="cluster-header">
-        <div class="coin-row"><span>Coin</span><span class="coin-value">0</span></div>
+        <div class="coin-row"><span>${ICON_COIN}Coin</span><span class="coin-value">0</span></div>
         <div class="cluster-header-right">
           <div class="turn-era-row">Turn <span class="turn-value">0</span> · Era <span class="era-value">1</span></div>
           <button type="button" class="cluster-collapse-toggle" aria-label="Collapse HUD">
@@ -85,14 +104,14 @@ export class Hud {
       </div>
       <div class="income-row">Income <span class="income-value">+0</span>/turn</div>
       <div class="resilience-gauge">
-        <div class="resilience-gauge-header"><span>Resilience</span><span class="resilience-value">100</span></div>
+        <div class="resilience-gauge-header"><span>${ICON_SHIELD}Resilience</span><span class="resilience-value">100</span></div>
         <div class="resilience-gauge-track"><div class="resilience-gauge-fill"></div></div>
       </div>
       <div class="hazard-incoming"></div>
       <button type="button" class="preview-toggle" hidden>Preview path</button>
       <div class="chip-grid">
-        <span class="meter-chip">Biodiversity <b class="biodiversity-value">0</b></span>
-        <span class="meter-chip food-chip">Food <b class="food-value">0</b></span>
+        <span class="meter-chip">${ICON_LEAF}Biodiversity <b class="biodiversity-value">0</b></span>
+        <span class="meter-chip food-chip">${ICON_GRAIN}Food <b class="food-value">0</b></span>
         <span class="meter-chip">Population <b class="population-value">0</b></span>
       </div>
       <button type="button" class="cluster-pill" aria-label="Expand HUD">
@@ -185,6 +204,19 @@ export class Hud {
     this.arrivalFlashEl.classList.remove("flashing");
     void this.arrivalFlashEl.offsetWidth; // force reflow so re-adding the class restarts the animation
     this.arrivalFlashEl.classList.add("flashing");
+  }
+
+  /**
+   * STEP_PROMPT_liquid_glass_hud.md item 2.5: one soft pulse on the
+   * instrument cluster itself — an expanding, fading box-shadow ring —
+   * on a confirmed build, so the HUD visibly acknowledges the change
+   * too, not just the tile. Same restart-safe remove/reflow/re-add
+   * pattern as `flashArrival()` above.
+   */
+  pulse(): void {
+    this.clusterEl.classList.remove("pulsing");
+    void this.clusterEl.offsetWidth; // force reflow so re-adding the class restarts the animation
+    this.clusterEl.classList.add("pulsing");
   }
 
   /** A brief, non-blocking announcement — originally an auto era-retired narrative, now the manual "Board reset." confirmation (STEP_PROMPT_manual_only_mode.md) — never a modal. */

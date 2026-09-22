@@ -89,7 +89,12 @@ export class ElementMeshManager {
     const { x, z } = axialToWorld(coord, HEX_SIZE);
 
     if (options.animate) {
-      this.animator.begin(mesh, index, x, z, terrainTopY, performance.now());
+      // STEP_PROMPT_liquid_glass_hud.md item 2.5: every real caller passing
+      // `animate: true` here is a just-confirmed player build (checked —
+      // only two call sites in main.ts, both build-confirm callbacks), so
+      // this is squarely the "diegetic build confirmation" beat, not a
+      // generic settle-in — the squash-and-stretch pop, not the drop-in.
+      this.animator.beginBuildConfirm(mesh, index, x, z, terrainTopY, performance.now());
     } else {
       mesh.setMatrixAt(index, new THREE.Matrix4().makeTranslation(x, terrainTopY, z));
       mesh.instanceMatrix.needsUpdate = true;

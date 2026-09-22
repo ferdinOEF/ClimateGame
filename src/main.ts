@@ -940,6 +940,20 @@ function openTilePopover(coord: AxialCoord): void {
     if (id === "khazan") khazanPaddy.place(coord, terrain.heightAt(coord));
     nuggetPopup.show(id);
     playSound("build");
+    // STEP_PROMPT_liquid_glass_hud.md item 2.5: the "diegetic build
+    // confirmation" beat — the element's own squash-and-stretch settle
+    // already happens inside elements.place() above (ElementMeshManager
+    // routes animate:true through SettleAnimator.beginBuildConfirm() now);
+    // these two are the rest of it, fired from the same real build-confirm
+    // moment, not a generic "something changed" hook.
+    hud.pulse();
+    const def = ELEMENT_BY_ID.get(id);
+    if (def) {
+      const deltaText = Object.entries(def.effects)
+        .map(([key, delta]) => `${key} ${delta > 0 ? "+" : ""}${delta}`)
+        .join("  ·  ");
+      if (deltaText) buildPopover.showConfirmPill(screen.x, screen.y, deltaText);
+    }
     // STEP_PROMPT_pacing_telegraph_preview.md: checkHazardSchedule() now
     // runs BEFORE refreshHud() (was the other way around) — it's what
     // updates the telegraph state (tint, cloud layer, pending severity)

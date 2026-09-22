@@ -383,13 +383,22 @@ html, body {
   step prompt's "same top-left position" instruction literally: the whole
   element just gets smaller in place, it never moves.
 */
+/*
+  STEP_PROMPT_liquid_glass_hud.md item 2.4: values copied straight from
+  the Khazan Interface Study artifact's own CSS, same as the build-menu
+  chips — one glass "material," reused everywhere translucency shows up
+  in this UI, not a second recipe. `backdrop-filter` needs a real
+  background behind it to blur, which the 3D canvas always provides here.
+*/
 .instrument-cluster {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: rgba(20, 30, 26, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  background: rgba(20, 40, 34, 0.42);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
   padding: 14px 16px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   width: 225px;
@@ -400,10 +409,24 @@ html, body {
   gap: 0;
   padding: 0 12px;
   border-radius: 17px;
-  background: rgba(20, 30, 26, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(20, 40, 34, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
   width: fit-content;
+}
+
+/* STEP_PROMPT_liquid_glass_hud.md item 2.5: a confirmed build's HUD acknowledgment — an expanding, fading ring layered on top of the cluster's own base box-shadow via a second shadow, not replacing it (the base shadow keeps the card grounded throughout). */
+.instrument-cluster.pulsing {
+  animation: instrument-cluster-pulse 700ms ease-out;
+}
+
+@keyframes instrument-cluster-pulse {
+  0% {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(230, 178, 104, 0.55);
+  }
+  100% {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 0 0 16px rgba(230, 178, 104, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -695,6 +718,12 @@ html, body {
 
 .pill-icon {
   flex: none;
+}
+
+/* STEP_PROMPT_liquid_glass_hud.md item 2.4: the full-size cluster's own coin/shield/leaf/grain icons — same inline-with-text placement as .pill-icon above, just not flex-item siblings here (these sit directly inside a text-node-bearing <span>). */
+.stat-icon {
+  vertical-align: -1px;
+  margin-right: 4px;
 }
 
 .pill-divider {
@@ -999,34 +1028,99 @@ html, body {
   Contextual build popover: anchored to a clicked tile's screen position,
   never a persistent panel. Transform centers it just above the tile.
 */
+/*
+  STEP_PROMPT_liquid_glass_hud.md item 2.2: `.build-popover` itself is now
+  a zero-size anchor point at the tapped tile's screen position — chips
+  (`.radial` mode, `show()`) are individually absolutely positioned
+  around it via `--chip-tx`/`--chip-ty` custom properties, fanned out by
+  `radialOffset()` in buildPopover.ts. `.card` mode (`showInfo()`) keeps
+  the original flowing single-card layout — there's only ever one thing
+  to show there, nothing to fan out.
+*/
 .build-popover {
   position: absolute;
   z-index: 20;
+  pointer-events: none;
+}
+
+.build-popover.card {
   transform: translate(-50%, -100%);
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: rgba(20, 30, 26, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  background: rgba(20, 40, 34, 0.42);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
   padding: 6px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
 }
 
+/*
+  Each radial chip: a translucent glass card (values copied straight from
+  the Khazan Interface Study artifact's own CSS — see buildPopover.ts's
+  class comment). `--chip-tx`/`--chip-ty` (set inline, per chip, by
+  `show()`) are the fan position; `left`/`top` stay at the anchor (0,0)
+  and the whole offset-plus-centering happens in `transform`, combined
+  with the spring keyframes' own scale so both animate together as one
+  `transform` value, not two competing ones.
+*/
 .build-option {
   display: flex;
   justify-content: space-between;
   gap: 14px;
   padding: 7px 10px;
-  border-radius: 6px;
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(24, 46, 40, 0.55);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
   color: #fdf6e6;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  pointer-events: auto;
+}
+
+/*
+  Radial mode only: absolutely positioned at the anchor (0,0), fanned out
+  and spring-scaled entirely via `transform` below. `.card` mode's lone
+  `.build-option` (the header row) stays in normal flow, unpositioned,
+  unanimated. `--chip-target-opacity` (1 normally, 0.4 on `.disabled`,
+  set alongside `--chip-tx`/`--chip-ty`) is what the keyframes settle on
+  — a plain `.disabled { opacity: 0.4 }` rule would lose to the spring
+  animation's own `forwards`-filled end state for the same property, so
+  the dimming has to be baked into the animation's own target instead.
+*/
+.build-popover.radial .build-option {
+  position: absolute;
+  left: 0;
+  top: 0;
+  --chip-target-opacity: 1;
+  transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty))) scale(0.3);
+  opacity: 0;
+  animation: build-option-spring 500ms cubic-bezier(0.22, 1.7, 0.32, 1) forwards;
+}
+
+.build-popover.radial .build-option.disabled {
+  --chip-target-opacity: 0.4;
+}
+
+@keyframes build-option-spring {
+  0% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty))) scale(0.3);
+  }
+  60% {
+    opacity: var(--chip-target-opacity);
+  }
+  100% {
+    opacity: var(--chip-target-opacity);
+    transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty))) scale(1);
+  }
 }
 
 .build-option:hover {
@@ -1034,8 +1128,11 @@ html, body {
 }
 
 .build-option.disabled {
-  opacity: 0.4;
   cursor: default;
+}
+
+.build-popover.card .build-option.disabled {
+  opacity: 0.4;
 }
 
 .build-option .cost {
@@ -1081,6 +1178,53 @@ html, body {
     transform: translate(-50%, -100%) scale(1);
   }
   70% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
+/*
+  STEP_PROMPT_liquid_glass_hud.md item 2.5: the build-confirm stat-delta
+  pill — same non-modal, outside-the-backdrop placement and restart-safe
+  `.showing` pattern as `.rejection-toast`, warm-gold accented instead of
+  neutral to read as a positive confirmation rather than a rejection.
+  Hold window tuned to land at roughly a third of a second (37%-12% of
+  1300ms ≈ 325ms), per the doc's own wording.
+*/
+.confirm-pill {
+  position: absolute;
+  z-index: 20;
+  transform: translate(-50%, -100%);
+  background: rgba(20, 30, 26, 0.92);
+  border: 1px solid rgba(230, 178, 104, 0.5);
+  border-radius: 999px;
+  padding: 6px 14px;
+  color: #f4d9a6;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.confirm-pill.showing {
+  animation: confirm-pill-beat 1300ms ease-out;
+}
+
+@keyframes confirm-pill-beat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.85);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+  }
+  37% {
     opacity: 1;
     transform: translate(-50%, -100%) scale(1);
   }

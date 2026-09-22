@@ -4,6 +4,25 @@ const SETTLE_DURATION_MS = 420;
 const SETTLE_DROP_HEIGHT = 2.5;
 const COLLAPSE_DURATION_MS = 500;
 
+/**
+ * STEP_PROMPT_liquid_glass_hud.md item 2.5: the exact scale sequence
+ * given in the doc (copied from the Khazan Interface Study artifact),
+ * read as (t-fraction, scaleXZ, scaleY) keyframes — a squash-and-stretch
+ * "pop into existence and jiggle to rest," not a drop from above (no Y
+ * offset anywhere here, unlike `begin()`'s SETTLE_DROP_HEIGHT). Linearly
+ * interpolated between neighboring keyframes at tick time; the bounce
+ * itself comes from the keyframe values overshooting past (1,1) and back,
+ * not from an easing curve between them.
+ */
+const BUILD_CONFIRM_DURATION_MS = 620;
+const BUILD_CONFIRM_KEYFRAMES: [number, number, number][] = [
+  [0, 0.3, 1.7],
+  [0.2, 1.32, 0.72],
+  [0.5, 0.92, 1.1],
+  [0.75, 1.04, 0.97],
+  [1, 1, 1]
+];
+
 /** t in [0,1] -> eased [0,1] with a slight overshoot, for a "click into place" feel. */
 function easeOutBack(t: number): number {
   const c1 = 1.70158;
@@ -12,12 +31,35 @@ function easeOutBack(t: number): number {
   return 1 + c3 * u * u * u + c1 * u * u;
 }
 
+/** Linearly interpolates BUILD_CONFIRM_KEYFRAMES at fraction `t` in [0,1] — returns [scaleXZ, scaleY]. */
+function sampleBuildConfirmKeyframes(t: number): [number, number] {
+  for (let i = 1; i < BUILD_CONFIRM_KEYFRAMES.length; i++) {
+    const [tPrev, xzPrev, yPrev] = BUILD_CONFIRM_KEYFRAMES[i - 1];
+    const [tNext, xzNext, yNext] = BUILD_CONFIRM_KEYFRAMES[i];
+    if (t <= tNext) {
+      const segmentT = tNext === tPrev ? 1 : (t - tPrev) / (tNext - tPrev);
+      return [THREE.MathUtils.lerp(xzPrev, xzNext, segmentT), THREE.MathUtils.lerp(yPrev, yNext, segmentT)];
+    }
+  }
+  const last = BUILD_CONFIRM_KEYFRAMES[BUILD_CONFIRM_KEYFRAMES.length - 1];
+  return [last[1], last[2]];
+}
+
 interface SettleAnim {
   mesh: THREE.InstancedMesh;
   index: number;
   x: number;
   z: number;
   finalY: number;
+  startTime: number;
+}
+
+interface BuildConfirmAnim {
+  mesh: THREE.InstancedMesh;
+  index: number;
+  x: number;
+  y: number;
+  z: number;
   startTime: number;
 }
 
@@ -33,6 +75,7 @@ interface CollapseAnim {
 /** Shared drop-and-settle animation for any InstancedMesh-backed placed object (tiles, buildings, ...). */
 export class SettleAnimator {
   private active: SettleAnim[] = [];
+  private buildConfirming: BuildConfirmAnim[] = [];
   private collapsing: CollapseAnim[] = [];
 
   /** Sets the instance's initial (elevated, shrunk) transform and registers it to animate in. */
@@ -41,6 +84,20 @@ export class SettleAnimator {
     mesh.setMatrixAt(index, matrix);
     mesh.instanceMatrix.needsUpdate = true;
     this.active.push({ mesh, index, x, z, finalY, startTime: nowMs });
+  }
+
+  /**
+   * STEP_PROMPT_liquid_glass_hud.md item 2.5: "diegetic build confirmation"
+   * — a just-built element squash-and-stretches into its final shape in
+   * place, rather than dropping in from above. Sets the instance to its
+   * final position immediately (no elevated start) and registers it to
+   * animate scale only.
+   */
+  beginBuildConfirm(mesh: THREE.InstancedMesh, index: number, x: number, z: number, finalY: number, nowMs: number): void {
+    const matrix = new THREE.Matrix4().makeScale(0.3, 1.7, 0.3).setPosition(x, finalY, z);
+    mesh.setMatrixAt(index, matrix);
+    mesh.instanceMatrix.needsUpdate = true;
+    this.buildConfirming.push({ mesh, index, x, y: finalY, z, startTime: nowMs });
   }
 
   /** Animates an existing instance shrinking to nothing — a catastrophic engineered-defense failure. */
@@ -68,6 +125,20 @@ export class SettleAnimator {
         if (t < 1) stillActive.push(anim);
       }
       this.active = stillActive;
+    }
+
+    if (this.buildConfirming.length > 0) {
+      const stillConfirming: BuildConfirmAnim[] = [];
+      for (const anim of this.buildConfirming) {
+        const t = Math.min(1, (nowMs - anim.startTime) / BUILD_CONFIRM_DURATION_MS);
+        const [scaleXZ, scaleY] = sampleBuildConfirmKeyframes(t);
+        const matrix = new THREE.Matrix4().makeScale(scaleXZ, scaleY, scaleXZ).setPosition(anim.x, anim.y, anim.z);
+        anim.mesh.setMatrixAt(anim.index, matrix);
+        anim.mesh.instanceMatrix.needsUpdate = true;
+        touchedMeshes.add(anim.mesh);
+        if (t < 1) stillConfirming.push(anim);
+      }
+      this.buildConfirming = stillConfirming;
     }
 
     if (this.collapsing.length > 0) {
