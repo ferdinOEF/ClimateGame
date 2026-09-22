@@ -1014,14 +1014,36 @@ access or `gh` CLI to fetch that URL programmatically, flagged to the
 user directly. The user then explicitly asked to skip the preview step
 for this item and land it on production directly; fast-forward merged
 to `master` and pushed (`de63942`), live now at
-`climate-game-psi.vercel.app/?debughazards`. One-time deviation from
-the doc's "preview first" rule, made explicitly by the user for this
-item only — the rest of this pass (1.3 onward) still follows the
-doc's branch-then-preview-then-confirm protocol by default.
+`climate-game-psi.vercel.app/?debughazards`. The user asked for the
+same straight-to-production treatment on item 1.3 too (below), so
+that's now the working default for this pass rather than a one-time
+exception — feature-branch-plus-preview stays available if that
+changes.
 
-Remaining items 1.1 (no code change needed, see Section 0), 1.3, 1.4
-(Mangrove legibility pass), 1.5, then 2.1-2.5, still to come — one at
-a time, each its own branch/preview/confirmation cycle, per the doc.
+## Follow-up — Liquid-glass HUD pass: item 1.3 (silent no-op on ineligible tile)
+
+`STEP_PROMPT_liquid_glass_hud.md` item 1.3: tried to reproduce the
+reported "tap on a distant tile does nothing" symptom with real
+raycast clicks (not the `__tapForTest` bypass) on five far-corner
+tiles — every one opened its popover correctly. Cross-checked
+`elements.json`: all five terrain types already have a buildable
+element, so the one real silent-no-op code path
+(`state.buildableAt()` returning empty) can't currently fire either.
+Likely the same "stale mental model from before claiming was removed"
+explanation as Section 0's zoom finding, not a live bug — full
+reasoning in PROGRESS.md.
+
+Status: closed anyway, since the doc explicitly asks for the
+affordance as a completeness fix even if the trigger isn't reachable
+today. New `BuildPopover.showRejection()` — a small non-modal toast,
+grow→hold→fade (the same shape validated for creature reactions),
+wired to the one real silent-return site so it'll say something the
+moment that branch ever becomes reachable again. Verified via a new
+`__buildPopoverForTest` hook exercising the mechanism directly.
+`tsc --noEmit` clean, 65/71 tests unchanged, production build
+succeeds. Pushed straight to `master` per the user's instruction.
+
+Remaining: 1.4 (Mangrove legibility pass), 1.5, then 2.1-2.5.
 
 ## Log
 
@@ -1077,3 +1099,4 @@ a time, each its own branch/preview/confirmation cycle, per the doc.
 - 2026-09-03, Icon legibility pass (Breakwater/Sand Mining/Khazan): closed, one limitation flagged and accepted. Pre-verified geometry from a separate sandbox applied directly. Breakwater's continuous crest bar replaced with a 7-rock two-row tumbled pile; Sand Mining's tiers widened and its dredge arm/scoop scaled ~1.7x with a lightness-contrast recolor — both pixel-sampled live to confirm real contrast against Seawall/Dune respectively. Khazan's front-bund/gate height fix confirmed live, but its color fix didn't hold up: the addendum's cyan water (`#5fe8e0`) pixel-samples as plain green (`RGB(49,85,46)`) against the real `defenseKhazanBund` tint, not water-blue — a lightness-contrast alternative was offered and declined, so the colors stand exactly as pasted, flagged as a known limitation rather than silently accepted as working. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
 - 2026-09-22, Element tap reactions & Khazan's living paddy cycle: closed. Ported the "Khazan Feel" CSS/SVG UX study into the real engine — all 11 roster elements (doc said 9, skip Breakwater; Breakwater and Yacht both turned out to be real, flagged back, both given reactions) get a grow→hold→exit tap reaction via a new shared `ReactionAnimator` and ~16 new low-poly creatures; Khazan additionally cycles a four-stage ambient paddy (shoots/tall/gold/stubble) driven off the real Cyclone telegraph/trigger/aftermath cycle, since `GAUNTLET_PROMPT.md`'s "Season" loop this doc assumed was never actually built (flagged back, user approved the Cyclone-interval substitute). Two real bugs caught live: the built-tile info popover was hiding most reactions behind its own card (fixed with a taller anchor for that path only), and Mangrove's bird was spawning inside its own canopy's solid geometry (fixed by repositioning beside it) — caught via systematic pixel-sampling of every element's real screen position, not by eyeballing screenshots. `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`/`/src/core`, production build succeeds.
 - 2026-09-22, Liquid-glass HUD pass, Section 0 + item 1.2: closed. Section 0's zoom/Mangrove discrepancy checked live against the deployed build with Playwright — neither a regression nor a stale deploy: the welcome modal (a later, unrelated pass) legitimately blocks scroll while open, confirmed via byte-identical `__cameraForTest.position` before/after scrolling with it up; Mangrove's redesign is deployed and matches its own spec, it just doesn't read well at gameplay zoom (a legibility follow-up, not a missing ship). Item 1.2: `state.claimed` has been a constant equal to the whole map since claiming was removed as a step, so "Tiles claimed" was correctly displaying a dead value — repurposed to `state.elements.size` ("Tiles built"), plus a stale "Claim land" Help step removed. First pushed to a feature branch per the doc's own preview-first protocol; user then explicitly asked to skip that for this item and merge straight to production — done (`de63942`), live at `climate-game-psi.vercel.app/?debughazards`.
+- 2026-09-22, Liquid-glass HUD pass, item 1.3: closed. Tried to reproduce "tap on a distant tile does nothing" with real raycast clicks on five far-corner tiles — every one worked; every terrain type already has a buildable element, so the underlying silent-no-op branch can't currently fire either, same "stale mental model" shape as Section 0. Built the requested affordance anyway (the doc explicitly anticipated this outcome): new `BuildPopover.showRejection()`, a small non-modal grow→hold→fade toast wired to the one real silent-return site in `openTilePopover()`, verified via a new `__buildPopoverForTest` hook. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. Pushed straight to `master` per the user's instruction.

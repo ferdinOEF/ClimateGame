@@ -4432,3 +4432,49 @@ step for this item and get it onto the production URL directly
 `master` and pushed (`de63942`), a deliberate one-time deviation from
 the doc's own "preview first" rule, not a default going forward for
 the rest of this pass.
+
+## STEP_PROMPT_liquid_glass_hud.md item 1.3 (silent no-op on ineligible tile) — DONE
+
+Tried hard to actually reproduce the reported symptom before writing
+any code, the same way Section 0 was investigated: real raycast clicks
+(`page.mouse.click`, not the `__tapForTest` bypass, which skips
+raycasting entirely) on five different far-corner tiles, each after
+genuinely panning the camera there first. Every single one opened its
+popover correctly — no silent no-op reproduced through the actual
+click path. Cross-checked `elements.json` against every terrain id on
+the map: all five terrain types (`coast`, `beach`, `estuary`, `land`,
+`river`) already have at least one buildable element (Coast via
+Yacht/Breakwater), so `state.buildableAt()` can't currently return
+empty for any real tile either. Most likely explanation, same shape as
+Section 0's zoom finding: the live playtest predates this session's
+elements — the doc's own wording ("a tile far from any claimed tile")
+reads like the old claim-adjacency mental model, which
+`STEP_PROMPT_remove_claiming.md` retired a while ago.
+
+Built the requested affordance anyway — the doc explicitly anticipated
+this outcome ("may be entirely correct rejection logic... but there's
+currently zero UX signal") — as a real, defensive UI completeness fix
+rather than a fix for a bug that's actually reachable today. New
+`BuildPopover.showRejection(screenX, screenY, message)`: a small
+`.rejection-toast` card (same dark-glass language as `.build-popover`,
+but `pointer-events: none` and deliberately outside the popover's own
+backdrop, since a rejection is a passive beat, never a modal) that
+grows in, holds, fades — the same shape `STEP_PROMPT_creature_
+reactions.md` validated for the world noticing a tap, applied to a UI
+rejection instead of a creature. Wired into `openTilePopover()`'s one
+real silent-return site (`options.length === 0`, in `main.ts`) — a
+branch that can't fire with today's roster but will say something the
+moment it ever can again, instead of nothing. New `__buildPopoverForTest`
+hook exposes the mechanism directly since the real trigger path isn't
+reachable to test through normal play right now.
+
+Live-verified: the toast element exists in the DOM (hidden by
+default); a direct `showRejection()` call renders it at the given
+screen point with the expected text, animates through its full
+grow→hold→fade cycle (confirmed via computed `opacity` mid-animation,
+screenshotted), and correctly hides again after ~1.2s; a rapid
+re-trigger while already showing restarts cleanly rather than
+breaking or stacking. `tsc --noEmit` clean, 65/71 tests unchanged,
+production build succeeds. Per the user's explicit instruction, pushed
+straight to `master` (skipping the feature-branch/preview step for
+this item too).
