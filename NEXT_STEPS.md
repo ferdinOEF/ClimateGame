@@ -1097,6 +1097,47 @@ over-built.
 succeeds, no diff in `elements.json`/`/src/core`. This closes
 `STEP_PROMPT_liquid_glass_hud.md` in full.
 
+## Follow-up — Real Panjim landmark markers
+
+`STEP_PROMPT_panjim_landmark_map.md`: 16 real-named Panjim landmarks
+(church, temple, mosque, market, palace, 8 schools/colleges/museums/
+academies sharing one "institution" silhouette, a park, a viewpoint,
+and a Miramar Beach marker) placed across the map's real geometry —
+found via connected-components analysis, not assumed: Land splits into
+a 28-tile patch closer to water (`estuary_core_land`) and a 50-tile
+patch farther out (`residential_land`), matching the doc's own
+"small patch" vs. "main cluster" language; Beach splits into the main
+15-tile run and an isolated 2-tile spur at the map's northern corner,
+a natural fit for the doc's "peninsula tip." Flagged plainly: the
+doc's own "established 80-120 hex budget" premise doesn't match the
+actual shipped `map.json` (198 tiles, hand-edited, 52 Estuary tiles
+across 2 components, not 6-9 across 3+) — the mapgen *script* still
+targets the smaller spec correctly, only the committed data has since
+diverged. Not regenerated, per the doc's own explicit "doesn't redraw
+it again" instruction; full reasoning in PROGRESS.md.
+
+Status: closed. New `landmarks.json` (data-driven, one entry per
+landmark), `landmarkGeometry.ts` (one shape per visual category, not
+per landmark), `landmarkMeshManager.ts` (a small standalone manager,
+deliberately not folded into `ElementMeshManager` — landmarks need
+none of that manager's tint/destroy/settle machinery). Non-claimable
+by construction: `openTilePopover()` checks the landmark map before
+`state.elements`/`state.buildableAt()`, so a landmark tile never
+reaches the build path at all. New `BuildPopover.showLandmarkInfo()`
+reuses the existing glass info-card pattern minus the effects row and
+Remove button. Live-verified: real names shown on tap (not
+placeholder ids), Coin completely unchanged by a landmark tap, zero
+build-menu chips ever offered on a landmark tile, a regression build
+on an ordinary tile still works exactly as before. Screenshotted all
+three placement zones separately (the game's own fog/max-zoom limits
+mean no single frame shows the whole 198-hex map) and grayscale-
+checked the estuary-core zone directly — every marker reads as a
+distinct silhouette.
+
+`tsc --noEmit` clean, 65/71 tests unchanged, no diff in
+`elements.json`/`/src/core`/`map.json`/`startingState.json`,
+production build succeeds.
+
 ## Log
 
 - Map redesign, fixed/authored map + claim mechanic (v2.1): closed. Superseded by later items below.
@@ -1154,3 +1195,4 @@ succeeds, no diff in `elements.json`/`/src/core`. This closes
 - 2026-09-22, Liquid-glass HUD pass, item 1.3: closed. Tried to reproduce "tap on a distant tile does nothing" with real raycast clicks on five far-corner tiles — every one worked; every terrain type already has a buildable element, so the underlying silent-no-op branch can't currently fire either, same "stale mental model" shape as Section 0. Built the requested affordance anyway (the doc explicitly anticipated this outcome): new `BuildPopover.showRejection()`, a small non-modal grow→hold→fade toast wired to the one real silent-return site in `openTilePopover()`, verified via a new `__buildPopoverForTest` hook. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. Pushed straight to `master` per the user's instruction.
 - 2026-09-22, Liquid-glass HUD pass, items 1.4 + 1.5: closed, Section 1 fully done. Mangrove's canopy highlight color was too hue-close to its base to survive the real `defenseMangrove` tint multiply (checked, not guessed) — swapped for a genuinely warmer yellow-green, added a second highlight lobe, thickened the stilt roots; verified live via a cropped/upscaled screenshot, a real improvement over the "crude blobby pinecone" the live playtest described. `IKUZO!` → `BEGIN`; Carbon HUD stat removed (confirmed dead — zero elements define a `carbon` effect, so it always read 0; the underlying generic accumulator stays). `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds. Pushed straight to `master`.
 - 2026-09-22, Liquid-glass HUD pass, Section 2 (radial build menu + HUD redesign): closed, whole step prompt now done. `BuildPopover.show()` fans chips in a 130° arc at 108px radius with a genuine spring entrance (staggered 70ms); `.instrument-cluster`/`.build-popover` get the doc's glass material (translucent + backdrop blur) plus four new coin/shield/leaf/grain stat icons; every real build-confirm now plays a squash-and-stretch settle (new `SettleAnimator.beginBuildConfirm()`), a soft HUD pulse ring, and a floating stat-delta pill. Two real bugs caught and fixed before reaching a screenshot (a disabled chip's dimming losing to the spring animation's forwards-filled opacity; `position: absolute` briefly leaking into the single-card info popover). One known minor edge case left unfixed and flagged: near the map's corner, the fan's clamp doesn't account for the HUD panel's own footprint. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
+- 2026-09-28, Real Panjim landmark markers: closed. 16 real-named landmarks (church, temple, mosque, market, palace, 8 schools/colleges/museums/academies sharing one shared "institution" silhouette, a park, a viewpoint, Miramar Beach) placed via connected-components analysis of the real map geometry, not assumed — Land splits into a 28-tile near-water patch and a 50-tile farther one, matching the doc's "small patch"/"main cluster" language; Beach's isolated 2-tile spur became the peninsula tip. Flagged: the doc's "established 80-120 hex budget" premise doesn't match the actual 198-tile `map.json` (hand-edited, diverged from what the still-correct mapgen script would produce) — not regenerated, per the doc's own "doesn't redraw it again" instruction. New `landmarks.json`/`landmarkGeometry.ts`/`landmarkMeshManager.ts`; landmarks are non-claimable by construction (`openTilePopover()` checks them before the build path, never reaching it) and show real names via a new `BuildPopover.showLandmarkInfo()`. Live-verified: real names on tap, Coin unaffected, zero build-menu chips on a landmark tile, an ordinary-tile regression build still works, grayscale-checked for silhouette distinctness. `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`/`/src/core`/`map.json`/`startingState.json`, production build succeeds.

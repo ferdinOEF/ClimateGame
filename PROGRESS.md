@@ -4629,3 +4629,122 @@ staying silent about it.
 succeeds, no diff in `elements.json`/`/src/core`. This closes
 `STEP_PROMPT_liquid_glass_hud.md` in full — Sections 0, 1, and 2 all
 done.
+
+## STEP_PROMPT_panjim_landmark_map.md (real Panjim landmark markers) — DONE, one discrepancy flagged up front
+
+**A real discrepancy worth stating plainly before anything else:** the
+doc's Section 0/3 both describe "the established 80-120 hex map-size
+budget" as the current state. The actual committed `map.json` is 198
+tiles (`handEdited: true`) — not 80-120 — with 52 Estuary tiles across
+only 2 connected components, not the 6-9-tiles-across-3+-patches shape
+`STEP_PROMPT_map_reshape_veg_icons.md` specifies. The mapgen script
+itself (`tools/mapgen/generate.ts`) still targets 80-120/6-9 correctly
+and would fail its own sanity check outside that range — so the *code*
+matches both prior docs, but the *shipped data* has since diverged
+from what generating it would produce, presumably hand-edited in a
+later pass for more terrain variety. This doc's own explicit
+instruction ("keep that shape; this pass places real names and icons
+onto it, it doesn't redraw it again") is unambiguous regardless of the
+size question, so no map regeneration was attempted — landmarks were
+placed on the real, current 198-tile map, not a hypothetical 80-120
+one. Flagging this now because it matters for how much weight to put
+on "established" claims in prior docs going forward, same reason
+Section 0 of `STEP_PROMPT_liquid_glass_hud.md` flagged its own zoom/
+Mangrove discrepancy.
+
+A second, smaller finding in the same vein: `startingState.json`'s
+`prebuiltHouses` is now empty — the "main residential cluster... where
+the starting claim + pre-built Houses continue to sit" framing no
+longer has literal pre-built Houses to anchor to. Didn't block
+anything: the doc's own zone concept ("the main residential cluster,"
+"the small patch near the estuary") still maps cleanly onto real
+geometry in the current map without needing that detail.
+
+**Zone identification** (the doc's own suggested zone ids reused
+directly): ran a connected-components analysis over the live
+`map.json`, not assumed. Land splits into exactly two components (50
+and 28 tiles) — matching the doc's "dual-Land-cluster" premise even
+though the map itself has grown well past the original spec. The
+smaller component (28 tiles, `estuary_core_land`) sits measurably
+closer to River/Estuary tiles on average (mean distance 1.82 vs.
+2.20) than the larger one (50 tiles, `residential_land`, mean distance
+3.18 vs. 4.00 to River) — both the doc's own size language ("small
+patch" vs. "main cluster") and the actual geometry point the same
+direction, so this wasn't an arbitrary pick. The existing Beach strip
+splits into a 15-tile main run (`beach_strip`) and an isolated 2-tile
+spur at the map's northern corner where Beach/Coast/River/Estuary all
+meet (`peninsula_tip`) — a real, already-present isolated landform,
+not one I created, and a good match for "a small peninsula tip... at
+the seaward end of the plateau."
+
+**16 landmarks placed**, one per hex, farthest-point-sampled within
+each zone so they read as spread out rather than clustered (confirmed
+live via screenshot, not just by the sampling algorithm's own math):
+
+- `estuary_core_land` (6): Church of Our Lady of the Immaculate
+  Conception (3,-2), Panjim Municipal Market (2,-4 — the zone's most
+  water-facing tile, per the doc's own placement instruction, confirmed
+  by measuring distance-to-water directly rather than eyeballing it),
+  Idalcao Palace / Old Secretariat (1,-5), Mahalaxmi Temple (4,-5),
+  Jama Masjid, Panaji (7,-5), Institute Menezes Braganza (10,-5).
+- `residential_land` (8): Dhempe College of Arts and Science (-1,4),
+  Don Bosco High School (7,1), Don Bosco College (-5,2), Sharada
+  Mandir School (2,6), Government Polytechnic, Panaji (-5,6), Kala
+  Academy (4,3), Goa State Museum (5,5), Campal Garden / Azad Maidan
+  (-3,3).
+- `beach_strip` (1): Miramar Beach (-6,3).
+- `peninsula_tip` (1): Dona Paula (-4,-5).
+
+**New `src/data/landmarks.json`** — one entry per landmark
+(`id`/`name`/`category`/`zone`/`icon`/`coord`/`note`), exactly the
+shape the doc's own example specifies. **New `src/render/
+landmarkGeometry.ts`** — one low-poly flat-shaded builder per visual
+category (church, temple, mosque, market, palace, a shared
+"institution" shape for every school/college/academy/museum/cultural
+institute, park, viewpoint, and a beach-umbrella marker for Miramar) —
+category-level distinctiveness, per the doc's own explicit example
+list, not a one-off unique shape per individual landmark (eight
+different colleges/schools/museums intentionally share one silhouette,
+same as the doc's own "books/building shape for schools and colleges"
+covers several buildings under one shape). **New `src/render/
+landmarkMeshManager.ts`** — a small standalone manager (not folded
+into `ElementMeshManager`: no tint, no destroy/degrade, no
+`SettleAnimator`, none of that machinery applies to something static
+and non-claimable), placed once at boot from `landmarks.json`.
+
+**Non-claimable, decorative-only, by construction, not by exclusion
+list:** `main.ts`'s `openTilePopover()` checks `landmarkMesh.at(coord)`
+*before* `state.elements`/`state.buildableAt()` — a landmark tile never
+reaches the build-menu or occupant-info path at all, so it can't be
+claimed or built on without touching `GameState` itself. **New
+`BuildPopover.showLandmarkInfo()`** reuses `showInfo()`'s own glass-card
+pattern exactly (per the doc's "reusing whatever info-card pattern the
+game already uses" ask) minus the effects row and the "Remove" button,
+since a landmark has neither.
+
+Live-verified, not assumed: tapped Church, Market, and Dona Paula —
+each showed its real name (e.g. "Church of Our Lady of the Immaculate
+Conception," not a placeholder id); Coin read identically before and
+after tapping a landmark (10000/10000); tapping Kala Academy produced
+zero radial build-menu chips (confirmed via
+`.build-popover.radial .build-option` count = 0) — an info card, never
+a build offer; a regression build on an ordinary, non-landmark tile
+(Seawall on a known Beach tile) still succeeded exactly as before and
+the "Tiles built" counter still moved. Screenshotted all three zones
+separately (the game's own existing fog/max-camera-distance limits
+mean no single frame shows the whole 198-hex map — a pre-existing
+constraint, not something this pass introduced): the estuary-core zone
+shows six visually distinct silhouettes (a towered church, a
+domed-and-minareted mosque, a flat market stall, a book-building
+institute, etc.), the residential zone shows eight spread-out
+institution markers, and the peninsula tip shows Dona Paula's
+railing-and-bench shape sitting alone on its isolated 2-tile spur.
+Converted the estuary-core screenshot to grayscale directly (not
+assumed): every marker still reads as a distinct boxy/domed/towered/
+flat-platform silhouette against its terrain, satisfying the
+readability convention the same way every buildable element already
+does.
+
+`tsc --noEmit` clean, 65/71 tests unchanged, no diff anywhere in
+`elements.json`, `/src/core`, `map.json`, or `startingState.json`,
+production build succeeds.
