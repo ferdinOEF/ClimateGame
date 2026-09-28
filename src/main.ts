@@ -4,6 +4,7 @@ import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
 import { ElementReactions } from "@render/elementReactions";
 import { KhazanPaddyManager } from "@render/khazanPaddyManager";
+import { LandmarkMeshManager, type LandmarkDef } from "@render/landmarkMeshManager";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
 import { CloudLayerManager } from "@render/cloudLayerManager";
 import { GhatsBackdropManager } from "@render/ghatsBackdropManager";
@@ -22,6 +23,7 @@ import { playSound } from "@ui/audioHooks";
 import { computeEraScoreBreakdown } from "@core/scoring";
 import mapData from "@data/map.json";
 import startingStateData from "@data/startingState.json";
+import landmarksData from "@data/landmarks.json";
 
 interface MapFile {
   estuary: AxialCoord;
@@ -37,6 +39,7 @@ interface StartingStateFile {
   prebuiltHouses: AxialCoord[];
 }
 const STARTING_STATE = startingStateData as StartingStateFile;
+const LANDMARKS = landmarksData as LandmarkDef[];
 const startingElements: StartingElementSeed[] = STARTING_STATE.prebuiltHouses.map((coord) => ({ coord, elementId: "house" }));
 
 const container = document.getElementById("app")!;
@@ -121,6 +124,13 @@ terrain.loadMap(mapTiles, keysToCoords(state.claimed));
 for (const coord of STARTING_STATE.prebuiltHouses) {
   elements.place(coord, "house", terrain.heightAt(coord));
 }
+
+// STEP_PROMPT_panjim_landmark_map.md: purely decorative, static map
+// dressing placed once at boot from landmarks.json — see
+// LandmarkMeshManager's own comment for why this isn't folded into
+// ElementMeshManager.
+const landmarkMesh = new LandmarkMeshManager(LANDMARKS, (coord) => terrain.heightAt(coord));
+scene.add(landmarkMesh.group);
 
 // Section 4/6: the fixed map's own (0,0) is an arbitrary point somewhere in
 // the middle of a wide east-west strip. `MAP.startingClaim` (still present
@@ -893,6 +903,18 @@ function openTilePopover(coord: AxialCoord): void {
   const worldTop = terrain.heightAt(coord);
   const { x: wx, z: wz } = axialToWorld(coord, 1.0);
   const screen = worldToScreen(wx, worldTop + 0.3, wz);
+
+  // STEP_PROMPT_panjim_landmark_map.md: checked before state.elements/
+  // state.buildableAt() below — a landmark tile never reaches the build-
+  // menu or occupant-info path at all, which is what makes it non-
+  // claimable/non-buildable without needing an exclusion list inside
+  // GameState itself. Landmarks don't affect the claim pool or Coin
+  // economy anywhere else on the map.
+  const landmark = landmarkMesh.at(coord);
+  if (landmark) {
+    buildPopover.showLandmarkInfo(screen.x, screen.y, { name: landmark.name, category: landmark.category });
+    return;
+  }
 
   const built = state.elements.get(key);
   if (built) {

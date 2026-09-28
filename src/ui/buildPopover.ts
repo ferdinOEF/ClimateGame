@@ -216,6 +216,24 @@ export class BuildPopover {
   }
 
   /**
+   * STEP_PROMPT_panjim_landmark_map.md: a landmark's name label, reusing
+   * `showInfo()`'s own glass-card pattern and backdrop/dismiss mechanics
+   * exactly — the doc's own ask ("reusing whatever info-card pattern the
+   * game already uses for a built element's occupant"). No effects row
+   * (landmarks have none) and no "Remove" button (a landmark isn't a
+   * player's build to demolish) — otherwise the same card.
+   */
+  showLandmarkInfo(screenX: number, screenY: number, info: { name: string; category: string }): void {
+    this.el.innerHTML = "";
+    this.el.className = "build-popover card";
+    const header = document.createElement("div");
+    header.className = "build-option built-info-header";
+    header.innerHTML = `<span>${info.name} <em>${info.category}</em></span>`;
+    this.el.appendChild(header);
+    this.positionAndReveal(screenX, screenY);
+  }
+
+  /**
    * Positions the popover at (screenX, screenY), then clamps within the
    * viewport — near a map edge the anchor point can otherwise push it
    * partly or fully off-screen. Revealing the backdrop and the measurement
