@@ -9,6 +9,7 @@ import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, typ
 import { CloudLayerManager } from "@render/cloudLayerManager";
 import { GhatsBackdropManager } from "@render/ghatsBackdropManager";
 import { WaveFrontManager } from "@render/waveFrontManager";
+import { RiverWaterManager } from "@render/riverWaterManager";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
@@ -68,6 +69,12 @@ const ghatsBackdrop = new GhatsBackdropManager(mapTiles);
 // layered on top of hazardOverlay's own per-tile reveals, not a
 // replacement for them (see WaveFrontManager's own comment).
 const waveFront = new WaveFrontManager();
+// STEP_PROMPT_hazard_vfx_and_fluidity.md Section 1: the river's own
+// always-present standing/flowing water surface — idle ripple all game,
+// turned up toward Flood telegraph/resolve (see updateFloodTelegraph()/
+// triggerFlood() below), independent of hazardOverlay/waveFront's own
+// hazard-time-only effects.
+const riverWater = new RiverWaterManager();
 // STEP_PROMPT_creature_reactions.md: tap-triggered creature/particle
 // reactions (Section 1-3) and Khazan's ambient paddy-stage cycle
 // (Section 4) — both purely additive/visual, no `/src/core` state written.
@@ -79,6 +86,7 @@ scene.add(hazardOverlay.mesh);
 scene.add(cloudLayer.group);
 scene.add(ghatsBackdrop.group);
 scene.add(waveFront.group);
+scene.add(riverWater.group);
 scene.add(reactions.group);
 scene.add(khazanPaddy.group);
 
@@ -116,6 +124,10 @@ function keysToCoords(keys: Iterable<string>): AxialCoord[] {
  */
 const state = new GameState(mapTiles, startingElements, STARTING_STATE.startingCoin);
 terrain.loadMap(mapTiles, keysToCoords(state.claimed));
+riverWater.setRiverTiles(
+  mapTiles.filter((t) => t.terrainId === "river").map((t) => t.coord),
+  (coord) => terrain.heightAt(coord)
+);
 
 // Section 4/8's new starting state: the player already owns a small
 // residential cluster of pre-built Houses on Land, inland from the coastal
@@ -485,6 +497,12 @@ function updateFloodTelegraph(): void {
   for (const coord of tilesOfType("river")) terrain.setTint(coord, telegraphing ? FLOOD_TELEGRAPH_COLOR : null);
   updateCloudVisibility();
   updateHazardTestSchedule();
+  // STEP_PROMPT_hazard_vfx_and_fluidity.md Section 1: "turning the volume
+  // up" on the river's own standing water once a Flood is genuinely
+  // imminent — triggerFlood() below keeps this elevated through the
+  // resolve/sweep too, so the ramp spans telegraph *and* resolution, not
+  // just the telegraph window.
+  riverWater.setIntensity(telegraphing ? 1 : 0);
 }
 
 /**
@@ -515,15 +533,48 @@ function triggerFlood(baseSeverity: number): void {
   const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
   const result = resolveMonsoonFlood(state, baseSeverity, stormSurgeActive);
   applyHazardResult("flood", result, performance.now());
+  const sweepMs = sweepDurationMs(result);
+  // STEP_PROMPT_hazard_vfx_and_fluidity.md Section 1: Flood gets the same
+  // wave-front spectacle Storm Surge already had — previously this call
+  // was entirely missing for Flood (only triggerCyclone() made it), so a
+  // Flood resolved with zero sweep geometry, only the per-tile color
+  // reveal. River tiles damaged by the flood become the channel-push
+  // markers automatically (WaveFrontManager's own terrain check); any
+  // spillover onto Land/Beach/Estuary near the river mouth becomes the
+  // open-water ring, originating from the same Coast/Estuary centroid the
+  // Cyclone sweep uses. `compound: stormSurgeActive` is the exact flag
+  // Section 3's downstream/tidal-push source above is gated on — the
+  // visual compounding and the damage-model compounding agree by
+  // construction, not by coincidence.
+  const floodOrigin = coastalCentroid();
+  if (floodOrigin) {
+    waveFront.trigger({
+      result,
+      originWorld: floodOrigin,
+      terrainIdAt: (coord) => terrain.terrainIdAt(coord),
+      heightAt: (coord) => terrain.heightAt(coord),
+      hexSize: 1.0,
+      roundDurationMs: ROUND_DURATION_MS,
+      nowMs: performance.now(),
+      durationMs: sweepMs,
+      compound: stormSurgeActive
+    });
+  }
   for (const coord of tilesOfType("river")) terrain.setTint(coord, null);
   floodTelegraphing = false;
   pendingFloodSeverity = null;
   updateCloudVisibility();
+  // Keeps the river surge turned up through the visible resolve sweep,
+  // then ramps back to idle — "intensifies... when a Flood is telegraphing
+  // OR resolving" (Section 1), not just during the telegraph window that
+  // just ended above.
+  riverWater.setIntensity(1);
+  setTimeout(() => riverWater.setIntensity(0), sweepMs);
   nextFloodAtTurn = state.turn + FLOOD_INTERVAL_TURNS;
   updateHazardTestSchedule();
   playSound("hazard_resolve");
   refreshHud();
-  setTimeout(() => showAftermathAndCheckEraEnd("Flood", result, resilienceBefore, trustBefore), sweepDurationMs(result));
+  setTimeout(() => showAftermathAndCheckEraEnd("Flood", result, resilienceBefore, trustBefore), sweepMs);
 }
 
 // --- Cyclone telegraph + resolution -------------------------------------------
@@ -1034,6 +1085,7 @@ start((nowMs) => {
   hazardOverlay.tick(nowMs);
   cloudLayer.tick(nowMs);
   waveFront.tick(nowMs);
+  riverWater.tick(nowMs);
   reactions.tick(nowMs);
   khazanPaddy.tick(nowMs);
   if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;

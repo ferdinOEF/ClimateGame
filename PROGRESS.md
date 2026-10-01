@@ -4748,3 +4748,160 @@ does.
 `tsc --noEmit` clean, 65/71 tests unchanged, no diff anywhere in
 `elements.json`, `/src/core`, `map.json`, or `startingState.json`,
 production build succeeds.
+
+## STEP_PROMPT_hazard_vfx_and_fluidity.md Section 1 (real hazard water: vertex-displaced waves, standing river surface, compound confluence, foam) — DONE, net-new build
+
+Moved from `claude/` to the repo root first, per the project's own
+convention. Read all five referenced docs in full before writing code,
+per the step prompt's own instruction.
+
+**Section 0's required pre-check (done before any Section 3 code, since
+Section 3 isn't due until later in this same pass, but the doc's own
+"this project has a documented pattern of marked-done-but-not-live"
+warning applied here too):** live-verified `STEP_PROMPT_creature_
+reactions.md`'s tap reactions against a real running build (`__tapForTest`,
+`__reactionsForTest`) rather than trusting PROGRESS.md's own prior
+"closed, confirmed live" entry. Finding, concrete and pixel-verified:
+the reactions genuinely fire — correct deterministic species cycling
+(`lastCombo` advanced through `["kingfisher","egret"]`, `["kite","egret"]`
+across repeated taps), correct grow→hold→exit scale curve (0.56 → 0.87 →
+0.99 → held at 1.0 for ~750ms → eased out), real non-empty geometry
+(600 vertex positions, valid bounding sphere, opaque vertex-colored
+material) — but at normal play they are **completely imperceptible**,
+not just subtle: hiding `ElementMeshManager`'s group entirely revealed
+the Mangrove's two birds as two faint specks a few pixels across,
+otherwise fully swallowed by the Mangrove's own (much bigger, post-
+`STEP_PROMPT_map_reshape_veg_icons.md` fused-3-plant-stand) canopy
+geometry; Khazan's dragonfly reaction was additionally found sitting
+directly under the built-tile info-card popover, peeking out only a
+few pixels at its bottom edge. This is squarely the step prompt's own
+"state 2: live but too subtle to notice" — confirmed by direct
+measurement, not assumed — so Section 3, when its turn comes, is scoped
+as a scale/anchor tuning pass on working infrastructure, not a rebuild.
+Logged here now since the investigation happened in this pass; Section
+3's own code changes land in a later entry once Section 2's element
+scale-up (which Section 3's own fix explicitly scales against) is done.
+
+**What's actually live before this pass, confirmed by reading the code
+directly, not assumed from the doc's own framing:** `floodOverlayManager.
+ts`'s `HazardOverlayManager` — flat per-tile hex-prism discs that rise/
+recede and change color/saturation with damage, no displacement at all.
+`waveFrontManager.ts`'s `WaveFrontManager` (`STEP_PROMPT_ghats_wave_
+demo.md`) — a flat `RingGeometry` expanding ring plus flat `CircleGeometry`
+river-channel markers, timed to the real BFS `arrivalRound` data but
+with zero vertex displacement; a real "spectacle" layer, just not yet
+*water*. Also found, not previously known going into this pass:
+`triggerFlood()` in `main.ts` never called `waveFront.trigger()` at
+all — only `triggerCyclone()` did — so a resolved Flood had zero sweep
+geometry, only the per-tile color reveal. This is a real, concrete gap
+the step prompt's own Section 1 ask (give Flood its own wave geometry)
+exists to close, not a hypothetical.
+
+**New `src/render/waveMath.ts`** — the shared sine-sum wave-displacement
+utility the step prompt's Section 4 explicitly asks for ("water motion
+and element reactions should share easing functions... via one shared
+utility"): `waveHeight(x, z, tSec, waves, phaseOffset)` sums 2-3
+mismatched `WaveComponent`s (amplitude/wavelength/speed/direction) so
+the result doesn't read as one uniform corrugated ripple; `scaleWaves()`/
+a local `lerpWaves()` ramp amplitude without popping; `recomputeNormals()`
+is the one shared post-displacement step every call site uses. `IDLE_
+WATER_WAVES` (idle amplitude ≈0.03 peak) and `FLOOD_SURGE_WAVES` (≈0.145
+peak, roughly 4-5x) are the two named presets `riverWaterManager.ts`
+ramps between.
+
+**New `src/render/riverWaterManager.ts`** — the standing/flowing river
+surface Section 1 asks for: one merged, always-present mesh built from
+every River tile's own hex footprint (`createHexWaterGeometry`, new
+helper below), displaced per-vertex every frame by `waveMath.ts`'s
+shared function. Idle all game at `IDLE_WATER_WAVES`; `setIntensity(1)`
+ramps to `FLOOD_SURGE_WAVES` over 1.8s (a ramp, not a pop — matches
+Section 4's own fluidity standard) whenever a Flood is telegraphing or
+resolving, ramping back to 0 once the resolve sweep finishes. Wired into
+`main.ts`'s `updateFloodTelegraph()` (ramp up at telegraph start, down
+at telegraph end) and `triggerFlood()` (held up through the resolve
+sweep specifically, so "telegraphing OR resolving" is both covered, not
+just the telegraph window). Live-verified: idle vertex Y-range ≈0.065
+(2070 vertices, 23 River tiles × 90/hex, matching the real map); 2.1s
+into a Flood trigger (past the 1.8s ramp), Y-range had grown to ≈0.285
+— the expected ~4.4x jump toward `FLOOD_SURGE_WAVES`' own peak-to-peak,
+confirmed by direct geometry read, not inferred from the code alone.
+
+**New geometry helper, `createHexWaterGeometry()` in `hexGeometry.ts`**
+— a real subdivided triangle grid inside the existing pointy-top hex
+footprint (6 sectors, each barycentrically subdivided), since a plain
+`CylinderGeometry` cap is only 6 giant triangles — nowhere near enough
+resolution for a sine displacement to read as a wave instead of 6 tilting
+panels. `DoubleSide` material on every new mesh in this pass, deliberately
+— sidesteps re-deriving this hex winding's correct CCW/CW convention by
+hand (the project's own documented "mirrored geometry silently backface-
+culled" precedent from the creature-reactions pass), reasonable for a
+thin water surface that has no real "back" side anyway.
+
+**`waveFrontManager.ts` rewritten**, same public `trigger()`/`tick()`
+API (`main.ts`'s two call sites needed zero changes beyond the new
+`compound` flag): the flat ring is now `buildCrestingRingGeometry()` —
+a radial×angular grid rebuilt every tick with `waveMath.ts` displacement
+plus a `crestHeight * radialT³` bump concentrated at the outer (leading)
+edge specifically, so the band visibly crests toward its own propagation
+front rather than tilting as one flat plane. A new thin, bright, high-
+emissive foam strip (`buildRingStripGeometry()`) rides exactly at the
+ring's current outer radius — the step prompt's explicitly-named
+"single highest-value detail." River-channel markers went from flat
+`CircleGeometry` discs to `createRippleDiscGeometry()` (a small
+multi-ring fan), re-displaced every tick (`displaceRippleDisc()`) with a
+local landing-ripple plus a share of the same directional wave. Live-
+verified the displacement is real, not just present in the code: a
+mid-sweep ring's own vertex Y-range measured 0.53–0.90 (0.37 units of
+real relief, cresting correctly toward the max at the outer rows) against
+a flat pre-pass ring that had none.
+
+**Compound confluence (Section 1's "two wavefronts should visibly meet
+and roughen")**: `trigger()` gained an optional `compound` flag. `main.ts`
+passes `compound: stormSurgeActive` into the Flood sweep — the *exact*
+same boolean `resolveMonsoonFlood()` itself already uses to decide
+whether to add the downstream tidal-push source (`STEP_PROMPT_hazard_
+science.md` Section 3) — so the visual compounding and the damage-model
+compounding share one source of truth by construction, not by two
+separately-tuned guesses landing on the same turns by luck. When true:
+ring/channel-marker amplitude ×1.7 (`COMPOUND_MULTIPLIER`), both recolor
+to the same `#c9503a` `HazardOverlayManager` already uses for a compound
+damage tile — one consistent "this spot is compound" visual language
+across both the per-tile reveal and the sweep geometry. Live-verified:
+triggering a Storm Surge then a Flood within the same turn (inside
+`STORM_SURGE_COMPOUND_WINDOW_TURNS`) produced `waveFront.compound ===
+true`; triggering a Flood alone produced `false`.
+
+**Filled the Flood/wave-front gap found above**: `triggerFlood()` now
+calls `waveFront.trigger()` (previously it never did). River tiles
+damaged by the flood become channel-push markers automatically (no
+special-casing needed — `WaveFrontManager` already branches on
+`terrainId`); any Land/Beach/Estuary spillover near the river mouth
+becomes the open-water ring, originating from the same Coast/Estuary
+centroid `triggerCyclone()` already uses. Investigated and resolved one
+real false-negative while verifying this: a fresh Flood trigger against
+undefended River tiles produces **zero** `channelMarkers`, which looked
+like a bug at first but isn't — `resolveMonsoonFlood()`'s own existing
+`skipDamage` rule (`STEP_PROMPT_hazard_mechanics_fixes.md`/Bucket C3)
+deliberately excludes undefended River tiles from `tileDamage` entirely
+(an untouched river tile is the flood's own source, not something it
+damages) — confirmed by building Small Dam on two River tiles first,
+after which the same trigger produced real river-tagged damage entries
+and `channelMarkers.length === 4`. No `/src/core` change was needed or
+made; this is existing, out-of-scope hazard logic working as designed,
+not something this pass touched.
+
+**Verification environment note:** the working tree had an unrelated,
+uncommitted, in-progress map rework (`src/data/map.json`/`landmarks.json`/
+`startingState.json`/`tools/mapgen/generate.ts`, expanding the map to
+~546 hexes) already present at the start of this pass, from outside this
+session's own visible history. That map's starting Resilience reads 0
+before any hazard even fires, making it unusable for verifying hazard
+visuals. Left it completely untouched (not read for content, not
+modified, not discarded) — `git stash push --keep-index` set it aside
+for the duration of this pass's live verification only, restored
+immediately after, so this pass's own diff touches none of those four
+files.
+
+`tsc --noEmit` clean, 65/65 tests pass (6 pre-existing `skipIf`-gated
+skips, unrelated to this pass), production build succeeds. No diff in
+`elements.json`, `/src/core`, or any data file.
