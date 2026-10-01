@@ -4905,3 +4905,83 @@ files.
 `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing `skipIf`-gated
 skips, unrelated to this pass), production build succeeds. No diff in
 `elements.json`, `/src/core`, or any data file.
+
+## STEP_PROMPT_hazard_vfx_and_fluidity.md Section 2 (element scale and detail, all 11 elements) — DONE, tuning pass on an already-detailed roster
+
+**Checked the doc's own premise against the real geometry first, per its
+own "re-run the legibility check... not just assume" instruction.** The
+roster isn't 9 elements, it's 11 — Breakwater and Yacht both exist now
+(found during the creature-reactions pass, carried forward). Measured
+every builder's actual current bounding footprint from `elementGeometry.
+ts` directly rather than trusting the doc's own "0.15-0.9" range, which
+describes an earlier state: several elements (Seawall ~0.86, Breakwater
+~0.93, Khazan ~0.9-1.0, Small Dam ~1.0 counting its buttresses) were
+already close to a reasonable size from prior icon-redesign/legibility
+passes — only Mangrove and Sandy Vegetation (~0.65-0.93, but reading as
+several small separate blobs rather than one dense mass) were genuinely
+undersized in the way the doc describes.
+
+**Camera-distance-vs-geometry-scale, checked both as instructed:** the
+default camera (`CAM_DISTANCE_DEFAULT=18`, no scroll) was confirmed live,
+not assumed, as the actual starting zoom — a fresh load's own screenshot,
+not a close-in debug shot. At that distance, adjacent same-row hex
+centers sit ~1.73 world units apart (`√3 × HEX_SIZE`), so a geometry-scale
+ceiling around ~1.3-1.4 units of footprint diameter stays safely clear of
+visually touching a neighboring tile's own built element — a camera-only
+fix (pulling the whole scene closer) would have made every HUD/UI element
+relatively bigger too and isn't a distinct lever from "zoom in," whereas
+scaling geometry only grows what's actually under-filling its tile.
+Geometry scale was the correct lever here; camera distance was left
+untouched.
+
+**New `SCALE_FACTOR` table in `elementGeometry.ts`**, applied once at the
+`createElementGeometry()` dispatcher (not inside each builder) so every
+element's factor lives in one readable place: a per-element whole-
+assembly `scale()` call (the doc's own prescribed first step), sized
+individually per element's actual current footprint rather than one
+blanket number — 1.25-1.6× depending on how undersized each one measured
+(Mangrove/Sandy Vegetation at the high end, Khazan/Small Dam at the low
+end, already close to target). **`yacht` deliberately left at 1.0, not
+missed:** its own existing comment (`STEP_PROMPT_economy_food_yacht.md`)
+explicitly calls it "a single small accent piece, not a scene
+centerpiece" — scaling it to match the new baseline would reverse an
+already-made, intentional design decision, not fix an oversight. Flagged
+here rather than silently applied.
+
+**Detail pass: found the roster is already dense with secondary shapes**
+from the prior icon-redesign (`STEP_PROMPT_icons.md`) and legibility
+(`STEP_PROMPT_icon_legibility_pass.md`) passes — windows/door/awning/
+pennant/pool on Beachside Resort, grooves/cap on Seawall, bund/gate/
+slats/water-paddy split on Khazan, tiers/groove-rings/dredge-arm on Sand
+Mining, veranda/fascia/windows on House, buttresses/spillway/ridge-cap on
+Small Dam, two-row jittered rocks on Breakwater, dual-highlight canopy
+plus stilt roots on Mangrove. The scale pass alone made most of this
+existing detail register at normal zoom for the first time, rather than
+needing new secondary shapes invented from scratch. **One real exception
+found and fixed:** Dune's grass tufts (thin, near-vertical, dark-olive-
+on-tan) remained invisible even after scaling — confirmed live, a built
+Dune still read as a plain rounded double-hump with zero vegetation cue.
+Root cause: a thin near-vertical blade presents almost no silhouette to
+this game's steep 58°-elevation top-down camera, regardless of scale.
+Fixed by raking the tufts into wide outward splay angles (so they
+present real silhouette from above, not a near-invisible edge-on sliver),
+widening them, going from 3 to 5, and shifting their color to a brighter
+yellow-green for value contrast against the tan/ochre dome rather than a
+same-dark-value olive. Live-verified: a freshly built Dune now reads
+unmistakably as a vegetated dune, not a bare mound.
+
+**Live-verified at the real default zoom** (not a close-in debug shot):
+built Seawall/Breakwater/Mangrove/Khazan/Small Dam/Sand Mining adjacent
+to each other across Beach/Coast/Estuary/River tiles, and separately
+House/Beachside Resort/Sandy Vegetation/Dune on Land/Beach — every
+element now visibly fills a much larger share of its tile with no
+clipping into a neighboring tile's own built element. Converted the
+first screenshot to true luminance grayscale (PowerShell `ColorMatrix`,
+not an approximation) and confirmed every element still reads as a
+distinct silhouette/value by shape alone — Breakwater's jagged pile vs.
+Seawall's flat-topped block, Mangrove's rounded canopy, Khazan's ring,
+Small Dam's flat wall, all tellable apart without color.
+
+`tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips, no
+hazard/economy logic touched), production build succeeds. No diff in
+`elements.json` or `/src/core`.

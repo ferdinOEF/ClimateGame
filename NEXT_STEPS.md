@@ -1030,6 +1030,34 @@ already sitting in the working tree at the start of this pass was set
 aside via `git stash` for live verification and restored immediately
 after, untouched.
 
+## Follow-up — Hazard VFX & Fluidity, Section 2 (element scale and detail)
+
+`STEP_PROMPT_hazard_vfx_and_fluidity.md` Section 2, second of four.
+Re-measured all 11 real roster elements (not 9 — Breakwater/Yacht both
+exist) against the actual default camera zoom, confirmed live, not
+assumed. Most were already close to a reasonable footprint from prior
+icon-redesign/legibility passes; Mangrove and Sandy Vegetation were the
+genuinely undersized ones.
+
+Status: closed. New per-element `SCALE_FACTOR` table in `elementGeometry.
+ts` (1.25-1.6×, `yacht` deliberately left at 1.0 per its own existing
+"not a scene centerpiece" design comment) applied once at the
+`createElementGeometry()` dispatcher. Checked camera-distance-vs-geometry-
+scale as the doc asked: geometry scale was the correct, isolated lever
+(a camera pull-in would also inflate the HUD); left untouched. Found the
+roster already carries plenty of secondary detail from earlier passes —
+the scale-up is what made most of it register at normal zoom — except
+Dune, whose grass tufts were real geometry but functionally invisible to
+this game's steep top-down camera (a thin near-vertical blade shows
+almost no silhouette from directly above); fixed by raking the tufts
+into a wide outward splay and brightening their color, confirmed live.
+Live-verified at real default zoom across all terrain types, plus a true
+luminance-grayscale conversion confirming every element still reads as a
+distinct silhouette. Full detail in PROGRESS.md.
+
+`tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production
+build succeeds. No diff in `elements.json`/`/src/core`.
+
 ## Follow-up — Liquid-glass HUD pass: Section 0 + item 1.2
 
 `STEP_PROMPT_liquid_glass_hud.md`: Section 0's zoom/Mangrove
@@ -1232,3 +1260,4 @@ production build succeeds.
 - 2026-09-22, Liquid-glass HUD pass, Section 2 (radial build menu + HUD redesign): closed, whole step prompt now done. `BuildPopover.show()` fans chips in a 130° arc at 108px radius with a genuine spring entrance (staggered 70ms); `.instrument-cluster`/`.build-popover` get the doc's glass material (translucent + backdrop blur) plus four new coin/shield/leaf/grain stat icons; every real build-confirm now plays a squash-and-stretch settle (new `SettleAnimator.beginBuildConfirm()`), a soft HUD pulse ring, and a floating stat-delta pill. Two real bugs caught and fixed before reaching a screenshot (a disabled chip's dimming losing to the spring animation's forwards-filled opacity; `position: absolute` briefly leaking into the single-card info popover). One known minor edge case left unfixed and flagged: near the map's corner, the fan's clamp doesn't account for the HUD panel's own footprint. `tsc --noEmit` clean, 65/71 tests unchanged, production build succeeds.
 - 2026-09-28, Real Panjim landmark markers: closed. 16 real-named landmarks (church, temple, mosque, market, palace, 8 schools/colleges/museums/academies sharing one shared "institution" silhouette, a park, a viewpoint, Miramar Beach) placed via connected-components analysis of the real map geometry, not assumed — Land splits into a 28-tile near-water patch and a 50-tile farther one, matching the doc's "small patch"/"main cluster" language; Beach's isolated 2-tile spur became the peninsula tip. Flagged: the doc's "established 80-120 hex budget" premise doesn't match the actual 198-tile `map.json` (hand-edited, diverged from what the still-correct mapgen script would produce) — not regenerated, per the doc's own "doesn't redraw it again" instruction. New `landmarks.json`/`landmarkGeometry.ts`/`landmarkMeshManager.ts`; landmarks are non-claimable by construction (`openTilePopover()` checks them before the build path, never reaching it) and show real names via a new `BuildPopover.showLandmarkInfo()`. Live-verified: real names on tap, Coin unaffected, zero build-menu chips on a landmark tile, an ordinary-tile regression build still works, grayscale-checked for silhouette distinctness. `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`/`/src/core`/`map.json`/`startingState.json`, production build succeeds.
 - 2026-09-30, Hazard VFX & Fluidity, Section 1 (real hazard water) + Section 0 pre-check: closed. Section 0: live-verified creature reactions fire correctly (right species cycling, right grow-hold-exit curve, real geometry) but are currently imperceptible — tiny scale, fully hidden behind Mangrove's own bigger canopy and (for Khazan) behind the info-card popover; confirmed by hiding element meshes and reading real vertex data, not by eyeballing a screenshot. Scopes Section 3 (later in this pass) as a tuning pass, not a rebuild. Section 1: new shared `waveMath.ts` sine-displacement utility; new always-present `RiverWaterManager` (idle ripple, ramps to a surge amplitude during Flood telegraph/resolve); `WaveFrontManager`'s ring/foam/channel-markers rewritten from flat geometry to real per-vertex displacement cresting at the leading edge. Found and fixed a real gap: `triggerFlood()` never called `waveFront.trigger()` at all (only Cyclone did) — fixed, with the same `stormSurgeActive` flag the damage model already uses now driving the visual compound amplitude/recolor too. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds. An unrelated uncommitted map rework already present in the working tree was stashed for verification and restored untouched afterward.
+- 2026-10-01, Hazard VFX & Fluidity, Section 2 (element scale and detail): closed. Re-measured all 11 real elements (not 9) against the real default camera zoom; most already sat close to a reasonable footprint from prior passes, only Mangrove/Sandy Vegetation were genuinely undersized. New per-element `SCALE_FACTOR` table (1.25-1.6×) applied once at `createElementGeometry()`'s dispatcher; `yacht` deliberately left unscaled per its own existing "not a scene centerpiece" design comment. Checked camera-distance vs. geometry-scale as asked — geometry scale was the correct isolated lever, camera left untouched. Found the roster already carries plenty of secondary detail from earlier passes (the scale-up alone made most of it register for the first time); the one real exception was Dune, whose grass tufts were genuine geometry but functionally invisible to the steep top-down camera (near-vertical blades show almost no silhouette from directly above) — fixed with a wide outward splay and a brighter color. Live-verified at true default zoom across every terrain type, plus a true luminance-grayscale conversion confirming every element still reads as a distinct silhouette. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds.

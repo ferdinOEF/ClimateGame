@@ -12,29 +12,54 @@ import { box, taperedSlab, coneFrustum, dome, blade, plan, rotate, move, scale }
  * saturated) terrain palette from the readability pass.
  */
 
-/** Dune: two overlapping low ridge arcs (back taller/set back, front lower/forward), plus angled grass tufts on the crest. */
+/**
+ * Dune: two overlapping low ridge arcs (back taller/set back, front lower/
+ * forward), plus angled grass tufts on the crest.
+ *
+ * STEP_PROMPT_hazard_vfx_and_fluidity.md Section 2 detail pass: the
+ * original tufts (thin, near-vertical, 0.02-0.04 wide, a dark olive close
+ * in value to the tan dome under it) were real geometry but functionally
+ * invisible at this game's steep 58°-elevation camera — a near-vertical
+ * blade presents almost no silhouette to a camera looking nearly straight
+ * down at it, confirmed live: even after the whole-assembly scale-up,
+ * Dune still read as a plain rounded double-hump with zero vegetation cue,
+ * the one element in the roster that genuinely needed a secondary-shape
+ * fix, not just a bigger version of what was already there. Fixed by
+ * raking the tufts outward much further (wide splay angles, not a slight
+ * lean) so they present real silhouette area from directly above, widening
+ * them, and shifting the color toward a brighter yellow-green for value
+ * contrast against the tan/ochre dome rather than a same-dark-value olive.
+ */
 function duneGeometry(): THREE.BufferGeometry {
   const backRidge = dome(0.42, 0.22, 0.22, "#c9932e", 0);
   move(backRidge, 0, 0, -0.14);
   const frontRidge = dome(0.4, 0.16, 0.2, "#b5842a", 0);
   move(frontRidge, 0.03, 0, 0.13);
 
-  const tuft = (x: number, angle: number) => {
+  const tuft = (x: number, z: number, leanX: number, leanZ: number) => {
     const g = blade(
       [
-        [-0.02, 0],
-        [0.02, 0],
-        [0.01, 0.22],
-        [-0.01, 0.22]
+        [-0.035, 0],
+        [0.035, 0],
+        [0.015, 0.3],
+        [-0.015, 0.3]
       ],
-      "#4b5a34"
+      "#8bb24a"
     );
-    rotate(g, 0, 0, angle);
-    move(g, x, 0.16, 0.1);
+    rotate(g, leanX, 0, leanZ);
+    move(g, x, 0.14, z);
     return g;
   };
 
-  return mergeGeometries([backRidge, frontRidge, tuft(-0.08, 0.25), tuft(0.02, -0.1), tuft(0.12, 0.3)]);
+  return mergeGeometries([
+    backRidge,
+    frontRidge,
+    tuft(-0.1, 0.08, 0.15, 0.55),
+    tuft(0.04, 0.14, 0.25, -0.4),
+    tuft(0.16, 0.06, -0.1, 0.6),
+    tuft(-0.02, 0.16, 0.3, 0.1),
+    tuft(0.1, 0.16, -0.2, -0.35)
+  ]);
 }
 
 /** Seawall: a tapered concrete block wall with a lighter cap slab and coursed groove lines. */
@@ -501,8 +526,49 @@ const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   yacht: yachtGeometry
 };
 
+/**
+ * STEP_PROMPT_hazard_vfx_and_fluidity.md Section 2: a whole-assembly scale
+ * pass, applied here at the dispatcher rather than inside each builder, so
+ * every element's per-type bound factor lives in one readable table instead
+ * of eleven separate edits. "Scale up as a whole-assembly transform first"
+ * is the doc's own prescribed first step (hand-redistributing proportions
+ * only where a straight scale-up breaks something) — measured each
+ * element's actual current bounding footprint against the hex's own
+ * across-flats visual width (`HEX_SIZE=1.0` → ~1.7 units) before picking a
+ * factor, rather than applying one blanket number to all eleven: elements
+ * that were already closer to the 60-80%-of-tile target (Seawall,
+ * Breakwater, Khazan, Small Dam — all built with ~0.85-1.0-wide geometry
+ * from earlier passes) get a smaller bump than the ones that read
+ * noticeably sparse at gameplay zoom (Mangrove, Sandy Vegetation — their
+ * "fused 3-clump stand" offsets individual plants outward but each plant
+ * itself stayed small, which spreads a sparse look wider rather than fixing
+ * it; a real per-plant size increase is what actually fixes "sparse").
+ *
+ * `yacht` is deliberately left at 1.0, not an oversight: its own comment
+ * (`yachtGeometry()`, STEP_PROMPT_economy_food_yacht.md) explicitly says "a
+ * single small accent piece, not a scene centerpiece" — scaling it to match
+ * every other element's new baseline would reverse that already-made,
+ * intentional design call, not fix an oversight. Flagged in PROGRESS.md
+ * rather than silently applied or silently skipped.
+ */
+const SCALE_FACTOR: Record<string, number> = {
+  dune: 1.45,
+  sandy_vegetation: 1.6,
+  beachside_resort: 1.25,
+  seawall: 1.5,
+  breakwater: 1.4,
+  mangrove: 1.5,
+  khazan: 1.35,
+  small_dam: 1.3,
+  sand_mining: 1.35,
+  house: 1.5,
+  yacht: 1.0
+};
+
 export function createElementGeometry(elementId: string): THREE.BufferGeometry {
   const builder = BUILDERS[elementId];
   if (!builder) throw new Error(`No geometry builder for element id: ${elementId}`);
-  return builder();
+  const geometry = builder();
+  const factor = SCALE_FACTOR[elementId] ?? 1;
+  return factor === 1 ? geometry : scale(geometry, factor);
 }
