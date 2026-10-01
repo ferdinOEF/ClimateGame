@@ -7,7 +7,15 @@ import { jitterColor, paletteColor } from "./palette";
 import { SettleAnimator } from "./settleAnimation";
 
 export const HEX_SIZE = 1.0;
-const MAX_INSTANCES_PER_TYPE = 400;
+// Raised 400 -> 600: the hand-edited Panjim map (src/data/map.json,
+// `handEdited: true`, authored via an interactive terrain editor rather
+// than tools/mapgen/generate.ts) grew to 897 tiles, 445 of them Land —
+// already past the old cap, which threw `Terrain instance cap exceeded
+// for land` on `loadMap()` and crashed the game before the scene ever
+// rendered. 600 gives real headroom above today's 445 for further edits
+// in that same tool, not just a value that happens to clear the current
+// map by a few tiles.
+const MAX_INSTANCES_PER_TYPE = 600;
 const UNCLAIMED_SINK = 0.15; // unclaimed tiles sit slightly lower, like they're still in the fog
 // Three playtest passes on this function now. First, the original
 // per-terrain HSL desaturate (scale saturation down, nudge lightness toward

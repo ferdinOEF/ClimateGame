@@ -5,7 +5,10 @@
     "category": "religious",
     "zone": "estuary_core_land",
     "icon": "landmark_church",
-    "coord": { "q": 3, "r": -2 },
+    "coord": {
+      "q": -3,
+      "r": -1
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -14,7 +17,10 @@
     "category": "religious",
     "zone": "estuary_core_land",
     "icon": "landmark_temple",
-    "coord": { "q": 4, "r": -5 },
+    "coord": {
+      "q": 4,
+      "r": 1
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -23,7 +29,10 @@
     "category": "religious",
     "zone": "estuary_core_land",
     "icon": "landmark_mosque",
-    "coord": { "q": 7, "r": -5 },
+    "coord": {
+      "q": 4,
+      "r": 3
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -32,7 +41,10 @@
     "category": "market",
     "zone": "estuary_core_land",
     "icon": "landmark_market",
-    "coord": { "q": 2, "r": -4 },
+    "coord": {
+      "q": 3,
+      "r": 5
+    },
     "note": "Real Panjim landmark (Mercado de Panaji), placed at the estuary patch's water-facing edge per the source description; decorative only, not part of the effects model."
   },
   {
@@ -41,7 +53,10 @@
     "category": "heritage",
     "zone": "estuary_core_land",
     "icon": "landmark_palace",
-    "coord": { "q": 1, "r": -5 },
+    "coord": {
+      "q": -1,
+      "r": 7
+    },
     "note": "Real Panjim landmark (Goa's former Secretariat), placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -50,7 +65,10 @@
     "category": "culture",
     "zone": "estuary_core_land",
     "icon": "landmark_institution",
-    "coord": { "q": 10, "r": -5 },
+    "coord": {
+      "q": 2,
+      "r": 8
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -59,7 +77,10 @@
     "category": "education",
     "zone": "residential_land",
     "icon": "landmark_institution",
-    "coord": { "q": -1, "r": 4 },
+    "coord": {
+      "q": 19,
+      "r": -3
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -68,7 +89,10 @@
     "category": "education",
     "zone": "residential_land",
     "icon": "landmark_institution",
-    "coord": { "q": 7, "r": 1 },
+    "coord": {
+      "q": 5,
+      "r": 0
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -77,7 +101,10 @@
     "category": "education",
     "zone": "residential_land",
     "icon": "landmark_institution",
-    "coord": { "q": -5, "r": 2 },
+    "coord": {
+      "q": 7,
+      "r": 2
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -86,7 +113,10 @@
     "category": "education",
     "zone": "residential_land",
     "icon": "landmark_institution",
-    "coord": { "q": 2, "r": 6 },
+    "coord": {
+      "q": 16,
+      "r": 3
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -95,7 +125,10 @@
     "category": "education",
     "zone": "residential_land",
     "icon": "landmark_institution",
-    "coord": { "q": -5, "r": 6 },
+    "coord": {
+      "q": 16,
+      "r": 4
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -104,7 +137,10 @@
     "category": "culture",
     "zone": "residential_land",
     "icon": "landmark_institution",
-    "coord": { "q": 4, "r": 3 },
+    "coord": {
+      "q": 4,
+      "r": 6
+    },
     "note": "Real Panjim landmark (Goa's performing-arts academy, Campal), placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -113,7 +149,10 @@
     "category": "culture",
     "zone": "residential_land",
     "icon": "landmark_institution",
-    "coord": { "q": 5, "r": 5 },
+    "coord": {
+      "q": 10,
+      "r": 8
+    },
     "note": "Real Panjim landmark, placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -122,7 +161,10 @@
     "category": "park",
     "zone": "residential_land",
     "icon": "landmark_park",
-    "coord": { "q": -3, "r": 3 },
+    "coord": {
+      "q": 13,
+      "r": 8
+    },
     "note": "Real Panjim landmark (a public ground/garden, Campal), placed for recognizability; decorative only, not part of the effects model."
   },
   {
@@ -131,7 +173,10 @@
     "category": "beach",
     "zone": "beach_strip",
     "icon": "landmark_beach",
-    "coord": { "q": -6, "r": 3 },
+    "coord": {
+      "q": -9,
+      "r": 2
+    },
     "note": "Labels the game's existing Beach strip explicitly as Miramar, its established real-world stand-in; decorative only, not part of the effects model."
   },
   {
@@ -140,7 +185,10 @@
     "category": "viewpoint",
     "zone": "peninsula_tip",
     "icon": "landmark_viewpoint",
-    "coord": { "q": -4, "r": -5 },
+    "coord": {
+      "q": -15,
+      "r": 13
+    },
     "note": "Real Panjim-adjacent headland lookout, placed at the map's small isolated peninsula-like beach spur; decorative only, not part of the effects model."
   }
 ]
