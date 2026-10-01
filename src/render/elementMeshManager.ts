@@ -10,6 +10,21 @@ import { SettleAnimator } from "./settleAnimation";
 const MAX_INSTANCES_PER_TYPE = 200;
 const DEGRADED_TINT = new THREE.Color("#5b4a36"); // dull, patchy brown — a visibly weakened structure
 
+/**
+ * STEP_PROMPT_hazard_vfx_and_fluidity.md Section 3's other named addition:
+ * "a slow canopy sway for Mangrove" — only Mangrove, not a general ambient-
+ * idle pass across every element (`STEP_PROMPT_creature_reactions.md`
+ * Section 5 explicitly ruled that out, and this doc only reopens it for
+ * the two elements actually named in the "feels inert" complaint). Rocks
+ * the whole instance gently around its own base (X/Z tilt, not a Y spin —
+ * a tree sways side to side in wind, it doesn't rotate on its trunk) via a
+ * per-instance deterministic phase (seeded from position) so a cluster of
+ * Mangroves doesn't sway in visible lockstep. Small enough (≤0.035 rad)
+ * not to compete with the tap reaction's own much larger motion.
+ */
+const MANGROVE_SWAY_ELEMENT_ID = "mangrove";
+const MANGROVE_SWAY_AMPLITUDE_RAD = 0.035;
+
 interface ElementInstanceRef {
   elementId: string;
   mesh: THREE.InstancedMesh;
@@ -154,6 +169,40 @@ export class ElementMeshManager {
 
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
+    this.swayMangroves(nowMs);
+  }
+
+  private swayMangroves(nowMs: number): void {
+    const mesh = this.meshes.get(MANGROVE_SWAY_ELEMENT_ID);
+    if (!mesh) return;
+    let any = false;
+    const tSec = nowMs / 1000;
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const euler = new THREE.Euler();
+    const scale = new THREE.Vector3(1, 1, 1);
+    const matrix = new THREE.Matrix4();
+    for (const ref of this.byCoord.values()) {
+      if (ref.elementId !== MANGROVE_SWAY_ELEMENT_ID) continue;
+      // Skip an instance mid-drop-in/build-confirm/collapse this tick —
+      // SettleAnimator already wrote this frame's matrix for it above, and
+      // overwriting it with a plain upright tilt would visibly cut that
+      // brief (~420-620ms) animation short every time a Mangrove is built,
+      // rebuilt, or destroyed.
+      if (this.animator.isAnimating(ref.mesh, ref.index)) continue;
+      any = true;
+      const phase = (ref.x * 12.9898 + ref.z * 78.233) % (Math.PI * 2);
+      euler.set(
+        Math.sin(tSec * 0.5 + phase) * MANGROVE_SWAY_AMPLITUDE_RAD,
+        0,
+        Math.cos(tSec * 0.4 + phase * 1.3) * MANGROVE_SWAY_AMPLITUDE_RAD
+      );
+      quaternion.setFromEuler(euler);
+      position.set(ref.x, ref.y, ref.z);
+      matrix.compose(position, quaternion, scale);
+      ref.mesh.setMatrixAt(ref.index, matrix);
+    }
+    if (any) mesh.instanceMatrix.needsUpdate = true;
   }
 
   /** Clears every placed element (a new era starting a fresh map). */

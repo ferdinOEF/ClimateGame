@@ -1058,6 +1058,39 @@ distinct silhouette. Full detail in PROGRESS.md.
 `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production
 build succeeds. No diff in `elements.json`/`/src/core`.
 
+## Follow-up — Hazard VFX & Fluidity, Section 3 (dynamic interaction tuning)
+
+`STEP_PROMPT_hazard_vfx_and_fluidity.md` Section 3, third of four. Per
+Section 0's finding (reactions fire correctly but are imperceptible),
+scoped and executed as a tuning pass, not a rebuild.
+
+Status: closed, one limitation flagged open. Every reaction in
+`elementReactions.ts` now scales its own offsets/`peakScale` by its host
+element's `elementGeometry.ts` `SCALE_FACTOR` (now exported), so a
+reaction's spawn point stays correctly positioned relative to its host
+after Section 2's scale-up instead of drifting back inside it — live-
+verified for Mangrove, now clearly visible in an ordinary screenshot with
+no hiding/pixel-sampling trick needed. Found and fixed a real Section-2
+regression along the way: `khazanPaddyManager.ts` builds its paddy rows
+in a completely separate geometry at hardcoded coordinates that never
+got Section 2's 1.35× memo, so a built Khazan's rows had drifted out of
+proportion with its now-bigger bund — fixed, re-verified live. Built
+both of Section 3's explicitly-scoped ambient additions: a faint,
+phase-offset water ripple per Khazan tile (reusing Section 1's shared
+`waveMath.ts`, color-matched to the water box's own known actual-on-
+screen tint rather than its authored one) and a gentle whole-instance
+sway for every Mangrove (skips any instance mid-settle-animation so it
+doesn't fight that separate animation). One limitation left open and
+reported rather than silently accepted: Khazan's own reaction creature
+still mostly hides behind the built-tile info card, which anchors high
+for an unrelated reason (tall features like Seawall) that no amount of
+this reaction's own height tuning fully escapes without touching the
+card's shared anchor logic — out of scope for this tuning pass. Full
+diagnosis and detail in PROGRESS.md.
+
+`tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production
+build succeeds. No diff in `elements.json`/`/src/core`/`main.ts`.
+
 ## Follow-up — Liquid-glass HUD pass: Section 0 + item 1.2
 
 `STEP_PROMPT_liquid_glass_hud.md`: Section 0's zoom/Mangrove
@@ -1261,3 +1294,4 @@ production build succeeds.
 - 2026-09-28, Real Panjim landmark markers: closed. 16 real-named landmarks (church, temple, mosque, market, palace, 8 schools/colleges/museums/academies sharing one shared "institution" silhouette, a park, a viewpoint, Miramar Beach) placed via connected-components analysis of the real map geometry, not assumed — Land splits into a 28-tile near-water patch and a 50-tile farther one, matching the doc's "small patch"/"main cluster" language; Beach's isolated 2-tile spur became the peninsula tip. Flagged: the doc's "established 80-120 hex budget" premise doesn't match the actual 198-tile `map.json` (hand-edited, diverged from what the still-correct mapgen script would produce) — not regenerated, per the doc's own "doesn't redraw it again" instruction. New `landmarks.json`/`landmarkGeometry.ts`/`landmarkMeshManager.ts`; landmarks are non-claimable by construction (`openTilePopover()` checks them before the build path, never reaching it) and show real names via a new `BuildPopover.showLandmarkInfo()`. Live-verified: real names on tap, Coin unaffected, zero build-menu chips on a landmark tile, an ordinary-tile regression build still works, grayscale-checked for silhouette distinctness. `tsc --noEmit` clean, 65/71 tests unchanged, no diff in `elements.json`/`/src/core`/`map.json`/`startingState.json`, production build succeeds.
 - 2026-09-30, Hazard VFX & Fluidity, Section 1 (real hazard water) + Section 0 pre-check: closed. Section 0: live-verified creature reactions fire correctly (right species cycling, right grow-hold-exit curve, real geometry) but are currently imperceptible — tiny scale, fully hidden behind Mangrove's own bigger canopy and (for Khazan) behind the info-card popover; confirmed by hiding element meshes and reading real vertex data, not by eyeballing a screenshot. Scopes Section 3 (later in this pass) as a tuning pass, not a rebuild. Section 1: new shared `waveMath.ts` sine-displacement utility; new always-present `RiverWaterManager` (idle ripple, ramps to a surge amplitude during Flood telegraph/resolve); `WaveFrontManager`'s ring/foam/channel-markers rewritten from flat geometry to real per-vertex displacement cresting at the leading edge. Found and fixed a real gap: `triggerFlood()` never called `waveFront.trigger()` at all (only Cyclone did) — fixed, with the same `stormSurgeActive` flag the damage model already uses now driving the visual compound amplitude/recolor too. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds. An unrelated uncommitted map rework already present in the working tree was stashed for verification and restored untouched afterward.
 - 2026-10-01, Hazard VFX & Fluidity, Section 2 (element scale and detail): closed. Re-measured all 11 real elements (not 9) against the real default camera zoom; most already sat close to a reasonable footprint from prior passes, only Mangrove/Sandy Vegetation were genuinely undersized. New per-element `SCALE_FACTOR` table (1.25-1.6×) applied once at `createElementGeometry()`'s dispatcher; `yacht` deliberately left unscaled per its own existing "not a scene centerpiece" design comment. Checked camera-distance vs. geometry-scale as asked — geometry scale was the correct isolated lever, camera left untouched. Found the roster already carries plenty of secondary detail from earlier passes (the scale-up alone made most of it register for the first time); the one real exception was Dune, whose grass tufts were genuine geometry but functionally invisible to the steep top-down camera (near-vertical blades show almost no silhouette from directly above) — fixed with a wide outward splay and a brighter color. Live-verified at true default zoom across every terrain type, plus a true luminance-grayscale conversion confirming every element still reads as a distinct silhouette. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds.
+- 2026-10-01, Hazard VFX & Fluidity, Section 3 (dynamic interaction tuning): closed, one limitation flagged open. Every reaction's spawn offset/`peakScale` in `elementReactions.ts` now scales by its host element's own Section-2 `SCALE_FACTOR` (now exported from `elementGeometry.ts`) — live-verified Mangrove's bird is now clearly visible in an ordinary screenshot, no hiding trick needed. Found and fixed a real Section-2 regression along the way: Khazan's paddy rows (`khazanPaddyManager.ts`, built in a separate geometry at hardcoded coordinates) never got the 1.35× memo and had visibly drifted out of proportion with the now-bigger bund — fixed, re-verified. Built both of Section 3's explicitly-scoped ambient additions: a faint phase-offset water ripple per Khazan tile (reusing Section 1's `waveMath.ts`) and a gentle whole-instance sway for every Mangrove (skips instances mid-settle-animation). One limitation left open, reported not hidden: Khazan's reaction creature still mostly hides behind the built-tile info card, which anchors high for an unrelated reason (tall features like Seawall) — a full fix needs the card's own shared anchor logic touched, out of scope here. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds.

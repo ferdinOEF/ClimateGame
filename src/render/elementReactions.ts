@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { ReactionAnimator } from "./reactionAnimator";
+import { SCALE_FACTOR } from "./elementGeometry";
 import {
   kingfisherGeometry,
   egretGeometry,
@@ -151,48 +152,67 @@ export class ElementReactions {
     this.animator.tick(nowMs);
   }
 
-  /** `originY` is the tile's terrain-top world Y (`terrain.heightAt`) — every offset below is relative to that. */
+  /**
+   * `originY` is the tile's terrain-top world Y (`terrain.heightAt`) —
+   * every offset below is relative to that.
+   *
+   * STEP_PROMPT_hazard_vfx_and_fluidity.md Section 3: every offset/
+   * `peakScale` below was originally tuned against each element's
+   * pre-Section-2 geometry — e.g. Mangrove's bird at `x+0.55` was
+   * calibrated to land just clear of that era's smaller canopy. Section 2
+   * then grew the host geometry itself (`elementGeometry.ts`'s
+   * `SCALE_FACTOR`, 1.25-1.6x per element) without touching this file, so
+   * every reaction's spawn point silently drifted back *inside* its own
+   * (now bigger) host — confirmed live pre-fix via Section 0's own
+   * investigation: a Mangrove bird reduced to a few-pixel speck, fully
+   * swallowed by the canopy once hidden-element-visibility testing proved
+   * it was there at all. `factor` reuses the exact same per-element number
+   * Section 2 already picked, so a reaction's spawn offset and the
+   * creature's own on-screen size both grow in lockstep with whatever its
+   * host element actually measures now, instead of drifting independently.
+   */
   trigger(elementId: string, originX: number, originY: number, originZ: number): void {
+    const factor = SCALE_FACTOR[elementId] ?? 1;
     switch (elementId) {
       case "mangrove":
-        this.mangrove(originX, originY, originZ);
+        this.mangrove(originX, originY, originZ, factor);
         break;
       case "khazan":
-        this.khazan(originX, originY, originZ);
+        this.khazan(originX, originY, originZ, factor);
         break;
       case "dune":
-        this.dune(originX, originY, originZ);
+        this.dune(originX, originY, originZ, factor);
         break;
       case "sandy_vegetation":
-        this.sandyVegetation(originX, originY, originZ);
+        this.sandyVegetation(originX, originY, originZ, factor);
         break;
       case "house":
-        this.house(originX, originY, originZ);
+        this.house(originX, originY, originZ, factor);
         break;
       case "beachside_resort":
-        this.beachsideResort(originX, originY, originZ);
+        this.beachsideResort(originX, originY, originZ, factor);
         break;
       case "seawall":
-        this.seawall(originX, originY, originZ);
+        this.seawall(originX, originY, originZ, factor);
         break;
       case "small_dam":
-        this.smallDam(originX, originY, originZ);
+        this.smallDam(originX, originY, originZ, factor);
         break;
       case "sand_mining":
-        this.sandMining(originX, originY, originZ);
+        this.sandMining(originX, originY, originZ, factor);
         break;
       case "breakwater":
-        this.breakwater(originX, originY, originZ);
+        this.breakwater(originX, originY, originZ, factor);
         break;
       case "yacht":
-        this.yacht(originX, originY, originZ);
+        this.yacht(originX, originY, originZ, factor);
         break;
       // Any other/future element id: no reaction, not an error — a new
       // roster addition simply has none until explicitly given one.
     }
   }
 
-  private mangrove(x: number, y: number, z: number): void {
+  private mangrove(x: number, y: number, z: number, f: number): void {
     const combo = MANGROVE_CYCLE.next();
     this.lastCombo = combo;
     // The center clump's own canopy is a solid dome reaching local Y~0.76
@@ -203,131 +223,145 @@ export class ElementReactions {
     // sampled zero color deviation at the computed spawn point, the only
     // element in the whole roster where that happened). Offsetting to the
     // side, clear of the canopy's footprint, reads as "swooping past the
-    // cluster" instead and isn't occluded by it.
+    // cluster" instead and isn't occluded by it. Every offset here scales
+    // by `f` (Mangrove's own 1.5x from Section 2) so "clear of the
+    // canopy's footprint" stays true against the now-bigger canopy.
     combo.forEach((id, i) => {
       const bird = creatureMesh(id);
-      place(bird, x + 0.55 + (i - (combo.length - 1) / 2) * 0.13, y + 0.3, z + 0.3);
-      this.animator.spawn(bird, { durationMs: 2400, peakScale: 1, rise: 0.1 });
+      place(bird, x + 0.55 * f + (i - (combo.length - 1) / 2) * 0.13 * f, y + 0.3 * f, z + 0.3 * f);
+      this.animator.spawn(bird, { durationMs: 2400, peakScale: f, rise: 0.1 * f });
     });
   }
 
-  private khazan(x: number, y: number, z: number): void {
+  private khazan(x: number, y: number, z: number, f: number): void {
     const id = KHAZAN_CYCLE.next();
     this.lastCombo = [id];
     const creature = creatureMesh(id);
-    // Water half of the tile — see khazanGeometry()'s own water box at local x=-0.17.
-    place(creature, x - 0.17, y + 0.05, z);
-    this.animator.spawn(creature, { durationMs: 1800, peakScale: 1.4, rise: id === "dragonfly" ? 0.18 : 0.08 });
+    // Water half of the tile — see khazanGeometry()'s own water box at
+    // local x=-0.17. `rise` bumped further above the proportional scale
+    // alone (not just *f) — Section 0 separately found this reaction
+    // sitting mostly behind the built-tile info card's own bottom edge
+    // (the card anchors high, at `worldTop+0.75` in main.ts, tuned for
+    // taller features like a Seawall's cap course; Khazan's own reaction
+    // is deliberately low, "from the water," so it never fully escapes
+    // that anchor the way a taller reaction does) — the extra lift here
+    // is a targeted compromise (clear more of the card without losing the
+    // "emerging from the water" read), not a full fix to the card's own
+    // anchor height, which stays out of scope for this tuning pass.
+    place(creature, x - 0.17 * f, y + 0.05 * f, z);
+    this.animator.spawn(creature, { durationMs: 1800, peakScale: 1.4 * f, rise: (id === "dragonfly" ? 0.3 : 0.2) * f });
   }
 
-  private dune(x: number, y: number, z: number): void {
-    const kickup = particleGroup(6, 0.05, "#c9932e");
-    place(kickup, x, y + 0.18, z + 0.05);
-    this.animator.spawn(kickup, { durationMs: 1200, peakScale: 1, rise: 0.03 });
+  private dune(x: number, y: number, z: number, f: number): void {
+    const kickup = particleGroup(6, 0.05 * f, "#c9932e");
+    place(kickup, x, y + 0.18 * f, z + 0.05 * f);
+    this.animator.spawn(kickup, { durationMs: 1200, peakScale: f, rise: 0.03 * f });
 
     const lizard = creatureMesh("lizard");
-    place(lizard, x + 0.06, y + 0.22, z + 0.05);
-    this.animator.spawn(lizard, { durationMs: 1600, peakScale: 1.1, rise: 0.02 });
+    place(lizard, x + 0.06 * f, y + 0.22 * f, z + 0.05 * f);
+    this.animator.spawn(lizard, { durationMs: 1600, peakScale: 1.1 * f, rise: 0.02 * f });
   }
 
-  private sandyVegetation(x: number, y: number, z: number): void {
+  private sandyVegetation(x: number, y: number, z: number, f: number): void {
     const crab = creatureMesh("crab");
-    place(crab, x + 0.1, y + 0.02, z);
-    this.animator.spawn(crab, { durationMs: 1500, peakScale: 1.2 });
+    place(crab, x + 0.1 * f, y + 0.02 * f, z);
+    this.animator.spawn(crab, { durationMs: 1500, peakScale: 1.2 * f });
   }
 
-  private house(x: number, y: number, z: number): void {
+  private house(x: number, y: number, z: number, f: number): void {
     // Window-glow pulse: two small warm-glow blocks at House's window inset positions (houseGeometry()'s own window(-0.18)/window(0.18)).
     const glowL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.11, 0.012), new THREE.MeshBasicMaterial({ color: "#f4d9a6" }));
-    place(glowL, x - 0.18, y + 0.16, z + 0.26);
-    this.animator.spawn(glowL, { durationMs: 1800, peakScale: 1 });
+    place(glowL, x - 0.18 * f, y + 0.16 * f, z + 0.26 * f);
+    this.animator.spawn(glowL, { durationMs: 1800, peakScale: f });
     const glowR = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.11, 0.012), new THREE.MeshBasicMaterial({ color: "#f4d9a6" }));
-    place(glowR, x + 0.18, y + 0.16, z + 0.26);
-    this.animator.spawn(glowR, { durationMs: 1800, peakScale: 1 });
+    place(glowR, x + 0.18 * f, y + 0.16 * f, z + 0.26 * f);
+    this.animator.spawn(glowR, { durationMs: 1800, peakScale: f });
 
     const cat = creatureMesh("cat");
-    place(cat, x, y + 0.02, z + 0.34);
-    this.animator.spawn(cat, { durationMs: 2000, peakScale: 1 });
+    place(cat, x, y + 0.02 * f, z + 0.34 * f);
+    this.animator.spawn(cat, { durationMs: 2000, peakScale: f });
   }
 
-  private beachsideResort(x: number, y: number, z: number): void {
+  private beachsideResort(x: number, y: number, z: number, f: number): void {
     // Pool is at local (0.55, 0, -0.05) per beachsideResortGeometry() — the static model's own palm was removed in a later pass, so this frond is a new, small, transient reaction-only prop (same category as every other creature here), not a restoration of static geometry.
     const frond = creatureMesh("palmFrond");
-    place(frond, x + 0.78, y, z - 0.05);
-    this.animator.spawn(frond, { durationMs: 2200, peakScale: 1 });
+    place(frond, x + 0.78 * f, y, z - 0.05 * f);
+    this.animator.spawn(frond, { durationMs: 2200, peakScale: f });
 
     const ball = creatureMesh("beachBall");
-    place(ball, x + 0.45, y + 0.05, z - 0.15);
-    this.animator.spawn(ball, { durationMs: 1600, peakScale: 1, rise: 0.15 });
+    place(ball, x + 0.45 * f, y + 0.05 * f, z - 0.15 * f);
+    this.animator.spawn(ball, { durationMs: 1600, peakScale: f, rise: 0.15 * f });
 
-    const rippleA = particleGroup(8, 0.14, "#8fc0c2");
+    const rippleA = particleGroup(8, 0.14 * f, "#8fc0c2");
     rippleA.scale.y = 0.05;
-    place(rippleA, x + 0.55, y + 0.02, z - 0.05);
-    this.animator.spawn(rippleA, { durationMs: 1400, peakScale: 1 });
-    const rippleB = particleGroup(8, 0.2, "#8fc0c2");
+    place(rippleA, x + 0.55 * f, y + 0.02 * f, z - 0.05 * f);
+    this.animator.spawn(rippleA, { durationMs: 1400, peakScale: f });
+    const rippleB = particleGroup(8, 0.2 * f, "#8fc0c2");
     rippleB.scale.y = 0.05;
-    place(rippleB, x + 0.55, y + 0.02, z - 0.05);
-    this.animator.spawn(rippleB, { durationMs: 1800, peakScale: 1 });
+    place(rippleB, x + 0.55 * f, y + 0.02 * f, z - 0.05 * f);
+    this.animator.spawn(rippleB, { durationMs: 1800, peakScale: f });
   }
 
-  private seawall(x: number, y: number, z: number): void {
-    const spray = particleGroup(7, 0.08, "#c9dde2");
-    place(spray, x, y + 0.42, z + 0.18);
-    this.animator.spawn(spray, { durationMs: 900, peakScale: 1, rise: 0.06 });
+  private seawall(x: number, y: number, z: number, f: number): void {
+    const spray = particleGroup(7, 0.08 * f, "#c9dde2");
+    place(spray, x, y + 0.42 * f, z + 0.18 * f);
+    this.animator.spawn(spray, { durationMs: 900, peakScale: f, rise: 0.06 * f });
 
     const perch = new THREE.Group();
     const pigeonA = creatureMesh("pigeon");
-    place(pigeonA, -0.12, 0, 0);
+    place(pigeonA, -0.12 * f, 0, 0);
     const pigeonB = creatureMesh("pigeon");
-    place(pigeonB, 0.1, 0, 0);
+    place(pigeonB, 0.1 * f, 0, 0);
     perch.add(pigeonA, pigeonB);
-    place(perch, x, y + 0.42, z);
-    this.animator.spawn(perch, { durationMs: 2600, peakScale: 1, rise: 0.05 });
+    place(perch, x, y + 0.42 * f, z);
+    this.animator.spawn(perch, { durationMs: 2600, peakScale: f, rise: 0.05 * f });
   }
 
-  private smallDam(x: number, y: number, z: number): void {
-    const mist = particleGroup(6, 0.06, "#e7f0ef");
-    place(mist, x, y + 0.34, z);
-    this.animator.spawn(mist, { durationMs: 1000, peakScale: 1, rise: 0.08 });
+  private smallDam(x: number, y: number, z: number, f: number): void {
+    const mist = particleGroup(6, 0.06 * f, "#e7f0ef");
+    place(mist, x, y + 0.34 * f, z);
+    this.animator.spawn(mist, { durationMs: 1000, peakScale: f, rise: 0.08 * f });
 
     const fish = creatureMesh("fish");
-    place(fish, x, y + 0.3, z);
-    this.animator.spawn(fish, { durationMs: 1300, peakScale: 1, rise: 0.22 });
+    place(fish, x, y + 0.3 * f, z);
+    this.animator.spawn(fish, { durationMs: 1300, peakScale: f, rise: 0.22 * f });
   }
 
-  private sandMining(x: number, y: number, z: number): void {
-    const puff = particleGroup(6, 0.07, "#d5972e");
-    place(puff, x, y + 0.4, z);
-    this.animator.spawn(puff, { durationMs: 900, peakScale: 1, rise: 0.05 });
+  private sandMining(x: number, y: number, z: number, f: number): void {
+    const puff = particleGroup(6, 0.07 * f, "#d5972e");
+    place(puff, x, y + 0.4 * f, z);
+    this.animator.spawn(puff, { durationMs: 900, peakScale: f, rise: 0.05 * f });
 
     // Fast, panicked timing — shorter hold, quicker exit than any other reaction here.
     const flock = new THREE.Group();
     const birdA = creatureMesh("shorebird");
-    place(birdA, -0.06, 0, 0);
+    place(birdA, -0.06 * f, 0, 0);
     const birdB = creatureMesh("shorebird");
-    place(birdB, 0.08, 0.03, -0.04);
+    place(birdB, 0.08 * f, 0.03 * f, -0.04 * f);
     flock.add(birdA, birdB);
-    place(flock, x, y + 0.44, z);
-    this.animator.spawn(flock, { durationMs: 1100, peakScale: 1, rise: 0.16 });
+    place(flock, x, y + 0.44 * f, z);
+    this.animator.spawn(flock, { durationMs: 1100, peakScale: f, rise: 0.16 * f });
   }
 
-  private breakwater(x: number, y: number, z: number): void {
+  private breakwater(x: number, y: number, z: number, f: number): void {
     const bird = creatureMesh("cormorant");
-    place(bird, x, y + 0.2, z + 0.1);
-    this.animator.spawn(bird, { durationMs: 2200, peakScale: 1, rise: 0.03 });
+    place(bird, x, y + 0.2 * f, z + 0.1 * f);
+    this.animator.spawn(bird, { durationMs: 2200, peakScale: f, rise: 0.03 * f });
   }
 
-  private yacht(x: number, y: number, z: number): void {
+  private yacht(x: number, y: number, z: number, f: number): void {
     // Not in the artifact's 10-item catalog — a fresh, deliberately minimal
     // design (per Section 0's restraint calibration): two small ripple
-    // rings off the waterline, nothing else.
-    const rippleA = particleGroup(7, 0.12, "#d8b158");
+    // rings off the waterline, nothing else. `f` is 1.0 for Yacht (Section
+    // 2 deliberately left it unscaled), so this is a no-op multiply, kept
+    // for consistency with every other method rather than a special case.
+    const rippleA = particleGroup(7, 0.12 * f, "#d8b158");
     rippleA.scale.y = 0.05;
-    place(rippleA, x, y + 0.02, z);
-    this.animator.spawn(rippleA, { durationMs: 1300, peakScale: 1 });
-    const rippleB = particleGroup(7, 0.18, "#8fc0c2");
+    place(rippleA, x, y + 0.02 * f, z);
+    this.animator.spawn(rippleA, { durationMs: 1300, peakScale: f });
+    const rippleB = particleGroup(7, 0.18 * f, "#8fc0c2");
     rippleB.scale.y = 0.05;
-    place(rippleB, x, y + 0.02, z);
-    this.animator.spawn(rippleB, { durationMs: 1600, peakScale: 1 });
+    place(rippleB, x, y + 0.02 * f, z);
+    this.animator.spawn(rippleB, { durationMs: 1600, peakScale: f });
   }
 }

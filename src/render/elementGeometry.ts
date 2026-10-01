@@ -551,7 +551,7 @@ const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
  * intentional design call, not fix an oversight. Flagged in PROGRESS.md
  * rather than silently applied or silently skipped.
  */
-const SCALE_FACTOR: Record<string, number> = {
+export const SCALE_FACTOR: Record<string, number> = {
   dune: 1.45,
   sandy_vegetation: 1.6,
   beachside_resort: 1.25,

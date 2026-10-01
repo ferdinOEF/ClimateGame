@@ -105,6 +105,19 @@ export class SettleAnimator {
     this.collapsing.push({ mesh, index, x, y, z, startTime: nowMs });
   }
 
+  /**
+   * STEP_PROMPT_hazard_vfx_and_fluidity.md Section 3: lets a caller that
+   * writes its own per-instance matrix outside this class (Mangrove's
+   * ambient sway, `ElementMeshManager.swayMangroves()`) check whether this
+   * specific index is mid-drop-in/build-confirm/collapse this tick, so it
+   * can skip that index for one frame rather than stomping the in-progress
+   * animation's own scale/position with a plain upright tilt.
+   */
+  isAnimating(mesh: THREE.InstancedMesh, index: number): boolean {
+    const matches = (a: { mesh: THREE.InstancedMesh; index: number }) => a.mesh === mesh && a.index === index;
+    return this.active.some(matches) || this.buildConfirming.some(matches) || this.collapsing.some(matches);
+  }
+
   tick(nowMs: number): void {
     const touchedMeshes = new Set<THREE.InstancedMesh>();
 

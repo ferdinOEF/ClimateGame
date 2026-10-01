@@ -4985,3 +4985,90 @@ Small Dam's flat wall, all tellable apart without color.
 `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips, no
 hazard/economy logic touched), production build succeeds. No diff in
 `elements.json` or `/src/core`.
+
+## STEP_PROMPT_hazard_vfx_and_fluidity.md Section 3 (dynamic interaction, tuned per Section 0's verification) — DONE, one limitation honestly left open
+
+Per Section 0's own finding (logged in this file's Section 1 entry
+above): reactions fire correctly but are imperceptible, caused by two
+things Section 2's element scale-up made worse, not better, since this
+file was never updated to match: every reaction's spawn offset/
+`peakScale` was tuned against each host element's *pre-Section-2*
+geometry.
+
+**Fixed the core problem: every reaction now scales with its own host
+element.** `elementGeometry.ts` now exports its `SCALE_FACTOR` table;
+`elementReactions.ts`'s `trigger()` looks up the triggering element's own
+factor and threads it through every one of the 11 private reaction
+methods, multiplying every spatial offset, `peakScale`, and particle
+radius by it. Mangrove's bird offset (`x+0.55`), tuned for the old
+canopy, now becomes `x+0.55×1.5` — correctly clearing the real, now-
+bigger canopy instead of drifting back inside it. **Live-verified, not
+assumed:** tapping a built Mangrove now shows a clearly visible bird
+silhouette beside the canopy in an ordinary screenshot — no element-
+hiding or pixel-sampling trick needed, unlike Section 0's own pre-fix
+investigation.
+
+**Found and fixed a real regression from Section 2 along the way, not
+originally scoped for this section:** `khazanPaddyManager.ts` builds its
+paddy-row geometry entirely separately from `khazanGeometry()`'s static
+bund (a merged per-type `InstancedMesh` can't swap sub-parts per tile —
+see that file's own comment), at hardcoded local coordinates copied from
+the pre-move static version. Section 2 scaled the bund 1.35× without
+touching this file, so a built Khazan's paddy rows stayed the old
+size/position while the bund grew around them — confirmed live: the
+rows visibly no longer filled half the (now bigger) interior, bunched
+into a corner instead. Fixed by importing the same `SCALE_FACTOR.khazan`
+and applying it to every row dimension/offset and the farmer-walk path.
+Live-verified: paddy rows now correctly fill half the bund's interior
+again, in proportion with the new scale.
+
+**Both explicitly-scoped ambient additions built** (Section 3's own
+conditional: "only build if tap reactions alone don't resolve the
+feels-inert complaint" — built because the complaint names these two
+specific elements, not a hypothetical):
+- **Khazan water ripple:** a small subdivided plane added to each
+  Khazan tile's existing per-tile group in `khazanPaddyManager.ts`,
+  reusing Section 1's shared `waveMath.ts` sine-sum at a reduced
+  (0.6×) idle amplitude appropriate for a small still pond rather than
+  open river, with a per-tile deterministic phase offset so multiple
+  Khazans don't ripple in visible lockstep. Colored to match the water
+  box's own *actual* on-screen appearance (a muted green once multiplied
+  through `defenseKhazanBund`'s tint, per the icon-legibility pass's own
+  measurement) rather than its authored cyan, so it blends with that
+  already-flagged, intentionally-left limitation instead of floating a
+  mismatched second "correct" patch on top of it. Live-verified: real
+  per-vertex Y range of ~0.015-0.041 (not flat).
+- **Mangrove canopy sway:** a new `swayMangroves()` in
+  `elementMeshManager.ts`'s `tick()`, rocking each Mangrove instance's
+  whole matrix gently around its own base (X/Z tilt, not a Y spin — a
+  tree sways side to side, it doesn't rotate on its trunk) via a
+  per-instance deterministic phase. Explicitly skips any instance
+  `SettleAnimator` is currently mid-drop-in/build-confirm/collapse for
+  (new `SettleAnimator.isAnimating()` check) so the sway never stomps
+  that separate, shorter animation's own scale sequence. **Testing note:**
+  this Browser pane's tab freezes `requestAnimationFrame` entirely while
+  hidden (confirmed directly: a pure `javascript_exec`+`setTimeout` wait
+  showed zero matrix change over 4 real seconds), so automatic tick-
+  driven verification only became observable once a `computer.screenshot`
+  call forced a paint in between reads — at that point the instance
+  matrix's rotation terms were confirmed changing frame to frame, not
+  just when manually invoked.
+
+**One limitation found and left open, flagged rather than silently
+accepted:** Khazan's own reaction creature (dragonfly/prawn/mudskipper)
+is still mostly hidden behind the built-tile info card across repeated
+live taps of all three variants, even after the proportional-scale fix
+and an extra manual `rise` boost beyond `×factor` alone. Root cause
+(diagnosed, not guessed): the info card anchors high
+(`worldTop + 0.75` in `main.ts`, tuned for taller features like a
+Seawall's cap course) while Khazan's reaction is deliberately low
+("emerging from the water"), so no amount of *this* reaction's own
+height tuning fully escapes a card anchored that high without either
+losing the "from the water" read or redesigning the card's own anchor
+logic — the latter is a shared mechanism touching every other
+element's info card too, out of scope for a tuning pass confined to
+`elementReactions.ts`/`elementMeshManager.ts`/`khazanPaddyManager.ts`.
+Reported honestly rather than claimed fixed.
+
+`tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production
+build succeeds. No diff in `elements.json`, `/src/core`, or `main.ts`.
