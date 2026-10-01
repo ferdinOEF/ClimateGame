@@ -118,7 +118,7 @@ interface KhazanTile {
 }
 
 interface FarmerWalk {
-  object: THREE.Object3D;
+  object: THREE.Mesh;
   startTime: number;
   durationMs: number;
   fromZ: number;
@@ -126,6 +126,8 @@ interface FarmerWalk {
 }
 
 const WALK_DURATION_MS = 2400;
+/** STEP_PROMPT_hazard_vfx_and_fluidity.md Section 4: the farmer previously popped into existence at full opacity and vanished the same way — an abrupt start/end this project's own fluidity standard (grow/fade, never a hard cut) otherwise holds everything else to. Short fade-in/out at each end of the walk, not a full grow→hold→exit scale envelope — the walk itself already reads as the "hold," this just softens the two edges. */
+const FARMER_FADE_FRACTION = 0.15;
 
 export class KhazanPaddyManager {
   readonly group = new THREE.Group();
@@ -223,7 +225,13 @@ export class KhazanPaddyManager {
   }
 
   private spawnFarmerWalk(tile: KhazanTile): void {
-    const object = new THREE.Mesh(this.farmerGeometry, this.farmerMaterial);
+    // Own material clone, not the shared `farmerMaterial` — several Khazan
+    // tiles can walk their farmer concurrently (onAftermath loops every
+    // undamaged tile), and opacity needs to fade independently per figure.
+    const material = this.farmerMaterial.clone();
+    material.transparent = true;
+    material.opacity = 0;
+    const object = new THREE.Mesh(this.farmerGeometry, material);
     object.position.set(ROW_LOCAL_X, 0.015, ROW_Z_OFFSETS[0]);
     tile.group.add(object);
     this.walking.push({ object, startTime: performance.now(), durationMs: WALK_DURATION_MS, fromZ: ROW_Z_OFFSETS[0], toZ: ROW_Z_OFFSETS[2] });
@@ -235,10 +243,14 @@ export class KhazanPaddyManager {
       for (const w of this.walking) {
         const t = Math.min(1, (nowMs - w.startTime) / w.durationMs);
         w.object.position.z = THREE.MathUtils.lerp(w.fromZ, w.toZ, t);
+        const fadeIn = THREE.MathUtils.clamp(t / FARMER_FADE_FRACTION, 0, 1);
+        const fadeOut = THREE.MathUtils.clamp((1 - t) / FARMER_FADE_FRACTION, 0, 1);
+        (w.object.material as THREE.MeshStandardMaterial).opacity = Math.min(fadeIn, fadeOut);
         if (t < 1) {
           stillWalking.push(w);
         } else {
           w.object.parent?.remove(w.object);
+          (w.object.material as THREE.MeshStandardMaterial).dispose(); // per-instance clone from spawnFarmerWalk(), not the shared template
         }
       }
       this.walking = stillWalking;

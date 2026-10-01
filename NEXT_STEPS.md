@@ -1091,6 +1091,39 @@ diagnosis and detail in PROGRESS.md.
 `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production
 build succeeds. No diff in `elements.json`/`/src/core`/`main.ts`.
 
+## Follow-up — Hazard VFX & Fluidity, Section 4 (fluidity standard) — closes the step prompt
+
+`STEP_PROMPT_hazard_vfx_and_fluidity.md` Section 4, last of four. Audited
+every animated system in the codebase against the grow→hold→exit
+standard (full list, compliant/changed/exempt, in PROGRESS.md).
+
+Status: closed. Most systems already complied from earlier polish
+passes; two real, concrete findings fixed: (1) Khazan's farmer-walk
+figure popped into existence and vanished abruptly with no fade — fixed
+with a short per-instance opacity fade-in/out (own material clone, since
+the shared template material would have made one farmer's fade affect
+every concurrently-walking farmer). (2) `prefers-reduced-motion`
+coverage audited across every `@keyframes` in `hud.css` — only 3 of 9 had
+any override; added the missing 5. Three of those (the build-menu radial
+chips, the rejection toast, the confirm pill) needed care, not a blind
+`animation: none` — all three bake `opacity: 0` into their own base rule,
+so disabling the animation outright would have left them *permanently
+invisible* under reduced motion, a real correctness bug caught before it
+shipped, not just a missing nicety. Section 1's `waveMath.ts` is
+confirmed as the one shared easing utility every water-type surface now
+uses (Section 4's own ask), with reaction/settle/UI easings left as
+deliberately distinct per-purpose curves. Honestly flagged, not fixed:
+the 3D/Three.js animation layer has no `prefers-reduced-motion` check at
+all — named as a real gap, since gating it would be a bigger design
+decision than this tuning pass covers.
+
+This closes `STEP_PROMPT_hazard_vfx_and_fluidity.md` in full. See
+PROGRESS.md's closing entry for the plain net-new-vs-tuning breakdown
+across all four sections, per the doc's own final instruction.
+
+`tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production
+build succeeds.
+
 ## Follow-up — Liquid-glass HUD pass: Section 0 + item 1.2
 
 `STEP_PROMPT_liquid_glass_hud.md`: Section 0's zoom/Mangrove
@@ -1295,3 +1328,4 @@ production build succeeds.
 - 2026-09-30, Hazard VFX & Fluidity, Section 1 (real hazard water) + Section 0 pre-check: closed. Section 0: live-verified creature reactions fire correctly (right species cycling, right grow-hold-exit curve, real geometry) but are currently imperceptible — tiny scale, fully hidden behind Mangrove's own bigger canopy and (for Khazan) behind the info-card popover; confirmed by hiding element meshes and reading real vertex data, not by eyeballing a screenshot. Scopes Section 3 (later in this pass) as a tuning pass, not a rebuild. Section 1: new shared `waveMath.ts` sine-displacement utility; new always-present `RiverWaterManager` (idle ripple, ramps to a surge amplitude during Flood telegraph/resolve); `WaveFrontManager`'s ring/foam/channel-markers rewritten from flat geometry to real per-vertex displacement cresting at the leading edge. Found and fixed a real gap: `triggerFlood()` never called `waveFront.trigger()` at all (only Cyclone did) — fixed, with the same `stormSurgeActive` flag the damage model already uses now driving the visual compound amplitude/recolor too. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds. An unrelated uncommitted map rework already present in the working tree was stashed for verification and restored untouched afterward.
 - 2026-10-01, Hazard VFX & Fluidity, Section 2 (element scale and detail): closed. Re-measured all 11 real elements (not 9) against the real default camera zoom; most already sat close to a reasonable footprint from prior passes, only Mangrove/Sandy Vegetation were genuinely undersized. New per-element `SCALE_FACTOR` table (1.25-1.6×) applied once at `createElementGeometry()`'s dispatcher; `yacht` deliberately left unscaled per its own existing "not a scene centerpiece" design comment. Checked camera-distance vs. geometry-scale as asked — geometry scale was the correct isolated lever, camera left untouched. Found the roster already carries plenty of secondary detail from earlier passes (the scale-up alone made most of it register for the first time); the one real exception was Dune, whose grass tufts were genuine geometry but functionally invisible to the steep top-down camera (near-vertical blades show almost no silhouette from directly above) — fixed with a wide outward splay and a brighter color. Live-verified at true default zoom across every terrain type, plus a true luminance-grayscale conversion confirming every element still reads as a distinct silhouette. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds.
 - 2026-10-01, Hazard VFX & Fluidity, Section 3 (dynamic interaction tuning): closed, one limitation flagged open. Every reaction's spawn offset/`peakScale` in `elementReactions.ts` now scales by its host element's own Section-2 `SCALE_FACTOR` (now exported from `elementGeometry.ts`) — live-verified Mangrove's bird is now clearly visible in an ordinary screenshot, no hiding trick needed. Found and fixed a real Section-2 regression along the way: Khazan's paddy rows (`khazanPaddyManager.ts`, built in a separate geometry at hardcoded coordinates) never got the 1.35× memo and had visibly drifted out of proportion with the now-bigger bund — fixed, re-verified. Built both of Section 3's explicitly-scoped ambient additions: a faint phase-offset water ripple per Khazan tile (reusing Section 1's `waveMath.ts`) and a gentle whole-instance sway for every Mangrove (skips instances mid-settle-animation). One limitation left open, reported not hidden: Khazan's reaction creature still mostly hides behind the built-tile info card, which anchors high for an unrelated reason (tall features like Seawall) — a full fix needs the card's own shared anchor logic touched, out of scope here. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds.
+- 2026-10-01, Hazard VFX & Fluidity, Section 4 (fluidity standard) — closes the step prompt: closed. Audited every animated system against the grow→hold→exit standard (full list in PROGRESS.md); most already complied from earlier passes. Two real fixes: Khazan's farmer-walk figure no longer pops in/out abruptly (short per-instance opacity fade, own material clone so concurrent farmers fade independently); `prefers-reduced-motion` coverage closed for 5 of 9 `hud.css` animations that had none, 3 of which would have been permanently-invisible-content bugs under reduced motion if simply disabled (they bake `opacity: 0` into their base rule) rather than redefined with the transform motion removed. Confirmed `waveMath.ts` is already the one shared easing utility across every water-type surface, per the doc's own ask. Flagged honestly, not fixed: the 3D/Three.js layer has no `prefers-reduced-motion` check at all. Closes `STEP_PROMPT_hazard_vfx_and_fluidity.md` in full — see PROGRESS.md's closing entry for the net-new-vs-tuning breakdown across all four sections. `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production build succeeds.

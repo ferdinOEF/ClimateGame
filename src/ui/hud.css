@@ -1234,6 +1234,86 @@ html, body {
   }
 }
 
+/*
+  STEP_PROMPT_hazard_vfx_and_fluidity.md Section 4: audited every
+  `@keyframes` in this file against `prefers-reduced-motion` — only three
+  of nine had any override at all (`.instrument-cluster`'s own transitions,
+  `.nugget-badge.entering`, the HUD-collapse transitions). `hazard-arrival-
+  flash`/`instrument-cluster-pulse` are safe to disable outright (their
+  un-animated base rule already renders invisible/neutral, matching the
+  animation's own natural resting state, so `animation: none` loses
+  nothing). The other three — `build-option-spring`, `rejection-toast-
+  beat`, `confirm-pill-beat` — are NOT safe to just disable: all three
+  bake `opacity: 0` into their own un-animated base rule (the keyframes
+  are the ONLY place `opacity: 1` ever gets set), so `animation: none`
+  alone would leave a build-menu chip, a rejection toast, or a confirm
+  pill permanently invisible under reduced motion — correctness bugs, not
+  just a missing animation. Redefining each by name here keeps every
+  original percentage/duration (so nothing needs to change in `buildPopover.
+  ts`'s class-toggle timing) but drops the scale/slide transform component
+  specifically — a plain opacity crossfade is the standard reduced-motion-
+  safe substitute for a transform-based entrance, not a removal of the
+  show/hold/hide beat itself.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .hazard-arrival-flash.flashing,
+  .instrument-cluster.pulsing {
+    animation: none;
+  }
+
+  .build-popover.radial .build-option {
+    animation: build-option-spring 500ms ease-out forwards;
+  }
+  @keyframes build-option-spring {
+    0% {
+      opacity: 0;
+      transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty)));
+    }
+    100% {
+      opacity: var(--chip-target-opacity);
+      transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty)));
+    }
+  }
+
+  @keyframes rejection-toast-beat {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -100%);
+    }
+    15% {
+      opacity: 1;
+      transform: translate(-50%, -100%);
+    }
+    70% {
+      opacity: 1;
+      transform: translate(-50%, -100%);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -100%);
+    }
+  }
+
+  @keyframes confirm-pill-beat {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -100%);
+    }
+    12% {
+      opacity: 1;
+      transform: translate(-50%, -100%);
+    }
+    37% {
+      opacity: 1;
+      transform: translate(-50%, -100%);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -100%);
+    }
+  }
+}
+
 .build-option em {
   display: block;
   font-style: normal;

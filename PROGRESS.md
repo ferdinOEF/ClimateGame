@@ -5072,3 +5072,157 @@ Reported honestly rather than claimed fixed.
 
 `tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production
 build succeeds. No diff in `elements.json`, `/src/core`, or `main.ts`.
+
+## STEP_PROMPT_hazard_vfx_and_fluidity.md Section 4 (fluidity: one shared standard, applied everywhere) — DONE
+
+Audited every animated system in the codebase against the grow→hold→exit
+standard, as asked. Short list, compliant vs. changed vs. reasoned
+exemption:
+
+- **`ReactionAnimator`** (creature tap reactions) — already compliant
+  (explicit 25/35/40 grow/hold/exit split). No change.
+- **`HazardOverlayManager`** (per-tile damage reveal) — already compliant,
+  via its own higher-level choreography: `SettleAnimator.begin()`'s 420ms
+  grow, a genuine ~1.8s static hold, then `collapse()`'s 500ms exit. No
+  change.
+- **`SettleAnimator.begin()`** (tile/building drop-in) and
+  **`beginBuildConfirm()`** (squash-and-stretch build confirmation) —
+  reasoned exemption: both are *permanent*-placement animations (appear
+  once, stay forever), not a transient reveal-then-remove — "hold" doesn't
+  apply the same way to something that never exits. Both already resolve
+  to a settled, non-jittery final state (an overshoot-and-settle curve,
+  or keyframes landing within ~4% of rest by t=0.75) rather than a hard
+  mechanical stop, which is what the hold is actually protecting against.
+  No change.
+- **`SettleAnimator.collapse()`** (catastrophic defense failure/destroy)
+  — reasoned exemption: a one-directional exit with nothing being
+  revealed, so grow/hold don't apply conceptually; forcing a plateau into
+  a shrink-to-nothing animation would read as a stutter, not more fluid.
+  No change.
+- **`.build-popover.radial .build-option`** (radial build-menu chip
+  entrance) — reasoned exemption, same category as `SettleAnimator.
+  begin()`: an entrance for a persistent, user-dismissed UI element, not
+  a timed reveal-then-remove. **Found and fixed a real `prefers-reduced-
+  motion` gap** (see below).
+- **`.rejection-toast`/`.confirm-pill`** (toasts) — already explicitly
+  built to the grow→hold→exit shape (confirmed against this file's own
+  `STEP_PROMPT_liquid_glass_hud.md` entries). No change. Found and fixed
+  the same reduced-motion gap.
+- **`.instrument-cluster.pulsing`/`.hazard-arrival-flash`** (expanding
+  glow ring, hazard-arrival flash) — reasoned exemption: both are one-way
+  *radiating* effects (an expanding ring, a flash), a different and
+  equally legitimate motion idiom from "an object appears" — a ring that
+  held its expanded radius before fading would read as broken, not more
+  polished. Found and fixed the same reduced-motion gap.
+- **`.nugget-badge.entering`** — already compliant (entrance-only reveal
+  for a popup that persists until explicitly dismissed later) and already
+  had reduced-motion coverage. No change.
+- **`CloudLayerManager.setVisible()`** — already compliant in spirit
+  (its own comment: "fades rather than snapping"), a different category
+  (a continuous level crossfade tied to telegraph state, not a discrete
+  timed reveal). No change.
+- **`WaveFrontManager`/`RiverWaterManager`/Khazan's water ripple/Mangrove
+  sway** (Sections 1 and 3's new work) — continuous ambient/sweep motion,
+  a different category from a discrete reveal; already share one easing
+  utility (`waveMath.ts`) and ramp intensity over time rather than
+  popping, per this section's own ask.
+- **`KhazanPaddyManager`'s farmer-walk figure** — **real finding, fixed:**
+  popped into existence at full opacity at the start of its walk and
+  vanished the same way at the end, a genuine abrupt start/end this
+  project's own standard elsewhere holds everything to. Fixed with a
+  short (15% of the walk's duration) fade-in/fade-out on a per-instance
+  material clone (the farmer mesh previously shared one material across
+  every concurrently-walking instance, which would have made a single
+  instance's fade affect every other farmer walking at the same time —
+  cloned per spawn, disposed on removal, same pattern `WaveFrontManager`'s
+  channel markers already use for per-instance state).
+
+**Shared easing/timing, per Section 4's second ask:** `waveMath.ts`
+(Section 1) is the one shared utility every water-type surface now uses —
+`RiverWaterManager`, `WaveFrontManager`'s ring/channel markers, and
+Khazan's new ambient ripple all call the same `waveHeight()`/
+`recomputeNormals()`/`scaleWaves()` functions rather than each hand-
+rolling its own sine math, exactly the "ripple/surface-settle behavior"
+overlap case named in the doc. Reaction/settle/UI easings (cubic grow-
+hold-exit, overshoot-back settle, CSS spring) are left as deliberately
+distinct per-purpose curves, not force-unified — they're different
+semantic actions (a creature popping in vs. a tile dropping into place
+vs. a UI chip springing out), and Dorfromantik-style games draw exactly
+this kind of distinction; the doc only asks to unify where motion types
+genuinely overlap (water), not to collapse every curve in the game to one.
+
+**`prefers-reduced-motion`, real gap found and fixed:** audited every
+`@keyframes` in `hud.css` — only 3 of 9 animated rules had any reduced-
+motion override at all. Added one for the remaining 5
+(`hazard-arrival-flash`, `instrument-cluster-pulse`, `build-option-
+spring`, `rejection-toast-beat`, `confirm-pill-beat`). The first two are
+safe to disable outright (their un-animated base state is already
+invisible/neutral — nothing is lost). The last three needed care, not a
+blind `animation: none`: all three bake `opacity: 0` into their own base
+rule (the keyframes are the *only* place `opacity: 1` is ever set), so
+disabling them outright would have left a build-menu chip, a rejection
+toast, or a confirm pill **permanently invisible** under reduced motion —
+a real correctness bug, not just a missing animation. Fixed by
+redefining each keyframe (same name/duration, so nothing in `buildPopover.
+ts`'s timing needed to change) with the scale/slide transform removed and
+a plain opacity crossfade kept — the standard reduced-motion-safe
+substitute for a transform-based entrance. **Honestly flagged, not
+fixed:** this covers the CSS/HUD layer only. The game's 3D/Three.js
+animations (reactions, Mangrove sway, water surfaces, hazard sweeps) have
+no `prefers-reduced-motion` check at all — gating the 3D engine behind it
+would mean deciding, system by system, which motion is "essential"
+(the hazard reveal itself, arguably) versus "reducible" (ambient sway/
+ripple), a meaningfully larger design decision than a tuning pass, so
+it's named here as a real gap rather than silently left unmentioned or
+unilaterally decided.
+
+`tsc --noEmit` clean, 65/65 tests pass (6 pre-existing skips), production
+build succeeds. No diff in `elements.json`/`/src/core`.
+
+## STEP_PROMPT_hazard_vfx_and_fluidity.md — net-new vs. tuning, stated plainly (all four sections)
+
+Per the doc's own closing instruction. The project's documented pattern
+("marked done, not actually live") applied to exactly one of the four
+sections this pass touched — the other three were genuine, previously-
+unbuilt gaps:
+
+- **Section 1 (real hazard water) — net-new build.** The hazard overlay/
+  wave-front system had zero vertex displacement anywhere before this
+  pass (flat hex-prism discs, a flat expanding ring, flat circle
+  markers). `waveMath.ts`, `RiverWaterManager`, and the cresting-ring/
+  foam/rippling-marker rewrite of `WaveFrontManager` are all new.
+  `triggerFlood()` calling `waveFront.trigger()` at all was also missing
+  entirely, not a tuning gap — Flood had zero sweep spectacle before this
+  pass, only Cyclone did.
+- **Section 2 (element scale/detail) — tuning pass on already-shipped
+  work, not a rebuild.** Every element's geometry, color, and secondary
+  detail already existed from three prior passes (`STEP_PROMPT_icons.md`,
+  `STEP_PROMPT_icon_legibility_pass.md`, `STEP_PROMPT_map_reshape_veg_
+  icons.md`) — this pass only applied a per-element whole-assembly scale
+  factor plus one real geometry fix (Dune's tufts).
+  
+- **Section 3 (dynamic interaction) — this is the one the doc's own
+  "marked done but not live" pattern actually predicted, and it didn't
+  hold here either, in a specific way: it WAS live** (`STEP_PROMPT_
+  creature_reactions.md` was genuinely implemented, not a phantom
+  feature) **but had silently regressed into imperceptibility by Section
+  2's own scale-up landing in this same pass**, not by neglect or drift
+  over time. So: tuning pass on real, working, already-shipped
+  infrastructure (`ReactionAnimator`, all 11 reaction methods, Khazan's
+  paddy-cycle system) — nothing here was rebuilt from scratch — plus two
+  genuinely new, explicitly-scoped additions (Khazan's water ripple,
+  Mangrove's sway) the original creature-reactions doc had deliberately
+  left out.
+- **Section 4 (fluidity) — an audit that found the codebase already
+  largely compliant, not a system that needed building.** Most animated
+  systems already matched the grow→hold→exit standard from earlier
+  polish passes; this section's real, net-new contributions are narrow
+  and concrete: the farmer-walk fade, and closing 5 of 9 CSS animations'
+  missing `prefers-reduced-motion` coverage (3 of which were silent
+  correctness bugs waiting to happen, not just a missing nicety).
+
+Section 0's own live pre-check (logged under Section 1 above) is what
+made Section 3's correct scoping possible in the first place — without
+it, Section 3 could easily have been approached as a from-scratch
+rebuild of working infrastructure, exactly the kind of wasted effort this
+project's "verify before building" convention exists to prevent.
