@@ -148,8 +148,41 @@ export class ElementReactions {
     this.group.add(this.animator.group);
   }
 
+  /**
+   * Ambient mode (user request): every placed element plays its tap reaction
+   * on its own staggered, jittered timer — birds keep flushing from the
+   * mangroves, crabs and cats keep appearing — without any click. Tapping
+   * still fires `trigger()` on top of this.
+   */
+  private ambientSource: (() => Iterable<{ key: string; elementId: string; x: number; y: number; z: number }>) | null = null;
+  private nextAmbient = new Map<string, number>();
+
+  setAmbientSource(source: () => Iterable<{ key: string; elementId: string; x: number; y: number; z: number }>): void {
+    this.ambientSource = source;
+  }
+
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
+    if (!this.ambientSource) return;
+    const seen = new Set<string>();
+    let spawnedThisFrame = false;
+    for (const el of this.ambientSource()) {
+      seen.add(el.key);
+      let due = this.nextAmbient.get(el.key);
+      if (due === undefined) {
+        due = nowMs + 400 + Math.random() * 4500; // stagger first reaction
+        this.nextAmbient.set(el.key, due);
+      }
+      if (nowMs < due || spawnedThisFrame) continue;
+      // Never let ambient play evict tap reactions: leave headroom.
+      if (this.animator.activeCount >= 20) continue;
+      this.trigger(el.elementId, el.x, el.y, el.z);
+      spawnedThisFrame = true;
+      this.nextAmbient.set(el.key, nowMs + 4500 + Math.random() * 6500);
+    }
+    // Unconditional (not gated on a size comparison): a destroy and a rebuild
+    // in the same frame leave the counts equal but the keys different.
+    for (const k of this.nextAmbient.keys()) if (!seen.has(k)) this.nextAmbient.delete(k);
   }
 
   /**

@@ -16,7 +16,7 @@ const HOLD_FRACTION = 0.35;
 // EXIT_FRACTION is the remainder (0.40) — kept implicit so the three
 // fractions can't drift out of summing to 1.
 
-const MAX_CONCURRENT = 9;
+export const MAX_CONCURRENT = 28;
 
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3);
@@ -61,6 +61,10 @@ export class ReactionAnimator {
     object.scale.setScalar(0.001);
     this.group.add(object);
     this.active.push({ object, startTime: performance.now(), durationMs, peakScale, baseY: object.position.y, riseY: rise });
+  }
+
+  get activeCount(): number {
+    return this.active.length;
   }
 
   tick(nowMs: number): void {

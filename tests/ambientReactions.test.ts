@@ -1,0 +1,176 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ElementReactions } from "../src/render/elementReactions";
+import { MAX_CONCURRENT } from "../src/render/reactionAnimator";
+
+interface FakeElement {
+  key: string;
+  elementId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+/** ReactionAnimator stamps `startTime` from the real `performance.now()`, so fake frame timestamps must start from there or reactions would never expire. */
+const T0 = performance.now();
+
+function animatorOf(reactions: ElementReactions): { activeCount: number } {
+  return (reactions as unknown as { animator: { activeCount: number } }).animator;
+}
+
+describe("ElementReactions ambient scheduler", () => {
+  beforeEach(() => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("spawns reactions on its own, with no trigger() call from outside", () => {
+    const elements: FakeElement[] = [
+      { key: "0,0", elementId: "mangrove", x: 0, y: 0, z: 0 },
+      { key: "1,0", elementId: "house", x: 2, y: 0, z: 0 }
+    ];
+    const reactions = new ElementReactions();
+    reactions.setAmbientSource(() => elements);
+    const triggerSpy = vi.spyOn(reactions, "trigger");
+
+    expect(reactions.lastCombo).toEqual([]);
+    let sawActive = false;
+    for (let t = 0; t <= 15000; t += 100) {
+      reactions.tick(T0 + t);
+      if (animatorOf(reactions).activeCount > 0) sawActive = true;
+    }
+
+    expect(triggerSpy).toHaveBeenCalled();
+    expect(sawActive).toBe(true);
+    // Mangrove is the only element here that records its pick — so a non-empty lastCombo proves the ambient timer reached it.
+    expect(reactions.lastCombo.length).toBeGreaterThan(0);
+    // Both elements got a turn, and each repeats (4.5-11s cycle) rather than firing once.
+    const calls = triggerSpy.mock.calls.map((c) => c[0]);
+    expect(calls).toContain("mangrove");
+    expect(calls).toContain("house");
+  });
+
+  it("repeats an element's reaction on a timer, not just once", () => {
+    const elements: FakeElement[] = [{ key: "0,0", elementId: "mangrove", x: 0, y: 0, z: 0 }];
+    const reactions = new ElementReactions();
+    reactions.setAmbientSource(() => elements);
+    const triggerSpy = vi.spyOn(reactions, "trigger");
+
+    for (let t = 0; t <= 40000; t += 100) reactions.tick(T0 + t);
+
+    expect(triggerSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("starts nothing before an element's first (staggered) due time", () => {
+    const elements: FakeElement[] = [{ key: "0,0", elementId: "mangrove", x: 0, y: 0, z: 0 }];
+    const reactions = new ElementReactions();
+    reactions.setAmbientSource(() => elements);
+    const triggerSpy = vi.spyOn(reactions, "trigger");
+
+    // Math.random is mocked to 0.5, so the first due time is 400 + 0.5*4500 = 2650ms out.
+    reactions.tick(T0);
+    reactions.tick(T0 + 1000);
+    reactions.tick(T0 + 2000);
+    expect(triggerSpy).not.toHaveBeenCalled();
+    reactions.tick(T0 + 2700);
+    expect(triggerSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("spawns at most one ambient reaction per frame even when many are due at once", () => {
+    const elements: FakeElement[] = Array.from({ length: 10 }, (_, i) => ({ key: `${i},0`, elementId: "house", x: i, y: 0, z: 0 }));
+    const reactions = new ElementReactions();
+    reactions.setAmbientSource(() => elements);
+    const triggerSpy = vi.spyOn(reactions, "trigger");
+
+    reactions.tick(T0); // registers every element's due time (all identical under the mocked RNG)
+    let previous = 0;
+    for (let t = 3000; t <= 3000 + 16 * 12; t += 16) {
+      reactions.tick(T0 + t);
+      const total = triggerSpy.mock.calls.length;
+      expect(total - previous).toBeLessThanOrEqual(1);
+      previous = total;
+    }
+    expect(previous).toBeGreaterThan(1); // they did all fire, just one frame apart
+  });
+
+  it("stops spawning for an element once it is removed", () => {
+    const elements: FakeElement[] = [
+      { key: "0,0", elementId: "mangrove", x: 0, y: 0, z: 0 },
+      { key: "1,0", elementId: "house", x: 2, y: 0, z: 0 }
+    ];
+    const reactions = new ElementReactions();
+    reactions.setAmbientSource(() => elements);
+    const triggerSpy = vi.spyOn(reactions, "trigger");
+
+    for (let t = 0; t <= 20000; t += 100) reactions.tick(T0 + t);
+    expect(triggerSpy.mock.calls.some((c) => c[0] === "mangrove")).toBe(true);
+
+    // Remove the mangrove (destroyed / board reset) and keep the house.
+    elements.splice(0, 1);
+    triggerSpy.mockClear();
+    for (let t = 20000; t <= 60000; t += 100) reactions.tick(T0 + t);
+
+    const after = triggerSpy.mock.calls.map((c) => c[0]);
+    expect(after).not.toContain("mangrove");
+    expect(after).toContain("house");
+    // Its timer entry was cleaned up too, not left to leak.
+    expect((reactions as unknown as { nextAmbient: Map<string, number> }).nextAmbient.has("0,0")).toBe(false);
+  });
+
+  it("cleans up timers even when one element is removed and another added in the same frame", () => {
+    const elements: FakeElement[] = [{ key: "0,0", elementId: "house", x: 0, y: 0, z: 0 }];
+    const reactions = new ElementReactions();
+    reactions.setAmbientSource(() => elements);
+    reactions.tick(T0);
+    elements.splice(0, 1, { key: "9,9", elementId: "house", x: 9, y: 0, z: 9 }); // same count, different key
+    reactions.tick(T0 + 10);
+    const keys = [...(reactions as unknown as { nextAmbient: Map<string, number> }).nextAmbient.keys()];
+    expect(keys).toEqual(["9,9"]);
+  });
+
+  it("never exceeds the animator's concurrent cap, even with a huge map of reacting elements", () => {
+    // Real randomness here: the point is that no timing luck can push past the cap.
+    vi.restoreAllMocks();
+    const elements: FakeElement[] = Array.from({ length: 80 }, (_, i) => ({
+      key: `${i},0`,
+      elementId: i % 2 === 0 ? "mangrove" : "beachside_resort", // the two heaviest spawners (up to 3 and 4 meshes)
+      x: i,
+      y: 0,
+      z: 0
+    }));
+    const reactions = new ElementReactions();
+    reactions.setAmbientSource(() => elements);
+
+    let peak = 0;
+    for (let t = 0; t <= 90000; t += 16) {
+      reactions.tick(T0 + t);
+      peak = Math.max(peak, animatorOf(reactions).activeCount);
+    }
+    expect(peak).toBeGreaterThan(0);
+    expect(peak).toBeLessThanOrEqual(MAX_CONCURRENT);
+  });
+
+  it("treats an element with no reaction as a harmless no-op", () => {
+    const elements: FakeElement[] = [{ key: "0,0", elementId: "some_future_element", x: 0, y: 0, z: 0 }];
+    const reactions = new ElementReactions();
+    reactions.setAmbientSource(() => elements);
+    expect(() => {
+      for (let t = 0; t <= 20000; t += 100) reactions.tick(T0 + t);
+    }).not.toThrow();
+    expect(animatorOf(reactions).activeCount).toBe(0);
+  });
+
+  it("does nothing, and does not throw, when no ambient source is set", () => {
+    const reactions = new ElementReactions();
+    expect(() => reactions.tick(T0 + 5000)).not.toThrow();
+    expect(animatorOf(reactions).activeCount).toBe(0);
+  });
+
+  it("leaves tap-triggered reactions working exactly as before", () => {
+    const reactions = new ElementReactions();
+    reactions.trigger("mangrove", 0, 0, 0);
+    expect(reactions.lastCombo.length).toBeGreaterThan(0);
+    expect(animatorOf(reactions).activeCount).toBeGreaterThan(0);
+  });
+});

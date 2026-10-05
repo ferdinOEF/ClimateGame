@@ -35,12 +35,12 @@ const PINCH_ZOOM_SPEED = 0.045;
  * no free orbit (Section 6). Bucket A (NEXT_STEPS.md): the camera used to
  * be framed once at boot and never move again — this adds pointer-drag pan
  * and scroll-wheel zoom, the only two camera controls this pilot needs.
- * One directional sun + soft fog for depth, no multi-light rig.
+ * One directional sun, no fog and no multi-light rig.
  */
 export function createScene(container: HTMLElement): KhazanScene {
   const scene = new THREE.Scene();
   scene.background = PALETTE.sky;
-  scene.fog = new THREE.Fog(PALETTE.fog.getHex(), 18, 46);
+  // Zoom-out mist removed (user request): the whole map stays crisp at max zoom.
 
   const camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 200);
   const rad = THREE.MathUtils.degToRad(CAM_ELEVATION_DEG);

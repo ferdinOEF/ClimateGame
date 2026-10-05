@@ -5289,3 +5289,59 @@ framing kept missing it behind the HUD card).
 `npx tsc --noEmit` clean, `npm run test` reports exactly 65 passed/6
 skipped (the skipped ones are the procedural-generator-only shape checks
 `handEdited: true` exempts this map from), `npm run build` succeeds.
+
+## Zoom-out fog removed; all element reactions ambient — DONE
+
+Removed zoom-out fog; all element reactions now ambient (staggered 4.5-11s timers, 28 concurrent cap, 1 spawn/frame); tap triggers unchanged.
+
+**Fog.** Deleted `scene.fog = new THREE.Fog(PALETTE.fog.getHex(), 18, 46)` from
+`scene.ts` (comment left saying it was removed on purpose; the doc comment
+that promised "soft fog for depth" corrected). `PALETTE.fog` stays in
+`palette.ts` — terrain tinting still reads it — and the `PALETTE` import in
+`scene.ts` stays too (sky background, ambient light). Grepped `src/render` for
+`fog`/`Fog`/`FogExp2` and for distance-based opacity/fade: nothing else
+hides the map. `cloudLayerManager.ts` is hazard-telegraph-only and was left
+alone. Two stale comments in `palette.ts`/`terrainMeshManager.ts` still
+mention the old scene fog in passing; they describe history, not behavior,
+and were left. Live-verified: `scene.fog === null`, camera at `CAM_DISTANCE_MAX`
+(40), the whole visible map and the sea out to the horizon crisp.
+
+**Ambient reactions.** `ElementReactions.tick()` now runs a scheduler over
+`ElementMeshManager.placedElements()` (a new generator over the existing
+`byCoord`, so `place()`/`destroy()`/`reset()` need no extra wiring — nothing
+changed at the `khazanPaddy` lifecycle call sites in `main.ts`). Each element
+gets a first reaction 0.4-4.9s after it appears (staggered), then repeats every
+4.5-11s. At most one ambient spawn per frame, none while the animator already
+holds 20 reactions (headroom, so ambient play can never evict a tap), and
+`MAX_CONCURRENT` raised 9 -> 28 (now exported, plus an `activeCount` getter).
+Timer entries for destroyed/reset elements are deleted after every pass. The
+cleanup is unconditional rather than gated on a size comparison: a destroy
+and a rebuild in the same frame leave the set sizes equal but the keys
+different, which a size gate would miss. Elements with no reaction case stay
+a harmless no-op. `main.ts` wires it with one line,
+`reactions.setAmbientSource(() => elements.placedElements())`; the tap
+`reactions.trigger(...)` in `openTilePopover()` is untouched and still fires
+on top of the ambient ones.
+
+**Tests.** New `tests/ambientReactions.test.ts` (10 tests): spawns with no
+`trigger()` from outside and `lastCombo` populated; repeats on its timer;
+nothing before its first staggered due time; max one spawn per frame with 10
+elements due at once; a removed element stops spawning and its timer is
+cleaned up; same-frame remove+add cleanup; never exceeds `MAX_CONCURRENT`
+with 80 mangroves/resorts (the two heaviest spawners) over 90s; unknown
+element is a no-op; no source is a no-op; tap `trigger()` unchanged.
+
+**Verified.** `tsc --noEmit` clean; `npm run test` 75 passed / 6 skipped (the 6
+are the handEdited-exempt procedural-shape checks); `npm run build` succeeds.
+Playtest: built 4 mangroves, a khazan and 2 houses (+ a seawall and dune on the
+beach, which is 13+ hexes from any estuary so it can't share a frame): all
+19 placed elements were on the ambient timer, up to 18-22 reactions active at
+once with zero clicks, a bird visible beside a mangrove, and tapping a mangrove
+still opened its info card and spawned its kingfisher. Honest limit: this
+browser pane freezes `requestAnimationFrame` while hidden, so screenshots only
+catch a reaction when a paint happens to land mid-animation; the counters
+(`activeCount`, tracked timers) are the firmer evidence.
+
+**Worth knowing.** The map starts with 10 prebuilt Houses, so a fresh game now
+has ten cats ambling about from the first seconds. That is the spec working as
+written, but it is the busiest part of the new behavior at game start.

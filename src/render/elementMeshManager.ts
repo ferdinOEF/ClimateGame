@@ -126,6 +126,11 @@ export class ElementMeshManager {
     this.byCoord.set(`${coord.q},${coord.r}`, { elementId, mesh, index, x, y: terrainTopY, z, baseColor });
   }
 
+  /** Every currently placed element with its world position — read by the ambient reaction scheduler. */
+  *placedElements(): IterableIterator<{ key: string; elementId: string; x: number; y: number; z: number }> {
+    for (const [key, ref] of this.byCoord) yield { key, elementId: ref.elementId, x: ref.x, y: ref.y, z: ref.z };
+  }
+
   /** Catastrophic engineered failure: collapses and permanently hides the instance, freeing its slot for reuse. */
   destroy(coord: AxialCoord): void {
     const key = `${coord.q},${coord.r}`;

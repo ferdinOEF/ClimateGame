@@ -79,6 +79,7 @@ const riverWater = new RiverWaterManager();
 // reactions (Section 1-3) and Khazan's ambient paddy-stage cycle
 // (Section 4) — both purely additive/visual, no `/src/core` state written.
 const reactions = new ElementReactions();
+reactions.setAmbientSource(() => elements.placedElements());
 const khazanPaddy = new KhazanPaddyManager();
 scene.add(terrain.group);
 scene.add(elements.group);
