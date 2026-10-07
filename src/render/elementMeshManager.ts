@@ -89,6 +89,20 @@ function prefersReducedMotion(): boolean {
   }
 }
 
+/** One element standing on the board, as the ambient reaction scheduler sees it. */
+export interface PlacedElement {
+  /**
+   * Stable for as long as this element stands: the tile plus the element id,
+   * so a tile cleared and rebuilt with something else reads as a new element
+   * with its own timer rather than inheriting the old one's.
+   */
+  key: string;
+  elementId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
 interface ElementInstanceRef {
   elementId: string;
   mesh: THREE.InstancedMesh;
@@ -379,6 +393,18 @@ export class ElementMeshManager {
       // See SettleAnimator.tick for the click-picking bug this class has
       // already caused once.
       mesh.boundingSphere = null;
+    }
+  }
+
+  /**
+   * Every element currently standing, read live from the same map `place()`,
+   * `destroy()` and `reset()` maintain — so a build, a storm loss, a player
+   * removal and a board reset are all reflected on the next call with no
+   * separate bookkeeping. A collapsing element is already gone from it.
+   */
+  *placedElements(): Generator<PlacedElement> {
+    for (const [coordKey, ref] of this.byCoord) {
+      yield { key: `${coordKey}:${ref.elementId}`, elementId: ref.elementId, x: ref.x, y: ref.y, z: ref.z };
     }
   }
 

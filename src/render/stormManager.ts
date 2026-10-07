@@ -17,7 +17,7 @@ import * as THREE from "three";
  *
  *   - **Rain.** Thousands of slanted streaks, falling harder as intensity
  *     rises, kept over the camera rather than over the map's origin.
- *   - **The sky.** Background and fog darken toward a bruised grey-green and
+ *   - **The sky.** The background darkens toward a bruised grey-green and
  *     the sun dims, so the whole board loses its holiday light.
  *   - **Lightning.** Brief, irregular, and only near the peak.
  *   - **Wind.** A scalar the element sway multiplies by, so mangroves and
@@ -55,7 +55,6 @@ const RAIN_SLANT_X = 5.5;
 const RAIN_SLANT_Z = 2.2;
 
 const STORM_SKY = new THREE.Color("#3f4a52");
-const STORM_FOG = new THREE.Color("#55606a");
 const LIGHTNING_SKY = new THREE.Color("#c9d6dd");
 
 /** Seconds for intensity to travel the full 0-to-1 range. Slow enough that weather reads as weather rather than a switch. */
@@ -82,7 +81,6 @@ export class StormManager {
   private readonly sun: THREE.DirectionalLight;
   private readonly baseSunIntensity: number;
   private readonly baseSky: THREE.Color;
-  private readonly baseFog: THREE.Color;
 
   private readonly rain: THREE.LineSegments;
   private readonly rainMaterial: THREE.LineBasicMaterial;
@@ -112,7 +110,6 @@ export class StormManager {
     // Cloned: these are the values to return to, and the live scene objects
     // are mutated every frame below.
     this.baseSky = (options.scene.background as THREE.Color).clone();
-    this.baseFog = (options.scene.fog as THREE.Fog).color.clone();
 
     // One LineSegments for the whole curtain. The obvious alternative, a mesh
     // per drop, is 1400 draw calls a frame; Points cannot be slanted, so a
@@ -231,9 +228,6 @@ export class StormManager {
       if (flash > 0) background.lerp(LIGHTNING_SKY, Math.min(1, flash));
     }
 
-    const fog = this.scene.fog as THREE.Fog | null;
-    if (fog) fog.color.copy(this.baseFog).lerp(STORM_FOG, this.intensity * 0.85);
-
     // The sun drops to just over a third at full storm, then spikes on a
     // flash. Keeping some light is deliberate: a board the player cannot read
     // is not dramatic, it is broken.
@@ -305,8 +299,6 @@ export class StormManager {
   dispose(): void {
     const background = this.scene.background as THREE.Color | null;
     if (background) background.copy(this.baseSky);
-    const fog = this.scene.fog as THREE.Fog | null;
-    if (fog) fog.color.copy(this.baseFog);
     this.sun.intensity = this.baseSunIntensity;
 
     this.rain.geometry.dispose();

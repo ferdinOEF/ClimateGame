@@ -94,7 +94,7 @@ const CAM_SMOOTHING = 0.18;
  * no free orbit (Section 6). Bucket A (NEXT_STEPS.md): the camera used to
  * be framed once at boot and never move again — this adds pointer-drag pan
  * and scroll-wheel zoom, the only two camera controls this pilot needs.
- * One directional sun + soft fog for depth, no multi-light rig.
+ * One directional sun, no fog, no multi-light rig.
  */
 export function createScene(container: HTMLElement): KhazanScene {
   // Every listener below is registered with this signal, so `dispose()`
@@ -109,18 +109,10 @@ export function createScene(container: HTMLElement): KhazanScene {
   // object directly would darken the palette itself, permanently, for every
   // later scene and every other consumer of that colour.
   scene.background = PALETTE.sky.clone();
-  /**
-   * Depth haze. The near and far planes are re-derived from the camera
-   * distance every frame (see `applyFog`) rather than fixed.
-   *
-   * They used to be constants tuned for a camera that sat at 18 units and
-   * never moved far. Now that the opening distance is derived from the board
-   * — up to 40 units on the larger maps — fixed planes would put the whole of
-   * Palolem past the far plane and render it as a flat sheet of fog. Scaling
-   * with distance keeps the same amount of atmospheric perspective at every
-   * zoom level, which is what the effect was for.
-   */
-  scene.fog = new THREE.Fog(PALETTE.fog.getHex(), 18, 46);
+  // No fog. A distance haze used to sit over the board and thicken as the
+  // camera pulled back, which at full zoom-out washed the far half of the map
+  // into a pale sheet — and on these boards the far half is real coastline
+  // the player is meant to read. The whole map now stays crisp at every zoom.
 
   const camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 200);
   const rad = THREE.MathUtils.degToRad(CAM_ELEVATION_DEG);
@@ -164,7 +156,6 @@ export function createScene(container: HTMLElement): KhazanScene {
       target.z + shakeZ + Math.cos(rad) * distance
     );
     camera.lookAt(target.x, 0, target.z);
-    applyFog();
   }
 
   function setShake(x: number, z: number): void {
@@ -175,24 +166,6 @@ export function createScene(container: HTMLElement): KhazanScene {
     // recomputing the matrix once the camera has come to rest — exactly the
     // state a shake needs to move it out of.
     updateTransform();
-  }
-
-  /**
-   * Keeps the haze proportional to how far back the camera is sitting.
-   *
-   * Deliberately lighter than the original fixed 18/46, which was tuned when
-   * the camera sat at 18 units and the board was 198 tiles. Carried forward
-   * unchanged, that density put the far third of a 350-tile board under enough
-   * fog to make its terrain colours unreadable — and on these maps the far
-   * third is real geography the player is supposed to be reading, not
-   * background. Still enough atmospheric perspective to separate near from
-   * far; no longer enough to hide a beach.
-   */
-  function applyFog(): void {
-    const fog = scene.fog as THREE.Fog | null;
-    if (!fog) return;
-    fog.near = distance * 1.15;
-    fog.far = distance * 3.1;
   }
 
   /**
