@@ -46,9 +46,6 @@ const TARGET_URL = urlArg ? urlArg.slice("--url=".length).replace(/\/+$/, "") : 
 /** Every campaign level, in order. Kept in step with src/data/levels.json by the assertion in `main`. */
 const LEVEL_IDS = ["l00-tutorial", "l01-first-rains"];
 
-/** Mirrors src/services/features.ts: only the exact string "true" turns the email sheet on. */
-const REQUIRE_EMAIL = process.env.VITE_REQUIRE_EMAIL?.trim() === "true";
-
 let shotIndex = 0;
 async function shot(page: Page, name: string): Promise<void> {
   shotIndex++;
@@ -119,18 +116,21 @@ async function main(): Promise<void> {
     await shot(page, "menu");
 
     // ---- 2. Start -> the level (or the registration sheet) ----------
-    // The sheet only exists when the build was made with
-    // VITE_REQUIRE_EMAIL=true (see src/services/features.ts). The dev server
-    // inherits this process's environment, so the same variable decides both.
+    // The sheet only exists in a build made with VITE_REQUIRE_EMAIL=true (see
+    // src/services/features.ts). Which one this is gets read off the page,
+    // not this process's environment: the flag can come from `.env.local`,
+    // and a `--url` target was built somewhere else entirely.
     stage = "registration";
-    if (REQUIRE_EMAIL) {
-      // By class, not by label. The primary button's text is deliberately
-      // variable — "Tutorial", "Play - Panaji", "Continue - Morjim & Chapora",
-      // "Play again" — so matching on a word in it would break every time the
-      // copy or the campaign order changed, which it already has once.
-      await page.locator(".menu-actions .btn-primary").first().click();
-      await page.waitForSelector(".setup-screen", { timeout: 10000 });
-      console.log("registration gate appeared");
+    const forbidden = /e-?mail|sign[ -]?in|signed in|account/i;
+    const menuText = (await page.locator(".menu-screen").textContent()) ?? "";
+    // By class, not by label. The primary button's text is deliberately
+    // variable — "Tutorial", "Play - Panaji", "Continue - Morjim & Chapora",
+    // "Play again" — so matching on a word in it would break every time the
+    // copy or the campaign order changed, which it already has once.
+    await page.locator(".menu-actions .btn-primary").first().click();
+    await page.waitForSelector(".brief-card, .setup-screen", { timeout: 15000 });
+    if ((await page.locator(".setup-screen").count()) > 0) {
+      console.log("registration gate appeared (build has VITE_REQUIRE_EMAIL=true)");
       await shot(page, "registration-empty");
 
       // Submit it empty first: the form must mark the field rather than letting
@@ -151,18 +151,9 @@ async function main(): Promise<void> {
       await shot(page, "registration-filled");
       await clickByText(page, "Start playing");
     } else {
-      // No email anywhere: the menu must not mention it, and Start must go
-      // straight to the level.
-      const forbidden = /e-?mail|sign[ -]?in|signed in|account/i;
-      const menuText = (await page.locator(".menu-screen").textContent()) ?? "";
+      // No email anywhere: the menu must not have mentioned it either.
       if (forbidden.test(menuText)) problems.push(`[menu] mentions email or accounts: "${menuText.match(forbidden)?.[0]}"`);
-      await page.locator(".menu-actions .btn-primary").first().click();
-      await page.waitForSelector(".brief-card, .setup-screen", { timeout: 15000 });
-      if ((await page.locator(".setup-screen").count()) > 0) {
-        problems.push("[registration] the email sheet appeared although VITE_REQUIRE_EMAIL is off");
-      } else {
-        console.log("Start went straight to the level — no email sheet");
-      }
+      console.log("Start went straight to the level — no email sheet");
     }
 
     // ---- 3. the tutorial board --------------------------------------

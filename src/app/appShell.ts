@@ -146,7 +146,9 @@ export class AppShell {
     // With the email requirement off (the default, see features.ts) there is
     // no gate, and the sign-in and registration screens send people to the
     // menu instead.
-    const decision = gateRoute(route.name, { requireEmail: REQUIRE_EMAIL, registered: isRegistered() });
+    // `isRegistered()` reads the stored registration, so it is only asked when
+    // the requirement is on: with it off, an earlier registration is never read.
+    const decision = gateRoute(route.name, { requireEmail: REQUIRE_EMAIL, registered: REQUIRE_EMAIL && isRegistered() });
     if (decision === "menu") {
       // Always rewrite the URL, even on a Back/forward or a hash typed into an
       // open tab (mode "none"), so the address bar does not keep showing a
