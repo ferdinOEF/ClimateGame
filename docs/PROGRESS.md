@@ -6417,3 +6417,97 @@ clock changes).
 - **What a first-time player might misread.** Pink wetland is where the
   water comes from, not something to save. Maya (P3–P4) names the place with
   the most houses at risk, which should anchor the reading.
+
+### P3–P5 — Maya, the field guide — DONE
+
+**TODO:** Review Maya's design and tips with Goan collaborators (Storiculture
+/ Transition Research).
+
+**P3: who she is and how she talks.**
+- **Look** (`ui/panjim/maya.ts`). An original inline-SVG character: warm
+  brown skin, dark hair in a bun, an orange headband, a green field vest over
+  a white shirt, a notebook on her hip. CSS animates her. There are no
+  textures, no 3D and nothing to load.
+- **Dock.** She stands bottom-left, above the street-map switch, with a
+  speech bubble to her right. She is 96 px tall at 1080p and 112 px on
+  screens wider than 1700 px.
+- **States**, as classes on her root:
+  - idle: blinks and breathes
+  - greeting: waves
+  - tip: points
+  - explains: lightbulb
+  - warning: arms up, red "!" badge, mouth open
+  - worried: brows up, sweat drop, hands in
+  - celebrates: arms up, twinkling stars, bounce
+  - jump: a hop, also used for every move
+- **Reduced motion.** With `prefers-reduced-motion` every animation is off;
+  the states stay as still poses, and a move is a fade.
+- **Lines live in `src/data/maya.json`**, kept short and kind:
+  - the greeting "Hello! I am Maya. Let us keep Panjim dry." (a test checks
+    that nothing says "Namaskar");
+  - the four tips the brief asked for (mangroves, khazans, dunes and
+    pandanus, seawalls), plus the red heat, the green shields and Get ready;
+  - five of the old Voices of Panjim as occasional lines in her voice
+    (Anthony at Miramar, Mrs Fernandes, Sitaram, Neha, Prakash).
+- **The rules** (`app/mayaDirector.ts`):
+  - At most one line per quarter, plus a quarter's rest between ordinary
+    tips.
+  - No line during a time-lapse or a storm, while the build menu, the brief,
+    the Aftermath, the Field Guide or the finale is open.
+  - Each line is said once per session, unless reopened from the Field Guide.
+  - Lines queue and never overlap. A warning may replace a line still showing
+    from an earlier quarter, never one from the same quarter.
+- **Controls.** "Got it", or Esc, dismisses the line. Esc is caught before
+  the level's own quit, so it is never accidental. M, or the "Maya" toggle
+  under Show risk, mutes her lines and leaves the heat on. The mute is
+  remembered safely.
+- **Accessibility.** The bubble is real text in an `aria-live="polite"`
+  region. It is dark text on cream, well over 4.5:1.
+
+**P4: the warning hop.**
+- **Three quarters out** (or at the first look inside three, after a skip),
+  Maya hops to the at-risk house with the most other at-risk houses within
+  two hexes. That is where the most homes are at risk, not the hottest tile,
+  which is usually empty wetland.
+  - She names the nearest neighbourhood landmark ("St Cruz is exposed!
+    Strengthen it before the flood.") and the camera glides there.
+  - The glide is cancelled the moment the player grabs the board.
+- **One quarter out** she gives a last call with the real count ("Last call!
+  69 homes are still in danger, most of them around St Cruz.").
+- **If the danger has passed.** If the warned place has been fixed, she
+  celebrates instead ("… looks safe now. Well done!"). If nothing was ever
+  at risk, she says nothing.
+- **City voices** are held back once a forecast has locked, so the run-up to
+  a storm is for warnings.
+
+**P5: teach by consequence, and the Field Guide link.**
+- **The Aftermath card** carries Maya's line, worked out from the resolved
+  storm (`mayaAftermath` in `core/mayaLines.ts`, tested). Examples: "The
+  dunes at Miramar held 52 homes." "The khazan absorbed the flood water at
+  Taleigao."
+  - **Mood.** She celebrates a 3-star or lossless storm and is worried
+    otherwise, but a loss is always followed by what would help, never blame.
+  - **Fewer voices.** With her line present, the card drops the old generic
+    line (except to report a failed seawall or dam) and the "saved the most"
+    estimate. The first draft showed three overlapping numbers.
+- **The Field Guide** gained "Maya's notes". Every tip and city voice she
+  says becomes a page, kept on this device. "Hear it again" replays it at
+  once.
+
+**Screenshots** (`docs/screenshots/maya/`):
+- `p3-board`: the greeting.
+- `p3-maya:tip`, `:explains`, `:worried`, `:celebrates`: the states.
+- `p4-heat-3`: the warning hop at St Cruz.
+- `p4-heat-1`: the last call.
+- `p5-challenge`: the Aftermath with her line.
+- `p5g-guide`: the Field Guide with her notes.
+
+**Self-assessment:**
+- **Helpful or annoying?** Mostly helpful. At most one line per quarter,
+  with a rest between tips, keeps her rare. The warning hop is the strongest
+  moment: it puts a name and a place on the red.
+- **The risk.** A player who fast-forwards through the run-up may get the
+  warning and the last call on consecutive actions. That is by design: they
+  are the only lines that matter then.
+- **First-time confusion.** At 3 quarters out the camera move might feel
+  like the game taking over. It is slow, and any drag cancels it.

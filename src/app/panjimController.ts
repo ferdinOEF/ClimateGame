@@ -23,6 +23,9 @@ import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
 import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
 import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
+import { Maya } from "@ui/panjim/maya";
+import { MayaDirector, GUIDE_NOTES } from "./mayaDirector";
+import { mayaAftermath } from "@core/mayaLines";
 
 /**
  * The Panjim 2050 run inside a live session.
@@ -85,6 +88,10 @@ export interface PanjimHost {
   showHeat: (tiles: HeatViewTile[]) => void;
   /** Glides the camera to a board coordinate (fractional allowed); `close` also zooms in a little. Cancelled by any drag. */
   focusCamera: (coord: AxialCoord, close?: boolean) => void;
+  /** The map's named places, for Maya to call a spot by name. */
+  landmarks: readonly { name: string; q: number; r: number }[];
+  /** True while the build menu or the opening brief is open: Maya stays quiet. */
+  uiBlocked: () => boolean;
 }
 
 /** Milliseconds per quarter tick: quick for a single action, slower for a visible time-lapse. */
@@ -116,6 +123,12 @@ export class PanjimController {
   /** The latest exposure preview of the next storm, while it is inside the warning window. Read by Maya and the Get ready panel. */
   exposure: Exposure | null = null;
   private readonly keyAbort = new AbortController();
+  /** Maya, the field guide, and the rules for when she speaks. */
+  readonly maya: Maya;
+  readonly mayaDirector: MayaDirector;
+  /** Maya's voice on or off (M). The heat stays either way. */
+  readonly mayaToggle: PrefToggle;
+  private nextPumpMs = 0;
 
   constructor(private readonly host: PanjimHost) {
     if (!host.level.timeline) throw new Error("PanjimController needs a level timeline");
@@ -144,14 +157,34 @@ export class PanjimController {
       { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: true, className: "risk-toggle" },
       () => this.renderHeat()
     );
+    this.mayaToggle = new PrefToggle(
+      host.container,
+      { storageKey: "riptide-rising:maya-voice:v1", label: "Maya", shortcut: "M", defaultOn: true, className: "maya-toggle" },
+      (on) => this.maya.setMuted(!on)
+    );
     document.addEventListener(
       "keydown",
       (event) => {
         if (event.ctrlKey || event.metaKey || event.altKey || isTyping(event)) return;
         if (event.key === "r" || event.key === "R") this.riskToggle.toggle();
+        if (event.key === "m" || event.key === "M") this.mayaToggle.toggle();
       },
       { signal: this.keyAbort.signal }
     );
+    this.maya = new Maya(host.container, { muted: !this.mayaToggle.value, reducedMotion: prefersReducedMotion() });
+    this.mayaDirector = new MayaDirector(this.maya, {
+      run: this.run,
+      exposure: () => this.exposure,
+      blocked: () => this.busy || this.host.uiBlocked() || this.aftermath.isOpen || this.fieldGuide.isOpen || Boolean(this.host.container.querySelector(".finale-card")),
+      project: (coord) => this.host.project(coord),
+      focus: (coord) => this.host.focusCamera(coord),
+      landmarks: host.landmarks
+    });
+    this.maya.onSpoken = (line) => {
+      const note = GUIDE_NOTES.get(line.id);
+      if (note) this.fieldGuide.addNote(note);
+    };
+    this.fieldGuide.onReplayNote = (note) => this.mayaDirector.replay(note);
     this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
@@ -217,6 +250,7 @@ export class PanjimController {
   /** Repaints the Outlook from the current quarter. */
   renderOutlook(): void {
     this.renderHeat();
+    this.mayaDirector?.consider();
     this.renderVoices();
     let houses = 0;
     let standing = 0;
@@ -287,6 +321,8 @@ export class PanjimController {
     const readiness = this.readinessById.get(challenge.id) ?? null;
     telemetry.emit("challenge_start", { id: challenge.id, readiness });
     this.host.challengeFx.begin(challenge);
+    this.maya.dismiss();
+    this.maya.setState("worried");
     // The houses in the storm's path that were standing when it arrived;
     // the counter falls from there, one house at a time.
     this.housesCounter.beginStorm(outcome.housesSaved + outcome.housesDamaged, outcome.housesTotal);
@@ -330,16 +366,24 @@ export class PanjimController {
     });
 
     const lock = this.run.lockSnapshots.get(challenge.id);
+    // Maya explains what actually happened, from the resolved storm.
+    const told = this.run.zones ? mayaAftermath(outcome, this.host.state, this.run.zones) : null;
+    this.maya.setState(told?.mood ?? "idle");
     const choice = await this.aftermath.show({
+      maya: told?.text ?? null,
       title: `${challenge.name} · ${this.labelFor(challenge.quarter)}`,
       stars: outcome.stars,
       housesSaved: outcome.housesSaved,
       housesDamaged: outcome.housesDamaged,
       housesTotal: outcome.housesTotal,
-      line: this.run.zones ? aftermathLine(challenge.kind, outcome, this.host.state, this.run.zones, failedIds) : "",
-      hero: this.run.zones ? topDefenceLine(outcome, this.host.state, this.run.zones) : null,
+      // With Maya's line, the card keeps one voice: the old line stays only
+      // to report a structure that failed, and the "saved the most" estimate
+      // only when Maya has nothing to say.
+      line: this.run.zones && (!told || outcome.zones.some((zone) => zone.failed.length > 0)) ? aftermathLine(challenge.kind, outcome, this.host.state, this.run.zones, failedIds) : "",
+      hero: this.run.zones && !told ? topDefenceLine(outcome, this.host.state, this.run.zones) : null,
       replayLabel: lock && !this.run.finished ? `Replay from the forecast (${this.labelFor(lock.quarter)})` : null
     });
+    this.maya.setState("idle");
     if (choice === "replay" && lock) this.rewindTo(lock, challenge);
   }
 
@@ -475,8 +519,14 @@ export class PanjimController {
     this.forecastLabel.hidden = true;
   }
 
-  /** Called every rendered frame: keeps the in-scene Forecast label over its zone. */
+  /** Called every rendered frame: Maya's moves and lines, and the in-scene Forecast label over its zone. */
   frame(): void {
+    const now = performance.now();
+    this.maya.frame(now);
+    if (now >= this.nextPumpMs) {
+      this.nextPumpMs = now + 400;
+      this.mayaDirector.pump();
+    }
     if (!this.forecastAnchor || this.forecastLabel.hidden) return;
     const screen = this.host.project(this.forecastAnchor);
     if (!screen) return;
@@ -728,6 +778,23 @@ export class PanjimController {
   async scenario(name: string): Promise<boolean> {
     // "heat-N": stop the clock N quarters before the next storm, building
     // nothing. "heat-defend": plant three defences on its path first.
+    // "maya:<state>": Maya says a sample line in that state (for the screenshots).
+    const pose = /^maya:(\w+)$/.exec(name);
+    if (pose) {
+      const samples: Record<string, string> = {
+        greeting: "Hello! I am Maya. Let us keep Panjim dry.",
+        tip: "Dunes and sandy vegetation shield the beach. Pandanus roots hold the sand when the wind gets up.",
+        explains: "A khazan stores floodwater in its fields, so the homes around it stay dry, every turn.",
+        warning: "Taleigao is exposed! Strengthen it before the flood.",
+        worried: "We lost 6 homes at Taleigao. A few more defences there next time and they will stand.",
+        celebrates: "The mangroves at Taleigao held 40 homes.",
+        jump: "Over here!"
+      };
+      this.maya.dismiss();
+      this.maya.say({ id: `sample:${pose[1]}:${performance.now()}`, text: samples[pose[1]] ?? pose[1], state: pose[1] as never, urgent: true });
+      this.maya.next();
+      return true;
+    }
     const heat = /^heat-(\d)$/.exec(name);
     if (heat) {
       const ok = await this.waitUntilQuartersLeft(Number(heat[1]));
@@ -1010,6 +1077,8 @@ export class PanjimController {
 
   dispose(): void {
     this.keyAbort.abort();
+    this.maya.dispose();
+    this.mayaToggle.dispose();
     this.riskToggle.dispose();
     this.housesCounter.dispose();
     this.finaleCard.dispose();
@@ -1037,6 +1106,14 @@ function nearestTo(keys: string[], target: AxialCoord): AxialCoord | null {
     }
   }
   return best;
+}
+
+function prefersReducedMotion(): boolean {
+  try {
+    return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
 }
 
 function wait(ms: number): Promise<void> {

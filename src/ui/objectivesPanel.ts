@@ -132,6 +132,11 @@ export class ObjectivesPanel {
     cta.insertAdjacentElement("afterend", button);
   }
 
+  /** True while the opening brief is on screen. */
+  get briefOpen(): boolean {
+    return !this.briefBackdrop.hidden;
+  }
+
   private hideBrief(): void {
     this.briefBackdrop.hidden = true;
   }

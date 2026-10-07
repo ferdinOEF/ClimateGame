@@ -493,6 +493,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // statement about where the storm goes, not two on top of each other.
             forecastOutline.group.visible = !tiles.some((tile) => tile.heat > 0);
           },
+          landmarks: levelMap.landmarks,
+          uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           focusCamera: (coord, close) => {
             const world = axialToWorld(coord, 1.0);
             focusOn(world.x, world.z, false);
