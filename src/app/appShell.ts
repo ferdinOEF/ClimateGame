@@ -23,7 +23,7 @@ import { renderAuthScreen } from "@ui/screens/authScreen";
 import { renderPlayerSetupScreen } from "@ui/screens/playerSetupScreen";
 import { isRegistered, restoreFromCloud } from "@services/playerRegistry";
 import { clear } from "@ui/screens/screenHelpers";
-import { REQUIRE_EMAIL } from "@services/features";
+import { REQUIRE_EMAIL, SHOW_MENU_EXTRAS } from "@services/features";
 import { gateRoute, hashToRoute, routeToHash, type Route } from "./routeGate";
 
 /**
@@ -148,7 +148,13 @@ export class AppShell {
     // menu instead.
     // `isRegistered()` reads the stored registration, so it is only asked when
     // the requirement is on: with it off, an earlier registration is never read.
-    const decision = gateRoute(route.name, { requireEmail: REQUIRE_EMAIL, registered: REQUIRE_EMAIL && isRegistered() });
+    // The same goes for the leaderboard, settings and daily challenge while
+    // the menu extras are off (also the default).
+    const decision = gateRoute(route, {
+      requireEmail: REQUIRE_EMAIL,
+      registered: REQUIRE_EMAIL && isRegistered(),
+      showMenuExtras: SHOW_MENU_EXTRAS
+    });
     if (decision === "menu") {
       // Always rewrite the URL, even on a Back/forward or a hash typed into an
       // open tab (mode "none"), so the address bar does not keep showing a
@@ -226,10 +232,11 @@ export class AppShell {
           onPlay: (levelId) => this.requestLevel(levelId),
           onDaily: (levelId) => this.requestLevel(levelId),
           onLevelSelect: () => this.go({ name: "levels" }),
-          onLeaderboard: () => this.go({ name: "leaderboard" }),
-          onSettings: () => this.go({ name: "settings" }),
+          onLeaderboard: () => this.enter({ name: "leaderboard" }),
+          onSettings: () => this.enter({ name: "settings" }),
           onSignIn: () => this.enter({ name: "auth", mode: "signin" }),
-          showAccount: REQUIRE_EMAIL
+          showAccount: REQUIRE_EMAIL,
+          showExtras: SHOW_MENU_EXTRAS
         });
         break;
 
@@ -254,8 +261,9 @@ export class AppShell {
           onRetry: (levelId) => this.requestLevel(levelId),
           onLevelSelect: () => this.go({ name: "levels" }),
           onMenu: () => this.go({ name: "menu" }),
-          onLeaderboard: (levelId) => this.go({ name: "leaderboard", levelId }),
-          showAccount: REQUIRE_EMAIL
+          onLeaderboard: (levelId) => this.enter({ name: "leaderboard", levelId }),
+          showAccount: REQUIRE_EMAIL,
+          showLeaderboard: SHOW_MENU_EXTRAS
         });
         break;
 

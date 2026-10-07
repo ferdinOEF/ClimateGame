@@ -1,6 +1,5 @@
-import { LEVELS, dailyChallengeLevel, type LevelDef } from "@levels/levels";
+import { LEVELS } from "@levels/levels";
 import {
-  currentLevelId,
   levelsCompleted,
   maxCampaignStars,
   totalScore,
@@ -11,15 +10,15 @@ import { ACHIEVEMENTS } from "@levels/achievements";
 import { isCloudConfigured } from "@services/env";
 import { getCurrentUser } from "@services/auth";
 import { el, formatScore, starRow } from "./screenHelpers";
+import { menuModel, type MenuButtonSpec } from "./menuModel";
 
 /**
  * The title screen — the first thing a player sees.
  *
- * Takes over the role the old `WelcomeModal` played (a title moment on
- * every load), but with somewhere to go from it. The primary button is
- * always "continue where you left off" rather than a level list, because
- * the overwhelming majority of visits want exactly one thing: to keep
- * playing. The list is one tap away for the minority who want to replay.
+ * By default it offers two things, "Tutorial" and "Choose a level", under the
+ * title. The rest of the old menu (Play/Continue, the Daily Challenge, the
+ * Leaderboard, the stats tiles and the footer) is behind `SHOW_MENU_EXTRAS`;
+ * which buttons appear is decided in `menuModel.ts`.
  */
 export interface MenuActions {
   onPlay: (levelId: string) => void;
@@ -30,20 +29,58 @@ export interface MenuActions {
   onSignIn: () => void;
   /** Whether account features exist in this build (`REQUIRE_EMAIL`). Off, the sign-in link and "Signed in as" note are not drawn. */
   showAccount: boolean;
+  /** `SHOW_MENU_EXTRAS`. Off, only "Tutorial" and "Choose a level" are drawn. */
+  showExtras: boolean;
 }
 
 export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, actions: MenuActions): void {
-  const resumeId = currentLevelId(progress);
-  const resumeLevel = LEVELS.find((level) => level.id === resumeId) ?? LEVELS[0];
+  const model = menuModel(progress, actions.showExtras);
   const completed = levelsCompleted(progress);
   const stars = totalStars(progress);
-  const campaignDone = completed >= LEVELS.length;
-  const daily = dailyChallengeLevel();
   const unlockedAchievements = progress.achievements.length;
   const account = getCurrentUser();
   // "Signed in" means a real provider is attached — an anonymous session
   // has a uid and a leaderboard row, but no way back to it from elsewhere.
   const signedIn = actions.showAccount && account?.hasProvider === true;
+
+  const statsBlock = (): HTMLElement =>
+    el("div", {
+      className: "menu-stats",
+      children: [
+        statTile("Levels cleared", `${completed}/${LEVELS.length}`),
+        statTile("Stars", `${stars}/${maxCampaignStars()}`),
+        statTile("Best total", formatScore(totalScore(progress))),
+        statTile("Badges", `${unlockedAchievements}/${ACHIEVEMENTS.length}`)
+      ]
+    });
+
+  const footerBlock = (): HTMLElement =>
+    el("div", {
+      className: "menu-footer",
+      children: [
+        // Offered, never demanded — the guest session already saves and
+        // already reaches the leaderboard. What an account buys is the
+        // save following you to another device, so that is what the
+        // button says.
+        actions.showAccount && isCloudConfigured() && !signedIn
+          ? el("button", { className: "link-button", text: "Sign in or create an account", on: { click: () => actions.onSignIn() } })
+          : null,
+        el("button", { className: "link-button", text: "Settings & profile", on: { click: () => actions.onSettings() } }),
+        // Say plainly where progress is actually kept. A player who never
+        // sees their name on a board should know why, rather than
+        // assuming the leaderboard is broken.
+        el("span", {
+          className: "menu-cloud-note",
+          text: !isCloudConfigured()
+            ? "Running offline — progress is saved on this device only."
+            : signedIn
+              ? `Signed in${account?.email ? ` as ${account.email}` : ""} — progress syncs across devices.`
+              : actions.showAccount
+                ? "Playing as a guest — progress is saved on this device."
+                : "Progress is saved on this device."
+        })
+      ]
+    });
 
   const screen = el("div", {
     className: "screen menu-screen",
@@ -62,93 +99,45 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
 
       el("div", {
         className: "menu-actions",
-        children: [
-          el("button", {
-            className: "btn btn-primary",
-            text: primaryActionLabel(resumeLevel, completed, campaignDone),
-            on: { click: () => actions.onPlay(resumeId) }
-          }),
-          el("button", {
-            className: "btn",
-            text: "Choose a level",
-            on: { click: () => actions.onLevelSelect() }
-          }),
-          el("button", {
-            className: "btn btn-daily",
-            children: [
-              el("span", { className: "btn-daily-label", text: "Daily Challenge" }),
-              el("span", { className: "btn-daily-sub", text: daily.subtitle })
-            ],
-            on: { click: () => actions.onDaily(daily.id) }
-          }),
-          el("button", {
-            className: "btn",
-            text: "Leaderboard",
-            on: { click: () => actions.onLeaderboard() }
-          })
-        ]
+        children: model.buttons.map((spec) => menuButton(spec, actions))
       }),
 
-      el("div", {
-        className: "menu-stats",
-        children: [
-          statTile("Levels cleared", `${completed}/${LEVELS.length}`),
-          statTile("Stars", `${stars}/${maxCampaignStars()}`),
-          statTile("Best total", formatScore(totalScore(progress))),
-          statTile("Badges", `${unlockedAchievements}/${ACHIEVEMENTS.length}`)
-        ]
-      }),
+      model.showStatsAndFooter ? statsBlock() : null,
+      model.showStatsAndFooter && stars > 0 ? el("div", { className: "menu-stars", children: [starRow(Math.min(3, Math.round(stars / Math.max(1, LEVELS.length))))] }) : null,
 
-      stars > 0 ? el("div", { className: "menu-stars", children: [starRow(Math.min(3, Math.round(stars / Math.max(1, LEVELS.length))))] }) : null,
-
-      el("div", {
-        className: "menu-footer",
-        children: [
-          // Offered, never demanded — the guest session already saves and
-          // already reaches the leaderboard. What an account buys is the
-          // save following you to another device, so that is what the
-          // button says.
-          actions.showAccount && isCloudConfigured() && !signedIn
-            ? el("button", { className: "link-button", text: "Sign in or create an account", on: { click: () => actions.onSignIn() } })
-            : null,
-          el("button", { className: "link-button", text: "Settings & profile", on: { click: () => actions.onSettings() } }),
-          // Say plainly where progress is actually kept. A player who never
-          // sees their name on a board should know why, rather than
-          // assuming the leaderboard is broken.
-          el("span", {
-            className: "menu-cloud-note",
-            text: !isCloudConfigured()
-              ? "Running offline — progress is saved on this device only."
-              : signedIn
-                ? `Signed in${account?.email ? ` as ${account.email}` : ""} — progress syncs across devices.`
-                : actions.showAccount
-                  ? "Playing as a guest — progress is saved on this device."
-                  : "Progress is saved on this device."
-          })
-        ]
-      })
+      model.showStatsAndFooter ? footerBlock() : null
     ]
   });
 
   root.appendChild(screen);
 }
 
-/**
- * What the big button says.
- *
- * "Play" for a brand-new player and "Continue" once there is something to
- * continue, so the label tells them which situation they are in without their
- * having to work it out.
- *
- * The tutorial is the exception and just says "Tutorial". Prefixing it reads
- * oddly in both directions — "Play - Tutorial" is noise, and "Continue -
- * Tutorial" is wrong in the common case where nobody has started one. The
- * name alone is the clearest thing the button can say.
- */
-function primaryActionLabel(resumeLevel: LevelDef, completed: number, campaignDone: boolean): string {
-  if (resumeLevel.tutorial) return resumeLevel.name;
-  if (campaignDone) return "Play again";
-  return completed === 0 ? `Play — ${resumeLevel.name}` : `Continue — ${resumeLevel.name}`;
+function menuButton(spec: MenuButtonSpec, actions: MenuActions): HTMLElement {
+  const className = spec.id === "daily" ? "btn btn-daily" : spec.primary ? "btn btn-primary" : "btn";
+  const run = (): void => {
+    switch (spec.id) {
+      case "tutorial":
+      case "resume":
+        actions.onPlay(spec.levelId!);
+        break;
+      case "daily":
+        actions.onDaily(spec.levelId!);
+        break;
+      case "levels":
+        actions.onLevelSelect();
+        break;
+      case "leaderboard":
+        actions.onLeaderboard();
+        break;
+    }
+  };
+  return spec.sub
+    ? el("button", {
+        className,
+        children: [el("span", { className: "btn-daily-label", text: spec.label }), el("span", { className: "btn-daily-sub", text: spec.sub })],
+        on: { click: run }
+      })
+    : el("button", { className, text: spec.label, on: { click: run } });
 }
 
 function statTile(label: string, value: string): HTMLElement {

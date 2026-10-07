@@ -84,6 +84,27 @@ it was on stay in `playtesters/` untouched; the client simply does not read
 them while it is off. The Authentication steps below only matter when it is
 on, apart from **Anonymous**, which the leaderboard always needs.
 
+### The menu extras (`VITE_SHOW_MENU_EXTRAS`)
+
+By default the main menu offers two things under the title: **Tutorial**
+(always starts the tutorial, `l00-tutorial`) and **Choose a level**. The Play /
+Continue button, Daily Challenge, Leaderboard, the stats tiles and star row,
+the "Settings & profile" link and the footer note are hidden, the results
+screen has no Leaderboard button, and a pasted `#/leaderboard`, `#/settings`
+or `#/play/daily-…` link lands on the menu. Level progress is still saved on
+the device, and personal bests are still posted in the background when a
+Firebase project is configured.
+
+To bring the full menu back, build with:
+
+```
+VITE_SHOW_MENU_EXTRAS=true
+```
+
+Like `VITE_REQUIRE_EMAIL`, it is read at build time (set it in `.env.local` or
+in the Vercel project's environment variables, then rebuild), and only the
+exact value `true` turns it on. The two flags are independent.
+
 ## 4. Turn on Authentication
 
 Console → **Build → Authentication → Get started**, then under

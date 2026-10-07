@@ -33,6 +33,8 @@ export interface ResultsActions {
   onLeaderboard: (levelId: string) => void;
   /** Whether account features exist in this build (`REQUIRE_EMAIL`). Off, nothing here mentions signing in. */
   showAccount: boolean;
+  /** Whether the leaderboard exists in this build (`SHOW_MENU_EXTRAS`). Off, there is no Leaderboard button and the score note does not mention one. */
+  showLeaderboard: boolean;
 }
 
 export interface ResultsContext {
@@ -112,11 +114,13 @@ export function renderResultsScreen(root: HTMLElement, ctx: ResultsContext, acti
               cleared && follow
                 ? el("button", { className: "btn", text: "Replay this level", on: { click: () => actions.onRetry(level.id) } })
                 : null,
-              el("button", {
-                className: "btn",
-                text: "Leaderboard",
-                on: { click: () => actions.onLeaderboard(level.id) }
-              }),
+              actions.showLeaderboard
+                ? el("button", {
+                    className: "btn",
+                    text: "Leaderboard",
+                    on: { click: () => actions.onLeaderboard(level.id) }
+                  })
+                : null,
               el("button", { className: "btn", text: "Level select", on: { click: () => actions.onLevelSelect() } }),
               el("button", { className: "link-button", text: "Main menu", on: { click: () => actions.onMenu() } })
             ]
@@ -132,7 +136,7 @@ export function renderResultsScreen(root: HTMLElement, ctx: ResultsContext, acti
   // after render: the player should never wait on the network to see how
   // they did.
   void ctx.submission.then((outcome) => {
-    submissionNote.textContent = describeSubmission(outcome, cleared, actions.showAccount);
+    submissionNote.textContent = describeSubmission(outcome, cleared, actions.showAccount, actions.showLeaderboard);
   });
 }
 
@@ -187,16 +191,17 @@ function achievementBlock(ctx: ResultsContext): HTMLElement | null {
   });
 }
 
-function describeSubmission(outcome: SubmitResult, cleared: boolean, showAccount: boolean): string {
+function describeSubmission(outcome: SubmitResult, cleared: boolean, showAccount: boolean, showLeaderboard: boolean): string {
   if (!cleared) return "";
   switch (outcome.status) {
     case "submitted":
-      return "Score posted to the leaderboard.";
+      // With no leaderboard on screen, naming one would point at nothing.
+      return showLeaderboard ? "Score posted to the leaderboard." : "New best score saved.";
     case "not-a-personal-best":
       return "Your best score for this level still stands.";
     case "offline":
-      return showAccount ? "Saved on this device. Sign in to post to the leaderboard." : "Saved on this device.";
+      return showAccount && showLeaderboard ? "Saved on this device. Sign in to post to the leaderboard." : "Saved on this device.";
     case "error":
-      return outcome.message;
+      return showLeaderboard ? outcome.message : "Saved on this device.";
   }
 }
