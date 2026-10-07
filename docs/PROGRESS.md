@@ -6994,3 +6994,89 @@ reached this session:
 - With the map off, the board shows no roads at all. That is deliberate (the
   switch is "show the real streets"), but a player who turns the map off
   loses them; the walkers still trace them.
+
+### P0 — audit and baseline — DONE
+
+**How a Panaji storm works today:**
+- When a storm lands, `ActionRun.land` resolves it zone by zone
+  (`resolveChallenge` in core/zones.ts) and changes the board at once.
+- `PanjimController.stageChallenge` then only stages the outcome:
+  - the camera visits each zone in turn;
+  - a translucent tint covers the zone (`HazardOverlayManager`);
+  - the defences there ring;
+  - the houses lost there go grey one by one;
+  - the slowest beat goes to the zone with the biggest save.
+- The weather is `StormManager.setIntensity(1)`, with rain and a darker sky.
+- The old `WaveFrontManager` and `CloudLayerManager` serve the Tutorial only.
+- None of this staging looked at depth or timing: the tint's strength was the
+  zone's leak share, the same for every tile in the zone.
+
+**Baseline**, from `verify:maya` on master `5f3fdfd`, full Panaji board, software
+GL: 2.3 ms per frame of scene update, 28 draw calls, 190,908 triangles.
+Software GL makes fps meaningless here; see the P9/QA fps notes.
+
+### P1 — one source of truth for water depth — DONE
+
+**The model:**
+- `core/hazard.ts` now has `buildDepthField`, `surgeDepth(field, tile, t)`,
+  `floodDepth(field, tile, t)` and `combinedDepth(field, tile, t)`, plus
+  `peakDepth`, `hitTime` and `arrivalTime`.
+- Depth is in damage units: 1 is the depth at which a house is lost.
+- A tile's peak is the resolver's own local intensity there (its tile probe)
+  divided by the house rule's resilience. So a house is hit exactly when its
+  water passes 1.
+- The rise/hold/drain envelope holds at exactly 1 through the peak, so the
+  drawn peak is the resolved peak, not an approximation of it.
+
+**Recording each storm:**
+- `core/stormRecord.ts` → `resolveStorm` runs the resolver exactly as before
+  (same arguments, same mutation), with the probe listening.
+- `ActionRun.land` now calls it and keeps a `StormRecord` per storm. The
+  record is not saved; it is only needed while the storm plays.
+- It also resolves the same storm on copies of the board as it stood before:
+  - with every defence against the storm removed;
+  - once per kind of defence, with only that kind removed.
+- These are the real numbers the Aftermath replay and the share card will
+  quote.
+
+**Timing.** Presentation only; none of it changes an outcome.
+- **Cyclone:** landfall at 16 s. The sea draws back from 4 s to 0.5 s before
+  landfall. The surge then pushes inland ring by ring (0.7 s per hex, the whole
+  push capped at 7 s), rising 2 s, holding 3 s and draining 5 s.
+- **Flood:** rain first for 6 s. Then a swell runs down the channel, starting
+  upstream, and spreads over the banks (at most 5 s). It rises 2.5 s, holds 4 s
+  and drains 6 s.
+- **Finale:**
+  - the surge lands at 12 s, while the river is already rising;
+  - a backwater term, surge × (riverIndex / mouthIndex)^1.6, pushes up the
+    channel from the mouth;
+  - they meet between about 12 s and 28 s.
+
+**Decisions:**
+- **Swell speed.** The brief says ~0.8 s per river tile. Panaji's channel
+  (river and wetland, measured from the sea) is 29 tiles long, which would make
+  a 23 s swell. The step is therefore shortened so the whole trip takes at most
+  12 s (0.41 s per tile here).
+- **Backwater is drawn on channel tiles only.** No house stands there. The
+  homes on the banks are judged by the zone resolver, whose finale already
+  makes the surge spend the Mandovi waterfront's defence before the flood
+  arrives.
+- **Wet ground without houses.** It shows the resolver's local intensity
+  too. Between fronts it is the sum of both, since only houses are judged
+  once.
+
+**Tests** (`tests/hazardDepth.test.ts`, 19). Across both presets, three
+seeds, undefended and defended, every storm:
+- houses hit ⇔ peak depth above 1;
+- the depth sampled every 50 ms reaches that same peak;
+- `hitTime` is set exactly for hit houses;
+- the land is dry before and after;
+- the undefended comparison's own field agrees with its own resolution;
+- the script itself: draw-back, ring order, swell order and speed, backwater
+  ∝ (i/m)^1.6, and the meeting window.
+
+**Self-assessment:**
+- The truthfulness is solid: the tests compare the field against the
+  resolver directly.
+- The timing numbers are my reading of the brief. Without the prototype
+  they could not be matched frame for frame.

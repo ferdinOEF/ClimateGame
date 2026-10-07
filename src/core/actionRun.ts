@@ -8,6 +8,7 @@ import { computeCombos, newComboMembers, type ComboId, type ComboState } from ".
 import { voiceProgress, type VoiceDef, type VoiceStatus } from "./voices";
 import { computeExposure, type Exposure } from "./exposure";
 import { generatePrep, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
+import { resolveStorm, type StormRecord } from "./stormRecord";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim in quarters, where time moves only
@@ -148,6 +149,12 @@ export class ActionRun {
   readonly zones: ZoneIndex | null;
   /** Outcome of each landed challenge, by id. */
   readonly outcomes = new Map<string, ChallengeOutcome>();
+  /**
+   * Each landed challenge recorded for showing (its water depth field and the
+   * replay's comparisons; core/stormRecord.ts), by id. Not saved: it is only
+   * needed while the storm plays and its Aftermath is open.
+   */
+  readonly stormRecords = new Map<string, StormRecord>();
   /** Perfect-fit combo bonuses (P6) the resolver adds to zone defence. */
   combos: ComboBonus = new Map();
   /** The board's perfect-fit combos, recomputed after every action and challenge. */
@@ -520,8 +527,18 @@ export class ActionRun {
     if (!this.zones || !this.climate) {
       events.push({ type: "challenge", challenge, outcome: null });
     } else {
-      const outcome = resolveChallenge(this.state, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule);
+      const record = resolveStorm(this.state, {
+        zones: this.zones,
+        kind: challenge.kind,
+        intensity: this.intensityOf(challenge),
+        strengthUnit: this.climate.intensityPerStrength,
+        combos: this.combos,
+        houseStars: this.houseStars,
+        houseRule: this.houseRule
+      });
+      const outcome = record.outcome;
       this.outcomes.set(challenge.id, outcome);
+      this.stormRecords.set(challenge.id, record);
       events.push({ type: "challenge", challenge, outcome });
     }
     // A new era: the last era's unanswered Voices lapse, the next era's arrive.

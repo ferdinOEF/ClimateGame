@@ -460,3 +460,356 @@ export function resolveCyclone(state: GameState, baseSeverity = 1.0): CycloneRes
 
   return { ...result, trustLost, damagedBuildings };
 }
+
+// ---------------------------------------------------------------------------
+// Water depth over time: the one source the hazard visuals draw from.
+// ---------------------------------------------------------------------------
+
+/**
+ * How deep the water stands on every tile, second by second, during a
+ * storm, built from the storm's own resolution.
+ *
+ * Depth is in "damage units": 1 is the depth at which a house is lost. A
+ * tile's peak depth is the hazard's local intensity there (what the zone
+ * resolver worked out, house by house) divided by the house rule's
+ * resilience, so a house is hit exactly when its peak depth is above 1, and
+ * the water drawn over it is exactly what decided its fate. The timing (when
+ * the water arrives at each tile, how fast it rises and drains) is
+ * presentation, laid out from where the water comes from: tile by tile inland
+ * from the sea for a surge, down the channel and then out over the banks for
+ * a river flood.
+ *
+ * Water tiles (sea, river, wetland channel) carry the hazard's incoming
+ * strength rather than a resolved local intensity: that is the swollen sea or
+ * river before any defence has answered it. No house stands on them.
+ *
+ * Pure: no renderer, no DOM. Rendering calls `surgeDepth`, `floodDepth` and
+ * `combinedDepth`; the tests check those against the resolution.
+ */
+export type StormKind = "cyclone" | "flood" | "compound";
+
+export const DAMAGE_DEPTH = 1;
+
+/** The storm's script, in seconds of storm time. Presentation only: none of it changes an outcome. */
+export const STORM_TIMING = {
+  cyclone: {
+    /** The spiral reaches the coast. */
+    landfall: 16,
+    /** Seconds from landfall to the surge reaching the first row of land. */
+    surgeLead: 0.5,
+    /** Seconds per hex the surge takes to push further inland, shortened when it reaches far inland. */
+    perHex: 0.7,
+    /** The surge's push inland never takes longer than this. */
+    maxInland: 7,
+    rise: 2,
+    hold: 3,
+    drain: 5,
+    /** The sea draws back before the hit: from, to (seconds before landfall). */
+    drawBack: [4, 0.5] as const,
+    /** How far it draws back, in damage units. */
+    drawBackDepth: 0.35
+  },
+  flood: {
+    /** Rain and the cloud band come first; the swell starts upstream after this. */
+    rainLead: 6,
+    /** Seconds per channel tile the swell takes downriver ("about 0.8 s"), shortened on a long channel. */
+    perRiverIndex: 0.8,
+    /** The swell's whole trip down the channel never takes longer than this. */
+    maxTravel: 12,
+    rise: 2.5,
+    hold: 4,
+    drain: 6,
+    /** Seconds per hex the overflow takes to spread from the channel over the banks, shortened on wide banks. */
+    perBankHex: 0.6,
+    /** The overflow's spread over the banks never takes longer than this. */
+    maxBank: 5,
+    /** Seconds from the swell passing to the first overflow on the nearest bank. */
+    bankLead: 1
+  },
+  compound: {
+    /** The surge lands sooner in the finale, while the river is already rising. */
+    landfall: 12,
+    /** Seconds per channel tile the surge's backwater takes to push upriver from the mouth. */
+    backwaterPerIndex: 0.45,
+    /** Backwater ∝ surge × (riverIndex / mouthIndex)^this (see `backwaterShare`). */
+    backwaterExponent: 1.6
+  }
+};
+
+export interface DepthTile {
+  key: string;
+  terrainId: string;
+  /** Peak depth of each hazard's water here, damage units. */
+  surgePeak: number;
+  floodPeak: number;
+  /** Storm time the surge / flood water starts rising here (Infinity: never). */
+  surgeArrival: number;
+  floodArrival: number;
+  /** Channel tiles only: position along the channel, 0 upstream to `mouthIndex` at the sea. */
+  riverIndex: number | null;
+  /** Channel tiles in a compound storm: the surge's backwater pushed up the river. */
+  backwaterPeak: number;
+  backwaterArrival: number;
+  /** A house stood here when the storm came. */
+  house: boolean;
+}
+
+export interface DepthField {
+  kind: StormKind;
+  tiles: Map<string, DepthTile>;
+  mouthIndex: number;
+  /** Seconds per channel index the swell actually uses on this board. */
+  perRiverIndex: number;
+  /** Storm time of landfall (cyclone or compound), else null. */
+  landfall: number | null;
+  /** Storm time by which all the water has drained. */
+  duration: number;
+}
+
+export interface DepthFieldInput {
+  kind: StormKind;
+  /** Every tile on the board. */
+  tiles: { key: string; terrainId: string }[];
+  /** The resolver's local intensity at each tile it reported, per hazard (`resolveChallenge`'s probe). */
+  samples: Map<string, { cyclone?: number; flood?: number }>;
+  /** The house rule's resilience: the local intensity at which a house is lost. */
+  resilience: number;
+  /** The strength each front set out with (intensity × share): the swollen sea and river. */
+  frontStrength: { cyclone?: number; flood?: number };
+  /** Coord keys of the houses standing when the storm came. */
+  houses: ReadonlySet<string>;
+}
+
+const SEA = new Set(["coast"]);
+const CHANNEL = new Set(["river", "estuary"]);
+
+function smooth(x: number): number {
+  const c = Math.min(1, Math.max(0, x));
+  return c * c * (3 - 2 * c);
+}
+
+/** Rise, hold, drain: 0 → 1 → 1 → 0. Exactly 1 through the hold, so the peak drawn is the peak resolved. */
+export function waterEnvelope(tau: number, rise: number, hold: number, drain: number): number {
+  if (tau <= 0) return 0;
+  if (tau < rise) return smooth(tau / rise);
+  if (tau <= rise + hold) return 1;
+  if (tau < rise + hold + drain) return 1 - smooth((tau - rise - hold) / drain);
+  return 0;
+}
+
+/** Hex rings outward from `sources`, through tiles `through` allows. */
+function hexRings(keys: ReadonlySet<string>, sources: string[], through: (key: string) => boolean): Map<string, number> {
+  const distance = new Map<string, number>();
+  const queue: string[] = [];
+  for (const key of sources) {
+    distance.set(key, 0);
+    queue.push(key);
+  }
+  for (let i = 0; i < queue.length; i++) {
+    const [q, r] = queue[i].split(",").map(Number);
+    for (let dir = 0; dir < 6; dir++) {
+      const next = axialKey(neighbor({ q, r }, dir));
+      if (distance.has(next) || !keys.has(next) || !through(next)) continue;
+      distance.set(next, distance.get(queue[i])! + 1);
+      queue.push(next);
+    }
+  }
+  return distance;
+}
+
+/** The share of the surge that backs up a channel tile: (riverIndex / mouthIndex)^1.6, so it is strongest at the mouth. */
+export function backwaterShare(riverIndex: number, mouthIndex: number): number {
+  if (mouthIndex <= 0) return 1;
+  return Math.pow(Math.min(1, Math.max(0, riverIndex / mouthIndex)), STORM_TIMING.compound.backwaterExponent);
+}
+
+export function buildDepthField(input: DepthFieldInput): DepthField {
+  const { kind } = input;
+  const terrain = new Map(input.tiles.map((t) => [t.key, t.terrainId]));
+  const keys = new Set(terrain.keys());
+  const hasSurge = kind !== "flood";
+  const hasFlood = kind !== "cyclone";
+  const c = STORM_TIMING.cyclone;
+  const f = STORM_TIMING.flood;
+  const landfall = kind === "cyclone" ? c.landfall : kind === "compound" ? STORM_TIMING.compound.landfall : null;
+
+  // The channel, measured from the sea: the mouth is index `mouthIndex`, the
+  // farthest point upstream is 0.
+  const mouth = [...keys].filter((key) => {
+    if (!CHANNEL.has(terrain.get(key)!)) return false;
+    const [q, r] = key.split(",").map(Number);
+    for (let dir = 0; dir < 6; dir++) if (SEA.has(terrain.get(axialKey(neighbor({ q, r }, dir))) ?? "")) return true;
+    return false;
+  });
+  const fromMouth = hexRings(keys, mouth, (key) => CHANNEL.has(terrain.get(key)!));
+  let mouthIndex = 0;
+  for (const d of fromMouth.values()) mouthIndex = Math.max(mouthIndex, d);
+  const perRiverIndex = mouthIndex > 0 ? Math.min(f.perRiverIndex, f.maxTravel / mouthIndex) : f.perRiverIndex;
+  const riverIndexOf = (key: string): number | null => {
+    if (!CHANNEL.has(terrain.get(key)!)) return null;
+    // A pocket of channel not joined to the sea counts as upstream.
+    return mouthIndex - (fromMouth.get(key) ?? mouthIndex);
+  };
+
+  // Surge timing: inland from the sea, one ring at a time.
+  const seaKeys = [...keys].filter((key) => SEA.has(terrain.get(key)!));
+  const fromSea = hexRings(keys, seaKeys, () => true);
+  let deepestInland = 0;
+  for (const [key, sample] of input.samples) if (sample.cyclone !== undefined) deepestInland = Math.max(deepestInland, (fromSea.get(key) ?? 1) - 1);
+  const perHex = deepestInland > 0 ? Math.min(c.perHex, c.maxInland / deepestInland) : c.perHex;
+  // Flood timing: the swell passes each channel tile, then spreads out over the banks.
+  const channelArrival = new Map<string, number>();
+  for (const key of keys) {
+    const index = riverIndexOf(key);
+    if (index !== null) channelArrival.set(key, f.rainLead + index * perRiverIndex);
+  }
+  const bankArrival = new Map<string, number>(channelArrival);
+  const fromChannel = hexRings(keys, [...channelArrival.keys()], (key) => !SEA.has(terrain.get(key)!));
+  let widestBank = 0;
+  for (const [key, sample] of input.samples) if (sample.flood !== undefined) widestBank = Math.max(widestBank, fromChannel.get(key) ?? 0);
+  const perBankHex = widestBank > 0 ? Math.min(f.perBankHex, f.maxBank / widestBank) : f.perBankHex;
+  {
+    // Rings outward from the channel, each tile taking the earliest neighbour's time.
+    let frontier = [...channelArrival.keys()];
+    const seen = new Set(frontier);
+    while (frontier.length > 0) {
+      const next: string[] = [];
+      for (const key of frontier) {
+        const [q, r] = key.split(",").map(Number);
+        const t = bankArrival.get(key)! + (CHANNEL.has(terrain.get(key)!) ? f.bankLead : perBankHex);
+        for (let dir = 0; dir < 6; dir++) {
+          const n = axialKey(neighbor({ q, r }, dir));
+          if (!keys.has(n) || SEA.has(terrain.get(n)!)) continue;
+          if (!seen.has(n)) {
+            seen.add(n);
+            next.push(n);
+            bankArrival.set(n, t);
+          } else if (!channelArrival.has(n) && t < bankArrival.get(n)!) {
+            bankArrival.set(n, t);
+          }
+        }
+      }
+      frontier = next;
+    }
+  }
+
+  const toDepth = (intensity: number | undefined): number => (intensity === undefined || input.resilience <= 0 ? 0 : Math.max(0, intensity) / input.resilience);
+  const seaSurge = toDepth(input.frontStrength.cyclone);
+  const riverFlood = toDepth(input.frontStrength.flood);
+
+  const tiles = new Map<string, DepthTile>();
+  let duration = 0;
+  for (const key of keys) {
+    const terrainId = terrain.get(key)!;
+    const sample = input.samples.get(key);
+    const isSea = SEA.has(terrainId);
+    const riverIndex = riverIndexOf(key);
+    let surgePeak = 0;
+    let surgeArrival = Infinity;
+    if (hasSurge && landfall !== null) {
+      const d = fromSea.get(key) ?? Infinity;
+      if (isSea) {
+        // The sea itself swells toward the shore: full surge on the coast, easing offshore.
+        surgePeak = seaSurge;
+        surgeArrival = landfall - 1.5;
+      } else if (sample?.cyclone !== undefined) {
+        surgePeak = toDepth(sample.cyclone);
+        surgeArrival = landfall + c.surgeLead + Math.max(0, d - 1) * perHex;
+      } else if (riverIndex !== null && d <= 1) {
+        // Channel tiles at the shore take the surge too.
+        surgePeak = seaSurge;
+        surgeArrival = landfall + c.surgeLead;
+      }
+    }
+    let floodPeak = 0;
+    let floodArrival = Infinity;
+    if (hasFlood) {
+      if (riverIndex !== null && terrainId === "river") {
+        floodPeak = Math.max(riverFlood, toDepth(sample?.flood));
+        floodArrival = channelArrival.get(key)!;
+      } else if (sample?.flood !== undefined) {
+        floodPeak = toDepth(sample.flood);
+        floodArrival = bankArrival.get(key) ?? f.rainLead;
+      }
+    }
+    let backwaterPeak = 0;
+    let backwaterArrival = Infinity;
+    if (kind === "compound" && riverIndex !== null && terrainId === "river" && landfall !== null) {
+      backwaterPeak = seaSurge * backwaterShare(riverIndex, mouthIndex);
+      backwaterArrival = landfall + c.surgeLead + (mouthIndex - riverIndex) * STORM_TIMING.compound.backwaterPerIndex;
+    }
+    const tile: DepthTile = { key, terrainId, surgePeak, floodPeak, surgeArrival, floodArrival, riverIndex, backwaterPeak, backwaterArrival, house: input.houses.has(key) };
+    tiles.set(key, tile);
+    if (surgePeak > 0) duration = Math.max(duration, surgeArrival + c.rise + c.hold + c.drain);
+    if (floodPeak > 0) duration = Math.max(duration, floodArrival + f.rise + f.hold + f.drain);
+    if (backwaterPeak > 0) duration = Math.max(duration, backwaterArrival + c.rise + c.hold + c.drain);
+  }
+  if (landfall !== null) duration = Math.max(duration, landfall + c.rise + c.hold + c.drain + 2);
+  return { kind, tiles, mouthIndex, perRiverIndex, landfall, duration: duration + 1 };
+}
+
+/** The surge's water on a tile at storm time `t`, damage units. On the sea it dips before landfall (the draw-back). */
+export function surgeDepth(field: DepthField, key: string, t: number): number {
+  const tile = field.tiles.get(key);
+  if (!tile || tile.surgePeak <= 0) return 0;
+  const c = STORM_TIMING.cyclone;
+  let depth = tile.surgePeak * waterEnvelope(t - tile.surgeArrival, c.rise, c.hold, c.drain);
+  if (field.landfall !== null && SEA.has(tile.terrainId)) {
+    const [from, to] = c.drawBack;
+    const start = field.landfall - from;
+    const end = field.landfall - to;
+    if (t > start && t < end + 1.5) {
+      // Out over three seconds, then back in with the surge.
+      const out = smooth((t - start) / (end - start - 1)) * (1 - smooth((t - end) / 1.5));
+      depth -= c.drawBackDepth * out;
+    }
+  }
+  return depth;
+}
+
+/** The flood's water on a tile at storm time `t`, damage units, including (in a compound storm) the surge backing up the river. */
+export function floodDepth(field: DepthField, key: string, t: number): number {
+  const tile = field.tiles.get(key);
+  if (!tile) return 0;
+  const f = STORM_TIMING.flood;
+  const c = STORM_TIMING.cyclone;
+  let depth = tile.floodPeak > 0 ? tile.floodPeak * waterEnvelope(t - tile.floodArrival, f.rise, f.hold, f.drain) : 0;
+  if (tile.backwaterPeak > 0) depth += tile.backwaterPeak * waterEnvelope(t - tile.backwaterArrival, c.rise, c.hold, c.drain);
+  return depth;
+}
+
+/** All the water on a tile at storm time `t`. A house is hit when this passes `DAMAGE_DEPTH`. */
+export function combinedDepth(field: DepthField, key: string, t: number): number {
+  return Math.max(0, surgeDepth(field, key, t)) + floodDepth(field, key, t);
+}
+
+/** The deepest the water gets on a tile over the whole storm. */
+export function peakDepth(field: DepthField, key: string): number {
+  const tile = field.tiles.get(key);
+  if (!tile) return 0;
+  const parts = [tile.surgePeak, tile.floodPeak, tile.backwaterPeak].filter((p) => p > 0);
+  if (parts.length === 0) return 0;
+  // One kind of water: its envelope holds at exactly 1, so the peak is the resolved peak.
+  if (parts.length === 1) return parts[0];
+  // Surge and river water overlapping (a compound storm's channel): sample the overlap.
+  let best = 0;
+  for (let t = 0; t <= field.duration; t += 0.05) best = Math.max(best, combinedDepth(field, key, t));
+  return best;
+}
+
+/** Storm time the water on a house first passes `DAMAGE_DEPTH` (null: it never does, the house stands). */
+export function hitTime(field: DepthField, key: string): number | null {
+  const tile = field.tiles.get(key);
+  if (!tile || peakDepth(field, key) <= DAMAGE_DEPTH) return null;
+  const start = Math.min(tile.surgeArrival, tile.floodArrival, tile.backwaterArrival);
+  for (let t = start; t <= field.duration; t += 0.02) if (combinedDepth(field, key, t) > DAMAGE_DEPTH) return t;
+  return null;
+}
+
+/** Storm time the water first reaches a tile (any hazard), or null if it never does. */
+export function arrivalTime(field: DepthField, key: string): number | null {
+  const tile = field.tiles.get(key);
+  if (!tile) return null;
+  const times = [tile.surgeArrival, tile.floodArrival, tile.backwaterArrival].filter((t, i) => Number.isFinite(t) && [tile.surgePeak, tile.floodPeak, tile.backwaterPeak][i] > 0);
+  return times.length > 0 ? Math.min(...times) : null;
+}
