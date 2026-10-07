@@ -5,6 +5,7 @@ import type { Telemetry } from "@core/telemetry";
 import type { LevelDef } from "@levels/levels";
 import { ClockHud } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
+import { CoinJar } from "@ui/panjim/coinJar";
 import { outlookFor, seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef } from "@core/zones";
 import { axialToWorld } from "@core/hex";
@@ -61,6 +62,7 @@ export class PanjimController {
   readonly run: ActionRun;
   private readonly clock: ClockHud;
   private readonly outlook: OutlookBar;
+  private readonly jar: CoinJar;
   /** Stars per landed challenge, shown on the Outlook. */
   readonly results = new Map<string, number>();
   private busy = false;
@@ -77,6 +79,7 @@ export class PanjimController {
       onFastForwardEvent: () => void this.fastForwardEvent()
     });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
+    this.jar = new CoinJar(host.container, () => this.collectJar());
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
     this.forecastLabel.hidden = true;
@@ -86,8 +89,24 @@ export class PanjimController {
     this.syncControls();
   }
 
+  /** Banks the jar. Free: no quarter passes. */
+  collectJar(): number {
+    const coins = this.run.collectJar();
+    if (coins > 0) {
+      this.host.telemetry.reward("coin");
+      this.host.refresh();
+      this.host.container.querySelector(".coin-value")?.classList.remove("bump");
+      void (this.host.container.querySelector(".coin-value") as HTMLElement | null)?.offsetWidth;
+      this.host.container.querySelector(".coin-value")?.classList.add("bump");
+    }
+    return coins;
+  }
+
   /** Repaints the Outlook from the current quarter. */
   renderOutlook(): void {
+    // A jar reads full at about two years of the current income, and never
+    // below a small floor, so even a young city sees it fill.
+    this.jar.render(this.run.jar, Math.max(60, this.run.incomePerQuarter * 8));
     const climate = this.run.climate;
     if (!climate) return;
     const startYear = this.run.config.startYear;
@@ -418,6 +437,7 @@ export class PanjimController {
   }
 
   dispose(): void {
+    this.jar.dispose();
     this.forecastLabel.remove();
     this.clock.dispose();
     this.host.container.classList.remove("has-panjim-clock");

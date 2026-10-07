@@ -5722,3 +5722,40 @@ structures collapse, worn ones weather, houses lean), then a banner such as
 - **Weak:** the skyline change is subtle in a single frame. It will read in
   the finale's 2025/2050 comparison (P8), not quarter to quarter, which is
   the right place for it.
+
+## P5 — economy and coin jar — DONE
+
+**Built:**
+- **The jar:** on this level income no longer goes straight into Coin. Each
+  quarter `income × incomeScale` (0.5) drops into a coin jar
+  (`ActionRun.jar`), at the board's maturity during that quarter. Damaged
+  houses earn nothing.
+- **Tapping it** banks the whole coins. It is free: no quarter passes
+  (tested), and it plays a pop, a chime and a bump on the Coin counter.
+- **Jar UI:** under the instrument cluster, top left. It fills to "full" at
+  about two years of current income, wobbles when it has coin in it, and
+  glows when full.
+- **The jar starts with a 40-coin gift.** Its first tap is the earliest
+  reward a new player can get, and logs `first_reward_ms`.
+- **Coin:** the HUD shows income per quarter at the jar's scale, and Panaji's
+  starting Coin is 350 (it was 1000, a testing value).
+- `timeline.economy` in levels.json holds `incomeScale` and `jarStart`.
+- **Decision:** everything that earns pays into the jar, not only Houses and
+  Khazan. Sand Mining's, the Resort's and the Small Dam's big incomes are
+  the Greedy temptation the bots must show doesn't win, and splitting
+  income between two places would only confuse.
+
+**Not yet tuned:** whether 350 Coin plus jar income lands at 40–70
+decisions, and whether banking loses to building, is for the bots (P9). The
+numbers here are a first guess from the costs (a typical build is about 35
+Coin).
+
+**Checks:** 238 tests pass (2 new); the build passes; `phaseShots p5` shows
+no console errors.
+
+**Self-assessment:**
+- **Fun:** the jar is a nice small loop: watch it fill during a time-lapse,
+  tap it, see Coin jump.
+- **Risk:** a player who never notices the jar will run out of Coin and not
+  know why. The gift and the wobble are meant to teach it in the first ten
+  seconds; P9's telemetry check (first reward ≤ 30 s) will tell.

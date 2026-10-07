@@ -35,6 +35,13 @@ export interface TimelineConfig {
     demolish: number;
     fastForwardYear: number;
   };
+  /**
+   * Income flows into a coin jar each quarter instead of straight into Coin;
+   * tapping the jar (free, no time) banks it. `incomeScale` sizes the whole
+   * economy: the run should afford roughly 40–70 meaningful decisions, never
+   * everything. `jarStart` is a small gift so the first tap comes early.
+   */
+  economy?: { incomeScale: number; jarStart: number };
 }
 
 export { QUARTERS_PER_YEAR };
@@ -99,6 +106,10 @@ export class ActionRun {
   readonly outcomes = new Map<string, ChallengeOutcome>();
   /** Perfect-fit combo bonuses (P6) the resolver adds to zone defence. */
   combos: ComboBonus = new Map();
+  /** Coin waiting in the jar. Banked only when the player taps it. */
+  jar: number;
+  /** Everything ever banked from the jar, for the finale's Livelihoods. */
+  jarCollected = 0;
 
   constructor(
     readonly state: GameState,
@@ -106,8 +117,9 @@ export class ActionRun {
     options: ActionRunOptions = {}
   ) {
     this.totalQuarters = (config.endYear - config.startYear) * QUARTERS_PER_YEAR;
-    state.autoCollectIncome = true;
+    state.autoCollectIncome = !config.economy;
     state.maturityField = "matureQuarters";
+    this.jar = config.economy?.jarStart ?? 0;
     this.climate = options.climate ?? null;
     this.schedule = this.climate ? buildSchedule(this.climate, options.seed ?? "panjim", config.startYear, config.endYear) : [];
     this.zones = options.zones && options.zones.length > 0 ? new ZoneIndex(options.zones) : null;
@@ -189,6 +201,21 @@ export class ActionRun {
     return this.spend(this.config.costs.demolish);
   }
 
+  /** Coin the jar gains per quarter at the board's current income. */
+  get incomePerQuarter(): number {
+    return Math.max(0, this.state.income) * (this.config.economy?.incomeScale ?? 1);
+  }
+
+  /** Banks the jar into Coin: a free action. Returns the whole coins banked. */
+  collectJar(): number {
+    const coins = Math.floor(this.jar);
+    if (coins <= 0) return 0;
+    this.jar -= coins;
+    this.jarCollected += coins;
+    this.state.coin += coins;
+    return coins;
+  }
+
   /** Coin a repair costs: a share of the element's build cost. */
   repairCoin(coord: AxialCoord): number {
     const inst = this.state.elements.get(axialKey(coord));
@@ -246,6 +273,9 @@ export class ActionRun {
 
   /** One quarter passes: the turn advances, then any Forecast that locks and any challenge that lands. */
   protected tick(): RunEvent[] {
+    // Income for the quarter goes into the jar, at the maturity the board had
+    // during it (before the turn advances), as the turn model always did.
+    if (this.config.economy) this.jar += this.incomePerQuarter;
     this.state.advanceTurn();
     const events: RunEvent[] = [{ type: "quarter", quarter: this.quarter }];
     if (!this.climate) return events;

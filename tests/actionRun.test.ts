@@ -76,3 +76,28 @@ describe("maturation in quarters", () => {
     expect(run.state.biodiversity).toBeCloseTo(2);
   });
 });
+
+describe("coin jar economy", () => {
+  const ECON = { ...TIMELINE, economy: { incomeScale: 0.5, jarStart: 40 } };
+
+  it("pays income into the jar each quarter, not into Coin", () => {
+    const run = new ActionRun(board(), ECON);
+    const coin0 = run.state.coin;
+    run.build({ q: 2, r: 0 }, "house"); // money +5 a quarter
+    expect(run.state.coin).toBe(coin0 - 25);
+    // A house needs no time to mature, so it earns in the quarter it is built.
+    expect(run.jar).toBe(40 + 5 * 0.5);
+    run.fastForwardYear();
+    expect(run.jar).toBe(40 + 5 * 5 * 0.5);
+  });
+
+  it("banks the jar for free: Coin goes up, the clock does not move", () => {
+    const run = new ActionRun(board(), ECON);
+    const quarter = run.quarter;
+    const coin0 = run.state.coin;
+    expect(run.collectJar()).toBe(40);
+    expect(run.state.coin).toBe(coin0 + 40);
+    expect(run.quarter).toBe(quarter);
+    expect(run.collectJar()).toBe(0);
+  });
+});

@@ -53,7 +53,7 @@
     "subtitle": "Panjim 2050",
     "brief": "Twenty-five years of Goa's capital, from 2025 to 2050. Time moves only when you act: each build takes a season, heavy engineering takes two. Three big storms are coming, and the sea rises a little every year. Get the city ready, one season at a time.",
     "mapId": "panaji",
-    "startingCoin": 1000,
+    "startingCoin": 350,
     "parTurns": 40,
     "mapRadius": null,
     "hazards": {
@@ -76,6 +76,10 @@
         "repair": 1,
         "demolish": 1,
         "fastForwardYear": 4
+      },
+      "economy": {
+        "incomeScale": 0.5,
+        "jarStart": 40
       }
     },
     "climate": {

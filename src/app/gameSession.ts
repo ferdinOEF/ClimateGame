@@ -657,7 +657,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   function refreshHud(): void {
     hud.setTileCount(state.claimed.size);
-    hud.setCoin(state.coin, state.income);
+    // Panjim 2050's income is per quarter, into the jar, at the level's scale.
+    hud.setCoin(state.coin, panjim ? panjim.run.incomePerQuarter : state.income);
     hud.setTurnEra(state.turn, state.erasCompleted + 1); // 1-based ("Era 1" from turn one)
     hud.setMeters({
       resilience: state.resilience,
