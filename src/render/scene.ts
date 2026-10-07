@@ -43,6 +43,8 @@ export interface KhazanScene {
   cameraDistance: () => number;
   /** True if the pointer moved more than a few px between its last down/up — a pan, not a click. Callers should skip click actions when this is true. */
   wasDrag: () => boolean;
+  /** Per-frame cost counters, read by the performance reports (see `start`). */
+  frameStats: { frames: number; updateMs: number; renderMs: number; calls: number; triangles: number };
   /**
    * Tears the scene down completely: stops the render loop, detaches every
    * listener (including the ones on `window`, which outlive the canvas and
@@ -328,6 +330,9 @@ export function createScene(container: HTMLElement): KhazanScene {
     if (e.button !== 0) return;
     pointerDown = { x: e.clientX, y: e.clientY };
     didDrag = false;
+    // Grabbing the board cancels any glide in progress (Maya's camera focus,
+    // a staged storm's move): the player's hand always wins over the script.
+    desiredTarget = { x: target.x, z: target.z };
   }, { signal });
 
   window.addEventListener("pointermove", (e: PointerEvent) => {
@@ -418,6 +423,15 @@ export function createScene(container: HTMLElement): KhazanScene {
   }
   window.addEventListener("resize", onResize, { signal });
 
+  /**
+   * Running totals for the performance reports in tools/phaseShots.ts: CPU
+   * time spent in the per-frame update and in `renderer.render` (which, on a
+   * real GPU, is mostly command submission), plus the last frame's draw calls
+   * and triangles. Software GL makes frames per second meaningless in CI;
+   * these numbers are what changes when the scene gets heavier.
+   */
+  const frameStats = { frames: 0, updateMs: 0, renderMs: 0, calls: 0, triangles: 0 };
+
   function start(onFrame?: (nowMs: number) => void): void {
     let lastFrameMs: number | null = null;
     renderer.setAnimationLoop((nowMs: number) => {
@@ -426,8 +440,15 @@ export function createScene(container: HTMLElement): KhazanScene {
       const deltaMs = lastFrameMs === null ? 16.667 : Math.min(100, nowMs - lastFrameMs);
       lastFrameMs = nowMs;
       settleCamera(deltaMs);
+      const cpuStart = performance.now();
       onFrame?.(nowMs);
+      frameStats.updateMs += performance.now() - cpuStart;
+      const renderStart = performance.now();
       renderer.render(scene, camera);
+      frameStats.renderMs += performance.now() - renderStart;
+      frameStats.frames++;
+      frameStats.calls = renderer.info.render.calls;
+      frameStats.triangles = renderer.info.render.triangles;
     });
   }
 
@@ -473,6 +494,7 @@ export function createScene(container: HTMLElement): KhazanScene {
     onResize,
     focusOn,
     fitTo,
+    frameStats,
     setShake,
     focusPoint,
     cameraDistance,

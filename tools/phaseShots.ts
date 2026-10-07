@@ -22,7 +22,7 @@ import path from "node:path";
 import { startDevServer } from "./devServer";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const OUT_DIR = path.join(ROOT, "docs", "screenshots", "panjim2050");
+const OUT_DIR = path.join(ROOT, "docs", "screenshots", process.env.SHOTS_DIR ?? "panjim2050");
 const PORT = 5191;
 
 const phase = process.argv[2] ?? "adhoc";
@@ -40,7 +40,7 @@ async function shot(page: Page, name: string): Promise<void> {
       if (style.textContent?.includes("grayscale(1) !important")) style.remove();
     }
   });
-  console.log(`  shot: docs/screenshots/panjim2050/${phase}-${name}.jpg (+ gray)`);
+  console.log(`  shot: ${path.relative(ROOT, file)} (+ gray)`);
 }
 
 async function fps(page: Page, ms = 3000): Promise<number> {
@@ -56,6 +56,24 @@ async function fps(page: Page, ms = 3000): Promise<number> {
     };
     requestAnimationFrame(step);
   })`) as Promise<number>;
+}
+
+/**
+ * Frame cost on the full board. Software GL (SwiftShader, no GPU here) makes
+ * frames per second a poor guide, so this also reports CPU milliseconds per
+ * frame for the scene update and for `renderer.render` (draw submission), and
+ * the draw calls and triangles of the last frame: the numbers that move when
+ * the scene gets heavier, on any machine.
+ */
+async function perf(page: Page, label: string): Promise<void> {
+  const before = (await page.evaluate("({ ...window.__frameStatsForTest })")) as Record<string, number>;
+  const rate = await fps(page);
+  const after = (await page.evaluate("({ ...window.__frameStatsForTest })")) as Record<string, number>;
+  const frames = Math.max(1, after.frames - before.frames);
+  console.log(
+    `perf (${label}, software GL): ${rate.toFixed(1)} fps · update ${((after.updateMs - before.updateMs) / frames).toFixed(2)} ms/frame · ` +
+      `render submit ${((after.renderMs - before.renderMs) / frames).toFixed(1)} ms/frame · ${after.calls} draw calls · ${after.triangles} triangles`
+  );
 }
 
 async function main(): Promise<void> {
@@ -83,7 +101,7 @@ async function main(): Promise<void> {
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(4500);
     await shot(page, "board");
-    console.log(`fps (full Panaji board, software GL): ${(await fps(page)).toFixed(1)}`);
+    await perf(page, "full Panaji board");
 
     for (const scenario of scenarios) {
       const ran = await page.evaluate(async (name) => {

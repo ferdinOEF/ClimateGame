@@ -104,6 +104,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     focusPoint,
     cameraDistance,
     wasDrag,
+    frameStats,
     dispose: disposeScene
   } = createScene(container);
 
@@ -1950,6 +1951,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const testHooks: Record<string, unknown> = {
     // The local telemetry log (see @core/telemetry). Read-only by convention.
     __telemetry: telemetry.events,
+    // Frame cost counters for tools/phaseShots.ts (see scene.ts `frameStats`).
+    __frameStatsForTest: frameStats,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
     __panjimScenarioForTest: async (name: string): Promise<boolean> => {

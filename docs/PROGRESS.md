@@ -6248,3 +6248,43 @@ strict:
 
 Software GL (SwiftShader) gives about 2 fps, so it says nothing about
 real-GPU frame rate. There were no console errors.
+
+## Maya, Warning Heat and a livelier town (branch `maya-warning-heat`)
+
+Base: master at 59e920b. The safety tag `pre-maya-guide` exists in the local
+clone only; the git proxy refused the tag push again (as it did for every
+earlier tag). The branch `backup/pre-maya-guide` marks the same commit on GitHub.
+
+### P0 — audit and baseline — DONE
+
+**What the audit found:**
+- **Which resolver Panaji uses.** Panaji's storms are resolved by
+  `src/core/zones.ts` (`resolveChallenge`, zone by zone, house by house).
+  `src/core/hazard.ts` is the older whole-map resolver; only the turn-model
+  levels and the Tutorial use it. So the shared exposure function for the
+  warning heat wraps `resolveChallenge`, the code that actually decides which
+  houses fall on this level.
+- **The Voices panel** is mounted into the objectives panel's body
+  (bottom-right) by `PanjimController`. The Tutorial never constructs the
+  controller and keeps its own objectives checklist.
+- **Building on land.** Only House is valid on land, and House is excluded
+  from the build menu, so empty land tiles (gardens, roads) stay unbuildable.
+  Leaving some land empty opens nothing new to the player.
+- **The OSM layer** is a raster rendered in OpenStreetMap's standard style,
+  not vector data. Major roads can be read from its fill colours (trunk,
+  primary, secondary) in the same pixel pass the map generator already makes.
+
+**Instrumentation added:**
+- `scene.ts` keeps `frameStats`: CPU ms per frame for the update and for
+  `renderer.render`, plus the last frame's draw calls and triangles.
+- `tools/phaseShots.ts` reports these numbers with the fps.
+- Software GL makes fps meaningless here, so draw calls, triangles and CPU
+  ms are what before/after comparisons rest on.
+- Grabbing the board now cancels a camera glide in progress, so the player's
+  hand always wins over a scripted camera move.
+
+**Baseline** (1920×1080, software GL), full Panaji board:
+
+| fps | update CPU | render submit | draw calls | triangles |
+|---|---|---|---|---|
+| 2.4 | 0.74 ms/frame | 0.8 ms/frame | 25 | 324,596 |
