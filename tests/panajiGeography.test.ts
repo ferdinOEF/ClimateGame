@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GAME_MAPS, mapById } from "../src/levels/levelMap";
-import { axialToWorld } from "../src/core/hex";
+import { axialKey, axialToWorld, neighbors, worldToAxial, type AxialCoord } from "../src/core/hex";
 
 /**
  * The Panaji board is real geography, read out of OpenStreetMap, and almost
@@ -97,11 +97,14 @@ describe("the Panaji landmarks", () => {
 
     expect(dona.z, "Dona Paula should be south of Miramar").toBeGreaterThan(miramar.z);
     expect(dona.x, "Dona Paula should be west of the old city").toBeLessThan(church.x);
-    // It is roughly twice as far from the centre as Miramar is, which is the
-    // relationship the old board flattened into "both are a bit west".
+    // It is about half as far again from the centre as Miramar is (5.2 km
+    // against 3.3 km, a ratio of 1.55), which is the relationship the old
+    // board flattened into "both are a bit west". 1.4 rather than 1.5 leaves
+    // room for each end rounding to its nearest 234 m hex; the board that got
+    // this wrong had the two at about the same distance.
     const toDona = Math.hypot(dona.x - church.x, dona.z - church.z);
     const toMiramar = Math.hypot(miramar.x - church.x, miramar.z - church.z);
-    expect(toDona).toBeGreaterThan(toMiramar * 1.5);
+    expect(toDona).toBeGreaterThan(toMiramar * 1.4);
   });
 
   it("puts Dhempe College at Miramar, not inland", () => {
@@ -134,5 +137,90 @@ describe("the Panaji landmarks", () => {
     // palace, which stands on the Mandovi.
     expect(world("government_polytechnic_panaji").z).toBeGreaterThan(world("idalcao_palace").z);
     expect(world("mahalaxmi_temple").z).toBeGreaterThan(world("idalcao_palace").z);
+  });
+});
+
+describe("the Panaji board, Miramar to Merces", () => {
+  const panaji = mapById("panaji")!;
+  const source = panaji.source!;
+  const METRES_PER_DEG_LAT = 110_574;
+  const METRES_PER_DEG_LON = 111_320 * Math.cos((15.48 * Math.PI) / 180);
+  /** The generator's projection: the board's north-west corner is world (0,0), +x east, +z south. */
+  const tileAt = (lat: number, lon: number): AxialCoord =>
+    worldToAxial(
+      ((lon - source.bounds.west) * METRES_PER_DEG_LON) / source.metresPerUnit,
+      ((source.bounds.north - lat) * METRES_PER_DEG_LAT) / source.metresPerUnit,
+      HEX_SIZE
+    );
+  const terrain = new Map(panaji.tiles.map((tile) => [axialKey(tile.coord), tile.terrainId]));
+  const isWet = (coord: AxialCoord): boolean => {
+    const id = terrain.get(axialKey(coord));
+    return id === "river" || id === "estuary";
+  };
+
+  it("stays small enough for a phone", () => {
+    expect(panaji.tiles.length).toBeLessThanOrEqual(1500);
+    // And large enough to have reached Merces at all.
+    expect(panaji.tiles.length).toBeGreaterThan(1000);
+  });
+
+  it("reaches Merces and St Cruz on the east and the Dona Paula headland on the south", () => {
+    expect(source.bounds.east).toBeGreaterThanOrEqual(73.86);
+    expect(source.bounds.south).toBeLessThanOrEqual(15.45);
+    for (const name of ["Merces", "St Cruz", "Taleigao", "Caranzalem"]) {
+      const label = panaji.landmarks.find((landmark) => landmark.name === name);
+      expect(label, `no "${name}" label`).toBeDefined();
+      expect(terrain.has(axialKey(label!)), `"${name}" is off the board`).toBe(true);
+    }
+  });
+
+  it("has all five terrain types", () => {
+    const present = new Set(panaji.tiles.map((tile) => tile.terrainId));
+    for (const id of ["coast", "beach", "land", "river", "estuary"]) expect(present.has(id), `no ${id}`).toBe(true);
+  });
+
+  it("stands every monument on dry ground, and Miramar on the beach", () => {
+    for (const monument of panaji.monuments) {
+      const id = terrain.get(axialKey(monument));
+      expect(["land", "beach"], `${monument.name} is on ${id}`).toContain(id);
+    }
+    const miramar = panaji.monuments.find((monument) => monument.id === "miramar_beach")!;
+    expect(terrain.get(axialKey(miramar))).toBe("beach");
+  });
+
+  it("keeps the Mandovi and its creeks as one connected waterway", () => {
+    /*
+     * The creeks are the reason the board was extended, and the easy way to
+     * lose them is for a narrow channel to come out as a string of land tiles
+     * with a few wet ones between. So: flood-fill the river and estuary from
+     * the middle of the Mandovi, and require the Ourem creek's southern reach,
+     * the channel down to St Agostinho Road and the Ribandar salt pans to all
+     * be in that one body of water.
+     */
+    const start = tileAt(15.505, 73.8375);
+    const seed = [start, ...neighbors(start)].find(isWet);
+    expect(seed, "the middle of the Mandovi is not river").toBeDefined();
+    const reached = new Set<string>([axialKey(seed!)]);
+    const queue = [seed!];
+    while (queue.length > 0) {
+      for (const next of neighbors(queue.pop()!)) {
+        if (!isWet(next) || reached.has(axialKey(next))) continue;
+        reached.add(axialKey(next));
+        queue.push(next);
+      }
+    }
+    const places = {
+      "Ourem creek, south reach": [15.4836, 73.833],
+      "creek at St Agostinho Road": [15.4736, 73.8357],
+      "Ribandar salt pans": [15.5003, 73.8474]
+    } as const;
+    for (const [name, [lat, lon]] of Object.entries(places)) {
+      const centre = tileAt(lat, lon);
+      const near = [centre, ...neighbors(centre)].some((coord) => reached.has(axialKey(coord)));
+      expect(near, `${name} is not connected to the Mandovi`).toBe(true);
+    }
+    const wet = panaji.tiles.filter((tile) => tile.terrainId === "river" || tile.terrainId === "estuary").length;
+    // Nearly all of it: a few ponds inland are allowed to stand alone.
+    expect(reached.size / wet).toBeGreaterThan(0.85);
   });
 });
