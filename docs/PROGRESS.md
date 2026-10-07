@@ -6288,3 +6288,64 @@ earlier tag). The branch `backup/pre-maya-guide` marks the same commit on GitHub
 | fps | update CPU | render submit | draw calls | triangles |
 |---|---|---|---|---|
 | 2.4 | 0.74 ms/frame | 0.8 ms/frame | 25 | 324,596 |
+
+### P1 — one shared `computeExposure` — DONE
+
+**What was built:**
+- **The probe.** `resolveChallenge` (`core/zones.ts`) takes an optional tile
+  probe. It reports the storm's local intensity at every tile on the path:
+  the zone's leak, faded by distance from the water, through the same
+  `localIntensity()` that decides which houses fall.
+  - A house an earlier front already judged (in the compound storm) is
+    skipped, exactly as the resolver skips it.
+  - The probe only reads. A test shows the outcome is identical with and
+    without it.
+- **`computeExposure`** (`core/exposure.ts`) runs the real resolver on a
+  copy of the board and returns three things:
+  - each tile's intensity;
+  - its exposure, `min(1, (intensity / house resilience)²)`;
+  - the houses at risk, which are the resolver's own `damagedHouses`.
+
+  `withoutDefences` runs the same storm with every defence against it
+  removed. The green shields compare against that.
+- **`ActionRun.exposureFor(challenge)`** previews on the board as it will
+  stand on the storm's date, with defences at the maturity they will have
+  reached and at the locked strength. It shares that preview board with the
+  readiness gauge, so the two can never disagree.
+- **`heatRamp`**: 5 quarters out is 5%, then 16.25%, 27.5%, 38.75%, and 50%
+  on the last quarter. The heat is capped at 50%.
+
+**Tests** (`tests/exposure.test.ts`, 22 tests):
+- **Setup.** Real Panaji runs, both presets, 4 seeds, all three storms.
+  Each run plays to the quarter before the storm, previews, then lands the
+  storm on the same seed.
+- **What holds:**
+  - The previewed houses at risk equal the houses actually lost. The
+    tolerance is zero, provided the player builds nothing between preview
+    and landing.
+  - Tiles previewed at zero take no damage.
+  - Every lost house was previewed at exposure 1.
+- **Defences in the window.** The same holds with dunes, sandy vegetation
+  and a mangrove planted inside the 5-quarter window.
+- **Other checks:** the real board is never touched; protected tiles are only
+  those whose exposure fell by at least 0.15; and with no defences built,
+  nothing is protected.
+- **Not trivial.** On seed s7 the previews hold 0–149 houses at risk per
+  storm.
+
+**Decisions:**
+- **Defence cooling is per zone, not per tile.** The brief asked for defences
+  to cool their own tile and, more weakly, their neighbours. The resolver has
+  no per-tile or neighbour rule: a defence raises its zone's defence, and that
+  lowers the leak for every tile of the zone. To stay truthful, the heat
+  drops zone-wide when a defence is built. "What you fixed" is shown with
+  green shields on the defence tiles and on every tile whose exposure the
+  defences cut. Adding a neighbour rule to the resolver itself would change
+  storm outcomes and re-balance both presets, so I did not.
+- **Exposure is squared.** On the easy cyclone, 236 tiles feel the storm but
+  no house falls. With linear exposure the whole beach would glow red for a
+  storm that takes nothing. Squared, half the breaking point shows a quarter
+  of the heat, and only a house that will actually fall reaches full red.
+- **Self-assessment.** The numbers are trustworthy. The open question is
+  whether players read "red" as "will fall" or "is stressed". The pulse on
+  the at-risk houses (P2) is what separates the two.

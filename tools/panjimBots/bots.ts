@@ -94,7 +94,7 @@ function coordOf(key: string): AxialCoord {
 }
 
 /** The same board the session builds: monuments reserved, the level's houses, exclusions and sea limit applied. */
-function newRun(seed: string, level: LevelDef): ActionRun {
+export function newRun(seed: string, level: LevelDef): ActionRun {
   const setup = boardSetup(level, MAP);
   const state = new GameState(MAP.tiles, setup.startingElements, level.startingCoin);
   for (const [id, scale] of setup.effectScale) state.effectScale.set(id, scale);

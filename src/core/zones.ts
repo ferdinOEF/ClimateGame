@@ -164,6 +164,37 @@ export interface HouseRule {
   exposureDecay: Record<HazardId, number>;
 }
 
+/**
+ * What a storm's leak through a zone does at one tile: the leak, faded by
+ * `exposureDecay` for every hex the tile stands back from the water the hazard
+ * comes from. A house is lost where this exceeds the rule's `resilience`.
+ *
+ * The one formula both the resolver and the warning-heat preview use (see
+ * core/exposure.ts), so the heat cannot say anything the storm will not do.
+ */
+export function localIntensity(leak: number, distanceFromWater: number, rule: HouseRule, hazard: HazardId): number {
+  return leak * Math.pow(rule.exposureDecay[hazard], Math.max(0, distanceFromWater - 1));
+}
+
+/**
+ * Called by `resolveChallenge` for every tile of every zone a front passes
+ * through, with the hazard's local intensity there (0 where the defences
+ * ahead stopped it). A tile on two fronts' paths is reported once per front.
+ */
+export type TileProbe = (key: string, intensity: number, hazard: HazardId) => void;
+
+/**
+ * Reports a zone's tiles to a probe. A house an earlier front already judged
+ * is skipped, exactly as the resolver skips it (`housesSeen`), so a house is
+ * only ever reported at the intensity that decided its fate.
+ */
+function probeZone(probe: TileProbe, zones: ZoneIndex, zoneId: string, housesSeen: Set<string>, at: (key: string) => number, hazard: HazardId): void {
+  for (const key of zones.keys(zoneId)) {
+    if (housesSeen.has(key)) continue;
+    probe(key, at(key), hazard);
+  }
+}
+
 /** Extra defence per tile from perfect-fit combos (P6). Keyed by coord key. */
 export type ComboBonus = Map<string, number>;
 
@@ -246,7 +277,9 @@ export function resolveChallenge(
   /** When set, stars come from the share of houses saved rather than from protection (the Houses-saved KPI). */
   houseStars?: { three: number; two: number },
   /** When set, houses are lost one by one by local intensity; otherwise a zone loses a share of its houses. */
-  houseRule?: HouseRule
+  houseRule?: HouseRule,
+  /** Reports the local intensity at every tile on the path (the warning heat's source). Never changes the outcome. */
+  probe?: TileProbe
 ): ChallengeOutcome {
   const outcomes: ZoneOutcome[] = [];
   // Defence is a budget per zone and hazard: a front that spends it leaves
@@ -274,6 +307,7 @@ export function resolveChallenge(
       if (carry <= 0.01) {
         // Stopped before it got here: every house in this zone was saved by
         // the defences ahead of it.
+        if (probe) probeZone(probe, zones, zoneId, housesSeen, () => 0, front.hazard);
         for (const key of housesIn(state, zones, zoneId, front.hazard)) housesSeen.add(key);
         undefendedTotal += undefendedCarry;
         undefendedCarry *= ZONE_CARRY;
@@ -323,12 +357,13 @@ export function resolveChallenge(
         // House by house: lost where what got through, faded by distance
         // from the water, is more than the house can stand.
         const exposure = zones.exposure(state, front.hazard);
-        const decay = houseRule.exposureDecay[front.hazard];
-        lost = houses.filter((key) => leak * Math.pow(decay, Math.max(0, (exposure.get(key) ?? 0) - 1)) > houseRule.resilience);
+        lost = houses.filter((key) => localIntensity(leak, exposure.get(key) ?? 0, houseRule, front.hazard) > houseRule.resilience);
+        if (probe) probeZone(probe, zones, zoneId, housesSeen, (key) => localIntensity(leak, exposure.get(key) ?? 0, houseRule, front.hazard), front.hazard);
       } else {
         // A share of the zone's houses, most exposed first.
         const damageShare = carry > 0 ? Math.min(1, leak / Math.max(carry, strengthUnit)) : 0;
         lost = houses.slice(0, Math.round(houses.length * damageShare));
+        if (probe) probeZone(probe, zones, zoneId, housesSeen, () => leak, front.hazard);
       }
       const hit = lost.length;
       for (const key of lost) {
