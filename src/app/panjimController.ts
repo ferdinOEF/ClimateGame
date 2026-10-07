@@ -12,7 +12,8 @@ import { voiceProgress, describeVoiceGoal } from "@core/voices";
 import { COMBO_INFO, type ComboId } from "@core/combos";
 import { outlookFor, seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
-import { aftermathLine } from "@core/aftermath";
+import { aftermathLine, topDefenceLine } from "@core/aftermath";
+import { HousesCounter } from "@ui/panjim/housesCounter";
 import type { RunSnapshot } from "@core/actionRun";
 import { AftermathCard } from "@ui/panjim/aftermathCard";
 import { FinaleCard } from "@ui/panjim/finaleCard";
@@ -33,7 +34,7 @@ import { playSound } from "@ui/audioHooks";
 export interface ChallengeFx {
   begin: (challenge: ScheduledChallenge) => void;
   /** One zone's moment: the water or wind reveals, its defences answer one at a time, failures fall, houses take damage. */
-  zone: (zone: ZoneOutcome, outcome: ChallengeOutcome, slow: boolean, durationMs: number) => void;
+  zone: (zone: ZoneOutcome, outcome: ChallengeOutcome, slow: boolean, durationMs: number, onHouseLost: () => void) => void;
   end: () => void;
 }
 
@@ -98,6 +99,7 @@ export class PanjimController {
   private readonly readinessById = new Map<string, string>();
   private readonly aftermath: AftermathCard;
   private readonly finaleCard: FinaleCard;
+  private readonly housesCounter: HousesCounter;
   /** Real milliseconds played before this session, when resuming a save: the tempo badge counts the whole run. */
   playMsBefore = 0;
   /** The in-scene label over the locked Forecast's first zone: "Cyclone landfall ●●○". */
@@ -125,6 +127,7 @@ export class PanjimController {
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     this.aftermath = new AftermathCard(host.container);
     this.finaleCard = new FinaleCard(host.container);
+    this.housesCounter = new HousesCounter(host.container);
     this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
@@ -165,6 +168,14 @@ export class PanjimController {
   /** Repaints the Outlook from the current quarter. */
   renderOutlook(): void {
     this.renderVoices();
+    let houses = 0;
+    let standing = 0;
+    for (const inst of this.host.state.elements.values()) {
+      if (inst.elementId !== "house") continue;
+      houses++;
+      if (inst.degradeAmount < 1) standing++;
+    }
+    this.housesCounter.showStanding(standing, houses);
     // A jar reads full at about two years of the current income, and never
     // below a small floor, so even a young city sees it fill.
     this.jar.render(this.run.jar, Math.max(60, this.run.incomePerQuarter * 8));
@@ -226,38 +237,32 @@ export class PanjimController {
     const readiness = this.readinessById.get(challenge.id) ?? null;
     telemetry.emit("challenge_start", { id: challenge.id, readiness });
     this.host.challengeFx.begin(challenge);
-    const counter = document.createElement("div");
-    counter.className = "houses-saved";
-    counter.innerHTML = `<span class="houses-saved-label">Houses saved</span><span class="houses-saved-value">0</span>`;
-    this.host.container.appendChild(counter);
-    const valueEl = counter.querySelector(".houses-saved-value") as HTMLElement;
+    // The houses in the storm's path that were standing when it arrived;
+    // the counter falls from there, one house at a time.
+    this.housesCounter.beginStorm(outcome.housesSaved + outcome.housesDamaged, outcome.housesTotal);
 
     let hurry = false;
     const abort = new AbortController();
     document.addEventListener("pointerdown", () => (hurry = true), { signal: abort.signal, capture: true });
 
     const biggest = outcome.zones.reduce((best, zone, index) => (zone.absorbed > (outcome.zones[best]?.absorbed ?? -1) ? index : best), 0);
-    let saved = 0;
     try {
       await wait(500);
       for (const [index, zone] of outcome.zones.entries()) {
         const slow = index === biggest && zone.absorbed > 0 && !hurry;
         const duration = hurry ? 250 : slow ? 2600 : 1300;
         this.host.container.classList.toggle("slowmo", slow);
-        this.host.challengeFx.zone(zone, outcome, slow, duration);
-        const from = saved;
-        saved += zone.housesInZone - zone.housesDamaged;
-        await countUp(valueEl, from, saved, duration);
+        this.host.challengeFx.zone(zone, outcome, slow, duration, () => this.housesCounter.lose());
+        await wait(duration);
         if (zone.held) playSound("chime");
       }
     } finally {
       abort.abort();
       this.host.container.classList.remove("slowmo");
     }
-    valueEl.textContent = String(outcome.housesSaved);
     await wait(hurry ? 100 : 500);
+    this.housesCounter.endStorm(outcome.housesSaved, outcome.housesTotal);
     this.host.challengeFx.end();
-    counter.remove();
     this.renderOutlook();
     this.host.refresh();
 
@@ -265,7 +270,14 @@ export class PanjimController {
     const saveStart = performance.now();
     this.saveRun();
     telemetry.emit("checkpoint", { id: challenge.id, ms: Math.round(telemetry.elapsed()), saveMs: Math.round(performance.now() - saveStart) });
-    telemetry.emit("challenge_end", { id: challenge.id, stars: outcome.stars, readiness, protection: Number(outcome.protection.toFixed(3)) });
+    telemetry.emit("challenge_end", {
+      id: challenge.id,
+      stars: outcome.stars,
+      readiness,
+      protection: Number(outcome.protection.toFixed(3)),
+      houses_saved: outcome.housesSaved,
+      houses_total: outcome.housesTotal
+    });
 
     const lock = this.run.lockSnapshots.get(challenge.id);
     const choice = await this.aftermath.show({
@@ -273,7 +285,9 @@ export class PanjimController {
       stars: outcome.stars,
       housesSaved: outcome.housesSaved,
       housesDamaged: outcome.housesDamaged,
+      housesTotal: outcome.housesTotal,
       line: this.run.zones ? aftermathLine(challenge.kind, outcome, this.host.state, this.run.zones, failedIds) : "",
+      hero: this.run.zones ? topDefenceLine(outcome, this.host.state, this.run.zones) : null,
       replayLabel: lock && !this.run.finished ? `Replay from the forecast (${this.labelFor(lock.quarter)})` : null
     });
     if (choice === "replay" && lock) this.rewindTo(lock, challenge);
@@ -707,7 +721,8 @@ export class PanjimController {
         await this.fastForwardEvent();
         await this.idle();
         void this.fastForwardYear();
-        while (!this.host.container.querySelector(".houses-saved")) await wait(50);
+        while (!this.host.container.querySelector(".houses-counter.live")) await wait(50);
+        await wait(1200); // a few houses into the count
         return true;
       }
       case "finale": {
@@ -864,6 +879,7 @@ export class PanjimController {
   }
 
   dispose(): void {
+    this.housesCounter.dispose();
     this.finaleCard.dispose();
     this.aftermath.dispose();
     this.jar.dispose();
@@ -893,18 +909,4 @@ function nearestTo(keys: string[], target: AxialCoord): AxialCoord | null {
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-/** Counts `el` up from `from` to `to` over `ms`. */
-async function countUp(el: HTMLElement, from: number, to: number, ms: number): Promise<void> {
-  const start = performance.now();
-  await new Promise<void>((resolve) => {
-    const step = (): void => {
-      const t = Math.min(1, (performance.now() - start) / ms);
-      el.textContent = String(Math.round(from + (to - from) * t));
-      if (t < 1) requestAnimationFrame(step);
-      else resolve();
-    };
-    requestAnimationFrame(step);
-  });
 }

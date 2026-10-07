@@ -84,3 +84,15 @@ describe("snapshots", () => {
     expect(replay()).toBe(replay());
   });
 });
+
+describe("top defence line", () => {
+  it("names the defence that saved the most houses", async () => {
+    const { topDefenceLine } = await import("../src/core/aftermath");
+    const { state, zones } = fixture();
+    for (let q = 0; q < 3; q++) state.build({ q, r: 0 }, "seawall", false);
+    state.build({ q: 3, r: 0 }, "house", false);
+    state.build({ q: 3, r: 1 }, "house", false);
+    const outcome = resolveChallenge(state, zones, "cyclone", 28, 20);
+    expect(topDefenceLine(outcome, state, zones)).toBe("The seawalls saved the most homes: about 2 of 2.");
+  });
+});

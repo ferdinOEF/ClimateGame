@@ -482,7 +482,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           },
           challengeFx: {
             begin: (challenge) => panjimFxBegin(challenge.kind),
-            zone: (zone, outcome, slow, durationMs) => panjimFxZone(zone, outcome, slow, durationMs),
+            zone: (zone, outcome, slow, durationMs, onHouseLost) => panjimFxZone(zone, outcome, slow, durationMs, onHouseLost),
             end: () => panjimFxEnd()
           },
           redrawBoard: () => redrawPanjimBoard(),
@@ -1528,7 +1528,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     zone: import("@core/zones").ZoneOutcome,
     outcome: import("@core/zones").ChallengeOutcome,
     slow: boolean,
-    durationMs: number
+    durationMs: number,
+    onHouseLost: () => void = () => {}
   ): void {
     const zones = panjim?.run.zones;
     if (!zones) return;
@@ -1574,11 +1575,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       elements.destroy({ q, r });
       playSound("hazard_breach");
     }
-    for (const key of outcome.damagedHouses) {
-      if (zones.zoneOf(key) !== zone.zoneId) continue;
-      const [q, r] = key.split(",").map(Number);
-      later(() => elements.setBuildingDamagedVisual({ q, r }), durationMs * 0.5);
-    }
+    // The houses lost here go one at a time, most exposed first (the order
+    // the resolver lost them in), each ticking the Houses saved counter down.
+    const lostHere = outcome.damagedHouses.filter((key) => zones.zoneOf(key) === zone.zoneId);
+    const houseGap = lostHere.length > 0 ? (durationMs * 0.85) / lostHere.length : 0;
+    lostHere.forEach((key, i) => {
+      later(() => {
+        const [q, r] = key.split(",").map(Number);
+        elements.setBuildingDamagedVisual({ q, r });
+        onHouseLost();
+      }, i * houseGap);
+    });
     playSound(zone.held ? "build" : "hazard_overwhelmed");
     runTracker.recordHazard({
       totalDamage: zone.leak,
@@ -1945,7 +1952,27 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __telemetry: telemetry.events,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
-    __panjimScenarioForTest: (name: string) => (panjim ? panjim.scenario(name) : false),
+    __panjimScenarioForTest: async (name: string): Promise<boolean> => {
+      if (!panjim) return false;
+      // "build-<terrain>": builds one thing on that terrain near the city,
+      // then opens the build menu on the next free tile of the same terrain,
+      // so a screenshot shows the build and what else the tile offers.
+      const build = /^build-(beach|estuary|river|coast)$/.exec(name);
+      if (!build) return panjim.scenario(name);
+      const element = { beach: "dune", estuary: "mangrove", river: "small_dam", coast: "breakwater" }[build[1]]!;
+      const first = panjim.firstBuildable(element, levelMap.focus);
+      if (!first) return false;
+      const world = axialToWorld(first, 1.0);
+      focusOn(world.x, world.z, true);
+      panjim.build(first, element);
+      await panjim.idle();
+      const next = panjim.firstBuildable(element, first);
+      if (next) {
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        openTilePopover(next);
+      }
+      return true;
+    },
     // Lets tools/verify_readability.ts (and any future script needing exact
     // camera framing) pan straight to a world coordinate via the scene's own
     // `focusOn`, instead of reverse-engineering the pan-drag pixel math.

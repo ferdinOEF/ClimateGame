@@ -91,3 +91,41 @@ export function aftermathLine(kind: ChallengeKind, outcome: ChallengeOutcome, st
   if (worn) return `The defences at ${place(worn.zoneId, zones)} bent but stayed. They'll want a repair.`;
   return `It got through ${place(outcome.zones[outcome.zones.length - 1]?.zoneId ?? "z4", zones)}, but slowed all the way.`;
 }
+
+/**
+ * Which kind of defence saved the most houses, as one line for the
+ * Aftermath: "The mangroves saved the most homes: about 38 of 52."
+ *
+ * Credit follows the arithmetic the resolver did. Each zone is credited with
+ * its share of everything absorbed, and inside a zone each element type with
+ * its share of that zone's defence; the houses saved are shared out the same
+ * way. An estimate (a house is saved by the whole line in front of it), but
+ * one that cannot credit something that did no work.
+ */
+export function topDefenceLine(outcome: ChallengeOutcome, state: GameState, zones: ZoneIndex): string | null {
+  if (outcome.housesSaved <= 0) return null;
+  const totalAbsorbed = outcome.zones.reduce((sum, zone) => sum + zone.absorbed, 0);
+  if (totalAbsorbed <= 0) return null;
+  const credit = new Map<string, number>();
+  for (const zone of outcome.zones) {
+    if (zone.absorbed <= 0) continue;
+    const byType = new Map<string, number>();
+    let zoneDefence = 0;
+    for (const key of zones.keys(zone.zoneId)) {
+      const inst = state.elements.get(key);
+      const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
+      const value = def?.effects.resilience ?? 0;
+      if (!def || value <= 0 || !def.targetsHazards?.includes(zone.hazard)) continue;
+      byType.set(def.id, (byType.get(def.id) ?? 0) + value);
+      zoneDefence += value;
+    }
+    for (const [id, value] of byType) {
+      credit.set(id, (credit.get(id) ?? 0) + (zone.absorbed / totalAbsorbed) * (value / zoneDefence) * outcome.housesSaved);
+    }
+  }
+  const [best] = [...credit].sort((a, b) => b[1] - a[1]);
+  if (!best) return null;
+  const name = plural(best[0]);
+  const count = Math.max(1, Math.round(best[1]));
+  return `The ${name} saved the most homes: about ${count} of ${outcome.housesSaved}.`;
+}
