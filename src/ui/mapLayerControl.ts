@@ -12,14 +12,22 @@
 
 export interface MapLayerSettings {
   visible: boolean;
-  /** 0.1 to 0.9. Never fully opaque: with the tile colours gone the board stops saying what can be built where. */
+  /**
+   * 0.1 to 1. Full opacity is safe: the strength per terrain (see
+   * terrainMeshManager) keeps water, sand and wetland in their own colours even
+   * at 100%, so the board never stops saying what can be built where.
+   */
   opacity: number;
 }
 
-const STORAGE_KEY = "riptide-rising:map-layer:v1";
-export const DEFAULT_MAP_LAYER: MapLayerSettings = { visible: true, opacity: 0.45 };
+/**
+ * v2 since the default went from 45% to 75%: a v1 setting saved at the old
+ * default would otherwise keep every returning player on the faint layer.
+ */
+const STORAGE_KEY = "riptide-rising:map-layer:v2";
+export const DEFAULT_MAP_LAYER: MapLayerSettings = { visible: true, opacity: 0.75 };
 const MIN_OPACITY = 0.1;
-const MAX_OPACITY = 0.9;
+const MAX_OPACITY = 1;
 
 export function loadMapLayerSettings(): MapLayerSettings {
   try {

@@ -27,11 +27,17 @@
   },
   "overlay": {
     "image": "maps/panaji-osm.webp",
+    "bounds": {
+      "north": 15.524,
+      "south": 15.443290823463713,
+      "west": 73.784,
+      "east": 73.8718703125
+    },
     "world": {
-      "x": 0,
-      "z": 0,
-      "width": 59.60095548180441,
-      "depth": 54.877466666666805
+      "x": -8.741473470660884,
+      "z": -9.009733333332704,
+      "width": 69.82872777978385,
+      "depth": 66.10619619498783
     },
     "attribution": "© OpenStreetMap contributors",
     "href": "https://www.openstreetmap.org/copyright"

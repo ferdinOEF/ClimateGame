@@ -232,18 +232,26 @@ describe("the Panaji OpenStreetMap layer", () => {
   const overlay = panaji.overlay!;
   const source = panaji.source!;
 
-  it("covers exactly the board's own bounds, through the board's own projection", () => {
+  it("covers its stated bounds through the board's own projection, and the whole board", () => {
     /*
      * The layer is stretched over `overlay.world` with no maths of its own, so
-     * this rectangle IS the alignment. It must start at the board's north-west
-     * corner and end where the generator's projection puts the south-east one.
+     * this rectangle IS the alignment. Its corners must be where the board's
+     * projection (north-west of the board is world 0,0) puts the layer's
+     * bounds, and those bounds must contain the board's.
      */
     const METRES_PER_DEG_LAT = 110_574;
     const METRES_PER_DEG_LON = 111_320 * Math.cos((15.48 * Math.PI) / 180);
-    expect(overlay.world.x).toBe(0);
-    expect(overlay.world.z).toBe(0);
-    expect(overlay.world.width).toBeCloseTo(((source.bounds.east - source.bounds.west) * METRES_PER_DEG_LON) / source.metresPerUnit, 6);
-    expect(overlay.world.depth).toBeCloseTo(((source.bounds.north - source.bounds.south) * METRES_PER_DEG_LAT) / source.metresPerUnit, 6);
+    const layer = overlay.bounds!;
+    const x = (lon: number): number => ((lon - source.bounds.west) * METRES_PER_DEG_LON) / source.metresPerUnit;
+    const z = (lat: number): number => ((source.bounds.north - lat) * METRES_PER_DEG_LAT) / source.metresPerUnit;
+    expect(overlay.world.x).toBeCloseTo(x(layer.west), 6);
+    expect(overlay.world.z).toBeCloseTo(z(layer.north), 6);
+    expect(overlay.world.width).toBeCloseTo(x(layer.east) - x(layer.west), 6);
+    expect(overlay.world.depth).toBeCloseTo(z(layer.south) - z(layer.north), 6);
+    expect(layer.north).toBeGreaterThanOrEqual(source.bounds.north);
+    expect(layer.south).toBeLessThanOrEqual(source.bounds.south);
+    expect(layer.west).toBeLessThanOrEqual(source.bounds.west);
+    expect(layer.east).toBeGreaterThanOrEqual(source.bounds.east);
   });
 
   it("contains every tile", () => {

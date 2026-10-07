@@ -71,6 +71,16 @@ const OVERLAY_URL = "maps/panaji-osm.webp";
  * keep the file at or under about 1.5 MB.
  */
 const OVERLAY_WIDTH = 2048;
+
+/**
+ * The street-map layer covers the board plus about 1.2 km round it, as far as
+ * the basemap reaches, so the decorative ground past the edge of play
+ * (`BoardSkirtManager`) shows the real surroundings — Porvorim, Reis Magos,
+ * the open bay — instead of the board's edge smeared outwards. The basemap
+ * stops close to the board on the south and east, so the margin is thinner
+ * there and the shader fades the map out past it.
+ */
+const OVERLAY_MARGIN_DEG = 0.011;
 const OVERLAY_QUALITY = 0.8;
 
 /**
@@ -980,19 +990,32 @@ async function writeDebugImage(
  * Nothing at runtime touches the OpenStreetMap tile server. This is a static
  * file served with the game.
  */
+/** The board's bounds widened by `OVERLAY_MARGIN_DEG`, kept a hair inside the basemap. */
+function overlayBounds(meta: BasemapMeta): typeof BOARD {
+  const inset = 0.0002;
+  return {
+    north: Math.min(meta.bounds.north - inset, BOARD.north + OVERLAY_MARGIN_DEG),
+    south: Math.max(meta.bounds.south + inset, BOARD.south - OVERLAY_MARGIN_DEG),
+    west: Math.max(meta.bounds.west + inset, BOARD.west - OVERLAY_MARGIN_DEG),
+    east: Math.min(meta.bounds.east - inset, BOARD.east + OVERLAY_MARGIN_DEG)
+  };
+}
+
 async function writeOverlay(meta: BasemapMeta): Promise<{ width: number; height: number; bytes: number }> {
   const dataUrl = `data:image/jpeg;base64,${fs.readFileSync(BASEMAP_IMAGE).toString("base64")}`;
-  const southEast = geoToWorld(BOARD.south, BOARD.east);
+  const bounds = overlayBounds(meta);
+  const northWest = geoToWorld(bounds.north, bounds.west);
+  const southEast = geoToWorld(bounds.south, bounds.east);
   const width = OVERLAY_WIDTH;
-  const height = Math.round((OVERLAY_WIDTH * southEast.z) / southEast.x);
+  const height = Math.round((OVERLAY_WIDTH * (southEast.z - northWest.z)) / (southEast.x - northWest.x));
 
   // Source rectangle per output row, computed here so the page needs no maths.
-  const left = geoToPixel(meta, BOARD.north, BOARD.west).px;
-  const right = geoToPixel(meta, BOARD.north, BOARD.east).px;
+  const left = geoToPixel(meta, bounds.north, bounds.west).px;
+  const right = geoToPixel(meta, bounds.north, bounds.east).px;
   const rows: number[] = [];
   for (let row = 0; row < height; row++) {
-    const lat = BOARD.north - ((row + 0.5) / height) * (BOARD.north - BOARD.south);
-    rows.push(geoToPixel(meta, lat, BOARD.west).py);
+    const lat = bounds.north - ((row + 0.5) / height) * (bounds.north - bounds.south);
+    rows.push(geoToPixel(meta, lat, bounds.west).py);
   }
 
   const browser = await chromium.launch();
@@ -1097,9 +1120,10 @@ async function main(): Promise<void> {
   const focus = worldToAxial(focusWorld.x, focusWorld.z, HEX_SIZE);
 
   const rows = [...new Set(cells.map((cell) => cell.coord.r))];
-  // The board's north-west corner is world (0,0) by construction; its
-  // south-east corner is where the far edge of the layer goes.
-  const overlayWorld = geoToWorld(BOARD.south, BOARD.east);
+  // The layer's corners, through the same projection as every hex.
+  const layerBounds = overlayBounds(meta);
+  const layerNorthWest = geoToWorld(layerBounds.north, layerBounds.west);
+  const layerSouthEast = geoToWorld(layerBounds.south, layerBounds.east);
   const file = {
     id: "panaji",
     name: "Panaji",
@@ -1137,7 +1161,13 @@ async function main(): Promise<void> {
      */
     overlay: {
       image: OVERLAY_URL,
-      world: { x: 0, z: 0, width: overlayWorld.x, depth: overlayWorld.z },
+      bounds: layerBounds,
+      world: {
+        x: layerNorthWest.x,
+        z: layerNorthWest.z,
+        width: layerSouthEast.x - layerNorthWest.x,
+        depth: layerSouthEast.z - layerNorthWest.z
+      },
       attribution: "© OpenStreetMap contributors",
       href: "https://www.openstreetmap.org/copyright"
     },
