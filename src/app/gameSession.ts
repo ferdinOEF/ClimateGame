@@ -2138,6 +2138,19 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __elementsForTest: elements,
     __heatForTest: heatOverlay,
     __ambientLifeForTest: () => ambientLife,
+    // The town plan as drawn: how many road tiles, and whether any holds a building.
+    __townForTest: () =>
+      town
+        ? {
+            roads: town.roads.size,
+            bridges: town.bridges.size,
+            links: town.links.length,
+            buildings: town.buildings.size,
+            gardens: town.gardens.size,
+            buildingsOnRoads: [...town.roads].filter((key) => state.elements.has(key)).length,
+            decorMeshes: townDecor?.group.children.map((child) => child.name) ?? []
+          }
+        : null,
     __tooltipsForTest: tooltips,
     // Every HUD control that should carry a tooltip but does not (ui/tooltip.ts HUD_SELECTORS).
     __missingTooltipsForTest: (): string[] => missingTooltips(container),

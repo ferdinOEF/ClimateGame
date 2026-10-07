@@ -6761,3 +6761,91 @@ and there are fewer of them.
   than as individual buildings until the player zooms in. That is
   deliberate: the brief asked for them to stop hiding the terrain.
 - **Roads zig-zag** a little, where the hex grid forces it.
+
+### P7 — bots, regression, performance — DONE
+
+**Browser verification:** `npm run verify:maya` (`tools/verifyMaya.ts`).
+Every check passed, with zero console errors.
+- **The Tutorial:**
+  - no Maya, no heat, no Get ready or Voices;
+  - its own objectives checklist is shown;
+  - 13 HUD tooltips are present and all show real text;
+  - building a mangrove, a dune and a house, then surviving its cyclone,
+    completes it (results screen, cleared).
+- **Panaji:**
+  - the Voices panel is gone and Get ready shows 3 jobs;
+  - the street map is on at 32%;
+  - 126 road tiles render (strips, junctions, bridge piers), with no
+    building on any road tile;
+  - Maya greets with "Hello! I am Maya. Let us keep Panjim dry.";
+  - all 29 HUD tooltips are present and show real text;
+  - M mutes and unmutes Maya; R hides and shows the heat;
+  - the heat shows 3 quarters out (77 tiles).
+- **Preview against storm, in the browser:**
+
+  | Storm | Previewed at risk | Lost |
+  |---|---|---|
+  | Cyclone (easy) | 0 | 0 |
+  | Flood (easy) | 35 | 35 |
+
+**Heat is information only.** `tests/exposure.test.ts` plays a run twice,
+once computing the exposure, the undefended exposure, the heat view and the
+readiness every quarter, and once never looking. The final snapshots and
+every outcome are byte-identical.
+
+**Bots** (`npm run bots -- easy-test` / `-- strict`, 20 seeds each):
+- **Voices are dormant on Panaji**, so "Voices" is 0 for every persona.
+  Get ready pays its jobs instead.
+- **The paths are smaller** (120, 100 and 100 houses, not 200, 181 and 181),
+  because gardens and roads took land.
+
+easy-test:
+
+| Persona | Per storm 1★/2★/3★ (cyclone · flood · compound) | Houses saved median | Index median |
+|---|---|---|---|
+| casual | 0/0/20 · 0/16/4 · 20/0/0 | 121/121 · 65/101 · 20/101 | 37 |
+| greedy | 0/0/20 · 0/20/0 · 20/0/0 | 120/120 · 65/100 · 20/100 | 30 |
+| smart | 0/0/20 · 0/0/20 · 0/0/20 | 120/120 · 100/100 · 100/100 | 83 |
+| rusher | 0/0/20 · 0/20/0 · 20/0/0 | 120/120 · 65/100 · 20/100 | 16 |
+| banker | 0/0/20 · 0/9/11 · 20/0/0 | 120/120 · 100/100 · 28/100 | 35 |
+| walls | 0/0/20 · 0/0/20 · 20/0/0 | 120/120 · 100/100 · 6/100 | 18 |
+| mangroves | 0/0/20 · 0/0/20 · 2/11/7 | 120/120 · 100/100 · 65/100 | 64 |
+
+strict:
+
+| Persona | Per storm 1★/2★/3★ (cyclone · flood · compound) | Houses saved median | Index median |
+|---|---|---|---|
+| casual | 0/14/6 · 20/0/0 · 20/0/0 | 104/121 · 22/101 · 6/101 | 36 |
+| greedy | 0/20/0 · 20/0/0 · 20/0/0 | 103/120 · 22/100 · 6/100 | 30 |
+| smart | 0/0/20 · 0/0/20 · 0/0/20 | 114/120 · 100/100 · 100/100 | 77 |
+| rusher | 0/20/0 · 20/0/0 · 20/0/0 | 103/120 · 22/100 · 6/100 | 15 |
+| banker | 0/9/11 · 20/0/0 · 20/0/0 | 114/120 · 22/100 · 7/100 | 20 |
+| walls | 0/0/20 · 0/18/2 · 20/0/0 | 114/120 · 65/100 · 2/100 | 23 |
+| mangroves | 0/0/20 · 0/0/20 · 0/0/20 | 114/120 · 100/100 · 100/100 | 69 |
+
+Every bot assertion holds on both presets:
+- easy-test: Casual at least 2★ on storms 1–2, Smart 3★ on all three, and no
+  persona loses every house on storms 1–2;
+- strict: the old assertions.
+
+**Performance** (1920×1080, software GL; no GPU in this container, so fps is
+not the real-hardware figure):
+
+| | fps | update CPU | draw calls | triangles |
+|---|---|---|---|---|
+| Before (P0, master) | 2.4 | 0.74 ms/frame | 25 | 324,596 |
+| After, full board, heat off | 2.9 | 0.9–1.3 ms/frame | 35 | 162,280 |
+| After, 1 quarter before the flood, heat on | 3.0 | 1.2–1.9 ms/frame | 25 (zoomed) | 168,598 |
+
+- **Halved triangles** (the smaller buildings) more than pay for the ten
+  extra draw calls: seven building kinds, gardens, roads, walkers, boats and
+  the heat.
+- **The update CPU rose by about half a millisecond a frame.** That is
+  walkers and boats (a few dozen matrix writes), the heat's time uniform,
+  and Maya's per-frame follow while she is away from her dock.
+- **On a real GPU** these numbers point well inside 60 fps. That is an
+  inference from draw calls, triangles and CPU time; it was not measured on
+  hardware here.
+
+**Screenshots:** `p7-heat-3`, `p7-heat-1`: the heat over the new town before
+the flood, with Maya's last call, and grayscale twins.

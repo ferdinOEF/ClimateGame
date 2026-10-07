@@ -1650,3 +1650,11 @@
 @media (prefers-reduced-motion: reduce) {
   .get-ready-row.just-done, .get-ready-pop { animation: none; }
 }
+
+/* Phones are secondary: keep Maya and her bubble inside a narrow screen. */
+@media (max-width: 700px) {
+  .maya { left: 6px; bottom: 58px; }
+  .maya-figure, .maya-figure-wrap { width: 72px; height: 114px; }
+  .maya-bubble { max-width: min(62vw, 300px); font-size: 14px; margin-bottom: 70px; }
+  .panjim-toggles { top: 120px; right: 8px; }
+}

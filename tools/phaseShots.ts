@@ -116,6 +116,7 @@ async function main(): Promise<void> {
       }
       await page.waitForTimeout(2500);
       await shot(page, scenario);
+      if (scenario.startsWith("heat-")) await perf(page, `with the warning heat, ${scenario}`);
     }
 
     const walkers = await page.evaluate("(() => { const life = window.__ambientLifeForTest ? window.__ambientLifeForTest() : null; return life ? life.activeWalkers : null; })()");

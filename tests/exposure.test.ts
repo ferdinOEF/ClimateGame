@@ -151,3 +151,44 @@ describe("buildHeatView", () => {
     expect(buildHeatView(now, bare, 7, defences, (key) => terrain.get(key)).every((t) => t.heat === 0)).toBe(true);
   });
 });
+
+describe("the heat is information only", () => {
+  it("a run that computes the heat, the shields and Get ready every quarter ends exactly like one that never looks", () => {
+    const play = (look: boolean): string => {
+      const run = newRun("s13", BOT_LEVELS["easy-test"]);
+      const terrain = new Map([...run.state.placed.values()].map((t) => [`${t.coord.q},${t.coord.r}`, t.terrainId]));
+      let step = 0;
+      while (!run.finished && step < 200) {
+        step++;
+        if (look) {
+          const next = run.nextChallenge();
+          if (next) {
+            const now = run.exposureFor(next)!;
+            const bare = run.exposureFor(next, true)!;
+            buildHeatView(now, bare, run.quartersUntil(next), [...run.state.elements.keys()], (key) => terrain.get(key));
+            run.readiness();
+          }
+        }
+        run.collectJar();
+        // A few builds on the way, the same in both runs.
+        if (step % 3 === 0) {
+          for (const [zone, element] of [["z1", "dune"], ["z2", "mangrove"], ["z2", "khazan"]] as const) {
+            const key = run.zones!.keys(zone).find((k) => {
+              const [q, r] = k.split(",").map(Number);
+              return run.state.canBuild({ q, r }, element);
+            });
+            if (key && run.state.coin > 200) {
+              const [q, r] = key.split(",").map(Number);
+              run.build({ q, r }, element);
+              break;
+            }
+          }
+        } else {
+          run.fastForwardYear();
+        }
+      }
+      return JSON.stringify({ snapshot: run.snapshot(), outcomes: [...run.outcomes] });
+    };
+    expect(play(true)).toBe(play(false));
+  });
+});
