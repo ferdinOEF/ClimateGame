@@ -94,7 +94,7 @@ describe("action run with a schedule", () => {
     const seen: string[] = [];
     while (!r.finished) {
       const outcome = r.fastForwardYear();
-      for (const event of outcome.events) if (event.type !== "quarter") seen.push(`${event.type}:${event.challenge.id}@${r.quarter}`);
+      for (const event of outcome.events) if (event.type === "forecast_lock" || event.type === "challenge") seen.push(`${event.type}:${event.challenge.id}@${r.quarter}`);
       const landedHere = outcome.events.find((e) => e.type === "challenge");
       if (landedHere && landedHere.type === "challenge") expect(r.quarter).toBe(landedHere.challenge.quarter);
     }

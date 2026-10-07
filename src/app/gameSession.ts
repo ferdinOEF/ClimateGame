@@ -354,6 +354,47 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   });
   const buildPopover = new BuildPopover(container);
   /**
+   * Panjim 2050's slow changes, redrawn as the clock moves: each growing
+   * defence's maturity (small and pale when planted, full at maturity), and
+   * the skyline, whose houses rise a little as the decades pass so 2050 does
+   * not look like 2025. Cheap: one pass over the standing elements.
+   */
+  function syncPanjimVisuals(): void {
+    if (!panjim) return;
+    const age = panjim.run.quarter / panjim.run.totalQuarters;
+    for (const [key, inst] of state.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def) continue;
+      const [q, r] = key.split(",").map(Number);
+      if ((def.matureQuarters ?? 0) > 0) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
+      else if (def.kind === "building") {
+        // Not every house rises equally: a fixed per-tile share, so the
+        // skyline grows uneven, the way a city does.
+        const share = 0.35 + (((q * 92821) ^ (r * 68917)) & 255) / 255;
+        elements.setHeightScale({ q, r }, 1 + age * 0.55 * share);
+      }
+    }
+  }
+
+  /** The locked Forecast's path, drawn as translucent ghosts over its zones (see PanjimController.showForecast). */
+  let forecastPreview: { coord: AxialCoord; weight: number }[] = [];
+  /**
+   * The live objective checklist.
+   *
+   * Replaces `EraEndScreen` in this file. That screen answered "the era
+   * ended, here is your score", which the app shell now owns (it needs to
+   * record progress and submit to the leaderboard before showing anything).
+   * What the *session* needs instead is the thing the sandbox never had: a
+   * persistent, visible statement of what this level is asking for, ticking
+   * off as the player gets there.
+   *
+   * That is the single biggest engagement change in this pass. A sandbox
+   * with no stated goal gives a player nothing to be pulled toward; the same
+   * board with three checkable objectives in the corner gives them a reason
+   * to make the next move.
+   */
+  const objectivesPanel = new ObjectivesPanel(container, level, levelMap);
+  /**
    * The Panjim 2050 run, on a level whose time model is `"actions"` (see
    * src/core/actionRun.ts). `null` on every other level, the tutorial
    * included, which keep the turn model exactly as it was. Every call site
@@ -397,51 +438,24 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           },
           repairVisual: (coord) => elements.repairVisual(coord),
           focus: levelMap.focus,
+          mountVoices: (el) => objectivesPanel.mountBody(el),
+          celebrateCombo: (tiles) => {
+            const gold = new THREE.Color("#f2c35b");
+            tiles.forEach((coord, i) => {
+              later(() => {
+                const world = axialToWorld(coord, 1.0);
+                buildFlourish.play(world.x, terrain.heightAt(coord), world.z, performance.now());
+                terrain.setTint(coord, gold, 0.55);
+                const inst = state.elements.get(`${coord.q},${coord.r}`);
+                if (inst) reactions.trigger(inst.elementId, world.x, terrain.heightAt(coord), world.z);
+              }, 120 * i);
+              later(() => terrain.setTint(coord, null), 1600 + 120 * i);
+            });
+          },
           onChallenge: (challenge, outcome) => showPanjimChallenge(challenge, outcome)
         })
       : null;
   if (panjim) hud.useQuarterClock();
-  /**
-   * Panjim 2050's slow changes, redrawn as the clock moves: each growing
-   * defence's maturity (small and pale when planted, full at maturity), and
-   * the skyline, whose houses rise a little as the decades pass so 2050 does
-   * not look like 2025. Cheap: one pass over the standing elements.
-   */
-  function syncPanjimVisuals(): void {
-    if (!panjim) return;
-    const age = panjim.run.quarter / panjim.run.totalQuarters;
-    for (const [key, inst] of state.elements) {
-      const def = ELEMENT_BY_ID.get(inst.elementId);
-      if (!def) continue;
-      const [q, r] = key.split(",").map(Number);
-      if ((def.matureQuarters ?? 0) > 0) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
-      else if (def.kind === "building") {
-        // Not every house rises equally: a fixed per-tile share, so the
-        // skyline grows uneven, the way a city does.
-        const share = 0.35 + (((q * 92821) ^ (r * 68917)) & 255) / 255;
-        elements.setHeightScale({ q, r }, 1 + age * 0.55 * share);
-      }
-    }
-  }
-
-  /** The locked Forecast's path, drawn as translucent ghosts over its zones (see PanjimController.showForecast). */
-  let forecastPreview: { coord: AxialCoord; weight: number }[] = [];
-  /**
-   * The live objective checklist.
-   *
-   * Replaces `EraEndScreen` in this file. That screen answered "the era
-   * ended, here is your score", which the app shell now owns (it needs to
-   * record progress and submit to the leaderboard before showing anything).
-   * What the *session* needs instead is the thing the sandbox never had: a
-   * persistent, visible statement of what this level is asking for, ticking
-   * off as the player gets there.
-   *
-   * That is the single biggest engagement change in this pass. A sandbox
-   * with no stated goal gives a player nothing to be pulled toward; the same
-   * board with three checkable objectives in the corner gives them a reason
-   * to make the next move.
-   */
-  const objectivesPanel = new ObjectivesPanel(container, level, levelMap);
   /**
    * The step-by-step coach, on the tutorial level only.
    *
@@ -1596,7 +1610,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (built) {
       const def = ELEMENT_BY_ID.get(built.elementId);
       if (!def) return;
-      reactions.trigger(built.elementId, wx, worldTop, wz);
+      const spawned = reactions.trigger(built.elementId, wx, worldTop, wz);
+      // Panjim 2050: whatever came to see is spotted for the Field Guide. Free.
+      panjim?.spotted(spawned);
       buildPopover.showInfo(screen.x, screen.y, {
         name: def.name,
         kindLabel: kindLabel(def),
@@ -1696,6 +1712,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera(pointer, camera);
+    // Panjim 2050: a tap on a creature itself spots it for the Field Guide
+    // and opens nothing else.
+    if (panjim) {
+      const species = reactions.speciesAt(raycaster);
+      if (species) {
+        panjim.spotted([species]);
+        return;
+      }
+    }
     const hits = raycaster.intersectObjects(terrain.raycastTargets);
     if (hits.length === 0 || hits[0].instanceId === undefined) return;
 

@@ -76,7 +76,14 @@ const CREATURE_BUILDERS: Record<CreatureId, () => THREE.BufferGeometry> = {
 const creatureGeometryCache = new Map<CreatureId, THREE.BufferGeometry>();
 const creatureMaterialCache = new Map<CreatureId, THREE.MeshStandardMaterial>();
 
+/**
+ * Creatures spawned by the reaction currently being triggered, so `trigger()`
+ * can say which species appeared (Panjim 2050's Field Guide collects them).
+ */
+let spawnLog: CreatureId[] = [];
+
 function creatureMesh(id: CreatureId): THREE.Mesh {
+  spawnLog.push(id);
   let geometry = creatureGeometryCache.get(id);
   if (!geometry) {
     geometry = CREATURE_BUILDERS[id]();
@@ -87,7 +94,10 @@ function creatureMesh(id: CreatureId): THREE.Mesh {
     material = creatureMaterial();
     creatureMaterialCache.set(id, material);
   }
-  return new THREE.Mesh(geometry, material);
+  const mesh = new THREE.Mesh(geometry, material);
+  // Lets a tap on the creature itself be recognised (see `speciesAt`).
+  mesh.userData.species = id;
+  return mesh;
 }
 
 /**
@@ -265,8 +275,9 @@ export class ElementReactions {
    * version's geometry is at its original size, so `f` is 1 throughout. It
    * stays a parameter so a future resize changes one number, not forty.
    */
-  trigger(elementId: string, originX: number, originY: number, originZ: number): void {
+  trigger(elementId: string, originX: number, originY: number, originZ: number): string[] {
     const factor = REACTION_SCALE;
+    spawnLog = [];
     switch (elementId) {
       case "mangrove":
         this.mangrove(originX, originY, originZ, factor);
@@ -304,6 +315,19 @@ export class ElementReactions {
       // Any other/future element id: no reaction, not an error — a new
       // roster addition simply has none until explicitly given one.
     }
+    return [...spawnLog];
+  }
+
+  /** The species of the creature (if any) under a ray, for tapping a creature directly. */
+  speciesAt(raycaster: THREE.Raycaster): string | null {
+    for (const hit of raycaster.intersectObjects(this.group.children, true)) {
+      let object: THREE.Object3D | null = hit.object;
+      while (object) {
+        if (typeof object.userData.species === "string") return object.userData.species;
+        object = object.parent;
+      }
+    }
+    return null;
   }
 
   private mangrove(x: number, y: number, z: number, f: number): void {

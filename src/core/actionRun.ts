@@ -4,6 +4,8 @@ import type { GameState } from "./gameState";
 import { QUARTERS_PER_YEAR } from "./quarters";
 import { buildSchedule, challengeStrength, outlookFor, type ClimateConfig, type ScheduledChallenge } from "./climate";
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type ZoneDef } from "./zones";
+import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
+import { voiceProgress, type VoiceDef, type VoiceStatus } from "./voices";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim in quarters, where time moves only
@@ -52,7 +54,13 @@ export type RunEvent =
   /** A challenge's Forecast locked: exact quarter and strength are now known. */
   | { type: "forecast_lock"; challenge: ScheduledChallenge }
   /** A challenge landed this quarter, and how the city fared. */
-  | { type: "challenge"; challenge: ScheduledChallenge; outcome: ChallengeOutcome | null };
+  | { type: "challenge"; challenge: ScheduledChallenge; outcome: ChallengeOutcome | null }
+  /** Tiles just joined a perfect-fit combo. `all` is every tile in that combo now. */
+  | { type: "combo"; combo: ComboId; tiles: string[]; all: string[] }
+  /** A Voice of Panjim was answered: `reward` Coin paid at once. */
+  | { type: "voice_complete"; voice: VoiceDef; reward: number }
+  /** A new era's Voices arrive. */
+  | { type: "voice_new"; voices: VoiceDef[] };
 
 export interface ActionRunOptions {
   /** The level's climate: scheduled challenges and the rising baseline. */
@@ -61,6 +69,8 @@ export interface ActionRunOptions {
   seed?: string;
   /** The map's challenge zones. Without them a challenge is reported but not resolved. */
   zones?: readonly ZoneDef[];
+  /** The level's Voices of Panjim requests. */
+  voices?: readonly VoiceDef[];
 }
 
 /** The readiness gauge: what the next challenge would do to the board as it stands. */
@@ -106,6 +116,10 @@ export class ActionRun {
   readonly outcomes = new Map<string, ChallengeOutcome>();
   /** Perfect-fit combo bonuses (P6) the resolver adds to zone defence. */
   combos: ComboBonus = new Map();
+  /** The board's perfect-fit combos, recomputed after every action and challenge. */
+  comboState: ComboState;
+  readonly voices: readonly VoiceDef[];
+  readonly voiceStatus = new Map<string, VoiceStatus>();
   /** Coin waiting in the jar. Banked only when the player taps it. */
   jar: number;
   /** Everything ever banked from the jar, for the finale's Livelihoods. */
@@ -123,6 +137,41 @@ export class ActionRun {
     this.climate = options.climate ?? null;
     this.schedule = this.climate ? buildSchedule(this.climate, options.seed ?? "panjim", config.startYear, config.endYear) : [];
     this.zones = options.zones && options.zones.length > 0 ? new ZoneIndex(options.zones) : null;
+    this.comboState = computeCombos(state);
+    this.combos = this.comboState.bonus;
+    this.voices = options.voices ?? [];
+    for (const voice of this.voices) this.voiceStatus.set(voice.id, voice.era === 1 ? "active" : "waiting");
+  }
+
+  /** Era 1 runs to the first challenge, era 2 to the second, era 3 to 2050. */
+  get era(): number {
+    return Math.min(3, this.landed.size + 1);
+  }
+
+  /** The Voices asking right now. */
+  activeVoices(): VoiceDef[] {
+    return this.voices.filter((voice) => this.voiceStatus.get(voice.id) === "active");
+  }
+
+  /**
+   * After anything that changed the board: recompute the combos (reporting
+   * tiles that just joined one) and pay out any Voice whose request is now
+   * met.
+   */
+  private settle(): RunEvent[] {
+    const events: RunEvent[] = [];
+    const next = computeCombos(this.state);
+    for (const joined of newComboMembers(this.comboState, next)) events.push({ type: "combo", ...joined });
+    this.comboState = next;
+    this.combos = next.bonus;
+    for (const voice of this.activeVoices()) {
+      const { current, target } = voiceProgress(voice.goal, this.state, this.zones, this.comboState);
+      if (current < target) continue;
+      this.voiceStatus.set(voice.id, "done");
+      this.state.coin += voice.reward;
+      events.push({ type: "voice_complete", voice, reward: voice.reward });
+    }
+    return events;
   }
 
   /** The intensity a challenge lands at: its strength (base times the baseline on its date) in zone-defence points. */
@@ -268,6 +317,7 @@ export class ActionRun {
       spent++;
       if (tickEvents.some((event) => event.type === "challenge")) break;
     }
+    events.push(...this.settle());
     return { ok: true, quarters: spent, events };
   }
 
@@ -294,10 +344,22 @@ export class ActionRun {
 
   /** A challenge lands and resolves zone by zone against the board. */
   protected land(challenge: ScheduledChallenge): RunEvent[] {
-    if (!this.zones || !this.climate) return [{ type: "challenge", challenge, outcome: null }];
-    const outcome = resolveChallenge(this.state, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, this.combos);
-    this.outcomes.set(challenge.id, outcome);
-    return [{ type: "challenge", challenge, outcome }];
+    const events: RunEvent[] = [];
+    if (!this.zones || !this.climate) {
+      events.push({ type: "challenge", challenge, outcome: null });
+    } else {
+      const outcome = resolveChallenge(this.state, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, this.combos);
+      this.outcomes.set(challenge.id, outcome);
+      events.push({ type: "challenge", challenge, outcome });
+    }
+    // A new era: the last era's unanswered Voices lapse, the next era's arrive.
+    for (const voice of this.voices) {
+      if (this.voiceStatus.get(voice.id) === "active") this.voiceStatus.set(voice.id, "lapsed");
+    }
+    const arriving = this.voices.filter((voice) => voice.era === this.era && this.voiceStatus.get(voice.id) === "waiting");
+    for (const voice of arriving) this.voiceStatus.set(voice.id, "active");
+    if (arriving.length > 0) events.push({ type: "voice_new", voices: arriving });
+    return events;
   }
 }
 

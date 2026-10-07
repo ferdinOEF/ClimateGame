@@ -5759,3 +5759,78 @@ no console errors.
 - **Risk:** a player who never notices the jar will run out of Coin and not
   know why. The gift and the wobble are meant to teach it in the first ten
   seconds; P9's telemetry check (first reward ≤ 30 s) will tell.
+
+## P6 — Voices of Panjim, perfect-fit combos, Field Guide — DONE
+
+**Voices of Panjim:**
+- **Data:** levels.json `voices`, with core logic in `src/core/voices.ts`.
+  There are nine requests, three per era. An era runs to the next challenge.
+- **Each request** is one micro-action: "2 Dunes in Z1", "a Mangrove Belt",
+  "a Living Bund".
+- **Payout:** the moment a request is met it pays at once, with a coin pop
+  plus chime and the person's thanks, and the card leaves.
+- **Lapse:** unmet requests lapse quietly when their era ends; nothing is
+  lost but the reward.
+- **Voices:**
+  - Anthony, a Miramar fisherman.
+  - Mrs Fernandes in Fontainhas, whose lane the Ourem creek floods.
+  - Sitaram, a Taleigao paddy farmer, and later his daughter.
+  - Rosy's shack at Caranzalem.
+  - Fr. Rodrigues at St Cruz.
+  - Neha, a teacher in Merces.
+  - Prakash, a Mandovi ferryman.
+  - Leon at the Dona Paula jetty.
+- **Writing:** each request is short and asks for something; thanks are one
+  line, some in Konkani ("Dev borem korum").
+- **Nudging:** requests point at good play without lecturing: era 1 asks for
+  dunes on the cyclone's beach and a khazan in the flood's wetlands.
+- **Tested:** two or three per era, each answerable on the real map (enough
+  valid tiles in the named zone), paid on completion, lapsed on the era
+  change.
+- **Panel:** the Voices take over the bottom-right objectives panel.
+  Panaji's objective is now "Weather 3 hazards", which is what the run is.
+
+**Combos** (`src/core/combos.ts`, with a real bonus to zone defence):
+- Mangrove Belt: 3 or more touching mangroves, +2 each.
+- Living Bund: a khazan next to a mangrove, +2 each.
+- Beach Shield: a dune next to sandy vegetation, +1.5 each.
+- **When one forms:** ring flourishes and a gold glow ripple across its
+  tiles, their creatures react, a four-note chime plays, and a banner reads
+  "Mangrove Belt! +2 defence on each of its 3 tiles".
+- **Tested:** formation thresholds, adjacency, and the bonus in the zone
+  sum (15 → 21).
+
+**Field Guide** (10 pages):
+- Tapping a built tile, or a creature in the air, records the species that
+  appeared. It's free, and plays a toast and chime.
+- **Every page is wildlife a nature defence brings:** kingfisher, egret and
+  kite from mangroves; dragonfly, tiger prawn and mudskipper from khazan;
+  garden lizard; ghost crab; mullet; cormorant. A seawall's pigeons and sand
+  mining's shorebirds are not in it, and nothing says so.
+- **Storage:** the guide is kept on the device across runs.
+- **Creatures:** they already had always-on ambient reactions in this
+  branch, so none needed adding. `trigger()` now returns what it spawned,
+  and creatures carry `userData.species` so a direct tap works.
+
+**Checks:**
+- 243 tests pass (5 new); the build passes; the walkthrough is clean;
+  `phaseShots p6 --scenario=voices,guide` shows no console errors.
+- **Fixed during the phase:**
+  - A start-up crash: the controller was built before the panel it mounts
+    into.
+  - Right-aligned cards.
+  - The stale "Weather 3 hazards" row.
+  - An empty forecast pill at the top-left: `display` was beating
+    `[hidden]`.
+
+**Self-assessment:**
+- **Fun:** this is the phase that makes it feel like a game. Answering
+  Anthony on the second dune, with a coin pop and his thanks, then
+  completing a Mangrove Belt with a ripple of gold, are two rewards inside
+  the first minute.
+- **Readable:** the Voices panel is the densest UI in the game (three
+  quoted paragraphs). It is kept to a 340px column at the edge, and the text
+  is capped at 140 characters by a test.
+- **What a first-time player won't understand:** that a creature can be
+  tapped in the air. The toast after the first tile-tap says "New in your
+  Field Guide", which is where they will learn the guide exists.

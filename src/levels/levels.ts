@@ -3,6 +3,7 @@ import type { Objective } from "@core/objectives";
 import { dailyChallengeId, hashSeed, Rng } from "@core/rng";
 import type { TimelineConfig } from "@core/actionRun";
 import type { ClimateConfig } from "@core/climate";
+import type { VoiceDef } from "@core/voices";
 
 /**
  * Level definitions — the campaign, loaded from data, never hardcoded.
@@ -79,6 +80,8 @@ export interface LevelDef {
   timeline?: TimelineConfig;
   /** The action-driven run's scheduled challenges and rising baseline (core/climate.ts). */
   climate?: ClimateConfig;
+  /** Voices of Panjim: optional citizen requests per era (core/voices.ts). */
+  voices?: VoiceDef[];
   objectives: Objective[];
   starThresholds: [number, number, number];
 }

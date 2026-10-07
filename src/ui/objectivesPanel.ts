@@ -106,6 +106,17 @@ export class ObjectivesPanel {
     container.appendChild(this.briefBackdrop);
   }
 
+  /**
+   * Replaces the objective checklist with another body (Panjim 2050's Voices
+   * panel). The header with the level name stays.
+   */
+  mountBody(body: HTMLElement): void {
+    this.listEl.hidden = true;
+    this.counterEl.hidden = true;
+    this.el.classList.add("custom-body");
+    this.el.appendChild(body);
+  }
+
   private hideBrief(): void {
     this.briefBackdrop.hidden = true;
   }

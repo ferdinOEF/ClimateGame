@@ -6,6 +6,10 @@ import type { LevelDef } from "@levels/levels";
 import { ClockHud } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
 import { CoinJar } from "@ui/panjim/coinJar";
+import { VoicesPanel } from "@ui/panjim/voicesPanel";
+import { FieldGuide } from "@ui/panjim/fieldGuide";
+import { voiceProgress, describeVoiceGoal } from "@core/voices";
+import { COMBO_INFO, type ComboId } from "@core/combos";
 import { outlookFor, seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef } from "@core/zones";
 import { axialToWorld } from "@core/hex";
@@ -52,6 +56,10 @@ export interface PanjimHost {
   repairVisual: (coord: AxialCoord) => void;
   /** The map's opening focus: the in-scene label anchors on the threatened tile nearest it, so it starts on screen. */
   focus: AxialCoord;
+  /** Puts the Voices panel where the objectives list would be. */
+  mountVoices: (el: HTMLElement) => void;
+  /** Sparkle, ring and glow over tiles that just joined a combo. */
+  celebrateCombo: (tiles: AxialCoord[]) => void;
 }
 
 /** Milliseconds per quarter tick: quick for a single action, slower for a visible time-lapse. */
@@ -63,6 +71,8 @@ export class PanjimController {
   private readonly clock: ClockHud;
   private readonly outlook: OutlookBar;
   private readonly jar: CoinJar;
+  private readonly voicesPanel = new VoicesPanel();
+  readonly fieldGuide: FieldGuide;
   /** Stars per landed challenge, shown on the Outlook. */
   readonly results = new Map<string, number>();
   private busy = false;
@@ -72,7 +82,12 @@ export class PanjimController {
 
   constructor(private readonly host: PanjimHost) {
     if (!host.level.timeline) throw new Error("PanjimController needs a level timeline");
-    this.run = new ActionRun(host.state, host.level.timeline, { climate: host.level.climate, seed: host.seed, zones: host.zones });
+    this.run = new ActionRun(host.state, host.level.timeline, {
+      climate: host.level.climate,
+      seed: host.seed,
+      zones: host.zones,
+      voices: host.level.voices
+    });
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, {
       onFastForwardYear: () => void this.fastForwardYear(),
@@ -80,6 +95,8 @@ export class PanjimController {
     });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
     this.jar = new CoinJar(host.container, () => this.collectJar());
+    host.mountVoices(this.voicesPanel.el);
+    this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
     this.forecastLabel.hidden = true;
@@ -102,8 +119,23 @@ export class PanjimController {
     return coins;
   }
 
+  /** Creatures that just appeared under a tap go into the Field Guide. Free. */
+  spotted(species: string[]): void {
+    this.fieldGuide.spot(species);
+  }
+
+  private renderVoices(): void {
+    this.voicesPanel.render(
+      this.run.activeVoices().map((voice) => {
+        const { current, target } = voiceProgress(voice.goal, this.host.state, this.run.zones, this.run.comboState);
+        return { voice, current, target, progress: describeVoiceGoal(voice.goal, this.run.zones) };
+      })
+    );
+  }
+
   /** Repaints the Outlook from the current quarter. */
   renderOutlook(): void {
+    this.renderVoices();
     // A jar reads full at about two years of the current income, and never
     // below a small floor, so even a young city sees it fill.
     this.jar.render(this.run.jar, Math.max(60, this.run.incomePerQuarter * 8));
@@ -266,7 +298,8 @@ export class PanjimController {
     const steps: { quarter: number; extra: RunEvent[] }[] = [];
     for (const event of outcome.events) {
       if (event.type === "quarter") steps.push({ quarter: event.quarter, extra: [] });
-      else steps[steps.length - 1]?.extra.push(event);
+      else if (steps.length > 0) steps[steps.length - 1].extra.push(event);
+      else this.handleEvent(event);
     }
     this.busy = true;
     this.syncControls();
@@ -314,6 +347,29 @@ export class PanjimController {
         this.host.onChallenge?.(event.challenge, event.outcome);
         break;
       }
+      case "combo": {
+        const info = COMBO_INFO[event.combo as ComboId];
+        playSound("combo");
+        this.host.celebrateCombo(event.tiles.map((key) => {
+          const [q, r] = key.split(",").map(Number);
+          return { q, r };
+        }));
+        this.host.showBanner(`${info.name}! +${info.bonus} defence on each of its ${event.all.length} tiles`, 3800);
+        this.host.telemetry.reward("combo");
+        break;
+      }
+      case "voice_complete": {
+        playSound("coin");
+        window.setTimeout(() => playSound("chime"), 180);
+        this.voicesPanel.answer(event.voice);
+        this.host.telemetry.emit("request_complete", { id: event.voice.id, reward: event.reward });
+        this.host.telemetry.reward("request");
+        break;
+      }
+      case "voice_new": {
+        this.host.showBanner(`New voices from Panjim: ${event.voices.length} requests`, 3500);
+        break;
+      }
       case "quarter":
         break;
     }
@@ -359,6 +415,27 @@ export class PanjimController {
           this.build(coord, "dune");
           await this.idle();
         }
+        return true;
+      }
+      case "voices": {
+        // Answer the Miramar fisherman (two dunes), then a mangrove belt by
+        // the Ourem creek, which also answers Fontainhas.
+        for (let i = 0; i < 2; i++) {
+          const dune = this.firstBuildableIn("z1", "dune");
+          if (dune) this.build(dune, "dune");
+          await this.idle();
+        }
+        let last = this.firstBuildableIn("z3", "mangrove");
+        for (let i = 0; i < 3 && last; i++) {
+          this.build(last, "mangrove");
+          await this.idle();
+          last = this.firstBuildable("mangrove", last);
+        }
+        this.spotted(["kingfisher", "egret"]);
+        return true;
+      }
+      case "guide": {
+        this.fieldGuide.open();
         return true;
       }
       case "growth": {
@@ -438,6 +515,7 @@ export class PanjimController {
 
   dispose(): void {
     this.jar.dispose();
+    this.fieldGuide.dispose();
     this.forecastLabel.remove();
     this.clock.dispose();
     this.host.container.classList.remove("has-panjim-clock");
