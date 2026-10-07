@@ -139,3 +139,55 @@ export function protectedTiles(current: Exposure, undefended: Exposure, minCut =
   }
   return keys;
 }
+
+/** How many tiles get the pulsing edge at most: the hardest-hit, so the eye goes to the worst first. */
+export const PULSE_LIMIT = 24;
+
+export interface HeatViewTile {
+  key: string;
+  heat: number;
+  hatch: boolean;
+  pulse: boolean;
+  shield: boolean;
+}
+
+/**
+ * Everything the overlay draws for one storm, from its exposure:
+ *   - heat on every land, beach and wetland tile it reaches (the water itself
+ *     is where the storm comes from, so it is never tinted);
+ *   - the hatch where the heat passes 30%;
+ *   - a pulsing edge on the houses that will fall, hardest hit first, at
+ *     most `PULSE_LIMIT` of them;
+ *   - a shield on every defence answering this storm on its path, and on
+ *     every tile the defences cooled (`protectedTiles`).
+ * `terrainOf` gives a tile's terrain id; `defenceKeys` the tiles holding a
+ * defence against this storm.
+ */
+export function buildHeatView(
+  current: Exposure,
+  undefended: Exposure | null,
+  quartersLeft: number,
+  defenceKeys: Iterable<string>,
+  terrainOf: (key: string) => string | undefined
+): HeatViewTile[] {
+  const shielded = new Set<string>(undefended ? protectedTiles(current, undefended) : []);
+  const onPath = new Set(current.exposure.keys());
+  for (const key of defenceKeys) if (onPath.has(key)) shielded.add(key);
+  // The pulse marks houses that will fall, hardest hit first, never empty
+  // ground: the point is to draw the eye to what can still be saved.
+  const pulse = new Set(
+    [...current.housesAtRisk]
+      .sort((a, b) => (current.intensity.get(b) ?? 0) - (current.intensity.get(a) ?? 0) || (a < b ? -1 : 1))
+      .slice(0, PULSE_LIMIT)
+  );
+  const tiles: HeatViewTile[] = [];
+  for (const [key, exposure] of current.exposure) {
+    const terrain = terrainOf(key);
+    const dry = terrain === "land" || terrain === "beach" || terrain === "estuary";
+    const heat = dry ? tileHeat(quartersLeft, exposure) : 0;
+    const shield = shielded.has(key);
+    if (heat <= 0 && !shield) continue;
+    tiles.push({ key, heat, hatch: heat > HATCH_THRESHOLD, pulse: heat > 0 && pulse.has(key), shield });
+  }
+  return tiles;
+}

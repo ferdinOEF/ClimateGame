@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heatRamp, tileHeat, computeExposure, protectedTiles, HEAT_LEAD_QUARTERS } from "../src/core/exposure";
+import { heatRamp, tileHeat, computeExposure, protectedTiles, buildHeatView, HEAT_LEAD_QUARTERS } from "../src/core/exposure";
 import { resolveChallenge } from "../src/core/zones";
 import { BOT_LEVELS, newRun, type Preset } from "../tools/panjimBots/bots";
 import type { ActionRun } from "../src/core/actionRun";
@@ -123,5 +123,31 @@ describe("computeExposure matches the storm it previews", () => {
     const path = new Set([...run.zones!.keys("z1"), ...run.zones!.keys("z2")]);
     for (const key of preview.exposure.keys()) expect(path.has(key)).toBe(true);
     expect(next.kind).toBe("cyclone");
+  });
+});
+
+describe("buildHeatView", () => {
+  it("heats only dry tiles, hatches above 30%, pulses at most 24 falling houses, and shields defences", () => {
+    const run = newRun("s7", BOT_LEVELS.strict);
+    approach(run, 1, [["z1", "dune"], ["z1", "dune"]]);
+    const next = run.nextChallenge()!;
+    const now = run.exposureFor(next)!;
+    const bare = run.exposureFor(next, true)!;
+    const terrain = new Map([...run.state.placed.values()].map((t) => [`${t.coord.q},${t.coord.r}`, t.terrainId]));
+    const defences = [...run.state.elements].filter(([, inst]) => inst.elementId === "dune").map(([key]) => key);
+    const quarters = run.quartersUntil(next);
+    const view = buildHeatView(now, bare, quarters, defences, (key) => terrain.get(key));
+    expect(view.length).toBeGreaterThan(0);
+    for (const tile of view) {
+      if (tile.heat > 0) expect(["land", "beach", "estuary"]).toContain(terrain.get(tile.key));
+      expect(tile.heat).toBeLessThanOrEqual(0.5);
+      expect(tile.hatch).toBe(tile.heat > 0.3);
+    }
+    expect(view.filter((t) => t.pulse).length).toBeLessThanOrEqual(24);
+    const atRisk = new Set(now.housesAtRisk);
+    for (const tile of view.filter((t) => t.pulse)) expect(atRisk.has(tile.key)).toBe(true);
+    for (const key of defences) expect(view.find((t) => t.key === key)?.shield).toBe(true);
+    // Outside the five-quarter window there is no heat at all, only shields.
+    expect(buildHeatView(now, bare, 7, defences, (key) => terrain.get(key)).every((t) => t.heat === 0)).toBe(true);
   });
 });

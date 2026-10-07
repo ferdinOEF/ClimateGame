@@ -25,6 +25,7 @@ import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer } from "@ui/mapLabels";
 import { MapAttribution } from "@ui/attribution";
 import { MapLayerControl } from "@ui/mapLayerControl";
+import { HeatOverlay } from "@render/heatOverlay";
 import { StormReport } from "@ui/stormReport";
 // `SessionResult` is defined in @core/levelScore (it is expressed purely
 // in core types) and re-exported here, so callers that think of it as
@@ -88,6 +89,15 @@ export interface GameSessionOptions {
 export interface GameSessionHandle {
   /** Stops the render loop, clears pending timers and detaches every listener. Safe to call twice. */
   dispose: () => void;
+}
+
+/** Whether the player has asked for reduced motion. Wrapped for environments without matchMedia. */
+function prefersReducedMotionNow(): boolean {
+  try {
+    return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
 }
 
 export function startGameSession(options: GameSessionOptions): GameSessionHandle {
@@ -236,6 +246,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   /** Panjim 2050: the locked Forecast's zone edge — see ForecastOutline. Empty on every other level. */
   const forecastOutline = new ForecastOutline();
   scene.add(forecastOutline.group);
+  /**
+   * Panjim 2050: the warning heat, one instanced layer over the board (see
+   * HeatOverlay). Empty on every other level and outside a storm's last five
+   * quarters.
+   */
+  const heatOverlay = new HeatOverlay(levelTiles.length, prefersReducedMotionNow());
+  scene.add(heatOverlay.mesh);
 
   /**
    * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -396,8 +413,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
   }
 
-  /** The locked Forecast's path, drawn as translucent ghosts over its zones (see PanjimController.showForecast). */
-  let forecastPreview: { coord: AxialCoord; weight: number }[] = [];
   /**
    * The live objective checklist.
    *
@@ -449,7 +464,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           seed: params.get("seed") ?? level.id,
           zones: levelMap.zones,
           showForecastZones: (tiles) => {
-            forecastPreview = tiles;
             forecastOutline.show(
               tiles.map((tile) => tile.coord),
               (coord) => terrain.heightAt(coord)
@@ -457,7 +471,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             refreshPreview();
           },
           clearForecastZones: () => {
-            forecastPreview = [];
             forecastOutline.clear();
             refreshPreview();
           },
@@ -468,6 +481,23 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           repairVisual: (coord) => elements.repairVisual(coord),
           focus: levelMap.focus,
           mountVoices: (el) => objectivesPanel.mountBody(el),
+          showHeat: (tiles) => {
+            heatOverlay.show(
+              tiles.map((tile) => {
+                const [q, r] = tile.key.split(",").map(Number);
+                return { coord: { q, r }, heat: tile.heat, hatch: tile.hatch, pulse: tile.pulse, shield: tile.shield };
+              }),
+              (coord) => terrain.heightAt(coord)
+            );
+            // The heat takes over from the Forecast's zone outline: one
+            // statement about where the storm goes, not two on top of each other.
+            forecastOutline.group.visible = !tiles.some((tile) => tile.heat > 0);
+          },
+          focusCamera: (coord, close) => {
+            const world = axialToWorld(coord, 1.0);
+            focusOn(world.x, world.z, false);
+            if (close) fitTo(26, 16, false);
+          },
           celebrateCombo: (tiles) => {
             const gold = new THREE.Color("#f2c35b");
             tiles.forEach((coord, i) => {
@@ -1318,7 +1348,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   function refreshPreview(): void {
     hazardOverlay.clearPreview();
-    for (const tile of forecastPreview) hazardOverlay.showPreview(tile.coord, terrain.heightAt(tile.coord), 0.25 + tile.weight * 0.6);
+    // Panjim 2050's locked Forecast used to ghost its zones here. The warning
+    // heat (HeatOverlay) replaced that: it says the same thing per tile, and
+    // truthfully. The Forecast keeps its outline and label until the heat starts.
     if (activePreviewSources.size === 0) return;
     const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
     for (const source of activePreviewSources.values()) {
@@ -1610,7 +1642,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   function redrawPanjimBoard(): void {
     elements.reset();
     hazardOverlay.reset();
-    forecastPreview = [];
     forecastOutline.clear();
     for (const [key, inst] of state.elements) {
       const [q, r] = key.split(",").map(Number);
@@ -1868,6 +1899,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     buildFlourish.tick(nowMs);
     panjim?.frame();
     forecastOutline.tick(nowMs);
+    heatOverlay.tick(nowMs);
     if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 
     // Place names have to be re-projected every frame, because the camera now
@@ -1993,6 +2025,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // precisely-timed screenshots to catch it mid-sweep.
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
+    __heatForTest: heatOverlay,
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     // Builds a specific element at a specific coord (rather than
@@ -2097,6 +2130,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     storm.dispose();
     buildFlourish.dispose();
     forecastOutline.dispose();
+    heatOverlay.dispose();
     disposeScene();
 
     // The session owns every DOM node it appended to `container` (HUD,

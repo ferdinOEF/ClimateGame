@@ -21,6 +21,8 @@ import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIn
 import { axialToWorld } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
+import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
+import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
 
 /**
  * The Panjim 2050 run inside a live session.
@@ -79,6 +81,10 @@ export interface PanjimHost {
   mountVoices: (el: HTMLElement) => void;
   /** Sparkle, ring and glow over tiles that just joined a combo. */
   celebrateCombo: (tiles: AxialCoord[]) => void;
+  /** Draws the warning heat (an empty list clears it). */
+  showHeat: (tiles: HeatViewTile[]) => void;
+  /** Glides the camera to a board coordinate (fractional allowed); `close` also zooms in a little. Cancelled by any drag. */
+  focusCamera: (coord: AxialCoord, close?: boolean) => void;
 }
 
 /** Milliseconds per quarter tick: quick for a single action, slower for a visible time-lapse. */
@@ -105,6 +111,11 @@ export class PanjimController {
   /** The in-scene label over the locked Forecast's first zone: "Cyclone landfall ●●○". */
   private readonly forecastLabel: HTMLElement;
   private forecastAnchor: AxialCoord | null = null;
+  /** "Show risk": the warning heat on or off (R). On by default, remembered on this device. */
+  readonly riskToggle: PrefToggle;
+  /** The latest exposure preview of the next storm, while it is inside the warning window. Read by Maya and the Get ready panel. */
+  exposure: Exposure | null = null;
+  private readonly keyAbort = new AbortController();
 
   constructor(private readonly host: PanjimHost) {
     if (!host.level.timeline) throw new Error("PanjimController needs a level timeline");
@@ -128,6 +139,19 @@ export class PanjimController {
     this.aftermath = new AftermathCard(host.container);
     this.finaleCard = new FinaleCard(host.container);
     this.housesCounter = new HousesCounter(host.container);
+    this.riskToggle = new PrefToggle(
+      host.container,
+      { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: true, className: "risk-toggle" },
+      () => this.renderHeat()
+    );
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.ctrlKey || event.metaKey || event.altKey || isTyping(event)) return;
+        if (event.key === "r" || event.key === "R") this.riskToggle.toggle();
+      },
+      { signal: this.keyAbort.signal }
+    );
     this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
@@ -165,8 +189,34 @@ export class PanjimController {
     );
   }
 
+  /**
+   * The warning heat for the next storm, rebuilt from scratch: on every
+   * quarter tick, every build, demolish and repair, a rewind or a resume.
+   * Inside the last five quarters only; one storm at a time (the next one).
+   * Purely information: it reads a copy of the board and changes nothing.
+   */
+  renderHeat(): void {
+    const next = this.run.nextChallenge();
+    const quartersLeft = next ? this.run.quartersUntil(next) : 0;
+    this.exposure = next && quartersLeft >= 1 && quartersLeft <= HEAT_LEAD_QUARTERS ? this.run.exposureFor(next) : null;
+    if (!next || !this.exposure || !this.riskToggle.value) {
+      this.host.showHeat([]);
+      return;
+    }
+    const hazards = hazardsOf(next.kind);
+    const defences: string[] = [];
+    for (const [key, inst] of this.host.state.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (def && (def.effects.resilience ?? 0) > 0 && def.targetsHazards?.some((h) => hazards.includes(h as "cyclone" | "flood"))) defences.push(key);
+    }
+    const undefended = this.run.exposureFor(next, true);
+    const terrain = (key: string): string | undefined => this.host.state.placed.get(key)?.terrainId;
+    this.host.showHeat(buildHeatView(this.exposure, undefended, quartersLeft, defences, terrain));
+  }
+
   /** Repaints the Outlook from the current quarter. */
   renderOutlook(): void {
+    this.renderHeat();
     this.renderVoices();
     let houses = 0;
     let standing = 0;
@@ -627,12 +677,92 @@ export class PanjimController {
     );
   }
 
+  /** Scenario helper: lets quarters pass, animated like a fast-forward, until `quartersLeft` remain before the next storm. */
+  private async waitUntilQuartersLeft(quartersLeft: number): Promise<boolean> {
+    const next = this.run.nextChallenge();
+    if (!next) return false;
+    const gap = this.run.quartersUntil(next) - quartersLeft;
+    if (gap < 0) return false;
+    if (gap > 0) {
+      this.noteBoard();
+      await this.play(this.run.waitQuarters(gap), 60);
+    }
+    return true;
+  }
+
+  /** Scenario helper: plants what answers the next storm on its first zones, through the player's own build path. */
+  private async plantForNext(count: number): Promise<void> {
+    const next = this.run.nextChallenge();
+    if (!next) return;
+    const picks: [string, string][] =
+      next.kind === "cyclone"
+        ? [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "dune"], ["z2", "mangrove"]]
+        : [["z2", "khazan"], ["z2", "mangrove"], ["z3", "mangrove"], ["z4", "mangrove"]];
+    let planted = 0;
+    for (const [zone, element] of picks) {
+      if (planted >= count) break;
+      this.collectJar();
+      const coord = this.firstBuildableIn(zone, element);
+      if (coord && this.build(coord, element)) planted++;
+      await this.idle();
+    }
+  }
+
+  /** Scenario helper: frames the camera on the next storm's first zone. */
+  private frameNextStorm(): void {
+    const next = this.run.nextChallenge();
+    if (!next || !this.run.zones) return;
+    const keys = this.run.zones.keys(FRONTS[next.kind][0].path[0]);
+    const coords = keys.map((key) => {
+      const [q, r] = key.split(",").map(Number);
+      return { q, r };
+    });
+    const centre = coords.reduce((acc, c) => ({ q: acc.q + c.q / coords.length, r: acc.r + c.r / coords.length }), { q: 0, r: 0 });
+    this.host.focusCamera(centre, true);
+  }
+
   /**
    * Test-only scenarios for tools/phaseShots.ts: puts the board in a state
    * worth photographing. Uses the same actions a player has.
    */
   async scenario(name: string): Promise<boolean> {
+    // "heat-N": stop the clock N quarters before the next storm, building
+    // nothing. "heat-defend": plant three defences on its path first.
+    const heat = /^heat-(\d)$/.exec(name);
+    if (heat) {
+      const ok = await this.waitUntilQuartersLeft(Number(heat[1]));
+      this.frameNextStorm();
+      return ok;
+    }
     switch (name) {
+      case "past-storm": {
+        // Plays through the next storm (accepting its Aftermath), so the
+        // shots that follow are about the one after it.
+        const next = this.run.nextChallenge();
+        if (!next) return false;
+        while (!this.run.landed.has(next.id)) {
+          void this.fastForwardYear();
+          await wait(60);
+          while (this.busy) {
+            if (this.aftermath.isOpen) this.host.container.querySelector<HTMLButtonElement>(".aftermath-continue")?.click();
+            await wait(100);
+          }
+        }
+        return true;
+      }
+      case "risk-off": {
+        this.riskToggle.set(false);
+        return true;
+      }
+      case "risk-on": {
+        this.riskToggle.set(true);
+        return true;
+      }
+      case "heat-defend": {
+        await this.plantForNext(3);
+        this.frameNextStorm();
+        return true;
+      }
       case "forecast": {
         // Up to the lock (two years out), then a few beach defences, so the
         // overlay, the label and the gauge all have something to show.
@@ -879,6 +1009,8 @@ export class PanjimController {
   }
 
   dispose(): void {
+    this.keyAbort.abort();
+    this.riskToggle.dispose();
     this.housesCounter.dispose();
     this.finaleCard.dispose();
     this.aftermath.dispose();

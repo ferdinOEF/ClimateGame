@@ -6349,3 +6349,71 @@ earlier tag). The branch `backup/pre-maya-guide` marks the same commit on GitHub
 - **Self-assessment.** The numbers are trustworthy. The open question is
   whether players read "red" as "will fall" or "is stressed". The pulse on
   the at-risk houses (P2) is what separates the two.
+
+### P2 — the warning heat overlay — DONE
+
+**What was built:**
+- **One layer.** `render/heatOverlay.ts` is one `InstancedMesh` of flat hexes
+  with one shader, so it costs one draw call however many tiles are hot. It is
+  rebuilt on every quarter tick and every build, demolish, repair, rewind or
+  resume; the shader only animates the pulse from a time uniform.
+  - It sits 0.012 above each tile's top, over the terrain colour and the
+    street map (both drawn in the terrain shader) and under every building,
+    defence and creature (opaque meshes that hide it).
+  - It never writes depth, and uses a polygon offset so it cannot z-fight.
+- **What each tile gets** (`buildHeatView` in `core/exposure.ts`, tested):
+  - **Heat** = ramp(quarters left) × exposure, on land, beach and wetland
+    tiles. The water the storm comes from is never tinted. The heat is capped
+    at 50%, hatch stripes and pulse band included.
+  - **Hatch** above 30% heat: dark diagonal stripes laid out in world space,
+    so they run continuously across tiles.
+  - **Pulsing dark edge** on the houses that will fall, hardest hit first, at
+    most 24. A slow 2.6 s pulse; with reduced motion it is a still edge.
+  - **Green shield** (a shape with a white rim, upper left of the tile, clear
+    of the building) on every defence answering this storm on its path, and on
+    every tile the defences cooled by at least 0.15 of exposure. Where a
+    shielded tile is not hot, there is also a faint green wash.
+- **Only one storm's heat at a time:** the next one. The schedule keeps
+  storms at least two years apart, so two never fall in the same 5-quarter
+  window.
+  - The compound storm is one event with two fronts. Its heat is one crimson
+    layer: the stronger front's intensity per tile, not two hues.
+  - FUTURE WORK: if a level ever schedules two storms within 5 quarters of
+    each other, show the nearer one, as now, and say so in the Outlook line.
+- **Forecast ghosts retired.** The locked Forecast's translucent ghost tiles
+  are gone; the heat says the same thing, per tile and truthfully. The
+  Forecast's dashed outline and in-scene label stay until the heat starts,
+  then the outline steps aside.
+- **"Show risk" toggle** in the top right, under the Houses counter, with
+  shortcut R. It is on by default and remembered on this device
+  (`riptide-rising:show-risk:v1`; storage is wrapped in try/catch). It is a
+  real button with `aria-pressed`. Turning it off clears the heat and leaves
+  everything else as it was.
+- **Colour:** crimson rather than orange-red. In the first shots an
+  orange-red at 50% over the beach's sand gold read as more sand.
+
+**Screenshots** (`docs/screenshots/maya/`; the cyclone is played through
+first, because the easy cyclone takes no houses and so truthfully shows only
+a faint pink of at most 19%):
+- `p2-heat-5`, `p2-heat-3`, `p2-heat-2`, `p2-heat-1`: before the flood, no
+  defences.
+- `p2d-heat-5`, `p2d-heat-defend`, `p2d-heat-1`: with a khazan and two
+  mangroves planted.
+- `p2d-risk-off`: the heat toggled off.
+- Every shot has a `-gray` twin. The hatch and the dark pulsing edges still
+  separate hot from safe ground with no colour at all.
+
+**Performance** (software GL): 26 draw calls (+1), 324,616 triangles (+20),
+update 0.84 ms/frame (+0.1 ms; the exposure is only recomputed on board or
+clock changes).
+
+**Self-assessment:**
+- **Readable.** The ramp from 5% to 50% over the last five quarters is easy
+  to follow, and the hatch carries it in grayscale.
+- **Heavy on the flood.** Before the easy-test flood, almost every tile of
+  the wetlands is hatched: the whole Taleigao–St Cruz bowl is genuinely in
+  the water's way. It is truthful, but the wetland tiles (no houses, nearest
+  the river) read reddest. The pulse is what points at the houses.
+- **What a first-time player might misread.** Pink wetland is where the
+  water comes from, not something to save. Maya (P3–P4) names the place with
+  the most houses at risk, which should anchor the reading.

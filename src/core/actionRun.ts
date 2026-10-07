@@ -413,6 +413,16 @@ export class ActionRun {
     return this.spend(this.config.costs.fastForwardYear);
   }
 
+  /**
+   * Lets `quarters` quarters pass with no build. Not a player control (the
+   * player has +1 year and Next event); the screenshot scenarios use it to
+   * stop the clock on an exact quarter before a storm.
+   */
+  waitQuarters(quarters: number): ActionOutcome {
+    if (this.finished) return refuse("The run has reached 2050.");
+    return this.spend(Math.max(0, Math.floor(quarters)));
+  }
+
   /** Skips to one quarter before the next challenge, as a time-lapse. */
   fastForwardToNextEvent(): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
