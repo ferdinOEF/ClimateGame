@@ -229,7 +229,7 @@ class Player {
       seed: this.seed,
       stars: outcomes.map((o) => o.stars),
       protection: outcomes.map((o) => Number(o.protection.toFixed(3))),
-      houses: outcomes.map((o) => ({ saved: o.housesSaved, total: o.housesSaved + o.housesDamaged })),
+      houses: outcomes.map((o) => ({ saved: o.housesSaved, total: o.housesTotal })),
       index: index.index,
       components: {
         resilience: index.resilience,
