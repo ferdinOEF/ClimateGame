@@ -110,7 +110,9 @@ export class PanjimController {
       climate: host.level.climate,
       seed: host.seed,
       zones: host.zones,
-      voices: host.level.voices
+      voices: host.level.voices,
+      houseStars: host.level.houseStars,
+      houseRule: host.level.houses?.rule
     });
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, {
@@ -301,7 +303,8 @@ export class PanjimController {
     return computePanjimIndex({
       state: this.host.state,
       outcomes: this.run.schedule.map((c) => this.run.outcomes.get(c.id)).filter((o): o is ChallengeOutcome => o !== undefined),
-      incomePerQuarter: this.run.incomePerQuarter
+      incomePerQuarter: this.run.incomePerQuarter,
+      coinMultiplier: this.run.config.economy?.coinMultiplier
     });
   }
 

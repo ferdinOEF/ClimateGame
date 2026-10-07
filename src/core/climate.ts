@@ -44,6 +44,8 @@ export interface ChallengeDef {
   jitterYears: number;
   /** Base strength before the rising baseline, on the 1–3 scale. */
   strength: number;
+  /** Multiplies the strength, from the level's balance preset (1 when absent): "easy-test" halves the first storm. */
+  severityScale?: number;
 }
 
 export interface ClimateConfig {
@@ -124,7 +126,7 @@ export function seaLevelCm(config: ClimateConfig, quarter: number): number {
 
 /** A challenge's strength when it lands: base strength scaled by the baseline on its date. */
 export function challengeStrength(config: ClimateConfig, challenge: ScheduledChallenge): number {
-  return challenge.strength * baselineMultiplier(config, challenge.quarter);
+  return challenge.strength * (challenge.severityScale ?? 1) * baselineMultiplier(config, challenge.quarter);
 }
 
 /** The 1–3 icon rating the Forecast shows. */

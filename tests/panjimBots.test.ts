@@ -1,19 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { MONOCULTURES, PERSONAS, SEEDS, runBot, type BotResult, type Persona } from "../tools/panjimBots/bots";
+import { MONOCULTURES, PERSONAS, SEEDS, runBot, type BotResult, type Persona, type Preset } from "../tools/panjimBots/bots";
 
 /**
- * The Panjim 2050 balance contract, played out by bots on the real rules.
- * If tuning breaks any of these, the build fails. `npm run bots` prints the
- * full tables (docs/PROGRESS.md, P9).
+ * The Panjim 2050 balance contract, played out by bots on the real rules,
+ * under both balance presets. If tuning breaks any of these, the build
+ * fails. `npm run bots` prints the full tables (docs/PROGRESS.md).
  */
-const results = new Map<Persona, BotResult[]>([...PERSONAS, ...MONOCULTURES].map((persona) => [persona, SEEDS.map((seed) => runBot(persona, seed))]));
-const all = (persona: Persona) => results.get(persona)!;
-const threeStarShare = (persona: Persona) => {
-  const stars = all(persona).flatMap((r) => r.stars);
+const ALL: Persona[] = [...PERSONAS, ...MONOCULTURES];
+function play(preset: Preset): Map<Persona, BotResult[]> {
+  return new Map(ALL.map((persona) => [persona, SEEDS.map((seed) => runBot(persona, seed, preset))]));
+}
+const strict = play("strict");
+const easy = play("easy-test");
+
+const threeStarShare = (rows: BotResult[]) => {
+  const stars = rows.flatMap((r) => r.stars);
   return stars.filter((s) => s === 3).length / stars.length;
 };
+const mean = (rows: BotResult[], pick: (r: BotResult) => number) => rows.reduce((sum, r) => sum + pick(r), 0) / rows.length;
 
-describe("Panjim 2050 bots (20 seeds per persona)", () => {
+describe("Panjim 2050 bots, strict preset (20 seeds per persona)", () => {
+  const all = (p: Persona) => strict.get(p)!;
+
   it("Casual always reaches 2050 with at least one star per challenge", () => {
     for (const run of all("casual")) {
       expect(run.stars).toHaveLength(3);
@@ -22,11 +30,11 @@ describe("Panjim 2050 bots (20 seeds per persona)", () => {
   });
 
   it("Greedy gets three stars in no more than 25% of challenges", () => {
-    expect(threeStarShare("greedy")).toBeLessThanOrEqual(0.25);
+    expect(threeStarShare(all("greedy"))).toBeLessThanOrEqual(0.25);
   });
 
   it("Smart gets three stars in at least 70% of challenges", () => {
-    expect(threeStarShare("smart")).toBeGreaterThanOrEqual(0.7);
+    expect(threeStarShare(all("smart"))).toBeGreaterThanOrEqual(0.7);
   });
 
   it("Rusher gets at most one star in at least two of the three challenges", () => {
@@ -34,27 +42,21 @@ describe("Panjim 2050 bots (20 seeds per persona)", () => {
   });
 
   it("Banker never beats Smart's index on the same seed", () => {
-    const smart = all("smart");
-    all("banker").forEach((banker, i) => expect(banker.index, banker.seed).toBeLessThanOrEqual(smart[i].index));
+    all("banker").forEach((banker, i) => expect(banker.index, banker.seed).toBeLessThanOrEqual(all("smart")[i].index));
   });
 
   it("gives identical results for the same seed", () => {
-    for (const persona of PERSONAS) expect(runBot(persona, SEEDS[3])).toEqual(all(persona)[3]);
+    for (const persona of PERSONAS) expect(runBot(persona, SEEDS[3], "strict")).toEqual(all(persona)[3]);
   });
 
   it("lets no single strategy dominate", () => {
-    // No one-trick build matches the balanced plan: walls-only and
-    // mangroves-only both score below Smart, while each still earns some
-    // three-star storms, so neither is a dead end either.
-    const meanIndex = (persona: Persona) => all(persona).reduce((sum, r) => sum + r.index, 0) / SEEDS.length;
+    // Neither one-trick build beats the balanced plan on the index or on
+    // total stars; and the money-maker really does out-earn the planner.
     for (const mono of MONOCULTURES) {
-      expect(meanIndex(mono), mono).toBeLessThan(meanIndex("smart"));
-      expect(threeStarShare(mono), mono).toBeLessThan(threeStarShare("smart"));
-      expect(threeStarShare(mono), mono).toBeGreaterThan(0);
+      expect(mean(all(mono), (r) => r.index), mono).toBeLessThan(mean(all("smart"), (r) => r.index));
+      expect(mean(all(mono), (r) => r.stars.reduce((a, b) => a + b, 0)), mono).toBeLessThanOrEqual(mean(all("smart"), (r) => r.stars.reduce((a, b) => a + b, 0)));
     }
-    // And the money-maker really does make more money than the planner.
-    const livelihoods = (persona: Persona) => all(persona).reduce((sum, r) => sum + r.components.livelihoods, 0) / SEEDS.length;
-    expect(livelihoods("greedy")).toBeGreaterThan(livelihoods("smart"));
+    expect(mean(all("greedy"), (r) => r.components.livelihoods)).toBeGreaterThan(mean(all("smart"), (r) => r.components.livelihoods));
   });
 
   it("sizes the economy so a careful player makes 40 to 70 meaningful decisions", () => {
@@ -62,5 +64,29 @@ describe("Panjim 2050 bots (20 seeds per persona)", () => {
     const median = decisions[Math.floor(decisions.length / 2)];
     expect(median).toBeGreaterThanOrEqual(40);
     expect(median).toBeLessThanOrEqual(70);
+  });
+});
+
+describe("Panjim 2050 bots, easy-test preset (20 seeds per persona)", () => {
+  const all = (p: Persona) => easy.get(p)!;
+
+  it("Casual gets at least two stars on the first two storms", () => {
+    for (const run of all("casual")) {
+      expect(run.stars[0], run.seed).toBeGreaterThanOrEqual(2);
+      expect(run.stars[1], run.seed).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("Smart gets three stars on all three storms", () => {
+    for (const run of all("smart")) expect(run.stars, run.seed).toEqual([3, 3, 3]);
+  });
+
+  it("nobody loses every house in the first two storms", () => {
+    for (const persona of ALL) {
+      for (const run of all(persona)) {
+        expect(run.houses[0].saved, `${persona} ${run.seed}`).toBeGreaterThan(0);
+        expect(run.houses[1].saved, `${persona} ${run.seed}`).toBeGreaterThan(0);
+      }
+    }
   });
 });

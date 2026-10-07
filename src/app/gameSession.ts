@@ -38,6 +38,7 @@ import { Telemetry } from "@core/telemetry";
 import { PanjimController } from "./panjimController";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
+import { boardSetup } from "@levels/balance";
 import startingStateData from "@data/startingState.json";
 
 interface StartingStateFile {
@@ -150,7 +151,16 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const prebuiltHouses = STARTING_STATE.prebuiltHouses.filter((coord) =>
     presentTileKeys.has(`${coord.q},${coord.r}`)
   );
-  const startingElements: StartingElementSeed[] = prebuiltHouses.map((coord) => ({ coord, elementId: "house" }));
+  /**
+   * The level's own board setup (levels/balance.ts): on Panjim 2050 a House on
+   * every land tile without a monument, their effects scaled, House off the
+   * build menu, and the open sea out of bounds. Empty on other levels.
+   */
+  const setup = boardSetup(level, levelMap);
+  const startingElements: StartingElementSeed[] = [
+    ...prebuiltHouses.map((coord) => ({ coord, elementId: "house" })),
+    ...setup.startingElements
+  ];
 
   /**
    * Every timer this session starts, so `dispose()` can cancel them.
@@ -262,6 +272,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // the main difficulty dials (see src/data/levels.json). The pre-built
   // houses and the map itself stay shared across every level.
   const state = new GameState(levelTiles, startingElements, level.startingCoin);
+  for (const [id, scale] of setup.effectScale) state.effectScale.set(id, scale);
+  for (const id of setup.excluded) state.excludedElements.add(id);
+  for (const key of setup.unbuildable) state.unbuildable.add(key);
   state.severityCreepPerHazard = level.hazards.severityCreepPerHazard;
   terrain.loadMap(levelTiles, keysToCoords(state.claimed));
 
@@ -295,9 +308,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // residential cluster of pre-built Houses on Land, inland from the coastal
   // claim — render them in place at boot, no settle animation (they were
   // never "just built," they're already there).
-  for (const coord of prebuiltHouses) {
-    elements.place(coord, "house", terrain.heightAt(coord));
+  for (const seed of startingElements) {
+    elements.place(seed.coord, seed.elementId, terrain.heightAt(seed.coord));
   }
+  // Hundreds of pre-built houses would otherwise keep a cat on screen
+  // somewhere every frame; two house reactions a second is plenty.
+  if (setup.startingElements.length > 0) reactions.setAmbientRateCap("house", 2);
 
   // Each map carries its own focus point, chosen when the map was built to
   // put sea, sand, river and town in one frame. A map's (0,0) is wherever its
@@ -1410,8 +1426,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
     terrain.resetClaims(keysToCoords(state.claimed));
-    for (const coord of prebuiltHouses) {
-      elements.place(coord, "house", terrain.heightAt(coord));
+    for (const seed of startingElements) {
+      elements.place(seed.coord, seed.elementId, terrain.heightAt(seed.coord));
     }
     nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
     nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;

@@ -9,6 +9,7 @@ const outcome = (protection: number, stars: 1 | 2 | 3): ChallengeOutcome => ({
   protection,
   stars,
   housesSaved: 0,
+  housesTotal: 0,
   housesDamaged: 0,
   damagedHouses: []
 });

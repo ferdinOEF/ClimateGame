@@ -3,7 +3,7 @@ import { GameState } from "../src/core/gameState";
 import { ActionRun } from "../src/core/actionRun";
 import { aftermathLine } from "../src/core/aftermath";
 import { resolveChallenge, ZoneIndex, type ZoneDef } from "../src/core/zones";
-import { LEVEL_BY_ID } from "../src/levels/levels";
+import { levelWithPreset } from "../src/levels/levels";
 import { mapById } from "../src/levels/levelMap";
 
 function fixture(): { state: GameState; zones: ZoneIndex } {
@@ -59,7 +59,7 @@ describe("aftermath line", () => {
 
 describe("snapshots", () => {
   it("rewinds to the forecast lock exactly, and replaying is deterministic", () => {
-    const level = LEVEL_BY_ID.get("l01-first-rains")!;
+    const level = levelWithPreset("l01-first-rains", "strict")!;
     const map = mapById("panaji")!;
     const make = () =>
       new ActionRun(new GameState(map.tiles, [], level.startingCoin), level.timeline!, { climate: level.climate, seed: level.id, zones: map.zones, voices: level.voices });

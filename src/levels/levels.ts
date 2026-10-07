@@ -4,6 +4,7 @@ import { dailyChallengeId, hashSeed, Rng } from "@core/rng";
 import type { TimelineConfig } from "@core/actionRun";
 import type { ClimateConfig } from "@core/climate";
 import type { VoiceDef } from "@core/voices";
+import { applyBalance, type BalancePreset, type HouseFill } from "./balance";
 
 /**
  * Level definitions — the campaign, loaded from data, never hardcoded.
@@ -82,11 +83,27 @@ export interface LevelDef {
   climate?: ClimateConfig;
   /** Voices of Panjim: optional citizen requests per era (core/voices.ts). */
   voices?: VoiceDef[];
+  /** The active balance preset's name, and the presets this level offers (see levels/balance.ts). */
+  balancePreset?: string;
+  balancePresets?: Record<string, BalancePreset>;
+  /** Set from the active preset: stars per storm by the share of houses saved. */
+  houseStars?: { three: number; two: number };
+  /** Houses pre-built on the land, and how they count (levels/balance.ts). */
+  houses?: HouseFill;
   objectives: Objective[];
   starThresholds: [number, number, number];
 }
 
-export const LEVELS: LevelDef[] = levelData as unknown as LevelDef[];
+/** The levels exactly as written in levels.json, before any balance preset is applied. */
+export const RAW_LEVELS: LevelDef[] = levelData as unknown as LevelDef[];
+/** The levels as played: each with its active balance preset folded in. */
+export const LEVELS: LevelDef[] = RAW_LEVELS.map((level) => applyBalance(level));
+
+/** A level under a named preset, for comparing presets (the bots, the tests). */
+export function levelWithPreset(levelId: string, preset: string): LevelDef | null {
+  const raw = RAW_LEVELS.find((level) => level.id === levelId);
+  return raw ? applyBalance(raw, preset) : null;
+}
 export const LEVEL_BY_ID = new Map(LEVELS.map((level) => [level.id, level]));
 
 export function levelIndex(levelId: string): number {

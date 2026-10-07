@@ -4,7 +4,7 @@ import { computeCombos, newComboMembers } from "../src/core/combos";
 import { ActionRun } from "../src/core/actionRun";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { ZoneIndex, zoneDefence } from "../src/core/zones";
-import { LEVEL_BY_ID } from "../src/levels/levels";
+import { levelWithPreset } from "../src/levels/levels";
 import { mapById } from "../src/levels/levelMap";
 
 function strip(terrain: string, n: number): GameState {
@@ -54,7 +54,7 @@ describe("perfect-fit combos", () => {
 });
 
 describe("Voices of Panjim", () => {
-  const level = LEVEL_BY_ID.get("l01-first-rains")!;
+  const level = levelWithPreset("l01-first-rains", "strict")!;
   const map = mapById("panaji")!;
 
   it("has two or three requests per era, each asking for something the map can host", () => {

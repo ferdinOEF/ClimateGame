@@ -99,7 +99,8 @@
       "cyclone"
     ],
     "validTerrainIds": [
-      "beach"
+      "beach",
+      "coast"
     ],
     "buildCost": 90,
     "maintenanceCostPerTurn": 5,

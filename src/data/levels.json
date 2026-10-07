@@ -51,7 +51,7 @@
     "id": "l01-first-rains",
     "name": "Panaji",
     "subtitle": "Panjim 2050",
-    "brief": "Twenty-five years of Goa's capital, from 2025 to 2050. Time moves only when you act: each build takes a season, heavy engineering takes two. Three big storms are coming, and the sea rises a little every year. Get the city ready, one season at a time.",
+    "brief": "Twenty-five years of Goa's capital, from 2025 to 2050. Every patch of land is already home to someone: the city fills it. Time moves only when you act. Build on the beach, the wetlands, the river and the near sea to protect those homes from three storms, and count the houses you save.",
     "mapId": "panaji",
     "startingCoin": 350,
     "parTurns": 40,
@@ -114,6 +114,51 @@
           "strength": 2.6
         }
       ]
+    },
+    "houses": {
+      "fillLand": true,
+      "houseEconomyScale": 0.0151,
+      "excludeFromBuild": [
+        "house"
+      ],
+      "coastBuildRange": 4,
+      "rule": {
+        "resilience": 45,
+        "exposureDecay": {
+          "cyclone": 0.8,
+          "flood": 0.6
+        }
+      }
+    },
+    "balancePreset": "easy-test",
+    "balancePresets": {
+      "easy-test": {
+        "coinMultiplier": 10,
+        "severityScale": {
+          "c1-cyclone": 0.5,
+          "c2-flood": 0.6,
+          "c3-compound": 1
+        },
+        "houseStars": {
+          "three": 0.9,
+          "two": 0.6
+        },
+        "houseRule": {
+          "resilience": 55,
+          "exposureDecay": {
+            "cyclone": 0.8,
+            "flood": 0.6
+          }
+        }
+      },
+      "strict": {
+        "coinMultiplier": 1,
+        "severityScale": {},
+        "houseStars": {
+          "three": 0.9,
+          "two": 0.6
+        }
+      }
     },
     "objectives": [
       {
@@ -194,15 +239,15 @@
         "reward": 60
       },
       {
-        "id": "v2-merces-houses",
+        "id": "v2-merces-mangroves",
         "era": 2,
         "who": "Neha, teacher in Merces",
-        "text": "Our children need homes near the school. Two more houses in Merces?",
-        "thanks": "Two more families on our street. Welcome!",
+        "text": "Our school is down by the creek. Mangroves near Merces and the children get to class through the monsoon.",
+        "thanks": "Dry feet all term. Thank you!",
         "goal": {
           "type": "standing",
-          "elementId": "house",
-          "count": 2,
+          "elementId": "mangrove",
+          "count": 3,
           "zone": "z2"
         },
         "reward": 40
