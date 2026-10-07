@@ -31,7 +31,8 @@ import { outlookFor } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
 import { voiceProgress } from "../../src/core/voices";
 import { hashSeed, Rng } from "../../src/core/rng";
-import { LEVEL_BY_ID, type LevelDef } from "../../src/levels/levels";
+import { levelWithPreset, type LevelDef } from "../../src/levels/levels";
+import { boardSetup } from "../../src/levels/balance";
 import { mapById } from "../../src/levels/levelMap";
 
 export type Persona = "casual" | "greedy" | "smart" | "rusher" | "banker" | "walls" | "mangroves";
@@ -42,6 +43,8 @@ export interface BotResult {
   seed: string;
   stars: number[];
   protection: number[];
+  /** Houses in each storm's path: how many were saved, out of how many. */
+  houses: { saved: number; total: number }[];
   index: number;
   /** The index's five parts. */
   components: { resilience: number; biodiversity: number; livelihoods: number; population: number; food: number };
@@ -74,7 +77,13 @@ export const TIME = {
   finale: 3800 + 5000
 };
 
-const LEVEL: LevelDef = LEVEL_BY_ID.get("l01-first-rains")!;
+export type Preset = "strict" | "easy-test";
+
+/** Panaji under each balance preset, built once. The tuning sweeps mutate these to try other numbers. */
+export const BOT_LEVELS: Record<Preset, LevelDef> = {
+  strict: levelWithPreset("l01-first-rains", "strict")!,
+  "easy-test": levelWithPreset("l01-first-rains", "easy-test")!
+};
 const MAP = mapById("panaji")!;
 const ZONES = new ZoneIndex(MAP.zones);
 const RESERVED = new Set(MAP.monuments.map((m) => `${m.q},${m.r}`));
@@ -84,10 +93,15 @@ function coordOf(key: string): AxialCoord {
   return { q, r };
 }
 
-function newRun(seed: string): ActionRun {
-  const state = new GameState(MAP.tiles, [], LEVEL.startingCoin);
+/** The same board the session builds: monuments reserved, the level's houses, exclusions and sea limit applied. */
+function newRun(seed: string, level: LevelDef): ActionRun {
+  const setup = boardSetup(level, MAP);
+  const state = new GameState(MAP.tiles, setup.startingElements, level.startingCoin);
+  for (const [id, scale] of setup.effectScale) state.effectScale.set(id, scale);
+  for (const id of setup.excluded) state.excludedElements.add(id);
+  for (const key of setup.unbuildable) state.unbuildable.add(key);
   for (const key of RESERVED) state.reserved.add(key);
-  return new ActionRun(state, LEVEL.timeline!, { climate: LEVEL.climate, seed, zones: MAP.zones, voices: LEVEL.voices });
+  return new ActionRun(state, level.timeline!, { climate: level.climate, seed, zones: MAP.zones, voices: level.voices, houseStars: level.houseStars, houseRule: level.houses?.rule });
 }
 
 class Player {
@@ -103,8 +117,8 @@ class Player {
   firstRewardMs = -1;
   private phaseSeen = new Map<string, string>();
 
-  constructor(readonly persona: Persona, readonly seed: string) {
-    this.run = newRun(seed);
+  constructor(readonly persona: Persona, readonly seed: string, readonly preset: Preset = "strict") {
+    this.run = newRun(seed, BOT_LEVELS[preset]);
     this.rng = new Rng(hashSeed(`${persona}:${seed}`));
   }
 
@@ -209,12 +223,13 @@ class Player {
 
   result(): BotResult {
     const outcomes = this.run.schedule.map((c) => this.run.outcomes.get(c.id)!).filter(Boolean);
-    const index = computePanjimIndex({ state: this.state, outcomes, incomePerQuarter: this.run.incomePerQuarter });
+    const index = computePanjimIndex({ state: this.state, outcomes, incomePerQuarter: this.run.incomePerQuarter, coinMultiplier: this.run.config.economy?.coinMultiplier });
     return {
       persona: this.persona,
       seed: this.seed,
       stars: outcomes.map((o) => o.stars),
       protection: outcomes.map((o) => Number(o.protection.toFixed(3))),
+      houses: outcomes.map((o) => ({ saved: o.housesSaved, total: o.housesTotal })),
       index: index.index,
       components: {
         resilience: index.resilience,
@@ -422,8 +437,8 @@ const PLAY: Record<Persona, (p: Player) => void> = {
 /** The two single-trick strategies, for the "no single strategy dominates" check. */
 export const MONOCULTURES: Persona[] = ["walls", "mangroves"];
 
-export function runBot(persona: Persona, seed: string): BotResult {
-  const player = new Player(persona, seed);
+export function runBot(persona: Persona, seed: string, preset: Preset = "strict"): BotResult {
+  const player = new Player(persona, seed, preset);
   PLAY[persona](player);
   return player.result();
 }
@@ -435,4 +450,9 @@ export function percentile(values: number[], p: number): number {
   if (sorted.length === 0) return 0;
   const index = Math.min(sorted.length - 1, Math.max(0, Math.round((p / 100) * (sorted.length - 1))));
   return sorted[index];
+}
+
+/** Houses in each storm's path that were saved, and how many there were, per storm. */
+export function housesOf(result: BotResult): { saved: number; total: number }[] {
+  return result.houses;
 }

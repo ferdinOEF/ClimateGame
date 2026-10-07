@@ -3,7 +3,7 @@ import { ELEMENT_BY_ID } from "./elements";
 import type { ElementInstance, GameState } from "./gameState";
 import { QUARTERS_PER_YEAR } from "./quarters";
 import { buildSchedule, challengeStrength, outlookFor, type ClimateConfig, type ScheduledChallenge } from "./climate";
-import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type ZoneDef } from "./zones";
+import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { voiceProgress, type VoiceDef, type VoiceStatus } from "./voices";
 
@@ -43,7 +43,7 @@ export interface TimelineConfig {
    * economy: the run should afford roughly 40–70 meaningful decisions, never
    * everything. `jarStart` is a small gift so the first tap comes early.
    */
-  economy?: { incomeScale: number; jarStart: number };
+  economy?: { incomeScale: number; jarStart: number; coinMultiplier?: number };
 }
 
 export { QUARTERS_PER_YEAR };
@@ -71,6 +71,10 @@ export interface ActionRunOptions {
   zones?: readonly ZoneDef[];
   /** The level's Voices of Panjim requests. */
   voices?: readonly VoiceDef[];
+  /** Stars per storm by the share of houses saved (the level's balance preset). Without it, by protection. */
+  houseStars?: { three: number; two: number };
+  /** How houses stand up to a storm, house by house (the level's `houses` block). */
+  houseRule?: HouseRule;
 }
 
 /** The readiness gauge: what the next challenge would do to the board as it stands. */
@@ -139,6 +143,8 @@ export class ActionRun {
   /** The board's perfect-fit combos, recomputed after every action and challenge. */
   comboState: ComboState;
   readonly voices: readonly VoiceDef[];
+  readonly houseStars?: { three: number; two: number };
+  readonly houseRule?: HouseRule;
   readonly voiceStatus = new Map<string, VoiceStatus>();
   /**
    * The run as it stood the quarter each challenge's Forecast locked, by
@@ -165,6 +171,8 @@ export class ActionRun {
     this.comboState = computeCombos(state);
     this.combos = this.comboState.bonus;
     this.voices = options.voices ?? [];
+    this.houseStars = options.houseStars;
+    this.houseRule = options.houseRule;
     for (const voice of this.voices) this.voiceStatus.set(voice.id, voice.era === 1 ? "active" : "waiting");
   }
 
@@ -268,7 +276,7 @@ export class ActionRun {
     const strength = challengeStrength(this.climate, lockedNow ? challenge : nominal);
     const preview = this.state.clone();
     preview.turn = Math.max(this.quarter, challenge.quarter);
-    const outcome = resolveChallenge(preview, this.zones, challenge.kind, strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos);
+    const outcome = resolveChallenge(preview, this.zones, challenge.kind, strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule);
     return { challenge, strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
   }
 
@@ -423,7 +431,7 @@ export class ActionRun {
     if (!this.zones || !this.climate) {
       events.push({ type: "challenge", challenge, outcome: null });
     } else {
-      const outcome = resolveChallenge(this.state, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, this.combos);
+      const outcome = resolveChallenge(this.state, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule);
       this.outcomes.set(challenge.id, outcome);
       events.push({ type: "challenge", challenge, outcome });
     }

@@ -3,7 +3,7 @@ import { GameState } from "../src/core/gameState";
 import { resolveChallenge, ZoneIndex, zoneDefence, type ZoneDef } from "../src/core/zones";
 import { ActionRun } from "../src/core/actionRun";
 import { mapById } from "../src/levels/levelMap";
-import { LEVEL_BY_ID } from "../src/levels/levels";
+import { levelWithPreset } from "../src/levels/levels";
 
 /** A tiny board: Z1 beach, Z2 estuary, Z3 river + land, Z4 land. Four tiles a zone. */
 function fixture(): { state: GameState; zones: ZoneIndex } {
@@ -122,7 +122,7 @@ describe("Panaji zones", () => {
   });
 
   it("updates the readiness gauge as the player builds", () => {
-    const level = LEVEL_BY_ID.get("l01-first-rains")!;
+    const level = levelWithPreset("l01-first-rains", "strict")!;
     const state = new GameState(map.tiles, [], 100000);
     const run = new ActionRun(state, level.timeline!, { climate: level.climate, seed: level.id, zones: map.zones });
     const before = run.readiness()!;

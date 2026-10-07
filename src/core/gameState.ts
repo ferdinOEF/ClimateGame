@@ -112,6 +112,17 @@ export class GameState {
    * growth times are authored on a 25-year scale).
    */
   maturityField: "matureTurns" | "matureQuarters" = "matureTurns";
+  /**
+   * Scales every effect of an element type (all of its `effects`), by element
+   * id. Panjim's land is pre-filled with hundreds of houses; scaling them
+   * keeps their total money, food and population near what ten used to give.
+   * Empty everywhere else.
+   */
+  readonly effectScale = new Map<string, number>();
+  /** Element ids the player may not build on this level (House, once the land is full). */
+  readonly excludedElements = new Set<string>();
+  /** Tile keys the player may not build on: the open sea far from shore. */
+  readonly unbuildable = new Set<string>();
   private readonly startingElements: StartingElementSeed[];
   private readonly startingCoin: number;
 
@@ -180,6 +191,9 @@ export class GameState {
     copy.severityCreepPerHazard = this.severityCreepPerHazard;
     copy.erasCompleted = this.erasCompleted;
     copy.autoCollectIncome = this.autoCollectIncome;
+    for (const [id, scale] of this.effectScale) copy.effectScale.set(id, scale);
+    for (const id of this.excludedElements) copy.excludedElements.add(id);
+    for (const key of this.unbuildable) copy.unbuildable.add(key);
     copy.maturityField = this.maturityField;
     for (const key of this.reserved) copy.reserved.add(key);
     return copy;
@@ -233,10 +247,10 @@ export class GameState {
   buildableAt(coord: AxialCoord): ElementDef[] {
     const key = axialKey(coord);
     const tile = this.placed.get(key);
-    if (!tile || !this.claimed.has(key) || this.elements.has(key) || this.reserved.has(key)) return [];
+    if (!tile || !this.claimed.has(key) || this.elements.has(key) || this.reserved.has(key) || this.unbuildable.has(key)) return [];
     const results: ElementDef[] = [];
     for (const def of ELEMENT_BY_ID.values()) {
-      if (def.validTerrainIds.includes(tile.terrainId)) results.push(def);
+      if (def.validTerrainIds.includes(tile.terrainId) && !this.excludedElements.has(def.id)) results.push(def);
     }
     return results;
   }
@@ -342,7 +356,7 @@ export class GameState {
       // gives nothing until it is repaired. Buildings never degrade on the
       // turn-based levels, so this changes nothing there.
       if (def.kind === "building" && inst.degradeAmount >= 1) continue;
-      total += delta * this.maturityFraction(inst, def);
+      total += delta * this.maturityFraction(inst, def) * (this.effectScale.get(def.id) ?? 1);
     }
     return total;
   }

@@ -237,6 +237,28 @@ export class ElementReactions {
     this.ambientSource = source;
   }
 
+  /**
+   * At most `perSecond` ambient reactions a second for one element type. A
+   * board pre-filled with hundreds of houses would otherwise keep a cat on
+   * screen somewhere every frame; past the cap a house simply waits for its
+   * next turn. Taps are never capped.
+   */
+  setAmbientRateCap(elementId: string, perSecond: number): void {
+    this.rateCaps.set(elementId, { perSecond, recent: [] });
+  }
+
+  private readonly rateCaps = new Map<string, { perSecond: number; recent: number[] }>();
+
+  /** True if `elementId` may play an ambient reaction now; records it if so. */
+  private takeRateSlot(elementId: string, nowMs: number): boolean {
+    const cap = this.rateCaps.get(elementId);
+    if (!cap) return true;
+    while (cap.recent.length > 0 && nowMs - cap.recent[0] > 1000) cap.recent.shift();
+    if (cap.recent.length >= cap.perSecond) return false;
+    cap.recent.push(nowMs);
+    return true;
+  }
+
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
     if (!this.ambientSource || !this.ambientEnabled) return;
@@ -257,6 +279,11 @@ export class ElementReactions {
       // Never let ambient play evict a tap reaction: the animator force-
       // finishes its oldest reaction at the cap, so stop short of it.
       if (this.animator.activeCount >= AMBIENT_HEADROOM_CAP) continue;
+      if (!this.takeRateSlot(el.elementId, nowMs)) {
+        // Over this type's cap: try again on its next turn, not next frame.
+        this.nextAmbient.set(el.key, nowMs + jitter(AMBIENT_REPEAT_MS));
+        continue;
+      }
       this.trigger(el.elementId, el.x, el.y, el.z);
       spawnedThisFrame = true;
       this.nextAmbient.set(el.key, nowMs + jitter(AMBIENT_REPEAT_MS));

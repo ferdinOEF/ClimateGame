@@ -1032,3 +1032,67 @@
 .houses-saved[hidden] {
   display: none !important;
 }
+
+/* ---- Houses saved: the headline number ------------------------------------ */
+
+.houses-counter {
+  position: absolute;
+  z-index: 10;
+  top: 64px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(20, 30, 26, 0.82);
+  border: 1px solid rgba(255, 243, 196, 0.3);
+  color: #fdf6e6;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.houses-counter-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(253, 246, 230, 0.75);
+}
+
+.houses-counter-figures {
+  font-size: 14px;
+}
+
+.houses-counter-value {
+  font-size: 22px;
+  color: #7fe0b8;
+}
+
+.houses-counter.some-lost .houses-counter-value {
+  color: #f2c35b;
+}
+
+.houses-counter.live {
+  border-color: #7fe0b8;
+  box-shadow: 0 0 14px rgba(127, 224, 184, 0.45);
+}
+
+.houses-counter.tick .houses-counter-value {
+  animation: houses-tick 260ms ease-out;
+}
+
+@keyframes houses-tick {
+  40% { color: #ff8a73; transform: scale(1.12); }
+}
+
+.aftermath-hero {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #9fd8c6;
+}
+
+.aftermath-hero[hidden] {
+  display: none;
+}

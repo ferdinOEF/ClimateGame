@@ -38,6 +38,7 @@ import { Telemetry } from "@core/telemetry";
 import { PanjimController } from "./panjimController";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
+import { boardSetup } from "@levels/balance";
 import startingStateData from "@data/startingState.json";
 
 interface StartingStateFile {
@@ -150,7 +151,16 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const prebuiltHouses = STARTING_STATE.prebuiltHouses.filter((coord) =>
     presentTileKeys.has(`${coord.q},${coord.r}`)
   );
-  const startingElements: StartingElementSeed[] = prebuiltHouses.map((coord) => ({ coord, elementId: "house" }));
+  /**
+   * The level's own board setup (levels/balance.ts): on Panjim 2050 a House on
+   * every land tile without a monument, their effects scaled, House off the
+   * build menu, and the open sea out of bounds. Empty on other levels.
+   */
+  const setup = boardSetup(level, levelMap);
+  const startingElements: StartingElementSeed[] = [
+    ...prebuiltHouses.map((coord) => ({ coord, elementId: "house" })),
+    ...setup.startingElements
+  ];
 
   /**
    * Every timer this session starts, so `dispose()` can cancel them.
@@ -262,6 +272,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // the main difficulty dials (see src/data/levels.json). The pre-built
   // houses and the map itself stay shared across every level.
   const state = new GameState(levelTiles, startingElements, level.startingCoin);
+  for (const [id, scale] of setup.effectScale) state.effectScale.set(id, scale);
+  for (const id of setup.excluded) state.excludedElements.add(id);
+  for (const key of setup.unbuildable) state.unbuildable.add(key);
   state.severityCreepPerHazard = level.hazards.severityCreepPerHazard;
   terrain.loadMap(levelTiles, keysToCoords(state.claimed));
 
@@ -295,9 +308,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // residential cluster of pre-built Houses on Land, inland from the coastal
   // claim — render them in place at boot, no settle animation (they were
   // never "just built," they're already there).
-  for (const coord of prebuiltHouses) {
-    elements.place(coord, "house", terrain.heightAt(coord));
+  for (const seed of startingElements) {
+    elements.place(seed.coord, seed.elementId, terrain.heightAt(seed.coord));
   }
+  // Hundreds of pre-built houses would otherwise keep a cat on screen
+  // somewhere every frame; two house reactions a second is plenty.
+  if (setup.startingElements.length > 0) reactions.setAmbientRateCap("house", 2);
 
   // Each map carries its own focus point, chosen when the map was built to
   // put sea, sand, river and town in one frame. A map's (0,0) is wherever its
@@ -466,7 +482,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           },
           challengeFx: {
             begin: (challenge) => panjimFxBegin(challenge.kind),
-            zone: (zone, outcome, slow, durationMs) => panjimFxZone(zone, outcome, slow, durationMs),
+            zone: (zone, outcome, slow, durationMs, onHouseLost) => panjimFxZone(zone, outcome, slow, durationMs, onHouseLost),
             end: () => panjimFxEnd()
           },
           redrawBoard: () => redrawPanjimBoard(),
@@ -1410,8 +1426,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
     terrain.resetClaims(keysToCoords(state.claimed));
-    for (const coord of prebuiltHouses) {
-      elements.place(coord, "house", terrain.heightAt(coord));
+    for (const seed of startingElements) {
+      elements.place(seed.coord, seed.elementId, terrain.heightAt(seed.coord));
     }
     nextFloodAtTurn = FLOOD_INTERVAL_TURNS;
     nextCycloneAtTurn = CYCLONE_INTERVAL_TURNS;
@@ -1512,7 +1528,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     zone: import("@core/zones").ZoneOutcome,
     outcome: import("@core/zones").ChallengeOutcome,
     slow: boolean,
-    durationMs: number
+    durationMs: number,
+    onHouseLost: () => void = () => {}
   ): void {
     const zones = panjim?.run.zones;
     if (!zones) return;
@@ -1558,11 +1575,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       elements.destroy({ q, r });
       playSound("hazard_breach");
     }
-    for (const key of outcome.damagedHouses) {
-      if (zones.zoneOf(key) !== zone.zoneId) continue;
-      const [q, r] = key.split(",").map(Number);
-      later(() => elements.setBuildingDamagedVisual({ q, r }), durationMs * 0.5);
-    }
+    // The houses lost here go one at a time, most exposed first (the order
+    // the resolver lost them in), each ticking the Houses saved counter down.
+    const lostHere = outcome.damagedHouses.filter((key) => zones.zoneOf(key) === zone.zoneId);
+    const houseGap = lostHere.length > 0 ? (durationMs * 0.85) / lostHere.length : 0;
+    lostHere.forEach((key, i) => {
+      later(() => {
+        const [q, r] = key.split(",").map(Number);
+        elements.setBuildingDamagedVisual({ q, r });
+        onHouseLost();
+      }, i * houseGap);
+    });
     playSound(zone.held ? "build" : "hazard_overwhelmed");
     runTracker.recordHazard({
       totalDamage: zone.leak,
@@ -1929,7 +1952,27 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __telemetry: telemetry.events,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
-    __panjimScenarioForTest: (name: string) => (panjim ? panjim.scenario(name) : false),
+    __panjimScenarioForTest: async (name: string): Promise<boolean> => {
+      if (!panjim) return false;
+      // "build-<terrain>": builds one thing on that terrain near the city,
+      // then opens the build menu on the next free tile of the same terrain,
+      // so a screenshot shows the build and what else the tile offers.
+      const build = /^build-(beach|estuary|river|coast)$/.exec(name);
+      if (!build) return panjim.scenario(name);
+      const element = { beach: "dune", estuary: "mangrove", river: "small_dam", coast: "breakwater" }[build[1]]!;
+      const first = panjim.firstBuildable(element, levelMap.focus);
+      if (!first) return false;
+      const world = axialToWorld(first, 1.0);
+      focusOn(world.x, world.z, true);
+      panjim.build(first, element);
+      await panjim.idle();
+      const next = panjim.firstBuildable(element, first);
+      if (next) {
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        openTilePopover(next);
+      }
+      return true;
+    },
     // Lets tools/verify_readability.ts (and any future script needing exact
     // camera framing) pan straight to a world coordinate via the scene's own
     // `focusOn`, instead of reverse-engineering the pan-drag pixel math.

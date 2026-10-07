@@ -14,7 +14,11 @@ export interface AftermathView {
   stars: number;
   housesSaved: number;
   housesDamaged: number;
+  /** Every house in the storm's path. */
+  housesTotal?: number;
   line: string;
+  /** Which defence saved the most houses, when one did. */
+  hero?: string | null;
   /** Null when there is no snapshot to go back to. */
   replayLabel: string | null;
 }
@@ -36,6 +40,7 @@ export class AftermathCard {
         <div class="aftermath-title"></div>
         <div class="aftermath-stars">${[0, 1, 2].map(() => `<span class="aftermath-star">★</span>`).join("")}</div>
         <div class="aftermath-houses"></div>
+        <p class="aftermath-hero"></p>
         <p class="aftermath-line"></p>
         <div class="aftermath-actions">
           <button type="button" class="aftermath-continue">Continue</button>
@@ -43,10 +48,12 @@ export class AftermathCard {
         </div>
       </div>`;
     (this.backdrop.querySelector(".aftermath-title") as HTMLElement).textContent = view.title;
+    const total = view.housesTotal ?? view.housesSaved + view.housesDamaged;
     (this.backdrop.querySelector(".aftermath-houses") as HTMLElement).textContent =
-      view.housesSaved + view.housesDamaged === 0
-        ? "No homes stood in its path"
-        : `Houses saved ${view.housesSaved}${view.housesDamaged > 0 ? ` · ${view.housesDamaged} damaged` : ""}`;
+      total === 0 ? "No homes stood in its path" : `Houses saved ${view.housesSaved} / ${total}`;
+    const hero = this.backdrop.querySelector(".aftermath-hero") as HTMLElement;
+    hero.textContent = view.hero ?? "";
+    hero.hidden = !view.hero;
     (this.backdrop.querySelector(".aftermath-line") as HTMLElement).textContent = view.line;
     const replay = this.backdrop.querySelector(".aftermath-replay") as HTMLButtonElement | null;
     if (replay && view.replayLabel) replay.textContent = view.replayLabel;

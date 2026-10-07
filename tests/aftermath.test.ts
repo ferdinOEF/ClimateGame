@@ -3,7 +3,7 @@ import { GameState } from "../src/core/gameState";
 import { ActionRun } from "../src/core/actionRun";
 import { aftermathLine } from "../src/core/aftermath";
 import { resolveChallenge, ZoneIndex, type ZoneDef } from "../src/core/zones";
-import { LEVEL_BY_ID } from "../src/levels/levels";
+import { levelWithPreset } from "../src/levels/levels";
 import { mapById } from "../src/levels/levelMap";
 
 function fixture(): { state: GameState; zones: ZoneIndex } {
@@ -59,7 +59,7 @@ describe("aftermath line", () => {
 
 describe("snapshots", () => {
   it("rewinds to the forecast lock exactly, and replaying is deterministic", () => {
-    const level = LEVEL_BY_ID.get("l01-first-rains")!;
+    const level = levelWithPreset("l01-first-rains", "strict")!;
     const map = mapById("panaji")!;
     const make = () =>
       new ActionRun(new GameState(map.tiles, [], level.startingCoin), level.timeline!, { climate: level.climate, seed: level.id, zones: map.zones, voices: level.voices });
@@ -82,5 +82,17 @@ describe("snapshots", () => {
       return JSON.stringify(run.outcomes.get(first.id));
     };
     expect(replay()).toBe(replay());
+  });
+});
+
+describe("top defence line", () => {
+  it("names the defence that saved the most houses", async () => {
+    const { topDefenceLine } = await import("../src/core/aftermath");
+    const { state, zones } = fixture();
+    for (let q = 0; q < 3; q++) state.build({ q, r: 0 }, "seawall", false);
+    state.build({ q: 3, r: 0 }, "house", false);
+    state.build({ q: 3, r: 1 }, "house", false);
+    const outcome = resolveChallenge(state, zones, "cyclone", 28, 20);
+    expect(topDefenceLine(outcome, state, zones)).toBe("The seawalls saved the most homes: about 2 of 2.");
   });
 });

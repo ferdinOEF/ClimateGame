@@ -1,4 +1,4 @@
-import { axialKey } from "./hex";
+import { axialKey, neighbor } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
@@ -86,6 +86,8 @@ export interface ChallengeOutcome {
   protection: number;
   stars: 1 | 2 | 3;
   housesSaved: number;
+  /** Every house in the storm's path, including any already lost to an earlier storm. */
+  housesTotal: number;
   housesDamaged: number;
   /** Coord keys of every house damaged. */
   damagedHouses: string[];
@@ -113,9 +115,53 @@ export class ZoneIndex {
     return this.keysByZone.get(zoneId) ?? [];
   }
 
+  private readonly exposureCache = new Map<HazardId, Map<string, number>>();
+
+  /**
+   * Hex distance from each tile to the water a hazard comes from: the sea for
+   * a cyclone, the river and estuary for a flood. Terrain never changes in
+   * play, so it is worked out once per hazard.
+   */
+  exposure(state: GameState, hazard: HazardId): Map<string, number> {
+    const cached = this.exposureCache.get(hazard);
+    if (cached) return cached;
+    const sources = hazard === "cyclone" ? ["coast"] : ["river", "estuary"];
+    const distance = new Map<string, number>();
+    const queue: string[] = [];
+    for (const tile of state.placed.values()) {
+      if (!sources.includes(tile.terrainId)) continue;
+      const key = axialKey(tile.coord);
+      distance.set(key, 0);
+      queue.push(key);
+    }
+    for (let i = 0; i < queue.length; i++) {
+      const [q, r] = queue[i].split(",").map(Number);
+      for (let dir = 0; dir < 6; dir++) {
+        const next = axialKey(neighbor({ q, r }, dir));
+        if (distance.has(next) || !state.placed.has(next)) continue;
+        distance.set(next, distance.get(queue[i])! + 1);
+        queue.push(next);
+      }
+    }
+    this.exposureCache.set(hazard, distance);
+    return distance;
+  }
+
   name(zoneId: string): string {
     return this.zones.find((zone) => zone.id === zoneId)?.name ?? zoneId;
   }
+}
+
+/**
+ * How a house stands up to what gets past the defences: a house is lost when
+ * the hazard's local intensity at its tile exceeds `resilience`. Local
+ * intensity is the zone's leak, falling off by `exposureDecay` for every hex
+ * the house stands from the water the hazard comes from (wind carries
+ * further inland than floodwater does).
+ */
+export interface HouseRule {
+  resilience: number;
+  exposureDecay: Record<HazardId, number>;
 }
 
 /** Extra defence per tile from perfect-fit combos (P6). Keyed by coord key. */
@@ -153,14 +199,32 @@ export function zoneDefence(state: GameState, zones: ZoneIndex, zoneId: string, 
   return Math.max(0, total);
 }
 
-function housesIn(state: GameState, zones: ZoneIndex, zoneId: string): string[] {
-  return zones.keys(zoneId).filter((key) => {
-    const inst = state.elements.get(key);
-    return inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building" && inst.degradeAmount < 1;
-  });
+/**
+ * The standing houses in a zone, most exposed first: nearest the sea for a
+ * cyclone, nearest open water (river or estuary) for a flood. A storm that
+ * gets through a zone's defences takes the houses in that order, so the ones
+ * lost are the ones on the front line, not whichever the file lists first.
+ */
+function housesIn(state: GameState, zones: ZoneIndex, zoneId: string, hazard: HazardId = "cyclone"): string[] {
+  const exposure = zones.exposure(state, hazard);
+  return zones
+    .keys(zoneId)
+    .filter((key) => {
+      const inst = state.elements.get(key);
+      return inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building" && inst.degradeAmount < 1;
+    })
+    .sort((a, b) => (exposure.get(a) ?? 99) - (exposure.get(b) ?? 99) || (a < b ? -1 : 1));
 }
 
 /** Stars from protection. A city that stands always earns at least one. */
+/** Stars from the share of houses in the storm's path that were saved. A city that stands always earns at least one. */
+export function starsForHouses(saved: number, total: number, thresholds: { three: number; two: number }): 1 | 2 | 3 {
+  const share = total > 0 ? saved / total : 1;
+  if (share >= thresholds.three) return 3;
+  if (share >= thresholds.two) return 2;
+  return 1;
+}
+
 export function starsFor(protection: number): 1 | 2 | 3 {
   if (protection >= 0.85) return 3;
   if (protection >= 0.5) return 2;
@@ -178,7 +242,11 @@ export function resolveChallenge(
   kind: ChallengeKind,
   intensity: number,
   strengthUnit: number,
-  combos?: ComboBonus
+  combos?: ComboBonus,
+  /** When set, stars come from the share of houses saved rather than from protection (the Houses-saved KPI). */
+  houseStars?: { three: number; two: number },
+  /** When set, houses are lost one by one by local intensity; otherwise a zone loses a share of its houses. */
+  houseRule?: HouseRule
 ): ChallengeOutcome {
   const outcomes: ZoneOutcome[] = [];
   // Defence is a budget per zone and hazard: a front that spends it leaves
@@ -188,16 +256,25 @@ export function resolveChallenge(
   let undefendedTotal = 0;
   const damagedHouses: string[] = [];
   const housesSeen = new Set<string>();
+  /** Every house in the storm's path, standing or already lost to an earlier storm: the KPI's total. */
+  const pathHouses = new Set<string>();
+  const addPath = (zoneId: string): void => {
+    for (const key of zones.keys(zoneId)) {
+      const inst = state.elements.get(key);
+      if (inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building") pathHouses.add(key);
+    }
+  };
 
   for (const front of FRONTS[kind]) {
     let carry = intensity * front.share;
     let undefendedCarry = carry;
     const frontSeverity = carry / strengthUnit;
     for (const zoneId of front.path) {
+      addPath(zoneId);
       if (carry <= 0.01) {
         // Stopped before it got here: every house in this zone was saved by
         // the defences ahead of it.
-        for (const key of housesIn(state, zones, zoneId)) housesSeen.add(key);
+        for (const key of housesIn(state, zones, zoneId, front.hazard)) housesSeen.add(key);
         undefendedTotal += undefendedCarry;
         undefendedCarry *= ZONE_CARRY;
         continue;
@@ -240,12 +317,21 @@ export function resolveChallenge(
       const absorbed = Math.min(carry, defence);
       spent.set(budgetKey, (spent.get(budgetKey) ?? 0) + absorbed);
       const leak = carry - absorbed;
-      const houses = housesIn(state, zones, zoneId).filter((key) => !housesSeen.has(key));
-      const damageShare = carry > 0 ? Math.min(1, leak / Math.max(carry, strengthUnit)) : 0;
-      const hit = Math.round(houses.length * damageShare);
-      // Deterministic: the houses nearest the front of the list take it. The
-      // list is in map order, which is stable for a given board.
-      for (const key of houses.slice(0, hit)) {
+      const houses = housesIn(state, zones, zoneId, front.hazard).filter((key) => !housesSeen.has(key));
+      let lost: string[];
+      if (houseRule) {
+        // House by house: lost where what got through, faded by distance
+        // from the water, is more than the house can stand.
+        const exposure = zones.exposure(state, front.hazard);
+        const decay = houseRule.exposureDecay[front.hazard];
+        lost = houses.filter((key) => leak * Math.pow(decay, Math.max(0, (exposure.get(key) ?? 0) - 1)) > houseRule.resilience);
+      } else {
+        // A share of the zone's houses, most exposed first.
+        const damageShare = carry > 0 ? Math.min(1, leak / Math.max(carry, strengthUnit)) : 0;
+        lost = houses.slice(0, Math.round(houses.length * damageShare));
+      }
+      const hit = lost.length;
+      for (const key of lost) {
         state.elements.get(key)!.degradeAmount = 1;
         damagedHouses.push(key);
       }
@@ -275,8 +361,9 @@ export function resolveChallenge(
     intensity,
     zones: outcomes,
     protection,
-    stars: starsFor(protection),
+    stars: houseStars && pathHouses.size > 0 ? starsForHouses(housesSeen.size - damagedHouses.length, pathHouses.size, houseStars) : starsFor(protection),
     housesSaved: housesSeen.size - damagedHouses.length,
+    housesTotal: pathHouses.size,
     housesDamaged: damagedHouses.length,
     damagedHouses
   };
