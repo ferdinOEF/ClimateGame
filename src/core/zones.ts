@@ -195,6 +195,9 @@ export function resolveChallenge(
     const frontSeverity = carry / strengthUnit;
     for (const zoneId of front.path) {
       if (carry <= 0.01) {
+        // Stopped before it got here: every house in this zone was saved by
+        // the defences ahead of it.
+        for (const key of housesIn(state, zones, zoneId)) housesSeen.add(key);
         undefendedTotal += undefendedCarry;
         undefendedCarry *= ZONE_CARRY;
         continue;

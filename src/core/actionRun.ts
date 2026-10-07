@@ -257,7 +257,12 @@ export class ActionRun {
    */
   readiness(): Readiness | null {
     const challenge = this.nextChallenge();
-    if (!challenge || !this.climate || !this.zones) return null;
+    return challenge ? this.readinessFor(challenge) : null;
+  }
+
+  /** The same prediction for any challenge still to come. */
+  readinessFor(challenge: ScheduledChallenge): Readiness | null {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
     const lockedNow = outlookFor(this.climate, challenge, this.quarter, this.config.startYear).phase === "locked";
     const nominal = { ...challenge, quarter: Math.round((challenge.year - this.config.startYear) * QUARTERS_PER_YEAR) };
     const strength = challengeStrength(this.climate, lockedNow ? challenge : nominal);

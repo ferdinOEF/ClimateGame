@@ -723,6 +723,16 @@ export class PanjimController {
         while (!this.host.container.querySelector(".finale-card")) await wait(100);
         return true;
       }
+      case "smart-forecast":
+        await this.playCarefully(() => this.run.locked.size > 0 && this.isGreenOrBroke());
+        return true;
+      case "smart-aftermath":
+        await this.playCarefully(() => this.aftermath.isOpen, true);
+        await wait(1800);
+        return true;
+      case "smart-finale":
+        await this.playCarefully(() => Boolean(this.host.container.querySelector(".finale-card")));
+        return true;
       case "replay": {
         const replay = this.host.container.querySelector<HTMLButtonElement>(".aftermath-replay");
         if (!replay) return false;
@@ -743,6 +753,78 @@ export class PanjimController {
       }
       default:
         return false;
+    }
+  }
+
+  /** True once the next challenge's gauge is green, or nothing more is affordable. */
+  private isGreenOrBroke(): boolean {
+    const readiness = this.run.readiness();
+    return !readiness || readiness.level === "green" || this.host.state.coin < 15;
+  }
+
+  /**
+   * A careful player, scripted, for the browser's final check: taps the jar,
+   * tops up the threatened zones until the gauge is green (dunes and pandanus
+   * on the beach, mangroves and khazan in the wetlands and on the
+   * waterfront), keeps a few houses away from the storm paths, then skips to
+   * the next event. Uses only the actions a player has; continues through
+   * each Aftermath. Stops when `until` is true (checked between actions, and
+   * while an Aftermath is open when `stopAtAftermath`).
+   */
+  private async playCarefully(until: () => boolean, stopAtAftermath = false): Promise<void> {
+    const wishes: Record<string, [string, string][]> = {
+      cyclone: [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "mangrove"], ["z2", "mangrove"]],
+      flood: [["z2", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"], ["z4", "mangrove"]],
+      compound: [["z4", "mangrove"], ["z2", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"]]
+    };
+    for (let guard = 0; guard < 600 && !this.run.finished; guard++) {
+      if (until()) return;
+      this.collectJar();
+      let acted = false;
+      for (const [key, inst] of this.host.state.elements) {
+        if (inst.degradeAmount > 0 && this.host.state.coin >= this.run.repairCoin({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) })) {
+          const [q, r] = key.split(",").map(Number);
+          acted = this.repair({ q, r });
+          if (acted) break;
+        }
+      }
+      const readiness = this.run.readiness();
+      if (!acted && readiness && readiness.level !== "green") {
+        for (const [zone, element] of wishes[readiness.challenge.kind]) {
+          const coord = this.firstBuildableIn(zone, element);
+          if (coord && this.build(coord, element)) {
+            acted = true;
+            break;
+          }
+        }
+      }
+      const houses = [...this.host.state.elements.values()].filter((inst) => inst.elementId === "house").length;
+      if (!acted && houses < 8) {
+        for (const tile of this.host.state.placed.values()) {
+          const key = `${tile.coord.q},${tile.coord.r}`;
+          if (this.run.zones?.zoneOf(key)) continue;
+          if (this.host.state.canBuild(tile.coord, "house") && this.build(tile.coord, "house")) {
+            acted = true;
+            break;
+          }
+        }
+      }
+      if (acted) {
+        await this.idle();
+        continue;
+      }
+      // Nothing to do: skip ahead, through any Aftermath.
+      if (this.run.quartersToNextEvent() > 0) void this.fastForwardEvent();
+      else void this.fastForwardYear();
+      await wait(60);
+      while (this.busy) {
+        if (this.aftermath.isOpen) {
+          if (stopAtAftermath && until()) return;
+          this.host.container.querySelector<HTMLButtonElement>(".aftermath-continue")?.click();
+        }
+        if (until()) return;
+        await wait(100);
+      }
     }
   }
 

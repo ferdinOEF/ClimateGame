@@ -78,7 +78,7 @@
         "fastForwardYear": 4
       },
       "economy": {
-        "incomeScale": 0.5,
+        "incomeScale": 0.2,
         "jarStart": 40
       }
     },
@@ -87,7 +87,7 @@
       "seaLevelCmPerYear": 0.4,
       "forecastLockQuarters": 8,
       "narrowFromQuarters": 20,
-      "intensityPerStrength": 20,
+      "intensityPerStrength": 50,
       "challenges": [
         {
           "id": "c1-cyclone",

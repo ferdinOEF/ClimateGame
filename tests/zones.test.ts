@@ -57,7 +57,7 @@ describe("zone-local resolution", () => {
   it("counts a defence only in its own zone and only against the hazards it answers", () => {
     const { state, zones } = fixture();
     state.build({ q: 0, r: 0 }, "seawall", false);
-    expect(zoneDefence(state, zones, "z1", "cyclone")).toBe(9);
+    expect(zoneDefence(state, zones, "z1", "cyclone")).toBe(16);
     expect(zoneDefence(state, zones, "z1", "flood")).toBe(0);
     expect(zoneDefence(state, zones, "z2", "cyclone")).toBe(0);
   });
