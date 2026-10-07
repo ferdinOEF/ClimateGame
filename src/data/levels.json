@@ -117,7 +117,7 @@
     },
     "houses": {
       "fillLand": true,
-      "houseEconomyScale": 0.0151,
+      "houseEconomyHouses": 10,
       "excludeFromBuild": [
         "house"
       ],

@@ -21,31 +21,41 @@ export interface MapLayerSettings {
 }
 
 /**
- * v2 since the default went from 45% to 75%: a v1 setting saved at the old
- * default would otherwise keep every returning player on the faint layer.
+ * v3 since the default went from 23% to 32% (v2 was 45% to 75%, then 23%).
  *
- * Deliberately still v2 now the default is 23%. A setting is only saved when
- * the player touches the switch or the slider, so anyone with a v2 value chose
- * it, and keeps it; everyone else gets the new default.
+ * A setting is only saved when the player touches the switch or the slider.
+ * A v2 value of exactly 23% most likely means they only flicked the switch and
+ * never moved the slider off the old default, so it migrates to the new
+ * default (keeping their on/off); any other v2 value was chosen, and is kept.
  */
-const STORAGE_KEY = "riptide-rising:map-layer:v2";
-/** 23%: the street map reads as a faint guide under the tiles rather than competing with them. */
-export const DEFAULT_MAP_LAYER: MapLayerSettings = { visible: true, opacity: 0.23 };
+const STORAGE_KEY = "riptide-rising:map-layer:v3";
+const LEGACY_KEY = "riptide-rising:map-layer:v2";
+const LEGACY_DEFAULT = 0.23;
+/** 32%: the streets and roads read clearly under the tiles without competing with them. */
+export const DEFAULT_MAP_LAYER: MapLayerSettings = { visible: true, opacity: 0.32 };
 const MIN_OPACITY = 0.1;
 const MAX_OPACITY = 1;
+
+function parse(raw: string, migrateLegacyDefault: boolean): MapLayerSettings {
+  const parsed = JSON.parse(raw) as Partial<MapLayerSettings>;
+  let opacity =
+    typeof parsed.opacity === "number" && Number.isFinite(parsed.opacity)
+      ? Math.min(MAX_OPACITY, Math.max(MIN_OPACITY, parsed.opacity))
+      : DEFAULT_MAP_LAYER.opacity;
+  if (migrateLegacyDefault && Math.abs(opacity - LEGACY_DEFAULT) < 0.005) opacity = DEFAULT_MAP_LAYER.opacity;
+  return {
+    visible: typeof parsed.visible === "boolean" ? parsed.visible : DEFAULT_MAP_LAYER.visible,
+    opacity
+  };
+}
 
 export function loadMapLayerSettings(): MapLayerSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_MAP_LAYER };
-    const parsed = JSON.parse(raw) as Partial<MapLayerSettings>;
-    return {
-      visible: typeof parsed.visible === "boolean" ? parsed.visible : DEFAULT_MAP_LAYER.visible,
-      opacity:
-        typeof parsed.opacity === "number" && Number.isFinite(parsed.opacity)
-          ? Math.min(MAX_OPACITY, Math.max(MIN_OPACITY, parsed.opacity))
-          : DEFAULT_MAP_LAYER.opacity
-    };
+    if (raw) return parse(raw, false);
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) return parse(legacy, true);
+    return { ...DEFAULT_MAP_LAYER };
   } catch {
     return { ...DEFAULT_MAP_LAYER };
   }
@@ -83,8 +93,8 @@ export class MapLayerControl {
     slider.className = "map-layer-opacity";
     slider.min = String(MIN_OPACITY * 100);
     slider.max = String(MAX_OPACITY * 100);
-    // Steps of 1, so the 23% default sits exactly on the track rather than
-    // the thumb snapping to 25 while the layer is drawn at 23.
+    // Steps of 1, so the 32% default sits exactly on the track rather than
+    // the thumb snapping to 30 while the layer is drawn at 32.
     slider.step = "1";
     slider.value = String(Math.round(this.settings.opacity * 100));
     slider.setAttribute("aria-label", "Street map opacity");

@@ -106,7 +106,11 @@ export function generatePrep(
   for (let pass = 0; pass < 2 && jobs.length < max; pass++) {
     for (const zone of ranked) {
       if (jobs.length >= max) break;
-      const template = templates.find((t) => !used.has(`${t.elementId}:${zone}`) && buildableIn(state, zones, t.elementId, zone) >= t.count);
+      // A different defence per job where possible: the first template whose
+      // element no job uses yet, else any that fits.
+      const fits = (t: PrepTemplate): boolean => !used.has(`${t.elementId}:${zone}`) && buildableIn(state, zones, t.elementId, zone) >= t.count;
+      const fresh = (t: PrepTemplate): boolean => !jobs.some((job) => job.elementId === t.elementId);
+      const template = templates.find((t) => fits(t) && fresh(t)) ?? templates.find(fits);
       if (!template) continue;
       if (pass === 0 && jobs.some((job) => job.zone === zone)) continue;
       used.add(`${template.elementId}:${zone}`);

@@ -7,6 +7,45 @@ import { createElementGeometry } from "./elementGeometry";
 import { jitterColor, paletteColor } from "./palette";
 import { SettleAnimator } from "./settleAnimation";
 import { MAX_ELEMENT_INSTANCES_PER_TYPE } from "./instanceLimits";
+import { buildingGeometry, ROOF_TOP } from "./townGeometry";
+import type { BuildingKind } from "@levels/townLayout";
+
+/**
+ * How a House on a town-plan tile is drawn (levels/townLayout.ts): which of
+ * the seven building kinds, its wall and roof colours, its size and its
+ * quarter-turn. Supplied per tile by the session; a House without one (the
+ * Tutorial, a player-built House) is drawn as the classic House.
+ */
+export interface BuildingStyle {
+  kind: BuildingKind;
+  wall: THREE.Color;
+  roof: THREE.Color;
+  scale: number;
+  turns: number;
+}
+
+/**
+ * The building kinds' material: vertex colours, with walls multiplied by the
+ * instance's wall colour and roofs by its roof colour (see townGeometry.ts,
+ * `aTint`). Everything else keeps its own colour.
+ */
+function buildingMaterial(): THREE.MeshStandardMaterial {
+  const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.85, vertexColors: true });
+  material.customProgramCacheKey = () => "town-building";
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute float aTint;\nattribute vec3 aRoofColor;")
+      .replace(
+        "#include <color_vertex>",
+        `#include <color_vertex>
+        #ifdef USE_INSTANCING_COLOR
+          if (aTint < 0.5) vColor.xyz = color.xyz;
+          else if (aTint > 1.5) vColor.xyz = color.xyz * aRoofColor;
+        #endif`
+      );
+  };
+  return material;
+}
 
 const DEGRADED_TINT = new THREE.Color("#5b4a36"); // dull, patchy brown — a visibly weakened structure
 
@@ -91,6 +130,8 @@ function prefersReducedMotion(): boolean {
 
 /** One element standing on the board, as the ambient reaction scheduler sees it. */
 export interface PlacedElement {
+  /** World Y of the top of what stands here (a building's roof), when known: where a cat can sit. */
+  top?: number;
   /**
    * Stable for as long as this element stands: the tile plus the element id,
    * so a tile cleared and rebuilt with something else reads as a new element
@@ -105,7 +146,16 @@ export interface PlacedElement {
 
 interface ElementInstanceRef {
   elementId: string;
+  /** Which mesh pool it lives in: the element id, or `house:<kind>` for a town building. */
+  meshKey: string;
   mesh: THREE.InstancedMesh;
+  /** A town building's roof colour (absent on everything else). */
+  roofColor?: THREE.Color;
+  /** A town building's own size and quarter-turn (1 and 0 on everything else). */
+  styleScale: number;
+  rotY: number;
+  /** Height of its roof above its tile, for reactions. */
+  roofTop?: number;
   index: number;
   x: number;
   y: number;
@@ -155,6 +205,8 @@ export class ElementMeshManager {
   private freeIndices = new Map<string, number[]>();
   private byCoord = new Map<string, ElementInstanceRef>();
   private animator = new SettleAnimator();
+  /** Per-tile building style for Houses, set by the session on a town-plan level. */
+  private styleOf: ((coord: AxialCoord) => BuildingStyle | null) | null = null;
   /**
    * Whether the sway runs. Off for a player who has asked their system for
    * reduced motion — see TerrainMeshManager for the same decision about the
@@ -197,6 +249,29 @@ export class ElementMeshManager {
     }
   }
 
+  /** Draws Houses as the town plan's buildings (see `BuildingStyle`). */
+  setStyleResolver(resolver: ((coord: AxialCoord) => BuildingStyle | null) | null): void {
+    this.styleOf = resolver;
+  }
+
+  /** The mesh pool for a building kind, made on first use: one InstancedMesh per kind. */
+  private buildingMesh(kind: BuildingKind): THREE.InstancedMesh {
+    const key = `house:${kind}`;
+    let mesh = this.meshes.get(key);
+    if (mesh) return mesh;
+    const geometry = buildingGeometry(kind).clone();
+    geometry.setAttribute("aRoofColor", new THREE.InstancedBufferAttribute(new Float32Array(MAX_ELEMENT_INSTANCES_PER_TYPE * 3), 3));
+    mesh = new THREE.InstancedMesh(geometry, buildingMaterial(), MAX_ELEMENT_INSTANCES_PER_TYPE);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_ELEMENT_INSTANCES_PER_TYPE * 3), 3);
+    mesh.count = 0;
+    mesh.name = `element-${key}`;
+    this.meshes.set(key, mesh);
+    this.nextIndex.set(key, 0);
+    this.freeIndices.set(key, []);
+    this.group.add(mesh);
+    return mesh;
+  }
+
   /**
    * STEP_PROMPT_gameplay_stability_test.md Part A: `index` used to be a
    * strictly-increasing per-type counter that never gave back a destroyed
@@ -213,46 +288,59 @@ export class ElementMeshManager {
   place(coord: AxialCoord, elementId: string, terrainTopY: number, options: { animate?: boolean; growth?: number } = {}): void {
     const def = ELEMENT_BY_ID.get(elementId);
     if (!def) throw new Error(`Unknown element id: ${elementId}`);
-    const mesh = this.meshes.get(elementId)!;
-    const free = this.freeIndices.get(elementId)!;
+    const style = elementId === "house" && this.styleOf ? this.styleOf(coord) : null;
+    const meshKey = style ? `house:${style.kind}` : elementId;
+    const mesh = style ? this.buildingMesh(style.kind) : this.meshes.get(elementId)!;
+    const free = this.freeIndices.get(meshKey)!;
     let index: number;
     if (free.length > 0) {
       index = free.pop()!;
     } else {
-      index = this.nextIndex.get(elementId)!;
-      if (index >= MAX_ELEMENT_INSTANCES_PER_TYPE) throw new Error(`Element instance cap exceeded for ${elementId}`);
-      this.nextIndex.set(elementId, index + 1);
+      index = this.nextIndex.get(meshKey)!;
+      if (index >= MAX_ELEMENT_INSTANCES_PER_TYPE) throw new Error(`Element instance cap exceeded for ${meshKey}`);
+      this.nextIndex.set(meshKey, index + 1);
     }
 
     const { x, z } = axialToWorld(coord, HEX_SIZE);
 
     const growth = options.growth ?? 1;
     const landScale = growthScale(growth);
+    const styleScale = style?.scale ?? 1;
+    const rotY = style ? (style.turns * Math.PI) / 2 : 0;
     if (options.animate) {
-      this.animator.begin(mesh, index, x, z, terrainTopY, performance.now(), landScale);
+      this.animator.begin(mesh, index, x, z, terrainTopY, performance.now(), landScale * styleScale);
     } else {
-      mesh.setMatrixAt(index, new THREE.Matrix4().makeScale(landScale, landScale, landScale).setPosition(x, terrainTopY, z));
+      const matrix = new THREE.Matrix4().makeRotationY(rotY);
+      matrix.scale(new THREE.Vector3(landScale * styleScale, landScale * styleScale, landScale * styleScale)).setPosition(x, terrainTopY, z);
+      mesh.setMatrixAt(index, matrix);
       mesh.instanceMatrix.needsUpdate = true;
       mesh.boundingSphere = null;
     }
 
     const seed = coord.q * 41 + coord.r * 19;
-    const baseColor = SELF_COLOURED.has(elementId)
-      ? jitterColor(NEUTRAL_TINT, seed)
-      : jitterColor(paletteColor(def.colorKey), seed);
+    const baseColor = style
+      ? jitterColor(style.wall, seed)
+      : SELF_COLOURED.has(elementId)
+        ? jitterColor(NEUTRAL_TINT, seed)
+        : jitterColor(paletteColor(def.colorKey), seed);
     mesh.setColorAt(index, growth < 1 ? baseColor.clone().lerp(YOUNG_TINT, (1 - growth) * 0.5) : baseColor);
 
     mesh.count = Math.max(mesh.count, index + 1);
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 
-    this.byCoord.set(`${coord.q},${coord.r}`, {
+    const ref: ElementInstanceRef = {
       elementId,
+      meshKey,
       mesh,
       index,
       x,
       y: terrainTopY,
       z,
       baseColor,
+      roofColor: style?.roof.clone(),
+      styleScale,
+      rotY,
+      roofTop: style ? ROOF_TOP[style.kind] * styleScale : undefined,
       swayPhase: SWAY_BY_ELEMENT[elementId] ? (x + z) * SWAY_PHASE_PER_UNIT : undefined,
       // A rebuild starts clean: `place()` is the only repair this game has.
       damage: 0,
@@ -265,7 +353,20 @@ export class ElementMeshManager {
       paintedGrowth: growth,
       degrade: 0,
       heightScale: 1
-    });
+    };
+    this.byCoord.set(`${coord.q},${coord.r}`, ref);
+    if (ref.roofColor) this.paintRoof(ref);
+  }
+
+  /** A town building's roof colour, browner with damage like its walls. */
+  private paintRoof(ref: ElementInstanceRef): void {
+    if (!ref.roofColor) return;
+    const attribute = ref.mesh.geometry.getAttribute("aRoofColor") as THREE.InstancedBufferAttribute | undefined;
+    if (!attribute) return;
+    const color = ref.roofColor.clone();
+    if (ref.damage > 0) color.lerp(DEGRADED_TINT, 0.35 + ref.damage * 0.45);
+    attribute.setXYZ(ref.index, color.r, color.g, color.b);
+    attribute.needsUpdate = true;
   }
 
   /** The colour an instance should show now: its own, paler while young, browner when weathered or damaged. */
@@ -277,6 +378,7 @@ export class ElementMeshManager {
     ref.mesh.setColorAt(ref.index, color);
     if (ref.mesh.instanceColor) ref.mesh.instanceColor.needsUpdate = true;
     ref.paintedGrowth = ref.growth;
+    this.paintRoof(ref);
   }
 
   /**
@@ -318,7 +420,7 @@ export class ElementMeshManager {
     if (!ref) return;
     this.animator.collapse(ref.mesh, ref.index, ref.x, ref.y, ref.z, performance.now());
     this.byCoord.delete(key);
-    this.freeIndices.get(ref.elementId)!.push(ref.index);
+    this.freeIndices.get(ref.meshKey)!.push(ref.index);
   }
 
   /** Khazan graceful degrade: tints the structure toward a patchy, weathered brown as degradeAmount grows. */
@@ -401,12 +503,12 @@ export class ElementMeshManager {
 
     this.scratchEuler.set(
       swayAngle + Math.cos(ref.damageLean) * lean,
-      0,
+      ref.rotY,
       swayRoll + Math.sin(ref.damageLean) * lean
     );
     this.scratchQuaternion.setFromEuler(this.scratchEuler);
     this.scratchMatrix.makeRotationFromQuaternion(this.scratchQuaternion);
-    const g = growthScale(ref.growth);
+    const g = growthScale(ref.growth) * ref.styleScale;
     this.scratchMatrix.scale(this.scratchScale.set(g, slump * g * ref.heightScale, g));
     this.scratchMatrix.setPosition(ref.x, ref.y - sink, ref.z);
     ref.mesh.setMatrixAt(ref.index, this.scratchMatrix);
@@ -486,17 +588,24 @@ export class ElementMeshManager {
    */
   *placedElements(): Generator<PlacedElement> {
     for (const [coordKey, ref] of this.byCoord) {
-      yield { key: `${coordKey}:${ref.elementId}`, elementId: ref.elementId, x: ref.x, y: ref.y, z: ref.z };
+      yield {
+        key: `${coordKey}:${ref.elementId}`,
+        elementId: ref.elementId,
+        x: ref.x,
+        y: ref.y,
+        z: ref.z,
+        top: ref.roofTop !== undefined ? ref.y + ref.roofTop * ref.heightScale : undefined
+      };
     }
   }
 
   /** Clears every placed element (a new era starting a fresh map). */
   reset(): void {
     this.byCoord.clear();
-    for (const elementId of this.nextIndex.keys()) {
-      this.nextIndex.set(elementId, 0);
-      this.freeIndices.set(elementId, []);
-      this.meshes.get(elementId)!.count = 0;
+    for (const key of this.nextIndex.keys()) {
+      this.nextIndex.set(key, 0);
+      this.freeIndices.set(key, []);
+      this.meshes.get(key)!.count = 0;
     }
   }
 }

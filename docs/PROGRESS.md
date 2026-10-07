@@ -6603,3 +6603,161 @@ clock changes).
 - **Possible confusion.** "Plant 2 mangroves along Taleigao" could send a
   first-timer to land tiles, where mangroves cannot go. The build menu only
   offers what is valid, and Maya's mangrove tip says "on the wetland edge".
+
+### P6c — varied, smaller buildings — DONE
+
+**The town plan.** `levels/townLayout.ts` is pure, deterministic and tested
+(`tests/townLayout.test.ts`). From the map and the level seed alone, it
+decides for every land tile one of: one of seven building kinds, a garden,
+or a road.
+- **Kinds:**
+  - small house: the commonest, 200 of 449 on Panaji;
+  - bungalow with a hipped roof and verandah;
+  - two-storey with a balcony rail;
+  - apartment block: 3–4 storeys, flat roof with a water tank;
+  - cafe with a striped awning and a tiny table outside;
+  - shop with a flat roof, parapet, signboard stripe and shutter;
+  - godown: a long low warehouse, a street back from the water.
+- **Weighted by district:**
+  - the old city, Fontainhas and the Mandovi waterfront: apartments, shops
+    and cafes;
+  - Miramar, Caranzalem and Dona Paula: bungalows and cafes;
+  - Taleigao, St Cruz and Merces: mostly small houses.
+- **Colours.** Walls come from a Goan palette: whitewash, ochre, laterite
+  red, terracotta, Fontainhas blue, teal, pink, mustard, mint and soft grey.
+  Roofs are red tile, grey or blue, applied separately. No two neighbouring
+  buildings share a wall colour where another is free (under 2% of
+  neighbouring pairs, tested).
+- **Size and orientation.**
+  - Each kind is modelled at about 56% of the old House's footprint and
+    57% of its height.
+  - Per building: ±12% scale and a quarter-turn, both hashed from the tile
+    and the seed. So a building never changes between frames, saves or
+    reloads (a determinism test checks this).
+
+**Rendering:**
+- **One InstancedMesh per kind:** seven draw calls for the whole town.
+- **Colours.** A vertex attribute `aTint` marks each part as wall
+  (multiplied by `instanceColor`), roof (multiplied by a per-instance
+  `aRoofColor`) or its own colour (doors, windows, awnings, signboards).
+- **Damage** browns both walls and roof.
+- **Every kind is a House to the game**, so hits, the damage tint and lean,
+  the "saved" moments, the heat, the house counters and the resolver all
+  work unchanged.
+- **Apartments are not weighted ×3:** every building is one dwelling, so
+  Houses saved still means houses.
+- **Cafes:** no idle animation (a static awning and table only), so the
+  extra cost is zero.
+
+**Houses counted:**
+- **From 661 to 449:** gardens and roads now hold land that used to carry a
+  House.
+- **Economy unchanged.** The economy setting is now `houseEconomyHouses: 10`
+  (scale = 10 / count), so the city's money, food and population stay at
+  ten houses' worth whatever the count. Easy-test still opens with +100
+  Coin a quarter, food −10 and population 100.
+- **Easy flood, before the fix.** The first layout pushed Casual's easy
+  flood to 63/108 saved (58%, 1★), because the gardens thinned the safe
+  inland houses. Raising easy-test house resilience made no difference: the
+  lost houses stand right at the water.
+- **The fix was in the layout.** Outside the old city, a wetland's edge is
+  now mostly fields and gardens (as it is in Taleigao). Every bot assertion
+  passes again on both presets.
+
+**Performance** (full board, software GL):
+
+| | draw calls | triangles | update CPU |
+|---|---|---|---|
+| Before (P0) | 25 | 324,596 | 0.74 ms/frame |
+| After | 35 | about 159,000 | 0.7–1.0 ms/frame |
+
+Triangles roughly halved. The kinds are simpler than the old detailed House,
+and there are fewer of them.
+
+### P6d — softer grass, visible roads, OSM at 32%, clustered density — DONE
+
+- **Grass.** Land is `#8EAB4F`, 28% less saturated than the old lime
+  `#8FBF3E` and a touch more olive (hue 82° to 79°), with luminance kept near
+  160 so it still parts from sand, wetland, river and sea. A very subtle
+  per-tile hue and saturation jitter (`jitterGrass`) stops it reading as a
+  printed grid.
+- **Roads**, read from the OSM data by the map generator
+  (`npm run mapgen:panaji`):
+  - **Detection.** The same pixel pass that classifies terrain also counts
+    the standard style's road fills: motorway, trunk, primary and secondary.
+    Tertiary roads are white, which labels and outlines share, so they are
+    left out. Sand is kept from reading as road.
+  - **Road tiles.** A land hex is a road tile from 13% road cover. A weaker
+    hex (5% or more) joins only where it closes a gap. Stubs under three
+    tiles are dropped. That gives 126 land road tiles (18.7% of land), plus
+    38 river and wetland crossings: the Atal Setu, the Patto and Ribandar
+    causeways, Bambolim.
+  - **Links.** Strips are drawn only along road links:
+    - every pair of neighbouring road tiles is scored by how much of the line
+      between their centres is road;
+    - a maximum spanning forest keeps each road in one piece with no
+      triangles;
+    - then strong extra links (60% or more) that close no triangle are
+      added, which keeps real loops such as the city grid.
+
+    Drawing every neighbour pair first produced a lattice of triangles, and
+    a coverage cut alone left dashes.
+  - **Debug image:** `tools/mapgen/debug/panaji-roads.jpg`.
+- **What roads change.** No House on a road tile. Crossings stay buildable;
+  they are drawn as a deck on a pier. Storms are unaffected.
+- **How roads look.** Light warm grey strips with a disc at each junction:
+  never green, red or concrete grey, so they never read as a defence or as
+  heat. They sit a hair above the terrain, under the heat and every
+  building.
+- **Street map at 32%** (from 23%): the default, the slider's start, and a
+  v2 to v3 saved-setting migration. A saved 23% (the old default, almost
+  certainly untouched) becomes 32% and keeps the on/off; any other saved
+  value is kept. `tests/mapLayer.test.ts` covers the default, the migration,
+  a kept choice and blocked storage.
+- **Density field** (`townLayout`):
+  - **Inputs:** closeness to the old city (the Church), being beside a
+    major road, the Mandovi waterfront, and the zone (Fontainhas and the
+    waterfront denser, the Taleigao–Merces wetlands thinner, wetland edges
+    outside the core mostly gardens).
+  - **Calibration.** One global offset, found by bisection, holds the empty
+    share at 16% of buildable land. A test keeps it within 10–20%.
+  - **Result.** The old city within 8 hexes is over 95% built, the edges
+    20 or more hexes out under 85% (tested).
+  - **Gardens.** Empty plots get two or three trees, a hedge and a coconut
+    palm.
+- **Before/after:** `docs/screenshots/maya/compare-before-after.jpg`
+  (colour and grayscale). The sea of red boxes is gone, the street map shows,
+  and in grayscale the terrain, the buildings and the roads still part.
+
+### P6e — ambient life and boats — DONE
+
+- **People on the roads and the waterfront** (`render/ambientLife.ts`):
+  - up to 28, mostly starting near the old city;
+  - in saturated clothes, exaggerated about 2.2× so they read at the
+    opening zoom;
+  - one InstancedMesh, keeping to one side of the road;
+  - like the creature scheduler, at most one sets off per frame, under a
+    hard cap.
+- **Boats.** Five low-poly boats (one InstancedMesh) circle slowly on open
+  water: river and sea tiles with water all round, spread out, nearest the
+  town first.
+- **Cats on rooftops and walls.** The town buildings' reaction (through the
+  existing scheduler, two a second at most) puts a cat on the roof or on the
+  wall beside it, in turn.
+- **More birds.** The gardens join the same scheduler as a source: a pigeon
+  or two lifts out of the trees, at most one garden a second. Pigeons are not
+  Field Guide species, so they cannot be farmed.
+- **In a storm.** Walkers shrink away indoors, background creatures pause
+  (taps still work), and boats pull in and heel over with the wind. All of it
+  returns when the storm ends.
+- **Reduced motion:** half the walkers, standing still; boats still.
+- **Cost:** two more draw calls and about 3,000 triangles. The update CPU
+  stayed within this run's noise (0.83–1.0 ms/frame).
+
+**Self-assessment:**
+- **Readable.** The town reads as Panjim now: the old city dense, the
+  suburbs green with gardens, the roads and the river crossings visible.
+- **Small at the opening zoom.** The buildings read as a varied town rather
+  than as individual buildings until the player zooms in. That is
+  deliberate: the brief asked for them to stop hiding the terrain.
+- **Roads zig-zag** a little, where the hex grid forces it.

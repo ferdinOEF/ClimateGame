@@ -92,7 +92,7 @@ export interface PanjimHost {
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
   /** Glides the camera to a board coordinate (fractional allowed); `close` also zooms in a little. Cancelled by any drag. */
-  focusCamera: (coord: AxialCoord, close?: boolean) => void;
+  focusCamera: (coord: AxialCoord, close?: boolean, zoom?: number) => void;
   /** The map's named places, for Maya to call a spot by name. */
   landmarks: readonly { name: string; q: number; r: number }[];
   /** True while the build menu or the opening brief is open: Maya stays quiet. */
@@ -880,6 +880,15 @@ export class PanjimController {
       this.maya.dismiss();
       this.maya.say({ id: `sample:${pose[1]}:${performance.now()}`, text: samples[pose[1]] ?? pose[1], state: pose[1] as never, urgent: true });
       this.maya.next();
+      return true;
+    }
+    // "look-<place>": frames the camera close on a named place ("look-miramar").
+    const look = /^look-(close-)?(.+)$/.exec(name);
+    if (look) {
+      const wanted = look[2].replace(/-/g, " ").toLowerCase();
+      const spot = this.host.landmarks.find((l) => l.name.toLowerCase().includes(wanted));
+      if (!spot) return false;
+      this.host.focusCamera({ q: spot.q, r: spot.r }, true, look[1] ? 0.45 : 1);
       return true;
     }
     const heat = /^heat-(\d)$/.exec(name);

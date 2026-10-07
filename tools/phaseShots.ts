@@ -118,6 +118,8 @@ async function main(): Promise<void> {
       await shot(page, scenario);
     }
 
+    const walkers = await page.evaluate("(() => { const life = window.__ambientLifeForTest ? window.__ambientLifeForTest() : null; return life ? life.activeWalkers : null; })()");
+    if (walkers !== null) console.log(`ambient walkers out: ${walkers}`);
     const missing = (await page.evaluate("window.__missingTooltipsForTest ? window.__missingTooltipsForTest() : []")) as string[];
     console.log(`HUD controls without a tooltip: ${missing.length === 0 ? "none" : missing.join(", ")}`);
     const telemetry = await page.evaluate(() => (window as unknown as { __telemetry?: unknown[] }).__telemetry ?? []);

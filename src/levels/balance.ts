@@ -3,6 +3,7 @@ import type { GameMap } from "./levelMap";
 import type { StartingElementSeed } from "@core/gameState";
 import { axialKey, neighbor } from "@core/hex";
 import type { HouseRule } from "@core/zones";
+import { townLayout } from "./townLayout";
 
 /**
  * Balance presets: named groups of difficulty settings, kept in levels.json.
@@ -25,12 +26,20 @@ export interface BalancePreset {
   houseRule?: HouseRule;
 }
 
-/** Panjim's settlement: houses pre-built on every land tile, and how much they count. */
+/** Panjim's settlement: houses pre-built across the land, and how much they count. */
 export interface HouseFill {
-  /** Pre-build a House on every land tile without a monument. */
+  /**
+   * Pre-build the town: a House on every building plot of the town plan
+   * (levels/townLayout.ts), which leaves road tiles, gardens and monuments
+   * empty.
+   */
   fillLand: boolean;
-  /** Scales every House effect (money, food, population), so hundreds of houses add up to about what ten did. */
-  houseEconomyScale: number;
+  /**
+   * The whole town's money, food and population add up to this many houses'
+   * worth (each House's effects are scaled by houses / count), so the economy
+   * stays where it was tuned however many plots the plan holds.
+   */
+  houseEconomyHouses: number;
   /** Elements the player cannot build on this level (House, once the land is full). */
   excludeFromBuild: string[];
   /** Coast tiles further than this many hexes from any non-coast tile are open sea and cannot be built on. */
@@ -86,14 +95,13 @@ export function boardSetup(level: LevelDef, map: GameMap): BoardSetup {
   const fill = level.houses;
   const setup: BoardSetup = { startingElements: [], effectScale: new Map(), excluded: new Set(), unbuildable: new Set() };
   if (!fill) return setup;
-  const monuments = new Set(map.monuments.map((m) => `${m.q},${m.r}`));
   if (fill.fillLand) {
+    const town = townLayout(map, level.id);
     for (const tile of map.tiles) {
-      if (tile.terrainId !== "land" || monuments.has(axialKey(tile.coord))) continue;
-      setup.startingElements.push({ coord: tile.coord, elementId: "house" });
+      if (town.buildings.has(axialKey(tile.coord))) setup.startingElements.push({ coord: tile.coord, elementId: "house" });
     }
   }
-  setup.effectScale.set("house", fill.houseEconomyScale);
+  setup.effectScale.set("house", fill.houseEconomyHouses / Math.max(1, setup.startingElements.length));
   for (const id of fill.excludeFromBuild) setup.excluded.add(id);
   if (fill.coastBuildRange !== undefined) {
     // Distance from the nearest non-coast tile, walked over the coast only.

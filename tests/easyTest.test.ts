@@ -3,6 +3,7 @@ import { GameState } from "../src/core/gameState";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { axialKey } from "../src/core/hex";
 import { LEVEL_BY_ID, levelWithPreset } from "../src/levels/levels";
+import { townLayout } from "../src/levels/townLayout";
 import { boardSetup } from "../src/levels/balance";
 import { mapById } from "../src/levels/levelMap";
 
@@ -46,12 +47,14 @@ describe("balance presets", () => {
   });
 });
 
-describe("houses on every land tile", () => {
+describe("the town: a House on every building plot", () => {
   const state = panajiBoard();
   const monuments = new Set(map.monuments.map((m) => `${m.q},${m.r}`));
+  const town = townLayout(map, "l01-first-rains");
 
-  it("pre-builds a House on every land tile except the monuments", () => {
+  it("pre-builds a House on every building plot, and none on roads, gardens or monuments", () => {
     let land = 0;
+    let built = 0;
     for (const tile of map.tiles) {
       if (tile.terrainId !== "land") continue;
       const key = axialKey(tile.coord);
@@ -60,13 +63,20 @@ describe("houses on every land tile", () => {
         continue;
       }
       land++;
-      expect(state.elements.get(key)?.elementId, key).toBe("house");
+      if (town.buildings.has(key)) {
+        built++;
+        expect(state.elements.get(key)?.elementId, key).toBe("house");
+      } else {
+        expect(town.roads.has(key) || town.gardens.has(key), key).toBe(true);
+        expect(state.elements.has(key), key).toBe(false);
+      }
     }
     expect(land).toBeGreaterThan(600);
+    expect(built).toBeGreaterThan(400);
   });
 
   it("never offers House: not on land, not anywhere", () => {
-    const tile = map.tiles.find((t) => t.terrainId === "land" && !monuments.has(axialKey(t.coord)))!;
+    const tile = map.tiles.find((t) => t.terrainId === "land" && town.buildings.has(axialKey(t.coord)))!;
     state.elements.delete(axialKey(tile.coord)); // a demolished house leaves bare land
     expect(state.buildableAt(tile.coord).map((d) => d.id)).not.toContain("house");
   });

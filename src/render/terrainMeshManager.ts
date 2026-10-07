@@ -3,7 +3,7 @@ import type { AxialCoord } from "@core/hex";
 import { axialToWorld } from "@core/hex";
 import { TERRAIN_DEFS, TERRAIN_BY_ID } from "@core/terrain";
 import { createHexPrismGeometry } from "./hexGeometry";
-import { jitterColor, paletteColor } from "./palette";
+import { jitterColor, jitterGrass, paletteColor } from "./palette";
 import { SettleAnimator } from "./settleAnimation";
 import { MAX_TERRAIN_INSTANCES_PER_TYPE } from "./instanceLimits";
 import { OVERLAY_PLACEHOLDER, patchForOverlay, type OverlayUniforms } from "./mapOverlayShader";
@@ -260,7 +260,7 @@ export class TerrainMeshManager {
       const key = `${coord.q},${coord.r}`;
       const claimed = claimedKeys.has(key);
       const seed = coord.q * 31 + coord.r * 17;
-      const fullColor = jitterColor(paletteColor(terrain.colorKey), seed);
+      const fullColor = terrainId === "land" ? jitterGrass(paletteColor(terrain.colorKey), seed) : jitterColor(paletteColor(terrain.colorKey), seed);
       const dimColor = dim(fullColor);
 
       const y = claimed ? 0 : -UNCLAIMED_SINK;

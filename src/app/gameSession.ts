@@ -26,6 +26,9 @@ import { MapLabelLayer } from "@ui/mapLabels";
 import { MapAttribution } from "@ui/attribution";
 import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
+import { TownDecor } from "@render/townDecor";
+import { AmbientLife } from "@render/ambientLife";
+import { townLayout, WALL_COLOURS, ROOF_COLOURS } from "@levels/townLayout";
 import { Tooltips, buildWhat, tooltipText, missingTooltips } from "@ui/tooltip";
 import { StormReport } from "@ui/stormReport";
 // `SessionResult` is defined in @core/levelScore (it is expressed purely
@@ -323,6 +326,41 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(monuments.group);
   for (const key of monuments.occupiedKeys()) state.reserved.add(key);
 
+  /**
+   * The town plan (levels/townLayout.ts), on a level that pre-builds its
+   * town: which building kind and colours each House is drawn with, the
+   * gardens, and the major roads. Purely how the town looks; the game counts
+   * every building as one House.
+   */
+  const town = level.houses?.fillLand ? townLayout(levelMap, level.id) : null;
+  let townDecor: TownDecor | null = null;
+  let ambientLife: AmbientLife | null = null;
+  if (town) {
+    const walls = WALL_COLOURS.map((hex) => new THREE.Color(hex));
+    const roofs = ROOF_COLOURS.map((hex) => new THREE.Color(hex));
+    elements.setStyleResolver((coord) => {
+      const plot = town.buildings.get(`${coord.q},${coord.r}`);
+      return plot ? { kind: plot.kind, wall: walls[plot.wall], roof: roofs[plot.roof], scale: plot.scale, turns: plot.turns } : null;
+    });
+    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord), terrain.height("land"));
+    scene.add(townDecor.group);
+    ambientLife = new AmbientLife(town, levelTiles, (coord) => terrain.heightAt(coord), terrain.height("land"), prefersReducedMotionNow(), levelMap.focus);
+    scene.add(ambientLife.group);
+    // The gardens join the creature scheduler: pigeons lift out of the trees
+    // now and then, under its usual caps (one spawn a frame, a ceiling on how
+    // many are out), and at most one garden a second.
+    const gardenPoints = [...town.gardens].map((key) => {
+      const [q, r] = key.split(",").map(Number);
+      const { x, z } = axialToWorld({ q, r }, 1.0);
+      return { key: `${key}:garden`, elementId: "garden", x, y: terrain.heightAt({ q, r }), z };
+    });
+    reactions.setAmbientSource(function* () {
+      yield* elements.placedElements();
+      yield* gardenPoints;
+    });
+    reactions.setAmbientRateCap("garden", 1);
+  }
+
   // Section 4/8's new starting state: the player already owns a small
   // residential cluster of pre-built Houses on Land, inland from the coastal
   // claim — render them in place at boot, no settle animation (they were
@@ -525,10 +563,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           landmarks: levelMap.landmarks,
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           tooltips,
-          focusCamera: (coord, close) => {
+          focusCamera: (coord, close, zoom = 1) => {
             const world = axialToWorld(coord, 1.0);
             focusOn(world.x, world.z, false);
-            if (close) fitTo(26, 16, false);
+            if (close) fitTo(26 * zoom, 16 * zoom, false);
           },
           celebrateCombo: (tiles) => {
             const gold = new THREE.Color("#f2c35b");
@@ -1591,6 +1629,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     storm.setIntensity(1);
     mapLabels.setVisible(false);
     buildPopover.hide();
+    // Everyone goes indoors: walkers, boats and the background creatures.
+    ambientLife?.setPaused(true);
+    reactions.setAmbientPaused(true);
   }
 
   function panjimFxZone(
@@ -1665,6 +1706,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   }
 
   function panjimFxEnd(): void {
+    ambientLife?.setPaused(false);
+    reactions.setAmbientPaused(false);
     stormImpactActive = false;
     storm.setIntensity(0);
     mapLabels.setVisible(true);
@@ -1942,6 +1985,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     panjim?.frame();
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
+    if (ambientLife) {
+      ambientLife.setWind(storm.windStrength);
+      ambientLife.tick(nowMs);
+    }
     if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 
     // Place names have to be re-projected every frame, because the camera now
@@ -2090,6 +2137,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
     __heatForTest: heatOverlay,
+    __ambientLifeForTest: () => ambientLife,
     __tooltipsForTest: tooltips,
     // Every HUD control that should carry a tooltip but does not (ui/tooltip.ts HUD_SELECTORS).
     __missingTooltipsForTest: (): string[] => missingTooltips(container),
@@ -2198,6 +2246,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     buildFlourish.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();
+    townDecor?.dispose();
+    ambientLife?.dispose();
     tooltips.dispose();
     disposeScene();
 
