@@ -865,6 +865,24 @@ export class PanjimController {
   async scenario(name: string): Promise<boolean> {
     // "heat-N": stop the clock N quarters before the next storm, building
     // nothing. "heat-defend": plant three defences on its path first.
+    // "maya-jump-<place>": a warning that hops her to a named place (the layout tests).
+    const jump = /^maya-jump-(.+)$/.exec(name);
+    if (jump) {
+      const wanted = jump[1].replace(/-/g, " ").toLowerCase();
+      const spot = this.host.landmarks.find((l) => l.name.toLowerCase().includes(wanted));
+      if (!spot) return false;
+      const coord = { q: spot.q, r: spot.r };
+      this.maya.dismiss();
+      this.maya.say({
+        id: `sample-jump:${performance.now()}`,
+        text: `${spot.name} is exposed! Strengthen it before the storm.`,
+        state: "warning",
+        urgent: true,
+        anchor: () => this.host.project(coord)
+      });
+      this.maya.next();
+      return true;
+    }
     // "maya:<state>": Maya says a sample line in that state (for the screenshots).
     const pose = /^maya:(\w+)$/.exec(name);
     if (pose) {

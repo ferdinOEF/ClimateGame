@@ -6885,3 +6885,69 @@ the flood, with Maya's last call, and grayscale twins.
   houses.
 - **Flood jobs** can repeat an element (two khazans), because a flood has
   only two answering defences.
+
+## Hazard visuals and fixes (branch `hazard-vfx-and-fixes`)
+
+**Safety net:**
+- The base is master at `5f3fdfd`.
+- It is marked by the local tag `pre-hazard-vfx-and-fixes` and by the branch
+  `backup/pre-hazard-vfx-and-fixes` on GitHub.
+- The proxy refuses tag pushes, so the tag exists only locally.
+
+**Reference prototype not available.** The brief names an attached
+`hazard_vfx_prototype.html`, to be copied to `docs/reference/`. No such file
+reached this session:
+- Searched: the upload folders and every remote branch.
+- Only the older `docs/design/khazan_hazard_prototype.html` exists, and it has
+  no spiral, swell or backwater.
+- Decision: work from the written spec (its timings, colours and behaviours are
+  given in the brief) and note the gap.
+- If the prototype is pushed later, the visuals should be compared against it.
+
+### PA — Maya never overlaps the HUD — DONE
+
+**What changed:**
+- **Geometry** — `src/ui/panjim/mayaLayout.ts` is pure rectangle geometry,
+  unit-tested in `tests/mayaLayout.test.ts`:
+  - `placeFigure` docks her on the left edge, searching bottom-up, so she
+    stands just above the Discovery card and moves with it. Next it tries the
+    bottom edge, then anywhere free.
+  - For a warning jump it searches outward from the tile, ring by ring.
+  - `placeBubble` tries her right, then above, then left, at widths
+    320 → 220 px.
+  - Both keep 12 px clear of every HUD box.
+- **Maya** (`maya.ts`) reads the HUD boxes:
+  - on load and resize;
+  - on any HUD change (a MutationObserver: panels opening or closing,
+    tooltips, cards);
+  - a few times a second as a fallback.
+- **When there is no room for the bubble:**
+  1. She first tries a compact bubble (smaller text, 260 px).
+  2. If that also fails, she holds the line back and retries as soon as the
+     layout changes.
+- **Big moves:** she fades and hops in at the new spot rather than sliding
+  across the HUD.
+- **Pointer events:** only her bubble and her two buttons take them; the rest
+  of her lets clicks reach the board.
+- **Minimise:** a new "−" control collapses her to a 52 px badge in a free
+  spot. The badge shows a dot when a line is waiting; clicking it brings her
+  back.
+
+**Layout test** — `npm run test:layout`, Playwright, exits 1 on any failure:
+- Resolutions: 1366x768, 1920x1080 and 2560x1440.
+- Combinations: Discovery card shown/hidden × Get ready open/collapsed ×
+  tooltip none/open × no jump / St Cruz / Merces / Miramar warning jumps.
+- Also covered: the build menu open, minimised, and the window resized to 80%.
+- What it checks:
+  - her figure, bubble or badge against an independent list of HUD boxes,
+    with no overlap allowed;
+  - that she stays inside the viewport;
+  - that the bubble is showing.
+- **Result:** 105 layouts checked, 0 failed.
+- Screenshots: `docs/qa/layout/`.
+
+**Self-assessment:**
+- At 1920 and 1366 she stands above the Discovery card with the bubble to her
+  right, which reads cleanly.
+- On a 768 px-high window with every panel open, the bubble often goes
+  compact. That is readable, but small.

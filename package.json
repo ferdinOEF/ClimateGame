@@ -26,7 +26,8 @@
     "mapgen:geocode": "tsx tools/mapgen/geocodePanaji.ts",
     "mapgen:basemap": "tsx tools/mapgen/fetchPanajiBasemap.ts",
     "bots": "tsx tools/panjimBots/index.ts",
-    "verify:maya": "tsx tools/verifyMaya.ts"
+    "verify:maya": "tsx tools/verifyMaya.ts",
+    "test:layout": "tsx tools/mayaLayoutTest.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",
