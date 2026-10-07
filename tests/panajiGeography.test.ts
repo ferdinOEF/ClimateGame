@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { GAME_MAPS, mapById } from "../src/levels/levelMap";
 import { axialKey, axialToWorld, neighbors, worldToAxial, type AxialCoord } from "../src/core/hex";
@@ -222,5 +224,48 @@ describe("the Panaji board, Miramar to Merces", () => {
     const wet = panaji.tiles.filter((tile) => tile.terrainId === "river" || tile.terrainId === "estuary").length;
     // Nearly all of it: a few ponds inland are allowed to stand alone.
     expect(reached.size / wet).toBeGreaterThan(0.85);
+  });
+});
+
+describe("the Panaji OpenStreetMap layer", () => {
+  const panaji = mapById("panaji")!;
+  const overlay = panaji.overlay!;
+  const source = panaji.source!;
+
+  it("covers exactly the board's own bounds, through the board's own projection", () => {
+    /*
+     * The layer is stretched over `overlay.world` with no maths of its own, so
+     * this rectangle IS the alignment. It must start at the board's north-west
+     * corner and end where the generator's projection puts the south-east one.
+     */
+    const METRES_PER_DEG_LAT = 110_574;
+    const METRES_PER_DEG_LON = 111_320 * Math.cos((15.48 * Math.PI) / 180);
+    expect(overlay.world.x).toBe(0);
+    expect(overlay.world.z).toBe(0);
+    expect(overlay.world.width).toBeCloseTo(((source.bounds.east - source.bounds.west) * METRES_PER_DEG_LON) / source.metresPerUnit, 6);
+    expect(overlay.world.depth).toBeCloseTo(((source.bounds.north - source.bounds.south) * METRES_PER_DEG_LAT) / source.metresPerUnit, 6);
+  });
+
+  it("contains every tile", () => {
+    for (const tile of panaji.tiles) {
+      const { x, z } = axialToWorld(tile.coord, HEX_SIZE);
+      expect(x).toBeGreaterThanOrEqual(overlay.world.x - 1);
+      expect(x).toBeLessThanOrEqual(overlay.world.x + overlay.world.width + 1);
+      expect(z).toBeGreaterThanOrEqual(overlay.world.z - 1);
+      expect(z).toBeLessThanOrEqual(overlay.world.z + overlay.world.depth + 1);
+    }
+  });
+
+  it("ships as a static file of a reasonable size, credited to OpenStreetMap", () => {
+    const file = path.join(process.cwd(), "public", overlay.image);
+    expect(fs.existsSync(file), `${overlay.image} is missing from public/`).toBe(true);
+    expect(fs.statSync(file).size).toBeLessThanOrEqual(1.5 * 1024 * 1024);
+    expect(overlay.image).not.toMatch(/^https?:/);
+    expect(overlay.attribution).toMatch(/OpenStreetMap contributors/);
+    expect(overlay.href).toBe("https://www.openstreetmap.org/copyright");
+  });
+
+  it("is only on the maps that have one", () => {
+    expect(mapById("tutorial")!.overlay).toBeUndefined();
   });
 });

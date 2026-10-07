@@ -52,6 +52,24 @@ export interface MapSource {
   metresPerUnit: number;
 }
 
+/**
+ * A picture of the real place that can be shown over the board.
+ *
+ * Baked offline from OpenStreetMap by the map's generator and served as a
+ * static file — the game never calls a tile server. `world` is the rectangle
+ * of the board's world plane the image covers, written by the same projection
+ * that placed the hexes, so drawing the image over exactly that rectangle is
+ * all the alignment there is.
+ */
+export interface MapOverlay {
+  /** Path under the site's base URL, e.g. `maps/panaji-osm.webp`. */
+  image: string;
+  /** World x/z of the image's top-left (north-west) corner, and its size. +x is east, +z is south. */
+  world: { x: number; z: number; width: number; depth: number };
+  attribution: string;
+  href?: string;
+}
+
 /** A place a level is played on. */
 export interface GameMap {
   id: string;
@@ -89,6 +107,8 @@ export interface GameMap {
    * of the world was read, so the board can be regenerated or checked later.
    */
   source?: MapSource;
+  /** An OpenStreetMap layer the player can show over the hexes. Absent on maps without one. */
+  overlay?: MapOverlay;
   /** Real places on the board, used for the floating place labels. */
   landmarks: { name: string; q: number; r: number }[];
   /**
@@ -111,6 +131,7 @@ interface MapFileShape {
   blurb: string;
   geo?: GameMap["geo"];
   source?: MapSource;
+  overlay?: MapOverlay;
   focus: { q: number; r: number };
   landmarks: { name: string; q: number; r: number }[];
   monuments?: { id: string; name: string; category: string; kind: string; q: number; r: number }[];
@@ -126,6 +147,7 @@ function fromFile(file: unknown): GameMap {
     blurb: data.blurb,
     geo: data.geo,
     source: data.source,
+    overlay: data.overlay,
     focus: { q: data.focus.q, r: data.focus.r },
     landmarks: data.landmarks ?? [],
     monuments: data.monuments ?? [],

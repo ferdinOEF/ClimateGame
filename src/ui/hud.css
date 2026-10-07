@@ -1919,10 +1919,6 @@ html, body {
   panel is not a credit.
 */
 .map-attribution {
-  position: absolute;
-  left: 10px;
-  bottom: 8px;
-  z-index: 9;
   font-size: 10px;
   letter-spacing: 0.02em;
   padding: 2px 7px;
@@ -1940,4 +1936,84 @@ html, body {
 .map-attribution a:focus-visible {
   color: #fdf6e6;
   text-decoration: underline;
+}
+
+/*
+  The map corner: the street-map switch stacked above the map credit, in one
+  container so the two can never be laid out on top of each other.
+
+  Bottom-left on a wide screen. On a phone the bottom edge is full (the
+  objectives panel takes most of it and the "hexes still empty" pill sits in
+  the middle, which used to cover part of the credit), so the stack moves up
+  to sit directly under the instrument cluster. That card changes height as it
+  collapses and expands, so its bottom edge is measured in gameSession.ts and
+  handed over as --map-corner-top.
+*/
+.map-corner {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.map-corner > * {
+  pointer-events: auto;
+}
+
+/*
+  The street-map layer switch. Same dark glass and cream text as the credit,
+  a size up so the switch and slider are comfortable to hit on a phone.
+*/
+.map-layer-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(16, 24, 20, 0.62);
+  color: rgba(253, 246, 230, 0.9);
+  font-size: 12px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.map-layer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.map-layer-toggle input,
+.map-layer-opacity {
+  accent-color: #d8b158;
+  margin: 0;
+}
+
+.map-layer-opacity {
+  width: 96px;
+  cursor: pointer;
+}
+
+.map-layer-opacity:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 600px) {
+  .map-corner {
+    bottom: auto;
+    top: var(--map-corner-top, calc(12px + env(safe-area-inset-top)));
+    left: calc(12px + env(safe-area-inset-left));
+  }
+
+  .map-layer-opacity {
+    width: 72px;
+  }
 }

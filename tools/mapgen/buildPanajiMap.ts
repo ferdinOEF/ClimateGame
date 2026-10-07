@@ -1,11 +1,12 @@
 /**
  * Builds the Panaji board from the real map of Panjim.
  *
- * The board SHIPS as flat coloured hexes. The map image is a build input read
- * once here, offline, to decide what each hex is — it is not an asset and is
- * never served to a player. What survives into the game is the geography: the
- * coastline, the Mandovi, the estuary fringe, the sand, and the sixteen
- * landmarks standing where they really stand.
+ * The board ships as flat coloured hexes, read offline out of the map image to
+ * decide what each hex is: the coastline, the Mandovi, the creeks and wetlands,
+ * the sand, and the sixteen landmarks standing where they really stand. A
+ * crop of the same image, resampled onto the board's projection, also ships as
+ * an optional street-map layer the player can show over the hexes
+ * (`writeOverlay`); the game never fetches map tiles at runtime.
  *
  * WHAT CHANGED, AND WHY
  *
@@ -58,6 +59,18 @@ const BASEMAP_META = path.join(ROOT, "tools/mapgen/panajiBasemap.json");
 const BASEMAP_IMAGE = path.join(ROOT, "tools/mapgen/panaji-basemap.jpg");
 const PLACES = path.join(ROOT, "tools/mapgen/panajiPlaces.json");
 const OUT = path.join(ROOT, "src/data/maps/panaji.json");
+/** The OpenStreetMap layer the player can show over the board. Served from `public/`, so it ships. */
+const OVERLAY_OUT = path.join(ROOT, "public/maps/panaji-osm.webp");
+/** The path the game requests it at, relative to the site's base URL. */
+const OVERLAY_URL = "maps/panaji-osm.webp";
+/**
+ * Pixel width of the shipped layer. The basemap has about 1,750 px across the
+ * board, so this upsamples a little rather than inventing detail; it is the
+ * texture size every phone handles without complaint. WebP quality is tuned to
+ * keep the file at or under about 1.5 MB.
+ */
+const OVERLAY_WIDTH = 2048;
+const OVERLAY_QUALITY = 0.8;
 
 /**
  * The slice of the basemap that becomes playable board.
@@ -811,6 +824,71 @@ async function writePreview(meta: BasemapMeta, cells: Cell[], monuments: Monumen
   }
 }
 
+// ---- the map layer ----------------------------------------------------
+
+/**
+ * Bakes the OpenStreetMap layer that can be shown over the hexes.
+ *
+ * Cut from the same basemap the board was read out of, exactly to the board's
+ * bounds, and RESAMPLED onto the board's own projection. The board places
+ * hexes linearly in latitude (`geoToWorld`), the basemap is Web Mercator; over
+ * 0.067 degrees the two differ by well under a pixel, but resampling row by row
+ * makes them identical rather than merely close, so the game can stretch the
+ * image over the board's world rectangle with no projection maths of its own.
+ * That rectangle is written into the map file from `geoToWorld` too: one
+ * projection places the hexes, the landmarks and this picture.
+ *
+ * Nothing at runtime touches the OpenStreetMap tile server. This is a static
+ * file served with the game.
+ */
+async function writeOverlay(meta: BasemapMeta): Promise<{ width: number; height: number; bytes: number }> {
+  const dataUrl = `data:image/jpeg;base64,${fs.readFileSync(BASEMAP_IMAGE).toString("base64")}`;
+  const southEast = geoToWorld(BOARD.south, BOARD.east);
+  const width = OVERLAY_WIDTH;
+  const height = Math.round((OVERLAY_WIDTH * southEast.z) / southEast.x);
+
+  // Source rectangle per output row, computed here so the page needs no maths.
+  const left = geoToPixel(meta, BOARD.north, BOARD.west).px;
+  const right = geoToPixel(meta, BOARD.north, BOARD.east).px;
+  const rows: number[] = [];
+  for (let row = 0; row < height; row++) {
+    const lat = BOARD.north - ((row + 0.5) / height) * (BOARD.north - BOARD.south);
+    rows.push(geoToPixel(meta, lat, BOARD.west).py);
+  }
+
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent("<html><body></body></html>");
+    await page.evaluate("globalThis.__name = (fn) => fn;");
+    const webp = await page.evaluate(
+      async ({ dataUrl, width, height, left, right, rows, quality }) => {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("basemap failed to decode"));
+          img.src = dataUrl;
+        });
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        rows.forEach((sourceY, row) => ctx.drawImage(image, left, sourceY - 0.5, right - left, 1, 0, row, width, 1));
+        return canvas.toDataURL("image/webp", quality);
+      },
+      { dataUrl, width, height, left, right, rows, quality: OVERLAY_QUALITY }
+    );
+    const buffer = Buffer.from(webp.slice(webp.indexOf(",") + 1), "base64");
+    fs.mkdirSync(path.dirname(OVERLAY_OUT), { recursive: true });
+    fs.writeFileSync(OVERLAY_OUT, buffer);
+    return { width, height, bytes: buffer.length };
+  } finally {
+    await browser.close();
+  }
+}
+
 // ---- output -----------------------------------------------------------
 
 function asciiPreview(cells: Cell[], monuments: Monument[]): string {
@@ -880,6 +958,9 @@ async function main(): Promise<void> {
   const focus = worldToAxial(focusWorld.x, focusWorld.z, HEX_SIZE);
 
   const rows = [...new Set(cells.map((cell) => cell.coord.r))];
+  // The board's north-west corner is world (0,0) by construction; its
+  // south-east corner is where the far edge of the layer goes.
+  const overlayWorld = geoToWorld(BOARD.south, BOARD.east);
   const file = {
     id: "panaji",
     name: "Panaji",
@@ -910,6 +991,17 @@ async function main(): Promise<void> {
       metresPerUnit: METRES_PER_UNIT
     },
     focus,
+    /*
+     * The OpenStreetMap layer: where the image is, and the world rectangle it
+     * covers. The rectangle comes from the same `geoToWorld` that placed every
+     * hex, so the picture cannot drift from the board.
+     */
+    overlay: {
+      image: OVERLAY_URL,
+      world: { x: 0, z: 0, width: overlayWorld.x, depth: overlayWorld.z },
+      attribution: "© OpenStreetMap contributors",
+      href: "https://www.openstreetmap.org/copyright"
+    },
     // Every monument is labelled, so those share one list rather than two
     // that could disagree; the neighbourhood labels follow, projected through
     // the same function as everything else.
@@ -926,6 +1018,11 @@ async function main(): Promise<void> {
 
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, `${JSON.stringify(file, null, 2)}\n`);
+
+  const overlay = await writeOverlay(meta);
+  console.log(
+    `Map layer: ${path.relative(ROOT, OVERLAY_OUT)} ${overlay.width}x${overlay.height}, ${(overlay.bytes / 1024).toFixed(0)} KB`
+  );
 
   const previewPath = path.join(os.tmpdir(), "riptide-panaji-preview.png");
   await writePreview(meta, cells, monuments, previewPath);

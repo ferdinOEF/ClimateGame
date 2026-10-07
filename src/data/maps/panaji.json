@@ -25,6 +25,17 @@
     "q": 9,
     "r": 10
   },
+  "overlay": {
+    "image": "maps/panaji-osm.webp",
+    "world": {
+      "x": 0,
+      "z": 0,
+      "width": 59.60095548180441,
+      "depth": 54.877466666666805
+    },
+    "attribution": "© OpenStreetMap contributors",
+    "href": "https://www.openstreetmap.org/copyright"
+  },
   "landmarks": [
     {
       "name": "Our Lady of the Immaculate Conception",
