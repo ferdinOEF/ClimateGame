@@ -1,6 +1,6 @@
 import { axialKey, type AxialCoord } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
-import type { GameState } from "./gameState";
+import type { ElementInstance, GameState } from "./gameState";
 import { QUARTERS_PER_YEAR } from "./quarters";
 import { buildSchedule, challengeStrength, outlookFor, type ClimateConfig, type ScheduledChallenge } from "./climate";
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type ZoneDef } from "./zones";
@@ -84,6 +84,26 @@ export interface Readiness {
 
 export type ActionKind = "build" | "repair" | "demolish" | "fast_forward_year" | "fast_forward_event";
 
+/**
+ * Everything needed to put a run back exactly where it was: the board, the
+ * clock, the jar, which challenges have locked and landed and how they went,
+ * and the Voices. Plain JSON, so it doubles as the autosave.
+ */
+export interface RunSnapshot {
+  version: 1;
+  quarter: number;
+  coin: number;
+  trust: number;
+  resilience: number;
+  elements: [string, ElementInstance][];
+  jar: number;
+  jarCollected: number;
+  landed: string[];
+  locked: string[];
+  outcomes: [string, ChallengeOutcome][];
+  voiceStatus: [string, VoiceStatus][];
+}
+
 /** Repairs cost this share of the element's build cost. */
 export const REPAIR_SHARE = 0.4;
 
@@ -120,6 +140,11 @@ export class ActionRun {
   comboState: ComboState;
   readonly voices: readonly VoiceDef[];
   readonly voiceStatus = new Map<string, VoiceStatus>();
+  /**
+   * The run as it stood the quarter each challenge's Forecast locked, by
+   * challenge id: what "Replay from the forecast" rewinds to.
+   */
+  readonly lockSnapshots = new Map<string, RunSnapshot>();
   /** Coin waiting in the jar. Banked only when the player taps it. */
   jar: number;
   /** Everything ever banked from the jar, for the finale's Livelihoods. */
@@ -141,6 +166,50 @@ export class ActionRun {
     this.combos = this.comboState.bonus;
     this.voices = options.voices ?? [];
     for (const voice of this.voices) this.voiceStatus.set(voice.id, voice.era === 1 ? "active" : "waiting");
+  }
+
+  snapshot(): RunSnapshot {
+    // Through JSON, so nothing in the snapshot shares an object with the live run.
+    return JSON.parse(
+      JSON.stringify({
+        version: 1,
+        quarter: this.quarter,
+        coin: this.state.coin,
+        trust: this.state.trust,
+        resilience: this.state.resilience,
+        elements: [...this.state.elements],
+        jar: this.jar,
+        jarCollected: this.jarCollected,
+        landed: [...this.landed],
+        locked: [...this.locked],
+        outcomes: [...this.outcomes],
+        voiceStatus: [...this.voiceStatus]
+      } satisfies RunSnapshot)
+    ) as RunSnapshot;
+  }
+
+  /** Puts the run back to `snapshot`. Lock snapshots taken after it are dropped; those before it stay. */
+  restore(snapshot: RunSnapshot): void {
+    const copy = JSON.parse(JSON.stringify(snapshot)) as RunSnapshot;
+    this.state.elements.clear();
+    for (const [key, inst] of copy.elements) this.state.elements.set(key, inst);
+    this.state.turn = copy.quarter;
+    this.state.coin = copy.coin;
+    this.state.trust = copy.trust;
+    this.state.resilience = copy.resilience;
+    this.jar = copy.jar;
+    this.jarCollected = copy.jarCollected;
+    this.landed.clear();
+    for (const id of copy.landed) this.landed.add(id);
+    this.locked.clear();
+    for (const id of copy.locked) this.locked.add(id);
+    this.outcomes.clear();
+    for (const [id, outcome] of copy.outcomes) this.outcomes.set(id, outcome);
+    this.voiceStatus.clear();
+    for (const [id, status] of copy.voiceStatus) this.voiceStatus.set(id, status);
+    for (const id of [...this.lockSnapshots.keys()]) if (!this.locked.has(id)) this.lockSnapshots.delete(id);
+    this.comboState = computeCombos(this.state);
+    this.combos = this.comboState.bonus;
   }
 
   /** Era 1 runs to the first challenge, era 2 to the second, era 3 to 2050. */
@@ -332,6 +401,7 @@ export class ActionRun {
     for (const challenge of this.schedule) {
       if (this.locked.has(challenge.id) || challenge.quarter - this.quarter > this.climate.forecastLockQuarters) continue;
       this.locked.add(challenge.id);
+      this.lockSnapshots.set(challenge.id, this.snapshot());
       events.push({ type: "forecast_lock", challenge });
     }
     for (const challenge of this.schedule) {

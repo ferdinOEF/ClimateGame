@@ -303,6 +303,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // put sea, sand, river and town in one frame. A map's (0,0) is wherever its
   // grid happened to centre, which on a georeferenced map is a latitude and
   // longitude, not anywhere a player would want to be looking.
+  /** The opening frame's extent, so a staged challenge can hand the camera back where the player started. */
+  let openingFit = { width: 20, depth: 20 };
   /**
    * The opening frame: centred on the map's focus point, pulled back far
    * enough to hold the whole board.
@@ -345,7 +347,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // would read as the game correcting a mistake.
     const focus = axialToWorld(levelMap.focus, 1.0);
     focusOn(focus.x, focus.z, true);
-    fitTo(maxX - minX + Math.sqrt(3), maxZ - minZ + 2, true);
+    openingFit = { width: maxX - minX + Math.sqrt(3), depth: maxZ - minZ + 2 };
+    fitTo(openingFit.width, openingFit.depth, true);
   }
 
   const hud = new Hud(container, {
@@ -452,7 +455,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
               later(() => terrain.setTint(coord, null), 1600 + 120 * i);
             });
           },
-          onChallenge: (challenge, outcome) => showPanjimChallenge(challenge, outcome)
+          challengeFx: {
+            begin: (challenge) => panjimFxBegin(challenge.kind),
+            zone: (zone, outcome, slow, durationMs) => panjimFxZone(zone, outcome, slow, durationMs),
+            end: () => panjimFxEnd()
+          },
+          redrawBoard: () => redrawPanjimBoard(),
+          offerResume: (label, onResume) => objectivesPanel.addBriefAction(label, onResume)
         })
       : null;
   if (panjim) hud.useQuarterClock();
@@ -1459,62 +1468,110 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // --- Panjim 2050 challenges -----------------------------------------------------
 
   /**
-   * Shows a resolved Panjim 2050 challenge on the board, zone by zone: the
-   * water or wind reveals over each zone it reached, in path order, with what
-   * failed, what was worn and which houses were hit. P7 stages this properly
-   * (spectacle, Aftermath, retry); this is the readable minimum.
+   * Panjim 2050's challenge staging, driven by PanjimController.stageChallenge:
+   * the weather comes in, then each zone gets its own moment in turn, then it
+   * clears. The outcome was decided when the challenge landed; this shows it.
    */
-  function showPanjimChallenge(challenge: { name: string; kind: string }, outcome: import("@core/zones").ChallengeOutcome | null): void {
-    hud.flashArrival(challenge.kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
-    if (!outcome) {
-      hud.showBanner(`${challenge.name} hits Panjim`, 4000);
-      return;
-    }
+  function panjimFxBegin(kind: string): void {
+    hud.flashArrival(kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
     stormImpactActive = true;
     storm.setIntensity(1);
     mapLabels.setVisible(false);
+    buildPopover.hide();
+  }
+
+  function panjimFxZone(
+    zone: import("@core/zones").ZoneOutcome,
+    outcome: import("@core/zones").ChallengeOutcome,
+    slow: boolean,
+    durationMs: number
+  ): void {
     const zones = panjim?.run.zones;
-    outcome.zones.forEach((zoneOutcome, index) => {
-      later(() => {
-        const share = zoneOutcome.incoming > 0 ? zoneOutcome.leak / zoneOutcome.incoming : 0;
-        if (zones && share > 0.05) {
-          const kind: HazardKind = zoneOutcome.hazard === "flood" ? "flood" : "storm";
-          for (const key of zones.keys(zoneOutcome.zoneId)) {
-            const [q, r] = key.split(",").map(Number);
-            hazardOverlay.show(kind, { q, r }, terrain.heightAt({ q, r }), 0.3 + share * 1.2, performance.now());
-          }
-        }
-        for (const key of zoneOutcome.failed) {
-          const [q, r] = key.split(",").map(Number);
-          elements.destroy({ q, r });
-          playSound("hazard_breach");
-        }
-        for (const key of zoneOutcome.overwhelmed) {
-          const inst = state.elements.get(key);
-          const [q, r] = key.split(",").map(Number);
-          if (inst) elements.setDegradeVisual({ q, r }, inst.degradeAmount);
-        }
-        playSound(zoneOutcome.held ? "chime" : "hazard_overwhelmed");
-      }, 600 + index * 1100);
-    });
-    for (const key of outcome.damagedHouses) {
+    if (!zones) return;
+    const keys = zones.keys(zone.zoneId);
+    const coords = keys.map((key) => {
       const [q, r] = key.split(",").map(Number);
-      later(() => elements.setBuildingDamagedVisual({ q, r }), 900);
-    }
-    runTracker.recordHazard({
-      totalDamage: outcome.zones.reduce((sum, z) => sum + z.leak, 0),
-      damagedTiles: outcome.housesDamaged,
-      destroyed: outcome.zones.reduce((sum, z) => sum + z.failed.length, 0),
-      overwhelmed: outcome.zones.reduce((sum, z) => sum + z.overwhelmed.length, 0)
+      return { q, r };
     });
-    later(() => {
-      stormImpactActive = false;
-      storm.setIntensity(0);
-      mapLabels.setVisible(true);
-      const stars = "★".repeat(outcome.stars) + "☆".repeat(3 - outcome.stars);
-      hud.showBanner(`${challenge.name} ${stars} · houses saved ${outcome.housesSaved}${outcome.housesDamaged ? ` · ${outcome.housesDamaged} damaged` : ""}`, 5000);
-      refreshHud();
-    }, 900 + outcome.zones.length * 1100);
+    // The camera goes to the zone. Closer, and slower, for the biggest save.
+    let cx = 0;
+    let cz = 0;
+    for (const coord of coords) {
+      const world = axialToWorld(coord, 1.0);
+      cx += world.x;
+      cz += world.z;
+    }
+    if (coords.length > 0) focusOn(cx / coords.length, cz / coords.length, false);
+    if (slow) fitTo(18, 12, false);
+    // The hazard's reach over the zone: how much got past its defence.
+    const share = zone.incoming > 0 ? zone.leak / zone.incoming : 0;
+    const kind: HazardKind = zone.hazard === "flood" ? "flood" : "storm";
+    if (share > 0.05) {
+      for (const coord of coords) hazardOverlay.show(kind, coord, terrain.heightAt(coord), 0.3 + share * 1.2, performance.now());
+    }
+    // The defences answer one at a time: a ring and their creatures, in turn.
+    const defenders = keys.filter((key) => {
+      const inst = state.elements.get(key);
+      return inst && (ELEMENT_BY_ID.get(inst.elementId)?.targetsHazards ?? []).includes(zone.hazard);
+    });
+    const gap = Math.min(220, (durationMs * 0.8) / Math.max(1, defenders.length));
+    defenders.forEach((key, i) => {
+      later(() => {
+        const [q, r] = key.split(",").map(Number);
+        const world = axialToWorld({ q, r }, 1.0);
+        buildFlourish.play(world.x, terrain.heightAt({ q, r }), world.z, performance.now());
+        const inst = state.elements.get(key);
+        if (inst && i < 6) reactions.trigger(inst.elementId, world.x, terrain.heightAt({ q, r }), world.z);
+        if (inst) elements.setDegradeVisual({ q, r }, inst.degradeAmount);
+      }, i * gap);
+    });
+    for (const key of zone.failed) {
+      const [q, r] = key.split(",").map(Number);
+      elements.destroy({ q, r });
+      playSound("hazard_breach");
+    }
+    for (const key of outcome.damagedHouses) {
+      if (zones.zoneOf(key) !== zone.zoneId) continue;
+      const [q, r] = key.split(",").map(Number);
+      later(() => elements.setBuildingDamagedVisual({ q, r }), durationMs * 0.5);
+    }
+    playSound(zone.held ? "build" : "hazard_overwhelmed");
+    runTracker.recordHazard({
+      totalDamage: zone.leak,
+      damagedTiles: zone.housesDamaged,
+      destroyed: zone.failed.length,
+      overwhelmed: zone.overwhelmed.length
+    });
+  }
+
+  function panjimFxEnd(): void {
+    stormImpactActive = false;
+    storm.setIntensity(0);
+    mapLabels.setVisible(true);
+    const focus = axialToWorld(levelMap.focus, 1.0);
+    focusOn(focus.x, focus.z, false);
+    fitTo(openingFit.width, openingFit.depth, false);
+    refreshHud();
+  }
+
+  /** After a rewind or a resume: every element mesh rebuilt from the game state, with its growth, wear and damage. */
+  function redrawPanjimBoard(): void {
+    elements.reset();
+    hazardOverlay.reset();
+    forecastPreview = [];
+    forecastOutline.clear();
+    for (const [key, inst] of state.elements) {
+      const [q, r] = key.split(",").map(Number);
+      const coord = { q, r };
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def) continue;
+      const growth = (def.matureQuarters ?? 0) > 0 ? state.maturityFraction(inst, def) : undefined;
+      elements.place(coord, inst.elementId, terrain.heightAt(coord), { animate: false, growth });
+      if (def.kind === "building" && inst.degradeAmount >= 1) elements.setBuildingDamagedVisual(coord);
+      else if (inst.degradeAmount > 0) elements.setDegradeVisual(coord, inst.degradeAmount);
+    }
+    syncPanjimVisuals();
+    refreshPreview();
   }
 
   // --- Build / defend popover --------------------------------------------------

@@ -672,3 +672,174 @@
 .voice-card.answered .voice-progress {
   visibility: hidden;
 }
+
+/* ---- Challenge staging and Aftermath ------------------------------------ */
+
+.houses-saved {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  top: 200px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: rgba(20, 30, 26, 0.9);
+  border: 2px solid #9fd8c6;
+  color: #fdf6e6;
+  pointer-events: none;
+}
+
+.houses-saved-label {
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.houses-saved-value {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: #7fe0b8;
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+  text-align: center;
+}
+
+/* Slow motion on the biggest save: a letterbox and a warm vignette. */
+.slowmo::before,
+.slowmo::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 7vh;
+  background: #000;
+  z-index: 11;
+  pointer-events: none;
+  animation: letterbox 400ms ease-out both;
+}
+
+.slowmo::before { top: 0; }
+.slowmo::after { bottom: 0; }
+
+@keyframes letterbox {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.aftermath-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(8, 14, 12, 0.35), rgba(8, 14, 12, 0.6));
+}
+
+.aftermath-backdrop[hidden] {
+  display: none;
+}
+
+.aftermath-card {
+  width: min(460px, calc(100vw - 32px));
+  padding: 22px 26px 20px;
+  border-radius: 16px;
+  background: #1d2a24;
+  border: 1px solid rgba(255, 243, 196, 0.35);
+  color: #fdf6e6;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  animation: aftermath-in 380ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes aftermath-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.94); }
+}
+
+.aftermath-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9fd8c6;
+}
+
+.aftermath-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 4px 0 8px;
+}
+
+.aftermath-stars {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.aftermath-star {
+  color: rgba(253, 246, 230, 0.18);
+  transform: scale(0.8);
+  transition: color 200ms ease, transform 360ms cubic-bezier(0.2, 1.8, 0.4, 1);
+}
+
+.aftermath-star.filled {
+  color: #f2c35b;
+  transform: scale(1.1);
+  text-shadow: 0 0 16px rgba(242, 195, 91, 0.7);
+}
+
+.aftermath-houses {
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #7fe0b8;
+}
+
+.aftermath-line {
+  margin: 8px 0 16px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: rgba(253, 246, 230, 0.92);
+}
+
+.aftermath-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aftermath-actions button {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.aftermath-continue {
+  background: #f2c35b;
+  border: none;
+  color: #1d2a24;
+  font-size: 15px;
+}
+
+.aftermath-replay {
+  background: transparent;
+  border: 1px solid rgba(253, 246, 230, 0.4);
+  color: #fdf6e6;
+  font-size: 13px;
+}
+
+.aftermath-replay:hover {
+  border-color: #9fd8c6;
+}
+
+.brief-resume {
+  margin-top: 8px;
+}

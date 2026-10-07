@@ -11,7 +11,10 @@ import { FieldGuide } from "@ui/panjim/fieldGuide";
 import { voiceProgress, describeVoiceGoal } from "@core/voices";
 import { COMBO_INFO, type ComboId } from "@core/combos";
 import { outlookFor, seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
-import { FRONTS, type ChallengeOutcome, type ZoneDef } from "@core/zones";
+import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
+import { aftermathLine } from "@core/aftermath";
+import type { RunSnapshot } from "@core/actionRun";
+import { AftermathCard } from "@ui/panjim/aftermathCard";
 import { axialToWorld } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
@@ -25,6 +28,13 @@ import { playSound } from "@ui/audioHooks";
  * calls in here instead of `state.build()` when the level's time model is
  * `"actions"`; on the tutorial this class is never constructed.
  */
+export interface ChallengeFx {
+  begin: (challenge: ScheduledChallenge) => void;
+  /** One zone's moment: the water or wind reveals, its defences answer one at a time, failures fall, houses take damage. */
+  zone: (zone: ZoneOutcome, outcome: ChallengeOutcome, slow: boolean, durationMs: number) => void;
+  end: () => void;
+}
+
 export interface PanjimHost {
   container: HTMLElement;
   state: GameState;
@@ -43,8 +53,12 @@ export interface PanjimHost {
   seed: string;
   /** A challenge's Forecast just locked. */
   onForecastLock?: (challenge: ScheduledChallenge) => void;
-  /** A challenge landed and resolved. */
-  onChallenge?: (challenge: ScheduledChallenge, outcome: ChallengeOutcome | null) => void;
+  /** The board effects of a challenge, staged zone by zone (see `stageChallenge`). */
+  challengeFx: ChallengeFx;
+  /** Rebuilds every element's mesh from the game state, after a rewind or a resume. */
+  redrawBoard: () => void;
+  /** Adds a second button to the level brief ("Continue from Q3 2032"). */
+  offerResume: (label: string, onResume: () => void) => void;
   /** The map's challenge zones. */
   zones: readonly ZoneDef[];
   /** Shows the locked Forecast's path as a translucent in-scene overlay: each tile with a 0–1 weight (first zone strongest). */
@@ -73,9 +87,14 @@ export class PanjimController {
   private readonly jar: CoinJar;
   private readonly voicesPanel = new VoicesPanel();
   readonly fieldGuide: FieldGuide;
-  /** Stars per landed challenge, shown on the Outlook. */
-  readonly results = new Map<string, number>();
   private busy = false;
+  /** A challenge that landed during the current time-lapse, staged once the clock stops. */
+  private pendingChallenge: { challenge: ScheduledChallenge; outcome: ChallengeOutcome; failedIds: string[] } | null = null;
+  /** The last readiness reading for each challenge before it landed, for telemetry. */
+  private readonly readinessById = new Map<string, string>();
+  private readonly aftermath: AftermathCard;
+  /** Real milliseconds played before this session, when resuming a save: the tempo badge counts the whole run. */
+  playMsBefore = 0;
   /** The in-scene label over the locked Forecast's first zone: "Cyclone landfall ●●○". */
   private readonly forecastLabel: HTMLElement;
   private forecastAnchor: AxialCoord | null = null;
@@ -97,6 +116,8 @@ export class PanjimController {
     this.jar = new CoinJar(host.container, () => this.collectJar());
     host.mountVoices(this.voicesPanel.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
+    this.aftermath = new AftermathCard(host.container);
+    this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
     this.forecastLabel.hidden = true;
@@ -152,9 +173,10 @@ export class PanjimController {
         return this.run.landed.has(challenge.id) ? { ...outlook, phase: "past" as const } : outlook;
       }),
       seaLevelCm: seaLevelCm(climate, this.run.quarter),
-      results: this.results
+      results: new Map([...this.run.outcomes].map(([id, outcome]) => [id, outcome.stars]))
     });
     const readiness = this.run.readiness();
+    if (readiness) this.readinessById.set(readiness.challenge.id, readiness.level);
     this.outlook.renderGauge(
       readiness
         ? {
@@ -182,6 +204,142 @@ export class PanjimController {
       }
     }
     return count;
+  }
+
+  /**
+   * The challenge, staged: each zone in turn gets its moment (the hazard
+   * arrives, the defences there answer one at a time, a "Houses saved"
+   * counter climbs), the zone with the biggest save plays in slow motion, then
+   * the Aftermath card. A click hurries the staging along. The outcome itself
+   * was decided the instant the challenge landed; this only shows it.
+   */
+  private async stageChallenge(challenge: ScheduledChallenge, outcome: ChallengeOutcome, failedIds: string[]): Promise<void> {
+    const telemetry = this.host.telemetry;
+    const readiness = this.readinessById.get(challenge.id) ?? null;
+    telemetry.emit("challenge_start", { id: challenge.id, readiness });
+    this.host.challengeFx.begin(challenge);
+    const counter = document.createElement("div");
+    counter.className = "houses-saved";
+    counter.innerHTML = `<span class="houses-saved-label">Houses saved</span><span class="houses-saved-value">0</span>`;
+    this.host.container.appendChild(counter);
+    const valueEl = counter.querySelector(".houses-saved-value") as HTMLElement;
+
+    let hurry = false;
+    const abort = new AbortController();
+    document.addEventListener("pointerdown", () => (hurry = true), { signal: abort.signal, capture: true });
+
+    const biggest = outcome.zones.reduce((best, zone, index) => (zone.absorbed > (outcome.zones[best]?.absorbed ?? -1) ? index : best), 0);
+    let saved = 0;
+    try {
+      await wait(500);
+      for (const [index, zone] of outcome.zones.entries()) {
+        const slow = index === biggest && zone.absorbed > 0 && !hurry;
+        const duration = hurry ? 250 : slow ? 2600 : 1300;
+        this.host.container.classList.toggle("slowmo", slow);
+        this.host.challengeFx.zone(zone, outcome, slow, duration);
+        const from = saved;
+        saved += zone.housesInZone - zone.housesDamaged;
+        await countUp(valueEl, from, saved, duration);
+        if (zone.held) playSound("chime");
+      }
+    } finally {
+      abort.abort();
+      this.host.container.classList.remove("slowmo");
+    }
+    valueEl.textContent = String(outcome.housesSaved);
+    await wait(hurry ? 100 : 500);
+    this.host.challengeFx.end();
+    counter.remove();
+    this.renderOutlook();
+    this.host.refresh();
+
+    // Autosave after every challenge.
+    const saveStart = performance.now();
+    this.saveRun();
+    telemetry.emit("checkpoint", { id: challenge.id, ms: Math.round(telemetry.elapsed()), saveMs: Math.round(performance.now() - saveStart) });
+    telemetry.emit("challenge_end", { id: challenge.id, stars: outcome.stars, readiness, protection: Number(outcome.protection.toFixed(3)) });
+
+    const lock = this.run.lockSnapshots.get(challenge.id);
+    const choice = await this.aftermath.show({
+      title: `${challenge.name} · ${this.labelFor(challenge.quarter)}`,
+      stars: outcome.stars,
+      housesSaved: outcome.housesSaved,
+      housesDamaged: outcome.housesDamaged,
+      line: this.run.zones ? aftermathLine(challenge.kind, outcome, this.host.state, this.run.zones, failedIds) : "",
+      replayLabel: lock && !this.run.finished ? `Replay from the forecast (${this.labelFor(lock.quarter)})` : null
+    });
+    if (choice === "replay" && lock) this.rewindTo(lock, challenge);
+  }
+
+  /** Rewinds to a snapshot (a forecast lock), redraws the board and re-shows that forecast. Measured: it must stay well under 3 s. */
+  private rewindTo(snapshot: RunSnapshot, challenge: ScheduledChallenge): void {
+    const start = performance.now();
+    this.run.restore(snapshot);
+    this.host.redrawBoard();
+    this.showForecast(challenge);
+    this.clock.set(this.run.label, this.progress());
+    this.renderOutlook();
+    this.host.refresh();
+    this.syncControls();
+    this.host.telemetry.emit("checkpoint", { rewind: challenge.id, ms: Math.round(performance.now() - start) });
+    this.host.showBanner(`Back to ${this.run.label}. The forecast is locked: ${challenge.name} in ${this.labelFor(challenge.quarter)}.`, 4500);
+  }
+
+  // ---- autosave -----------------------------------------------------------
+
+  private saveKey(): string {
+    return `riptide-rising:panjim2050:v1:${this.host.level.id}:${this.host.seed}`;
+  }
+
+  /** Writes the run to this device: the board, every forecast-lock snapshot (so Replay survives a reload), and real time played. */
+  saveRun(): void {
+    try {
+      localStorage.setItem(
+        this.saveKey(),
+        JSON.stringify({
+          snapshot: this.run.snapshot(),
+          locks: [...this.run.lockSnapshots],
+          playMs: this.playMsBefore + this.host.telemetry.elapsed(),
+          savedAt: new Date().toISOString()
+        })
+      );
+    } catch {
+      // Storage full or blocked: the run carries on unsaved.
+    }
+  }
+
+  clearSave(): void {
+    try {
+      localStorage.removeItem(this.saveKey());
+    } catch {
+      // Nothing to clear.
+    }
+  }
+
+  /** On load: if this level and seed have a save part-way through, the brief offers to continue it. */
+  private offerSavedRun(): void {
+    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number } | null = null;
+    try {
+      const raw = localStorage.getItem(this.saveKey());
+      saved = raw ? JSON.parse(raw) : null;
+    } catch {
+      saved = null;
+    }
+    if (!saved || saved.snapshot?.version !== 1 || saved.snapshot.quarter >= this.run.totalQuarters) return;
+    const label = quarterLabel(saved.snapshot.quarter, this.run.config.startYear);
+    const data = saved;
+    this.host.offerResume(`Continue from ${label}`, () => {
+      this.run.restore(data.snapshot);
+      for (const [id, lock] of data.locks) this.run.lockSnapshots.set(id, lock);
+      this.playMsBefore = data.playMs ?? 0;
+      this.host.redrawBoard();
+      const next = this.run.nextChallenge();
+      if (next && this.run.locked.has(next.id)) this.showForecast(next);
+      this.clock.set(this.run.label, this.progress());
+      this.renderOutlook();
+      this.host.refresh();
+      this.syncControls();
+    });
   }
 
   /** Draws the locked Forecast in the scene: the path's zones, the first one strongest, and the strength label over it. */
@@ -231,6 +389,7 @@ export class PanjimController {
   /** Repair a worn defence or damaged house: one quarter and part of its cost. */
   repair(coord: AxialCoord): boolean {
     if (this.busy) return false;
+    this.noteBoard();
     const outcome = this.run.repair(coord);
     if (!outcome.ok) {
       if (outcome.reason) this.host.showBanner(outcome.reason, 2000);
@@ -252,8 +411,16 @@ export class PanjimController {
     return this.busy;
   }
 
+  /** Element ids by tile as they stood before the current action, so a structure the resolver removed can still be named. */
+  private preChallengeIds = new Map<string, string>();
+
+  private noteBoard(): void {
+    this.preChallengeIds = new Map([...this.host.state.elements].map(([key, inst]) => [key, inst.elementId]));
+  }
+
   build(coord: AxialCoord, elementId: string): boolean {
     if (this.busy) return false;
+    this.noteBoard();
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
     this.host.placeElement(coord, elementId);
@@ -264,6 +431,7 @@ export class PanjimController {
 
   demolish(coord: AxialCoord): boolean {
     if (this.busy) return false;
+    this.noteBoard();
     const outcome = this.run.demolish(coord);
     if (!outcome.ok) return false;
     this.host.removeElementVisual(coord);
@@ -274,6 +442,7 @@ export class PanjimController {
 
   async fastForwardYear(): Promise<void> {
     if (this.busy) return;
+    this.noteBoard();
     const outcome = this.run.fastForwardYear();
     if (!outcome.ok) return;
     this.host.telemetry.action("fast_forward_year", outcome.quarters);
@@ -284,6 +453,7 @@ export class PanjimController {
   /** Skips to one quarter before the next challenge, as a time-lapse. */
   async fastForwardEvent(): Promise<void> {
     if (this.busy) return;
+    this.noteBoard();
     const outcome = this.run.fastForwardToNextEvent();
     if (!outcome.ok) return;
     this.host.telemetry.action("fast_forward_event", outcome.quarters);
@@ -320,6 +490,9 @@ export class PanjimController {
         stepMs,
         handleStep
       );
+      const pending = this.pendingChallenge;
+      this.pendingChallenge = null;
+      if (pending) await this.stageChallenge(pending.challenge, pending.outcome, pending.failedIds);
     } finally {
       this.busy = false;
     }
@@ -327,7 +500,10 @@ export class PanjimController {
     this.renderOutlook();
     this.host.refresh();
     this.syncControls();
-    if (this.run.finished) this.host.onRunComplete();
+    if (this.run.finished) {
+      this.clearSave();
+      this.host.onRunComplete();
+    }
   }
 
   private handleEvent(event: RunEvent): void {
@@ -343,8 +519,12 @@ export class PanjimController {
       case "challenge": {
         playSound("hazard_arrival");
         this.clearForecast();
-        if (event.outcome) this.results.set(event.challenge.id, event.outcome.stars);
-        this.host.onChallenge?.(event.challenge, event.outcome);
+        if (event.outcome) {
+          // Which kinds of thing failed, read before the meshes go: the
+          // resolver has already removed them from the game state.
+          const failedIds = event.outcome.zones.flatMap((zone) => zone.failed).map((key) => this.preChallengeIds.get(key) ?? "");
+          this.pendingChallenge = { challenge: event.challenge, outcome: event.outcome, failedIds };
+        }
         break;
       }
       case "combo": {
@@ -458,11 +638,44 @@ export class PanjimController {
         return true;
       }
       case "challenge": {
+        // Some beach defences first, so the staging has something to show.
+        for (let i = 0; i < 6; i++) {
+          const coord = this.firstBuildableIn("z1", i % 2 === 0 ? "dune" : "sandy_vegetation");
+          if (coord) this.build(coord, i % 2 === 0 ? "dune" : "sandy_vegetation");
+          await this.idle();
+        }
         await this.fastForwardEvent();
         await this.idle();
-        await this.fastForwardYear();
+        // Not awaited: the fast-forward waits on the Aftermath's buttons.
+        void this.fastForwardYear();
+        while (!this.aftermath.isOpen) await wait(100);
+        await wait(1800); // the stars fill
+        return true;
+      }
+      case "stage": {
+        // The same as "challenge", but handed back mid-staging, so the shot
+        // catches the Houses saved counter and the slow-motion save.
+        for (let i = 0; i < 6; i++) {
+          const coord = this.firstBuildableIn("z1", i % 2 === 0 ? "dune" : "sandy_vegetation");
+          if (coord) this.build(coord, i % 2 === 0 ? "dune" : "sandy_vegetation");
+          await this.idle();
+        }
+        for (let i = 0; i < 4; i++) {
+          const house = this.firstBuildableIn("z2", "house");
+          if (house) this.build(house, "house");
+          await this.idle();
+        }
+        await this.fastForwardEvent();
         await this.idle();
-        await new Promise((resolve) => window.setTimeout(resolve, 3500));
+        void this.fastForwardYear();
+        while (!this.host.container.querySelector(".houses-saved")) await wait(50);
+        return true;
+      }
+      case "replay": {
+        const replay = this.host.container.querySelector<HTMLButtonElement>(".aftermath-replay");
+        if (!replay) return false;
+        replay.click();
+        await this.idle();
         return true;
       }
       case "actions": {
@@ -514,6 +727,7 @@ export class PanjimController {
   }
 
   dispose(): void {
+    this.aftermath.dispose();
     this.jar.dispose();
     this.fieldGuide.dispose();
     this.forecastLabel.remove();
@@ -537,4 +751,22 @@ function nearestTo(keys: string[], target: AxialCoord): AxialCoord | null {
     }
   }
   return best;
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+/** Counts `el` up from `from` to `to` over `ms`. */
+async function countUp(el: HTMLElement, from: number, to: number, ms: number): Promise<void> {
+  const start = performance.now();
+  await new Promise<void>((resolve) => {
+    const step = (): void => {
+      const t = Math.min(1, (performance.now() - start) / ms);
+      el.textContent = String(Math.round(from + (to - from) * t));
+      if (t < 1) requestAnimationFrame(step);
+      else resolve();
+    };
+    requestAnimationFrame(step);
+  });
 }

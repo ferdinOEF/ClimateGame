@@ -102,6 +102,11 @@ async function main(): Promise<void> {
 
     const telemetry = await page.evaluate(() => (window as unknown as { __telemetry?: unknown[] }).__telemetry ?? []);
     console.log(`telemetry events: ${telemetry.length}`);
+    for (const event of telemetry as { name: string; t: number; data: unknown }[]) {
+      if (["checkpoint", "challenge_start", "challenge_end", "first_action_ms", "first_reward_ms", "run_end"].includes(event.name)) {
+        console.log(`  ${event.name} t=${event.t}ms ${JSON.stringify(event.data)}`);
+      }
+    }
     await browser.close();
   } finally {
     server.stop();

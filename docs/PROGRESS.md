@@ -5834,3 +5834,64 @@ no console errors.
 - **What a first-time player won't understand:** that a creature can be
   tapped in the air. The toast after the first tile-tap says "New in your
   Field Guide", which is where they will learn the guide exists.
+
+## P7 — challenge sequence: forecast lock, spectacle, Aftermath, retry, autosave — DONE
+
+**Built:**
+- **Forecast lock:** the run snapshots itself the quarter each Forecast locks
+  (`ActionRun.lockSnapshots`, plain JSON).
+- **Spectacle** (`PanjimController.stageChallenge` with the session's
+  `challengeFx`). The outcome is decided the instant the challenge lands;
+  the staging only shows it:
+  - The weather comes in, then each zone on the path gets its own moment.
+    The camera goes there, the hazard reveals over whatever got past, the
+    defences answer *one at a time* (a ring and their creatures, in turn),
+    failed structures collapse, and houses lean.
+  - A "Houses saved N" counter climbs zone by zone.
+  - The zone with the biggest save plays in slow motion: twice as long,
+    camera in close, letterboxed.
+  - A click anywhere hurries the staging.
+- **Aftermath card:** stars fill one at a time with a sound each, then
+  "Houses saved N · M damaged" (or "No homes stood in its path"), then one
+  line from `core/aftermath.ts` (pure, 5 tests). The line names a place and
+  a thing:
+  - "The dunes at Miramar took most of it."
+  - "The dam at the Ourem creek gave way and let everything it held through
+    at once."
+  - "Nothing stood in the way at Miramar, so the storm ran on into
+    Taleigao."
+- **Retry:** "Replay from the forecast (Q2 2029)" rewinds to the lock
+  snapshot. Everything built since is undone, the Forecast is re-shown, and
+  the board is redrawn from state with growth, wear and damage.
+  - Measured at **10 ms** in the browser (telemetry `checkpoint`), against a
+    3 s budget.
+  - A test confirms that replaying the same moves from the snapshot gives
+    an identical outcome.
+- **No game over:** the city always stands, so the worst result is one star.
+- **Autosave:** after every challenge the run is saved to this device, keyed
+  by level and seed.
+  - It holds the board, every lock snapshot (so Replay survives a reload)
+    and the real time played (for P8's tempo badge).
+  - On load, the brief offers "Continue from Q3 2032" under Begin.
+  - The save is cleared at 2050.
+- **Telemetry:** `challenge_start` and `challenge_end` (stars, readiness,
+  protection), and `checkpoint` (autosave time, and rewind ms).
+
+**Checks:** 248 tests pass; the build passes; the walkthrough is clean;
+`phaseShots p7` shows no console errors (`p7-stage`, `p7-challenge`,
+`p7-replay`).
+
+**Self-assessment:**
+- **Fun:** the staging is the moment the whole run builds toward, and it
+  now pays off. Watching the beach defences answer one by one while the
+  counter climbs reads as "my planning worked".
+- **Fixed during the phase:**
+  - A three-star result said "It got through Taleigao…". The line now
+    credits the defence that took most of it.
+  - "Houses saved 0" with no homes in the path.
+  - The camera stayed zoomed in after the slow motion; it now returns to
+    the opening frame.
+  - `challenge_start` reported the *next* challenge's readiness.
+- **Unsure:** the slow-motion zoom is close. That is dramatic on a GPU, but
+  in this sandbox's 2–3 fps software renderer the camera glide can't be
+  judged.
