@@ -5368,3 +5368,65 @@ differs from it by more than 100 m.
   20–30% slower than master at 1920x1080. The skirt fills screen area that used
   to be empty background, and software rendering pays for every pixel. A real
   desktop GPU has not been measured.
+
+## Two-button main menu, and the street map at 23% — DONE
+
+### The menu
+
+**What shows:** the title, eyebrow and tagline, and two buttons:
+- **Tutorial** always starts `l00-tutorial`, whatever the player has cleared.
+- **Choose a level** opens the level list (Tutorial and Panaji, with ← Back).
+
+**What's hidden:** Play/Continue/Play again, Daily Challenge, Leaderboard, the
+stats tiles and star row, "Settings & profile", the sign-in link and the
+footer note.
+
+**The flag:** all of it sits behind `SHOW_MENU_EXTRAS` in
+`src/services/features.ts`. It reads `VITE_SHOW_MENU_EXTRAS`, is off by
+default, and is documented in `.env.example` and `docs/DEPLOY.md`. Nothing was
+deleted: with the flag on, the old menu returns with Tutorial first and
+Play/Continue next. Play/Continue is left out while it would also point at the
+tutorial.
+
+**Model:** the buttons are decided in `src/ui/screens/menuModel.ts`, which has
+no DOM, so the tests run in Node.
+
+**Routes:** with the flag off, `gateRoute` sends `#/leaderboard`, `#/settings`
+and today's `#/play/daily-…` to the menu.
+
+**Results screen:**
+- The Leaderboard button is hidden, and the score note no longer mentions a
+  leaderboard.
+- Level select and Main menu are still there.
+- The HUD has no links to these screens, and the game has no pause menu.
+
+**Progress:** level progress is saved on the device as before.
+
+### Street map
+
+**Default:** the street-map layer now starts at 23% (was 75%).
+- The storage key stays v2. A value is only saved when the player touches the
+  switch or the slider, so anyone with a saved value chose it and keeps it.
+  Everyone else gets 23%.
+- The slider's step is now 1 (was 5), so its thumb sits at 23 rather than
+  snapping to 25. The 10–100 range and the toggle are unchanged.
+
+**Readability at 23%:** the five terrain types stay easy to tell apart at
+1920x1080. Land shows the streets faintly, and beach, estuary, river and coast
+keep their own colours. The per-terrain strengths are unchanged.
+
+### Verification
+
+- **Checks:** typecheck clean; 213 tests pass (6 skipped); the build passes;
+  the walkthrough is clean.
+- **New tests:** menu buttons with the flag off and on; Tutorial always
+  starting `l00-tutorial`; the route gate for the leaderboard, settings and
+  daily routes.
+- **Browser at 1920x1080 with a fresh profile:**
+  - The menu shows two buttons.
+  - Tutorial opens `#/play/l00-tutorial`, and Back returns to the menu.
+  - Choose a level lists Tutorial and Panaji.
+  - Panaji starts with the slider at 23.
+  - Pasted leaderboard, settings, sign-in and daily links land on the menu.
+- **Flag on:** a dev build with `VITE_SHOW_MENU_EXTRAS=true` shows the old
+  menu, and the leaderboard can be reached again.

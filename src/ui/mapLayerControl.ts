@@ -23,9 +23,14 @@ export interface MapLayerSettings {
 /**
  * v2 since the default went from 45% to 75%: a v1 setting saved at the old
  * default would otherwise keep every returning player on the faint layer.
+ *
+ * Deliberately still v2 now the default is 23%. A setting is only saved when
+ * the player touches the switch or the slider, so anyone with a v2 value chose
+ * it, and keeps it; everyone else gets the new default.
  */
 const STORAGE_KEY = "riptide-rising:map-layer:v2";
-export const DEFAULT_MAP_LAYER: MapLayerSettings = { visible: true, opacity: 0.75 };
+/** 23%: the street map reads as a faint guide under the tiles rather than competing with them. */
+export const DEFAULT_MAP_LAYER: MapLayerSettings = { visible: true, opacity: 0.23 };
 const MIN_OPACITY = 0.1;
 const MAX_OPACITY = 1;
 
@@ -78,7 +83,9 @@ export class MapLayerControl {
     slider.className = "map-layer-opacity";
     slider.min = String(MIN_OPACITY * 100);
     slider.max = String(MAX_OPACITY * 100);
-    slider.step = "5";
+    // Steps of 1, so the 23% default sits exactly on the track rather than
+    // the thumb snapping to 25 while the layer is drawn at 23.
+    slider.step = "1";
     slider.value = String(Math.round(this.settings.opacity * 100));
     slider.setAttribute("aria-label", "Street map opacity");
     slider.disabled = !this.settings.visible;

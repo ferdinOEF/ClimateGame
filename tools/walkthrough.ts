@@ -123,10 +123,10 @@ async function main(): Promise<void> {
     stage = "registration";
     const forbidden = /e-?mail|sign[ -]?in|signed in|account/i;
     const menuText = (await page.locator(".menu-screen").textContent()) ?? "";
-    // By class, not by label. The primary button's text is deliberately
-    // variable — "Tutorial", "Play - Panaji", "Continue - Morjim & Chapora",
-    // "Play again" — so matching on a word in it would break every time the
-    // copy or the campaign order changed, which it already has once.
+    // By class, not by label. The primary button is "Tutorial" and starts
+    // l00-tutorial in every build (see src/ui/screens/menuModel.ts), but the
+    // copy has changed before, and the class is what marks it as the one to
+    // press.
     await page.locator(".menu-actions .btn-primary").first().click();
     await page.waitForSelector(".brief-card, .setup-screen", { timeout: 15000 });
     if ((await page.locator(".setup-screen").count()) > 0) {

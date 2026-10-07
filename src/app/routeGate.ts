@@ -112,23 +112,37 @@ export function hashToRoute(hash: string): Route | null {
  *   - `register`  a level was asked for by a player who has not given an
  *                 email, while the email requirement is on: show the sheet,
  *                 then the level.
- *   - `menu`      an account or registration screen was asked for while the
- *                 email requirement is off. Those screens are unreachable from
- *                 the UI then, so a pasted `#/signin`, `#/signup` or `#/start`
- *                 lands on the menu rather than on a form the game says it
- *                 does not need.
+ *   - `menu`      the screen is switched off in this build, so it is
+ *                 unreachable from the UI and a pasted link to it lands on
+ *                 the menu rather than on a screen the game says it does not
+ *                 have. That covers the sign-in and registration screens
+ *                 (`#/signin`, `#/signup`, `#/start`) while the email
+ *                 requirement is off, and the leaderboard, settings and
+ *                 daily-challenge screens while the menu extras are off.
  */
 export type GateDecision = "allow" | "register" | "menu";
 
 export interface GateContext {
   requireEmail: boolean;
   registered: boolean;
+  /** `SHOW_MENU_EXTRAS`: whether the leaderboard, settings and daily challenge exist in this build. */
+  showMenuExtras: boolean;
 }
 
-export function gateRoute(routeName: string, context: GateContext): GateDecision {
-  if (!context.requireEmail) {
-    return routeName === "auth" || routeName === "player-setup" ? "menu" : "allow";
+/** Just enough of a `Route` to judge it, so a test can pass a plain object. */
+export interface GateRoute {
+  name: string;
+  level?: { id: string };
+}
+
+export function gateRoute(route: GateRoute, context: GateContext): GateDecision {
+  if (!context.showMenuExtras) {
+    if (route.name === "leaderboard" || route.name === "settings") return "menu";
+    if (route.name === "playing" && route.level?.id.startsWith("daily-")) return "menu";
   }
-  if (routeName === "playing" && !context.registered) return "register";
+  if (!context.requireEmail) {
+    return route.name === "auth" || route.name === "player-setup" ? "menu" : "allow";
+  }
+  if (route.name === "playing" && !context.registered) return "register";
   return "allow";
 }

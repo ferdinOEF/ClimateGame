@@ -22,6 +22,21 @@
  */
 export const REQUIRE_EMAIL = parseFlag(import.meta.env.VITE_REQUIRE_EMAIL);
 
+/**
+ * Whether the main menu shows its extras: the Play/Continue button, Daily
+ * Challenge, Leaderboard, the stats tiles and star row, and the footer
+ * (settings, sign-in link, where-progress-is-saved note).
+ *
+ * Off by default. With it off the menu offers two things, "Tutorial" and
+ * "Choose a level", and the leaderboard, daily-challenge and settings screens
+ * cannot be reached at all: no button leads to them, and a pasted
+ * `#/leaderboard`, `#/settings` or `#/play/daily-...` link lands on the menu.
+ * Scores are still saved on the device (and still posted in the background
+ * when a Firebase project is configured). Every piece is still in the
+ * codebase, and `VITE_SHOW_MENU_EXTRAS=true` at build time brings it back.
+ */
+export const SHOW_MENU_EXTRAS = parseFlag(import.meta.env.VITE_SHOW_MENU_EXTRAS);
+
 /** Only the exact string "true" turns a flag on, so a typo or an empty value can never enable it by accident. */
 export function parseFlag(value: unknown): boolean {
   return typeof value === "string" && value.trim() === "true";
