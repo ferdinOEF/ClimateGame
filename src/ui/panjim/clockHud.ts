@@ -36,8 +36,8 @@ export class ClockHud {
       </div>
       <div class="clock-outlook"></div>
       <div class="clock-buttons">
-        <button type="button" class="clock-ff clock-ff-year" title="Spend four quarters and watch a year go by">+1 year</button>
-        <button type="button" class="clock-ff clock-ff-event" title="Skip to one quarter before the next challenge">Next event</button>
+        <button type="button" class="clock-ff clock-ff-year">+1 year</button>
+        <button type="button" class="clock-ff clock-ff-event">Next event</button>
       </div>
       <div class="clock-lapse" hidden>Time-lapse · click or Space to skip</div>
     `;
@@ -81,10 +81,14 @@ export class ClockHud {
   }
 
   /** Whether the fast-forward controls may be used (false while a challenge plays, or at the end). */
-  setControlsEnabled(year: boolean, event: boolean, eventTitle?: string): void {
+  setControlsEnabled(year: boolean, event: boolean): void {
     this.ffYearBtn.disabled = !year;
     this.ffEventBtn.disabled = !event;
-    if (eventTitle) this.ffEventBtn.title = eventTitle;
+  }
+
+  /** The controls, for their tooltips. */
+  get parts(): { face: HTMLElement; year: HTMLButtonElement; event: HTMLButtonElement } {
+    return { face: this.el.querySelector(".clock-face")!, year: this.ffYearBtn, event: this.ffEventBtn };
   }
 
   get isLapsing(): boolean {

@@ -110,6 +110,15 @@ export class FieldGuide {
     return true;
   }
 
+  /** The guide's button, for its tooltip. */
+  get buttonEl(): HTMLButtonElement {
+    return this.button;
+  }
+
+  get speciesTotal(): number {
+    return SPECIES.length;
+  }
+
   get noteCount(): number {
     return this.notes.length;
   }

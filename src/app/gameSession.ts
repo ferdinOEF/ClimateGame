@@ -26,6 +26,7 @@ import { MapLabelLayer } from "@ui/mapLabels";
 import { MapAttribution } from "@ui/attribution";
 import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
+import { Tooltips, buildWhat, tooltipText, missingTooltips } from "@ui/tooltip";
 import { StormReport } from "@ui/stormReport";
 // `SessionResult` is defined in @core/levelScore (it is expressed purely
 // in core types) and re-exported here, so callers that think of it as
@@ -391,6 +392,34 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   });
   const buildPopover = new BuildPopover(container);
   /**
+   * Hover tooltips for every HUD control (see ui/tooltip.ts; the wording is in
+   * src/data/tooltips.json). The shared HUD and the build menu are wired here;
+   * Panjim 2050's own controls are wired by its controller.
+   */
+  const tooltips = new Tooltips(container);
+  buildPopover.tooltips = tooltips;
+  {
+    const q = <T extends HTMLElement>(selector: string): T | null => container.querySelector<T>(selector);
+    const attach = (selector: string, key: string, values?: () => Record<string, string | number>): void => {
+      const el = q(selector);
+      if (el) tooltips.attach(el, key, values);
+    };
+    attach(".instrument-cluster .coin-row", "coin", () => ({
+      coin: Math.round(state.coin),
+      income: Math.round(panjim ? panjim.run.incomePerQuarter : state.income)
+    }));
+    attach(".instrument-cluster .income-row", "income");
+    attach(".instrument-cluster .resilience-gauge", "resilience");
+    const chips = container.querySelectorAll<HTMLElement>(".instrument-cluster .meter-chip");
+    ["biodiversity", "carbon", "food", "population"].forEach((key, i) => chips[i] && tooltips.attach(chips[i], key));
+    attach(".instrument-cluster .cluster-collapse-toggle", "collapse");
+    attach(".instrument-cluster .cluster-pill", "expand");
+    attach(".instrument-cluster .preview-toggle", "previewToggle");
+    attach(".instrument-cluster .hazard-incoming", "hazardIncoming");
+    attach(".hud-chrome .back-button", "back");
+    attach(".hud-chrome .help-button", "help");
+  }
+  /**
    * Panjim 2050's slow changes, redrawn as the clock moves: each growing
    * defence's maturity (small and pale when planted, full at maturity), and
    * the skyline, whose houses rise a little as the decades pass so 2050 does
@@ -495,6 +524,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           },
           landmarks: levelMap.landmarks,
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
+          tooltips,
           focusCamera: (coord, close) => {
             const world = axialToWorld(coord, 1.0);
             focusOn(world.x, world.z, false);
@@ -610,6 +640,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Prepended so the switch stacks above the credit.
     mapLayerControl = new MapLayerControl(mapCorner ?? container, applyLayer, true);
     applyLayer(mapLayerControl.current);
+    const layerToggle = container.querySelector<HTMLElement>(".map-layer-control input[type=checkbox]");
+    const layerSlider = container.querySelector<HTMLElement>(".map-layer-control input[type=range]");
+    if (layerToggle) tooltips.attach(layerToggle, "streetMap");
+    if (layerSlider) tooltips.attach(layerSlider, "streetMapOpacity", () => ({ pct: Math.round((mapLayerControl?.current.opacity ?? 0) * 100) }));
     new THREE.TextureLoader().load(
       `${import.meta.env.BASE_URL}${overlay.image}`,
       (texture) => {
@@ -1788,7 +1822,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     const popoverOptions: PopoverOption[] = state
       .buildableAt(coord)
-      .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), quarters: panjim?.buildQuarters(d.id) }));
+      .map((d) => {
+        const quarters = panjim?.buildQuarters(d.id);
+        const time = quarters ? ` and ${quarters} season${quarters === 1 ? "" : "s"}` : "";
+        const values = { name: d.name, what: buildWhat(d.id), cost: d.buildCost, time, coin: Math.round(state.coin) };
+        const tip = tooltipText(state.coin >= d.buildCost ? "build" : "buildUnaffordable", values);
+        return { id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), quarters, tip };
+      });
     if (popoverOptions.length === 0) return;
 
     buildPopover.show(screen.x, screen.y, popoverOptions, state.coin, (id) => {
@@ -1994,6 +2034,28 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // "build-<terrain>": builds one thing on that terrain near the city,
       // then opens the build menu on the next free tile of the same terrain,
       // so a screenshot shows the build and what else the tile offers.
+      // "tip-<key>": opens the tooltip of the HUD control carrying that key.
+      if (name.startsWith("tip-")) {
+        const el = container.querySelector<HTMLElement>(`[data-tip="${name.slice(4)}"]`);
+        if (!el) return false;
+        tooltips.show(el);
+        return true;
+      }
+      // "menu-<terrain>": opens the build menu on a free tile of that terrain
+      // near the city and shows the first option's tooltip.
+      const menu = /^menu-(beach|estuary|river|coast)$/.exec(name);
+      if (menu) {
+        const element = { beach: "dune", estuary: "mangrove", river: "small_dam", coast: "breakwater" }[menu[1]]!;
+        const tile = panjim.firstBuildable(element, levelMap.focus);
+        if (!tile) return false;
+        const world = axialToWorld(tile, 1.0);
+        focusOn(world.x, world.z, true);
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+        openTilePopover(tile);
+        const option = container.querySelector<HTMLElement>(".build-popover .build-option");
+        if (option) tooltips.show(option);
+        return true;
+      }
       const build = /^build-(beach|estuary|river|coast)$/.exec(name);
       if (!build) return panjim.scenario(name);
       const element = { beach: "dune", estuary: "mangrove", river: "small_dam", coast: "breakwater" }[build[1]]!;
@@ -2028,6 +2090,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
     __heatForTest: heatOverlay,
+    __tooltipsForTest: tooltips,
+    // Every HUD control that should carry a tooltip but does not (ui/tooltip.ts HUD_SELECTORS).
+    __missingTooltipsForTest: (): string[] => missingTooltips(container),
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     // Builds a specific element at a specific coord (rather than
@@ -2133,6 +2198,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     buildFlourish.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();
+    tooltips.dispose();
     disposeScene();
 
     // The session owns every DOM node it appended to `container` (HUD,

@@ -118,6 +118,8 @@ async function main(): Promise<void> {
       await shot(page, scenario);
     }
 
+    const missing = (await page.evaluate("window.__missingTooltipsForTest ? window.__missingTooltipsForTest() : []")) as string[];
+    console.log(`HUD controls without a tooltip: ${missing.length === 0 ? "none" : missing.join(", ")}`);
     const telemetry = await page.evaluate(() => (window as unknown as { __telemetry?: unknown[] }).__telemetry ?? []);
     console.log(`telemetry events: ${telemetry.length}`);
     for (const event of telemetry as { name: string; t: number; data: unknown }[]) {

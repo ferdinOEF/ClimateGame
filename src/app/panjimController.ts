@@ -7,6 +7,9 @@ import { ClockHud } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
 import { CoinJar } from "@ui/panjim/coinJar";
 import { VoicesPanel } from "@ui/panjim/voicesPanel";
+import { GetReadyPanel } from "@ui/panjim/getReady";
+import { prepProgress } from "@core/prep";
+import { activeVoices } from "@levels/levels";
 import { FieldGuide } from "@ui/panjim/fieldGuide";
 import { voiceProgress, describeVoiceGoal } from "@core/voices";
 import { COMBO_INFO, type ComboId } from "@core/combos";
@@ -23,9 +26,11 @@ import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
 import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
 import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
+import { tooltipText } from "@ui/tooltip";
 import { Maya } from "@ui/panjim/maya";
 import { MayaDirector, GUIDE_NOTES } from "./mayaDirector";
-import { mayaAftermath } from "@core/mayaLines";
+import { mayaAftermath, stormWord } from "@core/mayaLines";
+import type { Tooltips } from "@ui/tooltip";
 
 /**
  * The Panjim 2050 run inside a live session.
@@ -92,6 +97,8 @@ export interface PanjimHost {
   landmarks: readonly { name: string; q: number; r: number }[];
   /** True while the build menu or the opening brief is open: Maya stays quiet. */
   uiBlocked: () => boolean;
+  /** The session's tooltip manager, for this run's own controls. */
+  tooltips: Tooltips;
 }
 
 /** Milliseconds per quarter tick: quick for a single action, slower for a visible time-lapse. */
@@ -104,6 +111,10 @@ export class PanjimController {
   private readonly outlook: OutlookBar;
   private readonly jar: CoinJar;
   private readonly voicesPanel = new VoicesPanel();
+  /** "Get ready": the jobs for the next storm, where the Voices panel used to be. */
+  private readonly getReady = new GetReadyPanel();
+  /** Whether the old Voices of Panjim panel is live on this level (levels.json `showVoicesPanel`). */
+  private readonly voicesLive: boolean;
   readonly fieldGuide: FieldGuide;
   private busy = false;
   /** A challenge that landed during the current time-lapse, staged once the clock stops. */
@@ -136,10 +147,12 @@ export class PanjimController {
       climate: host.level.climate,
       seed: host.seed,
       zones: host.zones,
-      voices: host.level.voices,
+      voices: activeVoices(host.level),
       houseStars: host.level.houseStars,
-      houseRule: host.level.houses?.rule
+      houseRule: host.level.houses?.rule,
+      prep: host.level.prep
     });
+    this.voicesLive = host.level.showVoicesPanel !== false;
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, {
       onFastForwardYear: () => void this.fastForwardYear(),
@@ -147,7 +160,7 @@ export class PanjimController {
     });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
     this.jar = new CoinJar(host.container, () => this.collectJar());
-    host.mountVoices(this.voicesPanel.el);
+    host.mountVoices(this.voicesLive ? this.voicesPanel.el : this.getReady.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     this.aftermath = new AftermathCard(host.container);
     this.finaleCard = new FinaleCard(host.container);
@@ -185,6 +198,7 @@ export class PanjimController {
       if (note) this.fieldGuide.addNote(note);
     };
     this.fieldGuide.onReplayNote = (note) => this.mayaDirector.replay(note);
+    this.attachTooltips();
     this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
@@ -193,6 +207,56 @@ export class PanjimController {
     this.clock.set(this.run.label, this.progress());
     this.renderOutlook();
     this.syncControls();
+  }
+
+  /** The last readiness reading, for the gauge's tooltip. */
+  private lastReadiness: ReturnType<ActionRun["readiness"]> = null;
+
+  /** Tooltips on this run's controls, with live numbers. */
+  private attachTooltips(): void {
+    const tips = this.host.tooltips;
+    const clock = this.clock.parts;
+    tips.attach(clock.face, "clock", () => ({ label: this.run.label }));
+    tips.attach(clock.year, "ffYear");
+    tips.attach(clock.event, () => {
+      const next = this.run.nextChallenge();
+      const quarters = this.run.quartersToNextEvent();
+      return next && quarters > 0 ? tooltipText("ffEvent", { quarters, storm: next.name.toLowerCase() }) : tooltipText("ffEventNone");
+    });
+    clock.event.dataset.tip = "ffEvent";
+    const outlook = this.outlook.parts;
+    tips.attach(outlook.track, "outlookTrack");
+    tips.attach(outlook.line, "outlookNext", () => ({ next: this.outlook.nextText }));
+    tips.attach(outlook.sea, "sea", () => ({ cm: this.run.climate ? seaLevelCm(this.run.climate, this.run.quarter) : 0 }));
+    tips.attach(this.outlook.gaugeSlot, () => {
+      const r = this.lastReadiness;
+      if (!r) return tooltipText("readinessNone");
+      return tooltipText("readiness", {
+        pct: Math.round(r.outcome.protection * 100),
+        storm: stormWord(r.challenge.kind),
+        saved: r.outcome.housesSaved,
+        total: r.outcome.housesTotal,
+        stars: r.outcome.stars
+      });
+    });
+    this.outlook.gaugeSlot.dataset.tip = "readiness";
+    tips.attach(this.jar.el, "jar", () => ({ amount: Math.floor(this.run.jar) }));
+    tips.attach(this.fieldGuide.buttonEl, "fieldGuide", () => ({ found: this.fieldGuide.count, species: this.fieldGuide.speciesTotal, notes: this.fieldGuide.noteCount }));
+    tips.attach(this.housesCounter.el, "housesCounter", () => {
+      let total = 0;
+      let standing = 0;
+      for (const inst of this.host.state.elements.values()) {
+        if (inst.elementId !== "house") continue;
+        total++;
+        if (inst.degradeAmount < 1) standing++;
+      }
+      return { standing, total };
+    });
+    tips.attach(this.riskToggle.el, "riskToggle");
+    if (!this.voicesLive) tips.attach(this.getReady.el, "getReady");
+    tips.attach(this.mayaToggle.el, "mayaToggle");
+    const dismiss = this.maya.el.querySelector<HTMLElement>(".maya-dismiss");
+    if (dismiss) tips.attach(dismiss, "mayaDismiss");
   }
 
   /** Banks the jar. Free: no quarter passes. */
@@ -214,6 +278,16 @@ export class PanjimController {
   }
 
   private renderVoices(): void {
+    if (!this.voicesLive) {
+      const next = this.run.nextChallenge();
+      const zones = this.run.zones;
+      this.getReady.render(
+        next ? next.name : null,
+        zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : []
+      );
+      if (this.run.prep.length > 0) this.mayaDirector?.tip("get-ready");
+      return;
+    }
     this.voicesPanel.render(
       this.run.activeVoices().map((voice) => {
         const { current, target } = voiceProgress(voice.goal, this.host.state, this.run.zones, this.run.comboState);
@@ -279,6 +353,7 @@ export class PanjimController {
       results: new Map([...this.run.outcomes].map(([id, outcome]) => [id, outcome.stars]))
     });
     const readiness = this.run.readiness();
+    this.lastReadiness = readiness;
     if (readiness) this.readinessById.set(readiness.challenge.id, readiness.level);
     this.outlook.renderGauge(
       readiness
@@ -703,6 +778,23 @@ export class PanjimController {
         this.host.showBanner(`New voices from Panjim: ${event.voices.length} requests`, 3500);
         break;
       }
+      case "prep_complete": {
+        playSound("coin");
+        window.setTimeout(() => playSound("chime"), 180);
+        this.getReady.celebrate(event.objective);
+        // A short cheer: a pose, not a line, so it never uses up her one line a quarter.
+        if (!this.maya.speaking) {
+          this.maya.setState("celebrates");
+          window.setTimeout(() => {
+            if (!this.maya.speaking) this.maya.setState("idle");
+          }, 2200);
+        }
+        this.host.telemetry.emit("request_complete", { id: event.objective.id, reward: event.reward, kind: "prep" });
+        this.host.telemetry.reward("request");
+        break;
+      }
+      case "prep_new":
+        break;
       case "quarter":
         break;
     }
@@ -719,12 +811,7 @@ export class PanjimController {
   private syncControls(): void {
     const open = !this.busy && !this.run.finished;
     const toEvent = this.run.quartersToNextEvent();
-    const next = this.run.nextChallenge();
-    this.clock.setControlsEnabled(
-      open,
-      open && toEvent > 0,
-      next ? `Skip ${toEvent} quarter${toEvent === 1 ? "" : "s"}, to just before the ${next.name.toLowerCase()}` : "No storm left to skip to"
-    );
+    this.clock.setControlsEnabled(open, open && toEvent > 0);
   }
 
   /** Scenario helper: lets quarters pass, animated like a fast-forward, until `quartersLeft` remain before the next storm. */
@@ -814,6 +901,18 @@ export class PanjimController {
             if (this.aftermath.isOpen) this.host.container.querySelector<HTMLButtonElement>(".aftermath-continue")?.click();
             await wait(100);
           }
+        }
+        return true;
+      }
+      case "prep-one": {
+        // Finishes the first Get ready job through the player's build path.
+        const job = this.run.prep.find((j) => !j.done);
+        if (!job || !this.run.zones) return false;
+        for (let i = 0; i < job.count; i++) {
+          this.collectJar();
+          const coord = this.firstBuildableIn(job.zone, job.elementId);
+          if (coord) this.build(coord, job.elementId);
+          await this.idle();
         }
         return true;
       }

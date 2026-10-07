@@ -1,3 +1,5 @@
+import type { Tooltips } from "./tooltip";
+
 export interface PopoverOption {
   id: string;
   name: string;
@@ -6,6 +8,8 @@ export interface PopoverOption {
   kindLabel?: string;
   /** Panjim 2050: how many quarters of the clock this build spends, shown beside the Coin cost. */
   quarters?: number;
+  /** One sentence on what it does, for its hover tooltip. */
+  tip?: string;
 }
 
 export interface BuiltElementInfo {
@@ -70,6 +74,8 @@ const VIEWPORT_MARGIN = 8;
 export class BuildPopover {
   private backdrop: HTMLElement;
   private el: HTMLElement;
+  /** Set by the session: gives each option its hover tooltip. */
+  tooltips: Tooltips | null = null;
 
   constructor(container: HTMLElement) {
     this.backdrop = document.createElement("div");
@@ -113,6 +119,10 @@ export class BuildPopover {
       const label = def.kindLabel ? `${def.name} <em>${def.kindLabel}</em>` : def.name;
       const time = def.quarters ? `<span class="time-cost" title="Seasons (quarters of a year) this takes">${def.quarters} qtr</span>` : "";
       btn.innerHTML = `<span>${label}</span><span class="cost">${time}${def.buildCost}c</span>`;
+      if (def.tip && this.tooltips) {
+        const tip = def.tip;
+        this.tooltips.attach(btn, () => tip, undefined, "right");
+      }
       if (affordable) {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -211,5 +221,6 @@ export class BuildPopover {
 
   hide(): void {
     this.backdrop.hidden = true;
+    this.tooltips?.hide();
   }
 }

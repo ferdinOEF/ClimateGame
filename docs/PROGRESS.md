@@ -6511,3 +6511,95 @@ clock changes).
   are the only lines that matter then.
 - **First-time confusion.** At 3 quarters out the camera move might feel
   like the game taking over. It is slow, and any drag cancels it.
+
+### P6 — HUD tooltips — DONE
+
+**What was built:**
+- **One manager** (`ui/tooltip.ts`), with all wording in
+  `src/data/tooltips.json`: one plain sentence per control, with live values
+  filled in when shown.
+  - **Hover:** 400 ms delay.
+  - **Keyboard:** shows on focus, hides on blur.
+  - **Touch:** shows on a press held 500 ms.
+  - **Esc** closes it, and only it, if a tooltip's control has focus.
+  - **`aria-describedby`** points at the tooltip while it shows.
+  - **Placement:** below the control, else above, else beside, never over it
+    and always inside the viewport. Build-menu options open theirs beside the
+    whole menu, so the tip never covers the neighbouring options (the first
+    shots had it over them).
+- **Covered:**
+  - the date, +1 year ("Pressing this will fast-forward the timeline by 1
+    year. Defences keep growing while you wait, but so does the sea."), and
+    Next event (with the live quarters and storm);
+  - the Outlook track and next-storm line;
+  - the readiness gauge (live % stopped, homes that would stand, stars);
+  - sea level, Coin and income, the jar (live amount), Houses saved;
+  - the Field Guide (live counts), Show risk, Maya and her Got it;
+  - Get ready;
+  - every instrument-cluster meter, collapse and expand;
+  - Back and Help;
+  - the street-map switch and slider (live %);
+  - every build-menu item: what it does, its cost, its seasons, and whether
+    it is affordable.
+- **Native `title` attributes are gone** from these controls, so two
+  tooltips never show at once.
+- **Coverage check.** `missingTooltips()` lists every HUD control under the
+  HUD selectors that has no tooltip. `tools/phaseShots.ts` prints it on
+  every run, and it reads "none".
+- **Test.** `tests/tooltips.test.ts` checks that every key the code attaches
+  exists in the JSON and that every element has a build description.
+
+**Screenshots:** `p6-tip-ffYear`, `-readiness`, `-coin`, `-housesCounter`,
+`-riskToggle`, `-getReady`, `p6b-menu-estuary`.
+
+### P6b — "Get ready" replaces Voices of Panjim — DONE
+
+**What changed:**
+- **The Voices panel is gone from Panaji.** The data and logic stay:
+  `showVoicesPanel: false` in `levels.json`, and `activeVoices(level)`
+  returns none, so dormant requests pay nothing. Their best lines are now
+  Maya's (P3).
+  - The Tutorial never used that panel and keeps its own objectives
+    checklist (a test checks its flag is not off).
+- **Get ready** (`core/prep.ts`, tested) sits in the same corner. It is a
+  compact, collapsible list of 2–3 optional jobs for the next storm.
+  - **When it refreshes:** when a storm is announced (the run starts, or the
+    previous storm lands). Jobs from a storm that has passed are dropped.
+  - **How jobs are chosen:**
+    - Zones on the storm's path are ranked by houses at risk, from
+      `computeExposure`, then by heat.
+    - Each top zone gets the first template that answers this kind of storm
+      and can actually be built there `count` times. The answers are dunes,
+      pandanus, mangroves and seawall for a cyclone; khazans and mangroves
+      for a flood.
+  - **Never starts done:** a job counts what stands in its zone on top of
+    what stood when it was set.
+  - **Data.** Templates (element, count, label, reward) and place names live
+    in `levels.json` under `prep`.
+  - **Rewards.** Rewards keep the Voices' scale (40–60 base) and follow the
+    coin preset (×10 on easy-test).
+  - **Tracking** reuses the Voices' `voiceProgress` standing count.
+  - **Saves.** Jobs are saved in run snapshots, so a resume or a replay
+    keeps them.
+  - **On completion:** a coin pop on the row, a coin sound and a chime,
+    and Maya's cheer. The cheer is a pose, not a line, so it never uses her
+    one line per quarter.
+  - **Never blocks:** nothing waits on a job.
+- **"Pandanus"** is the existing `sandy_vegetation` element (the game
+  already calls it pandanus). There is no flood-answering "vegetation"
+  element, so flood jobs use khazans and mangroves.
+- **Tests:**
+  - `tests/prep.test.ts`, 7 tests: jobs answer the storm and are buildable
+    where they point; they complete on the matching builds and pay once;
+    rewards are ×10 on easy-test; they refresh on announcement; they
+    survive a save.
+  - The bot balance tests still pass with Voices dormant.
+
+**Screenshot:** `p6b-prep-one`, a finished job ticked, with its reward.
+
+**Self-assessment:**
+- **Readable.** The panel is a third the height of the old Voices box. Each
+  job names a place and a number.
+- **Possible confusion.** "Plant 2 mangroves along Taleigao" could send a
+  first-timer to land tiles, where mangroves cannot go. The build menu only
+  offers what is valid, and Maya's mangrove tip says "on the wetland edge".

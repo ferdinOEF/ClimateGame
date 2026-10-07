@@ -7,6 +7,7 @@ import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, ty
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { voiceProgress, type VoiceDef, type VoiceStatus } from "./voices";
 import { computeExposure, type Exposure } from "./exposure";
+import { generatePrep, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim in quarters, where time moves only
@@ -61,7 +62,11 @@ export type RunEvent =
   /** A Voice of Panjim was answered: `reward` Coin paid at once. */
   | { type: "voice_complete"; voice: VoiceDef; reward: number }
   /** A new era's Voices arrive. */
-  | { type: "voice_new"; voices: VoiceDef[] };
+  | { type: "voice_new"; voices: VoiceDef[] }
+  /** A Get ready job was finished: `reward` Coin paid at once. */
+  | { type: "prep_complete"; objective: PrepObjective; reward: number }
+  /** The Get ready jobs for the next storm were set. */
+  | { type: "prep_new"; objectives: PrepObjective[] };
 
 export interface ActionRunOptions {
   /** The level's climate: scheduled challenges and the rising baseline. */
@@ -76,6 +81,8 @@ export interface ActionRunOptions {
   houseStars?: { three: number; two: number };
   /** How houses stand up to a storm, house by house (the level's `houses` block). */
   houseRule?: HouseRule;
+  /** "Get ready" jobs for each coming storm (core/prep.ts). */
+  prep?: PrepConfig;
 }
 
 /** The readiness gauge: what the next challenge would do to the board as it stands. */
@@ -107,6 +114,8 @@ export interface RunSnapshot {
   locked: string[];
   outcomes: [string, ChallengeOutcome][];
   voiceStatus: [string, VoiceStatus][];
+  /** The Get ready jobs at the time. Absent in saves from before they existed. */
+  prep?: PrepObjective[];
 }
 
 /** Repairs cost this share of the element's build cost. */
@@ -147,6 +156,9 @@ export class ActionRun {
   readonly houseStars?: { three: number; two: number };
   readonly houseRule?: HouseRule;
   readonly voiceStatus = new Map<string, VoiceStatus>();
+  readonly prepConfig?: PrepConfig;
+  /** The Get ready jobs for the next storm, done or not. */
+  prep: PrepObjective[] = [];
   /**
    * The run as it stood the quarter each challenge's Forecast locked, by
    * challenge id: what "Replay from the forecast" rewinds to.
@@ -175,6 +187,24 @@ export class ActionRun {
     this.houseStars = options.houseStars;
     this.houseRule = options.houseRule;
     for (const voice of this.voices) this.voiceStatus.set(voice.id, voice.era === 1 ? "active" : "waiting");
+    this.prepConfig = options.prep;
+    this.refreshPrep();
+  }
+
+  /**
+   * Sets the Get ready jobs for the next storm, from its exposure as the
+   * board stands now. Called when the run starts and when a storm lands (the
+   * next one is announced); jobs from the storm that passed are dropped.
+   */
+  refreshPrep(): PrepObjective[] {
+    const next = this.nextChallenge();
+    if (!this.prepConfig || !next || !this.zones) {
+      this.prep = [];
+      return this.prep;
+    }
+    const exposure = this.exposureFor(next);
+    this.prep = exposure ? generatePrep(next, exposure, this.state, this.zones, this.prepConfig) : [];
+    return this.prep;
   }
 
   snapshot(): RunSnapshot {
@@ -192,7 +222,8 @@ export class ActionRun {
         landed: [...this.landed],
         locked: [...this.locked],
         outcomes: [...this.outcomes],
-        voiceStatus: [...this.voiceStatus]
+        voiceStatus: [...this.voiceStatus],
+        prep: this.prep
       } satisfies RunSnapshot)
     ) as RunSnapshot;
   }
@@ -219,6 +250,8 @@ export class ActionRun {
     for (const id of [...this.lockSnapshots.keys()]) if (!this.locked.has(id)) this.lockSnapshots.delete(id);
     this.comboState = computeCombos(this.state);
     this.combos = this.comboState.bonus;
+    if (copy.prep) this.prep = copy.prep;
+    else this.refreshPrep();
   }
 
   /** Era 1 runs to the first challenge, era 2 to the second, era 3 to 2050. */
@@ -248,6 +281,16 @@ export class ActionRun {
       this.voiceStatus.set(voice.id, "done");
       this.state.coin += voice.reward;
       events.push({ type: "voice_complete", voice, reward: voice.reward });
+    }
+    if (this.zones) {
+      for (const job of this.prep) {
+        if (job.done) continue;
+        const { current, target } = prepProgress(job, this.state, this.zones);
+        if (current < target) continue;
+        job.done = true;
+        this.state.coin += job.reward;
+        events.push({ type: "prep_complete", objective: job, reward: job.reward });
+      }
     }
     return events;
   }
@@ -488,6 +531,9 @@ export class ActionRun {
     const arriving = this.voices.filter((voice) => voice.era === this.era && this.voiceStatus.get(voice.id) === "waiting");
     for (const voice of arriving) this.voiceStatus.set(voice.id, "active");
     if (arriving.length > 0) events.push({ type: "voice_new", voices: arriving });
+    // The next storm is announced: new Get ready jobs for it.
+    const jobs = this.refreshPrep();
+    if (jobs.length > 0) events.push({ type: "prep_new", objectives: jobs });
     return events;
   }
 }
