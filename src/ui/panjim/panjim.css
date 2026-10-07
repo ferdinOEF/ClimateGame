@@ -352,3 +352,9 @@
 .forecast-label.offscreen {
   border-style: dashed;
 }
+
+.outlook-gauge .gauge-growing {
+  font-weight: 500;
+  font-size: 11px;
+  color: #c9f0a8;
+}

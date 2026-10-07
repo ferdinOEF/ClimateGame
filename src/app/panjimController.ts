@@ -8,6 +8,7 @@ import { OutlookBar } from "@ui/panjim/outlookBar";
 import { outlookFor, seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef } from "@core/zones";
 import { axialToWorld } from "@core/hex";
+import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
 
 /**
@@ -109,10 +110,27 @@ export class PanjimController {
             level: readiness.level,
             stars: readiness.outcome.stars,
             protection: readiness.outcome.protection,
-            exact: this.run.locked.has(readiness.challenge.id)
+            exact: this.run.locked.has(readiness.challenge.id),
+            growing: this.growingIn(readiness.challenge)
           }
         : null
     );
+  }
+
+  /** Defences in the challenge's zones that have not reached full strength yet. */
+  private growingIn(challenge: ScheduledChallenge): number {
+    if (!this.run.zones) return 0;
+    let count = 0;
+    for (const front of FRONTS[challenge.kind]) {
+      for (const zoneId of front.path) {
+        for (const key of this.run.zones.keys(zoneId)) {
+          const inst = this.host.state.elements.get(key);
+          const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
+          if (inst && def && (def.matureQuarters ?? 0) > 0 && this.host.state.maturityFraction(inst, def) < 1) count++;
+        }
+      }
+    }
+    return count;
   }
 
   /** Draws the locked Forecast in the scene: the path's zones, the first one strongest, and the strength label over it. */
@@ -320,6 +338,25 @@ export class PanjimController {
           const coord = this.firstBuildableIn("z1", "dune");
           if (!coord) break;
           this.build(coord, "dune");
+          await this.idle();
+        }
+        return true;
+      }
+      case "growth": {
+        // A mangrove belt and a dune line planted now, then six years of
+        // time-lapse, photographed partway so young and grown both show.
+        for (let i = 0; i < 5; i++) {
+          const mangrove = this.firstBuildableIn("z4", "mangrove");
+          if (mangrove) this.build(mangrove, "mangrove");
+          await this.idle();
+        }
+        for (let i = 0; i < 3; i++) {
+          const house = this.firstBuildable("house", this.host.focus);
+          if (house) this.build(house, "house");
+          await this.idle();
+        }
+        for (let year = 0; year < 3; year++) {
+          await this.fastForwardYear();
           await this.idle();
         }
         return true;

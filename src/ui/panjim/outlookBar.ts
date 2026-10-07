@@ -110,7 +110,7 @@ export class OutlookBar {
    * have reached by then). Red, amber or green, with the stars as shapes so
    * it reads in grayscale too.
    */
-  renderGauge(gauge: { level: "red" | "amber" | "green"; stars: number; protection: number; exact: boolean } | null): void {
+  renderGauge(gauge: { level: "red" | "amber" | "green"; stars: number; protection: number; exact: boolean; growing: number } | null): void {
     if (!gauge) {
       this.gaugeSlot.hidden = true;
       return;
@@ -118,7 +118,9 @@ export class OutlookBar {
     this.gaugeSlot.hidden = false;
     this.gaugeSlot.className = `outlook-gauge gauge-${gauge.level}`;
     const pct = Math.round(gauge.protection * 100);
-    this.gaugeSlot.innerHTML = `<span class="gauge-label">Ready</span><span class="gauge-bar"><span style="width:${pct}%"></span></span><span class="gauge-stars">${"★".repeat(gauge.stars)}${"☆".repeat(3 - gauge.stars)}</span>`;
+    this.gaugeSlot.innerHTML = `<span class="gauge-label">Ready</span><span class="gauge-bar"><span style="width:${pct}%"></span></span><span class="gauge-stars">${"★".repeat(gauge.stars)}${"☆".repeat(3 - gauge.stars)}</span>${
+      gauge.growing > 0 ? `<span class="gauge-growing" title="Defences still growing in the threatened zones. The gauge already counts how big they will be on the day.">${gauge.growing} growing</span>` : ""
+    }`;
     this.gaugeSlot.title = `${gauge.exact ? "Against the locked forecast" : "Against the expected strength"}: your defences would stop ${pct}% of the damage. Build in the threatened zones to raise it.`;
   }
 

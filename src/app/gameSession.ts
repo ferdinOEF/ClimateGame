@@ -370,6 +370,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           placeElement: (coord, elementId) => placeElement(coord, elementId, true),
           removeElementVisual: (coord) => elements.destroy(coord),
           refresh: () => {
+            syncPanjimVisuals();
             refreshHud();
             refreshPreview();
           },
@@ -400,6 +401,29 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         })
       : null;
   if (panjim) hud.useQuarterClock();
+  /**
+   * Panjim 2050's slow changes, redrawn as the clock moves: each growing
+   * defence's maturity (small and pale when planted, full at maturity), and
+   * the skyline, whose houses rise a little as the decades pass so 2050 does
+   * not look like 2025. Cheap: one pass over the standing elements.
+   */
+  function syncPanjimVisuals(): void {
+    if (!panjim) return;
+    const age = panjim.run.quarter / panjim.run.totalQuarters;
+    for (const [key, inst] of state.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def) continue;
+      const [q, r] = key.split(",").map(Number);
+      if ((def.matureQuarters ?? 0) > 0) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
+      else if (def.kind === "building") {
+        // Not every house rises equally: a fixed per-tile share, so the
+        // skyline grows uneven, the way a city does.
+        const share = 0.35 + (((q * 92821) ^ (r * 68917)) & 255) / 255;
+        elements.setHeightScale({ q, r }, 1 + age * 0.55 * share);
+      }
+    }
+  }
+
   /** The locked Forecast's path, drawn as translucent ghosts over its zones (see PanjimController.showForecast). */
   let forecastPreview: { coord: AxialCoord; weight: number }[] = [];
   /**
@@ -1757,7 +1781,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   function placeElement(coord: AxialCoord, elementId: string, animate: boolean): void {
     runTracker.recordBuild(elementId, ELEMENT_BY_ID.get(elementId)?.buildCost ?? 0);
     const topY = terrain.heightAt(coord);
-    elements.place(coord, elementId, topY, { animate });
+    // Panjim 2050: a growing defence is planted young and grows on the clock.
+    const inst = state.elements.get(`${coord.q},${coord.r}`);
+    const def = ELEMENT_BY_ID.get(elementId);
+    const growth = panjim && inst && def && (def.matureQuarters ?? 0) > 0 ? state.maturityFraction(inst, def) : undefined;
+    elements.place(coord, elementId, topY, { animate, growth });
     if (animate) {
       // The ground half of the placement animation — see BuildFlourish. Every
       // element gets it, so a click always visibly registers wherever on the

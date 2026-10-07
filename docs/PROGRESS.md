@@ -5679,3 +5679,46 @@ structures collapse, worn ones weather, houses lean), then a banner such as
     stayed red, because dunes take two years to grow. That is the intended
     lesson, but nothing on the board shows growth yet (P4).
   - The bottom-right panel still lists the old objectives (P6 replaces it).
+
+## P4 — maturation and time-lapse visuals — DONE
+
+**Built:**
+- **Growth times:** in quarters, with the brief's placeholder values (Dune 8,
+  Sandy Vegetation 8, Mangrove 20, Khazan 12, the rest 0). They have been
+  live in the rules since P1. A young element gives a linear share of every
+  effect, defence included (tested).
+- **Drawn growth:**
+  - A growing defence is planted at 35% of its size and pale
+    (`YOUNG_TINT`), and fills out and darkens to its own colour at maturity.
+  - It eases in over a few frames, so a "+1 year" time-lapse visibly grows
+    the mangroves quarter by quarter.
+  - The settle animation lands a sapling at sapling size (a new
+    `finalScale`), so nothing pops.
+  - Colour is now composed in one place (`paint`): young, weathered and
+    damaged combine instead of overwriting each other.
+- **Skyline:** houses rise as the decades pass, up to about 1.2–1.75 times
+  their height by 2050 depending on the tile, so 2050 looks different from
+  2025.
+  - It costs one transform write per house when the clock moves, not per
+    frame.
+  - **Decision:** taller, not more. Extra decorative houses would mean
+    meshes the player didn't place, which muddies "everything here is
+    yours".
+- **Gauge:** shows "N growing" for defences in the threatened zones that are
+  still maturing. That answers P3's "why is it red when I just built four
+  dunes".
+
+**Checks:**
+- 236 tests pass (2 new: the maturity table and linear effect growth).
+- The build passes, the walkthrough is clean, and `phaseShots p4` shows no
+  console errors (`p4-growth`, `p4-forecast`).
+- The turn-based levels pass no growth, so every element there draws at
+  full size exactly as before.
+
+**Self-assessment:**
+- **Fun:** watching a mangrove belt fill out over a time-lapse is the first
+  genuinely satisfying moment of the run. Long-lead planting now has a
+  visible payoff.
+- **Weak:** the skyline change is subtle in a single frame. It will read in
+  the finale's 2025/2050 comparison (P8), not quarter to quarter, which is
+  the right place for it.

@@ -58,3 +58,21 @@ describe("action clock", () => {
     expect(LEVEL_BY_ID.get("l00-tutorial")?.timeModel ?? "turns").toBe("turns");
   });
 });
+
+describe("maturation in quarters", () => {
+  it("uses the brief's placeholder growth times", async () => {
+    const { ELEMENT_BY_ID } = await import("../src/core/elements");
+    const expected: Record<string, number> = { dune: 8, sandy_vegetation: 8, mangrove: 20, khazan: 12, seawall: 0, small_dam: 0, sand_mining: 0, beachside_resort: 0, house: 0 };
+    for (const [id, quarters] of Object.entries(expected)) expect(ELEMENT_BY_ID.get(id)?.matureQuarters, id).toBe(quarters);
+  });
+
+  it("gives an immature element a linear fraction of its effects", () => {
+    const run = new ActionRun(board(), TIMELINE);
+    run.build({ q: 0, r: 0 }, "sandy_vegetation"); // biodiversity +2 at maturity, 8 quarters
+    expect(run.state.biodiversity).toBeCloseTo(2 * (1 / 8));
+    run.fastForwardYear();
+    expect(run.state.biodiversity).toBeCloseTo(2 * (5 / 8));
+    run.fastForwardYear();
+    expect(run.state.biodiversity).toBeCloseTo(2);
+  });
+});
