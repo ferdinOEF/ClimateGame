@@ -14,6 +14,7 @@ import { isDailyLevel } from "@levels/levels";
 import { ensureSignedIn, getCurrentUser, onAuthChanged, storedDisplayName } from "./auth";
 import { getFirebase, isCloudConfigured } from "./firebase";
 import { submitGlobalTotals, submitScore } from "./leaderboard";
+import { REQUIRE_EMAIL } from "./features";
 
 /**
  * The single source of truth for player progress, in front of two very
@@ -183,9 +184,12 @@ export async function syncWithCloud(): Promise<void> {
  * the sign-in form hands it to the SDK.
  *
  * Omitted entirely for an anonymous session, which genuinely has no email —
- * writing `null` would fail the rules' string check on the field.
+ * writing `null` would fail the rules' string check on the field. Also
+ * omitted while account features are off (`REQUIRE_EMAIL`), so a session
+ * signed in under an earlier build does not keep sending its address.
  */
 function accountFields(): { email?: string } {
+  if (!REQUIRE_EMAIL) return {};
   const email = getCurrentUser()?.email;
   return email ? { email } : {};
 }

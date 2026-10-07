@@ -17,6 +17,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID?: string;
   readonly VITE_FIREBASE_APP_ID?: string;
   readonly VITE_FIREBASE_EMULATORS?: string;
+  /** "true" turns the email sheet and account features back on. See src/app/features.ts. */
+  readonly VITE_REQUIRE_EMAIL?: string;
 }
 
 interface ImportMeta {

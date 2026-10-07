@@ -21,12 +21,21 @@ export interface SettingsActions {
   onRefresh: () => void;
   /** Open the email sheet to correct the address given before the first level. */
   onEditDetails: () => void;
+  /**
+   * Whether account features exist in this build (`REQUIRE_EMAIL`). Off, the
+   * email details, the sign-in buttons and the connection test (which writes
+   * an email record) are not drawn, and a short note about where progress is
+   * kept stands in for the account block.
+   */
+  showAccount: boolean;
 }
 
 export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress, actions: SettingsActions): void {
   const user = getCurrentUser();
   const unlocked = new Set(progress.achievements);
-  const registration = getRegistration();
+  // Not read at all while account features are off: an address given under
+  // an earlier build stays stored, untouched and unused.
+  const registration = actions.showAccount ? getRegistration() : null;
 
   const nameInput = el("input", {
     className: "text-input",
@@ -42,6 +51,12 @@ export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress
   const nameStatus = el("span", { className: "field-status", text: "" });
 
   const accountNote = el("p", { className: "settings-note", text: accountSummary() });
+
+  function progressSummary(): string {
+    return isCloudConfigured()
+      ? "Saved on this device. Your best scores are posted to the leaderboard under your leaderboard name."
+      : "This build runs offline. Progress is saved on this device only.";
+  }
 
   function accountSummary(): string {
     if (!isCloudConfigured()) return "This build runs offline. Progress is saved on this device only.";
@@ -95,76 +110,86 @@ export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress
       // The address collected before the first level. Shown back rather than
       // left invisible: a player who typed an address into a form is entitled
       // to see what the game now holds about them, and to fix a typo.
-      el("section", {
-        className: "settings-block",
-        children: [
-          el("label", { className: "field-label", text: "Your details" }),
-          el("p", {
-            className: "settings-note",
-            text: registration
-              ? registration.declaredEmail
-              : "You haven't given this yet. You'll be asked once, before your first level."
-          }),
-          el("button", {
-            className: "btn btn-small",
-            text: registration ? "Edit your details" : "Add your details",
-            on: { click: () => actions.onEditDetails() }
+      actions.showAccount
+        ? el("section", {
+            className: "settings-block",
+            children: [
+              el("label", { className: "field-label", text: "Your details" }),
+              el("p", {
+                className: "settings-note",
+                text: registration
+                  ? registration.declaredEmail
+                  : "You haven't given this yet. You'll be asked once, before your first level."
+              }),
+              el("button", {
+                className: "btn btn-small",
+                text: registration ? "Edit your details" : "Add your details",
+                on: { click: () => actions.onEditDetails() }
+              })
+            ]
           })
-        ]
-      }),
+        : null,
 
-      el("section", {
-        className: "settings-block",
-        children: [
-          el("label", { className: "field-label", text: "Account" }),
-          accountNote,
-          // Guests get the full front door: email/password or Google, on
-          // the dedicated screen. Offering only Google here would quietly
-          // exclude anyone who does not have (or want to use) a Google
-          // account.
-          isCloudConfigured() && user && !user.hasProvider
-            ? el("button", {
-                className: "btn btn-primary",
-                text: "Sign in or create an account",
-                on: { click: () => actions.onSignIn() }
-              })
-            : null,
-          isCloudConfigured() && user && !user.hasProvider
-            ? el("button", {
-                className: "btn",
-                text: "Quick sign-in with Google",
-                on: {
-                  click: async (event) => {
-                    const button = event.currentTarget as HTMLButtonElement;
-                    button.disabled = true;
-                    button.textContent = "Opening…";
-                    const outcome = await linkGoogleAccount();
-                    button.disabled = false;
-                    if (outcome.ok) actions.onRefresh();
-                    else {
-                      button.textContent = "Sign in with Google";
-                      accountNote.textContent = outcome.reason;
+      actions.showAccount
+        ? el("section", {
+            className: "settings-block",
+            children: [
+              el("label", { className: "field-label", text: "Account" }),
+              accountNote,
+              // Guests get the full front door: email/password or Google, on
+              // the dedicated screen. Offering only Google here would quietly
+              // exclude anyone who does not have (or want to use) a Google
+              // account.
+              isCloudConfigured() && user && !user.hasProvider
+                ? el("button", {
+                    className: "btn btn-primary",
+                    text: "Sign in or create an account",
+                    on: { click: () => actions.onSignIn() }
+                  })
+                : null,
+              isCloudConfigured() && user && !user.hasProvider
+                ? el("button", {
+                    className: "btn",
+                    text: "Quick sign-in with Google",
+                    on: {
+                      click: async (event) => {
+                        const button = event.currentTarget as HTMLButtonElement;
+                        button.disabled = true;
+                        button.textContent = "Opening…";
+                        const outcome = await linkGoogleAccount();
+                        button.disabled = false;
+                        if (outcome.ok) actions.onRefresh();
+                        else {
+                          button.textContent = "Sign in with Google";
+                          accountNote.textContent = outcome.reason;
+                        }
+                      }
                     }
-                  }
-                }
-              })
-            : null,
-          isCloudConfigured() && user && user.hasProvider
-            ? el("button", {
-                className: "btn",
-                text: "Sign out",
-                on: {
-                  click: async () => {
-                    await signOutPlayer();
-                    actions.onRefresh();
-                  }
-                }
-              })
-            : null
-        ]
-      }),
+                  })
+                : null,
+              isCloudConfigured() && user && user.hasProvider
+                ? el("button", {
+                    className: "btn",
+                    text: "Sign out",
+                    on: {
+                      click: async () => {
+                        await signOutPlayer();
+                        actions.onRefresh();
+                      }
+                    }
+                  })
+                : null
+            ]
+          })
+        : el("section", {
+            className: "settings-block",
+            children: [
+              el("label", { className: "field-label", text: "Your progress" }),
+              el("p", { className: "settings-note", text: progressSummary() })
+            ]
+          }),
 
-      cloudStatusBlock(registration),
+      cloudStatusBlock(registration, actions.showAccount),
 
       el("section", {
         className: "settings-block",
@@ -246,13 +271,14 @@ export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress
  * console, and a rules rejection — look identical from the outside and read
  * very differently in that message.
  */
-function cloudStatusBlock(registration: ReturnType<typeof getRegistration>): HTMLElement {
+function cloudStatusBlock(registration: ReturnType<typeof getRegistration>, showAccount: boolean): HTMLElement {
   const config = readFirebaseConfig();
   const status = el("p", { className: "settings-note", attrs: { role: "status" } });
 
   function describe(): string {
     if (!config) return "No Firebase project is configured for this build, so nothing is sent anywhere. Everything is saved on this device. See docs/DEPLOY.md to connect one.";
     const account = getCurrentUser();
+    if (!showAccount) return `Project ${config.projectId} — ${account ? "connected" : "connecting…"}.`;
     const session = account ? `signed in (${account.isAnonymous ? "guest session" : "account"})` : "not signed in yet";
     return `Project ${config.projectId} — ${session}.`;
   }
@@ -297,7 +323,9 @@ function cloudStatusBlock(registration: ReturnType<typeof getRegistration>): HTM
     children: [
       el("label", { className: "field-label", text: "Cloud status" }),
       status,
-      config ? testButton : null
+      // The test writes a registration record, which holds an email address.
+      // With account features off nothing may write one, so it goes too.
+      config && showAccount ? testButton : null
     ]
   });
 }

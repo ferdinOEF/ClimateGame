@@ -28,6 +28,8 @@ export interface MenuActions {
   onDaily: (levelId: string) => void;
   onSettings: () => void;
   onSignIn: () => void;
+  /** Whether account features exist in this build (`REQUIRE_EMAIL`). Off, the sign-in link and "Signed in as" note are not drawn. */
+  showAccount: boolean;
 }
 
 export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, actions: MenuActions): void {
@@ -41,7 +43,7 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
   const account = getCurrentUser();
   // "Signed in" means a real provider is attached — an anonymous session
   // has a uid and a leaderboard row, but no way back to it from elsewhere.
-  const signedIn = account?.hasProvider === true;
+  const signedIn = actions.showAccount && account?.hasProvider === true;
 
   const screen = el("div", {
     className: "screen menu-screen",
@@ -106,7 +108,7 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
           // already reaches the leaderboard. What an account buys is the
           // save following you to another device, so that is what the
           // button says.
-          isCloudConfigured() && !signedIn
+          actions.showAccount && isCloudConfigured() && !signedIn
             ? el("button", { className: "link-button", text: "Sign in or create an account", on: { click: () => actions.onSignIn() } })
             : null,
           el("button", { className: "link-button", text: "Settings & profile", on: { click: () => actions.onSettings() } }),
@@ -119,7 +121,9 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
               ? "Running offline — progress is saved on this device only."
               : signedIn
                 ? `Signed in${account?.email ? ` as ${account.email}` : ""} — progress syncs across devices.`
-                : "Playing as a guest — progress is saved on this device."
+                : actions.showAccount
+                  ? "Playing as a guest — progress is saved on this device."
+                  : "Progress is saved on this device."
           })
         ]
       })

@@ -23,6 +23,8 @@ import { renderAuthScreen } from "@ui/screens/authScreen";
 import { renderPlayerSetupScreen } from "@ui/screens/playerSetupScreen";
 import { isRegistered, restoreFromCloud } from "@services/playerRegistry";
 import { clear } from "@ui/screens/screenHelpers";
+import { REQUIRE_EMAIL } from "@services/features";
+import { gateRoute, hashToRoute, routeToHash, type Route } from "./routeGate";
 
 /**
  * The app shell: what screen is showing, and the lifecycle of the game
@@ -44,31 +46,6 @@ import { clear } from "@ui/screens/screenHelpers";
  * appearing and then mutating under the player.
  */
 
-type Route =
-  | { name: "menu" }
-  | { name: "levels" }
-  | { name: "playing"; level: LevelDef }
-  | { name: "results"; context: ResultsState }
-  | { name: "leaderboard"; levelId?: string }
-  | { name: "settings" }
-  | { name: "auth"; mode: "signin" | "signup" }
-  /**
-   * The name/age/email sheet. `then` is what the player was trying to do when
-   * the gate intercepted them — carried on the route rather than held in a
-   * field, so it cannot outlive the screen that owns it and cannot be left
-   * set from a previous visit. `null` means they came from Settings to edit
-   * details, and should go back to the menu rather than into a level.
-   */
-  | { name: "player-setup"; then: { levelId: string } | null };
-
-interface ResultsState {
-  level: LevelDef;
-  result: SessionResult;
-  delta: ReturnType<typeof recordRunResult>;
-  newAchievements: string[];
-  submission: Promise<SubmitResult>;
-}
-
 /**
  * How a navigation should affect browser history.
  *
@@ -86,77 +63,6 @@ type HistoryMode = "push" | "replace" | "none";
 /** What we store in `history.state`. The index is how `goBack` knows whether there is anywhere to go back TO. */
 interface HistoryEntry {
   index: number;
-}
-
-/**
- * Routes as URLs.
- *
- * The hash, not the path. Two reasons: the game already uses query
- * parameters for its dev flags (`?debughazards`, `?flood=N`), and keeping
- * routing out of the query string means neither can clobber the other; and a
- * hash cannot 404 on a static host however the rewrites are configured.
- */
-function routeToHash(route: Route): string {
-  switch (route.name) {
-    case "menu":
-      return "#/";
-    case "levels":
-      return "#/levels";
-    case "playing":
-      return `#/play/${encodeURIComponent(route.level.id)}`;
-    // Addressable so the URL is never lying about what is on screen, but see
-    // `hashToRoute`: it is not RESTORABLE, because the results screen is built
-    // from a finished run held in memory.
-    case "results":
-      return "#/results";
-    case "leaderboard":
-      return route.levelId ? `#/leaderboard/${encodeURIComponent(route.levelId)}` : "#/leaderboard";
-    case "settings":
-      return "#/settings";
-    case "auth":
-      return route.mode === "signup" ? "#/signup" : "#/signin";
-    case "player-setup":
-      return route.then ? `#/start/${encodeURIComponent(route.then.levelId)}` : "#/start";
-  }
-}
-
-/**
- * The inverse, for a Back press or a pasted link.
- *
- * Returns null for anything unrecognised, which the caller turns into the
- * menu. That covers a typo, a link from an older build, and `#/results` —
- * whose state died with the run that produced it, so landing on the menu is
- * the only honest thing to do.
- */
-function hashToRoute(hash: string): Route | null {
-  const path = hash.replace(/^#\/?/, "");
-  const [head, tail] = [path.split("/")[0] ?? "", path.split("/").slice(1).join("/")];
-  const param = tail ? decodeURIComponent(tail) : undefined;
-
-  switch (head) {
-    case "":
-      return { name: "menu" };
-    case "levels":
-      return { name: "levels" };
-    case "play": {
-      const level = param ? resolveLevel(param) : null;
-      // A stale bookmark or an expired daily id. The menu beats a crash, and
-      // beats silently starting a different level.
-      return level ? { name: "playing", level } : null;
-    }
-    case "leaderboard":
-      return { name: "leaderboard", levelId: param };
-    case "settings":
-      return { name: "settings" };
-    case "signin":
-      return { name: "auth", mode: "signin" };
-    case "signup":
-      return { name: "auth", mode: "signup" };
-    case "start":
-      return { name: "player-setup", then: param ? { levelId: param } : null };
-    default:
-      return null;
-  }
 }
 
 export class AppShell {
@@ -237,7 +143,18 @@ export class AppShell {
   private enter(route: Route, mode: HistoryMode = "push"): void {
     // The registration gate has to hold here too, not only on the menu
     // button. Otherwise a pasted `#/play/...` link walks straight past it.
-    if (route.name === "playing" && !isRegistered()) {
+    // With the email requirement off (the default, see features.ts) there is
+    // no gate, and the sign-in and registration screens send people to the
+    // menu instead.
+    const decision = gateRoute(route.name, { requireEmail: REQUIRE_EMAIL, registered: isRegistered() });
+    if (decision === "menu") {
+      // Always rewrite the URL, even on a Back/forward or a hash typed into an
+      // open tab (mode "none"), so the address bar does not keep showing a
+      // screen that was never drawn.
+      this.go({ name: "menu" }, mode === "push" ? "push" : "replace");
+      return;
+    }
+    if (decision === "register" && route.name === "playing") {
       this.enter({ name: "player-setup", then: { levelId: route.level.id } }, mode);
       return;
     }
@@ -309,7 +226,8 @@ export class AppShell {
           onLevelSelect: () => this.go({ name: "levels" }),
           onLeaderboard: () => this.go({ name: "leaderboard" }),
           onSettings: () => this.go({ name: "settings" }),
-          onSignIn: () => this.go({ name: "auth", mode: "signin" })
+          onSignIn: () => this.enter({ name: "auth", mode: "signin" }),
+          showAccount: REQUIRE_EMAIL
         });
         break;
 
@@ -334,7 +252,8 @@ export class AppShell {
           onRetry: (levelId) => this.requestLevel(levelId),
           onLevelSelect: () => this.go({ name: "levels" }),
           onMenu: () => this.go({ name: "menu" }),
-          onLeaderboard: (levelId) => this.go({ name: "leaderboard", levelId })
+          onLeaderboard: (levelId) => this.go({ name: "leaderboard", levelId }),
+          showAccount: REQUIRE_EMAIL
         });
         break;
 
@@ -404,11 +323,12 @@ export class AppShell {
             resetLocalProgress();
             this.go({ name: "menu" });
           },
-          onSignIn: () => this.go({ name: "auth", mode: "signin" }),
+          onSignIn: () => this.enter({ name: "auth", mode: "signin" }),
           onRefresh: () => this.paint(),
           // `then: null` — reached from Settings rather than from a blocked
           // Start, so saving returns to the menu instead of launching a level.
-          onEditDetails: () => this.go({ name: "player-setup", then: null })
+          onEditDetails: () => this.enter({ name: "player-setup", then: null }),
+          showAccount: REQUIRE_EMAIL
         });
         break;
     }
