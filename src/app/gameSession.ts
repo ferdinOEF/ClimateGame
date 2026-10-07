@@ -23,6 +23,7 @@ import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer } from "@ui/mapLabels";
 import { MapAttribution } from "@ui/attribution";
+import { MapLayerControl } from "@ui/mapLayerControl";
 import { StormReport } from "@ui/stormReport";
 // `SessionResult` is defined in @core/levelScore (it is expressed purely
 // in core types) and re-exported here, so callers that think of it as
@@ -401,7 +402,65 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * off the map's own `source` block, so a board cannot acquire real geography
    * without the credit that pays for it.
    */
-  const mapAttribution = levelMap.source ? new MapAttribution(container, levelMap.source.attribution) : null;
+  // The street-map switch and the credit share one corner element — see
+  // `.map-corner` in hud.css. On a phone it sits under the instrument
+  // cluster, whose height changes as it collapses, so its bottom is tracked.
+  const mapCorner = levelMap.source ? document.createElement("div") : null;
+  let mapCornerObserver: ResizeObserver | null = null;
+  if (mapCorner) {
+    mapCorner.className = "map-corner";
+    container.appendChild(mapCorner);
+    const cluster = container.querySelector<HTMLElement>(".instrument-cluster");
+    if (cluster && typeof ResizeObserver === "function") {
+      const place = (): void => {
+        const top = cluster.getBoundingClientRect().bottom - container.getBoundingClientRect().top + 8;
+        mapCorner.style.setProperty("--map-corner-top", `${Math.round(top)}px`);
+      };
+      mapCornerObserver = new ResizeObserver(place);
+      mapCornerObserver.observe(cluster);
+      mapCornerObserver.observe(container);
+      place();
+    }
+  }
+  const mapAttribution = levelMap.source && mapCorner ? new MapAttribution(mapCorner, levelMap.source.attribution) : null;
+
+  /*
+   * The OpenStreetMap layer, on maps that ship one.
+   *
+   * The image is only requested here, after the level has started, and only
+   * for a map that has it — the tutorial never downloads a byte of it. Until it
+   * arrives the board simply shows its tiles. If it fails to load (offline, a
+   * bad deploy) the switch goes away with it rather than toggling nothing.
+   */
+  const overlay = levelMap.overlay;
+  let mapLayerControl: MapLayerControl | null = null;
+  let overlayTexture: THREE.Texture | null = null;
+  if (overlay) {
+    const applyLayer = (settings: { visible: boolean; opacity: number }): void =>
+      terrain.setOverlayOpacity(settings.visible ? settings.opacity : 0);
+    // Prepended so the switch stacks above the credit.
+    mapLayerControl = new MapLayerControl(mapCorner ?? container, applyLayer, true);
+    applyLayer(mapLayerControl.current);
+    new THREE.TextureLoader().load(
+      `${import.meta.env.BASE_URL}${overlay.image}`,
+      (texture) => {
+        if (disposed) {
+          texture.dispose();
+          return;
+        }
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        overlayTexture = texture;
+        terrain.setOverlayTexture(texture, overlay.world);
+      },
+      undefined,
+      () => {
+        console.warn(`[map] could not load the map layer ${overlay.image}`);
+        mapLayerControl?.dispose();
+        mapLayerControl = null;
+      }
+    );
+  }
   /** Set the first time a tile menu opens — the coach's second step waits on it. */
   let hasOpenedTileMenu = false;
   /**
@@ -1672,6 +1731,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormReport.dispose();
     mapLabels.dispose();
     mapAttribution?.dispose();
+    mapLayerControl?.dispose();
+    overlayTexture?.dispose();
+    mapCornerObserver?.disconnect();
+    mapCorner?.remove();
     // Puts the sky and sun back before the scene goes. Without it a
     // session disposed mid-storm would be the last thing to touch those
     // values, and `createScene`'s own disposal does not restore them.

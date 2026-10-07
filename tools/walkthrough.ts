@@ -115,34 +115,46 @@ async function main(): Promise<void> {
     console.log("menu");
     await shot(page, "menu");
 
-    // ---- 2. Start -> the registration sheet -------------------------
+    // ---- 2. Start -> the level (or the registration sheet) ----------
+    // The sheet only exists in a build made with VITE_REQUIRE_EMAIL=true (see
+    // src/services/features.ts). Which one this is gets read off the page,
+    // not this process's environment: the flag can come from `.env.local`,
+    // and a `--url` target was built somewhere else entirely.
     stage = "registration";
+    const forbidden = /e-?mail|sign[ -]?in|signed in|account/i;
+    const menuText = (await page.locator(".menu-screen").textContent()) ?? "";
     // By class, not by label. The primary button's text is deliberately
     // variable — "Tutorial", "Play - Panaji", "Continue - Morjim & Chapora",
     // "Play again" — so matching on a word in it would break every time the
     // copy or the campaign order changed, which it already has once.
     await page.locator(".menu-actions .btn-primary").first().click();
-    await page.waitForSelector(".setup-screen", { timeout: 10000 });
-    console.log("registration gate appeared");
-    await shot(page, "registration-empty");
+    await page.waitForSelector(".brief-card, .setup-screen", { timeout: 15000 });
+    if ((await page.locator(".setup-screen").count()) > 0) {
+      console.log("registration gate appeared (build has VITE_REQUIRE_EMAIL=true)");
+      await shot(page, "registration-empty");
 
-    // Submit it empty first: the form must mark the field rather than letting
-    // a blank registration through.
-    await clickByText(page, "Start playing");
-    await page.waitForTimeout(150);
-    const visibleErrors = await page.locator(".field-error.visible").count();
-    if (visibleErrors !== 1) {
-      problems.push(`[registration] empty submit flagged ${visibleErrors} fields, expected 1`);
-    }
-    if (await page.locator(".setup-screen").count() === 0) {
-      problems.push("[registration] an empty form was accepted");
-    }
-    await shot(page, "registration-errors");
+      // Submit it empty first: the form must mark the field rather than letting
+      // a blank registration through.
+      await clickByText(page, "Start playing");
+      await page.waitForTimeout(150);
+      const visibleErrors = await page.locator(".field-error.visible").count();
+      if (visibleErrors !== 1) {
+        problems.push(`[registration] empty submit flagged ${visibleErrors} fields, expected 1`);
+      }
+      if (await page.locator(".setup-screen").count() === 0) {
+        problems.push("[registration] an empty form was accepted");
+      }
+      await shot(page, "registration-errors");
 
-    // Now fill it properly.
-    await page.locator(".setup-form input").nth(0).fill("pilot@example.com");
-    await shot(page, "registration-filled");
-    await clickByText(page, "Start playing");
+      // Now fill it properly.
+      await page.locator(".setup-form input").nth(0).fill("pilot@example.com");
+      await shot(page, "registration-filled");
+      await clickByText(page, "Start playing");
+    } else {
+      // No email anywhere: the menu must not have mentioned it either.
+      if (forbidden.test(menuText)) problems.push(`[menu] mentions email or accounts: "${menuText.match(forbidden)?.[0]}"`);
+      console.log("Start went straight to the level — no email sheet");
+    }
 
     // ---- 3. the tutorial board --------------------------------------
     stage = "tutorial";

@@ -10,8 +10,9 @@
  * longitude of the image's edges, so `buildPanajiMap.ts` can say which pixels
  * a given hex covers. Without it the picture is just a picture.
  *
- * Neither file ships. The game draws flat coloured hexes; this image is only
- * ever read offline, to decide what each of those hexes is.
+ * Neither file ships as is. The image is read offline to decide what each hex
+ * is, and `buildPanajiMap.ts` cuts the board's own rectangle out of it as the
+ * street-map layer in `public/maps/`. The game never calls the tile server.
  *
  * WHY TILES AND NOT A VECTOR TRACE
  *
@@ -52,11 +53,11 @@ const ROOT = path.resolve(process.cwd());
 /*
  * Both outputs are BUILD INPUTS, not shipped assets.
  *
- * They live beside the generator rather than in `public/` because the game no
- * longer draws this image: the board is read out of it offline and then
- * rendered as flat palette colours. Shipping it would add 1.2 MB to every page
- * load for a picture nobody sees. It stays checked in so the board can be
- * regenerated and the classification re-checked.
+ * They live beside the generator rather than in `public/` because the game
+ * never draws this whole image: the board is read out of it offline, and only
+ * the board's own rectangle ships, as a smaller WebP street-map layer written
+ * by `buildPanajiMap.ts`. It stays checked in so the board and that layer can
+ * be regenerated and the classification re-checked.
  */
 const IMAGE_OUT = path.join(ROOT, "tools/mapgen/panaji-basemap.jpg");
 const META_OUT = path.join(ROOT, "tools/mapgen/panajiBasemap.json");

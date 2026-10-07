@@ -61,12 +61,25 @@ export interface KhazanScene {
 const CAM_DISTANCE_DEFAULT = 18;
 const CAM_DISTANCE_MIN = 8;
 /**
- * Raised from 40 for the real-world maps. The largest board (Palolem, 17 by
- * 21 tiles) needs about 39 units just to fit on screen, so the old ceiling
- * left no room to pull back any further than the opening frame — the zoom-out
- * control would have been dead on the biggest map in the campaign.
+ * How far the player can pull back. Raised from 40 for the real-world maps,
+ * then from 58 when Panaji grew to reach Merces: at 90 the whole 61-by-55-unit
+ * board fits on a landscape screen with room to spare, so the zoom-out control
+ * always ends with the entire map in view.
  */
-const CAM_DISTANCE_MAX = 58;
+const CAM_DISTANCE_MAX = 90;
+/**
+ * The furthest the camera is placed when it frames a board for you — on
+ * opening a level, and on a resize before you have zoomed.
+ *
+ * Separate from `CAM_DISTANCE_MAX`, which is how far you may pull back
+ * yourself. They were the same number (58) while every board fitted on screen
+ * at it. Panaji, running from Miramar to Merces, is about 61 by 55 units: a
+ * frame that held all of it would open the level on a map too small to read,
+ * and capping the manual zoom there would mean never seeing the whole city at
+ * once. So the game opens at a readable distance on the map's focus point, and
+ * lets the player pull back until all of it is in view.
+ */
+const CAM_DISTANCE_OPENING_MAX = 44;
 const CAM_ELEVATION_DEG = 58; // slight top-down, not hard isometric
 const DRAG_THRESHOLD_PX = 5;
 const ZOOM_SPEED = 0.02;
@@ -247,7 +260,7 @@ export function createScene(container: HTMLElement): KhazanScene {
     // screen edge nor underneath the HUD's corner panels — which occupy real
     // estate at all four corners and would otherwise cover the board's own
     // corners exactly.
-    return THREE.MathUtils.clamp(Math.max(forWidth, forDepth) * 1.18, CAM_DISTANCE_MIN, CAM_DISTANCE_MAX);
+    return THREE.MathUtils.clamp(Math.max(forWidth, forDepth) * 1.18, CAM_DISTANCE_MIN, CAM_DISTANCE_OPENING_MAX);
   }
 
   function fitTo(worldWidth: number, worldDepth: number, immediate = false): void {

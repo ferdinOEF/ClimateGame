@@ -1,11 +1,12 @@
 /**
  * Builds the Panaji board from the real map of Panjim.
  *
- * The board SHIPS as flat coloured hexes. The map image is a build input read
- * once here, offline, to decide what each hex is — it is not an asset and is
- * never served to a player. What survives into the game is the geography: the
- * coastline, the Mandovi, the estuary fringe, the sand, and the sixteen
- * landmarks standing where they really stand.
+ * The board ships as flat coloured hexes, read offline out of the map image to
+ * decide what each hex is: the coastline, the Mandovi, the creeks and wetlands,
+ * the sand, and the sixteen landmarks standing where they really stand. A
+ * crop of the same image, resampled onto the board's projection, also ships as
+ * an optional street-map layer the player can show over the hexes
+ * (`writeOverlay`); the game never fetches map tiles at runtime.
  *
  * WHAT CHANGED, AND WHY
  *
@@ -58,33 +59,52 @@ const BASEMAP_META = path.join(ROOT, "tools/mapgen/panajiBasemap.json");
 const BASEMAP_IMAGE = path.join(ROOT, "tools/mapgen/panaji-basemap.jpg");
 const PLACES = path.join(ROOT, "tools/mapgen/panajiPlaces.json");
 const OUT = path.join(ROOT, "src/data/maps/panaji.json");
+/** The OpenStreetMap layer the player can show over the board. Served from `public/`, so it ships. */
+const OVERLAY_OUT = path.join(ROOT, "public/maps/panaji-osm.webp");
+/** The path the game requests it at, relative to the site's base URL. */
+const OVERLAY_URL = "maps/panaji-osm.webp";
+/**
+ * Pixel width of the shipped layer. The basemap has about 1,750 px across the
+ * board, so this upsamples a little rather than inventing detail; it is the
+ * texture size every phone handles without complaint. WebP quality is tuned to
+ * keep the file at or under about 1.5 MB.
+ */
+const OVERLAY_WIDTH = 2048;
+const OVERLAY_QUALITY = 0.8;
 
 /**
  * The slice of the basemap that becomes playable board.
  *
- * Narrower than the image on purpose. The image reaches Porvorim, Chorao and
- * Goa University so there is real city visible past the edge of play; the
- * board itself is the part the game is about — the Mandovi mouth, the whole of
- * Panaji, Miramar at the river mouth, the Dona Paula headland, and enough open
- * Arabian Sea on the west edge for a storm to arrive across.
+ * Panjim and everything around it that a person from there would expect to
+ * see: the Mandovi waterfront and the Betim bank across it along the top, the
+ * Atal Setu and the river's estuary to the north-east, Aguada Bay and the
+ * Miramar–Caranzalem–Dona Paula shore down the west, the Dona Paula headland
+ * and the Zuari side along the bottom, and on the east the wetlands and creeks
+ * of Taleigao, St Cruz and Merces.
+ *
+ * The east edge stops just inside the basemap's own (73.8721) so a hex on the
+ * last column still has picture all round it to sample. The board used to end
+ * at 73.84, which cut off at Patto and left out every creek east of the city.
  */
-const BOARD = { north: 15.5105, south: 15.455, west: 73.7955, east: 73.84 };
+const BOARD = { north: 15.513, south: 15.446, west: 73.795, east: 73.87 };
 
 /**
  * Metres to one world unit, which is what sets how big a hex is on the ground.
  *
- * 125 puts a hex at about 216 m across — a neighbourhood, not a building. That
+ * 135 puts a hex at about 234 m across — a neighbourhood, not a building. That
  * is the right grain for this game: small enough that Campal, Altinho and
- * Fontainhas are different places, large enough that the board is about 700
- * tiles rather than the 10,000 a building-sized hex would need.
+ * Fontainhas are different places, large enough that a board running from
+ * Miramar to Merces is about 1,300 tiles. At the old 125 the same area would
+ * be just over 1,500, which is more than a mid-range phone should be asked to
+ * draw and more than a player can take in.
  */
-const METRES_PER_UNIT = 125;
+const METRES_PER_UNIT = 135;
 
 /** Hexes are authored at size 1, matching `HEX_SIZE` in the renderer. */
 const HEX_SIZE = 1;
 
 const METRES_PER_DEG_LAT = 110_574;
-/** At 15.5°N. Constant rather than per-row: the board spans 0.055° of latitude, over which the cosine moves by 0.01%. */
+/** At 15.48°N. Constant rather than per-row: the board spans 0.067° of latitude, over which the cosine moves by 0.02%. */
 const METRES_PER_DEG_LON = 111_320 * Math.cos((15.48 * Math.PI) / 180);
 
 /**
@@ -116,8 +136,78 @@ const RIVER_MOUTH = {
   south: { lat: 15.496, lon: 73.8162 }
 };
 
+/**
+ * South of this latitude, water east of the mouth line is the Zuari side, not
+ * the Mandovi.
+ *
+ * The mouth line above was drawn for a board that stopped at Dona Paula. The
+ * extended board reaches the bay between Dona Paula and Goa University, which
+ * is also east of that line and would otherwise be called river. It is open
+ * water facing the Arabian Sea, so it stays coast. Every Mandovi creek on the
+ * board — Ourem, St Inez, the St Cruz and Merces channels — is north of here.
+ */
+const ZUARI_SIDE_LAT = 15.463;
+
+/**
+ * When a tile that is not mostly water still belongs to the tidal system.
+ *
+ * OpenStreetMap draws three wet things that a "more than half blue" test
+ * misses, and all three are what this board is about east of the city:
+ *
+ *   - **Creeks.** Ourem, and the channels through St Cruz and Merces, are 30 to
+ *     80 m wide — a fifth of a hex. A creek tile is mostly bank by area.
+ *   - **Marsh.** Drawn as blue dashes over pale farmland or green meadow. Only
+ *     about a tenth of the pixels are blue, but the tile is a wetland all the
+ *     same.
+ *   - **Mangrove.** Drawn as tree symbols over a grey-green unique to it.
+ *     No blue at all.
+ *
+ * A tile meeting any of these, with little city in it and no sand, becomes
+ * estuary — but only if it connects to the river through other such tiles
+ * (`spreadWetlands`). That is what stops a swimming pool in Altinho or a
+ * waterfront street in Campal turning into mangrove ground.
+ */
+const WET = {
+  creekWater: 0.12,
+  marshWater: 0.05,
+  marshGround: 0.5,
+  mangrove: 0.3,
+  maxBuilt: 0.35,
+  maxSand: 0.2
+};
+
+/**
+ * Named places that get a floating label but no building.
+ *
+ * Neighbourhoods and a bridge rather than monuments: there is no single
+ * structure to draw for "Merces", and a label is what tells a player which
+ * part of the board they are looking at. Positions are where OpenStreetMap
+ * prints each name on the basemap, converted back through its projection —
+ * the geocoder is not reachable from every machine this runs on, and the
+ * label position is the one a player will be comparing against anyway.
+ */
+const PLACE_LABELS: { name: string; lat: number; lon: number }[] = [
+  { name: "Caranzalem", lat: 15.4701, lon: 73.8068 },
+  { name: "Taleigao", lat: 15.4726, lon: 73.8209 },
+  { name: "St Cruz", lat: 15.4754, lon: 73.8444 },
+  { name: "Merces", lat: 15.4847, lon: 73.8497 },
+  { name: "Atal Setu", lat: 15.5031, lon: 73.8345 }
+];
+
 /** How far inland of the open sea the sand is widened to. */
 const BEACH_BAND = 3;
+
+/**
+ * The stretch of shore the sand is widened along: Campal at the river mouth
+ * down to Caranzalem, the Miramar–Caranzalem beach.
+ *
+ * Named rather than inferred, for the same reason as the river mouth. The
+ * row walk in `widenBeach` finds the first dry tile west to east, which on the
+ * old board was always this beach. The extended board also has the Betim and
+ * Reis Magos bank to the north, the rocky Dona Paula headland and the
+ * south-facing shore to Bambolim, and the walk would paint all of them sand.
+ */
+const BEACH_SHORE = { north: 15.494, south: 15.462 };
 
 const GLYPHS: Record<string, string> = { coast: "~", beach: ".", land: "#", river: "=", estuary: "o" };
 
@@ -187,6 +277,8 @@ interface Cell {
   px: number;
   py: number;
   terrainId: string;
+  /** Fractions of the sampled pixels, kept for the wetland pass after the water split. */
+  share?: { water: number; sand: number; built: number; mangrove: number; pale: number; green: number };
 }
 
 /**
@@ -224,7 +316,7 @@ function buildGrid(meta: BasemapMeta): Cell[] {
 
 // ---- reading the picture ----------------------------------------------
 
-type Reading = { water: number; sand: number; green: number; built: number };
+type Reading = { water: number; sand: number; green: number; built: number; mangrove: number; pale: number };
 
 /**
  * Asks a browser what colour the map is at each hex.
@@ -280,21 +372,33 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
          * around every label and road casing. The tests below are written to
          * be the loosest thing that still separates the four categories.
          */
-        function classify(r: number, g: number, b: number): "water" | "sand" | "green" | "built" {
+        function classify(r: number, g: number, b: number): "water" | "sand" | "green" | "built" | "mangrove" | "pale" {
           // Water is the only thing on the map that is markedly bluer than it
-          // is red. Roads, buildings and labels are all neutral or warm.
+          // is red. Roads, buildings and labels are all neutral or warm. The
+          // blue dashes OSM draws over marsh land here too, which is wanted.
           if (b - r > 22 && b > 165) return "water";
-          // Sand is warm and pale with a clear blue deficit. The `b < g - 18`
-          // is what keeps white road fill (equal channels) out of it.
-          if (r > 232 && g > 220 && b < g - 18) return "sand";
-          // Everything OSM draws as vegetation is green-dominant.
+          // Sand is warm and pale with a clear blue deficit (about 250,235,
+          // 195). The `b < g - 18` keeps white road fill (equal channels) out
+          // of it, and `r - g >= 8` keeps out farmland and marsh (about 239,
+          // 242,208), which are just as pale but not warm. Without that test
+          // most of the sand this used to find was Taleigao's paddy fields.
+          if (r > 238 && g > 220 && r - g >= 8 && b < g - 18) return "sand";
+          // Mangrove: the muted grey-green (about 192,210,170) OSM puts under
+          // its mangrove tree symbols. Darker and greyer than grass (205,235,
+          // 176), redder than forest (172,209,158).
+          if (r >= 182 && r <= 204 && g >= 200 && g <= 222 && b >= 155 && b <= 186 && g - r >= 8 && g - r <= 28) return "mangrove";
+          // Everything else OSM draws as vegetation is green-dominant.
           if (g > r + 6 && g > b + 14) return "green";
+          // The pale yellow-green of farmland and meadow (about 234,240,210),
+          // which is what marsh dashes are drawn over. Not city: it must not
+          // count against a tile the way buildings and roads do.
+          if (r > 224 && g > 228 && Math.abs(r - g) < 8 && b > 185 && b < g - 10) return "pale";
           return "built";
         }
 
         const step = Math.max(1, Math.floor(radius / 6));
         return points.map(({ px, py }) => {
-          const reading = { water: 0, sand: 0, green: 0, built: 0 };
+          const reading = { water: 0, sand: 0, green: 0, built: 0, mangrove: 0, pale: 0 };
           for (let dy = -radius; dy <= radius; dy += step) {
             for (let dx = -radius; dx <= radius; dx += step) {
               if (dx * dx + dy * dy > radius * radius) continue;
@@ -326,11 +430,19 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
 function classifyCells(cells: Cell[], readings: Reading[]): void {
   cells.forEach((cell, index) => {
     const reading = readings[index];
-    const total = reading.water + reading.sand + reading.green + reading.built;
+    const total = reading.water + reading.sand + reading.green + reading.built + reading.mangrove + reading.pale;
     if (total === 0) {
       cell.terrainId = "land";
       return;
     }
+    cell.share = {
+      water: reading.water / total,
+      sand: reading.sand / total,
+      built: reading.built / total,
+      mangrove: reading.mangrove / total,
+      pale: reading.pale / total,
+      green: reading.green / total
+    };
     // A majority of water, not a plurality. A tile that is 40% water and 60%
     // city is a waterfront street, and the game should let you build on it.
     cell.terrainId = reading.water / total > 0.5 ? "coast" : "land";
@@ -372,14 +484,93 @@ function separateWater(cells: Cell[]): void {
   const eastOfMouth = (lat: number, lon: number): boolean =>
     (north.lon - south.lon) * (lat - south.lat) - (north.lat - south.lat) * (lon - south.lon) < 0;
 
-  const river = cells.filter((cell) => cell.terrainId === "coast" && eastOfMouth(cell.lat, cell.lon));
+  const river = cells.filter(
+    (cell) => cell.terrainId === "coast" && eastOfMouth(cell.lat, cell.lon) && cell.lat > ZUARI_SIDE_LAT
+  );
   for (const cell of river) cell.terrainId = "river";
+
+  /*
+   * Water that cannot reach the open sea is not the sea.
+   *
+   * Flood-filled from every coast tile on the board's edge through other coast
+   * tiles. Anything left over is a lake or a pond — Bandvol Lake, the tanks in
+   * Taleigao — and is still water, so it joins the river set rather than
+   * becoming a stretch of Arabian Sea stranded inland.
+   */
+  const rowsOf = new Map<number, Cell[]>();
+  for (const cell of cells) {
+    const row = rowsOf.get(cell.coord.r) ?? [];
+    row.push(cell);
+    rowsOf.set(cell.coord.r, row);
+  }
+  const rowKeys = [...rowsOf.keys()].sort((a, b) => a - b);
+  const edge = new Set<string>();
+  for (const r of rowKeys) {
+    const row = rowsOf.get(r)!.sort((a, b) => a.coord.q - b.coord.q);
+    edge.add(axialKey(row[0].coord));
+    edge.add(axialKey(row[row.length - 1].coord));
+    if (r === rowKeys[0] || r === rowKeys[rowKeys.length - 1]) for (const cell of row) edge.add(axialKey(cell.coord));
+  }
+  const open = new Set<string>();
+  const queue = cells.filter((cell) => cell.terrainId === "coast" && edge.has(axialKey(cell.coord)));
+  for (const cell of queue) open.add(axialKey(cell.coord));
+  while (queue.length > 0) {
+    const cell = queue.pop()!;
+    for (const coord of neighbors(cell.coord)) {
+      const next = byKey.get(axialKey(coord));
+      if (!next || next.terrainId !== "coast" || open.has(axialKey(coord))) continue;
+      open.add(axialKey(coord));
+      queue.push(next);
+    }
+  }
+  for (const cell of cells) {
+    if (cell.terrainId === "coast" && !open.has(axialKey(cell.coord))) {
+      cell.terrainId = "river";
+      river.push(cell);
+    }
+  }
 
   // Estuary last, and over the river set computed above, so no tile is asked
   // whether its neighbour is a bank while that neighbour is still undecided.
   for (const cell of river) {
     if (neighbors(cell.coord).some((coord) => isBank(coord))) cell.terrainId = "estuary";
   }
+}
+
+/**
+ * Turns creek, marsh and mangrove tiles connected to the river into estuary.
+ *
+ * Breadth-first from every river and estuary tile, through land tiles that
+ * read as wet by the rules in `WET`. Connectivity is the important half: the
+ * same reading on a tile with no path to the river — a park pond, a sports
+ * ground with a pool — is not tidal and stays land.
+ */
+function spreadWetlands(cells: Cell[]): number {
+  const byKey = new Map(cells.map((cell) => [axialKey(cell.coord), cell]));
+  const isWet = (cell: Cell): boolean => {
+    const share = cell.share;
+    if (!share || cell.terrainId !== "land") return false;
+    if (share.built > WET.maxBuilt || share.sand > WET.maxSand) return false;
+    return (
+      share.water >= WET.creekWater ||
+      share.mangrove >= WET.mangrove ||
+      (share.water >= WET.marshWater && share.pale + share.green + share.mangrove >= WET.marshGround)
+    );
+  };
+
+  const queue = cells.filter((cell) => cell.terrainId === "river" || cell.terrainId === "estuary");
+  let converted = 0;
+  while (queue.length > 0) {
+    const cell = queue.shift()!;
+    for (const coord of neighbors(cell.coord)) {
+      const next = byKey.get(axialKey(coord));
+      if (!next || !isWet(next)) continue;
+      next.terrainId = "estuary";
+      converted++;
+      queue.push(next);
+    }
+  }
+  return converted;
 }
 
 /**
@@ -404,6 +595,7 @@ function widenBeach(cells: Cell[]): number {
 
   for (const r of rows) {
     const row = cells.filter((cell) => cell.coord.r === r).sort((a, b) => a.coord.q - b.coord.q);
+    if (row[0].lat > BEACH_SHORE.north || row[0].lat < BEACH_SHORE.south) continue;
     let index = 0;
     while (index < row.length && row[index].terrainId === "coast") index++;
     // A row that is open sea all the way across, or dry land from its western
@@ -632,6 +824,71 @@ async function writePreview(meta: BasemapMeta, cells: Cell[], monuments: Monumen
   }
 }
 
+// ---- the map layer ----------------------------------------------------
+
+/**
+ * Bakes the OpenStreetMap layer that can be shown over the hexes.
+ *
+ * Cut from the same basemap the board was read out of, exactly to the board's
+ * bounds, and RESAMPLED onto the board's own projection. The board places
+ * hexes linearly in latitude (`geoToWorld`), the basemap is Web Mercator; over
+ * 0.067 degrees the two differ by well under a pixel, but resampling row by row
+ * makes them identical rather than merely close, so the game can stretch the
+ * image over the board's world rectangle with no projection maths of its own.
+ * That rectangle is written into the map file from `geoToWorld` too: one
+ * projection places the hexes, the landmarks and this picture.
+ *
+ * Nothing at runtime touches the OpenStreetMap tile server. This is a static
+ * file served with the game.
+ */
+async function writeOverlay(meta: BasemapMeta): Promise<{ width: number; height: number; bytes: number }> {
+  const dataUrl = `data:image/jpeg;base64,${fs.readFileSync(BASEMAP_IMAGE).toString("base64")}`;
+  const southEast = geoToWorld(BOARD.south, BOARD.east);
+  const width = OVERLAY_WIDTH;
+  const height = Math.round((OVERLAY_WIDTH * southEast.z) / southEast.x);
+
+  // Source rectangle per output row, computed here so the page needs no maths.
+  const left = geoToPixel(meta, BOARD.north, BOARD.west).px;
+  const right = geoToPixel(meta, BOARD.north, BOARD.east).px;
+  const rows: number[] = [];
+  for (let row = 0; row < height; row++) {
+    const lat = BOARD.north - ((row + 0.5) / height) * (BOARD.north - BOARD.south);
+    rows.push(geoToPixel(meta, lat, BOARD.west).py);
+  }
+
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent("<html><body></body></html>");
+    await page.evaluate("globalThis.__name = (fn) => fn;");
+    const webp = await page.evaluate(
+      async ({ dataUrl, width, height, left, right, rows, quality }) => {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("basemap failed to decode"));
+          img.src = dataUrl;
+        });
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        rows.forEach((sourceY, row) => ctx.drawImage(image, left, sourceY - 0.5, right - left, 1, 0, row, width, 1));
+        return canvas.toDataURL("image/webp", quality);
+      },
+      { dataUrl, width, height, left, right, rows, quality: OVERLAY_QUALITY }
+    );
+    const buffer = Buffer.from(webp.slice(webp.indexOf(",") + 1), "base64");
+    fs.mkdirSync(path.dirname(OVERLAY_OUT), { recursive: true });
+    fs.writeFileSync(OVERLAY_OUT, buffer);
+    return { width, height, bytes: buffer.length };
+  } finally {
+    await browser.close();
+  }
+}
+
 // ---- output -----------------------------------------------------------
 
 function asciiPreview(cells: Cell[], monuments: Monument[]): string {
@@ -678,6 +935,9 @@ async function main(): Promise<void> {
   separateWater(cells);
   console.log("after splitting water:  ", JSON.stringify(countTerrain(cells)));
 
+  const wetlands = spreadWetlands(cells);
+  console.log(`after wetlands:         ${JSON.stringify(countTerrain(cells))} (${wetlands} land tiles became estuary)`);
+
   const widened = widenBeach(cells);
   console.log(`after widening sand:    ${JSON.stringify(countTerrain(cells))} (${widened} land tiles became beach)`);
 
@@ -686,23 +946,27 @@ async function main(): Promise<void> {
   /*
    * Where the camera opens.
    *
-   * The board is about 38 by 49 world units, far too large to fit on screen at
+   * The board is about 61 by 55 world units, far too large to fit on screen at
    * a readable zoom, so the opening frame is a choice rather than the board's
-   * geometric centre — which lands in open water off Miramar. This point is
-   * the old city: the church, the waterfront and the river mouth in one view,
-   * which is the shot that says "this is Panjim" to someone who lives there.
+   * geometric centre — which lands in the Taleigao fields. This point is the
+   * old city between Campal and the church: the waterfront, the river mouth
+   * and Fontainhas in one view, which is the shot that says "this is Panjim"
+   * to someone who lives there.
    */
-  const focusGeo = { lat: 15.4955, lon: 73.8205 };
+  const focusGeo = { lat: 15.4955, lon: 73.8255 };
   const focusWorld = geoToWorld(focusGeo.lat, focusGeo.lon);
   const focus = worldToAxial(focusWorld.x, focusWorld.z, HEX_SIZE);
 
   const rows = [...new Set(cells.map((cell) => cell.coord.r))];
+  // The board's north-west corner is world (0,0) by construction; its
+  // south-east corner is where the far edge of the layer goes.
+  const overlayWorld = geoToWorld(BOARD.south, BOARD.east);
   const file = {
     id: "panaji",
     name: "Panaji",
     region: "Tiswadi, North Goa",
     blurb:
-      "Goa's capital, on the south bank of the Mandovi where the river spreads into tidal flats before reaching the sea. The old city sits on reclaimed water; the sand from Miramar down to Dona Paula is all that stands between it and the Arabian Sea.",
+      "Goa's capital, on the south bank of the Mandovi where the river spreads into tidal flats before reaching the sea. The old city sits on reclaimed water, the creeks and wetlands of Taleigao, St Cruz and Merces wrap round it to the east, and the sand from Miramar to Caranzalem is all that stands between it and the Arabian Sea.",
     geo: {
       originLat: BOARD.north,
       originLon: BOARD.west,
@@ -727,16 +991,38 @@ async function main(): Promise<void> {
       metresPerUnit: METRES_PER_UNIT
     },
     focus,
-    // The floating place labels and the monument buildings are the same
-    // sixteen places, so they are one list rather than two that could
-    // disagree.
-    landmarks: monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
+    /*
+     * The OpenStreetMap layer: where the image is, and the world rectangle it
+     * covers. The rectangle comes from the same `geoToWorld` that placed every
+     * hex, so the picture cannot drift from the board.
+     */
+    overlay: {
+      image: OVERLAY_URL,
+      world: { x: 0, z: 0, width: overlayWorld.x, depth: overlayWorld.z },
+      attribution: "© OpenStreetMap contributors",
+      href: "https://www.openstreetmap.org/copyright"
+    },
+    // Every monument is labelled, so those share one list rather than two
+    // that could disagree; the neighbourhood labels follow, projected through
+    // the same function as everything else.
+    landmarks: [
+      ...monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
+      ...PLACE_LABELS.map((label) => {
+        const { x, z } = geoToWorld(label.lat, label.lon);
+        return { name: label.name, ...worldToAxial(x, z, HEX_SIZE) };
+      })
+    ],
     monuments,
     tiles: cells.map((cell) => ({ q: cell.coord.q, r: cell.coord.r, terrainId: cell.terrainId }))
   };
 
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, `${JSON.stringify(file, null, 2)}\n`);
+
+  const overlay = await writeOverlay(meta);
+  console.log(
+    `Map layer: ${path.relative(ROOT, OVERLAY_OUT)} ${overlay.width}x${overlay.height}, ${(overlay.bytes / 1024).toFixed(0)} KB`
+  );
 
   const previewPath = path.join(os.tmpdir(), "riptide-panaji-preview.png");
   await writePreview(meta, cells, monuments, previewPath);

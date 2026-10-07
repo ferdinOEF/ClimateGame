@@ -31,6 +31,8 @@ export interface ResultsActions {
   onLevelSelect: () => void;
   onMenu: () => void;
   onLeaderboard: (levelId: string) => void;
+  /** Whether account features exist in this build (`REQUIRE_EMAIL`). Off, nothing here mentions signing in. */
+  showAccount: boolean;
 }
 
 export interface ResultsContext {
@@ -130,7 +132,7 @@ export function renderResultsScreen(root: HTMLElement, ctx: ResultsContext, acti
   // after render: the player should never wait on the network to see how
   // they did.
   void ctx.submission.then((outcome) => {
-    submissionNote.textContent = describeSubmission(outcome, cleared);
+    submissionNote.textContent = describeSubmission(outcome, cleared, actions.showAccount);
   });
 }
 
@@ -185,7 +187,7 @@ function achievementBlock(ctx: ResultsContext): HTMLElement | null {
   });
 }
 
-function describeSubmission(outcome: SubmitResult, cleared: boolean): string {
+function describeSubmission(outcome: SubmitResult, cleared: boolean, showAccount: boolean): string {
   if (!cleared) return "";
   switch (outcome.status) {
     case "submitted":
@@ -193,7 +195,7 @@ function describeSubmission(outcome: SubmitResult, cleared: boolean): string {
     case "not-a-personal-best":
       return "Your best score for this level still stands.";
     case "offline":
-      return "Saved on this device. Sign in to post to the leaderboard.";
+      return showAccount ? "Saved on this device. Sign in to post to the leaderboard." : "Saved on this device.";
     case "error":
       return outcome.message;
   }

@@ -17,23 +17,24 @@
  * because the failure mode of being too small is far worse than the cost of
  * being too large.
  *
- * The campaign's biggest board is Panaji at 743 tiles, whose largest single
- * terrain class is 457 land tiles. Both caps below are set above that, with
- * room for a board half as large again.
+ * The campaign's biggest board is Panaji at 1,277 tiles, whose largest single
+ * terrain class is 758 land tiles. The caps below are set above that with
+ * room to spare, and a typed array of 1,200 matrices is about 77 KB, so the
+ * headroom costs nothing worth weighing against a session that will not load.
  *
  * `tests/levels.test.ts` checks every shipped map against these, so a new
  * board that outgrows them fails the suite rather than the player's session.
  */
 
 /** Per terrain type, per map. Checked by the generator and enforced in `TerrainMeshManager.loadMap`. */
-export const MAX_TERRAIN_INSTANCES_PER_TYPE = 800;
+export const MAX_TERRAIN_INSTANCES_PER_TYPE = 1200;
 
 /**
  * Per element type.
  *
  * Has to exceed the count of any single terrain class, because a player can
- * legitimately fill every valid tile with one element — 457 Houses on Panaji's
- * land, or 155 Breakwaters on its open water. It also absorbs the slot churn
+ * legitimately fill every valid tile with one element — 758 Houses on Panaji's
+ * land, or 238 Breakwaters on its open water. It also absorbs the slot churn
  * `ElementMeshManager` documents: a destroyed instance's slot is reused, but a
  * rebuild-and-breach cycle can still walk the index upward.
  *
@@ -44,7 +45,7 @@ export const MAX_TERRAIN_INSTANCES_PER_TYPE = 800;
  * sized off the real maximum rather than off the largest board that happened
  * to exist when it was written.
  */
-export const MAX_ELEMENT_INSTANCES_PER_TYPE = 700;
+export const MAX_ELEMENT_INSTANCES_PER_TYPE = 1200;
 
 /**
  * Hazard overlay tiles live at once, damage reveals and severity previews
@@ -55,6 +56,7 @@ export const MAX_ELEMENT_INSTANCES_PER_TYPE = 700;
  * also showing. Running out here is not a crash — `HazardOverlayManager`
  * silently stops drawing — which is worse in a way, because the player simply
  * cannot see where the water got through and has no reason to suspect the
- * display rather than their own defences.
+ * display rather than their own defences. At 1,000 it was below Panaji's
+ * 1,277 tiles once the board reached Merces.
  */
-export const MAX_HAZARD_OVERLAY_INSTANCES = 1000;
+export const MAX_HAZARD_OVERLAY_INSTANCES = 1600;

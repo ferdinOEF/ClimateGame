@@ -62,6 +62,28 @@ VITE_FIREBASE_APP_ID=1:1234567890:web:abc123
 > and personal bests all work offline against `localStorage`. Only the
 > shared leaderboard and cross-device sync need it.
 
+### The email requirement (`VITE_REQUIRE_EMAIL`)
+
+By default the game asks for nothing. Play goes straight into a level, and
+there is no email sheet, sign-in screen, Google button or "Signed in as" text
+anywhere. Players still get an anonymous Firebase session, so progress syncs
+to `players/` and personal bests reach the leaderboard; no email address is
+collected, stored or sent.
+
+To bring the email sheet and the account features back, build with:
+
+```
+VITE_REQUIRE_EMAIL=true
+```
+
+Set it in `.env.local` for a local build, or as an environment variable on
+whatever builds the deployment (Vercel project settings, a CI job), then
+rebuild — it is read at build time. Only the exact value `true` turns it on.
+Nothing in `firestore.rules` depends on it, and registrations collected while
+it was on stay in `playtesters/` untouched; the client simply does not read
+them while it is off. The Authentication steps below only matter when it is
+on, apart from **Anonymous**, which the leaderboard always needs.
+
 ## 4. Turn on Authentication
 
 Console → **Build → Authentication → Get started**, then under

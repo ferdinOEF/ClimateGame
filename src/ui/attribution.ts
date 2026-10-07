@@ -3,13 +3,13 @@
  *
  * NOT OPTIONAL, AND NOT ONLY ABOUT PICTURES
  *
- * Panaji ships as flat coloured hexes with no map imagery in the build at all,
- * which makes it tempting to think the credit is no longer owed. It is. The
- * coastline, the Mandovi, the estuary fringe, the sand and the sixteen
- * landmark positions were all read out of OpenStreetMap, so the board is a
- * derived database, and the Open Database Licence asks for the credit on one
- * of those exactly as it does on a rendered tile. The licence is free to use
- * and costs this one thing.
+ * Owed twice over on Panaji. The board can show a street-map layer cut from
+ * OpenStreetMap's own rendering, which carries the credit like any rendered
+ * tile. And even with that layer switched off the credit stays: the coastline,
+ * the Mandovi, the creeks, the sand and the sixteen landmark positions were
+ * all read out of OpenStreetMap, so the board is a derived database, and the
+ * Open Database Licence asks for the credit on one of those exactly as it
+ * does on a picture. The licence is free to use and costs this one thing.
  *
  * Wired to the map's own `source.attribution` rather than typed into a
  * stylesheet, so a board cannot acquire real geography without the credit that
