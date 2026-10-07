@@ -5060,6 +5060,76 @@ Typecheck, 165 tests and the build green; walkthrough clean.
 
 ---
 
+## No zoom-out mist; element reactions play on their own — DONE
+
+Two requests that were done once before (`d18e56d`) and lost when the new
+canonical version was adopted in `504d367`. Redone against this version's
+structure rather than cherry-picked, because the files they touched
+(`main.ts`, the reaction system) no longer exist in the same form.
+
+### The mist is gone
+
+`createScene` gave the board a `THREE.Fog` whose near and far planes followed
+the camera distance (`applyFog`). However carefully it was thinned, pulling the
+camera all the way back still faded the far side of the map toward a pale
+sheet — and on these boards the far side is real coastline. The fog, its
+per-frame `applyFog`, and its call in `updateTransform` are deleted.
+
+`StormManager` was the other reader: it tinted the fog colour toward grey as a
+storm built and put it back on dispose, and its constructor read
+`scene.fog.color` unguarded, so it would have thrown with no fog present. That
+tinting is removed; the storm still darkens the sky, dims the sun, rains and
+flashes. `PALETTE.fog` stays — nothing in the renderer reads it now, but the
+Ghats palette is documented against it and it costs nothing.
+
+The only other zoom-linked fade in `src/` is `MapLabelLayer`, which fades the
+DOM place-name labels out past a camera distance of 40 so they do not clutter
+a whole-board view. That hides text, not the map, so it was left alone. The
+hazard cloud layer was also left alone: it is a telegraph, not mist.
+
+### Reactions are ambient
+
+This version had no reaction system at all — `elementReactions.ts`,
+`reactionAnimator.ts` and `creatureGeometry.ts` were not part of it. They are
+ported back from `d18e56d` with these changes:
+
+- **Ambient scheduler** in `ElementReactions.tick()`. Every placed element gets
+  a first reaction 0.4–4.9 s after it is first seen, then another every
+  4.5–11 s. At most one ambient spawn per frame, and none while 20 or more
+  reactions are live (`AMBIENT_HEADROOM_CAP`), so background play never forces
+  the animator to evict a tap's reaction. Timers for elements that no longer
+  exist are dropped every frame. An element with no reaction case is a no-op.
+- **Taps still work.** `openTilePopover`'s built-tile branch calls `trigger()`
+  as before; it plays on top of whatever ambient reactions are running.
+- **`ReactionAnimator`**: cap raised from 9 to `MAX_CONCURRENT = 28`, an
+  `activeCount` getter, and spawns now take their start time from the last
+  `tick()` rather than `performance.now()`, so spawn and tick share one clock.
+- **`ElementMeshManager.placedElements()`** yields `{key, elementId, x, y, z}`
+  live from the same map `place`/`destroy`/`reset` maintain, so a build, a
+  storm loss, a player removal and a board reset all show up on the next frame
+  with no extra wiring. The key is tile plus element id, so a tile rebuilt with
+  something else starts a fresh timer. A new level is a new `gameSession`, so
+  it gets a fresh scheduler too.
+- **No leak.** The ported code built a fresh geometry and material for every
+  particle burst and every house window glow and never disposed them. Harmless
+  when reactions only fired on a tap; a steady GPU leak once they fire
+  continuously. Both are now cached and shared like the creature meshes.
+- **Scale.** The version this came from had enlarged its element geometry and
+  scaled reactions to match (`SCALE_FACTOR`). This version's geometry is at its
+  original size, so reactions use a factor of 1 — the original tuning.
+- **Monuments** are a separate `MonumentMeshManager`, never in
+  `placedElements()`, and their tiles return from `openTilePopover` before the
+  built branch, so they never react.
+- Khazan's living paddy cycle (`khazanPaddyManager.ts`) was part of the same
+  original commit and was **not** ported — it was not asked for here.
+
+`tests/ambientReactions.test.ts` covers spawning with no tap, repeats, the
+stagger, one spawn per frame, a removed element stopping, same-frame
+remove-and-add cleanup, the concurrency cap, tap headroom, no-op elements, and
+`placedElements()` through place, destroy, rebuild and reset.
+
+---
+
 ## No email to play; Panjim to Merces; a street map over the board — DONE
 
 Three commits on `panjim-merces-osm-no-email`.

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
+import { ElementReactions } from "@render/elementReactions";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
 import { CloudLayerManager } from "@render/cloudLayerManager";
 import { GhatsBackdropManager } from "@render/ghatsBackdropManager";
@@ -190,6 +191,16 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const storm = new StormManager({ scene, sun });
   /** The ring that spreads across a tile as something lands on it — see BuildFlourish. */
   const buildFlourish = new BuildFlourish();
+  /**
+   * The creatures and props each element shows: a kingfisher off a mangrove,
+   * a cat on a house step. They play on their own, on a staggered timer per
+   * element, and a tap on a built tile plays one on top. Reads the board from
+   * `elements` every frame, so builds, storm losses, removals and a board
+   * reset need no extra wiring; a new level is a new session and so a fresh
+   * scheduler. Monuments live in their own manager and never react.
+   */
+  const reactions = new ElementReactions();
+  reactions.setAmbientSource(() => elements.placedElements());
   scene.add(terrain.group);
   scene.add(elements.group);
   scene.add(hazardOverlay.mesh);
@@ -198,6 +209,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(waveFront.group);
   scene.add(storm.group);
   scene.add(buildFlourish.group);
+  scene.add(reactions.group);
 
   /**
    * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -1428,6 +1440,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (built) {
       const def = ELEMENT_BY_ID.get(built.elementId);
       if (!def) return;
+      reactions.trigger(built.elementId, wx, worldTop, wz);
       buildPopover.showInfo(screen.x, screen.y, {
         name: def.name,
         kindLabel: kindLabel(def),
@@ -1526,6 +1539,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     terrain.tick(nowMs);
     elements.tick(nowMs);
+    reactions.tick(nowMs);
     hazardOverlay.tick(nowMs);
     cloudLayer.tick(nowMs);
     waveFront.tick(nowMs);
@@ -1624,6 +1638,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // precisely-timed screenshots to catch it mid-sweep.
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
+    __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     // Builds a specific element at a specific coord (rather than
     // reverse-engineering screen-pixel clicks through the popover).
@@ -1720,7 +1735,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     overlayTexture?.dispose();
     mapCornerObserver?.disconnect();
     mapCorner?.remove();
-    // Puts the sky, fog and sun back before the scene goes. Without it a
+    // Puts the sky and sun back before the scene goes. Without it a
     // session disposed mid-storm would be the last thing to touch those
     // values, and `createScene`'s own disposal does not restore them.
     storm.dispose();
