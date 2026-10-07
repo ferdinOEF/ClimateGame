@@ -6126,3 +6126,125 @@ profile):
 - Resetting to `pre-panjim-2050` (b5bffe4) also works. That tag exists in
   the local clone only, because the git proxy refused tag pushes; the
   branch `backup/pre-panjim-2050` marks the same commit on GitHub.
+
+## Easy test + houses — DONE
+
+Base: master at 1c5e010 (Panjim 2050 was already merged, so this branch
+`easy-test-houses` came off master). The local tag `pre-easy-test-houses` and
+the branch `backup/pre-easy-test-houses` on GitHub both mark that base; the
+proxy refused the tag push again.
+
+**Balance presets (`src/levels/balance.ts`).**
+- The Panaji level in `src/data/levels.json` names its active preset with
+  `"balancePreset"` and lists the options under `"balancePresets"`.
+- `applyBalance` folds the active preset in when the levels load, so the
+  engine only sees plain numbers.
+- **To switch back to the old difficulty**, change `"balancePreset":
+  "easy-test"` to `"strict"`. That is the only change needed.
+- `levelWithPreset(id, preset)` gives either version for tests and bots.
+
+| | easy-test (default) | strict |
+|---|---|---|
+| `coinMultiplier` (starting Coin, jar income, jar's opening gift, Voice rewards; never build costs) | 10 | 1 |
+| `severityScale` Challenge I (cyclone) / II (flood) / III (compound) | 0.5 / 0.6 / 1.0 | 1 / 1 / 1 |
+| `houseStars` (share of path houses saved for 3★ / 2★) | 0.9 / 0.6 | 0.9 / 0.6 |
+| `houseRule.resilience` | 55 | 45 (the level's own) |
+
+- Each challenge's `severityScale` is data (`ChallengeDef.severityScale`,
+  default 1). `challengeStrength` multiplies by it.
+- The Panjim index divides livelihoods by the coin multiplier, so ×10 Coin
+  does not read as ×10 livelihoods.
+
+**Houses on every land tile (`levels.json` → `houses`, `boardSetup`).**
+- `fillLand`: a House is pre-built on every land tile without a monument,
+  661 houses on Panaji.
+- `excludeFromBuild: ["house"]` removes House from the build menu, so land
+  is not buildable by the player.
+- `houseEconomyScale` 0.0151 scales every House effect (Coin, food,
+  population). The 661 houses add up to about ten houses' worth: income
+  +100/quarter (×10 coin), food −10, population 100.
+- Houses stay low-poly and instanced. The instance cap was already 1200 per
+  element type, so it did not need raising.
+- Ambient creature reactions on houses are capped at 2 spawns per second
+  (`setAmbientRateCap`), never more than one spawn per frame.
+
+**Building on every other tile.**
+- Seawall is now allowed on Coast. The build popover lists only what is valid
+  on the clicked tile:
+
+  | Terrain | Options |
+  |---|---|
+  | beach | Dune, Sandy Veg, Resort, Seawall |
+  | estuary | Mangrove, Khazan, Resort |
+  | river | Small Dam, Sand Mining |
+  | coast | Seawall, Breakwater, Yacht |
+
+- Coast was already buildable (Breakwater, Yacht) before this change.
+- `coastBuildRange: 4`: Coast tiles more than 4 hexes (walked over coast)
+  from any non-coast tile are open sea and refuse builds.
+- No placeholder art was needed: every option reuses existing models.
+
+**The house rule and the KPI.**
+- **When a house is lost.** It is lost when the storm's local intensity is
+  more than its resilience. Local intensity is the zone's leak ×
+  decay^(distance from the water − 1). Distance is measured from the coast
+  for a cyclone (decay 0.8) and from the river or estuary for a flood (decay
+  0.6). The rule lives in `HouseRule` in `core/zones.ts`.
+- **Stars.** Stars come from houses saved over every house in the storm's
+  path, including ones lost to an earlier storm. The storm passes the
+  thresholds above. There is no game over, and replay still works.
+- **HUD counter.** A small card in the top right says "Houses standing"
+  between storms. During a storm it says "Houses saved N / total" and
+  counts down house by house as each collapses on the board.
+- **Aftermath.** It shows the tally and one line naming the defence that
+  saved the most homes (`topDefenceLine`).
+- **Telemetry.** `challenge_end` logs `houses_saved` and `houses_total`.
+
+**Bots (`npm run bots -- strict` / `npm run bots -- easy-test`), 20 seeds each.**
+
+easy-test:
+
+| Persona | 1★ | 2★ | 3★ | Index median | Per storm 1★/2★/3★ (cyclone · flood · compound) | Houses saved median (cyclone · flood · compound) |
+|---|---|---|---|---|---|---|
+| casual | 20 | 16 | 24 | 38 | 0/0/20 · 0/16/4 · 20/0/0 | 201/201 · 112/182 · 32/182 |
+| greedy | 20 | 20 | 20 | 31 | 0/0/20 · 0/20/0 · 20/0/0 | 200/200 · 112/181 · 32/181 |
+| smart | 0 | 0 | 60 | 83 | 0/0/20 · 0/0/20 · 0/0/20 | 200/200 · 181/181 · 181/181 |
+| rusher | 20 | 20 | 20 | 16 | 0/0/20 · 0/20/0 · 20/0/0 | 200/200 · 112/181 · 32/181 |
+| banker | 20 | 0 | 40 | 34 | 0/0/20 · 0/0/20 · 20/0/0 | 200/200 · 181/181 · 42/181 |
+| walls | 20 | 0 | 40 | 19 | 0/0/20 · 0/0/20 · 20/0/0 | 200/200 · 181/181 · 11/181 |
+| mangroves | 4 | 9 | 47 | 64 | 0/0/20 · 0/0/20 · 4/9/7 | 200/200 · 181/181 · 112/181 |
+
+strict:
+
+| Persona | 1★ | 2★ | 3★ | Index median | Per storm 1★/2★/3★ (cyclone · flood · compound) | Houses saved median (cyclone · flood · compound) |
+|---|---|---|---|---|---|---|
+| casual | 40 | 14 | 6 | 36 | 0/14/6 · 20/0/0 · 20/0/0 | 174/201 · 32/182 · 8/182 |
+| greedy | 40 | 20 | 0 | 30 | 0/20/0 · 20/0/0 · 20/0/0 | 173/200 · 32/181 · 8/181 |
+| smart | 0 | 0 | 60 | 78 | 0/0/20 · 0/0/20 · 0/0/20 | 193/200 · 181/181 · 181/181 |
+| rusher | 40 | 20 | 0 | 15 | 0/20/0 · 20/0/0 · 20/0/0 | 173/200 · 32/181 · 8/181 |
+| banker | 40 | 20 | 0 | 20 | 0/20/0 · 20/0/0 · 20/0/0 | 173/200 · 32/181 · 12/181 |
+| walls | 20 | 0 | 40 | 22 | 0/0/20 · 0/0/20 · 20/0/0 | 193/200 · 181/181 · 5/181 |
+| mangroves | 0 | 0 | 60 | 70 | 0/0/20 · 0/0/20 · 0/0/20 | 193/200 · 181/181 · 181/181 |
+
+- **easy-test bar.** All three targets pass on every seed: Casual gets at
+  least 2★ on storms 1–2, Smart gets 3★ on all three, and no persona loses
+  every house on storms 1–2. The lowest is 112 of 181 saved on the flood.
+- **strict.** The P9 assertions still hold with one re-tuning. Stars now
+  come from houses, so the Mangroves-only monoculture reaches 3★ everywhere.
+  "No single strategy dominates" is therefore asserted on the Panjim index
+  and total stars: each monoculture's mean index is below Smart's, and its
+  stars are no higher.
+- **Known softness.**
+  - The easy cyclone (×0.5) is so mild that even the Rusher, who builds
+    nothing, keeps every house and gets 3★.
+  - The readiness gauge reads green before Challenge I with no defences.
+  - The flood and compound storm still separate the personas.
+
+**Screenshots** (1920×1080, `docs/screenshots/panjim2050/eth-*.jpg`):
+- `eth-board`: the full board with all houses.
+- `eth-build-beach`, `-estuary`, `-river` and `-coast`: a build placed and
+  the popover open on the next tile.
+- `eth-stage`: Challenge I in progress with the Houses saved counter.
+
+Software GL (SwiftShader) gives about 2 fps, so it says nothing about
+real-GPU frame rate. There were no console errors.
