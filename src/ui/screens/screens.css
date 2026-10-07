@@ -1,0 +1,1314 @@
+/*
+  Shell screens: menu, level select, results, leaderboard, settings.
+
+  Kept in its own stylesheet rather than appended to hud.css, because the
+  two have opposite jobs. hud.css styles small corner-anchored strips that
+  must never compete with the map (its own stated rule). This file styles
+  full-screen surfaces that deliberately DO take over — the moments between
+  runs. Mixing them would blur that distinction and make hud.css's rule
+  harder to hold.
+
+  Palette is the established Laterite Earth one already used by
+  .welcome-card: deep terracotta grounds, a warm sand foreground, and one
+  gold accent. Defined here as custom properties so the screens share it,
+  which hud.css predates and does with literal values.
+*/
+
+:root {
+  --rr-ground-top: #6e2c16;
+  --rr-ground-bottom: #2a0f07;
+  --rr-panel: rgba(20, 30, 26, 0.92);
+  --rr-panel-raised: rgba(32, 44, 38, 0.94);
+  --rr-ink: #fbeed9;
+  --rr-ink-dim: rgba(251, 238, 217, 0.62);
+  --rr-gold: #e6b268;
+  --rr-gold-bright: #f4d9a6;
+  --rr-line: rgba(230, 178, 104, 0.32);
+  --rr-good: #7fc99a;
+  --rr-bad: #d98b6a;
+}
+
+/* --- layers ------------------------------------------------------- */
+
+/*
+  The game canvas sits underneath; the screen layer paints over it. Both
+  fill the viewport. `.screen-layer[hidden]` needs the explicit override
+  because the layer is given an unconditional `display` below — the exact
+  bug class hud.css documents at length (an author `display` beats the
+  user-agent `[hidden]` rule regardless of specificity).
+*/
+.game-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.screen-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: block;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: linear-gradient(165deg, var(--rr-ground-top) 0%, var(--rr-ground-bottom) 100%);
+  color: var(--rr-ink);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.screen-layer[hidden] {
+  display: none !important;
+}
+
+.screen {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: calc(28px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom));
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* --- shared controls ---------------------------------------------- */
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 999px;
+  border: 2px solid var(--rr-line);
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--rr-gold-bright);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+}
+
+.btn:hover,
+.btn:focus-visible {
+  background: rgba(230, 178, 104, 0.14);
+  border-color: var(--rr-gold);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--rr-gold);
+  border-color: var(--rr-gold);
+  color: #3c1509;
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  background: var(--rr-gold-bright);
+  border-color: var(--rr-gold-bright);
+}
+
+.btn-small {
+  width: auto;
+  padding: 9px 16px;
+  font-size: 13px;
+}
+
+.btn-danger {
+  border-color: rgba(217, 139, 106, 0.6);
+  color: var(--rr-bad);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--rr-ink-dim);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 2px;
+  text-align: left;
+}
+
+.link-button:hover,
+.link-button:focus-visible {
+  color: var(--rr-gold-bright);
+}
+
+.text-input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--rr-line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--rr-ink);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.text-input:focus-visible {
+  outline: 2px solid var(--rr-gold);
+  outline-offset: 1px;
+}
+
+.screen-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.screen-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--rr-gold-bright);
+  margin: 0;
+}
+
+/* --- stars -------------------------------------------------------- */
+
+.star-row {
+  display: inline-flex;
+  gap: 2px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.star {
+  color: rgba(251, 238, 217, 0.28);
+}
+
+.star.filled {
+  color: var(--rr-gold);
+}
+
+/* --- menu --------------------------------------------------------- */
+
+.menu-screen {
+  justify-content: center;
+  text-align: center;
+}
+
+.menu-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rr-ink-dim);
+}
+
+.menu-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(38px, 11vw, 62px);
+  font-weight: 700;
+  color: var(--rr-gold-bright);
+  margin: 6px 0 10px;
+  line-height: 1.05;
+}
+
+.menu-tagline {
+  margin: 0 auto;
+  max-width: 34ch;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--rr-ink-dim);
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.btn-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+
+.btn-daily-sub {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--rr-ink-dim);
+}
+
+.menu-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.stat-tile {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--rr-line);
+  border-radius: 10px;
+  padding: 10px 6px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--rr-gold-bright);
+}
+
+.stat-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rr-ink-dim);
+  margin-top: 2px;
+}
+
+.menu-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu-cloud-note {
+  font-size: 12px;
+  color: var(--rr-ink-dim);
+}
+
+/* --- level select -------------------------------------------------- */
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.level-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--rr-line);
+  background: var(--rr-panel);
+  color: var(--rr-ink);
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.level-card:hover:not(.locked),
+.level-card:focus-visible:not(.locked) {
+  transform: translateY(-2px);
+  border-color: var(--rr-gold);
+}
+
+.level-card.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.level-card.cleared {
+  border-color: rgba(127, 201, 154, 0.4);
+}
+
+.level-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.level-number {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 20px;
+  color: var(--rr-gold);
+}
+
+.level-card-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--rr-gold-bright);
+}
+
+.level-card-sub {
+  font-size: 12px;
+  color: var(--rr-ink-dim);
+}
+
+.level-card-goals {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--rr-ink-dim);
+}
+
+.level-card-best {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rr-gold);
+}
+
+.level-card-best.muted {
+  color: var(--rr-ink-dim);
+  font-weight: 400;
+}
+
+/* --- results ------------------------------------------------------- */
+
+.results-screen {
+  justify-content: center;
+}
+
+.results-card {
+  background: var(--rr-panel);
+  border: 1px solid var(--rr-line);
+  border-radius: 16px;
+  padding: 26px 24px;
+  text-align: center;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+
+.results-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rr-ink-dim);
+}
+
+.results-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 27px;
+  margin: 4px 0 6px;
+  color: var(--rr-gold-bright);
+}
+
+.results-screen.failed .results-title {
+  color: var(--rr-bad);
+}
+
+.results-subtitle {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--rr-ink-dim);
+}
+
+.results-stars .star-row {
+  font-size: 30px;
+  gap: 6px;
+}
+
+.results-next-star {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--rr-gold);
+}
+
+.results-score {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 46px;
+  font-weight: 700;
+  color: var(--rr-gold-bright);
+  margin: 10px 0 2px;
+}
+
+.results-best-flag {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rr-good);
+  margin-bottom: 10px;
+}
+
+.results-breakdown {
+  border-top: 1px solid var(--rr-line);
+  border-bottom: 1px solid var(--rr-line);
+  padding: 10px 0;
+  margin: 12px 0;
+}
+
+.results-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 3px 0;
+  color: var(--rr-ink-dim);
+}
+
+.results-row span:last-child {
+  color: var(--rr-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.results-achievements {
+  margin: 14px 0;
+  text-align: left;
+}
+
+.results-achievements-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rr-gold);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.achievement-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(230, 178, 104, 0.1);
+  border: 1px solid var(--rr-line);
+  margin-bottom: 6px;
+}
+
+.achievement-icon {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.achievement-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+  color: var(--rr-ink-dim);
+}
+
+.achievement-text b {
+  font-size: 13px;
+  color: var(--rr-ink);
+}
+
+.results-submission {
+  font-size: 12px;
+  color: var(--rr-ink-dim);
+  min-height: 16px;
+  margin-bottom: 10px;
+}
+
+.results-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* --- leaderboard --------------------------------------------------- */
+
+.board-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.board-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--rr-line);
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--rr-ink-dim);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.board-tab.active {
+  background: rgba(230, 178, 104, 0.16);
+  color: var(--rr-gold-bright);
+  border-color: var(--rr-gold);
+}
+
+.board-level-picker {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--rr-line);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--rr-ink);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.board-level-picker[hidden] {
+  display: none !important;
+}
+
+.board-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.board-table th {
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rr-ink-dim);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--rr-line);
+  font-weight: 600;
+}
+
+.board-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(230, 178, 104, 0.12);
+}
+
+/* Long names must not push the score column off screen. */
+.board-table td:nth-child(2) {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-table td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--rr-gold-bright);
+}
+
+.board-table tr.is-self {
+  background: rgba(230, 178, 104, 0.12);
+}
+
+.board-table tr.is-self td:first-child {
+  color: var(--rr-gold);
+  font-weight: 700;
+}
+
+.board-loading,
+.board-empty {
+  text-align: center;
+  padding: 34px 12px;
+  color: var(--rr-ink-dim);
+}
+
+.board-empty-title {
+  font-size: 17px;
+  color: var(--rr-ink);
+  margin-bottom: 6px;
+}
+
+.board-empty-body {
+  margin: 0 auto;
+  max-width: 36ch;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* --- settings ------------------------------------------------------ */
+
+.settings-block {
+  background: var(--rr-panel);
+  border: 1px solid var(--rr-line);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-block.danger {
+  border-color: rgba(217, 139, 106, 0.35);
+}
+
+.field-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rr-gold);
+}
+
+.field-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.field-status {
+  font-size: 12px;
+  color: var(--rr-good);
+  min-height: 14px;
+}
+
+.settings-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rr-ink-dim);
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid transparent;
+  opacity: 0.45;
+}
+
+.badge.unlocked {
+  opacity: 1;
+  border-color: var(--rr-line);
+  background: rgba(230, 178, 104, 0.1);
+}
+
+.badge-icon {
+  font-size: 18px;
+  line-height: 1.2;
+  /* Locked badges read as silhouettes rather than spoilers. */
+  filter: grayscale(1);
+}
+
+.badge.unlocked .badge-icon {
+  filter: none;
+}
+
+.badge-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--rr-ink-dim);
+}
+
+.badge-text b {
+  font-size: 12.5px;
+  color: var(--rr-ink);
+}
+
+/* --- in-game: objectives panel + level brief ------------------------ */
+
+/*
+  Anchored bottom-right via hud.css's own `.hud-corner.bottom-right`. The
+  Test Hazards panel also claims that corner, but it only exists under
+  `?debughazards` — a dev-only overlap, not one a player can hit.
+*/
+.objectives-panel {
+  width: min(230px, 44vw);
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: rgba(20, 30, 26, 0.86);
+  border: 1px solid var(--rr-line);
+  text-align: left;
+  pointer-events: auto;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.objectives-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.objectives-level-name {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 14px;
+  color: var(--rr-gold-bright);
+}
+
+.objectives-level-sub {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rr-ink-dim);
+}
+
+.objectives-counter {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rr-ink-dim);
+  margin: 6px 0 4px;
+}
+
+.objectives-counter.all-done {
+  color: var(--rr-good);
+}
+
+.objectives-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.objective-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 7px;
+  align-items: start;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--rr-ink);
+}
+
+.objective-check {
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+  border-radius: 3px;
+  border: 1.5px solid var(--rr-ink-dim);
+}
+
+.objective-row.complete .objective-check {
+  background: var(--rr-good);
+  border-color: var(--rr-good);
+}
+
+.objective-row.complete .objective-text {
+  color: var(--rr-ink-dim);
+  text-decoration: line-through;
+}
+
+.objective-progress {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--rr-gold);
+}
+
+@keyframes objective-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.objective-row.just-completed {
+  animation: objective-pop 420ms ease-out;
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .objective-row.just-completed {
+    animation: none;
+  }
+}
+
+/* the level brief, shown once on mount */
+.brief-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(8, 6, 6, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  pointer-events: auto;
+}
+
+.brief-backdrop[hidden] {
+  display: none !important;
+}
+
+.brief-card {
+  width: min(400px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 26px 24px;
+  border-radius: 16px;
+  color: var(--rr-ink);
+  background: linear-gradient(160deg, #6e2c16 0%, #3c1509 100%);
+  border: 1px solid rgba(230, 178, 104, 0.4);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+.brief-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rr-gold);
+}
+
+.brief-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--rr-gold-bright);
+  margin: 4px 0 10px;
+}
+
+/*
+  The real-world note about the place, above the level's framing of the
+  challenge. Set apart with a rule and a dimmer tone so the two paragraphs
+  read as different kinds of statement: this one is true of the coast whoever
+  is playing, the one below it is about this particular run.
+*/
+.brief-place {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: rgba(251, 238, 217, 0.8);
+  background: rgba(0, 0, 0, 0.16);
+  border-left: 2px solid var(--rr-gold);
+  border-radius: 0 8px 8px 0;
+}
+
+/* The tutorial map is a diagram, so it carries no scale claim and should not look like it does. */
+.brief-place.synthetic {
+  border-left-style: dashed;
+}
+
+.brief-body {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--rr-ink);
+}
+
+.brief-goals-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rr-gold);
+  margin-bottom: 6px;
+}
+
+.brief-goals {
+  margin: 0 0 20px;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.brief-cta {
+  width: 100%;
+  padding: 13px;
+  border-radius: 999px;
+  border: 2px solid var(--rr-gold);
+  background: transparent;
+  color: var(--rr-gold-bright);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.brief-cta:hover,
+.brief-cta:focus-visible {
+  background: rgba(230, 178, 104, 0.14);
+}
+
+/* --- mobile -------------------------------------------------------- */
+
+@media (max-width: 620px) {
+  .menu-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .level-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .objectives-panel {
+    width: min(200px, 52vw);
+    font-size: 11px;
+  }
+
+  .board-table {
+    font-size: 13px;
+  }
+
+  .board-table th,
+  .board-table td {
+    padding: 8px 5px;
+  }
+}
+
+/* --- sign in / create account -------------------------------------- */
+
+.auth-screen {
+  justify-content: center;
+}
+
+.auth-card {
+  background: var(--rr-panel);
+  border: 1px solid var(--rr-line);
+  border-radius: 16px;
+  padding: 24px 22px;
+  max-width: 400px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+
+.auth-blurb {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--rr-ink-dim);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.auth-field[hidden] {
+  display: none !important;
+}
+
+/*
+  role="alert" text. Reserves its line height even when empty so the form
+  does not jump as a message appears — a layout shift under a button the
+  player is about to press again is how a double submit happens.
+*/
+.auth-message {
+  margin: 0;
+  min-height: 17px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--rr-bad);
+}
+
+.auth-message.info {
+  color: var(--rr-good);
+}
+
+.auth-forgot,
+.auth-guest {
+  align-self: center;
+  font-size: 12.5px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--rr-ink-dim);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rr-line);
+}
+
+/* --- the name / age / email sheet ----------------------------------- */
+
+/*
+  Reached from Start, once, before the first level. Centred like the auth
+  screen because it is the same kind of moment: one card, one job, nothing
+  else on screen competing for the press.
+*/
+.setup-screen {
+  justify-content: center;
+}
+
+/*
+  `.screen` is 860px wide and centred, so a left-aligned header sits 220px to
+  the left of a 420px card centred inside it — which reads as two unrelated
+  things rather than one sheet. Constraining the header to the card's own
+  width lines them up.
+*/
+.setup-screen .screen-header {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.setup-card {
+  max-width: 420px;
+}
+
+.setup-form {
+  gap: 16px;
+}
+
+/*
+  The one-line explanation under each label. Dim and small, because it is
+  there for the player who pauses, not the one who already knows what a name
+  field is.
+*/
+.field-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--rr-ink-dim);
+}
+
+/*
+  Per-field validation text. Collapsed to zero height until there is
+  something to say, then animated open — reserving the line unconditionally
+  would put 18px of dead space under all three fields in the common case
+  where nothing is wrong.
+
+  The transition is on max-height rather than height so the rule needs no
+  measured pixel value, and `overflow: hidden` is what makes the collapsed
+  state actually hide the text rather than just clip its box.
+*/
+.field-error {
+  margin: 0;
+  max-height: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--rr-bad);
+  transition: max-height 160ms ease-out;
+}
+
+.field-error.visible {
+  max-height: 48px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-error {
+    transition: none;
+  }
+}
+
+/* The red border is the sighted half of the same signal `aria-invalid` sends. */
+.text-input[aria-invalid="true"] {
+  border-color: var(--rr-bad);
+}
+
+.setup-privacy {
+  margin: 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--rr-line);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--rr-ink-dim);
+}
+
+/* --- after-storm report --------------------------------------------- */
+
+/*
+  Appears once a storm's sweep has finished, explaining what absorbed what.
+  See src/ui/stormReport.ts for why this is a panel rather than a line in the
+  banner: the game's central claim about mangroves was being computed and
+  never shown.
+
+  A backdrop rather than a corner card, because this is the one moment the
+  board should stop competing for attention — the player has just watched
+  damage land and this says why.
+*/
+.storm-report-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(12, 18, 16, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.storm-report-backdrop[hidden] {
+  display: none !important;
+}
+
+.storm-report {
+  width: min(430px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 22px 22px 18px;
+  border-radius: 16px;
+  color: var(--rr-ink);
+  background: linear-gradient(165deg, #2c3b3a 0%, #1a2524 100%);
+  border: 1px solid var(--rr-line);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.storm-report-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rr-gold);
+}
+
+.storm-report-summary {
+  margin: 10px 0 18px;
+  text-align: center;
+}
+
+/*
+  The headline number is what got THROUGH, not what was stopped. The player is
+  looking at damaged buildings; a figure that explains the damage is useful,
+  and one that argues with it is not.
+*/
+.storm-report-big {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 46px;
+  line-height: 1;
+  color: #f0a98b;
+}
+
+.storm-report-big-label {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--rr-ink-dim);
+}
+
+.storm-report-section-label {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rr-ink-dim);
+  margin-bottom: 8px;
+}
+
+.storm-report-row {
+  display: grid;
+  grid-template-columns: 1fr 72px 36px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  font-size: 12.5px;
+}
+
+.storm-report-row-label {
+  color: var(--rr-ink);
+}
+
+.storm-report-row-value {
+  text-align: right;
+  font-weight: 700;
+  color: var(--rr-gold-bright);
+}
+
+.storm-report-bar {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.storm-report-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* Colour-coded to the families themselves, so the bar means the same thing as the build menu's own grouping. */
+.storm-report-bar-fill.nbs { background: #4fae6e; }
+.storm-report-bar-fill.hybrid { background: #c79a52; }
+.storm-report-bar-fill.engineered { background: #93a0a6; }
+
+.storm-report-nothing {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rr-bad);
+}
+
+.storm-report-costs {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rr-line);
+  font-size: 12px;
+  color: var(--rr-ink-dim);
+}
+
+.storm-report-lesson {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border-left: 3px solid var(--rr-gold);
+}
+
+.storm-report-lesson-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--rr-gold-bright);
+}
+
+.storm-report-lesson-body {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(251, 238, 217, 0.85);
+}
+
+.storm-report-dismiss {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--rr-gold);
+  color: #2a0f07;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+}
+
+.storm-report-dismiss:hover,
+.storm-report-dismiss:focus-visible {
+  background: var(--rr-gold-bright);
+}
+
+@media (max-width: 560px) {
+  .storm-report {
+    padding: 18px 16px 14px;
+  }
+
+  .storm-report-big {
+    font-size: 38px;
+  }
+
+  .storm-report-row {
+    grid-template-columns: 1fr 56px 34px;
+    font-size: 12px;
+  }
+}

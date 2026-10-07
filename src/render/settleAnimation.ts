@@ -1,27 +1,8 @@
 import * as THREE from "three";
 
-const SETTLE_DURATION_MS = 420;
+const SETTLE_DURATION_MS = 480;
 const SETTLE_DROP_HEIGHT = 2.5;
 const COLLAPSE_DURATION_MS = 500;
-
-/**
- * STEP_PROMPT_liquid_glass_hud.md item 2.5: the exact scale sequence
- * given in the doc (copied from the Khazan Interface Study artifact),
- * read as (t-fraction, scaleXZ, scaleY) keyframes — a squash-and-stretch
- * "pop into existence and jiggle to rest," not a drop from above (no Y
- * offset anywhere here, unlike `begin()`'s SETTLE_DROP_HEIGHT). Linearly
- * interpolated between neighboring keyframes at tick time; the bounce
- * itself comes from the keyframe values overshooting past (1,1) and back,
- * not from an easing curve between them.
- */
-const BUILD_CONFIRM_DURATION_MS = 620;
-const BUILD_CONFIRM_KEYFRAMES: [number, number, number][] = [
-  [0, 0.3, 1.7],
-  [0.2, 1.32, 0.72],
-  [0.5, 0.92, 1.1],
-  [0.75, 1.04, 0.97],
-  [1, 1, 1]
-];
 
 /** t in [0,1] -> eased [0,1] with a slight overshoot, for a "click into place" feel. */
 function easeOutBack(t: number): number {
@@ -31,35 +12,12 @@ function easeOutBack(t: number): number {
   return 1 + c3 * u * u * u + c1 * u * u;
 }
 
-/** Linearly interpolates BUILD_CONFIRM_KEYFRAMES at fraction `t` in [0,1] — returns [scaleXZ, scaleY]. */
-function sampleBuildConfirmKeyframes(t: number): [number, number] {
-  for (let i = 1; i < BUILD_CONFIRM_KEYFRAMES.length; i++) {
-    const [tPrev, xzPrev, yPrev] = BUILD_CONFIRM_KEYFRAMES[i - 1];
-    const [tNext, xzNext, yNext] = BUILD_CONFIRM_KEYFRAMES[i];
-    if (t <= tNext) {
-      const segmentT = tNext === tPrev ? 1 : (t - tPrev) / (tNext - tPrev);
-      return [THREE.MathUtils.lerp(xzPrev, xzNext, segmentT), THREE.MathUtils.lerp(yPrev, yNext, segmentT)];
-    }
-  }
-  const last = BUILD_CONFIRM_KEYFRAMES[BUILD_CONFIRM_KEYFRAMES.length - 1];
-  return [last[1], last[2]];
-}
-
 interface SettleAnim {
   mesh: THREE.InstancedMesh;
   index: number;
   x: number;
   z: number;
   finalY: number;
-  startTime: number;
-}
-
-interface BuildConfirmAnim {
-  mesh: THREE.InstancedMesh;
-  index: number;
-  x: number;
-  y: number;
-  z: number;
   startTime: number;
 }
 
@@ -75,7 +33,6 @@ interface CollapseAnim {
 /** Shared drop-and-settle animation for any InstancedMesh-backed placed object (tiles, buildings, ...). */
 export class SettleAnimator {
   private active: SettleAnim[] = [];
-  private buildConfirming: BuildConfirmAnim[] = [];
   private collapsing: CollapseAnim[] = [];
 
   /** Sets the instance's initial (elevated, shrunk) transform and registers it to animate in. */
@@ -86,36 +43,32 @@ export class SettleAnimator {
     this.active.push({ mesh, index, x, z, finalY, startTime: nowMs });
   }
 
-  /**
-   * STEP_PROMPT_liquid_glass_hud.md item 2.5: "diegetic build confirmation"
-   * — a just-built element squash-and-stretches into its final shape in
-   * place, rather than dropping in from above. Sets the instance to its
-   * final position immediately (no elevated start) and registers it to
-   * animate scale only.
-   */
-  beginBuildConfirm(mesh: THREE.InstancedMesh, index: number, x: number, z: number, finalY: number, nowMs: number): void {
-    const matrix = new THREE.Matrix4().makeScale(0.3, 1.7, 0.3).setPosition(x, finalY, z);
-    mesh.setMatrixAt(index, matrix);
-    mesh.instanceMatrix.needsUpdate = true;
-    this.buildConfirming.push({ mesh, index, x, y: finalY, z, startTime: nowMs });
-  }
-
   /** Animates an existing instance shrinking to nothing — a catastrophic engineered-defense failure. */
   collapse(mesh: THREE.InstancedMesh, index: number, x: number, y: number, z: number, nowMs: number): void {
     this.collapsing.push({ mesh, index, x, y, z, startTime: nowMs });
   }
 
   /**
-   * STEP_PROMPT_hazard_vfx_and_fluidity.md Section 3: lets a caller that
-   * writes its own per-instance matrix outside this class (Mangrove's
-   * ambient sway, `ElementMeshManager.swayMangroves()`) check whether this
-   * specific index is mid-drop-in/build-confirm/collapse this tick, so it
-   * can skip that index for one frame rather than stomping the in-progress
-   * animation's own scale/position with a plain upright tilt.
+   * Whether this animator currently owns a given instance's transform.
+   *
+   * Exists so another per-frame effect can stand aside. `TerrainMeshManager`'s
+   * water swell writes a matrix for every water tile on every frame; if it did
+   * that to a tile mid-settle, the two would both be setting the same instance
+   * and the tile would judder between its drop-in position and its swell
+   * position instead of landing.
+   *
+   * Linear over both lists, which is the right shape here: both are empty on
+   * the overwhelming majority of frames and hold a handful of entries on the
+   * rest, so an index would cost more to maintain than it saves.
    */
-  isAnimating(mesh: THREE.InstancedMesh, index: number): boolean {
-    const matches = (a: { mesh: THREE.InstancedMesh; index: number }) => a.mesh === mesh && a.index === index;
-    return this.active.some(matches) || this.buildConfirming.some(matches) || this.collapsing.some(matches);
+  isAnimating(index: number, mesh: THREE.InstancedMesh): boolean {
+    for (const anim of this.active) {
+      if (anim.index === index && anim.mesh === mesh) return true;
+    }
+    for (const anim of this.collapsing) {
+      if (anim.index === index && anim.mesh === mesh) return true;
+    }
+    return false;
   }
 
   tick(nowMs: number): void {
@@ -128,9 +81,29 @@ export class SettleAnimator {
         const eased = easeOutBack(t);
         const y = anim.finalY + SETTLE_DROP_HEIGHT * (1 - eased);
         const scale = THREE.MathUtils.clamp(0.4 + 0.6 * eased, 0, 1.08);
+
+        /*
+         * Squash and stretch, on top of the existing drop.
+         *
+         * The drop alone happens entirely above the tile, which at this
+         * game's near-top-down camera reads as the prop appearing rather than
+         * as it landing. Stretching it tall while it falls and squashing it
+         * wide as it touches down is the oldest trick there is for selling an
+         * impact, and it costs two multiplies.
+         *
+         * The window is the last fifth of the animation, where `easeOutBack`
+         * is already overshooting — so the squash lands on the bounce rather
+         * than fighting it.
+         */
+        const impact = t < 0.8 ? 0 : Math.sin(((t - 0.8) / 0.2) * Math.PI);
+        const stretch = t < 0.8 ? 1 + (1 - t) * 0.22 : 1 - impact * 0.18;
+        const spread = t < 0.8 ? 1 - (1 - t) * 0.12 : 1 + impact * 0.14;
+
         const matrix =
           t < 1
-            ? new THREE.Matrix4().makeScale(scale, scale, scale).setPosition(anim.x, y, anim.z)
+            ? new THREE.Matrix4()
+                .makeScale(scale * spread, scale * stretch, scale * spread)
+                .setPosition(anim.x, y, anim.z)
             : new THREE.Matrix4().makeTranslation(anim.x, anim.finalY, anim.z);
         anim.mesh.setMatrixAt(anim.index, matrix);
         anim.mesh.instanceMatrix.needsUpdate = true;
@@ -138,20 +111,6 @@ export class SettleAnimator {
         if (t < 1) stillActive.push(anim);
       }
       this.active = stillActive;
-    }
-
-    if (this.buildConfirming.length > 0) {
-      const stillConfirming: BuildConfirmAnim[] = [];
-      for (const anim of this.buildConfirming) {
-        const t = Math.min(1, (nowMs - anim.startTime) / BUILD_CONFIRM_DURATION_MS);
-        const [scaleXZ, scaleY] = sampleBuildConfirmKeyframes(t);
-        const matrix = new THREE.Matrix4().makeScale(scaleXZ, scaleY, scaleXZ).setPosition(anim.x, anim.y, anim.z);
-        anim.mesh.setMatrixAt(anim.index, matrix);
-        anim.mesh.instanceMatrix.needsUpdate = true;
-        touchedMeshes.add(anim.mesh);
-        if (t < 1) stillConfirming.push(anim);
-      }
-      this.buildConfirming = stillConfirming;
     }
 
     if (this.collapsing.length > 0) {

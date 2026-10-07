@@ -1,47 +1,6 @@
 {
-  "startingCoin": 1000,
+  "startingCoin": 10000,
   "startingPopulation": 50,
   "populationPerHouse": 5,
-  "prebuiltHouses": [
-    {
-      "q": 1,
-      "r": 14
-    },
-    {
-      "q": 2,
-      "r": 14
-    },
-    {
-      "q": 2,
-      "r": 13
-    },
-    {
-      "q": 1,
-      "r": 13
-    },
-    {
-      "q": 0,
-      "r": 14
-    },
-    {
-      "q": 3,
-      "r": 14
-    },
-    {
-      "q": 3,
-      "r": 13
-    },
-    {
-      "q": 3,
-      "r": 12
-    },
-    {
-      "q": 2,
-      "r": 12
-    },
-    {
-      "q": 1,
-      "r": 12
-    }
-  ]
+  "prebuiltHouses": []
 }

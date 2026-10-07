@@ -1,0 +1,92 @@
+[
+  {
+    "id": "l00-tutorial",
+    "name": "Tutorial",
+    "subtitle": "How this works",
+    "brief": "A small coast, drawn to be read at a glance. Sea, sand, a brackish estuary and the river behind it — the shape every Goan river mouth shares. Follow the prompts and you will have built on all four by the end.",
+    "mapId": "tutorial",
+    "tutorial": true,
+    "startingCoin": 320,
+    "parTurns": 12,
+    "mapRadius": null,
+    "hazards": {
+      "cycloneEnabled": true,
+      "cycloneIntervalTurns": 7,
+      "cycloneTelegraphTurns": 2,
+      "floodEnabled": false,
+      "floodIntervalTurns": 40,
+      "floodTelegraphTurns": 2,
+      "severityBase": 0.25,
+      "severitySpread": 0.15,
+      "severityCreepPerHazard": 0
+    },
+    "objectives": [
+      {
+        "type": "build_element",
+        "elementId": "mangrove",
+        "count": 1
+      },
+      {
+        "type": "build_element",
+        "elementId": "dune",
+        "count": 1
+      },
+      {
+        "type": "build_element",
+        "elementId": "house",
+        "count": 1
+      },
+      {
+        "type": "survive_hazards",
+        "count": 1
+      }
+    ],
+    "starThresholds": [
+      280,
+      360,
+      440
+    ]
+  },
+  {
+    "id": "l01-first-rains",
+    "name": "Panaji",
+    "subtitle": "The Mandovi estuary",
+    "brief": "Goa's capital, built on reclaimed water where the Mandovi spreads into tidal flats before reaching the sea. Sixteen of the city's real landmarks stand on this board and cannot be moved. Everything else is yours to place — and the beach to the west is all that stands between the old town and the Arabian Sea.",
+    "mapId": "panaji",
+    "startingCoin": 1000,
+    "parTurns": 40,
+    "mapRadius": null,
+    "hazards": {
+      "cycloneEnabled": true,
+      "cycloneIntervalTurns": 12,
+      "cycloneTelegraphTurns": 2,
+      "floodEnabled": true,
+      "floodIntervalTurns": 16,
+      "floodTelegraphTurns": 2,
+      "severityBase": 0.35,
+      "severitySpread": 0.25,
+      "severityCreepPerHazard": 0.01
+    },
+    "objectives": [
+      {
+        "type": "build_category",
+        "category": "nbs",
+        "count": 6
+      },
+      {
+        "type": "meter_at_least",
+        "meter": "biodiversity",
+        "value": 16
+      },
+      {
+        "type": "survive_hazards",
+        "count": 2
+      }
+    ],
+    "starThresholds": [
+      520,
+      700,
+      900
+    ]
+  }
+]

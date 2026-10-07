@@ -1,52 +1,42 @@
 /**
- * Headless smoke test (Section 10): boots the dev server if needed, loads
- * the build, takes a screenshot every run, and fails on any console error.
- * This is the primary way to verify the render without a human watching an
- * interactive browser pane — run it from the command line any time.
+ * Headless smoke test: boots the dev server, loads the app, screenshots it,
+ * and fails on any console error.
+ *
+ * SCOPE, SINCE IT NARROWED
+ *
+ * This was written when the whole game was one scene built at import time, so
+ * loading the page WAS loading the board. It is not any more: the app opens on
+ * a menu, there is a registration sheet behind Start, and no canvas exists
+ * until a level begins. Rather than quietly pass by waiting for something that
+ * no longer appears on the first screen, this now does the smaller job
+ * honestly — "does the app boot clean" — and drives a board only when asked.
+ *
+ * For the whole route a player takes, and every map rendered in turn, use
+ * `npm run walkthrough` (tools/walkthrough.ts). That is the one to reach for
+ * when something is actually broken.
+ *
+ * Usage:
+ *   npm run smoke                      boot the app, screenshot the menu
+ *   npm run smoke -- mylabel           the same, under a chosen screenshot name
+ *   npm run smoke -- mylabel play      also start the first level and shoot the board
+ *   npm run smoke -- mylabel play simpan   ...and exercise a drag-pan and wheel-zoom first
  */
 import { chromium } from "playwright";
-import { spawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import { startDevServer } from "./devServer";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const SCREENSHOT_DIR = path.join(ROOT, "tools", "screenshots");
 const DEV_PORT = 5183;
 const DEV_URL = `http://localhost:${DEV_PORT}`;
 
-function waitForServer(url: string, timeoutMs: number): Promise<void> {
-  const start = Date.now();
-  return new Promise((resolve, reject) => {
-    const tryOnce = () => {
-      fetch(url)
-        .then(() => resolve())
-        .catch(() => {
-          if (Date.now() - start > timeoutMs) reject(new Error(`Timed out waiting for ${url}`));
-          else setTimeout(tryOnce, 250);
-        });
-    };
-    tryOnce();
-  });
-}
-
 async function main(): Promise<void> {
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
-  let devServer: ChildProcess | undefined;
-  const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-  devServer = spawn(npmCmd, ["run", "dev", "--", "--port", String(DEV_PORT), "--strictPort"], {
-    cwd: ROOT,
-    stdio: "pipe",
-    shell: true
-  });
-
-  const serverLogs: string[] = [];
-  devServer.stdout?.on("data", (d) => serverLogs.push(d.toString()));
-  devServer.stderr?.on("data", (d) => serverLogs.push(d.toString()));
+  const devServer = await startDevServer(DEV_PORT);
 
   try {
-    await waitForServer(DEV_URL, 20000);
-
     const browser = await chromium.launch();
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
@@ -56,10 +46,35 @@ async function main(): Promise<void> {
     });
     page.on("pageerror", (err) => consoleErrors.push(String(err)));
 
-    const query = process.argv[3] ? `?${process.argv[3]}` : "";
-    await page.goto(DEV_URL + query, { waitUntil: "networkidle" });
-    await page.waitForSelector("canvas", { timeout: 10000 });
-    // Let a few frames render (and any dev autoplace / settle animations finish).
+    // `domcontentloaded`, not `networkidle`: with a Firebase project
+    // configured the SDKs hold a connection open from boot, so the network
+    // never goes idle and `networkidle` just times out.
+    await page.goto(DEV_URL, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".menu-screen", { timeout: 15000 });
+
+    // "play" starts the first level, which is the only way to get a board on
+    // screen now. The registration sheet is seeded rather than filled in, so
+    // this stays a smoke test of the RENDERER and does not quietly become a
+    // second, worse copy of the walkthrough's form check.
+    if (process.argv[3] === "play") {
+      await page.evaluate(() => {
+        localStorage.setItem(
+          "root-and-ruin:player:v1",
+          JSON.stringify({
+            declaredEmail: "smoke@example.com",
+            registeredAt: new Date().toISOString(),
+            schemaVersion: 2
+          })
+        );
+      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".menu-screen", { timeout: 15000 });
+      await page.locator(".menu-actions .btn-primary").first().click();
+      await page.waitForSelector("canvas", { timeout: 15000 });
+      await page.locator("button", { hasText: "Begin" }).first().click();
+    }
+
+    // Let a few frames render (and any settle animations finish).
     await page.waitForTimeout(800);
 
     // Tool-only flag (not read by the app): simulate a drag-pan + wheel-zoom
@@ -96,7 +111,7 @@ async function main(): Promise<void> {
       console.log("No console errors.");
     }
   } finally {
-    devServer?.kill();
+    devServer.stop();
   }
 }
 

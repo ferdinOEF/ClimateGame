@@ -5,3 +5,14 @@ dist/
 *.tsbuildinfo
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Local environment (never commit real project config)
+.env
+.env.local
+.env.*.local

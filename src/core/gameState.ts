@@ -66,6 +66,22 @@ export class GameState {
   readonly placed = new Map<string, PlacedTile>();
   readonly claimed = new Set<string>();
   readonly elements = new Map<string, ElementInstance>(); // coord key -> instance
+  /**
+   * Tiles that are spoken for and cannot be built on, but hold no element.
+   *
+   * Monuments live here: the sixteen real Panjim landmarks stand on their own
+   * tiles and are not part of the effects model — they grant no meters, take
+   * no damage and cannot be removed. Keeping them OUT of `elements` is what
+   * guarantees that: everything that walks `elements` (meter totals, hazard
+   * resolution, objective counts, achievements, the standing-element tallies)
+   * stays unaware they exist, instead of each of those having to learn to skip
+   * a decorative kind.
+   *
+   * What they do change is where you can build, which is the one real
+   * gameplay consequence a heritage building should have — you cannot put a
+   * seawall on the Church of the Immaculate Conception.
+   */
+  readonly reserved = new Set<string>();
   coin: number; // set from `startingCoin` in the constructor
   turn = 0;
   /** Section 7's meters. Biodiversity is derived (see `meterTotal`); Trust and Resilience are running totals. */
@@ -75,6 +91,15 @@ export class GameState {
   severityBaseline = 0;
   /** Section 2's light meta-progression hook: preserved across `startNewEra()`. */
   erasCompleted = 0;
+  /**
+   * How much `severityBaseline` rises per resolved hazard — Section 2's
+   * "slowly rising monsoon intensity". Was a hardcoded 0.04 inside
+   * `applyHazardOutcome()`; now a field so each level can set its own
+   * "it gets worse" slope from levels.json (see `HazardConfig`). The
+   * default is the original value, so any caller that never touches it
+   * behaves exactly as before.
+   */
+  severityCreepPerHazard = 0.04;
   private readonly startingElements: StartingElementSeed[];
   private readonly startingCoin: number;
 
@@ -140,6 +165,7 @@ export class GameState {
     copy.trust = this.trust;
     copy.resilience = this.resilience;
     copy.severityBaseline = this.severityBaseline;
+    copy.severityCreepPerHazard = this.severityCreepPerHazard;
     copy.erasCompleted = this.erasCompleted;
     return copy;
   }
@@ -190,7 +216,7 @@ export class GameState {
   buildableAt(coord: AxialCoord): ElementDef[] {
     const key = axialKey(coord);
     const tile = this.placed.get(key);
-    if (!tile || !this.claimed.has(key) || this.elements.has(key)) return [];
+    if (!tile || !this.claimed.has(key) || this.elements.has(key) || this.reserved.has(key)) return [];
     const results: ElementDef[] = [];
     for (const def of ELEMENT_BY_ID.values()) {
       if (def.validTerrainIds.includes(tile.terrainId)) results.push(def);
@@ -354,7 +380,7 @@ export class GameState {
     } else {
       this.trust = Math.min(100, this.trust + WEATHERED_TRUST_BONUS);
     }
-    this.severityBaseline += 0.04;
+    this.severityBaseline += this.severityCreepPerHazard;
   }
 
   /** Era soft-ends when Resilience hits zero (Section 2) — no hard game-over, just this. */
