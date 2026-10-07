@@ -6849,3 +6849,39 @@ not the real-hardware figure):
 
 **Screenshots:** `p7-heat-3`, `p7-heat-1`: the heat over the new town before
 the flood, with Maya's last call, and grayscale twins.
+
+### P8 — final verification and merge — DONE
+
+**Checks on the branch head:**
+- tsc clean.
+- 322 tests pass, 6 skipped.
+- The build passes.
+- `npm run walkthrough` is clean (menu, Tutorial, Panaji).
+- `npm run verify:maya` passes every check, with zero console errors.
+
+**Standing rules held:**
+- The email requirement is hidden (`REQUIRE_EMAIL` off).
+- The menu is Tutorial plus Choose a level.
+- The street map defaults to 32%.
+- The Tutorial completes.
+- Run length is not hard-coded: the heat window, the forecast lock and the
+  run all come from the level data.
+
+**How to undo:** the merge into master is a merge commit, so `git revert -m 1
+<merge>` undoes the whole change. The base is also marked by the local tag
+`pre-maya-guide` and by the branch `backup/pre-maya-guide` on GitHub.
+
+**Open questions, for a human to judge:**
+- **Maya's look and words** have not been reviewed by Goan collaborators
+  (TODO above).
+- **Defences cool their zone, not their tile and neighbours.** This is a
+  deliberate deviation from the brief, for truthfulness (see P1).
+- **No real-GPU frame rate** was measured; this container only has software
+  GL.
+- **The easy-test cyclone is still mild:** no house falls undefended, so its
+  heat is a faint pink (at most 19%) and Maya stays quiet about it.
+- **Wetland tiles read reddest before a flood**, because they are nearest the
+  river. They are truthfully the most exposed ground, but they hold no
+  houses.
+- **Flood jobs** can repeat an element (two khazans), because a flood has
+  only two answering defences.
