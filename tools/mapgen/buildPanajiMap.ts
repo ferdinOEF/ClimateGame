@@ -49,7 +49,6 @@
  * `npm run mapgen:basemap && npm run mapgen:geocode && npm run mapgen:panaji`.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
 import { axialKey, axialToWorld, neighbors, worldToAxial, type AxialCoord } from "../../src/core/hex";
@@ -59,6 +58,8 @@ const BASEMAP_META = path.join(ROOT, "tools/mapgen/panajiBasemap.json");
 const BASEMAP_IMAGE = path.join(ROOT, "tools/mapgen/panaji-basemap.jpg");
 const PLACES = path.join(ROOT, "tools/mapgen/panajiPlaces.json");
 const OUT = path.join(ROOT, "src/data/maps/panaji.json");
+/** Debug images for checking the board by eye. Checked in, never shipped (not under `public/`). */
+const DEBUG_DIR = path.join(ROOT, "tools/mapgen/debug");
 /** The OpenStreetMap layer the player can show over the board. Served from `public/`, so it ships. */
 const OVERLAY_OUT = path.join(ROOT, "public/maps/panaji-osm.webp");
 /** The path the game requests it at, relative to the site's base URL. */
@@ -110,11 +111,34 @@ const METRES_PER_DEG_LON = 111_320 * Math.cos((15.48 * Math.PI) / 180);
 /**
  * How far from a hex centre to sample, as a fraction of the hex inradius.
  *
- * 0.8 rather than 1.0 so neighbouring hexes do not read each other's pixels.
- * Overlapping samples would blur a coastline into a band of tiles that are all
- * half water, and the majority vote would then turn on sub-pixel noise.
+ * 0.95: nearly the whole hex. The classes are counted, not majority-voted, so
+ * a hex has to be read edge to edge for "a third of it is sea" to mean what it
+ * says. Just short of 1.0 so neighbours do not read each other's pixels.
  */
-const SAMPLE_RADIUS_FRACTION = 0.8;
+const SAMPLE_RADIUS_FRACTION = 0.95;
+
+/**
+ * The minority-wins share. If this much of a hex is sand, water or wetland in
+ * the picture, the hex takes that class even though most of it is something
+ * else.
+ *
+ * A plain majority vote was what put the south shore on land tiles: the coast
+ * from Dona Paula to Bambolim runs diagonally through the hexes, so most shore
+ * hexes are 30–45% sea and every one of them lost the vote. The same rule
+ * erased the Miramar sand (a strip narrower than a hex) and the edges of the
+ * Taleigao marsh. Rare classes win from a third because a third of a hex is
+ * 80 m of real sand, water or marsh, which is plenty to plant on.
+ */
+const MINORITY_SHARE = 0.3;
+
+/**
+ * Sand gets a lower bar than the rest. OpenStreetMap draws the Miramar to
+ * Dona Paula beach as a strip about 50 m wide, a fifth of a hex, so no hex is
+ * ever a third sand. Sand is also the one class with no false positives on
+ * this image (checked: every hex over 8% sand is on that shore or at the river
+ * mouth), so a low bar costs nothing.
+ */
+const SAND_SHARE = 0.08;
 
 /**
  * The line across the Mandovi's mouth that separates river from open sea.
@@ -149,32 +173,15 @@ const RIVER_MOUTH = {
 const ZUARI_SIDE_LAT = 15.463;
 
 /**
- * When a tile that is not mostly water still belongs to the tidal system.
+ * Paddy: khazan farmland next to the wetlands.
  *
- * OpenStreetMap draws three wet things that a "more than half blue" test
- * misses, and all three are what this board is about east of the city:
- *
- *   - **Creeks.** Ourem, and the channels through St Cruz and Merces, are 30 to
- *     80 m wide — a fifth of a hex. A creek tile is mostly bank by area.
- *   - **Marsh.** Drawn as blue dashes over pale farmland or green meadow. Only
- *     about a tenth of the pixels are blue, but the tile is a wetland all the
- *     same.
- *   - **Mangrove.** Drawn as tree symbols over a grey-green unique to it.
- *     No blue at all.
- *
- * A tile meeting any of these, with little city in it and no sand, becomes
- * estuary — but only if it connects to the river through other such tiles
- * (`spreadWetlands`). That is what stops a swimming pool in Altinho or a
- * waterfront street in Campal turning into mangrove ground.
+ * OSM draws paddy as plain farmland, the same pale colour as any field, so it
+ * cannot be told apart by colour. What makes a field khazan is where it is:
+ * low land at the edge of the tidal marsh. So a field becomes estuary only if
+ * it is mostly farmland, has little city in it, and is within `PADDY_REACH`
+ * hexes of real wetland or water, reached through other such fields.
  */
-const WET = {
-  creekWater: 0.12,
-  marshWater: 0.05,
-  marshGround: 0.5,
-  mangrove: 0.3,
-  maxBuilt: 0.35,
-  maxSand: 0.2
-};
+const PADDY = { minFarmland: 0.45, maxBuilt: 0.3, reach: 2 };
 
 /**
  * Named places that get a floating label but no building.
@@ -194,8 +201,13 @@ const PLACE_LABELS: { name: string; lat: number; lon: number }[] = [
   { name: "Atal Setu", lat: 15.5031, lon: 73.8345 }
 ];
 
-/** How far inland of the open sea the sand is widened to. */
-const BEACH_BAND = 3;
+/**
+ * How far inland of the open sea the sand is widened to: the shoreline row
+ * only, which fills gaps in the strip where a hex happened to straddle less
+ * than `SAND_SHARE` of it. It used to be three rows, which painted Miramar's
+ * road and houses as sand.
+ */
+const BEACH_BAND = 1;
 
 /**
  * The stretch of shore the sand is widened along: Campal at the river mouth
@@ -278,7 +290,7 @@ interface Cell {
   py: number;
   terrainId: string;
   /** Fractions of the sampled pixels, kept for the wetland pass after the water split. */
-  share?: { water: number; sand: number; built: number; mangrove: number; pale: number; green: number };
+  share?: { water: number; sand: number; built: number; mangrove: number; pale: number; green: number; marsh: number };
 }
 
 /**
@@ -316,14 +328,21 @@ function buildGrid(meta: BasemapMeta): Cell[] {
 
 // ---- reading the picture ----------------------------------------------
 
-type Reading = { water: number; sand: number; green: number; built: number; mangrove: number; pale: number };
+type Reading = { water: number; sand: number; green: number; built: number; mangrove: number; pale: number; marsh: number };
 
 /**
- * Asks a browser what colour the map is at each hex.
+ * Asks a browser what the map shows under each hex.
  *
  * Playwright rather than a PNG/JPEG decoder because the project already
  * depends on it and does not depend on an image library. The image goes in as
  * a data URL so the canvas stays untainted and `getImageData` is allowed.
+ *
+ * Two passes. First every pixel of the image gets a class from its colour.
+ * Then blue pixels are split by how much blue surrounds them: solid blue is
+ * water, sparse blue is the dash pattern OSM draws over marsh, so the dashes
+ * and the meadow or farmland they are drawn on both count as marsh. A hex is
+ * then read from a dense grid of samples (every 2 px, about 450 per hex),
+ * which is what lets a class that covers only a third of a hex be seen at all.
  */
 async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]> {
   const dataUrl = `data:image/jpeg;base64,${fs.readFileSync(BASEMAP_IMAGE).toString("base64")}`;
@@ -369,44 +388,75 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
          *
          * Thresholds rather than exact matches, because the basemap is a JPEG:
          * compression moves flat colour by a few counts and puts ringing
-         * around every label and road casing. The tests below are written to
-         * be the loosest thing that still separates the four categories.
+         * around every label and road casing.
          */
-        function classify(r: number, g: number, b: number): "water" | "sand" | "green" | "built" | "mangrove" | "pale" {
+        const WATER = 0, SAND = 1, MANGROVE = 2, GREEN = 3, PALE = 4, BUILT = 5, MARSH = 6;
+        const classOf = new Uint8Array(width * height);
+        const blue = new Uint8Array(width * height);
+        for (let i = 0, p = 0; i < classOf.length; i++, p += 4) {
+          const r = pixels[p], g = pixels[p + 1], b = pixels[p + 2];
+          let c: number;
           // Water is the only thing on the map that is markedly bluer than it
-          // is red. Roads, buildings and labels are all neutral or warm. The
-          // blue dashes OSM draws over marsh land here too, which is wanted.
-          if (b - r > 22 && b > 165) return "water";
+          // is red. Roads, buildings and labels are all neutral or warm.
+          if (b - r > 22 && b > 165) c = WATER;
           // Sand is warm and pale with a clear blue deficit (about 250,235,
-          // 195). The `b < g - 18` keeps white road fill (equal channels) out
-          // of it, and `r - g >= 8` keeps out farmland and marsh (about 239,
-          // 242,208), which are just as pale but not warm. Without that test
-          // most of the sand this used to find was Taleigao's paddy fields.
-          if (r > 238 && g > 220 && r - g >= 8 && b < g - 18) return "sand";
-          // Mangrove: the muted grey-green (about 192,210,170) OSM puts under
-          // its mangrove tree symbols. Darker and greyer than grass (205,235,
-          // 176), redder than forest (172,209,158).
-          if (r >= 182 && r <= 204 && g >= 200 && g <= 222 && b >= 155 && b <= 186 && g - r >= 8 && g - r <= 28) return "mangrove";
+          // 195). `r - g >= 8` keeps out farmland and marsh (about 239,242,
+          // 208), which are just as pale but not warm.
+          else if (r > 238 && g > 220 && r - g >= 8 && b < g - 18) c = SAND;
+          // Mangrove: the muted grey-green (about 192,210,170) under OSM's
+          // mangrove tree symbols. Darker and greyer than grass (205,235,176),
+          // redder than forest (172,209,158).
+          else if (r >= 182 && r <= 204 && g >= 200 && g <= 222 && b >= 155 && b <= 186 && g - r >= 8 && g - r <= 28) c = MANGROVE;
           // Everything else OSM draws as vegetation is green-dominant.
-          if (g > r + 6 && g > b + 14) return "green";
-          // The pale yellow-green of farmland and meadow (about 234,240,210),
-          // which is what marsh dashes are drawn over. Not city: it must not
-          // count against a tile the way buildings and roads do.
-          if (r > 224 && g > 228 && Math.abs(r - g) < 8 && b > 185 && b < g - 10) return "pale";
-          return "built";
+          else if (g > r + 6 && g > b + 14) c = GREEN;
+          // The pale yellow-green of farmland and meadow (about 234,240,210).
+          // Around Taleigao and St Cruz this is the khazan paddy.
+          else if (r > 224 && g > 228 && Math.abs(r - g) < 8 && b > 185 && b < g - 10) c = PALE;
+          else c = BUILT;
+          classOf[i] = c;
+          blue[i] = c === WATER ? 1 : 0;
         }
 
-        const step = Math.max(1, Math.floor(radius / 6));
+        // Blue density in a 15 px window (about 70 m), from a summed-area table.
+        const W = width + 1;
+        const sat = new Uint32Array(W * (height + 1));
+        for (let y = 0; y < height; y++) {
+          let row = 0;
+          for (let x = 0; x < width; x++) {
+            row += blue[y * width + x];
+            sat[(y + 1) * W + x + 1] = sat[y * W + x + 1] + row;
+          }
+        }
+        const HALF = 7;
+        const density = (x: number, y: number): number => {
+          const x0 = Math.max(0, x - HALF), y0 = Math.max(0, y - HALF);
+          const x1 = Math.min(width, x + HALF + 1), y1 = Math.min(height, y + HALF + 1);
+          const sum = sat[y1 * W + x1] - sat[y0 * W + x1] - sat[y1 * W + x0] + sat[y0 * W + x0];
+          return sum / ((x1 - x0) * (y1 - y0));
+        };
+        // Marsh: blue that is sparse around it (the dashes themselves), or
+        // ground that has a sprinkling of blue around it (what they are drawn
+        // on). Solid water stays water; a creek fifteen pixels wide is still
+        // more than half blue in its own window.
+        const finalClass = (x: number, y: number): number => {
+          const c = classOf[y * width + x];
+          if (c === BUILT || c === SAND) return c;
+          const d = density(x, y);
+          if (c === WATER) return d < 0.35 ? MARSH : WATER;
+          if (d >= 0.04 && d < 0.35) return MARSH;
+          return c;
+        };
+
         return points.map(({ px, py }) => {
-          const reading = { water: 0, sand: 0, green: 0, built: 0, mangrove: 0, pale: 0 };
-          for (let dy = -radius; dy <= radius; dy += step) {
-            for (let dx = -radius; dx <= radius; dx += step) {
+          const reading = { water: 0, sand: 0, green: 0, built: 0, mangrove: 0, pale: 0, marsh: 0 };
+          const keys = ["water", "sand", "mangrove", "green", "pale", "built", "marsh"] as const;
+          for (let dy = -radius; dy <= radius; dy += 2) {
+            for (let dx = -radius; dx <= radius; dx += 2) {
               if (dx * dx + dy * dy > radius * radius) continue;
               const x = Math.round(px + dx);
               const y = Math.round(py + dy);
               if (x < 0 || y < 0 || x >= width || y >= height) continue;
-              const i = (y * width + x) * 4;
-              reading[classify(pixels[i], pixels[i + 1], pixels[i + 2])]++;
+              reading[keys[finalClass(x, y)]]++;
             }
           }
           return reading;
@@ -430,22 +480,38 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
 function classifyCells(cells: Cell[], readings: Reading[]): void {
   cells.forEach((cell, index) => {
     const reading = readings[index];
-    const total = reading.water + reading.sand + reading.green + reading.built + reading.mangrove + reading.pale;
+    const total =
+      reading.water + reading.sand + reading.green + reading.built + reading.mangrove + reading.pale + reading.marsh;
     if (total === 0) {
       cell.terrainId = "land";
       return;
     }
-    cell.share = {
+    const share = {
       water: reading.water / total,
       sand: reading.sand / total,
       built: reading.built / total,
       mangrove: reading.mangrove / total,
       pale: reading.pale / total,
-      green: reading.green / total
+      green: reading.green / total,
+      marsh: reading.marsh / total
     };
-    // A majority of water, not a plurality. A tile that is 40% water and 60%
-    // city is a waterfront street, and the game should let you build on it.
-    cell.terrainId = reading.water / total > 0.5 ? "coast" : "land";
+    cell.share = share;
+    const wetland = share.marsh + share.mangrove;
+    /*
+     * Minority wins, in this order:
+     *   - mostly water is water, whatever else is there;
+     *   - then sand, so a shoreline hex that is part sea and part beach is
+     *     beach (somewhere a dune can go) rather than sea;
+     *   - then water from a third up: the south shore, the creek banks;
+     *   - then marsh and mangrove from a third up;
+     *   - everything else is land.
+     * Water is `coast` here; `separateWater` decides river from sea after.
+     */
+    if (share.water >= 0.5) cell.terrainId = "coast";
+    else if (share.sand >= SAND_SHARE) cell.terrainId = "beach";
+    else if (share.water >= MINORITY_SHARE) cell.terrainId = "coast";
+    else if (wetland >= MINORITY_SHARE) cell.terrainId = "estuary";
+    else cell.terrainId = "land";
   });
 }
 
@@ -538,37 +604,33 @@ function separateWater(cells: Cell[]): void {
 }
 
 /**
- * Turns creek, marsh and mangrove tiles connected to the river into estuary.
+ * Turns the khazan paddy next to the wetlands into estuary. See `PADDY`.
  *
- * Breadth-first from every river and estuary tile, through land tiles that
- * read as wet by the rules in `WET`. Connectivity is the important half: the
- * same reading on a tile with no path to the river — a park pond, a sports
- * ground with a pool — is not tidal and stays land.
+ * Breadth-first from every river and estuary tile, at most `PADDY.reach`
+ * steps out, through land that is mostly farmland with little city in it.
  */
-function spreadWetlands(cells: Cell[]): number {
+function spreadPaddy(cells: Cell[]): number {
   const byKey = new Map(cells.map((cell) => [axialKey(cell.coord), cell]));
-  const isWet = (cell: Cell): boolean => {
-    const share = cell.share;
-    if (!share || cell.terrainId !== "land") return false;
-    if (share.built > WET.maxBuilt || share.sand > WET.maxSand) return false;
-    return (
-      share.water >= WET.creekWater ||
-      share.mangrove >= WET.mangrove ||
-      (share.water >= WET.marshWater && share.pale + share.green + share.mangrove >= WET.marshGround)
-    );
-  };
+  const isPaddy = (cell: Cell): boolean =>
+    cell.terrainId === "land" &&
+    cell.share !== undefined &&
+    cell.share.pale + cell.share.marsh >= PADDY.minFarmland &&
+    cell.share.built <= PADDY.maxBuilt;
 
-  const queue = cells.filter((cell) => cell.terrainId === "river" || cell.terrainId === "estuary");
+  let frontier = cells.filter((cell) => cell.terrainId === "river" || cell.terrainId === "estuary");
   let converted = 0;
-  while (queue.length > 0) {
-    const cell = queue.shift()!;
-    for (const coord of neighbors(cell.coord)) {
-      const next = byKey.get(axialKey(coord));
-      if (!next || !isWet(next)) continue;
-      next.terrainId = "estuary";
-      converted++;
-      queue.push(next);
+  for (let step = 0; step < PADDY.reach; step++) {
+    const next: Cell[] = [];
+    for (const cell of frontier) {
+      for (const coord of neighbors(cell.coord)) {
+        const neighbour = byKey.get(axialKey(coord));
+        if (!neighbour || !isPaddy(neighbour)) continue;
+        neighbour.terrainId = "estuary";
+        converted++;
+        next.push(neighbour);
+      }
     }
+    frontier = next;
   }
   return converted;
 }
@@ -712,30 +774,48 @@ function hexDistance(a: AxialCoord, b: AxialCoord): number {
 
 // ---- looking at the result --------------------------------------------
 
+/** A numbered landmark on the debug image: where it really is, and the centre of the hex it was given. */
+interface DebugMarker {
+  label: string;
+  truePx: { px: number; py: number };
+  hexPx: { px: number; py: number };
+}
+
 /**
  * Draws the finished board back over the map it was read from.
  *
  * This is the only honest way to check the classification. An ASCII dump says
  * a tile is `coast`; it cannot say whether that tile is over the Arabian Sea
  * or over Campal. Painting the hexes onto the picture makes every disagreement
- * between the two visible at a glance, and it is how the river-mouth cut and
- * the sampling radius were actually settled.
+ * between the two visible at a glance, and it is how the river-mouth cut, the
+ * sampling radius and the minority-wins thresholds were settled.
  *
- * Written to the system temp directory rather than into the repo: it is a
- * thing to look at while changing this file, not an artefact the game needs.
+ * Two images, both under `tools/mapgen/debug/` (checked in, never shipped):
+ * the classes, and the landmarks — a numbered dot at each landmark's real
+ * position, a ring on the hex it was given, and a line between when they
+ * differ.
  */
-async function writePreview(meta: BasemapMeta, cells: Cell[], monuments: Monument[], outPath: string): Promise<void> {
+async function writeDebugImage(
+  meta: BasemapMeta,
+  cells: Cell[],
+  markers: DebugMarker[],
+  outPath: string,
+  options: { hexAlpha: number; title: string }
+): Promise<void> {
   const dataUrl = `data:image/jpeg;base64,${fs.readFileSync(BASEMAP_IMAGE).toString("base64")}`;
   const inradiusMetres = HEX_SIZE * Math.sqrt(3) * 0.5 * METRES_PER_UNIT;
   const metresPerPixel = ((meta.bounds.east - meta.bounds.west) * METRES_PER_DEG_LON) / meta.width;
   // Circumradius, not inradius: the polygon is drawn from its corners.
   const radiusPx = inradiusMetres / metresPerPixel / (Math.sqrt(3) / 2);
-
-  const monumentPixels = monuments.map((monument) => {
-    const { x, z } = axialToWorld({ q: monument.q, r: monument.r }, HEX_SIZE);
-    const { lat, lon } = worldToGeo(x, z);
-    return { ...geoToPixel(meta, lat, lon), name: monument.name };
-  });
+  // Crop to the board plus a hex of margin, so the image is all board.
+  const nw = geoToPixel(meta, BOARD.north, BOARD.west);
+  const se = geoToPixel(meta, BOARD.south, BOARD.east);
+  const crop = {
+    x: Math.max(0, Math.floor(nw.px - radiusPx)),
+    y: Math.max(0, Math.floor(nw.py - radiusPx)),
+    w: Math.ceil(se.px - nw.px + 2 * radiusPx),
+    h: Math.ceil(se.py - nw.py + 2 * radiusPx)
+  };
 
   const browser = await chromium.launch();
   try {
@@ -743,8 +823,8 @@ async function writePreview(meta: BasemapMeta, cells: Cell[], monuments: Monumen
     await page.setContent("<html><body></body></html>");
     await page.evaluate("globalThis.__name = (fn) => fn;");
 
-    const png = await page.evaluate(
-      async ({ dataUrl, hexes, markers, radius, width, height }) => {
+    const jpeg = await page.evaluate(
+      async ({ dataUrl, hexes, markers, radius, crop, hexAlpha, title }) => {
         const image = await new Promise<HTMLImageElement>((resolve, reject) => {
           const img = new Image();
           img.onload = () => resolve(img);
@@ -753,17 +833,18 @@ async function writePreview(meta: BasemapMeta, cells: Cell[], monuments: Monumen
         });
 
         const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = crop.w;
+        canvas.height = crop.h;
         const ctx = canvas.getContext("2d")!;
+        ctx.translate(-crop.x, -crop.y);
         ctx.drawImage(image, 0, 0);
 
         const FILL: Record<string, string> = {
-          coast: "rgba(20,110,170,0.45)",
-          river: "rgba(70,70,230,0.5)",
-          estuary: "rgba(20,175,135,0.5)",
-          beach: "rgba(245,190,55,0.55)",
-          land: "rgba(70,150,60,0.3)"
+          coast: `rgba(20,110,170,${hexAlpha})`,
+          river: `rgba(70,70,230,${hexAlpha})`,
+          estuary: `rgba(20,175,135,${hexAlpha})`,
+          beach: `rgba(245,190,55,${Math.min(1, hexAlpha + 0.1)})`,
+          land: `rgba(70,150,60,${hexAlpha * 0.6})`
         };
 
         for (const hex of hexes) {
@@ -782,43 +863,79 @@ async function writePreview(meta: BasemapMeta, cells: Cell[], monuments: Monumen
           // impossible and should look impossible.
           ctx.fillStyle = FILL[hex.terrainId] ?? "rgba(255,0,255,0.7)";
           ctx.fill();
-          ctx.strokeStyle = "rgba(255,255,255,0.25)";
+          ctx.strokeStyle = "rgba(255,255,255,0.3)";
           ctx.lineWidth = 1;
           ctx.stroke();
         }
 
         for (const marker of markers) {
+          const { truePx, hexPx } = marker;
+          // Ring on the hex the landmark was given.
           ctx.beginPath();
-          ctx.arc(marker.px, marker.py, radius * 0.45, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(230,30,30,0.95)";
+          ctx.arc(hexPx.px, hexPx.py, radius * 0.62, 0, Math.PI * 2);
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = "rgba(255,255,255,0.95)";
+          ctx.stroke();
+          // Line from its real position, if it had to move.
+          if (Math.hypot(truePx.px - hexPx.px, truePx.py - hexPx.py) > radius * 0.9) {
+            ctx.beginPath();
+            ctx.moveTo(truePx.px, truePx.py);
+            ctx.lineTo(hexPx.px, hexPx.py);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "rgba(230,30,30,0.9)";
+            ctx.stroke();
+          }
+          // Numbered dot at its real position.
+          ctx.beginPath();
+          ctx.arc(truePx.px, truePx.py, 13, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(210,25,25,0.95)";
           ctx.fill();
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 2;
           ctx.strokeStyle = "white";
           ctx.stroke();
-
-          ctx.font = "bold 21px sans-serif";
-          ctx.lineWidth = 5;
-          ctx.strokeStyle = "rgba(0,0,0,0.9)";
-          ctx.strokeText(marker.name, marker.px + radius * 0.7, marker.py - radius * 0.6);
+          ctx.font = "bold 15px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
           ctx.fillStyle = "white";
-          ctx.fillText(marker.name, marker.px + radius * 0.7, marker.py - radius * 0.6);
+          ctx.fillText(marker.label, truePx.px, truePx.py + 1);
         }
 
-        return canvas.toDataURL("image/png");
+        // Legend, in image space.
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const rows: [string, string][] = [
+          ["coast (sea)", FILL.coast], ["river", FILL.river], ["estuary (wetland)", FILL.estuary],
+          ["beach", FILL.beach], ["land", FILL.land]
+        ];
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.fillRect(10, 10, 300, 40 + rows.length * 26);
+        ctx.font = "bold 18px sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillStyle = "#111";
+        ctx.fillText(title, 20, 18);
+        ctx.font = "16px sans-serif";
+        rows.forEach(([name, fill], i) => {
+          ctx.fillStyle = fill;
+          ctx.fillRect(20, 46 + i * 26, 22, 18);
+          ctx.fillStyle = "#111";
+          ctx.fillText(name, 52, 46 + i * 26);
+        });
+
+        return canvas.toDataURL("image/jpeg", 0.82);
       },
       {
         dataUrl,
         hexes: cells.map((cell) => ({ px: cell.px, py: cell.py, terrainId: cell.terrainId })),
-        markers: monumentPixels,
+        markers,
         radius: radiusPx,
-        width: meta.width,
-        height: meta.height
+        crop,
+        hexAlpha: options.hexAlpha,
+        title: options.title
       }
     );
 
-    const base64 = png.slice(png.indexOf(",") + 1);
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
-    fs.writeFileSync(outPath, Buffer.from(base64, "base64"));
+    fs.writeFileSync(outPath, Buffer.from(jpeg.slice(jpeg.indexOf(",") + 1), "base64"));
   } finally {
     await browser.close();
   }
@@ -935,8 +1052,8 @@ async function main(): Promise<void> {
   separateWater(cells);
   console.log("after splitting water:  ", JSON.stringify(countTerrain(cells)));
 
-  const wetlands = spreadWetlands(cells);
-  console.log(`after wetlands:         ${JSON.stringify(countTerrain(cells))} (${wetlands} land tiles became estuary)`);
+  const paddy = spreadPaddy(cells);
+  console.log(`after paddy:            ${JSON.stringify(countTerrain(cells))} (${paddy} khazan fields became estuary)`);
 
   const widened = widenBeach(cells);
   console.log(`after widening sand:    ${JSON.stringify(countTerrain(cells))} (${widened} land tiles became beach)`);
@@ -1024,8 +1141,8 @@ async function main(): Promise<void> {
     `Map layer: ${path.relative(ROOT, OVERLAY_OUT)} ${overlay.width}x${overlay.height}, ${(overlay.bytes / 1024).toFixed(0)} KB`
   );
 
-  const previewPath = path.join(os.tmpdir(), "riptide-panaji-preview.png");
-  await writePreview(meta, cells, monuments, previewPath);
+  const classesPath = path.join(DEBUG_DIR, "panaji-classes.jpg");
+  await writeDebugImage(meta, cells, [], classesPath, { hexAlpha: 0.5, title: "Panaji: hex classes over OSM" });
 
   console.log(`\n=== Panaji ===`);
   console.log(`${cells.length} tiles, ${monuments.length} monuments, focus ${focus.q},${focus.r}`);
@@ -1045,7 +1162,7 @@ async function main(): Promise<void> {
     console.log(`\nWrote ${path.relative(ROOT, OUT)}`);
   }
 
-  console.log(`Overlay preview: ${previewPath}`);
+  console.log(`Debug image: ${path.relative(ROOT, classesPath)}`);
 }
 
 main();

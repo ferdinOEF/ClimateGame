@@ -109,12 +109,25 @@ describe("monuments", () => {
     }
   });
 
-  it("gives the widened beach real room to build on", () => {
-    // The brief for this map was explicitly that the beach needed space:
-    // Dune, Pandanus, Seawall and Beachside Resort all need sand, and the
-    // map's own beach polygons give about a dozen tiles at this hex size.
+  it("keeps the beach the whole length of the Miramar shore, with room to build", () => {
+    // Dune, Pandanus, Seawall and Beachside Resort all need sand. The beach
+    // used to be widened three hexes inland to make room for them (45 tiles),
+    // which painted Miramar's road and houses as sand. Tiles now follow the
+    // OpenStreetMap picture, so the beach is the real strip: one hex wide, but
+    // unbroken from the river mouth to Dona Paula, which is still enough to
+    // build a defended shoreline on.
     const panaji = mapById("panaji")!;
     const counts = terrainCounts(panaji.tiles);
-    expect(counts.get("beach") ?? 0).toBeGreaterThanOrEqual(45);
+    expect(counts.get("beach") ?? 0).toBeGreaterThanOrEqual(15);
+    const beachRows = new Set(panaji.tiles.filter((tile) => tile.terrainId === "beach").map((tile) => tile.coord.r));
+    const rows = [...beachRows].sort((a, b) => a - b);
+    // From the Campal end to Caranzalem there is sand on every row.
+    let longestRun = 1;
+    let run = 1;
+    for (let i = 1; i < rows.length; i++) {
+      run = rows[i] === rows[i - 1] + 1 ? run + 1 : 1;
+      longestRun = Math.max(longestRun, run);
+    }
+    expect(longestRun).toBeGreaterThanOrEqual(12);
   });
 });
