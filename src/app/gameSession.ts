@@ -342,7 +342,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const plot = town.buildings.get(`${coord.q},${coord.r}`);
       return plot ? { kind: plot.kind, wall: walls[plot.wall], roof: roofs[plot.roof], scale: plot.scale, turns: plot.turns } : null;
     });
-    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord), terrain.height("land"));
+    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord));
     scene.add(townDecor.group);
     ambientLife = new AmbientLife(town, levelTiles, (coord) => terrain.heightAt(coord), terrain.height("land"), prefersReducedMotionNow(), levelMap.focus);
     scene.add(ambientLife.group);

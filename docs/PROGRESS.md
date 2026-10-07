@@ -6951,3 +6951,46 @@ reached this session:
   right, which reads cleanly.
 - On a 768 px-high window with every panel open, the bubble often goes
   compact. That is readable, but small.
+
+### PA2 — roads read as part of the street map — DONE
+
+**Decision: no drawn road overlay.**
+- The beige strips, the junction discs and the bridge piers are gone from
+  `townDecor.ts`.
+- The street-map layer already paints every major road in OSM's own colours
+  and widths. That means roads now:
+  - fade with the map's opacity slider;
+  - disappear with the map's switch;
+  - never sit on top as a thick band that could read as a sea wall, the heat
+    or water.
+- The other option, redrawing the same roads as thin lines bound to the
+  slider, would duplicate what the layer shows. It would also drift from it
+  wherever the road tiles are coarser than the real road.
+
+**The road data is unchanged:**
+- road tiles still refuse buildings;
+- walkers still follow the road tiles (`TownDecor.roadPoints`);
+- mapgen and the map JSON are untouched.
+
+**Found and fixed: a seam showing the sky.**
+- Thin pale-blue lines ran down the middle of the screen. They were the sky
+  showing through the gaps between hex tiles wherever a gap lined up with the
+  camera, and could pass for a stream or a road.
+- The fault predates this branch; it is visible in PR #8's shots.
+- Fix: a dark floor of slightly wider hexes now sits under the board (one draw
+  call). The gaps read as shadow.
+
+**Checked** (in `docs/qa/roads/`, each with a grayscale twin):
+- 1920x1080 and 2560x1440;
+- far and near zoom;
+- street map on and off;
+- with the warning heat on top.
+- Flood-on-top shots come with P4, when the flood visuals exist.
+- `verify:maya` now checks that no `town-road*` mesh is drawn while the road
+  tiles still exist.
+
+**Self-assessment:**
+- With the map on (32%), roads read as part of the map.
+- With the map off, the board shows no roads at all. That is deliberate (the
+  switch is "show the real streets"), but a player who turns the map off
+  loses them; the walkers still trace them.
