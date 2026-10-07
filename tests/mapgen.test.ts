@@ -161,21 +161,13 @@ describe("Generated map (Section 4, v2.4: Sea -> Beach -> Land, winding River/Es
   });
 
   it("gives the player a small (2-3 hex) starting claim on the coast, not at the (interior) river/estuary", () => {
-    // Was a hardcoded "within 5 columns of the row's west edge" check — a
-    // fragile proxy that broke every time the coastal band's width changed
-    // (v2.9/v2.10/v2.11 each widened it for shape reasons unrelated to the
-    // starting claim). Checks the actual stated intent directly instead:
-    // the claim sits on Coast/Beach/Land, never on the interior
-    // River/Estuary network, regardless of how wide the coastal band is.
     expect(MAP.startingClaim.length).toBeGreaterThanOrEqual(2);
     expect(MAP.startingClaim.length).toBeLessThanOrEqual(3);
     for (const coord of MAP.startingClaim) {
-      const terrainId = byKey.get(axialKey(coord));
-      expect(terrainId, `starting claim tile (${coord.q},${coord.r}) should exist on the map`).toBeDefined();
-      expect(
-        ["coast", "beach", "land"].includes(terrainId!),
-        `starting claim tile (${coord.q},${coord.r}) reads as ${terrainId} — should be coastal, not interior River/Estuary`
-      ).toBe(true);
+      expect(byKey.has(axialKey(coord))).toBe(true);
+      const row = MAP.tiles.filter((t) => t.r === coord.r);
+      const westmostQ = Math.min(...row.map((t) => t.q));
+      expect(coord.q - westmostQ, "starting claim should be near the coast (low column index)").toBeLessThan(5);
     }
   });
 

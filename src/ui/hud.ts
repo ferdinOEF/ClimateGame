@@ -1,25 +1,6 @@
 import { HelpModal } from "./helpModal";
 
 /**
- * STEP_PROMPT_liquid_glass_hud.md item 2.4: small flat inline stat icons —
- * coin/shield/leaf/grain, exactly the four the doc names — replacing the
- * bare-number labels these four rows/chips had before. Same minimal
- * stroke-only style the HUD pill's own coin icon already established
- * (`.pill-coin`'s `<svg>` below), just reused at the full-size cluster's
- * own labels too, one icon language for the whole HUD rather than "the
- * pill has icons, the expanded card doesn't." Population is deliberately
- * left without one — the doc names four, not five.
- */
-const ICON_COIN =
-  '<svg class="stat-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="#ffe9a8" stroke-width="1.4"></circle><line x1="3.5" y1="8" x2="12.5" y2="8" stroke="#ffe9a8" stroke-width="1.4"></line></svg>';
-const ICON_SHIELD =
-  '<svg class="stat-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M8 1.5 13 3.5V7.5C13 10.8 10.9 13.4 8 14.5 5.1 13.4 3 10.8 3 7.5V3.5Z" fill="none" stroke="#7bd4c4" stroke-width="1.4" stroke-linejoin="round"></path></svg>';
-const ICON_LEAF =
-  '<svg class="stat-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M3 13C3 7 7 3 13 3 13 9 9 13 3 13Z" fill="none" stroke="#8fc25a" stroke-width="1.4" stroke-linejoin="round"></path><line x1="3.6" y1="12.4" x2="10" y2="6" stroke="#8fc25a" stroke-width="1.2"></line></svg>';
-const ICON_GRAIN =
-  '<svg class="stat-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><line x1="8" y1="2" x2="8" y2="14" stroke="#d8b158" stroke-width="1.4"></line><path d="M8 4 5.5 5.8M8 4 10.5 5.8M8 7 5.5 8.8M8 7 10.5 8.8M8 10 5.5 11.8M8 10 10.5 11.8" fill="none" stroke="#d8b158" stroke-width="1.2" stroke-linecap="round"></path></svg>';
-
-/**
  * STEP_PROMPT_hud_instrument_cluster.md (v3, "Instrument Cluster"): the
  * top-left corner is a real card now (background/border/padding, not bare
  * text floating over the 3D scene) — a header row (Coin + Turn/Era), a
@@ -39,6 +20,13 @@ const ICON_GRAIN =
  * already active (STEP_PROMPT_remove_claiming.md), so there's nothing to
  * hand-pick from, only where to build next.
  */
+/** What the HUD's own controls need to reach. */
+export interface HudActions {
+  onPreviewToggle: () => void;
+  /** Leave the level. Wired to the shell's Back, so it agrees with the browser's. */
+  onBack: () => void;
+}
+
 export class Hud {
   private tileCountEl: HTMLElement;
   private coinEl: HTMLElement;
@@ -49,6 +37,7 @@ export class Hud {
   private resilienceFillEl: HTMLElement;
   private hazardIncomingEl: HTMLElement;
   private biodiversityEl: HTMLElement;
+  private carbonEl: HTMLElement;
   private foodEl: HTMLElement;
   private foodChipEl: HTMLElement;
   private populationEl: HTMLElement;
@@ -64,7 +53,7 @@ export class Hud {
   private pillResilienceDotEl: HTMLElement;
   private pillHazardValueEl: HTMLElement;
 
-  constructor(container: HTMLElement, onPreviewToggle: () => void) {
+  constructor(container: HTMLElement, actions: HudActions) {
     // STEP_PROMPT_how_to_play_button.md: static content, no game-state
     // coupling — unlike EraEndScreen (which needs an onStartNewEra
     // callback into main.ts), this never needs to reach outside itself,
@@ -73,14 +62,30 @@ export class Hud {
 
     const tileCounter = document.createElement("div");
     tileCounter.className = "hud-corner top-right";
+    /*
+     * The way out of a level, beside the way to ask what the level is.
+     *
+     * Top-RIGHT rather than the conventional top-left, because the top-left
+     * corner is the instrument cluster — a card that also collapses to a pill
+     * on a narrow screen, so anything stacked above it fights that
+     * interaction and moves when the player collapses it. The top-right
+     * already holds the other piece of chrome (Help) and has room.
+     *
+     * Labelled rather than an arrow glyph alone. This abandons an unscored
+     * run, which is not a thing to leave a player guessing about from an icon.
+     */
     tileCounter.innerHTML = `
-      <button type="button" class="help-button" aria-label="How to play">?</button>
-      <div>Tiles built</div>
+      <div class="hud-chrome">
+        <button type="button" class="back-button">← Back</button>
+        <button type="button" class="help-button" aria-label="How to play">?</button>
+      </div>
+      <div>Tiles claimed</div>
       <div class="tile-count-value">0</div>
     `;
     tileCounter.querySelector(".help-button")!.addEventListener("click", () => {
       helpModal.show();
     });
+    tileCounter.querySelector(".back-button")!.addEventListener("click", () => actions.onBack());
     container.appendChild(tileCounter);
     this.tileCountEl = tileCounter.querySelector(".tile-count-value")!;
 
@@ -94,7 +99,7 @@ export class Hud {
     cluster.className = "hud-corner top-left instrument-cluster";
     cluster.innerHTML = `
       <div class="cluster-header">
-        <div class="coin-row"><span>${ICON_COIN}Coin</span><span class="coin-value">0</span></div>
+        <div class="coin-row"><span>Coin</span><span class="coin-value">0</span></div>
         <div class="cluster-header-right">
           <div class="turn-era-row">Turn <span class="turn-value">0</span> · Era <span class="era-value">1</span></div>
           <button type="button" class="cluster-collapse-toggle" aria-label="Collapse HUD">
@@ -104,14 +109,15 @@ export class Hud {
       </div>
       <div class="income-row">Income <span class="income-value">+0</span>/turn</div>
       <div class="resilience-gauge">
-        <div class="resilience-gauge-header"><span>${ICON_SHIELD}Resilience</span><span class="resilience-value">100</span></div>
+        <div class="resilience-gauge-header"><span>Resilience</span><span class="resilience-value">100</span></div>
         <div class="resilience-gauge-track"><div class="resilience-gauge-fill"></div></div>
       </div>
       <div class="hazard-incoming"></div>
       <button type="button" class="preview-toggle" hidden>Preview path</button>
       <div class="chip-grid">
-        <span class="meter-chip">${ICON_LEAF}Biodiversity <b class="biodiversity-value">0</b></span>
-        <span class="meter-chip food-chip">${ICON_GRAIN}Food <b class="food-value">0</b></span>
+        <span class="meter-chip">Biodiversity <b class="biodiversity-value">0</b></span>
+        <span class="meter-chip">Carbon <b class="carbon-value">0</b></span>
+        <span class="meter-chip food-chip">Food <b class="food-value">0</b></span>
         <span class="meter-chip">Population <b class="population-value">0</b></span>
       </div>
       <button type="button" class="cluster-pill" aria-label="Expand HUD">
@@ -146,11 +152,12 @@ export class Hud {
     this.resilienceFillEl = cluster.querySelector(".resilience-gauge-fill")!;
     this.hazardIncomingEl = cluster.querySelector(".hazard-incoming")!;
     this.biodiversityEl = cluster.querySelector(".biodiversity-value")!;
+    this.carbonEl = cluster.querySelector(".carbon-value")!;
     this.foodEl = cluster.querySelector(".food-value")!;
     this.foodChipEl = cluster.querySelector(".food-chip")!;
     this.populationEl = cluster.querySelector(".population-value")!;
     this.previewToggleEl = cluster.querySelector(".preview-toggle")!;
-    this.previewToggleEl.addEventListener("click", () => onPreviewToggle());
+    this.previewToggleEl.addEventListener("click", () => actions.onPreviewToggle());
 
     // STEP_PROMPT_mobile_responsive.md Section 4 ("Status Pill" direction,
     // signed off from a 4-option mockup): the chevron in the header
@@ -206,19 +213,6 @@ export class Hud {
     this.arrivalFlashEl.classList.add("flashing");
   }
 
-  /**
-   * STEP_PROMPT_liquid_glass_hud.md item 2.5: one soft pulse on the
-   * instrument cluster itself — an expanding, fading box-shadow ring —
-   * on a confirmed build, so the HUD visibly acknowledges the change
-   * too, not just the tile. Same restart-safe remove/reflow/re-add
-   * pattern as `flashArrival()` above.
-   */
-  pulse(): void {
-    this.clusterEl.classList.remove("pulsing");
-    void this.clusterEl.offsetWidth; // force reflow so re-adding the class restarts the animation
-    this.clusterEl.classList.add("pulsing");
-  }
-
   /** A brief, non-blocking announcement — originally an auto era-retired narrative, now the manual "Board reset." confirmation (STEP_PROMPT_manual_only_mode.md) — never a modal. */
   showBanner(text: string, durationMs = 3500): void {
     this.bannerEl.textContent = text;
@@ -228,18 +222,7 @@ export class Hud {
     }, durationMs);
   }
 
-  /**
-   * STEP_PROMPT_liquid_glass_hud.md item 1.2: was `setTileCount`, fed by
-   * `state.claimed.size` — dead ever since `STEP_PROMPT_remove_claiming.md`
-   * made `claimed` always exactly equal to the whole map (every tile is
-   * claimable from turn one, so nothing ever grows that set again), which
-   * is why this corner stat visibly never moved. Repurposed to the one
-   * thing this corner can show that's both live and meaningful: how many
-   * tiles have something built on them — the exact complement of the
-   * `.empty-prompt` bottom-center counter (`placed.size - elements.size`),
-   * so the two together always sum to the whole map.
-   */
-  setBuiltCount(n: number): void {
+  setTileCount(n: number): void {
     this.tileCountEl.textContent = String(n);
   }
 
@@ -270,18 +253,10 @@ export class Hud {
    * longer displays it (the data model and everything that reads it
    * outside this class are untouched; see the class comment).
    */
-  /**
-   * STEP_PROMPT_liquid_glass_hud.md item 1.5: `carbon` dropped from this
-   * signature — no element in the current roster has a `carbon` effect
-   * (confirmed against elements.json), so it always read 0 and was never
-   * part of GAUNTLET_PROMPT.md's documented five-meter schema. The generic
-   * `GameState.carbon`/`meterTotal("carbon")` accumulator stays exactly as
-   * it is — real, reusable infrastructure for the day some element
-   * actually has a carbon effect — only this always-zero HUD display goes.
-   */
   setMeters(meters: {
     resilience: number;
     biodiversity: number;
+    carbon: number;
     food: number;
     population: number;
   }): void {
@@ -305,6 +280,7 @@ export class Hud {
     this.resilienceFillEl.classList.toggle("critical", critical);
     this.pillResilienceDotEl.classList.toggle("critical", critical);
     this.biodiversityEl.textContent = String(Math.round(meters.biodiversity));
+    this.carbonEl.textContent = String(Math.round(meters.carbon));
     this.foodEl.textContent = String(Math.round(meters.food));
     this.populationEl.textContent = String(Math.round(meters.population));
     // STEP_PROMPT_economy_food_yacht.md item 2: a running Food deficit used

@@ -12,54 +12,29 @@ import { box, taperedSlab, coneFrustum, dome, blade, plan, rotate, move, scale }
  * saturated) terrain palette from the readability pass.
  */
 
-/**
- * Dune: two overlapping low ridge arcs (back taller/set back, front lower/
- * forward), plus angled grass tufts on the crest.
- *
- * STEP_PROMPT_hazard_vfx_and_fluidity.md Section 2 detail pass: the
- * original tufts (thin, near-vertical, 0.02-0.04 wide, a dark olive close
- * in value to the tan dome under it) were real geometry but functionally
- * invisible at this game's steep 58°-elevation camera — a near-vertical
- * blade presents almost no silhouette to a camera looking nearly straight
- * down at it, confirmed live: even after the whole-assembly scale-up,
- * Dune still read as a plain rounded double-hump with zero vegetation cue,
- * the one element in the roster that genuinely needed a secondary-shape
- * fix, not just a bigger version of what was already there. Fixed by
- * raking the tufts outward much further (wide splay angles, not a slight
- * lean) so they present real silhouette area from directly above, widening
- * them, and shifting the color toward a brighter yellow-green for value
- * contrast against the tan/ochre dome rather than a same-dark-value olive.
- */
+/** Dune: two overlapping low ridge arcs (back taller/set back, front lower/forward), plus angled grass tufts on the crest. */
 function duneGeometry(): THREE.BufferGeometry {
   const backRidge = dome(0.42, 0.22, 0.22, "#c9932e", 0);
   move(backRidge, 0, 0, -0.14);
   const frontRidge = dome(0.4, 0.16, 0.2, "#b5842a", 0);
   move(frontRidge, 0.03, 0, 0.13);
 
-  const tuft = (x: number, z: number, leanX: number, leanZ: number) => {
+  const tuft = (x: number, angle: number) => {
     const g = blade(
       [
-        [-0.035, 0],
-        [0.035, 0],
-        [0.015, 0.3],
-        [-0.015, 0.3]
+        [-0.02, 0],
+        [0.02, 0],
+        [0.01, 0.22],
+        [-0.01, 0.22]
       ],
-      "#8bb24a"
+      "#4b5a34"
     );
-    rotate(g, leanX, 0, leanZ);
-    move(g, x, 0.14, z);
+    rotate(g, 0, 0, angle);
+    move(g, x, 0.16, 0.1);
     return g;
   };
 
-  return mergeGeometries([
-    backRidge,
-    frontRidge,
-    tuft(-0.1, 0.08, 0.15, 0.55),
-    tuft(0.04, 0.14, 0.25, -0.4),
-    tuft(0.16, 0.06, -0.1, 0.6),
-    tuft(-0.02, 0.16, 0.3, 0.1),
-    tuft(0.1, 0.16, -0.2, -0.35)
-  ]);
+  return mergeGeometries([backRidge, frontRidge, tuft(-0.08, 0.25), tuft(0.02, -0.1), tuft(0.12, 0.3)]);
 }
 
 /** Seawall: a tapered concrete block wall with a lighter cap slab and coursed groove lines. */
@@ -171,107 +146,172 @@ function sandyVegetationGeometry(): THREE.BufferGeometry {
   return mergeGeometries([center, left, right]);
 }
 
-/** Beachside Resort: a tall whitewashed block, flat parapet roofline, 3x3 window grid, ground-floor awning + door, rooftop pennant, plus a pool. */
+/**
+ * Beachside Resort — the thing that pays well and costs the coast.
+ *
+ * Has to read as unmistakably bigger and more intrusive than a House at a
+ * glance, because the whole Boom Town lesson is carried by seeing a row of
+ * these replace a village. The earlier version got the height right and
+ * little else: a plain block with a window grid, which read as an office.
+ *
+ * What makes it a resort rather than a tall house, in order of how much work
+ * each does at this size: a stepped-back upper storey, projecting balconies
+ * with railings on every floor, a blue pool with a deck, loungers and
+ * parasols, and two palms. The palms matter more than they look — they are
+ * the fastest cue that this is a leisure building, and they also make the
+ * biodiversity cost legible when a storm takes them.
+ */
 function beachsideResortGeometry(): THREE.BufferGeometry {
-  // Deliberately much taller than House's 0.32 wall (+ ~0.26 roof peak,
-  // ~0.58 total) — a live side-by-side check found the flat-roof/window-
-  // grid cues alone read as different in KIND but not obviously bigger;
-  // this needs to be unmistakable at a glance, per this pass's own
-  // explicit verification note, not just "technically taller."
-  const BLOCK_H = 0.95;
-  const block = box(0.58, BLOCK_H, 0.42, "#f2ede0", 0);
-  const parapet = box(0.64, 0.08, 0.46, "#a9791f", BLOCK_H);
-  const parapetTrim = box(0.66, 0.02, 0.48, "#d8b158", BLOCK_H + 0.08);
+  // Deliberately far taller than House's ~0.6 total. A live side-by-side
+  // check during the earlier pass found that flat-roof and window-grid cues
+  // alone read as different in KIND but not obviously bigger, and "bigger"
+  // is the specific thing this element has to communicate.
+  const BASE_H = 0.46;
+  const UPPER_H = 0.4;
+  const TOP = BASE_H + UPPER_H;
 
-  const parts: THREE.BufferGeometry[] = [block, parapet, parapetTrim];
+  const parts: THREE.BufferGeometry[] = [];
 
-  // 3x3 window grid, skipping bottom-center for the entrance below it —
-  // spread across the block's full height (proportional to BLOCK_H, not
-  // a fixed offset) so the taller block reads as multi-storey rather than
-  // one row of windows floating in a tall blank wall.
-  const cols = [-0.18, 0, 0.18];
-  const rows = [BLOCK_H * 0.17, BLOCK_H * 0.5, BLOCK_H * 0.83];
-  for (const y of rows) {
-    for (const x of cols) {
-      if (y === rows[0] && x === 0) continue; // entrance position
-      const win = box(0.11, 0.13, 0.02, "#1f6e66", y);
-      move(win, x, 0, 0.215);
-      const sill = box(0.11, 0.02, 0.02, "#3c9c8e", y + 0.13);
-      move(sill, x, 0, 0.215);
-      parts.push(win, sill);
+  // Two storeys, the upper one stepped back — the standard seafront hotel
+  // massing, and it breaks up what was previously one tall slab.
+  const base = box(0.5, BASE_H, 0.42, "#f6f1e4", 0);
+  move(base, -0.22, 0, -0.04);
+  const upper = box(0.4, UPPER_H, 0.34, "#f6f1e4", BASE_H);
+  move(upper, -0.26, 0, -0.04);
+  parts.push(base, upper);
+
+  // Floor slabs reading as balconies, projecting past the wall on the
+  // seaward face. The projection is what casts the horizontal shadow lines
+  // that say "hotel" from above.
+  // Narrower than the wall they hang off, and shallow. A first attempt made
+  // them wider than the block, which turned the whole building into a stack
+  // of white slabs with no body — the balconies have to read as attached to
+  // something, not as the something.
+  const balcony = (y: number, width: number, z: number) => {
+    const slab = box(width, 0.022, 0.08, "#e0d4b4", y);
+    move(slab, 0, 0, z);
+    const rail = box(width, 0.042, 0.012, "#2f6b7a", y + 0.022);
+    move(rail, 0, 0, z + 0.034);
+    const railTop = box(width, 0.01, 0.018, "#9fc6cc", y + 0.064);
+    move(railTop, 0, 0, z + 0.034);
+    return [slab, rail, railTop];
+  };
+  parts.push(...balcony(BASE_H * 0.5, 0.38, 0.205));
+  parts.push(...balcony(BASE_H + UPPER_H * 0.45, 0.3, 0.165));
+
+  // Flat parapet roofline with a gold trim band.
+  const parapet = box(0.44, 0.055, 0.38, "#a9791f", TOP);
+  move(parapet, -0.26, 0, -0.04);
+  const parapetTrim = box(0.46, 0.016, 0.4, "#d8b158", TOP + 0.055);
+  move(parapetTrim, -0.26, 0, -0.04);
+  parts.push(parapet, parapetTrim);
+
+  // Windows on the shaded return wall, where there are no balconies to read
+  // against. Teal glass, same family as the railings.
+  for (const y of [BASE_H * 0.25, BASE_H * 0.72, BASE_H + UPPER_H * 0.3]) {
+    for (const z of [-0.12, 0.06]) {
+      const win = box(0.02, 0.09, 0.08, "#1f6e66", y);
+      move(win, -0.472, 0, z - 0.04);
+      parts.push(win);
     }
   }
 
-  const awning = box(0.4, 0.04, 0.1, "#b5502e", 0.14);
-  move(awning, 0, 0, 0.26);
-  const door = box(0.12, 0.14, 0.02, "#8a3a1f", 0);
-  move(door, 0, 0, 0.215);
-  parts.push(awning, door);
+  // Ground-floor entrance: awning, glass doors, a step.
+  const awning = box(0.28, 0.032, 0.1, "#c7503a", 0.2);
+  move(awning, -0.22, 0, 0.23);
+  const doors = box(0.15, 0.17, 0.02, "#2f6b5e", 0);
+  move(doors, -0.22, 0, 0.175);
+  const step = box(0.22, 0.02, 0.07, "#ded3b8", 0);
+  move(step, -0.22, 0, 0.225);
+  parts.push(awning, doors, step);
 
-  const pennantPole = coneFrustum(0.008, 0.012, 0.16, 5, "#8a8f91", BLOCK_H + 0.08);
+  // Rooftop pennant.
+  const pennantPole = coneFrustum(0.007, 0.011, 0.16, 5, "#8a8f91", TOP + 0.078);
+  move(pennantPole, -0.42, 0, -0.04);
   const pennantFlag = blade(
     [
       [0, 0],
-      [0.12, -0.03],
-      [0, -0.06]
+      [0.11, -0.028],
+      [0, -0.056]
     ],
     "#d8b158",
-    0.015
+    0.014
   );
-  move(pennantFlag, 0.008, BLOCK_H + 0.2, 0);
+  move(pennantFlag, -0.415, TOP + 0.195, -0.04);
   parts.push(pennantPole, pennantFlag);
 
-  const pool = box(0.32, 0.02, 0.4, "#4a90a4", 0);
-  move(pool, 0.55, 0, -0.05);
-  const poolHighlight = box(0.32, 0.022, 0.08, "#8fc0c2", 0);
-  move(poolHighlight, 0.55, 0, -0.22);
-  parts.push(pool, poolHighlight);
+  // The pool deck, off to one side. Two tones so it reads as water with a
+  // shallow end rather than a flat blue rectangle.
+  const deck = box(0.38, 0.015, 0.4, "#efe6cf", 0);
+  move(deck, 0.3, 0, -0.06);
+  const pool = box(0.25, 0.018, 0.28, "#2f7f9e", 0.008);
+  move(pool, 0.3, 0, -0.06);
+  const poolShallow = box(0.25, 0.02, 0.08, "#67b4c4", 0.008);
+  move(poolShallow, 0.3, 0, -0.17);
+  parts.push(deck, pool, poolShallow);
+
+  // Loungers and a parasol on the deck. Tiny, but they are what turn a blue
+  // rectangle into a pool.
+  for (const z of [0.1, 0.17]) {
+    const lounger = box(0.1, 0.015, 0.042, "#f7f2e6", 0.015);
+    move(lounger, 0.24, 0, z);
+    parts.push(lounger);
+  }
+  const parasolPole = coneFrustum(0.006, 0.008, 0.13, 4, "#8d6b45", 0.015);
+  move(parasolPole, 0.42, 0, 0.13);
+  const parasol = coneFrustum(0.001, 0.1, 0.05, 7, "#c7503a", 0.13);
+  move(parasol, 0.42, 0, 0.13);
+  parts.push(parasolPole, parasol);
+
+  // Two palms, different heights. The strongest "leisure" cue on the model,
+  // and the clearest thing to lose when a surge comes through.
+  const palm = (x: number, z: number, height: number) => {
+    const built: THREE.BufferGeometry[] = [];
+    const trunk = coneFrustum(0.018, 0.032, height, 6, "#8d6b45", 0);
+    // A slight lean, the way a coconut palm actually grows on a beach.
+    rotate(trunk, 0.1, 0, 0.12);
+    move(trunk, x, 0, z);
+    built.push(trunk);
+
+    const frondCount = 6;
+    for (let i = 0; i < frondCount; i++) {
+      const yaw = (i / frondCount) * Math.PI * 2;
+      const frond = blade(
+        [
+          [-0.025, 0],
+          [0.025, 0],
+          [0.012, 0.26],
+          [-0.012, 0.26]
+        ],
+        i % 2 === 0 ? "#3f7f3a" : "#5aa04c",
+        0.016
+      );
+      rotate(frond, -0.95, 0, 0);
+      rotate(frond, 0, yaw, 0);
+      move(frond, x + 0.03, height - 0.01, z);
+      built.push(frond);
+    }
+    return built;
+  };
+  parts.push(...palm(0.08, 0.3, 0.44), ...palm(0.56, 0.3, 0.34));
 
   return mergeGeometries(parts);
 }
 
-/**
- * A single Mangrove tree: four angled stilt roots converging upward into a
- * two-tone rounded canopy.
- *
- * STEP_PROMPT_liquid_glass_hud.md item 1.4: read live as "a small, crude,
- * blobby pinecone-on-a-stick" — this construction was already correct
- * (the fused 3-clump stand, stilt roots, two-tone canopy all match
- * STEP_PROMPT_map_reshape_veg_icons.md's own spec exactly), just not
- * legible at gameplay scale/tint. Two real causes, both checked against
- * the actual `defenseMangrove` instance tint (`#4FAE6E`) rather than
- * guessed at:
- * - The roots (0.02-0.045 radius) are thin enough to be functionally
- *   invisible at this zoom — thickened below so the one visual cue no
- *   other roster element has (aerial prop roots) actually registers.
- * - The old highlight color (`#3c9c8e`) is close enough in hue to the
- *   base (`#1f6e66`) that post-tint they land only ~25 RGB units apart
- *   (checked: `#1f6e66`*tint ≈ (10,75,44), `#3c9c8e`*tint ≈ (19,106,61))
- *   — real but subtle, reading as ordinary facet shading rather than a
- *   deliberate two-tone canopy. Swapped for a genuinely warmer
- *   yellow-green (`#6fc95a`*tint ≈ (34,137,39), ~60-90 units apart on
- *   every channel) — the same "push lightness/hue harder, hue-matching
- *   alone doesn't survive this tint" fix already validated on Sand
- *   Mining's scoop and Khazan's water in the icon-legibility pass. A
- *   second, smaller highlight bump added off-axis from the first breaks
- *   up the single-smooth-sphere "pinecone" silhouette into a clustered,
- *   foliage-like one instead.
- */
+/** A single Mangrove tree: four angled stilt roots converging upward into a two-tone rounded canopy. */
 function mangroveClump(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const rootAngles = [-0.6, -0.22, 0.22, 0.6];
+  const rootAngles = [-0.55, -0.2, 0.2, 0.55];
   for (const angle of rootAngles) {
-    const root = coneFrustum(0.035, 0.075, 0.34, 5, "#5a4632", 0);
+    const root = coneFrustum(0.02, 0.045, 0.32, 5, "#5a4632", 0);
     rotate(root, 0, 0, angle);
-    move(root, Math.sin(angle) * 0.07, 0, 0);
+    move(root, Math.sin(angle) * 0.05, 0, 0);
     parts.push(root);
   }
   const canopyBase = dome(0.32, 0.24, 0.3, "#1f6e66", 0.28);
-  const canopyHighlight = dome(0.2, 0.17, 0.21, "#6fc95a", 0.42);
-  move(canopyHighlight, 0.09, 0, -0.05);
-  const canopyBump = dome(0.14, 0.12, 0.15, "#6fc95a", 0.4);
-  move(canopyBump, -0.13, 0, 0.1);
-  parts.push(canopyBase, canopyHighlight, canopyBump);
+  const canopyHighlight = dome(0.2, 0.16, 0.2, "#3c9c8e", 0.4);
+  move(canopyHighlight, 0.08, 0, -0.04);
+  parts.push(canopyBase, canopyHighlight);
   return mergeGeometries(parts);
 }
 
@@ -342,15 +382,13 @@ function khazanGeometry(): THREE.BufferGeometry {
   move(water, -0.17, 0, 0);
   parts.push(water);
 
-  // The paddy-row half (previously a static 3-box loop right here, same
-  // "#8fc25a"/"#a0d060" colors, local x=0.24, z=-0.2/0/0.2, each
-  // 0.28x0.035x0.14 at baseY 0.015) moved out to `KhazanPaddyManager`
-  // (STEP_PROMPT_creature_reactions.md Section 4): it now needs four
-  // swappable growth-stage variants (shoots/full/gold/stubble) tied to
-  // real hazard-cycle state, which a single merged, static per-type
-  // `InstancedMesh` geometry (what every other part of this function
-  // still is) can't do per-tile. Every other part of Khazan — bund,
-  // water, gate, slats — is unchanged and still lives here.
+  for (let i = 0; i < 3; i++) {
+    const tone = i % 2 === 0 ? "#8fc25a" : "#a0d060";
+    const row = box(0.28, 0.035, 0.14, tone, 0.015);
+    move(row, 0.24, 0, -0.2 + i * 0.2);
+    parts.push(row);
+  }
+
   const gate = box(0.16, 0.16, 0.06, "#8a8f91", 0);
   move(gate, 0, 0, 0.42);
   parts.push(gate);
@@ -428,88 +466,240 @@ function sandMiningGeometry(): THREE.BufferGeometry {
   return mergeGeometries([bottom, middle, top, groove1, groove2, armBase, scoop]);
 }
 
-/** House: a cream cottage wall under a wide overhanging gable roof, a lean-to veranda at the front, and a pair of window insets. */
+/**
+ * House — a Goan village house.
+ *
+ * Rebuilt from a cream box with a roof on it. The earlier version read as a
+ * generic cottage from anywhere; this is specifically the thing that stands
+ * on this coast, and that matters for a game about what a storm takes away.
+ * The features are the ones a Goan house actually has and that survive at
+ * this size: a raised laterite plinth, ochre walls, a steep terracotta tile
+ * roof with a ridge course, and a `balcão` — the covered front porch with
+ * built-in seats that is the single most recognisable element of the style.
+ *
+ * Everything is kept chunky on purpose. These props are about a third of a
+ * hex across on screen, so detail finer than roughly 3 cm of world space
+ * reads as noise rather than as a feature.
+ */
 function houseGeometry(): THREE.BufferGeometry {
-  const WALL_H = 0.32;
-  const wall = box(0.62, WALL_H, 0.5, "#ede3c8", 0);
-  // Wider than the wall on purpose — the overhang is the key silhouette
-  // cue distinguishing this from a flush-roofed generic box.
-  const roof = taperedSlab(0.8, 0.08, 0.26, 0.64, "#b5502e", WALL_H);
-  const fascia = box(0.8, 0.03, 0.02, "#8a3a1f", WALL_H);
-  move(fascia, 0, 0, 0.32);
-  const veranda = taperedSlab(0.26, 0.22, 0.16, 0.18, "#a9793f", 0);
-  move(veranda, 0, 0, 0.34);
+  const PLINTH_H = 0.07;
+  const WALL_H = 0.3;
+  const WALL_TOP = PLINTH_H + WALL_H;
 
-  const window = (x: number) => {
-    const g = box(0.08, 0.1, 0.015, "#a9793f", 0.1);
-    move(g, x, 0, 0.255);
-    return g;
+  // Laterite plinth. Real houses here sit up off the ground against the
+  // monsoon, which is exactly the detail worth keeping in a game about water.
+  const plinth = box(0.68, PLINTH_H, 0.56, "#9c5a37", 0);
+  const wall = box(0.6, WALL_H, 0.48, "#f0e4c6", PLINTH_H);
+  // A band of exposed laterite at the base of the wall, the usual treatment.
+  const skirt = box(0.608, 0.05, 0.488, "#b4714a", PLINTH_H);
+
+  // Steep tiled roof with a generous overhang — the overhang is the main
+  // silhouette cue, and a steep pitch is what sheds 3 m of monsoon rain.
+  const roof = taperedSlab(0.84, 0.06, 0.3, 0.7, "#b5502e", WALL_TOP);
+  const ridge = box(0.1, 0.05, 0.72, "#8a3a1f", WALL_TOP + 0.28);
+  const eave = box(0.86, 0.035, 0.03, "#8a3a1f", WALL_TOP);
+  move(eave, 0, 0, 0.35);
+  const eaveBack = box(0.86, 0.035, 0.03, "#8a3a1f", WALL_TOP);
+  move(eaveBack, 0, 0, -0.35);
+
+  const parts: THREE.BufferGeometry[] = [plinth, wall, skirt, roof, ridge, eave, eaveBack];
+
+  // The balcão: a raised porch deck, two slim pillars carrying the roof
+  // overhang, and the low seat walls that make it a balcão rather than a step.
+  const deck = box(0.42, 0.05, 0.16, "#c69a63", PLINTH_H);
+  move(deck, 0, 0, 0.3);
+  parts.push(deck);
+
+  for (const x of [-0.17, 0.17]) {
+    const pillar = coneFrustum(0.022, 0.03, 0.26, 6, "#f0e4c6", PLINTH_H + 0.05);
+    move(pillar, x, 0, 0.33);
+    const seat = box(0.06, 0.09, 0.14, "#e2d3b2", PLINTH_H + 0.05);
+    move(seat, x, 0, 0.3);
+    parts.push(pillar, seat);
+  }
+
+  // Door, set into the porch, with a terracotta lintel over it.
+  const door = box(0.13, 0.19, 0.02, "#6b4226", PLINTH_H + 0.05);
+  move(door, 0, 0, 0.242);
+  const lintel = box(0.17, 0.025, 0.02, "#b5502e", PLINTH_H + 0.24);
+  move(lintel, 0, 0, 0.245);
+  parts.push(door, lintel);
+
+  // Shuttered windows on the two visible walls. The shutters are the reason
+  // these read as windows at a glance rather than as dark rectangles.
+  const window = (x: number, z: number, faceZ: boolean) => {
+    const frame = box(faceZ ? 0.13 : 0.02, 0.12, faceZ ? 0.02 : 0.13, "#f7f0dd", PLINTH_H + 0.11);
+    move(frame, x, 0, z);
+    const pane = box(faceZ ? 0.09 : 0.022, 0.085, faceZ ? 0.022 : 0.09, "#3b5a52", PLINTH_H + 0.125);
+    move(pane, x, 0, z);
+    const shutterA = box(faceZ ? 0.035 : 0.024, 0.11, faceZ ? 0.024 : 0.035, "#2f6b5e", PLINTH_H + 0.115);
+    move(shutterA, faceZ ? x - 0.05 : x, 0, faceZ ? z : z - 0.05);
+    const shutterB = box(faceZ ? 0.035 : 0.024, 0.11, faceZ ? 0.024 : 0.035, "#2f6b5e", PLINTH_H + 0.115);
+    move(shutterB, faceZ ? x + 0.05 : x, 0, faceZ ? z : z + 0.05);
+    return [frame, pane, shutterA, shutterB];
   };
+  parts.push(...window(-0.21, 0.245, true), ...window(0.21, 0.245, true));
+  parts.push(...window(-0.305, -0.1, false));
 
-  return mergeGeometries([wall, roof, fascia, veranda, window(-0.18), window(0.18)]);
+  // Rooftop water tank — ubiquitous on Indian houses, and a strong
+  // silhouette cue from this game's near-top-down camera.
+  const tankStand = box(0.1, 0.05, 0.1, "#8a8f91", WALL_TOP + 0.2);
+  move(tankStand, 0.19, 0, -0.14);
+  const tank = coneFrustum(0.07, 0.075, 0.1, 8, "#1f6e66", WALL_TOP + 0.25);
+  move(tank, 0.19, 0, -0.14);
+  const tankLid = coneFrustum(0.05, 0.072, 0.025, 8, "#2f8f84", WALL_TOP + 0.35);
+  move(tankLid, 0.19, 0, -0.14);
+  parts.push(tankStand, tank, tankLid);
+
+  return mergeGeometries(parts);
 }
 
-/** Yacht (STEP_PROMPT_economy_food_yacht.md item 4): a low, both-ends-tapered hull, a thin mast, one angled sail, a gold waterline trim — a single small accent piece, not a scene centerpiece. Purely cosmetic (Coast-only, zero effects). */
+/**
+ * Yacht — the Coin sink, and the one purely decorative thing on the board.
+ *
+ * Rebuilt from a flat lens with one triangle on a stick. It is the most
+ * expensive thing a player can buy and it was the least convincing object in
+ * the game, which is a poor trade for several turns of saved income. Now it
+ * has the parts an eye actually uses to recognise a yacht: a hull with a dark
+ * bootline, a raised coachroof, a cockpit, a mainsail AND a jib (one sail
+ * reads as a dinghy), a boom, and a stern flag.
+ *
+ * Still deliberately small — a Coast-tile ornament, not a centrepiece — and
+ * still zero gameplay effect.
+ */
 function yachtGeometry(): THREE.BufferGeometry {
-  const hull = plan(
+  const hullOutline: [number, number][] = [
+    [-0.4, 0],
+    [-0.3, 0.085],
+    [-0.05, 0.115],
+    [0.22, 0.1],
+    [0.4, 0.04],
+    [0.4, -0.04],
+    [0.22, -0.1],
+    [-0.05, -0.115],
+    [-0.3, -0.085]
+  ];
+
+  const hull = plan(hullOutline, 0.1, "#f4f1e8", 0);
+  // A dark bootline just above the waterline. Real hulls have one, and it is
+  // what stops a white shape reading as a bar of soap.
+  const boot = plan(hullOutline, 0.022, "#2c4a5a", 0.055);
+  const deck = plan(
     [
-      [-0.42, 0],
-      [-0.28, 0.1],
-      [0, 0.14],
-      [0.28, 0.1],
-      [0.42, 0],
-      [0.28, -0.1],
-      [0, -0.14],
-      [-0.28, -0.1]
+      [-0.34, 0],
+      [-0.26, 0.06],
+      [-0.04, 0.085],
+      [0.2, 0.072],
+      [0.34, 0.028],
+      [0.34, -0.028],
+      [0.2, -0.072],
+      [-0.04, -0.085],
+      [-0.26, -0.06]
     ],
-    0.1,
-    "#f2ede0",
-    0
-  );
-  const waterline = plan(
-    [
-      [-0.4, 0],
-      [-0.26, 0.09],
-      [0, 0.125],
-      [0.26, 0.09],
-      [0.4, 0],
-      [0.26, -0.09],
-      [0, -0.125],
-      [-0.26, -0.09]
-    ],
-    0.02,
-    "#d8b158",
-    0
+    0.012,
+    "#d8c69a",
+    0.1
   );
 
-  const mast = coneFrustum(0.012, 0.02, 0.5, 6, "#7c6a4f", 0.1);
-  // blade()'s shape lies in the local XY plane (its flat face normal
-  // along Z) — a 90° rotateY, tried first, turned that face edge-on to a
-  // camera that looks in mostly along -Z, making the sail vanish. A small
-  // angle instead keeps the flat face mostly toward the camera (reads as
-  // a real sail, not a sliver) while still looking "angled," not flat-on.
-  const sail = blade(
+  const parts: THREE.BufferGeometry[] = [hull, boot, deck];
+
+  // Coachroof and cockpit — the break in the deck line that says "cabin".
+  const coachroof = plan(
     [
-      [0, 0.56],
-      [0.26, 0.42],
-      [0, 0.2]
+      [-0.14, 0.055],
+      [0.1, 0.05],
+      [0.14, 0],
+      [0.1, -0.05],
+      [-0.14, -0.055]
     ],
-    "#e7e2cf",
+    0.055,
+    "#f4f1e8",
+    0.112
+  );
+  const coachroofTop = plan(
+    [
+      [-0.13, 0.045],
+      [0.09, 0.04],
+      [0.12, 0],
+      [0.09, -0.04],
+      [-0.13, -0.045]
+    ],
+    0.014,
+    "#c9bda0",
+    0.167
+  );
+  parts.push(coachroof, coachroofTop);
+
+  const cockpit = box(0.12, 0.03, 0.1, "#8d6b45", 0.112);
+  move(cockpit, -0.24, 0, 0);
+  parts.push(cockpit);
+
+  const mast = coneFrustum(0.009, 0.016, 0.62, 6, "#d9d4c6", 0.112);
+  move(mast, 0.02, 0, 0);
+  // The boom, angled slightly off centreline so the rig does not read as flat.
+  const boom = box(0.3, 0.014, 0.014, "#d9d4c6", 0.2);
+  move(boom, -0.12, 0, 0.012);
+  parts.push(mast, boom);
+
+  // Mainsail aft of the mast, jib forward of it. blade()'s shape lies in the
+  // local XY plane with its face normal along Z; a 90-degree yaw would turn
+  // that face edge-on to this game's camera and the sail would vanish, so
+  // both get a small yaw instead — enough to read as angled, not enough to
+  // disappear.
+  const mainsail = blade(
+    [
+      [0.02, 0.7],
+      [-0.3, 0.26],
+      [0.02, 0.22]
+    ],
+    "#f2efe2",
+    0.018
+  );
+  rotate(mainsail, 0, 0.34, 0);
+  move(mainsail, 0.02, 0.112, 0);
+
+  const jib = blade(
+    [
+      [0.02, 0.66],
+      [0.3, 0.2],
+      [0.02, 0.2]
+    ],
+    "#e6dcc4",
+    0.016
+  );
+  rotate(jib, 0, 0.34, 0);
+  move(jib, 0.02, 0.112, 0);
+
+  const sailSeam = blade(
+    [
+      [0.0, 0.7],
+      [-0.03, 0.675],
+      [0.0, 0.22]
+    ],
+    "#c2a86a",
     0.02
   );
-  rotate(sail, 0, 0.35, 0);
-  const sailTrim = blade(
-    [
-      [0, 0.56],
-      [0.03, 0.545],
-      [0, 0.2]
-    ],
-    "#d8b158",
-    0.022
-  );
-  rotate(sailTrim, 0, 0.35, 0);
+  rotate(sailSeam, 0, 0.34, 0);
+  move(sailSeam, 0.02, 0.112, 0);
+  parts.push(mainsail, jib, sailSeam);
 
-  return mergeGeometries([hull, waterline, mast, sail, sailTrim]);
+  // Stern flag — a small bright accent at the one end of the boat that has
+  // nothing else going on.
+  const flagPole = coneFrustum(0.005, 0.007, 0.1, 4, "#d9d4c6", 0.112);
+  move(flagPole, -0.36, 0, 0);
+  const flag = blade(
+    [
+      [0, 0],
+      [0.09, -0.02],
+      [0, -0.045]
+    ],
+    "#c7503a",
+    0.012
+  );
+  move(flag, -0.355, 0.2, 0);
+  parts.push(flagPole, flag);
+
+  return mergeGeometries(parts);
 }
 
 const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
@@ -526,49 +716,8 @@ const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   yacht: yachtGeometry
 };
 
-/**
- * STEP_PROMPT_hazard_vfx_and_fluidity.md Section 2: a whole-assembly scale
- * pass, applied here at the dispatcher rather than inside each builder, so
- * every element's per-type bound factor lives in one readable table instead
- * of eleven separate edits. "Scale up as a whole-assembly transform first"
- * is the doc's own prescribed first step (hand-redistributing proportions
- * only where a straight scale-up breaks something) — measured each
- * element's actual current bounding footprint against the hex's own
- * across-flats visual width (`HEX_SIZE=1.0` → ~1.7 units) before picking a
- * factor, rather than applying one blanket number to all eleven: elements
- * that were already closer to the 60-80%-of-tile target (Seawall,
- * Breakwater, Khazan, Small Dam — all built with ~0.85-1.0-wide geometry
- * from earlier passes) get a smaller bump than the ones that read
- * noticeably sparse at gameplay zoom (Mangrove, Sandy Vegetation — their
- * "fused 3-clump stand" offsets individual plants outward but each plant
- * itself stayed small, which spreads a sparse look wider rather than fixing
- * it; a real per-plant size increase is what actually fixes "sparse").
- *
- * `yacht` is deliberately left at 1.0, not an oversight: its own comment
- * (`yachtGeometry()`, STEP_PROMPT_economy_food_yacht.md) explicitly says "a
- * single small accent piece, not a scene centerpiece" — scaling it to match
- * every other element's new baseline would reverse that already-made,
- * intentional design call, not fix an oversight. Flagged in PROGRESS.md
- * rather than silently applied or silently skipped.
- */
-export const SCALE_FACTOR: Record<string, number> = {
-  dune: 1.45,
-  sandy_vegetation: 1.6,
-  beachside_resort: 1.25,
-  seawall: 1.5,
-  breakwater: 1.4,
-  mangrove: 1.5,
-  khazan: 1.35,
-  small_dam: 1.3,
-  sand_mining: 1.35,
-  house: 1.5,
-  yacht: 1.0
-};
-
 export function createElementGeometry(elementId: string): THREE.BufferGeometry {
   const builder = BUILDERS[elementId];
   if (!builder) throw new Error(`No geometry builder for element id: ${elementId}`);
-  const geometry = builder();
-  const factor = SCALE_FACTOR[elementId] ?? 1;
-  return factor === 1 ? geometry : scale(geometry, factor);
+  return builder();
 }

@@ -1,22 +1,36 @@
 {
-  "name": "khazan",
+  "name": "riptide-rising",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:emulated": "vite --mode emulated",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "tsx tools/smoke.ts",
     "mapgen": "tsx tools/mapgen/generate.ts",
-    "balance-sim": "tsx tools/balance_sim/index.ts"
+    "balance-sim": "tsx tools/balance_sim/index.ts",
+    "emulators": "firebase emulators:start",
+    "rules:test": "firebase deploy --only firestore:rules --dry-run",
+    "deploy": "npm run build && firebase deploy",
+    "deploy:hosting": "npm run build && firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes",
+    "mapgen:cities": "tsx tools/mapgen/buildCityMaps.ts",
+    "mapgen:tutorial": "tsx tools/mapgen/buildTutorialMap.ts",
+    "walkthrough": "tsx tools/walkthrough.ts",
+    "mapgen:panaji": "tsx tools/mapgen/buildPanajiMap.ts",
+    "mapgen:geocode": "tsx tools/mapgen/geocodePanaji.ts",
+    "mapgen:basemap": "tsx tools/mapgen/fetchPanajiBasemap.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",
     "@types/node": "^22.7.0",
     "@types/three": "^0.185.4",
+    "firebase-tools": "^13.20.0",
     "playwright": "^1.47.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
@@ -24,6 +38,11 @@
     "vitest": "^2.1.0"
   },
   "dependencies": {
+    "firebase": "^11.10.0",
     "three": "^0.169.0"
+  },
+  "description": "A coastal resilience strategy game set in Goa. Build defences, weather the monsoon, keep the coast alive.",
+  "engines": {
+    "node": ">=20"
   }
 }

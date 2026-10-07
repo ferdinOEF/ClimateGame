@@ -1,114 +1,61 @@
 /**
- * Section 4: the terrain map is fixed and pre-generated, not player-drawn.
- * This script runs ONCE, offline, and serializes the result to
- * src/data/map.json. It is never run at app runtime — `npm run mapgen`,
+ * Section 4 (v2.4): the terrain map is fixed and pre-generated, not
+ * player-drawn. This script runs ONCE, offline, and serializes the result
+ * to src/data/map.json. It is never run at app runtime — `npm run mapgen`,
  * check the output in, done.
  *
- * v2.11 — user supplied a real map screenshot (Google Maps, Panaji /
- * Taleigao / Caranzalem / Dona Paula) and asked to recreate it. The single
- * biggest shape mismatch: the reference shows Dona Paula as a distinct
- * hook — the coast runs south in a fairly straight line through Miramar
- * and Caranzalem, dips inland slightly in a shallow cove just past
- * Durgavado, then the headland itself juts sharply back out west to a
- * narrow point, and the point curls back east into its own small bay at
- * the very tip. v2.10's coastline only ever monotonically tapered to a
- * point — no cove, no hook. v2.11 adds three more points to
- * COASTLINE_TRACE to encode that non-monotonic shape directly (cove at
- * y=0.6, point at y=0.675, hook-back at y=0.7), instead of changing the
- * taper formula itself. Everything else about the reference (Ribandar
- * upstream/east of the river bend, the bay opening west past Reis Magos
- * Fort) was already the right general arrangement from v2.9/v2.10, just
- * without this specific headland detail — the river's own curve around
- * Reis Magos Fort isn't modeled (that bank is off the north edge of the
- * grid, outside what this map represents), flagged as a known gap below.
+ * Layout (v2.4, explicit left-to-right): Sea -> Beach -> Land (interior),
+ * with a winding River entering the interior just past Beach and bending
+ * through several turns as it crosses east off the map's edge (per
+ * STEP_PROMPT_map_reshape_veg_icons.md, superseding the earlier single
+ * two-arm-confluence mouth shape — see git history). Estuary is no longer
+ * one blob at a river mouth: it's several distinct patches strung along the
+ * river's bends (one larger patch at the widest/southernmost bend, several
+ * smaller ones elsewhere), reading as a floodplain wetland threaded through
+ * the terrain rather than a single delta. Land fills everything else,
+ * reading as two clusters: a modest pocket near the estuary (wherever the
+ * river's bends leave gaps) and a larger, deliberately separate Residential
+ * cluster placed at the Land tile farthest from any River/Estuary tile —
+ * where the starting claim's prebuilt Houses continue to sit.
  *
- * v2.10 — user asked to expand the map further, both vertically and
- * horizontally, so the shape reads as Panjim at a glance: the river/bay
- * frontage in the north and the coastline sweeping down to Dona Paula in
- * the south. Two problems in v2.9 worked against that:
+ * The grid is NOT a plain axial rectangle (q in [Q_MIN,Q_MAX], r in
+ * [R_MIN,R_MAX]). `axialToWorld`'s x = sqrt3*(q + r/2) means a plain axial
+ * rectangle renders as a *parallelogram* in world space, not a rectangle —
+ * each row is shifted sideways from the last by the r/2 shear term, so
+ * over R_MAX-R_MIN rows the accumulated drift is several hex-widths. With
+ * a camera that never yaws (Section 6), a tilted world-space edge reads as
+ * a diagonal on screen no matter how it's framed — which is exactly what a
+ * live playtest found: Sea "wrapping" around a corner, and the
+ * Estuary/River band reading as "a diagonal vein" instead of a coherent
+ * side. (An earlier version tried banding by axial q directly to fix a
+ * different, narrower bug — see git history — which produces a
+ * *consistent* diagonal, better than the original worldX-threshold bug's
+ * inconsistent one, but still a visible diagonal, not the fix.)
  *
- * 1. The river band (top 5 rows) and the coastal band below it used two
- *    unrelated width formulas — a flat constant for the river's sea-mouth
- *    cut, then an entirely separate trace-based taper starting immediately
- *    below it. That produced a visible step/kink right where the river
- *    meets the open coast, instead of one continuous bay-to-headland
- *    curve. v2.10 adds `riverRowSeaWidth()`, which interpolates the
- *    river rows' sea-mouth width up to match the first coastal row's
- *    width exactly, so the coastline reads as a single sweep.
- * 2. R_MAX only gave the Miramar -> Dona Paula taper 13 rows of vertical
- *    resolution, not enough for the headland to read as an actual
- *    point/cape rather than a stairstep. v2.10 extends R_MAX by 5 more
- *    rows (9 -> 14) for a sharper, smoother taper, and drops the taper's
- *    minimum width from 3 cols to 2 so the Dona Paula tip reads as a
- *    narrow cape, not a blunt edge.
- *
- * Both of those add a lot more open-sea tile area (more coastal rows,
- * each with its own sea/beach cut), which would have pulled the river/sea
- * tile ratio away from the real CRZ proportions this project grounds
- * itself in (river the single largest water category, ahead of open sea
- * — see panjim_mandovi_case_study.json). The first attempt at fixing this
- * widened RIVER_ROWS (5 -> 7), but that silently absorbed two rows that
- * used to be the city's riverfront land/estuary frontage (where several
- * landmarks sit) into open river tiles — wrong trade. RIVER_ROWS stays at
- * v2.9's 5, and the coastal width formula's ceiling comes down instead
- * (headland tapers to 1 col, bay tops out at 6, both down from v2.9) —
- * net effect: sanity check `riverVsSeaProportionate` still holds
- * (verified by running the script) without eating into the land mass.
- *
- * Horizontal expansion: Q_MIN -10 -> -13 (more open-sea room to the west
- * so the wider bay silhouette doesn't crowd the grid edge) and Q_MAX 20
- * -> 25 (more interior/upstream room so the taller map's Land mass, both
- * creeks, and the east-side khazan cluster keep the same proportions
- * relative to the coastline rather than getting squeezed).
- *
- * Net grid: 31x13 (v2.8) -> 31x18 (v2.9) -> 39x23 (v2.10).
- *
- * Everything else — coastline trace shape, Ourem + St Inez creeks, the
- * two Land clusters, the east-side khazan/Ribandar cluster, the river
- * meeting the sea on the west — is kept as-is from v2.9, just re-run over
- * the bigger grid.
+ * The actual fix: build the grid with a per-row q-offset that cancels the
+ * shear (`rowQMin(r) = Q_MIN - floor(r/2)`), the standard "offset
+ * coordinates" trick for laying out a rectangular hex region. This leaves
+ * only the natural half-hex stagger between adjacent rows (the normal,
+ * expected brick-like offset every hex grid has) instead of an
+ * accumulating drift — the result is an actual rectangle in world space,
+ * so Sea/Beach/Land bands read as straight sides regardless of pan, zoom,
+ * or which row you look at (the River/Estuary no longer form a "band" at
+ * all — see below).
  */
 import fs from "node:fs";
 import path from "node:path";
-import { type AxialCoord, axialKey, neighbor, axialDistance, hexSpiral } from "../../src/core/hex";
+import { type AxialCoord, axialKey, neighbor, axialDistance, hexRing, hexSpiral } from "../../src/core/hex";
 import { TERRAIN_DEFS } from "../../src/core/terrain";
 
-// --- Coastline trace (south of the river only) ------------------------------
-const COASTLINE_TRACE: { x: number; y: number }[] = [
-  { x: 0.44, y: 0.235 }, // river mouth bay, near Reis Magos Fort's side
-  { x: 0.365, y: 0.27 }, // Miramar Beach frontage
-  { x: 0.34, y: 0.35 },
-  { x: 0.335, y: 0.45 }, // Caranzalem
-  { x: 0.33, y: 0.55 }, // Durgavado
-  { x: 0.4, y: 0.6 }, // v2.11: cove/recess just north of the Dona Paula headland (real coast dips inland here)
-  { x: 0.3, y: 0.645 }, // land juts back out, approaching the headland
-  { x: 0.22, y: 0.675 }, // Dona Paula headland tip — sharpest point, westmost
-  { x: 0.32, y: 0.7 } // v2.11: the hook — Dona Paula's point curls back east into its own small bay at the map's southern edge
-];
-const TRACE_X_MIN = Math.min(...COASTLINE_TRACE.map((p) => p.x));
-const TRACE_X_MAX = Math.max(...COASTLINE_TRACE.map((p) => p.x));
-
-function xFracAt(yFrac: number): number {
-  const pts = COASTLINE_TRACE;
-  if (yFrac <= pts[0].y) return pts[0].x;
-  if (yFrac >= pts[pts.length - 1].y) return pts[pts.length - 1].x;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i];
-    const b = pts[i + 1];
-    if (yFrac >= a.y && yFrac <= b.y) {
-      const t = b.y === a.y ? 0 : (yFrac - a.y) / (b.y - a.y);
-      return a.x + t * (b.x - a.x);
-    }
-  }
-  return pts[pts.length - 1].x;
-}
-
-// --- Grid --------------------------------------------------------------------
-const Q_MIN = -13; // v2.10: was -10 — more open-sea room for the wider bay
-const Q_MAX = 25; // v2.10: was 20 — more interior room now the map is taller
-const R_MIN = -8;
-const R_MAX = 14; // v2.10: was 9 — more vertical resolution for the Dona Paula taper
-const SEED = 20260928;
+// STEP_PROMPT_visuals_map_river.md item 2: cut total map size down
+// substantially for this pilot (~80-120 hex target — see that file's
+// reasoning) from the previous 243-hex/27x9 map. 15x7 = 105 hexes, still
+// "wider than tall" per Section 8.
+const Q_MIN = -7;
+const Q_MAX = 7;
+const R_MIN = -3;
+const R_MAX = 3;
+const SEED = 20260819; // fixed seed for this pilot (Section 4: "a fixed seed is fine ... a new seed per era is a later enhancement")
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -122,9 +69,11 @@ function mulberry32(seed: number) {
 }
 const rng = mulberry32(SEED);
 
-const TOTAL_COLS = Q_MAX - Q_MIN + 1;
-const TOTAL_ROWS = R_MAX - R_MIN + 1;
+// --- 1. Build a TRUE-rectangle grid via per-row offset coordinates --------
 
+const TOTAL_COLS = Q_MAX - Q_MIN + 1; // 15, same for every row by construction
+
+/** The q of the westmost hex in row `r`, shifted to cancel axialToWorld's r/2 shear. */
 function rowQMin(r: number): number {
   return Q_MIN - Math.floor(r / 2);
 }
@@ -132,236 +81,180 @@ function rowQMin(r: number): number {
 const allCoords: AxialCoord[] = [];
 for (let r = R_MIN; r <= R_MAX; r++) {
   const qMin = rowQMin(r);
-  for (let q = qMin; q < qMin + TOTAL_COLS; q++) allCoords.push({ q, r });
+  for (let q = qMin; q < qMin + TOTAL_COLS; q++) {
+    allCoords.push({ q, r });
+  }
 }
+
 const grid = new Map<string, AxialCoord>();
 for (const c of allCoords) grid.set(axialKey(c), c);
 function inGrid(c: AxialCoord): boolean {
   return grid.has(axialKey(c));
 }
+
+/** 0-based column index of `c` within its own row — the west-to-east position Coast/Beach are banded by. */
 function colIndex(c: AxialCoord): number {
   return c.q - rowQMin(c.r);
 }
-function coordAt(r: number, col: number): AxialCoord {
-  return { q: rowQMin(r) + col, r };
+
+/** The coordinate at a given (row-relative column index, row) — the inverse of colIndex, used to place river waypoints by their intended west-to-east position regardless of row shear. */
+function coordAt(colIdx: number, r: number): AxialCoord {
+  return { q: rowQMin(r) + colIdx, r };
 }
 
-// --- River: the north edge (Mandovi), mouth on the WEST meeting the open sea,
-// River running the rest of the row east, upstream. 7 rows so its tile share
-// matches the real CRZ-IVB (tidal water channel) proportion, which is
-// actually the single largest water category in the reference data —
-// bigger than the open sea, and still ahead of it after v2.10's extra
-// coastal rows. ---------------------------------------------------------------
-const RIVER_ROWS = 5; // v2.10: kept at v2.9's value — see note below on why this stayed put
-const riverRowSet = new Set<number>();
-for (let i = 0; i < RIVER_ROWS; i++) riverRowSet.add(R_MIN + i);
-const firstCoastRow = R_MIN + RIVER_ROWS;
+// --- 2. Coast / Beach are still fixed left-to-right bands -------------------
 
-const EXTRA_SEA_COLS = 1; // unchanged from v2.8 ("reduce the sea by 50%")
+const COAST_COLS = 1;
 const BEACH_COLS = 2;
-const RIVER_MOUTH_SEA_COLS = EXTRA_SEA_COLS + 3;
+const coastMaxCol = COAST_COLS - 1; // colIndex <= this: Sea
+const beachMaxCol = coastMaxCol + BEACH_COLS; // colIndex in (coastMaxCol, beachMaxCol]: Beach
 
-/** Coast column-width for a coastal (non-river) row — wide at the bay end, narrow at Dona Paula. */
-function coastWidthForRow(r: number): number {
-  const yFrac =
-    COASTLINE_TRACE[0].y +
-    ((r - firstCoastRow) / Math.max(1, R_MAX - firstCoastRow)) * (COASTLINE_TRACE[COASTLINE_TRACE.length - 1].y - COASTLINE_TRACE[0].y);
-  const xf = xFracAt(yFrac);
-  const t = (xf - TRACE_X_MIN) / (TRACE_X_MAX - TRACE_X_MIN);
-  const base = 1 + t * 5; // v2.10: was 3 + t*6 — narrower overall (headland down to 1, bay down to 6)
-  return Math.round(base) + EXTRA_SEA_COLS;
-}
+const coastCoords = allCoords.filter((c) => colIndex(c) <= coastMaxCol);
+const coastSet = new Set(coastCoords.map(axialKey));
+const beachCoords = allCoords.filter((c) => colIndex(c) > coastMaxCol && colIndex(c) <= beachMaxCol);
+const beachSet = new Set(beachCoords.map(axialKey));
+
+// --- 3. Carve a winding River with distributed Estuary patches -------------
+
+// The river's route as a sequence of (column index, row) waypoints: it
+// enters the interior immediately past Beach, swings south through a wide
+// bend (the deepest point, col 8/r 2 — the widest/southernmost bend, where
+// the larger Estuary patch sits), then swings back north before exiting off
+// the map's east edge. Unlike the old two-arm-to-confluence river, this is
+// NOT confined to an eastern "water zone" band — it's meant to cross the
+// full width of the interior, which is the whole point of "winding."
+const RIVER_WAYPOINT_SPEC: { col: number; r: number }[] = [
+  { col: 3, r: -2 }, // entry, just past Beach
+  { col: 5, r: -2 },
+  { col: 6, r: 0 },
+  { col: 8, r: 2 }, // widest/southernmost bend — the big Estuary patch anchors here
+  { col: 9, r: 1 },
+  { col: 11, r: -1 },
+  { col: 12, r: -2 },
+  { col: 14, r: -1 } // exits off the east edge
+];
+const riverWaypoints: AxialCoord[] = RIVER_WAYPOINT_SPEC.map((w) => coordAt(w.col, w.r));
 
 /**
- * v2.10: the river rows' own sea-mouth width, ramped from a narrower cut at
- * the map's north edge up to exactly coastWidthForRow(firstCoastRow) by the
- * last river row — so the coastline is one continuous curve from the bay
- * into the open coast instead of a flat river-mouth wall meeting a sudden
- * jump in width.
+ * A near-greedy walk from `start` toward `target` (always moves strictly
+ * closer, ties broken by a small random jitter for a natural wiggle rather
+ * than a detour), avoiding Coast/Beach (the river only ever touches the
+ * interior) and any hex already used earlier in the path (so the winding
+ * route doesn't cross or double back on itself).
  */
-function riverRowSeaWidth(r: number): number {
-  const tRow = (r - R_MIN) / Math.max(1, RIVER_ROWS - 1);
-  const endWidth = coastWidthForRow(firstCoastRow);
-  return Math.round(RIVER_MOUTH_SEA_COLS + tRow * (endWidth - RIVER_MOUTH_SEA_COLS));
-}
+function walkSegment(start: AxialCoord, target: AxialCoord, visited: Set<string>): AxialCoord[] {
+  const segPath: AxialCoord[] = [];
+  let current = start;
+  const maxSteps = axialDistance(start, target) * 2 + 10;
 
-// --- Estuary (Mangrove/Khazan terrain, src/data/elements.json restricts both
-// to validTerrainIds: ["estuary"]): riverbank fringe + interior corridor +
-// an east-side khazan cluster, matching the real CRZ khazan overlay's shape
-// (khazan_overlay.png, panjim_crz_classified_map.png). ----------------------
-function landStartCol(r: number): number {
-  return coastWidthForRow(r) + BEACH_COLS;
-}
-const RIVER_FRINGE_ROWS = 2;
-const RIVER_FRINGE_WIDTH = 18;
-const CORRIDOR_OFFSET = 2;
-const CORRIDOR_WIDTH = 3;
-function corridorBounds(r: number): { start: number; end: number } {
-  const wave = Math.sin((r - firstCoastRow) * 0.9) * 1.2;
-  const start = landStartCol(r) + CORRIDOR_OFFSET + Math.round(wave);
-  const end = start + CORRIDOR_WIDTH;
-  return { start, end };
-}
-function isRiverFringeRow(r: number): boolean {
-  return r >= firstCoastRow && r < firstCoastRow + RIVER_FRINGE_ROWS;
-}
-
-// East-side khazan/mangrove cluster (Ribandar analog): the classified CRZ
-// map shows a distinct olive-green mangrove/khazan patch near the map's
-// east edge, close to the river, separate from the city-frontage fringe.
-const EAST_KHAZAN_ROW_SPAN = 6; // v2.10: was 4 — kept proportional on the taller map
-function isEastKhazanTile(c: AxialCoord, col: number): boolean {
-  const rOffset = c.r - (firstCoastRow + RIVER_FRINGE_ROWS);
-  if (rOffset < 0 || rOffset >= EAST_KHAZAN_ROW_SPAN) return false;
-  const availableWidth = Math.max(1, TOTAL_COLS - landStartCol(c.r));
-  const fracStart = 0.82 - rOffset * 0.02;
-  const fracEnd = 0.98 - rOffset * 0.02;
-  const colStart = landStartCol(c.r) + Math.round(fracStart * availableWidth);
-  const colEnd = landStartCol(c.r) + Math.round(fracEnd * availableWidth);
-  return col >= colStart && col <= colEnd;
-}
-
-// --- Creeks: real named waterways cutting into the Land mass, drawn in the
-// same River terrain as the Mandovi (not Estuary) with an Estuary fringe on
-// both banks — grounded via a web lookup of each creek's real geography. ---
-interface CreekDef {
-  name: string;
-  rowStart: number;
-  rowEnd: number;
-  fracStart: number;
-  fracEnd: number;
-  meanderAmp: number;
-  meanderFreq: number;
-}
-const CREEKS: CreekDef[] = [
-  {
-    // Ourem Creek: short, hugs the river, bounds Fontainhas (old quarter)
-    // on its east side just inland from the Mandovi.
-    name: "ourem",
-    rowStart: firstCoastRow + 1,
-    rowEnd: firstCoastRow + 6,
-    fracStart: 0.4,
-    fracEnd: 0.52,
-    meanderAmp: 1.4,
-    meanderFreq: 0.8
-  },
-  {
-    // St Inez Creek: long, runs most of the peninsula's north-south length,
-    // from near the river down toward the Dona Paula/Taleigao hills at the
-    // southern end, further east/interior than Ourem Creek. With the
-    // vertical expansion this now spans nearly the full land mass.
-    name: "st_inez",
-    rowStart: firstCoastRow + 1,
-    rowEnd: R_MAX - 1,
-    fracStart: 0.65,
-    fracEnd: 0.78,
-    meanderAmp: 1.6,
-    meanderFreq: 0.5
+  for (let step = 0; step < maxSteps; step++) {
+    if (axialDistance(current, target) === 0) break;
+    const candidates: { coord: AxialCoord; score: number }[] = [];
+    for (let dir = 0; dir < 6; dir++) {
+      const n = neighbor(current, dir);
+      const key = axialKey(n);
+      if (!inGrid(n) || coastSet.has(key) || beachSet.has(key) || visited.has(key)) continue;
+      candidates.push({ coord: n, score: -axialDistance(n, target) + rng() * 0.3 });
+    }
+    if (candidates.length === 0) break; // boxed in; stop where we are
+    candidates.sort((a, b) => b.score - a.score);
+    current = candidates[0].coord;
+    visited.add(axialKey(current));
+    segPath.push(current);
   }
-];
-/** Column offset from landStartCol(r), scaled to that row's actual Land width so a creek always stays in-grid. */
-function creekColForRow(def: CreekDef, r: number): number {
-  const t = (r - def.rowStart) / Math.max(1, def.rowEnd - def.rowStart);
-  const frac = def.fracStart + t * (def.fracEnd - def.fracStart);
-  const availableWidth = Math.max(1, TOTAL_COLS - landStartCol(r));
-  const base = frac * availableWidth;
-  const meander = Math.sin((r - def.rowStart) * def.meanderFreq) * def.meanderAmp;
-  return Math.round(base + meander);
+  if (axialDistance(current, target) > 0 && inGrid(target) && !visited.has(axialKey(target))) {
+    segPath.push(target); // guarantee the segment actually reaches its waypoint
+    visited.add(axialKey(target));
+  }
+  return segPath;
 }
 
-// --- Assign terrain (base pass: coast/beach/river/fringe/corridor/khazan/land) ----
+const riverVisited = new Set<string>([axialKey(riverWaypoints[0])]);
+const riverPath: AxialCoord[] = [riverWaypoints[0]];
+for (let i = 0; i < riverWaypoints.length - 1; i++) {
+  riverPath.push(...walkSegment(riverWaypoints[i], riverWaypoints[i + 1], riverVisited));
+}
+
+// Estuary patches: the interior waypoints (excluding the entry/exit points)
+// each anchor one patch. The widest/southernmost bend (col 8, r 2) gets a
+// larger patch (itself plus two ring neighbors); every other interior
+// waypoint gets a single-tile patch. This reads as a floodplain wetland
+// strung along the river's bends, not one blob at a single mouth.
+const bigPatchAnchor = riverWaypoints[3]; // col 8, r 2
+const bigPatchExtra = hexRing(bigPatchAnchor, 1)
+  .filter((c) => inGrid(c) && !coastSet.has(axialKey(c)) && !beachSet.has(axialKey(c)))
+  .slice(0, 2);
+const smallPatchAnchors = [1, 2, 4, 5, 6].map((i) => riverWaypoints[i]); // the other 5 interior waypoints
+
+const estuaryCoords: AxialCoord[] = [bigPatchAnchor, ...bigPatchExtra, ...smallPatchAnchors];
+const estuarySet = new Set(estuaryCoords.map(axialKey));
+
+// --- 4. Assign terrain: Coast / Beach / Estuary / River fixed, rest Land ---
+
 const terrainOf = new Map<string, string>();
+for (const c of coastCoords) terrainOf.set(axialKey(c), "coast");
+for (const c of beachCoords) terrainOf.set(axialKey(c), "beach");
+for (const c of estuaryCoords) terrainOf.set(axialKey(c), "estuary");
+for (const c of riverPath) {
+  const key = axialKey(c);
+  if (!estuarySet.has(key)) terrainOf.set(key, "river");
+}
 for (const c of allCoords) {
   const key = axialKey(c);
-  const col = colIndex(c);
-
-  if (riverRowSet.has(c.r)) {
-    const seaMouthMaxCol = riverRowSeaWidth(c.r) - 1;
-    // v2.10: the northernmost river row is the actual mouth, where the
-    // Mandovi's main channel opens straight into the sea with no sandbar —
-    // skip the beach there so River tiles touch Coast tiles directly,
-    // instead of relying on the v2.9 width-discontinuity to do it by
-    // accident. Every other river row keeps its beach strip.
-    const beachColsThisRow = c.r === R_MIN ? 0 : BEACH_COLS;
-    const beachMaxCol = seaMouthMaxCol + beachColsThisRow;
-    if (col <= seaMouthMaxCol) terrainOf.set(key, "coast");
-    else if (col <= beachMaxCol) terrainOf.set(key, "beach");
-    else terrainOf.set(key, "river");
-    continue;
-  }
-
-  const cw = coastWidthForRow(c.r);
-  const coastMaxCol = cw - 1;
-  const beachMaxCol = coastMaxCol + BEACH_COLS;
-
-  if (col <= coastMaxCol) {
-    terrainOf.set(key, "coast");
-  } else if (col <= beachMaxCol) {
-    terrainOf.set(key, "beach");
-  } else if (isRiverFringeRow(c.r) && col <= beachMaxCol + RIVER_FRINGE_WIDTH) {
-    terrainOf.set(key, "estuary");
-  } else if (isEastKhazanTile(c, col)) {
-    terrainOf.set(key, "estuary");
-  } else {
-    const { start, end } = corridorBounds(c.r);
-    terrainOf.set(key, col >= start && col <= end ? "estuary" : "land");
-  }
+  if (!terrainOf.has(key)) terrainOf.set(key, "land");
 }
 
-// --- Overlay pass: cut the two creeks through the Land mass (River terrain,
-// Estuary fringe on both banks) — only ever replaces Land, never touches
-// Coast/Beach/River/existing Estuary. ----------------------------------------
-for (const def of CREEKS) {
-  for (let r = def.rowStart; r <= def.rowEnd; r++) {
-    if (!grid.has(axialKey({ q: rowQMin(r), r }))) continue;
-    const col = landStartCol(r) + creekColForRow(def, r);
-    const centerCoord = coordAt(r, col);
-    if (inGrid(centerCoord) && terrainOf.get(axialKey(centerCoord)) === "land") {
-      terrainOf.set(axialKey(centerCoord), "river");
-    }
-    for (const bankCol of [col - 1, col + 1]) {
-      const bankCoord = coordAt(r, bankCol);
-      if (inGrid(bankCoord) && terrainOf.get(axialKey(bankCoord)) === "land") {
-        terrainOf.set(axialKey(bankCoord), "estuary");
-      }
-    }
-  }
-}
+// --- 5. Serialize -------------------------------------------------------------
 
 interface MapTile {
   q: number;
   r: number;
   terrainId: string;
 }
+
 const tiles: MapTile[] = allCoords.map((c) => ({ q: c.q, r: c.r, terrainId: terrainOf.get(axialKey(c))! }));
 
-const coastCoords = allCoords.filter((c) => terrainOf.get(axialKey(c)) === "coast");
-const beachCoords = allCoords.filter((c) => terrainOf.get(axialKey(c)) === "beach");
-const riverCoords = allCoords.filter((c) => terrainOf.get(axialKey(c)) === "river");
-const estuaryCoords = allCoords.filter((c) => terrainOf.get(axialKey(c)) === "estuary");
-const landCoords = allCoords.filter((c) => terrainOf.get(axialKey(c)) === "land");
-
-const coastalClaimSeed = beachCoords.reduce((best, c) => (c.r > best.r ? c : best), beachCoords[0]);
+// The player's initial claim is a small coastal footprint (Section 4/8,
+// v2.4: "the player begins already owning a small coastal claim") — near
+// the shore, unrelated to the (now-interior) river. Centered on a Beach
+// tile close to the coastal midline. Unchanged by the river reshape.
+const coastalClaimSeed = beachCoords.reduce((best, c) => (Math.abs(c.r) < Math.abs(best.r) ? c : best), beachCoords[0]);
 const startingClaim: AxialCoord[] = [
   coastalClaimSeed,
   ...[0, 1, 2, 3, 4, 5].map((dir) => neighbor(coastalClaimSeed, dir)).filter(inGrid)
 ].slice(0, 3);
 
+// The true q extent now varies by row (the offset grid isn't a plain
+// rectangle in q,r terms even though it is one in world space), so record
+// the actual min/max across every generated tile rather than the nominal
+// Q_MIN/Q_MAX — those are the row-0 baseline only.
 const allQs = allCoords.map((c) => c.q);
 const output = {
   seed: SEED,
   qRange: [Math.min(...allQs), Math.max(...allQs)],
   rRange: [R_MIN, R_MAX],
-  estuary: estuaryCoords[Math.floor(estuaryCoords.length / 2)],
+  estuary: bigPatchAnchor, // the larger patch's anchor — a stable single-coord handle for tooling that just needs "a" estuary tile
   startingClaim,
   tiles
 };
-fs.writeFileSync(path.resolve(import.meta.dirname, "../../src/data/map.json"), JSON.stringify(output, null, 2));
 
+const outPath = path.resolve(import.meta.dirname, "../../src/data/map.json");
+fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
+
+// A pre-built residential cluster of 10 Houses on Land (Section 4/8, v2.4's
+// new starting state) — the player owns this from turn one, they don't
+// build it. Per the map reshape, this is the "main Residential cluster, set
+// apart from the river": seeded from the Land tile that maximizes distance
+// to the nearest River/Estuary tile, so it's demonstrably the land pocket
+// farthest from the water, not just "the first Land tile found."
 const waterCoords = tiles.filter((t) => t.terrainId === "river" || t.terrainId === "estuary").map((t) => ({ q: t.q, r: t.r }));
+const landCoords = allCoords.filter((c) => terrainOf.get(axialKey(c)) === "land");
 function minDistToWater(c: AxialCoord): number {
   return Math.min(...waterCoords.map((w) => axialDistance(c, w)));
 }
+// Only consider seeds whose radius-2 spiral actually has 10 Land tiles to
+// give — otherwise "farthest from the river" could pick a pocket too small
+// to hold the full cluster (e.g. clipped by the grid edge).
 const viableSeeds = landCoords.filter(
   (c) => hexSpiral(c, 2).filter((n) => inGrid(n) && terrainOf.get(axialKey(n)) === "land").length >= 10
 );
@@ -373,73 +266,105 @@ const houseCoords = hexSpiral(houseClusterSeed, 2)
   .slice(0, 10);
 
 const startingState = {
-  startingCoin: 1000,
+  startingCoin: 1000, // explicitly a temporary testing value (Section 8), not tuned balance
   startingPopulation: 50,
-  populationPerHouse: 5,
+  populationPerHouse: 5, // placeholder growth hook — "population scales with House count," no curve specified beyond that yet
   prebuiltHouses: houseCoords
 };
-fs.writeFileSync(path.resolve(import.meta.dirname, "../../src/data/startingState.json"), JSON.stringify(startingState, null, 2));
+const startingStatePath = path.resolve(import.meta.dirname, "../../src/data/startingState.json");
+fs.writeFileSync(startingStatePath, JSON.stringify(startingState, null, 2));
 
-// --- Sanity checks ---------------------------------------------------------
+// --- 6. Sanity-check the constraints before declaring success ---------------
+
 const terrainIdSet = new Set(TERRAIN_DEFS.map((t) => t.id));
 const badTerrainIds = tiles.filter((t) => !terrainIdSet.has(t.terrainId));
-const expectedTotal = TOTAL_COLS * TOTAL_ROWS;
+const riverTileCount = tiles.filter((t) => t.terrainId === "river").length;
+const estuaryTileCount = tiles.filter((t) => t.terrainId === "estuary").length;
+const landTileCount = tiles.filter((t) => t.terrainId === "land").length;
+
+// Coast/Beach order check: every row should still read Coast then Beach at
+// its west edge (unchanged by the reshape — the River/Estuary now wind
+// through the interior and are no longer confined to a per-row band, so
+// there's no "Land before water" invariant left to check here: on rows
+// near the river's entry column, the river can legitimately appear right
+// after Beach with no Land tile ahead of it in that row).
+let orderViolations = 0;
+for (let r = R_MIN; r <= R_MAX; r++) {
+  const row = tiles.filter((t) => t.r === r).sort((a, b) => a.q - b.q);
+  const order: string[] = [];
+  for (const t of row) {
+    if (order[order.length - 1] !== t.terrainId) order.push(t.terrainId);
+  }
+  const macro = order.filter((id, i) => id !== order[i - 1]);
+  if (macro.indexOf("coast") !== 0 || macro.indexOf("beach") !== 1) orderViolations++;
+}
+
+// Estuary-patch check: the patches should read as several distinct clumps,
+// not one contiguous blob (the whole point of the reshape) — flood-fill
+// estuary-only tiles (not river) and count connected components.
+function estuaryComponentCount(): number {
+  const estuaryKeys = new Set(estuaryCoords.map(axialKey));
+  const seen = new Set<string>();
+  let components = 0;
+  for (const c of estuaryCoords) {
+    const key = axialKey(c);
+    if (seen.has(key)) continue;
+    components++;
+    const queue = [c];
+    seen.add(key);
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (let dir = 0; dir < 6; dir++) {
+        const n = neighbor(cur, dir);
+        const nKey = axialKey(n);
+        if (!estuaryKeys.has(nKey) || seen.has(nKey)) continue;
+        seen.add(nKey);
+        queue.push(n);
+      }
+    }
+  }
+  return components;
+}
+const estuaryPatchCount = estuaryComponentCount();
+
+// Rectangle check: every row's westmost hex should sit at (approximately)
+// the same world-X as every other row's — confirms the shear-cancelling
+// offset actually worked, not just that terrain assignment is internally
+// consistent. Half a hex-width of residual stagger between adjacent rows
+// is the normal/expected brick-like hex offset, not an error; anything
+// bigger accumulating across rows would mean the offset math is wrong.
+function worldXOf(c: AxialCoord): number {
+  return Math.sqrt(3) * (c.q + c.r / 2);
+}
+const westEdgeXs = [];
+for (let r = R_MIN; r <= R_MAX; r++) {
+  westEdgeXs.push(worldXOf({ q: rowQMin(r), r }));
+}
+const maxWestEdgeDrift = Math.max(...westEdgeXs) - Math.min(...westEdgeXs);
+const HALF_HEX = Math.sqrt(3) / 2;
+
 const minHouseToWaterDist = Math.min(...houseCoords.map((h) => Math.min(...waterCoords.map((w) => axialDistance(h, w)))));
 
-const riverMeetsSea = riverCoords.some((rc) =>
-  [0, 1, 2, 3, 4, 5].some((dir) => {
-    const n = neighbor(rc, dir);
-    return inGrid(n) && terrainOf.get(axialKey(n)) === "coast";
-  })
-);
-
-const coastWidths = [];
-for (let r = firstCoastRow; r <= R_MAX; r++) coastWidths.push(coastWidthForRow(r));
-const coastlineNarrows = coastWidths[0] > coastWidths[coastWidths.length - 1];
-
-const creekRiverTilesByName = CREEKS.map((def) => {
-  let count = 0;
-  for (let r = def.rowStart; r <= def.rowEnd; r++) {
-    const col = landStartCol(r) + creekColForRow(def, r);
-    const coord = coordAt(r, col);
-    if (inGrid(coord) && terrainOf.get(axialKey(coord)) === "river") count++;
-  }
-  return { name: def.name, count };
-});
-const creeksPresent = creekRiverTilesByName.every((c) => c.count >= 3);
-
-// Water-tile proportions should favor the river over the sea, per the real
-// CRZ-area ratio (river the largest water category, ahead of sea).
-const riverVsSeaProportionate = riverCoords.length > coastCoords.length;
-
-// v2.10: the river-row sea cut should ramp smoothly up to the first coastal
-// row's width, not jump — i.e. the last river row's sea width should be
-// close (within a couple columns) to firstCoastRow's width.
-const riverCoastContinuity = Math.abs(riverRowSeaWidth(R_MIN + RIVER_ROWS - 1) - coastWidthForRow(firstCoastRow)) <= 1;
-
-console.log(`map.json written: ${tiles.length} tiles (expected ${expectedTotal})`);
-console.log(`  grid: ${TOTAL_COLS} cols x ${TOTAL_ROWS} rows`);
-console.log(`  coast: ${coastCoords.length}, beach: ${beachCoords.length}, land: ${landCoords.length}, river: ${riverCoords.length}, estuary: ${estuaryCoords.length}`);
-console.log(`  river meets the sea (river tile adjacent to coast tile): ${riverMeetsSea}`);
-console.log(`  river tile count exceeds sea tile count (matches real CRZ ratio): ${riverVsSeaProportionate}`);
-console.log(`  river-mouth -> coastline continuity (no jump at the join): ${riverCoastContinuity} (last river-row width ${riverRowSeaWidth(R_MIN + RIVER_ROWS - 1)}, first coastal-row width ${coastWidthForRow(firstCoastRow)})`);
-console.log(`  coastline narrows bay(N) -> headland(S): ${coastlineNarrows} (widths ${coastWidths.join(",")})`);
-console.log(`  creeks cut through Land: ${creekRiverTilesByName.map((c) => `${c.name}=${c.count}`).join(", ")}`);
+console.log(`map.json written: ${tiles.length} tiles`);
+console.log(`  coast: ${coastCoords.length}, beach: ${beachCoords.length}, land: ${landTileCount}, river: ${riverTileCount}, estuary: ${estuaryTileCount}`);
+console.log(`  estuary patches (connected components): ${estuaryPatchCount} (should be several, not 1)`);
+console.log(`  rows with a Coast/Beach order violation: ${orderViolations} / ${R_MAX - R_MIN + 1} (should be 0)`);
+console.log(`  west-edge world-X drift across all rows: ${maxWestEdgeDrift.toFixed(3)} (should be <= ${HALF_HEX.toFixed(3)}, one half-hex stagger, not several hex-widths)`);
 console.log(`  unknown terrain ids: ${badTerrainIds.length}`);
-console.log(`  starting claim (coastal, southern Beach end): ${startingClaim.map((c) => `(${c.q},${c.r})`).join(", ")}`);
-console.log(`  house cluster seed: (${houseClusterSeed.q},${houseClusterSeed.r}), min distance to River/Estuary: ${minHouseToWaterDist}`);
-console.log(`startingState.json written: ${houseCoords.length} pre-built Houses, all on Land: ${houseCoords.every((c) => terrainOf.get(axialKey(c)) === "land")}`);
+console.log(`  starting claim (coastal): ${startingClaim.map((c) => `(${c.q},${c.r})`).join(", ")}`);
+console.log(`  big estuary patch anchor: (${bigPatchAnchor.q},${bigPatchAnchor.r})`);
+console.log(`  house cluster seed: (${houseClusterSeed.q},${houseClusterSeed.r}), min distance from any prebuilt House to River/Estuary: ${minHouseToWaterDist}`);
+console.log(`startingState.json written: ${houseCoords.length} pre-built Houses (should be 10), all on Land: ${houseCoords.every((c) => terrainOf.get(axialKey(c)) === "land")}`);
 
 if (
   badTerrainIds.length > 0 ||
-  tiles.length !== expectedTotal ||
-  !riverMeetsSea ||
-  !riverVsSeaProportionate ||
-  !riverCoastContinuity ||
-  !coastlineNarrows ||
-  !creeksPresent ||
-  estuaryCoords.length < 25 ||
-  houseCoords.length !== 10
+  estuaryTileCount < 6 ||
+  estuaryTileCount > 9 ||
+  estuaryPatchCount < 3 ||
+  riverTileCount === 0 ||
+  orderViolations > 0 ||
+  houseCoords.length !== 10 ||
+  maxWestEdgeDrift > HALF_HEX + 0.01
 ) {
   console.error("mapgen sanity check FAILED");
   process.exitCode = 1;

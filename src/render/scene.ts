@@ -8,15 +8,65 @@ export interface KhazanScene {
   sun: THREE.DirectionalLight;
   start: (onFrame?: (nowMs: number) => void) => void;
   onResize: () => void;
-  /** Re-centers the camera on a world (x, z) point, keeping the same distance/elevation. v2.1: the fixed map's own (0,0) is arbitrary relative to where the player actually starts. */
-  focusOn: (x: number, z: number) => void;
+  /**
+   * Re-centres the camera on a world (x, z) point, keeping the same distance
+   * and elevation. Each map carries its own focus point, chosen to put sea,
+   * sand, river and town in one frame — a map's (0, 0) is wherever its grid
+   * happened to centre, which on a georeferenced map is a latitude and
+   * longitude rather than anywhere worth looking at.
+   *
+   * Glides by default, which is what makes "look over there" read as a move
+   * rather than a cut. `immediate` snaps, and the session uses it for the
+   * opening frame: easing in from wherever the camera happened to be
+   * initialised would look like a mistake, not an establishing shot.
+   */
+  focusOn: (x: number, z: number, immediate?: boolean) => void;
+  /**
+   * Pulls back far enough to hold a board of the given world-space size.
+   *
+   * The campaign used to play on one map, so a single hand-picked opening
+   * distance was fine. It is not fine now: the boards run from a 63-tile
+   * teaching diagram to 357 tiles of the Canacona coast, and the distance
+   * that framed the old map shows about a tenth of Panaji — which defeats the
+   * entire point of having drawn Panaji.
+   *
+   * Re-applied on resize, so rotating a phone reframes the board instead of
+   * cropping it. That stops the moment the player zooms: once someone has
+   * chosen their own framing, a resize must not throw it away.
+   */
+  fitTo: (worldWidth: number, worldDepth: number, immediate?: boolean) => void;
+  /** Offsets the camera by a small amount without moving what it looks at — the storm's impact tremor. Pass (0, 0) to clear. */
+  setShake: (x: number, z: number) => void;
+  /** Where the camera is currently looking, so effects anchored to the view (the rain volume) can follow it. */
+  focusPoint: () => { x: number; z: number };
+  /** How far back the camera is sitting, in world units. Lets view-dependent UI — the place labels — know how zoomed in the player is. */
+  cameraDistance: () => number;
   /** True if the pointer moved more than a few px between its last down/up — a pan, not a click. Callers should skip click actions when this is true. */
   wasDrag: () => boolean;
+  /**
+   * Tears the scene down completely: stops the render loop, detaches every
+   * listener (including the ones on `window`, which outlive the canvas and
+   * are the ones that actually leak), drops GPU resources and removes the
+   * canvas from the DOM.
+   *
+   * Needed now that the app starts and stops a scene per level rather than
+   * building one at boot and keeping it forever. Without it, every level
+   * transition would leave behind a live animation loop, a WebGL context
+   * (browsers cap those at ~16 before dropping the oldest) and a set of
+   * window listeners still panning a camera nothing renders.
+   */
+  dispose: () => void;
 }
 
 const CAM_DISTANCE_DEFAULT = 18;
 const CAM_DISTANCE_MIN = 8;
-const CAM_DISTANCE_MAX = 40;
+/**
+ * Raised from 40 for the real-world maps. The largest board (Palolem, 17 by
+ * 21 tiles) needs about 39 units just to fit on screen, so the old ceiling
+ * left no room to pull back any further than the opening frame — the zoom-out
+ * control would have been dead on the biggest map in the campaign.
+ */
+const CAM_DISTANCE_MAX = 58;
 const CAM_ELEVATION_DEG = 58; // slight top-down, not hard isometric
 const DRAG_THRESHOLD_PX = 5;
 const ZOOM_SPEED = 0.02;
@@ -29,38 +79,212 @@ const ZOOM_SPEED = 0.02;
 // same "flag it, tune by feel" convention as every other pacing number
 // in this codebase.
 const PINCH_ZOOM_SPEED = 0.045;
+/**
+ * Fraction of the remaining distance the camera closes per 60 Hz frame.
+ *
+ * 0.18 settles a move in roughly a fifth of a second: fast enough that a pan
+ * still feels like dragging the world directly rather than towing it, slow
+ * enough to turn a wheel notch into a glide. Frame-rate compensated in
+ * `settleCamera`, so this number means the same thing at 60 and 144 Hz.
+ */
+const CAM_SMOOTHING = 0.18;
 
 /**
  * Dorfromantik-style camera: a slight top-down perspective, pan/zoom only,
  * no free orbit (Section 6). Bucket A (NEXT_STEPS.md): the camera used to
  * be framed once at boot and never move again — this adds pointer-drag pan
  * and scroll-wheel zoom, the only two camera controls this pilot needs.
- * One directional sun, no fog and no multi-light rig.
+ * One directional sun + soft fog for depth, no multi-light rig.
  */
 export function createScene(container: HTMLElement): KhazanScene {
+  // Every listener below is registered with this signal, so `dispose()`
+  // removes all of them in one call and cannot miss one as handlers are
+  // added over time.
+  const listenerAbort = new AbortController();
+  const { signal } = listenerAbort;
+
   const scene = new THREE.Scene();
-  scene.background = PALETTE.sky;
-  // Zoom-out mist removed (user request): the whole map stays crisp at max zoom.
+  // Cloned, not assigned. `PALETTE.sky` is a shared module-level Color, and
+  // the storm tints the sky by mutating this one — assigning the shared
+  // object directly would darken the palette itself, permanently, for every
+  // later scene and every other consumer of that colour.
+  scene.background = PALETTE.sky.clone();
+  /**
+   * Depth haze. The near and far planes are re-derived from the camera
+   * distance every frame (see `applyFog`) rather than fixed.
+   *
+   * They used to be constants tuned for a camera that sat at 18 units and
+   * never moved far. Now that the opening distance is derived from the board
+   * — up to 40 units on the larger maps — fixed planes would put the whole of
+   * Palolem past the far plane and render it as a flat sheet of fog. Scaling
+   * with distance keeps the same amount of atmospheric perspective at every
+   * zoom level, which is what the effect was for.
+   */
+  scene.fog = new THREE.Fog(PALETTE.fog.getHex(), 18, 46);
 
   const camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 200);
   const rad = THREE.MathUtils.degToRad(CAM_ELEVATION_DEG);
 
+  /**
+   * The camera runs on a desired value and a displayed value, with the
+   * displayed one chasing the desired one every frame.
+   *
+   * Before this, a wheel tick snapped `distance` and re-derived the matrix
+   * inside the event handler. That is correct and it feels bad: a mouse wheel
+   * delivers discrete notches, so zooming read as a series of jumps rather
+   * than a movement, and a pinch delivered them fast enough to stutter. Pan
+   * had the same problem in milder form, because a pointermove at 60 Hz on a
+   * 120 Hz display moves the camera on half the frames.
+   *
+   * Splitting the two fixes both with one mechanism, and gives `focusOn`
+   * a glide for free.
+   */
   let target = { x: 0, z: 0 };
+  let desiredTarget = { x: 0, z: 0 };
   let distance = CAM_DISTANCE_DEFAULT;
+  let desiredDistance = CAM_DISTANCE_DEFAULT;
 
   // The camera never yaws (Section 6: no rotation), so its ground-plane
   // right/forward axes are always world +X / -Z regardless of target —
   // panning is just a direct offset in those two constant directions.
+  /**
+   * A small positional tremor added on top of the camera's resting place,
+   * driven by the storm at the moment of impact. Kept separate from `target`
+   * so it never contaminates where the camera is actually looking — a shake
+   * folded into the pan target would drift the view a little further every
+   * frame it ran.
+   */
+  let shakeX = 0;
+  let shakeZ = 0;
+
   function updateTransform(): void {
-    camera.position.set(target.x, Math.sin(rad) * distance, target.z + Math.cos(rad) * distance);
+    camera.position.set(
+      target.x + shakeX,
+      Math.sin(rad) * distance,
+      target.z + shakeZ + Math.cos(rad) * distance
+    );
     camera.lookAt(target.x, 0, target.z);
+    applyFog();
   }
 
-  function focusOn(x: number, z: number): void {
-    target = { x, z };
+  function setShake(x: number, z: number): void {
+    if (x === shakeX && z === shakeZ) return;
+    shakeX = x;
+    shakeZ = z;
+    // Applied immediately rather than waiting for `settleCamera`, which stops
+    // recomputing the matrix once the camera has come to rest — exactly the
+    // state a shake needs to move it out of.
     updateTransform();
   }
-  focusOn(0, 0);
+
+  /**
+   * Keeps the haze proportional to how far back the camera is sitting.
+   *
+   * Deliberately lighter than the original fixed 18/46, which was tuned when
+   * the camera sat at 18 units and the board was 198 tiles. Carried forward
+   * unchanged, that density put the far third of a 350-tile board under enough
+   * fog to make its terrain colours unreadable — and on these maps the far
+   * third is real geography the player is supposed to be reading, not
+   * background. Still enough atmospheric perspective to separate near from
+   * far; no longer enough to hide a beach.
+   */
+  function applyFog(): void {
+    const fog = scene.fog as THREE.Fog | null;
+    if (!fog) return;
+    fog.near = distance * 1.15;
+    fog.far = distance * 3.1;
+  }
+
+  /**
+   * Moves the displayed camera toward the desired one. Returns true while
+   * there is still ground to cover, so the render loop only recomputes the
+   * matrix when something is actually moving.
+   *
+   * The smoothing is frame-rate compensated: a fixed per-frame lerp factor
+   * would make the camera glide at one speed on a 60 Hz display and nearly
+   * twice that on a 120 Hz one. Raising the retention factor to the power of
+   * (dt / reference frame) keeps the time constant the same on both.
+   */
+  function settleCamera(deltaMs: number): boolean {
+    const dx = desiredTarget.x - target.x;
+    const dz = desiredTarget.z - target.z;
+    const dd = desiredDistance - distance;
+
+    // Below this, the remaining error is far under a pixel at any zoom level.
+    // Snapping instead of easing forever is what stops the camera recomputing
+    // its matrix on every frame for the rest of the session.
+    if (Math.abs(dx) < 0.0005 && Math.abs(dz) < 0.0005 && Math.abs(dd) < 0.0005) {
+      if (dx !== 0 || dz !== 0 || dd !== 0) {
+        target = { x: desiredTarget.x, z: desiredTarget.z };
+        distance = desiredDistance;
+        updateTransform();
+      }
+      return false;
+    }
+
+    const step = 1 - Math.pow(1 - CAM_SMOOTHING, Math.min(4, deltaMs / 16.667));
+    target = { x: target.x + dx * step, z: target.z + dz * step };
+    distance += dd * step;
+    updateTransform();
+    return true;
+  }
+
+  function focusOn(x: number, z: number, immediate = false): void {
+    desiredTarget = { x, z };
+    if (immediate) {
+      target = { x, z };
+      updateTransform();
+    }
+  }
+  focusOn(0, 0, true);
+
+  /**
+   * The board this camera was asked to frame, kept so a resize can reframe it.
+   * Null until `fitTo` is called.
+   */
+  let fitBounds: { width: number; depth: number } | null = null;
+  /**
+   * Set the first time the player zooms. After that a resize leaves the zoom
+   * alone: someone who has chosen their own framing should keep it when they
+   * rotate their phone, not have the game overrule them.
+   */
+  let userAdjustedZoom = false;
+
+  /**
+   * How far back the camera has to sit to hold a board of this size.
+   *
+   * Two constraints, and the binding one wins:
+   *
+   *   - Width. The horizontal field of view is derived from the vertical one
+   *     and the current aspect, so this answer changes with the window shape,
+   *     which is exactly why the result is recomputed on resize.
+   *   - Depth. The camera looks down at `CAM_ELEVATION_DEG`, so a given
+   *     vertical angle covers MORE ground than it would head-on — foreshortened
+   *     by sin(elevation). Leaving that term out makes the opening frame of
+   *     every tall map about 15% too tight, with the bottom row cut off.
+   */
+  function distanceToFit(worldWidth: number, worldDepth: number): number {
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+
+    const forWidth = worldWidth / (2 * Math.tan(horizontalFov / 2));
+    const forDepth = (worldDepth * Math.sin(rad)) / (2 * Math.tan(verticalFov / 2));
+
+    // Breathing room, so the outermost tiles are neither flush against the
+    // screen edge nor underneath the HUD's corner panels — which occupy real
+    // estate at all four corners and would otherwise cover the board's own
+    // corners exactly.
+    return THREE.MathUtils.clamp(Math.max(forWidth, forDepth) * 1.18, CAM_DISTANCE_MIN, CAM_DISTANCE_MAX);
+  }
+
+  function fitTo(worldWidth: number, worldDepth: number, immediate = false): void {
+    fitBounds = { width: worldWidth, depth: worldDepth };
+    desiredDistance = distanceToFit(worldWidth, worldDepth);
+    if (immediate) {
+      distance = desiredDistance;
+      updateTransform();
+    }
+  }
 
   // preserveDrawingBuffer: readPixels-based readability verification
   // (tools/verify_readability.ts) needs the completed frame still present
@@ -118,7 +342,7 @@ export function createScene(container: HTMLElement): KhazanScene {
     if (e.button !== 0) return;
     pointerDown = { x: e.clientX, y: e.clientY };
     didDrag = false;
-  });
+  }, { signal });
 
   window.addEventListener("pointermove", (e: PointerEvent) => {
     if (e.pointerType === "touch" && activeTouches.has(e.pointerId)) {
@@ -128,8 +352,12 @@ export function createScene(container: HTMLElement): KhazanScene {
         // Fingers spreading apart (dist growing) should zoom in, i.e.
         // shrink `distance` — the same sign convention the wheel handler
         // uses (scrolling up/deltaY<0 also shrinks distance).
-        distance = THREE.MathUtils.clamp(distance - (dist - pinchLastDistance) * PINCH_ZOOM_SPEED, CAM_DISTANCE_MIN, CAM_DISTANCE_MAX);
-        updateTransform();
+        desiredDistance = THREE.MathUtils.clamp(
+          desiredDistance - (dist - pinchLastDistance) * PINCH_ZOOM_SPEED,
+          CAM_DISTANCE_MIN,
+          CAM_DISTANCE_MAX
+        );
+        userAdjustedZoom = true;
         pinchLastDistance = dist;
         return;
       }
@@ -143,11 +371,13 @@ export function createScene(container: HTMLElement): KhazanScene {
 
     // Pan speed scales with distance (and viewport height) so a given drag
     // covers the same *apparent* screen distance regardless of zoom level.
-    const panScale = distance / Math.max(1, container.clientHeight);
-    target = { x: target.x - dx * panScale, z: target.z - dy * panScale };
-    updateTransform();
+    // Measured against `desiredDistance`, not the displayed one: mid-glide
+    // the two differ, and using the displayed value would make a drag that
+    // overlaps a zoom travel the wrong amount.
+    const panScale = desiredDistance / Math.max(1, container.clientHeight);
+    desiredTarget = { x: desiredTarget.x - dx * panScale, z: desiredTarget.z - dy * panScale };
     pointerDown = { x: e.clientX, y: e.clientY };
-  });
+  }, { signal });
 
   function endTouch(e: PointerEvent): void {
     if (e.pointerType !== "touch") return;
@@ -161,20 +391,24 @@ export function createScene(container: HTMLElement): KhazanScene {
   window.addEventListener("pointerup", (e: PointerEvent) => {
     endTouch(e);
     pointerDown = null;
-  });
+  }, { signal });
   window.addEventListener("pointercancel", (e: PointerEvent) => {
     endTouch(e);
     pointerDown = null;
-  });
+  }, { signal });
 
   renderer.domElement.addEventListener(
     "wheel",
     (e: WheelEvent) => {
       e.preventDefault();
-      distance = THREE.MathUtils.clamp(distance + e.deltaY * ZOOM_SPEED, CAM_DISTANCE_MIN, CAM_DISTANCE_MAX);
-      updateTransform();
+      desiredDistance = THREE.MathUtils.clamp(
+        desiredDistance + e.deltaY * ZOOM_SPEED,
+        CAM_DISTANCE_MIN,
+        CAM_DISTANCE_MAX
+      );
+      userAdjustedZoom = true;
     },
-    { passive: false }
+    { passive: false, signal }
   );
 
   function wasDrag(): boolean {
@@ -187,15 +421,76 @@ export function createScene(container: HTMLElement): KhazanScene {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+
+    // The distance that framed the board in landscape crops it in portrait,
+    // because the horizontal field of view is derived from the aspect. Only
+    // reframes while the player has left the zoom alone — see
+    // `userAdjustedZoom`.
+    if (fitBounds && !userAdjustedZoom) {
+      desiredDistance = distanceToFit(fitBounds.width, fitBounds.depth);
+    }
   }
-  window.addEventListener("resize", onResize);
+  window.addEventListener("resize", onResize, { signal });
 
   function start(onFrame?: (nowMs: number) => void): void {
+    let lastFrameMs: number | null = null;
     renderer.setAnimationLoop((nowMs: number) => {
+      // Clamped so a backgrounded tab resuming after thirty seconds eases the
+      // camera in over a few frames instead of teleporting it.
+      const deltaMs = lastFrameMs === null ? 16.667 : Math.min(100, nowMs - lastFrameMs);
+      lastFrameMs = nowMs;
+      settleCamera(deltaMs);
       onFrame?.(nowMs);
       renderer.render(scene, camera);
     });
   }
 
-  return { scene, camera, renderer, sun, start, onResize, focusOn, wasDrag };
+  function dispose(): void {
+    // Order matters: stop the loop before releasing anything it renders,
+    // so a frame already in flight cannot touch a disposed resource.
+    renderer.setAnimationLoop(null);
+    listenerAbort.abort();
+
+    // Three does not free GPU memory when a mesh leaves the graph — the
+    // geometry and material hold buffers until told otherwise. Walk what
+    // is still attached and release it, rather than trusting GC.
+    scene.traverse((object) => {
+      const mesh = object as Partial<THREE.Mesh>;
+      mesh.geometry?.dispose();
+      const material = mesh.material;
+      if (Array.isArray(material)) material.forEach((m) => m.dispose());
+      else material?.dispose();
+    });
+    scene.clear();
+
+    // Drops the WebGL context itself. Browsers allow only a handful of
+    // live contexts per page and silently kill the oldest past the cap,
+    // so a per-level scene must hand its own back.
+    renderer.dispose();
+    renderer.domElement.remove();
+  }
+
+  function focusPoint(): { x: number; z: number } {
+    return { x: target.x, z: target.z };
+  }
+
+  function cameraDistance(): number {
+    return distance;
+  }
+
+  return {
+    scene,
+    camera,
+    renderer,
+    sun,
+    start,
+    onResize,
+    focusOn,
+    fitTo,
+    setShake,
+    focusPoint,
+    cameraDistance,
+    wasDrag,
+    dispose
+  };
 }

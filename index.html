@@ -3,14 +3,93 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
-<title>Khazan</title>
+<title>Riptide Rising — hold the coast</title>
+
+<meta name="description" content="A coastal resilience game set in Goa. Plant mangroves, raise seawalls, restore Khazan fields, and see whether your slice of coast can survive the monsoon." />
+<meta name="theme-color" content="#3c1509" />
+<meta name="color-scheme" content="dark" />
+
+<!-- Social preview. og:image is intentionally omitted rather than pointed
+     at a file that does not exist: a broken image reference renders worse
+     in a share card than no image at all. Add one to /public and reference
+     it here when there is real key art. -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Riptide Rising" />
+<meta property="og:description" content="Hold the coast against the monsoon. A game about mangroves, seawalls, and what each one really costs." />
+<meta name="twitter:card" content="summary" />
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="manifest" href="/manifest.webmanifest" />
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/src/ui/hud.css" />
+
+<!--
+  Stylesheets are imported from src/main.ts rather than linked here. A
+  <link> to a /src/... path resolves in dev and 404s in a production build,
+  which is the kind of bug that only appears after deploying.
+
+  The splash below is inline for the same reason it exists at all: it has
+  to paint before any bundle loads. src/main.ts removes it once the shell
+  has rendered its first screen.
+-->
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #2a0f07;
+  }
+  #boot-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: linear-gradient(165deg, #6e2c16 0%, #2a0f07 100%);
+    color: #f4d9a6;
+    font-family: "Fraunces", Georgia, serif;
+  }
+  #boot-splash .boot-title {
+    font-size: 34px;
+    letter-spacing: 0.01em;
+  }
+  #boot-splash .boot-sub {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(251, 238, 217, 0.6);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    #boot-splash .boot-sub {
+      animation: boot-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes boot-pulse {
+      0%, 100% { opacity: 0.45; }
+      50% { opacity: 1; }
+    }
+  }
+</style>
 </head>
 <body>
 <div id="app"></div>
+
+<div id="boot-splash">
+  <div class="boot-title">Riptide Rising</div>
+  <div class="boot-sub">Loading the coast</div>
+</div>
+
+<noscript>
+  <div style="padding:40px;color:#f4d9a6;font-family:system-ui,sans-serif;text-align:center">
+    <h1>Riptide Rising</h1>
+    <p>This game needs JavaScript and WebGL. Please enable JavaScript to play.</p>
+  </div>
+</noscript>
+
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

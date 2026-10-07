@@ -1,8 +1,18 @@
 /**
+ * SUPERSEDED by the app shell's menu screen (`@ui/screens/menuScreen`),
+ * which is now the actual "first thing you see" and has somewhere to go
+ * from it. Nothing constructs this any more.
+ *
+ * Kept rather than deleted, per this project's standing "don't delete
+ * useful plumbing" convention — it is a self-contained title-moment modal
+ * with no game-state coupling, so it is trivially reusable if a one-off
+ * announcement dialog is ever wanted again.
+ */
+/**
  * Shown once per game load, before anything else — a title moment, not a
  * gameplay dialog. Static content, no game-state coupling, same reasoning
  * as HelpModal: no wiring through main.ts beyond construction + one show()
- * call. BEGIN and the corner × both just close it — there's no separate
+ * call. IKUZO and the corner × both just close it — there's no separate
  * "start" action since the game underneath is already loaded and playable.
  */
 export class WelcomeModal {
@@ -23,7 +33,7 @@ export class WelcomeModal {
       <div class="welcome-title">Root &amp; Ruin</div>
       <p class="welcome-body">Nature's coming, are you ready? Grow your coast, plant your defenses, and see if your little slice of Goa can survive the fury of the sea.</p>
       <p class="welcome-help">Need help with the game? Click the '?' button on the top right corner.</p>
-      <button type="button" class="welcome-cta">BEGIN</button>
+      <button type="button" class="welcome-cta">IKUZO!</button>
     `;
     card.querySelector(".welcome-close")!.addEventListener("click", () => this.hide());
     card.querySelector(".welcome-cta")!.addEventListener("click", () => this.hide());

@@ -165,7 +165,7 @@ html, body {
   font-weight: 600;
 }
 
-/* STEP_PROMPT_how_to_play_button.md: a small round "?" opening the in-game How to Play dialog (HelpModal) — sits above "Tiles built" in the same top-right .hud-corner element, not a second corner widget. `pointer-events: auto` opts back out of `.hud-corner`'s base `none`, same pattern `.preview-toggle`/the instrument cluster's collapse toggle already use. */
+/* STEP_PROMPT_how_to_play_button.md: a small round "?" opening the in-game How to Play dialog (HelpModal) — sits above "Tiles claimed" in the same top-right .hud-corner element, not a second corner widget. `pointer-events: auto` opts back out of `.hud-corner`'s base `none`, same pattern `.preview-toggle`/the instrument cluster's collapse toggle already use. */
 .help-button {
   pointer-events: auto;
   width: 28px;
@@ -383,22 +383,13 @@ html, body {
   step prompt's "same top-left position" instruction literally: the whole
   element just gets smaller in place, it never moves.
 */
-/*
-  STEP_PROMPT_liquid_glass_hud.md item 2.4: values copied straight from
-  the Khazan Interface Study artifact's own CSS, same as the build-menu
-  chips — one glass "material," reused everywhere translucency shows up
-  in this UI, not a second recipe. `backdrop-filter` needs a real
-  background behind it to blur, which the 3D canvas always provides here.
-*/
 .instrument-cluster {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: rgba(20, 40, 34, 0.42);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
+  background: rgba(20, 30, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
   padding: 14px 16px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   width: 225px;
@@ -409,24 +400,10 @@ html, body {
   gap: 0;
   padding: 0 12px;
   border-radius: 17px;
-  background: rgba(20, 40, 34, 0.48);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(20, 30, 26, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
   width: fit-content;
-}
-
-/* STEP_PROMPT_liquid_glass_hud.md item 2.5: a confirmed build's HUD acknowledgment — an expanding, fading ring layered on top of the cluster's own base box-shadow via a second shadow, not replacing it (the base shadow keeps the card grounded throughout). */
-.instrument-cluster.pulsing {
-  animation: instrument-cluster-pulse 700ms ease-out;
-}
-
-@keyframes instrument-cluster-pulse {
-  0% {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(230, 178, 104, 0.55);
-  }
-  100% {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 0 0 16px rgba(230, 178, 104, 0);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -718,12 +695,6 @@ html, body {
 
 .pill-icon {
   flex: none;
-}
-
-/* STEP_PROMPT_liquid_glass_hud.md item 2.4: the full-size cluster's own coin/shield/leaf/grain icons — same inline-with-text placement as .pill-icon above, just not flex-item siblings here (these sit directly inside a text-node-bearing <span>). */
-.stat-icon {
-  vertical-align: -1px;
-  margin-right: 4px;
 }
 
 .pill-divider {
@@ -1028,99 +999,34 @@ html, body {
   Contextual build popover: anchored to a clicked tile's screen position,
   never a persistent panel. Transform centers it just above the tile.
 */
-/*
-  STEP_PROMPT_liquid_glass_hud.md item 2.2: `.build-popover` itself is now
-  a zero-size anchor point at the tapped tile's screen position — chips
-  (`.radial` mode, `show()`) are individually absolutely positioned
-  around it via `--chip-tx`/`--chip-ty` custom properties, fanned out by
-  `radialOffset()` in buildPopover.ts. `.card` mode (`showInfo()`) keeps
-  the original flowing single-card layout — there's only ever one thing
-  to show there, nothing to fan out.
-*/
 .build-popover {
   position: absolute;
   z-index: 20;
-  pointer-events: none;
-}
-
-.build-popover.card {
   transform: translate(-50%, -100%);
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: rgba(20, 40, 34, 0.42);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
+  background: rgba(20, 30, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
   padding: 6px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
 }
 
-/*
-  Each radial chip: a translucent glass card (values copied straight from
-  the Khazan Interface Study artifact's own CSS — see buildPopover.ts's
-  class comment). `--chip-tx`/`--chip-ty` (set inline, per chip, by
-  `show()`) are the fan position; `left`/`top` stay at the anchor (0,0)
-  and the whole offset-plus-centering happens in `transform`, combined
-  with the spring keyframes' own scale so both animate together as one
-  `transform` value, not two competing ones.
-*/
 .build-option {
   display: flex;
   justify-content: space-between;
   gap: 14px;
   padding: 7px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(24, 46, 40, 0.55);
-  backdrop-filter: blur(12px) saturate(1.4);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border-radius: 6px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
   color: #fdf6e6;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  pointer-events: auto;
-}
-
-/*
-  Radial mode only: absolutely positioned at the anchor (0,0), fanned out
-  and spring-scaled entirely via `transform` below. `.card` mode's lone
-  `.build-option` (the header row) stays in normal flow, unpositioned,
-  unanimated. `--chip-target-opacity` (1 normally, 0.4 on `.disabled`,
-  set alongside `--chip-tx`/`--chip-ty`) is what the keyframes settle on
-  — a plain `.disabled { opacity: 0.4 }` rule would lose to the spring
-  animation's own `forwards`-filled end state for the same property, so
-  the dimming has to be baked into the animation's own target instead.
-*/
-.build-popover.radial .build-option {
-  position: absolute;
-  left: 0;
-  top: 0;
-  --chip-target-opacity: 1;
-  transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty))) scale(0.3);
-  opacity: 0;
-  animation: build-option-spring 500ms cubic-bezier(0.22, 1.7, 0.32, 1) forwards;
-}
-
-.build-popover.radial .build-option.disabled {
-  --chip-target-opacity: 0.4;
-}
-
-@keyframes build-option-spring {
-  0% {
-    opacity: 0;
-    transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty))) scale(0.3);
-  }
-  60% {
-    opacity: var(--chip-target-opacity);
-  }
-  100% {
-    opacity: var(--chip-target-opacity);
-    transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty))) scale(1);
-  }
 }
 
 .build-option:hover {
@@ -1128,190 +1034,13 @@ html, body {
 }
 
 .build-option.disabled {
-  cursor: default;
-}
-
-.build-popover.card .build-option.disabled {
   opacity: 0.4;
+  cursor: default;
 }
 
 .build-option .cost {
   color: #ffe9a8;
   font-weight: 700;
-}
-
-/*
-  STEP_PROMPT_liquid_glass_hud.md item 1.3: same dark-card language as
-  `.build-popover` but pointer-events: none and outside its backdrop —
-  a passive beat, never a modal, never blocking the click that triggers
-  the next real action. `hidden` handles the base show/hide; `.showing`
-  (re-added on every call, forcing a reflow first so a rapid re-trigger
-  restarts cleanly) drives the grow→hold→fade keyframes below.
-*/
-.rejection-toast {
-  position: absolute;
-  z-index: 20;
-  transform: translate(-50%, -100%);
-  background: rgba(20, 30, 26, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  padding: 6px 12px;
-  color: #fdf6e6;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-}
-
-.rejection-toast.showing {
-  animation: rejection-toast-beat 1200ms ease-out;
-}
-
-@keyframes rejection-toast-beat {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -100%) scale(0.85);
-  }
-  15% {
-    opacity: 1;
-    transform: translate(-50%, -100%) scale(1);
-  }
-  70% {
-    opacity: 1;
-    transform: translate(-50%, -100%) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -100%) scale(1);
-  }
-}
-
-/*
-  STEP_PROMPT_liquid_glass_hud.md item 2.5: the build-confirm stat-delta
-  pill — same non-modal, outside-the-backdrop placement and restart-safe
-  `.showing` pattern as `.rejection-toast`, warm-gold accented instead of
-  neutral to read as a positive confirmation rather than a rejection.
-  Hold window tuned to land at roughly a third of a second (37%-12% of
-  1300ms ≈ 325ms), per the doc's own wording.
-*/
-.confirm-pill {
-  position: absolute;
-  z-index: 20;
-  transform: translate(-50%, -100%);
-  background: rgba(20, 30, 26, 0.92);
-  border: 1px solid rgba(230, 178, 104, 0.5);
-  border-radius: 999px;
-  padding: 6px 14px;
-  color: #f4d9a6;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-}
-
-.confirm-pill.showing {
-  animation: confirm-pill-beat 1300ms ease-out;
-}
-
-@keyframes confirm-pill-beat {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -100%) scale(0.85);
-  }
-  12% {
-    opacity: 1;
-    transform: translate(-50%, -100%) scale(1);
-  }
-  37% {
-    opacity: 1;
-    transform: translate(-50%, -100%) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -100%) scale(1);
-  }
-}
-
-/*
-  STEP_PROMPT_hazard_vfx_and_fluidity.md Section 4: audited every
-  `@keyframes` in this file against `prefers-reduced-motion` — only three
-  of nine had any override at all (`.instrument-cluster`'s own transitions,
-  `.nugget-badge.entering`, the HUD-collapse transitions). `hazard-arrival-
-  flash`/`instrument-cluster-pulse` are safe to disable outright (their
-  un-animated base rule already renders invisible/neutral, matching the
-  animation's own natural resting state, so `animation: none` loses
-  nothing). The other three — `build-option-spring`, `rejection-toast-
-  beat`, `confirm-pill-beat` — are NOT safe to just disable: all three
-  bake `opacity: 0` into their own un-animated base rule (the keyframes
-  are the ONLY place `opacity: 1` ever gets set), so `animation: none`
-  alone would leave a build-menu chip, a rejection toast, or a confirm
-  pill permanently invisible under reduced motion — correctness bugs, not
-  just a missing animation. Redefining each by name here keeps every
-  original percentage/duration (so nothing needs to change in `buildPopover.
-  ts`'s class-toggle timing) but drops the scale/slide transform component
-  specifically — a plain opacity crossfade is the standard reduced-motion-
-  safe substitute for a transform-based entrance, not a removal of the
-  show/hold/hide beat itself.
-*/
-@media (prefers-reduced-motion: reduce) {
-  .hazard-arrival-flash.flashing,
-  .instrument-cluster.pulsing {
-    animation: none;
-  }
-
-  .build-popover.radial .build-option {
-    animation: build-option-spring 500ms ease-out forwards;
-  }
-  @keyframes build-option-spring {
-    0% {
-      opacity: 0;
-      transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty)));
-    }
-    100% {
-      opacity: var(--chip-target-opacity);
-      transform: translate(calc(-50% + var(--chip-tx)), calc(-50% + var(--chip-ty)));
-    }
-  }
-
-  @keyframes rejection-toast-beat {
-    0% {
-      opacity: 0;
-      transform: translate(-50%, -100%);
-    }
-    15% {
-      opacity: 1;
-      transform: translate(-50%, -100%);
-    }
-    70% {
-      opacity: 1;
-      transform: translate(-50%, -100%);
-    }
-    100% {
-      opacity: 0;
-      transform: translate(-50%, -100%);
-    }
-  }
-
-  @keyframes confirm-pill-beat {
-    0% {
-      opacity: 0;
-      transform: translate(-50%, -100%);
-    }
-    12% {
-      opacity: 1;
-      transform: translate(-50%, -100%);
-    }
-    37% {
-      opacity: 1;
-      transform: translate(-50%, -100%);
-    }
-    100% {
-      opacity: 0;
-      transform: translate(-50%, -100%);
-    }
-  }
 }
 
 .build-option em {
@@ -1339,6 +1068,20 @@ html, body {
   font-size: 11px;
   color: #cfe6d8;
   white-space: nowrap;
+}
+
+/*
+  The line under a monument's name. Monuments have no effects row and no
+  Remove button — see buildPopover.ts for why a disabled Remove would be worse
+  than none — so this is the whole body of their popover.
+*/
+.built-info-note {
+  padding: 0 10px 8px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: rgba(253, 246, 230, 0.72);
+  max-width: 210px;
+  white-space: normal;
 }
 
 /* STEP_PROMPT_manual_only_mode.md Part C: lower-stakes than the dev panel's board-wide Reset (only this one tile, no confirm needed), so a lighter tint of the same warning family rather than the full .hazard-test-reset treatment. */
@@ -1878,4 +1621,323 @@ html, body {
     top: 10px;
     right: 10px;
   }
+}
+
+/* --- tutorial coach ------------------------------------------------- */
+
+/*
+  Top-centre, because that is where the eye lands before it learns to look
+  in the corners — and a first-time player has not learned that yet. Only
+  ever present on the tutorial level; every other level constructs no coach
+  at all (see gameSession.ts).
+
+  `pointer-events: auto` is opted back in here because `.hud-corner` turns
+  them off for the whole layer, and this panel has a button. The panel is
+  also deliberately narrow and top-anchored so it cannot sit over the middle
+  of the board the player is being told to click.
+*/
+.tutorial-coach {
+  pointer-events: auto;
+  width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 14px 16px 12px;
+  background: rgba(20, 30, 26, 0.94);
+  border: 1px solid rgba(230, 178, 104, 0.38);
+  border-radius: 14px;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.5);
+  text-align: left;
+  text-shadow: none;
+}
+
+/*
+  The explicit `[hidden]` override. `.tutorial-coach` is given an
+  unconditional `padding`/`background` but no `display`, so in principle the
+  user-agent `[hidden]` rule would win — this is here anyway, because it is
+  the exact bug class this stylesheet has been bitten by three times, and the
+  cost of being wrong is a dismissed panel that stays on screen for the rest
+  of the run.
+*/
+.tutorial-coach[hidden] {
+  display: none !important;
+}
+
+.coach-step {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(230, 178, 104, 0.8);
+}
+
+.coach-title {
+  margin-top: 3px;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 18px;
+  line-height: 1.2;
+  color: #f4d9a6;
+}
+
+.coach-body {
+  margin: 7px 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(253, 246, 230, 0.86);
+}
+
+.coach-cta {
+  display: block;
+  width: 100%;
+  padding: 9px 14px;
+  font: inherit;
+  font-weight: 600;
+  color: #2a0f07;
+  background: linear-gradient(180deg, #f0c683 0%, #e0a258 100%);
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.coach-cta:hover,
+.coach-cta:focus-visible {
+  filter: brightness(1.08);
+}
+
+.coach-cta[hidden],
+.coach-wait[hidden] {
+  display: none !important;
+}
+
+/*
+  Shown instead of the button while a step is waiting on the player to act.
+  It has to read as "the game is waiting for you", not as a disabled button —
+  a greyed-out Next on a step that cannot be skipped invites the player to
+  keep clicking something that will never respond.
+*/
+.coach-wait {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: #e6b268;
+  background: rgba(230, 178, 104, 0.1);
+  border: 1px dashed rgba(230, 178, 104, 0.45);
+  border-radius: 9px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .coach-wait {
+    animation: coach-wait-pulse 2.2s ease-in-out infinite;
+  }
+
+  @keyframes coach-wait-pulse {
+    0%, 100% { opacity: 0.62; }
+    50% { opacity: 1; }
+  }
+
+  /*
+    Replayed on every step change, so a new instruction is noticed even when
+    the player is looking at the board rather than the panel.
+  */
+  .tutorial-coach.coach-enter {
+    animation: coach-enter 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes coach-enter {
+    from { opacity: 0; transform: translate(-50%, -10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+}
+
+@media (max-width: 560px) {
+  .tutorial-coach {
+    padding: 11px 13px 10px;
+  }
+
+  .coach-title {
+    font-size: 16px;
+  }
+
+  .coach-body {
+    font-size: 12.5px;
+  }
+}
+
+/* --- place names over the board ------------------------------------- */
+
+/*
+  Absolutely positioned labels tracking real landmarks: "Miramar Beach",
+  "Fort Aguada". See src/ui/mapLabels.ts for why these are DOM rather than
+  3D text.
+
+  The layer is full-bleed and inert; each label positions itself with a
+  transform written per frame, so the layer must not be a `.hud-corner` (those
+  anchor to one edge) and must never intercept a click meant for the tile
+  underneath.
+*/
+.map-labels {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.map-labels[hidden] {
+  display: none !important;
+}
+
+/*
+  `left: 0; top: 0` with the offset carried entirely in the transform: the
+  layer writes one `transform` per frame, and a single composited property is
+  far cheaper than animating `left`/`top`, which would force layout on every
+  label on every frame.
+*/
+.map-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px 8px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fdf6e6;
+  background: rgba(16, 24, 20, 0.62);
+  border: 1px solid rgba(253, 246, 230, 0.2);
+  border-radius: 999px;
+  /*
+    The board underneath is bright sand and turquoise, and a label has to stay
+    readable over both. The pill background does most of that work; the shadow
+    covers the case where a label's edge overhangs onto pale sand.
+  */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(2px);
+  /*
+    Only opacity transitions. The transform is rewritten every frame to track
+    the camera, so transitioning it would make every label lag the board by
+    the transition duration.
+  */
+  transition: opacity 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-label {
+    transition: none;
+  }
+}
+
+@media (max-width: 560px) {
+  /*
+    A phone screen showing a 300-tile map has the labels overlapping more
+    than they inform. Smaller and tighter rather than hidden: knowing the
+    name of the beach is most of their value, and that survives at 10px.
+  */
+  .map-label {
+    padding: 1px 6px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+}
+
+/* --- the way out of a level ----------------------------------------- */
+
+/*
+  Back and Help sit together in the top-right corner. They are the only two
+  controls in the game world that are not about the board itself, so grouping
+  them reads as one piece of chrome rather than two strays.
+
+  Top-right rather than the conventional top-left because the top-left corner
+  is the instrument cluster, which collapses to a pill on a narrow screen —
+  anything stacked above it would move when the player collapsed it.
+*/
+.hud-chrome {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/*
+  Labelled, not a bare arrow. Pressing this abandons an unscored run, and an
+  icon alone leaves a player guessing what it does until they have lost one.
+*/
+.back-button {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  /*
+    44px is the minimum comfortable touch target. A control that quits a level
+    is the last place to be stingy about that — a mis-tap here costs the run.
+  */
+  min-height: 32px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fdf6e6;
+  background: rgba(20, 30, 26, 0.85);
+  border: 1px solid rgba(230, 178, 104, 0.4);
+  border-radius: 999px;
+  cursor: pointer;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+.back-button:hover,
+.back-button:focus-visible {
+  background: rgba(32, 44, 38, 0.95);
+  border-color: var(--rr-gold, #e6b268);
+}
+
+.back-button:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 560px) {
+  /*
+    The label shortens rather than disappearing. On a phone the corner is
+    tight, but an unlabelled quit control is exactly the wrong thing to
+    economise on.
+  */
+  .back-button {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
+
+/*
+  The map credit.
+
+  Required, not decorative: the board under Panaji is rendered from
+  OpenStreetMap data, whose licence is free in exchange for a visible credit.
+  See src/ui/attribution.ts. Keep it on screen.
+
+  Bottom-left rather than bottom-right, because the right corner already holds
+  the build popover on a narrow viewport and a credit that disappears under a
+  panel is not a credit.
+*/
+.map-attribution {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  z-index: 9;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(16, 24, 20, 0.5);
+  color: rgba(253, 246, 230, 0.72);
+}
+
+.map-attribution a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.map-attribution a:hover,
+.map-attribution a:focus-visible {
+  color: #fdf6e6;
+  text-decoration: underline;
 }

@@ -1,3 +1,15 @@
+/**
+ * SUPERSEDED by `@ui/screens/resultsScreen`. This screen only ever had one
+ * story to tell ("Resilience hit zero, here is a number"); the campaign
+ * needs a results moment that also reports stars, objectives, badges and
+ * where the score went, and that has to happen after the app shell has
+ * recorded progress — so it lives in the shell now, not in the session.
+ *
+ * Kept rather than deleted, per this project's standing "don't delete
+ * useful plumbing" convention. `EraScoreBreakdown` and the underlying
+ * `computeEraScoreBreakdown()` it renders are both still very much live —
+ * they are the bulk of a level score (see `@core/levelScore`).
+ */
 import type { EraScoreBreakdown } from "@core/scoring";
 
 /**

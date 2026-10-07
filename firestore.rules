@@ -1,0 +1,310 @@
+rules_version = '2';
+
+// Riptide Rising — Firestore security rules.
+//
+// This project runs on the Firebase Spark (free) plan, which has NO Cloud
+// Functions. That is the single most important constraint shaping this
+// file: there is no trusted server tier that can validate a submitted
+// score, mint a leaderboard row, or run a scheduled cleanup. Every
+// integrity guarantee the leaderboard has, it has *here* — so these rules
+// are deliberately strict about shape, range, ownership and write rate
+// rather than trusting the client to behave.
+//
+// What that does and does not buy us:
+//   - It DOES stop the ordinary cases: writing to someone else's row,
+//     inventing extra fields, submitting a 10^9 score, spamming writes,
+//     deleting a rival's entry, backdating a timestamp.
+//   - It does NOT make scores cryptographically trustworthy. A determined
+//     player can still call the SDK from a console with an in-range score.
+//     That is an accepted trade for staying on the free tier; the fix is a
+//     Cloud Function (Blaze) that recomputes the score from a replay log.
+//     See docs/DEPLOY.md ("Hardening beyond Spark").
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers -----------------------------------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Display names are shown to every other player, so they are length-
+    // capped and must be non-blank. Content moderation is out of scope for
+    // rules; the client also filters (see src/services/auth.ts).
+    function validName(name) {
+      return name is string && name.size() >= 1 && name.size() <= 24;
+    }
+
+    // A hard ceiling well above any score the scoring formula can produce
+    // (see src/core/levelScore.ts) but low enough that a garbage value is
+    // rejected outright rather than sitting atop the board forever.
+    function validScore(v) {
+      return v is number && v >= 0 && v <= 100000;
+    }
+
+    function validStars(v) {
+      return v is int && v >= 0 && v <= 3;
+    }
+
+    function validTurns(v) {
+      return v is int && v >= 0 && v <= 10000;
+    }
+
+    // Clients must stamp updatedAt with the server's own clock. Without
+    // this a client could backdate a write to slip past the rate limit
+    // below, or postdate one to pin itself atop a tie-break.
+    function serverStamped() {
+      return incoming().updatedAt == request.time;
+    }
+
+    // Cheap, rules-only rate limit: an existing row cannot be rewritten
+    // more than once every 5 seconds. Guards the free tier's daily write
+    // quota against a loop, accidental or otherwise.
+    function notTooSoon() {
+      return request.time > resource.data.updatedAt + duration.value(5, 's');
+    }
+
+    // ---- player profile (private) ------------------------------------
+    //
+    // The player's own cloud save: which levels they have finished, their
+    // best score and star count per level, and unlocked achievements. Only
+    // ever read or written by its owner — nothing here is public, and the
+    // leaderboard deliberately duplicates the few fields it needs rather
+    // than opening this document up for public reads.
+
+    match /players/{uid} {
+      allow read: if isOwner(uid);
+
+      allow create, update: if isOwner(uid)
+        && incoming().keys().hasOnly([
+             'displayName', 'email', 'totalStars', 'totalScore', 'levelsCompleted',
+             'achievements', 'createdAt', 'updatedAt', 'schemaVersion'
+           ])
+        && validName(incoming().displayName)
+        // `email` is optional (an anonymous session has none) and, when
+        // present, must match the email on the caller's own auth token.
+        // Without that second check a signed-in player could write anyone
+        // else's address onto their own profile, which would make the
+        // field useless as an identity record — the one thing it is for.
+        && (!incoming().keys().hasAny(['email'])
+            || (incoming().email is string
+                && incoming().email.size() <= 254
+                && incoming().email == request.auth.token.email))
+        && incoming().totalStars is int && incoming().totalStars >= 0 && incoming().totalStars <= 1000
+        && validScore(incoming().totalScore)
+        && incoming().levelsCompleted is int && incoming().levelsCompleted >= 0 && incoming().levelsCompleted <= 1000
+        && incoming().achievements is list && incoming().achievements.size() <= 100
+        && incoming().schemaVersion is int
+        && serverStamped();
+
+      // Deletion is the account-deletion path; a player may remove their
+      // own data. Leaderboard rows are separate documents with their own
+      // owner-only delete rule below, so a full erase means deleting this
+      // document, its progress subcollection, and those rows.
+      allow delete: if isOwner(uid);
+
+      // Per-level detail, one document per level the player has attempted.
+      match /progress/{levelId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && incoming().keys().hasOnly([
+               'levelId', 'bestScore', 'stars', 'bestTurns', 'attempts',
+               'completed', 'updatedAt'
+             ])
+          && incoming().levelId == levelId
+          && validScore(incoming().bestScore)
+          && validStars(incoming().stars)
+          && validTurns(incoming().bestTurns)
+          && incoming().attempts is int && incoming().attempts >= 0
+          && incoming().completed is bool
+          && serverStamped();
+      }
+    }
+
+    // ---- playtester sign-up sheet (private, owner-only) --------------
+    //
+    // The name, age and email collected before a player's first level (see
+    // src/services/playerRegistry.ts). Kept as a flat, uid-keyed collection
+    // rather than a subcollection of /players, purely so the whole sign-up
+    // list reads as one page in the Firebase console — which is the actual
+    // reason the data is in the cloud at all.
+    //
+    // THIS IS PERSONAL DATA, AND ONE FIELD OF IT IS A MINOR'S AGE.
+    //
+    // So: no public read, no read by any other player, and no path by which
+    // any of it reaches a leaderboard document. The leaderboard rules above
+    // and below accept `displayName` and nothing else, which is what makes
+    // that guarantee structural rather than a convention the client happens
+    // to follow today.
+    //
+    // `email` here is NOT validated against request.auth.token.email, unlike
+    // the field of the same name on /players. That is deliberate and it is
+    // the whole point of keeping the two apart: this is an address a player
+    // typed into a form, which an anonymous session has no token to match
+    // against, and which nothing has confirmed. It is stored as a contact
+    // detail for a playtest, never used as an identity claim. The client
+    // calls it `declaredEmail` for the same reason.
+
+    match /playtesters/{uid} {
+      // The shape every write has to have, create and update alike. Factored
+      // out so the two rules below cannot drift — they differ only in the
+      // rate limit, which has nothing to check on a create.
+      //
+      // `name` and `age` are deliberately NOT on this list any more. The
+      // sign-in sheet stopped collecting them (see
+      // src/services/playerRegistry.ts), and `hasOnly` is what makes that a
+      // real guarantee rather than a client-side habit: a build that still
+      // tried to send an age would be refused here. It also means the mirror
+      // has to overwrite rather than merge, because a merge would leave the
+      // old fields on a document written under the previous schema and every
+      // later write by that player would be rejected.
+      function validPlaytester() {
+        return incoming().keys().hasOnly([
+                 'declaredEmail', 'registeredAt', 'updatedAt', 'schemaVersion'
+               ])
+          && incoming().declaredEmail is string
+          && incoming().declaredEmail.size() >= 3
+          && incoming().declaredEmail.size() <= 254
+          && incoming().registeredAt is string && incoming().registeredAt.size() <= 40
+          && incoming().schemaVersion is int
+          && serverStamped();
+      }
+
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid) && validPlaytester();
+
+      // Rate limited like every other updatable document here. A player
+      // legitimately rewrites this about twice ever — once if they correct a
+      // typo, once if they press "Test the connection" — so the 5-second floor
+      // is invisible to them and is the only thing standing between a loop and
+      // the Spark plan's 20k daily writes.
+      allow update: if isOwner(uid) && validPlaytester() && notTooSoon();
+
+      // A player may erase their own record. With no Cloud Functions there is
+      // no server-side cascade, so a full erase means deleting this document,
+      // the /players document, its progress subcollection and the
+      // leaderboard rows — see src/services/playerRegistry.ts.
+      allow delete: if isOwner(uid);
+    }
+
+    // ---- per-level leaderboard (public read) -------------------------
+    //
+    // One document per player per level — never an append-only log of every
+    // run. That is a storage AND quota decision: the Spark plan allows
+    // 20k writes/day across the whole project, so a board that grew a row
+    // per attempt would burn through it and grow without bound. Keying by
+    // uid caps the collection at "one row per player" forever, and the
+    // improvements-only rule below means a write only happens on an actual
+    // personal best.
+
+    match /leaderboards/{levelId}/entries/{uid} {
+      allow read: if true;
+
+      allow create: if isOwner(uid)
+        && incoming().keys().hasOnly(['uid', 'displayName', 'score', 'stars', 'turns', 'levelId', 'updatedAt'])
+        && incoming().uid == uid
+        && incoming().levelId == levelId
+        && validName(incoming().displayName)
+        && validScore(incoming().score)
+        && validStars(incoming().stars)
+        && validTurns(incoming().turns)
+        && serverStamped();
+
+      // Improvements only. A player can raise their own row but never
+      // lower it, so the board cannot be used to erase a beaten rival's
+      // standing, and a rewrite is only spent when the score actually
+      // moved.
+      allow update: if isOwner(uid)
+        && incoming().keys().hasOnly(['uid', 'displayName', 'score', 'stars', 'turns', 'levelId', 'updatedAt'])
+        && incoming().uid == resource.data.uid
+        && incoming().levelId == levelId
+        && validName(incoming().displayName)
+        && validScore(incoming().score)
+        && validStars(incoming().stars)
+        && validTurns(incoming().turns)
+        && incoming().score > resource.data.score
+        && serverStamped()
+        && notTooSoon();
+
+      allow delete: if isOwner(uid);
+    }
+
+    // ---- all-levels leaderboard (public read) ------------------------
+
+    match /globalEntries/{uid} {
+      allow read: if true;
+
+      allow create: if isOwner(uid)
+        && incoming().keys().hasOnly(['uid', 'displayName', 'totalScore', 'totalStars', 'levelsCompleted', 'updatedAt'])
+        && incoming().uid == uid
+        && validName(incoming().displayName)
+        && validScore(incoming().totalScore)
+        && incoming().totalStars is int && incoming().totalStars >= 0 && incoming().totalStars <= 1000
+        && incoming().levelsCompleted is int && incoming().levelsCompleted >= 0 && incoming().levelsCompleted <= 1000
+        && serverStamped();
+
+      allow update: if isOwner(uid)
+        && incoming().keys().hasOnly(['uid', 'displayName', 'totalScore', 'totalStars', 'levelsCompleted', 'updatedAt'])
+        && incoming().uid == resource.data.uid
+        && validName(incoming().displayName)
+        && validScore(incoming().totalScore)
+        && incoming().totalStars is int && incoming().totalStars >= 0 && incoming().totalStars <= 1000
+        && incoming().levelsCompleted is int && incoming().levelsCompleted >= 0 && incoming().levelsCompleted <= 1000
+        && incoming().totalScore >= resource.data.totalScore
+        && serverStamped()
+        && notTooSoon();
+
+      allow delete: if isOwner(uid);
+    }
+
+    // ---- daily challenge board (public read) -------------------------
+    //
+    // Same one-row-per-player shape as the level boards, partitioned by the
+    // challenge's UTC date id so each day is its own small collection —
+    // which is also what makes old days cheap to drop by hand if storage
+    // ever becomes a concern (again: no scheduled Function on Spark).
+
+    match /daily/{dateId}/entries/{uid} {
+      allow read: if true;
+
+      allow create: if isOwner(uid)
+        && incoming().keys().hasOnly(['uid', 'displayName', 'score', 'stars', 'turns', 'dateId', 'updatedAt'])
+        && incoming().uid == uid
+        && incoming().dateId == dateId
+        && validName(incoming().displayName)
+        && validScore(incoming().score)
+        && validStars(incoming().stars)
+        && validTurns(incoming().turns)
+        && serverStamped();
+
+      allow update: if isOwner(uid)
+        && incoming().keys().hasOnly(['uid', 'displayName', 'score', 'stars', 'turns', 'dateId', 'updatedAt'])
+        && incoming().uid == resource.data.uid
+        && incoming().dateId == dateId
+        && validName(incoming().displayName)
+        && validScore(incoming().score)
+        && validStars(incoming().stars)
+        && validTurns(incoming().turns)
+        && incoming().score > resource.data.score
+        && serverStamped()
+        && notTooSoon();
+
+      allow delete: if isOwner(uid);
+    }
+
+    // Anything not matched above is closed. New collections must opt in
+    // here explicitly rather than inheriting a permissive default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

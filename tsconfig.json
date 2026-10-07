@@ -18,7 +18,10 @@
       "@core/*": ["src/core/*"],
       "@render/*": ["src/render/*"],
       "@data/*": ["src/data/*"],
-      "@ui/*": ["src/ui/*"]
+      "@ui/*": ["src/ui/*"],
+      "@app/*": ["src/app/*"],
+      "@levels/*": ["src/levels/*"],
+      "@services/*": ["src/services/*"]
     }
   },
   "include": ["src", "tests", "tools"]

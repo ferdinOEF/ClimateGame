@@ -1,0 +1,13 @@
+{
+  "name": "Riptide Rising",
+  "short_name": "Riptide Rising",
+  "description": "A coastal resilience game set in Goa. Hold the coast against the monsoon.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#2a0f07",
+  "theme_color": "#3c1509",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

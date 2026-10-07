@@ -3,8 +3,8 @@ import type { AxialCoord } from "@core/hex";
 import { axialToWorld } from "@core/hex";
 import { createHexPrismGeometry } from "./hexGeometry";
 import { SettleAnimator } from "./settleAnimation";
+import { MAX_HAZARD_OVERLAY_INSTANCES } from "./instanceLimits";
 
-const MAX_INSTANCES = 400;
 const OVERLAY_HEIGHT = 0.14;
 const OVERLAY_LIFETIME_MS = 2200;
 
@@ -64,7 +64,7 @@ interface ActiveOverlay {
  */
 export class HazardOverlayManager {
   readonly mesh: THREE.InstancedMesh;
-  /** High-water mark — only ever grows, capped at MAX_INSTANCES. */
+  /** High-water mark — only ever grows, capped at MAX_HAZARD_OVERLAY_INSTANCES. */
   private nextIndex = 0;
   /** Indices whose collapse timeout has fired, ready to be reused. */
   private freeIndices: number[] = [];
@@ -77,7 +77,7 @@ export class HazardOverlayManager {
   /**
    * STEP_PROMPT_pacing_telegraph_preview.md Section 3: preview tiles
    * share this mesh/index pool with real reveals (so combined capacity is
-   * still bounded by MAX_INSTANCES) but are tracked entirely separately —
+   * still bounded by MAX_HAZARD_OVERLAY_INSTANCES) but are tracked entirely separately —
    * no SettleAnimator grow-in/collapse (a preview should appear/update
    * instantly, not drop-and-settle), no `OVERLAY_LIFETIME_MS` expiry (a
    * preview persists exactly as long as the toggle is on), no compound-
@@ -97,8 +97,8 @@ export class HazardOverlayManager {
       roughness: 0.3,
       metalness: 0.1
     });
-    this.mesh = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
-    this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_INSTANCES * 3), 3);
+    this.mesh = new THREE.InstancedMesh(geometry, material, MAX_HAZARD_OVERLAY_INSTANCES);
+    this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_HAZARD_OVERLAY_INSTANCES * 3), 3);
     this.mesh.count = 0;
     this.mesh.name = "hazard-overlay";
   }
@@ -114,7 +114,7 @@ export class HazardOverlayManager {
    * STEP_PROMPT_gameplay_stability_test.md Part A: the instance index used
    * to be a strictly-increasing counter that never gave back a slot once
    * its ~2s lifetime expired, so `show()` silently stopped doing anything
-   * at all — no error, just no more overlays — after MAX_INSTANCES (400)
+   * at all — no error, just no more overlays — after MAX_HAZARD_OVERLAY_INSTANCES (400)
    * cumulative calls within a single era, easily hit by a handful of
    * hazard triggers on a well-populated map. Now draws from `freeIndices`
    * (populated once a shown overlay's own collapse timeout fires) before
@@ -124,10 +124,10 @@ export class HazardOverlayManager {
     let index: number;
     if (this.freeIndices.length > 0) {
       index = this.freeIndices.pop()!;
-    } else if (this.nextIndex < MAX_INSTANCES) {
+    } else if (this.nextIndex < MAX_HAZARD_OVERLAY_INSTANCES) {
       index = this.nextIndex++;
     } else {
-      return; // truly MAX_INSTANCES concurrently live at once — vanishingly unlikely, same bail as before
+      return; // truly MAX_HAZARD_OVERLAY_INSTANCES concurrently live at once — vanishingly unlikely, same bail as before
     }
     this.mesh.count = Math.max(this.mesh.count, index + 1);
     const key = `${coord.q},${coord.r}`;
@@ -185,7 +185,7 @@ export class HazardOverlayManager {
     let index = this.previewByKey.get(key)?.index;
     if (index === undefined) {
       if (this.freeIndices.length > 0) index = this.freeIndices.pop()!;
-      else if (this.nextIndex < MAX_INSTANCES) index = this.nextIndex++;
+      else if (this.nextIndex < MAX_HAZARD_OVERLAY_INSTANCES) index = this.nextIndex++;
       else return; // out of shared capacity — same bail as show()
     }
     this.mesh.count = Math.max(this.mesh.count, index + 1);

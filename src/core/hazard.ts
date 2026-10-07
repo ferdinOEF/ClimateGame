@@ -20,6 +20,23 @@ export interface HazardResult {
    * disconnected from the real propagation.
    */
   arrivalRound: Map<string, number>;
+  /**
+   * How much incoming severity each defence family took out of the wave,
+   * keyed by `ElementCategory` ("nbs", "engineered", "hybrid").
+   *
+   * This exists for teaching, not for scoring. The game's claim is that
+   * mangroves absorb a surge, and until now the only evidence a player had
+   * was that the numbers were smaller than they might otherwise have been —
+   * which is not evidence at all, because they never saw the counterfactual.
+   * Tallying it here, inside the resolver that actually does the arithmetic,
+   * means the aftermath can state what each kind of defence did without the
+   * UI estimating anything.
+   */
+  absorbedByCategory: Map<string, number>;
+  /** Severity that arrived at tiles with nothing standing on them. The size of the gap in the defences. */
+  unprotectedSeverity: number;
+  /** Total severity that reached any damageable tile, protected or not. The denominator for the two figures above. */
+  arrivedSeverity: number;
 }
 
 /** The per-hop decay multiplier for one specific edge (from one tile's terrain to its neighbor's) — lets a hazard give the river channel its own shallower decay (Section 2) without a special-cased branch in the propagation loop itself. */
@@ -44,6 +61,9 @@ function resolveHazardWave(
   decayFor: DecayFn,
   skipDamage: (terrainId: string, key: string) => boolean
 ): HazardResult {
+  const absorbedByCategory = new Map<string, number>();
+  let unprotectedSeverity = 0;
+  let arrivedSeverity = 0;
   const tileDamage = new Map<string, number>();
   const destroyedDefenses: string[] = [];
   const overwhelmedDefenses: string[] = [];
@@ -135,6 +155,31 @@ function resolveHazardWave(
           tileDamage.set(key, severity);
           passthrough = severity;
         }
+
+        /*
+         * One accounting step for every branch above, rather than a line
+         * inside each.
+         *
+         * Whatever a branch decided, the energy that did NOT become damage
+         * here was absorbed here — by a reservoir drawing it down, by roots
+         * taking it out of the wave, or by a wall holding. Deriving it from
+         * the damage each branch already recorded means this can never
+         * disagree with the damage the player actually sees, which a second
+         * parallel calculation eventually would.
+         */
+        const dealtHere = tileDamage.get(key) ?? 0;
+        arrivedSeverity += severity;
+        if (def && targets && def.category) {
+          absorbedByCategory.set(
+            def.category,
+            (absorbedByCategory.get(def.category) ?? 0) + Math.max(0, severity - dealtHere)
+          );
+        } else {
+          // Nothing here that answers this hazard. A seawall facing a river
+          // flood counts as unprotected too, which is the point: it is the
+          // defence being in the wrong place, not the tile being empty.
+          unprotectedSeverity += severity;
+        }
       }
 
       if (passthrough < MIN_SEVERITY) continue;
@@ -156,7 +201,15 @@ function resolveHazardWave(
     round++;
   }
 
-  return { tileDamage, destroyedDefenses, overwhelmedDefenses, arrivalRound };
+  return {
+    tileDamage,
+    destroyedDefenses,
+    overwhelmedDefenses,
+    arrivalRound,
+    absorbedByCategory,
+    unprotectedSeverity,
+    arrivedSeverity
+  };
 }
 
 function sumDamage(result: HazardResult): number {
@@ -255,11 +308,24 @@ function mergeCompoundResults(a: HazardResult, b: HazardResult, severityCap: num
     arrivalRound.set(key, Math.min(ra ?? Infinity, rb ?? Infinity));
   }
 
+  // The two components are summed rather than capped like `tileDamage`,
+  // because these are energy totals across the whole event, not a per-tile
+  // severity that has to stay inside the cap.
+  const absorbedByCategory = new Map<string, number>();
+  for (const source of [a.absorbedByCategory, b.absorbedByCategory]) {
+    for (const [category, amount] of source) {
+      absorbedByCategory.set(category, (absorbedByCategory.get(category) ?? 0) + amount);
+    }
+  }
+
   return {
     tileDamage,
     destroyedDefenses: [...new Set([...a.destroyedDefenses, ...b.destroyedDefenses])],
     overwhelmedDefenses: [...new Set([...a.overwhelmedDefenses, ...b.overwhelmedDefenses])],
-    arrivalRound
+    arrivalRound,
+    absorbedByCategory,
+    unprotectedSeverity: a.unprotectedSeverity + b.unprotectedSeverity,
+    arrivedSeverity: a.arrivedSeverity + b.arrivedSeverity
   };
 }
 
