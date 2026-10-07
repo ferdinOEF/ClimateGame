@@ -6106,3 +6106,23 @@ profile):
 - **Risk:** Smart's 3★ rate falls steeply below a jar income of 0.2 (18% at
   0.15). Any later economy change should re-run `npm run bots`, which the
   test suite already does.
+
+## P10 — final verification and merge — DONE
+
+**Checks on the branch head:**
+- tsc clean.
+- 259 tests pass, 6 skipped, including the 8 bot balance assertions.
+- The build passes.
+- The walkthrough is clean: menu, tutorial (unchanged turn model), Panaji.
+
+**The standing rules still hold:**
+- The email requirement is off (`REQUIRE_EMAIL`).
+- The menu is still Tutorial plus Choose a level (`SHOW_MENU_EXTRAS` off).
+- The street-map layer still defaults to 23%.
+
+**How to undo the whole change:**
+- The merge into master is a merge commit, so `git revert -m 1 <merge
+  commit>` reverts it in one step.
+- Resetting to `pre-panjim-2050` (b5bffe4) also works. That tag exists in
+  the local clone only, because the git proxy refused tag pushes; the
+  branch `backup/pre-panjim-2050` marks the same commit on GitHub.
