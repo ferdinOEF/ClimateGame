@@ -5430,3 +5430,64 @@ keep their own colours. The per-terrain strengths are unchanged.
   - Pasted leaderboard, settings, sign-in and daily links land on the menu.
 - **Flag on:** a dev build with `VITE_SHOW_MENU_EXTRAS=true` shows the old
   menu, and the leaderboard can be reached again.
+
+# Panjim 2050 (branch `panjim-2050`)
+
+Turning the Panaji level into a 25-year run (Q1 2025 to Q4 2049) where time
+moves only when the player acts. The work runs as a gauntlet: every phase is
+built, checked (`tsc`, tests, build, a 1920x1080 headless run with grayscale
+twins), assessed here, then committed and pushed. Screenshots are in
+`docs/screenshots/panjim2050/` (`<phase>-<name>.jpg`, plus `-gray`), taken by
+`npx tsx tools/phaseShots.ts <phase>`.
+
+## P0 — safety net, audit, telemetry — DONE
+
+**Safety net:**
+- Master was green at `b5bffe4`: tsc clean, 213 tests pass (6 skipped), and the
+  build passes.
+- **Tag:** the annotated tag `pre-panjim-2050` exists locally, but the git
+  proxy here refuses tag pushes (HTTP 403 on `refs/tags/*`). Branch pushes
+  work, so `backup/pre-panjim-2050` sits on the remote at the same commit.
+  **Decision:** keep both and ask the owner to push the tag from a normal
+  checkout (`git push origin pre-panjim-2050`) or create it on GitHub at
+  `b5bffe4`.
+- All work is on `panjim-2050`.
+
+**Audit, what exists today:**
+- **Turns:** a "turn" is one `GameState.build()`. Each build collects income
+  into Coin and advances the turn by one. Removal is free, and there is no
+  claim step: claiming was removed earlier, and every tile starts claimed.
+- **Hazards:** they run on fixed turn intervals per level
+  (`cycloneIntervalTurns`, `floodIntervalTurns`) with a 2-turn telegraph. The
+  resolution is a whole-map BFS from every coast and estuary tile (cyclone) or
+  from the river source (flood). Nothing is zone-local, and severity creeps
+  per hazard, not per year.
+- **Maturity:** measured in turns (`matureTurns`: Dune 2, Mangrove 4…).
+- **Creatures:** every placed element already plays its reaction on a
+  staggered ambient timer (`ElementReactions.setAmbientSource`), and a tap on
+  a built tile plays one on top. Nothing records which species were seen.
+- **Sound:** `playSound` is a placeholder hook that only logs.
+- **Score:** objectives drive completion, and stars come from a single total
+  against `starThresholds`.
+- **Zones:** none exist. The Panaji map has neighbourhood labels (Miramar,
+  Caranzalem, Dona Paula, Taleigao, St Cruz, Merces), which the zones can be
+  traced from.
+
+**Telemetry:**
+- `src/core/telemetry.ts` is pure, with an injected clock, and has a test.
+- The session mirrors each event to `console.info` and `window.__telemetry`;
+  nothing goes over the network.
+- Wired so far: `session_start`, `first_action_ms`, `action(build, 1)` and
+  `run_end`. The rest arrive with the phases that create them.
+
+**Checks:**
+- tsc clean, 214 tests pass, and the build passes.
+- `tools/phaseShots.ts p0` reports no console errors.
+- **Frame rate:** 2.5 fps on the full board in this sandbox. That is a
+  software renderer (SwiftShader), so it is not a measure of a desktop GPU,
+  and 60 fps on real hardware cannot be checked from here.
+
+**Self-assessment:** nothing player-facing changed yet. The main risk found
+is that `gameSession.ts` is 1,760 lines and owns all pacing. **Decision:** the
+Panjim 2050 rules go in a pure core module the bots can drive, and the
+session only renders its events. The tutorial keeps its turn model untouched.

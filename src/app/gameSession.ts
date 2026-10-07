@@ -33,6 +33,7 @@ export type { SessionResult } from "@core/levelScore";
 import { allComplete, evaluateObjectives } from "@core/objectives";
 import { RunTracker } from "@core/runStats";
 import { hashSeed, Rng } from "@core/rng";
+import { Telemetry } from "@core/telemetry";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import startingStateData from "@data/startingState.json";
@@ -107,6 +108,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // level id so the sequence is identical for every player on this level.
   const rng = new Rng(hashSeed(level.id));
   const runTracker = new RunTracker();
+  /**
+   * Local play telemetry (see @core/telemetry): mirrored to the console and to
+   * `window.__telemetry`, never sent anywhere.
+   */
+  const telemetry = new Telemetry(
+    () => performance.now(),
+    (event) => console.info(`[telemetry] ${event.name} t=${event.t}ms`, event.data),
+    { levelId: level.id }
+  );
 
   /**
    * The place this level is played on, and its tiles (see @levels/levelMap).
@@ -689,6 +699,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     });
 
     playSound(completed ? "build" : "era_end");
+    telemetry.emit("run_end", { total_ms: Math.round(telemetry.elapsed()), actions: telemetry.actions, completed, score: score.total });
     options.onFinished({
       levelId: level.id,
       completed,
@@ -1457,6 +1468,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     buildPopover.show(screen.x, screen.y, popoverOptions, state.coin, (id) => {
       if (!state.build(coord, id)) return;
+      telemetry.action("build", 1);
       placeElement(coord, id, true);
       nuggetPopup.show(id);
       playSound("build");
@@ -1621,6 +1633,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   }
 
   const testHooks: Record<string, unknown> = {
+    // The local telemetry log (see @core/telemetry). Read-only by convention.
+    __telemetry: telemetry.events,
     // Lets tools/verify_readability.ts (and any future script needing exact
     // camera framing) pan straight to a world coordinate via the scene's own
     // `focusOn`, instead of reverse-engineering the pan-drag pixel math.
