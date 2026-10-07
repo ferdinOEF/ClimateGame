@@ -18,7 +18,8 @@ export class ClockHud {
   readonly el: HTMLElement;
   private readonly quarterEl: HTMLElement;
   private readonly yearEl: HTMLElement;
-  private readonly fillEl: HTMLElement;
+  /** Where the Climate Outlook mounts, between the face and the buttons. */
+  readonly outlookSlot: HTMLElement;
   private readonly ffYearBtn: HTMLButtonElement;
   private readonly ffEventBtn: HTMLButtonElement;
   private readonly lapseEl: HTMLElement;
@@ -33,7 +34,7 @@ export class ClockHud {
       <div class="clock-face" aria-live="polite">
         <span class="clock-quarter">Q1</span><span class="clock-year">2025</span>
       </div>
-      <div class="clock-track" aria-hidden="true"><div class="clock-fill"></div></div>
+      <div class="clock-outlook"></div>
       <div class="clock-buttons">
         <button type="button" class="clock-ff clock-ff-year" title="Spend four quarters and watch a year go by">+1 year</button>
         <button type="button" class="clock-ff clock-ff-event" title="Skip to one quarter before the next challenge">Next event</button>
@@ -43,7 +44,7 @@ export class ClockHud {
     container.appendChild(this.el);
     this.quarterEl = this.el.querySelector(".clock-quarter")!;
     this.yearEl = this.el.querySelector(".clock-year")!;
-    this.fillEl = this.el.querySelector(".clock-fill")!;
+    this.outlookSlot = this.el.querySelector(".clock-outlook")!;
     this.ffYearBtn = this.el.querySelector(".clock-ff-year")!;
     this.ffEventBtn = this.el.querySelector(".clock-ff-event")!;
     this.lapseEl = this.el.querySelector(".clock-lapse")!;
@@ -64,11 +65,10 @@ export class ClockHud {
   }
 
   /** Paints the clock immediately, without a tick. `label` is "Q2 2026" or the bare end year. */
-  set(label: string, progress: number): void {
+  set(label: string, _progress: number): void {
     const [quarter, year] = label.includes(" ") ? label.split(" ") : ["", label];
     this.quarterEl.textContent = quarter;
     this.yearEl.textContent = year;
-    this.fillEl.style.width = `${Math.max(0, Math.min(1, progress)) * 100}%`;
   }
 
   /** One quarter passes: flip the face and click. */

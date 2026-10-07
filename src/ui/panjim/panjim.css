@@ -120,3 +120,164 @@
 .built-info-action {
   margin-bottom: 6px;
 }
+
+/* ---- Climate Outlook --------------------------------------------------- */
+
+.panjim-clock .clock-outlook {
+  width: 640px;
+  max-width: calc(100vw - 640px);
+  min-width: 420px;
+}
+
+.outlook {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px 6px;
+  background: rgba(20, 30, 26, 0.82);
+  border: 1px solid rgba(255, 243, 196, 0.25);
+  border-radius: 10px;
+}
+
+.outlook-track {
+  position: relative;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(253, 246, 230, 0.08);
+}
+
+.outlook-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 6px 0 0 6px;
+  background: linear-gradient(90deg, rgba(111, 194, 168, 0.25), rgba(111, 194, 168, 0.4));
+  transition: width 220ms ease-out;
+}
+
+.outlook-now {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: #fdf6e6;
+  box-shadow: 0 0 6px rgba(253, 246, 230, 0.8);
+  transition: left 220ms ease-out;
+}
+
+.outlook-ticks {
+  position: absolute;
+  inset: 0;
+}
+
+.outlook-tick {
+  position: absolute;
+  bottom: 1px;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: rgba(253, 246, 230, 0.4);
+  border-left: 1px solid rgba(253, 246, 230, 0.15);
+  padding-left: 2px;
+}
+
+.outlook-markers {
+  position: absolute;
+  inset: 0;
+}
+
+.outlook-marker {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 5px;
+  color: #fdf6e6;
+  min-width: 18px;
+  transition: left 300ms ease, width 300ms ease, background 300ms ease;
+}
+
+.outlook-marker svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+/* Far: a soft, dashed season band. */
+.outlook-marker.phase-far {
+  background: repeating-linear-gradient(135deg, rgba(242, 195, 91, 0.16) 0 6px, rgba(242, 195, 91, 0.06) 6px 12px);
+  border: 1px dashed rgba(242, 195, 91, 0.45);
+}
+
+/* Near: narrowing and firmer. */
+.outlook-marker.phase-near {
+  background: rgba(242, 195, 91, 0.28);
+  border: 1px solid rgba(242, 195, 91, 0.7);
+}
+
+/* Locked: a solid pin with the strength rating. */
+.outlook-marker.phase-locked {
+  background: #d9573b;
+  border: 2px solid #fdf6e6;
+  min-width: 46px;
+  transform: translateX(-35%);
+  box-shadow: 0 0 10px rgba(217, 87, 59, 0.7);
+  animation: outlook-locked 1.6s ease-in-out infinite;
+}
+
+@keyframes outlook-locked {
+  50% { box-shadow: 0 0 18px rgba(217, 87, 59, 0.95); }
+}
+
+.outlook-marker.phase-past {
+  background: rgba(111, 194, 168, 0.35);
+  border: 1px solid rgba(111, 194, 168, 0.8);
+  min-width: 40px;
+  transform: translateX(-35%);
+}
+
+.outlook-strength {
+  font-size: 9px;
+  letter-spacing: -1px;
+}
+
+.outlook-stars {
+  font-size: 10px;
+  color: #f2c35b;
+}
+
+.outlook-track.pulse {
+  animation: outlook-pulse 900ms ease-out;
+}
+
+@keyframes outlook-pulse {
+  30% { box-shadow: 0 0 0 3px rgba(217, 87, 59, 0.6); }
+}
+
+.outlook-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.outlook-line {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.outlook-line.locked {
+  color: #ffb39e;
+  font-weight: 600;
+}
+
+.outlook-sea {
+  color: #9fd8c6;
+  font-variant-numeric: tabular-nums;
+}

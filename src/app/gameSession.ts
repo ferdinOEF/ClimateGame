@@ -370,7 +370,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             refreshPreview();
           },
           onRunComplete: () => finishRun(true),
-          showBanner: (text, ms) => hud.showBanner(text, ms)
+          showBanner: (text, ms) => hud.showBanner(text, ms),
+          seed: params.get("seed") ?? level.id,
+          // Placeholder until the zones resolve it (P3/P7): the challenge is announced, not yet felt.
+          onChallenge: (challenge) => {
+            hud.flashArrival(challenge.kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
+            hud.showBanner(`${challenge.name} hits Panjim`, 4000);
+          }
         })
       : null;
   if (panjim) hud.useQuarterClock();

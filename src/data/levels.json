@@ -78,6 +78,38 @@
         "fastForwardYear": 4
       }
     },
+    "climate": {
+      "baselinePerYear": 0.02,
+      "seaLevelCmPerYear": 0.4,
+      "forecastLockQuarters": 8,
+      "narrowFromQuarters": 20,
+      "challenges": [
+        {
+          "id": "c1-cyclone",
+          "name": "Cyclone",
+          "kind": "cyclone",
+          "year": 2032,
+          "jitterYears": 1.5,
+          "strength": 1.2
+        },
+        {
+          "id": "c2-flood",
+          "name": "Monsoon flood",
+          "kind": "flood",
+          "year": 2040,
+          "jitterYears": 1.5,
+          "strength": 1.8
+        },
+        {
+          "id": "c3-compound",
+          "name": "Cyclone and flood",
+          "kind": "compound",
+          "year": 2048,
+          "jitterYears": 1,
+          "strength": 2.2
+        }
+      ]
+    },
     "objectives": [
       {
         "type": "build_category",

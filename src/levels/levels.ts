@@ -2,6 +2,7 @@ import levelData from "@data/levels.json";
 import type { Objective } from "@core/objectives";
 import { dailyChallengeId, hashSeed, Rng } from "@core/rng";
 import type { TimelineConfig } from "@core/actionRun";
+import type { ClimateConfig } from "@core/climate";
 
 /**
  * Level definitions — the campaign, loaded from data, never hardcoded.
@@ -76,6 +77,8 @@ export interface LevelDef {
   timeModel?: "turns" | "actions";
   /** Required when `timeModel` is `"actions"`. */
   timeline?: TimelineConfig;
+  /** The action-driven run's scheduled challenges and rising baseline (core/climate.ts). */
+  climate?: ClimateConfig;
   objectives: Objective[];
   starThresholds: [number, number, number];
 }

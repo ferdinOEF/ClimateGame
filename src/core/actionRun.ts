@@ -1,6 +1,8 @@
 import { axialKey, type AxialCoord } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
+import { QUARTERS_PER_YEAR } from "./quarters";
+import { buildSchedule, type ClimateConfig, type ScheduledChallenge } from "./climate";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim in quarters, where time moves only
@@ -34,10 +36,22 @@ export interface TimelineConfig {
   };
 }
 
-export const QUARTERS_PER_YEAR = 4;
+export { QUARTERS_PER_YEAR };
 
 /** One thing that happened while the clock moved. The session animates these in order. */
-export type RunEvent = { type: "quarter"; quarter: number };
+export type RunEvent =
+  | { type: "quarter"; quarter: number }
+  /** A challenge's Forecast locked: exact quarter and strength are now known. */
+  | { type: "forecast_lock"; challenge: ScheduledChallenge }
+  /** A challenge landed this quarter. */
+  | { type: "challenge"; challenge: ScheduledChallenge };
+
+export interface ActionRunOptions {
+  /** The level's climate: scheduled challenges and the rising baseline. */
+  climate?: ClimateConfig;
+  /** Seed text for the schedule's jitter. The level id by default; a daily or replay seed otherwise. */
+  seed?: string;
+}
 
 export type ActionKind = "build" | "repair" | "demolish" | "fast_forward_year" | "fast_forward_event";
 
@@ -58,14 +72,36 @@ export function quarterLabel(quarter: number, startYear: number): string {
 
 export class ActionRun {
   readonly totalQuarters: number;
+  readonly climate: ClimateConfig | null;
+  /** The challenge calendar for this seed, in order. */
+  readonly schedule: ScheduledChallenge[];
+  /** Ids of challenges that have landed. */
+  readonly landed = new Set<string>();
+  /** Ids of challenges whose Forecast has locked. */
+  readonly locked = new Set<string>();
 
   constructor(
     readonly state: GameState,
-    readonly config: TimelineConfig
+    readonly config: TimelineConfig,
+    options: ActionRunOptions = {}
   ) {
     this.totalQuarters = (config.endYear - config.startYear) * QUARTERS_PER_YEAR;
     state.autoCollectIncome = true;
     state.maturityField = "matureQuarters";
+    this.climate = options.climate ?? null;
+    this.schedule = this.climate ? buildSchedule(this.climate, options.seed ?? "panjim", config.startYear, config.endYear) : [];
+  }
+
+  /** The next challenge that has not landed yet, or null after the last. */
+  nextChallenge(): ScheduledChallenge | null {
+    return this.schedule.find((challenge) => !this.landed.has(challenge.id)) ?? null;
+  }
+
+  /** Quarters "Next event" would spend: up to one quarter before the next challenge. 0 when there is nothing to skip. */
+  quartersToNextEvent(): number {
+    const next = this.nextChallenge();
+    if (!next) return 0;
+    return Math.max(0, next.quarter - 1 - this.quarter);
   }
 
   /** Quarters elapsed since Q1 of the start year. The game state's turn counter is the same number. */
@@ -114,21 +150,52 @@ export class ActionRun {
     return this.spend(this.config.costs.fastForwardYear);
   }
 
-  /** Advances the clock `quarters` times, one quarter at a time, and reports each tick. */
+  /** Skips to one quarter before the next challenge, as a time-lapse. */
+  fastForwardToNextEvent(): ActionOutcome {
+    if (this.finished) return refuse("The run has reached 2050.");
+    const quarters = this.quartersToNextEvent();
+    if (quarters <= 0) return refuse("Nothing to skip to.");
+    return this.spend(quarters);
+  }
+
+  /**
+   * Advances the clock `quarters` times, one quarter at a time, and reports
+   * each tick. A challenge interrupts: the clock stops on the quarter it
+   * lands, so a fast-forward never skips past one.
+   */
   protected spend(quarters: number): ActionOutcome {
     const events: RunEvent[] = [];
     let spent = 0;
     while (spent < quarters && !this.finished) {
-      events.push(...this.tick());
+      const tickEvents = this.tick();
+      events.push(...tickEvents);
       spent++;
+      if (tickEvents.some((event) => event.type === "challenge")) break;
     }
     return { ok: true, quarters: spent, events };
   }
 
-  /** One quarter passes. */
+  /** One quarter passes: the turn advances, then any Forecast that locks and any challenge that lands. */
   protected tick(): RunEvent[] {
     this.state.advanceTurn();
-    return [{ type: "quarter", quarter: this.quarter }];
+    const events: RunEvent[] = [{ type: "quarter", quarter: this.quarter }];
+    if (!this.climate) return events;
+    for (const challenge of this.schedule) {
+      if (this.locked.has(challenge.id) || challenge.quarter - this.quarter > this.climate.forecastLockQuarters) continue;
+      this.locked.add(challenge.id);
+      events.push({ type: "forecast_lock", challenge });
+    }
+    for (const challenge of this.schedule) {
+      if (this.landed.has(challenge.id) || challenge.quarter > this.quarter) continue;
+      this.landed.add(challenge.id);
+      events.push(...this.land(challenge));
+    }
+    return events;
+  }
+
+  /** A challenge lands. Subclasses and later phases resolve it against the board; here it is only reported. */
+  protected land(challenge: ScheduledChallenge): RunEvent[] {
+    return [{ type: "challenge", challenge }];
   }
 }
 

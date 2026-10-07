@@ -4,6 +4,9 @@ import type { AxialCoord } from "@core/hex";
 import type { Telemetry } from "@core/telemetry";
 import type { LevelDef } from "@levels/levels";
 import { ClockHud } from "@ui/panjim/clockHud";
+import { OutlookBar } from "@ui/panjim/outlookBar";
+import { outlookFor, seaLevelCm, type ScheduledChallenge } from "@core/climate";
+import { playSound } from "@ui/audioHooks";
 
 /**
  * The Panjim 2050 run inside a live session.
@@ -28,6 +31,12 @@ export interface PanjimHost {
   /** The run reached 2050. */
   onRunComplete: () => void;
   showBanner: (text: string, ms?: number) => void;
+  /** Seed text for the challenge calendar: the level id, a daily id, or a `?seed=` replay. */
+  seed: string;
+  /** A challenge's Forecast just locked. */
+  onForecastLock?: (challenge: ScheduledChallenge) => void;
+  /** A challenge landed. */
+  onChallenge?: (challenge: ScheduledChallenge) => void;
 }
 
 /** Milliseconds per quarter tick: quick for a single action, slower for a visible time-lapse. */
@@ -37,18 +46,38 @@ const TICK_MS_LAPSE = 420;
 export class PanjimController {
   readonly run: ActionRun;
   private readonly clock: ClockHud;
+  private readonly outlook: OutlookBar;
+  /** Stars per landed challenge, shown on the Outlook. */
+  readonly results = new Map<string, number>();
   private busy = false;
 
   constructor(private readonly host: PanjimHost) {
     if (!host.level.timeline) throw new Error("PanjimController needs a level timeline");
-    this.run = new ActionRun(host.state, host.level.timeline);
+    this.run = new ActionRun(host.state, host.level.timeline, { climate: host.level.climate, seed: host.seed });
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, {
       onFastForwardYear: () => void this.fastForwardYear(),
       onFastForwardEvent: () => void this.fastForwardEvent()
     });
+    this.outlook = new OutlookBar(this.clock.outlookSlot);
     this.clock.set(this.run.label, this.progress());
+    this.renderOutlook();
     this.syncControls();
+  }
+
+  /** Repaints the Outlook from the current quarter. */
+  renderOutlook(): void {
+    const climate = this.run.climate;
+    if (!climate) return;
+    const startYear = this.run.config.startYear;
+    this.outlook.render({
+      startYear,
+      endYear: this.run.config.endYear,
+      now: this.run.year,
+      outlooks: this.run.schedule.map((challenge) => outlookFor(climate, challenge, this.run.quarter, startYear)),
+      seaLevelCm: seaLevelCm(climate, this.run.quarter),
+      results: this.results
+    });
   }
 
   /** Quarters a build of this element spends, for the popover. */
@@ -90,29 +119,71 @@ export class PanjimController {
     await this.play(outcome, TICK_MS_LAPSE);
   }
 
-  /** Skips to one quarter before the next challenge window. Wired up with the schedule (P2). */
+  /** Skips to one quarter before the next challenge, as a time-lapse. */
   async fastForwardEvent(): Promise<void> {
-    // No schedule yet: nothing to skip to.
+    if (this.busy) return;
+    const outcome = this.run.fastForwardToNextEvent();
+    if (!outcome.ok) return;
+    this.host.telemetry.action("fast_forward_event", outcome.quarters);
+    this.host.telemetry.emit("fast_forward", { quarters: outcome.quarters, toEvent: true });
+    await this.play(outcome, outcome.quarters > 8 ? TICK_MS_LAPSE * 0.6 : TICK_MS_LAPSE);
   }
 
   /** Animates an action's quarter ticks, then repaints and checks for the end of the run. */
   private async play(outcome: ActionOutcome, stepMs: number): Promise<void> {
-    const ticks = outcome.events.filter((e): e is Extract<RunEvent, { type: "quarter" }> => e.type === "quarter");
+    // One step per quarter; the forecast and challenge events that happened
+    // in that quarter ride along with it, so they fire as its tick shows.
+    const steps: { quarter: number; extra: RunEvent[] }[] = [];
+    for (const event of outcome.events) {
+      if (event.type === "quarter") steps.push({ quarter: event.quarter, extra: [] });
+      else steps[steps.length - 1]?.extra.push(event);
+    }
     this.busy = true;
     this.syncControls();
+    const handled = new Set<number>();
+    const handleStep = (index: number): void => {
+      // A skip jumps to the last step; run every step's events up to it, once.
+      for (let i = 0; i <= index; i++) {
+        if (handled.has(i)) continue;
+        handled.add(i);
+        for (const event of steps[i].extra) this.handleEvent(event);
+      }
+      this.renderOutlook();
+      this.host.refresh();
+    };
     try {
       await this.clock.timeLapse(
-        ticks.map((tick) => ({ label: this.labelFor(tick.quarter), progress: tick.quarter / this.run.totalQuarters })),
+        steps.map((step) => ({ label: this.labelFor(step.quarter), progress: step.quarter / this.run.totalQuarters })),
         stepMs,
-        () => this.host.refresh()
+        handleStep
       );
     } finally {
       this.busy = false;
     }
     this.clock.set(this.run.label, this.progress());
+    this.renderOutlook();
     this.host.refresh();
     this.syncControls();
     if (this.run.finished) this.host.onRunComplete();
+  }
+
+  private handleEvent(event: RunEvent): void {
+    switch (event.type) {
+      case "forecast_lock": {
+        playSound("hazard_telegraph");
+        this.outlook.pulse();
+        this.host.showBanner(`Forecast locked: ${event.challenge.name} in ${this.labelFor(event.challenge.quarter)}`, 4200);
+        this.host.onForecastLock?.(event.challenge);
+        break;
+      }
+      case "challenge": {
+        playSound("hazard_arrival");
+        this.host.onChallenge?.(event.challenge);
+        break;
+      }
+      case "quarter":
+        break;
+    }
   }
 
   private labelFor(quarter: number): string {
@@ -125,7 +196,13 @@ export class PanjimController {
 
   private syncControls(): void {
     const open = !this.busy && !this.run.finished;
-    this.clock.setControlsEnabled(open, false, "No challenge on the horizon yet");
+    const toEvent = this.run.quartersToNextEvent();
+    const next = this.run.nextChallenge();
+    this.clock.setControlsEnabled(
+      open,
+      open && toEvent > 0,
+      next ? `Skip ${toEvent} quarter${toEvent === 1 ? "" : "s"}, to just before the ${next.name.toLowerCase()}` : "No storm left to skip to"
+    );
   }
 
   /**
@@ -134,6 +211,11 @@ export class PanjimController {
    */
   async scenario(name: string): Promise<boolean> {
     switch (name) {
+      case "forecast": {
+        await this.fastForwardEvent();
+        await this.idle();
+        return true;
+      }
       case "actions": {
         for (const elementId of ["dune", "mangrove", "house", "seawall"]) {
           const coord = this.firstBuildable(elementId);

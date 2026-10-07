@@ -5543,3 +5543,56 @@ session only renders its events. The tutorial keeps its turn model untouched.
   earlier and every tile starts open, so "claim a tile" is folded into
   building on it rather than re-adding a step that would double every
   action's cost.
+
+## P2 — climate schedule, rising baseline, Outlook bar — DONE
+
+**Schedule** (`src/core/climate.ts`, pure, 7 new tests):
+- Three challenges are defined in levels.json (`climate`):
+  - Cyclone about 2032 (±1.5 years), base strength 1.2.
+  - Monsoon flood about 2040 (±1.5 years), base strength 1.8.
+  - Cyclone and flood about 2048 (±1 year), base strength 2.2.
+- **Seed:** the jitter is seeded from `level.id`, from `?seed=` for a replay,
+  or from the daily id. The same seed always gives the same calendar, and
+  the tests check that 200 seeds give many different ones.
+- **Seasons:** each date is snapped to its real season (cyclones Q2/Q4, the
+  monsoon flood Q3).
+- **Spacing:** challenges stay in order, at least two years apart, and
+  inside the run.
+
+**Baseline:**
+- Challenge strength is multiplied by 1 + 2% per year, giving 1 icon, then 2,
+  then 3 on the default seed. The Outlook also shows "Sea +N cm" (0.4 cm a
+  year).
+- **Decision:** the baseline is tied to the calendar, not to the player's
+  speed. A challenge's strength is fixed by its date. Waiting costs instead
+  because every quarter spent banking is a quarter not building, and nature
+  defences take years to grow. P9's bots must confirm this.
+
+**Outlook:** a 2025–2050 timeline under the clock with three markers.
+- **Far:** a dashed season band centred on the nominal year, so it leaks
+  nothing about the jitter.
+- **Near (from 5 years out):** the band narrows around the true date, skewed
+  by a seeded offset, and always contains it (tested).
+- **Locked (2 years out):** a red pin with the exact quarter and ●●○
+  strength, plus a sound, a pulse and a banner. Never a modal.
+- **Next line:** "Next: Forecast locked · Cyclone · Q2 2031 · mild · in 1 qtr".
+
+**Next event:** "Next event" spends the quarters up to one before the next
+challenge, as a time-lapse. Every fast-forward stops on the quarter a
+challenge lands, so none can skip past one.
+
+**Placeholder:** for now a challenge only flashes and announces itself. The
+zones resolve it in P3, and P7 stages it.
+
+**Checks:** 226 tests pass; the build passes; `phaseShots p2 --scenario=forecast`
+shows no console errors (`p2-board`, `p2-forecast`).
+
+**Self-assessment:**
+- **Fixed:** the Outlook reads at a glance, and the locked pin is the most
+  saturated thing on screen. The first draft said "Cyclone, cyclone season",
+  now fixed.
+- **Missing:** the board doesn't show *where* yet, so a first-time player
+  would read "mild cyclone in 1 qtr" and not know what to do about it. P3
+  adds the zone overlay and the readiness gauge, which answer that.
+- **Watch:** the 2030 tick label sits under the first marker. It is
+  legible, but needs checking again with the gauge in place.
