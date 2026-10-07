@@ -5596,3 +5596,86 @@ shows no console errors (`p2-board`, `p2-forecast`).
   adds the zone overlay and the readiness gauge, which answer that.
 - **Watch:** the 2030 tick label sits under the first marker. It is
   legible, but needs checking again with the gauge in place.
+
+## P3 — zones, zone-local resolution, readiness gauge — DONE
+
+**Zones** are generated, not hand-written. `buildPanajiMap.ts` gained four
+lat/lon polygons traced around real places, and every tile inside one is
+written to `panaji.json` as `zones`; tiles and landmarks did not move
+(checked byte for byte before the change):
+
+| Zone | Place | Tiles | Make-up |
+|---|---|---|---|
+| Z1 | Campal–Miramar–Caranzalem–Dona Paula beach | 114 | 17 of the 20 beach tiles, 38 sea, 55 town |
+| Z2 | Taleigao plain, St Cruz and Merces wetlands | 242 | 87 estuary, 148 land, 7 river |
+| Z3 | Ourem creek and Fontainhas | 44 | 11 river, 12 estuary, 21 land |
+| Z4 | Mandovi waterfront and the old city | 51 | 11 river, 18 estuary, 22 land |
+
+**Resolution** (`src/core/zones.ts`, pure, 8 new tests):
+- **Paths:** a challenge travels zone by zone.
+  - Cyclone: Z1 then Z2.
+  - Flood: Z2, then Z3, then Z4.
+  - Compound: a surge front up the Mandovi into Z4 (60% of the strength),
+    plus a rain front Z2, Z3, Z4 (75%), which reaches Z4 second and finds
+    whatever defence the surge left there.
+- **The rule:** each zone's defence is the sum of the generic
+  `effects.resilience` of everything standing in it that answers the hazard,
+  scaled by maturity and wear.
+  - Values: Dune 4, Sandy Vegetation 2.5, Mangrove 5, Khazan 5, Seawall 9,
+    Breakwater 7, Small Dam 5; Sand Mining −4 and Resort −1 weaken every
+    hazard.
+  - A shortfall damages that zone's houses in proportion; a damaged house
+    earns nothing until repaired. 75% of the shortfall carries on to the
+    next zone.
+  - Stars per challenge come from "protection", the share of the
+    undefended damage prevented: 85% or more is 3 stars, 50% is 2, and
+    anything less is still 1, because the city always stands.
+- **Engineered failure:** an engineered structure over its own
+  `failureThreshold` fails and releases what it held.
+- **Dam decision:** a reservoir (anything with a flood buffer) is tested
+  against its front's *full* rain load, not what got past the zones above
+  it, because a dam carries its whole catchment. This makes the Small Dam
+  hold in the monsoon flood and fail in the compound storm wherever it
+  stands (tested). That is the "cheap temptation" in the brief.
+- **Repair:** 1 quarter plus 40% of the build cost, from the tile's card.
+  It clears wear and gets damaged houses earning again.
+
+**Readiness gauge:**
+- Next to the Outlook line: "Ready", a bar and ★★☆, coloured red, amber or
+  green.
+- **How it predicts:** it resolves the next challenge against a copy of the
+  board *as it will stand on the challenge date*, so defences that are
+  still growing count at the maturity they will have reached by then. The
+  strength is the expected one before the lock, the exact one after.
+- **Live:** it updates on every repaint, and a test confirms that building
+  dunes in Z1 raises it.
+
+**Forecast in the scene, once locked:**
+- **Overlay:** translucent ghosts over every tile on the path, strongest on
+  the first zone.
+- **Outline:** a bold, pulsing cream-and-dark band along the zones' edge.
+  The ghosts alone vanished in grayscale; the band reads in both.
+- **Label:** "Cyclone landfall ●○○ Q2 2031", anchored on the threatened tile
+  nearest the city centre and kept on screen.
+
+**Challenges:** they now resolve and show zone by zone (overlay reveal, failed
+structures collapse, worn ones weather, houses lean), then a banner such as
+"Cyclone ★★☆ · houses saved 12". P7 stages this properly.
+
+**Checks:** 234 tests pass; the build passes; the walkthrough is clean;
+`phaseShots p3 --scenario=forecast,challenge` shows no console errors.
+
+**Self-assessment:**
+- **The useful part:** "Cyclone landfall ●○○" sitting on the beach with an
+  outlined zone is the first moment the game says *where*, and the gauge
+  makes the next move obvious.
+- **Fixed during the phase:**
+  - The label first sat off-screen at Caranzalem.
+  - The Outlook said "in 0 qtr" on the quarter the storm landed.
+  - The result banner hid the fast-forward buttons.
+  - The overlay was invisible in grayscale.
+- **What a first-time player won't understand:**
+  - The scenario built four dunes one quarter before landfall and the gauge
+    stayed red, because dunes take two years to grow. That is the intended
+    lesson, but nothing on the board shows growth yet (P4).
+  - The bottom-right panel still lists the old objectives (P6 replaces it).

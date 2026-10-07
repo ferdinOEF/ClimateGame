@@ -104,6 +104,24 @@ export class OutlookBar {
     this.seaEl.textContent = `Sea +${view.seaLevelCm} cm`;
   }
 
+  /**
+   * The readiness gauge for the next challenge: predicted stars if it landed
+   * on the board as it stands (defences counted at the maturity they will
+   * have reached by then). Red, amber or green, with the stars as shapes so
+   * it reads in grayscale too.
+   */
+  renderGauge(gauge: { level: "red" | "amber" | "green"; stars: number; protection: number; exact: boolean } | null): void {
+    if (!gauge) {
+      this.gaugeSlot.hidden = true;
+      return;
+    }
+    this.gaugeSlot.hidden = false;
+    this.gaugeSlot.className = `outlook-gauge gauge-${gauge.level}`;
+    const pct = Math.round(gauge.protection * 100);
+    this.gaugeSlot.innerHTML = `<span class="gauge-label">Ready</span><span class="gauge-bar"><span style="width:${pct}%"></span></span><span class="gauge-stars">${"★".repeat(gauge.stars)}${"☆".repeat(3 - gauge.stars)}</span>`;
+    this.gaugeSlot.title = `${gauge.exact ? "Against the locked forecast" : "Against the expected strength"}: your defences would stop ${pct}% of the damage. Build in the threatened zones to raise it.`;
+  }
+
   /** Pulses the next marker, when its Forecast locks. */
   pulse(): void {
     this.trackEl.classList.remove("pulse");

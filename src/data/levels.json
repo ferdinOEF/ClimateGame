@@ -83,6 +83,7 @@
       "seaLevelCmPerYear": 0.4,
       "forecastLockQuarters": 8,
       "narrowFromQuarters": 20,
+      "intensityPerStrength": 20,
       "challenges": [
         {
           "id": "c1-cyclone",
@@ -106,7 +107,7 @@
           "kind": "compound",
           "year": 2048,
           "jitterYears": 1,
-          "strength": 2.2
+          "strength": 2.6
         }
       ]
     },

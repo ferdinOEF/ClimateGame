@@ -294,6 +294,17 @@ export class ElementMeshManager {
     ref.mesh.boundingSphere = null;
   }
 
+  /** Panjim 2050's Repair: the instance stands straight and takes its own colour back. */
+  repairVisual(coord: AxialCoord): void {
+    const ref = this.byCoord.get(`${coord.q},${coord.r}`);
+    if (!ref) return;
+    ref.damage = 0;
+    ref.mesh.setColorAt(ref.index, ref.baseColor);
+    if (ref.mesh.instanceColor) ref.mesh.instanceColor.needsUpdate = true;
+    this.writeTransform(ref);
+    ref.mesh.instanceMatrix.needsUpdate = true;
+  }
+
   /**
    * Composes an instance's transform from everything currently acting on it:
    * where it sits, how far the wind has bent it, and how badly the sea has

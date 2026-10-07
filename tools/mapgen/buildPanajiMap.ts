@@ -213,6 +213,82 @@ const PLACE_LABELS: { name: string; lat: number; lon: number }[] = [
 ];
 
 /**
+ * The four zones the Panjim 2050 challenges resolve through, as polygons in
+ * latitude and longitude traced around real places.
+ *
+ *   Z1  the beach strip: Campal, Miramar, Caranzalem down to Dona Paula, with
+ *       a row of sea in front and a couple of rows of town behind. A cyclone
+ *       makes landfall here.
+ *   Z2  the Taleigao plain and the St Cruz and Merces wetlands. A cyclone
+ *       that gets past the beach runs on into it; the monsoon flood starts
+ *       here as rain off the plain.
+ *   Z3  the Ourem creek and Fontainhas: the channel the flood drains down.
+ *   Z4  the Mandovi waterfront and the old city centre: where the flood ends
+ *       up, and where the compound storm's surge comes up the river.
+ *
+ * A tile in two polygons takes the first listed, so the city centre (Z4) and
+ * the creek (Z3) keep their edges against the larger zones around them.
+ */
+const ZONES: { id: string; name: string; polygon: [number, number][] }[] = [
+  {
+    id: "z4",
+    name: "Mandovi waterfront",
+    polygon: [
+      [15.507, 73.817], [15.507, 73.838], [15.4995, 73.837], [15.499, 73.829],
+      [15.494, 73.8285], [15.493, 73.82], [15.496, 73.818]
+    ]
+  },
+  {
+    id: "z3",
+    name: "Ourem creek and Fontainhas",
+    polygon: [
+      [15.499, 73.829], [15.4995, 73.837], [15.495, 73.842], [15.487, 73.844],
+      [15.484, 73.836], [15.488, 73.83], [15.494, 73.8285]
+    ]
+  },
+  {
+    id: "z1",
+    name: "Miramar to Dona Paula beach",
+    polygon: [
+      [15.496, 73.814], [15.4955, 73.8195], [15.48, 73.8135], [15.466, 73.8125],
+      [15.456, 73.808], [15.4515, 73.804], [15.45, 73.799], [15.46, 73.799],
+      [15.475, 73.801], [15.49, 73.808]
+    ]
+  },
+  {
+    id: "z2",
+    name: "Taleigao, St Cruz and Merces wetlands",
+    polygon: [
+      [15.479, 73.8145], [15.484, 73.829], [15.487, 73.844], [15.492, 73.856],
+      [15.486, 73.865], [15.47, 73.856], [15.462, 73.84], [15.462, 73.82],
+      [15.468, 73.814]
+    ]
+  }
+];
+
+/** Ray-casting point-in-polygon on [lat, lon] pairs. */
+function insidePolygon(lat: number, lon: number, polygon: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [latI, lonI] = polygon[i];
+    const [latJ, lonJ] = polygon[j];
+    if (lonI > lon !== lonJ > lon && lat < ((latJ - latI) * (lon - lonI)) / (lonJ - lonI) + latI) inside = !inside;
+  }
+  return inside;
+}
+
+/** Which tiles fall in each zone, first polygon wins. */
+function assignZones(cells: Cell[]): { id: string; name: string; tiles: [number, number][] }[] {
+  const zones = ZONES.map((zone) => ({ id: zone.id, name: zone.name, tiles: [] as [number, number][] }));
+  for (const cell of cells) {
+    const index = ZONES.findIndex((zone) => insidePolygon(cell.lat, cell.lon, zone.polygon));
+    if (index >= 0) zones[index].tiles.push([cell.coord.q, cell.coord.r]);
+  }
+  // Listed in path order (Z1 to Z4) in the file.
+  return zones.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
  * How far inland of the open sea the sand is widened to: the shoreline row
  * only, which fills gaps in the strip where a hex happened to straddle less
  * than `SAND_SHARE` of it. It used to be three rows, which painted Miramar's
@@ -1182,8 +1258,18 @@ async function main(): Promise<void> {
       })
     ],
     monuments,
+    // The Panjim 2050 challenge zones (see ZONES).
+    zones: assignZones(cells),
     tiles: cells.map((cell) => ({ q: cell.coord.q, r: cell.coord.r, terrainId: cell.terrainId }))
   };
+  for (const zone of file.zones) {
+    const terrain = new Map<string, number>();
+    for (const [q, r] of zone.tiles) {
+      const id = cells.find((cell) => cell.coord.q === q && cell.coord.r === r)!.terrainId;
+      terrain.set(id, (terrain.get(id) ?? 0) + 1);
+    }
+    console.log(`zone ${zone.id} ${zone.name}: ${zone.tiles.length} tiles ${JSON.stringify(Object.fromEntries(terrain))}`);
+  }
 
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, `${JSON.stringify(file, null, 2)}\n`);

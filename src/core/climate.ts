@@ -56,6 +56,8 @@ export interface ClimateConfig {
   forecastLockQuarters: number;
   /** Quarters before a challenge that its window starts to narrow. */
   narrowFromQuarters: number;
+  /** Zone-defence points one unit of challenge strength is worth (core/zones.ts). */
+  intensityPerStrength: number;
 }
 
 export interface ScheduledChallenge extends ChallengeDef {

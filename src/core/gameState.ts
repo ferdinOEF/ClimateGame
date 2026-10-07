@@ -338,6 +338,10 @@ export class GameState {
       if (!def) continue;
       const delta = def.effects[key];
       if (delta === undefined) continue;
+      // A building knocked out by a Panjim 2050 challenge (degradeAmount 1)
+      // gives nothing until it is repaired. Buildings never degrade on the
+      // turn-based levels, so this changes nothing there.
+      if (def.kind === "building" && inst.degradeAmount >= 1) continue;
       total += delta * this.maturityFraction(inst, def);
     }
     return total;

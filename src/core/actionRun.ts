@@ -2,7 +2,8 @@ import { axialKey, type AxialCoord } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import { QUARTERS_PER_YEAR } from "./quarters";
-import { buildSchedule, type ClimateConfig, type ScheduledChallenge } from "./climate";
+import { buildSchedule, challengeStrength, outlookFor, type ClimateConfig, type ScheduledChallenge } from "./climate";
+import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type ZoneDef } from "./zones";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim in quarters, where time moves only
@@ -43,17 +44,31 @@ export type RunEvent =
   | { type: "quarter"; quarter: number }
   /** A challenge's Forecast locked: exact quarter and strength are now known. */
   | { type: "forecast_lock"; challenge: ScheduledChallenge }
-  /** A challenge landed this quarter. */
-  | { type: "challenge"; challenge: ScheduledChallenge };
+  /** A challenge landed this quarter, and how the city fared. */
+  | { type: "challenge"; challenge: ScheduledChallenge; outcome: ChallengeOutcome | null };
 
 export interface ActionRunOptions {
   /** The level's climate: scheduled challenges and the rising baseline. */
   climate?: ClimateConfig;
   /** Seed text for the schedule's jitter. The level id by default; a daily or replay seed otherwise. */
   seed?: string;
+  /** The map's challenge zones. Without them a challenge is reported but not resolved. */
+  zones?: readonly ZoneDef[];
+}
+
+/** The readiness gauge: what the next challenge would do to the board as it stands. */
+export interface Readiness {
+  challenge: ScheduledChallenge;
+  /** Strength the prediction used: exact once the Forecast locks, the expected value before. */
+  strength: number;
+  outcome: ChallengeOutcome;
+  level: "red" | "amber" | "green";
 }
 
 export type ActionKind = "build" | "repair" | "demolish" | "fast_forward_year" | "fast_forward_event";
+
+/** Repairs cost this share of the element's build cost. */
+export const REPAIR_SHARE = 0.4;
 
 export interface ActionOutcome {
   ok: boolean;
@@ -79,6 +94,11 @@ export class ActionRun {
   readonly landed = new Set<string>();
   /** Ids of challenges whose Forecast has locked. */
   readonly locked = new Set<string>();
+  readonly zones: ZoneIndex | null;
+  /** Outcome of each landed challenge, by id. */
+  readonly outcomes = new Map<string, ChallengeOutcome>();
+  /** Perfect-fit combo bonuses (P6) the resolver adds to zone defence. */
+  combos: ComboBonus = new Map();
 
   constructor(
     readonly state: GameState,
@@ -90,6 +110,31 @@ export class ActionRun {
     state.maturityField = "matureQuarters";
     this.climate = options.climate ?? null;
     this.schedule = this.climate ? buildSchedule(this.climate, options.seed ?? "panjim", config.startYear, config.endYear) : [];
+    this.zones = options.zones && options.zones.length > 0 ? new ZoneIndex(options.zones) : null;
+  }
+
+  /** The intensity a challenge lands at: its strength (base times the baseline on its date) in zone-defence points. */
+  intensityOf(challenge: ScheduledChallenge): number {
+    return this.climate ? challengeStrength(this.climate, challenge) * this.climate.intensityPerStrength : 0;
+  }
+
+  /**
+   * The readiness gauge for the next challenge: resolves it against a copy of
+   * the board as it would stand on the challenge's date if the player built
+   * nothing more (so defences still growing are counted at the maturity they
+   * will have reached). Before the Forecast locks the strength is the
+   * expected one, from the nominal year; after, it is exact.
+   */
+  readiness(): Readiness | null {
+    const challenge = this.nextChallenge();
+    if (!challenge || !this.climate || !this.zones) return null;
+    const lockedNow = outlookFor(this.climate, challenge, this.quarter, this.config.startYear).phase === "locked";
+    const nominal = { ...challenge, quarter: Math.round((challenge.year - this.config.startYear) * QUARTERS_PER_YEAR) };
+    const strength = challengeStrength(this.climate, lockedNow ? challenge : nominal);
+    const preview = this.state.clone();
+    preview.turn = Math.max(this.quarter, challenge.quarter);
+    const outcome = resolveChallenge(preview, this.zones, challenge.kind, strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos);
+    return { challenge, strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
   }
 
   /** The next challenge that has not landed yet, or null after the last. */
@@ -144,6 +189,30 @@ export class ActionRun {
     return this.spend(this.config.costs.demolish);
   }
 
+  /** Coin a repair costs: a share of the element's build cost. */
+  repairCoin(coord: AxialCoord): number {
+    const inst = this.state.elements.get(axialKey(coord));
+    const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
+    return def ? Math.ceil(def.buildCost * REPAIR_SHARE) : 0;
+  }
+
+  /** Whether the element at `coord` is worn or knocked out, and so can be repaired. */
+  needsRepair(coord: AxialCoord): boolean {
+    return (this.state.elements.get(axialKey(coord))?.degradeAmount ?? 0) > 0;
+  }
+
+  /** Restores a worn defence or a damaged house to full: one quarter and part of its build cost. */
+  repair(coord: AxialCoord): ActionOutcome {
+    if (this.finished) return refuse("The run has reached 2050.");
+    const inst = this.state.elements.get(axialKey(coord));
+    if (!inst || inst.degradeAmount <= 0) return refuse("Nothing to repair.");
+    const coin = this.repairCoin(coord);
+    if (this.state.coin < coin) return refuse("Not enough Coin.");
+    this.state.coin -= coin;
+    inst.degradeAmount = 0;
+    return this.spend(this.config.costs.repair);
+  }
+
   /** One year of time-lapse: four quarters, stopping early at the end of the run. */
   fastForwardYear(): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
@@ -193,9 +262,12 @@ export class ActionRun {
     return events;
   }
 
-  /** A challenge lands. Subclasses and later phases resolve it against the board; here it is only reported. */
+  /** A challenge lands and resolves zone by zone against the board. */
   protected land(challenge: ScheduledChallenge): RunEvent[] {
-    return [{ type: "challenge", challenge }];
+    if (!this.zones || !this.climate) return [{ type: "challenge", challenge, outcome: null }];
+    const outcome = resolveChallenge(this.state, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, this.combos);
+    this.outcomes.set(challenge.id, outcome);
+    return [{ type: "challenge", challenge, outcome }];
   }
 }
 

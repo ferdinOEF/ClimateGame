@@ -10,6 +10,7 @@ import { WaveFrontManager } from "@render/waveFrontManager";
 import { StormManager } from "@render/stormManager";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
 import { BuildFlourish } from "@render/buildFlourish";
+import { ForecastOutline } from "@render/forecastOutline";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
@@ -221,6 +222,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(storm.group);
   scene.add(buildFlourish.group);
   scene.add(reactions.group);
+  /** Panjim 2050: the locked Forecast's zone edge — see ForecastOutline. Empty on every other level. */
+  const forecastOutline = new ForecastOutline();
+  scene.add(forecastOutline.group);
 
   /**
    * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -372,14 +376,32 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           onRunComplete: () => finishRun(true),
           showBanner: (text, ms) => hud.showBanner(text, ms),
           seed: params.get("seed") ?? level.id,
-          // Placeholder until the zones resolve it (P3/P7): the challenge is announced, not yet felt.
-          onChallenge: (challenge) => {
-            hud.flashArrival(challenge.kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
-            hud.showBanner(`${challenge.name} hits Panjim`, 4000);
-          }
+          zones: levelMap.zones,
+          showForecastZones: (tiles) => {
+            forecastPreview = tiles;
+            forecastOutline.show(
+              tiles.map((tile) => tile.coord),
+              (coord) => terrain.heightAt(coord)
+            );
+            refreshPreview();
+          },
+          clearForecastZones: () => {
+            forecastPreview = [];
+            forecastOutline.clear();
+            refreshPreview();
+          },
+          project: (coord) => {
+            const { x, z } = axialToWorld(coord, 1.0);
+            return worldToScreen(x, terrain.heightAt(coord) + 0.4, z);
+          },
+          repairVisual: (coord) => elements.repairVisual(coord),
+          focus: levelMap.focus,
+          onChallenge: (challenge, outcome) => showPanjimChallenge(challenge, outcome)
         })
       : null;
   if (panjim) hud.useQuarterClock();
+  /** The locked Forecast's path, drawn as translucent ghosts over its zones (see PanjimController.showForecast). */
+  let forecastPreview: { coord: AxialCoord; weight: number }[] = [];
   /**
    * The live objective checklist.
    *
@@ -1203,6 +1225,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   function refreshPreview(): void {
     hazardOverlay.clearPreview();
+    for (const tile of forecastPreview) hazardOverlay.showPreview(tile.coord, terrain.heightAt(tile.coord), 0.25 + tile.weight * 0.6);
     if (activePreviewSources.size === 0) return;
     const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
     for (const source of activePreviewSources.values()) {
@@ -1394,6 +1417,67 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
   }
 
+  // --- Panjim 2050 challenges -----------------------------------------------------
+
+  /**
+   * Shows a resolved Panjim 2050 challenge on the board, zone by zone: the
+   * water or wind reveals over each zone it reached, in path order, with what
+   * failed, what was worn and which houses were hit. P7 stages this properly
+   * (spectacle, Aftermath, retry); this is the readable minimum.
+   */
+  function showPanjimChallenge(challenge: { name: string; kind: string }, outcome: import("@core/zones").ChallengeOutcome | null): void {
+    hud.flashArrival(challenge.kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
+    if (!outcome) {
+      hud.showBanner(`${challenge.name} hits Panjim`, 4000);
+      return;
+    }
+    stormImpactActive = true;
+    storm.setIntensity(1);
+    mapLabels.setVisible(false);
+    const zones = panjim?.run.zones;
+    outcome.zones.forEach((zoneOutcome, index) => {
+      later(() => {
+        const share = zoneOutcome.incoming > 0 ? zoneOutcome.leak / zoneOutcome.incoming : 0;
+        if (zones && share > 0.05) {
+          const kind: HazardKind = zoneOutcome.hazard === "flood" ? "flood" : "storm";
+          for (const key of zones.keys(zoneOutcome.zoneId)) {
+            const [q, r] = key.split(",").map(Number);
+            hazardOverlay.show(kind, { q, r }, terrain.heightAt({ q, r }), 0.3 + share * 1.2, performance.now());
+          }
+        }
+        for (const key of zoneOutcome.failed) {
+          const [q, r] = key.split(",").map(Number);
+          elements.destroy({ q, r });
+          playSound("hazard_breach");
+        }
+        for (const key of zoneOutcome.overwhelmed) {
+          const inst = state.elements.get(key);
+          const [q, r] = key.split(",").map(Number);
+          if (inst) elements.setDegradeVisual({ q, r }, inst.degradeAmount);
+        }
+        playSound(zoneOutcome.held ? "chime" : "hazard_overwhelmed");
+      }, 600 + index * 1100);
+    });
+    for (const key of outcome.damagedHouses) {
+      const [q, r] = key.split(",").map(Number);
+      later(() => elements.setBuildingDamagedVisual({ q, r }), 900);
+    }
+    runTracker.recordHazard({
+      totalDamage: outcome.zones.reduce((sum, z) => sum + z.leak, 0),
+      damagedTiles: outcome.housesDamaged,
+      destroyed: outcome.zones.reduce((sum, z) => sum + z.failed.length, 0),
+      overwhelmed: outcome.zones.reduce((sum, z) => sum + z.overwhelmed.length, 0)
+    });
+    later(() => {
+      stormImpactActive = false;
+      storm.setIntensity(0);
+      mapLabels.setVisible(true);
+      const stars = "★".repeat(outcome.stars) + "☆".repeat(3 - outcome.stars);
+      hud.showBanner(`${challenge.name} ${stars} · houses saved ${outcome.housesSaved}${outcome.housesDamaged ? ` · ${outcome.housesDamaged} damaged` : ""}`, 5000);
+      refreshHud();
+    }, 900 + outcome.zones.length * 1100);
+  }
+
   // --- Build / defend popover --------------------------------------------------
 
   /**
@@ -1493,6 +1577,19 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         kindLabel: kindLabel(def),
         effects: def.effects,
         removeLabel: panjim ? "Demolish · 1 qtr" : undefined,
+        extraActions:
+          panjim && panjim.run.needsRepair(coord)
+            ? [
+                {
+                  label: `Repair · 1 qtr · ${panjim.run.repairCoin(coord)}c`,
+                  disabled: state.coin < panjim.run.repairCoin(coord),
+                  onClick: () => {
+                    panjim.repair(coord);
+                    buildPopover.hide();
+                  }
+                }
+              ]
+            : undefined,
         onRemove: () => {
           if (!panjim) {
             removeElement(coord);
@@ -1610,6 +1707,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     cloudLayer.tick(nowMs);
     waveFront.tick(nowMs);
     buildFlourish.tick(nowMs);
+    panjim?.frame();
+    forecastOutline.tick(nowMs);
     if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 
     // Place names have to be re-projected every frame, because the camera now
@@ -1812,6 +1911,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // values, and `createScene`'s own disposal does not restore them.
     storm.dispose();
     buildFlourish.dispose();
+    forecastOutline.dispose();
     disposeScene();
 
     // The session owns every DOM node it appended to `container` (HUD,

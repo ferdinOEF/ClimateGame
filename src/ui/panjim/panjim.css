@@ -104,7 +104,7 @@
 
 /* The banner moves below the clock when there is one. */
 .has-panjim-clock .era-banner {
-  top: calc(118px + env(safe-area-inset-top));
+  top: calc(196px + env(safe-area-inset-top));
 }
 
 .build-option .time-cost {
@@ -280,4 +280,75 @@
 .outlook-sea {
   color: #9fd8c6;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- Readiness gauge ----------------------------------------------------- */
+
+.outlook-gauge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+
+.outlook-gauge .gauge-bar {
+  width: 54px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(253, 246, 230, 0.15);
+  overflow: hidden;
+}
+
+.outlook-gauge .gauge-bar span {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  transition: width 300ms ease-out;
+}
+
+.outlook-gauge.gauge-red { color: #ff8a73; }
+.outlook-gauge.gauge-amber { color: #f2c35b; }
+.outlook-gauge.gauge-green { color: #7fe0b8; }
+
+.outlook-gauge .gauge-stars {
+  letter-spacing: 1px;
+}
+
+/* ---- In-scene forecast label -------------------------------------------- */
+
+.forecast-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 9;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(120, 30, 20, 0.88);
+  border: 2px solid #fdf6e6;
+  color: #fdf6e6;
+  font-size: 13px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.forecast-label .forecast-strength {
+  letter-spacing: 1px;
+  color: #ffd0c4;
+}
+
+.forecast-label .forecast-when {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.forecast-label.offscreen {
+  border-style: dashed;
 }

@@ -5,7 +5,9 @@ import type { Telemetry } from "@core/telemetry";
 import type { LevelDef } from "@levels/levels";
 import { ClockHud } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
-import { outlookFor, seaLevelCm, type ScheduledChallenge } from "@core/climate";
+import { outlookFor, seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
+import { FRONTS, type ChallengeOutcome, type ZoneDef } from "@core/zones";
+import { axialToWorld } from "@core/hex";
 import { playSound } from "@ui/audioHooks";
 
 /**
@@ -35,8 +37,19 @@ export interface PanjimHost {
   seed: string;
   /** A challenge's Forecast just locked. */
   onForecastLock?: (challenge: ScheduledChallenge) => void;
-  /** A challenge landed. */
-  onChallenge?: (challenge: ScheduledChallenge) => void;
+  /** A challenge landed and resolved. */
+  onChallenge?: (challenge: ScheduledChallenge, outcome: ChallengeOutcome | null) => void;
+  /** The map's challenge zones. */
+  zones: readonly ZoneDef[];
+  /** Shows the locked Forecast's path as a translucent in-scene overlay: each tile with a 0–1 weight (first zone strongest). */
+  showForecastZones: (tiles: { coord: AxialCoord; weight: number }[]) => void;
+  clearForecastZones: () => void;
+  /** Projects a board coordinate to screen pixels in the container, for the in-scene strength label. */
+  project: (coord: AxialCoord) => { x: number; y: number } | null;
+  /** Restores a repaired element's look. */
+  repairVisual: (coord: AxialCoord) => void;
+  /** The map's opening focus: the in-scene label anchors on the threatened tile nearest it, so it starts on screen. */
+  focus: AxialCoord;
 }
 
 /** Milliseconds per quarter tick: quick for a single action, slower for a visible time-lapse. */
@@ -50,16 +63,23 @@ export class PanjimController {
   /** Stars per landed challenge, shown on the Outlook. */
   readonly results = new Map<string, number>();
   private busy = false;
+  /** The in-scene label over the locked Forecast's first zone: "Cyclone landfall ●●○". */
+  private readonly forecastLabel: HTMLElement;
+  private forecastAnchor: AxialCoord | null = null;
 
   constructor(private readonly host: PanjimHost) {
     if (!host.level.timeline) throw new Error("PanjimController needs a level timeline");
-    this.run = new ActionRun(host.state, host.level.timeline, { climate: host.level.climate, seed: host.seed });
+    this.run = new ActionRun(host.state, host.level.timeline, { climate: host.level.climate, seed: host.seed, zones: host.zones });
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, {
       onFastForwardYear: () => void this.fastForwardYear(),
       onFastForwardEvent: () => void this.fastForwardEvent()
     });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
+    this.forecastLabel = document.createElement("div");
+    this.forecastLabel.className = "forecast-label";
+    this.forecastLabel.hidden = true;
+    host.container.appendChild(this.forecastLabel);
     this.clock.set(this.run.label, this.progress());
     this.renderOutlook();
     this.syncControls();
@@ -74,10 +94,83 @@ export class PanjimController {
       startYear,
       endYear: this.run.config.endYear,
       now: this.run.year,
-      outlooks: this.run.schedule.map((challenge) => outlookFor(climate, challenge, this.run.quarter, startYear)),
+      outlooks: this.run.schedule.map((challenge) => {
+        const outlook = outlookFor(climate, challenge, this.run.quarter, startYear);
+        // A challenge that has landed is behind the player, even on its own quarter.
+        return this.run.landed.has(challenge.id) ? { ...outlook, phase: "past" as const } : outlook;
+      }),
       seaLevelCm: seaLevelCm(climate, this.run.quarter),
       results: this.results
     });
+    const readiness = this.run.readiness();
+    this.outlook.renderGauge(
+      readiness
+        ? {
+            level: readiness.level,
+            stars: readiness.outcome.stars,
+            protection: readiness.outcome.protection,
+            exact: this.run.locked.has(readiness.challenge.id)
+          }
+        : null
+    );
+  }
+
+  /** Draws the locked Forecast in the scene: the path's zones, the first one strongest, and the strength label over it. */
+  private showForecast(challenge: ScheduledChallenge): void {
+    if (!this.run.zones || !this.run.climate) return;
+    const tiles: { coord: AxialCoord; weight: number }[] = [];
+    const seen = new Set<string>();
+    for (const front of FRONTS[challenge.kind]) {
+      front.path.forEach((zoneId, index) => {
+        for (const key of this.run.zones!.keys(zoneId)) {
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const [q, r] = key.split(",").map(Number);
+          tiles.push({ coord: { q, r }, weight: Math.max(0.35, 1 - index * 0.3) });
+        }
+      });
+    }
+    this.host.showForecastZones(tiles);
+    const firstZone = FRONTS[challenge.kind][0].path[0];
+    this.forecastAnchor = nearestTo(this.run.zones.keys(firstZone), this.host.focus);
+    const icons = strengthIcons(challengeStrength(this.run.climate, challenge));
+    const what = challenge.kind === "cyclone" ? "Cyclone landfall" : challenge.kind === "flood" ? "Flood rises here" : "Surge and flood meet here";
+    this.forecastLabel.innerHTML = `<b>${what}</b> <span class="forecast-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span><span class="forecast-when">${this.labelFor(challenge.quarter)}</span>`;
+    this.forecastLabel.hidden = false;
+  }
+
+  private clearForecast(): void {
+    this.host.clearForecastZones();
+    this.forecastAnchor = null;
+    this.forecastLabel.hidden = true;
+  }
+
+  /** Called every rendered frame: keeps the in-scene Forecast label over its zone. */
+  frame(): void {
+    if (!this.forecastAnchor || this.forecastLabel.hidden) return;
+    const screen = this.host.project(this.forecastAnchor);
+    if (!screen) return;
+    // Kept inside the view (clear of the clock and the bottom bar), so a
+    // camera that has wandered off still sees where the storm is headed.
+    const rect = this.host.container.getBoundingClientRect();
+    const x = Math.min(rect.width - 140, Math.max(140, screen.x));
+    const y = Math.min(rect.height - 70, Math.max(230, screen.y));
+    this.forecastLabel.classList.toggle("offscreen", x !== screen.x || y !== screen.y);
+    this.forecastLabel.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -120%)`;
+  }
+
+  /** Repair a worn defence or damaged house: one quarter and part of its cost. */
+  repair(coord: AxialCoord): boolean {
+    if (this.busy) return false;
+    const outcome = this.run.repair(coord);
+    if (!outcome.ok) {
+      if (outcome.reason) this.host.showBanner(outcome.reason, 2000);
+      return false;
+    }
+    this.host.repairVisual(coord);
+    this.host.telemetry.action("repair", outcome.quarters);
+    void this.play(outcome, TICK_MS_ACTION);
+    return true;
   }
 
   /** Quarters a build of this element spends, for the popover. */
@@ -173,12 +266,15 @@ export class PanjimController {
         playSound("hazard_telegraph");
         this.outlook.pulse();
         this.host.showBanner(`Forecast locked: ${event.challenge.name} in ${this.labelFor(event.challenge.quarter)}`, 4200);
+        this.showForecast(event.challenge);
         this.host.onForecastLock?.(event.challenge);
         break;
       }
       case "challenge": {
         playSound("hazard_arrival");
-        this.host.onChallenge?.(event.challenge);
+        this.clearForecast();
+        if (event.outcome) this.results.set(event.challenge.id, event.outcome.stars);
+        this.host.onChallenge?.(event.challenge, event.outcome);
         break;
       }
       case "quarter":
@@ -212,8 +308,28 @@ export class PanjimController {
   async scenario(name: string): Promise<boolean> {
     switch (name) {
       case "forecast": {
+        // Up to the lock (two years out), then a few beach defences, so the
+        // overlay, the label and the gauge all have something to show.
+        const next = this.run.nextChallenge();
+        if (!next || !this.run.climate) return false;
+        while (this.run.quarter < next.quarter - this.run.climate.forecastLockQuarters) {
+          await this.fastForwardYear();
+          await this.idle();
+        }
+        for (let i = 0; i < 4; i++) {
+          const coord = this.firstBuildableIn("z1", "dune");
+          if (!coord) break;
+          this.build(coord, "dune");
+          await this.idle();
+        }
+        return true;
+      }
+      case "challenge": {
         await this.fastForwardEvent();
         await this.idle();
+        await this.fastForwardYear();
+        await this.idle();
+        await new Promise((resolve) => window.setTimeout(resolve, 3500));
         return true;
       }
       case "actions": {
@@ -250,13 +366,40 @@ export class PanjimController {
     return best;
   }
 
+  /** The first tile in `zoneId` where `elementId` can be built now. */
+  firstBuildableIn(zoneId: string, elementId: string): AxialCoord | null {
+    for (const key of this.run.zones?.keys(zoneId) ?? []) {
+      const [q, r] = key.split(",").map(Number);
+      if (this.host.state.canBuild({ q, r }, elementId)) return { q, r };
+    }
+    return null;
+  }
+
   /** Resolves once no time-lapse is playing. */
   async idle(): Promise<void> {
     while (this.busy) await new Promise((resolve) => window.setTimeout(resolve, 50));
   }
 
   dispose(): void {
+    this.forecastLabel.remove();
     this.clock.dispose();
     this.host.container.classList.remove("has-panjim-clock");
   }
+}
+
+/** The tile in `keys` nearest `target`, for anchoring a label where the player is already looking. */
+function nearestTo(keys: string[], target: AxialCoord): AxialCoord | null {
+  let best: AxialCoord | null = null;
+  let bestDistance = Infinity;
+  const goal = axialToWorld(target, 1);
+  for (const key of keys) {
+    const [q, r] = key.split(",").map(Number);
+    const world = axialToWorld({ q, r }, 1);
+    const distance = (world.x - goal.x) ** 2 + (world.z - goal.z) ** 2;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = { q, r };
+    }
+  }
+  return best;
 }
