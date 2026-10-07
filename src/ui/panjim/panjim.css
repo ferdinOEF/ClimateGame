@@ -1,0 +1,122 @@
+/*
+ * Panjim 2050: the clock, the climate outlook, the coin jar, the Voices panel,
+ * the Field Guide and the challenge and finale cards. Desktop first (1080p to
+ * 4K); everything sits at the edges so the board stays the main view.
+ */
+
+.panjim-clock {
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 300px;
+}
+
+.panjim-clock .clock-face {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 20px 4px;
+  background: rgba(20, 30, 26, 0.86);
+  border: 1px solid rgba(255, 243, 196, 0.35);
+  border-radius: 12px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.panjim-clock .clock-quarter {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f2c35b;
+  letter-spacing: 0.04em;
+}
+
+.panjim-clock .clock-year {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: #fdf6e6;
+  line-height: 1;
+}
+
+.panjim-clock.ticking .clock-face {
+  animation: clock-tick 260ms ease-out;
+}
+
+@keyframes clock-tick {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-3px) scale(1.07); border-color: rgba(242, 195, 91, 0.9); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.panjim-clock .clock-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(253, 246, 230, 0.18);
+  overflow: hidden;
+}
+
+.panjim-clock .clock-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #6fc2a8, #f2c35b);
+  transition: width 220ms ease-out;
+}
+
+.panjim-clock .clock-buttons {
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.panjim-clock .clock-ff {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fdf6e6;
+  background: rgba(20, 30, 26, 0.82);
+  border: 1px solid rgba(255, 243, 196, 0.35);
+  border-radius: 999px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+
+.panjim-clock .clock-ff:hover:not(:disabled) {
+  border-color: #f2c35b;
+  color: #f2c35b;
+}
+
+.panjim-clock .clock-ff:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.panjim-clock .clock-lapse {
+  font-size: 12px;
+  color: rgba(253, 246, 230, 0.85);
+}
+
+.panjim-clock.lapsing .clock-face {
+  border-color: rgba(111, 194, 168, 0.8);
+}
+
+/* The banner moves below the clock when there is one. */
+.has-panjim-clock .era-banner {
+  top: calc(118px + env(safe-area-inset-top));
+}
+
+.build-option .time-cost {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #10201a;
+  background: #9fd8c6;
+}
+
+.built-info-action {
+  margin-bottom: 6px;
+}

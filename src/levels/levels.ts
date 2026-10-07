@@ -1,6 +1,7 @@
 import levelData from "@data/levels.json";
 import type { Objective } from "@core/objectives";
 import { dailyChallengeId, hashSeed, Rng } from "@core/rng";
+import type { TimelineConfig } from "@core/actionRun";
 
 /**
  * Level definitions — the campaign, loaded from data, never hardcoded.
@@ -65,6 +66,16 @@ export interface LevelDef {
    */
   mapRadius: number | null;
   hazards: HazardConfig;
+  /**
+   * How time moves. `"turns"` (the default, and the tutorial's) is the
+   * original model: a build is a turn and hazards come on turn intervals.
+   * `"actions"` is the Panjim 2050 run: a 25-year clock in quarters that moves
+   * only when the player spends an action, with scheduled challenges instead
+   * of interval hazards. See core/actionRun.ts.
+   */
+  timeModel?: "turns" | "actions";
+  /** Required when `timeModel` is `"actions"`. */
+  timeline?: TimelineConfig;
   objectives: Objective[];
   starThresholds: [number, number, number];
 }

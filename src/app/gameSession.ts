@@ -34,6 +34,7 @@ import { allComplete, evaluateObjectives } from "@core/objectives";
 import { RunTracker } from "@core/runStats";
 import { hashSeed, Rng } from "@core/rng";
 import { Telemetry } from "@core/telemetry";
+import { PanjimController } from "./panjimController";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import startingStateData from "@data/startingState.json";
@@ -349,6 +350,31 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   });
   const buildPopover = new BuildPopover(container);
   /**
+   * The Panjim 2050 run, on a level whose time model is `"actions"` (see
+   * src/core/actionRun.ts). `null` on every other level, the tutorial
+   * included, which keep the turn model exactly as it was. Every call site
+   * below checks it, and it takes over pacing entirely when present: no
+   * interval hazards, no objective-driven early finish.
+   */
+  const panjim =
+    level.timeModel === "actions" && level.timeline
+      ? new PanjimController({
+          container,
+          state,
+          level,
+          telemetry,
+          placeElement: (coord, elementId) => placeElement(coord, elementId, true),
+          removeElementVisual: (coord) => elements.destroy(coord),
+          refresh: () => {
+            refreshHud();
+            refreshPreview();
+          },
+          onRunComplete: () => finishRun(true),
+          showBanner: (text, ms) => hud.showBanner(text, ms)
+        })
+      : null;
+  if (panjim) hud.useQuarterClock();
+  /**
    * The live objective checklist.
    *
    * Replaces `EraEndScreen` in this file. That screen answered "the era
@@ -542,6 +568,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * the function itself needed no changes, only its call site.
    */
   function hazardIncomingInfo(): { kind: "Storm Surge" | "Flood"; turnsUntil: number; imminent: boolean }[] {
+    // Panjim 2050 has its own outlook; the interval readout does not apply.
+    if (panjim) return [];
     const stormTurnsUntil = nextCycloneAtTurn - state.turn;
     const stormImminent = stormTurnsUntil > 0 && stormTurnsUntil <= CYCLONE_TELEGRAPH_TURNS;
 
@@ -1341,6 +1369,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * same call, not on a separate hidden tick.
    */
   function checkHazardSchedule(): void {
+    // Panjim 2050 schedules its own challenges (see PanjimController).
+    if (panjim) return;
     if (FLOOD_HAZARD_ENABLED) {
       if (state.turn >= nextFloodAtTurn) {
         const severity = pendingFloodSeverity ?? rolledSeverity();
@@ -1456,17 +1486,34 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         name: def.name,
         kindLabel: kindLabel(def),
         effects: def.effects,
-        onRemove: () => removeElement(coord)
+        removeLabel: panjim ? "Demolish · 1 qtr" : undefined,
+        onRemove: () => {
+          if (!panjim) {
+            removeElement(coord);
+            return;
+          }
+          const removed = state.elements.get(key);
+          if (panjim.demolish(coord) && removed) runTracker.recordRemoval(removed.elementId);
+          buildPopover.hide();
+        }
       });
       return;
     }
 
     const popoverOptions: PopoverOption[] = state
       .buildableAt(coord)
-      .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d) }));
+      .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), quarters: panjim?.buildQuarters(d.id) }));
     if (popoverOptions.length === 0) return;
 
     buildPopover.show(screen.x, screen.y, popoverOptions, state.coin, (id) => {
+      if (panjim) {
+        // The controller spends the quarters, draws the element and ticks the
+        // clock. The run ends at 2050, never on an objective.
+        if (!panjim.build(coord, id)) return;
+        nuggetPopup.show(id);
+        playSound("build");
+        return;
+      }
       if (!state.build(coord, id)) return;
       telemetry.action("build", 1);
       placeElement(coord, id, true);
@@ -1513,6 +1560,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   renderer.domElement.addEventListener("click", (event: MouseEvent) => {
     if (wasDrag()) return; // a pan, not a click — don't also open a popover at the drag's end point
     if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
+    if (panjim?.isBusy) return; // a time-lapse is playing; the click skips it instead
     if (sessionFinished) return; // the run is over and the shell is showing its results screen — the board is read-only now
 
     const rect = renderer.domElement.getBoundingClientRect();
@@ -1635,6 +1683,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const testHooks: Record<string, unknown> = {
     // The local telemetry log (see @core/telemetry). Read-only by convention.
     __telemetry: telemetry.events,
+    // Panjim 2050 only: the live controller and its screenshot scenarios.
+    __panjimForTest: panjim,
+    __panjimScenarioForTest: (name: string) => (panjim ? panjim.scenario(name) : false),
     // Lets tools/verify_readability.ts (and any future script needing exact
     // camera framing) pan straight to a world coordinate via the scene's own
     // `focusOn`, instead of reverse-engineering the pan-drag pixel math.
@@ -1742,6 +1793,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     timers.clear();
 
     keydownAbort.abort();
+    panjim?.dispose();
     stormReport.dispose();
     mapLabels.dispose();
     mapAttribution?.dispose();

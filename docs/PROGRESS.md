@@ -5491,3 +5491,55 @@ twins), assessed here, then committed and pushed. Screenshots are in
 is that `gameSession.ts` is 1,760 lines and owns all pacing. **Decision:** the
 Panjim 2050 rules go in a pure core module the bots can drive, and the
 session only renders its events. The tutorial keeps its turn model untouched.
+
+## P1 — action clock, costs, fast-forward, clock HUD — DONE
+
+**Built:**
+- **The clock:** `src/core/actionRun.ts` (pure) runs 100 quarters, from Q1 2025
+  until the clock reaches 2050.
+  - **Costs:** build 1 quarter; Seawall and Small Dam 2
+    (`buildQuarters` in elements.json); demolish 1; "+1 year" 4. A refused
+    action costs nothing.
+  - **Turns:** a quarter is a `GameState` turn, so the turn engine is reused
+    as is. `GameState` gained two switches, `autoCollectIncome` and
+    `maturityField`, and `build(…, advance = false)`.
+- **Per-level switch:** `timeModel: "actions"` plus a `timeline` block in
+  levels.json. Panaji uses it; the tutorial does not, and keeps turns,
+  interval hazards and its objectives exactly as before.
+- **Session:**
+  - `src/app/panjimController.ts` replaces `state.build()` on this level only.
+  - The interval hazard schedule and its "in N turns" readout are switched
+    off here.
+  - The run ends at 2050, never on an objective.
+- **Clock HUD:** top centre, "Q2 2027", with a progress bar.
+  - Each quarter flips the face and plays a tick.
+  - "+1 year" plays a skippable time-lapse (420 ms per quarter; a click or
+    Space skips it).
+  - "Next event" is drawn but disabled until the schedule exists (P2).
+- **Sound:** `playSound` now synthesises short WebAudio tones (tick, coin,
+  chime, combo, star). There are still no audio files.
+- **Build menu:** each option shows its time cost ("2 qtr") next to the Coin
+  cost. Demolish is labelled "Demolish · 1 qtr".
+- **Data:** `matureQuarters` added as placeholder values: Dune 8, Sandy
+  Vegetation 8, Mangrove 20, Khazan 12, others 0. Growth in quarters is live
+  now; the visuals come in P4.
+- **Telemetry:** `action(type, quarters)` and `fast_forward(quarters)`.
+
+**Checks:**
+- tsc clean; 219 tests pass, including 5 new action-clock tests; the build
+  passes; the walkthrough is clean (the tutorial is unchanged).
+- `phaseShots p1`: no console errors; 2.6 fps under software GL.
+
+**Self-assessment:**
+- **Is it fun?** Not yet: there is nothing to plan against. The clock alone is
+  readable, though, and a build visibly costs time.
+- **Fixed after the first shots:** "Tiles claimed 1277" and "1273 hexes still
+  empty" meant nothing here and are gone. The bottom prompt now says "Time
+  moves only when you act: each build takes a season", and "1q" now reads
+  "1 qtr".
+- **What a first-time player won't understand yet:** why time matters. That
+  is P2's job (the Outlook).
+- **Decision:** there is no separate claim action. Claiming was removed
+  earlier and every tile starts open, so "claim a tile" is folded into
+  building on it rather than re-adding a step that would double every
+  action's cost.

@@ -4,6 +4,8 @@ export interface PopoverOption {
   buildCost: number;
   /** Shown as a small tag so a defense reads differently from a town building at a glance. */
   kindLabel?: string;
+  /** Panjim 2050: how many quarters of the clock this build spends, shown beside the Coin cost. */
+  quarters?: number;
 }
 
 export interface BuiltElementInfo {
@@ -23,6 +25,10 @@ export interface BuiltElementInfo {
    * what would happen if it worked.
    */
   onRemove?: () => void;
+  /** Label for the remove button. Panjim 2050 says "Demolish · 1q", since it costs time there. */
+  removeLabel?: string;
+  /** Extra actions drawn above Remove, such as Panjim 2050's Repair. */
+  extraActions?: { label: string; onClick: () => void; disabled?: boolean }[];
   /** A short line under the name. Used by monuments to say what the building is; built elements get their effects instead. */
   note?: string;
 }
@@ -105,7 +111,8 @@ export class BuildPopover {
       const affordable = coin >= def.buildCost;
       btn.className = "build-option" + (affordable ? "" : " disabled");
       const label = def.kindLabel ? `${def.name} <em>${def.kindLabel}</em>` : def.name;
-      btn.innerHTML = `<span>${label}</span><span class="cost">${def.buildCost}c</span>`;
+      const time = def.quarters ? `<span class="time-cost" title="Seasons (quarters of a year) this takes">${def.quarters} qtr</span>` : "";
+      btn.innerHTML = `<span>${label}</span><span class="cost">${time}${def.buildCost}c</span>`;
       if (affordable) {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -149,12 +156,25 @@ export class BuildPopover {
       this.el.appendChild(note);
     }
 
+    for (const action of info.extraActions ?? []) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "built-info-remove built-info-action";
+      btn.textContent = action.label;
+      btn.disabled = action.disabled === true;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        action.onClick();
+      });
+      this.el.appendChild(btn);
+    }
+
     const onRemove = info.onRemove;
     if (onRemove) {
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.className = "built-info-remove";
-      removeBtn.textContent = "Remove";
+      removeBtn.textContent = info.removeLabel ?? "Remove";
       removeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         onRemove();

@@ -3,7 +3,7 @@
     "id": "l00-tutorial",
     "name": "Tutorial",
     "subtitle": "How this works",
-    "brief": "A small coast, drawn to be read at a glance. Sea, sand, a brackish estuary and the river behind it — the shape every Goan river mouth shares. Follow the prompts and you will have built on all four by the end.",
+    "brief": "A small coast, drawn to be read at a glance. Sea, sand, a brackish estuary and the river behind it \u2014 the shape every Goan river mouth shares. Follow the prompts and you will have built on all four by the end.",
     "mapId": "tutorial",
     "tutorial": true,
     "startingCoin": 320,
@@ -50,8 +50,8 @@
   {
     "id": "l01-first-rains",
     "name": "Panaji",
-    "subtitle": "The Mandovi estuary",
-    "brief": "Goa's capital, built on reclaimed water where the Mandovi spreads into tidal flats before reaching the sea. Sixteen of the city's real landmarks stand on this board and cannot be moved. Everything else is yours to place — and the beach to the west is all that stands between the old town and the Arabian Sea.",
+    "subtitle": "Panjim 2050",
+    "brief": "Twenty-five years of Goa's capital, from 2025 to 2050. Time moves only when you act: each build takes a season, heavy engineering takes two. Three big storms are coming, and the sea rises a little every year. Get the city ready, one season at a time.",
     "mapId": "panaji",
     "startingCoin": 1000,
     "parTurns": 40,
@@ -66,6 +66,17 @@
       "severityBase": 0.35,
       "severitySpread": 0.25,
       "severityCreepPerHazard": 0.01
+    },
+    "timeModel": "actions",
+    "timeline": {
+      "startYear": 2025,
+      "endYear": 2050,
+      "costs": {
+        "build": 1,
+        "repair": 1,
+        "demolish": 1,
+        "fastForwardYear": 4
+      }
     },
     "objectives": [
       {
