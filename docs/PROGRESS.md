@@ -5430,3 +5430,699 @@ keep their own colours. The per-terrain strengths are unchanged.
   - Pasted leaderboard, settings, sign-in and daily links land on the menu.
 - **Flag on:** a dev build with `VITE_SHOW_MENU_EXTRAS=true` shows the old
   menu, and the leaderboard can be reached again.
+
+# Panjim 2050 (branch `panjim-2050`)
+
+Turning the Panaji level into a 25-year run (Q1 2025 to Q4 2049) where time
+moves only when the player acts. The work runs as a gauntlet: every phase is
+built, checked (`tsc`, tests, build, a 1920x1080 headless run with grayscale
+twins), assessed here, then committed and pushed. Screenshots are in
+`docs/screenshots/panjim2050/` (`<phase>-<name>.jpg`, plus `-gray`), taken by
+`npx tsx tools/phaseShots.ts <phase>`.
+
+## P0 — safety net, audit, telemetry — DONE
+
+**Safety net:**
+- Master was green at `b5bffe4`: tsc clean, 213 tests pass (6 skipped), and the
+  build passes.
+- **Tag:** the annotated tag `pre-panjim-2050` exists locally, but the git
+  proxy here refuses tag pushes (HTTP 403 on `refs/tags/*`). Branch pushes
+  work, so `backup/pre-panjim-2050` sits on the remote at the same commit.
+  **Decision:** keep both and ask the owner to push the tag from a normal
+  checkout (`git push origin pre-panjim-2050`) or create it on GitHub at
+  `b5bffe4`.
+- All work is on `panjim-2050`.
+
+**Audit, what exists today:**
+- **Turns:** a "turn" is one `GameState.build()`. Each build collects income
+  into Coin and advances the turn by one. Removal is free, and there is no
+  claim step: claiming was removed earlier, and every tile starts claimed.
+- **Hazards:** they run on fixed turn intervals per level
+  (`cycloneIntervalTurns`, `floodIntervalTurns`) with a 2-turn telegraph. The
+  resolution is a whole-map BFS from every coast and estuary tile (cyclone) or
+  from the river source (flood). Nothing is zone-local, and severity creeps
+  per hazard, not per year.
+- **Maturity:** measured in turns (`matureTurns`: Dune 2, Mangrove 4…).
+- **Creatures:** every placed element already plays its reaction on a
+  staggered ambient timer (`ElementReactions.setAmbientSource`), and a tap on
+  a built tile plays one on top. Nothing records which species were seen.
+- **Sound:** `playSound` is a placeholder hook that only logs.
+- **Score:** objectives drive completion, and stars come from a single total
+  against `starThresholds`.
+- **Zones:** none exist. The Panaji map has neighbourhood labels (Miramar,
+  Caranzalem, Dona Paula, Taleigao, St Cruz, Merces), which the zones can be
+  traced from.
+
+**Telemetry:**
+- `src/core/telemetry.ts` is pure, with an injected clock, and has a test.
+- The session mirrors each event to `console.info` and `window.__telemetry`;
+  nothing goes over the network.
+- Wired so far: `session_start`, `first_action_ms`, `action(build, 1)` and
+  `run_end`. The rest arrive with the phases that create them.
+
+**Checks:**
+- tsc clean, 214 tests pass, and the build passes.
+- `tools/phaseShots.ts p0` reports no console errors.
+- **Frame rate:** 2.5 fps on the full board in this sandbox. That is a
+  software renderer (SwiftShader), so it is not a measure of a desktop GPU,
+  and 60 fps on real hardware cannot be checked from here.
+
+**Self-assessment:** nothing player-facing changed yet. The main risk found
+is that `gameSession.ts` is 1,760 lines and owns all pacing. **Decision:** the
+Panjim 2050 rules go in a pure core module the bots can drive, and the
+session only renders its events. The tutorial keeps its turn model untouched.
+
+## P1 — action clock, costs, fast-forward, clock HUD — DONE
+
+**Built:**
+- **The clock:** `src/core/actionRun.ts` (pure) runs 100 quarters, from Q1 2025
+  until the clock reaches 2050.
+  - **Costs:** build 1 quarter; Seawall and Small Dam 2
+    (`buildQuarters` in elements.json); demolish 1; "+1 year" 4. A refused
+    action costs nothing.
+  - **Turns:** a quarter is a `GameState` turn, so the turn engine is reused
+    as is. `GameState` gained two switches, `autoCollectIncome` and
+    `maturityField`, and `build(…, advance = false)`.
+- **Per-level switch:** `timeModel: "actions"` plus a `timeline` block in
+  levels.json. Panaji uses it; the tutorial does not, and keeps turns,
+  interval hazards and its objectives exactly as before.
+- **Session:**
+  - `src/app/panjimController.ts` replaces `state.build()` on this level only.
+  - The interval hazard schedule and its "in N turns" readout are switched
+    off here.
+  - The run ends at 2050, never on an objective.
+- **Clock HUD:** top centre, "Q2 2027", with a progress bar.
+  - Each quarter flips the face and plays a tick.
+  - "+1 year" plays a skippable time-lapse (420 ms per quarter; a click or
+    Space skips it).
+  - "Next event" is drawn but disabled until the schedule exists (P2).
+- **Sound:** `playSound` now synthesises short WebAudio tones (tick, coin,
+  chime, combo, star). There are still no audio files.
+- **Build menu:** each option shows its time cost ("2 qtr") next to the Coin
+  cost. Demolish is labelled "Demolish · 1 qtr".
+- **Data:** `matureQuarters` added as placeholder values: Dune 8, Sandy
+  Vegetation 8, Mangrove 20, Khazan 12, others 0. Growth in quarters is live
+  now; the visuals come in P4.
+- **Telemetry:** `action(type, quarters)` and `fast_forward(quarters)`.
+
+**Checks:**
+- tsc clean; 219 tests pass, including 5 new action-clock tests; the build
+  passes; the walkthrough is clean (the tutorial is unchanged).
+- `phaseShots p1`: no console errors; 2.6 fps under software GL.
+
+**Self-assessment:**
+- **Is it fun?** Not yet: there is nothing to plan against. The clock alone is
+  readable, though, and a build visibly costs time.
+- **Fixed after the first shots:** "Tiles claimed 1277" and "1273 hexes still
+  empty" meant nothing here and are gone. The bottom prompt now says "Time
+  moves only when you act: each build takes a season", and "1q" now reads
+  "1 qtr".
+- **What a first-time player won't understand yet:** why time matters. That
+  is P2's job (the Outlook).
+- **Decision:** there is no separate claim action. Claiming was removed
+  earlier and every tile starts open, so "claim a tile" is folded into
+  building on it rather than re-adding a step that would double every
+  action's cost.
+
+## P2 — climate schedule, rising baseline, Outlook bar — DONE
+
+**Schedule** (`src/core/climate.ts`, pure, 7 new tests):
+- Three challenges are defined in levels.json (`climate`):
+  - Cyclone about 2032 (±1.5 years), base strength 1.2.
+  - Monsoon flood about 2040 (±1.5 years), base strength 1.8.
+  - Cyclone and flood about 2048 (±1 year), base strength 2.2.
+- **Seed:** the jitter is seeded from `level.id`, from `?seed=` for a replay,
+  or from the daily id. The same seed always gives the same calendar, and
+  the tests check that 200 seeds give many different ones.
+- **Seasons:** each date is snapped to its real season (cyclones Q2/Q4, the
+  monsoon flood Q3).
+- **Spacing:** challenges stay in order, at least two years apart, and
+  inside the run.
+
+**Baseline:**
+- Challenge strength is multiplied by 1 + 2% per year, giving 1 icon, then 2,
+  then 3 on the default seed. The Outlook also shows "Sea +N cm" (0.4 cm a
+  year).
+- **Decision:** the baseline is tied to the calendar, not to the player's
+  speed. A challenge's strength is fixed by its date. Waiting costs instead
+  because every quarter spent banking is a quarter not building, and nature
+  defences take years to grow. P9's bots must confirm this.
+
+**Outlook:** a 2025–2050 timeline under the clock with three markers.
+- **Far:** a dashed season band centred on the nominal year, so it leaks
+  nothing about the jitter.
+- **Near (from 5 years out):** the band narrows around the true date, skewed
+  by a seeded offset, and always contains it (tested).
+- **Locked (2 years out):** a red pin with the exact quarter and ●●○
+  strength, plus a sound, a pulse and a banner. Never a modal.
+- **Next line:** "Next: Forecast locked · Cyclone · Q2 2031 · mild · in 1 qtr".
+
+**Next event:** "Next event" spends the quarters up to one before the next
+challenge, as a time-lapse. Every fast-forward stops on the quarter a
+challenge lands, so none can skip past one.
+
+**Placeholder:** for now a challenge only flashes and announces itself. The
+zones resolve it in P3, and P7 stages it.
+
+**Checks:** 226 tests pass; the build passes; `phaseShots p2 --scenario=forecast`
+shows no console errors (`p2-board`, `p2-forecast`).
+
+**Self-assessment:**
+- **Fixed:** the Outlook reads at a glance, and the locked pin is the most
+  saturated thing on screen. The first draft said "Cyclone, cyclone season",
+  now fixed.
+- **Missing:** the board doesn't show *where* yet, so a first-time player
+  would read "mild cyclone in 1 qtr" and not know what to do about it. P3
+  adds the zone overlay and the readiness gauge, which answer that.
+- **Watch:** the 2030 tick label sits under the first marker. It is
+  legible, but needs checking again with the gauge in place.
+
+## P3 — zones, zone-local resolution, readiness gauge — DONE
+
+**Zones** are generated, not hand-written. `buildPanajiMap.ts` gained four
+lat/lon polygons traced around real places, and every tile inside one is
+written to `panaji.json` as `zones`; tiles and landmarks did not move
+(checked byte for byte before the change):
+
+| Zone | Place | Tiles | Make-up |
+|---|---|---|---|
+| Z1 | Campal–Miramar–Caranzalem–Dona Paula beach | 114 | 17 of the 20 beach tiles, 38 sea, 55 town |
+| Z2 | Taleigao plain, St Cruz and Merces wetlands | 242 | 87 estuary, 148 land, 7 river |
+| Z3 | Ourem creek and Fontainhas | 44 | 11 river, 12 estuary, 21 land |
+| Z4 | Mandovi waterfront and the old city | 51 | 11 river, 18 estuary, 22 land |
+
+**Resolution** (`src/core/zones.ts`, pure, 8 new tests):
+- **Paths:** a challenge travels zone by zone.
+  - Cyclone: Z1 then Z2.
+  - Flood: Z2, then Z3, then Z4.
+  - Compound: a surge front up the Mandovi into Z4 (60% of the strength),
+    plus a rain front Z2, Z3, Z4 (75%), which reaches Z4 second and finds
+    whatever defence the surge left there.
+- **The rule:** each zone's defence is the sum of the generic
+  `effects.resilience` of everything standing in it that answers the hazard,
+  scaled by maturity and wear.
+  - Values: Dune 4, Sandy Vegetation 2.5, Mangrove 5, Khazan 5, Seawall 9,
+    Breakwater 7, Small Dam 5; Sand Mining −4 and Resort −1 weaken every
+    hazard.
+  - A shortfall damages that zone's houses in proportion; a damaged house
+    earns nothing until repaired. 75% of the shortfall carries on to the
+    next zone.
+  - Stars per challenge come from "protection", the share of the
+    undefended damage prevented: 85% or more is 3 stars, 50% is 2, and
+    anything less is still 1, because the city always stands.
+- **Engineered failure:** an engineered structure over its own
+  `failureThreshold` fails and releases what it held.
+- **Dam decision:** a reservoir (anything with a flood buffer) is tested
+  against its front's *full* rain load, not what got past the zones above
+  it, because a dam carries its whole catchment. This makes the Small Dam
+  hold in the monsoon flood and fail in the compound storm wherever it
+  stands (tested). That is the "cheap temptation" in the brief.
+- **Repair:** 1 quarter plus 40% of the build cost, from the tile's card.
+  It clears wear and gets damaged houses earning again.
+
+**Readiness gauge:**
+- Next to the Outlook line: "Ready", a bar and ★★☆, coloured red, amber or
+  green.
+- **How it predicts:** it resolves the next challenge against a copy of the
+  board *as it will stand on the challenge date*, so defences that are
+  still growing count at the maturity they will have reached by then. The
+  strength is the expected one before the lock, the exact one after.
+- **Live:** it updates on every repaint, and a test confirms that building
+  dunes in Z1 raises it.
+
+**Forecast in the scene, once locked:**
+- **Overlay:** translucent ghosts over every tile on the path, strongest on
+  the first zone.
+- **Outline:** a bold, pulsing cream-and-dark band along the zones' edge.
+  The ghosts alone vanished in grayscale; the band reads in both.
+- **Label:** "Cyclone landfall ●○○ Q2 2031", anchored on the threatened tile
+  nearest the city centre and kept on screen.
+
+**Challenges:** they now resolve and show zone by zone (overlay reveal, failed
+structures collapse, worn ones weather, houses lean), then a banner such as
+"Cyclone ★★☆ · houses saved 12". P7 stages this properly.
+
+**Checks:** 234 tests pass; the build passes; the walkthrough is clean;
+`phaseShots p3 --scenario=forecast,challenge` shows no console errors.
+
+**Self-assessment:**
+- **The useful part:** "Cyclone landfall ●○○" sitting on the beach with an
+  outlined zone is the first moment the game says *where*, and the gauge
+  makes the next move obvious.
+- **Fixed during the phase:**
+  - The label first sat off-screen at Caranzalem.
+  - The Outlook said "in 0 qtr" on the quarter the storm landed.
+  - The result banner hid the fast-forward buttons.
+  - The overlay was invisible in grayscale.
+- **What a first-time player won't understand:**
+  - The scenario built four dunes one quarter before landfall and the gauge
+    stayed red, because dunes take two years to grow. That is the intended
+    lesson, but nothing on the board shows growth yet (P4).
+  - The bottom-right panel still lists the old objectives (P6 replaces it).
+
+## P4 — maturation and time-lapse visuals — DONE
+
+**Built:**
+- **Growth times:** in quarters, with the brief's placeholder values (Dune 8,
+  Sandy Vegetation 8, Mangrove 20, Khazan 12, the rest 0). They have been
+  live in the rules since P1. A young element gives a linear share of every
+  effect, defence included (tested).
+- **Drawn growth:**
+  - A growing defence is planted at 35% of its size and pale
+    (`YOUNG_TINT`), and fills out and darkens to its own colour at maturity.
+  - It eases in over a few frames, so a "+1 year" time-lapse visibly grows
+    the mangroves quarter by quarter.
+  - The settle animation lands a sapling at sapling size (a new
+    `finalScale`), so nothing pops.
+  - Colour is now composed in one place (`paint`): young, weathered and
+    damaged combine instead of overwriting each other.
+- **Skyline:** houses rise as the decades pass, up to about 1.2–1.75 times
+  their height by 2050 depending on the tile, so 2050 looks different from
+  2025.
+  - It costs one transform write per house when the clock moves, not per
+    frame.
+  - **Decision:** taller, not more. Extra decorative houses would mean
+    meshes the player didn't place, which muddies "everything here is
+    yours".
+- **Gauge:** shows "N growing" for defences in the threatened zones that are
+  still maturing. That answers P3's "why is it red when I just built four
+  dunes".
+
+**Checks:**
+- 236 tests pass (2 new: the maturity table and linear effect growth).
+- The build passes, the walkthrough is clean, and `phaseShots p4` shows no
+  console errors (`p4-growth`, `p4-forecast`).
+- The turn-based levels pass no growth, so every element there draws at
+  full size exactly as before.
+
+**Self-assessment:**
+- **Fun:** watching a mangrove belt fill out over a time-lapse is the first
+  genuinely satisfying moment of the run. Long-lead planting now has a
+  visible payoff.
+- **Weak:** the skyline change is subtle in a single frame. It will read in
+  the finale's 2025/2050 comparison (P8), not quarter to quarter, which is
+  the right place for it.
+
+## P5 — economy and coin jar — DONE
+
+**Built:**
+- **The jar:** on this level income no longer goes straight into Coin. Each
+  quarter `income × incomeScale` (0.5) drops into a coin jar
+  (`ActionRun.jar`), at the board's maturity during that quarter. Damaged
+  houses earn nothing.
+- **Tapping it** banks the whole coins. It is free: no quarter passes
+  (tested), and it plays a pop, a chime and a bump on the Coin counter.
+- **Jar UI:** under the instrument cluster, top left. It fills to "full" at
+  about two years of current income, wobbles when it has coin in it, and
+  glows when full.
+- **The jar starts with a 40-coin gift.** Its first tap is the earliest
+  reward a new player can get, and logs `first_reward_ms`.
+- **Coin:** the HUD shows income per quarter at the jar's scale, and Panaji's
+  starting Coin is 350 (it was 1000, a testing value).
+- `timeline.economy` in levels.json holds `incomeScale` and `jarStart`.
+- **Decision:** everything that earns pays into the jar, not only Houses and
+  Khazan. Sand Mining's, the Resort's and the Small Dam's big incomes are
+  the Greedy temptation the bots must show doesn't win, and splitting
+  income between two places would only confuse.
+
+**Not yet tuned:** whether 350 Coin plus jar income lands at 40–70
+decisions, and whether banking loses to building, is for the bots (P9). The
+numbers here are a first guess from the costs (a typical build is about 35
+Coin).
+
+**Checks:** 238 tests pass (2 new); the build passes; `phaseShots p5` shows
+no console errors.
+
+**Self-assessment:**
+- **Fun:** the jar is a nice small loop: watch it fill during a time-lapse,
+  tap it, see Coin jump.
+- **Risk:** a player who never notices the jar will run out of Coin and not
+  know why. The gift and the wobble are meant to teach it in the first ten
+  seconds; P9's telemetry check (first reward ≤ 30 s) will tell.
+
+## P6 — Voices of Panjim, perfect-fit combos, Field Guide — DONE
+
+**Voices of Panjim:**
+- **Data:** levels.json `voices`, with core logic in `src/core/voices.ts`.
+  There are nine requests, three per era. An era runs to the next challenge.
+- **Each request** is one micro-action: "2 Dunes in Z1", "a Mangrove Belt",
+  "a Living Bund".
+- **Payout:** the moment a request is met it pays at once, with a coin pop
+  plus chime and the person's thanks, and the card leaves.
+- **Lapse:** unmet requests lapse quietly when their era ends; nothing is
+  lost but the reward.
+- **Voices:**
+  - Anthony, a Miramar fisherman.
+  - Mrs Fernandes in Fontainhas, whose lane the Ourem creek floods.
+  - Sitaram, a Taleigao paddy farmer, and later his daughter.
+  - Rosy's shack at Caranzalem.
+  - Fr. Rodrigues at St Cruz.
+  - Neha, a teacher in Merces.
+  - Prakash, a Mandovi ferryman.
+  - Leon at the Dona Paula jetty.
+- **Writing:** each request is short and asks for something; thanks are one
+  line, some in Konkani ("Dev borem korum").
+- **Nudging:** requests point at good play without lecturing: era 1 asks for
+  dunes on the cyclone's beach and a khazan in the flood's wetlands.
+- **Tested:** two or three per era, each answerable on the real map (enough
+  valid tiles in the named zone), paid on completion, lapsed on the era
+  change.
+- **Panel:** the Voices take over the bottom-right objectives panel.
+  Panaji's objective is now "Weather 3 hazards", which is what the run is.
+
+**Combos** (`src/core/combos.ts`, with a real bonus to zone defence):
+- Mangrove Belt: 3 or more touching mangroves, +2 each.
+- Living Bund: a khazan next to a mangrove, +2 each.
+- Beach Shield: a dune next to sandy vegetation, +1.5 each.
+- **When one forms:** ring flourishes and a gold glow ripple across its
+  tiles, their creatures react, a four-note chime plays, and a banner reads
+  "Mangrove Belt! +2 defence on each of its 3 tiles".
+- **Tested:** formation thresholds, adjacency, and the bonus in the zone
+  sum (15 → 21).
+
+**Field Guide** (10 pages):
+- Tapping a built tile, or a creature in the air, records the species that
+  appeared. It's free, and plays a toast and chime.
+- **Every page is wildlife a nature defence brings:** kingfisher, egret and
+  kite from mangroves; dragonfly, tiger prawn and mudskipper from khazan;
+  garden lizard; ghost crab; mullet; cormorant. A seawall's pigeons and sand
+  mining's shorebirds are not in it, and nothing says so.
+- **Storage:** the guide is kept on the device across runs.
+- **Creatures:** they already had always-on ambient reactions in this
+  branch, so none needed adding. `trigger()` now returns what it spawned,
+  and creatures carry `userData.species` so a direct tap works.
+
+**Checks:**
+- 243 tests pass (5 new); the build passes; the walkthrough is clean;
+  `phaseShots p6 --scenario=voices,guide` shows no console errors.
+- **Fixed during the phase:**
+  - A start-up crash: the controller was built before the panel it mounts
+    into.
+  - Right-aligned cards.
+  - The stale "Weather 3 hazards" row.
+  - An empty forecast pill at the top-left: `display` was beating
+    `[hidden]`.
+
+**Self-assessment:**
+- **Fun:** this is the phase that makes it feel like a game. Answering
+  Anthony on the second dune, with a coin pop and his thanks, then
+  completing a Mangrove Belt with a ripple of gold, are two rewards inside
+  the first minute.
+- **Readable:** the Voices panel is the densest UI in the game (three
+  quoted paragraphs). It is kept to a 340px column at the edge, and the text
+  is capped at 140 characters by a test.
+- **What a first-time player won't understand:** that a creature can be
+  tapped in the air. The toast after the first tile-tap says "New in your
+  Field Guide", which is where they will learn the guide exists.
+
+## P7 — challenge sequence: forecast lock, spectacle, Aftermath, retry, autosave — DONE
+
+**Built:**
+- **Forecast lock:** the run snapshots itself the quarter each Forecast locks
+  (`ActionRun.lockSnapshots`, plain JSON).
+- **Spectacle** (`PanjimController.stageChallenge` with the session's
+  `challengeFx`). The outcome is decided the instant the challenge lands;
+  the staging only shows it:
+  - The weather comes in, then each zone on the path gets its own moment.
+    The camera goes there, the hazard reveals over whatever got past, the
+    defences answer *one at a time* (a ring and their creatures, in turn),
+    failed structures collapse, and houses lean.
+  - A "Houses saved N" counter climbs zone by zone.
+  - The zone with the biggest save plays in slow motion: twice as long,
+    camera in close, letterboxed.
+  - A click anywhere hurries the staging.
+- **Aftermath card:** stars fill one at a time with a sound each, then
+  "Houses saved N · M damaged" (or "No homes stood in its path"), then one
+  line from `core/aftermath.ts` (pure, 5 tests). The line names a place and
+  a thing:
+  - "The dunes at Miramar took most of it."
+  - "The dam at the Ourem creek gave way and let everything it held through
+    at once."
+  - "Nothing stood in the way at Miramar, so the storm ran on into
+    Taleigao."
+- **Retry:** "Replay from the forecast (Q2 2029)" rewinds to the lock
+  snapshot. Everything built since is undone, the Forecast is re-shown, and
+  the board is redrawn from state with growth, wear and damage.
+  - Measured at **10 ms** in the browser (telemetry `checkpoint`), against a
+    3 s budget.
+  - A test confirms that replaying the same moves from the snapshot gives
+    an identical outcome.
+- **No game over:** the city always stands, so the worst result is one star.
+- **Autosave:** after every challenge the run is saved to this device, keyed
+  by level and seed.
+  - It holds the board, every lock snapshot (so Replay survives a reload)
+    and the real time played (for P8's tempo badge).
+  - On load, the brief offers "Continue from Q3 2032" under Begin.
+  - The save is cleared at 2050.
+- **Telemetry:** `challenge_start` and `challenge_end` (stars, readiness,
+  protection), and `checkpoint` (autosave time, and rewind ms).
+
+**Checks:** 248 tests pass; the build passes; the walkthrough is clean;
+`phaseShots p7` shows no console errors (`p7-stage`, `p7-challenge`,
+`p7-replay`).
+
+**Self-assessment:**
+- **Fun:** the staging is the moment the whole run builds toward, and it
+  now pays off. Watching the beach defences answer one by one while the
+  counter climbs reads as "my planning worked".
+- **Fixed during the phase:**
+  - A three-star result said "It got through Taleigao…". The line now
+    credits the defence that took most of it.
+  - "Houses saved 0" with no homes in the path.
+  - The camera stayed zoomed in after the slow motion; it now returns to
+    the opening frame.
+  - `challenge_start` reported the *next* challenge's readiness.
+- **Unsure:** the slow-motion zoom is close. That is dramatic on a GPU, but
+  in this sandbox's 2–3 fps software renderer the camera glide can't be
+  judged.
+
+## P8 — finale: index, skyline reveal, tempo badge, share card — DONE
+
+**Built:**
+- **The index** (`src/core/panjimIndex.ts`, pure, 3 tests). Five counts,
+  0–100 each, averaged:
+  - Resilience: mean protection across the three storms.
+  - Biodiversity: meter ÷ 40.
+  - Livelihoods: jar income per quarter in 2050 ÷ 30.
+  - Population: growth ÷ 100.
+  - Food: centred on 50.
+- **Score and stars:** score = index × 10 + 100 per storm star (at most
+  1900). Level stars are the average storm result, never below 1.
+- **Results screen:** the rows read "Panjim 2050 index" and "Storm N
+  stars", through a new optional `rows` on the score breakdown. The
+  next-star hint is off here, because stars come from the storms, not from
+  thresholds.
+- **Tempo badge:** real minutes played, named. Under 10 minutes is "Swift
+  tide", 10–20 is "Steady tide", longer is "Slow, deep tide". It is shown
+  beside the score and is **not part of it** (tested). Across an autosave
+  resume it counts the whole run.
+- **Finale at 2050:**
+  1. The camera pulls back over the city as the weather clears (the
+     skyline reveal, where P4's risen houses and grown mangroves show).
+  2. A full-screen title, "25 years · 3 storms / Panjim, 2050".
+  3. The finale card: the index with five bars, stars per storm, the tempo
+     badge, "Share card" and "See results".
+- **Share card:** a 1200×630 PNG drawn on a canvas (index, stars per storm,
+  tempo). It uses the system share sheet where there is one, and a download
+  otherwise; the text summary goes to the clipboard.
+- **Telemetry:** `run_end` now carries `index`, and `total_ms` is real time
+  across any resume.
+
+**Checks:**
+- 251 tests pass; the build passes; the walkthrough is clean.
+- `phaseShots p8 --scenario=finale` plays the whole run on fast-forward
+  only, the "Rusher" line. It got **1 star in each storm and an index of
+  10**: that strategy earns almost nothing, as designed. No console errors.
+
+**Self-assessment:**
+- **Works:** the finale card reads clearly, and a Rusher sees at once why
+  the run went badly (four zero bars).
+- **Fixed during the phase:** the readiness gauge stayed on screen after
+  the last storm (`display` beating `[hidden]` again).
+- **Sandbox only:** rain lingers into the finale in this renderer. Storm
+  easing caps each frame at 0.1 s, and at 2–3 fps that makes the weather
+  clear about four times slower than on a real GPU.
+- **Not checked:** the reveal's camera pull-back is clamped at the
+  camera's maximum distance, so on this board it ends near the opening
+  framing. The "2050 looks different" comparison is better judged in a
+  real run with a built city, which the P9 Playwright run will screenshot.
+
+## P9 — bots and balance — DONE
+
+**The bots** (`tools/panjimBots/bots.ts`) play the real rules, not a copy:
+`ActionRun` on the real Panaji board with the monuments reserved, through
+the same calls a click makes. Each persona plays 20 seeds.
+- **casual:** random valid actions; ignores the Outlook.
+- **greedy:** maximises Coin per Coin spent (Sand Mining, Small Dams, Houses,
+  Resorts); fast-forwards when broke.
+- **smart:** reads the Outlook and gauge.
+  - Tops up the threatened zones until the gauge is green.
+  - Plants mangroves and khazan for later storms early.
+  - Answers Voices, builds combos, repairs, keeps houses off the storm
+    paths, and grows the city while keeping a repair reserve.
+- **rusher:** only fast-forwards.
+- **banker:** fast-forwards and banks until a Forecast locks, then builds.
+- **walls and mangroves:** two single-trick careful players, for the "no
+  single strategy dominates" check.
+
+**Assertions** live in `tests/panjimBots.test.ts` and fail `npm run test` if
+broken. All pass:
+- Casual always reaches 2050 with at least 1★ per storm.
+- Greedy gets 3★ in **0%** of storms (the limit is 25% or less).
+- Smart gets 3★ in **82%** (the target is 70% or more).
+- Rusher gets 1★ or less in 3 of 3 storms on every seed.
+- Banker never beats Smart's index on the same seed.
+- The same seed gives identical results.
+- No single strategy dominates: walls-only and mangroves-only both score
+  below the balanced plan yet both win some 3★ storms, and Greedy out-earns
+  Smart.
+- Smart's median decisions fall within 40–70.
+
+`npm run bots` prints the tables:
+
+
+
+| Persona | 1★ | 2★ | 3★ | 3★ share | Index p10 / median / p90 | Decisions (median) | FF quarters (median) | Voices (median) |
+|---|---|---|---|---|---|---|---|---|
+| casual | 58 | 2 | 0 | 0% | 23 / 31 / 35 | 29 | 68 | 1 |
+| greedy | 60 | 0 | 0 | 0% | 30 / 30 / 30 | 100 | 0 | 0 |
+| smart | 0 | 11 | 49 | 82% | 85 / 85 / 87 | 68 | 32 | 6 |
+| rusher | 60 | 0 | 0 | 0% | 10 / 10 / 10 | 0 | 100 | 0 |
+| banker | 60 | 0 | 0 | 0% | 32 / 38 / 41 | 21 | 79 | 6 |
+| walls | 20 | 29 | 11 | 18% | 27 / 27 / 27 | 38 | 38 | 1 |
+| mangroves | 9 | 11 | 40 | 67% | 70 / 71 / 71 | 45 | 55 | 4 |
+
+| Persona | Est. minutes p10 / median / p90 | 2nd challenge at (median, min) | First action (s) | First reward (s) |
+|---|---|---|---|---|
+| casual | 3.4 / 3.8 / 4.2 | 2.2 | 11.7 | 9.0 |
+| greedy | 7.5 / 7.5 / 7.5 | 4.4 | 11.7 | 9.0 |
+| smart | 5.9 / 6.0 / 6.0 | 3.6 | 11.7 | 9.0 |
+| rusher | 2.4 / 2.5 / 2.5 | 1.5 | 10.7 | never |
+| banker | 3.4 / 3.5 / 3.6 | 2.0 | 11.7 | 9.0 |
+| walls | 4.2 / 4.3 / 4.4 | 2.6 | 11.7 | 9.0 |
+| mangroves | 4.9 / 5.0 / 5.0 | 2.9 | 11.7 | 9.0 |
+
+Per-challenge star share (1/2/3):
+  casual  cyclone 18/2/0  flood 20/0/0  compound 20/0/0
+  greedy  cyclone 20/0/0  flood 20/0/0  compound 20/0/0
+  smart   cyclone 0/10/10  flood 0/1/19  compound 0/0/20
+  rusher  cyclone 20/0/0  flood 20/0/0  compound 20/0/0
+  banker  cyclone 20/0/0  flood 20/0/0  compound 20/0/0
+  walls   cyclone 0/10/10  flood 0/19/1  compound 20/0/0
+  mangroves cyclone 9/11/0  flood 0/0/20  compound 0/0/20
+
+| Persona | Resilience | Biodiversity | Livelihoods | Population | Food | (medians) |
+|---|---|---|---|---|---|---|
+| casual | 8 | 5 | 61 | 7 | 63 | |
+| greedy | 0 | 0 | 100 | 10 | 41 | |
+| smart | 89 | 100 | 89 | 67 | 89 | |
+| rusher | 0 | 0 | 0 | 0 | 50 | |
+| banker | 26 | 68 | 9 | 0 | 86 | |
+| walls | 50 | 0 | 28 | 27 | 29 | |
+| mangroves | 76 | 100 | 52 | 27 | 100 | |
+
+**Tuning, done with the bots rather than by guessing:**
+- **Challenge intensity:** 20 → **50** defence points per unit of strength.
+  At 20, Smart got 3★ every time from 27 decisions, so nothing was asked of
+  the player. Sweep: 30 → 100%, 40 → 90%, 50 → 83%, 60 → 73%.
+- **Jar income scale:** 0.5 → **0.2**. At 0.5, Smart could build every
+  quarter (100 decisions), so Coin never bound. At 0.15, Smart fell off a
+  cliff to 18% 3★. At 0.2 it makes 68 decisions and still gets 82%.
+- **Engineered defences** were a dead end: walls-only got no 3★ storm, not
+  even the cyclone. Seawall resilience went 9 → **16**, Breakwater 7 →
+  **12**, Small Dam 5 → **10**. Walls now play out the story the brief
+  wants: half their cyclones get 3★, the dams carry the monsoon flood to
+  2★, and everything collapses to 1★ in the compound storm when the dams
+  fail.
+- **Index ceilings** loosened (biodiversity full at 60, population at +150,
+  food ±3 a point), so a strong city is not stuck at 100 on three bars.
+- **Bug found by the bots:** houses in a zone the storm never reached were
+  not counted as saved. They are now.
+
+**Time model:**
+- Estimated real length uses the brief's model: an 8 s brief; 2.5 s per
+  decision plus its tick animation; 1 s per jar tap; time-lapses at 0.42 s
+  a quarter; 5 s of reading for each Outlook band narrowing, each Forecast
+  lock and each Aftermath; the staging at 1.3 s per zone plus fixed beats;
+  and the finale.
+- **Smart's median is 6.0 minutes, so it does not fall in 8–16.** The second
+  challenge lands at about 3.6 minutes.
+- **Why I didn't force it.** Under this model, decisions dominate run
+  length: every decision is about 2.7 s, and everything else adds up to
+  about 2.5 minutes. Reaching 8 minutes needs about 110 decisions. That
+  contradicts the economy target of 40–70 affordable decisions, and also
+  the 100-quarter clock at one quarter per build.
+- **Within the allowed levers:**
+  - Income is already tuned to put Smart at the top of that band.
+  - Requests are already at the brief's maximum of three per era.
+  - Halving light-build quarter costs would allow more builds, but only
+    more Coin would make them affordable, and that breaks the band.
+- **Not counted:** the model ignores free actions (Field Guide taps,
+  inspecting tiles, camera moves, reading Voices). They take real time, so a
+  human's run will be longer than 6 minutes. A real playtest should settle
+  it.
+
+**First action and first reward:** in the model, the first action comes at
+11.7 s (8 s brief plus one decision) and the first reward at 9.0 s (tapping
+the jar's starting gift). Targets: 15 s or less and 30 s or less.
+
+**Final check in a real browser** (`phaseShots p9`, 1920x1080, fresh
+profile):
+- **The run:** a scripted careful player plays the whole run through the
+  real UI path: controller actions, the jar, the Aftermath buttons.
+  - Cyclone ★★★ (protection 0.89); monsoon flood ★ (0.09); compound ★★
+    (0.52); index 61.
+  - The script is cruder than the bot: no lookahead planting, so it ran
+    short of Coin before the flood.
+  - **The gauge was honest in every case.** It read green, red and amber
+    before the three storms, matching the stars they got.
+- **Screenshots:** `p9-smart-forecast`, `p9-smart-aftermath`, and
+  `p9-smart-finale` (the 2050 finale over a built city: the dune line, the
+  waterfront mangrove belt, houses away from the storm paths).
+- **Console errors:** none.
+- **Frame rate on the full board:** 2.6 fps under this sandbox's
+  SwiftShader software renderer. **60 fps on a desktop GPU cannot be
+  measured here**, and needs checking on real hardware.
+- **First action and reward in the headless run:** first reward at 17.1 s
+  and first action at 17.1 s after session start. About 12 s of that is
+  the harness itself (page and asset load under software GL, then a fixed
+  4.5 s wait before acting), so it is not a human measurement. The
+  human-time model's 11.7 s and 9.0 s are the estimates to compare with the
+  15 s and 30 s targets.
+- **Fixed during the phase:** my scripted player deadlocked when a storm
+  landed on a build's quarter, waiting for "not busy" while the Aftermath
+  waited for Continue. The script now answers an Aftermath wherever one
+  opens. The game itself was fine; it was the test player.
+
+**Self-assessment:**
+- **Balance:**
+  - The personas separate cleanly: Smart 85, Mangroves-only 71, Banker 38,
+    Casual 31, Greedy 30, Walls-only 27, Rusher 10.
+  - The engineered path is no longer a dead end, but it loses where the
+    brief says it should.
+  - Banker's 1★ every time is harsh but correct: defences built after the
+    lock cannot mature in time. That is the point of the brief's "waiting
+    is never free".
+- **Risk:** Smart's 3★ rate falls steeply below a jar income of 0.2 (18% at
+  0.15). Any later economy change should re-run `npm run bots`, which the
+  test suite already does.
+
+## P10 — final verification and merge — DONE
+
+**Checks on the branch head:**
+- tsc clean.
+- 259 tests pass, 6 skipped, including the 8 bot balance assertions.
+- The build passes.
+- The walkthrough is clean: menu, tutorial (unchanged turn model), Panaji.
+
+**The standing rules still hold:**
+- The email requirement is off (`REQUIRE_EMAIL`).
+- The menu is still Tutorial plus Choose a level (`SHOW_MENU_EXTRAS` off).
+- The street-map layer still defaults to 23%.
+
+**How to undo the whole change:**
+- The merge into master is a merge commit, so `git revert -m 1 <merge
+  commit>` reverts it in one step.
+- Resetting to `pre-panjim-2050` (b5bffe4) also works. That tag exists in
+  the local clone only, because the git proxy refused tag pushes; the
+  branch `backup/pre-panjim-2050` marks the same commit on GitHub.

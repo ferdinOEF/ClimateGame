@@ -19,6 +19,8 @@ interface SettleAnim {
   z: number;
   finalY: number;
   startTime: number;
+  /** The scale the instance lands at: 1 normally, smaller for a young planting that has yet to grow. */
+  finalScale: number;
 }
 
 interface CollapseAnim {
@@ -36,11 +38,11 @@ export class SettleAnimator {
   private collapsing: CollapseAnim[] = [];
 
   /** Sets the instance's initial (elevated, shrunk) transform and registers it to animate in. */
-  begin(mesh: THREE.InstancedMesh, index: number, x: number, z: number, finalY: number, nowMs: number): void {
-    const matrix = new THREE.Matrix4().makeScale(0.4, 0.4, 0.4).setPosition(x, finalY + SETTLE_DROP_HEIGHT, z);
+  begin(mesh: THREE.InstancedMesh, index: number, x: number, z: number, finalY: number, nowMs: number, finalScale = 1): void {
+    const matrix = new THREE.Matrix4().makeScale(0.4 * finalScale, 0.4 * finalScale, 0.4 * finalScale).setPosition(x, finalY + SETTLE_DROP_HEIGHT, z);
     mesh.setMatrixAt(index, matrix);
     mesh.instanceMatrix.needsUpdate = true;
-    this.active.push({ mesh, index, x, z, finalY, startTime: nowMs });
+    this.active.push({ mesh, index, x, z, finalY, startTime: nowMs, finalScale });
   }
 
   /** Animates an existing instance shrinking to nothing — a catastrophic engineered-defense failure. */
@@ -80,7 +82,7 @@ export class SettleAnimator {
         const t = Math.min(1, (nowMs - anim.startTime) / SETTLE_DURATION_MS);
         const eased = easeOutBack(t);
         const y = anim.finalY + SETTLE_DROP_HEIGHT * (1 - eased);
-        const scale = THREE.MathUtils.clamp(0.4 + 0.6 * eased, 0, 1.08);
+        const scale = THREE.MathUtils.clamp(0.4 + 0.6 * eased, 0, 1.08) * anim.finalScale;
 
         /*
          * Squash and stretch, on top of the existing drop.
@@ -104,7 +106,7 @@ export class SettleAnimator {
             ? new THREE.Matrix4()
                 .makeScale(scale * spread, scale * stretch, scale * spread)
                 .setPosition(anim.x, y, anim.z)
-            : new THREE.Matrix4().makeTranslation(anim.x, anim.finalY, anim.z);
+            : new THREE.Matrix4().makeScale(anim.finalScale, anim.finalScale, anim.finalScale).setPosition(anim.x, anim.finalY, anim.z);
         anim.mesh.setMatrixAt(anim.index, matrix);
         anim.mesh.instanceMatrix.needsUpdate = true;
         touchedMeshes.add(anim.mesh);

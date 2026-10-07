@@ -106,6 +106,32 @@ export class ObjectivesPanel {
     container.appendChild(this.briefBackdrop);
   }
 
+  /**
+   * Replaces the objective checklist with another body (Panjim 2050's Voices
+   * panel). The header with the level name stays.
+   */
+  mountBody(body: HTMLElement): void {
+    this.listEl.hidden = true;
+    this.counterEl.hidden = true;
+    this.el.classList.add("custom-body");
+    this.el.appendChild(body);
+  }
+
+  /** Adds a second button to the opening brief, under Begin. Closes the brief and runs `onClick`. */
+  addBriefAction(label: string, onClick: () => void): void {
+    const cta = this.briefBackdrop.querySelector(".brief-cta");
+    if (!cta) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "brief-cta brief-resume";
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      this.hideBrief();
+      onClick();
+    });
+    cta.insertAdjacentElement("afterend", button);
+  }
+
   private hideBrief(): void {
     this.briefBackdrop.hidden = true;
   }

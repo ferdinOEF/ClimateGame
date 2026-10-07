@@ -154,6 +154,9 @@ function unmetSummary(ctx: ResultsContext): string {
 /** Tells a 1- or 2-star player exactly what the next star costs. Nothing pulls a replay like a number that is nearly reached. */
 function nextStarHint(ctx: ResultsContext): HTMLElement | null {
   const { score } = ctx.result;
+  // A level scored its own way (Panjim 2050: stars come from its storms)
+  // has no thresholds to count toward.
+  if (score.rows) return null;
   if (!ctx.result.completed || score.stars >= 3) return null;
   const target = ctx.level.starThresholds[score.stars];
   if (target === undefined) return null;

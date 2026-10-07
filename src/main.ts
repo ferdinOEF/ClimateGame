@@ -1,5 +1,6 @@
 import "@ui/hud.css";
 import "@ui/screens/screens.css";
+import "@ui/panjim/panjim.css";
 import { AppShell } from "@app/appShell";
 
 /**

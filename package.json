@@ -24,7 +24,8 @@
     "walkthrough": "tsx tools/walkthrough.ts",
     "mapgen:panaji": "tsx tools/mapgen/buildPanajiMap.ts",
     "mapgen:geocode": "tsx tools/mapgen/geocodePanaji.ts",
-    "mapgen:basemap": "tsx tools/mapgen/fetchPanajiBasemap.ts"
+    "mapgen:basemap": "tsx tools/mapgen/fetchPanajiBasemap.ts",
+    "bots": "tsx tools/panjimBots/index.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",

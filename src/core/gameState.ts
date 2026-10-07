@@ -100,6 +100,18 @@ export class GameState {
    * behaves exactly as before.
    */
   severityCreepPerHazard = 0.04;
+  /**
+   * Whether `advanceTurn()` pays income straight into Coin. True for the
+   * turn-based levels. The action-driven Panjim 2050 run (core/actionRun.ts)
+   * turns it off and pays income into its coin jar itself.
+   */
+  autoCollectIncome = true;
+  /**
+   * Which element field measures maturity: turns for the turn-based levels,
+   * quarters for the action-driven run (where a turn IS a quarter, but the
+   * growth times are authored on a 25-year scale).
+   */
+  maturityField: "matureTurns" | "matureQuarters" = "matureTurns";
   private readonly startingElements: StartingElementSeed[];
   private readonly startingCoin: number;
 
@@ -167,6 +179,9 @@ export class GameState {
     copy.severityBaseline = this.severityBaseline;
     copy.severityCreepPerHazard = this.severityCreepPerHazard;
     copy.erasCompleted = this.erasCompleted;
+    copy.autoCollectIncome = this.autoCollectIncome;
+    copy.maturityField = this.maturityField;
+    for (const key of this.reserved) copy.reserved.add(key);
     return copy;
   }
 
@@ -187,8 +202,10 @@ export class GameState {
     return this.placed.size - this.elements.size;
   }
 
-  private maturityFraction(inst: ElementInstance, def: ElementDef): number {
-    return def.matureTurns > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / def.matureTurns)) : 1;
+  /** 0 at the moment of building, rising linearly to 1 at the element's maturity time. */
+  maturityFraction(inst: ElementInstance, def: ElementDef): number {
+    const span = (this.maturityField === "matureQuarters" ? def.matureQuarters : def.matureTurns) ?? def.matureTurns;
+    return span > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / span)) : 1;
   }
 
   /**
@@ -208,7 +225,7 @@ export class GameState {
    * directly (those callers don't collect income; only a real build does).
    */
   advanceTurn(): void {
-    this.coin += this.income;
+    if (this.autoCollectIncome) this.coin += this.income;
     this.turn++;
   }
 
@@ -242,12 +259,12 @@ export class GameState {
    * reads `this.turn` from *before* the advance, same as it always did (a
    * just-built element starts at 0% maturity, not already one turn matured).
    */
-  build(coord: AxialCoord, elementId: string): boolean {
+  build(coord: AxialCoord, elementId: string, advance = true): boolean {
     if (!this.canBuild(coord, elementId)) return false;
     const def = ELEMENT_BY_ID.get(elementId)!;
     this.coin -= def.buildCost;
     this.elements.set(axialKey(coord), { elementId, builtOnTurn: this.turn, degradeAmount: 0, floodBufferFilled: 0 });
-    this.advanceTurn();
+    if (advance) this.advanceTurn();
     return true;
   }
 
@@ -321,6 +338,10 @@ export class GameState {
       if (!def) continue;
       const delta = def.effects[key];
       if (delta === undefined) continue;
+      // A building knocked out by a Panjim 2050 challenge (degradeAmount 1)
+      // gives nothing until it is repaired. Buildings never degrade on the
+      // turn-based levels, so this changes nothing there.
+      if (def.kind === "building" && inst.degradeAmount >= 1) continue;
       total += delta * this.maturityFraction(inst, def);
     }
     return total;

@@ -1,0 +1,12 @@
+[
+  { "id": "kingfisher", "name": "White-throated Kingfisher", "home": "mangrove", "line": "Perches over the mangrove channels and drops on fish. You hear the rattle before you see the blue." },
+  { "id": "egret", "name": "Little Egret", "home": "mangrove", "line": "Stalks the mudflats at low tide, stirring up prey with its yellow feet." },
+  { "id": "kite", "name": "Brahminy Kite", "home": "mangrove", "line": "Chestnut and white, circling the Mandovi for scraps from the fishing boats." },
+  { "id": "dragonfly", "name": "Ground Skimmer", "home": "khazan", "line": "Hunts low over the khazan fields. Its young grow up in the paddy water." },
+  { "id": "prawn", "name": "Tiger Prawn", "home": "khazan", "line": "The khazan sluice lets young prawns in on the tide: a harvest as old as the bunds." },
+  { "id": "mudskipper", "name": "Mudskipper", "home": "khazan", "line": "A fish that walks. It lives on the mud and breathes through its skin." },
+  { "id": "lizard", "name": "Garden Lizard", "home": "dune", "line": "Basks on the dune grass and flushes red at the throat when showing off." },
+  { "id": "crab", "name": "Ghost Crab", "home": "sandy_vegetation", "line": "Sprints sideways between burrows on the upper beach and is gone in a blink." },
+  { "id": "fish", "name": "Grey Mullet", "home": "small_dam", "line": "Schools in the river and leaps clear of the water for no obvious reason." },
+  { "id": "cormorant", "name": "Little Cormorant", "home": "breakwater", "line": "Dives for fish, then holds its wings out on the rocks to dry." }
+]

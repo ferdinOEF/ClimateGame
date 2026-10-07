@@ -4,6 +4,7 @@ import panajiMap from "@data/maps/panaji.json";
 import { axialDistance, type AxialCoord } from "@core/hex";
 import type { PlacedTile } from "@core/gameState";
 import type { LevelDef } from "./levels";
+import type { ZoneDef } from "@core/zones";
 
 /**
  * The maps a level can be played on, and which one each level gets.
@@ -122,6 +123,8 @@ export interface GameMap {
    * `src/render/monumentGeometry.ts`.
    */
   monuments: { id: string; name: string; category: string; kind: string; q: number; r: number }[];
+  /** Panjim 2050 challenge zones, from the map generator. Empty on maps without them. */
+  zones: ZoneDef[];
   tiles: PlacedTile[];
 }
 
@@ -137,6 +140,7 @@ interface MapFileShape {
   focus: { q: number; r: number };
   landmarks: { name: string; q: number; r: number }[];
   monuments?: { id: string; name: string; category: string; kind: string; q: number; r: number }[];
+  zones?: ZoneDef[];
   tiles: { q: number; r: number; terrainId: string }[];
 }
 
@@ -153,6 +157,7 @@ function fromFile(file: unknown): GameMap {
     focus: { q: data.focus.q, r: data.focus.r },
     landmarks: data.landmarks ?? [],
     monuments: data.monuments ?? [],
+    zones: data.zones ?? [],
     tiles: data.tiles.map((tile) => ({ coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }))
   };
 }
@@ -194,6 +199,7 @@ const LEGACY_MAP: GameMap = (() => {
     focus,
     landmarks: [],
     monuments: [],
+    zones: [],
     tiles: data.tiles.map((tile) => ({ coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }))
   };
 })();

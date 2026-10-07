@@ -50,10 +50,10 @@
   {
     "id": "l01-first-rains",
     "name": "Panaji",
-    "subtitle": "The Mandovi estuary",
-    "brief": "Goa's capital, built on reclaimed water where the Mandovi spreads into tidal flats before reaching the sea. Sixteen of the city's real landmarks stand on this board and cannot be moved. Everything else is yours to place — and the beach to the west is all that stands between the old town and the Arabian Sea.",
+    "subtitle": "Panjim 2050",
+    "brief": "Twenty-five years of Goa's capital, from 2025 to 2050. Time moves only when you act: each build takes a season, heavy engineering takes two. Three big storms are coming, and the sea rises a little every year. Get the city ready, one season at a time.",
     "mapId": "panaji",
-    "startingCoin": 1000,
+    "startingCoin": 350,
     "parTurns": 40,
     "mapRadius": null,
     "hazards": {
@@ -67,26 +67,186 @@
       "severitySpread": 0.25,
       "severityCreepPerHazard": 0.01
     },
+    "timeModel": "actions",
+    "timeline": {
+      "startYear": 2025,
+      "endYear": 2050,
+      "costs": {
+        "build": 1,
+        "repair": 1,
+        "demolish": 1,
+        "fastForwardYear": 4
+      },
+      "economy": {
+        "incomeScale": 0.2,
+        "jarStart": 40
+      }
+    },
+    "climate": {
+      "baselinePerYear": 0.02,
+      "seaLevelCmPerYear": 0.4,
+      "forecastLockQuarters": 8,
+      "narrowFromQuarters": 20,
+      "intensityPerStrength": 50,
+      "challenges": [
+        {
+          "id": "c1-cyclone",
+          "name": "Cyclone",
+          "kind": "cyclone",
+          "year": 2032,
+          "jitterYears": 1.5,
+          "strength": 1.2
+        },
+        {
+          "id": "c2-flood",
+          "name": "Monsoon flood",
+          "kind": "flood",
+          "year": 2040,
+          "jitterYears": 1.5,
+          "strength": 1.8
+        },
+        {
+          "id": "c3-compound",
+          "name": "Cyclone and flood",
+          "kind": "compound",
+          "year": 2048,
+          "jitterYears": 1,
+          "strength": 2.6
+        }
+      ]
+    },
     "objectives": [
       {
-        "type": "build_category",
-        "category": "nbs",
-        "count": 6
-      },
-      {
-        "type": "meter_at_least",
-        "meter": "biodiversity",
-        "value": 16
-      },
-      {
         "type": "survive_hazards",
-        "count": 2
+        "count": 3
       }
     ],
     "starThresholds": [
       520,
       700,
       900
+    ],
+    "voices": [
+      {
+        "id": "v1-miramar-dunes",
+        "era": 1,
+        "who": "Anthony, fisherman at Miramar",
+        "text": "Every year the tide takes more of our beach. Two dunes at Miramar and the boats have somewhere to land.",
+        "thanks": "Dev borem korum! The sand stays put now.",
+        "goal": {
+          "type": "standing",
+          "elementId": "dune",
+          "count": 2,
+          "zone": "z1"
+        },
+        "reward": 40
+      },
+      {
+        "id": "v1-fontainhas-mangroves",
+        "era": 1,
+        "who": "Mrs Fernandes, Fontainhas",
+        "text": "The Ourem creek comes up our lane each monsoon. Mangroves along the creek, please, before my plants drown again.",
+        "thanks": "My balcony garden thanks you.",
+        "goal": {
+          "type": "standing",
+          "elementId": "mangrove",
+          "count": 2,
+          "zone": "z3"
+        },
+        "reward": 50
+      },
+      {
+        "id": "v1-taleigao-khazan",
+        "era": 1,
+        "who": "Sitaram, paddy farmer in Taleigao",
+        "text": "My grandfather's khazan bund is broken. Rebuild one and the fields and the prawns both come back.",
+        "thanks": "Rice in the field, prawns in the sluice. Like before.",
+        "goal": {
+          "type": "standing",
+          "elementId": "khazan",
+          "count": 1,
+          "zone": "z2"
+        },
+        "reward": 60
+      },
+      {
+        "id": "v2-caranzalem-pandanus",
+        "era": 2,
+        "who": "Rosy, runs a shack at Caranzalem",
+        "text": "Plant kewda beside the dunes. The roots hold the sand when the wind gets up.",
+        "thanks": "Shack's still standing. Come for a feni.",
+        "goal": {
+          "type": "combo",
+          "combo": "beach_shield"
+        },
+        "reward": 50
+      },
+      {
+        "id": "v2-stcruz-belt",
+        "era": 2,
+        "who": "Fr. Rodrigues, St Cruz",
+        "text": "One mangrove is a tree. Three together are a wall the river respects.",
+        "thanks": "A fine belt. The parish is grateful.",
+        "goal": {
+          "type": "combo",
+          "combo": "mangrove_belt"
+        },
+        "reward": 60
+      },
+      {
+        "id": "v2-merces-houses",
+        "era": 2,
+        "who": "Neha, teacher in Merces",
+        "text": "Our children need homes near the school. Two more houses in Merces?",
+        "thanks": "Two more families on our street. Welcome!",
+        "goal": {
+          "type": "standing",
+          "elementId": "house",
+          "count": 2,
+          "zone": "z2"
+        },
+        "reward": 40
+      },
+      {
+        "id": "v3-ferry-mangroves",
+        "era": 3,
+        "who": "Prakash, ferryman on the Mandovi",
+        "text": "The river sits higher at the wharf every year. Mangroves along the waterfront would break the surge.",
+        "thanks": "The ferry steps are dry. Shukriya!",
+        "goal": {
+          "type": "standing",
+          "elementId": "mangrove",
+          "count": 3,
+          "zone": "z4"
+        },
+        "reward": 70
+      },
+      {
+        "id": "v3-living-bund",
+        "era": 3,
+        "who": "Sitaram's daughter, Taleigao",
+        "text": "A khazan with mangroves beside it is how the old people kept the creek gentle.",
+        "thanks": "The bund holds. Baba would be proud.",
+        "goal": {
+          "type": "combo",
+          "combo": "living_bund"
+        },
+        "reward": 70
+      },
+      {
+        "id": "v3-donapaula-dunes",
+        "era": 3,
+        "who": "Leon, Dona Paula jetty",
+        "text": "The big one is coming. Three dunes on the beach and we can watch from the jetty.",
+        "thanks": "We watched it break on the sand.",
+        "goal": {
+          "type": "standing",
+          "elementId": "dune",
+          "count": 3,
+          "zone": "z1"
+        },
+        "reward": 60
+      }
     ]
   }
 ]

@@ -25,6 +25,15 @@ export interface ElementDef {
   maintenanceNeglectPenaltyPerTurn?: number;
   /** Turns until effects/absorption reach full strength. 0 = immediately mature. */
   matureTurns: number;
+  /**
+   * Quarters until full strength in the action-driven Panjim 2050 run, where
+   * one action is one quarter of a year. Falls back to `matureTurns` when
+   * absent. PLACEHOLDER values (Dune 8, Mangrove 20, Khazan 12…), to be tuned
+   * with the bots.
+   */
+  matureQuarters?: number;
+  /** Panjim 2050: actions that take this many quarters instead of one (heavy engineering). */
+  buildQuarters?: number;
   absorptionAtMaturity?: number;
   overwhelmSeverity?: number;
   overwhelmedAbsorptionMultiplier?: number;

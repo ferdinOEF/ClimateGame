@@ -52,6 +52,8 @@ export class Hud {
   private pillResilienceValueEl: HTMLElement;
   private pillResilienceDotEl: HTMLElement;
   private pillHazardValueEl: HTMLElement;
+  /** Panjim 2050: time is shown by the clock, in quarters. */
+  private quarterMode = false;
 
   constructor(container: HTMLElement, actions: HudActions) {
     // STEP_PROMPT_how_to_play_button.md: static content, no game-state
@@ -242,6 +244,21 @@ export class Hud {
     this.incomeEl.classList.toggle("negative", roundedIncome < 0);
   }
 
+  /**
+   * Panjim 2050: time is the clock at the top centre, in quarters, so the
+   * "Turn N · Era 1" readout goes and income is per quarter.
+   */
+  useQuarterClock(): void {
+    this.quarterMode = true;
+    this.turnValueEl.closest<HTMLElement>(".turn-era-row")!.hidden = true;
+    // Every tile is open from the start, so a count of them says nothing here.
+    for (const el of Array.from(this.tileCountEl.parentElement?.children ?? [])) {
+      if (!el.classList.contains("hud-chrome")) (el as HTMLElement).hidden = true;
+    }
+    const unit = this.incomeEl.parentElement?.lastChild;
+    if (unit && unit.nodeType === Node.TEXT_NODE) unit.textContent = "/quarter";
+  }
+
   /** STEP_PROMPT_hud_instrument_cluster.md: the header row's second half — `era` is 1-based ("Era 1" from turn one), matching `GameState.erasCompleted + 1`'s own convention (the same expression `main.ts`'s `refreshHud()` passes in here). */
   setTurnEra(turn: number, era: number): void {
     this.turnValueEl.textContent = String(turn);
@@ -349,6 +366,10 @@ export class Hud {
 
   /** STEP_PROMPT_remove_claiming.md: a soft progress indicator, not a gate — every tile is already buildable, this just orients the player toward how much map is still untouched. */
   setEmptyTiles(count: number): void {
+    if (this.quarterMode) {
+      this.emptyPromptEl.textContent = "Time moves only when you act: each build takes a season";
+      return;
+    }
     this.emptyPromptEl.textContent = count > 0 ? `${count} hex${count === 1 ? "" : "es"} still empty` : "Every hex has something built on it";
   }
 

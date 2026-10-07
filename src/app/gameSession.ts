@@ -10,6 +10,7 @@ import { WaveFrontManager } from "@render/waveFrontManager";
 import { StormManager } from "@render/stormManager";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
 import { BuildFlourish } from "@render/buildFlourish";
+import { ForecastOutline } from "@render/forecastOutline";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
@@ -33,6 +34,8 @@ export type { SessionResult } from "@core/levelScore";
 import { allComplete, evaluateObjectives } from "@core/objectives";
 import { RunTracker } from "@core/runStats";
 import { hashSeed, Rng } from "@core/rng";
+import { Telemetry } from "@core/telemetry";
+import { PanjimController } from "./panjimController";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import startingStateData from "@data/startingState.json";
@@ -107,6 +110,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // level id so the sequence is identical for every player on this level.
   const rng = new Rng(hashSeed(level.id));
   const runTracker = new RunTracker();
+  /**
+   * Local play telemetry (see @core/telemetry): mirrored to the console and to
+   * `window.__telemetry`, never sent anywhere.
+   */
+  const telemetry = new Telemetry(
+    () => performance.now(),
+    (event) => console.info(`[telemetry] ${event.name} t=${event.t}ms`, event.data),
+    { levelId: level.id }
+  );
 
   /**
    * The place this level is played on, and its tiles (see @levels/levelMap).
@@ -210,6 +222,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(storm.group);
   scene.add(buildFlourish.group);
   scene.add(reactions.group);
+  /** Panjim 2050: the locked Forecast's zone edge — see ForecastOutline. Empty on every other level. */
+  const forecastOutline = new ForecastOutline();
+  scene.add(forecastOutline.group);
 
   /**
    * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -288,6 +303,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // put sea, sand, river and town in one frame. A map's (0,0) is wherever its
   // grid happened to centre, which on a georeferenced map is a latitude and
   // longitude, not anywhere a player would want to be looking.
+  /** The opening frame's extent, so a staged challenge can hand the camera back where the player started. */
+  let openingFit = { width: 20, depth: 20 };
   /**
    * The opening frame: centred on the map's focus point, pulled back far
    * enough to hold the whole board.
@@ -330,7 +347,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // would read as the game correcting a mistake.
     const focus = axialToWorld(levelMap.focus, 1.0);
     focusOn(focus.x, focus.z, true);
-    fitTo(maxX - minX + Math.sqrt(3), maxZ - minZ + 2, true);
+    openingFit = { width: maxX - minX + Math.sqrt(3), depth: maxZ - minZ + 2 };
+    fitTo(openingFit.width, openingFit.depth, true);
   }
 
   const hud = new Hud(container, {
@@ -338,6 +356,31 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     onBack: () => options.onExit()
   });
   const buildPopover = new BuildPopover(container);
+  /**
+   * Panjim 2050's slow changes, redrawn as the clock moves: each growing
+   * defence's maturity (small and pale when planted, full at maturity), and
+   * the skyline, whose houses rise a little as the decades pass so 2050 does
+   * not look like 2025. Cheap: one pass over the standing elements.
+   */
+  function syncPanjimVisuals(): void {
+    if (!panjim) return;
+    const age = panjim.run.quarter / panjim.run.totalQuarters;
+    for (const [key, inst] of state.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def) continue;
+      const [q, r] = key.split(",").map(Number);
+      if ((def.matureQuarters ?? 0) > 0) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
+      else if (def.kind === "building") {
+        // Not every house rises equally: a fixed per-tile share, so the
+        // skyline grows uneven, the way a city does.
+        const share = 0.35 + (((q * 92821) ^ (r * 68917)) & 255) / 255;
+        elements.setHeightScale({ q, r }, 1 + age * 0.55 * share);
+      }
+    }
+  }
+
+  /** The locked Forecast's path, drawn as translucent ghosts over its zones (see PanjimController.showForecast). */
+  let forecastPreview: { coord: AxialCoord; weight: number }[] = [];
   /**
    * The live objective checklist.
    *
@@ -354,6 +397,83 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * to make the next move.
    */
   const objectivesPanel = new ObjectivesPanel(container, level, levelMap);
+  /**
+   * The Panjim 2050 run, on a level whose time model is `"actions"` (see
+   * src/core/actionRun.ts). `null` on every other level, the tutorial
+   * included, which keep the turn model exactly as it was. Every call site
+   * below checks it, and it takes over pacing entirely when present: no
+   * interval hazards, no objective-driven early finish.
+   */
+  const panjim =
+    level.timeModel === "actions" && level.timeline
+      ? new PanjimController({
+          container,
+          state,
+          level,
+          telemetry,
+          placeElement: (coord, elementId) => placeElement(coord, elementId, true),
+          removeElementVisual: (coord) => elements.destroy(coord),
+          refresh: () => {
+            syncPanjimVisuals();
+            refreshHud();
+            refreshPreview();
+          },
+          onRunComplete: (result) => finishRun(true, result),
+          revealSkyline: () => {
+            // Up and back over the whole city, the light clearing.
+            stormImpactActive = false;
+            storm.setIntensity(0);
+            mapLabels.setVisible(true);
+            const focus = axialToWorld(levelMap.focus, 1.0);
+            focusOn(focus.x, focus.z + 4, false);
+            fitTo(openingFit.width * 1.15, openingFit.depth * 1.15, false);
+          },
+          showBanner: (text, ms) => hud.showBanner(text, ms),
+          seed: params.get("seed") ?? level.id,
+          zones: levelMap.zones,
+          showForecastZones: (tiles) => {
+            forecastPreview = tiles;
+            forecastOutline.show(
+              tiles.map((tile) => tile.coord),
+              (coord) => terrain.heightAt(coord)
+            );
+            refreshPreview();
+          },
+          clearForecastZones: () => {
+            forecastPreview = [];
+            forecastOutline.clear();
+            refreshPreview();
+          },
+          project: (coord) => {
+            const { x, z } = axialToWorld(coord, 1.0);
+            return worldToScreen(x, terrain.heightAt(coord) + 0.4, z);
+          },
+          repairVisual: (coord) => elements.repairVisual(coord),
+          focus: levelMap.focus,
+          mountVoices: (el) => objectivesPanel.mountBody(el),
+          celebrateCombo: (tiles) => {
+            const gold = new THREE.Color("#f2c35b");
+            tiles.forEach((coord, i) => {
+              later(() => {
+                const world = axialToWorld(coord, 1.0);
+                buildFlourish.play(world.x, terrain.heightAt(coord), world.z, performance.now());
+                terrain.setTint(coord, gold, 0.55);
+                const inst = state.elements.get(`${coord.q},${coord.r}`);
+                if (inst) reactions.trigger(inst.elementId, world.x, terrain.heightAt(coord), world.z);
+              }, 120 * i);
+              later(() => terrain.setTint(coord, null), 1600 + 120 * i);
+            });
+          },
+          challengeFx: {
+            begin: (challenge) => panjimFxBegin(challenge.kind),
+            zone: (zone, outcome, slow, durationMs) => panjimFxZone(zone, outcome, slow, durationMs),
+            end: () => panjimFxEnd()
+          },
+          redrawBoard: () => redrawPanjimBoard(),
+          offerResume: (label, onResume) => objectivesPanel.addBriefAction(label, onResume)
+        })
+      : null;
+  if (panjim) hud.useQuarterClock();
   /**
    * The step-by-step coach, on the tutorial level only.
    *
@@ -532,6 +652,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * the function itself needed no changes, only its call site.
    */
   function hazardIncomingInfo(): { kind: "Storm Surge" | "Flood"; turnsUntil: number; imminent: boolean }[] {
+    // Panjim 2050 has its own outlook; the interval readout does not apply.
+    if (panjim) return [];
     const stormTurnsUntil = nextCycloneAtTurn - state.turn;
     const stormImminent = stormTurnsUntil > 0 && stormTurnsUntil <= CYCLONE_TELEGRAPH_TURNS;
 
@@ -567,7 +689,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   function refreshHud(): void {
     hud.setTileCount(state.claimed.size);
-    hud.setCoin(state.coin, state.income);
+    // Panjim 2050's income is per quarter, into the jar, at the level's scale.
+    hud.setCoin(state.coin, panjim ? panjim.run.incomePerQuarter : state.income);
     hud.setTurnEra(state.turn, state.erasCompleted + 1); // 1-based ("Era 1" from turn one)
     hud.setMeters({
       resilience: state.resilience,
@@ -667,7 +790,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * both completes the level and starts the storm that kills the player
    * could report the run twice.
    */
-  function finishRun(completed: boolean): void {
+  function finishRun(completed: boolean, panjimResult?: import("@core/panjimIndex").PanjimIndex): void {
     if (sessionFinished) return;
     sessionFinished = true;
 
@@ -680,15 +803,35 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     const stats = runTracker.snapshot();
     const counts = standingCounts();
-    const score = computeLevelScore({
+    const baseScore = computeLevelScore({
       state,
       stats,
       parTurns: level.parTurns,
       starThresholds: level.starThresholds,
       completed
     });
+    // Panjim 2050 is scored by its index plus the stars from its three
+    // storms; real playtime is never part of it (see core/panjimIndex.ts).
+    const score = panjimResult
+      ? {
+          ...baseScore,
+          total: panjimResult.score,
+          stars: panjimResult.levelStars,
+          rows: [
+            { label: "Panjim 2050 index", value: panjimResult.index * 10 },
+            ...panjimResult.challengeStars.map((stars, i) => ({ label: `Storm ${i + 1} stars`, value: stars * 100 }))
+          ]
+        }
+      : baseScore;
 
     playSound(completed ? "build" : "era_end");
+    telemetry.emit("run_end", {
+      total_ms: Math.round(panjim ? panjim.playMs() : telemetry.elapsed()),
+      actions: telemetry.actions,
+      completed,
+      score: score.total,
+      index: panjimResult?.index ?? null
+    });
     options.onFinished({
       levelId: level.id,
       completed,
@@ -1158,6 +1301,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   function refreshPreview(): void {
     hazardOverlay.clearPreview();
+    for (const tile of forecastPreview) hazardOverlay.showPreview(tile.coord, terrain.heightAt(tile.coord), 0.25 + tile.weight * 0.6);
     if (activePreviewSources.size === 0) return;
     const stormSurgeActive = cycloneTelegraphing || state.turn - lastStormSurgeResolvedTurn <= STORM_SURGE_COMPOUND_WINDOW_TURNS;
     for (const source of activePreviewSources.values()) {
@@ -1330,6 +1474,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * same call, not on a separate hidden tick.
    */
   function checkHazardSchedule(): void {
+    // Panjim 2050 schedules its own challenges (see PanjimController).
+    if (panjim) return;
     if (FLOOD_HAZARD_ENABLED) {
       if (state.turn >= nextFloodAtTurn) {
         const severity = pendingFloodSeverity ?? rolledSeverity();
@@ -1345,6 +1491,115 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     } else {
       updateCycloneTelegraph();
     }
+  }
+
+  // --- Panjim 2050 challenges -----------------------------------------------------
+
+  /**
+   * Panjim 2050's challenge staging, driven by PanjimController.stageChallenge:
+   * the weather comes in, then each zone gets its own moment in turn, then it
+   * clears. The outcome was decided when the challenge landed; this shows it.
+   */
+  function panjimFxBegin(kind: string): void {
+    hud.flashArrival(kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
+    stormImpactActive = true;
+    storm.setIntensity(1);
+    mapLabels.setVisible(false);
+    buildPopover.hide();
+  }
+
+  function panjimFxZone(
+    zone: import("@core/zones").ZoneOutcome,
+    outcome: import("@core/zones").ChallengeOutcome,
+    slow: boolean,
+    durationMs: number
+  ): void {
+    const zones = panjim?.run.zones;
+    if (!zones) return;
+    const keys = zones.keys(zone.zoneId);
+    const coords = keys.map((key) => {
+      const [q, r] = key.split(",").map(Number);
+      return { q, r };
+    });
+    // The camera goes to the zone. Closer, and slower, for the biggest save.
+    let cx = 0;
+    let cz = 0;
+    for (const coord of coords) {
+      const world = axialToWorld(coord, 1.0);
+      cx += world.x;
+      cz += world.z;
+    }
+    if (coords.length > 0) focusOn(cx / coords.length, cz / coords.length, false);
+    if (slow) fitTo(18, 12, false);
+    // The hazard's reach over the zone: how much got past its defence.
+    const share = zone.incoming > 0 ? zone.leak / zone.incoming : 0;
+    const kind: HazardKind = zone.hazard === "flood" ? "flood" : "storm";
+    if (share > 0.05) {
+      for (const coord of coords) hazardOverlay.show(kind, coord, terrain.heightAt(coord), 0.3 + share * 1.2, performance.now());
+    }
+    // The defences answer one at a time: a ring and their creatures, in turn.
+    const defenders = keys.filter((key) => {
+      const inst = state.elements.get(key);
+      return inst && (ELEMENT_BY_ID.get(inst.elementId)?.targetsHazards ?? []).includes(zone.hazard);
+    });
+    const gap = Math.min(220, (durationMs * 0.8) / Math.max(1, defenders.length));
+    defenders.forEach((key, i) => {
+      later(() => {
+        const [q, r] = key.split(",").map(Number);
+        const world = axialToWorld({ q, r }, 1.0);
+        buildFlourish.play(world.x, terrain.heightAt({ q, r }), world.z, performance.now());
+        const inst = state.elements.get(key);
+        if (inst && i < 6) reactions.trigger(inst.elementId, world.x, terrain.heightAt({ q, r }), world.z);
+        if (inst) elements.setDegradeVisual({ q, r }, inst.degradeAmount);
+      }, i * gap);
+    });
+    for (const key of zone.failed) {
+      const [q, r] = key.split(",").map(Number);
+      elements.destroy({ q, r });
+      playSound("hazard_breach");
+    }
+    for (const key of outcome.damagedHouses) {
+      if (zones.zoneOf(key) !== zone.zoneId) continue;
+      const [q, r] = key.split(",").map(Number);
+      later(() => elements.setBuildingDamagedVisual({ q, r }), durationMs * 0.5);
+    }
+    playSound(zone.held ? "build" : "hazard_overwhelmed");
+    runTracker.recordHazard({
+      totalDamage: zone.leak,
+      damagedTiles: zone.housesDamaged,
+      destroyed: zone.failed.length,
+      overwhelmed: zone.overwhelmed.length
+    });
+  }
+
+  function panjimFxEnd(): void {
+    stormImpactActive = false;
+    storm.setIntensity(0);
+    mapLabels.setVisible(true);
+    const focus = axialToWorld(levelMap.focus, 1.0);
+    focusOn(focus.x, focus.z, false);
+    fitTo(openingFit.width, openingFit.depth, false);
+    refreshHud();
+  }
+
+  /** After a rewind or a resume: every element mesh rebuilt from the game state, with its growth, wear and damage. */
+  function redrawPanjimBoard(): void {
+    elements.reset();
+    hazardOverlay.reset();
+    forecastPreview = [];
+    forecastOutline.clear();
+    for (const [key, inst] of state.elements) {
+      const [q, r] = key.split(",").map(Number);
+      const coord = { q, r };
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def) continue;
+      const growth = (def.matureQuarters ?? 0) > 0 ? state.maturityFraction(inst, def) : undefined;
+      elements.place(coord, inst.elementId, terrain.heightAt(coord), { animate: false, growth });
+      if (def.kind === "building" && inst.degradeAmount >= 1) elements.setBuildingDamagedVisual(coord);
+      else if (inst.degradeAmount > 0) elements.setDegradeVisual(coord, inst.degradeAmount);
+    }
+    syncPanjimVisuals();
+    refreshPreview();
   }
 
   // --- Build / defend popover --------------------------------------------------
@@ -1440,23 +1695,56 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (built) {
       const def = ELEMENT_BY_ID.get(built.elementId);
       if (!def) return;
-      reactions.trigger(built.elementId, wx, worldTop, wz);
+      const spawned = reactions.trigger(built.elementId, wx, worldTop, wz);
+      // Panjim 2050: whatever came to see is spotted for the Field Guide. Free.
+      panjim?.spotted(spawned);
       buildPopover.showInfo(screen.x, screen.y, {
         name: def.name,
         kindLabel: kindLabel(def),
         effects: def.effects,
-        onRemove: () => removeElement(coord)
+        removeLabel: panjim ? "Demolish · 1 qtr" : undefined,
+        extraActions:
+          panjim && panjim.run.needsRepair(coord)
+            ? [
+                {
+                  label: `Repair · 1 qtr · ${panjim.run.repairCoin(coord)}c`,
+                  disabled: state.coin < panjim.run.repairCoin(coord),
+                  onClick: () => {
+                    panjim.repair(coord);
+                    buildPopover.hide();
+                  }
+                }
+              ]
+            : undefined,
+        onRemove: () => {
+          if (!panjim) {
+            removeElement(coord);
+            return;
+          }
+          const removed = state.elements.get(key);
+          if (panjim.demolish(coord) && removed) runTracker.recordRemoval(removed.elementId);
+          buildPopover.hide();
+        }
       });
       return;
     }
 
     const popoverOptions: PopoverOption[] = state
       .buildableAt(coord)
-      .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d) }));
+      .map((d) => ({ id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), quarters: panjim?.buildQuarters(d.id) }));
     if (popoverOptions.length === 0) return;
 
     buildPopover.show(screen.x, screen.y, popoverOptions, state.coin, (id) => {
+      if (panjim) {
+        // The controller spends the quarters, draws the element and ticks the
+        // clock. The run ends at 2050, never on an objective.
+        if (!panjim.build(coord, id)) return;
+        nuggetPopup.show(id);
+        playSound("build");
+        return;
+      }
       if (!state.build(coord, id)) return;
+      telemetry.action("build", 1);
       placeElement(coord, id, true);
       nuggetPopup.show(id);
       playSound("build");
@@ -1501,6 +1789,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   renderer.domElement.addEventListener("click", (event: MouseEvent) => {
     if (wasDrag()) return; // a pan, not a click — don't also open a popover at the drag's end point
     if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
+    if (panjim?.isBusy) return; // a time-lapse is playing; the click skips it instead
     if (sessionFinished) return; // the run is over and the shell is showing its results screen — the board is read-only now
 
     const rect = renderer.domElement.getBoundingClientRect();
@@ -1508,6 +1797,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera(pointer, camera);
+    // Panjim 2050: a tap on a creature itself spots it for the Field Guide
+    // and opens nothing else.
+    if (panjim) {
+      const species = reactions.speciesAt(raycaster);
+      if (species) {
+        panjim.spotted([species]);
+        return;
+      }
+    }
     const hits = raycaster.intersectObjects(terrain.raycastTargets);
     if (hits.length === 0 || hits[0].instanceId === undefined) return;
 
@@ -1544,6 +1842,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     cloudLayer.tick(nowMs);
     waveFront.tick(nowMs);
     buildFlourish.tick(nowMs);
+    panjim?.frame();
+    forecastOutline.tick(nowMs);
     if (cycloneIcon.visible) cycloneIcon.rotation.z = nowMs * 0.003;
 
     // Place names have to be re-projected every frame, because the camera now
@@ -1592,7 +1892,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   function placeElement(coord: AxialCoord, elementId: string, animate: boolean): void {
     runTracker.recordBuild(elementId, ELEMENT_BY_ID.get(elementId)?.buildCost ?? 0);
     const topY = terrain.heightAt(coord);
-    elements.place(coord, elementId, topY, { animate });
+    // Panjim 2050: a growing defence is planted young and grows on the clock.
+    const inst = state.elements.get(`${coord.q},${coord.r}`);
+    const def = ELEMENT_BY_ID.get(elementId);
+    const growth = panjim && inst && def && (def.matureQuarters ?? 0) > 0 ? state.maturityFraction(inst, def) : undefined;
+    elements.place(coord, elementId, topY, { animate, growth });
     if (animate) {
       // The ground half of the placement animation — see BuildFlourish. Every
       // element gets it, so a click always visibly registers wherever on the
@@ -1621,6 +1925,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   }
 
   const testHooks: Record<string, unknown> = {
+    // The local telemetry log (see @core/telemetry). Read-only by convention.
+    __telemetry: telemetry.events,
+    // Panjim 2050 only: the live controller and its screenshot scenarios.
+    __panjimForTest: panjim,
+    __panjimScenarioForTest: (name: string) => (panjim ? panjim.scenario(name) : false),
     // Lets tools/verify_readability.ts (and any future script needing exact
     // camera framing) pan straight to a world coordinate via the scene's own
     // `focusOn`, instead of reverse-engineering the pan-drag pixel math.
@@ -1728,6 +2037,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     timers.clear();
 
     keydownAbort.abort();
+    panjim?.dispose();
     stormReport.dispose();
     mapLabels.dispose();
     mapAttribution?.dispose();
@@ -1740,6 +2050,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // values, and `createScene`'s own disposal does not restore them.
     storm.dispose();
     buildFlourish.dispose();
+    forecastOutline.dispose();
     disposeScene();
 
     // The session owns every DOM node it appended to `container` (HUD,

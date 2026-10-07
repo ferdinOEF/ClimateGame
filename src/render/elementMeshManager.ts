@@ -117,6 +117,24 @@ interface ElementInstanceRef {
   damage: number;
   /** Which way it falls, in radians about the vertical. Fixed per tile so repeated hits deepen one collapse. */
   damageLean: number;
+  /** Panjim 2050 maturity as drawn, 0 (just planted) to 1, easing toward `growthTarget`. 1 everywhere else. */
+  growth: number;
+  growthTarget: number;
+  /** The growth value the colour was last painted for, so recolouring happens in steps, not every frame. */
+  paintedGrowth: number;
+  /** How weathered a defence looks, 0–0.5 (see `setDegradeVisual`). */
+  degrade: number;
+  /** Panjim 2050's skyline: buildings grow taller as the years pass. 1 everywhere else. */
+  heightScale: number;
+}
+
+/** A just-planted defence is drawn at this fraction of its full size, growing to 1 at maturity. */
+const SAPLING_SCALE = 0.35;
+/** Young growth is paler; this is the colour it starts from. */
+const YOUNG_TINT = new THREE.Color("#d9ecb0");
+
+function growthScale(growth: number): number {
+  return SAPLING_SCALE + (1 - SAPLING_SCALE) * growth;
 }
 
 /**
@@ -192,7 +210,7 @@ export class ElementMeshManager {
    * before growing `nextIndex`, so a destroyed instance's slot is actually
    * reusable instead of burning one more of the fixed pool forever.
    */
-  place(coord: AxialCoord, elementId: string, terrainTopY: number, options: { animate?: boolean } = {}): void {
+  place(coord: AxialCoord, elementId: string, terrainTopY: number, options: { animate?: boolean; growth?: number } = {}): void {
     const def = ELEMENT_BY_ID.get(elementId);
     if (!def) throw new Error(`Unknown element id: ${elementId}`);
     const mesh = this.meshes.get(elementId)!;
@@ -208,10 +226,12 @@ export class ElementMeshManager {
 
     const { x, z } = axialToWorld(coord, HEX_SIZE);
 
+    const growth = options.growth ?? 1;
+    const landScale = growthScale(growth);
     if (options.animate) {
-      this.animator.begin(mesh, index, x, z, terrainTopY, performance.now());
+      this.animator.begin(mesh, index, x, z, terrainTopY, performance.now(), landScale);
     } else {
-      mesh.setMatrixAt(index, new THREE.Matrix4().makeTranslation(x, terrainTopY, z));
+      mesh.setMatrixAt(index, new THREE.Matrix4().makeScale(landScale, landScale, landScale).setPosition(x, terrainTopY, z));
       mesh.instanceMatrix.needsUpdate = true;
       mesh.boundingSphere = null;
     }
@@ -220,7 +240,7 @@ export class ElementMeshManager {
     const baseColor = SELF_COLOURED.has(elementId)
       ? jitterColor(NEUTRAL_TINT, seed)
       : jitterColor(paletteColor(def.colorKey), seed);
-    mesh.setColorAt(index, baseColor);
+    mesh.setColorAt(index, growth < 1 ? baseColor.clone().lerp(YOUNG_TINT, (1 - growth) * 0.5) : baseColor);
 
     mesh.count = Math.max(mesh.count, index + 1);
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -239,8 +259,56 @@ export class ElementMeshManager {
       // Derived from the tile rather than rolled, so the same building leans
       // the same way every time it is hit, and two neighbours do not collapse
       // in lockstep.
-      damageLean: ((coord.q * 73856093) ^ (coord.r * 19349663)) % 628 / 100
+      damageLean: ((coord.q * 73856093) ^ (coord.r * 19349663)) % 628 / 100,
+      growth,
+      growthTarget: growth,
+      paintedGrowth: growth,
+      degrade: 0,
+      heightScale: 1
     });
+  }
+
+  /** The colour an instance should show now: its own, paler while young, browner when weathered or damaged. */
+  private paint(ref: ElementInstanceRef): void {
+    const color = ref.baseColor.clone();
+    if (ref.growth < 1) color.lerp(YOUNG_TINT, (1 - ref.growth) * 0.5);
+    if (ref.degrade > 0) color.lerp(DEGRADED_TINT, THREE.MathUtils.clamp(ref.degrade / 0.5, 0, 1) * 0.7);
+    if (ref.damage > 0) color.lerp(DEGRADED_TINT, 0.35 + ref.damage * 0.45);
+    ref.mesh.setColorAt(ref.index, color);
+    if (ref.mesh.instanceColor) ref.mesh.instanceColor.needsUpdate = true;
+    ref.paintedGrowth = ref.growth;
+  }
+
+  /**
+   * Panjim 2050: how mature a growing defence is, 0 to 1. A young mangrove is
+   * drawn small and pale and fills out as the quarters pass; on a swaying
+   * element the change eases in over a few frames rather than jumping.
+   */
+  setGrowth(coord: AxialCoord, target: number): void {
+    const ref = this.byCoord.get(`${coord.q},${coord.r}`);
+    if (!ref) return;
+    const clamped = THREE.MathUtils.clamp(target, 0, 1);
+    if (Math.abs(clamped - ref.growthTarget) < 1e-4) return;
+    ref.growthTarget = clamped;
+    if (this.swayEnabled && SWAY_BY_ELEMENT[ref.elementId]) return; // tickSway eases it in
+    ref.growth = clamped;
+    this.paint(ref);
+    if (!this.animator.isAnimating(ref.index, ref.mesh)) {
+      this.writeTransform(ref);
+      ref.mesh.instanceMatrix.needsUpdate = true;
+      ref.mesh.boundingSphere = null;
+    }
+  }
+
+  /** Panjim 2050's skyline: a building's height relative to its authored size. */
+  setHeightScale(coord: AxialCoord, scale: number): void {
+    const ref = this.byCoord.get(`${coord.q},${coord.r}`);
+    if (!ref || Math.abs(ref.heightScale - scale) < 1e-3) return;
+    ref.heightScale = scale;
+    if (this.animator.isAnimating(ref.index, ref.mesh)) return;
+    this.writeTransform(ref);
+    ref.mesh.instanceMatrix.needsUpdate = true;
+    ref.mesh.boundingSphere = null;
   }
 
   /** Catastrophic engineered failure: collapses and permanently hides the instance, freeing its slot for reuse. */
@@ -257,10 +325,8 @@ export class ElementMeshManager {
   setDegradeVisual(coord: AxialCoord, degradeAmount: number): void {
     const ref = this.byCoord.get(`${coord.q},${coord.r}`);
     if (!ref) return;
-    const t = THREE.MathUtils.clamp(degradeAmount / 0.5, 0, 1);
-    const tinted = ref.baseColor.clone().lerp(DEGRADED_TINT, t * 0.7);
-    ref.mesh.setColorAt(ref.index, tinted);
-    if (ref.mesh.instanceColor) ref.mesh.instanceColor.needsUpdate = true;
+    ref.degrade = degradeAmount;
+    this.paint(ref);
   }
 
   /**
@@ -284,14 +350,22 @@ export class ElementMeshManager {
     // not the same as one hit once — a building that bottoms out after a
     // single wave has nothing left to say about the second.
     ref.damage = Math.min(1, ref.damage + DAMAGE_PER_HIT);
-
-    const tinted = ref.baseColor.clone().lerp(DEGRADED_TINT, 0.35 + ref.damage * 0.45);
-    ref.mesh.setColorAt(ref.index, tinted);
-    if (ref.mesh.instanceColor) ref.mesh.instanceColor.needsUpdate = true;
+    this.paint(ref);
 
     this.writeTransform(ref);
     ref.mesh.instanceMatrix.needsUpdate = true;
     ref.mesh.boundingSphere = null;
+  }
+
+  /** Panjim 2050's Repair: the instance stands straight and takes its own colour back. */
+  repairVisual(coord: AxialCoord): void {
+    const ref = this.byCoord.get(`${coord.q},${coord.r}`);
+    if (!ref) return;
+    ref.damage = 0;
+    ref.degrade = 0;
+    this.paint(ref);
+    this.writeTransform(ref);
+    ref.mesh.instanceMatrix.needsUpdate = true;
   }
 
   /**
@@ -332,7 +406,8 @@ export class ElementMeshManager {
     );
     this.scratchQuaternion.setFromEuler(this.scratchEuler);
     this.scratchMatrix.makeRotationFromQuaternion(this.scratchQuaternion);
-    this.scratchMatrix.scale(this.scratchScale.set(1, slump, 1));
+    const g = growthScale(ref.growth);
+    this.scratchMatrix.scale(this.scratchScale.set(g, slump * g * ref.heightScale, g));
     this.scratchMatrix.setPosition(ref.x, ref.y - sink, ref.z);
     ref.mesh.setMatrixAt(ref.index, this.scratchMatrix);
   }
@@ -366,6 +441,13 @@ export class ElementMeshManager {
       const profile = SWAY_BY_ELEMENT[ref.elementId];
       if (!profile) continue;
       if (this.animator.isAnimating(ref.index, ref.mesh)) continue;
+
+      // Growth eases toward its target over about half a second.
+      if (ref.growth !== ref.growthTarget) {
+        const step = ref.growthTarget - ref.growth;
+        ref.growth = Math.abs(step) < 0.004 ? ref.growthTarget : ref.growth + step * 0.12;
+        if (Math.abs(ref.growth - ref.paintedGrowth) > 0.04 || ref.growth === ref.growthTarget) this.paint(ref);
+      }
 
       // Wind both speeds the cycle up and widens it, which is what separates
       // a breeze from a gale. The period shortens by up to two thirds and the
