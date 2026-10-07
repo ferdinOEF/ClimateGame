@@ -418,7 +418,16 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             refreshHud();
             refreshPreview();
           },
-          onRunComplete: () => finishRun(true),
+          onRunComplete: (result) => finishRun(true, result),
+          revealSkyline: () => {
+            // Up and back over the whole city, the light clearing.
+            stormImpactActive = false;
+            storm.setIntensity(0);
+            mapLabels.setVisible(true);
+            const focus = axialToWorld(levelMap.focus, 1.0);
+            focusOn(focus.x, focus.z + 4, false);
+            fitTo(openingFit.width * 1.15, openingFit.depth * 1.15, false);
+          },
           showBanner: (text, ms) => hud.showBanner(text, ms),
           seed: params.get("seed") ?? level.id,
           zones: levelMap.zones,
@@ -781,7 +790,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * both completes the level and starts the storm that kills the player
    * could report the run twice.
    */
-  function finishRun(completed: boolean): void {
+  function finishRun(completed: boolean, panjimResult?: import("@core/panjimIndex").PanjimIndex): void {
     if (sessionFinished) return;
     sessionFinished = true;
 
@@ -794,16 +803,35 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     const stats = runTracker.snapshot();
     const counts = standingCounts();
-    const score = computeLevelScore({
+    const baseScore = computeLevelScore({
       state,
       stats,
       parTurns: level.parTurns,
       starThresholds: level.starThresholds,
       completed
     });
+    // Panjim 2050 is scored by its index plus the stars from its three
+    // storms; real playtime is never part of it (see core/panjimIndex.ts).
+    const score = panjimResult
+      ? {
+          ...baseScore,
+          total: panjimResult.score,
+          stars: panjimResult.levelStars,
+          rows: [
+            { label: "Panjim 2050 index", value: panjimResult.index * 10 },
+            ...panjimResult.challengeStars.map((stars, i) => ({ label: `Storm ${i + 1} stars`, value: stars * 100 }))
+          ]
+        }
+      : baseScore;
 
     playSound(completed ? "build" : "era_end");
-    telemetry.emit("run_end", { total_ms: Math.round(telemetry.elapsed()), actions: telemetry.actions, completed, score: score.total });
+    telemetry.emit("run_end", {
+      total_ms: Math.round(panjim ? panjim.playMs() : telemetry.elapsed()),
+      actions: telemetry.actions,
+      completed,
+      score: score.total,
+      index: panjimResult?.index ?? null
+    });
     options.onFinished({
       levelId: level.id,
       completed,

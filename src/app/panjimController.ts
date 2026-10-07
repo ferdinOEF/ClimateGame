@@ -15,6 +15,8 @@ import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@
 import { aftermathLine } from "@core/aftermath";
 import type { RunSnapshot } from "@core/actionRun";
 import { AftermathCard } from "@ui/panjim/aftermathCard";
+import { FinaleCard } from "@ui/panjim/finaleCard";
+import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIndex";
 import { axialToWorld } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
@@ -46,8 +48,10 @@ export interface PanjimHost {
   removeElementVisual: (coord: AxialCoord) => void;
   /** Repaints the HUD after state changed. */
   refresh: () => void;
-  /** The run reached 2050. */
-  onRunComplete: () => void;
+  /** The run reached 2050 and the finale has played. */
+  onRunComplete: (result: PanjimIndex) => void;
+  /** The skyline reveal: the camera pulls back over the whole city. */
+  revealSkyline: () => void;
   showBanner: (text: string, ms?: number) => void;
   /** Seed text for the challenge calendar: the level id, a daily id, or a `?seed=` replay. */
   seed: string;
@@ -93,6 +97,7 @@ export class PanjimController {
   /** The last readiness reading for each challenge before it landed, for telemetry. */
   private readonly readinessById = new Map<string, string>();
   private readonly aftermath: AftermathCard;
+  private readonly finaleCard: FinaleCard;
   /** Real milliseconds played before this session, when resuming a save: the tempo badge counts the whole run. */
   playMsBefore = 0;
   /** The in-scene label over the locked Forecast's first zone: "Cyclone landfall ●●○". */
@@ -117,6 +122,7 @@ export class PanjimController {
     host.mountVoices(this.voicesPanel.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     this.aftermath = new AftermathCard(host.container);
+    this.finaleCard = new FinaleCard(host.container);
     this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
@@ -283,6 +289,36 @@ export class PanjimController {
     this.syncControls();
     this.host.telemetry.emit("checkpoint", { rewind: challenge.id, ms: Math.round(performance.now() - start) });
     this.host.showBanner(`Back to ${this.run.label}. The forecast is locked: ${challenge.name} in ${this.labelFor(challenge.quarter)}.`, 4500);
+  }
+
+  /** Real milliseconds played on this run, across any resume. */
+  playMs(): number {
+    return this.playMsBefore + this.host.telemetry.elapsed();
+  }
+
+  /** The Panjim 2050 index as the run stands now. */
+  result(): PanjimIndex {
+    return computePanjimIndex({
+      state: this.host.state,
+      outcomes: this.run.schedule.map((c) => this.run.outcomes.get(c.id)).filter((o): o is ChallengeOutcome => o !== undefined),
+      incomePerQuarter: this.run.incomePerQuarter
+    });
+  }
+
+  /** 2050: the skyline reveal, the title, then the finale card; then the shell's results. */
+  private async finale(): Promise<void> {
+    this.busy = true;
+    this.syncControls();
+    const result = this.result();
+    this.host.revealSkyline();
+    await this.finaleCard.title();
+    await this.finaleCard.show({
+      index: result,
+      challengeNames: this.run.schedule.map((c) => c.name),
+      tempo: tempoBadge(this.playMs()),
+      seed: this.host.seed
+    });
+    this.host.onRunComplete(result);
   }
 
   // ---- autosave -----------------------------------------------------------
@@ -502,7 +538,7 @@ export class PanjimController {
     this.syncControls();
     if (this.run.finished) {
       this.clearSave();
-      this.host.onRunComplete();
+      await this.finale();
     }
   }
 
@@ -671,6 +707,22 @@ export class PanjimController {
         while (!this.host.container.querySelector(".houses-saved")) await wait(50);
         return true;
       }
+      case "finale": {
+        // Plays the whole run on fast-forward, accepting each Aftermath,
+        // and hands back at the finale card.
+        while (!this.run.finished) {
+          void this.fastForwardYear();
+          await wait(60);
+          while (this.busy) {
+            const cont = this.host.container.querySelector<HTMLButtonElement>(".aftermath-continue");
+            if (this.aftermath.isOpen && cont) cont.click();
+            if (this.host.container.querySelector(".finale-card")) return true;
+            await wait(100);
+          }
+        }
+        while (!this.host.container.querySelector(".finale-card")) await wait(100);
+        return true;
+      }
       case "replay": {
         const replay = this.host.container.querySelector<HTMLButtonElement>(".aftermath-replay");
         if (!replay) return false;
@@ -727,6 +779,7 @@ export class PanjimController {
   }
 
   dispose(): void {
+    this.finaleCard.dispose();
     this.aftermath.dispose();
     this.jar.dispose();
     this.fieldGuide.dispose();

@@ -49,6 +49,8 @@ export interface LevelScoreBreakdown {
   total: number;
   /** 0 on a failed run; 1–3 on a cleared one, from the level's own thresholds. */
   stars: number;
+  /** Replaces the default score rows, for a level scored its own way (Panjim 2050's index). */
+  rows?: { label: string; value: number }[];
 }
 
 export interface LevelScoreInput {
@@ -128,6 +130,7 @@ export interface SessionResult {
 
 /** The rows the level-complete screen lists, in display order. Built here so the screen never re-derives which terms exist. */
 export function scoreRows(breakdown: LevelScoreBreakdown): { label: string; value: number }[] {
+  if (breakdown.rows) return breakdown.rows;
   const rows = [
     { label: "Trust", value: breakdown.era.trust },
     { label: "Resilience", value: breakdown.era.resilience },

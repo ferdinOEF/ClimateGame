@@ -5895,3 +5895,54 @@ no console errors.
 - **Unsure:** the slow-motion zoom is close. That is dramatic on a GPU, but
   in this sandbox's 2–3 fps software renderer the camera glide can't be
   judged.
+
+## P8 — finale: index, skyline reveal, tempo badge, share card — DONE
+
+**Built:**
+- **The index** (`src/core/panjimIndex.ts`, pure, 3 tests). Five counts,
+  0–100 each, averaged:
+  - Resilience: mean protection across the three storms.
+  - Biodiversity: meter ÷ 40.
+  - Livelihoods: jar income per quarter in 2050 ÷ 30.
+  - Population: growth ÷ 100.
+  - Food: centred on 50.
+- **Score and stars:** score = index × 10 + 100 per storm star (at most
+  1900). Level stars are the average storm result, never below 1.
+- **Results screen:** the rows read "Panjim 2050 index" and "Storm N
+  stars", through a new optional `rows` on the score breakdown. The
+  next-star hint is off here, because stars come from the storms, not from
+  thresholds.
+- **Tempo badge:** real minutes played, named. Under 10 minutes is "Swift
+  tide", 10–20 is "Steady tide", longer is "Slow, deep tide". It is shown
+  beside the score and is **not part of it** (tested). Across an autosave
+  resume it counts the whole run.
+- **Finale at 2050:**
+  1. The camera pulls back over the city as the weather clears (the
+     skyline reveal, where P4's risen houses and grown mangroves show).
+  2. A full-screen title, "25 years · 3 storms / Panjim, 2050".
+  3. The finale card: the index with five bars, stars per storm, the tempo
+     badge, "Share card" and "See results".
+- **Share card:** a 1200×630 PNG drawn on a canvas (index, stars per storm,
+  tempo). It uses the system share sheet where there is one, and a download
+  otherwise; the text summary goes to the clipboard.
+- **Telemetry:** `run_end` now carries `index`, and `total_ms` is real time
+  across any resume.
+
+**Checks:**
+- 251 tests pass; the build passes; the walkthrough is clean.
+- `phaseShots p8 --scenario=finale` plays the whole run on fast-forward
+  only, the "Rusher" line. It got **1 star in each storm and an index of
+  10**: that strategy earns almost nothing, as designed. No console errors.
+
+**Self-assessment:**
+- **Works:** the finale card reads clearly, and a Rusher sees at once why
+  the run went badly (four zero bars).
+- **Fixed during the phase:** the readiness gauge stayed on screen after
+  the last storm (`display` beating `[hidden]` again).
+- **Sandbox only:** rain lingers into the finale in this renderer. Storm
+  easing caps each frame at 0.1 s, and at 2–3 fps that makes the weather
+  clear about four times slower than on a real GPU.
+- **Not checked:** the reveal's camera pull-back is clamped at the
+  camera's maximum distance, so on this board it ends near the opening
+  framing. The "2050 looks different" comparison is better judged in a
+  real run with a built city, which the P9 Playwright run will screenshot.
