@@ -5,7 +5,7 @@ import { ElementMeshManager } from "@render/elementMeshManager";
 import { ElementReactions } from "@render/elementReactions";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
 import { CloudLayerManager } from "@render/cloudLayerManager";
-import { GhatsBackdropManager } from "@render/ghatsBackdropManager";
+import { BoardSkirtManager } from "@render/boardSkirtManager";
 import { WaveFrontManager } from "@render/waveFrontManager";
 import { StormManager } from "@render/stormManager";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
@@ -174,10 +174,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // compound color — see floodOverlayManager.ts's own comment.
   const hazardOverlay = new HazardOverlayManager(FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS);
   const cloudLayer = new CloudLayerManager();
-  // STEP_PROMPT_ghats_wave_demo.md Section 1: purely cosmetic, deliberately
-  // never fed into GameState/mapTiles — see the manager's own comment for
-  // why that separation is load-bearing, not incidental.
-  const ghatsBackdrop = new GhatsBackdropManager(levelTiles);
+  // Purely cosmetic and never fed into GameState: the ground past the edge of
+  // play, so the board dissolves into sea and hills instead of ending in a
+  // cut. Replaces the old four-column Ghats backdrop — see the manager.
+  const boardSkirt = new BoardSkirtManager(levelTiles, terrain.overlayUniforms);
   // STEP_PROMPT_ghats_wave_demo.md Section 2/3: the wave-front spectacle —
   // layered on top of hazardOverlay's own per-tile reveals, not a
   // replacement for them (see WaveFrontManager's own comment).
@@ -205,7 +205,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(elements.group);
   scene.add(hazardOverlay.mesh);
   scene.add(cloudLayer.group);
-  scene.add(ghatsBackdrop.group);
+  scene.add(boardSkirt.group);
   scene.add(waveFront.group);
   scene.add(storm.group);
   scene.add(buildFlourish.group);

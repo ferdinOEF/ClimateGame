@@ -64,6 +64,8 @@ export interface MapSource {
 export interface MapOverlay {
   /** Path under the site's base URL, e.g. `maps/panaji-osm.webp`. */
   image: string;
+  /** The geographic box the image covers: the board plus a margin round it. */
+  bounds?: { north: number; south: number; west: number; east: number };
   /** World x/z of the image's top-left (north-west) corner, and its size. +x is east, +z is south. */
   world: { x: number; z: number; width: number; depth: number };
   attribution: string;

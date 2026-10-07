@@ -5255,3 +5255,116 @@ only be measured under the sandbox's software renderer, where the new board with
 the layer on ran about 5–10% slower than the old board (6.4–6.7 against
 6.7–7.5 fps). That comparison is relative only; it says nothing about a real
 phone GPU.
+
+---
+
+## Project rules, and Panaji: clearer street map, soft edges, tiles and landmarks from OSM — DONE
+
+### Project rules (also in `CLAUDE.md`)
+
+- **Web browsers first.** Desktop Chrome, Edge, Firefox and Safari, with a
+  mouse, scroll wheel and keyboard, at 1080p to 4K. Optimise and test for that
+  (at least 1920x1080). Phones are secondary: desktop is never made worse to
+  help them.
+- **Always ship to production.** Verified work goes through a PR for the
+  record and is then merged into `master` straight away, so the production
+  Vercel deployment updates. Preview deployments are not relied on. After a
+  merge, check https://climate-game-psi.vercel.app is serving the new build if
+  the network allows, and say whether it could be checked.
+
+### 1. The street map is the main view on land
+
+- **Opacity.** The default goes from 45% to 75%, and the slider now reaches
+  100%. The saved setting moves to a v2 key so returning players get the new
+  default.
+- **Strength per terrain.** Land takes the map at 1.25x (about 94% map at the
+  default), so its flat green recedes behind the streets. Sea, river, estuary
+  and beach take it at 0.27–0.35x and keep their own colours, so water, sand
+  and wetland still read at a glance.
+- The shader patch now lives in `src/render/mapOverlayShader.ts`.
+
+### 2. The board dissolves at its edges
+
+`BoardSkirtManager` adds six rings of decorative, non-playable hexes all round
+the board, replacing the four-column Ghats backdrop, which read as a wall:
+
+- **Sea:** sea hexes sink a little more and blend further into the sky colour
+  with each ring.
+- **Land:** land rises gently into hills that haze toward the sky.
+- **Fraying:** the outer rings are thinned along smooth value noise, so the
+  edge is a ragged shoreline and ridge rather than a straight cut.
+- **Map past the board:** the baked street map now reaches about 1.2 km past
+  the board where the basemap allows, so Porvorim and Reis Magos show for
+  real. Past the picture's edge the skirt samples a coarse mipmap of it, so
+  the map's tones carry on with no seam and no smear.
+- **No fog.** Board tiles are untouched and the skirt is not clickable.
+
+### 3. Tiles follow the OpenStreetMap picture
+
+Each hex is now read from about 450 samples. A rare class wins from a third of
+the hex: water, marsh and mangrove at 30%, sand at 8%. OSM draws the Miramar
+beach as a strip a fifth of a hex wide, and sand has no false positives on this
+image.
+
+- **Marsh vs water:** blue is split by local density. Solid blue is water,
+  sparse blue is OSM's marsh dashes, so the marsh and the meadow under it count
+  as wetland.
+- **Paddy:** khazan paddy (farmland within two hexes of the wetland) becomes
+  estuary.
+- **Beach:** sand widening drops to one row, which stops Miramar's road being
+  painted as sand.
+
+| | land | coast | estuary | river | beach |
+|---|---|---|---|---|---|
+| before | 758 | 238 | 188 | 48 | 45 |
+| after | 675 | 253 | 232 | 97 | 20 |
+
+**Result:** the south shore from Dona Paula to Bambolim and the Goa University
+bay are sea, and the Taleigao and St Cruz marsh and paddy are estuary.
+`tools/mapgen/debug/panaji-classes.jpg` shows the classes over the map (checked
+in, not shipped). The beach test now checks for an unbroken strip along the
+Miramar shore instead of the old 45-tile minimum, because a wider beach would
+mean painting houses as sand.
+
+### 4. Landmarks re-placed
+
+**Projection check:** the board, the layer and the basemap share one
+projection. The church's published coordinate lands beside OSM's own "Church
+Square" label.
+
+**Sources:** Nominatim, Wikidata and Wikipedia are unreachable from this
+environment, so every landmark was checked against where the OSM basemap itself
+draws it. `geocodePanaji.ts` now prefers the image whenever a geocoder answer
+differs from it by more than 100 m.
+
+**Fixes:**
+- **Dona Paula:** moved 549 m to the jetty at the headland tip. Nominatim had
+  given the locality label at the circle.
+- **Campal Garden:** moved 747 m to the children's park.
+- **Municipal Market:** moved 414 m to Panjim Bazaar.
+- **Jama Masjid:** moved to Dr Dada Vaidya Road, from local knowledge. It is
+  marked unverified, as is Mahalaxmi Temple.
+- **Neighbourhood labels:** all five were 230–480 m off and are re-measured at
+  full resolution.
+
+**Placement:** each landmark takes the hex containing its real position.
+- **Moved one hex:** four landmarks. Don Bosco College is next to the High
+  School's hex, and Kala Academy, Campal Garden and Miramar Beach were on hexes
+  that now read as water.
+- **Records:** `tools/mapgen/debug/panaji-landmarks.jpg` (numbered) and
+  `panaji-landmarks.md` (the table).
+- **Tests:** no stacking, each monument within one hex of its real position,
+  and Dona Paula at the tip.
+
+### Verification
+
+- **Checks:** typecheck clean; 204 tests pass (6 skipped); the build passes;
+  the walkthrough is clean.
+- **Build size:** the JS grows by about 3 KB, and the street-map image by 3 KB
+  (391 KB).
+- **Screenshots** at 1920x1080 with the layer at 75%: the default view, fully
+  zoomed out, the south shore, Taleigao and both edges.
+- **Frame rate:** in this sandbox's software renderer the new build ran about
+  20–30% slower than master at 1920x1080. The skirt fills screen area that used
+  to be empty background, and software rendering pays for every pixel. A real
+  desktop GPU has not been measured.

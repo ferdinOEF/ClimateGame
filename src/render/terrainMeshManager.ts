@@ -6,6 +6,7 @@ import { createHexPrismGeometry } from "./hexGeometry";
 import { jitterColor, paletteColor } from "./palette";
 import { SettleAnimator } from "./settleAnimation";
 import { MAX_TERRAIN_INSTANCES_PER_TYPE } from "./instanceLimits";
+import { OVERLAY_PLACEHOLDER, patchForOverlay, type OverlayUniforms } from "./mapOverlayShader";
 
 export const HEX_SIZE = 1.0;
 const UNCLAIMED_SINK = 0.15; // unclaimed tiles sit slightly lower, like they're still in the fog
@@ -136,86 +137,24 @@ function matchMediaReducedMotion(): boolean {
 }
 
 /**
- * The OpenStreetMap layer, as shader uniforms shared by every terrain material.
+ * How strongly the map layer shows on each terrain, as a multiple of the
+ * player's opacity setting.
  *
- * One object, referenced by all five materials, so a toggle or an opacity
- * change is one write that every terrain type sees on its next frame. The
- * placeholder texture is a single white pixel: a sampler has to be bound to
- * something, and opacity 0 means it is never mixed in anyway.
+ * The map is for reading the city: streets, names, neighbourhoods. That is
+ * all on land, so on land the tile's own flat green recedes almost entirely
+ * (at the default 75% it is about 94% map). Water, sand and wetland are the
+ * opposite: they are what the game is about, and the player has to see at a
+ * glance where the beach and the mangrove ground are. On those the tile keeps
+ * its own colour and the map is a light wash (about 20–26%), enough to show
+ * the creek outlines and the shore without muddying which is which.
  */
-const OVERLAY_PLACEHOLDER = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
-OVERLAY_PLACEHOLDER.needsUpdate = true;
-
-interface OverlayUniforms {
-  uOsmMap: { value: THREE.Texture };
-  /** World x, z of the image's north-west corner, then its width and depth. */
-  uOsmRect: { value: THREE.Vector4 };
-  uOsmOpacity: { value: number };
-}
-
-/**
- * Projects the map layer onto the tops of the hexes, by world position.
- *
- * Patched into the standard material rather than drawn as a separate plane,
- * for three reasons:
- *
- *   - It sits on each hex at that hex's own height, so it follows the terrain
- *     steps, the water swell and the settle animation without any of them
- *     knowing it exists.
- *   - It goes in before lighting, so a storm darkens the map with the board
- *     and the sun shades it like any other surface.
- *   - Elements, creatures, monuments and hazard overlays are separate meshes
- *     above the terrain, so they draw on top of it for free. A plane floating
- *     above the hexes would have had to be pushed back under all of them with
- *     depth tricks, and would have looked flat over the stepped terrain.
- *
- * The sampling is by world x/z, against the rectangle the map generator wrote
- * from the same projection that placed the hexes — which is what makes the
- * layer line up. Only top faces take it (`vOsmTop`): a hex wall drawn with the
- * map would smear one column of pixels down its whole height.
- *
- * The tile colour still shows through at `1 - opacity`, so terrain stays
- * readable with the layer on, and the per-instance tint (the flood telegraph's
- * darkening) is mixed with it rather than lost.
- */
-function patchForOverlay(material: THREE.MeshStandardMaterial, uniforms: OverlayUniforms): void {
-  material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        "#include <common>",
-        "#include <common>\nvarying vec2 vOsmWorld;\nvarying float vOsmTop;"
-      )
-      .replace(
-        "#include <project_vertex>",
-        `#include <project_vertex>
-        vec4 osmWorld = vec4( transformed, 1.0 );
-        #ifdef USE_INSTANCING
-          osmWorld = instanceMatrix * osmWorld;
-        #endif
-        osmWorld = modelMatrix * osmWorld;
-        vOsmWorld = osmWorld.xz;
-        vOsmTop = step( 0.5, normal.y );`
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        "#include <common>",
-        "#include <common>\nuniform sampler2D uOsmMap;\nuniform vec4 uOsmRect;\nuniform float uOsmOpacity;\nvarying vec2 vOsmWorld;\nvarying float vOsmTop;"
-      )
-      .replace(
-        "#include <color_fragment>",
-        `#include <color_fragment>
-        if ( uOsmOpacity > 0.0 && vOsmTop > 0.5 ) {
-          vec2 osmUv = ( vOsmWorld - uOsmRect.xy ) / uOsmRect.zw;
-          if ( osmUv.x >= 0.0 && osmUv.x <= 1.0 && osmUv.y >= 0.0 && osmUv.y <= 1.0 ) {
-            // Image row 0 is the north edge, which is world z = 0: flip v.
-            vec3 osm = texture2D( uOsmMap, vec2( osmUv.x, 1.0 - osmUv.y ) ).rgb;
-            diffuseColor.rgb = mix( diffuseColor.rgb, osm, uOsmOpacity );
-          }
-        }`
-      );
-  };
-}
+const OVERLAY_STRENGTH: Record<string, number> = {
+  land: 1.25,
+  beach: 0.3,
+  estuary: 0.35,
+  river: 0.3,
+  coast: 0.27
+};
 
 /**
  * v2.1: the terrain map is fixed (Section 4) — `loadMap` renders the whole
@@ -244,7 +183,7 @@ export class TerrainMeshManager {
   /** Scratch objects, reused every frame — allocating a Matrix4 and a Color per water tile per frame would be ~8000 objects a second on a large map. */
   private readonly scratchMatrix = new THREE.Matrix4();
   private readonly scratchColor = new THREE.Color();
-  /** Shared by every terrain material — see `patchForOverlay`. */
+  /** Shared by every terrain material, and by the board skirt — see `patchForOverlay`. */
   private readonly overlay: OverlayUniforms = {
     uOsmMap: { value: OVERLAY_PLACEHOLDER },
     uOsmRect: { value: new THREE.Vector4(0, 0, 1, 1) },
@@ -266,7 +205,7 @@ export class TerrainMeshManager {
         roughness: 0.9,
         metalness: 0.0
       });
-      patchForOverlay(material, this.overlay);
+      patchForOverlay(material, this.overlay, OVERLAY_STRENGTH[terrain.id] ?? 0.5);
       const mesh = new THREE.InstancedMesh(geometry, material, MAX_TERRAIN_INSTANCES_PER_TYPE);
       mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TERRAIN_INSTANCES_PER_TYPE * 3), 3);
       mesh.count = 0;
@@ -277,6 +216,11 @@ export class TerrainMeshManager {
       this.counts.set(terrain.id, 0);
       this.group.add(mesh);
     }
+  }
+
+  /** The map layer's shared uniforms, so decorative meshes around the board can show it too. */
+  get overlayUniforms(): OverlayUniforms {
+    return this.overlay;
   }
 
   /** Hands the loaded map layer to the shader, and the world rectangle it covers. */
