@@ -188,17 +188,18 @@ const PADDY = { minFarmland: 0.45, maxBuilt: 0.3, reach: 2 };
  *
  * Neighbourhoods and a bridge rather than monuments: there is no single
  * structure to draw for "Merces", and a label is what tells a player which
- * part of the board they are looking at. Positions are where OpenStreetMap
- * prints each name on the basemap, converted back through its projection —
- * the geocoder is not reachable from every machine this runs on, and the
- * label position is the one a player will be comparing against anyway.
+ * part of the board they are looking at. Positions are the centres of the
+ * names as OpenStreetMap prints them on the basemap, measured on the image at
+ * full resolution and converted back through its projection (the Atal Setu at
+ * the middle of its deck over the Mandovi). An earlier pass read these off a
+ * downscaled view and put every one 230–480 m north-west of its label.
  */
 const PLACE_LABELS: { name: string; lat: number; lon: number }[] = [
-  { name: "Caranzalem", lat: 15.4701, lon: 73.8068 },
-  { name: "Taleigao", lat: 15.4726, lon: 73.8209 },
-  { name: "St Cruz", lat: 15.4754, lon: 73.8444 },
-  { name: "Merces", lat: 15.4847, lon: 73.8497 },
-  { name: "Atal Setu", lat: 15.5031, lon: 73.8345 }
+  { name: "Caranzalem", lat: 15.4677, lon: 73.808 },
+  { name: "Taleigao", lat: 15.4702, lon: 73.8226 },
+  { name: "St Cruz", lat: 15.4731, lon: 73.8468 },
+  { name: "Merces", lat: 15.4829, lon: 73.8538 },
+  { name: "Atal Setu", lat: 15.5028, lon: 73.8366 }
 ];
 
 /**
@@ -702,11 +703,21 @@ interface Monument {
  *     one monument drawn twice in the same place, and `GameState.reserved`
  *     would silently hold one tile for two buildings.
  */
-function placeMonuments(places: Place[], cells: Cell[]): { monuments: Monument[]; notes: string[] } {
+/** Where one landmark ended up and why, for the debug table. */
+interface Placement {
+  place: Place;
+  ideal: AxialCoord;
+  chosen: AxialCoord;
+  /** Empty when it stands on the hex containing its real position. */
+  reason: string;
+}
+
+function placeMonuments(places: Place[], cells: Cell[]): { monuments: Monument[]; notes: string[]; placements: Placement[] } {
   const byKey = new Map(cells.map((cell) => [axialKey(cell.coord), cell]));
-  const taken = new Set<string>();
+  const takenBy = new Map<string, string>();
   const monuments: Monument[] = [];
   const notes: string[] = [];
+  const placements: Placement[] = [];
 
   const isDry = (coord: AxialCoord): boolean => {
     const cell = byKey.get(axialKey(coord));
@@ -718,15 +729,19 @@ function placeMonuments(places: Place[], cells: Cell[]): { monuments: Monument[]
     const ideal = worldToAxial(x, z, HEX_SIZE);
 
     // Rings outward from the true position, so a displaced monument moves the
-    // shortest distance that satisfies both rules.
+    // shortest distance that satisfies both rules; within a ring, the hex
+    // whose centre is nearest the real position wins.
     let chosen: AxialCoord | null = null;
-    search: for (let radius = 0; radius <= 4; radius++) {
+    for (let radius = 0; radius <= 4 && !chosen; radius++) {
+      let best = Infinity;
       for (const coord of ringOrSelf(ideal, radius)) {
-        const key = axialKey(coord);
-        if (taken.has(key)) continue;
-        if (!isDry(coord)) continue;
-        chosen = coord;
-        break search;
+        if (takenBy.has(axialKey(coord)) || !isDry(coord)) continue;
+        const centre = axialToWorld(coord, HEX_SIZE);
+        const distance = Math.hypot(centre.x - x, centre.z - z);
+        if (distance < best) {
+          best = distance;
+          chosen = coord;
+        }
       }
     }
 
@@ -736,11 +751,18 @@ function placeMonuments(places: Place[], cells: Cell[]): { monuments: Monument[]
     }
 
     const moved = hexDistance(ideal, chosen);
+    let reason = "";
     if (moved > 0) {
-      notes.push(`${place.name}: moved ${moved} hex${moved === 1 ? "" : "es"} to the nearest free dry tile`);
+      const occupant = takenBy.get(axialKey(ideal));
+      const terrain = byKey.get(axialKey(ideal))?.terrainId ?? "off the board";
+      reason = occupant
+        ? `its hex is taken by ${occupant}; moved ${moved}`
+        : `its hex reads as ${terrain} in OSM; moved ${moved} to dry ground`;
+      notes.push(`${place.name}: ${reason}`);
     }
 
-    taken.add(axialKey(chosen));
+    takenBy.set(axialKey(chosen), place.name);
+    placements.push({ place, ideal, chosen, reason });
     monuments.push({
       id: place.id,
       name: place.name,
@@ -751,7 +773,7 @@ function placeMonuments(places: Place[], cells: Cell[]): { monuments: Monument[]
     });
   }
 
-  return { monuments, notes };
+  return { monuments, notes, placements };
 }
 
 function ringOrSelf(centre: AxialCoord, radius: number): AxialCoord[] {
@@ -1058,7 +1080,7 @@ async function main(): Promise<void> {
   const widened = widenBeach(cells);
   console.log(`after widening sand:    ${JSON.stringify(countTerrain(cells))} (${widened} land tiles became beach)`);
 
-  const { monuments, notes } = placeMonuments(places, cells);
+  const { monuments, notes, placements } = placeMonuments(places, cells);
 
   /*
    * Where the camera opens.
@@ -1144,6 +1166,51 @@ async function main(): Promise<void> {
   const classesPath = path.join(DEBUG_DIR, "panaji-classes.jpg");
   await writeDebugImage(meta, cells, [], classesPath, { hexAlpha: 0.5, title: "Panaji: hex classes over OSM" });
 
+  // Landmarks: monuments first, then the neighbourhood labels, numbered in
+  // that order in both the image and the table.
+  const hexPixel = (coord: AxialCoord): { px: number; py: number } => {
+    const { x, z } = axialToWorld(coord, HEX_SIZE);
+    const { lat, lon } = worldToGeo(x, z);
+    return geoToPixel(meta, lat, lon);
+  };
+  const labelRows = PLACE_LABELS.map((label) => {
+    const { x, z } = geoToWorld(label.lat, label.lon);
+    return { label, coord: worldToAxial(x, z, HEX_SIZE) };
+  });
+  const markers: DebugMarker[] = [
+    ...placements.map((placement, i) => ({
+      label: String(i + 1),
+      truePx: geoToPixel(meta, placement.place.lat, placement.place.lon),
+      hexPx: hexPixel(placement.chosen)
+    })),
+    ...labelRows.map((row, i) => ({
+      label: String(placements.length + i + 1),
+      truePx: geoToPixel(meta, row.label.lat, row.label.lon),
+      hexPx: hexPixel(row.coord)
+    }))
+  ];
+  const landmarksPath = path.join(DEBUG_DIR, "panaji-landmarks.jpg");
+  await writeDebugImage(meta, cells, markers, landmarksPath, { hexAlpha: 0.22, title: "Panaji: landmarks (dot = real, ring = hex)" });
+  const terrainAt = new Map(cells.map((cell) => [axialKey(cell.coord), cell.terrainId]));
+  const table = [
+    "# Panaji landmarks",
+    "",
+    "Generated by `npm run mapgen:panaji`. Numbers match `panaji-landmarks.jpg`: the dot is the real",
+    "position, the ring the hex the landmark stands on. Positions: `tools/mapgen/panajiPlaces.json`",
+    "(monuments) and `PLACE_LABELS` in `buildPanajiMap.ts` (neighbourhood labels).",
+    "",
+    "| # | Name | Lat | Lon | Source | Hex (q,r) | Terrain | Note |",
+    "|---|---|---|---|---|---|---|---|",
+    ...placements.map((placement, i) =>
+      `| ${i + 1} | ${placement.place.name} | ${placement.place.lat.toFixed(5)} | ${placement.place.lon.toFixed(5)} | ${placement.place.source} | ${placement.chosen.q},${placement.chosen.r} | ${terrainAt.get(axialKey(placement.chosen))} | ${placement.reason} |`
+    ),
+    ...labelRows.map((row, i) =>
+      `| ${placements.length + i + 1} | ${row.label.name} (label) | ${row.label.lat.toFixed(5)} | ${row.label.lon.toFixed(5)} | OSM basemap label | ${row.coord.q},${row.coord.r} | ${terrainAt.get(axialKey(row.coord))} | |`
+    ),
+    ""
+  ].join("\n");
+  fs.writeFileSync(path.join(DEBUG_DIR, "panaji-landmarks.md"), table);
+
   console.log(`\n=== Panaji ===`);
   console.log(`${cells.length} tiles, ${monuments.length} monuments, focus ${focus.q},${focus.r}`);
   console.log(asciiPreview(cells, monuments));
@@ -1162,7 +1229,7 @@ async function main(): Promise<void> {
     console.log(`\nWrote ${path.relative(ROOT, OUT)}`);
   }
 
-  console.log(`Debug image: ${path.relative(ROOT, classesPath)}`);
+  console.log(`Debug images: ${path.relative(ROOT, classesPath)}, ${path.relative(ROOT, landmarksPath)}, panaji-landmarks.md`);
 }
 
 main();

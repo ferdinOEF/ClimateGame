@@ -169,7 +169,7 @@ describe("the Panaji board, Miramar to Merces", () => {
   it("reaches Merces and St Cruz on the east and the Dona Paula headland on the south", () => {
     expect(source.bounds.east).toBeGreaterThanOrEqual(73.86);
     expect(source.bounds.south).toBeLessThanOrEqual(15.45);
-    for (const name of ["Merces", "St Cruz", "Taleigao", "Caranzalem"]) {
+    for (const name of ["Merces", "St Cruz", "Taleigao", "Caranzalem", "Atal Setu"]) {
       const label = panaji.landmarks.find((landmark) => landmark.name === name);
       expect(label, `no "${name}" label`).toBeDefined();
       expect(terrain.has(axialKey(label!)), `"${name}" is off the board`).toBe(true);
@@ -199,7 +199,7 @@ describe("the Panaji board, Miramar to Merces", () => {
      * the channel down to St Agostinho Road and the Ribandar salt pans to all
      * be in that one body of water.
      */
-    const start = tileAt(15.505, 73.8375);
+    const start = tileAt(15.5036, 73.8397);
     const seed = [start, ...neighbors(start)].find(isWet);
     expect(seed, "the middle of the Mandovi is not river").toBeDefined();
     const reached = new Set<string>([axialKey(seed!)]);
@@ -212,8 +212,8 @@ describe("the Panaji board, Miramar to Merces", () => {
       }
     }
     const places = {
-      "Ourem creek, south reach": [15.4836, 73.833],
-      "creek at St Agostinho Road": [15.4736, 73.8357],
+      "Ourem creek, south reach": [15.4842, 73.8354],
+      "creek at St Agostinho Road": [15.4751, 73.8378],
       "Ribandar salt pans": [15.5003, 73.8474]
     } as const;
     for (const [name, [lat, lon]] of Object.entries(places)) {
@@ -267,5 +267,49 @@ describe("the Panaji OpenStreetMap layer", () => {
 
   it("is only on the maps that have one", () => {
     expect(mapById("tutorial")!.overlay).toBeUndefined();
+  });
+});
+
+describe("the Panaji landmarks, against their real positions", () => {
+  const panaji = mapById("panaji")!;
+  const source = panaji.source!;
+  const METRES_PER_DEG_LAT = 110_574;
+  const METRES_PER_DEG_LON = 111_320 * Math.cos((15.48 * Math.PI) / 180);
+  const places = (
+    JSON.parse(fs.readFileSync(path.join(process.cwd(), "tools/mapgen/panajiPlaces.json"), "utf8")) as {
+      places: { id: string; lat: number; lon: number }[];
+    }
+  ).places;
+  const tileAt = (lat: number, lon: number): AxialCoord =>
+    worldToAxial(
+      ((lon - source.bounds.west) * METRES_PER_DEG_LON) / source.metresPerUnit,
+      ((source.bounds.north - lat) * METRES_PER_DEG_LAT) / source.metresPerUnit,
+      HEX_SIZE
+    );
+  const hexDistance = (a: AxialCoord, b: AxialCoord): number =>
+    (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2;
+
+  it("never stacks two monuments on one hex", () => {
+    const keys = panaji.monuments.map((monument) => axialKey(monument));
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("stands each monument on, or right next to, the hex containing its real position", () => {
+    // Next to, at most: a landmark moves one hex only when its own hex reads as
+    // water in OSM or is already taken. Anything further is a wrong coordinate.
+    for (const place of places) {
+      const monument = panaji.monuments.find((candidate) => candidate.id === place.id);
+      expect(monument, `${place.id} is missing from the board`).toBeDefined();
+      const distance = hexDistance(monument!, tileAt(place.lat, place.lon));
+      expect(distance, `${place.id} is ${distance} hexes from its real position`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("puts Dona Paula at the tip of the headland, south-west of Dona Paula Circle", () => {
+    // Nominatim answered "Dona Paula" with the locality label at the circle;
+    // the viewpoint is the jetty at the tip, about 550 m further out.
+    const dona = panaji.monuments.find((monument) => monument.id === "dona_paula_viewpoint")!;
+    const circle = tileAt(15.4581997, 73.8038671);
+    expect(dona.r).toBeGreaterThan(circle.r);
   });
 });

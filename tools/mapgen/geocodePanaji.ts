@@ -23,11 +23,12 @@
  * silently dropped, because a missing landmark is a visible hole in the board
  * and should fail the build that made it.
  *
- * Each entry carries a `fallback` — a coordinate read off the map by hand.
- * It is used only when the lookup finds nothing plausible, which keeps the
- * board buildable offline and on a day when the service is down, and means a
- * network failure degrades to "slightly less precise" rather than "no
- * monuments".
+ * Each entry also carries `osm`: where the OpenStreetMap basemap image puts
+ * the place, at its label or the feature it names. A geocoder answer is used
+ * only when it agrees with that to within `AGREE_METRES`; otherwise, or when
+ * the service is unreachable, the image position is used and the disagreement
+ * is printed. That keeps the board buildable offline, and it is what caught
+ * "Dona Paula" resolving to the locality rather than the headland viewpoint.
  *
  * RATE LIMIT
  *
@@ -61,9 +62,28 @@ interface PlaceSpec {
   kind: string;
   /** What to ask the geocoder. More specific than `name`, because "Don Bosco" alone matches half of India. */
   query: string;
-  /** Read off the map by hand; used only if the lookup finds nothing plausible. */
-  fallback: { lat: number; lon: number };
+  /**
+   * Where the OpenStreetMap basemap (`panaji-basemap.jpg`) itself puts this
+   * place: at its label, or at the feature it names. This is the reference
+   * every geocoder answer is checked against, and what is used when the
+   * lookup fails or lands more than `AGREE_METRES` away from it.
+   *
+   * `how` says what on the image it was read from. `onImage: false` marks the
+   * few places the image does not label at this zoom, whose position rests on
+   * the geocoder or local knowledge alone and should be checked by someone
+   * who knows the street.
+   */
+  osm: { lat: number; lon: number; how: string; onImage: boolean };
 }
+
+/**
+ * How far a geocoder answer may be from the OSM image before the image wins.
+ *
+ * Nominatim answers the question it is asked, which is not always the one
+ * meant: asked for "Dona Paula" it returns the locality label at Dona Paula
+ * Circle, 550 m from the viewpoint on the headland that the monument is.
+ */
+const AGREE_METRES = 100;
 
 /*
  * The sixteen places, with the real-world relationships the old coordinates
@@ -90,7 +110,7 @@ const PLACES: PlaceSpec[] = [
     category: "Heritage church, 1541",
     kind: "church",
     query: "Church of Our Lady of the Immaculate Conception, Panaji, Goa, India",
-    fallback: { lat: 15.4989, lon: 73.8278 }
+    osm: { lat: 15.4989, lon: 73.8278, how: "beside the OSM label Church Square, the square the church fronts", onImage: true }
   },
   {
     id: "idalcao_palace",
@@ -98,7 +118,7 @@ const PLACES: PlaceSpec[] = [
     category: "Old Secretariat, 1500s",
     kind: "palace",
     query: "Adil Shah Palace, Panaji, Goa, India",
-    fallback: { lat: 15.4998, lon: 73.8262 }
+    osm: { lat: 15.4998, lon: 73.8262, how: "the waterfront block on Avenida Dom Joao de Castro, west of Church Square", onImage: true }
   },
   {
     id: "panjim_municipal_market",
@@ -106,7 +126,7 @@ const PLACES: PlaceSpec[] = [
     category: "City market",
     kind: "market",
     query: "Panaji Municipal Market, Panaji, Goa, India",
-    fallback: { lat: 15.4962, lon: 73.8295 }
+    osm: { lat: 15.49773, lon: 73.82598, how: "the OSM label Panjim Bazaar, off 18th June Road", onImage: true }
   },
   {
     id: "institute_menezes_braganza",
@@ -114,7 +134,7 @@ const PLACES: PlaceSpec[] = [
     category: "Library and gallery, 1871",
     kind: "institution",
     query: "Institute Menezes Braganza, Panaji, Goa, India",
-    fallback: { lat: 15.4977, lon: 73.8259 }
+    osm: { lat: 15.50044, lon: 73.82537, how: "beside Azad Maidan, the green square behind the ferry terminal", onImage: true }
   },
   {
     id: "mahalaxmi_temple",
@@ -122,7 +142,7 @@ const PLACES: PlaceSpec[] = [
     category: "Temple, 1818",
     kind: "temple",
     query: "Mahalaxmi Temple, Panaji, Goa, India",
-    fallback: { lat: 15.4944, lon: 73.8268 }
+    osm: { lat: 15.4944, lon: 73.8268, how: "on Dr Dada Vaidya Road at the foot of Altinho; the temple is not labelled at this zoom", onImage: false }
   },
   {
     id: "jama_masjid_panaji",
@@ -130,7 +150,7 @@ const PLACES: PlaceSpec[] = [
     category: "Mosque",
     kind: "mosque",
     query: "Jama Masjid, Panaji, Goa, India",
-    fallback: { lat: 15.4958, lon: 73.8332 }
+    osm: { lat: 15.49482, lon: 73.82612, how: "on Dr Dada Vaidya Road near Mahalaxmi Temple, from local knowledge; not labelled at this zoom", onImage: false }
   },
   {
     id: "don_bosco_high_school",
@@ -138,7 +158,7 @@ const PLACES: PlaceSpec[] = [
     category: "School, 1935",
     kind: "institution",
     query: "Don Bosco High School, Panaji, Goa, India",
-    fallback: { lat: 15.4971, lon: 73.8231 }
+    osm: { lat: 15.49704, lon: 73.82130, how: "the school grounds on Mahatma Gandhi Road, west end of the old town", onImage: true }
   },
   {
     id: "don_bosco_college",
@@ -146,7 +166,7 @@ const PLACES: PlaceSpec[] = [
     category: "College",
     kind: "institution",
     query: "Don Bosco College, Panaji, Goa, India",
-    fallback: { lat: 15.4966, lon: 73.8225 }
+    osm: { lat: 15.4966, lon: 73.8225, how: "next to the high school, south of Mahatma Gandhi Road", onImage: true }
   },
   {
     id: "sharada_mandir_school",
@@ -154,7 +174,7 @@ const PLACES: PlaceSpec[] = [
     category: "School, Altinho",
     kind: "institution",
     query: "Sharada Mandir School, Miramar, Panaji, Goa, India",
-    fallback: { lat: 15.4886, lon: 73.8213 }
+    osm: { lat: 15.48043, lon: 73.80916, how: "Miramar, inland of Dr Jack Sequeira Road", onImage: true }
   },
   {
     id: "government_polytechnic_panaji",
@@ -162,7 +182,7 @@ const PLACES: PlaceSpec[] = [
     category: "Technical college, Altinho",
     kind: "institution",
     query: "Government Polytechnic Panaji, Altinho, Goa, India",
-    fallback: { lat: 15.4921, lon: 73.8243 }
+    osm: { lat: 15.48625, lon: 73.82388, how: "the OSM label Government Polytechnic, on Altinho", onImage: true }
   },
   {
     id: "kala_academy",
@@ -170,7 +190,7 @@ const PLACES: PlaceSpec[] = [
     category: "Arts centre, 1983",
     kind: "institution",
     query: "Kala Academy, Campal, Panaji, Goa, India",
-    fallback: { lat: 15.4932, lon: 73.8166 }
+    osm: { lat: 15.49421, lon: 73.81741, how: "the riverfront building at Campal", onImage: true }
   },
   {
     id: "goa_state_museum",
@@ -178,7 +198,7 @@ const PLACES: PlaceSpec[] = [
     category: "Museum, Patto",
     kind: "institution",
     query: "Goa State Museum, Panaji, Goa, India",
-    fallback: { lat: 15.4937, lon: 73.8356 }
+    osm: { lat: 15.4937, lon: 73.8356, how: "Patto, east of the Ourem creek", onImage: true }
   },
   {
     id: "campal_garden",
@@ -186,7 +206,7 @@ const PLACES: PlaceSpec[] = [
     category: "Riverside garden",
     kind: "park",
     query: "Campal Garden, Panaji, Goa, India",
-    fallback: { lat: 15.4909, lon: 73.8149 }
+    osm: { lat: 15.49682, lon: 73.81825, how: "the OSM label Bhagwan Mahavir Children Park, at Campal", onImage: true }
   },
   {
     id: "dhempe_college",
@@ -194,7 +214,7 @@ const PLACES: PlaceSpec[] = [
     category: "College, Miramar",
     kind: "institution",
     query: "Dhempe College of Arts and Science, Miramar, Panaji, Goa, India",
-    fallback: { lat: 15.4812, lon: 73.8098 }
+    osm: { lat: 15.4812, lon: 73.8098, how: "Miramar, beside Sharada Mandir", onImage: true }
   },
   {
     id: "miramar_beach",
@@ -202,7 +222,7 @@ const PLACES: PlaceSpec[] = [
     category: "Beach at the river mouth",
     kind: "beach",
     query: "Miramar Beach, Panaji, Goa, India",
-    fallback: { lat: 15.4793, lon: 73.8062 }
+    osm: { lat: 15.47668, lon: 73.80668, how: "the OSM label Miramar Beach, on the sand", onImage: true }
   },
   {
     id: "dona_paula_viewpoint",
@@ -210,7 +230,7 @@ const PLACES: PlaceSpec[] = [
     category: "Headland viewpoint",
     kind: "viewpoint",
     query: "Dona Paula, Goa, India",
-    fallback: { lat: 15.4505, lon: 73.8031 }
+    osm: { lat: 15.4536, lon: 73.80195, how: "the jetty plaza at the tip of the headland, where the road ends at the rocks", onImage: true }
   }
 ];
 
@@ -229,8 +249,20 @@ export interface ResolvedPlace {
   kind: string;
   lat: number;
   lon: number;
-  /** "geocoded" or "fallback", so the generated board records how good its own inputs were. */
-  source: "geocoded" | "fallback";
+  /**
+   * Where the position came from, so the generated board records how good its
+   * own inputs were:
+   *   - "nominatim+osm-image": the geocoder agreed with the OSM image (within
+   *     `AGREE_METRES`), and its answer is used;
+   *   - "osm-image": the geocoder failed or disagreed, and the position read
+   *     off the OSM image is used;
+   *   - "unverified": not labelled on the image and not confirmed by a lookup.
+   */
+  source: "nominatim+osm-image" | "osm-image" | "unverified";
+  /** What on the OSM image the position was read from. */
+  how: string;
+  /** How far the geocoder's answer was from the image, when there was one. */
+  geocoderOffsetMetres?: number;
   /** What the geocoder actually matched, for a human to sanity-check the result against. */
   matched?: string;
 }
@@ -258,22 +290,27 @@ async function lookup(spec: PlaceSpec): Promise<ResolvedPlace> {
       const lon = Number(hit.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       if (!inside(lat, lon)) continue;
-      return {
-        id: spec.id,
-        name: spec.name,
-        category: spec.category,
-        kind: spec.kind,
-        lat,
-        lon,
-        source: "geocoded",
-        matched: hit.display_name
-      };
+      const offset = metres(lat, lon, spec.osm.lat, spec.osm.lon);
+      if (offset <= AGREE_METRES) {
+        return { ...base(spec), lat, lon, source: "nominatim+osm-image", geocoderOffsetMetres: Math.round(offset), matched: hit.display_name };
+      }
+      console.warn(`  ! ${spec.id}: Nominatim is ${offset.toFixed(0)} m from the OSM image (${hit.display_name}); using the image`);
+      return { ...fromImage(spec), geocoderOffsetMetres: Math.round(offset), matched: hit.display_name };
     }
   } catch (error) {
     console.warn(`  ! ${spec.id}: lookup failed (${error instanceof Error ? error.message : String(error)})`);
   }
 
-  return { id: spec.id, name: spec.name, category: spec.category, kind: spec.kind, ...spec.fallback, source: "fallback" };
+  return fromImage(spec);
+}
+
+function base(spec: PlaceSpec): Pick<ResolvedPlace, "id" | "name" | "category" | "kind" | "how"> {
+  return { id: spec.id, name: spec.name, category: spec.category, kind: spec.kind, how: spec.osm.how };
+}
+
+/** The position read off the OSM image, marked unverified when the image does not label the place. */
+function fromImage(spec: PlaceSpec): ResolvedPlace {
+  return { ...base(spec), lat: spec.osm.lat, lon: spec.osm.lon, source: spec.osm.onImage ? "osm-image" : "unverified" };
 }
 
 async function main(): Promise<void> {
@@ -282,20 +319,17 @@ async function main(): Promise<void> {
   for (const spec of PLACES) {
     const place = await lookup(spec);
     resolved.push(place);
-    const drift =
-      place.source === "geocoded"
-        ? ` (${metres(place.lat, place.lon, spec.fallback.lat, spec.fallback.lon).toFixed(0)}m from the hand-read position)`
-        : "";
-    console.log(`  ${place.source === "geocoded" ? "✓" : "·"} ${spec.id.padEnd(30)} ${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}${drift}`);
+    const offset = place.geocoderOffsetMetres === undefined ? "" : ` (geocoder ${place.geocoderOffsetMetres} m from the OSM image)`;
+    console.log(`  ${place.source.padEnd(19)} ${spec.id.padEnd(30)} ${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}${offset}`);
     await new Promise((resolve) => setTimeout(resolve, SPACING_MS));
   }
 
-  const geocoded = resolved.filter((place) => place.source === "geocoded").length;
+  const agreed = resolved.filter((place) => place.source === "nominatim+osm-image").length;
   fs.writeFileSync(
     OUT,
     `${JSON.stringify(
       {
-        note: "Generated by tools/mapgen/geocodePanaji.ts. Positions from OpenStreetMap via Nominatim; data © OpenStreetMap contributors, ODbL.",
+        note: "Generated by tools/mapgen/geocodePanaji.ts. Positions from OpenStreetMap (Nominatim, checked against the OSM basemap image); data © OpenStreetMap contributors, ODbL.",
         generatedAt: new Date().toISOString(),
         places: resolved
       },
@@ -304,7 +338,7 @@ async function main(): Promise<void> {
     )}\n`
   );
 
-  console.log(`\n${geocoded}/${resolved.length} geocoded, ${resolved.length - geocoded} from the hand-read fallback`);
+  console.log(`\n${agreed}/${resolved.length} confirmed by Nominatim, the rest from the OSM image`);
   console.log(`Wrote ${path.relative(ROOT, OUT)}`);
 }
 
