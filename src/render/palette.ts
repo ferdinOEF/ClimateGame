@@ -22,7 +22,11 @@ export const PALETTE: Record<string, THREE.Color> = {
   mangroveTeal: new THREE.Color("#1F5C4E"), // estuary — deep mangrove teal
   seaTurquoise: new THREE.Color("#167C77"), // coast — Arabian Sea turquoise
   riverBlue: new THREE.Color("#3E86B0"), // river
-  landGreen: new THREE.Color("#8FBF3E"), // land (interior)
+  // Land: a calm, slightly olive green, 28% less saturated than the
+  // lime it was (#8FBF3E). The lime fought the buildings and the heat for
+  // attention; this sits back, and still parts clearly from sand, wetland,
+  // river and sea (luminance about 160, as before).
+  landGreen: new THREE.Color("#8EAB4F"), // land (interior)
   sandGold: new THREE.Color("#F0B94A"), // beach — sun-bleached sand gold
   fog: new THREE.Color("#D9E6E0"),
   sky: new THREE.Color("#CFE6E8"),
@@ -73,6 +77,23 @@ export function jitterColor(base: THREE.Color, seed: number): THREE.Color {
   const jitter = (Math.sin(seed * 12.9898) * 43758.5453) % 1;
   const delta = (jitter - Math.floor(jitter) - 0.5) * 0.06;
   c.setHSL(hsl.h, THREE.MathUtils.clamp(hsl.s, 0, 1), THREE.MathUtils.clamp(hsl.l + delta, 0, 1));
+  return c;
+}
+
+/**
+ * A very subtle per-tile variation for grass: a few degrees of hue and a few
+ * points of saturation either way, as well as `jitterColor`'s lightness, so
+ * a field of land tiles reads as ground rather than a printed grid.
+ */
+export function jitterGrass(base: THREE.Color, seed: number): THREE.Color {
+  const c = jitterColor(base, seed);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  const a = Math.sin(seed * 78.233) * 43758.5453;
+  const b = Math.sin(seed * 39.425) * 24634.6345;
+  const hueJitter = ((a - Math.floor(a)) - 0.5) * (6 / 360);
+  const satJitter = ((b - Math.floor(b)) - 0.5) * 0.08;
+  c.setHSL((hsl.h + hueJitter + 1) % 1, THREE.MathUtils.clamp(hsl.s + satJitter, 0, 1), hsl.l);
   return c;
 }
 

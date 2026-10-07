@@ -117,7 +117,7 @@
     },
     "houses": {
       "fillLand": true,
-      "houseEconomyScale": 0.0151,
+      "houseEconomyHouses": 10,
       "excludeFromBuild": [
         "house"
       ],
@@ -292,6 +292,73 @@
         },
         "reward": 60
       }
-    ]
+    ],
+    "showVoicesPanel": false,
+    "prep": {
+      "max": 3,
+      "places": {
+        "z1": "Miramar beach",
+        "z2": "Taleigao",
+        "z3": "the Ourem creek",
+        "z4": "the Mandovi waterfront"
+      },
+      "templates": [
+        {
+          "id": "pandanus",
+          "kinds": [
+            "cyclone",
+            "compound"
+          ],
+          "elementId": "sandy_vegetation",
+          "count": 3,
+          "reward": 40,
+          "label": "Plant {count} pandanus on {place}"
+        },
+        {
+          "id": "dunes",
+          "kinds": [
+            "cyclone",
+            "compound"
+          ],
+          "elementId": "dune",
+          "count": 2,
+          "reward": 40,
+          "label": "Add {count} dunes at {place}"
+        },
+        {
+          "id": "khazan",
+          "kinds": [
+            "flood",
+            "compound"
+          ],
+          "elementId": "khazan",
+          "count": 1,
+          "reward": 60,
+          "label": "Build {count} khazan at {place}"
+        },
+        {
+          "id": "mangroves",
+          "kinds": [
+            "cyclone",
+            "flood",
+            "compound"
+          ],
+          "elementId": "mangrove",
+          "count": 2,
+          "reward": 50,
+          "label": "Plant {count} mangroves along {place}"
+        },
+        {
+          "id": "seawall",
+          "kinds": [
+            "cyclone"
+          ],
+          "elementId": "seawall",
+          "count": 1,
+          "reward": 50,
+          "label": "Build {count} seawall at {place}"
+        }
+      ]
+    }
   }
 ]

@@ -51,7 +51,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
-import { axialKey, axialToWorld, neighbors, worldToAxial, type AxialCoord } from "../../src/core/hex";
+import { axialKey, axialToWorld, neighbor, neighbors, worldToAxial, type AxialCoord } from "../../src/core/hex";
 
 const ROOT = path.resolve(process.cwd());
 const BASEMAP_META = path.join(ROOT, "tools/mapgen/panajiBasemap.json");
@@ -378,6 +378,8 @@ interface Cell {
   terrainId: string;
   /** Fractions of the sampled pixels, kept for the wetland pass after the water split. */
   share?: { water: number; sand: number; built: number; mangrove: number; pale: number; green: number; marsh: number };
+  /** Share of the hex covered by a major road's fill (motorway, trunk, primary, secondary). */
+  roadShare?: number;
 }
 
 /**
@@ -415,7 +417,7 @@ function buildGrid(meta: BasemapMeta): Cell[] {
 
 // ---- reading the picture ----------------------------------------------
 
-type Reading = { water: number; sand: number; green: number; built: number; mangrove: number; pale: number; marsh: number };
+type Reading = { water: number; sand: number; green: number; built: number; mangrove: number; pale: number; marsh: number; road: number; samples: number };
 
 /**
  * Asks a browser what the map shows under each hex.
@@ -431,7 +433,10 @@ type Reading = { water: number; sand: number; green: number; built: number; mang
  * then read from a dense grid of samples (every 2 px, about 450 per hex),
  * which is what lets a class that covers only a third of a hex be seen at all.
  */
-async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]> {
+/** Two neighbouring hexes, for measuring how much of the line between their centres is road. */
+type Pair = { a: number; b: number };
+
+async function readBasemap(meta: BasemapMeta, cells: Cell[], pairs: Pair[] = []): Promise<{ readings: Reading[]; links: number[] }> {
   const dataUrl = `data:image/jpeg;base64,${fs.readFileSync(BASEMAP_IMAGE).toString("base64")}`;
   const inradiusMetres = HEX_SIZE * Math.sqrt(3) * 0.5 * METRES_PER_UNIT;
   const metresPerPixel = ((meta.bounds.east - meta.bounds.west) * METRES_PER_DEG_LON) / meta.width;
@@ -455,7 +460,7 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
     await page.evaluate("globalThis.__name = (fn) => fn;");
 
     return await page.evaluate(
-      async ({ dataUrl, points, radius, width, height }) => {
+      async ({ dataUrl, points, pairs, radius, width, height }) => {
         const image = await new Promise<HTMLImageElement>((resolve, reject) => {
           const img = new Image();
           img.onload = () => resolve(img);
@@ -479,6 +484,17 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
          */
         const WATER = 0, SAND = 1, MANGROVE = 2, GREEN = 3, PALE = 4, BUILT = 5, MARSH = 6;
         const classOf = new Uint8Array(width * height);
+        /*
+         * Major roads, by the fill colours OSM's standard style paints them:
+         * motorway (232,146,162), trunk (249,178,156), primary (252,214,164)
+         * and secondary (247,250,191). Tertiary and smaller roads are white,
+         * which labels and building outlines share, so they are left out: the
+         * board only wants the roads a player would name. A secondary road's
+         * green is at least its red; sand's is lower, which keeps the beach
+         * from reading as road.
+         */
+        const isRoad = new Uint8Array(width * height);
+        const ROAD_FILLS = [[232, 146, 162], [249, 178, 156], [252, 214, 164], [247, 250, 191]];
         const blue = new Uint8Array(width * height);
         for (let i = 0, p = 0; i < classOf.length; i++, p += 4) {
           const r = pixels[p], g = pixels[p + 1], b = pixels[p + 2];
@@ -502,6 +518,13 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
           else c = BUILT;
           classOf[i] = c;
           blue[i] = c === WATER ? 1 : 0;
+          for (let k = 0; k < ROAD_FILLS.length; k++) {
+            const fill = ROAD_FILLS[k];
+            if (Math.abs(r - fill[0]) < 10 && Math.abs(g - fill[1]) < 10 && Math.abs(b - fill[2]) < 12 && (k < 3 || g >= r - 3)) {
+              isRoad[i] = 1;
+              break;
+            }
+          }
         }
 
         // Blue density in a 15 px window (about 70 m), from a summed-area table.
@@ -534,8 +557,36 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
           return c;
         };
 
-        return points.map(({ px, py }) => {
-          const reading = { water: 0, sand: 0, green: 0, built: 0, mangrove: 0, pale: 0, marsh: 0 };
+        /*
+         * For each pair of neighbouring hexes, the share of the line between
+         * their centres that runs along a road (a road pixel within 4 px of
+         * each sample). A road that really links two hexes covers most of that
+         * line; two hexes that merely both touch a road do not.
+         */
+        const nearRoad = (x: number, y: number): boolean => {
+          for (let dy = -4; dy <= 4; dy += 2) {
+            for (let dx = -4; dx <= 4; dx += 2) {
+              const sx = Math.round(x + dx);
+              const sy = Math.round(y + dy);
+              if (sx >= 0 && sy >= 0 && sx < width && sy < height && isRoad[sy * width + sx]) return true;
+            }
+          }
+          return false;
+        };
+        const links = pairs.map(({ a, b }) => {
+          const pa = points[a];
+          const pb = points[b];
+          let hits = 0;
+          const samples = 16;
+          for (let i = 1; i < samples; i++) {
+            const t = i / samples;
+            if (nearRoad(pa.px + (pb.px - pa.px) * t, pa.py + (pb.py - pa.py) * t)) hits++;
+          }
+          return hits / (samples - 1);
+        });
+
+        const readings = points.map(({ px, py }) => {
+          const reading = { water: 0, sand: 0, green: 0, built: 0, mangrove: 0, pale: 0, marsh: 0, road: 0, samples: 0 };
           const keys = ["water", "sand", "mangrove", "green", "pale", "built", "marsh"] as const;
           for (let dy = -radius; dy <= radius; dy += 2) {
             for (let dx = -radius; dx <= radius; dx += 2) {
@@ -544,14 +595,18 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
               const y = Math.round(py + dy);
               if (x < 0 || y < 0 || x >= width || y >= height) continue;
               reading[keys[finalClass(x, y)]]++;
+              reading.samples++;
+              if (isRoad[y * width + x]) reading.road++;
             }
           }
           return reading;
         });
+        return { readings, links };
       },
       {
         dataUrl,
         points: cells.map((cell) => ({ px: cell.px, py: cell.py })),
+        pairs,
         radius: Math.max(2, Math.round(sampleRadiusPx)),
         width: meta.width,
         height: meta.height
@@ -562,11 +617,148 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[]): Promise<Reading[]>
   }
 }
 
+// ---- roads -------------------------------------------------------------
+
+/**
+ * A hex is a road tile when at least this share of it is a major road's fill.
+ * At zoom 15 a primary road is 10-12 px wide and a hex about 50 px across, so
+ * a road through a hex's middle covers 0.2-0.4 of it; one grazing an edge
+ * covers less. The bar sits between the two, so a road comes out one hex wide
+ * rather than two wherever it runs between hex centres.
+ */
+const ROAD_SHARE = 0.13;
+/** A hex with at least this much road joins the network only where it closes a gap between two road tiles. */
+const ROAD_GAP_SHARE = 0.05;
+/** Road pieces smaller than this are dropped: a stub is noise, not a road. */
+const ROAD_MIN_RUN = 3;
+
+/**
+ * The major roads, as tiles, read from the same OSM picture as the terrain.
+ * `roads` are land tiles a road runs through: they get no house. `bridges`
+ * are river and wetland tiles a road crosses: drawn as a deck or a causeway,
+ * still buildable, so storms and building are untouched by any of this.
+ */
+function findRoads(cells: Cell[]): { roads: AxialCoord[]; bridges: AxialCoord[] } {
+  const byKey = new Map(cells.map((cell) => [axialKey(cell.coord), cell]));
+  const roadable = (cell: Cell | undefined): boolean => cell !== undefined && ["land", "river", "estuary"].includes(cell.terrainId);
+  const candidate = new Set<string>();
+  for (const cell of cells) if (roadable(cell) && (cell.roadShare ?? 0) >= ROAD_SHARE) candidate.add(axialKey(cell.coord));
+  // Close single-hex gaps: a weaker hex that joins two road tiles which do not touch each other.
+  for (const cell of cells) {
+    const key = axialKey(cell.coord);
+    if (candidate.has(key) || !roadable(cell) || (cell.roadShare ?? 0) < ROAD_GAP_SHARE) continue;
+    const around = neighbors(cell.coord).filter((n) => candidate.has(axialKey(n)));
+    const joins = around.some((a, i) => around.slice(i + 1).some((b) => Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - b.q - b.r) > 2));
+    if (joins) candidate.add(key);
+  }
+  const seen = new Set<string>();
+  const keep = new Set<string>();
+  for (const start of candidate) {
+    if (seen.has(start)) continue;
+    const component: string[] = [];
+    const queue = [start];
+    seen.add(start);
+    while (queue.length > 0) {
+      const key = queue.pop()!;
+      component.push(key);
+      const [q, r] = key.split(",").map(Number);
+      for (let dir = 0; dir < 6; dir++) {
+        const next = axialKey(neighbor({ q, r }, dir));
+        if (candidate.has(next) && !seen.has(next)) {
+          seen.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    const hasLand = component.some((key) => byKey.get(key)?.terrainId === "land");
+    if (component.length >= ROAD_MIN_RUN && hasLand) for (const key of component) keep.add(key);
+  }
+  const roads: AxialCoord[] = [];
+  const bridges: AxialCoord[] = [];
+  for (const key of keep) {
+    const cell = byKey.get(key)!;
+    (cell.terrainId === "land" ? roads : bridges).push(cell.coord);
+  }
+  const order = (a: AxialCoord, b: AxialCoord): number => a.r - b.r || a.q - b.q;
+  return { roads: roads.sort(order), bridges: bridges.sort(order) };
+}
+
+/** An extra link (beyond what keeps the network connected) needs the road along at least this share of the line between centres. */
+const LINK_COVERAGE = 0.6;
+
+/**
+ * How the road tiles join up, as pairs of neighbouring tiles.
+ *
+ * Drawing a strip between every pair of neighbouring road tiles turns any
+ * two-hex-wide stretch into a lattice of triangles. Keeping only the pairs
+ * the road visibly runs between leaves it in dashes, because a road rarely
+ * passes exactly through hex centres. So:
+ *   1. a maximum spanning forest over all neighbouring road pairs, weighted
+ *      by how much of the line between their centres is road: every road
+ *      stays in one piece, with no triangles (a tree has none);
+ *   2. then the remaining links the road clearly follows (LINK_COVERAGE),
+ *      strongest first, as long as each closes no triangle: that keeps the
+ *      real loops, such as the city grid.
+ */
+function linkRoads(tiles: AxialCoord[], cells: Cell[], pairs: Pair[], coverage: number[]): [number, number, number, number][] {
+  const onRoad = new Set(tiles.map((coord) => axialKey(coord)));
+  const keyOf = (i: number): string => axialKey(cells[i].coord);
+  const edgeKey = (a: string, b: string): string => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const candidates: { a: string; b: string; weight: number }[] = [];
+  pairs.forEach((pair, i) => {
+    const a = keyOf(pair.a);
+    const b = keyOf(pair.b);
+    if (onRoad.has(a) && onRoad.has(b)) candidates.push({ a, b, weight: coverage[i] });
+  });
+  candidates.sort((x, y) => y.weight - x.weight || (edgeKey(x.a, x.b) < edgeKey(y.a, y.b) ? -1 : 1));
+
+  // 1. Kruskal: a maximum spanning forest.
+  const parent = new Map<string, string>([...onRoad].map((key) => [key, key]));
+  const find = (key: string): string => {
+    let root = key;
+    while (parent.get(root) !== root) root = parent.get(root)!;
+    parent.set(key, root);
+    return root;
+  };
+  const kept = new Set<string>();
+  const rest: typeof candidates = [];
+  for (const edge of candidates) {
+    const ra = find(edge.a);
+    const rb = find(edge.b);
+    if (ra !== rb) {
+      parent.set(ra, rb);
+      kept.add(edgeKey(edge.a, edge.b));
+    } else {
+      rest.push(edge);
+    }
+  }
+
+  // 2. The strong extra links, as long as they close no triangle.
+  const linked = (a: string, b: string): boolean => kept.has(edgeKey(a, b));
+  const neighboursOf = (key: string): string[] => {
+    const [q, r] = key.split(",").map(Number);
+    return neighbors({ q, r }).map((n) => axialKey(n)).filter((n) => onRoad.has(n));
+  };
+  for (const edge of rest) {
+    if (edge.weight < LINK_COVERAGE) break;
+    const closes = neighboursOf(edge.a).some((c) => c !== edge.b && linked(edge.a, c) && linked(edge.b, c));
+    if (!closes) kept.add(edgeKey(edge.a, edge.b));
+  }
+
+  return [...kept]
+    .sort()
+    .map((edge) => {
+      const [a, b] = edge.split("|").map((key) => key.split(",").map(Number));
+      return [a[0], a[1], b[0], b[1]] as [number, number, number, number];
+    });
+}
+
 // ---- turning readings into terrain ------------------------------------
 
 function classifyCells(cells: Cell[], readings: Reading[]): void {
   cells.forEach((cell, index) => {
     const reading = readings[index];
+    cell.roadShare = reading.samples > 0 ? reading.road / reading.samples : 0;
     const total =
       reading.water + reading.sand + reading.green + reading.built + reading.mangrove + reading.pale + reading.marsh;
     if (total === 0) {
@@ -952,7 +1144,10 @@ async function writeDebugImage(
           river: `rgba(70,70,230,${hexAlpha})`,
           estuary: `rgba(20,175,135,${hexAlpha})`,
           beach: `rgba(245,190,55,${Math.min(1, hexAlpha + 0.1)})`,
-          land: `rgba(70,150,60,${hexAlpha * 0.6})`
+          land: `rgba(70,150,60,${hexAlpha * 0.6})`,
+          road: `rgba(220,40,40,${hexAlpha})`,
+          bridge: `rgba(150,40,220,${hexAlpha})`,
+          none: "rgba(0,0,0,0)"
         };
 
         for (const hex of hexes) {
@@ -1166,7 +1361,16 @@ async function main(): Promise<void> {
   const cells = buildGrid(meta);
   console.log(`Grid: ${cells.length} hexes over ${BOARD.south}..${BOARD.north} N, ${BOARD.west}..${BOARD.east} E`);
 
-  const readings = await readBasemap(meta, cells);
+  // Every pair of neighbouring hexes, once each, for the road links.
+  const indexOf = new Map(cells.map((cell, i) => [axialKey(cell.coord), i]));
+  const pairs: Pair[] = [];
+  cells.forEach((cell, a) => {
+    for (let dir = 0; dir < 3; dir++) {
+      const b = indexOf.get(axialKey(neighbor(cell.coord, dir)));
+      if (b !== undefined) pairs.push({ a, b });
+    }
+  });
+  const { readings, links: linkCoverage } = await readBasemap(meta, cells, pairs);
   classifyCells(cells, readings);
   console.log("after reading the map: ", JSON.stringify(countTerrain(cells)));
 
@@ -1180,6 +1384,21 @@ async function main(): Promise<void> {
   console.log(`after widening sand:    ${JSON.stringify(countTerrain(cells))} (${widened} land tiles became beach)`);
 
   const { monuments, notes, placements } = placeMonuments(places, cells);
+
+  const monumentKeys = new Set(monuments.map((m) => `${m.q},${m.r}`));
+  const found = findRoads(cells);
+  const roads = found.roads.filter((coord) => !monumentKeys.has(axialKey(coord)));
+  const bridges = found.bridges;
+  const roadLinks = linkRoads([...roads, ...bridges], cells, pairs, linkCoverage);
+  console.log(`road links: ${roadLinks.length}`);
+  const landCount = cells.filter((cell) => cell.terrainId === "land").length;
+  console.log(`roads: ${roads.length} land tiles (${((roads.length / landCount) * 100).toFixed(1)}% of land), ${bridges.length} bridge and causeway tiles`);
+  if (process.env.ROAD_DEBUG) {
+    for (const terrain of ["land", "river", "coast", "estuary"]) {
+      const shares = cells.filter((c) => c.terrainId === terrain).map((c) => c.roadShare ?? 0).sort((a, b) => b - a);
+      console.log(terrain, "top road shares", shares.slice(0, 12).map((v) => v.toFixed(3)).join(" "), "count>=0.07", shares.filter((v) => v >= 0.07).length, ">=0.1", shares.filter((v) => v >= 0.1).length, ">=0.13", shares.filter((v) => v >= 0.13).length);
+    }
+  }
 
   /*
    * Where the camera opens.
@@ -1260,6 +1479,11 @@ async function main(): Promise<void> {
     monuments,
     // The Panjim 2050 challenge zones (see ZONES).
     zones: assignZones(cells),
+    // Major roads and bridges, read from the OSM picture (see findRoads).
+    roads: roads.map((coord) => [coord.q, coord.r]),
+    bridges: bridges.map((coord) => [coord.q, coord.r]),
+    // Which neighbouring road tiles the road actually runs between (see linkRoads).
+    roadLinks,
     tiles: cells.map((cell) => ({ q: cell.coord.q, r: cell.coord.r, terrainId: cell.terrainId }))
   };
   for (const zone of file.zones) {
@@ -1281,6 +1505,9 @@ async function main(): Promise<void> {
 
   const classesPath = path.join(DEBUG_DIR, "panaji-classes.jpg");
   await writeDebugImage(meta, cells, [], classesPath, { hexAlpha: 0.5, title: "Panaji: hex classes over OSM" });
+  const roadKeys = new Set([...roads, ...bridges].map((coord) => axialKey(coord)));
+  const roadCells = cells.map((cell) => ({ ...cell, terrainId: roadKeys.has(axialKey(cell.coord)) ? (cell.terrainId === "land" ? "road" : "bridge") : "none" }));
+  await writeDebugImage(meta, roadCells, [], path.join(DEBUG_DIR, "panaji-roads.jpg"), { hexAlpha: 0.55, title: "Panaji: road and bridge tiles" });
 
   // Landmarks: monuments first, then the neighbourhood labels, numbered in
   // that order in both the image and the table.

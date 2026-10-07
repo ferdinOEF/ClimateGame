@@ -159,6 +159,12 @@ const MANGROVE_CYCLE = new Cycle<CreatureId[]>([
   ["kingfisher", "kite", "egret"]
 ]);
 
+// Gardens: one pigeon, then two.
+const GARDEN_CYCLE = new Cycle<number>([1, 2, 1]);
+
+// Town buildings: a cat on the roof, then on the wall, and so on.
+const TOWN_CAT_CYCLE = new Cycle<boolean>([true, false, false]);
+
 // Khazan: one of three water creatures, cycled (Section 1 explicitly names Khazan as needing the same cycle treatment as Mangrove, despite item 2's looser "randomized" wording).
 const KHAZAN_CYCLE = new Cycle<CreatureId>(["dragonfly", "prawn", "mudskipper"]);
 
@@ -237,6 +243,12 @@ export class ElementReactions {
     this.ambientSource = source;
   }
 
+  /** While a storm plays out, the background creatures stay away (taps still work). */
+  private ambientPaused = false;
+  setAmbientPaused(paused: boolean): void {
+    this.ambientPaused = paused;
+  }
+
   /**
    * At most `perSecond` ambient reactions a second for one element type. A
    * board pre-filled with hundreds of houses would otherwise keep a cat on
@@ -261,7 +273,7 @@ export class ElementReactions {
 
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
-    if (!this.ambientSource || !this.ambientEnabled) return;
+    if (!this.ambientSource || !this.ambientEnabled || this.ambientPaused) return;
     const seen = new Set<string>();
     let spawnedThisFrame = false;
     for (const el of this.ambientSource()) {
@@ -284,7 +296,7 @@ export class ElementReactions {
         this.nextAmbient.set(el.key, nowMs + jitter(AMBIENT_REPEAT_MS));
         continue;
       }
-      this.trigger(el.elementId, el.x, el.y, el.z);
+      this.trigger(el.elementId, el.x, el.y, el.z, el.top);
       spawnedThisFrame = true;
       this.nextAmbient.set(el.key, nowMs + jitter(AMBIENT_REPEAT_MS));
     }
@@ -302,7 +314,7 @@ export class ElementReactions {
    * version's geometry is at its original size, so `f` is 1 throughout. It
    * stays a parameter so a future resize changes one number, not forty.
    */
-  trigger(elementId: string, originX: number, originY: number, originZ: number): string[] {
+  trigger(elementId: string, originX: number, originY: number, originZ: number, top?: number): string[] {
     const factor = REACTION_SCALE;
     spawnLog = [];
     switch (elementId) {
@@ -319,7 +331,8 @@ export class ElementReactions {
         this.sandyVegetation(originX, originY, originZ, factor);
         break;
       case "house":
-        this.house(originX, originY, originZ, factor);
+        if (top !== undefined) this.townHouse(originX, originY, originZ, top);
+        else this.house(originX, originY, originZ, factor);
         break;
       case "beachside_resort":
         this.beachsideResort(originX, originY, originZ, factor);
@@ -338,6 +351,9 @@ export class ElementReactions {
         break;
       case "yacht":
         this.yacht(originX, originY, originZ, factor);
+        break;
+      case "garden":
+        this.garden(originX, originY, originZ);
         break;
       // Any other/future element id: no reaction, not an error — a new
       // roster addition simply has none until explicitly given one.
@@ -425,6 +441,31 @@ export class ElementReactions {
     const cat = creatureMesh("cat");
     place(cat, x, y + 0.02 * f, z + 0.34 * f);
     this.animator.spawn(cat, { durationMs: 2000, peakScale: f });
+  }
+
+  /**
+   * A town building (any of the town plan's kinds, which are smaller than the
+   * classic House): a cat on its roof, or on the wall beside it, in turn.
+   */
+  private townHouse(x: number, y: number, z: number, top: number): void {
+    const cat = creatureMesh("cat");
+    const onRoof = TOWN_CAT_CYCLE.next();
+    if (onRoof) place(cat, x + 0.04, top - 0.02, z + 0.02);
+    else place(cat, x + 0.22, y + 0.02, z + 0.2);
+    this.animator.spawn(cat, { durationMs: 2000, peakScale: 0.8 });
+  }
+
+  /** A garden on empty town land: a pigeon or two lifting out of the trees. */
+  private garden(x: number, y: number, z: number): void {
+    const flock = new THREE.Group();
+    const count = GARDEN_CYCLE.next();
+    for (let i = 0; i < count; i++) {
+      const bird = creatureMesh("pigeon");
+      place(bird, (i - (count - 1) / 2) * 0.12, i * 0.03, 0);
+      flock.add(bird);
+    }
+    place(flock, x - 0.1, y + 0.3, z - 0.05);
+    this.animator.spawn(flock, { durationMs: 2200, peakScale: 0.9, rise: 0.22 });
   }
 
   private beachsideResort(x: number, y: number, z: number, f: number): void {

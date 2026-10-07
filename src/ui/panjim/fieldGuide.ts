@@ -22,6 +22,25 @@ export interface Species {
 
 export const SPECIES: Species[] = guideData as Species[];
 const STORAGE_KEY = "riptide-rising:field-guide:v1";
+/** Maya's tips, kept as pages so they can be reread. */
+const NOTES_KEY = "riptide-rising:maya-notes:v1";
+
+/** A page in the guide written by Maya: one tip she gave. */
+export interface GuideNote {
+  id: string;
+  title: string;
+  text: string;
+}
+
+function loadNotes(): GuideNote[] {
+  try {
+    const raw = localStorage.getItem(NOTES_KEY);
+    const parsed = raw ? (JSON.parse(raw) as GuideNote[]) : [];
+    return Array.isArray(parsed) ? parsed.filter((note) => typeof note?.id === "string" && typeof note.text === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function load(): Set<string> {
   try {
@@ -34,6 +53,9 @@ function load(): Set<string> {
 
 export class FieldGuide {
   private readonly found = load();
+  private readonly notes = loadNotes();
+  /** Asks Maya to say a note again (the "Hear it again" button on its page). */
+  onReplayNote: ((note: GuideNote) => void) | null = null;
   private readonly button: HTMLButtonElement;
   private readonly backdrop: HTMLElement;
   private readonly grid: HTMLElement;
@@ -58,6 +80,8 @@ export class FieldGuide {
         <div class="field-guide-head"><b>Field Guide</b><span class="field-guide-count"></span><button type="button" class="field-guide-close" aria-label="Close">×</button></div>
         <p class="field-guide-hint">Tap the creatures that visit what you build. Free: no time passes.</p>
         <div class="field-guide-grid"></div>
+        <div class="field-guide-notes-head"><b>Maya's notes</b><span class="field-guide-notes-count"></span></div>
+        <ul class="field-guide-notes"></ul>
       </div>`;
     this.backdrop.addEventListener("click", (event) => {
       if (event.target === this.backdrop) this.close();
@@ -71,6 +95,32 @@ export class FieldGuide {
     this.toast.hidden = true;
     container.appendChild(this.toast);
     this.renderButton();
+  }
+
+  /** Records one of Maya's tips as a page. Returns true if it was new. */
+  addNote(note: GuideNote): boolean {
+    if (this.notes.some((existing) => existing.id === note.id)) return false;
+    this.notes.push({ id: note.id, title: note.title, text: note.text });
+    try {
+      localStorage.setItem(NOTES_KEY, JSON.stringify(this.notes));
+    } catch {
+      // Private mode: the notes last for this run.
+    }
+    this.renderButton();
+    return true;
+  }
+
+  /** The guide's button, for its tooltip. */
+  get buttonEl(): HTMLButtonElement {
+    return this.button;
+  }
+
+  get speciesTotal(): number {
+    return SPECIES.length;
+  }
+
+  get noteCount(): number {
+    return this.notes.length;
   }
 
   get count(): number {
@@ -104,6 +154,12 @@ export class FieldGuide {
 
   private renderButton(): void {
     this.button.textContent = `Field Guide ${this.count}/${SPECIES.length}`;
+    if (this.notes.length > 0) {
+      const notes = document.createElement("span");
+      notes.className = "field-guide-button-notes";
+      notes.textContent = ` · ${this.notes.length} note${this.notes.length === 1 ? "" : "s"}`;
+      this.button.appendChild(notes);
+    }
   }
 
   private showToast(text: string): void {
@@ -128,6 +184,22 @@ export class FieldGuide {
         (page.querySelector("p") as HTMLElement).textContent = species.line;
       }
       this.grid.appendChild(page);
+    }
+    const list = this.backdrop.querySelector(".field-guide-notes") as HTMLElement;
+    (this.backdrop.querySelector(".field-guide-notes-count") as HTMLElement).textContent =
+      this.notes.length === 0 ? "None yet: Maya's tips land here." : `${this.notes.length}`;
+    list.innerHTML = "";
+    for (const note of this.notes) {
+      const item = document.createElement("li");
+      item.className = "field-guide-note";
+      item.innerHTML = `<b></b><p></p><button type="button" class="field-guide-replay">Hear it again</button>`;
+      (item.querySelector("b") as HTMLElement).textContent = note.title;
+      (item.querySelector("p") as HTMLElement).textContent = note.text;
+      item.querySelector("button")!.addEventListener("click", () => {
+        this.close();
+        this.onReplayNote?.(note);
+      });
+      list.appendChild(item);
     }
     this.backdrop.hidden = false;
   }

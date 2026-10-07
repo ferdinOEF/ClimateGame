@@ -6248,3 +6248,640 @@ strict:
 
 Software GL (SwiftShader) gives about 2 fps, so it says nothing about
 real-GPU frame rate. There were no console errors.
+
+## Maya, Warning Heat and a livelier town (branch `maya-warning-heat`)
+
+Base: master at 59e920b. The safety tag `pre-maya-guide` exists in the local
+clone only; the git proxy refused the tag push again (as it did for every
+earlier tag). The branch `backup/pre-maya-guide` marks the same commit on GitHub.
+
+### P0 — audit and baseline — DONE
+
+**What the audit found:**
+- **Which resolver Panaji uses.** Panaji's storms are resolved by
+  `src/core/zones.ts` (`resolveChallenge`, zone by zone, house by house).
+  `src/core/hazard.ts` is the older whole-map resolver; only the turn-model
+  levels and the Tutorial use it. So the shared exposure function for the
+  warning heat wraps `resolveChallenge`, the code that actually decides which
+  houses fall on this level.
+- **The Voices panel** is mounted into the objectives panel's body
+  (bottom-right) by `PanjimController`. The Tutorial never constructs the
+  controller and keeps its own objectives checklist.
+- **Building on land.** Only House is valid on land, and House is excluded
+  from the build menu, so empty land tiles (gardens, roads) stay unbuildable.
+  Leaving some land empty opens nothing new to the player.
+- **The OSM layer** is a raster rendered in OpenStreetMap's standard style,
+  not vector data. Major roads can be read from its fill colours (trunk,
+  primary, secondary) in the same pixel pass the map generator already makes.
+
+**Instrumentation added:**
+- `scene.ts` keeps `frameStats`: CPU ms per frame for the update and for
+  `renderer.render`, plus the last frame's draw calls and triangles.
+- `tools/phaseShots.ts` reports these numbers with the fps.
+- Software GL makes fps meaningless here, so draw calls, triangles and CPU
+  ms are what before/after comparisons rest on.
+- Grabbing the board now cancels a camera glide in progress, so the player's
+  hand always wins over a scripted camera move.
+
+**Baseline** (1920×1080, software GL), full Panaji board:
+
+| fps | update CPU | render submit | draw calls | triangles |
+|---|---|---|---|---|
+| 2.4 | 0.74 ms/frame | 0.8 ms/frame | 25 | 324,596 |
+
+### P1 — one shared `computeExposure` — DONE
+
+**What was built:**
+- **The probe.** `resolveChallenge` (`core/zones.ts`) takes an optional tile
+  probe. It reports the storm's local intensity at every tile on the path:
+  the zone's leak, faded by distance from the water, through the same
+  `localIntensity()` that decides which houses fall.
+  - A house an earlier front already judged (in the compound storm) is
+    skipped, exactly as the resolver skips it.
+  - The probe only reads. A test shows the outcome is identical with and
+    without it.
+- **`computeExposure`** (`core/exposure.ts`) runs the real resolver on a
+  copy of the board and returns three things:
+  - each tile's intensity;
+  - its exposure, `min(1, (intensity / house resilience)²)`;
+  - the houses at risk, which are the resolver's own `damagedHouses`.
+
+  `withoutDefences` runs the same storm with every defence against it
+  removed. The green shields compare against that.
+- **`ActionRun.exposureFor(challenge)`** previews on the board as it will
+  stand on the storm's date, with defences at the maturity they will have
+  reached and at the locked strength. It shares that preview board with the
+  readiness gauge, so the two can never disagree.
+- **`heatRamp`**: 5 quarters out is 5%, then 16.25%, 27.5%, 38.75%, and 50%
+  on the last quarter. The heat is capped at 50%.
+
+**Tests** (`tests/exposure.test.ts`, 22 tests):
+- **Setup.** Real Panaji runs, both presets, 4 seeds, all three storms.
+  Each run plays to the quarter before the storm, previews, then lands the
+  storm on the same seed.
+- **What holds:**
+  - The previewed houses at risk equal the houses actually lost. The
+    tolerance is zero, provided the player builds nothing between preview
+    and landing.
+  - Tiles previewed at zero take no damage.
+  - Every lost house was previewed at exposure 1.
+- **Defences in the window.** The same holds with dunes, sandy vegetation
+  and a mangrove planted inside the 5-quarter window.
+- **Other checks:** the real board is never touched; protected tiles are only
+  those whose exposure fell by at least 0.15; and with no defences built,
+  nothing is protected.
+- **Not trivial.** On seed s7 the previews hold 0–149 houses at risk per
+  storm.
+
+**Decisions:**
+- **Defence cooling is per zone, not per tile.** The brief asked for defences
+  to cool their own tile and, more weakly, their neighbours. The resolver has
+  no per-tile or neighbour rule: a defence raises its zone's defence, and that
+  lowers the leak for every tile of the zone. To stay truthful, the heat
+  drops zone-wide when a defence is built. "What you fixed" is shown with
+  green shields on the defence tiles and on every tile whose exposure the
+  defences cut. Adding a neighbour rule to the resolver itself would change
+  storm outcomes and re-balance both presets, so I did not.
+- **Exposure is squared.** On the easy cyclone, 236 tiles feel the storm but
+  no house falls. With linear exposure the whole beach would glow red for a
+  storm that takes nothing. Squared, half the breaking point shows a quarter
+  of the heat, and only a house that will actually fall reaches full red.
+- **Self-assessment.** The numbers are trustworthy. The open question is
+  whether players read "red" as "will fall" or "is stressed". The pulse on
+  the at-risk houses (P2) is what separates the two.
+
+### P2 — the warning heat overlay — DONE
+
+**What was built:**
+- **One layer.** `render/heatOverlay.ts` is one `InstancedMesh` of flat hexes
+  with one shader, so it costs one draw call however many tiles are hot. It is
+  rebuilt on every quarter tick and every build, demolish, repair, rewind or
+  resume; the shader only animates the pulse from a time uniform.
+  - It sits 0.012 above each tile's top, over the terrain colour and the
+    street map (both drawn in the terrain shader) and under every building,
+    defence and creature (opaque meshes that hide it).
+  - It never writes depth, and uses a polygon offset so it cannot z-fight.
+- **What each tile gets** (`buildHeatView` in `core/exposure.ts`, tested):
+  - **Heat** = ramp(quarters left) × exposure, on land, beach and wetland
+    tiles. The water the storm comes from is never tinted. The heat is capped
+    at 50%, hatch stripes and pulse band included.
+  - **Hatch** above 30% heat: dark diagonal stripes laid out in world space,
+    so they run continuously across tiles.
+  - **Pulsing dark edge** on the houses that will fall, hardest hit first, at
+    most 24. A slow 2.6 s pulse; with reduced motion it is a still edge.
+  - **Green shield** (a shape with a white rim, upper left of the tile, clear
+    of the building) on every defence answering this storm on its path, and on
+    every tile the defences cooled by at least 0.15 of exposure. Where a
+    shielded tile is not hot, there is also a faint green wash.
+- **Only one storm's heat at a time:** the next one. The schedule keeps
+  storms at least two years apart, so two never fall in the same 5-quarter
+  window.
+  - The compound storm is one event with two fronts. Its heat is one crimson
+    layer: the stronger front's intensity per tile, not two hues.
+  - FUTURE WORK: if a level ever schedules two storms within 5 quarters of
+    each other, show the nearer one, as now, and say so in the Outlook line.
+- **Forecast ghosts retired.** The locked Forecast's translucent ghost tiles
+  are gone; the heat says the same thing, per tile and truthfully. The
+  Forecast's dashed outline and in-scene label stay until the heat starts,
+  then the outline steps aside.
+- **"Show risk" toggle** in the top right, under the Houses counter, with
+  shortcut R. It is on by default and remembered on this device
+  (`riptide-rising:show-risk:v1`; storage is wrapped in try/catch). It is a
+  real button with `aria-pressed`. Turning it off clears the heat and leaves
+  everything else as it was.
+- **Colour:** crimson rather than orange-red. In the first shots an
+  orange-red at 50% over the beach's sand gold read as more sand.
+
+**Screenshots** (`docs/screenshots/maya/`; the cyclone is played through
+first, because the easy cyclone takes no houses and so truthfully shows only
+a faint pink of at most 19%):
+- `p2-heat-5`, `p2-heat-3`, `p2-heat-2`, `p2-heat-1`: before the flood, no
+  defences.
+- `p2d-heat-5`, `p2d-heat-defend`, `p2d-heat-1`: with a khazan and two
+  mangroves planted.
+- `p2d-risk-off`: the heat toggled off.
+- Every shot has a `-gray` twin. The hatch and the dark pulsing edges still
+  separate hot from safe ground with no colour at all.
+
+**Performance** (software GL): 26 draw calls (+1), 324,616 triangles (+20),
+update 0.84 ms/frame (+0.1 ms; the exposure is only recomputed on board or
+clock changes).
+
+**Self-assessment:**
+- **Readable.** The ramp from 5% to 50% over the last five quarters is easy
+  to follow, and the hatch carries it in grayscale.
+- **Heavy on the flood.** Before the easy-test flood, almost every tile of
+  the wetlands is hatched: the whole Taleigao–St Cruz bowl is genuinely in
+  the water's way. It is truthful, but the wetland tiles (no houses, nearest
+  the river) read reddest. The pulse is what points at the houses.
+- **What a first-time player might misread.** Pink wetland is where the
+  water comes from, not something to save. Maya (P3–P4) names the place with
+  the most houses at risk, which should anchor the reading.
+
+### P3–P5 — Maya, the field guide — DONE
+
+**TODO:** Review Maya's design and tips with Goan collaborators (Storiculture
+/ Transition Research).
+
+**P3: who she is and how she talks.**
+- **Look** (`ui/panjim/maya.ts`). An original inline-SVG character: warm
+  brown skin, dark hair in a bun, an orange headband, a green field vest over
+  a white shirt, a notebook on her hip. CSS animates her. There are no
+  textures, no 3D and nothing to load.
+- **Dock.** She stands bottom-left, above the street-map switch, with a
+  speech bubble to her right. She is 96 px tall at 1080p and 112 px on
+  screens wider than 1700 px.
+- **States**, as classes on her root:
+  - idle: blinks and breathes
+  - greeting: waves
+  - tip: points
+  - explains: lightbulb
+  - warning: arms up, red "!" badge, mouth open
+  - worried: brows up, sweat drop, hands in
+  - celebrates: arms up, twinkling stars, bounce
+  - jump: a hop, also used for every move
+- **Reduced motion.** With `prefers-reduced-motion` every animation is off;
+  the states stay as still poses, and a move is a fade.
+- **Lines live in `src/data/maya.json`**, kept short and kind:
+  - the greeting "Hello! I am Maya. Let us keep Panjim dry." (a test checks
+    that nothing says "Namaskar");
+  - the four tips the brief asked for (mangroves, khazans, dunes and
+    pandanus, seawalls), plus the red heat, the green shields and Get ready;
+  - five of the old Voices of Panjim as occasional lines in her voice
+    (Anthony at Miramar, Mrs Fernandes, Sitaram, Neha, Prakash).
+- **The rules** (`app/mayaDirector.ts`):
+  - At most one line per quarter, plus a quarter's rest between ordinary
+    tips.
+  - No line during a time-lapse or a storm, while the build menu, the brief,
+    the Aftermath, the Field Guide or the finale is open.
+  - Each line is said once per session, unless reopened from the Field Guide.
+  - Lines queue and never overlap. A warning may replace a line still showing
+    from an earlier quarter, never one from the same quarter.
+- **Controls.** "Got it", or Esc, dismisses the line. Esc is caught before
+  the level's own quit, so it is never accidental. M, or the "Maya" toggle
+  under Show risk, mutes her lines and leaves the heat on. The mute is
+  remembered safely.
+- **Accessibility.** The bubble is real text in an `aria-live="polite"`
+  region. It is dark text on cream, well over 4.5:1.
+
+**P4: the warning hop.**
+- **Three quarters out** (or at the first look inside three, after a skip),
+  Maya hops to the at-risk house with the most other at-risk houses within
+  two hexes. That is where the most homes are at risk, not the hottest tile,
+  which is usually empty wetland.
+  - She names the nearest neighbourhood landmark ("St Cruz is exposed!
+    Strengthen it before the flood.") and the camera glides there.
+  - The glide is cancelled the moment the player grabs the board.
+- **One quarter out** she gives a last call with the real count ("Last call!
+  69 homes are still in danger, most of them around St Cruz.").
+- **If the danger has passed.** If the warned place has been fixed, she
+  celebrates instead ("… looks safe now. Well done!"). If nothing was ever
+  at risk, she says nothing.
+- **City voices** are held back once a forecast has locked, so the run-up to
+  a storm is for warnings.
+
+**P5: teach by consequence, and the Field Guide link.**
+- **The Aftermath card** carries Maya's line, worked out from the resolved
+  storm (`mayaAftermath` in `core/mayaLines.ts`, tested). Examples: "The
+  dunes at Miramar held 52 homes." "The khazan absorbed the flood water at
+  Taleigao."
+  - **Mood.** She celebrates a 3-star or lossless storm and is worried
+    otherwise, but a loss is always followed by what would help, never blame.
+  - **Fewer voices.** With her line present, the card drops the old generic
+    line (except to report a failed seawall or dam) and the "saved the most"
+    estimate. The first draft showed three overlapping numbers.
+- **The Field Guide** gained "Maya's notes". Every tip and city voice she
+  says becomes a page, kept on this device. "Hear it again" replays it at
+  once.
+
+**Screenshots** (`docs/screenshots/maya/`):
+- `p3-board`: the greeting.
+- `p3-maya:tip`, `:explains`, `:worried`, `:celebrates`: the states.
+- `p4-heat-3`: the warning hop at St Cruz.
+- `p4-heat-1`: the last call.
+- `p5-challenge`: the Aftermath with her line.
+- `p5g-guide`: the Field Guide with her notes.
+
+**Self-assessment:**
+- **Helpful or annoying?** Mostly helpful. At most one line per quarter,
+  with a rest between tips, keeps her rare. The warning hop is the strongest
+  moment: it puts a name and a place on the red.
+- **The risk.** A player who fast-forwards through the run-up may get the
+  warning and the last call on consecutive actions. That is by design: they
+  are the only lines that matter then.
+- **First-time confusion.** At 3 quarters out the camera move might feel
+  like the game taking over. It is slow, and any drag cancels it.
+
+### P6 — HUD tooltips — DONE
+
+**What was built:**
+- **One manager** (`ui/tooltip.ts`), with all wording in
+  `src/data/tooltips.json`: one plain sentence per control, with live values
+  filled in when shown.
+  - **Hover:** 400 ms delay.
+  - **Keyboard:** shows on focus, hides on blur.
+  - **Touch:** shows on a press held 500 ms.
+  - **Esc** closes it, and only it, if a tooltip's control has focus.
+  - **`aria-describedby`** points at the tooltip while it shows.
+  - **Placement:** below the control, else above, else beside, never over it
+    and always inside the viewport. Build-menu options open theirs beside the
+    whole menu, so the tip never covers the neighbouring options (the first
+    shots had it over them).
+- **Covered:**
+  - the date, +1 year ("Pressing this will fast-forward the timeline by 1
+    year. Defences keep growing while you wait, but so does the sea."), and
+    Next event (with the live quarters and storm);
+  - the Outlook track and next-storm line;
+  - the readiness gauge (live % stopped, homes that would stand, stars);
+  - sea level, Coin and income, the jar (live amount), Houses saved;
+  - the Field Guide (live counts), Show risk, Maya and her Got it;
+  - Get ready;
+  - every instrument-cluster meter, collapse and expand;
+  - Back and Help;
+  - the street-map switch and slider (live %);
+  - every build-menu item: what it does, its cost, its seasons, and whether
+    it is affordable.
+- **Native `title` attributes are gone** from these controls, so two
+  tooltips never show at once.
+- **Coverage check.** `missingTooltips()` lists every HUD control under the
+  HUD selectors that has no tooltip. `tools/phaseShots.ts` prints it on
+  every run, and it reads "none".
+- **Test.** `tests/tooltips.test.ts` checks that every key the code attaches
+  exists in the JSON and that every element has a build description.
+
+**Screenshots:** `p6-tip-ffYear`, `-readiness`, `-coin`, `-housesCounter`,
+`-riskToggle`, `-getReady`, `p6b-menu-estuary`.
+
+### P6b — "Get ready" replaces Voices of Panjim — DONE
+
+**What changed:**
+- **The Voices panel is gone from Panaji.** The data and logic stay:
+  `showVoicesPanel: false` in `levels.json`, and `activeVoices(level)`
+  returns none, so dormant requests pay nothing. Their best lines are now
+  Maya's (P3).
+  - The Tutorial never used that panel and keeps its own objectives
+    checklist (a test checks its flag is not off).
+- **Get ready** (`core/prep.ts`, tested) sits in the same corner. It is a
+  compact, collapsible list of 2–3 optional jobs for the next storm.
+  - **When it refreshes:** when a storm is announced (the run starts, or the
+    previous storm lands). Jobs from a storm that has passed are dropped.
+  - **How jobs are chosen:**
+    - Zones on the storm's path are ranked by houses at risk, from
+      `computeExposure`, then by heat.
+    - Each top zone gets the first template that answers this kind of storm
+      and can actually be built there `count` times. The answers are dunes,
+      pandanus, mangroves and seawall for a cyclone; khazans and mangroves
+      for a flood.
+  - **Never starts done:** a job counts what stands in its zone on top of
+    what stood when it was set.
+  - **Data.** Templates (element, count, label, reward) and place names live
+    in `levels.json` under `prep`.
+  - **Rewards.** Rewards keep the Voices' scale (40–60 base) and follow the
+    coin preset (×10 on easy-test).
+  - **Tracking** reuses the Voices' `voiceProgress` standing count.
+  - **Saves.** Jobs are saved in run snapshots, so a resume or a replay
+    keeps them.
+  - **On completion:** a coin pop on the row, a coin sound and a chime,
+    and Maya's cheer. The cheer is a pose, not a line, so it never uses her
+    one line per quarter.
+  - **Never blocks:** nothing waits on a job.
+- **"Pandanus"** is the existing `sandy_vegetation` element (the game
+  already calls it pandanus). There is no flood-answering "vegetation"
+  element, so flood jobs use khazans and mangroves.
+- **Tests:**
+  - `tests/prep.test.ts`, 7 tests: jobs answer the storm and are buildable
+    where they point; they complete on the matching builds and pay once;
+    rewards are ×10 on easy-test; they refresh on announcement; they
+    survive a save.
+  - The bot balance tests still pass with Voices dormant.
+
+**Screenshot:** `p6b-prep-one`, a finished job ticked, with its reward.
+
+**Self-assessment:**
+- **Readable.** The panel is a third the height of the old Voices box. Each
+  job names a place and a number.
+- **Possible confusion.** "Plant 2 mangroves along Taleigao" could send a
+  first-timer to land tiles, where mangroves cannot go. The build menu only
+  offers what is valid, and Maya's mangrove tip says "on the wetland edge".
+
+### P6c — varied, smaller buildings — DONE
+
+**The town plan.** `levels/townLayout.ts` is pure, deterministic and tested
+(`tests/townLayout.test.ts`). From the map and the level seed alone, it
+decides for every land tile one of: one of seven building kinds, a garden,
+or a road.
+- **Kinds:**
+  - small house: the commonest, 200 of 449 on Panaji;
+  - bungalow with a hipped roof and verandah;
+  - two-storey with a balcony rail;
+  - apartment block: 3–4 storeys, flat roof with a water tank;
+  - cafe with a striped awning and a tiny table outside;
+  - shop with a flat roof, parapet, signboard stripe and shutter;
+  - godown: a long low warehouse, a street back from the water.
+- **Weighted by district:**
+  - the old city, Fontainhas and the Mandovi waterfront: apartments, shops
+    and cafes;
+  - Miramar, Caranzalem and Dona Paula: bungalows and cafes;
+  - Taleigao, St Cruz and Merces: mostly small houses.
+- **Colours.** Walls come from a Goan palette: whitewash, ochre, laterite
+  red, terracotta, Fontainhas blue, teal, pink, mustard, mint and soft grey.
+  Roofs are red tile, grey or blue, applied separately. No two neighbouring
+  buildings share a wall colour where another is free (under 2% of
+  neighbouring pairs, tested).
+- **Size and orientation.**
+  - Each kind is modelled at about 56% of the old House's footprint and
+    57% of its height.
+  - Per building: ±12% scale and a quarter-turn, both hashed from the tile
+    and the seed. So a building never changes between frames, saves or
+    reloads (a determinism test checks this).
+
+**Rendering:**
+- **One InstancedMesh per kind:** seven draw calls for the whole town.
+- **Colours.** A vertex attribute `aTint` marks each part as wall
+  (multiplied by `instanceColor`), roof (multiplied by a per-instance
+  `aRoofColor`) or its own colour (doors, windows, awnings, signboards).
+- **Damage** browns both walls and roof.
+- **Every kind is a House to the game**, so hits, the damage tint and lean,
+  the "saved" moments, the heat, the house counters and the resolver all
+  work unchanged.
+- **Apartments are not weighted ×3:** every building is one dwelling, so
+  Houses saved still means houses.
+- **Cafes:** no idle animation (a static awning and table only), so the
+  extra cost is zero.
+
+**Houses counted:**
+- **From 661 to 449:** gardens and roads now hold land that used to carry a
+  House.
+- **Economy unchanged.** The economy setting is now `houseEconomyHouses: 10`
+  (scale = 10 / count), so the city's money, food and population stay at
+  ten houses' worth whatever the count. Easy-test still opens with +100
+  Coin a quarter, food −10 and population 100.
+- **Easy flood, before the fix.** The first layout pushed Casual's easy
+  flood to 63/108 saved (58%, 1★), because the gardens thinned the safe
+  inland houses. Raising easy-test house resilience made no difference: the
+  lost houses stand right at the water.
+- **The fix was in the layout.** Outside the old city, a wetland's edge is
+  now mostly fields and gardens (as it is in Taleigao). Every bot assertion
+  passes again on both presets.
+
+**Performance** (full board, software GL):
+
+| | draw calls | triangles | update CPU |
+|---|---|---|---|
+| Before (P0) | 25 | 324,596 | 0.74 ms/frame |
+| After | 35 | about 159,000 | 0.7–1.0 ms/frame |
+
+Triangles roughly halved. The kinds are simpler than the old detailed House,
+and there are fewer of them.
+
+### P6d — softer grass, visible roads, OSM at 32%, clustered density — DONE
+
+- **Grass.** Land is `#8EAB4F`, 28% less saturated than the old lime
+  `#8FBF3E` and a touch more olive (hue 82° to 79°), with luminance kept near
+  160 so it still parts from sand, wetland, river and sea. A very subtle
+  per-tile hue and saturation jitter (`jitterGrass`) stops it reading as a
+  printed grid.
+- **Roads**, read from the OSM data by the map generator
+  (`npm run mapgen:panaji`):
+  - **Detection.** The same pixel pass that classifies terrain also counts
+    the standard style's road fills: motorway, trunk, primary and secondary.
+    Tertiary roads are white, which labels and outlines share, so they are
+    left out. Sand is kept from reading as road.
+  - **Road tiles.** A land hex is a road tile from 13% road cover. A weaker
+    hex (5% or more) joins only where it closes a gap. Stubs under three
+    tiles are dropped. That gives 126 land road tiles (18.7% of land), plus
+    38 river and wetland crossings: the Atal Setu, the Patto and Ribandar
+    causeways, Bambolim.
+  - **Links.** Strips are drawn only along road links:
+    - every pair of neighbouring road tiles is scored by how much of the line
+      between their centres is road;
+    - a maximum spanning forest keeps each road in one piece with no
+      triangles;
+    - then strong extra links (60% or more) that close no triangle are
+      added, which keeps real loops such as the city grid.
+
+    Drawing every neighbour pair first produced a lattice of triangles, and
+    a coverage cut alone left dashes.
+  - **Debug image:** `tools/mapgen/debug/panaji-roads.jpg`.
+- **What roads change.** No House on a road tile. Crossings stay buildable;
+  they are drawn as a deck on a pier. Storms are unaffected.
+- **How roads look.** Light warm grey strips with a disc at each junction:
+  never green, red or concrete grey, so they never read as a defence or as
+  heat. They sit a hair above the terrain, under the heat and every
+  building.
+- **Street map at 32%** (from 23%): the default, the slider's start, and a
+  v2 to v3 saved-setting migration. A saved 23% (the old default, almost
+  certainly untouched) becomes 32% and keeps the on/off; any other saved
+  value is kept. `tests/mapLayer.test.ts` covers the default, the migration,
+  a kept choice and blocked storage.
+- **Density field** (`townLayout`):
+  - **Inputs:** closeness to the old city (the Church), being beside a
+    major road, the Mandovi waterfront, and the zone (Fontainhas and the
+    waterfront denser, the Taleigao–Merces wetlands thinner, wetland edges
+    outside the core mostly gardens).
+  - **Calibration.** One global offset, found by bisection, holds the empty
+    share at 16% of buildable land. A test keeps it within 10–20%.
+  - **Result.** The old city within 8 hexes is over 95% built, the edges
+    20 or more hexes out under 85% (tested).
+  - **Gardens.** Empty plots get two or three trees, a hedge and a coconut
+    palm.
+- **Before/after:** `docs/screenshots/maya/compare-before-after.jpg`
+  (colour and grayscale). The sea of red boxes is gone, the street map shows,
+  and in grayscale the terrain, the buildings and the roads still part.
+
+### P6e — ambient life and boats — DONE
+
+- **People on the roads and the waterfront** (`render/ambientLife.ts`):
+  - up to 28, mostly starting near the old city;
+  - in saturated clothes, exaggerated about 2.2× so they read at the
+    opening zoom;
+  - one InstancedMesh, keeping to one side of the road;
+  - like the creature scheduler, at most one sets off per frame, under a
+    hard cap.
+- **Boats.** Five low-poly boats (one InstancedMesh) circle slowly on open
+  water: river and sea tiles with water all round, spread out, nearest the
+  town first.
+- **Cats on rooftops and walls.** The town buildings' reaction (through the
+  existing scheduler, two a second at most) puts a cat on the roof or on the
+  wall beside it, in turn.
+- **More birds.** The gardens join the same scheduler as a source: a pigeon
+  or two lifts out of the trees, at most one garden a second. Pigeons are not
+  Field Guide species, so they cannot be farmed.
+- **In a storm.** Walkers shrink away indoors, background creatures pause
+  (taps still work), and boats pull in and heel over with the wind. All of it
+  returns when the storm ends.
+- **Reduced motion:** half the walkers, standing still; boats still.
+- **Cost:** two more draw calls and about 3,000 triangles. The update CPU
+  stayed within this run's noise (0.83–1.0 ms/frame).
+
+**Self-assessment:**
+- **Readable.** The town reads as Panjim now: the old city dense, the
+  suburbs green with gardens, the roads and the river crossings visible.
+- **Small at the opening zoom.** The buildings read as a varied town rather
+  than as individual buildings until the player zooms in. That is
+  deliberate: the brief asked for them to stop hiding the terrain.
+- **Roads zig-zag** a little, where the hex grid forces it.
+
+### P7 — bots, regression, performance — DONE
+
+**Browser verification:** `npm run verify:maya` (`tools/verifyMaya.ts`).
+Every check passed, with zero console errors.
+- **The Tutorial:**
+  - no Maya, no heat, no Get ready or Voices;
+  - its own objectives checklist is shown;
+  - 13 HUD tooltips are present and all show real text;
+  - building a mangrove, a dune and a house, then surviving its cyclone,
+    completes it (results screen, cleared).
+- **Panaji:**
+  - the Voices panel is gone and Get ready shows 3 jobs;
+  - the street map is on at 32%;
+  - 126 road tiles render (strips, junctions, bridge piers), with no
+    building on any road tile;
+  - Maya greets with "Hello! I am Maya. Let us keep Panjim dry.";
+  - all 29 HUD tooltips are present and show real text;
+  - M mutes and unmutes Maya; R hides and shows the heat;
+  - the heat shows 3 quarters out (77 tiles).
+- **Preview against storm, in the browser:**
+
+  | Storm | Previewed at risk | Lost |
+  |---|---|---|
+  | Cyclone (easy) | 0 | 0 |
+  | Flood (easy) | 35 | 35 |
+
+**Heat is information only.** `tests/exposure.test.ts` plays a run twice,
+once computing the exposure, the undefended exposure, the heat view and the
+readiness every quarter, and once never looking. The final snapshots and
+every outcome are byte-identical.
+
+**Bots** (`npm run bots -- easy-test` / `-- strict`, 20 seeds each):
+- **Voices are dormant on Panaji**, so "Voices" is 0 for every persona.
+  Get ready pays its jobs instead.
+- **The paths are smaller** (120, 100 and 100 houses, not 200, 181 and 181),
+  because gardens and roads took land.
+
+easy-test:
+
+| Persona | Per storm 1★/2★/3★ (cyclone · flood · compound) | Houses saved median | Index median |
+|---|---|---|---|
+| casual | 0/0/20 · 0/16/4 · 20/0/0 | 121/121 · 65/101 · 20/101 | 37 |
+| greedy | 0/0/20 · 0/20/0 · 20/0/0 | 120/120 · 65/100 · 20/100 | 30 |
+| smart | 0/0/20 · 0/0/20 · 0/0/20 | 120/120 · 100/100 · 100/100 | 83 |
+| rusher | 0/0/20 · 0/20/0 · 20/0/0 | 120/120 · 65/100 · 20/100 | 16 |
+| banker | 0/0/20 · 0/9/11 · 20/0/0 | 120/120 · 100/100 · 28/100 | 35 |
+| walls | 0/0/20 · 0/0/20 · 20/0/0 | 120/120 · 100/100 · 6/100 | 18 |
+| mangroves | 0/0/20 · 0/0/20 · 2/11/7 | 120/120 · 100/100 · 65/100 | 64 |
+
+strict:
+
+| Persona | Per storm 1★/2★/3★ (cyclone · flood · compound) | Houses saved median | Index median |
+|---|---|---|---|
+| casual | 0/14/6 · 20/0/0 · 20/0/0 | 104/121 · 22/101 · 6/101 | 36 |
+| greedy | 0/20/0 · 20/0/0 · 20/0/0 | 103/120 · 22/100 · 6/100 | 30 |
+| smart | 0/0/20 · 0/0/20 · 0/0/20 | 114/120 · 100/100 · 100/100 | 77 |
+| rusher | 0/20/0 · 20/0/0 · 20/0/0 | 103/120 · 22/100 · 6/100 | 15 |
+| banker | 0/9/11 · 20/0/0 · 20/0/0 | 114/120 · 22/100 · 7/100 | 20 |
+| walls | 0/0/20 · 0/18/2 · 20/0/0 | 114/120 · 65/100 · 2/100 | 23 |
+| mangroves | 0/0/20 · 0/0/20 · 0/0/20 | 114/120 · 100/100 · 100/100 | 69 |
+
+Every bot assertion holds on both presets:
+- easy-test: Casual at least 2★ on storms 1–2, Smart 3★ on all three, and no
+  persona loses every house on storms 1–2;
+- strict: the old assertions.
+
+**Performance** (1920×1080, software GL; no GPU in this container, so fps is
+not the real-hardware figure):
+
+| | fps | update CPU | draw calls | triangles |
+|---|---|---|---|---|
+| Before (P0, master) | 2.4 | 0.74 ms/frame | 25 | 324,596 |
+| After, full board, heat off | 2.9 | 0.9–1.3 ms/frame | 35 | 162,280 |
+| After, 1 quarter before the flood, heat on | 3.0 | 1.2–1.9 ms/frame | 25 (zoomed) | 168,598 |
+
+- **Halved triangles** (the smaller buildings) more than pay for the ten
+  extra draw calls: seven building kinds, gardens, roads, walkers, boats and
+  the heat.
+- **The update CPU rose by about half a millisecond a frame.** That is
+  walkers and boats (a few dozen matrix writes), the heat's time uniform,
+  and Maya's per-frame follow while she is away from her dock.
+- **On a real GPU** these numbers point well inside 60 fps. That is an
+  inference from draw calls, triangles and CPU time; it was not measured on
+  hardware here.
+
+**Screenshots:** `p7-heat-3`, `p7-heat-1`: the heat over the new town before
+the flood, with Maya's last call, and grayscale twins.
+
+### P8 — final verification and merge — DONE
+
+**Checks on the branch head:**
+- tsc clean.
+- 322 tests pass, 6 skipped.
+- The build passes.
+- `npm run walkthrough` is clean (menu, Tutorial, Panaji).
+- `npm run verify:maya` passes every check, with zero console errors.
+
+**Standing rules held:**
+- The email requirement is hidden (`REQUIRE_EMAIL` off).
+- The menu is Tutorial plus Choose a level.
+- The street map defaults to 32%.
+- The Tutorial completes.
+- Run length is not hard-coded: the heat window, the forecast lock and the
+  run all come from the level data.
+
+**How to undo:** the merge into master is a merge commit, so `git revert -m 1
+<merge>` undoes the whole change. The base is also marked by the local tag
+`pre-maya-guide` and by the branch `backup/pre-maya-guide` on GitHub.
+
+**Open questions, for a human to judge:**
+- **Maya's look and words** have not been reviewed by Goan collaborators
+  (TODO above).
+- **Defences cool their zone, not their tile and neighbours.** This is a
+  deliberate deviation from the brief, for truthfulness (see P1).
+- **No real-GPU frame rate** was measured; this container only has software
+  GL.
+- **The easy-test cyclone is still mild:** no house falls undefended, so its
+  heat is a faint pink (at most 19%) and Maya stays quiet about it.
+- **Wetland tiles read reddest before a flood**, because they are nearest the
+  river. They are truthfully the most exposed ground, but they hold no
+  houses.
+- **Flood jobs** can repeat an element (two khazans), because a flood has
+  only two answering defences.

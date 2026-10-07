@@ -31,7 +31,7 @@ import { outlookFor } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
 import { voiceProgress } from "../../src/core/voices";
 import { hashSeed, Rng } from "../../src/core/rng";
-import { levelWithPreset, type LevelDef } from "../../src/levels/levels";
+import { activeVoices, levelWithPreset, type LevelDef } from "../../src/levels/levels";
 import { boardSetup } from "../../src/levels/balance";
 import { mapById } from "../../src/levels/levelMap";
 
@@ -94,14 +94,14 @@ function coordOf(key: string): AxialCoord {
 }
 
 /** The same board the session builds: monuments reserved, the level's houses, exclusions and sea limit applied. */
-function newRun(seed: string, level: LevelDef): ActionRun {
+export function newRun(seed: string, level: LevelDef): ActionRun {
   const setup = boardSetup(level, MAP);
   const state = new GameState(MAP.tiles, setup.startingElements, level.startingCoin);
   for (const [id, scale] of setup.effectScale) state.effectScale.set(id, scale);
   for (const id of setup.excluded) state.excludedElements.add(id);
   for (const key of setup.unbuildable) state.unbuildable.add(key);
   for (const key of RESERVED) state.reserved.add(key);
-  return new ActionRun(state, level.timeline!, { climate: level.climate, seed, zones: MAP.zones, voices: level.voices, houseStars: level.houseStars, houseRule: level.houses?.rule });
+  return new ActionRun(state, level.timeline!, { climate: level.climate, seed, zones: MAP.zones, voices: activeVoices(level), houseStars: level.houseStars, houseRule: level.houses?.rule, prep: level.prep });
 }
 
 class Player {

@@ -125,6 +125,12 @@ export interface GameMap {
   monuments: { id: string; name: string; category: string; kind: string; q: number; r: number }[];
   /** Panjim 2050 challenge zones, from the map generator. Empty on maps without them. */
   zones: ZoneDef[];
+  /** Land tiles a major road runs through, read from OpenStreetMap by the generator. Decoration and layout only. Empty on maps without them. */
+  roads: [number, number][];
+  /** River and wetland tiles a major road crosses (bridges, causeways). Drawn only; still buildable. */
+  bridges: [number, number][];
+  /** Which neighbouring road tiles the road runs between: [q1, r1, q2, r2]. */
+  roadLinks: [number, number, number, number][];
   tiles: PlacedTile[];
 }
 
@@ -141,6 +147,9 @@ interface MapFileShape {
   landmarks: { name: string; q: number; r: number }[];
   monuments?: { id: string; name: string; category: string; kind: string; q: number; r: number }[];
   zones?: ZoneDef[];
+  roads?: [number, number][];
+  bridges?: [number, number][];
+  roadLinks?: [number, number, number, number][];
   tiles: { q: number; r: number; terrainId: string }[];
 }
 
@@ -158,6 +167,9 @@ function fromFile(file: unknown): GameMap {
     landmarks: data.landmarks ?? [],
     monuments: data.monuments ?? [],
     zones: data.zones ?? [],
+    roads: data.roads ?? [],
+    bridges: data.bridges ?? [],
+    roadLinks: data.roadLinks ?? [],
     tiles: data.tiles.map((tile) => ({ coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }))
   };
 }
@@ -192,6 +204,9 @@ const LEGACY_MAP: GameMap = (() => {
 
   return {
     id: "goa-coast",
+    roads: [],
+    bridges: [],
+    roadLinks: [],
     name: "The Goa Coast",
     region: "Generated coastline",
     blurb:

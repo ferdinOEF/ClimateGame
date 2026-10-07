@@ -6,6 +6,8 @@ import { buildSchedule, challengeStrength, outlookFor, type ClimateConfig, type 
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { voiceProgress, type VoiceDef, type VoiceStatus } from "./voices";
+import { computeExposure, type Exposure } from "./exposure";
+import { generatePrep, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim in quarters, where time moves only
@@ -60,7 +62,11 @@ export type RunEvent =
   /** A Voice of Panjim was answered: `reward` Coin paid at once. */
   | { type: "voice_complete"; voice: VoiceDef; reward: number }
   /** A new era's Voices arrive. */
-  | { type: "voice_new"; voices: VoiceDef[] };
+  | { type: "voice_new"; voices: VoiceDef[] }
+  /** A Get ready job was finished: `reward` Coin paid at once. */
+  | { type: "prep_complete"; objective: PrepObjective; reward: number }
+  /** The Get ready jobs for the next storm were set. */
+  | { type: "prep_new"; objectives: PrepObjective[] };
 
 export interface ActionRunOptions {
   /** The level's climate: scheduled challenges and the rising baseline. */
@@ -75,6 +81,8 @@ export interface ActionRunOptions {
   houseStars?: { three: number; two: number };
   /** How houses stand up to a storm, house by house (the level's `houses` block). */
   houseRule?: HouseRule;
+  /** "Get ready" jobs for each coming storm (core/prep.ts). */
+  prep?: PrepConfig;
 }
 
 /** The readiness gauge: what the next challenge would do to the board as it stands. */
@@ -106,6 +114,8 @@ export interface RunSnapshot {
   locked: string[];
   outcomes: [string, ChallengeOutcome][];
   voiceStatus: [string, VoiceStatus][];
+  /** The Get ready jobs at the time. Absent in saves from before they existed. */
+  prep?: PrepObjective[];
 }
 
 /** Repairs cost this share of the element's build cost. */
@@ -146,6 +156,9 @@ export class ActionRun {
   readonly houseStars?: { three: number; two: number };
   readonly houseRule?: HouseRule;
   readonly voiceStatus = new Map<string, VoiceStatus>();
+  readonly prepConfig?: PrepConfig;
+  /** The Get ready jobs for the next storm, done or not. */
+  prep: PrepObjective[] = [];
   /**
    * The run as it stood the quarter each challenge's Forecast locked, by
    * challenge id: what "Replay from the forecast" rewinds to.
@@ -174,6 +187,24 @@ export class ActionRun {
     this.houseStars = options.houseStars;
     this.houseRule = options.houseRule;
     for (const voice of this.voices) this.voiceStatus.set(voice.id, voice.era === 1 ? "active" : "waiting");
+    this.prepConfig = options.prep;
+    this.refreshPrep();
+  }
+
+  /**
+   * Sets the Get ready jobs for the next storm, from its exposure as the
+   * board stands now. Called when the run starts and when a storm lands (the
+   * next one is announced); jobs from the storm that passed are dropped.
+   */
+  refreshPrep(): PrepObjective[] {
+    const next = this.nextChallenge();
+    if (!this.prepConfig || !next || !this.zones) {
+      this.prep = [];
+      return this.prep;
+    }
+    const exposure = this.exposureFor(next);
+    this.prep = exposure ? generatePrep(next, exposure, this.state, this.zones, this.prepConfig) : [];
+    return this.prep;
   }
 
   snapshot(): RunSnapshot {
@@ -191,7 +222,8 @@ export class ActionRun {
         landed: [...this.landed],
         locked: [...this.locked],
         outcomes: [...this.outcomes],
-        voiceStatus: [...this.voiceStatus]
+        voiceStatus: [...this.voiceStatus],
+        prep: this.prep
       } satisfies RunSnapshot)
     ) as RunSnapshot;
   }
@@ -218,6 +250,8 @@ export class ActionRun {
     for (const id of [...this.lockSnapshots.keys()]) if (!this.locked.has(id)) this.lockSnapshots.delete(id);
     this.comboState = computeCombos(this.state);
     this.combos = this.comboState.bonus;
+    if (copy.prep) this.prep = copy.prep;
+    else this.refreshPrep();
   }
 
   /** Era 1 runs to the first challenge, era 2 to the second, era 3 to 2050. */
@@ -248,6 +282,16 @@ export class ActionRun {
       this.state.coin += voice.reward;
       events.push({ type: "voice_complete", voice, reward: voice.reward });
     }
+    if (this.zones) {
+      for (const job of this.prep) {
+        if (job.done) continue;
+        const { current, target } = prepProgress(job, this.state, this.zones);
+        if (current < target) continue;
+        job.done = true;
+        this.state.coin += job.reward;
+        events.push({ type: "prep_complete", objective: job, reward: job.reward });
+      }
+    }
     return events;
   }
 
@@ -270,14 +314,49 @@ export class ActionRun {
 
   /** The same prediction for any challenge still to come. */
   readinessFor(challenge: ScheduledChallenge): Readiness | null {
+    const preview = this.previewBoard(challenge);
+    if (!preview || !this.climate || !this.zones) return null;
+    const outcome = resolveChallenge(preview.board, this.zones, challenge.kind, preview.strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule);
+    return { challenge, strength: preview.strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
+  }
+
+  /**
+   * The board as it will stand on `challenge`'s date if the player builds
+   * nothing more (defences counted at the maturity they will have by then),
+   * and the strength to test it at: exact once the Forecast locks, the
+   * expected one before. Shared by the readiness gauge and the warning heat,
+   * so the two can never disagree.
+   */
+  private previewBoard(challenge: ScheduledChallenge): { board: GameState; strength: number } | null {
     if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
     const lockedNow = outlookFor(this.climate, challenge, this.quarter, this.config.startYear).phase === "locked";
     const nominal = { ...challenge, quarter: Math.round((challenge.year - this.config.startYear) * QUARTERS_PER_YEAR) };
     const strength = challengeStrength(this.climate, lockedNow ? challenge : nominal);
-    const preview = this.state.clone();
-    preview.turn = Math.max(this.quarter, challenge.quarter);
-    const outcome = resolveChallenge(preview, this.zones, challenge.kind, strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule);
-    return { challenge, strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
+    const board = this.state.clone();
+    board.turn = Math.max(this.quarter, challenge.quarter);
+    return { board, strength };
+  }
+
+  /**
+   * The warning heat's source: `challenge` run on the board as it will stand
+   * on its date, tile by tile (core/exposure.ts). `withoutDefences` gives the
+   * same storm against a board with every defence against it removed, which
+   * is what the green shields compare to.
+   */
+  exposureFor(challenge: ScheduledChallenge, withoutDefences = false): Exposure | null {
+    const preview = this.previewBoard(challenge);
+    if (!preview || !this.climate || !this.zones) return null;
+    return computeExposure(preview.board, this.zones, challenge.kind, preview.strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, {
+      combos: this.combos,
+      houseRule: this.houseRule,
+      houseStars: this.houseStars,
+      withoutDefences
+    });
+  }
+
+  /** Quarters until `challenge` lands, from now. */
+  quartersUntil(challenge: ScheduledChallenge): number {
+    return challenge.quarter - this.quarter;
   }
 
   /** The next challenge that has not landed yet, or null after the last. */
@@ -377,6 +456,16 @@ export class ActionRun {
     return this.spend(this.config.costs.fastForwardYear);
   }
 
+  /**
+   * Lets `quarters` quarters pass with no build. Not a player control (the
+   * player has +1 year and Next event); the screenshot scenarios use it to
+   * stop the clock on an exact quarter before a storm.
+   */
+  waitQuarters(quarters: number): ActionOutcome {
+    if (this.finished) return refuse("The run has reached 2050.");
+    return this.spend(Math.max(0, Math.floor(quarters)));
+  }
+
   /** Skips to one quarter before the next challenge, as a time-lapse. */
   fastForwardToNextEvent(): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
@@ -442,6 +531,9 @@ export class ActionRun {
     const arriving = this.voices.filter((voice) => voice.era === this.era && this.voiceStatus.get(voice.id) === "waiting");
     for (const voice of arriving) this.voiceStatus.set(voice.id, "active");
     if (arriving.length > 0) events.push({ type: "voice_new", voices: arriving });
+    // The next storm is announced: new Get ready jobs for it.
+    const jobs = this.refreshPrep();
+    if (jobs.length > 0) events.push({ type: "prep_new", objectives: jobs });
     return events;
   }
 }

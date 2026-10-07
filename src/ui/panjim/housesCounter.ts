@@ -8,7 +8,7 @@
  * they are playing for.
  */
 export class HousesCounter {
-  private readonly el: HTMLElement;
+  readonly el: HTMLElement;
   private readonly labelEl: HTMLElement;
   private readonly valueEl: HTMLElement;
   private readonly totalEl: HTMLElement;

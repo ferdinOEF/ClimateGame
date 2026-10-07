@@ -21,6 +21,8 @@ export interface AftermathView {
   hero?: string | null;
   /** Null when there is no snapshot to go back to. */
   replayLabel: string | null;
+  /** Maya's line about what actually happened. */
+  maya?: string | null;
 }
 
 export class AftermathCard {
@@ -42,6 +44,7 @@ export class AftermathCard {
         <div class="aftermath-houses"></div>
         <p class="aftermath-hero"></p>
         <p class="aftermath-line"></p>
+        <p class="aftermath-maya"><span class="aftermath-maya-name">Maya</span><span class="aftermath-maya-text"></span></p>
         <div class="aftermath-actions">
           <button type="button" class="aftermath-continue">Continue</button>
           ${view.replayLabel ? `<button type="button" class="aftermath-replay"></button>` : ""}
@@ -55,6 +58,9 @@ export class AftermathCard {
     hero.textContent = view.hero ?? "";
     hero.hidden = !view.hero;
     (this.backdrop.querySelector(".aftermath-line") as HTMLElement).textContent = view.line;
+    const maya = this.backdrop.querySelector(".aftermath-maya") as HTMLElement;
+    (maya.querySelector(".aftermath-maya-text") as HTMLElement).textContent = view.maya ?? "";
+    maya.hidden = !view.maya;
     const replay = this.backdrop.querySelector(".aftermath-replay") as HTMLButtonElement | null;
     if (replay && view.replayLabel) replay.textContent = view.replayLabel;
     this.backdrop.hidden = false;

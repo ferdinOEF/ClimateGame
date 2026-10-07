@@ -16,11 +16,21 @@ src/
     runStats.ts       per-run event log             (new)
     levelScore.ts     level score + stars           (new)
     rng.ts            seeded, deterministic RNG     (new)
+    exposure.ts       warning heat: computeExposure runs the real zone
+                      resolver on a copy (tile probe), heat ramp, shields
+    prep.ts           "Get ready" jobs for the next storm, from its exposure
+    mayaLines.ts      Maya's words from game data: hotspot, place, Aftermath
   render/     Three.js scene and mesh managers
+    heatOverlay.ts    the warning heat: one instanced layer, one shader
+    townGeometry.ts   the seven building kinds and the garden
+    townDecor.ts      roads, bridges and gardens (instanced)
+    ambientLife.ts    walkers and boats (instanced)
   ui/         HUD, popovers, modals
     screens/          full-screen shell surfaces    (new)
   levels/     campaign definitions, map registry, progression
     levelMap.ts       which board each level plays on
+    townLayout.ts     Panjim's town plan: building kinds, colours,
+                      gardens and roads, deterministic from the seed
   services/   Firebase, auth, leaderboard, storage
     playerRegistry.ts name/age/email collected before the first level
   app/        entry, shell, and the game session

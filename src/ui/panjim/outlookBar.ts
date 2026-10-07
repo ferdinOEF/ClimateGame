@@ -42,6 +42,8 @@ export class OutlookBar {
   private readonly seaEl: HTMLElement;
   /** Slot to the right of the line, for the readiness gauge (P3). */
   readonly gaugeSlot: HTMLElement;
+  /** The next storm in words, for the line's tooltip (the line itself is cut short on a narrow screen). */
+  nextText = "";
 
   constructor(parent: HTMLElement) {
     this.el = document.createElement("div");
@@ -51,12 +53,12 @@ export class OutlookBar {
         <div class="outlook-fill"></div>
         <div class="outlook-ticks"></div>
         <div class="outlook-markers"></div>
-        <div class="outlook-now" title="Now"></div>
+        <div class="outlook-now"></div>
       </div>
       <div class="outlook-info">
         <span class="outlook-line"></span>
         <span class="outlook-gauge"></span>
-        <span class="outlook-sea" title="Sea level rise since 2025. It never stops, so every later storm is a little stronger."></span>
+        <span class="outlook-sea"></span>
       </div>
     `;
     parent.appendChild(this.el);
@@ -91,7 +93,7 @@ export class OutlookBar {
       marker.className = `outlook-marker phase-${outlook.phase} kind-${outlook.challenge.kind}`;
       marker.style.left = `${pct(outlook.windowStart)}%`;
       marker.style.width = `${Math.max(1.2, pct(outlook.windowEnd) - pct(outlook.windowStart))}%`;
-      marker.title = describe(outlook, view.startYear);
+      marker.setAttribute("aria-label", describe(outlook, view.startYear));
       marker.innerHTML = `<span class="outlook-icon">${ICON[outlook.challenge.kind]}</span>${
         outlook.phase === "locked" ? `<span class="outlook-strength">${"●".repeat(outlook.icons ?? 1)}${"○".repeat(3 - (outlook.icons ?? 1))}</span>` : ""
       }${stars !== undefined ? `<span class="outlook-stars">${"★".repeat(stars)}</span>` : ""}`;
@@ -100,6 +102,7 @@ export class OutlookBar {
 
     const next = view.outlooks.find((outlook) => outlook.phase !== "past");
     this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, view.startYear)}` : "<b>All three storms are behind you.</b> Finish the city by 2050.";
+    this.nextText = next ? describe(next, view.startYear) : "All three storms are behind you. Finish the city by 2050.";
     this.lineEl.classList.toggle("locked", next?.phase === "locked");
     this.seaEl.textContent = `Sea +${view.seaLevelCm} cm`;
   }
@@ -119,9 +122,13 @@ export class OutlookBar {
     this.gaugeSlot.className = `outlook-gauge gauge-${gauge.level}`;
     const pct = Math.round(gauge.protection * 100);
     this.gaugeSlot.innerHTML = `<span class="gauge-label">Ready</span><span class="gauge-bar"><span style="width:${pct}%"></span></span><span class="gauge-stars">${"★".repeat(gauge.stars)}${"☆".repeat(3 - gauge.stars)}</span>${
-      gauge.growing > 0 ? `<span class="gauge-growing" title="Defences still growing in the threatened zones. The gauge already counts how big they will be on the day.">${gauge.growing} growing</span>` : ""
+      gauge.growing > 0 ? `<span class="gauge-growing">${gauge.growing} growing</span>` : ""
     }`;
-    this.gaugeSlot.title = `${gauge.exact ? "Against the locked forecast" : "Against the expected strength"}: your defences would stop ${pct}% of the damage. Build in the threatened zones to raise it.`;
+  }
+
+  /** The parts that carry tooltips. */
+  get parts(): { track: HTMLElement; line: HTMLElement; sea: HTMLElement } {
+    return { track: this.trackEl, line: this.lineEl, sea: this.seaEl };
   }
 
   /** Pulses the next marker, when its Forecast locks. */
