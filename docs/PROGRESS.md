@@ -5946,3 +5946,163 @@ no console errors.
   camera's maximum distance, so on this board it ends near the opening
   framing. The "2050 looks different" comparison is better judged in a
   real run with a built city, which the P9 Playwright run will screenshot.
+
+## P9 — bots and balance — DONE
+
+**The bots** (`tools/panjimBots/bots.ts`) play the real rules, not a copy:
+`ActionRun` on the real Panaji board with the monuments reserved, through
+the same calls a click makes. Each persona plays 20 seeds.
+- **casual:** random valid actions; ignores the Outlook.
+- **greedy:** maximises Coin per Coin spent (Sand Mining, Small Dams, Houses,
+  Resorts); fast-forwards when broke.
+- **smart:** reads the Outlook and gauge.
+  - Tops up the threatened zones until the gauge is green.
+  - Plants mangroves and khazan for later storms early.
+  - Answers Voices, builds combos, repairs, keeps houses off the storm
+    paths, and grows the city while keeping a repair reserve.
+- **rusher:** only fast-forwards.
+- **banker:** fast-forwards and banks until a Forecast locks, then builds.
+- **walls and mangroves:** two single-trick careful players, for the "no
+  single strategy dominates" check.
+
+**Assertions** live in `tests/panjimBots.test.ts` and fail `npm run test` if
+broken. All pass:
+- Casual always reaches 2050 with at least 1★ per storm.
+- Greedy gets 3★ in **0%** of storms (the limit is 25% or less).
+- Smart gets 3★ in **82%** (the target is 70% or more).
+- Rusher gets 1★ or less in 3 of 3 storms on every seed.
+- Banker never beats Smart's index on the same seed.
+- The same seed gives identical results.
+- No single strategy dominates: walls-only and mangroves-only both score
+  below the balanced plan yet both win some 3★ storms, and Greedy out-earns
+  Smart.
+- Smart's median decisions fall within 40–70.
+
+`npm run bots` prints the tables:
+
+
+
+| Persona | 1★ | 2★ | 3★ | 3★ share | Index p10 / median / p90 | Decisions (median) | FF quarters (median) | Voices (median) |
+|---|---|---|---|---|---|---|---|---|
+| casual | 58 | 2 | 0 | 0% | 23 / 31 / 35 | 29 | 68 | 1 |
+| greedy | 60 | 0 | 0 | 0% | 30 / 30 / 30 | 100 | 0 | 0 |
+| smart | 0 | 11 | 49 | 82% | 85 / 85 / 87 | 68 | 32 | 6 |
+| rusher | 60 | 0 | 0 | 0% | 10 / 10 / 10 | 0 | 100 | 0 |
+| banker | 60 | 0 | 0 | 0% | 32 / 38 / 41 | 21 | 79 | 6 |
+| walls | 20 | 29 | 11 | 18% | 27 / 27 / 27 | 38 | 38 | 1 |
+| mangroves | 9 | 11 | 40 | 67% | 70 / 71 / 71 | 45 | 55 | 4 |
+
+| Persona | Est. minutes p10 / median / p90 | 2nd challenge at (median, min) | First action (s) | First reward (s) |
+|---|---|---|---|---|
+| casual | 3.4 / 3.8 / 4.2 | 2.2 | 11.7 | 9.0 |
+| greedy | 7.5 / 7.5 / 7.5 | 4.4 | 11.7 | 9.0 |
+| smart | 5.9 / 6.0 / 6.0 | 3.6 | 11.7 | 9.0 |
+| rusher | 2.4 / 2.5 / 2.5 | 1.5 | 10.7 | never |
+| banker | 3.4 / 3.5 / 3.6 | 2.0 | 11.7 | 9.0 |
+| walls | 4.2 / 4.3 / 4.4 | 2.6 | 11.7 | 9.0 |
+| mangroves | 4.9 / 5.0 / 5.0 | 2.9 | 11.7 | 9.0 |
+
+Per-challenge star share (1/2/3):
+  casual  cyclone 18/2/0  flood 20/0/0  compound 20/0/0
+  greedy  cyclone 20/0/0  flood 20/0/0  compound 20/0/0
+  smart   cyclone 0/10/10  flood 0/1/19  compound 0/0/20
+  rusher  cyclone 20/0/0  flood 20/0/0  compound 20/0/0
+  banker  cyclone 20/0/0  flood 20/0/0  compound 20/0/0
+  walls   cyclone 0/10/10  flood 0/19/1  compound 20/0/0
+  mangroves cyclone 9/11/0  flood 0/0/20  compound 0/0/20
+
+| Persona | Resilience | Biodiversity | Livelihoods | Population | Food | (medians) |
+|---|---|---|---|---|---|---|
+| casual | 8 | 5 | 61 | 7 | 63 | |
+| greedy | 0 | 0 | 100 | 10 | 41 | |
+| smart | 89 | 100 | 89 | 67 | 89 | |
+| rusher | 0 | 0 | 0 | 0 | 50 | |
+| banker | 26 | 68 | 9 | 0 | 86 | |
+| walls | 50 | 0 | 28 | 27 | 29 | |
+| mangroves | 76 | 100 | 52 | 27 | 100 | |
+
+**Tuning, done with the bots rather than by guessing:**
+- **Challenge intensity:** 20 → **50** defence points per unit of strength.
+  At 20, Smart got 3★ every time from 27 decisions, so nothing was asked of
+  the player. Sweep: 30 → 100%, 40 → 90%, 50 → 83%, 60 → 73%.
+- **Jar income scale:** 0.5 → **0.2**. At 0.5, Smart could build every
+  quarter (100 decisions), so Coin never bound. At 0.15, Smart fell off a
+  cliff to 18% 3★. At 0.2 it makes 68 decisions and still gets 82%.
+- **Engineered defences** were a dead end: walls-only got no 3★ storm, not
+  even the cyclone. Seawall resilience went 9 → **16**, Breakwater 7 →
+  **12**, Small Dam 5 → **10**. Walls now play out the story the brief
+  wants: half their cyclones get 3★, the dams carry the monsoon flood to
+  2★, and everything collapses to 1★ in the compound storm when the dams
+  fail.
+- **Index ceilings** loosened (biodiversity full at 60, population at +150,
+  food ±3 a point), so a strong city is not stuck at 100 on three bars.
+- **Bug found by the bots:** houses in a zone the storm never reached were
+  not counted as saved. They are now.
+
+**Time model:**
+- Estimated real length uses the brief's model: an 8 s brief; 2.5 s per
+  decision plus its tick animation; 1 s per jar tap; time-lapses at 0.42 s
+  a quarter; 5 s of reading for each Outlook band narrowing, each Forecast
+  lock and each Aftermath; the staging at 1.3 s per zone plus fixed beats;
+  and the finale.
+- **Smart's median is 6.0 minutes, so it does not fall in 8–16.** The second
+  challenge lands at about 3.6 minutes.
+- **Why I didn't force it.** Under this model, decisions dominate run
+  length: every decision is about 2.7 s, and everything else adds up to
+  about 2.5 minutes. Reaching 8 minutes needs about 110 decisions. That
+  contradicts the economy target of 40–70 affordable decisions, and also
+  the 100-quarter clock at one quarter per build.
+- **Within the allowed levers:**
+  - Income is already tuned to put Smart at the top of that band.
+  - Requests are already at the brief's maximum of three per era.
+  - Halving light-build quarter costs would allow more builds, but only
+    more Coin would make them affordable, and that breaks the band.
+- **Not counted:** the model ignores free actions (Field Guide taps,
+  inspecting tiles, camera moves, reading Voices). They take real time, so a
+  human's run will be longer than 6 minutes. A real playtest should settle
+  it.
+
+**First action and first reward:** in the model, the first action comes at
+11.7 s (8 s brief plus one decision) and the first reward at 9.0 s (tapping
+the jar's starting gift). Targets: 15 s or less and 30 s or less.
+
+**Final check in a real browser** (`phaseShots p9`, 1920x1080, fresh
+profile):
+- **The run:** a scripted careful player plays the whole run through the
+  real UI path: controller actions, the jar, the Aftermath buttons.
+  - Cyclone ★★★ (protection 0.89); monsoon flood ★ (0.09); compound ★★
+    (0.52); index 61.
+  - The script is cruder than the bot: no lookahead planting, so it ran
+    short of Coin before the flood.
+  - **The gauge was honest in every case.** It read green, red and amber
+    before the three storms, matching the stars they got.
+- **Screenshots:** `p9-smart-forecast`, `p9-smart-aftermath`, and
+  `p9-smart-finale` (the 2050 finale over a built city: the dune line, the
+  waterfront mangrove belt, houses away from the storm paths).
+- **Console errors:** none.
+- **Frame rate on the full board:** 2.6 fps under this sandbox's
+  SwiftShader software renderer. **60 fps on a desktop GPU cannot be
+  measured here**, and needs checking on real hardware.
+- **First action and reward in the headless run:** first reward at 17.1 s
+  and first action at 17.1 s after session start. About 12 s of that is
+  the harness itself (page and asset load under software GL, then a fixed
+  4.5 s wait before acting), so it is not a human measurement. The
+  human-time model's 11.7 s and 9.0 s are the estimates to compare with the
+  15 s and 30 s targets.
+- **Fixed during the phase:** my scripted player deadlocked when a storm
+  landed on a build's quarter, waiting for "not busy" while the Aftermath
+  waited for Continue. The script now answers an Aftermath wherever one
+  opens. The game itself was fine; it was the test player.
+
+**Self-assessment:**
+- **Balance:**
+  - The personas separate cleanly: Smart 85, Mangroves-only 71, Banker 38,
+    Casual 31, Greedy 30, Walls-only 27, Rusher 10.
+  - The engineered path is no longer a dead end, but it loses where the
+    brief says it should.
+  - Banker's 1★ every time is harsh but correct: defences built after the
+    lock cannot mature in time. That is the point of the brief's "waiting
+    is never free".
+- **Risk:** Smart's 3★ rate falls steeply below a jar income of 0.2 (18% at
+  0.15). Any later economy change should re-run `npm run bots`, which the
+  test suite already does.

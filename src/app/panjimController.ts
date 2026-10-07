@@ -809,13 +809,13 @@ export class PanjimController {
           }
         }
       }
-      if (acted) {
-        await this.idle();
-        continue;
+      if (!acted) {
+        // Nothing to do: skip ahead.
+        if (this.run.quartersToNextEvent() > 0) void this.fastForwardEvent();
+        else void this.fastForwardYear();
       }
-      // Nothing to do: skip ahead, through any Aftermath.
-      if (this.run.quartersToNextEvent() > 0) void this.fastForwardEvent();
-      else void this.fastForwardYear();
+      // Wait for the action to play out, answering any Aftermath it brings:
+      // a storm can land on a build's quarter just as on a fast-forward's.
       await wait(60);
       while (this.busy) {
         if (this.aftermath.isOpen) {
