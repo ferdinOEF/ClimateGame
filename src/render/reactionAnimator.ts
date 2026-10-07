@@ -38,6 +38,12 @@ interface ActiveReaction {
   durationMs: number;
   peakScale: number;
   baseY: number;
+  /**
+   * The scale the object was authored with before it was spawned. The
+   * animation multiplies this rather than replacing it, so a ripple flattened
+   * to `scale.y = 0.05` stays a flat ring instead of growing into a ball.
+   */
+  baseScale: THREE.Vector3;
   riseY: number;
 }
 
@@ -71,9 +77,10 @@ export class ReactionAnimator {
     const durationMs = options.durationMs ?? 2000;
     const peakScale = options.peakScale ?? 1;
     const rise = options.rise ?? 0;
-    object.scale.setScalar(0.001);
+    const baseScale = object.scale.clone();
+    object.scale.copy(baseScale).multiplyScalar(0.001);
     this.group.add(object);
-    this.active.push({ object, startTime: this.lastTickMs ?? performance.now(), durationMs, peakScale, baseY: object.position.y, riseY: rise });
+    this.active.push({ object, startTime: this.lastTickMs ?? performance.now(), durationMs, peakScale, baseY: object.position.y, baseScale, riseY: rise });
   }
 
   /** How many reactions are on screen right now. The ambient scheduler reads this to leave headroom for taps. */
@@ -103,7 +110,7 @@ export class ReactionAnimator {
         scale = (1 - easeInCubic(localT)) * r.peakScale;
         yOffset = r.riseY;
       }
-      r.object.scale.setScalar(Math.max(0.001, scale));
+      r.object.scale.copy(r.baseScale).multiplyScalar(Math.max(0.001, scale));
       r.object.position.y = r.baseY + yOffset;
       if (t < 1) {
         stillActive.push(r);

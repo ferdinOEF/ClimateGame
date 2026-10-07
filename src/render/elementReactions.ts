@@ -152,6 +152,15 @@ const MANGROVE_CYCLE = new Cycle<CreatureId[]>([
 // Khazan: one of three water creatures, cycled (Section 1 explicitly names Khazan as needing the same cycle treatment as Mangrove, despite item 2's looser "randomized" wording).
 const KHAZAN_CYCLE = new Cycle<CreatureId>(["dragonfly", "prawn", "mudskipper"]);
 
+/** Wrapped so this can be constructed where `matchMedia` does not exist (vitest). Same check as `elementMeshManager.ts`. */
+function prefersReducedMotion(): boolean {
+  try {
+    return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
+
 /** See `trigger()`. */
 const REACTION_SCALE = 1;
 
@@ -188,7 +197,15 @@ export class ElementReactions {
   /** Verify checklist: "tap 4-5 times, confirm visibly different outcomes" — records what each Mangrove/Khazan trigger actually chose, so a verification script can check the real deterministic-cycle sequence directly instead of diffing screenshots. */
   lastCombo: string[] = [];
 
-  constructor() {
+  /**
+   * Off for a player who has asked their system for reduced motion, matching
+   * the element sway and the water swell. Only the ambient reactions stop: a
+   * tap is something the player chose to do, so its reaction still plays.
+   */
+  private readonly ambientEnabled: boolean;
+
+  constructor(options: { reducedMotion?: boolean } = {}) {
+    this.ambientEnabled = !(options.reducedMotion ?? prefersReducedMotion());
     this.group.add(this.animator.group);
   }
 
@@ -212,7 +229,7 @@ export class ElementReactions {
 
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
-    if (!this.ambientSource) return;
+    if (!this.ambientSource || !this.ambientEnabled) return;
     const seen = new Set<string>();
     let spawnedThisFrame = false;
     for (const el of this.ambientSource()) {

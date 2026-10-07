@@ -182,6 +182,30 @@ describe("ElementReactions ambient scheduler", () => {
     expect(animatorOf(reactions).activeCount).toBe(0);
   });
 
+  it("plays no ambient reactions under reduced motion, but still answers a tap", () => {
+    const elements: FakeElement[] = [{ key: "0,0", elementId: "mangrove", x: 0, y: 0, z: 0 }];
+    const reactions = new ElementReactions({ reducedMotion: true });
+    reactions.setAmbientSource(() => elements);
+    const triggerSpy = vi.spyOn(reactions, "trigger");
+    for (let t = 0; t <= 30000; t += 100) reactions.tick(T0 + t);
+    expect(triggerSpy).not.toHaveBeenCalled();
+    reactions.trigger("mangrove", 0, 0, 0);
+    expect(animatorOf(reactions).activeCount).toBeGreaterThan(0);
+  });
+
+  it("keeps a reaction's authored axis scale through the animation", async () => {
+    const THREE = await import("three");
+    const { ReactionAnimator } = await import("../src/render/reactionAnimator");
+    const animator = new ReactionAnimator();
+    animator.tick(T0);
+    const ripple = new THREE.Object3D();
+    ripple.scale.y = 0.05;
+    animator.spawn(ripple, { durationMs: 1000, peakScale: 2 });
+    animator.tick(T0 + 400); // in the hold phase
+    expect(ripple.scale.x).toBeCloseTo(2);
+    expect(ripple.scale.y).toBeCloseTo(0.1);
+  });
+
   it("leaves tap-triggered reactions working exactly as before", () => {
     const reactions = new ElementReactions();
     reactions.trigger("mangrove", 0, 0, 0);
