@@ -212,7 +212,7 @@ export class ElementMeshManager {
    * reduced motion — see TerrainMeshManager for the same decision about the
    * water swell, and for why this is read once rather than watched.
    */
-  private readonly swayEnabled = !prefersReducedMotion();
+  private swayEnabled = !prefersReducedMotion();
   /**
    * How hard the wind is blowing, 0 to 1, from the storm.
    *
@@ -512,6 +512,11 @@ export class ElementMeshManager {
     this.scratchMatrix.scale(this.scratchScale.set(g, slump * g * ref.heightScale, g));
     this.scratchMatrix.setPosition(ref.x, ref.y - sink, ref.z);
     ref.mesh.setMatrixAt(ref.index, this.scratchMatrix);
+  }
+
+  /** Sway on or off (the in-game Calm motion switch, as well as the system setting). */
+  setSwayEnabled(enabled: boolean): void {
+    this.swayEnabled = enabled;
   }
 
   /** Called once per frame from the session, before `tick`. */

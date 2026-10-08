@@ -7248,3 +7248,53 @@ card, the finale with the Storm card button, and the card image itself.
   captions them, but does not re-run the water.
 - In the scripted finale run nothing was built, so the two halves of the
   card match. A built-up run will differ.
+
+### P9 — quality, Calm motion, flash and readability caps — DONE (fps table below in QA)
+
+**Quality** (`core/quality.ts`, unit-tested). Low, Medium or High, set by a
+HUD button with a tooltip, which cycles Auto → Low → Medium → High:
+- **Auto** starts at High. It averages the frame rate over four-second
+  samples and steps down a level below 40 fps (High) or 26 fps (Medium). It
+  never steps back up, so it cannot flap mid-storm. A hidden-tab gap restarts
+  the sample.
+- **The player's choice** is remembered on this device.
+- **What each level sets:**
+
+  | | Low | Medium | High |
+  |---|---|---|---|
+  | Rain drops | 600 | 1,400 | 2,400 |
+  | Puffs per spiral arm | 7 | 11 | 14 |
+  | Wave rings per water tile (triangles) | 1 (6) | 3 (54) | 4 (96) |
+  | Pixel ratio cap | 1 | 1.5 | 2 |
+
+**Calm motion.** A switch with a tooltip, defaulting to the system's
+reduce-motion setting and remembered. It turns off:
+- screen shake;
+- lightning, both the flash and the bolt;
+- the slow-motion lurch;
+- the defences' sway.
+
+It also gives slower, calmer waves (shader motion at 35%), 40% of the rain
+streaks, a steady glow on defences instead of a pulse, and still,
+non-floating storm words.
+
+**Caps, in code:**
+- **Darkness:** the sun loses at most 35% (`MAX_DARKNESS`).
+- **Flashes:**
+  - a lightning flash lifts the sky and screen by at most 25%
+    (`MAX_FLASH_ALPHA`; the screen overlay peaks at 0.22);
+  - flashes are at least 0.34 s apart in `StormManager` (so never above 3 a
+    second);
+  - scripted strikes are at least 2.5 s apart (tested).
+- **Shake:** only above 70% intensity.
+- **Spiral:** kept over the sea and coast. It reaches about one tile inland
+  at most, then moves at most three more tiles inland while fading out.
+- **Flooded tiles** carry the wavy stripe, so they read in grayscale.
+
+**Instanced, one draw call per effect type:**
+- the water (with the defence glow rims inside it);
+- the rain;
+- the spiral;
+- the rain band;
+- the bolt (one line set);
+- the garden sway (in the existing gardens mesh).

@@ -55,8 +55,13 @@ export class PrefToggle {
     this.el.className = `panjim-toggle ${options.className}`;
     this.el.innerHTML = `<span class="toggle-dot" aria-hidden="true"></span><span class="toggle-label"></span><kbd></kbd>`;
     (this.el.querySelector(".toggle-label") as HTMLElement).textContent = options.label;
-    (this.el.querySelector("kbd") as HTMLElement).textContent = options.shortcut;
-    this.el.setAttribute("aria-keyshortcuts", options.shortcut);
+    const kbd = this.el.querySelector("kbd") as HTMLElement;
+    if (options.shortcut) {
+      kbd.textContent = options.shortcut;
+      this.el.setAttribute("aria-keyshortcuts", options.shortcut);
+    } else {
+      kbd.remove();
+    }
     this.el.addEventListener("click", (event) => {
       event.stopPropagation();
       this.set(!this.on);

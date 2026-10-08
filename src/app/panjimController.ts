@@ -1,5 +1,6 @@
 import { ActionRun, quarterLabel, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import type { GameState } from "@core/gameState";
+import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
 import { defendsAgainst, type StormRecord } from "@core/stormRecord";
 import { drawStormCard, type StormCardInput } from "@ui/panjim/stormCard";
 import { DEFENCE_PLURAL, replaySteps } from "@core/stormReplay";
@@ -87,6 +88,10 @@ export interface PanjimHost {
   challengeFx: ChallengeFx;
   /** Tints tiles for the Aftermath replay (null clears every tint it set). */
   tintTiles: (tints: { key: string; color: string; blend: number }[] | null) => void;
+  /** Applies a graphics quality (rain, cloud, wave detail and pixel ratio). */
+  setQuality: (quality: Quality) => void;
+  /** Reduced motion on or off for the storm effects, the sway and Maya. */
+  setReducedMotion: (reduced: boolean) => void;
   /** The calm after the finale's storm: the sun back out, birds, the calm bed. Resolves after `ms` or on a click. */
   calmEnding: (ms: number) => Promise<void>;
   /** Rebuilds every element's mesh from the game state, after a rewind or a resume. */
@@ -159,6 +164,14 @@ export class PanjimController {
   /** Maya's voice on or off (M). The heat stays either way. */
   readonly mayaToggle: PrefToggle;
   private readonly replayCard: ReplayCard;
+  /** Reduced motion: no shake or flashes, calmer waves, fewer rain streaks. Starts from the system setting. */
+  readonly motionToggle: PrefToggle;
+  /** Graphics quality: Auto (from the frame rate), Low, Medium or High. */
+  private readonly qualityButton: HTMLButtonElement;
+  private qualityChoice: QualityChoice = "auto";
+  private autoQuality: Quality = "high";
+  private readonly sampler = new FrameSampler();
+  private lastFrameMs: number | null = null;
   /** Sound on or off (S), with the master volume beside it. Off until the first click whatever it says: browsers require one. */
   readonly soundToggle: PrefToggle;
   private readonly volumeSlider: HTMLInputElement;
@@ -207,6 +220,30 @@ export class PanjimController {
         this.volumeSlider.disabled = !on;
       }
     );
+    this.motionToggle = new PrefToggle(
+      host.container,
+      { storageKey: "riptide-rising:calm-motion", label: "Calm motion", shortcut: "", defaultOn: prefersReducedMotion(), className: "motion-toggle" },
+      (on) => host.setReducedMotion(on)
+    );
+    this.qualityButton = document.createElement("button");
+    this.qualityButton.type = "button";
+    this.qualityButton.className = "panjim-toggle quality-control";
+    this.qualityButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.qualityChoice = nextChoice(this.qualityChoice);
+      try {
+        localStorage.setItem("riptide-rising:quality", this.qualityChoice);
+      } catch {
+        // Storage blocked: the choice lasts for this visit.
+      }
+      this.applyQuality();
+    });
+    try {
+      const saved = localStorage.getItem("riptide-rising:quality");
+      if (saved === "auto" || saved === "low" || saved === "medium" || saved === "high") this.qualityChoice = saved;
+    } catch {
+      // Storage blocked: Auto.
+    }
     this.volumeSlider = document.createElement("input");
     this.volumeSlider.type = "range";
     this.volumeSlider.className = "sound-volume";
@@ -219,6 +256,9 @@ export class PanjimController {
     this.volumeSlider.addEventListener("input", () => setSoundVolume(Number(this.volumeSlider.value) / 100));
     this.volumeSlider.addEventListener("pointerdown", (event) => event.stopPropagation());
     this.soundToggle.el.after(this.volumeSlider);
+    this.motionToggle.el.after(this.qualityButton);
+    host.setReducedMotion(this.motionToggle.value);
+    this.applyQuality();
     document.addEventListener(
       "keydown",
       (event) => {
@@ -301,6 +341,8 @@ export class PanjimController {
     if (!this.voicesLive) tips.attach(this.getReady.el, "getReady");
     tips.attach(this.mayaToggle.el, "mayaToggle");
     tips.attach(this.soundToggle.el, "soundToggle");
+    tips.attach(this.motionToggle.el, "motionToggle");
+    tips.attach(this.qualityButton, "qualityControl", () => ({ choice: this.qualityLabel(), fps: this.lastFps > 0 ? Math.round(this.lastFps) : "–" }));
     tips.attach(this.volumeSlider, "soundVolume", () => ({ pct: this.volumeSlider.value }));
     const dismiss = this.maya.el.querySelector<HTMLElement>(".maya-dismiss");
     if (dismiss) tips.attach(dismiss, "mayaDismiss");
@@ -736,8 +778,40 @@ export class PanjimController {
   }
 
   /** Called every rendered frame: Maya's moves and lines, and the in-scene Forecast label over its zone. */
+  private lastFps = 0;
+
+  /** The quality in use: the player's choice, or Auto's current level. */
+  get quality(): Quality {
+    return this.qualityChoice === "auto" ? this.autoQuality : this.qualityChoice;
+  }
+
+  private qualityLabel(): string {
+    const name = (q: Quality): string => q.charAt(0).toUpperCase() + q.slice(1);
+    return this.qualityChoice === "auto" ? `Auto (${name(this.autoQuality)})` : name(this.qualityChoice);
+  }
+
+  private applyQuality(): void {
+    this.qualityButton.innerHTML = `<span class="toggle-label"></span>`;
+    (this.qualityButton.querySelector(".toggle-label") as HTMLElement).textContent = `Quality: ${this.qualityLabel()}`;
+    this.host.setQuality(this.quality);
+  }
+
   frame(): void {
     const now = performance.now();
+    // Auto quality: average the frame rate a few seconds at a time and step down if it is low.
+    const fps = this.sampler.frame(now, this.lastFrameMs);
+    this.lastFrameMs = now;
+    if (fps !== null) {
+      this.lastFps = fps;
+      if (this.qualityChoice === "auto") {
+        const next = autoStep(this.autoQuality, fps);
+        if (next !== this.autoQuality) {
+          this.autoQuality = next;
+          this.applyQuality();
+          this.host.telemetry.emit("quality_auto", { quality: next, fps: Math.round(fps) });
+        }
+      }
+    }
     this.maya.frame(now);
     if (now >= this.nextPumpMs) {
       this.nextPumpMs = now + 400;
@@ -1396,6 +1470,8 @@ export class PanjimController {
     this.mayaToggle.dispose();
     this.replayCard.dispose();
     this.soundToggle.dispose();
+    this.motionToggle.dispose();
+    this.qualityButton.remove();
     this.volumeSlider.remove();
     this.riskToggle.dispose();
     this.housesCounter.dispose();

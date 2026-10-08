@@ -620,6 +620,21 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             }
           },
           calmEnding: (ms) => calmEnding(ms),
+          setQuality: (quality) => {
+            stormWater.setQuality(quality);
+            stormSky.setQuality(quality);
+            storm.setQuality(quality);
+            // Low draws at 1:1 pixels; Medium caps the ratio at 1.5; High at 2.
+            const cap = quality === "low" ? 1 : quality === "medium" ? 1.5 : 2;
+            // setPixelRatio resizes the drawing buffer itself; the camera framing is left alone.
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+          },
+          setReducedMotion: (reduced) => {
+            storm.setReducedMotion(reduced);
+            stormWater.setReducedMotion(reduced);
+            elements.setSwayEnabled(!reduced);
+            container.classList.toggle("calm-motion", reduced);
+          },
           offerResume: (label, onResume) => objectivesPanel.addBriefAction(label, onResume)
         })
       : null;

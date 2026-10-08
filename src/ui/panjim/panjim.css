@@ -1850,3 +1850,7 @@
   opacity: 0.9;
 }
 .aftermath-compare li { margin: 2px 0; font-variant-numeric: tabular-nums; }
+
+/* The in-game Calm motion switch does what the system setting does. */
+.calm-motion .storm-word { animation: storm-word-still 3.2s linear forwards; }
+.calm-motion .storm-flash.on { animation: none; }
