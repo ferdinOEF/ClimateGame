@@ -1,5 +1,5 @@
 import { ELEMENT_BY_ID } from "@core/elements";
-import { discoveryFacts, discoveryTotal, displayText, shortCredit } from "@core/facts";
+import { discoveryFacts, discoveryTotal, displayText, shortCredit, type Fact } from "@core/facts";
 import { openSources } from "./sourcesScreen";
 
 /** Every distinct fact a card can show (nuggets.json lists them by id; facts.json holds them). Never hardcoded. */
@@ -138,10 +138,19 @@ export class NuggetPopup {
     this.onVisibilityChange?.(false);
   }
 
-  /** No-ops silently if elementId has no entry in nuggets.json. */
-  show(elementId: string): void {
+  /**
+   * No-ops silently if elementId has no entry in nuggets.json. `factId`
+   * picks a particular card (the layout test shows the tallest); otherwise
+   * the next one in this element's shuffle.
+   */
+  show(elementId: string, factId?: string): void {
     const facts = discoveryFacts(elementId);
     if (!facts || facts.length === 0) return;
+    const chosen = factId ? facts.findIndex((fact) => fact.id === factId) : -1;
+    if (chosen >= 0) {
+      this.present(elementId, facts[chosen]);
+      return;
+    }
 
     let state = this.pickState.get(elementId);
     if (!state || state.cursor >= state.order.length) {
@@ -152,7 +161,10 @@ export class NuggetPopup {
     const factIndex = state.order[state.cursor];
     state.cursor++;
 
-    const fact = facts[factIndex];
+    this.present(elementId, facts[factIndex]);
+  }
+
+  private present(elementId: string, fact: Fact): void {
     this.discovered.add(fact.id);
     this.factId = fact.id;
 

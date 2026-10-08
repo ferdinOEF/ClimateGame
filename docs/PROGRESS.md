@@ -7584,3 +7584,79 @@ notable ones:
 **Self-assessment:** the strip is quiet and readable and never touches the
 menu. The menu's own pixels are unchanged above it (the pixel diff in the
 QA gate checks this).
+
+## PA / PB re-check, and Low quality as the brief describes it — DONE
+
+**Low quality, completed:**
+- **Sky:** Low now draws the cyclone spiral and the rain band as single
+  flat painted sheets, not 3D puffs. They follow the same path, turn and
+  fade (a canvas texture made once, two triangles each).
+- **Water:** on Low it has no wave displacement (a `uDetail` uniform skips
+  the Gerstner offset), no river chop, and a plain foam rim without moving
+  noise.
+- **Rain:** stays at 600 streaks (Medium 1400, High 2400).
+- Medium and High are unchanged.
+- Compare `docs/qa/lowq/cy-low-1920x1080.jpg` with `cy-high-1920x1080.jpg`.
+
+**PA, Maya, re-checked:**
+- `tools/mayaLayoutTest.ts` now shows the tallest Discovery card: the
+  khazan fact with its new Source row (`show(element, factId)`).
+- 105/105 layouts pass:
+  - at 1366, 1920 and 2560;
+  - with the card shown or hidden, Get ready open or collapsed, and a
+    tooltip open or not;
+  - docked, and during three warning jumps;
+  - with the build menu open, minimised, and resized.
+- **Flake fixed:** one case was intermittent. After a resize the bubble
+  re-shows with its 220 ms fade-in, and the check sometimes measured it
+  at opacity 0. The test now waits up to 3 s for the fade to finish, and
+  still fails if the bubble never appears. The failure message now
+  reports Maya's state. 5/5 repeat runs pass.
+- **Found and fixed:** on Panaji the Discovery card covered the Street map
+  switch and the OpenStreetMap credit. It now sits above them; the height
+  is tracked, wide screens only. See
+  `docs/qa/layout/maya-discovery-shown-*.jpg`.
+
+**PB, finale tuning, re-checked; still a known gap:**
+`tools/panjimBots/finaleDefences.ts`, homes hit in the finale, mean of 20
+seeds:
+
+| Preset, layout | none | belt | khazans | both |
+|---|---|---|---|---|
+| easy-test (finale 0.85), spread | 37.0 | 36.9 (0%) | 37.0 (0%) | 36.9 (0%) |
+| easy-test, packed | 37.0 | 35.0 (5%) | 37.0 (0%) | 35.0 (5%) |
+| strict, spread | 16.0 | 15.0 (6%) | 16.0 (0%) | 3.0 (81%) |
+| strict, packed | 16.0 | 13.0 (19%) | 4.0 (75%) | 1.0 (94%) |
+
+- **The sweep:** a sweep of the easy-test finale strength (0.5–0.85)
+  shows a cliff, not a slope. Homes hit with no defence go 0 → 2 → 31 →
+  36 between 0.5 and 0.7. With both defences the cut is either about 0%
+  or about 95%; it is never near the 40% target.
+- **Why:** the house rule compares one zone leak, faded by distance from
+  the water, against one fixed house resilience. The houses in a zone
+  stand at much the same distance, so they fall together.
+- **What it would take:** a graded ~40% needs a change to the model, such
+  as per-house resilience or a per-tile leak from the depth field. That
+  would move every bot result and star.
+- **Decision:** left as it is (logged, not changed). It is reported in the
+  ship report as needing the user's call.
+
+**Bots** (easy-test, 20 seeds a persona, 3 storms each; ★ counts are over
+60 storms):
+
+| Persona | 1★ | 2★ | 3★ |
+|---|---|---|---|
+| smart | 0 | 0 | 60 |
+| casual | 20 | 16 | 24 |
+| greedy | 20 | 20 | 20 |
+| rusher | 20 | 20 | 20 |
+| banker | 0 | 29 | 31 |
+| walls | 0 | 4 | 56 |
+| mangroves | 0 | 4 | 56 |
+
+- Per storm, Greedy and Casual take 1★ on every finale.
+- This meets the brief: Smart 2–3★, Casual ≥1★, Greedy struggles.
+- The results are identical to before PC1, as expected: the Voices were
+  already switched off.
+
+**Checks:** tsc is clean; all tests pass; the build passes.

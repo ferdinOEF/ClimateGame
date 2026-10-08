@@ -12,7 +12,9 @@ import * as THREE from "three";
  * that comes in from inland, where the river's rain falls.
  *
  * Each is one `InstancedMesh` (one draw call); per frame only the group's
- * position, turn and opacity change. Lightning is a jagged line that shows
+ * position, turn and opacity change. On Low quality each is instead a
+ * single flat, textured sheet (a painted spiral, a soft grey band): the
+ * same path, turn and fade, at the cost of two triangles. Lightning is a jagged line that shows
  * for a tenth of a second; its flash on screen is the session's job (capped
  * in brightness and rate there).
  */
@@ -21,6 +23,68 @@ export type SkyQuality = "low" | "medium" | "high";
 const ARM_PUFFS: Record<SkyQuality, number> = { low: 7, medium: 11, high: 14 };
 const BAND_PUFFS: Record<SkyQuality, number> = { low: 24, medium: 40, high: 60 };
 const CLOUD_HEIGHT = 3.6;
+/** The flat Low-quality sheets, in board units: the spiral's reach and the band's length and width. */
+const FLAT_SPIRAL_SIZE = 15;
+const FLAT_BAND_SIZE: [number, number] = [28, 9];
+
+/** A painted cyclone seen from above: a bright eye wall and five arms winding out, soft-edged. */
+function spiralTexture(): THREE.Texture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const g = canvas.getContext("2d")!;
+  const c = size / 2;
+  const scale = size / FLAT_SPIRAL_SIZE;
+  const puff = (x: number, y: number, r: number, light: number): void => {
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgba(${light}, ${light + 4}, ${light + 8}, 0.9)`);
+    grad.addColorStop(1, `rgba(${light}, ${light + 4}, ${light + 8}, 0)`);
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  };
+  // The same shape as the 3D spiral (buildSpiral), painted puff by puff.
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    puff(c + Math.cos(a) * 1.15 * scale, c + Math.sin(a) * 1.15 * scale, 0.6 * scale, 236);
+  }
+  for (let arm = 0; arm < 5; arm++) {
+    for (let p = 0; p < 18; p++) {
+      const f = p / 18;
+      const a = (arm / 5) * Math.PI * 2 - f * 2.6;
+      const r = 1.7 + f * 5.2;
+      puff(c + Math.cos(a) * r * scale, c + Math.sin(a) * r * scale, (0.45 + f * 0.5) * scale, 226 - Math.round(f * 20));
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+/** A long, soft grey band of rain cloud seen from above. */
+function bandTexture(): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 96;
+  const g = canvas.getContext("2d")!;
+  const random = rng(11);
+  for (let i = 0; i < 40; i++) {
+    const x = 24 + random() * 208;
+    const y = 48 + (random() - 0.5) * 40 * (1 - Math.abs(x - 128) / 150);
+    const r = 14 + random() * 16;
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, "rgba(176, 184, 192, 0.75)");
+    grad.addColorStop(1, "rgba(176, 184, 192, 0)");
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
 
 function puffGeometry(): THREE.BufferGeometry {
   const geometry = new THREE.IcosahedronGeometry(1, 1);
@@ -44,8 +108,10 @@ export class StormSky {
   private readonly spiral = new THREE.Group();
   private readonly spiralMaterial: THREE.MeshLambertMaterial;
   private readonly bandMaterial: THREE.MeshLambertMaterial;
-  private spiralMesh: THREE.InstancedMesh;
-  private bandMesh: THREE.InstancedMesh;
+  private spiralMesh: THREE.Mesh;
+  private bandMesh: THREE.Mesh;
+  /** Low quality's flat sheets, made the first time Low is chosen. */
+  private flat: { spiral: THREE.MeshBasicMaterial; band: THREE.MeshBasicMaterial } | null = null;
   private readonly band = new THREE.Group();
   private readonly bolt: THREE.LineSegments;
   private readonly boltMaterial: THREE.LineBasicMaterial;
@@ -54,8 +120,8 @@ export class StormSky {
   constructor(quality: SkyQuality = "high") {
     this.spiralMaterial = new THREE.MeshLambertMaterial({ color: "#eef2f4", emissive: "#a9b2b8", transparent: true, opacity: 0, depthWrite: false, flatShading: true });
     this.bandMaterial = new THREE.MeshLambertMaterial({ color: "#c3cad0", emissive: "#5d666e", transparent: true, opacity: 0, depthWrite: false, flatShading: true });
-    this.spiralMesh = this.buildSpiral(quality);
-    this.bandMesh = this.buildBand(quality);
+    this.spiralMesh = quality === "low" ? this.buildFlatSpiral() : this.buildSpiral(quality);
+    this.bandMesh = quality === "low" ? this.buildFlatBand() : this.buildBand(quality);
     this.spiral.add(this.spiralMesh);
     this.band.add(this.bandMesh);
     this.spiral.visible = false;
@@ -109,6 +175,35 @@ export class StormSky {
     return mesh;
   }
 
+  private flatMaterials(): { spiral: THREE.MeshBasicMaterial; band: THREE.MeshBasicMaterial } {
+    if (!this.flat) {
+      const sheet = (map: THREE.Texture): THREE.MeshBasicMaterial =>
+        new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+      this.flat = { spiral: sheet(spiralTexture()), band: sheet(bandTexture()) };
+    }
+    return this.flat;
+  }
+
+  /** Low quality: the spiral as one flat painted sheet. */
+  private buildFlatSpiral(): THREE.Mesh {
+    const geometry = new THREE.PlaneGeometry(FLAT_SPIRAL_SIZE, FLAT_SPIRAL_SIZE);
+    geometry.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geometry, this.flatMaterials().spiral);
+    mesh.name = "storm-spiral";
+    mesh.frustumCulled = false;
+    return mesh;
+  }
+
+  /** Low quality: the rain band as one flat sheet. */
+  private buildFlatBand(): THREE.Mesh {
+    const geometry = new THREE.PlaneGeometry(FLAT_BAND_SIZE[0], FLAT_BAND_SIZE[1]);
+    geometry.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geometry, this.flatMaterials().band);
+    mesh.name = "storm-cloud-band";
+    mesh.frustumCulled = false;
+    return mesh;
+  }
+
   private buildBand(quality: SkyQuality): THREE.InstancedMesh {
     const count = BAND_PUFFS[quality];
     const mesh = new THREE.InstancedMesh(puffGeometry(), this.bandMaterial, count);
@@ -137,10 +232,15 @@ export class StormSky {
     this.band.remove(this.bandMesh);
     this.spiralMesh.geometry.dispose();
     this.bandMesh.geometry.dispose();
-    this.spiralMesh = this.buildSpiral(quality);
-    this.bandMesh = this.buildBand(quality);
+    this.spiralMesh = quality === "low" ? this.buildFlatSpiral() : this.buildSpiral(quality);
+    this.bandMesh = quality === "low" ? this.buildFlatBand() : this.buildBand(quality);
     this.spiral.add(this.spiralMesh);
     this.band.add(this.bandMesh);
+  }
+
+  /** Whether the sky is drawn as flat sheets (Low quality). */
+  get isFlat(): boolean {
+    return !(this.spiralMesh instanceof THREE.InstancedMesh);
   }
 
   /**
@@ -153,6 +253,7 @@ export class StormSky {
     this.spiral.rotation.y = angle;
     this.spiral.scale.setScalar(scale);
     this.spiralMaterial.opacity = Math.min(0.62, opacity);
+    if (this.flat) this.flat.spiral.opacity = Math.min(0.7, opacity);
   }
 
   /** The rain-cloud band at (x, z), lying along `heading` (radians), at `opacity`. */
@@ -161,6 +262,7 @@ export class StormSky {
     this.band.position.set(x, CLOUD_HEIGHT + 0.8, z);
     this.band.rotation.y = heading;
     this.bandMaterial.opacity = Math.min(0.45, opacity);
+    if (this.flat) this.flat.band.opacity = Math.min(0.5, opacity);
   }
 
   /** A lightning bolt from the cloud base down to (x, z) on the board, shown until `untilMs`. */
@@ -200,6 +302,12 @@ export class StormSky {
     this.bandMesh.geometry.dispose();
     this.spiralMaterial.dispose();
     this.bandMaterial.dispose();
+    if (this.flat) {
+      for (const material of [this.flat.spiral, this.flat.band]) {
+        material.map?.dispose();
+        material.dispose();
+      }
+    }
     this.bolt.geometry.dispose();
     this.boltMaterial.dispose();
   }

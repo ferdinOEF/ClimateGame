@@ -692,6 +692,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // cluster, whose height changes as it collapses, so its bottom is tracked.
   const mapCorner = levelMap.source ? document.createElement("div") : null;
   let mapCornerObserver: ResizeObserver | null = null;
+  let mapCornerHeightObserver: ResizeObserver | null = null;
   if (mapCorner) {
     mapCorner.className = "map-corner";
     container.appendChild(mapCorner);
@@ -706,6 +707,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       mapCornerObserver.observe(container);
       place();
     }
+    // The Discovery card shares the bottom-left corner: it sits above the
+    // street-map switch and the credit, so the credit is never covered.
+    container.classList.add("has-map-corner");
+    const height = (): void => container.style.setProperty("--map-corner-h", `${Math.round(mapCorner.getBoundingClientRect().height)}px`);
+    if (typeof ResizeObserver === "function") {
+      mapCornerHeightObserver = new ResizeObserver(height);
+      mapCornerHeightObserver.observe(mapCorner);
+    }
+    height();
   }
   const mapAttribution = levelMap.source && mapCorner ? new MapAttribution(mapCorner, levelMap.source.attribution) : null;
 
@@ -2421,6 +2431,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     mapLayerControl?.dispose();
     overlayTexture?.dispose();
     mapCornerObserver?.disconnect();
+    mapCornerHeightObserver?.disconnect();
     mapCorner?.remove();
     // Puts the sky and sun back before the scene goes. Without it a
     // session disposed mid-storm would be the last thing to touch those

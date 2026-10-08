@@ -2203,3 +2203,10 @@ html, body {
   line-height: 1.5;
   color: rgba(251, 238, 217, 0.88);
 }
+
+/* On a board with a street map, the Discovery card sits above the switch and the credit (wide screens only; on a phone they move to the top). */
+@media (min-width: 601px) {
+  .has-map-corner .nugget-badge.hud-corner.bottom-left {
+    bottom: calc(16px + var(--map-corner-h, 0px) + env(safe-area-inset-bottom));
+  }
+}
