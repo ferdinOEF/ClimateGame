@@ -30,7 +30,7 @@ const check = (ok: boolean, what: string): void => {
 async function menuChecks(page: Page, label: string): Promise<void> {
   const result = (await page.evaluate(`(() => {
     const plate = document.querySelector(".menu-credits-plate").getBoundingClientRect();
-    const others = [...document.querySelectorAll(".menu-screen .menu-hero > *, .menu-screen .menu-actions > *")].map((n) => n.getBoundingClientRect());
+    const others = [...document.querySelectorAll(".menu-screen .menu-hero > *, .menu-screen .menu-actions > *, .menu-screen > .menu-stats, .menu-screen > .menu-stars, .menu-screen > .menu-footer")].map((n) => n.getBoundingClientRect());
     const gap = Math.min(...others.map((r) => plate.top - r.bottom));
     const overlaps = others.filter((r) => !(r.right <= plate.left || r.left >= plate.right || r.bottom <= plate.top || r.top >= plate.bottom)).length;
     const logos = [...document.querySelectorAll(".menu-credit-logo")].map((img) => ({

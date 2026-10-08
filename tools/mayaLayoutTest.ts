@@ -4,7 +4,7 @@
  * the brief lists and checks the rectangles:
  *
  *   resolutions 1366x768, 1920x1080, 2560x1440
- *   x the Discovery card hidden and shown (its tallest card: the longest fact, with its Source row)
+ *   x the Discovery card hidden and shown (its tallest card: the longest cited fact, dunes-barrier, with its Source row)
  *   x the Get ready panel open and collapsed
  *   x no tooltip and a tooltip open
  *   x Maya docked with a tip, and mid warning jump to three places
@@ -107,7 +107,7 @@ async function main(): Promise<void> {
                 if (panel && panel.classList.contains("collapsed") === ${getReadyOpen}) panel.querySelector(".get-ready-toggle").click();
                 window.__tooltipsForTest.hide();
               })()`);
-              if (discovery) await page.evaluate("window.__nuggetPopupForTest.show('khazan', 'khazan-what')");
+              if (discovery) await page.evaluate("window.__nuggetPopupForTest.show('dune', 'dunes-barrier')");
               await page.evaluate(`window.__panjimScenarioForTest(${JSON.stringify(jump ? `maya-jump-${jump}` : "maya:tip")})`);
               if (tooltip) await page.evaluate(`(() => { const el = document.querySelector('[data-tip="getReady"]') || document.querySelector('[data-tip="coin"]'); window.__tooltipsForTest.show(el); })()`);
               await assertClear(page, `${tag} discovery=${discovery ? "shown" : "hidden"} getReady=${getReadyOpen ? "open" : "collapsed"} tooltip=${tooltip ? "open" : "none"} ${jump ? `jump=${jump}` : "docked"}`, true);
@@ -124,7 +124,7 @@ async function main(): Promise<void> {
       await page.waitForTimeout(300);
       if (process.env.LAYOUT_SHOTS) {
         fs.mkdirSync("docs/qa/layout", { recursive: true });
-        await page.evaluate("window.__nuggetPopupForTest.show('khazan', 'khazan-what')");
+        await page.evaluate("window.__nuggetPopupForTest.show('dune', 'dunes-barrier')");
         await page.evaluate("window.__panjimScenarioForTest('maya:explains')");
         await page.waitForTimeout(900);
         await page.screenshot({ path: `docs/qa/layout/maya-discovery-shown-${tag}.jpg`, type: "jpeg", quality: 75 });
