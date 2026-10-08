@@ -13,7 +13,7 @@
 - PASS canvas fills the window at 1366x768 — 1366x768
 - PASS canvas fills the window at 2560x1440 — 2560x1440
 - PASS canvas fills the window at 1920x1080 — 1920x1080
-- PASS rendering resumes after the tab is hidden and shown — 20 → 29 frames
+- PASS rendering resumes after the tab is hidden and shown — 22 → 31 frames
 - INFO fullscreen: entered and left (headless Chromium may refuse without a real gesture)
 
 ## Keyboard only
@@ -32,7 +32,7 @@
 ## Truthfulness: drawn depth = resolved depth
 
 - PASS cyclone: drawn depth equals the core depth on every water tile at t = 6, 9, 12, 16, 20 s — 2930 tile-moments, 1819 wet, worst difference 0
-- PASS lightning flashes during the cyclone's height — 1 flashes, storm time 7.0 → 9.6 s
+- PASS lightning flashes during the cyclone's height — 1 flashes, storm time 7.0 → 9.5 s
 - PASS lightning overlay never brighter than 25% — keyframe peak opacity 0.150
 - PASS no more than 3 flashes in any second — at most 1 in a second, 1 in 14.0 s
 - PASS flood: drawn depth equals the core depth on every water tile at t = 9, 14, 20, 28 s — 2632 tile-moments, 988 wet, worst difference 0

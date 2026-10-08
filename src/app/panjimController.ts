@@ -1104,6 +1104,13 @@ export class PanjimController {
       this.host.focusCamera({ q: spot.q, r: spot.r }, true, look[1] ? 0.45 : 1);
       return true;
     }
+    // "quality-<low|medium|high|auto>": sets the graphics quality for this visit (not saved).
+    const quality = /^quality-(low|medium|high|auto)$/.exec(name);
+    if (quality) {
+      this.qualityChoice = quality[1] as QualityChoice;
+      this.applyQuality();
+      return true;
+    }
     // "storm-<seconds>": plays the next storm and holds it at that storm time.
     const stormAt = /^storm-(\d+(?:\.\d+)?)$/.exec(name);
     if (stormAt) {
