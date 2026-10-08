@@ -202,6 +202,7 @@ export class NuggetPopup {
     }
     this.pickState.clear();
     this.discovered.clear();
+    this.hovered = false;
     const wasVisible = !this.el.hidden;
     this.el.hidden = true;
     this.el.classList.remove("entering");

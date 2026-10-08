@@ -111,7 +111,9 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
   });
 
   root.appendChild(screen);
-  root.appendChild(creditsStrip());
+  const credits = creditsStrip();
+  root.appendChild(credits);
+  keepCreditsClear(screen, credits);
 }
 
 function menuButton(spec: MenuButtonSpec, actions: MenuActions): HTMLElement {
@@ -184,4 +186,31 @@ function creditsStrip(): HTMLElement {
       })
     ]
   });
+}
+
+/**
+ * The plate is pinned to the foot of the window while that leaves it clear
+ * of the menu (the usual case on desktop). If the menu would reach it (more
+ * buttons, a short or narrow window where the plate wraps), the plate moves
+ * into the flow below the menu instead. Checked again on every resize.
+ */
+function keepCreditsClear(screen: HTMLElement, credits: HTMLElement): void {
+  const check = (): void => {
+    if (!credits.isConnected) return;
+    credits.classList.remove("in-flow");
+    const plate = credits.getBoundingClientRect();
+    if (getComputedStyle(credits).position !== "absolute") return;
+    let bottom = 0;
+    for (const child of screen.children) bottom = Math.max(bottom, child.getBoundingClientRect().bottom);
+    if (bottom + 12 > plate.top) credits.classList.add("in-flow");
+  };
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(() => {
+      if (!credits.isConnected) observer.disconnect();
+      else check();
+    });
+    observer.observe(screen);
+    observer.observe(credits);
+  }
+  requestAnimationFrame(check);
 }

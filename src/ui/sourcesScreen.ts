@@ -9,18 +9,52 @@ import { CITED_FACTS, SHOWN_FACTS, displayText, fullReference } from "@core/fact
  * "Source" button on a Discovery card (which scrolls to that fact). Esc,
  * the close button or a click on the backdrop closes it.
  */
-let open: { backdrop: HTMLElement; previousFocus: Element | null; onKey: (event: KeyboardEvent) => void } | null = null;
+let open: { backdrop: HTMLElement; previousFocus: Element | null; inerted: HTMLElement[] } | null = null;
 
 export function isSourcesOpen(): boolean {
   return open !== null;
 }
 
+/**
+ * One key listener for the life of the page, on `window` in the capture
+ * phase and added when this module loads: before any level's own Esc
+ * handlers (Maya's, the replay card's), so Esc closes this screen first and
+ * the game's shortcuts never fire behind it. Idle when the screen is shut.
+ */
+function onKey(event: KeyboardEvent): void {
+  if (!open) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeSources();
+  } else if (event.key === "Tab") {
+    // Keep focus inside the dialog (the page behind is inert as well).
+    const stops = [...open.backdrop.querySelectorAll<HTMLElement>("button, a[href]")];
+    if (stops.length > 0) {
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      const inside = open.backdrop.contains(document.activeElement);
+      if (event.shiftKey && (document.activeElement === first || !inside)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !inside)) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  }
+  event.stopImmediatePropagation();
+}
+if (typeof window !== "undefined") window.addEventListener("keydown", onKey, true);
+
 export function closeSources(): void {
   if (!open) return;
-  document.removeEventListener("keydown", open.onKey, true);
-  open.backdrop.remove();
-  (open.previousFocus as HTMLElement | null)?.focus?.();
+  const { backdrop, previousFocus, inerted } = open;
   open = null;
+  for (const el of inerted) el.inert = false;
+  backdrop.remove();
+  // Back to where the player was, if that is still on screen (a Discovery card may have closed).
+  const back = previousFocus as HTMLElement | null;
+  if (back && back.isConnected && back.getClientRects().length > 0) back.focus({ preventScroll: true });
 }
 
 /** Opens the Sources screen over whatever is showing; `factId` scrolls to and highlights that fact. */
@@ -108,16 +142,10 @@ export function openSources(factId?: string): HTMLElement {
   backdrop.addEventListener("click", (event) => {
     if (event.target === backdrop) closeSources();
   });
-  // Stop the game's own shortcuts (R, M, S, Esc) while the screen is up.
-  const onKey = (event: KeyboardEvent): void => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeSources();
-    }
-    event.stopPropagation();
-  };
-  document.addEventListener("keydown", onKey, true);
-  open = { backdrop, previousFocus: document.activeElement, onKey };
+  // Everything else on the page is out of reach (and out of the tab order) until it closes.
+  const inerted = [...document.body.children].filter((el): el is HTMLElement => el instanceof HTMLElement && !el.inert);
+  for (const el of inerted) el.inert = true;
+  open = { backdrop, previousFocus: document.activeElement, inerted };
   document.body.appendChild(backdrop);
   close.focus();
   if (factId) {

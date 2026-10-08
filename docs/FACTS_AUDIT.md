@@ -37,7 +37,7 @@ those results on 8 October 2026.
 | # | Fact id | Source | What the search text confirms | Status |
 |---|---|---|---|---|
 | 1 | `mangrove-waves` | McIvor, Möller, Spencer & Spalding (2012), TNC / Wetlands International | "wave height can be reduced by between 13 and 66% over 100 m of mangroves"; research has focused on small waves (< 70 cm) | Shown |
-| 2 | `dunes-barrier` | Pye, Saye & Blott (2007), Defra / Environment Agency FD1302 summary | dunes "can provide an important natural coastal flood defence"; their importance lies in "their function as barriers to coastal flooding"; managed as dynamic natural defences; scope is England and Wales | Shown, with the England and Wales scope in its note |
+| 2 | `dunes-barrier` | Pye, Saye & Blott (2007), Defra / Environment Agency FD1302 summary | dunes "can provide an important natural coastal flood defence"; their importance lies in "their function as barriers to coastal flooding"; managed as dynamic natural defences; scope is England and Wales | Shown. The card text names the scope ("Research on dunes in England and Wales found...") and says no more than "managed as dynamic natural defences" (tightened after review) |
 | 3 | `khazan-what` | Jacob, Sahapedia (no date on the page) | an agro-aqua integrated system for sharing resources between farmers and fishers; land reclaimed from marshes; bunds keep out tidal water; a sluice gate regulates the flow | Shown |
 | 4 | `khazan-mangrove-bund` | Jacob, Sahapedia | "the outer embankment comprises mangroves that act as wave breakers against tidal action" | Shown, cited to Sahapedia only (see below) |
 | 5 | `khazan-bund-breach` | Lobo (24 July 2020), Down To Earth | mangroves reclaiming khazan lands because of breaching bunds (the article's photo caption) | Shown as "As reported by Lobo (2020)" |
@@ -107,6 +107,13 @@ lists them by id for each element. Verdicts:
   and 16 game rules.
 - 9 entries are hidden pending a source.
 - 2 lines were removed: one meaningless, one untrue in this game.
+
+**Saved notes.** Maya's notes are kept on the player's device with the
+words they were heard in. On load, every saved note now takes its current
+title and text, and notes for lines that no longer exist (the old city
+requests) are dropped (`refreshSavedNotes`, tested in
+`tests/oldSaves.test.ts`). So no old, unsourced wording survives on a
+device.
 
 The card's progress line now reads "N of 21 discoveries", because most
 entries are game rules, not facts. The count is computed, never written

@@ -24,6 +24,7 @@ import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { NuggetPopup } from "@ui/nuggetPopup";
+import { closeSources } from "@ui/sourcesScreen";
 import { audioStateForTest, playSound } from "@ui/audioHooks";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
@@ -2433,6 +2434,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     mapCornerObserver?.disconnect();
     mapCornerHeightObserver?.disconnect();
     mapCorner?.remove();
+    container.classList.remove("has-map-corner");
+    container.style.removeProperty("--map-corner-h");
+    closeSources();
     // Puts the sky and sun back before the scene goes. Without it a
     // session disposed mid-storm would be the last thing to touch those
     // values, and `createScene`'s own disposal does not restore them.

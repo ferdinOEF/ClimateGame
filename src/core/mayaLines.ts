@@ -12,6 +12,28 @@ import type { ChallengeOutcome, ZoneIndex } from "./zones";
  */
 export const MAYA = mayaData;
 
+/** A line kept in the Field Guide's "Maya's notes". */
+export interface SavedNote {
+  id: string;
+  title: string;
+  text: string;
+}
+
+/**
+ * Notes saved on the device, brought up to date: a note whose line still
+ * exists takes its current title and text (so a rewording reaches players
+ * who heard the old one), and a note whose line is gone is dropped.
+ */
+export function refreshSavedNotes(saved: readonly SavedNote[]): SavedNote[] {
+  const current = new Map<string, SavedNote>([[MAYA.greeting.id, MAYA.greeting], ...MAYA.tips.map((tip) => [tip.id, tip] as [string, SavedNote])]);
+  const out: SavedNote[] = [];
+  for (const note of saved) {
+    const line = current.get(note.id);
+    if (line && !out.some((kept) => kept.id === line.id)) out.push({ id: line.id, title: line.title, text: line.text });
+  }
+  return out;
+}
+
 export type MayaMood = "celebrates" | "worried";
 
 function fill(template: string, values: Record<string, string | number>): string {

@@ -1393,3 +1393,10 @@
   outline: 2px solid #6e2c16;
   outline-offset: 2px;
 }
+
+/* Set by menuScreen.ts when the pinned plate would meet the menu: it then sits below it in the scroll. */
+@media (min-height: 640px) {
+  .menu-credits.in-flow {
+    position: static;
+  }
+}

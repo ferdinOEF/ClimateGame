@@ -1,5 +1,6 @@
 import guideData from "@data/fieldGuide.json";
 import { playSound } from "@ui/audioHooks";
+import { refreshSavedNotes } from "@core/mayaLines";
 
 /**
  * The Field Guide: ten species of the Panjim coast, collected by tapping the
@@ -36,8 +37,10 @@ function loadNotes(): GuideNote[] {
   try {
     const raw = localStorage.getItem(NOTES_KEY);
     const parsed = raw ? (JSON.parse(raw) as GuideNote[]) : [];
-    // Notes from removed lines (the old city requests, "voice-*") are dropped.
-    return Array.isArray(parsed) ? parsed.filter((note) => typeof note?.id === "string" && typeof note.text === "string" && !note.id.startsWith("voice-")) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Saved notes carry the words they were saved with: bring them up to
+    // date, and drop lines that no longer exist (core/mayaLines.ts).
+    return refreshSavedNotes(parsed.filter((note) => typeof note?.id === "string" && typeof note.text === "string"));
   } catch {
     return [];
   }

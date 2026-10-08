@@ -2210,3 +2210,8 @@ html, body {
     bottom: calc(16px + var(--map-corner-h, 0px) + env(safe-area-inset-bottom));
   }
 }
+
+/* The card takes the pointer (so it stays up while read, and its Source can be reached); the corner around it does not. */
+.nugget-badge {
+  pointer-events: auto;
+}
