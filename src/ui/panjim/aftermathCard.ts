@@ -23,6 +23,8 @@ export interface AftermathView {
   replayLabel: string | null;
   /** Maya's line about what actually happened. */
   maya?: string | null;
+  /** The same storm with no defences (houses hit), and what each kind of defence saved: real resolver numbers. */
+  comparison?: { without: number; savedBy: string[] } | null;
 }
 
 export class AftermathCard {
@@ -43,6 +45,7 @@ export class AftermathCard {
         <div class="aftermath-stars">${[0, 1, 2].map(() => `<span class="aftermath-star">★</span>`).join("")}</div>
         <div class="aftermath-houses"></div>
         <p class="aftermath-hero"></p>
+        <ul class="aftermath-compare" hidden></ul>
         <p class="aftermath-line"></p>
         <p class="aftermath-maya"><span class="aftermath-maya-name">Maya</span><span class="aftermath-maya-text"></span></p>
         <div class="aftermath-actions">
@@ -61,6 +64,16 @@ export class AftermathCard {
     const maya = this.backdrop.querySelector(".aftermath-maya") as HTMLElement;
     (maya.querySelector(".aftermath-maya-text") as HTMLElement).textContent = view.maya ?? "";
     maya.hidden = !view.maya;
+    const compare = this.backdrop.querySelector(".aftermath-compare") as HTMLElement;
+    if (view.comparison && total > 0 && view.comparison.without > view.housesDamaged) {
+      const rows = [`Without any defences: ${view.comparison.without} hit`, ...view.comparison.savedBy];
+      for (const row of rows) {
+        const li = document.createElement("li");
+        li.textContent = row;
+        compare.appendChild(li);
+      }
+      compare.hidden = false;
+    }
     const replay = this.backdrop.querySelector(".aftermath-replay") as HTMLButtonElement | null;
     if (replay && view.replayLabel) replay.textContent = view.replayLabel;
     this.backdrop.hidden = false;

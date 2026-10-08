@@ -1,5 +1,6 @@
 import type { PanjimIndex } from "@core/panjimIndex";
 import { playSound } from "@ui/audioHooks";
+import { downloadStormCard, type StormCardInput } from "./stormCard";
 
 /**
  * The finale: Panjim in 2050.
@@ -17,6 +18,8 @@ export interface FinaleView {
   challengeNames: string[];
   tempo: { name: string; minutes: number };
   seed: string;
+  /** The storm the defences did most for, for the side-by-side storm card. */
+  stormCard?: StormCardInput | null;
 }
 
 export class FinaleCard {
@@ -68,6 +71,7 @@ export class FinaleCard {
         <div class="finale-tempo" title="Real time played. It is not part of the score.">Tempo: <b>${view.tempo.name}</b> · ${view.tempo.minutes} min</div>
         <div class="finale-actions">
           <button type="button" class="finale-share">Share card</button>
+          ${view.stormCard ? `<button type="button" class="finale-storm-card">Storm card</button>` : ""}
           <button type="button" class="finale-done">See results</button>
         </div>
         <div class="finale-share-note" hidden></div>
@@ -76,6 +80,15 @@ export class FinaleCard {
     playSound("star");
 
     this.root.querySelector(".finale-share")!.addEventListener("click", () => void this.share(view));
+    const stormButton = this.root.querySelector<HTMLButtonElement>(".finale-storm-card");
+    stormButton?.addEventListener("click", () => {
+      if (!view.stormCard) return;
+      void downloadStormCard(view.stormCard).then((ok) => {
+        const note = this.root.querySelector(".finale-share-note") as HTMLElement;
+        note.hidden = !ok;
+        note.textContent = "Storm card saved as panjim-storm-card.png: your defences beside none, same storm.";
+      });
+    });
     return new Promise((resolve) => {
       this.root.querySelector(".finale-done")!.addEventListener("click", () => {
         this.root.hidden = true;

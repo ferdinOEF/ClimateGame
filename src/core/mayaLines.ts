@@ -124,26 +124,44 @@ const SHORT_PLACE = MAYA.zonePlaces as Record<string, string>;
  * stars, or nothing lost), is worried about losses, and never blames: a loss
  * is followed by what would help, not by what the player did wrong.
  */
-export function mayaAftermath(outcome: ChallengeOutcome, state: GameState, zones: ZoneIndex): { text: string; mood: MayaMood } {
+export function mayaAftermath(
+  outcome: ChallengeOutcome,
+  state: GameState,
+  zones: ZoneIndex,
+  /**
+   * What each kind of defence really saved: the storm resolved again with
+   * that kind removed (core/stormRecord.ts). When given, Maya quotes it and
+   * nothing else; without it she falls back to the zone tally.
+   */
+  savedBy?: readonly { elementId: string; count: number; houses: number }[]
+): { text: string; mood: MayaMood } {
   const hazardWord = (hazard: string): string => (hazard === "flood" ? "flood water" : "surge");
-  // The zone where defences saved the most homes.
-  let best: { zoneId: string; hazard: string; saved: number; absorbed: number } | null = null;
-  for (const zone of outcome.zones) {
-    if (zone.absorbed <= 0) continue;
-    const saved = zone.housesInZone - zone.housesDamaged;
-    if (!best || saved > best.saved || (saved === best.saved && zone.absorbed > best.absorbed)) best = { zoneId: zone.zoneId, hazard: zone.hazard, saved, absorbed: zone.absorbed };
-  }
   let heroText: string | null = null;
-  if (best) {
-    const hero = zoneHero(state, zones, best.zoneId, best.hazard);
-    const place = SHORT_PLACE[best.zoneId] ?? zones.name(best.zoneId);
-    if (hero) {
-      const defence = hero.count === 1 ? SINGULAR[hero.id] ?? hero.id : PLURAL[hero.id] ?? hero.id;
-      heroText =
-        best.saved > 0
-          ? fill(MAYA.aftermath.held, { defence, place, count: best.saved })
-          : fill(MAYA.aftermath.absorbed, { defence, place, hazard: hazardWord(best.hazard) });
-      heroText = heroText.replace(/held 1 homes/, "held 1 home");
+  if (savedBy) {
+    const top = savedBy[0];
+    if (top && top.houses > 0) {
+      const defence = PLURAL[top.elementId] ?? top.elementId;
+      heroText = fill(MAYA.aftermath.saved, { defence, count: top.houses }).replace(/\b1 more homes\b/, "1 more home");
+    }
+  } else {
+    // The zone where defences saved the most homes.
+    let best: { zoneId: string; hazard: string; saved: number; absorbed: number } | null = null;
+    for (const zone of outcome.zones) {
+      if (zone.absorbed <= 0) continue;
+      const saved = zone.housesInZone - zone.housesDamaged;
+      if (!best || saved > best.saved || (saved === best.saved && zone.absorbed > best.absorbed)) best = { zoneId: zone.zoneId, hazard: zone.hazard, saved, absorbed: zone.absorbed };
+    }
+    if (best) {
+      const hero = zoneHero(state, zones, best.zoneId, best.hazard);
+      const place = SHORT_PLACE[best.zoneId] ?? zones.name(best.zoneId);
+      if (hero) {
+        const defence = hero.count === 1 ? SINGULAR[hero.id] ?? hero.id : PLURAL[hero.id] ?? hero.id;
+        heroText =
+          best.saved > 0
+            ? fill(MAYA.aftermath.held, { defence, place, count: best.saved })
+            : fill(MAYA.aftermath.absorbed, { defence, place, hazard: hazardWord(best.hazard) });
+        heroText = heroText.replace(/held 1 homes/, "held 1 home");
+      }
     }
   }
   const lost = outcome.housesDamaged;
@@ -152,9 +170,12 @@ export function mayaAftermath(outcome: ChallengeOutcome, state: GameState, zones
   }
   const worst = [...outcome.zones].sort((a, b) => b.housesDamaged - a.housesDamaged)[0];
   const worstPlace = SHORT_PLACE[worst.zoneId] ?? zones.name(worst.zoneId);
+  const defended = zoneHero(state, zones, worst.zoneId, worst.hazard) !== null;
   const lossText = heroText
     ? fill(MAYA.aftermath.someLost, { lost: worst.housesDamaged, place: worstPlace })
-    : fill(MAYA.aftermath.noDefence, { hazard: hazardWord(worst.hazard), place: worstPlace });
+    : defended
+      ? fill(MAYA.aftermath.notYet, { hazard: hazardWord(worst.hazard), place: worstPlace })
+      : fill(MAYA.aftermath.noDefence, { hazard: hazardWord(worst.hazard), place: worstPlace });
   const fixedLoss = lossText.replace(/lost 1 homes/, "lost 1 home");
   return { text: heroText ? `${heroText} ${fixedLoss}` : fixedLoss, mood: outcome.stars === 3 ? "celebrates" : "worried" };
 }

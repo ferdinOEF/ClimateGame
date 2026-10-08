@@ -16,6 +16,7 @@ import { BOT_LEVELS, newRun, type Preset } from "../tools/panjimBots/bots";
 import type { ActionRun } from "../src/core/actionRun";
 import type { StormRecord } from "../src/core/stormRecord";
 import { buildStormScript, LIGHTNING_GAP } from "../src/core/stormScript";
+import { replaySteps } from "../src/core/stormReplay";
 
 /**
  * The water the hazard visuals draw is the storm the resolver decided. These
@@ -201,4 +202,26 @@ describe("the storm script marks only what the resolution decided", () => {
       }
     });
   }
+});
+
+describe("the Aftermath replay quotes the record", () => {
+  it("uses the resolver's numbers, step by step", () => {
+    const run = newRun("panjim", BOT_LEVELS.strict);
+    const before = new Map<string, string>();
+    const record = nextStorm(run, [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "dune"]]);
+    for (const [key, inst] of run.state.elements) before.set(key, inst.elementId);
+    const steps = replaySteps(record, before);
+    expect(steps[0].hit.sort()).toEqual([...record.outcome.damagedHouses].sort());
+    for (const key of steps[0].dry) expect(record.outcome.damagedHouses).not.toContain(key);
+    expect(steps[0].text).toContain(`${record.outcome.housesDamaged}`);
+    for (const save of record.savedBy.slice(0, 3)) {
+      const step = steps.find((s) => s.text.includes(`×${save.count}`) && s.text.includes(`${save.houses}`));
+      expect(step).toBeDefined();
+    }
+    if (record.undefended.outcome.housesDamaged > record.outcome.housesDamaged) {
+      expect(steps.some((s) => s.text.includes(`${record.undefended.outcome.housesDamaged}`))).toBe(true);
+    }
+    // No real-world claims: no years, no named storms.
+    for (const step of steps) expect(`${step.text} ${step.maya}`).not.toMatch(/\b(19|20)\d\d\b/);
+  });
 });

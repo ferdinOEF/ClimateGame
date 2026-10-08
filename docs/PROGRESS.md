@@ -7194,3 +7194,57 @@ wind (a vertex sway on their one instanced material).
 **Self-assessment.** It could not be heard here (headless). The levels were
 chosen low: wind at most 0.32 and rain 0.12 on a 0.7 master. It needs a
 listen on real speakers.
+
+### P8 — Aftermath replay, calm ending, storm card — DONE
+
+**Aftermath replay** (`core/stormReplay.ts`, `ui/panjim/replayCard.ts`). After
+the water drains, a replay card walks through the storm in the record's real
+numbers. The camera frames the homes it reached, and Maya says each step.
+- Step 1 is "35 homes hit · 65 homes kept dry". The board tints hit houses
+  red and those kept dry green.
+- Next, where defences stood and changed the result: "With no defences at
+  all: N homes hit". This is the same storm, re-resolved on the board without
+  them.
+- Then up to three kinds of defence, e.g. "Mangroves ×4: 12 homes saved",
+  with their tiles in gold. Each number is the storm re-resolved with just
+  that kind removed.
+- A Skip button, Esc or a click on the board ends it.
+- The Aftermath card now lists the same comparisons, shown only when the
+  defences changed the result.
+
+**Found and fixed: Maya's Aftermath line overstated what defences did.**
+- It said "The khazan at Taleigao held 49 homes". The 49 was simply every
+  house still standing in the zone.
+- The real comparison showed those khazans, planted a quarter before the
+  storm, had saved none.
+- She now quotes only the record: "Without your khazans, N more homes would
+  have been hit".
+- When the defences made no difference she says so: "…before the defences
+  there could make a difference. More of them, given time to grow, will hold
+  it."
+- This is covered by a test.
+
+**Calm ending.** After the finale storm drains, before the replay:
+- the sky clears and the people and boats come back out;
+- creatures show on up to ten defences;
+- the calm bed and birdsong play;
+- Maya says "The water has gone down and the sun is out again." (4.5 s; a
+  click ends it.)
+
+**Storm card** (`ui/panjim/stormCard.ts`):
+- A **Storm card** button on the 2050 finale screen downloads a 1200×630 PNG:
+  the storm the defences did most for, with your defences beside none.
+- Both halves are real resolutions, drawn from their depth fields.
+- Houses kept dry are green dots; houses hit are red with a white cross.
+- It is drawn on a canvas and saved only on the click. There is no network
+  call and no personal data.
+
+**Screenshots** are in `docs/qa/p8/`: the replay card mid-step, the Aftermath
+card, the finale with the Storm card button, and the card image itself.
+
+**Self-assessment:**
+- The numbers are trustworthy, since each one is a resolver run.
+- The replay is functional rather than cinematic: it lights tiles and
+  captions them, but does not re-run the water.
+- In the scripted finale run nothing was built, so the two halves of the
+  card match. A built-up run will differ.

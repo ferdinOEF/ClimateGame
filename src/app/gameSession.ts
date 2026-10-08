@@ -610,6 +610,16 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             end: () => panjimFxEnd()
           },
           redrawBoard: () => redrawPanjimBoard(),
+          tintTiles: (tints) => {
+            for (const coord of replayTinted) terrain.setTint(coord, null);
+            replayTinted.length = 0;
+            for (const tint of tints ?? []) {
+              const [q, r] = tint.key.split(",").map(Number);
+              terrain.setTint({ q, r }, new THREE.Color(tint.color), tint.blend);
+              replayTinted.push({ q, r });
+            }
+          },
+          calmEnding: (ms) => calmEnding(ms),
           offerResume: (label, onResume) => objectivesPanel.addBriefAction(label, onResume)
         })
       : null;
@@ -1647,6 +1657,35 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * clears. The outcome was decided when the challenge landed; this shows it.
    */
   let stormDirector: StormDirector | null = null;
+  /** Tiles the Aftermath replay has tinted, to clear after it. */
+  const replayTinted: AxialCoord[] = [];
+  /**
+   * The calm after the finale's storm: the sky clears, the people and boats
+   * come back out, the birds on the defences show themselves, and the calm
+   * bed plays. A click ends it early.
+   */
+  function calmEnding(ms: number): Promise<void> {
+    storm.setIntensity(0);
+    ambientLife?.setPaused(false);
+    reactions.setAmbientPaused(false);
+    stormSound.calm(ms / 1000);
+    let shown = 0;
+    for (const placed of elements.placedElements()) {
+      if (shown >= 10 || !["mangrove", "khazan", "sandy_vegetation", "dune"].includes(placed.elementId)) continue;
+      const delay = 300 + shown * 320;
+      later(() => reactions.trigger(placed.elementId, placed.x, placed.y, placed.z, placed.top), delay);
+      shown++;
+    }
+    return new Promise((resolve) => {
+      const abort = new AbortController();
+      const done = (): void => {
+        abort.abort();
+        resolve();
+      };
+      window.setTimeout(done, ms);
+      window.setTimeout(() => document.addEventListener("pointerdown", done, { signal: abort.signal, capture: true }), 400);
+    });
+  }
   const stormSound = new StormSound();
   /** The words over defences answering a storm ("Absorbed"); they follow their tile as the camera moves. */
   const stormWords: { el: HTMLElement; coord: AxialCoord }[] = [];

@@ -1,6 +1,9 @@
 import { ActionRun, quarterLabel, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import type { GameState } from "@core/gameState";
-import type { StormRecord } from "@core/stormRecord";
+import { defendsAgainst, type StormRecord } from "@core/stormRecord";
+import { drawStormCard, type StormCardInput } from "@ui/panjim/stormCard";
+import { DEFENCE_PLURAL, replaySteps } from "@core/stormReplay";
+import { ReplayCard } from "@ui/panjim/replayCard";
 import { setSoundEnabled, setSoundVolume, soundVolume } from "@ui/audioHooks";
 import type { AxialCoord } from "@core/hex";
 import type { Telemetry } from "@core/telemetry";
@@ -82,6 +85,10 @@ export interface PanjimHost {
   onForecastLock?: (challenge: ScheduledChallenge) => void;
   /** The board effects of a challenge, staged zone by zone (see `stageChallenge`). */
   challengeFx: ChallengeFx;
+  /** Tints tiles for the Aftermath replay (null clears every tint it set). */
+  tintTiles: (tints: { key: string; color: string; blend: number }[] | null) => void;
+  /** The calm after the finale's storm: the sun back out, birds, the calm bed. Resolves after `ms` or on a click. */
+  calmEnding: (ms: number) => Promise<void>;
   /** Rebuilds every element's mesh from the game state, after a rewind or a resume. */
   redrawBoard: () => void;
   /** Adds a second button to the level brief ("Continue from Q3 2032"). */
@@ -151,6 +158,7 @@ export class PanjimController {
   readonly mayaDirector: MayaDirector;
   /** Maya's voice on or off (M). The heat stays either way. */
   readonly mayaToggle: PrefToggle;
+  private readonly replayCard: ReplayCard;
   /** Sound on or off (S), with the master volume beside it. Off until the first click whatever it says: browsers require one. */
   readonly soundToggle: PrefToggle;
   private readonly volumeSlider: HTMLInputElement;
@@ -180,6 +188,7 @@ export class PanjimController {
     this.aftermath = new AftermathCard(host.container);
     this.finaleCard = new FinaleCard(host.container);
     this.housesCounter = new HousesCounter(host.container);
+    this.replayCard = new ReplayCard(host.container);
     this.riskToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: true, className: "risk-toggle" },
@@ -476,6 +485,16 @@ export class PanjimController {
       this.host.container.classList.remove("slowmo");
     }
     await wait(hurry ? 100 : 500);
+    if (record) {
+      // The calm after the finale's storm, then the replay of what happened.
+      if (record.kind === "compound") {
+        this.maya.dismiss();
+        this.maya.say({ id: `calm:${challenge.id}`, text: "The water has gone down and the sun is out again.", state: "celebrates", urgent: true });
+        this.maya.next();
+        await this.host.calmEnding(4500);
+      }
+      await this.replay(challenge, record);
+    }
     this.housesCounter.endStorm(outcome.housesSaved, outcome.housesTotal);
     this.host.challengeFx.end();
     this.renderOutlook();
@@ -496,7 +515,7 @@ export class PanjimController {
 
     const lock = this.run.lockSnapshots.get(challenge.id);
     // Maya explains what actually happened, from the resolved storm.
-    const told = this.run.zones ? mayaAftermath(outcome, this.host.state, this.run.zones) : null;
+    const told = this.run.zones ? mayaAftermath(outcome, this.host.state, this.run.zones, record?.savedBy) : null;
     this.maya.setState(told?.mood ?? "idle");
     const choice = await this.aftermath.show({
       maya: told?.text ?? null,
@@ -510,10 +529,48 @@ export class PanjimController {
       // only when Maya has nothing to say.
       line: this.run.zones && (!told || outcome.zones.some((zone) => zone.failed.length > 0)) ? aftermathLine(challenge.kind, outcome, this.host.state, this.run.zones, failedIds) : "",
       hero: this.run.zones && !told ? topDefenceLine(outcome, this.host.state, this.run.zones) : null,
-      replayLabel: lock && !this.run.finished ? `Replay from the forecast (${this.labelFor(lock.quarter)})` : null
+      replayLabel: lock && !this.run.finished ? `Replay from the forecast (${this.labelFor(lock.quarter)})` : null,
+      comparison: record
+        ? {
+            without: record.undefended.outcome.housesDamaged,
+            savedBy: record.savedBy.slice(0, 3).map((save) => `${DEFENCE_PLURAL[save.elementId] ?? save.elementId} ×${save.count}: ${save.houses} saved`)
+          }
+        : null
     });
     this.maya.setState("idle");
     if (choice === "replay" && lock) this.rewindTo(lock, challenge);
+  }
+
+  /** The Aftermath replay: what the storm did, step by step, in the record's real numbers. Skippable. */
+  private async replay(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
+    const steps = replaySteps(record, this.preChallengeIds);
+    // Frame the homes the storm reached: the hit ones, else the ones it reached and spared.
+    const focusKeys = steps[0]?.hit.length ? steps[0].hit : steps[0]?.dry ?? [];
+    if (focusKeys.length > 0) {
+      const sum = focusKeys.reduce((acc, key) => {
+        const [q, r] = key.split(",").map(Number);
+        return { q: acc.q + q, r: acc.r + r };
+      }, { q: 0, r: 0 });
+      this.host.focusCamera({ q: Math.round(sum.q / focusKeys.length), r: Math.round(sum.r / focusKeys.length) }, true, 1.4);
+    }
+    await this.replayCard.play(challenge.name, steps, {
+      light: (step) => {
+        if (!step) {
+          this.host.tintTiles(null);
+          return;
+        }
+        const tints: { key: string; color: string; blend: number }[] = [];
+        for (const key of step.dry) tints.push({ key, color: "#5fbf7a", blend: 0.5 });
+        for (const key of step.hit) tints.push({ key, color: "#d9553d", blend: 0.6 });
+        for (const key of step.highlight) tints.push({ key, color: "#f2c35b", blend: 0.7 });
+        this.host.tintTiles(tints);
+      },
+      say: (line) => {
+        this.maya.dismiss();
+        this.maya.say({ id: `replay:${challenge.id}:${line}`, text: line, state: "explains", urgent: true, force: true });
+        this.maya.next();
+      }
+    });
   }
 
   /** Rewinds to a snapshot (a forecast lock), redraws the board and re-shows that forecast. Measured: it must stay well under 3 s. */
@@ -556,9 +613,39 @@ export class PanjimController {
       index: result,
       challengeNames: this.run.schedule.map((c) => c.name),
       tempo: tempoBadge(this.playMs()),
-      seed: this.host.seed
+      seed: this.host.seed,
+      stormCard: this.stormCardInput()
     });
     this.host.onRunComplete(result);
+  }
+
+  /** The storm card as a PNG data URL (for the screenshots). */
+  stormCardDataUrl(): string | null {
+    const input = this.stormCardInput();
+    return input ? drawStormCard(input).toDataURL("image/png") : null;
+  }
+
+  /** The storm card's data: the storm the defences did most for (the last one if none did). */
+  private stormCardInput(): StormCardInput | null {
+    let best: { name: string; record: StormRecord } | null = null;
+    let bestGain = -1;
+    for (const challenge of this.run.schedule) {
+      const record = this.run.stormRecords.get(challenge.id);
+      if (!record) continue;
+      const gain = record.undefended.outcome.housesDamaged - record.outcome.housesDamaged;
+      if (gain >= bestGain) {
+        bestGain = gain;
+        best = { name: challenge.name, record };
+      }
+    }
+    if (!best) return null;
+    const hazards = best.record.kind === "compound" ? (["cyclone", "flood"] as const) : ([best.record.kind] as const);
+    return {
+      title: best.name,
+      tiles: [...this.host.state.placed.entries()].map(([key, tile]) => ({ key, terrainId: tile.terrainId })),
+      record: best.record,
+      defences: [...this.host.state.elements].filter(([, inst]) => defendsAgainst(inst.elementId, hazards)).map(([key]) => key)
+    };
   }
 
   // ---- autosave -----------------------------------------------------------
@@ -997,7 +1084,7 @@ export class PanjimController {
           await wait(60);
           while (this.busy) {
             // Hurry the storm along, as a player's click does.
-            if (this.host.challengeFx.isPlaying()) document.dispatchEvent(new PointerEvent("pointerdown"));
+            if (this.host.challengeFx.isPlaying() || this.replayCard.isOpen) document.dispatchEvent(new PointerEvent("pointerdown"));
             if (this.aftermath.isOpen) this.host.container.querySelector<HTMLButtonElement>(".aftermath-continue")?.click();
             await wait(100);
           }
@@ -1121,6 +1208,34 @@ export class PanjimController {
         await wait(1200); // a few houses into the count
         return true;
       }
+      case "show-storm-card": {
+        // The storm card's image over everything, for the screenshots.
+        const url = this.stormCardDataUrl();
+        if (!url) return false;
+        const img = document.createElement("img");
+        img.src = url;
+        img.className = "storm-card-preview";
+        img.style.cssText = "position:fixed;left:0;top:0;width:100vw;z-index:99999;background:#000";
+        document.body.appendChild(img);
+        await wait(300);
+        return true;
+      }
+      case "aftermath-replay": {
+        // Defences on the next storm's path, the storm hurried through, then
+        // handed back on the replay's second step.
+        await this.plantForNext(4);
+        const next = this.run.nextChallenge();
+        if (!next) return false;
+        if (this.run.quartersUntil(next) > 1) await this.fastForwardEvent();
+        await this.idle();
+        void this.fastForwardYear();
+        while (!this.replayCard.isOpen) {
+          if (this.host.challengeFx.isPlaying()) document.dispatchEvent(new PointerEvent("pointerdown"));
+          await wait(150);
+        }
+        await wait(700);
+        return true;
+      }
       case "finale": {
         // Plays the whole run on fast-forward, accepting each Aftermath,
         // and hands back at the finale card.
@@ -1128,6 +1243,7 @@ export class PanjimController {
           void this.fastForwardYear();
           await wait(60);
           while (this.busy) {
+            if (this.host.challengeFx.isPlaying() || this.replayCard.isOpen) document.dispatchEvent(new PointerEvent("pointerdown"));
             const cont = this.host.container.querySelector<HTMLButtonElement>(".aftermath-continue");
             if (this.aftermath.isOpen && cont) cont.click();
             if (this.host.container.querySelector(".finale-card")) return true;
@@ -1278,6 +1394,7 @@ export class PanjimController {
     this.keyAbort.abort();
     this.maya.dispose();
     this.mayaToggle.dispose();
+    this.replayCard.dispose();
     this.soundToggle.dispose();
     this.volumeSlider.remove();
     this.riskToggle.dispose();
