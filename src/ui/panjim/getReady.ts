@@ -1,8 +1,7 @@
 import type { PrepObjective } from "@core/prep";
 
 /**
- * "Get ready": the compact panel bottom-right that replaced Voices of
- * Panjim. Two or three optional jobs for the next storm, each with its
+ * "Get ready": the compact panel bottom-right. Two or three optional jobs for the next storm, each with its
  * progress and reward; a finished one ticks, pops its Coin and stays checked
  * until the storm passes. Collapsible to its title bar, so it never competes
  * with the map. Purely a bonus: nothing here ever blocks play.

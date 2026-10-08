@@ -5771,17 +5771,9 @@ no console errors.
   plus chime and the person's thanks, and the card leaves.
 - **Lapse:** unmet requests lapse quietly when their era ends; nothing is
   lost but the reward.
-- **Voices:**
-  - Anthony, a Miramar fisherman.
-  - Mrs Fernandes in Fontainhas, whose lane the Ourem creek floods.
-  - Sitaram, a Taleigao paddy farmer, and later his daughter.
-  - Rosy's shack at Caranzalem.
-  - Fr. Rodrigues at St Cruz.
-  - Neha, a teacher in Merces.
-  - Prakash, a Mandovi ferryman.
-  - Leon at the Dona Paula jetty.
-- **Writing:** each request is short and asks for something; thanks are one
-  line, some in Konkani ("Dev borem korum").
+- **Voices:** eight invented residents (names removed in PC1; the whole
+  feature was deleted then).
+- **Writing:** each request was short and asked for something.
 - **Nudging:** requests point at good play without lecturing: era 1 asks for
   dunes on the cyclone's beach and a khazan in the flood's wetlands.
 - **Tested:** two or three per era, each answerable on the real map (enough
@@ -5825,7 +5817,7 @@ no console errors.
 
 **Self-assessment:**
 - **Fun:** this is the phase that makes it feel like a game. Answering
-  Anthony on the second dune, with a coin pop and his thanks, then
+  a request on the second dune, with a coin pop, then
   completing a Mangrove Belt with a ripple of gold, are two rewards inside
   the first minute.
 - **Readable:** the Voices panel is the densest UI in the game (three
@@ -6448,7 +6440,7 @@ clock changes).
   - the four tips the brief asked for (mangroves, khazans, dunes and
     pandanus, seawalls), plus the red heat, the green shields and Get ready;
   - five of the old Voices of Panjim as occasional lines in her voice
-    (Anthony at Miramar, Mrs Fernandes, Sitaram, Neha, Prakash).
+    (invented residents; removed in PC1).
 - **The rules** (`app/mayaDirector.ts`):
   - At most one line per quarter, plus a quarter's rest between ordinary
     tips.
@@ -7429,3 +7421,34 @@ notable ones:
 - page zoom is allowed (`maximum-scale=1` removed; the board keeps
   `touch-action: none`);
 - the Outlook markers' `aria-label` gained `role="img"`.
+
+## PC1 — invented people removed — DONE
+
+- **Removed:** the whole Voices system:
+  - `core/voices.ts`, the panel (`ui/panjim/voicesPanel.ts`) and its CSS;
+  - the `voices` and `showVoicesPanel` fields in `levels.json` and `levels.ts`;
+  - the run's `voice_complete` and `voice_new` events and `activeVoices()`;
+  - Maya's five city lines (`maya.json` `voices`) and the director's timer for them;
+  - the balance multiplier for their rewards;
+  - the bots' "answer a Voice" step and the "Voices (median)" column;
+  - the debug scenario `voices`.
+- **Kept behaviour:**
+  - Get ready counts standing elements in a zone directly (`prep.ts`);
+    it no longer borrows the old helper.
+  - Old autosaves that still carry `voiceStatus` load: the field is optional and ignored.
+  - Field Guide notes saved from the removed lines (`voice-*`) are dropped on load.
+  - The Voices were already switched off on Panaji, so bot outcomes are unchanged.
+- **Objectives** were already in plain game language ("Weather 3 hazards",
+  "Plant 2 mangroves along the Ourem creek"). No change was needed.
+- **Docs:** the names are scrubbed from this log (the P6 history keeps a one-line note).
+- **Guard:** `tests/noInventedPeople.test.ts` fails if any of these appear
+  in `src/`, `public/`, `index.html` or the README:
+  - the removed names;
+  - "Voices of Panjim" or `showVoicesPanel`;
+  - an "X says/asks/told" line in the game's text data.
+- **Checks:**
+  - tsc clean; 355 tests pass (6 skipped); the build passes.
+  - There is no `lint` script in package.json. tsc in strict mode is the lint.
+- **Self-assessment:** nothing a player sees is lost but the five
+  occasional city lines. Maya now speaks only tips, warnings and aftermath
+  lines; PC2 checks each of those for claims.

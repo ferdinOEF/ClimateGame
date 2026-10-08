@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { BOT_LEVELS, newRun } from "../tools/panjimBots/bots";
 import { prepProgress } from "../src/core/prep";
-import { activeVoices, levelWithPreset } from "../src/levels/levels";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import type { ActionRun } from "../src/core/actionRun";
 
 /**
- * "Get ready" replaced the Voices of Panjim panel on Panaji. These check that
- * the jobs are written for the storm that is coming (its exposure, defences
+ * "Get ready" on Panaji. These check that the jobs are written for the storm that is coming (its exposure, defences
  * that answer it, buildable where they point), that they complete when the
- * matching builds are made and pay their reward, and that the old Voices are
- * dormant rather than deleted.
+ * matching builds are made and pay their reward.
  */
 const ANSWERS: Record<string, string[]> = { cyclone: ["dune", "sandy_vegetation", "mangrove", "seawall"], flood: ["khazan", "mangrove"], compound: ["dune", "sandy_vegetation", "mangrove", "khazan"] };
 
@@ -28,15 +25,6 @@ function build(run: ActionRun, zone: string, elementId: string, times: number): 
 }
 
 describe("Get ready jobs", () => {
-  it("Voices are dormant on Panaji: still in the data, switched off", () => {
-    const level = levelWithPreset("l01-first-rains", "easy-test")!;
-    expect(level.showVoicesPanel).toBe(false);
-    expect((level.voices ?? []).length).toBeGreaterThan(0);
-    expect(activeVoices(level)).toEqual([]);
-    const tutorial = levelWithPreset("l00-tutorial", "easy-test") ?? undefined;
-    expect(tutorial?.showVoicesPanel).not.toBe(false);
-  });
-
   for (const preset of ["easy-test", "strict"] as const) {
     it(`${preset}: 2-3 jobs per storm, each a defence against it, buildable where it points`, () => {
       const run = newRun("panjim", BOT_LEVELS[preset]);

@@ -36,7 +36,8 @@ function loadNotes(): GuideNote[] {
   try {
     const raw = localStorage.getItem(NOTES_KEY);
     const parsed = raw ? (JSON.parse(raw) as GuideNote[]) : [];
-    return Array.isArray(parsed) ? parsed.filter((note) => typeof note?.id === "string" && typeof note.text === "string") : [];
+    // Notes from removed lines (the old city requests, "voice-*") are dropped.
+    return Array.isArray(parsed) ? parsed.filter((note) => typeof note?.id === "string" && typeof note.text === "string" && !note.id.startsWith("voice-")) : [];
   } catch {
     return [];
   }

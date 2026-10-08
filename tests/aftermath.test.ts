@@ -62,7 +62,7 @@ describe("snapshots", () => {
     const level = levelWithPreset("l01-first-rains", "strict")!;
     const map = mapById("panaji")!;
     const make = () =>
-      new ActionRun(new GameState(map.tiles, [], level.startingCoin), level.timeline!, { climate: level.climate, seed: level.id, zones: map.zones, voices: level.voices });
+      new ActionRun(new GameState(map.tiles, [], level.startingCoin), level.timeline!, { climate: level.climate, seed: level.id, zones: map.zones });
     const run = make();
     const first = run.schedule[0];
     while (!run.locked.has(first.id)) run.fastForwardYear();

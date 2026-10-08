@@ -5,7 +5,6 @@ import { QUARTERS_PER_YEAR } from "./quarters";
 import { buildSchedule, challengeStrength, outlookFor, type ClimateConfig, type ScheduledChallenge } from "./climate";
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
-import { voiceProgress, type VoiceDef, type VoiceStatus } from "./voices";
 import { computeExposure, type Exposure } from "./exposure";
 import { generatePrep, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
 import { resolveStorm, type StormRecord } from "./stormRecord";
@@ -60,10 +59,6 @@ export type RunEvent =
   | { type: "challenge"; challenge: ScheduledChallenge; outcome: ChallengeOutcome | null }
   /** Tiles just joined a perfect-fit combo. `all` is every tile in that combo now. */
   | { type: "combo"; combo: ComboId; tiles: string[]; all: string[] }
-  /** A Voice of Panjim was answered: `reward` Coin paid at once. */
-  | { type: "voice_complete"; voice: VoiceDef; reward: number }
-  /** A new era's Voices arrive. */
-  | { type: "voice_new"; voices: VoiceDef[] }
   /** A Get ready job was finished: `reward` Coin paid at once. */
   | { type: "prep_complete"; objective: PrepObjective; reward: number }
   /** The Get ready jobs for the next storm were set. */
@@ -76,8 +71,6 @@ export interface ActionRunOptions {
   seed?: string;
   /** The map's challenge zones. Without them a challenge is reported but not resolved. */
   zones?: readonly ZoneDef[];
-  /** The level's Voices of Panjim requests. */
-  voices?: readonly VoiceDef[];
   /** Stars per storm by the share of houses saved (the level's balance preset). Without it, by protection. */
   houseStars?: { three: number; two: number };
   /** How houses stand up to a storm, house by house (the level's `houses` block). */
@@ -100,7 +93,7 @@ export type ActionKind = "build" | "repair" | "demolish" | "fast_forward_year" |
 /**
  * Everything needed to put a run back exactly where it was: the board, the
  * clock, the jar, which challenges have locked and landed and how they went,
- * and the Voices. Plain JSON, so it doubles as the autosave.
+ * and the Get ready jobs. Plain JSON, so it doubles as the autosave.
  */
 export interface RunSnapshot {
   version: 1;
@@ -114,7 +107,8 @@ export interface RunSnapshot {
   landed: string[];
   locked: string[];
   outcomes: [string, ChallengeOutcome][];
-  voiceStatus: [string, VoiceStatus][];
+  /** Saves from before the requests panel was removed carry this; it is ignored. */
+  voiceStatus?: unknown;
   /** The Get ready jobs at the time. Absent in saves from before they existed. */
   prep?: PrepObjective[];
 }
@@ -159,10 +153,8 @@ export class ActionRun {
   combos: ComboBonus = new Map();
   /** The board's perfect-fit combos, recomputed after every action and challenge. */
   comboState: ComboState;
-  readonly voices: readonly VoiceDef[];
   readonly houseStars?: { three: number; two: number };
   readonly houseRule?: HouseRule;
-  readonly voiceStatus = new Map<string, VoiceStatus>();
   readonly prepConfig?: PrepConfig;
   /** The Get ready jobs for the next storm, done or not. */
   prep: PrepObjective[] = [];
@@ -190,10 +182,8 @@ export class ActionRun {
     this.zones = options.zones && options.zones.length > 0 ? new ZoneIndex(options.zones) : null;
     this.comboState = computeCombos(state);
     this.combos = this.comboState.bonus;
-    this.voices = options.voices ?? [];
     this.houseStars = options.houseStars;
     this.houseRule = options.houseRule;
-    for (const voice of this.voices) this.voiceStatus.set(voice.id, voice.era === 1 ? "active" : "waiting");
     this.prepConfig = options.prep;
     this.refreshPrep();
   }
@@ -229,7 +219,6 @@ export class ActionRun {
         landed: [...this.landed],
         locked: [...this.locked],
         outcomes: [...this.outcomes],
-        voiceStatus: [...this.voiceStatus],
         prep: this.prep
       } satisfies RunSnapshot)
     ) as RunSnapshot;
@@ -252,8 +241,6 @@ export class ActionRun {
     for (const id of copy.locked) this.locked.add(id);
     this.outcomes.clear();
     for (const [id, outcome] of copy.outcomes) this.outcomes.set(id, outcome);
-    this.voiceStatus.clear();
-    for (const [id, status] of copy.voiceStatus) this.voiceStatus.set(id, status);
     for (const id of [...this.lockSnapshots.keys()]) if (!this.locked.has(id)) this.lockSnapshots.delete(id);
     this.comboState = computeCombos(this.state);
     this.combos = this.comboState.bonus;
@@ -266,15 +253,10 @@ export class ActionRun {
     return Math.min(3, this.landed.size + 1);
   }
 
-  /** The Voices asking right now. */
-  activeVoices(): VoiceDef[] {
-    return this.voices.filter((voice) => this.voiceStatus.get(voice.id) === "active");
-  }
-
   /**
    * After anything that changed the board: recompute the combos (reporting
-   * tiles that just joined one) and pay out any Voice whose request is now
-   * met.
+   * tiles that just joined one) and pay out any Get ready job that is now
+   * done.
    */
   private settle(): RunEvent[] {
     const events: RunEvent[] = [];
@@ -282,13 +264,6 @@ export class ActionRun {
     for (const joined of newComboMembers(this.comboState, next)) events.push({ type: "combo", ...joined });
     this.comboState = next;
     this.combos = next.bonus;
-    for (const voice of this.activeVoices()) {
-      const { current, target } = voiceProgress(voice.goal, this.state, this.zones, this.comboState);
-      if (current < target) continue;
-      this.voiceStatus.set(voice.id, "done");
-      this.state.coin += voice.reward;
-      events.push({ type: "voice_complete", voice, reward: voice.reward });
-    }
     if (this.zones) {
       for (const job of this.prep) {
         if (job.done) continue;
@@ -541,13 +516,6 @@ export class ActionRun {
       this.stormRecords.set(challenge.id, record);
       events.push({ type: "challenge", challenge, outcome });
     }
-    // A new era: the last era's unanswered Voices lapse, the next era's arrive.
-    for (const voice of this.voices) {
-      if (this.voiceStatus.get(voice.id) === "active") this.voiceStatus.set(voice.id, "lapsed");
-    }
-    const arriving = this.voices.filter((voice) => voice.era === this.era && this.voiceStatus.get(voice.id) === "waiting");
-    for (const voice of arriving) this.voiceStatus.set(voice.id, "active");
-    if (arriving.length > 0) events.push({ type: "voice_new", voices: arriving });
     // The next storm is announced: new Get ready jobs for it.
     const jobs = this.refreshPrep();
     if (jobs.length > 0) events.push({ type: "prep_new", objectives: jobs });

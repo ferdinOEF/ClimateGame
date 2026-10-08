@@ -107,7 +107,7 @@ export class ObjectivesPanel {
   }
 
   /**
-   * Replaces the objective checklist with another body (Panjim 2050's Voices
+   * Replaces the objective checklist with another body (Panaji's Get ready
    * panel). The header with the level name stays.
    */
   mountBody(body: HTMLElement): void {

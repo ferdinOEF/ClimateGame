@@ -16,7 +16,7 @@ import { townLayout } from "./townLayout";
  * needs to know a preset exists.
  */
 export interface BalancePreset {
-  /** Multiplies every source of Coin: starting Coin, jar income, the jar's opening gift, Voice and Get ready rewards. Never build costs. */
+  /** Multiplies every source of Coin: starting Coin, jar income, the jar's opening gift and Get ready rewards. Never build costs. */
   coinMultiplier: number;
   /** Per-challenge severity scale, by challenge id. Missing ids are 1. */
   severityScale: Record<string, number>;
@@ -72,7 +72,6 @@ export function applyBalance(level: LevelDef, presetName: string | undefined = l
         severityScale: (challenge.severityScale ?? 1) * (preset.severityScale[challenge.id] ?? 1)
       }))
     },
-    voices: level.voices?.map((voice) => ({ ...voice, reward: voice.reward * m })),
     prep: level.prep && { ...level.prep, templates: level.prep.templates.map((template) => ({ ...template, reward: template.reward * m })) },
     houseStars: preset.houseStars,
     houses: level.houses && preset.houseRule ? { ...level.houses, rule: preset.houseRule } : level.houses

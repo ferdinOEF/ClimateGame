@@ -567,7 +567,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           },
           repairVisual: (coord) => elements.repairVisual(coord),
           focus: levelMap.focus,
-          mountVoices: (el) => objectivesPanel.mountBody(el),
+          mountPanel: (el) => objectivesPanel.mountBody(el),
           showHeat: (tiles) => {
             heatOverlay.show(
               tiles.map((tile) => {
