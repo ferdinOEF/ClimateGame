@@ -137,7 +137,7 @@
         "severityScale": {
           "c1-cyclone": 0.5,
           "c2-flood": 0.6,
-          "c3-compound": 1
+          "c3-compound": 0.85
         },
         "houseStars": {
           "three": 0.9,

@@ -27,8 +27,10 @@ describe("balance presets", () => {
     expect(Object.keys(LEVEL_BY_ID.get("l01-first-rains")!.balancePresets!)).toEqual(["easy-test", "strict"]);
   });
 
-  it("scales the three storms 0.5 / 0.6 / 1.0 on easy-test and leaves them at 1 on strict", () => {
-    expect(easy.climate!.challenges.map((c) => c.severityScale)).toEqual([0.5, 0.6, 1]);
+  // The finale at 0.85: at full strength no mix of defences a player can grow
+  // in time makes a real difference to it (see PROGRESS, P10).
+  it("scales the three storms 0.5 / 0.6 / 0.85 on easy-test and leaves them at 1 on strict", () => {
+    expect(easy.climate!.challenges.map((c) => c.severityScale)).toEqual([0.5, 0.6, 0.85]);
     expect(strict.climate!.challenges.map((c) => c.severityScale ?? 1)).toEqual([1, 1, 1]);
   });
 

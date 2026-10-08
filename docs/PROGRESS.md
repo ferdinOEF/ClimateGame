@@ -7298,3 +7298,94 @@ non-floating storm words.
 - the rain band;
 - the bolt (one line set);
 - the garden sway (in the existing gardens mesh).
+
+### P10 — finale tuning with the bots — DONE, with a caveat
+
+**Change.** On the easy-test preset (the level's own), the finale's
+severity scale goes from 1 to 0.85. Strict is unchanged.
+
+**Why 0.85.** At full strength, the experiment
+(`tools/panjimBots/finaleDefences.ts`, every defence fully grown, 20 seeds)
+found that no mix a player could grow in time made a real difference. Ten
+mangroves plus six khazans cut homes hit by 18–22%, and either alone by
+13–18%. At 0.85 the defences pay off once a zone has enough of them, and
+neither kind alone does it when spread out.
+
+**Caveat: the brief's "about 40%" target cannot be met exactly.**
+- The zone resolver loses a zone's houses against one threshold: a house
+  falls when the zone's leak, faded by distance from the water, passes its
+  resilience. Most houses in a zone sit one or two tiles from the water.
+- So adding defences changes nothing until a zone's threshold is crossed,
+  then saves nearly every house there at once.
+- Measured cuts are 0–8% or 80–97%, never 40%.
+- Getting a graded 40% would mean changing the house rule itself, which
+  the warning heat's zero-tolerance tests and every star threshold rest on.
+  I did not do that in this run.
+- What does hold: spread out, no single kind suffices, and together they
+  save most homes. Packed into one zone, khazans alone can save most (76% at
+  6, packed in Taleigao).
+- The tables are below, for a human to judge.
+
+**Finale defences.** Homes hit, mean of 20 seeds, fully grown:
+
+```
+easy-test, spread (mangroves 6, khazans 4): homes hit, mean of 20 seeds
+  none 37.0 | belt 36.9 (0%) | khazans 37.0 (0%) | both 36.9 (0%)
+easy-test, packed (mangroves 6, khazans 4): homes hit, mean of 20 seeds
+  none 37.0 | belt 35.0 (5%) | khazans 37.0 (0%) | both 35.0 (5%)
+strict, spread (mangroves 6, khazans 4): homes hit, mean of 20 seeds
+  none 16.0 | belt 15.0 (6%) | khazans 16.0 (0%) | both 3.0 (81%)
+strict, packed (mangroves 6, khazans 4): homes hit, mean of 20 seeds
+  none 16.0 | belt 13.0 (19%) | khazans 4.0 (75%) | both 1.0 (94%)
+easy-test, spread (mangroves 10, khazans 6): homes hit, mean of 20 seeds
+  none 37.0 | belt 36.0 (3%) | khazans 37.0 (0%) | both 34.0 (8%)
+easy-test, packed (mangroves 10, khazans 6): homes hit, mean of 20 seeds
+  none 37.0 | belt 35.0 (5%) | khazans 8.9 (76%) | both 7.0 (81%)
+strict, spread (mangroves 10, khazans 6): homes hit, mean of 20 seeds
+  none 16.0 | belt 15.0 (6%) | khazans 16.0 (0%) | both 3.0 (81%)
+strict, packed (mangroves 10, khazans 6): homes hit, mean of 20 seeds
+  none 16.0 | belt 12.0 (25%) | khazans 4.0 (75%) | both 0.0 (100%)
+easy-test, spread (mangroves 12, khazans 8): homes hit, mean of 20 seeds
+  none 37.0 | belt 35.7 (4%) | khazans 37.0 (0%) | both 1.0 (97%)
+easy-test, packed (mangroves 12, khazans 8): homes hit, mean of 20 seeds
+  none 37.0 | belt 35.0 (5%) | khazans 4.0 (89%) | both 2.0 (95%)
+strict, spread (mangroves 12, khazans 8): homes hit, mean of 20 seeds
+  none 16.0 | belt 3.0 (81%) | khazans 16.0 (0%) | both 3.0 (81%)
+strict, packed (mangroves 12, khazans 8): homes hit, mean of 20 seeds
+  none 16.0 | belt 12.0 (25%) | khazans 4.0 (75%) | both 0.0 (100%)
+```
+
+**Finale stars by bot** (20 seeds each, after the change):
+
+
+easy-test: finale (Cyclone and flood) stars, 20 seeds
+| Persona | 1★ | 2★ | 3★ | homes saved (median %) |
+|---|---|---|---|---|
+| casual | 20 | 0 | 0 | 28% |
+| greedy | 20 | 0 | 0 | 28% |
+| smart | 0 | 0 | 20 | 100% |
+| rusher | 20 | 0 | 0 | 28% |
+| banker | 0 | 20 | 0 | 62% |
+| walls | 0 | 4 | 16 | 98% |
+| mangroves | 0 | 4 | 16 | 100% |
+
+strict: finale (Cyclone and flood) stars, 20 seeds
+| Persona | 1★ | 2★ | 3★ | homes saved (median %) |
+|---|---|---|---|---|
+| casual | 20 | 0 | 0 | 6% |
+| greedy | 20 | 0 | 0 | 6% |
+| smart | 0 | 0 | 20 | 100% |
+| rusher | 20 | 0 | 0 | 6% |
+| banker | 20 | 0 | 0 | 7% |
+| walls | 20 | 0 | 0 | 2% |
+| mangroves | 0 | 0 | 20 | 100% |
+
+**Against the brief's targets:**
+- Smart scores 3★ on every seed. The brief said "usually 2–3★"; on this
+  preset it is always 3.
+- Casual always scores at least 1★ (it gets 1★, saving 28% of homes).
+- Greedy struggles (1★ on every seed).
+- Banker reaches 2★.
+
+**The finale's warning heat stays single-hazard.** It is one red ramp for
+the compound storm (core/exposure.ts), unchanged.
