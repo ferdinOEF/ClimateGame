@@ -87,6 +87,13 @@ async function main(): Promise<void> {
         const links = await page.locator(".sources-list .sources-link").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
         check(links.every((u) => u.startsWith("https://")), "Sources links are https");
         await page.screenshot({ path: path.join(OUT, `sources-${label}.jpg`), quality: 85 });
+        // axe-core on the menu with the strip and on the open Sources screen.
+        await page.addScriptTag({ path: path.resolve(ROOT, "node_modules/axe-core/axe.min.js") });
+        const axeResult = await page.evaluate<string[]>(`(async () => {
+          const r = await axe.run(document, { resultTypes: ["violations"] });
+          return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id + " x" + v.nodes.length);
+        })()`);
+        check(axeResult.length === 0, `axe-core: menu + Sources screen, no serious or critical violations${axeResult.length ? ": " + axeResult.join(", ") : ""}`);
         await page.keyboard.press("Escape");
         check((await page.locator(".sources-panel").count()) === 0, "Esc closes the Sources screen");
         // Into a level: no strip, and a Discovery card with its Source.
