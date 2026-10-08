@@ -7529,3 +7529,58 @@ notable ones:
     checked from the Sources screen.
   - The cards lost some flavour, mostly the wildlife lines. Each hidden one
     can come back the moment someone adds a source.
+
+## PC3 + PC4 — branding strip, street map at 21% — DONE
+
+**PC3: the logos.**
+- **Files:** the four files from `branding_logos.zip` are copied
+  byte-for-byte to `public/branding/` (sha256 checked against the
+  originals):
+  - `oneearth-foundation.png`;
+  - `gokhush-charitable-trust.svg`, `.png` and `-white.png`.
+
+  None was redrawn or edited. One web copy was made from the original
+  with Pillow (LANCZOS): `oneearth-foundation-256.webp`, 256×261, 34 KB,
+  plus a PNG twin. The page loads the WebP; the Gokhush logo is the black
+  SVG.
+- **The strip:** on the landing page only, a cream plate (`#F6ECD8`,
+  rounded 16 px, thin border, soft shadow) at the bottom. It holds:
+  - "Brought to you by";
+  - the OneEarth Foundation logo;
+  - the Gokhush Charitable Trust logo;
+  - the "Facts & sources" link.
+- **Logos:** both are 60 px tall at their own proportions. They are not
+  links, not draggable and not interactive. Alt text is "OneEarth
+  Foundation logo" and "Gokhush Charitable Trust logo".
+- **Layout:**
+  - On windows 640 px or taller the plate is pinned to the bottom of the
+    layer, so the centred menu does not move at all.
+  - On shorter windows it sits below the menu in the scroll.
+  - It wraps on narrow widths.
+  - It is never drawn in a level.
+- **Checked** by `tools/creditsCheck.ts` at 1366×768, 1920×1080,
+  2560×1440, 1920×1080 at DPR 2 and 760×900:
+  - no overlap with any menu element (the closest gap is 207 px at
+    760×900);
+  - label contrast 11.7:1;
+  - logos 60 px tall with their proportions kept;
+  - no horizontal scroll;
+  - no console errors or failed requests;
+  - no strip in the Tutorial.
+- **Crispness at DPR 2:** `docs/qa/credits/strip-1920x1080@2x.png` shows
+  both logos sharp. The 256 px WebP is drawn at 120 device pixels.
+
+**PC4: the street map at 21%.**
+- `DEFAULT_MAP_LAYER` is 21%; the slider starts there.
+- **Migration:** saves move from key v3 to v4.
+  - A v3 save of exactly 32%, or a v2 save of exactly 23% (each the default
+    of its own version), moves to 21%, keeping the player's on/off choice.
+  - Any other value was chosen by the player and is kept.
+  - Covered by `tests/mapLayer.test.ts` (5 tests).
+- The roads already follow the street map's opacity (PA2). The
+  OpenStreetMap attribution is unchanged.
+- `tools/verifyMaya.ts` now expects 21.
+
+**Self-assessment:** the strip is quiet and readable and never touches the
+menu. The menu's own pixels are unchanged above it (the pixel diff in the
+QA gate checks this).

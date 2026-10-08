@@ -21,28 +21,32 @@ export interface MapLayerSettings {
 }
 
 /**
- * v3 since the default went from 23% to 32% (v2 was 45% to 75%, then 23%).
+ * v4 since the default went from 32% to 21% (v3 defaulted to 32%; v2 was
+ * 45%, then 75%, then 23%).
  *
  * A setting is only saved when the player touches the switch or the slider.
- * A v2 value of exactly 23% most likely means they only flicked the switch and
- * never moved the slider off the old default, so it migrates to the new
- * default (keeping their on/off); any other v2 value was chosen, and is kept.
+ * A saved value equal to the default of its own version (32% in v3, 23% in
+ * v2) most likely means they only flicked the switch and never moved the
+ * slider, so it migrates to the new default (keeping their on/off); any
+ * other value was chosen, and is kept.
  */
-const STORAGE_KEY = "riptide-rising:map-layer:v3";
-const LEGACY_KEY = "riptide-rising:map-layer:v2";
-const LEGACY_DEFAULT = 0.23;
-/** 32%: the streets and roads read clearly under the tiles without competing with them. */
-export const DEFAULT_MAP_LAYER: MapLayerSettings = { visible: true, opacity: 0.32 };
+const STORAGE_KEY = "riptide-rising:map-layer:v4";
+const LEGACY: readonly { key: string; oldDefault: number }[] = [
+  { key: "riptide-rising:map-layer:v3", oldDefault: 0.32 },
+  { key: "riptide-rising:map-layer:v2", oldDefault: 0.23 }
+];
+/** 21%: the streets and roads read under the tiles while the board's own colours lead. */
+export const DEFAULT_MAP_LAYER: MapLayerSettings = { visible: true, opacity: 0.21 };
 const MIN_OPACITY = 0.1;
 const MAX_OPACITY = 1;
 
-function parse(raw: string, migrateLegacyDefault: boolean): MapLayerSettings {
+function parse(raw: string, oldDefault: number | null): MapLayerSettings {
   const parsed = JSON.parse(raw) as Partial<MapLayerSettings>;
   let opacity =
     typeof parsed.opacity === "number" && Number.isFinite(parsed.opacity)
       ? Math.min(MAX_OPACITY, Math.max(MIN_OPACITY, parsed.opacity))
       : DEFAULT_MAP_LAYER.opacity;
-  if (migrateLegacyDefault && Math.abs(opacity - LEGACY_DEFAULT) < 0.005) opacity = DEFAULT_MAP_LAYER.opacity;
+  if (oldDefault !== null && Math.abs(opacity - oldDefault) < 0.005) opacity = DEFAULT_MAP_LAYER.opacity;
   return {
     visible: typeof parsed.visible === "boolean" ? parsed.visible : DEFAULT_MAP_LAYER.visible,
     opacity
@@ -52,9 +56,11 @@ function parse(raw: string, migrateLegacyDefault: boolean): MapLayerSettings {
 export function loadMapLayerSettings(): MapLayerSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return parse(raw, false);
-    const legacy = localStorage.getItem(LEGACY_KEY);
-    if (legacy) return parse(legacy, true);
+    if (raw) return parse(raw, null);
+    for (const { key, oldDefault } of LEGACY) {
+      const legacy = localStorage.getItem(key);
+      if (legacy) return parse(legacy, oldDefault);
+    }
     return { ...DEFAULT_MAP_LAYER };
   } catch {
     return { ...DEFAULT_MAP_LAYER };
@@ -93,7 +99,7 @@ export class MapLayerControl {
     slider.className = "map-layer-opacity";
     slider.min = String(MIN_OPACITY * 100);
     slider.max = String(MAX_OPACITY * 100);
-    // Steps of 1, so the 32% default sits exactly on the track rather than
+    // Steps of 1, so the 21% default sits exactly on the track rather than
     // the thumb snapping to 30 while the layer is drawn at 32.
     slider.step = "1";
     slider.value = String(Math.round(this.settings.opacity * 100));

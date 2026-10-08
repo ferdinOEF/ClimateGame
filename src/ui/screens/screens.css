@@ -1312,3 +1312,84 @@
     font-size: 12px;
   }
 }
+
+/* --- landing page credits strip ------------------------------------ */
+/*
+  A cream plate at the foot of the menu: "Brought to you by", the two
+  logos, and the way to the Sources screen. Pinned to the bottom of the
+  layer when the window is tall enough that it cannot reach the centred
+  menu; on short windows it sits below the menu in the scroll instead.
+*/
+.menu-credits {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 16px calc(14px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-height: 640px) {
+  .menu-credits {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+}
+
+.menu-credits-plate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 22px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 22px;
+  border-radius: 16px;
+  background: #f6ecd8;
+  border: 1px solid rgba(90, 60, 30, 0.22);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  color: #3b2a1a;
+}
+
+.menu-credits-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.menu-credits-logos {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.menu-credit-logo {
+  display: block;
+  height: 60px;
+  width: auto;
+  user-select: none;
+  pointer-events: none;
+}
+
+.menu-credits-sources {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3b2a1a;
+  background: none;
+  border: none;
+  border-left: 1px solid rgba(90, 60, 30, 0.3);
+  padding: 4px 0 4px 18px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.menu-credits-sources:hover,
+.menu-credits-sources:focus-visible {
+  color: #6e2c16;
+  outline: 2px solid #6e2c16;
+  outline-offset: 2px;
+}

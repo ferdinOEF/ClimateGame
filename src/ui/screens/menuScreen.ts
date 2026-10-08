@@ -11,6 +11,7 @@ import { isCloudConfigured } from "@services/env";
 import { getCurrentUser } from "@services/auth";
 import { el, formatScore, starRow } from "./screenHelpers";
 import { menuModel, type MenuButtonSpec } from "./menuModel";
+import { openSources } from "@ui/sourcesScreen";
 
 /**
  * The title screen — the first thing a player sees.
@@ -110,6 +111,7 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
   });
 
   root.appendChild(screen);
+  root.appendChild(creditsStrip());
 }
 
 function menuButton(spec: MenuButtonSpec, actions: MenuActions): HTMLElement {
@@ -146,6 +148,40 @@ function statTile(label: string, value: string): HTMLElement {
     children: [
       el("div", { className: "stat-value", text: value }),
       el("div", { className: "stat-label", text: label })
+    ]
+  });
+}
+
+/**
+ * The cream strip at the foot of the landing page: who brings the game,
+ * and the way to the Sources screen. The logos are the supplied files
+ * (public/branding/), shown at their own proportions and never as links.
+ * Only on this screen: never in a level.
+ */
+function creditsStrip(): HTMLElement {
+  const base = import.meta.env.BASE_URL;
+  const logo = (src: string, alt: string, className: string, srcset?: string): HTMLImageElement => {
+    const img = el("img", { className: `menu-credit-logo ${className}`, attrs: { src: `${base}${src}`, alt, decoding: "async", draggable: "false" } });
+    if (srcset) img.srcset = srcset;
+    return img;
+  };
+  return el("footer", {
+    className: "menu-credits",
+    children: [
+      el("div", {
+        className: "menu-credits-plate",
+        children: [
+          el("span", { className: "menu-credits-label", text: "Brought to you by" }),
+          el("div", {
+            className: "menu-credits-logos",
+            children: [
+              logo("branding/oneearth-foundation-256.webp", "OneEarth Foundation logo", "oneearth", undefined),
+              logo("branding/gokhush-charitable-trust.svg", "Gokhush Charitable Trust logo", "gokhush")
+            ]
+          }),
+          el("button", { className: "menu-credits-sources", text: "Facts & sources", on: { click: () => openSources() } })
+        ]
+      })
     ]
   });
 }

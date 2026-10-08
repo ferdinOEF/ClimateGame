@@ -8,7 +8,7 @@
  *     Maya, heat or Get ready;
  *   - every HUD control has a tooltip, and every tooltip shows real text;
  *   - Get ready shows 2-3 jobs on Panaji;
- *   - the street map defaults to 32%;
+ *   - the street map defaults to 21%;
  *   - roads render, with no building on any road tile;
  *   - Maya greets with "Hello", mutes with M, the heat toggles with R;
  *   - the heat's previewed houses at risk equal the houses the storm then
@@ -107,7 +107,7 @@ async function main(): Promise<void> {
     const jobs = await page.locator(".get-ready-row").count();
     check(jobs >= 2 && jobs <= 3 && (await page.locator(".get-ready").isVisible()), `Panaji: Get ready shows ${jobs} jobs`);
     const slider = await page.locator(".map-layer-opacity").inputValue();
-    check(slider === "32" && (await page.locator(".map-layer-control input[type=checkbox]").isChecked()), `Panaji: street map on at ${slider}%`);
+    check(slider === "21" && (await page.locator(".map-layer-control input[type=checkbox]").isChecked()), `Panaji: street map on at ${slider}%`);
     const town = await evalJs<{ roads: number; buildingsOnRoads: number; decorMeshes: string[]; buildings: number }>(page, "window.__townForTest()");
     check(town.roads > 50 && !town.decorMeshes.some((name) => name.startsWith("town-road")), `Panaji: roads come from the street map, not drawn strips (${town.roads} road tiles; meshes ${town.decorMeshes.join(", ")})`);
     check(town.buildingsOnRoads === 0, "Panaji: no building on any road tile");
