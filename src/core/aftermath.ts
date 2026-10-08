@@ -62,7 +62,7 @@ export function aftermathLine(kind: ChallengeKind, outcome: ChallengeOutcome, st
   const failedZone = outcome.zones.find((zone) => zone.failed.length > 0);
   if (failedZone) {
     const what = failedIds.includes("small_dam") ? "The dam" : failedIds.includes("seawall") ? "The seawall" : "An engineered wall";
-    return `${what} at ${place(failedZone.zoneId, zones)} gave way and let everything it held through at once.`;
+    return `${what} at ${place(failedZone.zoneId, zones)} was overwhelmed and let the water through all at once.`;
   }
   if (first && first.defence < first.incoming * 0.1) {
     const next = outcome.zones[1];

@@ -120,7 +120,7 @@ function main(): void {
     name: "Tutorial Cove",
     region: "A teaching map, not a real place",
     blurb:
-      "Every Goan river mouth has this shape: open sea, a bar of sand, a brackish estuary where the fresh water meets the salt, and the river behind it. This is that shape with the noise taken out, so you can see all of it at once.",
+      "A made-up river mouth, drawn simply: open sea, a bar of sand, an estuary, and the river behind it, so you can see all of it at once.",
     // No `geo` block: this map is not georeferenced, and claiming otherwise
     // in the data would be a lie a future reader would have to disprove.
     focus: coordAt(4, 3),

@@ -7452,3 +7452,80 @@ notable ones:
 - **Self-assessment:** nothing a player sees is lost but the five
   occasional city lines. Maya now speaks only tips, warnings and aftermath
   lines; PC2 checks each of those for claims.
+
+## PC2 — only verified, cited facts — DONE
+
+- **`src/data/facts.json`** holds everything the game says about the real
+  world. Each entry is either:
+  - a cited fact, with `citation {title, authors, publisher, year, url, note}`;
+  - a game rule ("In this game, ...").
+
+  Unsourced entries are kept with `needsSource: true` and are never shown.
+  `src/core/facts.ts` (pure) decides what is shown and formats credits.
+- **The six starting facts:**
+  - Five are cited facts: mangrove waves (McIvor et al. 2012), dunes
+    (FD1302, 2007), what a khazan is, and mangroves on the bund (both
+    Sahapedia).
+  - Bunds breaching and mangroves returning is shown "As reported by Lobo
+    (2020)".
+  - The khazan floodwater line is the game rule, word for word.
+- **Sources could not be opened directly.** The network here blocks all
+  five sites. Each claim was checked against the pages' own text as
+  quoted in web search results (8 October 2026). Two points are narrower
+  than the brief:
+  - Lobo is not cited for "wave breakers", because the available text
+    does not show him saying it.
+  - "Unmaintained" is not claimed.
+
+  Details, and the check a person should make before release, are in
+  `docs/FACTS_AUDIT.md`.
+- **Audit:** the 30 Discovery lines came out as:
+  - 3 rewritten as cited facts;
+  - 16 game rules;
+  - 9 hidden;
+  - 2 removed: one meaningless, and "skip the maintenance and a dam
+    weakens", which is untrue in this game.
+
+  Maya's tips, the tooltips, the Field Guide's ten species lines and every
+  other UI string with a real-world claim were also rewritten as game rules
+  or neutral wording:
+  - the Tutorial coach;
+  - How to play;
+  - the storm report;
+  - the map blurbs (changed in the generators too);
+  - the page metadata.
+
+  The `carbon` tooltip was wrong for this game (dunes store none) and now
+  matches `elements.json`.
+- **UI:**
+  - The Discovery card shows a **Source** button on a cited fact. Hover or
+    focus shows the author, year and publisher; clicking opens the Sources
+    screen at that fact. The card waits while the pointer or focus is on it.
+  - The card's count is now "N of 21 discoveries", computed from the data.
+  - **Sources screen** (`ui/sourcesScreen.ts`): every cited fact with its
+    full reference, the source's own wording and the link(s), then the
+    game rules. It opens from the menu's "Facts & sources" link and from a
+    card. Esc, the × button or a backdrop click closes it.
+- **Tests** (`tests/facts.test.ts`, 14):
+  - every shown fact has a complete citation with an https URL;
+  - no number appears in a shown fact that is not in its source note;
+  - game rules start "In this game, ";
+  - hidden entries never show;
+  - a reported fact names its reporter;
+  - no year or named cyclone appears in shown text;
+  - the cards list only shown facts, and every cited fact is reachable;
+  - the Sources screen renders every cited fact;
+  - Maya's tips are game rules or guidance.
+- **Checks:**
+  - tsc is clean; 370 tests pass; the build passes.
+  - `tools/creditsCheck.ts` passes: the Sources screen lists all 5 cited
+    facts with https links, Esc closes it, and the card's Source tooltip
+    reads "McIvor et al., 2012 · The Nature Conservancy and Wetlands
+    International (...)".
+- **Fixed during the phase:** the credit said "Lobo et al." for a single
+  author. Authors are now counted as "Surname, I." pairs, with a test.
+- **Self-assessment:**
+  - The game says far less about the world, and every word of it can be
+    checked from the Sources screen.
+  - The cards lost some flavour, mostly the wildlife lines. Each hidden one
+    can come back the moment someone adds a source.

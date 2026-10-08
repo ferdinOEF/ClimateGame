@@ -76,8 +76,8 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
     return {
       headline: "A wall that fails gives everything back at once",
       body:
-        "Concrete holds completely until the moment it does not, and then the water it was holding arrives all together. " +
-        "That is the trade: more protection than roots can offer, right up until there is none at all."
+        "In this game, a wall holds completely until the moment it does not, and then the water it was holding arrives all together. " +
+        "That is the trade: strong protection, right up until there is none at all."
     };
   }
 
@@ -85,7 +85,7 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
     return {
       headline: "Nothing stood between the sea and those homes",
       body:
-        "Every bit of this wave arrived with its full energy. Mangroves on the estuary break a surge up in their roots " +
+        "Every bit of this wave arrived with its full strength. In this game, mangroves on the estuary weaken a surge " +
         "before it reaches the shore — plant a belt and watch this number fall."
     };
   }
@@ -95,7 +95,7 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
       headline: "Your living defences helped, but the belt is too thin",
       body:
         `Roots took ${percent(living)} out of this wave. The rest came through the gaps. ` +
-        "A deeper belt absorbs more, and a mature one absorbs far more than a young one."
+        "In this game, a deeper belt absorbs more, and a grown one far more than a young one."
     };
   }
 
@@ -103,8 +103,8 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
     return {
       headline: "The living coast did most of the work",
       body:
-        `Mangrove roots and dune grass absorbed ${percent(living)} of this surge by slowing the water through them, ` +
-        "rather than bouncing it somewhere else the way a wall does. They also came back after it."
+        `Your living defences absorbed ${percent(living)} of this surge, ` +
+        "and in this game they are still standing for the next one."
     };
   }
 
@@ -112,7 +112,7 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
     return {
       headline: "Concrete held this one",
       body:
-        `Engineered defences took ${percent(engineered)} out of the wave — more than roots could have, today. ` +
+        `Built defences took ${percent(engineered)} out of the wave. ` +
         "Watch what happens when a storm arrives bigger than the wall was built for."
     };
   }
@@ -128,7 +128,7 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
 
   return {
     headline: "The coast held",
-    body: "Nothing was lost this time. Storms get stronger as the season goes on — the belt that held today may not hold the next one."
+    body: "Nothing was lost this time. In this game, later storms are stronger: the belt that held today may not hold the next one."
   };
 }
 

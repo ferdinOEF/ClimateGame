@@ -85,7 +85,7 @@ export class ObjectivesPanel {
       const heightKm = (map.geo.rows * 0.866 * map.geo.metersPerHex) / 1000;
       place.textContent =
         `${map.blurb} ` +
-        `This board is ${widthKm.toFixed(1)} by ${heightKm.toFixed(1)} km of real coast, ` +
+        `This board is ${widthKm.toFixed(1)} by ${heightKm.toFixed(1)} km of Panjim's map, ` +
         `about ${Math.round(map.geo.metersPerHex)} m to a tile.`;
     } else {
       place.textContent = map.blurb;

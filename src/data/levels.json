@@ -3,7 +3,7 @@
     "id": "l00-tutorial",
     "name": "Tutorial",
     "subtitle": "How this works",
-    "brief": "A small coast, drawn to be read at a glance. Sea, sand, a brackish estuary and the river behind it — the shape every Goan river mouth shares. Follow the prompts and you will have built on all four by the end.",
+    "brief": "A small coast, drawn to be read at a glance. Sea, sand, an estuary and the river behind it. Follow the prompts and you will have built on all four by the end.",
     "mapId": "tutorial",
     "tutorial": true,
     "startingCoin": 320,

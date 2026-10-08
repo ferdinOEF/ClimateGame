@@ -1963,7 +1963,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         name: monument.name,
         kindLabel: "landmark",
         effects: {},
-        note: "A real Panjim landmark. It stands here permanently and cannot be built on or removed."
+        note: "A Panjim landmark, placed from OpenStreetMap. It cannot be built on or removed."
       });
       return;
     }

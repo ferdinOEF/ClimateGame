@@ -1083,8 +1083,8 @@ export class PanjimController {
     if (pose) {
       const samples: Record<string, string> = {
         greeting: "Hello! I am Maya. Let us keep Panjim dry.",
-        tip: "Dunes and sandy vegetation shield the beach. Pandanus roots hold the sand when the wind gets up.",
-        explains: "A khazan stores floodwater in its fields, so the homes around it stay dry, every turn.",
+        tip: "In this game, dunes and pandanus shield the beach from a cyclone's surge.",
+        explains: "In this game, a Khazan holds floodwater so nearby homes stay drier.",
         warning: "Taleigao is exposed! Strengthen it before the flood.",
         worried: "We lost 6 homes at Taleigao. A few more defences there next time and they will stand.",
         celebrates: "The mangroves at Taleigao held 40 homes.",

@@ -13,22 +13,22 @@
     {
       "id": "mangroves",
       "title": "Mangroves",
-      "text": "Mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow."
+      "text": "In this game, mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow."
     },
     {
       "id": "khazans",
       "title": "Khazans",
-      "text": "A khazan stores floodwater in its fields, so the homes around it stay dry, every turn."
+      "text": "In this game, a Khazan holds floodwater so nearby homes stay drier."
     },
     {
       "id": "dunes",
       "title": "Dunes and pandanus",
-      "text": "Dunes and sandy vegetation shield the beach. Pandanus roots hold the sand when the wind gets up."
+      "text": "In this game, dunes and pandanus shield the beach from a cyclone's surge."
     },
     {
       "id": "seawall",
       "title": "Seawalls",
-      "text": "A seawall helps, but it costs more and does not absorb water. If a storm is bigger than the wall, the wall fails all at once."
+      "text": "In this game, a seawall costs more and holds no water. If a storm is bigger than the wall, the wall fails all at once."
     },
     {
       "id": "shields",

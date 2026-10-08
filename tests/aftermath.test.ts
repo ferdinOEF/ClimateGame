@@ -53,7 +53,7 @@ describe("aftermath line", () => {
     const before = new Map([...state.elements].map(([k, v]) => [k, v.elementId]));
     const outcome = resolveChallenge(state, zones, "compound", 76, 20);
     const failedIds = outcome.zones.flatMap((z) => z.failed).map((key) => before.get(key)!);
-    expect(aftermathLine("compound", outcome, state, zones, failedIds)).toBe("The dam at the Ourem creek gave way and let everything it held through at once.");
+    expect(aftermathLine("compound", outcome, state, zones, failedIds)).toBe("The dam at the Ourem creek was overwhelmed and let the water through all at once.");
   });
 });
 
