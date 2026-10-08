@@ -1,5 +1,6 @@
 import { ActionRun, quarterLabel, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import type { GameState } from "@core/gameState";
+import type { StormRecord } from "@core/stormRecord";
 import type { AxialCoord } from "@core/hex";
 import type { Telemetry } from "@core/telemetry";
 import type { LevelDef } from "@levels/levels";
@@ -42,6 +43,16 @@ import type { Tooltips } from "@ui/tooltip";
  * `"actions"`; on the tutorial this class is never constructed.
  */
 export interface ChallengeFx {
+  /**
+   * Plays a recorded storm from its depth field (see StormDirector): water,
+   * sky, the defences answering and the houses going, all from the
+   * resolution. Resolves once the water has drained.
+   */
+  play: (record: StormRecord, defences: ReadonlyMap<string, string>, hooks: { onHouseLost: () => void; hurry: () => boolean; onPhase?: (phase: string, line: string) => void }) => Promise<void>;
+  /** Holds the storm clock at `seconds` for screenshots (null lets it run); the hold applies to the next storm too. */
+  freeze: (seconds: number | null) => void;
+  /** True while a storm plays. */
+  isPlaying: () => boolean;
   begin: (challenge: ScheduledChallenge) => void;
   /** One zone's moment: the water or wind reveals, its defences answer one at a time, failures fall, houses take damage. */
   zone: (zone: ZoneOutcome, outcome: ChallengeOutcome, slow: boolean, durationMs: number, onHouseLost: () => void) => void;
@@ -406,16 +417,32 @@ export class PanjimController {
     const abort = new AbortController();
     document.addEventListener("pointerdown", () => (hurry = true), { signal: abort.signal, capture: true });
 
-    const biggest = outcome.zones.reduce((best, zone, index) => (zone.absorbed > (outcome.zones[best]?.absorbed ?? -1) ? index : best), 0);
+    const record = this.run.stormRecords.get(challenge.id);
     try {
-      await wait(500);
-      for (const [index, zone] of outcome.zones.entries()) {
-        const slow = index === biggest && zone.absorbed > 0 && !hurry;
-        const duration = hurry ? 250 : slow ? 2600 : 1300;
-        this.host.container.classList.toggle("slowmo", slow);
-        this.host.challengeFx.zone(zone, outcome, slow, duration, () => this.housesCounter.lose());
-        await wait(duration);
-        if (zone.held) playSound("chime");
+      if (record) {
+        // The storm itself, from its depth field: the houses go when their
+        // water passes the line, the defences answer when it reaches them.
+        await this.host.challengeFx.play(record, this.preChallengeIds, {
+          onHouseLost: () => this.housesCounter.lose(),
+          hurry: () => hurry,
+          // Maya calls the storm's phases as they come.
+          onPhase: (phase, line) => {
+            this.maya.dismiss();
+            this.maya.say({ id: `storm:${challenge.id}:${phase}`, text: line, state: phase === "Recede" ? "explains" : "warning", urgent: true });
+            this.maya.next();
+          }
+        });
+      } else {
+        const biggest = outcome.zones.reduce((best, zone, index) => (zone.absorbed > (outcome.zones[best]?.absorbed ?? -1) ? index : best), 0);
+        await wait(500);
+        for (const [index, zone] of outcome.zones.entries()) {
+          const slow = index === biggest && zone.absorbed > 0 && !hurry;
+          const duration = hurry ? 250 : slow ? 2600 : 1300;
+          this.host.container.classList.toggle("slowmo", slow);
+          this.host.challengeFx.zone(zone, outcome, slow, duration, () => this.housesCounter.lose());
+          await wait(duration);
+          if (zone.held) playSound("chime");
+        }
       }
     } finally {
       abort.abort();
@@ -909,6 +936,23 @@ export class PanjimController {
       this.host.focusCamera({ q: spot.q, r: spot.r }, true, look[1] ? 0.45 : 1);
       return true;
     }
+    // "storm-<seconds>": plays the next storm and holds it at that storm time.
+    const stormAt = /^storm-(\d+(?:\.\d+)?)$/.exec(name);
+    if (stormAt) {
+      this.host.challengeFx.freeze(Number(stormAt[1]));
+      const next = this.run.nextChallenge();
+      if (!next) return false;
+      if (this.run.quartersUntil(next) > 1) await this.fastForwardEvent();
+      await this.idle();
+      void this.fastForwardYear();
+      while (!this.host.challengeFx.isPlaying()) await wait(100);
+      await wait(1200);
+      return true;
+    }
+    if (name === "storm-release") {
+      this.host.challengeFx.freeze(null);
+      return true;
+    }
     const heat = /^heat-(\d)$/.exec(name);
     if (heat) {
       const ok = await this.waitUntilQuartersLeft(Number(heat[1]));
@@ -925,6 +969,8 @@ export class PanjimController {
           void this.fastForwardYear();
           await wait(60);
           while (this.busy) {
+            // Hurry the storm along, as a player's click does.
+            if (this.host.challengeFx.isPlaying()) document.dispatchEvent(new PointerEvent("pointerdown"));
             if (this.aftermath.isOpen) this.host.container.querySelector<HTMLButtonElement>(".aftermath-continue")?.click();
             await wait(100);
           }

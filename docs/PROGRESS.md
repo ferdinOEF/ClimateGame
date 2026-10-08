@@ -7080,3 +7080,84 @@ seeds, undefended and defended, every storm:
   resolver directly.
 - The timing numbers are my reading of the brief. Without the prototype
   they could not be matched frame for frame.
+
+### The reference prototype arrived
+
+The user attached `hazard_vfx_prototype.html` mid-run. It is now kept at
+`docs/reference/hazard_vfx_prototype.html`, and `docs/reference/README.md`
+lists what was taken from it and where the game differs.
+
+The storm script was re-timed to it:
+- landfall at 10 s;
+- the surge rising from 8 s to 16 s and drained by 24 s;
+- the swell from 8 s at 0.8 s a tile, capped to 9 s of travel on Panaji's
+  29-tile channel;
+- a 6 s river rise.
+
+Also taken from it:
+- the backwater coefficient (0.28);
+- the colours: surge #3c96c8, river #123e7d, both #5846a0;
+- lightning 2.5–5.5 s apart;
+- foam only on the shallow advancing front;
+- Maya's phase lines (approach, landfall, recede; rain, swell, recede;
+  storm and rain, pincer, recede).
+
+### P2–P6 — the storm on the board — IN PROGRESS (first pass done)
+
+**What plays now.** Each Panaji storm is played by `app/stormDirector.ts` from
+its recorded depth field:
+- **Water** (`render/storm/stormWater.ts`), one instanced draw call:
+  - the sea swells with Gerstner waves, lower within two tiles of a mangrove;
+  - the surge climbs the land tile by tile and drains, with foam on the
+    shallow front;
+  - river tiles lift and deepen to navy, with white chop, flow streaks and a
+    pale crest at the swell's front;
+  - overflow onto the banks, delayed by distance from the channel;
+  - khazans fill teal and shimmer while holding water;
+  - flooded land carries a wavy stripe, so it reads without colour.
+- **Sky** (`render/storm/stormSky.ts`):
+  - a 5-arm spiral of puffs with an eye-wall, turning anticlockwise;
+  - the flood's grey rain band;
+  - lightning bolts.
+- **Weather** (`StormManager`):
+  - rain is now GPU-instanced (one draw, no per-frame CPU work);
+  - darkness is capped at 35%;
+  - a flash is capped at 25% and rate-limited;
+  - shake only above 70%;
+  - the wind drops in a lull before the hit, while the shallows by landfall
+    draw back and show sand.
+- **Script** (`core/stormScript.ts`), all from the resolution:
+  - houses go grey when their water passes the damage line;
+  - each defence answers when the water first reaches it or its neighbour:
+    its glow rim pulses while the water is on it, a ring plays, and a word
+    floats over it ("Absorbed", "Overwhelmed" or "Failed", from the resolver);
+  - the first defence the water reaches gets 1.5 s of 0.4× slow motion and a
+    camera push;
+  - lightning around the peak, never closer than 2.5 s;
+  - a click hurries the storm along at 4×.
+
+**Checks:**
+- In the browser, `__stormForTest.compare(key)` shows the drawn depth equal to
+  the core depth at the same storm time. It reads 0.6136 against 0.6136 on a
+  sampled tile.
+- `tests/hazardDepth.test.ts` (21 tests) also checks the script:
+  - house events = exactly the resolver's damaged houses;
+  - defence events only on defences;
+  - no lightning in a flood;
+  - strikes at least 2.5 s apart.
+- Screenshots are in `docs/qa/storm-p2/` (each with a grayscale twin): the
+  cyclone at 7/10/16/22 s, defended at 8/9 s, the flood at 12/14/20 s, and the
+  finale at 16 s.
+
+**Self-assessment:**
+- **Working:**
+  - the sea, surge and river colours read clearly;
+  - the finale's indigo meeting shows;
+  - no brown anywhere;
+  - the spiral is visible but faint over the pale skirt.
+- **Still to do:**
+  - boats still only pull in and heel (the existing behaviour);
+  - trees in the town's gardens do not bend; only the planted defences do;
+  - the slow-motion push has not yet been seen in a recorded sequence;
+  - P9 still has to wire Low/Medium/High and the in-game reduce-motion switch
+    through to these layers.

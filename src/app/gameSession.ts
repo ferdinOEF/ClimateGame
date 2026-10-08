@@ -8,6 +8,10 @@ import { CloudLayerManager } from "@render/cloudLayerManager";
 import { BoardSkirtManager } from "@render/boardSkirtManager";
 import { WaveFrontManager } from "@render/waveFrontManager";
 import { StormManager } from "@render/stormManager";
+import { StormWater } from "@render/storm/stormWater";
+import { StormSky } from "@render/storm/stormSky";
+import { StormDirector } from "./stormDirector";
+import { combinedDepth as combinedDepthAt } from "@core/hazard";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
 import { BuildFlourish } from "@render/buildFlourish";
 import { ForecastOutline } from "@render/forecastOutline";
@@ -257,6 +261,21 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   const heatOverlay = new HeatOverlay(levelTiles.length, prefersReducedMotionNow());
   scene.add(heatOverlay.mesh);
+  /**
+   * Panjim 2050's storms: the water (one instanced layer, drawn from the
+   * storm's depth field) and the sky (the cyclone's spiral, the flood's rain
+   * band, lightning). Both stay empty and hidden until a storm plays; see
+   * StormDirector.
+   */
+  const stormWater = new StormWater(levelTiles.length);
+  const stormSky = new StormSky();
+  scene.add(stormWater.mesh);
+  scene.add(stormSky.group);
+  // The lightning flash on screen: never brighter than a quarter, never more than three a second (StormManager rate-limits).
+  const stormFlash = document.createElement("div");
+  stormFlash.className = "storm-flash";
+  stormFlash.setAttribute("aria-hidden", "true");
+  container.appendChild(stormFlash);
 
   /**
    * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -582,6 +601,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             });
           },
           challengeFx: {
+            play: (record, defences, hooks) => stormDirectorFor().play(record, defences, hooks),
+            freeze: (seconds) => stormDirectorFor().freezeAt(seconds),
+            isPlaying: () => stormDirector?.playing ?? false,
             begin: (challenge) => panjimFxBegin(challenge.kind),
             zone: (zone, outcome, slow, durationMs, onHouseLost) => panjimFxZone(zone, outcome, slow, durationMs, onHouseLost),
             end: () => panjimFxEnd()
@@ -1623,8 +1645,66 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * the weather comes in, then each zone gets its own moment in turn, then it
    * clears. The outcome was decided when the challenge landed; this shows it.
    */
+  let stormDirector: StormDirector | null = null;
+  /** The words over defences answering a storm ("Absorbed"); they follow their tile as the camera moves. */
+  const stormWords: { el: HTMLElement; coord: AxialCoord }[] = [];
+  function placeStormWord(word: { el: HTMLElement; coord: AxialCoord }): void {
+    const world = axialToWorld(word.coord, 1.0);
+    const screen = worldToScreen(world.x, terrain.heightAt(word.coord) + 0.6, world.z);
+    word.el.style.left = `${Math.round(screen.x)}px`;
+    word.el.style.top = `${Math.round(screen.y)}px`;
+  }
+  /** The storm player, made on first use (Panjim 2050 only: it needs the run's zones). */
+  function stormDirectorFor(): StormDirector {
+    if (stormDirector) return stormDirector;
+    stormDirector = new StormDirector({
+      tiles: levelTiles,
+      heightAt: (coord) => terrain.heightAt(coord),
+      zones: panjim!.run.zones!,
+      water: stormWater,
+      sky: stormSky,
+      weather: storm,
+      elementAt: (key) => state.elements.get(key)?.elementId,
+      degradeAt: (key) => state.elements.get(key)?.degradeAmount ?? 0,
+      focusOn: (x, z) => focusOn(x, z, false),
+      fitTo: (w, d) => fitTo(w, d, false),
+      setTint: (coord, tint, blend) => terrain.setTint(coord, tint, blend),
+      houseLost: (coord) => elements.setBuildingDamagedVisual(coord),
+      defenceFailed: (coord) => {
+        elements.destroy(coord);
+        playSound("hazard_breach");
+      },
+      defenceWorn: (coord, degrade) => elements.setDegradeVisual(coord, degrade),
+      defenceAnswers: (coord, elementId) => {
+        const world = axialToWorld(coord, 1.0);
+        buildFlourish.play(world.x, terrain.heightAt(coord), world.z, performance.now());
+        reactions.trigger(elementId, world.x, terrain.heightAt(coord), world.z);
+      },
+      label: (coord, text, tone) => {
+        const el = document.createElement("div");
+        el.className = `storm-word ${tone}`;
+        el.textContent = text;
+        container.appendChild(el);
+        const word = { el, coord };
+        stormWords.push(word);
+        placeStormWord(word);
+        window.setTimeout(() => {
+          el.remove();
+          stormWords.splice(stormWords.indexOf(word), 1);
+        }, 3300);
+      },
+      screenFlash: () => {
+        stormFlash.classList.remove("on");
+        void stormFlash.offsetWidth;
+        stormFlash.classList.add("on");
+      },
+      reducedMotion: () => storm.isReducedMotion
+    });
+    return stormDirector;
+  }
+
   function panjimFxBegin(kind: string): void {
-    hud.flashArrival(kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
+    void kind;
     stormImpactActive = true;
     storm.setIntensity(1);
     mapLabels.setVisible(false);
@@ -1983,6 +2063,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     waveFront.tick(nowMs);
     buildFlourish.tick(nowMs);
     panjim?.frame();
+    stormDirector?.tick(nowMs);
+    for (const word of stormWords) placeStormWord(word);
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
     if (ambientLife) {
@@ -2076,6 +2158,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __frameStatsForTest: frameStats,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
+    __stormForTest: {
+      time: () => stormDirector?.time ?? null,
+      playing: () => stormDirector?.playing ?? false,
+      /** The depth the water layer drew on a tile, and the core's depth there at the same storm time. */
+      compare: (key: string) => {
+        const drawn = stormWater.depthDrawn(key);
+        const field = stormDirector?.currentField;
+        if (!drawn || !field) return null;
+        return { drawn: drawn.depth, core: combinedDepthAt(field, key, drawn.t), t: drawn.t };
+      },
+      wetKeys: () => {
+        const field = stormDirector?.currentField;
+        return field ? [...field.tiles.values()].filter((tile) => tile.surgePeak > 0 || tile.floodPeak > 0 || tile.backwaterPeak > 0).map((tile) => tile.key) : [];
+      },
+      script: () => stormDirector?.currentScript ?? null
+    },
     __panjimScenarioForTest: async (name: string): Promise<boolean> => {
       if (!panjim) return false;
       // "build-<terrain>": builds one thing on that terrain near the city,

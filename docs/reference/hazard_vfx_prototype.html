@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cyclone and Flood Preview</title>
+<style>
+:root{--bg:#1c1410;--panel:#2a1d16;--line:#4a3426;--ink:#f6ead8;--mute:#c7b196;--gold:#e8a64a;--teal:#4aa8b8;--red:#d9553d;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin:28px 0 8px}
+p.lead{margin:0 0 16px;color:var(--mute);max-width:70ch}
+.stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0d1a22}
+canvas{display:block;width:100%;height:auto}
+.hud{position:absolute;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.pill{background:rgba(20,14,10,.78);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--mute)}
+.pill.on{color:#1c1410;background:var(--gold);border-color:var(--gold);font-weight:600}
+.stats{position:absolute;right:12px;top:12px;display:grid;gap:6px;text-align:right}
+.stat{background:rgba(20,14,10,.78);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:13px}
+.stat b{font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+.bubble{position:absolute;left:12px;bottom:12px;max-width:min(460px,80%);background:#fff3dc;color:#2a1d16;border-radius:12px;padding:10px 14px;font-size:14px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.bubble b{color:#8a4b12}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+button,.tab{font:inherit;color:var(--ink);background:#3a2a20;border:1px solid var(--line);border-radius:8px;padding:6px 14px;cursor:pointer}
+button:hover,.tab:hover{background:#4a3426}
+button:focus-visible,input:focus-visible,.tab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.tab[aria-pressed=true]{background:var(--gold);color:#1c1410;border-color:var(--gold);font-weight:600}
+input[type=range]{flex:1;min-width:160px;accent-color:var(--gold)}
+label{display:flex;gap:6px;align-items:center;color:var(--mute);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card h3{margin:0 0 6px;font-size:16px}
+.card p,.card li{color:var(--mute);margin:0 0 6px;font-size:14px}
+.card ul{margin:0;padding-left:18px}
+a{color:var(--teal)}
+small{color:var(--mute)}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main>
+<h1>Cyclone and flood: how they could look in the game</h1>
+<p class="lead">A live mock-up on the same hex tiles as Panaji. Pick a hazard, press play or drag the timeline, and switch defences on and off to see how the water reaches fewer homes.</p>
+
+<div class="controls" role="group" aria-label="Hazard">
+  <button class="tab" id="tabC" aria-pressed="true">Cyclone and storm surge</button>
+  <button class="tab" id="tabF" aria-pressed="false">Heavy rain and river flood</button>
+  <button class="tab" id="tabB" aria-pressed="false">Cyclone + flood: the finale</button>
+</div>
+
+<div class="stage" style="margin-top:12px">
+  <canvas id="cv" width="1100" height="560" aria-label="Animated hex map of a coast with sea on the left and a river"></canvas>
+  <div class="hud" id="phases"></div>
+  <div class="stats">
+    <div class="stat">Homes hit <b id="sHit">0</b></div>
+    <div class="stat">Homes dry <b id="sDry">0</b></div>
+  </div>
+  <div class="bubble" id="bubble"></div>
+</div>
+
+<div class="controls">
+  <button id="play">Pause</button>
+  <button id="replay">Replay</button>
+  <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Timeline">
+  <label><input type="checkbox" id="optA" checked> Mangrove belt</label>
+  <label><input type="checkbox" id="optB" checked> Khazans</label>
+  <label><input type="checkbox" id="optC"> Reduce motion</label>
+</div>
+
+<h2>What you are seeing</h2>
+<div class="grid">
+  <div class="card"><h3>Cyclone</h3><ul>
+    <li>A rotating cloud spiral with an eye drifts in from the sea and darkens the sky.</li>
+    <li>Wave bands roll in, foam-edged, and grow as the storm nears.</li>
+    <li>Storm surge lifts the water level; tiles flood from the shore inland and drain afterwards.</li>
+    <li>Palms bend in the wind, rain streaks slant, lightning flickers at landfall.</li></ul></div>
+  <div class="card"><h3>Flood</h3><ul>
+    <li>Rain builds first; then the river tiles physically rise as a swell travels downriver toward the sea, deepening from blue to a dark, churning blue.</li>
+    <li>A pale crest moves along the river and dark blue water spills over low, unprotected banks, choppy with white flecks and flow streaks.</li>
+    <li>Khazans fill with teal stored water and protect homes beside them.</li></ul></div>
+  <div class="card"><h3>Cyclone + flood (finale)</h3><ul>
+    <li>The storm and the rain arrive together. The sea surge pushes up against the swollen river.</li>
+    <li>Backwater: near the mouth the river cannot drain, so it rises higher and floods the low land from both sides.</li>
+    <li>Light turquoise sea water and dark navy river water overlap in an indigo mix, showing where both fronts hit the same homes.</li></ul></div>
+  <div class="card"><h3>Defences</h3><ul>
+    <li>Mangrove belt: waves lose strength behind it and a ring pulses where they hit.</li>
+    <li>Rows behind the belt stay dry; rows outside it flood. This is the "where to focus" view.</li></ul></div>
+</div>
+
+<h2>References used</h2>
+<div class="grid">
+  <div class="card"><h3>Waves</h3>
+    <p><a href="https://discourse.threejs.org/t/classic-ocean-shader-example-with-gestner-waves/29227">Three.js forum: Gerstner-wave ocean shader</a></p>
+    <p><a href="https://sbcode.net/tsl/gerstner-water">sbcode: Gerstner water in TSL</a></p>
+    <p><a href="https://80.lv/articles/tutorial-ocean-shader-with-gerstner-waves/">80.lv: ocean shader with Gerstner waves</a></p></div>
+  <div class="card"><h3>Shore foam and flooding</h3>
+    <p><a href="https://discourse.threejs.org/t/unlit-water-shader-with-foam/11641">Three.js forum: unlit water shader with foam</a></p>
+    <p><a href="https://tympanus.net/codrops/?p=88608">Codrops: stylized water in React Three Fiber</a></p>
+    <p><a href="https://godotshaders.com/shader/foam-edge-water-shader/">Foam-edge water shader</a></p></div>
+  <div class="card"><h3>Look and feel</h3>
+    <p><a href="https://80.lv/articles/bad-north-cure-minimalistic-rts-with-vikings/">80.lv: Bad North, minimalist low-poly style</a></p>
+    <p><a href="https://forums.unrealengine.com/t/olegverenko-stylized-cartoon-clouds-and-weather-icons-pack-138-lowpoly-assets/2730791">Stylized cartoon clouds pack</a></p>
+    <p><small>I only saw titles and snippets of these pages, not their full content, so they are starting points for the build, not verified recipes.</small></p></div>
+</div>
+</main>
+
+<script>
+(function(){
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=cv.width,H=cv.height;
+const R=33,SQ=0.6,HW=Math.sqrt(3)*R,COLS=17,ROWS=12,OX=36,OY=120,DEPTH=7;
+const $=id=>document.getElementById(id);
+const cyc=()=>mode!=='flood',flo=()=>mode!=='cyclone';
+let mode='cyclone',t=0,playing=true,speed=1,reduced=false;
+let mangrove=true,khazan=true;
+const DUR={cyclone:26,flood:38,both:40};
+const PH={cyclone:[['Calm',0],['Approach',4],['Landfall',10],['Recede',18]],flood:[['Calm',0],['Rain builds',4],['River swells',8],['Recede',26]],both:[['Calm',0],['Storm and rain',4],['Pincer',12],['Recede',29]]};
+const SAY={cyclone:[
+ [0,'<b>Maya:</b> Calm sea for now. Plant mangroves where the waves will hit first.'],
+ [4,'<b>Maya:</b> Cyclone forming offshore. The waves are getting bigger.'],
+ [10,'<b>Maya:</b> Landfall! Watch the surge climb the beach.'],
+ [18,'<b>Maya:</b> The water is draining. Count the homes your belt kept dry.']],
+ flood:[
+ [0,'<b>Maya:</b> Quiet monsoon morning. The river is low.'],
+ [4,'<b>Maya:</b> Heavy rain upstream. The river will rise soon.'],
+ [8,'<b>Maya:</b> The swell is moving downriver and spilling over the unprotected banks. Khazans hold water and save the homes around them.'],
+ [26,'<b>Maya:</b> The river is falling. Well done for planning ahead.']],
+ both:[
+ [0,'<b>Maya:</b> This is the big one: a cyclone and a flood in the same week. Defend both fronts.'],
+ [4,'<b>Maya:</b> The storm is closing in and the rain has started upstream.'],
+ [12,'<b>Maya:</b> The sea surge is pushing against the swollen river. Water cannot drain, so the river mouth backs up!'],
+ [29,'<b>Maya:</b> Both fronts are easing. Count the homes your defences held.']]};
+
+function hash(a,b){let h=(a*374761393+b*668265263)^0x5bd1e995;h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967295}
+function pos(c,r){return [OX+c*HW+(r%2)*HW/2,OY+r*1.5*R*SQ]}
+const riverPath=[[12,0],[11,1],[11,2],[10,3],[9,4],[9,5],[8,6],[7,6],[6,7],[5,7],[4,7]];
+const khz=[[8,7],[9,7],[7,8],[8,8],[9,8],[10,6]];
+const tiles=[];const byKey={};
+function shoreC(r){return 3+(((r*7)%3===0)?1:0)}
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+  let type;const sc=shoreC(r);
+  if(c<sc)type='ocean';else if(c<=sc+1)type='beach';else type='land';
+  const tt={c,r,type,e:0,home:null,p:pos(c,r)};
+  byKey[c+','+r]=tt;tiles.push(tt);
+}
+riverPath.forEach(([c,r])=>{const k=byKey[c+','+r];if(k&&k.type!=='ocean')k.type='river'});
+function applyKhazan(){tiles.forEach(k=>{if(k.type==='khazan')k.type='land'});
+ if(khazan)khz.forEach(([c,r])=>{const k=byKey[c+','+r];if(k&&k.type==='land')k.type='khazan'})}
+const belt=[[5,1],[5,2],[5,3],[5,4],[5,5]];
+function applyBelt(){tiles.forEach(k=>{if(k.mangrove){k.mangrove=false;k.type=k.prev}});
+ if(mangrove)belt.forEach(([c,r])=>{const k=byKey[c+','+r];if(k&&(k.type==='beach'||k.type==='land')){k.prev=k.type;k.type='mangrove';k.mangrove=true}})}
+function elev(k){switch(k.type){case'ocean':return -1;case'beach':return .10;case'river':return .04;case'khazan':return .08;case'mangrove':return .12;default:return .20+.025*(k.c-6)}}
+function dRiver(k){let m=99;for(const[c,r]of riverPath){const q=byKey[c+','+r].p;const d=Math.hypot((k.p[0]-q[0]),(k.p[1]-q[1])/SQ)/HW;if(d<m)m=d}return m}
+function dKhazan(k){let m=99;for(const[c,r]of khz){const q=byKey[c+','+r];if(q.type!=='khazan')continue;const d=Math.hypot((k.p[0]-q.p[0]),(k.p[1]-q.p[1])/SQ)/HW;if(d<m)m=d}return m}
+tiles.forEach(k=>k.dr=dRiver(k));
+const DELAY=.8;
+tiles.forEach(k=>{let m=99,bi=0;riverPath.forEach(([c,r],i)=>{const q=byKey[c+','+r].p;const d=Math.hypot(k.p[0]-q[0],(k.p[1]-q[1])/SQ);if(d<m){m=d;bi=i}});k.ri=bi});
+
+const sm=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x)};
+function intensity(m,tt){ // storm / rain strength 0..1
+ if(m==='both')return sm(3,12,tt)*(1-sm(26,34,tt));
+ if(m==='cyclone')return sm(3,12,tt)*(1-sm(17,24,tt));
+ return sm(3,11,tt)*(1-sm(24,32,tt));
+}
+function surge(tt){return .60*sm(8,16,tt)*(1-sm(17.5,24,tt))+.035*Math.sin(tt*3)*sm(9,16,tt)*(1-sm(18,24,tt))}
+function flood(tt){return .5*sm(8,16,tt)*(1-sm(22,30,tt))}
+function fl(k,tt){return flood(tt-k.ri*DELAY)}
+function shieldC(k){let s=0;if(!mangrove)return 0;for(const[c,r]of belt){if(k.c>c&&Math.abs(k.r-r)<=1){s=Math.max(s,.20-.015*(k.c-c))}}return s}
+function bw(k,tt){return mode==='both'?surge(tt)*.28*Math.pow(k.ri/10,1.6):0}
+function dS(k,tt){
+ const L=surge(tt)*(mode==='both'?.82:1);
+ if(k.type==='mangrove')return Math.max(0,L*.4-k.e-.02);
+ if(k.type==='river'||k.type==='khazan')return Math.max(0,L*(1-(k.c-3)*0.065)-k.e-shieldC(k));
+ return L*(1-(k.c-3)*0.065)-k.e-shieldC(k);
+}
+function dF(k,tt){
+ const F=fl(k,tt)+bw(k,tt);
+ if(k.type==='river')return .1+F;
+ let sh=0;if(khazan){const d=dKhazan(k);if(d<2.8)sh=.16*(1-d/2.8)}
+ if(k.type==='khazan')return Math.max(0,F*.8);
+ if(k.type==='mangrove')return 0;
+ return F-k.e-k.dr*.05-sh;
+}
+function depthAt(k,tt){
+ if(k.type==='ocean')return 1;
+ const a=cyc()?Math.max(0,dS(k,tt)):0,b=flo()?Math.max(0,dF(k,tt)-(k.type==='river'?.1:0)):0;
+ return (k.type==='river'?0:0)+a+b;
+}
+// houses
+tiles.forEach(k=>{if((k.type==='beach'||k.type==='land')&&k.c>=5&&hash(k.c,k.r)<.72){
+ const h=hash(k.c+9,k.r+4);k.home={w:.34+.14*h,h:.26+.22*hash(k.c,k.r+3),col:['#efe3cc','#e0a54a','#c8664a','#4a8fa8','#d98fa6','#8dbf8a','#c9c2b4'][Math.floor(hash(k.r,k.c)*7)],roof:['#a8402f','#6b6f78','#35566e'][Math.floor(hash(k.c+2,k.r+5)*3)],first:null}}});
+function precompute(){
+ applyKhazan();applyBelt();tiles.forEach(k=>k.e=elev(k));
+ tiles.forEach(k=>{if(k.home){k.home.first=null;for(let s=0;s<=DUR[mode];s+=.25){if(depthAt(k,s)>.045){k.home.first=s;break}}}});
+}
+// rain
+const drops=[];for(let i=0;i<700;i++)drops.push({x:Math.random()*W,y:Math.random()*H,v:520+Math.random()*380,l:10+Math.random()*16,s:Math.random()});
+const splashes=[];let lastT=performance.now(),lightning=0,boltPts=null,nextBolt=0;
+
+function hexPath(x,y,rad){ctx.beginPath();for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);const px=x+rad*Math.cos(a),py=y+rad*SQ*Math.sin(a);i?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.closePath()}
+function sideShade(x,y,rad,col,dep=DEPTH){ctx.fillStyle=col;ctx.beginPath();
+ const pts=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);pts.push([x+rad*Math.cos(a),y+rad*SQ*Math.sin(a)])}
+ ctx.moveTo(pts[0][0],pts[0][1]+dep);ctx.lineTo(pts[0][0],pts[0][1]);ctx.lineTo(pts[1][0],pts[1][1]);ctx.lineTo(pts[2][0],pts[2][1]);ctx.lineTo(pts[2][0],pts[2][1]+dep);ctx.lineTo(pts[1][0],pts[1][1]+dep);ctx.closePath();ctx.fill()}
+function mix(a,b,f){return[Math.round(a[0]+(b[0]-a[0])*f),Math.round(a[1]+(b[1]-a[1])*f),Math.round(a[2]+(b[2]-a[2])*f)]}
+const rgb=a=>`rgb(${a[0]},${a[1]},${a[2]})`;
+const COL={land:[134,150,88],beach:[222,200,130],river:[70,140,185],khazan:[96,150,120],mangrove:[70,125,80],ocean:[34,98,138]};
+
+function drawPalm(x,y,wind,tt){
+ const sway=(Math.sin(tt*2.4+x)*.12+.5)*wind*28*(reduced?.3:1);
+ ctx.strokeStyle='#7a5a38';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+sway*.4,y-12,x+sway,y-24);ctx.stroke();
+ ctx.fillStyle='#3d7a46';
+ for(let i=0;i<5;i++){const a=-Math.PI/2+(i-2)*.62+wind*.6*(reduced?.3:1)+Math.sin(tt*3+i)*.08*wind;
+  ctx.beginPath();ctx.moveTo(x+sway,y-24);ctx.quadraticCurveTo(x+sway+Math.cos(a)*10,y-24+Math.sin(a)*10-4,x+sway+Math.cos(a)*17,y-24+Math.sin(a)*13+4);ctx.quadraticCurveTo(x+sway+Math.cos(a)*9,y-24+Math.sin(a)*8,x+sway,y-24);ctx.fill()}
+}
+function drawHouse(k,tt,wet){
+ const [x,y]=k.p,h=k.home;const w=h.w*R*1.1,hh=h.h*R*1.1;
+ ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(x,y+3,w*.7,w*.28,0,0,6.3);ctx.fill();
+ ctx.fillStyle=h.col;ctx.fillRect(x-w/2,y-hh,w,hh);
+ ctx.fillStyle='rgba(0,0,0,.14)';ctx.fillRect(x,y-hh,w/2,hh);
+ ctx.fillStyle=h.roof;ctx.beginPath();ctx.moveTo(x-w/2-2,y-hh);ctx.lineTo(x,y-hh-w*.42);ctx.lineTo(x+w/2+2,y-hh);ctx.closePath();ctx.fill();
+ if(wet>0){const lv=Math.min(hh,wet*60);ctx.fillStyle=mode==='flood'?'rgba(20,70,130,.7)':(mode==='both'?'rgba(50,80,140,.7)':'rgba(70,150,195,.6)');ctx.fillRect(x-w/2,y-lv,w,lv)}
+ if(h.first!==null&&tt>h.first){ctx.fillStyle='#d9553d';ctx.beginPath();ctx.arc(x,y-hh-w*.42-8,4,0,6.3);ctx.fill()}
+ else if(tt>DUR[mode]-3&&h.first===null){const a=(Math.sin(tt*5)+1)/2;ctx.fillStyle=`rgba(255,220,100,${.5+.5*a})`;ctx.fillText('★',x-5,y-hh-w*.42-6)}
+}
+function turb(x,y,amt,tt,seed){
+ if(amt<=.02)return;const n=Math.min(7,Math.round(amt*8));
+ ctx.lineWidth=1.4;
+ for(let i=0;i<n;i++){
+  const ph=tt*(reduced?1.5:5)+seed*7+i*1.9;const a=hash(Math.floor(ph*.5)+i,seed|0);
+  const px=x+(hash(i,seed|0)-.5)*R*1.2+Math.sin(ph)*3,py=y+(hash(seed|0,i)-.5)*R*SQ*1.1;
+  ctx.strokeStyle=`rgba(225,244,255,${.25+.45*a*amt})`;
+  ctx.beginPath();ctx.moveTo(px-5,py);ctx.lineTo(px-1,py-2.5);ctx.lineTo(px+1,py+1.5);ctx.lineTo(px+5,py-1.5);ctx.stroke();
+ }
+}
+function waveBoost(k,tt,I){
+ const sp=60+90*I,spacing=230;const x=k.p[0]-tt*sp;const m=((x%spacing)+spacing)%spacing/spacing;
+ return Math.max(0,1-Math.abs(m-.5)*6)*(.35+.65*I);
+}
+function draw(tt){
+ const I=intensity(mode,tt);
+ // sky
+ const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2a4a5e');g.addColorStop(1,'#16303d');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ const shake=(!reduced&&cyc()&&I>.7)?(Math.random()-.5)*2*(I-.7)*4:0;
+ ctx.save();ctx.translate(shake,shake*.6);
+ let hit=0,dry=0;
+ for(let r=0;r<ROWS;r++){
+  for(let c=0;c<COLS;c++){
+   const k=byKey[c+','+r];const [x,y]=k.p;
+   let col=COL[k.type];
+   if(k.type==='ocean'){
+     const wb=waveBoost(k,tt,cyc()?I:.15);
+     col=mix(col,[88,170,205],wb*.55+.08*Math.sin(x*.03-tt*2+y*.02));
+   }else if(k.type==='land'){col=mix(col,[118,138,76],hash(c,r)*.6)}
+   else if(k.type==='river'&&flo()){col=mix(col,[22,66,128],Math.min(1,(fl(k,tt)+bw(k,tt))/.35)*.95)}
+   let rise=0,crest=0;
+   if(k.type==='river'&&flo()){const F=fl(k,tt)+bw(k,tt);rise=18*Math.min(1.35,F/.5);const cI=(tt-6)*1/DELAY;crest=Math.max(0,1-Math.abs(k.ri-cI)/1.6)*Math.min(1,F/.1)}
+   if(rise>0){sideShade(x,y-rise,R,rgb(mix(col,[8,22,48],.5)),DEPTH+rise);if(rise>1){ctx.fillStyle='rgba(190,230,255,.22)';ctx.fillRect(x-R*.86,y-rise+R*SQ*.5+DEPTH,R*1.72,1)}}
+   else sideShade(x,y,R,rgb(mix(col,[0,0,0],.38)));
+   hexPath(x,y-rise,R);ctx.fillStyle=rgb(mix(col,[190,228,255],crest*.38));ctx.fill();
+   ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=1;ctx.stroke();
+   if(crest>.05){hexPath(x,y-rise,R-2);ctx.strokeStyle=`rgba(225,244,255,${.85*crest})`;ctx.lineWidth=2.6;ctx.stroke()}
+   if(k.type==='ocean'){
+     // little wave arcs
+     const wb=waveBoost(k,tt,cyc()?I:.15);
+     ctx.strokeStyle=`rgba(235,248,255,${.14+.55*wb})`;ctx.lineWidth=1.6;
+     const o=((tt*(14+40*I)+k.c*13)%36)-18;
+     ctx.beginPath();ctx.moveTo(x-12+o*.3,y-3);ctx.quadraticCurveTo(x+o*.3,y-8,x+12+o*.3,y-3);ctx.stroke();
+     ctx.beginPath();ctx.moveTo(x-9-o*.2,y+6);ctx.quadraticCurveTo(x-o*.2,y+2,x+9-o*.2,y+6);ctx.stroke();
+     if(wb>.55&&k.c>=shoreC(r)-2){hexPath(x,y,R-2);ctx.strokeStyle=`rgba(255,255,255,${.5*wb})`;ctx.lineWidth=2.5;ctx.stroke()}
+   }
+   if(k.type==='river'){
+     ctx.strokeStyle='rgba(235,245,255,.35)';ctx.lineWidth=1.5;const fw=flo()?1+3*fl(k,tt)/.5:1;
+     const o=((tt*20*fw)%24);ctx.beginPath();ctx.moveTo(x+10-o*.9,y-rise-4+o*.15);ctx.lineTo(x-2-o*.9,y-rise+o*.15);ctx.stroke();
+     if(flo())turb(x,y-rise,Math.min(1,(fl(k,tt)+bw(k,tt))/.4),tt,k.c*31+k.r);
+   }
+   if(k.type==='khazan'){ctx.strokeStyle='rgba(180,230,230,.5)';ctx.lineWidth=1.2;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(x-14,y+i*7);ctx.lineTo(x+14,y+i*7);ctx.stroke()}
+     const st=Math.min(1,flood(tt)/.3);if(flo()&&st>0){hexPath(x,y,R*.9);ctx.fillStyle=`rgba(74,190,200,${.15+.5*st})`;ctx.fill()}}
+   const dsv=(cyc()&&k.type!=='ocean'&&k.type!=='river')?Math.max(0,dS(k,tt)):0,dfv=(flo()&&k.type!=='ocean'&&k.type!=='river')?Math.max(0,dF(k,tt)):0,d=dsv+dfv;
+   if(d>0){
+     if(dsv>0){hexPath(x,y,R);ctx.fillStyle=`rgba(60,150,200,${Math.min(.7,.28+dsv*2)})`;ctx.fill()}
+     if(dfv>0){hexPath(x,y,R);ctx.fillStyle=`rgba(18,62,125,${Math.min(.78,.34+dfv*2)})`;ctx.fill();turb(x,y,Math.min(1,.4+dfv*2),tt,k.c*17+k.r)}
+     if(dsv>0&&dfv>0){hexPath(x,y,R*.82);ctx.fillStyle='rgba(88,70,160,.42)';ctx.fill()}
+     // ripples
+     ctx.strokeStyle='rgba(255,255,255,.32)';ctx.lineWidth=1.3;
+     const o=(tt*(reduced?5:16)+hash(c,r)*30)%30;
+     ctx.beginPath();ctx.moveTo(x-12+o*.4,y);ctx.quadraticCurveTo(x-4+o*.4,y-4,x+4+o*.4,y);ctx.stroke();
+     if(d<.1){hexPath(x,y,R-1.5);ctx.strokeStyle=`rgba(255,255,255,${.75*(1-d/.1)})`;ctx.lineWidth=3;ctx.stroke()}
+     if(!reduced&&Math.random()<.01*I&&splashes.length<60)splashes.push({x:x+(Math.random()-.5)*30,y:y+(Math.random()-.5)*12,t:0});
+   }
+   if(k.type==='mangrove'){
+     for(let i=0;i<3;i++){const bx=x+(i-1)*11,by=y+(i%2)*3;ctx.fillStyle='#3a7a46';ctx.beginPath();ctx.arc(bx,by-9,9,0,6.3);ctx.fill();ctx.fillStyle='#4f9b5b';ctx.beginPath();ctx.arc(bx-2,by-12,5.5,0,6.3);ctx.fill();ctx.strokeStyle='#5a4128';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(bx-4,by);ctx.lineTo(bx-1,by-4);ctx.moveTo(bx+4,by);ctx.lineTo(bx+1,by-4);ctx.stroke()}
+     if(cyc()){const p=surge(tt)/.6;if(p>.15){ctx.strokeStyle=`rgba(190,255,200,${.6*Math.abs(Math.sin(tt*4))})`;ctx.lineWidth=2.5;hexPath(x,y,R*(.8+.25*Math.abs(Math.sin(tt*4))));ctx.stroke()}}
+   }
+   if(k.home){const dd=depthAt(k,tt);drawHouse(k,tt,Math.max(0,dd));
+     if(k.home.first!==null&&tt>=k.home.first)hit++;else dry++}
+   else if((k.type==='land'||k.type==='beach')&&hash(c+3,r+1)>.72&&hash(c,r+7)>.45&&c>=4){
+     drawPalm(x+(hash(c,r)-.5)*14,y+2,.2+(cyc()?I:.2)*1.1,tt)}
+  }
+ }
+ // splashes
+ for(let i=splashes.length-1;i>=0;i--){const s=splashes[i];s.t+=.03;ctx.strokeStyle=`rgba(255,255,255,${.6-s.t})`;ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(s.x,s.y,s.t*22,s.t*9,0,0,6.3);ctx.stroke();if(s.t>.6)splashes.splice(i,1)}
+ // boat
+ const bx=90+((tt*(cyc()?22:4))%1)*0,by=OY+R*SQ*4.5+Math.sin(tt*2)*3;
+ if(cyc()||tt<14){const bxx=cyc()?Math.max(-30,60-tt*5):70;ctx.save();ctx.translate(bxx,by);ctx.rotate(Math.sin(tt*2.2)*.12*(1+I*2));ctx.fillStyle='#f0e6d2';ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(10,0);ctx.lineTo(6,6);ctx.lineTo(-7,6);ctx.fill();ctx.fillStyle='#d9553d';ctx.fillRect(-1,-14,2,14);ctx.beginPath();ctx.moveTo(1,-14);ctx.lineTo(9,-5);ctx.lineTo(1,-5);ctx.fill();ctx.restore()}
+ ctx.restore();
+ // cyclone cloud spiral
+ if(cyc()&&tt>1.5){
+  const prog=sm(2,18,tt);const cx=-160+prog*470+sm(18,26,tt)*260;const cy=270-prog*20;
+  const size=380*(.5+.5*sm(2,11,tt))*(1-.25*sm(18,26,tt));const rot=-tt*(reduced?.15:.6);
+  ctx.save();ctx.translate(cx,cy);ctx.scale(1,.66);
+  for(let arm=0;arm<5;arm++){let px=null,py=null;
+   for(let a=0;a<=1.0001;a+=.025){const th=rot+arm*Math.PI*2/5+a*3.4;const rad=size*(.2+.8*a);const X=Math.cos(th)*rad,Y=Math.sin(th)*rad;
+    if(px!==null){ctx.strokeStyle=`rgba(226,234,242,${.26*I*(1-a*.75)})`;ctx.lineWidth=34*(1-a*.8);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(X,Y);ctx.stroke()}
+    if(Math.round(a*40)%3===0){ctx.fillStyle=`rgba(240,245,250,${.22*I*(1-a*.7)})`;ctx.beginPath();ctx.arc(X,Y,16*(1-a*.5),0,6.3);ctx.fill()}
+    px=X;py=Y}}
+  ctx.strokeStyle=`rgba(250,252,255,${.5*I})`;ctx.lineWidth=16;ctx.beginPath();ctx.arc(0,0,size*.19,0,6.3);ctx.stroke();
+  ctx.restore();
+ }
+ // flood: rain clouds band
+ if(flo()){const a=.55*I;const gg=ctx.createLinearGradient(0,0,0,170);gg.addColorStop(0,`rgba(40,52,64,${a})`);gg.addColorStop(1,'rgba(40,52,64,0)');ctx.fillStyle=gg;ctx.fillRect(0,0,W,170);
+  for(let i=0;i<9;i++){const cx=((i*140+tt*(reduced?2:10))%(W+200))-100;ctx.fillStyle=`rgba(205,214,224,${.22*I+.05})`;for(let j=0;j<4;j++){ctx.beginPath();ctx.ellipse(cx+j*34,36+(j%2)*10+Math.sin(i)*12,46,20,0,0,6.3);ctx.fill()}}}
+ // darkness
+ ctx.fillStyle=`rgba(14,24,36,${(cyc()?.36:.3)*I})`;ctx.fillRect(0,0,W,H);
+ // rain
+ const wind=cyc()?.35+.8*I:.12;const cnt=Math.floor(drops.length*I*(reduced?.4:1));
+ ctx.strokeStyle=`rgba(210,226,240,${.3+.2*I})`;ctx.lineWidth=1.2;ctx.beginPath();
+ for(let i=0;i<cnt;i++){const d=drops[i];ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+wind*d.l,d.y+d.l)}ctx.stroke();
+ // lightning
+ if(cyc()&&I>.7&&!reduced){if(tt>nextBolt){lightning=1;nextBolt=tt+2.5+Math.random()*3;const bx0=200+Math.random()*700;boltPts=[[bx0,0]];let yy=0,xx=bx0;while(yy<200){yy+=20+Math.random()*20;xx+=(Math.random()-.5)*50;boltPts.push([xx,yy])}}
+  if(lightning>0){ctx.fillStyle=`rgba(255,255,255,${.28*lightning})`;ctx.fillRect(0,0,W,H);if(boltPts){ctx.strokeStyle=`rgba(255,255,255,${lightning})`;ctx.lineWidth=2.4;ctx.beginPath();boltPts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke()}lightning-=.08}}
+ // vignette
+ const vg=ctx.createRadialGradient(W/2,H/2,H*.4,W/2,H/2,H*.9);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+ $('sHit').textContent=hit;$('sDry').textContent=dry;
+}
+function setPhasesUI(tt){
+ const ph=PH[mode];let idx=0;ph.forEach((p,i)=>{if(tt>=p[1])idx=i});
+ $('phases').innerHTML=ph.map((p,i)=>`<span class="pill${i===idx?' on':''}">${p[0]}</span>`).join('');
+ let s=SAY[mode][0][1];SAY[mode].forEach(q=>{if(tt>=q[0])s=q[1]});$('bubble').innerHTML=s;
+}
+let lastIdx=-1;
+function frame(now){
+ const dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+ if(playing){t+=dt*speed;if(t>DUR[mode]+2)t=0}
+ for(const d of drops){d.y+=d.v*dt;d.x+=(cyc()?.7*d.v*.5:.1*d.v)*dt*.5;if(d.y>H){d.y=-20;d.x=Math.random()*W}if(d.x>W)d.x=0}
+ const tt=Math.min(t,DUR[mode]);draw(tt);
+ const idx=Math.floor(tt*2);if(idx!==lastIdx){lastIdx=idx;setPhasesUI(tt)}
+ $('scrub').value=Math.round(tt/DUR[mode]*1000);
+ requestAnimationFrame(frame);
+}
+function setMode(m){mode=m;t=0;$('tabC').setAttribute('aria-pressed',m==='cyclone');$('tabF').setAttribute('aria-pressed',m==='flood');$('tabB').setAttribute('aria-pressed',m==='both');precompute();lastIdx=-1}
+$('tabB').onclick=()=>setMode('both');$('tabC').onclick=()=>setMode('cyclone');$('tabF').onclick=()=>setMode('flood');
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play'};
+$('replay').onclick=()=>{t=0;playing=true;$('play').textContent='Pause'};
+$('scrub').oninput=e=>{playing=false;$('play').textContent='Play';t=e.target.value/1000*DUR[mode];lastIdx=-1};
+$('optA').onchange=e=>{mangrove=e.target.checked;precompute()};
+$('optB').onchange=e=>{khazan=e.target.checked;precompute()};
+$('optC').onchange=e=>{reduced=e.target.checked};
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){reduced=true;$('optC').checked=true}
+window.__set=(m,tt,a,b)=>{if(m!==mode)setMode(m);mangrove=a!==false;khazan=b!==false;$('optA').checked=mangrove;$('optB').checked=khazan;precompute();t=tt;playing=false;lastIdx=-1};
+setMode('cyclone');requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

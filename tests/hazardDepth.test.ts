@@ -15,6 +15,7 @@ import {
 import { BOT_LEVELS, newRun, type Preset } from "../tools/panjimBots/bots";
 import type { ActionRun } from "../src/core/actionRun";
 import type { StormRecord } from "../src/core/stormRecord";
+import { buildStormScript, LIGHTNING_GAP } from "../src/core/stormScript";
 
 /**
  * The water the hazard visuals draw is the storm the resolver decided. These
@@ -117,15 +118,17 @@ describe("the storm's script", () => {
     expect(cyclone.field.landfall).toBe(STORM_TIMING.cyclone.landfall);
     const land = [...cyclone.field.tiles.values()].filter((t) => t.terrainId !== "coast" && t.surgePeak > 0);
     expect(land.length).toBeGreaterThan(0);
-    for (const tile of land) expect(tile.surgeArrival).toBeGreaterThanOrEqual(STORM_TIMING.cyclone.landfall);
+    for (const tile of land) expect(tile.surgeArrival).toBeGreaterThanOrEqual(STORM_TIMING.cyclone.landfall + STORM_TIMING.cyclone.surgeLead);
     // A cyclone brings no river flood.
     for (const tile of cyclone.field.tiles.values()) expect(floodDepth(cyclone.field, tile.key, 20)).toBe(0);
   });
 
   it("draws the sea back before the hit", () => {
-    const sea = [...cyclone.field.tiles.values()].find((t) => t.terrainId === "coast" && t.surgePeak > 0)!;
+    const sea = [...cyclone.field.tiles.values()].find((t) => t.shallows && t.surgePeak > 0)!;
+    const offshore = [...cyclone.field.tiles.values()].find((t) => t.terrainId === "coast" && !t.shallows && t.surgePeak > 0)!;
+    expect(surgeDepth(cyclone.field, offshore.key, cyclone.field.landfall! - 3)).toBeGreaterThanOrEqual(0);
     const landfall = cyclone.field.landfall!;
-    expect(surgeDepth(cyclone.field, sea.key, landfall - 2)).toBeLessThan(0);
+    expect(surgeDepth(cyclone.field, sea.key, landfall - 3)).toBeLessThan(0);
     expect(surgeDepth(cyclone.field, sea.key, landfall + 2)).toBeGreaterThan(0);
   });
 
@@ -151,7 +154,7 @@ describe("the storm's script", () => {
     const river = [...compound.field.tiles.values()].filter((t) => t.terrainId === "river" && t.backwaterPeak > 0);
     expect(river.length).toBeGreaterThan(0);
     const seaSurge = Math.max(...[...compound.field.tiles.values()].filter((t) => t.terrainId === "coast").map((t) => t.surgePeak));
-    for (const tile of river) expect(tile.backwaterPeak).toBeCloseTo(seaSurge * backwaterShare(tile.riverIndex!, compound.field.mouthIndex), 9);
+    for (const tile of river) expect(tile.backwaterPeak).toBeCloseTo(seaSurge * STORM_TIMING.compound.backwaterScale * backwaterShare(tile.riverIndex!, compound.field.mouthIndex), 9);
     expect(backwaterShare(compound.field.mouthIndex, compound.field.mouthIndex)).toBe(1);
     expect(backwaterShare(compound.field.mouthIndex / 2, compound.field.mouthIndex)).toBeCloseTo(Math.pow(0.5, 1.6), 9);
     // The surge meets the swollen river between about 12 s and 28 s.
@@ -169,4 +172,33 @@ describe("the storm's script", () => {
       }
     }
   });
+});
+
+describe("the storm script marks only what the resolution decided", () => {
+  for (const preset of PRESETS) {
+    it(`${preset}: houses, defences and lightning`, () => {
+      const run = newRun("s7", BOT_LEVELS[preset]);
+      for (let i = 0; i < 3; i++) {
+        const before = new Map([...run.state.elements].map(([key, inst]) => [key, inst.elementId]));
+        const plant: [string, string][] = i === 0 ? [["z1", "dune"], ["z1", "sandy_vegetation"]] : i === 1 ? [["z2", "khazan"], ["z3", "mangrove"]] : [["z4", "mangrove"]];
+        const record = nextStorm(run, plant);
+        const defences = new Map(before);
+        for (const [key, inst] of run.state.elements) if (!defences.has(key)) defences.set(key, inst.elementId);
+        for (const zone of record.outcome.zones) for (const key of zone.failed) if (!defences.has(key)) defences.set(key, "seawall");
+        const script = buildStormScript(record, defences);
+        const houseEvents = script.events.filter((e) => e.type === "house").map((e) => (e as { key: string }).key);
+        expect(houseEvents.sort()).toEqual([...record.outcome.damagedHouses].sort());
+        for (const event of script.events) {
+          if (event.type === "defence") expect(defences.has(event.key)).toBe(true);
+          expect(event.t).toBeGreaterThanOrEqual(0);
+          expect(event.t).toBeLessThanOrEqual(script.duration);
+        }
+        const firsts = script.events.filter((e) => e.type === "defence" && e.first);
+        expect(firsts.length).toBe(script.firstContact === null ? 0 : 1);
+        const strikes = script.events.filter((e) => e.type === "lightning").map((e) => e.t);
+        if (record.kind === "flood") expect(strikes.length).toBe(0);
+        for (let k = 1; k < strikes.length; k++) expect(strikes[k] - strikes[k - 1]).toBeGreaterThanOrEqual(LIGHTNING_GAP);
+      }
+    });
+  }
 });

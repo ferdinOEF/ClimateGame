@@ -41,18 +41,60 @@ import * as THREE from "three";
  * doing, and removing them would leave such a player with no warning at all.
  */
 
-/** How many rain streaks exist at full intensity. Drawn as one LineSegments call, so the cost is one draw. */
-const RAIN_DROPS = 1400;
+/** How many rain streaks exist at full intensity, by quality. Drawn as one instanced call, so the cost is one draw. */
+export type WeatherQuality = "low" | "medium" | "high";
+const RAIN_DROPS: Record<WeatherQuality, number> = { low: 600, medium: 1400, high: 2400 };
 /** The box rain falls inside, centred on the camera's focus. Wide enough to cover the board at any zoom. */
 const RAIN_AREA = 46;
 const RAIN_TOP = 16;
 const RAIN_BOTTOM = -2;
-/** Streak length at full intensity. Longer streaks read as faster rain, which is cheaper than actually moving them faster. */
+/** Streak length. Longer streaks read as faster rain, which is cheaper than actually moving them faster. */
 const RAIN_STREAK = 0.85;
 const RAIN_FALL_SPEED = 26;
-/** Horizontal drift, so rain slants rather than falling straight down. A vertical curtain reads as static. */
-const RAIN_SLANT_X = 5.5;
-const RAIN_SLANT_Z = 2.2;
+/** Horizontal drift per unit of fall, so rain slants rather than falling straight down. A vertical curtain reads as static. */
+const RAIN_SLANT_X = 0.21;
+const RAIN_SLANT_Z = 0.085;
+/**
+ * The most the storm darkens the board: the sun loses at most this share of
+ * its light. Buildings, the heat and the HUD must stay readable in a storm.
+ */
+export const MAX_DARKNESS = 0.35;
+/** A lightning flash brightens the sky by at most this much (photosensitivity: low-contrast flashes only). */
+export const MAX_FLASH_ALPHA = 0.25;
+/** Shake only above this intensity. */
+const SHAKE_FROM = 0.7;
+
+const RAIN_VERTEX = /* glsl */ `
+  attribute vec4 aDrop; // x, z offset in the volume; phase 0-1; speed factor
+  uniform float uTime;
+  uniform vec3 uCentre;
+  uniform float uActive;
+  varying float vAlpha;
+  void main() {
+    float height = ${(16 - -2).toFixed(1)};
+    float fall = fract(aDrop.z - uTime * ${RAIN_FALL_SPEED.toFixed(1)} * aDrop.w / height);
+    float y = ${(-2).toFixed(1)} + fall * height;
+    float drop = (1.0 - fall) * height;
+    // Drops past the active share sit below the floor: lighter rain is fewer drops, not fainter ones.
+    float on = step(fract(aDrop.x * 12.9898 + aDrop.y * 78.233), uActive);
+    vec3 p = vec3(uCentre.x + aDrop.x + drop * ${RAIN_SLANT_X.toFixed(3)}, y - (1.0 - on) * 40.0, uCentre.z + aDrop.y + drop * ${RAIN_SLANT_Z.toFixed(3)});
+    // The streak: a thin quad, its top end trailing up and back along the slant.
+    vec3 along = normalize(vec3(-${RAIN_SLANT_X.toFixed(3)}, 1.0, -${RAIN_SLANT_Z.toFixed(3)}));
+    p += along * position.y * ${RAIN_STREAK.toFixed(2)};
+    vec4 view = viewMatrix * vec4(p, 1.0);
+    view.x += position.x * 0.018;
+    vAlpha = 1.0 - position.y * 0.6;
+    gl_Position = projectionMatrix * view;
+  }
+`;
+
+const RAIN_FRAGMENT = /* glsl */ `
+  uniform float uOpacity;
+  varying float vAlpha;
+  void main() {
+    gl_FragColor = vec4(0.81, 0.89, 0.94, uOpacity * vAlpha);
+  }
+`;
 
 const STORM_SKY = new THREE.Color("#3f4a52");
 const LIGHTNING_SKY = new THREE.Color("#c9d6dd");
@@ -82,11 +124,9 @@ export class StormManager {
   private readonly baseSunIntensity: number;
   private readonly baseSky: THREE.Color;
 
-  private readonly rain: THREE.LineSegments;
-  private readonly rainMaterial: THREE.LineBasicMaterial;
-  private readonly rainPositions: Float32Array;
-  /** Per-drop fall speed multiplier, so the curtain has depth instead of moving as one sheet. */
-  private readonly rainSpeeds: Float32Array;
+  private rain: THREE.InstancedMesh;
+  private readonly rainMaterial: THREE.ShaderMaterial;
+  private quality: WeatherQuality = "high";
 
   private intensity = 0;
   private target = 0;
@@ -97,7 +137,15 @@ export class StormManager {
   /** Countdown to the next strike, in seconds. */
   private nextStrikeIn = 0;
 
-  private readonly reducedMotion = prefersReducedMotion();
+  private reducedMotion = prefersReducedMotion();
+  /** Lightning on its own irregular timer (the Tutorial's weather). The Panaji storms strike from their script instead. */
+  autoLightning = true;
+  /** Set by a scripted storm: overrides the wind (for the lull before landfall) and the rain. */
+  private windOverride: number | null = null;
+  private rainOverride: number | null = null;
+  private scriptedFlash = 0;
+  /** Seconds since the last flash of either kind: flashes never come more than three a second. */
+  private sinceFlash = 10;
 
   /** Current camera tremor, in world units. The session feeds this to the scene each frame. */
   shakeX = 0;
@@ -111,54 +159,86 @@ export class StormManager {
     // are mutated every frame below.
     this.baseSky = (options.scene.background as THREE.Color).clone();
 
-    // One LineSegments for the whole curtain. The obvious alternative, a mesh
-    // per drop, is 1400 draw calls a frame; Points cannot be slanted, so a
-    // drop would be a dot rather than a streak and the rain would read as
-    // snow.
-    const positions = new Float32Array(RAIN_DROPS * 2 * 3);
-    const speeds = new Float32Array(RAIN_DROPS);
-    for (let i = 0; i < RAIN_DROPS; i++) {
-      speeds[i] = 0.7 + Math.random() * 0.6;
-      this.seedDrop(positions, i, RAIN_BOTTOM + Math.random() * (RAIN_TOP - RAIN_BOTTOM));
-    }
-    this.rainPositions = positions;
-    this.rainSpeeds = speeds;
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    // The curtain is repositioned onto the camera every frame, so a bounding
-    // sphere computed once at the origin would frustum-cull it the moment the
-    // player pans. Infinite radius costs nothing here and never culls wrongly.
-    geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), Infinity);
-
-    this.rainMaterial = new THREE.LineBasicMaterial({
-      color: new THREE.Color("#cfe4ef"),
+    this.rainMaterial = new THREE.ShaderMaterial({
+      vertexShader: RAIN_VERTEX,
+      fragmentShader: RAIN_FRAGMENT,
       transparent: true,
-      opacity: 0,
+      depthWrite: false,
       // Rain in front of a dark sky should lighten it rather than paint over
       // it, and additive blending also means overlapping streaks build up
       // into the denser-looking core a real downpour has.
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      uniforms: { uTime: { value: 0 }, uCentre: { value: new THREE.Vector3() }, uActive: { value: 0 }, uOpacity: { value: 0 } }
     });
-
-    this.rain = new THREE.LineSegments(geometry, this.rainMaterial);
-    this.rain.visible = false;
-    this.rain.renderOrder = 2;
+    this.rain = this.buildRain(RAIN_DROPS[this.quality]);
     this.group.add(this.rain);
   }
 
-  /** Puts one drop at a random spot in the volume, at height `y`. */
-  private seedDrop(positions: Float32Array, index: number, y: number): void {
-    const x = (Math.random() - 0.5) * RAIN_AREA;
-    const z = (Math.random() - 0.5) * RAIN_AREA;
-    const head = index * 6;
-    positions[head] = x;
-    positions[head + 1] = y;
-    positions[head + 2] = z;
-    positions[head + 3] = x;
-    positions[head + 4] = y + RAIN_STREAK;
-    positions[head + 5] = z;
+  /**
+   * The curtain: one thin quad, instanced once per drop, falling in the
+   * vertex shader from a time uniform. No per-frame work on the CPU, and one
+   * draw call however many drops there are.
+   */
+  private buildRain(count: number): THREE.InstancedMesh {
+    const quad = new THREE.PlaneGeometry(1, 1);
+    quad.translate(0, 0.5, 0);
+    const drops = new Float32Array(count * 4);
+    for (let i = 0; i < count; i++) {
+      drops[i * 4] = (Math.random() - 0.5) * RAIN_AREA;
+      drops[i * 4 + 1] = (Math.random() - 0.5) * RAIN_AREA;
+      drops[i * 4 + 2] = Math.random();
+      // Per-drop speed, so the curtain has depth instead of moving as one sheet.
+      drops[i * 4 + 3] = 0.7 + Math.random() * 0.6;
+    }
+    quad.setAttribute("aDrop", new THREE.InstancedBufferAttribute(drops, 4));
+    const mesh = new THREE.InstancedMesh(quad, this.rainMaterial, count);
+    mesh.name = "storm-rain";
+    // Positioned in the shader around the camera's focus: never cull it.
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    mesh.renderOrder = 4;
+    return mesh;
+  }
+
+  /** Low, Medium or High: how many drops fall. */
+  setQuality(quality: WeatherQuality): void {
+    if (quality === this.quality) return;
+    this.quality = quality;
+    this.group.remove(this.rain);
+    this.rain.geometry.dispose();
+    this.rain = this.buildRain(RAIN_DROPS[quality]);
+    this.group.add(this.rain);
+  }
+
+  /** Reduced motion (the OS setting or the in-game switch): no shake, no lightning, gentler rain. */
+  setReducedMotion(reduced: boolean): void {
+    this.reducedMotion = reduced;
+  }
+
+  get isReducedMotion(): boolean {
+    return this.reducedMotion;
+  }
+
+  /** A scripted storm's wind (null hands it back to the intensity dial). */
+  setWind(wind: number | null): void {
+    this.windOverride = wind === null ? null : THREE.MathUtils.clamp(wind, 0, 1);
+  }
+
+  /** A scripted storm's rain, 0–1 (null hands it back to the intensity dial). */
+  setRain(rain: number | null): void {
+    this.rainOverride = rain === null ? null : THREE.MathUtils.clamp(rain, 0, 1);
+  }
+
+  /**
+   * A lightning flash, from a storm's script. Ignored under reduced motion,
+   * and when another flash came less than a third of a second ago.
+   * Returns true if it flashed.
+   */
+  flash(): boolean {
+    if (this.reducedMotion || this.sinceFlash < 0.34) return false;
+    this.scriptedFlash = 0.12;
+    this.sinceFlash = 0;
+    return true;
   }
 
   /**
@@ -175,6 +255,11 @@ export class StormManager {
 
   /** How hard the wind is blowing, for the element sway to multiply by. 0 when calm. */
   get windStrength(): number {
+    return this.windOverride ?? this.intensity;
+  }
+
+  /** The current intensity (0–1), eased. */
+  get level(): number {
     return this.intensity;
   }
 
@@ -188,8 +273,9 @@ export class StormManager {
     this.lastMs = nowMs;
 
     this.advanceIntensity(deltaSeconds);
+    this.sinceFlash += deltaSeconds;
     this.applySky(deltaSeconds);
-    this.applyRain(deltaSeconds, focus);
+    this.applyRain(nowMs, focus);
     this.applyShake();
   }
 
@@ -206,83 +292,62 @@ export class StormManager {
   private applySky(deltaSeconds: number): void {
     // Lightning only near the peak, and never under reduced motion.
     let flash = 0;
-    if (!this.reducedMotion && this.intensity > 0.55) {
+    if (!this.reducedMotion && this.autoLightning && this.intensity > 0.55) {
       this.nextStrikeIn -= deltaSeconds;
       if (this.nextStrikeIn <= 0) {
         // Irregular on purpose. A strike on a fixed beat stops reading as
         // weather within about three repetitions.
         this.nextStrikeIn = 1.4 + Math.random() * 4.5;
-        this.flashRemaining = 0.1 + Math.random() * 0.1;
+        if (this.sinceFlash >= 0.34) {
+          this.flashRemaining = 0.1 + Math.random() * 0.1;
+          this.sinceFlash = 0;
+        }
       }
-      if (this.flashRemaining > 0) {
-        this.flashRemaining -= deltaSeconds;
-        flash = Math.max(0, this.flashRemaining) * 5;
-      }
-    } else {
+    } else if (this.reducedMotion) {
       this.flashRemaining = 0;
+      this.scriptedFlash = 0;
     }
+    if (this.flashRemaining > 0) {
+      this.flashRemaining -= deltaSeconds;
+      flash = Math.max(0, this.flashRemaining) * 5;
+    }
+    if (this.scriptedFlash > 0) {
+      this.scriptedFlash -= deltaSeconds;
+      flash = Math.max(flash, Math.max(0, this.scriptedFlash) / 0.12);
+    }
+    flash = Math.min(1, flash);
 
     const background = this.scene.background as THREE.Color | null;
     if (background) {
-      background.copy(this.baseSky).lerp(STORM_SKY, this.intensity);
-      if (flash > 0) background.lerp(LIGHTNING_SKY, Math.min(1, flash));
+      background.copy(this.baseSky).lerp(STORM_SKY, this.intensity * 0.6);
+      // A flash lifts the sky by at most a quarter of the way to white-blue.
+      if (flash > 0) background.lerp(LIGHTNING_SKY, flash * MAX_FLASH_ALPHA);
     }
 
-    // The sun drops to just over a third at full storm, then spikes on a
-    // flash. Keeping some light is deliberate: a board the player cannot read
-    // is not dramatic, it is broken.
-    this.sun.intensity = this.baseSunIntensity * (1 - 0.62 * this.intensity) + flash * 1.6;
+    // The sun loses at most MAX_DARKNESS of its light at full storm, and a
+    // flash lifts it only modestly: a board the player cannot read is not
+    // dramatic, it is broken.
+    this.sun.intensity = this.baseSunIntensity * (1 - MAX_DARKNESS * this.intensity) * (1 + flash * MAX_FLASH_ALPHA);
   }
 
-  private applyRain(deltaSeconds: number, focus: { x: number; z: number }): void {
-    const visible = this.intensity > 0.02;
+  private applyRain(nowMs: number, focus: { x: number; z: number }): void {
+    const amount = this.rainOverride ?? this.intensity;
+    const visible = amount > 0.02;
     this.rain.visible = visible;
     if (!visible) return;
-
+    const uniforms = this.rainMaterial.uniforms;
     // The curtain tracks the camera. Snapped to whole units so the drops do
-    // not visibly slide sideways as the camera eases — the volume moves, the
-    // rain inside it does not.
-    this.rain.position.set(Math.round(focus.x), 0, Math.round(focus.z));
-
-    this.rainMaterial.opacity = 0.1 + this.intensity * 0.5;
-
-    const positions = this.rainPositions;
-    const fall = RAIN_FALL_SPEED * deltaSeconds * (0.45 + this.intensity * 0.55);
-    const slantX = RAIN_SLANT_X * deltaSeconds * this.intensity;
-    const slantZ = RAIN_SLANT_Z * deltaSeconds * this.intensity;
-    // Only a share of the drops exist at low intensity, so light rain is
-    // genuinely lighter rather than the same curtain faded out.
-    const activeDrops = Math.max(1, Math.floor(RAIN_DROPS * (0.25 + this.intensity * 0.75)));
-
-    for (let i = 0; i < activeDrops; i++) {
-      const head = i * 6;
-      const drop = fall * this.rainSpeeds[i];
-      positions[head + 1] -= drop;
-      positions[head + 4] -= drop;
-      positions[head] += slantX;
-      positions[head + 3] += slantX;
-      positions[head + 2] += slantZ;
-      positions[head + 5] += slantZ;
-
-      if (positions[head + 1] < RAIN_BOTTOM) this.seedDrop(positions, i, RAIN_TOP);
-    }
-
-    // Drops past the active count are parked below the floor rather than
-    // deleted: the buffer is a fixed size, and moving them is cheaper than
-    // rebuilding the geometry every time intensity changes.
-    for (let i = activeDrops; i < RAIN_DROPS; i++) {
-      const head = i * 6;
-      if (positions[head + 1] > RAIN_BOTTOM) {
-        positions[head + 1] = RAIN_BOTTOM - 10;
-        positions[head + 4] = RAIN_BOTTOM - 10;
-      }
-    }
-
-    this.rain.geometry.attributes.position.needsUpdate = true;
+    // not visibly slide sideways as the camera eases.
+    uniforms.uCentre.value.set(Math.round(focus.x), 0, Math.round(focus.z));
+    uniforms.uTime.value = nowMs / 1000;
+    // Only a share of the drops fall at low intensity, so light rain is
+    // genuinely lighter; reduced motion keeps fewer streaks.
+    uniforms.uActive.value = (0.25 + amount * 0.75) * (this.reducedMotion ? 0.4 : 1);
+    uniforms.uOpacity.value = 0.1 + amount * 0.45;
   }
 
   private applyShake(): void {
-    if (this.reducedMotion || this.intensity < 0.5) {
+    if (this.reducedMotion || this.intensity < SHAKE_FROM) {
       this.shakeX = 0;
       this.shakeZ = 0;
       return;
@@ -290,7 +355,7 @@ export class StormManager {
     // Only the top half of the intensity range shakes, and gently. A tremor
     // large enough to notice consciously makes the board hard to click, which
     // matters because the player is supposed to keep building during a storm.
-    const amount = (this.intensity - 0.5) * 2 * 0.055;
+    const amount = ((this.intensity - SHAKE_FROM) / (1 - SHAKE_FROM)) * 0.05;
     this.shakeX = (Math.random() - 0.5) * amount;
     this.shakeZ = (Math.random() - 0.5) * amount;
   }

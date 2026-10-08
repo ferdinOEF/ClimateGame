@@ -1732,3 +1732,58 @@
   .maya-bubble { font-size: 14px; }
   .panjim-toggles { top: 120px; right: 8px; }
 }
+
+/* ---- Storms ------------------------------------------------------------ */
+
+/* Lightning on screen: a soft lift, never above 25% (photosensitivity). */
+.storm-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #e9f1ff;
+  opacity: 0;
+  z-index: 3;
+}
+.storm-flash.on {
+  animation: storm-flash 220ms ease-out;
+}
+@keyframes storm-flash {
+  0% { opacity: 0; }
+  25% { opacity: 0.22; }
+  100% { opacity: 0; }
+}
+
+/* A defence answering: a short word over its tile that floats up and fades. */
+.storm-word {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  z-index: 4;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font: 700 13px/1.2 var(--font-ui, system-ui, sans-serif);
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: #1f6f5c;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  animation: storm-word 3.2s ease-out forwards;
+}
+.storm-word::before { content: "✓ "; }
+.storm-word.warn { background: #8a5a12; }
+.storm-word.warn::before { content: "! "; }
+.storm-word.bad { background: #8e2b2b; }
+.storm-word.bad::before { content: "✕ "; }
+@keyframes storm-word {
+  0% { opacity: 0; transform: translate(-50%, -80%) scale(0.9); }
+  12% { opacity: 1; transform: translate(-50%, -100%) scale(1.06); }
+  85% { opacity: 1; transform: translate(-50%, -150%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -170%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .storm-word { animation: storm-word-still 3.2s linear forwards; }
+  .storm-flash.on { animation: none; }
+}
+@keyframes storm-word-still {
+  0%, 85% { opacity: 1; transform: translate(-50%, -100%); }
+  100% { opacity: 0; transform: translate(-50%, -100%); }
+}

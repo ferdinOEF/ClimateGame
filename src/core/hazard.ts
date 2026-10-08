@@ -492,46 +492,52 @@ export const DAMAGE_DEPTH = 1;
 
 /** The storm's script, in seconds of storm time. Presentation only: none of it changes an outcome. */
 export const STORM_TIMING = {
+  // Matched to docs/reference/hazard_vfx_prototype.html: landfall at 10 s,
+  // the surge rising from 8 s to its peak at 16 s and gone by 24 s.
   cyclone: {
-    /** The spiral reaches the coast. */
-    landfall: 16,
-    /** Seconds from landfall to the surge reaching the first row of land. */
-    surgeLead: 0.5,
+    /** The storm comes ashore (the prototype's "Landfall" phase). */
+    landfall: 10,
+    /** Seconds from landfall to the surge reaching the first row of land: it starts rising before the eye arrives. */
+    surgeLead: -2,
     /** Seconds per hex the surge takes to push further inland, shortened when it reaches far inland. */
-    perHex: 0.7,
+    perHex: 0.35,
     /** The surge's push inland never takes longer than this. */
-    maxInland: 7,
-    rise: 2,
-    hold: 3,
-    drain: 5,
+    maxInland: 3,
+    rise: 6,
+    hold: 1.5,
+    drain: 6.5,
     /** The sea draws back before the hit: from, to (seconds before landfall). */
-    drawBack: [4, 0.5] as const,
+    drawBack: [5, 2] as const,
     /** How far it draws back, in damage units. */
     drawBackDepth: 0.35
   },
+  // The swell starts upstream at 8 s and travels down at 0.8 s a channel tile,
+  // rising over about 6 s; the river falls from about 26 s.
   flood: {
     /** Rain and the cloud band come first; the swell starts upstream after this. */
-    rainLead: 6,
+    rainLead: 8,
     /** Seconds per channel tile the swell takes downriver ("about 0.8 s"), shortened on a long channel. */
     perRiverIndex: 0.8,
     /** The swell's whole trip down the channel never takes longer than this. */
-    maxTravel: 12,
-    rise: 2.5,
-    hold: 4,
-    drain: 6,
+    maxTravel: 9,
+    rise: 6,
+    hold: 5,
+    drain: 7,
     /** Seconds per hex the overflow takes to spread from the channel over the banks, shortened on wide banks. */
     perBankHex: 0.6,
     /** The overflow's spread over the banks never takes longer than this. */
-    maxBank: 5,
+    maxBank: 4,
     /** Seconds from the swell passing to the first overflow on the nearest bank. */
     bankLead: 1
   },
+  // Both at once: the surge comes ashore at 10 s while the swell is coming
+  // down; they meet in the channel from about 12 s.
   compound: {
-    /** The surge lands sooner in the finale, while the river is already rising. */
-    landfall: 12,
+    landfall: 10,
     /** Seconds per channel tile the surge's backwater takes to push upriver from the mouth. */
-    backwaterPerIndex: 0.45,
-    /** Backwater ∝ surge × (riverIndex / mouthIndex)^this (see `backwaterShare`). */
+    backwaterPerIndex: 0.3,
+    /** Backwater = surge × backwaterScale × (riverIndex / mouthIndex)^backwaterExponent (see `backwaterShare`). */
+    backwaterScale: 0.28,
     backwaterExponent: 1.6
   }
 };
@@ -552,6 +558,8 @@ export interface DepthTile {
   backwaterArrival: number;
   /** A house stood here when the storm came. */
   house: boolean;
+  /** Sea within two tiles of land: the shallows that drain before a cyclone's hit. */
+  shallows: boolean;
 }
 
 export interface DepthField {
@@ -656,6 +664,8 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
   const fromSea = hexRings(keys, seaKeys, () => true);
   let deepestInland = 0;
   for (const [key, sample] of input.samples) if (sample.cyclone !== undefined) deepestInland = Math.max(deepestInland, (fromSea.get(key) ?? 1) - 1);
+  const landKeys = [...keys].filter((key) => !SEA.has(terrain.get(key)!));
+  const fromLand = hexRings(keys, landKeys, () => true);
   const perHex = deepestInland > 0 ? Math.min(c.perHex, c.maxInland / deepestInland) : c.perHex;
   // Flood timing: the swell passes each channel tile, then spreads out over the banks.
   const channelArrival = new Map<string, number>();
@@ -711,7 +721,7 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
       if (isSea) {
         // The sea itself swells toward the shore: full surge on the coast, easing offshore.
         surgePeak = seaSurge;
-        surgeArrival = landfall - 1.5;
+        surgeArrival = landfall + c.surgeLead - 0.5;
       } else if (sample?.cyclone !== undefined) {
         surgePeak = toDepth(sample.cyclone);
         surgeArrival = landfall + c.surgeLead + Math.max(0, d - 1) * perHex;
@@ -735,10 +745,10 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
     let backwaterPeak = 0;
     let backwaterArrival = Infinity;
     if (kind === "compound" && riverIndex !== null && terrainId === "river" && landfall !== null) {
-      backwaterPeak = seaSurge * backwaterShare(riverIndex, mouthIndex);
+      backwaterPeak = seaSurge * STORM_TIMING.compound.backwaterScale * backwaterShare(riverIndex, mouthIndex);
       backwaterArrival = landfall + c.surgeLead + (mouthIndex - riverIndex) * STORM_TIMING.compound.backwaterPerIndex;
     }
-    const tile: DepthTile = { key, terrainId, surgePeak, floodPeak, surgeArrival, floodArrival, riverIndex, backwaterPeak, backwaterArrival, house: input.houses.has(key) };
+    const tile: DepthTile = { key, terrainId, surgePeak, floodPeak, surgeArrival, floodArrival, riverIndex, backwaterPeak, backwaterArrival, house: input.houses.has(key), shallows: isSea && (fromLand.get(key) ?? 99) <= 2 };
     tiles.set(key, tile);
     if (surgePeak > 0) duration = Math.max(duration, surgeArrival + c.rise + c.hold + c.drain);
     if (floodPeak > 0) duration = Math.max(duration, floodArrival + f.rise + f.hold + f.drain);
@@ -748,13 +758,13 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
   return { kind, tiles, mouthIndex, perRiverIndex, landfall, duration: duration + 1 };
 }
 
-/** The surge's water on a tile at storm time `t`, damage units. On the sea it dips before landfall (the draw-back). */
+/** The surge's water on a tile at storm time `t`, damage units. In the shallows it dips before landfall (the draw-back). */
 export function surgeDepth(field: DepthField, key: string, t: number): number {
   const tile = field.tiles.get(key);
   if (!tile || tile.surgePeak <= 0) return 0;
   const c = STORM_TIMING.cyclone;
   let depth = tile.surgePeak * waterEnvelope(t - tile.surgeArrival, c.rise, c.hold, c.drain);
-  if (field.landfall !== null && SEA.has(tile.terrainId)) {
+  if (field.landfall !== null && tile.shallows) {
     const [from, to] = c.drawBack;
     const start = field.landfall - from;
     const end = field.landfall - to;
