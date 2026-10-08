@@ -1,0 +1,11 @@
+shot: docs/qa/matrix/fl-06-1920x1080.jpg (+ gray)
+shot: docs/qa/matrix/fl-12-1920x1080.jpg (+ gray)
+shot: docs/qa/matrix/fl-20-1920x1080.jpg (+ gray)
+shot: docs/qa/matrix/fl-30-1920x1080.jpg (+ gray)
+shot: docs/qa/matrix/fldef-14-1920x1080.jpg (+ gray)
+shot: docs/qa/matrix/fl-20-protan-1920x1080.jpg (+ gray)
+shot: docs/qa/matrix/fl-20-deutan-1920x1080.jpg (+ gray)
+shot: docs/qa/matrix/fl-20-1366x768.jpg (+ gray)
+shot: docs/qa/matrix/fl-20-2560x1440.jpg (+ gray)
+shot: docs/qa/matrix/fl-20-medium-1920x1080.jpg (+ gray)
+console errors: none

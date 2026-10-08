@@ -26,12 +26,14 @@
     "mapgen:geocode": "tsx tools/mapgen/geocodePanaji.ts",
     "mapgen:basemap": "tsx tools/mapgen/fetchPanajiBasemap.ts",
     "bots": "tsx tools/panjimBots/index.ts",
-    "verify:maya": "tsx tools/verifyMaya.ts"
+    "verify:maya": "tsx tools/verifyMaya.ts",
+    "test:layout": "tsx tools/mayaLayoutTest.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",
     "@types/node": "^22.7.0",
     "@types/three": "^0.185.4",
+    "axe-core": "^4.10.3",
     "firebase-tools": "^13.20.0",
     "playwright": "^1.47.0",
     "tsx": "^4.19.0",

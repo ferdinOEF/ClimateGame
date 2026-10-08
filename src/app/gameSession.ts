@@ -8,6 +8,11 @@ import { CloudLayerManager } from "@render/cloudLayerManager";
 import { BoardSkirtManager } from "@render/boardSkirtManager";
 import { WaveFrontManager } from "@render/waveFrontManager";
 import { StormManager } from "@render/stormManager";
+import { StormWater } from "@render/storm/stormWater";
+import { StormSky } from "@render/storm/stormSky";
+import { StormDirector } from "./stormDirector";
+import { StormSound } from "@ui/stormSound";
+import { combinedDepth as combinedDepthAt } from "@core/hazard";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
 import { BuildFlourish } from "@render/buildFlourish";
 import { ForecastOutline } from "@render/forecastOutline";
@@ -19,7 +24,7 @@ import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { playSound } from "@ui/audioHooks";
+import { audioStateForTest, playSound } from "@ui/audioHooks";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer } from "@ui/mapLabels";
@@ -257,6 +262,21 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   const heatOverlay = new HeatOverlay(levelTiles.length, prefersReducedMotionNow());
   scene.add(heatOverlay.mesh);
+  /**
+   * Panjim 2050's storms: the water (one instanced layer, drawn from the
+   * storm's depth field) and the sky (the cyclone's spiral, the flood's rain
+   * band, lightning). Both stay empty and hidden until a storm plays; see
+   * StormDirector.
+   */
+  const stormWater = new StormWater(levelTiles.length);
+  const stormSky = new StormSky();
+  scene.add(stormWater.mesh);
+  scene.add(stormSky.group);
+  // The lightning flash on screen: never brighter than a quarter, never more than three a second (StormManager rate-limits).
+  const stormFlash = document.createElement("div");
+  stormFlash.className = "storm-flash";
+  stormFlash.setAttribute("aria-hidden", "true");
+  container.appendChild(stormFlash);
 
   /**
    * A spinning storm marker over the coast — Section 5's "spinning storm
@@ -342,7 +362,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const plot = town.buildings.get(`${coord.q},${coord.r}`);
       return plot ? { kind: plot.kind, wall: walls[plot.wall], roof: roofs[plot.roof], scale: plot.scale, turns: plot.turns } : null;
     });
-    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord), terrain.height("land"));
+    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord));
     scene.add(townDecor.group);
     ambientLife = new AmbientLife(town, levelTiles, (coord) => terrain.heightAt(coord), terrain.height("land"), prefersReducedMotionNow(), levelMap.focus);
     scene.add(ambientLife.group);
@@ -582,11 +602,39 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             });
           },
           challengeFx: {
+            play: (record, defences, hooks) => stormDirectorFor().play(record, defences, hooks),
+            freeze: (seconds) => stormDirectorFor().freezeAt(seconds),
+            isPlaying: () => stormDirector?.playing ?? false,
             begin: (challenge) => panjimFxBegin(challenge.kind),
             zone: (zone, outcome, slow, durationMs, onHouseLost) => panjimFxZone(zone, outcome, slow, durationMs, onHouseLost),
             end: () => panjimFxEnd()
           },
           redrawBoard: () => redrawPanjimBoard(),
+          tintTiles: (tints) => {
+            for (const coord of replayTinted) terrain.setTint(coord, null);
+            replayTinted.length = 0;
+            for (const tint of tints ?? []) {
+              const [q, r] = tint.key.split(",").map(Number);
+              terrain.setTint({ q, r }, new THREE.Color(tint.color), tint.blend);
+              replayTinted.push({ q, r });
+            }
+          },
+          calmEnding: (ms) => calmEnding(ms),
+          setQuality: (quality) => {
+            stormWater.setQuality(quality);
+            stormSky.setQuality(quality);
+            storm.setQuality(quality);
+            // Low draws at 1:1 pixels; Medium caps the ratio at 1.5; High at 2.
+            const cap = quality === "low" ? 1 : quality === "medium" ? 1.5 : 2;
+            // setPixelRatio resizes the drawing buffer itself; the camera framing is left alone.
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+          },
+          setReducedMotion: (reduced) => {
+            storm.setReducedMotion(reduced);
+            stormWater.setReducedMotion(reduced);
+            elements.setSwayEnabled(!reduced);
+            container.classList.toggle("calm-motion", reduced);
+          },
           offerResume: (label, onResume) => objectivesPanel.addBriefAction(label, onResume)
         })
       : null;
@@ -1623,8 +1671,103 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * the weather comes in, then each zone gets its own moment in turn, then it
    * clears. The outcome was decided when the challenge landed; this shows it.
    */
+  let stormDirector: StormDirector | null = null;
+  /** Tiles the Aftermath replay has tinted, to clear after it. */
+  const replayTinted: AxialCoord[] = [];
+  /**
+   * The calm after the finale's storm: the sky clears, the people and boats
+   * come back out, the birds on the defences show themselves, and the calm
+   * bed plays. A click ends it early.
+   */
+  function calmEnding(ms: number): Promise<void> {
+    storm.setIntensity(0);
+    ambientLife?.setPaused(false);
+    reactions.setAmbientPaused(false);
+    stormSound.calm(ms / 1000);
+    let shown = 0;
+    for (const placed of elements.placedElements()) {
+      if (shown >= 10 || !["mangrove", "khazan", "sandy_vegetation", "dune"].includes(placed.elementId)) continue;
+      const delay = 300 + shown * 320;
+      later(() => reactions.trigger(placed.elementId, placed.x, placed.y, placed.z, placed.top), delay);
+      shown++;
+    }
+    return new Promise((resolve) => {
+      const abort = new AbortController();
+      const done = (): void => {
+        abort.abort();
+        resolve();
+      };
+      window.setTimeout(done, ms);
+      window.setTimeout(() => document.addEventListener("pointerdown", done, { signal: abort.signal, capture: true }), 400);
+    });
+  }
+  const stormSound = new StormSound();
+  /** The words over defences answering a storm ("Absorbed"); they follow their tile as the camera moves. */
+  const stormWords: { el: HTMLElement; coord: AxialCoord }[] = [];
+  function placeStormWord(word: { el: HTMLElement; coord: AxialCoord }): void {
+    const world = axialToWorld(word.coord, 1.0);
+    const screen = worldToScreen(world.x, terrain.heightAt(word.coord) + 0.6, world.z);
+    word.el.style.left = `${Math.round(screen.x)}px`;
+    word.el.style.top = `${Math.round(screen.y)}px`;
+  }
+  /** The storm player, made on first use (Panjim 2050 only: it needs the run's zones). */
+  function stormDirectorFor(): StormDirector {
+    if (stormDirector) return stormDirector;
+    stormDirector = new StormDirector({
+      tiles: levelTiles,
+      heightAt: (coord) => terrain.heightAt(coord),
+      zones: panjim!.run.zones!,
+      water: stormWater,
+      sky: stormSky,
+      weather: storm,
+      elementAt: (key) => state.elements.get(key)?.elementId,
+      degradeAt: (key) => state.elements.get(key)?.degradeAmount ?? 0,
+      focusOn: (x, z) => focusOn(x, z, false),
+      fitTo: (w, d) => fitTo(w, d, false),
+      setTint: (coord, tint, blend) => terrain.setTint(coord, tint, blend),
+      houseLost: (coord) => elements.setBuildingDamagedVisual(coord),
+      defenceFailed: (coord) => {
+        elements.destroy(coord);
+        playSound("hazard_breach");
+      },
+      defenceWorn: (coord, degrade) => elements.setDegradeVisual(coord, degrade),
+      defenceAnswers: (coord, elementId) => {
+        const world = axialToWorld(coord, 1.0);
+        buildFlourish.play(world.x, terrain.heightAt(coord), world.z, performance.now());
+        reactions.trigger(elementId, world.x, terrain.heightAt(coord), world.z);
+      },
+      label: (coord, text, tone) => {
+        const el = document.createElement("div");
+        el.className = `storm-word ${tone}`;
+        el.textContent = text;
+        container.appendChild(el);
+        const word = { el, coord };
+        stormWords.push(word);
+        placeStormWord(word);
+        window.setTimeout(() => {
+          el.remove();
+          stormWords.splice(stormWords.indexOf(word), 1);
+        }, 3300);
+      },
+      screenFlash: () => {
+        stormFlash.classList.remove("on");
+        void stormFlash.offsetWidth;
+        stormFlash.classList.add("on");
+      },
+      reducedMotion: () => storm.isReducedMotion,
+      ambience: (wind, sea, rain) => stormSound.levels(wind, sea, rain),
+      sound: (cue) => {
+        if (cue === "thunder") stormSound.thunder();
+        else if (cue === "absorbed") playSound("chime");
+        else if (cue === "overwhelmed") playSound("hazard_overwhelmed");
+        else if (cue === "end") stormSound.quiet();
+      }
+    });
+    return stormDirector;
+  }
+
   function panjimFxBegin(kind: string): void {
-    hud.flashArrival(kind === "flood" ? `#${FLOOD_TELEGRAPH_COLOR.getHexString()}` : `#${CYCLONE_TELEGRAPH_COLOR.getHexString()}`);
+    void kind;
     stormImpactActive = true;
     storm.setIntensity(1);
     mapLabels.setVisible(false);
@@ -1974,6 +2117,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     storm.tick(nowMs, focusPoint());
     setShake(storm.shakeX, storm.shakeZ);
     elements.setWind(storm.windStrength);
+    townDecor?.setWind(storm.windStrength, nowMs, stormDirector?.windDirection);
 
     terrain.tick(nowMs);
     elements.tick(nowMs);
@@ -1983,6 +2127,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     waveFront.tick(nowMs);
     buildFlourish.tick(nowMs);
     panjim?.frame();
+    stormDirector?.tick(nowMs);
+    for (const word of stormWords) placeStormWord(word);
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
     if (ambientLife) {
@@ -2076,6 +2222,30 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __frameStatsForTest: frameStats,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
+    __audioForTest: audioStateForTest,
+    __stormForTest: {
+      /** Holds the storm at a storm time (null lets it run). */
+      freeze: (seconds: number | null) => stormDirector?.freezeAt(seconds),
+      /** Every tile the water layer could draw (sea, river, wetland and land). */
+      allKeys: () => {
+        const field = stormDirector?.currentField;
+        return field ? [...field.tiles.keys()] : [];
+      },
+      time: () => stormDirector?.time ?? null,
+      playing: () => stormDirector?.playing ?? false,
+      /** The depth the water layer drew on a tile, and the core's depth there at the same storm time. */
+      compare: (key: string) => {
+        const drawn = stormWater.depthDrawn(key);
+        const field = stormDirector?.currentField;
+        if (!drawn || !field) return null;
+        return { drawn: drawn.depth, core: combinedDepthAt(field, key, drawn.t), t: drawn.t };
+      },
+      wetKeys: () => {
+        const field = stormDirector?.currentField;
+        return field ? [...field.tiles.values()].filter((tile) => tile.surgePeak > 0 || tile.floodPeak > 0 || tile.backwaterPeak > 0).map((tile) => tile.key) : [];
+      },
+      script: () => stormDirector?.currentScript ?? null
+    },
     __panjimScenarioForTest: async (name: string): Promise<boolean> => {
       if (!panjim) return false;
       // "build-<terrain>": builds one thing on that terrain near the city,
@@ -2255,7 +2425,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Puts the sky and sun back before the scene goes. Without it a
     // session disposed mid-storm would be the last thing to touch those
     // values, and `createScene`'s own disposal does not restore them.
+    stormDirector?.finish();
     storm.dispose();
+    stormSound.dispose();
+    stormWater.dispose();
+    stormSky.dispose();
     buildFlourish.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();

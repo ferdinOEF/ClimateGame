@@ -4,25 +4,18 @@ import { gardenGeometry } from "./townGeometry";
 import type { TownLayout } from "@levels/townLayout";
 
 /**
- * What the town plan draws besides its buildings: the gardens on empty land,
- * and the major roads.
+ * What the town plan draws besides its buildings: the gardens on empty land.
  *
- * Roads are strips on the hex tops along the links the map generator found
- * (where the road really runs between two neighbouring road tiles, never a
- * lattice), with a small disc at each tile's centre so bends and junctions
- * join cleanly. Where a road crosses the river
- * or a wetland it becomes a deck at land height on a pier: the bridges and
- * causeways. Light warm grey, never green, red or concrete-grey, so a road
- * never reads as a defence or as the warning heat. Under everything else: a
- * hair above the terrain, below the heat overlay and every element.
+ * Roads are not drawn here. They show through the street-map layer, in OSM's
+ * own colours and widths, so they fade with its opacity slider and can never
+ * read as a defence, the heat or water. (Thick drawn strips did.) The road
+ * data is unchanged: road tiles still refuse buildings, and the walkers still
+ * follow `roadPoints`.
  *
- * Four instanced meshes in all (garden, strip, junction, pier). Built once:
- * the town plan never changes during a run.
+ * One instanced mesh (gardens). Built once: the town plan never changes
+ * during a run.
  */
-const ROAD = new THREE.Color("#ddd6c6");
-const DECK = new THREE.Color("#cbc4b4");
 const ROAD_LIFT = 0.006;
-const STRIP_WIDTH = 0.2;
 
 function seeded(key: string): number {
   let h = 2166136261;
@@ -33,8 +26,10 @@ function seeded(key: string): number {
 export class TownDecor {
   readonly group = new THREE.Group();
   private readonly meshes: THREE.InstancedMesh[] = [];
+  /** Wind (0–1), its direction and the clock, for the gardens' trees to bend in a storm (vertex shader; no per-frame CPU work). */
+  private readonly sway = { uWind: { value: 0 }, uTime: { value: 0 }, uWindDir: { value: new THREE.Vector2(1, 0.3).normalize() } };
 
-  constructor(town: TownLayout, heightAt: (coord: AxialCoord) => number, landHeight: number) {
+  constructor(town: TownLayout, heightAt: (coord: AxialCoord) => number) {
     const coordOf = (key: string): AxialCoord => {
       const [q, r] = key.split(",").map(Number);
       return { q, r };
@@ -43,6 +38,24 @@ export class TownDecor {
     // Gardens.
     if (town.gardens.size > 0) {
       const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9, vertexColors: true });
+      material.onBeforeCompile = (shader) => {
+        Object.assign(shader.uniforms, this.sway);
+        shader.vertexShader = shader.vertexShader
+          .replace("#include <common>", "#include <common>\nuniform float uWind;\nuniform float uTime;\nuniform vec2 uWindDir;")
+          .replace(
+            "#include <begin_vertex>",
+            `#include <begin_vertex>
+            #ifdef USE_INSTANCING
+              // Taller parts bend further, all the same way: the wind direction
+              // turned into this instance's own frame, plus a gusting wobble.
+              vec3 local = transpose(mat3(instanceMatrix)) * vec3(uWindDir.x, 0.0, uWindDir.y);
+              vec2 dir = normalize(local.xz + vec2(0.0001));
+              float h = max(0.0, position.y);
+              float gust = 0.75 + 0.25 * sin(uTime * 3.1 + instanceMatrix[3].x * 0.7 + instanceMatrix[3].z * 0.5);
+              transformed.xz += dir * h * h * uWind * gust * 0.55;
+            #endif`
+          );
+      };
       const gardens = new THREE.InstancedMesh(gardenGeometry(), material, town.gardens.size);
       gardens.name = "town-gardens";
       const matrix = new THREE.Matrix4();
@@ -58,73 +71,13 @@ export class TownDecor {
       gardens.instanceMatrix.needsUpdate = true;
       this.add(gardens);
     }
+  }
 
-    // Roads and bridges.
-    const network = new Set([...town.roads, ...town.bridges]);
-    const segments: { x: number; y: number; z: number; angle: number; color: THREE.Color }[] = [];
-    const nodes: { x: number; y: number; z: number; color: THREE.Color }[] = [];
-    const piers: { x: number; z: number; bottom: number; top: number }[] = [];
-    const deckY = landHeight + ROAD_LIFT * 2;
-    const surface = (key: string): { x: number; y: number; z: number; color: THREE.Color } => {
-      const coord = coordOf(key);
-      const centre = axialToWorld(coord, 1);
-      const bridge = town.bridges.has(key);
-      return { x: centre.x, y: bridge ? deckY : heightAt(coord) + ROAD_LIFT, z: centre.z, color: bridge ? DECK : ROAD };
-    };
-    for (const key of network) {
-      const at = surface(key);
-      nodes.push(at);
-      if (town.bridges.has(key)) {
-        const coord = coordOf(key);
-        piers.push({ x: at.x, z: at.z, bottom: heightAt(coord) - 0.05, top: deckY });
-      }
-    }
-    // One strip per link, in two halves, each at its own tile's height: the
-    // halves meet on the shared edge.
-    for (const [a, b] of town.links) {
-      const from = surface(a);
-      const to = surface(b);
-      const angle = Math.atan2(to.z - from.z, to.x - from.x);
-      segments.push({ x: (from.x * 3 + to.x) / 4, y: from.y, z: (from.z * 3 + to.z) / 4, angle, color: from.color });
-      segments.push({ x: (to.x * 3 + from.x) / 4, y: to.y, z: (to.z * 3 + from.z) / 4, angle, color: to.color });
-    }
-    const flat = new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true });
-    if (segments.length > 0) {
-      const strip = new THREE.BoxGeometry(0.9, 0.012, STRIP_WIDTH);
-      const mesh = new THREE.InstancedMesh(strip, flat, segments.length);
-      mesh.name = "town-road-strips";
-      const matrix = new THREE.Matrix4();
-      segments.forEach((s, i) => {
-        // Box length runs along x; rotate it onto the segment (-angle: three's Y rotation turns x towards -z).
-        matrix.makeRotationY(-s.angle).setPosition(s.x, s.y + 0.006, s.z);
-        mesh.setMatrixAt(i, matrix);
-        mesh.setColorAt(i, s.color);
-      });
-      this.add(mesh);
-    }
-    if (nodes.length > 0) {
-      const disc = new THREE.CylinderGeometry(STRIP_WIDTH * 0.62, STRIP_WIDTH * 0.62, 0.012, 8);
-      const mesh = new THREE.InstancedMesh(disc, flat, nodes.length);
-      mesh.name = "town-road-junctions";
-      const matrix = new THREE.Matrix4();
-      nodes.forEach((n, i) => {
-        mesh.setMatrixAt(i, matrix.makeTranslation(n.x, n.y + 0.006, n.z));
-        mesh.setColorAt(i, n.color);
-      });
-      this.add(mesh);
-    }
-    if (piers.length > 0) {
-      const pier = new THREE.BoxGeometry(0.12, 1, 0.12);
-      pier.translate(0, 0.5, 0);
-      const mesh = new THREE.InstancedMesh(pier, new THREE.MeshStandardMaterial({ color: "#8e8a82", roughness: 0.9, flatShading: true }), piers.length);
-      mesh.name = "town-bridge-piers";
-      const matrix = new THREE.Matrix4();
-      piers.forEach((p, i) => {
-        matrix.makeScale(1, Math.max(0.05, p.top - p.bottom), 1).setPosition(p.x, p.bottom, p.z);
-        mesh.setMatrixAt(i, matrix);
-      });
-      this.add(mesh);
-    }
+  /** The storm's wind (0–1) and where it blows from the sea toward, for the garden trees. */
+  setWind(wind: number, nowMs: number, direction?: THREE.Vector2): void {
+    this.sway.uWind.value = wind;
+    this.sway.uTime.value = nowMs / 1000;
+    if (direction && direction.lengthSq() > 0) this.sway.uWindDir.value.copy(direction).normalize();
   }
 
   private add(mesh: THREE.InstancedMesh): void {

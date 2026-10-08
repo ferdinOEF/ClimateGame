@@ -288,6 +288,23 @@ export class TerrainMeshManager {
     // tiles to walk per frame instead of 357.
     this.swellTiles = Array.from(this.placed.values()).filter((inst) => inst.swellPhase !== undefined);
 
+    // A dark floor under every tile, a little wider than the tile, so the
+    // gaps between tiles read as shadow. Without it, the gaps that line up
+    // with the camera showed the pale sky as thin bright lines (mistakable
+    // for a road or a stream). One draw call, built once.
+    if (mapTiles.length > 0) {
+      const floorGeometry = new THREE.CylinderGeometry(HEX_SIZE * 1.02, HEX_SIZE * 1.02, 0.02, 6, 1, false);
+      const floor = new THREE.InstancedMesh(floorGeometry, new THREE.MeshBasicMaterial({ color: "#22302a" }), mapTiles.length);
+      floor.name = "terrain-floor";
+      const m = new THREE.Matrix4();
+      mapTiles.forEach(({ coord }, i) => {
+        const { x, z } = axialToWorld(coord, HEX_SIZE);
+        floor.setMatrixAt(i, m.makeTranslation(x, -UNCLAIMED_SINK - 0.06, z));
+      });
+      floor.instanceMatrix.needsUpdate = true;
+      this.group.add(floor);
+    }
+
     for (const mesh of this.meshes.values()) {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;

@@ -30,6 +30,8 @@
  * point on the board (`goTo`), following it as the camera moves, then hop
  * home when the line is done.
  */
+import { placeBubble, placeFigure, type Rect } from "./mayaLayout";
+
 export type MayaState = "idle" | "greeting" | "tip" | "explains" | "warning" | "worried" | "celebrates" | "jump";
 
 export interface MayaLine {
@@ -131,15 +133,43 @@ function readingMs(text: string): number {
   return Math.min(16000, Math.max(7000, 2600 + text.length * 70));
 }
 
-const DOCK_LEFT = 14;
-const DOCK_BOTTOM = 66;
-const HOP_MS = 700;
+/**
+ * Everything on screen Maya must keep clear of. Read fresh on every layout,
+ * so a card that appears, grows or collapses moves her with it.
+ */
+export const HUD_OBSTACLES = [
+  ".instrument-cluster",
+  ".coin-jar",
+  ".field-guide-button",
+  ".panjim-clock",
+  ".hud-chrome",
+  ".houses-counter",
+  ".panjim-toggles",
+  ".objectives-panel",
+  ".nugget-badge",
+  ".map-corner",
+  ".empty-prompt",
+  ".era-banner",
+  ".build-popover",
+  ".hud-tooltip",
+  ".field-guide-toast",
+  ".aftermath-card",
+  ".field-guide-card",
+  ".finale-card",
+  ".brief-card",
+  ".replay-card",
+  ".sound-toggle",
+  ".quality-control"
+];
+
+const BADGE_SIZE = { w: 52, h: 52 };
 
 export class Maya {
   readonly el: HTMLElement;
   private readonly figure: HTMLElement;
   private readonly bubble: HTMLElement;
   private readonly textEl: HTMLElement;
+  private readonly badge: HTMLButtonElement;
   private readonly queue: MayaLine[] = [];
   /** Lines already spoken this session, by id. */
   private readonly spoken = new Set<string>();
@@ -147,12 +177,20 @@ export class Maya {
   private hideTimer = 0;
   private state: MayaState = "idle";
   private muted: boolean;
+  private minimised = false;
   private readonly abort = new AbortController();
-  /** Where she stands, in container pixels (her feet), and where she is going. */
-  private pos: { x: number; y: number } | null = null;
-  private hop: { from: { x: number; y: number }; startMs: number } | null = null;
+  private readonly observer: MutationObserver;
+  /** Where her figure stands now, in container pixels. */
+  private placed: Rect | null = null;
   private anchor: (() => { x: number; y: number } | null) | null = null;
-  private returning = false;
+  private layoutDirty = true;
+  /** A line was held back because no bubble spot was free. */
+  private heldBack = false;
+  /** Test-only: lines stay up until dismissed, so a slow headless page cannot time them out mid-measurement. */
+  holdLines = false;
+  private readonly heightCache = new Map<string, number>();
+  private heightCacheKey = "";
+  private lastLayoutMs = 0;
   /** Called when a line is shown: the Field Guide records it. */
   onSpoken: ((line: MayaLine) => void) | null = null;
 
@@ -162,18 +200,37 @@ export class Maya {
     this.el.className = "maya state-idle";
     if (options.reducedMotion) this.el.classList.add("reduced-motion");
     this.el.innerHTML = `
-      <div class="maya-figure-wrap">${SVG}</div>
-      <div class="maya-bubble" role="status" aria-live="polite" hidden>
+      <div class="maya-figure-wrap">${SVG}<button type="button" class="maya-minimise" aria-label="Minimise Maya">&minus;</button></div>
+      <div class="maya-bubble side-right" role="status" aria-live="polite" hidden>
         <span class="maya-name">Maya</span>
         <p class="maya-text"></p>
         <button type="button" class="maya-dismiss">Got it</button>
-      </div>`;
+      </div>
+      <button type="button" class="maya-badge" aria-label="Show Maya" hidden>
+        <svg viewBox="40 30 40 44" width="34" height="34" aria-hidden="true">
+          <circle cx="60" cy="31" r="9.5" fill="#24170f"/>
+          <ellipse cx="60" cy="56" rx="17" ry="19" fill="#8a5634"/>
+          <path d="M43 55 Q41 36 60 35 Q79 36 77 55 Q73 44 60 44 Q47 44 43 55 Z" fill="#24170f"/>
+          <path d="M43.6 49 Q60 37.5 76.4 49 L76 53.5 Q60 42.5 44 53.5 Z" fill="#f08a24"/>
+          <ellipse cx="53" cy="57.5" rx="2.1" ry="2.7" fill="#20140d"/><ellipse cx="67" cy="57.5" rx="2.1" ry="2.7" fill="#20140d"/>
+          <path d="M54 66 Q60 71.5 66 66" fill="none" stroke="#4a1f12" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>`;
     this.figure = this.el.querySelector(".maya-figure-wrap")!;
     this.bubble = this.el.querySelector(".maya-bubble")!;
     this.textEl = this.el.querySelector(".maya-text")!;
+    this.badge = this.el.querySelector(".maya-badge")!;
     this.el.querySelector(".maya-dismiss")!.addEventListener("click", (event) => {
       event.stopPropagation();
       this.dismiss();
+    });
+    this.el.querySelector(".maya-minimise")!.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.setMinimised(true);
+    });
+    this.badge.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.setMinimised(false);
     });
     // Esc dismisses her line before it reaches the level's own Esc (quit).
     window.addEventListener(
@@ -187,7 +244,27 @@ export class Maya {
       },
       { capture: true, signal: this.abort.signal }
     );
-    this.el.addEventListener("pointerdown", (event) => event.stopPropagation());
+    window.addEventListener(
+      "resize",
+      () => {
+        this.layoutDirty = true;
+        // Text may reflow at another size: measure again.
+        this.heightCache.clear();
+      },
+      { signal: this.abort.signal }
+    );
+    // Any HUD element appearing, hiding, growing or moving re-lays her out.
+    // Her own changes are ignored, or she would chase herself.
+    this.observer = new MutationObserver((records) => {
+      // Things that move with the camera every frame (the storm's words, the
+      // forecast label, the lightning overlay) are not HUD and do not count.
+      const moving = (node: Node): boolean => node instanceof Element && node.closest(".storm-word, .forecast-label, .storm-flash") !== null;
+      if (records.some((record) => !this.el.contains(record.target) && !moving(record.target))) this.layoutDirty = true;
+    });
+    this.observer.observe(container, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "class", "style"] });
+    for (const part of [this.bubble, this.badge, this.el.querySelector(".maya-minimise")!]) {
+      part.addEventListener("pointerdown", (event) => event.stopPropagation());
+    }
     container.appendChild(this.el);
     this.setState("idle");
   }
@@ -203,6 +280,10 @@ export class Maya {
 
   get isMuted(): boolean {
     return this.muted;
+  }
+
+  get isMinimised(): boolean {
+    return this.minimised;
   }
 
   /** Whether a line with this id has been said this session. */
@@ -224,6 +305,7 @@ export class Maya {
     if (this.queue.some((queued) => queued.id === line.id) || this.current?.id === line.id) return;
     if (line.urgent) this.queue.unshift(line);
     else this.queue.push(line);
+    this.el.classList.toggle("has-pending", this.queue.length > 0);
   }
 
   /** Drops any queued line whose id matches (a warning that no longer applies). */
@@ -238,7 +320,7 @@ export class Maya {
 
   /** Says the next queued line now, if there is one and she is free. Returns true if she spoke. */
   next(): boolean {
-    if (this.current || this.muted) return false;
+    if (this.current || this.muted || this.minimised) return false;
     const line = this.queue.shift();
     if (!line) return false;
     this.show(line);
@@ -251,12 +333,14 @@ export class Maya {
     this.textEl.textContent = line.text;
     this.bubble.hidden = false;
     this.el.classList.add("talking");
+    this.el.classList.toggle("has-pending", this.queue.length > 0);
     this.setState(line.state);
     if (line.anchor) this.goTo(line.anchor);
     line.onShow?.();
     window.clearTimeout(this.hideTimer);
-    this.hideTimer = window.setTimeout(() => this.dismiss(), readingMs(line.text) + (line.anchor ? 2500 : 0));
+    if (!this.holdLines) this.hideTimer = window.setTimeout(() => this.dismiss(), readingMs(line.text) + (line.anchor ? 2500 : 0));
     this.onSpoken?.(line);
+    this.layout(performance.now());
   }
 
   /** Closes the current line and goes home. */
@@ -268,6 +352,7 @@ export class Maya {
     this.el.classList.remove("talking");
     if (this.anchor) this.goHome();
     this.setState("idle");
+    this.layoutDirty = true;
   }
 
   /** Silences her lines (M). The heat and everything else carry on. */
@@ -275,6 +360,19 @@ export class Maya {
     this.muted = muted;
     this.el.classList.toggle("muted", muted);
     if (muted) this.dismiss();
+  }
+
+  /** Collapses her to a small badge in a free corner, or brings her back. */
+  setMinimised(minimised: boolean): void {
+    if (minimised === this.minimised) return;
+    this.minimised = minimised;
+    if (minimised) this.dismiss();
+    this.el.classList.toggle("minimised", minimised);
+    this.figure.hidden = minimised;
+    this.badge.hidden = !minimised;
+    this.layoutDirty = true;
+    this.layout(performance.now());
+    (minimised ? this.badge : (this.el.querySelector(".maya-minimise") as HTMLElement)).focus({ preventScroll: true });
   }
 
   /** Sets a pose without a line (the Aftermath's celebrate or worried). */
@@ -287,67 +385,142 @@ export class Maya {
   /** Hops to a point on the board and follows it until the line is done. */
   goTo(anchor: () => { x: number; y: number } | null): void {
     this.anchor = anchor;
-    this.returning = false;
-    this.hop = { from: this.pos ?? this.dockPoint(), startMs: performance.now() };
-    this.el.classList.add("away", "hopping");
+    this.el.classList.add("away");
+    this.layoutDirty = true;
   }
 
   private goHome(): void {
     this.anchor = null;
-    this.returning = true;
-    this.hop = { from: this.pos ?? this.dockPoint(), startMs: performance.now() };
-    this.el.classList.add("hopping");
+    this.el.classList.remove("away");
+    this.layoutDirty = true;
   }
 
-  private dockPoint(): { x: number; y: number } {
-    return { x: DOCK_LEFT + 48, y: this.container.clientHeight - DOCK_BOTTOM };
+  /** The rectangles of every other HUD element, in container pixels. */
+  obstacles(): Rect[] {
+    const box = this.container.getBoundingClientRect();
+    const rects: Rect[] = [];
+    for (const el of Array.from(this.container.querySelectorAll<HTMLElement>(HUD_OBSTACLES.join(",")))) {
+      if (this.el.contains(el) || el.closest("[hidden]")) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      if (getComputedStyle(el).visibility === "hidden" || getComputedStyle(el).display === "none") continue;
+      rects.push({ x: r.left - box.left, y: r.top - box.top, w: r.width, h: r.height });
+    }
+    return rects;
   }
 
-  /** Called every frame: moves her along a hop and keeps her on her anchor as the camera moves. */
-  frame(nowMs: number): void {
-    if (!this.anchor && !this.returning) {
-      if (this.pos) {
-        this.pos = null;
-        this.el.style.transform = "";
-        this.el.classList.remove("away", "hopping", "flip");
+  /** Her figure's and bubble's rectangles now, in container pixels (for the layout tests). */
+  rects(): { figure: Rect | null; bubble: Rect | null; badge: Rect | null } {
+    const box = this.container.getBoundingClientRect();
+    const rel = (el: HTMLElement): Rect | null => {
+      if (el.hidden) return null;
+      const r = el.getBoundingClientRect();
+      return r.width > 0 ? { x: r.left - box.left, y: r.top - box.top, w: r.width, h: r.height } : null;
+    };
+    return { figure: rel(this.figure), bubble: rel(this.bubble), badge: rel(this.badge) };
+  }
+
+  /**
+   * Places her figure, then her bubble, clear of everything else (see
+   * mayaLayout.ts). A big move (to a tile, or home) fades her out and hops
+   * her in at the new spot, so she never sweeps across the HUD on the way.
+   */
+  private layout(nowMs: number): void {
+    this.layoutDirty = false;
+    this.lastLayoutMs = nowMs;
+    const viewport = { w: this.container.clientWidth, h: this.container.clientHeight };
+    if (viewport.w < 50 || viewport.h < 50) return;
+    const obstacles = this.obstacles();
+    if (this.minimised) {
+      const spot = placeFigure(BADGE_SIZE, obstacles, viewport, null);
+      if (spot) {
+        this.badge.style.left = `${spot.x}px`;
+        this.badge.style.top = `${spot.y}px`;
       }
       return;
     }
-    const raw = this.anchor ? this.anchor() : null;
-    const rect = { w: this.container.clientWidth, h: this.container.clientHeight };
-    const target = this.returning ? this.dockPoint() : raw ? { x: clamp(raw.x, 70, rect.w - 70), y: clamp(raw.y, 230, rect.h - 40) } : this.dockPoint();
-    let x = target.x;
-    let y = target.y;
-    if (this.hop) {
-      const t = Math.min(1, (nowMs - this.hop.startMs) / HOP_MS);
-      const ease = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-      x = this.hop.from.x + (target.x - this.hop.from.x) * ease;
-      y = this.hop.from.y + (target.y - this.hop.from.y) * ease - Math.sin(Math.PI * t) * 70;
-      if (t >= 1) {
-        this.hop = null;
-        this.el.classList.remove("hopping");
-        if (this.returning) {
-          this.returning = false;
-          this.pos = { x, y };
-          return;
-        }
+    const size = { w: this.figure.offsetWidth || 96, h: this.figure.offsetHeight || 152 };
+    const target = this.anchor ? this.anchor() : null;
+    const spot = placeFigure(size, obstacles, viewport, target) ?? placeFigure(size, obstacles, viewport, null);
+    if (!spot) {
+      // Nowhere free at all (a tiny window): step aside as a badge.
+      this.figure.style.visibility = "hidden";
+      return;
+    }
+    this.figure.style.visibility = "";
+    const moved = !this.placed || Math.hypot(spot.x - this.placed.x, spot.y - this.placed.y) > 60;
+    if (moved && this.placed) {
+      this.el.classList.remove("hopping");
+      void this.el.offsetWidth;
+      this.el.classList.add("hopping");
+      window.setTimeout(() => this.el.classList.remove("hopping"), 520);
+    }
+    this.placed = spot;
+    this.figure.style.left = `${spot.x}px`;
+    this.figure.style.top = `${spot.y}px`;
+    if (!this.current) return;
+    this.placeBubble(spot, obstacles, viewport);
+  }
+
+  private placeBubble(figure: Rect, obstacles: Rect[], viewport: { w: number; h: number }): void {
+    // Heights by width for this line (and look), so a re-layout does not force a reflow per candidate.
+    const cacheKey = this.textEl.textContent ?? "";
+    if (this.heightCacheKey !== cacheKey) {
+      this.heightCache.clear();
+      this.heightCacheKey = cacheKey;
+    }
+    const measure = (width: number): number => {
+      const key = `${width}|${this.bubble.classList.contains("compact")}`;
+      const cached = this.heightCache.get(key);
+      if (cached !== undefined) return cached;
+      this.bubble.style.width = `${width}px`;
+      const height = this.bubble.offsetHeight;
+      this.heightCache.set(key, height);
+      return height;
+    };
+    this.bubble.classList.remove("compact");
+    let spot = placeBubble(figure, measure, obstacles, viewport);
+    if (!spot) {
+      this.bubble.classList.add("compact");
+      spot = placeBubble(figure, measure, obstacles, viewport, 260);
+    }
+    if (!spot) {
+      // No room anywhere beside her: hold the line back and try again later.
+      const line = this.current!;
+      this.current = null;
+      this.spoken.delete(line.id);
+      window.clearTimeout(this.hideTimer);
+      this.bubble.hidden = true;
+      this.el.classList.remove("talking");
+      this.queue.unshift(line);
+      this.heldBack = true;
+      return;
+    }
+    this.bubble.style.width = `${spot.rect.w}px`;
+    this.bubble.style.left = `${spot.rect.x}px`;
+    this.bubble.style.top = `${spot.rect.y}px`;
+    this.bubble.classList.remove("side-right", "side-above", "side-left");
+    this.bubble.classList.add(`side-${spot.side}`);
+  }
+
+  /** Called every frame: follows a tile while away; otherwise re-lays out on change (and a few times a second). */
+  frame(nowMs: number): void {
+    // Following a tile: ten times a second is smooth enough and keeps layout cheap.
+    const followDue = this.anchor !== null && nowMs - this.lastLayoutMs > 100;
+    if (followDue || (this.layoutDirty && nowMs - this.lastLayoutMs > 50) || nowMs - this.lastLayoutMs > 250) {
+      this.layout(nowMs);
+      // A line held back for lack of room gets another try once things move.
+      if (this.heldBack && !this.current) {
+        this.heldBack = false;
+        this.next();
       }
     }
-    this.pos = { x, y };
-    // Her root is laid out at the dock; moving is a transform from there.
-    const dock = this.dockPoint();
-    this.el.style.transform = `translate(${Math.round(x - dock.x)}px, ${Math.round(y - dock.y)}px)`;
-    // Near the right edge the bubble opens to her left.
-    this.el.classList.toggle("flip", x > rect.w - 420);
   }
 
   dispose(): void {
     window.clearTimeout(this.hideTimer);
+    this.observer.disconnect();
     this.abort.abort();
     this.el.remove();
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }

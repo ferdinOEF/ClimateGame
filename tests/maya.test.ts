@@ -76,3 +76,26 @@ describe("Maya's Aftermath line", () => {
     expect(happy.text).toMatch(/dune|Every home/);
   });
 });
+
+describe("Maya's Aftermath line with the storm's real comparisons", () => {
+  it("quotes what a kind of defence really saved, and claims nothing when none did", () => {
+    const run = newRun("panjim", BOT_LEVELS.strict);
+    for (let i = 0; i < 3; i++) {
+      for (const key of run.zones!.keys("z1")) {
+        const [q, r] = key.split(",").map(Number);
+        if (run.state.canBuild({ q, r }, "dune")) {
+          run.build({ q, r }, "dune");
+          break;
+        }
+      }
+    }
+    while (run.landed.size < 1) run.fastForwardYear();
+    const record = run.stormRecords.get("c1-cyclone")!;
+    const told = mayaAftermath(record.outcome, run.state, run.zones!, record.savedBy);
+    if (record.savedBy.length > 0) expect(told.text).toContain(`${record.savedBy[0].houses}`);
+    else expect(told.text).not.toMatch(/held|saved|would have/);
+    // With no saves at all, no claim of a save.
+    const none = mayaAftermath(record.outcome, run.state, run.zones!, []);
+    expect(none.text).not.toMatch(/held \d|would have been hit/);
+  });
+});

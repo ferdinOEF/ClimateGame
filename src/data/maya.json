@@ -78,7 +78,9 @@
     "absorbed": "The {defence} absorbed the {hazard} at {place}.",
     "allSaved": "Every home in the storm's path is still standing. Panjim is proud of you!",
     "someLost": "We lost {lost} homes at {place}. A few more defences there next time and they will stand.",
-    "noDefence": "Nothing stood between the {hazard} and {place}. Next time, plant something there first."
+    "noDefence": "Nothing stood between the {hazard} and {place}. Next time, plant something there first.",
+    "saved": "Without your {defence}, {count} more homes would have been hit.",
+    "notYet": "The {hazard} reached {place} before the defences there could make a difference. More of them, given time to grow, will hold it."
   },
   "zonePlaces": {
     "z1": "Miramar",

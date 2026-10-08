@@ -110,7 +110,7 @@ async function main(): Promise<void> {
     const slider = await page.locator(".map-layer-opacity").inputValue();
     check(slider === "32" && (await page.locator(".map-layer-control input[type=checkbox]").isChecked()), `Panaji: street map on at ${slider}%`);
     const town = await evalJs<{ roads: number; buildingsOnRoads: number; decorMeshes: string[]; buildings: number }>(page, "window.__townForTest()");
-    check(town.roads > 50 && town.decorMeshes.includes("town-road-strips"), `Panaji: roads render (${town.roads} road tiles; meshes ${town.decorMeshes.join(", ")})`);
+    check(town.roads > 50 && !town.decorMeshes.some((name) => name.startsWith("town-road")), `Panaji: roads come from the street map, not drawn strips (${town.roads} road tiles; meshes ${town.decorMeshes.join(", ")})`);
     check(town.buildingsOnRoads === 0, "Panaji: no building on any road tile");
     const greeting = (await page.locator(".maya-text").textContent()) ?? "";
     check(greeting === "Hello! I am Maya. Let us keep Panjim dry.", `Panaji: Maya greets: "${greeting}"`);

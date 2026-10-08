@@ -6885,3 +6885,547 @@ the flood, with Maya's last call, and grayscale twins.
   houses.
 - **Flood jobs** can repeat an element (two khazans), because a flood has
   only two answering defences.
+
+## Hazard visuals and fixes (branch `hazard-vfx-and-fixes`)
+
+**Safety net:**
+- The base is master at `5f3fdfd`.
+- It is marked by the local tag `pre-hazard-vfx-and-fixes` and by the branch
+  `backup/pre-hazard-vfx-and-fixes` on GitHub.
+- The proxy refuses tag pushes, so the tag exists only locally.
+
+**Reference prototype not available.** The brief names an attached
+`hazard_vfx_prototype.html`, to be copied to `docs/reference/`. No such file
+reached this session:
+- Searched: the upload folders and every remote branch.
+- Only the older `docs/design/khazan_hazard_prototype.html` exists, and it has
+  no spiral, swell or backwater.
+- Decision: work from the written spec (its timings, colours and behaviours are
+  given in the brief) and note the gap.
+- If the prototype is pushed later, the visuals should be compared against it.
+
+### PA — Maya never overlaps the HUD — DONE
+
+**What changed:**
+- **Geometry** — `src/ui/panjim/mayaLayout.ts` is pure rectangle geometry,
+  unit-tested in `tests/mayaLayout.test.ts`:
+  - `placeFigure` docks her on the left edge, searching bottom-up, so she
+    stands just above the Discovery card and moves with it. Next it tries the
+    bottom edge, then anywhere free.
+  - For a warning jump it searches outward from the tile, ring by ring.
+  - `placeBubble` tries her right, then above, then left, at widths
+    320 → 220 px.
+  - Both keep 12 px clear of every HUD box.
+- **Maya** (`maya.ts`) reads the HUD boxes:
+  - on load and resize;
+  - on any HUD change (a MutationObserver: panels opening or closing,
+    tooltips, cards);
+  - a few times a second as a fallback.
+- **When there is no room for the bubble:**
+  1. She first tries a compact bubble (smaller text, 260 px).
+  2. If that also fails, she holds the line back and retries as soon as the
+     layout changes.
+- **Big moves:** she fades and hops in at the new spot rather than sliding
+  across the HUD.
+- **Pointer events:** only her bubble and her two buttons take them; the rest
+  of her lets clicks reach the board.
+- **Minimise:** a new "−" control collapses her to a 52 px badge in a free
+  spot. The badge shows a dot when a line is waiting; clicking it brings her
+  back.
+
+**Layout test** — `npm run test:layout`, Playwright, exits 1 on any failure:
+- Resolutions: 1366x768, 1920x1080 and 2560x1440.
+- Combinations: Discovery card shown/hidden × Get ready open/collapsed ×
+  tooltip none/open × no jump / St Cruz / Merces / Miramar warning jumps.
+- Also covered: the build menu open, minimised, and the window resized to 80%.
+- What it checks:
+  - her figure, bubble or badge against an independent list of HUD boxes,
+    with no overlap allowed;
+  - that she stays inside the viewport;
+  - that the bubble is showing.
+- **Result:** 105 layouts checked, 0 failed.
+- Screenshots: `docs/qa/layout/`.
+
+**Self-assessment:**
+- At 1920 and 1366 she stands above the Discovery card with the bubble to her
+  right, which reads cleanly.
+- On a 768 px-high window with every panel open, the bubble often goes
+  compact. That is readable, but small.
+
+### PA2 — roads read as part of the street map — DONE
+
+**Decision: no drawn road overlay.**
+- The beige strips, the junction discs and the bridge piers are gone from
+  `townDecor.ts`.
+- The street-map layer already paints every major road in OSM's own colours
+  and widths. That means roads now:
+  - fade with the map's opacity slider;
+  - disappear with the map's switch;
+  - never sit on top as a thick band that could read as a sea wall, the heat
+    or water.
+- The other option, redrawing the same roads as thin lines bound to the
+  slider, would duplicate what the layer shows. It would also drift from it
+  wherever the road tiles are coarser than the real road.
+
+**The road data is unchanged:**
+- road tiles still refuse buildings;
+- walkers still follow the road tiles (`TownDecor.roadPoints`);
+- mapgen and the map JSON are untouched.
+
+**Found and fixed: a seam showing the sky.**
+- Thin pale-blue lines ran down the middle of the screen. They were the sky
+  showing through the gaps between hex tiles wherever a gap lined up with the
+  camera, and could pass for a stream or a road.
+- The fault predates this branch; it is visible in PR #8's shots.
+- Fix: a dark floor of slightly wider hexes now sits under the board (one draw
+  call). The gaps read as shadow.
+
+**Checked** (in `docs/qa/roads/`, each with a grayscale twin):
+- 1920x1080 and 2560x1440;
+- far and near zoom;
+- street map on and off;
+- with the warning heat on top.
+- Flood-on-top shots come with P4, when the flood visuals exist.
+- `verify:maya` now checks that no `town-road*` mesh is drawn while the road
+  tiles still exist.
+
+**Self-assessment:**
+- With the map on (32%), roads read as part of the map.
+- With the map off, the board shows no roads at all. That is deliberate (the
+  switch is "show the real streets"), but a player who turns the map off
+  loses them; the walkers still trace them.
+
+### P0 — audit and baseline — DONE
+
+**How a Panaji storm works today:**
+- When a storm lands, `ActionRun.land` resolves it zone by zone
+  (`resolveChallenge` in core/zones.ts) and changes the board at once.
+- `PanjimController.stageChallenge` then only stages the outcome:
+  - the camera visits each zone in turn;
+  - a translucent tint covers the zone (`HazardOverlayManager`);
+  - the defences there ring;
+  - the houses lost there go grey one by one;
+  - the slowest beat goes to the zone with the biggest save.
+- The weather is `StormManager.setIntensity(1)`, with rain and a darker sky.
+- The old `WaveFrontManager` and `CloudLayerManager` serve the Tutorial only.
+- None of this staging looked at depth or timing: the tint's strength was the
+  zone's leak share, the same for every tile in the zone.
+
+**Baseline**, from `verify:maya` on master `5f3fdfd`, full Panaji board, software
+GL: 2.3 ms per frame of scene update, 28 draw calls, 190,908 triangles.
+Software GL makes fps meaningless here; see the P9/QA fps notes.
+
+### P1 — one source of truth for water depth — DONE
+
+**The model:**
+- `core/hazard.ts` now has `buildDepthField`, `surgeDepth(field, tile, t)`,
+  `floodDepth(field, tile, t)` and `combinedDepth(field, tile, t)`, plus
+  `peakDepth`, `hitTime` and `arrivalTime`.
+- Depth is in damage units: 1 is the depth at which a house is lost.
+- A tile's peak is the resolver's own local intensity there (its tile probe)
+  divided by the house rule's resilience. So a house is hit exactly when its
+  water passes 1.
+- The rise/hold/drain envelope holds at exactly 1 through the peak, so the
+  drawn peak is the resolved peak, not an approximation of it.
+
+**Recording each storm:**
+- `core/stormRecord.ts` → `resolveStorm` runs the resolver exactly as before
+  (same arguments, same mutation), with the probe listening.
+- `ActionRun.land` now calls it and keeps a `StormRecord` per storm. The
+  record is not saved; it is only needed while the storm plays.
+- It also resolves the same storm on copies of the board as it stood before:
+  - with every defence against the storm removed;
+  - once per kind of defence, with only that kind removed.
+- These are the real numbers the Aftermath replay and the share card will
+  quote.
+
+**Timing.** Presentation only; none of it changes an outcome.
+- **Cyclone:** landfall at 16 s. The sea draws back from 4 s to 0.5 s before
+  landfall. The surge then pushes inland ring by ring (0.7 s per hex, the whole
+  push capped at 7 s), rising 2 s, holding 3 s and draining 5 s.
+- **Flood:** rain first for 6 s. Then a swell runs down the channel, starting
+  upstream, and spreads over the banks (at most 5 s). It rises 2.5 s, holds 4 s
+  and drains 6 s.
+- **Finale:**
+  - the surge lands at 12 s, while the river is already rising;
+  - a backwater term, surge × (riverIndex / mouthIndex)^1.6, pushes up the
+    channel from the mouth;
+  - they meet between about 12 s and 28 s.
+
+**Decisions:**
+- **Swell speed.** The brief says ~0.8 s per river tile. Panaji's channel
+  (river and wetland, measured from the sea) is 29 tiles long, which would make
+  a 23 s swell. The step is therefore shortened so the whole trip takes at most
+  12 s (0.41 s per tile here).
+- **Backwater is drawn on channel tiles only.** No house stands there. The
+  homes on the banks are judged by the zone resolver, whose finale already
+  makes the surge spend the Mandovi waterfront's defence before the flood
+  arrives.
+- **Wet ground without houses.** It shows the resolver's local intensity
+  too. Between fronts it is the sum of both, since only houses are judged
+  once.
+
+**Tests** (`tests/hazardDepth.test.ts`, 19). Across both presets, three
+seeds, undefended and defended, every storm:
+- houses hit ⇔ peak depth above 1;
+- the depth sampled every 50 ms reaches that same peak;
+- `hitTime` is set exactly for hit houses;
+- the land is dry before and after;
+- the undefended comparison's own field agrees with its own resolution;
+- the script itself: draw-back, ring order, swell order and speed, backwater
+  ∝ (i/m)^1.6, and the meeting window.
+
+**Self-assessment:**
+- The truthfulness is solid: the tests compare the field against the
+  resolver directly.
+- The timing numbers are my reading of the brief. Without the prototype
+  they could not be matched frame for frame.
+
+### The reference prototype arrived
+
+The user attached `hazard_vfx_prototype.html` mid-run. It is now kept at
+`docs/reference/hazard_vfx_prototype.html`, and `docs/reference/README.md`
+lists what was taken from it and where the game differs.
+
+The storm script was re-timed to it:
+- landfall at 10 s;
+- the surge rising from 8 s to 16 s and drained by 24 s;
+- the swell from 8 s at 0.8 s a tile, capped to 9 s of travel on Panaji's
+  29-tile channel;
+- a 6 s river rise.
+
+Also taken from it:
+- the backwater coefficient (0.28);
+- the colours: surge #3c96c8, river #123e7d, both #5846a0;
+- lightning 2.5–5.5 s apart;
+- foam only on the shallow advancing front;
+- Maya's phase lines (approach, landfall, recede; rain, swell, recede;
+  storm and rain, pincer, recede).
+
+### P2–P6 — the storm on the board — IN PROGRESS (first pass done)
+
+**What plays now.** Each Panaji storm is played by `app/stormDirector.ts` from
+its recorded depth field:
+- **Water** (`render/storm/stormWater.ts`), one instanced draw call:
+  - the sea swells with Gerstner waves, lower within two tiles of a mangrove;
+  - the surge climbs the land tile by tile and drains, with foam on the
+    shallow front;
+  - river tiles lift and deepen to navy, with white chop, flow streaks and a
+    pale crest at the swell's front;
+  - overflow onto the banks, delayed by distance from the channel;
+  - khazans fill teal and shimmer while holding water;
+  - flooded land carries a wavy stripe, so it reads without colour.
+- **Sky** (`render/storm/stormSky.ts`):
+  - a 5-arm spiral of puffs with an eye-wall, turning anticlockwise;
+  - the flood's grey rain band;
+  - lightning bolts.
+- **Weather** (`StormManager`):
+  - rain is now GPU-instanced (one draw, no per-frame CPU work);
+  - darkness is capped at 35%;
+  - a flash is capped at 25% and rate-limited;
+  - shake only above 70%;
+  - the wind drops in a lull before the hit, while the shallows by landfall
+    draw back and show sand.
+- **Script** (`core/stormScript.ts`), all from the resolution:
+  - houses go grey when their water passes the damage line;
+  - each defence answers when the water first reaches it or its neighbour:
+    its glow rim pulses while the water is on it, a ring plays, and a word
+    floats over it ("Absorbed", "Overwhelmed" or "Failed", from the resolver);
+  - the first defence the water reaches gets 1.5 s of 0.4× slow motion and a
+    camera push;
+  - lightning around the peak, never closer than 2.5 s;
+  - a click hurries the storm along at 4×.
+
+**Checks:**
+- In the browser, `__stormForTest.compare(key)` shows the drawn depth equal to
+  the core depth at the same storm time. It reads 0.6136 against 0.6136 on a
+  sampled tile.
+- `tests/hazardDepth.test.ts` (21 tests) also checks the script:
+  - house events = exactly the resolver's damaged houses;
+  - defence events only on defences;
+  - no lightning in a flood;
+  - strikes at least 2.5 s apart.
+- Screenshots are in `docs/qa/storm-p2/` (each with a grayscale twin): the
+  cyclone at 7/10/16/22 s, defended at 8/9 s, the flood at 12/14/20 s, and the
+  finale at 16 s.
+
+**Self-assessment:**
+- **Working:**
+  - the sea, surge and river colours read clearly;
+  - the finale's indigo meeting shows;
+  - no brown anywhere;
+  - the spiral is visible but faint over the pale skirt.
+- **Still to do:**
+  - boats still only pull in and heel (the existing behaviour);
+  - trees in the town's gardens do not bend; only the planted defences do;
+  - the slow-motion push has not yet been seen in a recorded sequence;
+  - P9 still has to wire Low/Medium/High and the in-game reduce-motion switch
+    through to these layers.
+
+### P7 — sound — DONE
+
+**Silent until the first click.** All of the game's audio now goes through one
+master gain in `ui/audioHooks.ts`:
+- nothing at all plays until the first click or key press;
+- the AudioContext is only made after that.
+
+**The controls:**
+- A **Sound (S)** switch sits in the HUD's switch column, under Show risk (R)
+  and Maya (M), each with a tooltip.
+- A **volume slider** sits beside it.
+- Both are remembered on this device; storage is wrapped in try/catch, so a
+  refusal just means the default.
+- S is separate from Maya's M.
+
+**The storm** (`ui/stormSound.ts`) is synthesised with Web Audio, with no files:
+- **wind:** band-passed brown noise with a wandering pitch, following the
+  storm's wind, so the lull before the hit is heard as a hush;
+- **waves:** low-passed noise swelling slowly;
+- **rain:** high-passed noise;
+- **thunder:** a low burst with a 2.6 s tail, a beat after each flash;
+- **a calm bed:** two soft detuned tones with birdsong chirps, for the calm
+  ending in P8.
+
+A defence answering plays the chime; one overwhelmed plays a new low tone.
+
+Also in this round: the garden trees in the town now bend with the storm's
+wind (a vertex sway on their one instanced material).
+
+**Self-assessment.** It could not be heard here (headless). The levels were
+chosen low: wind at most 0.32 and rain 0.12 on a 0.7 master. It needs a
+listen on real speakers.
+
+### P8 — Aftermath replay, calm ending, storm card — DONE
+
+**Aftermath replay** (`core/stormReplay.ts`, `ui/panjim/replayCard.ts`). After
+the water drains, a replay card walks through the storm in the record's real
+numbers. The camera frames the homes it reached, and Maya says each step.
+- Step 1 is "35 homes hit · 65 homes kept dry". The board tints hit houses
+  red and those kept dry green.
+- Next, where defences stood and changed the result: "With no defences at
+  all: N homes hit". This is the same storm, re-resolved on the board without
+  them.
+- Then up to three kinds of defence, e.g. "Mangroves ×4: 12 homes saved",
+  with their tiles in gold. Each number is the storm re-resolved with just
+  that kind removed.
+- A Skip button, Esc or a click on the board ends it.
+- The Aftermath card now lists the same comparisons, shown only when the
+  defences changed the result.
+
+**Found and fixed: Maya's Aftermath line overstated what defences did.**
+- It said "The khazan at Taleigao held 49 homes". The 49 was simply every
+  house still standing in the zone.
+- The real comparison showed those khazans, planted a quarter before the
+  storm, had saved none.
+- She now quotes only the record: "Without your khazans, N more homes would
+  have been hit".
+- When the defences made no difference she says so: "…before the defences
+  there could make a difference. More of them, given time to grow, will hold
+  it."
+- This is covered by a test.
+
+**Calm ending.** After the finale storm drains, before the replay:
+- the sky clears and the people and boats come back out;
+- creatures show on up to ten defences;
+- the calm bed and birdsong play;
+- Maya says "The water has gone down and the sun is out again." (4.5 s; a
+  click ends it.)
+
+**Storm card** (`ui/panjim/stormCard.ts`):
+- A **Storm card** button on the 2050 finale screen downloads a 1200×630 PNG:
+  the storm the defences did most for, with your defences beside none.
+- Both halves are real resolutions, drawn from their depth fields.
+- Houses kept dry are green dots; houses hit are red with a white cross.
+- It is drawn on a canvas and saved only on the click. There is no network
+  call and no personal data.
+
+**Screenshots** are in `docs/qa/p8/`: the replay card mid-step, the Aftermath
+card, the finale with the Storm card button, and the card image itself.
+
+**Self-assessment:**
+- The numbers are trustworthy, since each one is a resolver run.
+- The replay is functional rather than cinematic: it lights tiles and
+  captions them, but does not re-run the water.
+- In the scripted finale run nothing was built, so the two halves of the
+  card match. A built-up run will differ.
+
+### P9 — quality, Calm motion, flash and readability caps — DONE (fps table below in QA)
+
+**Quality** (`core/quality.ts`, unit-tested). Low, Medium or High, set by a
+HUD button with a tooltip, which cycles Auto → Low → Medium → High:
+- **Auto** starts at High. It averages the frame rate over four-second
+  samples and steps down a level below 40 fps (High) or 26 fps (Medium). It
+  never steps back up, so it cannot flap mid-storm. A hidden-tab gap restarts
+  the sample.
+- **The player's choice** is remembered on this device.
+- **What each level sets:**
+
+  | | Low | Medium | High |
+  |---|---|---|---|
+  | Rain drops | 600 | 1,400 | 2,400 |
+  | Puffs per spiral arm | 7 | 11 | 14 |
+  | Wave rings per water tile (triangles) | 1 (6) | 3 (54) | 4 (96) |
+  | Pixel ratio cap | 1 | 1.5 | 2 |
+
+**Calm motion.** A switch with a tooltip, defaulting to the system's
+reduce-motion setting and remembered. It turns off:
+- screen shake;
+- lightning, both the flash and the bolt;
+- the slow-motion lurch;
+- the defences' sway.
+
+It also gives slower, calmer waves (shader motion at 35%), 40% of the rain
+streaks, a steady glow on defences instead of a pulse, and still,
+non-floating storm words.
+
+**Caps, in code:**
+- **Darkness:** the sun loses at most 35% (`MAX_DARKNESS`).
+- **Flashes:**
+  - a lightning flash lifts the sky and screen by at most 25%
+    (`MAX_FLASH_ALPHA`; the screen overlay peaks at 0.22);
+  - flashes are at least 0.34 s apart in `StormManager` (so never above 3 a
+    second);
+  - scripted strikes are at least 2.5 s apart (tested).
+- **Shake:** only above 70% intensity.
+- **Spiral:** kept over the sea and coast. It reaches about one tile inland
+  at most, then moves at most three more tiles inland while fading out.
+- **Flooded tiles** carry the wavy stripe, so they read in grayscale.
+
+**Instanced, one draw call per effect type:**
+- the water (with the defence glow rims inside it);
+- the rain;
+- the spiral;
+- the rain band;
+- the bolt (one line set);
+- the garden sway (in the existing gardens mesh).
+
+### P10 — finale tuning with the bots — DONE, with a caveat
+
+**Change.** On the easy-test preset (the level's own), the finale's
+severity scale goes from 1 to 0.85. Strict is unchanged.
+
+**Why 0.85.** At full strength, the experiment
+(`tools/panjimBots/finaleDefences.ts`, every defence fully grown, 20 seeds)
+found that no mix a player could grow in time made a real difference. Ten
+mangroves plus six khazans cut homes hit by 18–22%, and either alone by
+13–18%. At 0.85 the defences pay off once a zone has enough of them, and
+neither kind alone does it when spread out.
+
+**Caveat: the brief's "about 40%" target cannot be met exactly.**
+- The zone resolver loses a zone's houses against one threshold: a house
+  falls when the zone's leak, faded by distance from the water, passes its
+  resilience. Most houses in a zone sit one or two tiles from the water.
+- So adding defences changes nothing until a zone's threshold is crossed,
+  then saves nearly every house there at once.
+- Measured cuts are 0–8% or 80–97%, never 40%.
+- Getting a graded 40% would mean changing the house rule itself, which
+  the warning heat's zero-tolerance tests and every star threshold rest on.
+  I did not do that in this run.
+- What does hold: spread out, no single kind suffices, and together they
+  save most homes. Packed into one zone, khazans alone can save most (76% at
+  6, packed in Taleigao).
+- The tables are below, for a human to judge.
+
+**Finale defences.** Homes hit, mean of 20 seeds, fully grown:
+
+```
+easy-test, spread (mangroves 6, khazans 4): homes hit, mean of 20 seeds
+  none 37.0 | belt 36.9 (0%) | khazans 37.0 (0%) | both 36.9 (0%)
+easy-test, packed (mangroves 6, khazans 4): homes hit, mean of 20 seeds
+  none 37.0 | belt 35.0 (5%) | khazans 37.0 (0%) | both 35.0 (5%)
+strict, spread (mangroves 6, khazans 4): homes hit, mean of 20 seeds
+  none 16.0 | belt 15.0 (6%) | khazans 16.0 (0%) | both 3.0 (81%)
+strict, packed (mangroves 6, khazans 4): homes hit, mean of 20 seeds
+  none 16.0 | belt 13.0 (19%) | khazans 4.0 (75%) | both 1.0 (94%)
+easy-test, spread (mangroves 10, khazans 6): homes hit, mean of 20 seeds
+  none 37.0 | belt 36.0 (3%) | khazans 37.0 (0%) | both 34.0 (8%)
+easy-test, packed (mangroves 10, khazans 6): homes hit, mean of 20 seeds
+  none 37.0 | belt 35.0 (5%) | khazans 8.9 (76%) | both 7.0 (81%)
+strict, spread (mangroves 10, khazans 6): homes hit, mean of 20 seeds
+  none 16.0 | belt 15.0 (6%) | khazans 16.0 (0%) | both 3.0 (81%)
+strict, packed (mangroves 10, khazans 6): homes hit, mean of 20 seeds
+  none 16.0 | belt 12.0 (25%) | khazans 4.0 (75%) | both 0.0 (100%)
+easy-test, spread (mangroves 12, khazans 8): homes hit, mean of 20 seeds
+  none 37.0 | belt 35.7 (4%) | khazans 37.0 (0%) | both 1.0 (97%)
+easy-test, packed (mangroves 12, khazans 8): homes hit, mean of 20 seeds
+  none 37.0 | belt 35.0 (5%) | khazans 4.0 (89%) | both 2.0 (95%)
+strict, spread (mangroves 12, khazans 8): homes hit, mean of 20 seeds
+  none 16.0 | belt 3.0 (81%) | khazans 16.0 (0%) | both 3.0 (81%)
+strict, packed (mangroves 12, khazans 8): homes hit, mean of 20 seeds
+  none 16.0 | belt 12.0 (25%) | khazans 4.0 (75%) | both 0.0 (100%)
+```
+
+**Finale stars by bot** (20 seeds each, after the change):
+
+
+easy-test: finale (Cyclone and flood) stars, 20 seeds
+| Persona | 1★ | 2★ | 3★ | homes saved (median %) |
+|---|---|---|---|---|
+| casual | 20 | 0 | 0 | 28% |
+| greedy | 20 | 0 | 0 | 28% |
+| smart | 0 | 0 | 20 | 100% |
+| rusher | 20 | 0 | 0 | 28% |
+| banker | 0 | 20 | 0 | 62% |
+| walls | 0 | 4 | 16 | 98% |
+| mangroves | 0 | 4 | 16 | 100% |
+
+strict: finale (Cyclone and flood) stars, 20 seeds
+| Persona | 1★ | 2★ | 3★ | homes saved (median %) |
+|---|---|---|---|---|
+| casual | 20 | 0 | 0 | 6% |
+| greedy | 20 | 0 | 0 | 6% |
+| smart | 0 | 0 | 20 | 100% |
+| rusher | 20 | 0 | 0 | 6% |
+| banker | 20 | 0 | 0 | 7% |
+| walls | 20 | 0 | 0 | 2% |
+| mangroves | 0 | 0 | 20 | 100% |
+
+**Against the brief's targets:**
+- Smart scores 3★ on every seed. The brief said "usually 2–3★"; on this
+  preset it is always 3.
+- Casual always scores at least 1★ (it gets 1★, saving 28% of homes).
+- Greedy struggles (1★ on every seed).
+- Banker reaches 2★.
+
+**The finale's warning heat stays single-hazard.** It is one red ramp for
+the compound storm (core/exposure.ts), unchanged.
+
+### P11 — QA gate — DONE (see docs/QA_REPORT.md)
+
+**Result:** every gate passes except two that cannot run here:
+- **Cross-browser:** Firefox and WebKit are not installed, and
+  `playwright install` is not allowed in this environment.
+- **Real-GPU frame rates:** the container has software GL only.
+
+**Checks run:**
+- typecheck, 355 unit tests, the production build;
+- the Tutorial walkthrough and `verify:maya`;
+- the Maya layout test (105/105);
+- the functional script:
+  - routing, refresh, back, resize, hidden tab, fullscreen;
+  - keyboard R/M/S, Tab focus rings, Esc;
+  - sound silent before the first click;
+  - axe-core;
+  - drawn depth = resolved depth on 8,242 tile-moments, worst difference 0;
+  - flash peak 0.15, at most 1 a second;
+- the perf and leak table;
+- the pixel diff against the pre-change build: menu identical, Tutorial
+  0.07% (the closed seams);
+- byte-identical bot runs;
+- before/after contact sheets;
+- a 43-shot matrix with grayscale twins and protanopia/deuteranopia
+  versions.
+
+**Independent review:** 3 MAJOR and 10 MINOR findings, all fixed. The
+notable ones:
+- **MAJOR:** only defences the storm actually tested may answer it;
+- **MAJOR:** the storm card shows the defences that faced the storm;
+- **MAJOR:** Maya's per-frame layout is gone;
+- **MINOR:** HUD clicks no longer hurry a storm;
+- **MINOR:** the sky's darkening is capped at 35% too;
+- **MINOR:** the phase lines only claim what the record shows.
+
+**Two pre-existing accessibility issues fixed on the way:**
+- page zoom is allowed (`maximum-scale=1` removed; the board keeps
+  `touch-action: none`);
+- the Outlook markers' `aria-label` gained `role="img"`.

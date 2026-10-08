@@ -21,7 +21,8 @@ export type TelemetryEventName =
   | "challenge_start"
   | "challenge_end"
   | "checkpoint"
-  | "run_end";
+  | "run_end"
+  | "quality_auto";
 
 export interface TelemetryEvent {
   name: TelemetryEventName;

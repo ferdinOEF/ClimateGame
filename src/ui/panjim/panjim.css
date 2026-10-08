@@ -1170,42 +1170,93 @@
 /* ---- Maya, the field guide ------------------------------------------------------ */
 
 .maya {
+  /*
+   * A full-size, click-through layer: her figure, bubble and badge are
+   * placed inside it by the layout manager (maya.ts / mayaLayout.ts), clear
+   * of every other HUD element. Only the bubble, its buttons, the minimise
+   * button and the badge take pointer events, so she never blocks the map.
+   */
   position: absolute;
+  inset: 0;
   z-index: 12;
-  left: 14px;
-  bottom: 66px;
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
   pointer-events: none;
-  will-change: transform;
-}
-
-.maya.flip {
-  flex-direction: row-reverse;
 }
 
 .maya-figure-wrap {
-  flex: none;
+  position: absolute;
+  left: 14px;
+  top: calc(100% - 230px);
   width: 96px;
   height: 152px;
-  margin-left: -48px;
-  pointer-events: auto;
+  pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
-}
-
-.maya:not(.away) .maya-figure-wrap {
-  margin-left: 0;
-}
-
-.maya.flip .maya-figure-wrap {
-  margin-left: 0;
-  margin-right: -48px;
 }
 
 .maya-figure {
   display: block;
   overflow: visible;
+}
+
+.maya-minimise {
+  position: absolute;
+  top: 2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid #2f6a3e;
+  background: #fdf6e6;
+  color: #1c2420;
+  font: inherit;
+  font-size: 15px;
+  line-height: 17px;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0.85;
+}
+
+.maya-minimise:hover,
+.maya-minimise:focus-visible {
+  opacity: 1;
+  outline: 2px solid #f2c35b;
+  outline-offset: 2px;
+}
+
+.maya-badge {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 2px solid #3d7a4c;
+  background: #fdf6e6;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.maya-badge[hidden] {
+  display: none;
+}
+
+.maya-badge:focus-visible {
+  outline: 3px solid #f2c35b;
+  outline-offset: 2px;
+}
+
+.maya.has-pending .maya-badge::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #e0533a;
+  border: 2px solid #fdf6e6;
 }
 
 .maya-shadow {
@@ -1214,9 +1265,10 @@
 
 .maya-bubble {
   pointer-events: auto;
-  position: relative;
-  max-width: 320px;
-  margin-bottom: 92px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
   padding: 10px 14px 10px;
   border-radius: 14px;
   background: #fdf6e6;
@@ -1228,6 +1280,12 @@
   animation: maya-bubble-in 220ms ease-out;
 }
 
+.maya-bubble.compact {
+  font-size: 13px;
+  line-height: 1.3;
+  padding: 7px 10px;
+}
+
 .maya-bubble[hidden] {
   display: none;
 }
@@ -1235,20 +1293,28 @@
 .maya-bubble::before {
   content: "";
   position: absolute;
-  left: -9px;
-  bottom: 18px;
   border: 8px solid transparent;
+}
+
+.maya-bubble.side-right::before {
+  left: -9px;
+  top: 22px;
   border-right-color: #3d7a4c;
   border-left-width: 0;
 }
 
-.maya.flip .maya-bubble::before {
-  left: auto;
+.maya-bubble.side-left::before {
   right: -9px;
-  border-right-color: transparent;
+  top: 22px;
   border-left-color: #3d7a4c;
-  border-left-width: 8px;
   border-right-width: 0;
+}
+
+.maya-bubble.side-above::before {
+  bottom: -9px;
+  left: 30px;
+  border-top-color: #3d7a4c;
+  border-bottom-width: 0;
 }
 
 .maya-name {
@@ -1380,9 +1446,15 @@
   50% { transform: translateY(-6px); }
 }
 
-/* Jump, and every move between dock and tile: a hop. */
-.maya.state-jump .maya-body,
-.maya.hopping .maya-body { animation: maya-hop 0.35s ease-in-out 2; }
+/* Jump; and every move between dock and tile: a fade and a hop in place
+   (never a sweep across the HUD). */
+.maya.state-jump .maya-body { animation: maya-hop 0.35s ease-in-out 2; }
+.maya.hopping .maya-figure-wrap { animation: maya-arrive 0.5s ease-out; }
+@keyframes maya-arrive {
+  0% { opacity: 0; transform: translateY(-14px); }
+  60% { opacity: 1; transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
 @keyframes maya-hop {
   50% { transform: translateY(-8px) scaleY(1.04); }
 }
@@ -1390,10 +1462,13 @@
 /* Reduced motion: still poses, no loops; moves fade instead of hop. */
 @media (prefers-reduced-motion: reduce) {
   .maya *, .maya { animation: none !important; transition: none !important; }
-  .maya.hopping { opacity: 0.25; }
+  .maya.hopping .maya-figure-wrap { animation: maya-fade 0.3s linear !important; }
+}
+@keyframes maya-fade {
+  from { opacity: 0; }
 }
 .maya.reduced-motion *, .maya.reduced-motion { animation: none !important; transition: none !important; }
-.maya.reduced-motion.hopping { opacity: 0.25; }
+.maya.reduced-motion.hopping .maya-figure-wrap { animation: maya-fade 0.3s linear !important; }
 
 /* ---- Field Guide: Maya's notes --------------------------------------------------- */
 
@@ -1487,7 +1562,7 @@
 @media (min-width: 1700px) and (min-height: 900px) {
   .maya-figure { width: 112px; height: 177px; }
   .maya-figure-wrap { width: 112px; height: 177px; }
-  .maya-bubble { font-size: 16px; max-width: 360px; margin-bottom: 106px; }
+  .maya-bubble { font-size: 16px; }
 }
 
 /* ---- HUD tooltips (ui/tooltip.ts) ------------------------------------------------- */
@@ -1653,8 +1728,131 @@
 
 /* Phones are secondary: keep Maya and her bubble inside a narrow screen. */
 @media (max-width: 700px) {
-  .maya { left: 6px; bottom: 58px; }
   .maya-figure, .maya-figure-wrap { width: 72px; height: 114px; }
-  .maya-bubble { max-width: min(62vw, 300px); font-size: 14px; margin-bottom: 70px; }
+  .maya-bubble { font-size: 14px; }
   .panjim-toggles { top: 120px; right: 8px; }
 }
+
+/* ---- Storms ------------------------------------------------------------ */
+
+/* Lightning on screen: a soft lift, never above 25% (photosensitivity). */
+.storm-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: #e9f1ff;
+  opacity: 0;
+  z-index: 3;
+}
+.storm-flash.on {
+  animation: storm-flash 220ms ease-out;
+}
+@keyframes storm-flash {
+  0% { opacity: 0; }
+  25% { opacity: 0.15; }
+  100% { opacity: 0; }
+}
+
+/* A defence answering: a short word over its tile that floats up and fades. */
+.storm-word {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  z-index: 4;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font: 700 13px/1.2 var(--font-ui, system-ui, sans-serif);
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: #1f6f5c;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  animation: storm-word 3.2s ease-out forwards;
+}
+.storm-word::before { content: "✓ "; }
+.storm-word.warn { background: #8a5a12; }
+.storm-word.warn::before { content: "! "; }
+.storm-word.bad { background: #8e2b2b; }
+.storm-word.bad::before { content: "✕ "; }
+@keyframes storm-word {
+  0% { opacity: 0; transform: translate(-50%, -80%) scale(0.9); }
+  12% { opacity: 1; transform: translate(-50%, -100%) scale(1.06); }
+  85% { opacity: 1; transform: translate(-50%, -150%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -170%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .storm-word { animation: storm-word-still 3.2s linear forwards; }
+  .storm-flash.on { animation: none; }
+}
+@keyframes storm-word-still {
+  0%, 85% { opacity: 1; transform: translate(-50%, -100%); }
+  100% { opacity: 0; transform: translate(-50%, -100%); }
+}
+
+/* The master volume, under the Sound switch. */
+.sound-volume {
+  pointer-events: auto;
+  width: 96px;
+  margin: -2px 4px 2px 0;
+  accent-color: #e8a64a;
+}
+.sound-volume:disabled { opacity: 0.4; }
+.sound-volume:focus-visible { outline: 2px solid #f2c35b; outline-offset: 2px; }
+
+/* ---- Aftermath replay ---------------------------------------------------- */
+
+.replay-card {
+  position: absolute;
+  z-index: 30;
+  top: 196px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 12px 16px 10px;
+  border-radius: 14px;
+  background: rgba(24, 33, 30, 0.92);
+  color: #f4efe2;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  font: 500 14px/1.4 var(--font-ui, system-ui, sans-serif);
+}
+.replay-head { display: flex; align-items: center; gap: 8px; }
+.replay-eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #e8a64a; }
+.replay-title { flex: 1; font-weight: 700; }
+.replay-skip {
+  font: inherit;
+  font-size: 13px;
+  color: #f4efe2;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 3px 12px;
+  cursor: pointer;
+}
+.replay-skip:hover { background: rgba(255, 255, 255, 0.18); }
+.replay-skip:focus-visible { outline: 2px solid #f2c35b; outline-offset: 2px; }
+.replay-text { margin: 8px 0 6px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.replay-dots { display: flex; gap: 5px; }
+.replay-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
+.replay-dot.on { background: #e8a64a; }
+.replay-legend { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: #cfc6b2; }
+.replay-legend .hit { color: #ff8a73; }
+.replay-legend .dry { color: #8fdca4; }
+.replay-legend .gold { color: #f2c35b; }
+
+.aftermath-compare {
+  margin: 4px 0 8px;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+  font-size: 14px;
+  color: inherit;
+  opacity: 0.9;
+}
+.aftermath-compare li { margin: 2px 0; font-variant-numeric: tabular-nums; }
+
+/* The in-game Calm motion switch does what the system setting does. */
+.calm-motion .storm-word { animation: storm-word-still 3.2s linear forwards; }
+.calm-motion .storm-flash.on { animation: none; }
+.calm-motion .maya,
+.calm-motion .maya * { animation: none !important; transition: none !important; }

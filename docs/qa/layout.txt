@@ -1,0 +1,107 @@
+PASS  1366x768 discovery=hidden getReady=open tooltip=none docked
+PASS  1366x768 discovery=hidden getReady=open tooltip=none jump=st-cruz
+PASS  1366x768 discovery=hidden getReady=open tooltip=none jump=merces
+PASS  1366x768 discovery=hidden getReady=open tooltip=none jump=miramar
+PASS  1366x768 discovery=hidden getReady=open tooltip=open docked
+PASS  1366x768 discovery=hidden getReady=open tooltip=open jump=st-cruz
+PASS  1366x768 discovery=hidden getReady=open tooltip=open jump=merces
+PASS  1366x768 discovery=hidden getReady=open tooltip=open jump=miramar
+PASS  1366x768 discovery=hidden getReady=collapsed tooltip=none docked
+PASS  1366x768 discovery=hidden getReady=collapsed tooltip=none jump=st-cruz
+PASS  1366x768 discovery=hidden getReady=collapsed tooltip=none jump=merces
+PASS  1366x768 discovery=hidden getReady=collapsed tooltip=none jump=miramar
+PASS  1366x768 discovery=hidden getReady=collapsed tooltip=open docked
+PASS  1366x768 discovery=hidden getReady=collapsed tooltip=open jump=st-cruz
+PASS  1366x768 discovery=hidden getReady=collapsed tooltip=open jump=merces
+PASS  1366x768 discovery=hidden getReady=collapsed tooltip=open jump=miramar
+PASS  1366x768 discovery=shown getReady=open tooltip=none docked
+PASS  1366x768 discovery=shown getReady=open tooltip=none jump=st-cruz
+PASS  1366x768 discovery=shown getReady=open tooltip=none jump=merces
+PASS  1366x768 discovery=shown getReady=open tooltip=none jump=miramar
+PASS  1366x768 discovery=shown getReady=open tooltip=open docked
+PASS  1366x768 discovery=shown getReady=open tooltip=open jump=st-cruz
+PASS  1366x768 discovery=shown getReady=open tooltip=open jump=merces
+PASS  1366x768 discovery=shown getReady=open tooltip=open jump=miramar
+PASS  1366x768 discovery=shown getReady=collapsed tooltip=none docked
+PASS  1366x768 discovery=shown getReady=collapsed tooltip=none jump=st-cruz
+PASS  1366x768 discovery=shown getReady=collapsed tooltip=none jump=merces
+PASS  1366x768 discovery=shown getReady=collapsed tooltip=none jump=miramar
+PASS  1366x768 discovery=shown getReady=collapsed tooltip=open docked
+PASS  1366x768 discovery=shown getReady=collapsed tooltip=open jump=st-cruz
+PASS  1366x768 discovery=shown getReady=collapsed tooltip=open jump=merces
+PASS  1366x768 discovery=shown getReady=collapsed tooltip=open jump=miramar
+PASS  1366x768 build menu open
+PASS  1366x768 minimised
+PASS  1366x768 resized to 80%
+PASS  1920x1080 discovery=hidden getReady=open tooltip=none docked
+PASS  1920x1080 discovery=hidden getReady=open tooltip=none jump=st-cruz
+PASS  1920x1080 discovery=hidden getReady=open tooltip=none jump=merces
+PASS  1920x1080 discovery=hidden getReady=open tooltip=none jump=miramar
+PASS  1920x1080 discovery=hidden getReady=open tooltip=open docked
+PASS  1920x1080 discovery=hidden getReady=open tooltip=open jump=st-cruz
+PASS  1920x1080 discovery=hidden getReady=open tooltip=open jump=merces
+PASS  1920x1080 discovery=hidden getReady=open tooltip=open jump=miramar
+PASS  1920x1080 discovery=hidden getReady=collapsed tooltip=none docked
+PASS  1920x1080 discovery=hidden getReady=collapsed tooltip=none jump=st-cruz
+PASS  1920x1080 discovery=hidden getReady=collapsed tooltip=none jump=merces
+PASS  1920x1080 discovery=hidden getReady=collapsed tooltip=none jump=miramar
+PASS  1920x1080 discovery=hidden getReady=collapsed tooltip=open docked
+PASS  1920x1080 discovery=hidden getReady=collapsed tooltip=open jump=st-cruz
+PASS  1920x1080 discovery=hidden getReady=collapsed tooltip=open jump=merces
+PASS  1920x1080 discovery=hidden getReady=collapsed tooltip=open jump=miramar
+PASS  1920x1080 discovery=shown getReady=open tooltip=none docked
+PASS  1920x1080 discovery=shown getReady=open tooltip=none jump=st-cruz
+PASS  1920x1080 discovery=shown getReady=open tooltip=none jump=merces
+PASS  1920x1080 discovery=shown getReady=open tooltip=none jump=miramar
+PASS  1920x1080 discovery=shown getReady=open tooltip=open docked
+PASS  1920x1080 discovery=shown getReady=open tooltip=open jump=st-cruz
+PASS  1920x1080 discovery=shown getReady=open tooltip=open jump=merces
+PASS  1920x1080 discovery=shown getReady=open tooltip=open jump=miramar
+PASS  1920x1080 discovery=shown getReady=collapsed tooltip=none docked
+PASS  1920x1080 discovery=shown getReady=collapsed tooltip=none jump=st-cruz
+PASS  1920x1080 discovery=shown getReady=collapsed tooltip=none jump=merces
+PASS  1920x1080 discovery=shown getReady=collapsed tooltip=none jump=miramar
+PASS  1920x1080 discovery=shown getReady=collapsed tooltip=open docked
+PASS  1920x1080 discovery=shown getReady=collapsed tooltip=open jump=st-cruz
+PASS  1920x1080 discovery=shown getReady=collapsed tooltip=open jump=merces
+PASS  1920x1080 discovery=shown getReady=collapsed tooltip=open jump=miramar
+PASS  1920x1080 build menu open
+PASS  1920x1080 minimised
+PASS  1920x1080 resized to 80%
+PASS  2560x1440 discovery=hidden getReady=open tooltip=none docked
+PASS  2560x1440 discovery=hidden getReady=open tooltip=none jump=st-cruz
+PASS  2560x1440 discovery=hidden getReady=open tooltip=none jump=merces
+PASS  2560x1440 discovery=hidden getReady=open tooltip=none jump=miramar
+PASS  2560x1440 discovery=hidden getReady=open tooltip=open docked
+PASS  2560x1440 discovery=hidden getReady=open tooltip=open jump=st-cruz
+PASS  2560x1440 discovery=hidden getReady=open tooltip=open jump=merces
+PASS  2560x1440 discovery=hidden getReady=open tooltip=open jump=miramar
+PASS  2560x1440 discovery=hidden getReady=collapsed tooltip=none docked
+PASS  2560x1440 discovery=hidden getReady=collapsed tooltip=none jump=st-cruz
+PASS  2560x1440 discovery=hidden getReady=collapsed tooltip=none jump=merces
+PASS  2560x1440 discovery=hidden getReady=collapsed tooltip=none jump=miramar
+PASS  2560x1440 discovery=hidden getReady=collapsed tooltip=open docked
+PASS  2560x1440 discovery=hidden getReady=collapsed tooltip=open jump=st-cruz
+PASS  2560x1440 discovery=hidden getReady=collapsed tooltip=open jump=merces
+PASS  2560x1440 discovery=hidden getReady=collapsed tooltip=open jump=miramar
+PASS  2560x1440 discovery=shown getReady=open tooltip=none docked
+PASS  2560x1440 discovery=shown getReady=open tooltip=none jump=st-cruz
+PASS  2560x1440 discovery=shown getReady=open tooltip=none jump=merces
+PASS  2560x1440 discovery=shown getReady=open tooltip=none jump=miramar
+PASS  2560x1440 discovery=shown getReady=open tooltip=open docked
+PASS  2560x1440 discovery=shown getReady=open tooltip=open jump=st-cruz
+PASS  2560x1440 discovery=shown getReady=open tooltip=open jump=merces
+PASS  2560x1440 discovery=shown getReady=open tooltip=open jump=miramar
+PASS  2560x1440 discovery=shown getReady=collapsed tooltip=none docked
+PASS  2560x1440 discovery=shown getReady=collapsed tooltip=none jump=st-cruz
+PASS  2560x1440 discovery=shown getReady=collapsed tooltip=none jump=merces
+PASS  2560x1440 discovery=shown getReady=collapsed tooltip=none jump=miramar
+PASS  2560x1440 discovery=shown getReady=collapsed tooltip=open docked
+PASS  2560x1440 discovery=shown getReady=collapsed tooltip=open jump=st-cruz
+PASS  2560x1440 discovery=shown getReady=collapsed tooltip=open jump=merces
+PASS  2560x1440 discovery=shown getReady=collapsed tooltip=open jump=miramar
+PASS  2560x1440 build menu open
+PASS  2560x1440 minimised
+PASS  2560x1440 resized to 80%
+
+105 layouts checked, 0 failed

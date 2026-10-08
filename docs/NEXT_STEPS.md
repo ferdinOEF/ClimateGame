@@ -12,6 +12,23 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After the hazard visuals (from docs/QA_REPORT.md)
+
+- **Real-GPU frame rates.** Measure Low/Medium/High on real desktop GPUs
+  (Chrome, Edge, Firefox, Safari) at 1080p and 4K; only software GL was
+  available here.
+- **Cross-browser.** Run the walkthrough, `test:layout` and
+  `tools/qaFunctional.ts` in Firefox and WebKit. They were not installable
+  in the build container.
+- **Finale's graded response.** The zone resolver loses a zone's houses
+  together, so defences cut losses in steps (0–8% or 80–97%), not the
+  "~40%" the brief wanted. A per-house resilience spread would grade it.
+  Coordinate it with the warning heat's zero-tolerance tests.
+- **Sound.** Listen on real speakers and tune the levels: wind ≤ 0.32,
+  rain 0.12, on a 0.7 master.
+- **Prototype comparison.** Compare side by side with
+  `docs/reference/hazard_vfx_prototype.html` on a real GPU.
+
 ## Bucket A — UI/UX & Playability (work this first)
 
 ### A1. Fix: build popover doesn't auto-close after a successful build, and doesn't reflect a tile's already-built state — top priority
