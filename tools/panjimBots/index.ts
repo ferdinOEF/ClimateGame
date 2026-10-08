@@ -17,15 +17,15 @@ const results: BotResult[] = [];
 for (const persona of PERSONAS) for (const seed of SEEDS) results.push(runBot(persona, seed, preset));
 
 const minutes = (ms: number): string => (ms / 60000).toFixed(1);
-console.log("| Persona | 1★ | 2★ | 3★ | 3★ share | Index p10 / median / p90 | Decisions (median) | FF quarters (median) | Voices (median) |");
-console.log("|---|---|---|---|---|---|---|---|---|");
+console.log("| Persona | 1★ | 2★ | 3★ | 3★ share | Index p10 / median / p90 | Decisions (median) | FF quarters (median) |");
+console.log("|---|---|---|---|---|---|---|---|");
 for (const persona of PERSONAS) {
   const rows = results.filter((r) => r.persona === persona);
   const stars = rows.flatMap((r) => r.stars);
   const count = (n: number) => stars.filter((s) => s === n).length;
   const index = rows.map((r) => r.index);
   console.log(
-    `| ${persona} | ${count(1)} | ${count(2)} | ${count(3)} | ${Math.round((count(3) / stars.length) * 100)}% | ${percentile(index, 10)} / ${percentile(index, 50)} / ${percentile(index, 90)} | ${percentile(rows.map((r) => r.decisions), 50)} | ${percentile(rows.map((r) => r.fastForwardQuarters), 50)} | ${percentile(rows.map((r) => r.voicesAnswered), 50)} |`
+    `| ${persona} | ${count(1)} | ${count(2)} | ${count(3)} | ${Math.round((count(3) / stars.length) * 100)}% | ${percentile(index, 10)} / ${percentile(index, 50)} / ${percentile(index, 90)} | ${percentile(rows.map((r) => r.decisions), 50)} | ${percentile(rows.map((r) => r.fastForwardQuarters), 50)} |`
   );
 }
 console.log("");

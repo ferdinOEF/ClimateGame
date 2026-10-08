@@ -210,7 +210,7 @@ const LEGACY_MAP: GameMap = (() => {
     name: "The Goa Coast",
     region: "Generated coastline",
     blurb:
-      "The original generated coast: sea, sand, a winding river and a floodplain strung along its bends. Not a particular place — the shape every stretch of this coast shares.",
+      "The original generated coast: sea, sand, a winding river and a floodplain strung along its bends. Not a particular place.",
     focus,
     landmarks: [],
     monuments: [],

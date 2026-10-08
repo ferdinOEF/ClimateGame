@@ -1,0 +1,305 @@
+{
+  "facts": [
+    {
+      "id": "mangrove-waves",
+      "kind": "fact",
+      "elements": [
+        "mangrove"
+      ],
+      "text": "Across the studies reviewed, 100 m of mangroves cut wave height by between 13% and 66%. Most of those measurements were of small waves, under 70 cm high.",
+      "citation": {
+        "title": "Reduction of Wind and Swell Waves by Mangroves",
+        "authors": "McIvor, A.L., Möller, I., Spencer, T. and Spalding, M.",
+        "publisher": "The Nature Conservancy and Wetlands International (Natural Coastal Protection Series, Report 1)",
+        "year": "2012",
+        "url": "https://library.sprep.org/sites/default/files/reduction-wind-swell-waves-by-mangvoes.pdf",
+        "landingUrl": "https://www.wetlands.org/publication/reduction-of-wind-and-swell-waves-by-mangroves/",
+        "note": "The report states that wave height can be reduced by between 13 and 66% over 100 m of mangroves, and that the research so far has focused on small waves (wave height < 70 cm)."
+      }
+    },
+    {
+      "id": "dunes-barrier",
+      "kind": "fact",
+      "elements": [
+        "dune"
+      ],
+      "text": "Research on dunes in England and Wales found that sand dunes can be an important natural defence against coastal flooding, standing as a barrier between the sea and the land behind, and are best managed as dynamic natural defences.",
+      "citation": {
+        "title": "Sand Dune Processes and Management for Flood and Coastal Defence: Summary (FD1302)",
+        "authors": "Pye, K., Saye, S. and Blott, S.",
+        "publisher": "Defra / Environment Agency Flood and Coastal Erosion Risk Management R&D Programme",
+        "year": "2007",
+        "url": "https://assets.publishing.service.gov.uk/media/60266223d3bf7f031fb13829/Sand_Dune_Processes_and_Management_for_Flood_and_Coastal_Defence__Summary.pdf",
+        "note": "The summary says sand dune systems can provide an important natural coastal flood defence, whose importance lies in their function as barriers to coastal flooding, and discusses managing them as dynamic natural defences. The research is about dunes in England and Wales."
+      }
+    },
+    {
+      "id": "khazan-what",
+      "kind": "fact",
+      "elements": [
+        "khazan"
+      ],
+      "text": "Khazans are Goa's coastal wetlands reclaimed from the marshes. Bunds keep out the tide and sluice gates control the water, and the land is shared by farmers and fishers.",
+      "citation": {
+        "title": "The Khazans of Goa: A Socio-Cultural Perspective",
+        "authors": "Jacob, G.J.",
+        "publisher": "Sahapedia",
+        "year": "n.d.",
+        "url": "https://www.sahapedia.org/khazans-goa-socio-cultural-perspective",
+        "note": "Describes khazans as a traditional agro-aqua integrated system practised by local communities for equitable sharing of resources between farmers and fishers, on land reclaimed from marshes, with bunds preventing the ingress of tidal waters and a sluice gate regulating the flow of water."
+      }
+    },
+    {
+      "id": "khazan-mangrove-bund",
+      "kind": "fact",
+      "elements": [
+        "khazan",
+        "mangrove"
+      ],
+      "text": "On the outer bund of a khazan, mangroves act as wave breakers against the tide.",
+      "citation": {
+        "title": "The Khazans of Goa: A Socio-Cultural Perspective",
+        "authors": "Jacob, G.J.",
+        "publisher": "Sahapedia",
+        "year": "n.d.",
+        "url": "https://www.sahapedia.org/khazans-goa-socio-cultural-perspective",
+        "note": "States that the outer embankment comprises mangroves that act as wave breakers against tidal action."
+      }
+    },
+    {
+      "id": "khazan-bund-breach",
+      "kind": "fact",
+      "reported": true,
+      "elements": [
+        "khazan"
+      ],
+      "text": "Where khazan bunds breach, mangroves grow back over the old fields.",
+      "citation": {
+        "title": "Mangroves and Khazan agriculture: Sustaining Goa's promise for fish, curry and rice",
+        "authors": "Lobo, A.S.",
+        "publisher": "Down To Earth",
+        "year": "2020",
+        "url": "https://www.downtoearth.org.in/blog/wildlife-biodiversity/mangroves-and-khazan-agriculture-sustaining-goa-s-promise-for-fish-curry-and-rice-72460",
+        "note": "Published 24 July 2020. Shows mangroves reclaiming khazan lands because of breaching bunds. A blog article, so the game shows this as reported by the author."
+      }
+    },
+    {
+      "id": "khazan-holds-floodwater",
+      "kind": "gameRule",
+      "text": "In this game, a Khazan holds floodwater so nearby homes stay drier.",
+      "elements": [
+        "khazan"
+      ]
+    },
+    {
+      "id": "mangrove-grow",
+      "kind": "gameRule",
+      "text": "In this game, mangroves take a few years to reach full strength, so plant them early.",
+      "elements": [
+        "mangrove"
+      ]
+    },
+    {
+      "id": "pandanus-cheap",
+      "kind": "gameRule",
+      "text": "In this game, pandanus is the cheapest defence you can build. It softens a storm surge a little, on sand where mangroves cannot grow.",
+      "elements": [
+        "sandy_vegetation"
+      ]
+    },
+    {
+      "id": "dune-shrinks",
+      "kind": "gameRule",
+      "text": "In this game, a dune that takes a beating is not destroyed: it weakens for that storm and is still there for the next one.",
+      "elements": [
+        "dune"
+      ]
+    },
+    {
+      "id": "seawall-holds",
+      "kind": "gameRule",
+      "text": "In this game, a seawall stops most of a surge while it holds, and it is strong from the day it is built.",
+      "elements": [
+        "seawall"
+      ]
+    },
+    {
+      "id": "seawall-fails",
+      "kind": "gameRule",
+      "text": "In this game, a seawall pushed past its limit fails all at once, and the surge goes on past it.",
+      "elements": [
+        "seawall"
+      ]
+    },
+    {
+      "id": "seawall-no-wildlife",
+      "kind": "gameRule",
+      "text": "In this game, a seawall lowers biodiversity: nothing in the game lives on it.",
+      "elements": [
+        "seawall"
+      ]
+    },
+    {
+      "id": "breakwater-offshore",
+      "kind": "gameRule",
+      "text": "In this game, a breakwater sits out at sea and takes the force out of a cyclone's waves before they reach the beach.",
+      "elements": [
+        "breakwater"
+      ]
+    },
+    {
+      "id": "dam-fails",
+      "kind": "gameRule",
+      "text": "In this game, a small dam holds back the river until a flood is too big for it, then fails all at once.",
+      "elements": [
+        "small_dam"
+      ]
+    },
+    {
+      "id": "dam-coin",
+      "kind": "gameRule",
+      "text": "In this game, a small dam earns Coin and protects against floods, but it lowers biodiversity.",
+      "elements": [
+        "small_dam"
+      ]
+    },
+    {
+      "id": "resort-coin",
+      "kind": "gameRule",
+      "text": "In this game, a resort earns Coin every season but lowers biodiversity and the city's resilience.",
+      "elements": [
+        "beachside_resort"
+      ]
+    },
+    {
+      "id": "resort-no-defence",
+      "kind": "gameRule",
+      "text": "In this game, a resort defends nothing: a storm that reaches it does damage.",
+      "elements": [
+        "beachside_resort"
+      ]
+    },
+    {
+      "id": "sandmining-coin",
+      "kind": "gameRule",
+      "text": "In this game, sand mining earns more Coin than anything else, and weakens the city against floods.",
+      "elements": [
+        "sand_mining"
+      ]
+    },
+    {
+      "id": "sandmining-biodiversity",
+      "kind": "gameRule",
+      "text": "In this game, sand mining lowers biodiversity more than any other build.",
+      "elements": [
+        "sand_mining"
+      ]
+    },
+    {
+      "id": "yacht-nothing",
+      "kind": "gameRule",
+      "text": "In this game, the Yacht does nothing for your Coin, your defences or your resilience. It is there to be seen.",
+      "elements": [
+        "yacht"
+      ]
+    },
+    {
+      "id": "yacht-cost",
+      "kind": "gameRule",
+      "text": "In this game, the Yacht is the most expensive thing you can build.",
+      "elements": [
+        "yacht"
+      ]
+    },
+    {
+      "id": "mangrove-nursery",
+      "kind": "fact",
+      "text": "A mangrove forest is a coastal nursery for young fish, crabs and prawns.",
+      "elements": [
+        "mangrove"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "mangrove-carbon",
+      "kind": "fact",
+      "text": "Mangroves lock away carbon faster than almost any rainforest.",
+      "elements": [
+        "mangrove"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet; the comparison is unsourced."
+    },
+    {
+      "id": "pandanus-weaving",
+      "kind": "fact",
+      "text": "Goan families have woven pandanus leaves into mats and baskets for generations.",
+      "elements": [
+        "sandy_vegetation"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "dune-nesting",
+      "kind": "fact",
+      "text": "Sea turtles and shorebirds nest in the sand a healthy dune protects.",
+      "elements": [
+        "dune"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "breakwater-reef",
+      "kind": "fact",
+      "text": "Barnacles, oysters and coral settle on a breakwater over time.",
+      "elements": [
+        "breakwater"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "resort-goa-coast",
+      "kind": "fact",
+      "text": "Mangroves and wetlands on Goa's coast have been cleared for waterfront rooms.",
+      "elements": [
+        "beachside_resort"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "sandmining-buffer",
+      "kind": "fact",
+      "text": "Sand taken from a riverbed is natural flood buffer lost.",
+      "elements": [
+        "sand_mining"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "sandmining-saltwater",
+      "kind": "fact",
+      "text": "Strip enough sand from a river and the sea creeps further upstream.",
+      "elements": [
+        "sand_mining"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "yacht-seagrass",
+      "kind": "fact",
+      "text": "An anchor can flatten the seagrass beneath it.",
+      "elements": [
+        "yacht"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "No cited source yet."
+    }
+  ]
+}

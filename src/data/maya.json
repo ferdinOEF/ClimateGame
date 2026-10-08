@@ -13,22 +13,22 @@
     {
       "id": "mangroves",
       "title": "Mangroves",
-      "text": "Mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow."
+      "text": "In this game, mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow."
     },
     {
       "id": "khazans",
       "title": "Khazans",
-      "text": "A khazan stores floodwater in its fields, so the homes around it stay dry, every turn."
+      "text": "In this game, a Khazan holds floodwater so nearby homes stay drier."
     },
     {
       "id": "dunes",
       "title": "Dunes and pandanus",
-      "text": "Dunes and sandy vegetation shield the beach. Pandanus roots hold the sand when the wind gets up."
+      "text": "In this game, dunes and pandanus shield the beach from a cyclone's surge."
     },
     {
       "id": "seawall",
       "title": "Seawalls",
-      "text": "A seawall helps, but it costs more and does not absorb water. If a storm is bigger than the wall, the wall fails all at once."
+      "text": "In this game, a seawall costs more and holds no water. If a storm is bigger than the wall, the wall fails all at once."
     },
     {
       "id": "shields",
@@ -39,33 +39,6 @@
       "id": "get-ready",
       "title": "Get ready",
       "text": "I keep a short Get ready list for the next storm, bottom right. Every item is optional, and each one pays."
-    }
-  ],
-  "voices": [
-    {
-      "id": "voice-anthony",
-      "title": "Anthony, Miramar",
-      "text": "Anthony fishes off Miramar. He says the tide takes more beach every year. Two dunes there and his boat has somewhere to land."
-    },
-    {
-      "id": "voice-fernandes",
-      "title": "Mrs Fernandes, Fontainhas",
-      "text": "Mrs Fernandes says the Ourem creek comes up her lane every monsoon. Mangroves along the creek would slow it down."
-    },
-    {
-      "id": "voice-sitaram",
-      "title": "Sitaram, Taleigao",
-      "text": "Sitaram farms in Taleigao. A rebuilt khazan bund brings back the rice and the prawns, and it holds the water."
-    },
-    {
-      "id": "voice-neha",
-      "title": "Neha, Merces",
-      "text": "Neha teaches by the creek in Merces. Mangroves near the school and the children get to class through the monsoon."
-    },
-    {
-      "id": "voice-prakash",
-      "title": "Prakash, Mandovi ferry",
-      "text": "Prakash runs the ferry. The river sits higher at the wharf every year; mangroves along the waterfront would break the surge."
     }
   ],
   "warning": {

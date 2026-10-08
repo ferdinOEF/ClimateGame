@@ -1,10 +1,9 @@
-import nuggetsData from "@data/nuggets.json";
 import { ELEMENT_BY_ID } from "@core/elements";
+import { discoveryFacts, discoveryTotal, displayText, shortCredit, type Fact } from "@core/facts";
+import { openSources } from "./sourcesScreen";
 
-const NUGGETS = nuggetsData as Record<string, string[]>;
-
-/** Sum of every element's fact-array length — never hardcoded, so the denominator tracks nuggets.json automatically if it grows. */
-const TOTAL_FACTS = Object.values(NUGGETS).reduce((sum, facts) => sum + facts.length, 0);
+/** Every distinct fact a card can show (nuggets.json lists them by id; facts.json holds them). Never hardcoded. */
+const TOTAL_FACTS = discoveryTotal();
 
 /**
  * C.2: a positive/negative framing decided in chat, not a per-element
@@ -44,8 +43,9 @@ function shuffledIndices(n: number, avoidFirst?: number): number[] {
 /**
  * STEP_PROMPT_knowledge_nuggets.md Part C: the "Discovery Badge" that
  * appears the instant a player successfully builds one of the ten
- * nugget-eligible elements — one of that element's three pre-written
- * facts, plus a running "N of 30 facts found" count across the session.
+ * nugget-eligible elements — one of that element's cards (a cited fact,
+ * with its Source, or a rule of this game), plus a running "N of M
+ * discoveries" count across the session.
  * `house` deliberately has no entry in nuggets.json, so `show()` no-ops
  * for it (and for any future element added without nuggets yet) rather
  * than throwing.
@@ -56,10 +56,14 @@ export class NuggetPopup {
   private textEl: HTMLElement;
   private fillEl: HTMLElement;
   private progressEl: HTMLElement;
+  private sourceEl: HTMLButtonElement;
+  private creditEl: HTMLElement;
+  private factId: string | null = null;
+  private hovered = false;
   private dismissTimer: number | null = null;
   /** Per-element shuffle state — a fresh shuffle on first build of that type, reshuffled (never immediately repeating) once exhausted. */
   private pickState = new Map<string, { order: number[]; cursor: number }>();
-  /** `"<elementId>#<factIndex>"` keys — a Set, not a raw counter, so a repeat shown again can be told apart from a genuinely new fact for the progress bar. */
+  /** Fact ids — a Set, not a raw counter, so a repeat shown again can be told apart from a genuinely new fact for the progress bar. */
   private discovered = new Set<string>();
   private onVisibilityChange?: (visible: boolean) => void;
 
@@ -86,6 +90,10 @@ export class NuggetPopup {
         <div class="nugget-badge-eyebrow">New discovery</div>
         <div class="nugget-badge-label"></div>
         <p class="nugget-badge-text"></p>
+        <div class="nugget-source-row" hidden>
+          <button type="button" class="nugget-source" aria-describedby="nugget-credit">Source</button>
+          <span class="nugget-credit" id="nugget-credit" role="tooltip"></span>
+        </div>
         <div class="nugget-badge-track"><div class="nugget-badge-fill"></div></div>
         <div class="nugget-badge-progress"></div>
       </div>`;
@@ -95,12 +103,54 @@ export class NuggetPopup {
     this.textEl = el.querySelector(".nugget-badge-text")!;
     this.fillEl = el.querySelector(".nugget-badge-fill")!;
     this.progressEl = el.querySelector(".nugget-badge-progress")!;
+    this.sourceEl = el.querySelector(".nugget-source")!;
+    this.creditEl = el.querySelector(".nugget-credit")!;
+    this.sourceEl.addEventListener("click", () => {
+      if (this.factId) openSources(this.factId);
+      this.hide();
+    });
+    // The card waits while the pointer or focus is on it, so the Source can be read.
+    const hold = (on: boolean): void => {
+      this.hovered = on;
+      if (!on && !this.el.hidden) this.armDismiss();
+    };
+    el.addEventListener("pointerenter", () => hold(true));
+    el.addEventListener("pointerleave", () => hold(false));
+    el.addEventListener("focusin", () => hold(true));
+    el.addEventListener("focusout", () => hold(false));
   }
 
-  /** No-ops silently if elementId has no entry in nuggets.json. */
-  show(elementId: string): void {
-    const facts = NUGGETS[elementId];
+  private armDismiss(): void {
+    if (this.dismissTimer !== null) window.clearTimeout(this.dismissTimer);
+    this.dismissTimer = window.setTimeout(() => {
+      this.dismissTimer = null;
+      if (this.hovered) return;
+      this.hide();
+    }, DISMISS_MS);
+  }
+
+  private hide(): void {
+    if (this.dismissTimer !== null) window.clearTimeout(this.dismissTimer);
+    this.dismissTimer = null;
+    this.hovered = false;
+    if (this.el.hidden) return;
+    this.el.hidden = true;
+    this.onVisibilityChange?.(false);
+  }
+
+  /**
+   * No-ops silently if elementId has no entry in nuggets.json. `factId`
+   * picks a particular card (the layout test shows the tallest); otherwise
+   * the next one in this element's shuffle.
+   */
+  show(elementId: string, factId?: string): void {
+    const facts = discoveryFacts(elementId);
     if (!facts || facts.length === 0) return;
+    const chosen = factId ? facts.findIndex((fact) => fact.id === factId) : -1;
+    if (chosen >= 0) {
+      this.present(elementId, facts[chosen]);
+      return;
+    }
 
     let state = this.pickState.get(elementId);
     if (!state || state.cursor >= state.order.length) {
@@ -111,15 +161,23 @@ export class NuggetPopup {
     const factIndex = state.order[state.cursor];
     state.cursor++;
 
-    this.discovered.add(`${elementId}#${factIndex}`);
+    this.present(elementId, facts[factIndex]);
+  }
+
+  private present(elementId: string, fact: Fact): void {
+    this.discovered.add(fact.id);
+    this.factId = fact.id;
 
     const caution = CAUTION_IDS.has(elementId);
     this.el.classList.toggle("tint-caution", caution);
     this.el.classList.toggle("tint-positive", !caution);
     this.labelEl.textContent = ELEMENT_BY_ID.get(elementId)?.name ?? elementId;
-    this.textEl.textContent = facts[factIndex];
+    this.textEl.textContent = displayText(fact);
+    const row = this.el.querySelector<HTMLElement>(".nugget-source-row")!;
+    row.hidden = !fact.citation;
+    this.creditEl.textContent = fact.citation ? shortCredit(fact.citation) : "";
     this.fillEl.style.width = `${(this.discovered.size / TOTAL_FACTS) * 100}%`;
-    this.progressEl.textContent = `${this.discovered.size} of ${TOTAL_FACTS} facts found`;
+    this.progressEl.textContent = `${this.discovered.size} of ${TOTAL_FACTS} discoveries`;
 
     if (this.dismissTimer !== null) window.clearTimeout(this.dismissTimer);
     this.el.hidden = false;
@@ -133,11 +191,7 @@ export class NuggetPopup {
     void this.el.offsetWidth;
     this.el.classList.add("entering");
 
-    this.dismissTimer = window.setTimeout(() => {
-      this.el.hidden = true;
-      this.dismissTimer = null;
-      this.onVisibilityChange?.(false);
-    }, DISMISS_MS);
+    this.armDismiss();
   }
 
   /** Same "doesn't need to persist across a reset" convention as HazardTestPanel.reset() — clears the per-element pick-order state and the discovered-count back to zero. */
@@ -148,6 +202,7 @@ export class NuggetPopup {
     }
     this.pickState.clear();
     this.discovered.clear();
+    this.hovered = false;
     const wasVisible = !this.el.hidden;
     this.el.hidden = true;
     this.el.classList.remove("entering");

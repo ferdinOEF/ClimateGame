@@ -1,5 +1,5 @@
 /*
- * Panjim 2050: the clock, the climate outlook, the coin jar, the Voices panel,
+ * Panjim 2050: the clock, the climate outlook, the coin jar, the Get ready panel,
  * the Field Guide and the challenge and finale cards. Desktop first (1080p to
  * 4K); everything sits at the edges so the board stays the main view.
  */
@@ -441,89 +441,10 @@
   40% { transform: scale(1.3); color: #ffe08a; }
 }
 
-/* ---- Voices of Panjim ---------------------------------------------------- */
+/* ---- HUD panel body (Get ready) ------------------------------------------ */
 
 .objectives-panel.custom-body {
   width: 340px;
-}
-
-.voices-title {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #f2c35b;
-  margin: 6px 0 6px;
-}
-
-.voices-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.voice-card {
-  position: relative;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(253, 246, 230, 0.07);
-  border-left: 3px solid #9fd8c6;
-  transition: transform 300ms ease, opacity 300ms ease, background 300ms ease;
-}
-
-.voice-card.arriving {
-  transform: translateX(16px);
-  opacity: 0;
-}
-
-.voice-card.answered {
-  background: rgba(242, 195, 91, 0.22);
-  border-left-color: #f2c35b;
-}
-
-.voice-who {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #fdf6e6;
-}
-
-.voice-text {
-  font-size: 12.5px;
-  line-height: 1.35;
-  color: rgba(253, 246, 230, 0.88);
-  margin: 2px 0 4px;
-  font-style: italic;
-}
-
-.voice-card.answered .voice-text {
-  font-style: normal;
-  color: #ffe9a8;
-}
-
-.voice-foot {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  color: rgba(253, 246, 230, 0.7);
-}
-
-.voice-reward {
-  color: #f2c35b;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.voice-pop {
-  position: absolute;
-  right: 10px;
-  top: 4px;
-  font-weight: 800;
-  font-size: 18px;
-  color: #ffe08a;
-  animation: jar-pop 1.2s ease-out forwards;
 }
 
 /* ---- Field Guide --------------------------------------------------------- */
@@ -659,18 +580,9 @@
 
 /* `display` rules above would otherwise beat the `hidden` attribute. */
 .forecast-label[hidden],
-.voices[hidden],
 .objectives-panel.custom-body .objectives-list,
 .objectives-panel.custom-body .objectives-counter {
   display: none !important;
-}
-
-.objectives-panel.custom-body .voices {
-  text-align: left;
-}
-
-.voice-card.answered .voice-progress {
-  visibility: hidden;
 }
 
 /* ---- Challenge staging and Aftermath ------------------------------------ */
@@ -1595,7 +1507,7 @@
   .hud-tooltip { animation: none; }
 }
 
-/* ---- Get ready (replaces Voices of Panjim) ---------------------------------------- */
+/* ---- Get ready ------------------------------------------------------------------- */
 
 .objectives-panel.custom-body:has(.get-ready) {
   width: 300px;

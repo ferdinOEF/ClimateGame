@@ -201,13 +201,13 @@ export class StormDirector {
     if (record.kind === "flood") {
       return [
         { t: 4, name: "Rain builds", line: "Heavy rain upstream. The river will rise soon." },
-        { t: STORM_TIMING.flood.rainLead, name: "River swells", line: hasKhazans ? "The swell is moving downriver and spilling over the low banks. The khazans are holding water." : "The swell is moving downriver and spilling over the low, unprotected banks." },
+        { t: STORM_TIMING.flood.rainLead, name: "River swells", line: hasKhazans ? "The swell is moving downriver and spilling over the low banks. Your khazans are holding water." : "The swell is moving downriver and spilling over the low, unprotected banks." },
         { t: field.duration - 12, name: "Recede", line: "The river is falling." }
       ];
     }
     return [
       { t: 4, name: "Storm and rain", line: "The storm is closing in and the rain has started upstream. Two fronts at once." },
-      { t: landfall + 2, name: "Pincer", line: "The sea surge is pushing against the swollen river. The water cannot drain, so the river mouth backs up!" },
+      { t: landfall + 2, name: "Pincer", line: "The surge is pushing against the swollen river. Here the water cannot drain, so the river mouth backs up!" },
       { t: field.duration - 11, name: "Recede", line: "Both fronts are easing. Count the homes your defences held." }
     ];
   }

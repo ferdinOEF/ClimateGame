@@ -12,8 +12,8 @@
  *   greedy  maximises Coin: Resorts, Small Dams, Sand Mining, Houses;
  *           fast-forwards when broke.
  *   smart   reads the Outlook: long-lead defences early, tops up the
- *           threatened zones before each challenge, answers Voices, builds
- *           combos, repairs.
+ *           threatened zones before each challenge, builds combos,
+ *           repairs.
  *   rusher  only fast-forwards (the "skip years" exploit).
  *   banker  banks coin by fast-forwarding, and only builds once a Forecast
  *           has locked.
@@ -29,9 +29,8 @@ import { axialKey, neighbor, type AxialCoord } from "../../src/core/hex";
 import { FRONTS, ZoneIndex } from "../../src/core/zones";
 import { outlookFor } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
-import { voiceProgress } from "../../src/core/voices";
 import { hashSeed, Rng } from "../../src/core/rng";
-import { activeVoices, levelWithPreset, type LevelDef } from "../../src/levels/levels";
+import { levelWithPreset, type LevelDef } from "../../src/levels/levels";
 import { boardSetup } from "../../src/levels/balance";
 import { mapById } from "../../src/levels/levelMap";
 
@@ -53,7 +52,6 @@ export interface BotResult {
   decisions: number;
   fastForwardQuarters: number;
   jarTaps: number;
-  voicesAnswered: number;
   /** Estimated real milliseconds for a human playing the same moves. */
   estimatedMs: number;
   /** Estimated real milliseconds at which the second challenge's Aftermath closes. */
@@ -101,7 +99,7 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
   for (const id of setup.excluded) state.excludedElements.add(id);
   for (const key of setup.unbuildable) state.unbuildable.add(key);
   for (const key of RESERVED) state.reserved.add(key);
-  return new ActionRun(state, level.timeline!, { climate: level.climate, seed, zones: MAP.zones, voices: activeVoices(level), houseStars: level.houseStars, houseRule: level.houses?.rule, prep: level.prep });
+  return new ActionRun(state, level.timeline!, { climate: level.climate, seed, zones: MAP.zones, houseStars: level.houseStars, houseRule: level.houses?.rule, prep: level.prep });
 }
 
 class Player {
@@ -111,7 +109,6 @@ class Player {
   decisions = 0;
   ffQuarters = 0;
   jarTaps = 0;
-  voicesAnswered = 0;
   checkpoint2Ms = 0;
   firstActionMs = -1;
   firstRewardMs = -1;
@@ -176,8 +173,7 @@ class Player {
         if (this.run.landed.size === 2) this.checkpoint2Ms = this.ms;
       } else if (event.type === "forecast_lock") {
         this.ms += TIME.reading;
-      } else if (event.type === "combo" || event.type === "voice_complete") {
-        if (event.type === "voice_complete") this.voicesAnswered++;
+      } else if (event.type === "combo") {
         this.reward();
       }
     }
@@ -242,7 +238,6 @@ class Player {
       decisions: this.decisions,
       fastForwardQuarters: this.ffQuarters,
       jarTaps: this.jarTaps,
-      voicesAnswered: this.voicesAnswered,
       estimatedMs: this.ms + TIME.finale,
       checkpoint2Ms: this.checkpoint2Ms,
       firstActionMs: this.firstActionMs,
@@ -319,7 +314,7 @@ function wishesFor(kind: "cyclone" | "flood" | "compound"): { zone: string; elem
   return out;
 }
 
-/** One careful decision: repair, answer a Voice, prepare for the next storm, look further ahead, grow income. Returns false when nothing was worth doing. */
+/** One careful decision: repair, prepare for the next storm, look further ahead, grow income. Returns false when nothing was worth doing. */
 function smartStep(p: Player, opts: { lookahead: boolean; houses: number; grow?: boolean; only?: string[] }): boolean {
   const run = p.run;
   p.tapJar();
@@ -332,14 +327,6 @@ function smartStep(p: Player, opts: { lookahead: boolean; houses: number; grow?:
   if (houses < opts.houses) {
     const spot = p.safeHouseSpot();
     if (spot && p.build(spot, "house")) return true;
-  }
-  // Answer a Voice when it is one build away.
-  for (const voice of run.activeVoices()) {
-    if (voice.goal.type !== "standing") continue;
-    const { current, target } = voiceProgress(voice.goal, p.state, run.zones, run.comboState);
-    if (target - current !== 1) continue;
-    const spots = p.spots(voice.goal.elementId, voice.goal.zone ?? null, [voice.goal.elementId]);
-    if (spots.length > 0 && p.build(spots[0], voice.goal.elementId)) return true;
   }
   // The next challenge, while it is not yet green.
   const readiness = run.readiness();

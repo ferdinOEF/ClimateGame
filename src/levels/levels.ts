@@ -3,7 +3,6 @@ import type { Objective } from "@core/objectives";
 import { dailyChallengeId, hashSeed, Rng } from "@core/rng";
 import type { TimelineConfig } from "@core/actionRun";
 import type { ClimateConfig } from "@core/climate";
-import type { VoiceDef } from "@core/voices";
 import type { PrepConfig } from "@core/prep";
 import { applyBalance, type BalancePreset, type HouseFill } from "./balance";
 
@@ -82,14 +81,6 @@ export interface LevelDef {
   timeline?: TimelineConfig;
   /** The action-driven run's scheduled challenges and rising baseline (core/climate.ts). */
   climate?: ClimateConfig;
-  /** Voices of Panjim: optional citizen requests per era (core/voices.ts). */
-  voices?: VoiceDef[];
-  /**
-   * Whether the Voices of Panjim panel and its requests are live. False on
-   * Panaji now: the "Get ready" jobs (`prep`) took its place, and the
-   * requests stay in the data, dormant, with their best lines spoken by Maya.
-   */
-  showVoicesPanel?: boolean;
   /** "Get ready": optional jobs for each coming storm (core/prep.ts). */
   prep?: PrepConfig;
   /** The active balance preset's name, and the presets this level offers (see levels/balance.ts). */
@@ -107,11 +98,6 @@ export interface LevelDef {
 export const RAW_LEVELS: LevelDef[] = levelData as unknown as LevelDef[];
 /** The levels as played: each with its active balance preset folded in. */
 export const LEVELS: LevelDef[] = RAW_LEVELS.map((level) => applyBalance(level));
-
-/** The Voices a run should use: none when the level has switched the panel off (they stay in the data, dormant). */
-export function activeVoices(level: LevelDef): VoiceDef[] {
-  return level.showVoicesPanel === false ? [] : level.voices ?? [];
-}
 
 /** A level under a named preset, for comparing presets (the bots, the tests). */
 export function levelWithPreset(levelId: string, preset: string): LevelDef | null {

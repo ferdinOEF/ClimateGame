@@ -85,6 +85,7 @@ const VERTEX = /* glsl */ `
   uniform float uTime;
   uniform vec2 uWindDir;
   uniform float uMotion;
+  uniform float uDetail;   // 1: waves move the surface (Medium, High); 0: a flat surface (Low)
   varying vec3 vWorld;
   varying vec3 vNormal;
   varying float vEdge;
@@ -109,7 +110,7 @@ const VERTEX = /* glsl */ `
     vec2 slope = vec2(0.0);
     float amp = aWater.z;
     vec3 offset = vec3(0.0);
-    if (amp > 0.0) {
+    if (amp > 0.0 && uDetail > 0.5) {
       // The rim stays put so neighbouring tiles' water meets; the waves live inside.
       float inner = 1.0 - smoothstep(0.75, 1.0, aEdge);
       vec2 d1 = normalize(uWindDir);
@@ -144,6 +145,7 @@ const FRAGMENT = /* glsl */ `
   uniform vec3 uBoth;
   uniform vec3 uKhazan;
   uniform float uPattern;
+  uniform float uDetail;
   varying vec3 vWorld;
   varying vec3 vNormal;
   varying float vEdge;
@@ -195,7 +197,8 @@ const FRAGMENT = /* glsl */ `
     col *= diffuse;
 
     // White chop on the river as it rises; whitecaps on wave crests at sea.
-    float chop = smoothstep(0.86, 0.97, noise(vWorld.xz * 6.0 + vec2(t * 1.3, -t * 0.9))) * clamp(river * 0.6, 0.0, 0.6);
+    // (Low quality: no chop; whitecaps need waves, which Low does not draw.)
+    float chop = uDetail * smoothstep(0.86, 0.97, noise(vWorld.xz * 6.0 + vec2(t * 1.3, -t * 0.9))) * clamp(river * 0.6, 0.0, 0.6);
     float caps = smoothstep(0.7, 1.0, vHeight) * smoothstep(0.55, 0.85, noise(vWorld.xz * 5.0 + vec2(t * 0.6, t * 0.3))) * smoothstep(0.05, 0.12, vWater.z) * 0.7;
     col = mix(col, vec3(0.94, 0.97, 1.0), clamp(chop + caps, 0.0, 0.85));
 
@@ -213,7 +216,9 @@ const FRAGMENT = /* glsl */ `
 
     // Foam at the water's edge, and ripples spreading on flooded land.
     float shore = vFlow.w;
-    float foamLine = smoothstep(0.78, 0.98, vEdge) * (0.55 + 0.45 * noise(vWorld.xz * 9.0 + t * 0.7));
+    // Low quality: a plain foam rim, without the moving noise.
+    float foamNoise = uDetail > 0.5 ? 0.55 + 0.45 * noise(vWorld.xz * 9.0 + t * 0.7) : 0.7;
+    float foamLine = smoothstep(0.78, 0.98, vEdge) * foamNoise;
     col = mix(col, vec3(1.0), foamLine * shore * 0.85);
     if (kind > 1.5) {
       float ripple = smoothstep(0.85, 1.0, sin(vEdge * 18.0 - t * 3.0) * 0.5 + 0.5) * (1.0 - vEdge) * 0.25;
@@ -312,7 +317,8 @@ export class StormWater {
         uRiverDeep: { value: new THREE.Color("#123e7d") },
         uBoth: { value: new THREE.Color("#5846a0") },
         uKhazan: { value: new THREE.Color("#4abec8") },
-        uPattern: { value: 1 }
+        uPattern: { value: 1 },
+        uDetail: { value: quality === "low" ? 0 : 1 }
       }
     });
     this.mesh = new THREE.InstancedMesh(waterHexGeometry(1.0, RINGS[quality]), this.material, capacity);
@@ -330,8 +336,9 @@ export class StormWater {
     this.mesh.visible = false;
   }
 
-  /** Changes the wave mesh's detail (Low/Medium/High). */
+  /** Changes the wave mesh's detail (Low/Medium/High). Low is a flat surface with a plain foam rim. */
   setQuality(quality: WaterQuality): void {
+    this.material.uniforms.uDetail.value = quality === "low" ? 0 : 1;
     const old = this.mesh.geometry;
     const next = waterHexGeometry(1.0, RINGS[quality]);
     next.setAttribute("aWater", this.water);

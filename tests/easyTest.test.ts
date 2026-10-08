@@ -38,7 +38,6 @@ describe("balance presets", () => {
     expect(easy.startingCoin).toBe(strict.startingCoin * 10);
     expect(easy.timeline!.economy!.incomeScale).toBeCloseTo(strict.timeline!.economy!.incomeScale * 10);
     expect(easy.timeline!.economy!.jarStart).toBe(strict.timeline!.economy!.jarStart * 10);
-    easy.voices!.forEach((voice, i) => expect(voice.reward).toBe(strict.voices![i].reward * 10));
     expect(ELEMENT_BY_ID.get("dune")!.buildCost).toBe(15);
     expect(ELEMENT_BY_ID.get("seawall")!.buildCost).toBe(90);
   });

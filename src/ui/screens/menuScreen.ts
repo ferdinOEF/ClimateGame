@@ -11,6 +11,7 @@ import { isCloudConfigured } from "@services/env";
 import { getCurrentUser } from "@services/auth";
 import { el, formatScore, starRow } from "./screenHelpers";
 import { menuModel, type MenuButtonSpec } from "./menuModel";
+import { openSources } from "@ui/sourcesScreen";
 
 /**
  * The title screen — the first thing a player sees.
@@ -110,6 +111,9 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
   });
 
   root.appendChild(screen);
+  const credits = creditsStrip();
+  root.appendChild(credits);
+  keepCreditsClear(screen, credits);
 }
 
 function menuButton(spec: MenuButtonSpec, actions: MenuActions): HTMLElement {
@@ -148,4 +152,65 @@ function statTile(label: string, value: string): HTMLElement {
       el("div", { className: "stat-label", text: label })
     ]
   });
+}
+
+/**
+ * The cream strip at the foot of the landing page: who brings the game,
+ * and the way to the Sources screen. The logos are the supplied files
+ * (public/branding/), shown at their own proportions and never as links.
+ * Only on this screen: never in a level.
+ */
+function creditsStrip(): HTMLElement {
+  const base = import.meta.env.BASE_URL;
+  const logo = (src: string, alt: string, className: string, srcset?: string): HTMLImageElement => {
+    const img = el("img", { className: `menu-credit-logo ${className}`, attrs: { src: `${base}${src}`, alt, decoding: "async", draggable: "false" } });
+    if (srcset) img.srcset = srcset;
+    return img;
+  };
+  return el("footer", {
+    className: "menu-credits",
+    children: [
+      el("div", {
+        className: "menu-credits-plate",
+        children: [
+          el("span", { className: "menu-credits-label", text: "Brought to you by" }),
+          el("div", {
+            className: "menu-credits-logos",
+            children: [
+              logo("branding/oneearth-foundation-256.webp", "OneEarth Foundation logo", "oneearth", undefined),
+              logo("branding/gokhush-charitable-trust.svg", "Gokhush Charitable Trust logo", "gokhush")
+            ]
+          }),
+          el("button", { className: "menu-credits-sources", text: "Facts & sources", on: { click: () => openSources() } })
+        ]
+      })
+    ]
+  });
+}
+
+/**
+ * The plate is pinned to the foot of the window while that leaves it clear
+ * of the menu (the usual case on desktop). If the menu would reach it (more
+ * buttons, a short or narrow window where the plate wraps), the plate moves
+ * into the flow below the menu instead. Checked again on every resize.
+ */
+function keepCreditsClear(screen: HTMLElement, credits: HTMLElement): void {
+  const check = (): void => {
+    if (!credits.isConnected) return;
+    credits.classList.remove("in-flow");
+    const plate = credits.getBoundingClientRect();
+    if (getComputedStyle(credits).position !== "absolute") return;
+    let bottom = 0;
+    for (const child of screen.children) bottom = Math.max(bottom, child.getBoundingClientRect().bottom);
+    if (bottom + 12 > plate.top) credits.classList.add("in-flow");
+  };
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(() => {
+      if (!credits.isConnected) observer.disconnect();
+      else check();
+    });
+    observer.observe(screen);
+    observer.observe(credits);
+  }
+  requestAnimationFrame(check);
 }

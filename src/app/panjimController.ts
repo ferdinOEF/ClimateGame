@@ -12,12 +12,9 @@ import type { LevelDef } from "@levels/levels";
 import { ClockHud } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
 import { CoinJar } from "@ui/panjim/coinJar";
-import { VoicesPanel } from "@ui/panjim/voicesPanel";
 import { GetReadyPanel } from "@ui/panjim/getReady";
 import { prepProgress } from "@core/prep";
-import { activeVoices } from "@levels/levels";
 import { FieldGuide } from "@ui/panjim/fieldGuide";
-import { voiceProgress, describeVoiceGoal } from "@core/voices";
 import { COMBO_INFO, type ComboId } from "@core/combos";
 import { outlookFor, seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
@@ -109,8 +106,8 @@ export interface PanjimHost {
   repairVisual: (coord: AxialCoord) => void;
   /** The map's opening focus: the in-scene label anchors on the threatened tile nearest it, so it starts on screen. */
   focus: AxialCoord;
-  /** Puts the Voices panel where the objectives list would be. */
-  mountVoices: (el: HTMLElement) => void;
+  /** Puts the Get ready panel where the objectives list would be. */
+  mountPanel: (el: HTMLElement) => void;
   /** Sparkle, ring and glow over tiles that just joined a combo. */
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the warning heat (an empty list clears it). */
@@ -134,11 +131,8 @@ export class PanjimController {
   private readonly clock: ClockHud;
   private readonly outlook: OutlookBar;
   private readonly jar: CoinJar;
-  private readonly voicesPanel = new VoicesPanel();
-  /** "Get ready": the jobs for the next storm, where the Voices panel used to be. */
+  /** "Get ready": the jobs for the next storm. */
   private readonly getReady = new GetReadyPanel();
-  /** Whether the old Voices of Panjim panel is live on this level (levels.json `showVoicesPanel`). */
-  private readonly voicesLive: boolean;
   readonly fieldGuide: FieldGuide;
   private busy = false;
   /** A challenge that landed during the current time-lapse, staged once the clock stops. */
@@ -183,12 +177,10 @@ export class PanjimController {
       climate: host.level.climate,
       seed: host.seed,
       zones: host.zones,
-      voices: activeVoices(host.level),
       houseStars: host.level.houseStars,
       houseRule: host.level.houses?.rule,
       prep: host.level.prep
     });
-    this.voicesLive = host.level.showVoicesPanel !== false;
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, {
       onFastForwardYear: () => void this.fastForwardYear(),
@@ -196,7 +188,7 @@ export class PanjimController {
     });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
     this.jar = new CoinJar(host.container, () => this.collectJar());
-    host.mountVoices(this.voicesLive ? this.voicesPanel.el : this.getReady.el);
+    host.mountPanel(this.getReady.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     this.aftermath = new AftermathCard(host.container);
     this.finaleCard = new FinaleCard(host.container);
@@ -338,7 +330,7 @@ export class PanjimController {
       return { standing, total };
     });
     tips.attach(this.riskToggle.el, "riskToggle");
-    if (!this.voicesLive) tips.attach(this.getReady.el, "getReady");
+    tips.attach(this.getReady.el, "getReady");
     tips.attach(this.mayaToggle.el, "mayaToggle");
     tips.attach(this.soundToggle.el, "soundToggle");
     tips.attach(this.motionToggle.el, "motionToggle");
@@ -366,23 +358,14 @@ export class PanjimController {
     this.fieldGuide.spot(species);
   }
 
-  private renderVoices(): void {
-    if (!this.voicesLive) {
-      const next = this.run.nextChallenge();
-      const zones = this.run.zones;
-      this.getReady.render(
-        next ? next.name : null,
-        zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : []
-      );
-      if (this.run.prep.length > 0) this.mayaDirector?.tip("get-ready");
-      return;
-    }
-    this.voicesPanel.render(
-      this.run.activeVoices().map((voice) => {
-        const { current, target } = voiceProgress(voice.goal, this.host.state, this.run.zones, this.run.comboState);
-        return { voice, current, target, progress: describeVoiceGoal(voice.goal, this.run.zones) };
-      })
+  private renderGetReady(): void {
+    const next = this.run.nextChallenge();
+    const zones = this.run.zones;
+    this.getReady.render(
+      next ? next.name : null,
+      zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : []
     );
+    if (this.run.prep.length > 0) this.mayaDirector?.tip("get-ready");
   }
 
   /**
@@ -414,7 +397,7 @@ export class PanjimController {
   renderOutlook(): void {
     this.renderHeat();
     this.mayaDirector?.consider();
-    this.renderVoices();
+    this.renderGetReady();
     let houses = 0;
     let standing = 0;
     for (const inst of this.host.state.elements.values()) {
@@ -990,18 +973,6 @@ export class PanjimController {
         this.host.telemetry.reward("combo");
         break;
       }
-      case "voice_complete": {
-        playSound("coin");
-        window.setTimeout(() => playSound("chime"), 180);
-        this.voicesPanel.answer(event.voice);
-        this.host.telemetry.emit("request_complete", { id: event.voice.id, reward: event.reward });
-        this.host.telemetry.reward("request");
-        break;
-      }
-      case "voice_new": {
-        this.host.showBanner(`New voices from Panjim: ${event.voices.length} requests`, 3500);
-        break;
-      }
       case "prep_complete": {
         playSound("coin");
         window.setTimeout(() => playSound("chime"), 180);
@@ -1112,8 +1083,8 @@ export class PanjimController {
     if (pose) {
       const samples: Record<string, string> = {
         greeting: "Hello! I am Maya. Let us keep Panjim dry.",
-        tip: "Dunes and sandy vegetation shield the beach. Pandanus roots hold the sand when the wind gets up.",
-        explains: "A khazan stores floodwater in its fields, so the homes around it stay dry, every turn.",
+        tip: "In this game, dunes and pandanus shield the beach from a cyclone's surge.",
+        explains: "In this game, a Khazan holds floodwater so nearby homes stay drier.",
         warning: "Taleigao is exposed! Strengthen it before the flood.",
         worried: "We lost 6 homes at Taleigao. A few more defences there next time and they will stand.",
         celebrates: "The mangroves at Taleigao held 40 homes.",
@@ -1131,6 +1102,13 @@ export class PanjimController {
       const spot = this.host.landmarks.find((l) => l.name.toLowerCase().includes(wanted));
       if (!spot) return false;
       this.host.focusCamera({ q: spot.q, r: spot.r }, true, look[1] ? 0.45 : 1);
+      return true;
+    }
+    // "quality-<low|medium|high|auto>": sets the graphics quality for this visit (not saved).
+    const quality = /^quality-(low|medium|high|auto)$/.exec(name);
+    if (quality) {
+      this.qualityChoice = quality[1] as QualityChoice;
+      this.applyQuality();
       return true;
     }
     // "storm-<seconds>": plays the next storm and holds it at that storm time.
@@ -1214,23 +1192,6 @@ export class PanjimController {
           this.build(coord, "dune");
           await this.idle();
         }
-        return true;
-      }
-      case "voices": {
-        // Answer the Miramar fisherman (two dunes), then a mangrove belt by
-        // the Ourem creek, which also answers Fontainhas.
-        for (let i = 0; i < 2; i++) {
-          const dune = this.firstBuildableIn("z1", "dune");
-          if (dune) this.build(dune, "dune");
-          await this.idle();
-        }
-        let last = this.firstBuildableIn("z3", "mangrove");
-        for (let i = 0; i < 3 && last; i++) {
-          this.build(last, "mangrove");
-          await this.idle();
-          last = this.firstBuildable("mangrove", last);
-        }
-        this.spotted(["kingfisher", "egret"]);
         return true;
       }
       case "guide": {

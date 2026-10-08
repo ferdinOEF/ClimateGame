@@ -5771,17 +5771,9 @@ no console errors.
   plus chime and the person's thanks, and the card leaves.
 - **Lapse:** unmet requests lapse quietly when their era ends; nothing is
   lost but the reward.
-- **Voices:**
-  - Anthony, a Miramar fisherman.
-  - Mrs Fernandes in Fontainhas, whose lane the Ourem creek floods.
-  - Sitaram, a Taleigao paddy farmer, and later his daughter.
-  - Rosy's shack at Caranzalem.
-  - Fr. Rodrigues at St Cruz.
-  - Neha, a teacher in Merces.
-  - Prakash, a Mandovi ferryman.
-  - Leon at the Dona Paula jetty.
-- **Writing:** each request is short and asks for something; thanks are one
-  line, some in Konkani ("Dev borem korum").
+- **Voices:** eight invented residents (names removed in PC1; the whole
+  feature was deleted then).
+- **Writing:** each request was short and asked for something.
 - **Nudging:** requests point at good play without lecturing: era 1 asks for
   dunes on the cyclone's beach and a khazan in the flood's wetlands.
 - **Tested:** two or three per era, each answerable on the real map (enough
@@ -5825,7 +5817,7 @@ no console errors.
 
 **Self-assessment:**
 - **Fun:** this is the phase that makes it feel like a game. Answering
-  Anthony on the second dune, with a coin pop and his thanks, then
+  a request on the second dune, with a coin pop, then
   completing a Mangrove Belt with a ripple of gold, are two rewards inside
   the first minute.
 - **Readable:** the Voices panel is the densest UI in the game (three
@@ -6448,7 +6440,7 @@ clock changes).
   - the four tips the brief asked for (mangroves, khazans, dunes and
     pandanus, seawalls), plus the red heat, the green shields and Get ready;
   - five of the old Voices of Panjim as occasional lines in her voice
-    (Anthony at Miramar, Mrs Fernandes, Sitaram, Neha, Prakash).
+    (invented residents; removed in PC1).
 - **The rules** (`app/mayaDirector.ts`):
   - At most one line per quarter, plus a quarter's rest between ordinary
     tips.
@@ -7429,3 +7421,242 @@ notable ones:
 - page zoom is allowed (`maximum-scale=1` removed; the board keeps
   `touch-action: none`);
 - the Outlook markers' `aria-label` gained `role="img"`.
+
+## PC1 — invented people removed — DONE
+
+- **Removed:** the whole Voices system:
+  - `core/voices.ts`, the panel (`ui/panjim/voicesPanel.ts`) and its CSS;
+  - the `voices` and `showVoicesPanel` fields in `levels.json` and `levels.ts`;
+  - the run's `voice_complete` and `voice_new` events and `activeVoices()`;
+  - Maya's five city lines (`maya.json` `voices`) and the director's timer for them;
+  - the balance multiplier for their rewards;
+  - the bots' "answer a Voice" step and the "Voices (median)" column;
+  - the debug scenario `voices`.
+- **Kept behaviour:**
+  - Get ready counts standing elements in a zone directly (`prep.ts`);
+    it no longer borrows the old helper.
+  - Old autosaves that still carry `voiceStatus` load: the field is optional and ignored.
+  - Field Guide notes saved from the removed lines (`voice-*`) are dropped on load.
+  - The Voices were already switched off on Panaji, so bot outcomes are unchanged.
+- **Objectives** were already in plain game language ("Weather 3 hazards",
+  "Plant 2 mangroves along the Ourem creek"). No change was needed.
+- **Docs:** the names are scrubbed from this log (the P6 history keeps a one-line note).
+- **Guard:** `tests/noInventedPeople.test.ts` fails if any of these appear
+  in `src/`, `public/`, `index.html` or the README:
+  - the removed names;
+  - "Voices of Panjim" or `showVoicesPanel`;
+  - an "X says/asks/told" line in the game's text data.
+- **Checks:**
+  - tsc clean; 355 tests pass (6 skipped); the build passes.
+  - There is no `lint` script in package.json. tsc in strict mode is the lint.
+- **Self-assessment:** nothing a player sees is lost but the five
+  occasional city lines. Maya now speaks only tips, warnings and aftermath
+  lines; PC2 checks each of those for claims.
+
+## PC2 — only verified, cited facts — DONE
+
+- **`src/data/facts.json`** holds everything the game says about the real
+  world. Each entry is either:
+  - a cited fact, with `citation {title, authors, publisher, year, url, note}`;
+  - a game rule ("In this game, ...").
+
+  Unsourced entries are kept with `needsSource: true` and are never shown.
+  `src/core/facts.ts` (pure) decides what is shown and formats credits.
+- **The six starting facts:**
+  - Five are cited facts: mangrove waves (McIvor et al. 2012), dunes
+    (FD1302, 2007), what a khazan is, and mangroves on the bund (both
+    Sahapedia).
+  - Bunds breaching and mangroves returning is shown "As reported by Lobo
+    (2020)".
+  - The khazan floodwater line is the game rule, word for word.
+- **Sources could not be opened directly.** The network here blocks all
+  five sites. Each claim was checked against the pages' own text as
+  quoted in web search results (8 October 2026). Two points are narrower
+  than the brief:
+  - Lobo is not cited for "wave breakers", because the available text
+    does not show him saying it.
+  - "Unmaintained" is not claimed.
+
+  Details, and the check a person should make before release, are in
+  `docs/FACTS_AUDIT.md`.
+- **Audit:** the 30 Discovery lines came out as:
+  - 3 rewritten as cited facts;
+  - 16 game rules;
+  - 9 hidden;
+  - 2 removed: one meaningless, and "skip the maintenance and a dam
+    weakens", which is untrue in this game.
+
+  Maya's tips, the tooltips, the Field Guide's ten species lines and every
+  other UI string with a real-world claim were also rewritten as game rules
+  or neutral wording:
+  - the Tutorial coach;
+  - How to play;
+  - the storm report;
+  - the map blurbs (changed in the generators too);
+  - the page metadata.
+
+  The `carbon` tooltip was wrong for this game (dunes store none) and now
+  matches `elements.json`.
+- **UI:**
+  - The Discovery card shows a **Source** button on a cited fact. Hover or
+    focus shows the author, year and publisher; clicking opens the Sources
+    screen at that fact. The card waits while the pointer or focus is on it.
+  - The card's count is now "N of 21 discoveries", computed from the data.
+  - **Sources screen** (`ui/sourcesScreen.ts`): every cited fact with its
+    full reference, the source's own wording and the link(s), then the
+    game rules. It opens from the menu's "Facts & sources" link and from a
+    card. Esc, the × button or a backdrop click closes it.
+- **Tests** (`tests/facts.test.ts`, 14):
+  - every shown fact has a complete citation with an https URL;
+  - no number appears in a shown fact that is not in its source note;
+  - game rules start "In this game, ";
+  - hidden entries never show;
+  - a reported fact names its reporter;
+  - no year or named cyclone appears in shown text;
+  - the cards list only shown facts, and every cited fact is reachable;
+  - the Sources screen renders every cited fact;
+  - Maya's tips are game rules or guidance.
+- **Checks:**
+  - tsc is clean; 370 tests pass; the build passes.
+  - `tools/creditsCheck.ts` passes: the Sources screen lists all 5 cited
+    facts with https links, Esc closes it, and the card's Source tooltip
+    reads "McIvor et al., 2012 · The Nature Conservancy and Wetlands
+    International (...)".
+- **Fixed during the phase:** the credit said "Lobo et al." for a single
+  author. Authors are now counted as "Surname, I." pairs, with a test.
+- **Self-assessment:**
+  - The game says far less about the world, and every word of it can be
+    checked from the Sources screen.
+  - The cards lost some flavour, mostly the wildlife lines. Each hidden one
+    can come back the moment someone adds a source.
+
+## PC3 + PC4 — branding strip, street map at 21% — DONE
+
+**PC3: the logos.**
+- **Files:** the four files from `branding_logos.zip` are copied
+  byte-for-byte to `public/branding/` (sha256 checked against the
+  originals):
+  - `oneearth-foundation.png`;
+  - `gokhush-charitable-trust.svg`, `.png` and `-white.png`.
+
+  None was redrawn or edited. One web copy was made from the original
+  with Pillow (LANCZOS): `oneearth-foundation-256.webp`, 256×261, 34 KB,
+  plus a PNG twin. The page loads the WebP; the Gokhush logo is the black
+  SVG.
+- **The strip:** on the landing page only, a cream plate (`#F6ECD8`,
+  rounded 16 px, thin border, soft shadow) at the bottom. It holds:
+  - "Brought to you by";
+  - the OneEarth Foundation logo;
+  - the Gokhush Charitable Trust logo;
+  - the "Facts & sources" link.
+- **Logos:** both are 60 px tall at their own proportions. They are not
+  links, not draggable and not interactive. Alt text is "OneEarth
+  Foundation logo" and "Gokhush Charitable Trust logo".
+- **Layout:**
+  - On windows 640 px or taller the plate is pinned to the bottom of the
+    layer, so the centred menu does not move at all.
+  - On shorter windows it sits below the menu in the scroll.
+  - It wraps on narrow widths.
+  - It is never drawn in a level.
+- **Checked** by `tools/creditsCheck.ts` at 1366×768, 1920×1080,
+  2560×1440, 1920×1080 at DPR 2 and 760×900:
+  - no overlap with any menu element (the closest gap is 207 px at
+    760×900);
+  - label contrast 11.7:1;
+  - logos 60 px tall with their proportions kept;
+  - no horizontal scroll;
+  - no console errors or failed requests;
+  - no strip in the Tutorial.
+- **Crispness at DPR 2:** `docs/qa/credits/strip-1920x1080@2x.png` shows
+  both logos sharp. The 256 px WebP is drawn at 120 device pixels.
+
+**PC4: the street map at 21%.**
+- `DEFAULT_MAP_LAYER` is 21%; the slider starts there.
+- **Migration:** saves move from key v3 to v4.
+  - A v3 save of exactly 32%, or a v2 save of exactly 23% (each the default
+    of its own version), moves to 21%, keeping the player's on/off choice.
+  - Any other value was chosen by the player and is kept.
+  - Covered by `tests/mapLayer.test.ts` (5 tests).
+- The roads already follow the street map's opacity (PA2). The
+  OpenStreetMap attribution is unchanged.
+- `tools/verifyMaya.ts` now expects 21.
+
+**Self-assessment:** the strip is quiet and readable and never touches the
+menu. The menu's own pixels are unchanged above it (the pixel diff in the
+QA gate checks this).
+
+## PA / PB re-check, and Low quality as the brief describes it — DONE
+
+**Low quality, completed:**
+- **Sky:** Low now draws the cyclone spiral and the rain band as single
+  flat painted sheets, not 3D puffs. They follow the same path, turn and
+  fade (a canvas texture made once, two triangles each).
+- **Water:** on Low it has no wave displacement (a `uDetail` uniform skips
+  the Gerstner offset), no river chop, and a plain foam rim without moving
+  noise.
+- **Rain:** stays at 600 streaks (Medium 1400, High 2400).
+- Medium and High are unchanged.
+- Compare `docs/qa/lowq/cy-low-1920x1080.jpg` with `cy-high-1920x1080.jpg`.
+
+**PA, Maya, re-checked:**
+- `tools/mayaLayoutTest.ts` now shows the tallest Discovery card: the
+  khazan fact with its new Source row (`show(element, factId)`).
+- 105/105 layouts pass:
+  - at 1366, 1920 and 2560;
+  - with the card shown or hidden, Get ready open or collapsed, and a
+    tooltip open or not;
+  - docked, and during three warning jumps;
+  - with the build menu open, minimised, and resized.
+- **Flake fixed:** one case was intermittent. After a resize the bubble
+  re-shows with its 220 ms fade-in, and the check sometimes measured it
+  at opacity 0. The test now waits up to 3 s for the fade to finish, and
+  still fails if the bubble never appears. The failure message now
+  reports Maya's state. 5/5 repeat runs pass.
+- **Found and fixed:** on Panaji the Discovery card covered the Street map
+  switch and the OpenStreetMap credit. It now sits above them; the height
+  is tracked, wide screens only. See
+  `docs/qa/layout/maya-discovery-shown-*.jpg`.
+
+**PB, finale tuning, re-checked; still a known gap:**
+`tools/panjimBots/finaleDefences.ts`, homes hit in the finale, mean of 20
+seeds:
+
+| Preset, layout | none | belt | khazans | both |
+|---|---|---|---|---|
+| easy-test (finale 0.85), spread | 37.0 | 36.9 (0%) | 37.0 (0%) | 36.9 (0%) |
+| easy-test, packed | 37.0 | 35.0 (5%) | 37.0 (0%) | 35.0 (5%) |
+| strict, spread | 16.0 | 15.0 (6%) | 16.0 (0%) | 3.0 (81%) |
+| strict, packed | 16.0 | 13.0 (19%) | 4.0 (75%) | 1.0 (94%) |
+
+- **The sweep:** a sweep of the easy-test finale strength (0.5–0.85)
+  shows a cliff, not a slope. Homes hit with no defence go 0 → 2 → 31 →
+  36 between 0.5 and 0.7. With both defences the cut is either about 0%
+  or about 95%; it is never near the 40% target.
+- **Why:** the house rule compares one zone leak, faded by distance from
+  the water, against one fixed house resilience. The houses in a zone
+  stand at much the same distance, so they fall together.
+- **What it would take:** a graded ~40% needs a change to the model, such
+  as per-house resilience or a per-tile leak from the depth field. That
+  would move every bot result and star.
+- **Decision:** left as it is (logged, not changed). It is reported in the
+  ship report as needing the user's call.
+
+**Bots** (easy-test, 20 seeds a persona, 3 storms each; ★ counts are over
+60 storms):
+
+| Persona | 1★ | 2★ | 3★ |
+|---|---|---|---|
+| smart | 0 | 0 | 60 |
+| casual | 20 | 16 | 24 |
+| greedy | 20 | 20 | 20 |
+| rusher | 20 | 20 | 20 |
+| banker | 0 | 29 | 31 |
+| walls | 0 | 4 | 56 |
+| mangroves | 0 | 4 | 56 |
+
+- Per storm, Greedy and Casual take 1★ on every finale.
+- This meets the brief: Smart 2–3★, Casual ≥1★, Greedy struggles.
+- The results are identical to before PC1, as expected: the Voices were
+  already switched off.
+
+**Checks:** tsc is clean; all tests pass; the build passes.

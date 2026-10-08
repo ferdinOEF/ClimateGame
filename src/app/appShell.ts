@@ -25,6 +25,7 @@ import { isRegistered, restoreFromCloud } from "@services/playerRegistry";
 import { clear } from "@ui/screens/screenHelpers";
 import { REQUIRE_EMAIL, SHOW_MENU_EXTRAS } from "@services/features";
 import { gateRoute, hashToRoute, routeToHash, type Route } from "./routeGate";
+import { closeSources } from "@ui/sourcesScreen";
 
 /**
  * The app shell: what screen is showing, and the lifecycle of the game
@@ -141,6 +142,7 @@ export class AppShell {
    * WebGL context.
    */
   private enter(route: Route, mode: HistoryMode = "push"): void {
+    closeSources();
     // The registration gate has to hold here too, not only on the menu
     // button. Otherwise a pasted `#/play/...` link walks straight past it.
     // With the email requirement off (the default, see features.ts) there is

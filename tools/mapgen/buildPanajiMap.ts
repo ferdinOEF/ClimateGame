@@ -1424,7 +1424,7 @@ async function main(): Promise<void> {
     name: "Panaji",
     region: "Tiswadi, North Goa",
     blurb:
-      "Goa's capital, on the south bank of the Mandovi where the river spreads into tidal flats before reaching the sea. The old city sits on reclaimed water, the creeks and wetlands of Taleigao, St Cruz and Merces wrap round it to the east, and the sand from Miramar to Caranzalem is all that stands between it and the Arabian Sea.",
+      "Panjim, drawn from OpenStreetMap: the city on the Mandovi, the creeks and fields of Taleigao, St Cruz and Merces to the east, and the beach from Miramar to Caranzalem facing the sea.",
     geo: {
       originLat: BOARD.north,
       originLon: BOARD.west,

@@ -1,15 +1,12 @@
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
-import type { ComboState } from "./combos";
 import type { Exposure } from "./exposure";
 import { FRONTS, type ZoneIndex } from "./zones";
-import { voiceProgress } from "./voices";
 
 /**
  * "Get ready": two or three small, optional jobs for the storm that is
- * coming, each paying Coin the moment it is done. They replace the Voices of
- * Panjim panel (whose requests were fixed in advance and could point at a
- * zone the next storm never touches).
+ * coming, each paying Coin the moment it is done. They are written fresh for
+ * each storm, so they never point at a zone the next storm will not touch.
  *
  * These are written for the storm in front of the player. When a storm is
  * announced (the run starts, or the one before it lands), its exposure is
@@ -58,9 +55,11 @@ export interface PrepObjective {
 }
 
 function standingIn(state: GameState, zones: ZoneIndex, elementId: string, zone: string): number {
-  // The same count the Voices used (core/voices.ts): standing elements of a type in a zone.
-  const empty: ComboState = { members: new Map(), bonus: new Map() } as unknown as ComboState;
-  return voiceProgress({ type: "standing", elementId, count: 0, zone }, state, zones, empty).current;
+  let count = 0;
+  for (const [key, inst] of state.elements) {
+    if (inst.elementId === elementId && zones.zoneOf(key) === zone) count++;
+  }
+  return count;
 }
 
 /** Free tiles in `zone` where `elementId` can be built now. */

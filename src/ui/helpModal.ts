@@ -75,26 +75,26 @@ const HELP_CONTENT = `
 
       <div class="help-roster-group">
         <div class="help-roster-terrain">Beach</div>
-        <div class="help-roster-item"><span>Dune</span><span>Cheap. Soaks up wave energy, slowly rebuilds itself.</span></div>
-        <div class="help-roster-item"><span>Sandy Vegetation</span><span>Roots grip the sand, blunt an incoming surge.</span></div>
-        <div class="help-roster-item"><span>Seawall</span><span>Blocks waves hard, works immediately. Fails all at once if overwhelmed.</span></div>
+        <div class="help-roster-item"><span>Dune</span><span>Cheap. Soaks up part of a surge; weakens but is not destroyed.</span></div>
+        <div class="help-roster-item"><span>Sandy Vegetation</span><span>The cheapest defence. Softens a surge a little.</span></div>
+        <div class="help-roster-item"><span>Seawall</span><span>Strong at once. Fails all at once if a storm is too big for it.</span></div>
       </div>
 
       <div class="help-roster-group">
         <div class="help-roster-terrain">Estuary</div>
-        <div class="help-roster-item"><span>Mangrove</span><span>The strongest natural defense. Also feeds people and biodiversity.</span></div>
-        <div class="help-roster-item"><span>Khazan</span><span>Old bund-and-sluice system. Holds back floodwater, grows rice and fish.</span></div>
+        <div class="help-roster-item"><span>Mangrove</span><span>The strongest living defence here. Adds food and biodiversity.</span></div>
+        <div class="help-roster-item"><span>Khazan</span><span>Bunds and a sluice. Holds floodwater and adds food.</span></div>
       </div>
 
       <div class="help-roster-group">
         <div class="help-roster-terrain">River</div>
-        <div class="help-roster-item"><span>Small Dam</span><span>Holds back floodwater, pays for itself. Skip upkeep and it weakens.</span></div>
-        <div class="help-roster-item"><span>Sand Mining</span><span>Fast money, at the riverbank's expense.</span></div>
+        <div class="help-roster-item"><span>Small Dam</span><span>Holds back a flood and earns Coin, until a flood is too big for it.</span></div>
+        <div class="help-roster-item"><span>Sand Mining</span><span>Fast Coin; lowers biodiversity and resilience.</span></div>
       </div>
 
       <div class="help-roster-group">
         <div class="help-roster-terrain">Coast</div>
-        <div class="help-roster-item"><span>Breakwater</span><span>Sits offshore, breaks a wave's power before it reaches land.</span></div>
+        <div class="help-roster-item"><span>Breakwater</span><span>Sits offshore and weakens a cyclone's waves before the beach.</span></div>
       </div>
 
       <div class="help-roster-group">
@@ -115,20 +115,20 @@ const HELP_CONTENT = `
       <div class="help-meter"><span>Resilience</span><span>Your settlement's overall defense. Runs out, the era ends.</span></div>
       <div class="help-meter"><span>Food</span><span>Produced by Mangrove and Khazan, consumed by every House.</span></div>
       <div class="help-meter"><span>Population</span><span>Grows with Houses. Falls if people go hungry or unprotected.</span></div>
-      <div class="help-meter"><span>Biodiversity</span><span>Rises with nature-based defenses, falls with engineered ones.</span></div>
+      <div class="help-meter"><span>Biodiversity</span><span>Rises with living defences, falls with built ones.</span></div>
       <div class="help-meter"><span>Trust</span><span>Your people's confidence in you. Damaged buildings cost you here.</span></div>
     </section>
 
     <section class="help-section">
       <h3>Two Threats</h3>
-      <div class="help-threat"><strong>Cyclone</strong> &mdash; rolls in off the sea, hits the coast first. Beach defenses matter most.</div>
-      <div class="help-threat"><strong>Flood</strong> &mdash; rises from upriver, flows toward the estuary. River and estuary defenses hold it back.</div>
+      <div class="help-threat"><strong>Cyclone</strong> &mdash; comes in off the sea and hits the coast first. Beach defences matter most here.</div>
+      <div class="help-threat"><strong>Flood</strong> &mdash; comes down the river toward the estuary. River and estuary defences hold it back here.</div>
     </section>
 
     <section class="help-section">
       <h3>A Few Tips</h3>
       <ul class="help-tips">
-        <li>Nature-based defenses take time to mature. Plant early.</li>
+        <li>Living defences take time to grow. Plant early.</li>
         <li>Don't put all your defense on one stretch of coast.</li>
         <li>Watch your Food &mdash; a hungry population costs you before you notice.</li>
       </ul>

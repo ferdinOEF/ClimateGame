@@ -34,9 +34,8 @@ export interface DirectorContext {
 type Note = { id: string; title: string; text: string };
 
 const TIPS = new Map<string, Note>(MAYA.tips.map((tip) => [tip.id, tip]));
-const VOICES: Note[] = MAYA.voices;
 /** Every line that becomes a Field Guide page, by id. Warnings are situational and are not kept. */
-export const GUIDE_NOTES = new Map<string, Note>([[MAYA.greeting.id, MAYA.greeting], ...TIPS, ...VOICES.map((voice) => [voice.id, voice] as [string, Note])]);
+export const GUIDE_NOTES = new Map<string, Note>([[MAYA.greeting.id, MAYA.greeting], ...TIPS]);
 
 /** The tips that answer each kind of storm, in the order she gives them. */
 const TIPS_FOR: Record<string, string[]> = {
@@ -52,8 +51,6 @@ function coordOf(key: string): AxialCoord {
 
 export class MayaDirector {
   private lastSpokenQuarter = -1;
-  private lastVoiceQuarter = -99;
-  private voiceIndex = 0;
   private readonly warned = new Set<string>();
   private readonly lastCalled = new Set<string>();
 
@@ -130,14 +127,6 @@ export class MayaDirector {
         }
       }
       if (place) this.lastPlace = place;
-    }
-
-    // Now and then, when nothing more pressing is waiting, a voice from the
-    // city. Never once a forecast has locked: the run-up to a storm is for
-    // the warnings.
-    if (this.maya.pending === 0 && quartersLeft > 8 && run.quarter >= 2 && run.quarter - this.lastVoiceQuarter >= 6 && this.voiceIndex < VOICES.length) {
-      this.say(VOICES[this.voiceIndex++], "tip");
-      this.lastVoiceQuarter = run.quarter;
     }
   }
 

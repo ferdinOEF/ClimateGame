@@ -75,7 +75,7 @@ const STEPS: TutorialStep[] = [
   {
     title: "This is a coast",
     body:
-      "Open sea on the left, then a bar of sand, then the olive-green shallows where fresh water meets salt, and the river behind. Drag to pan, scroll or pinch to zoom.",
+      "Open sea on the left, then a bar of sand, then the olive-green shallows of the estuary, and the river behind. Drag to pan, scroll or pinch to zoom.",
     cta: "Got it"
   },
   {
@@ -86,7 +86,7 @@ const STEPS: TutorialStep[] = [
   {
     title: "Plant a dune",
     body:
-      "Click the pale sand and build a Dune. It is the cheapest thing on the roster and it does a real job: loose sand takes the energy out of a wave instead of bouncing it somewhere else.",
+      "Click the pale sand and build a Dune. It is cheap, and in this game it soaks up part of a storm's surge.",
     done: (state) => standing(state, "dune") > 0
   },
   {
@@ -98,7 +98,7 @@ const STEPS: TutorialStep[] = [
   {
     title: "Plant a mangrove",
     body:
-      "Click the olive-green shallows, the estuary, and build a Mangrove. That tangle of stilt roots is the best wave absorber on this coast, and it feeds everything else that lives here.",
+      "Click the olive-green shallows, the estuary, and build a Mangrove. In this game it is the strongest living defence, and it adds food and wildlife.",
     done: (state) => standing(state, "mangrove") > 0
   },
   {
@@ -127,7 +127,7 @@ const STEPS: TutorialStep[] = [
   {
     title: "That is the whole game",
     body:
-      "Nature-based defences grow slowly, give back, and fail gently. Engineered ones work instantly, work harder, and fail all at once. Everything from here is choosing between them on a real coast.",
+      "In this game, living defences grow slowly, give back, and weaken gently. Built ones work at once, work harder, and fail all at once. Everything from here is choosing between them.",
     cta: "Finish"
   }
 ];
