@@ -7389,3 +7389,43 @@ strict: finale (Cyclone and flood) stars, 20 seeds
 
 **The finale's warning heat stays single-hazard.** It is one red ramp for
 the compound storm (core/exposure.ts), unchanged.
+
+### P11 — QA gate — DONE (see docs/QA_REPORT.md)
+
+**Result:** every gate passes except two that cannot run here:
+- **Cross-browser:** Firefox and WebKit are not installed, and
+  `playwright install` is not allowed in this environment.
+- **Real-GPU frame rates:** the container has software GL only.
+
+**Checks run:**
+- typecheck, 355 unit tests, the production build;
+- the Tutorial walkthrough and `verify:maya`;
+- the Maya layout test (105/105);
+- the functional script:
+  - routing, refresh, back, resize, hidden tab, fullscreen;
+  - keyboard R/M/S, Tab focus rings, Esc;
+  - sound silent before the first click;
+  - axe-core;
+  - drawn depth = resolved depth on 8,242 tile-moments, worst difference 0;
+  - flash peak 0.15, at most 1 a second;
+- the perf and leak table;
+- the pixel diff against the pre-change build: menu identical, Tutorial
+  0.07% (the closed seams);
+- byte-identical bot runs;
+- before/after contact sheets;
+- a 43-shot matrix with grayscale twins and protanopia/deuteranopia
+  versions.
+
+**Independent review:** 3 MAJOR and 10 MINOR findings, all fixed. The
+notable ones:
+- **MAJOR:** only defences the storm actually tested may answer it;
+- **MAJOR:** the storm card shows the defences that faced the storm;
+- **MAJOR:** Maya's per-frame layout is gone;
+- **MINOR:** HUD clicks no longer hurry a storm;
+- **MINOR:** the sky's darkening is capped at 35% too;
+- **MINOR:** the phase lines only claim what the record shows.
+
+**Two pre-existing accessibility issues fixed on the way:**
+- page zoom is allowed (`maximum-scale=1` removed; the board keeps
+  `touch-action: none`);
+- the Outlook markers' `aria-label` gained `role="img"`.

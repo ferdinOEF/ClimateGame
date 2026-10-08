@@ -131,6 +131,38 @@ must be playing the same level 3. Severity now comes from a `mulberry32`
 generator seeded on the level id, so the storm sequence is identical for
 everyone — which is also what makes a bug report reproducible.
 
+### 3b. Storms are drawn from their own resolution
+
+A Panjim 2050 storm is decided once, when it lands, and then shown.
+
+**Resolving** (`core/stormRecord.ts` → `resolveStorm`):
+- runs the zone resolver exactly as before, with its tile probe listening;
+- also resolves the same storm on copies of the board as it stood before:
+  with no defences, and with each kind of defence removed in turn;
+- the copies feed the Aftermath replay, Maya's line and the storm card,
+  which therefore quote real numbers.
+
+**Depth** (`core/hazard.ts`):
+- `buildDepthField` turns the probe's per-tile intensities into water depth
+  over time;
+- `surgeDepth`, `floodDepth` and `combinedDepth` read it;
+- 1 is the depth at which a house is lost, so houses hit ⇔ depth > 1.
+
+**Script.**
+- `core/stormScript.ts` derives the timed moments from the resolution:
+  houses going, tested defences answering, the slow-motion beat, lightning.
+- `core/stormReplay.ts` writes the replay's captions.
+
+**Showing** (`app/stormDirector.ts`):
+- plays the record on one storm clock, driving
+  `render/storm/stormWater.ts` (one instanced draw),
+  `render/storm/stormSky.ts`, `StormManager` (weather, capped darkness,
+  flash and shake) and `ui/stormSound.ts`;
+- nothing in the render layer computes a depth of its own.
+
+**Checks:** `tests/hazardDepth.test.ts`, plus the browser comparison in
+`tools/qaFunctional.ts`.
+
 ## Navigation and history
 
 `AppShell` keeps the current screen in a field, and for a long time that was

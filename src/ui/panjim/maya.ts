@@ -186,6 +186,8 @@ export class Maya {
   private layoutDirty = true;
   /** A line was held back because no bubble spot was free. */
   private heldBack = false;
+  /** Test-only: lines stay up until dismissed, so a slow headless page cannot time them out mid-measurement. */
+  holdLines = false;
   private readonly heightCache = new Map<string, number>();
   private heightCacheKey = "";
   private lastLayoutMs = 0;
@@ -242,7 +244,15 @@ export class Maya {
       },
       { capture: true, signal: this.abort.signal }
     );
-    window.addEventListener("resize", () => (this.layoutDirty = true), { signal: this.abort.signal });
+    window.addEventListener(
+      "resize",
+      () => {
+        this.layoutDirty = true;
+        // Text may reflow at another size: measure again.
+        this.heightCache.clear();
+      },
+      { signal: this.abort.signal }
+    );
     // Any HUD element appearing, hiding, growing or moving re-lays her out.
     // Her own changes are ignored, or she would chase herself.
     this.observer = new MutationObserver((records) => {
@@ -328,7 +338,7 @@ export class Maya {
     if (line.anchor) this.goTo(line.anchor);
     line.onShow?.();
     window.clearTimeout(this.hideTimer);
-    this.hideTimer = window.setTimeout(() => this.dismiss(), readingMs(line.text) + (line.anchor ? 2500 : 0));
+    if (!this.holdLines) this.hideTimer = window.setTimeout(() => this.dismiss(), readingMs(line.text) + (line.anchor ? 2500 : 0));
     this.onSpoken?.(line);
     this.layout(performance.now());
   }

@@ -89,6 +89,8 @@ async function main(): Promise<void> {
       await page.waitForSelector(".brief-card", { timeout: 60000 });
       await page.locator(".brief-cta").first().click();
       await page.waitForTimeout(2500);
+      // Measure layout, not reading time: her lines stay up until replaced.
+      await page.evaluate("window.__panjimForTest.maya.holdLines = true");
       const tag = `${res.w}x${res.h}`;
       for (const discovery of [false, true]) {
         for (const getReadyOpen of [true, false]) {

@@ -10,7 +10,9 @@
  *   - `s:<scenario>`  a `__panjimScenarioForTest` scenario ("heat-2", "look-close-miramar");
  *   - `osm:off` / `osm:on`  the Street map switch;
  *   - `wait:<ms>`;
- *   - `js:<expression>`  evaluated in the page (awaited).
+ *   - `js:<expression>`  evaluated in the page (awaited; no semicolons);
+ *   - `cb:protanopia` / `cb:deuteranopia`  a colour-vision simulation over the whole page (Machado et al. matrices).
+ * A shot named `tutorial…` opens the Tutorial instead of Panaji.
  * Saves `<out-dir>/<name>-<W>x<H>.jpg` and a grayscale twin, both under
  * docs/qa/. A console error or a failed step fails the run.
  */
@@ -20,7 +22,7 @@ import path from "node:path";
 import { startDevServer } from "./devServer";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const PORT = 5193;
+const PORT = Number(process.env.SHOTS_PORT ?? 5193);
 const [outName, ...shotArgs] = process.argv.slice(2);
 const OUT_DIR = path.join(ROOT, "docs", "qa", outName ?? "adhoc");
 
@@ -50,6 +52,20 @@ async function step(page: Page, text: string): Promise<boolean> {
     if ((await box.isChecked()) !== (arg === "on")) await box.click();
     return true;
   }
+  if (kind === "cb") {
+    const matrix: Record<string, string> = {
+      protanopia: "0.152286 1.052583 -0.204868 0 0  0.114503 0.786281 0.099216 0 0  -0.003882 -0.048116 1.051998 0 0  0 0 0 1 0",
+      deuteranopia: "0.367322 0.860646 -0.227968 0 0  0.280085 0.672501 0.047413 0 0  -0.011820 0.042940 0.968881 0 0  0 0 0 1 0"
+    };
+    await page.evaluate(`(() => {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("style", "position:absolute;width:0;height:0");
+      svg.innerHTML = '<filter id="qa-cvd"><feColorMatrix type="matrix" values="${matrix[arg]}"/></filter>';
+      document.body.appendChild(svg);
+      document.documentElement.style.filter = "url(#qa-cvd)";
+    })()`);
+    return true;
+  }
   if (kind === "js") {
     await page.evaluate(`(async () => (${arg}))()`);
     return true;
@@ -73,10 +89,15 @@ async function main(): Promise<void> {
       page.on("console", (msg) => {
         if (msg.type() === "error") errors.push(`${shot.name}: ${msg.text()}`);
       });
-      await page.goto(`http://localhost:${PORT}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-      await page.waitForSelector(".brief-cta", { timeout: 90000 });
-      await page.locator(".brief-cta").first().click();
-      await page.waitForTimeout(3500);
+      if (shot.name.startsWith("tutorial")) {
+        await page.goto(`http://localhost:${PORT}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+        await page.waitForTimeout(6000);
+      } else {
+        await page.goto(`http://localhost:${PORT}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+        await page.waitForSelector(".brief-cta", { timeout: 90000 });
+        await page.locator(".brief-cta").first().click();
+        await page.waitForTimeout(3500);
+      }
       for (const s of shot.steps) {
         if (!(await step(page, s))) errors.push(`${shot.name}: step "${s}" failed`);
       }

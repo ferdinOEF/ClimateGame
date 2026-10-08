@@ -7,8 +7,9 @@
  *     saves a frame at each.
  *
  *   npx tsx tools/contactSheet.ts <out-dir> wall <scenario> <seconds> - [port] [root]
- *     Any build (the pre-change one too): starts the scenario without waiting
- *     for it and saves a frame every 0.25 s of real time for `seconds`.
+ *     Any build (the pre-change one too): starts the scenario, waits for the
+ *     storm's staging to begin (the live Houses counter), then steps a
+ *     controlled clock 0.25 s per frame for `seconds`.
  *
  * Frames go to docs/qa/contact/<out-dir>/; tools/contactSheet.py lays them out.
  */
@@ -57,7 +58,13 @@ async function main(): Promise<void> {
       executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
       args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
     });
-    const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      ...(mode === "wall" ? { recordVideo: { dir: OUT, size: { width: 1280, height: 720 } } } : {})
+    });
+    const page = await context.newPage();
+    // The video's clock starts with the page.
+    const pageStart = Date.now();
     await page.goto(`http://localhost:${PORT}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-cta", { timeout: 90000 });
     await page.locator(".brief-cta").first().click();
@@ -79,15 +86,16 @@ async function main(): Promise<void> {
         await shot(`t${t.toFixed(2)}`);
       }
     } else {
+      // The old build's staging plays in real time, and a software-GL
+      // screenshot takes over a second, so this mode records a video of the
+      // page instead (see `video` below); the frames are cut from it at
+      // 0.25 s intervals by tools/contactSheet.py's companion ffmpeg step.
       void run(scenarioArg);
-      const seconds = Number(a);
-      const t0 = Date.now();
-      while (Date.now() - t0 < seconds * 1000) {
-        const due = t0 + n * 250;
-        if (Date.now() < due) await page.waitForTimeout(due - Date.now());
-        await shot(`w${((Date.now() - t0) / 1000).toFixed(2)}`);
-      }
+      await page.waitForSelector(".houses-counter.live", { timeout: 300000 });
+      fs.writeFileSync(path.join(OUT, "staging-start.txt"), String((Date.now() - pageStart) / 1000));
+      await page.waitForTimeout(Number(a) * 1000);
     }
+    await context.close();
     await browser.close();
   } finally {
     server.stop();

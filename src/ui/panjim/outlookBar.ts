@@ -93,6 +93,8 @@ export class OutlookBar {
       marker.className = `outlook-marker phase-${outlook.phase} kind-${outlook.challenge.kind}`;
       marker.style.left = `${pct(outlook.windowStart)}%`;
       marker.style.width = `${Math.max(1.2, pct(outlook.windowEnd) - pct(outlook.windowStart))}%`;
+      // An image of the storm window, named by its label (a bare div may not carry one).
+      marker.setAttribute("role", "img");
       marker.setAttribute("aria-label", describe(outlook, view.startYear));
       marker.innerHTML = `<span class="outlook-icon">${ICON[outlook.challenge.kind]}</span>${
         outlook.phase === "locked" ? `<span class="outlook-strength">${"●".repeat(outlook.icons ?? 1)}${"○".repeat(3 - (outlook.icons ?? 1))}</span>` : ""

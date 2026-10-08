@@ -55,7 +55,7 @@ async function axe(page: Page, label: string): Promise<void> {
   await page.addScriptTag({ path: path.resolve("node_modules/axe-core/axe.min.js") });
   const result = (await page.evaluate(`(async () => {
     const r = await axe.run(document, { resultTypes: ["violations"] });
-    return r.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help }));
+    return r.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help + (v.impact === "serious" || v.impact === "critical" ? " @ " + v.nodes.map((n) => n.target.join(" ")).slice(0, 4).join(", ") : "") }));
   })()`)) as { id: string; impact: string; nodes: number; help: string }[];
   const serious = result.filter((v) => v.impact === "serious" || v.impact === "critical");
   check(serious.length === 0, `axe-core: ${label} has no serious or critical violations`, result.length === 0 ? "no violations" : result.map((v) => `${v.impact} ${v.id} ×${v.nodes} (${v.help})`).join("; "));
@@ -80,13 +80,20 @@ async function main(): Promise<void> {
       const menuButtons = await page.locator(".menu-screen button, .menu-screen a").allInnerTexts();
       check(menuButtons.some((t) => /tutorial/i.test(t)) && menuButtons.some((t) => /choose a level/i.test(t)), "menu offers Tutorial and Choose a level", menuButtons.map((t) => t.trim()).filter(Boolean).join(" | "));
       check(!(await page.locator("input[type=email]").count()), "no email field on the menu (email requirement hidden)");
-      const audioBefore = (await page.evaluate("window.__audioForTest ? window.__audioForTest() : null")) as { unlocked: boolean; context: boolean } | null;
       await page.goto(`${BASE}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(4000);
       check((await page.locator("canvas").count()) > 0, "Tutorial route renders the board");
       await page.goBack();
       await page.waitForSelector(".menu-screen", { timeout: 30000 });
       check(true, "browser Back returns to the menu");
+      // A fresh tab straight onto the level: nothing clicked yet, so no sound may exist.
+      const fresh = await context.newPage();
+      watch(fresh, "audio");
+      await fresh.goto(`${BASE}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await fresh.waitForSelector(".brief-cta", { timeout: 90000 });
+      await fresh.waitForTimeout(1500);
+      const audioBefore = (await fresh.evaluate("window.__audioForTest ? window.__audioForTest() : null")) as { unlocked: boolean; context: boolean } | null;
+      await fresh.close();
       await startPanaji(page);
       const audioSilent = (await page.evaluate("window.__audioForTest ? window.__audioForTest() : null")) as { unlocked: boolean; context: boolean } | null;
       check(audioBefore !== null && !audioBefore.context, "no audio context before any click", JSON.stringify(audioBefore));
@@ -147,17 +154,18 @@ async function main(): Promise<void> {
         check(before !== null && before !== after && back === before, `${key.toUpperCase()} toggles ${selector} and back`, `${before} → ${after} → ${back}`);
       }
       // Tab reaches the HUD controls with a visible focus ring.
-      let rings = 0;
+      const ringed = new Set<string>();
       const seen = new Set<string>();
       for (let i = 0; i < 40; i++) {
         await page.keyboard.press("Tab");
         const info = (await page.evaluate(`(() => { const el = document.activeElement; if (!el || el === document.body) return null; const s = getComputedStyle(el); return { name: (el.className || el.tagName) + ':' + (el.textContent || '').trim().slice(0, 20), ring: (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== 'none' }; })()`)) as { name: string; ring: boolean } | null;
         if (!info) continue;
         seen.add(info.name);
-        if (info.ring) rings++;
+        if (info.ring) ringed.add(info.name);
       }
       check(seen.size >= 8, "Tab reaches the HUD controls", `${seen.size} distinct stops`);
-      check(rings >= Math.min(seen.size, 8) * 0.8, "focused controls show a visible focus ring", `${rings} of ${seen.size} stops`);
+      const bare = [...seen].filter((name) => !ringed.has(name));
+      check(bare.length === 0, "every focused control shows a visible focus ring", bare.length ? `no ring on: ${bare.join(", ")}` : `${ringed.size} of ${seen.size} stops`);
       // Esc closes a tooltip.
       await page.locator(".sound-toggle").focus();
       await page.waitForTimeout(200);
@@ -225,25 +233,41 @@ async function main(): Promise<void> {
         }
         check(worst < 1e-9 && compared > 0 && wet > 0, `${kind.label}: drawn depth equals the core depth on every water tile at t = ${kind.times.join(", ")} s`, `${compared} tile-moments, ${wet} wet, worst difference ${worst}`);
         if (kind.label === "cyclone") {
-          // Flash: release the storm at the height and sample the overlay every frame.
-          await page.evaluate("window.__stormForTest.freeze(null)");
-          const flash = (await page.evaluate(`new Promise((resolve) => {
+          // Flash: from just before landfall, let the storm run through its lightning
+          // window and count the overlay's flashes (animationstart, so a slow
+          // software-GL frame rate cannot miss one); the peak is read from the
+          // flash's own keyframes.
+          // A fresh page: the truthfulness pass above already ran this storm's script past its lightning.
+          const flashPage = await context.newPage();
+          watch(flashPage, "flash");
+          await startPanaji(flashPage);
+          await scenario(flashPage, "storm-7");
+          await flashPage.evaluate("window.__stormForTest.freeze(null)");
+          const flash = (await flashPage.evaluate(`new Promise((resolve) => {
             const el = document.querySelector(".storm-flash");
-            let peak = 0, onsets = 0, wasOn = false;
+            const starts = [];
+            el.addEventListener("animationstart", () => starts.push(performance.now()));
+            let peak = 0;
+            for (const sheet of Array.from(document.styleSheets)) {
+              let rules = [];
+              try { rules = Array.from(sheet.cssRules); } catch (e) { continue; }
+              for (const rule of rules) {
+                if (rule.type === 7 && rule.name === "storm-flash") {
+                  for (const frame of Array.from(rule.cssRules)) peak = Math.max(peak, parseFloat(frame.style.opacity || "0"));
+                }
+              }
+            }
             const t0 = performance.now();
-            const step = () => {
-              const o = el ? parseFloat(getComputedStyle(el).opacity) : 0;
-              peak = Math.max(peak, o);
-              const on = o > 0.02;
-              if (on && !wasOn) onsets++;
-              wasOn = on;
-              if (performance.now() - t0 < 12000) requestAnimationFrame(step);
-              else resolve({ peak, onsets, seconds: (performance.now() - t0) / 1000 });
-            };
-            requestAnimationFrame(step);
-          })`)) as { peak: number; onsets: number; seconds: number };
-          check(flash.peak <= 0.25 + 1e-6, "lightning overlay never brighter than 25%", `peak opacity ${flash.peak.toFixed(3)}`);
-          check(flash.onsets / flash.seconds <= 3, "no more than 3 flashes a second", `${flash.onsets} flashes in ${flash.seconds.toFixed(1)} s`);
+            const startStorm = window.__stormForTest.time();
+            setTimeout(() => {
+              let maxPerSecond = 0;
+              for (const t of starts) maxPerSecond = Math.max(maxPerSecond, starts.filter((u) => u >= t && u < t + 1000).length);
+              resolve({ peak, onsets: starts.length, maxPerSecond, seconds: (performance.now() - t0) / 1000, stormFrom: startStorm, stormTo: window.__stormForTest.time() });
+            }, 14000);
+          })`)) as { peak: number; onsets: number; maxPerSecond: number; seconds: number; stormFrom: number; stormTo: number };
+          check(flash.onsets > 0, "lightning flashes during the cyclone's height", `${flash.onsets} flashes, storm time ${flash.stormFrom?.toFixed(1)} → ${flash.stormTo?.toFixed(1)} s`);
+          check(flash.peak > 0 && flash.peak <= 0.25 + 1e-6, "lightning overlay never brighter than 25%", `keyframe peak opacity ${flash.peak.toFixed(3)}`);
+          check(flash.maxPerSecond <= 3, "no more than 3 flashes in any second", `at most ${flash.maxPerSecond} in a second, ${flash.onsets} in ${flash.seconds.toFixed(1)} s`);
         }
         await context.close();
       }
