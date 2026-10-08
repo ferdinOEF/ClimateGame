@@ -4,6 +4,7 @@ import type { ChallengeKind } from "./climate";
 import { FRONTS, resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId, type HouseRule, type ZoneIndex } from "./zones";
 import { buildDepthField, type DepthField } from "./hazard";
 import { hazardsOf } from "./exposure";
+import { computeCombos } from "./combos";
 
 /**
  * A storm, resolved and recorded for showing: the real outcome, the water
@@ -36,6 +37,8 @@ export interface StormRecord {
   undefended: { outcome: ChallengeOutcome; field: DepthField };
   /** Per kind of defence, most houses saved first. Kinds that saved none are left out. */
   savedBy: DefenceSave[];
+  /** The defences against this storm standing when it came (key → element id), before any failed. */
+  defences: Map<string, string>;
 }
 
 export interface StormArgs {
@@ -95,16 +98,21 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
     for (const [key, inst] of [...copy.elements]) if (!keep(inst.elementId)) copy.elements.delete(key);
     return copy;
   };
-  const undefended = resolveWithField(without((id) => !defendsAgainst(id, hazards)), args);
+  // A copy's combo bonuses are its own: removing one kind breaks the combos it was part of.
+  const argsFor = (copy: GameState): StormArgs => ({ ...args, combos: args.combos ? computeCombos(copy).bonus : undefined });
+  const bare = without((id) => !defendsAgainst(id, hazards));
+  const undefended = resolveWithField(bare, argsFor(bare));
   const counts = new Map<string, number>();
   for (const inst of before.elements.values()) if (defendsAgainst(inst.elementId, hazards)) counts.set(inst.elementId, (counts.get(inst.elementId) ?? 0) + 1);
   const savedBy: DefenceSave[] = [];
   for (const [elementId, count] of counts) {
     const copy = without((id) => id !== elementId);
-    const lost = resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, args.combos, args.houseStars, args.houseRule).housesDamaged;
+    const lost = resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, argsFor(copy).combos, args.houseStars, args.houseRule).housesDamaged;
     const houses = lost - outcome.housesDamaged;
     if (houses > 0) savedBy.push({ elementId, count, houses });
   }
   savedBy.sort((a, b) => b.houses - a.houses || (a.elementId < b.elementId ? -1 : 1));
-  return { kind: args.kind, outcome, field, undefended, savedBy };
+  const defences = new Map<string, string>();
+  for (const [key, inst] of before.elements) if (defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
+  return { kind: args.kind, outcome, field, undefended, savedBy, defences };
 }

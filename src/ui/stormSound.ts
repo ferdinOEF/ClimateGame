@@ -41,8 +41,10 @@ function noiseBuffer(ctx: AudioContext): AudioBuffer {
 export class StormSound {
   private graph: Graph | null = null;
   private calmTimer = 0;
+  private disposed = false;
 
   private build(): Graph | null {
+    if (this.disposed) return null;
     if (this.graph) return this.graph;
     const io = audioOut();
     if (!io) return null;
@@ -210,6 +212,7 @@ export class StormSound {
   }
 
   dispose(): void {
+    this.disposed = true;
     window.clearInterval(this.calmTimer);
     const g = this.graph;
     if (!g) return;

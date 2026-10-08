@@ -1,0 +1,18 @@
+| quality | state | avg fps | 1% low | p95 frame ms | draw calls | triangles |
+|---|---|---|---|---|---|---|
+| low | calm | 2.1 | 1.1 | 933.2 | 29 | 183228 |
+| low | cyclone | 2.3 | 1.9 | 516.7 | 23 | 187800 |
+| low | flood | 2.1 | 1.3 | 783.3 | 27 | 188316 |
+| low | finale | 2.4 | 1.6 | 616.7 | 37 | 193228 |
+| medium | calm | 2.1 | 1.1 | 883.3 | 38 | 183760 |
+| medium | cyclone | 2.0 | 1.3 | 750.0 | 23 | 219128 |
+| medium | flood | 2.0 | 1.4 | 700.0 | 27 | 222780 |
+| medium | finale | 2.4 | 2.1 | 483.3 | 38 | 229888 |
+| high | calm | 2.7 | 1.0 | 1016.7 | 33 | 183392 |
+| high | cyclone | 2.0 | 1.8 | 550.1 | 23 | 246940 |
+| high | flood | 2.0 | 1.1 | 933.3 | 27 | 254016 |
+| high | finale | 2.1 | 1.9 | 516.6 | 36 | 262788 |
+
+Leak check (three storms on one page): before {"heapMB":25,"dom":449}, after {"heapMB":25,"dom":468}
+
+console errors/warnings/failed requests: none

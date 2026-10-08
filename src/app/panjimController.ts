@@ -1,7 +1,7 @@
 import { ActionRun, quarterLabel, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import type { GameState } from "@core/gameState";
 import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
-import { defendsAgainst, type StormRecord } from "@core/stormRecord";
+import type { StormRecord } from "@core/stormRecord";
 import { drawStormCard, type StormCardInput } from "@ui/panjim/stormCard";
 import { DEFENCE_PLURAL, replaySteps } from "@core/stormReplay";
 import { ReplayCard } from "@ui/panjim/replayCard";
@@ -493,7 +493,16 @@ export class PanjimController {
 
     let hurry = false;
     const abort = new AbortController();
-    document.addEventListener("pointerdown", () => (hurry = true), { signal: abort.signal, capture: true });
+    // A click on the board hurries the storm; one on the HUD (volume, switches, Maya) does not.
+    document.addEventListener(
+      "pointerdown",
+      (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest(".panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready, .houses-counter")) return;
+        hurry = true;
+      },
+      { signal: abort.signal, capture: true }
+    );
 
     const record = this.run.stormRecords.get(challenge.id);
     try {
@@ -681,12 +690,12 @@ export class PanjimController {
       }
     }
     if (!best) return null;
-    const hazards = best.record.kind === "compound" ? (["cyclone", "flood"] as const) : ([best.record.kind] as const);
     return {
       title: best.name,
       tiles: [...this.host.state.placed.entries()].map(([key, tile]) => ({ key, terrainId: tile.terrainId })),
       record: best.record,
-      defences: [...this.host.state.elements].filter(([, inst]) => defendsAgainst(inst.elementId, hazards)).map(([key]) => key)
+      // The defences that faced that storm, not the ones standing now.
+      defences: [...best.record.defences.keys()]
     };
   }
 

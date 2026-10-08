@@ -152,7 +152,6 @@ export const HUD_OBSTACLES = [
   ".era-banner",
   ".build-popover",
   ".hud-tooltip",
-  ".forecast-label",
   ".field-guide-toast",
   ".aftermath-card",
   ".field-guide-card",
@@ -187,6 +186,8 @@ export class Maya {
   private layoutDirty = true;
   /** A line was held back because no bubble spot was free. */
   private heldBack = false;
+  private readonly heightCache = new Map<string, number>();
+  private heightCacheKey = "";
   private lastLayoutMs = 0;
   /** Called when a line is shown: the Field Guide records it. */
   onSpoken: ((line: MayaLine) => void) | null = null;
@@ -245,7 +246,10 @@ export class Maya {
     // Any HUD element appearing, hiding, growing or moving re-lays her out.
     // Her own changes are ignored, or she would chase herself.
     this.observer = new MutationObserver((records) => {
-      if (records.some((record) => !this.el.contains(record.target))) this.layoutDirty = true;
+      // Things that move with the camera every frame (the storm's words, the
+      // forecast label, the lightning overlay) are not HUD and do not count.
+      const moving = (node: Node): boolean => node instanceof Element && node.closest(".storm-word, .forecast-label, .storm-flash") !== null;
+      if (records.some((record) => !this.el.contains(record.target) && !moving(record.target))) this.layoutDirty = true;
     });
     this.observer.observe(container, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "class", "style"] });
     for (const part of [this.bubble, this.badge, this.el.querySelector(".maya-minimise")!]) {
@@ -449,9 +453,20 @@ export class Maya {
   }
 
   private placeBubble(figure: Rect, obstacles: Rect[], viewport: { w: number; h: number }): void {
+    // Heights by width for this line (and look), so a re-layout does not force a reflow per candidate.
+    const cacheKey = this.textEl.textContent ?? "";
+    if (this.heightCacheKey !== cacheKey) {
+      this.heightCache.clear();
+      this.heightCacheKey = cacheKey;
+    }
     const measure = (width: number): number => {
+      const key = `${width}|${this.bubble.classList.contains("compact")}`;
+      const cached = this.heightCache.get(key);
+      if (cached !== undefined) return cached;
       this.bubble.style.width = `${width}px`;
-      return this.bubble.offsetHeight;
+      const height = this.bubble.offsetHeight;
+      this.heightCache.set(key, height);
+      return height;
     };
     this.bubble.classList.remove("compact");
     let spot = placeBubble(figure, measure, obstacles, viewport);
@@ -480,7 +495,9 @@ export class Maya {
 
   /** Called every frame: follows a tile while away; otherwise re-lays out on change (and a few times a second). */
   frame(nowMs: number): void {
-    if (this.anchor || this.layoutDirty || nowMs - this.lastLayoutMs > 250) {
+    // Following a tile: ten times a second is smooth enough and keeps layout cheap.
+    const followDue = this.anchor !== null && nowMs - this.lastLayoutMs > 100;
+    if (followDue || (this.layoutDirty && nowMs - this.lastLayoutMs > 50) || nowMs - this.lastLayoutMs > 250) {
       this.layout(nowMs);
       // A line held back for lack of room gets another try once things move.
       if (this.heldBack && !this.current) {

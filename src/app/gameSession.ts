@@ -24,7 +24,7 @@ import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { playSound } from "@ui/audioHooks";
+import { audioStateForTest, playSound } from "@ui/audioHooks";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer } from "@ui/mapLabels";
@@ -2222,7 +2222,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __frameStatsForTest: frameStats,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
+    __audioForTest: audioStateForTest,
     __stormForTest: {
+      /** Holds the storm at a storm time (null lets it run). */
+      freeze: (seconds: number | null) => stormDirector?.freezeAt(seconds),
+      /** Every tile the water layer could draw (sea, river, wetland and land). */
+      allKeys: () => {
+        const field = stormDirector?.currentField;
+        return field ? [...field.tiles.keys()] : [];
+      },
       time: () => stormDirector?.time ?? null,
       playing: () => stormDirector?.playing ?? false,
       /** The depth the water layer drew on a tile, and the core's depth there at the same storm time. */
@@ -2417,6 +2425,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Puts the sky and sun back before the scene goes. Without it a
     // session disposed mid-storm would be the last thing to touch those
     // values, and `createScene`'s own disposal does not restore them.
+    stormDirector?.finish();
     storm.dispose();
     stormSound.dispose();
     stormWater.dispose();

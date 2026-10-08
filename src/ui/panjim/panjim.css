@@ -1749,7 +1749,7 @@
 }
 @keyframes storm-flash {
   0% { opacity: 0; }
-  25% { opacity: 0.22; }
+  25% { opacity: 0.15; }
   100% { opacity: 0; }
 }
 
@@ -1854,3 +1854,5 @@
 /* The in-game Calm motion switch does what the system setting does. */
 .calm-motion .storm-word { animation: storm-word-still 3.2s linear forwards; }
 .calm-motion .storm-flash.on { animation: none; }
+.calm-motion .maya,
+.calm-motion .maya * { animation: none !important; transition: none !important; }

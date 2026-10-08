@@ -121,6 +121,11 @@ if (typeof document !== "undefined") {
   document.addEventListener("keydown", unlock, true);
 }
 
+/** For the browser checks: has the player unlocked sound, and does an audio context exist yet? */
+export function audioStateForTest(): { unlocked: boolean; context: boolean; enabled: boolean } {
+  return { unlocked, context: context !== null, enabled };
+}
+
 export function soundEnabled(): boolean {
   return enabled;
 }

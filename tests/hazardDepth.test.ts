@@ -15,7 +15,7 @@ import {
 import { BOT_LEVELS, newRun, type Preset } from "../tools/panjimBots/bots";
 import type { ActionRun } from "../src/core/actionRun";
 import type { StormRecord } from "../src/core/stormRecord";
-import { buildStormScript, LIGHTNING_GAP } from "../src/core/stormScript";
+import { buildStormScript, LIGHTNING_GAP, testedDefences } from "../src/core/stormScript";
 import { replaySteps } from "../src/core/stormReplay";
 
 /**
@@ -186,7 +186,7 @@ describe("the storm script marks only what the resolution decided", () => {
         const defences = new Map(before);
         for (const [key, inst] of run.state.elements) if (!defences.has(key)) defences.set(key, inst.elementId);
         for (const zone of record.outcome.zones) for (const key of zone.failed) if (!defences.has(key)) defences.set(key, "seawall");
-        const script = buildStormScript(record, defences);
+        const script = buildStormScript(record, defences, (key) => run.zones!.zoneOf(key));
         const houseEvents = script.events.filter((e) => e.type === "house").map((e) => (e as { key: string }).key);
         expect(houseEvents.sort()).toEqual([...record.outcome.damagedHouses].sort());
         for (const event of script.events) {
@@ -223,5 +223,25 @@ describe("the Aftermath replay quotes the record", () => {
     }
     // No real-world claims: no years, no named storms.
     for (const step of steps) expect(`${step.text} ${step.maya}`).not.toMatch(/\b(19|20)\d\d\b/);
+  });
+});
+
+describe("only the defences a storm tested answer it", () => {
+  it("a mangrove off the flood's path never shows answering, one on it can", () => {
+    const run = newRun("panjim", BOT_LEVELS["easy-test"]);
+    nextStorm(run); // past the cyclone
+    const record = nextStorm(run, [["z1", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"]]);
+    expect(record.kind).toBe("flood");
+    const defences = new Map([...run.state.elements].map(([key, inst]) => [key, inst.elementId]));
+    const zoneOf = (key: string): string | null => run.zones!.zoneOf(key);
+    const script = buildStormScript(record, defences, zoneOf);
+    const pathZones = new Set(record.outcome.zones.map((z) => z.zoneId));
+    for (const event of script.events) if (event.type === "defence") expect(pathZones.has(zoneOf(event.key)!)).toBe(true);
+    const offPath = [...defences].filter(([key, id]) => id === "mangrove" && zoneOf(key) === "z1");
+    expect(offPath.length).toBeGreaterThan(0);
+    for (const [key] of offPath) expect(script.events.some((e) => e.type === "defence" && e.key === key)).toBe(false);
+    expect([...testedDefences(record, defences, zoneOf).keys()].every((key) => pathZones.has(zoneOf(key)!))).toBe(true);
+    // The record keeps the defences that faced the storm.
+    for (const [key, id] of record.defences) expect(defences.get(key) ?? id).toBe(id);
   });
 });

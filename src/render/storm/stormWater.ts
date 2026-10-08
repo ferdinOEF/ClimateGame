@@ -432,7 +432,6 @@ export class StormWater {
     const water = this.water.array as Float32Array;
     const look = this.look.array as Float32Array;
     const flow = this.flow.array as Float32Array;
-    const levels = new Float32Array(this.slots.length);
     for (const slot of this.slots) {
       const surge = surgeDepth(field, slot.key, frame.t);
       const flood = floodDepth(field, slot.key, frame.t);
@@ -444,7 +443,6 @@ export class StormWater {
       const amp = slot.amp * (slot.sea ? 0.35 + frame.wind * 1.9 : 0.5 + Math.min(1, flood) * 1.2);
       const base = slot.top + 0.03 + amp;
       const level = base + (slot.sea ? surge : shown) * DEPTH_TO_WORLD;
-      levels[slot.index] = level;
       const wetLand = !slot.sea && !slot.channel;
       const pulse = frame.pulses.get(slot.key) ?? 0;
       const wetness = Math.min(1, Math.max(depth, stored) / 0.06);

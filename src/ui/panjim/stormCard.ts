@@ -130,7 +130,7 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
   ctx.fillText(input.title, 28, 72);
   ctx.fillStyle = "#cfc6b2";
   ctx.font = "15px system-ui, sans-serif";
-  ctx.fillText("Same storm, same board: only the defences differ.   ● kept dry   ✕ hit   ■ defence", 28, 608);
+  ctx.fillText("Same storm, same board: only the defences differ.   ● not hit   ✕ hit   ■ defence", 28, 608);
   return canvas;
 }
 

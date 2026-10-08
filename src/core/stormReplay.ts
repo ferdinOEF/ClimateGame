@@ -60,8 +60,8 @@ export function replaySteps(record: StormRecord, defences: ReadonlyMap<string, s
   const dry = [...record.field.tiles.values()].filter((tile) => tile.house && (tile.surgePeak > 0 || tile.floodPeak > 0 || tile.backwaterPeak > 0 || record.undefended.outcome.damagedHouses.includes(tile.key)) && !hitSet.has(tile.key)).map((tile) => tile.key);
   const steps: ReplayStep[] = [];
   steps.push({
-    text: `${cap(homes(hit.length))} hit · ${homes(dry.length)} kept dry`,
-    maya: hit.length === 0 ? "Every home in its path stayed dry." : dry.length === 0 ? `${cap(homes(hit.length))} were hit.` : `${cap(homes(hit.length))} were hit, and ${homes(dry.length)} stayed dry.`,
+    text: `${cap(homes(hit.length))} hit · ${homes(dry.length)} spared`,
+    maya: hit.length === 0 ? "Every home in its path was spared." : dry.length === 0 ? `${cap(homes(hit.length))} were hit.` : `${cap(homes(hit.length))} were hit, and ${homes(dry.length)} were spared.`,
     hit,
     dry,
     highlight: []

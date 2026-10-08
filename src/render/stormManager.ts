@@ -59,8 +59,13 @@ const RAIN_SLANT_Z = 0.085;
  * its light. Buildings, the heat and the HUD must stay readable in a storm.
  */
 export const MAX_DARKNESS = 0.35;
-/** A lightning flash brightens the sky by at most this much (photosensitivity: low-contrast flashes only). */
+/** The hard cap on any lightning flash (photosensitivity: low-contrast flashes only). */
 export const MAX_FLASH_ALPHA = 0.25;
+/**
+ * What a flash actually lifts the sky and the sun by. Kept well under the
+ * cap because it stacks with the on-screen overlay (also 0.15 at peak).
+ */
+const FLASH_LIFT = 0.15;
 /** Shake only above this intensity. */
 const SHAKE_FROM = 0.7;
 
@@ -319,15 +324,16 @@ export class StormManager {
 
     const background = this.scene.background as THREE.Color | null;
     if (background) {
-      background.copy(this.baseSky).lerp(STORM_SKY, this.intensity * 0.6);
-      // A flash lifts the sky by at most a quarter of the way to white-blue.
-      if (flash > 0) background.lerp(LIGHTNING_SKY, flash * MAX_FLASH_ALPHA);
+      // At most about a 35% loss of light in the sky too (the storm grey is
+      // nearly black next to the clear sky, so the lerp itself is capped).
+      background.copy(this.baseSky).lerp(STORM_SKY, this.intensity * MAX_DARKNESS);
+      if (flash > 0) background.lerp(LIGHTNING_SKY, flash * FLASH_LIFT);
     }
 
     // The sun loses at most MAX_DARKNESS of its light at full storm, and a
     // flash lifts it only modestly: a board the player cannot read is not
     // dramatic, it is broken.
-    this.sun.intensity = this.baseSunIntensity * (1 - MAX_DARKNESS * this.intensity) * (1 + flash * MAX_FLASH_ALPHA);
+    this.sun.intensity = this.baseSunIntensity * (1 - MAX_DARKNESS * this.intensity) * (1 + flash * FLASH_LIFT);
   }
 
   private applyRain(nowMs: number, focus: { x: number; z: number }): void {

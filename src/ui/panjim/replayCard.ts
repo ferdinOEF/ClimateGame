@@ -37,7 +37,7 @@ export class ReplayCard {
         <button type="button" class="replay-skip">Skip</button></div>
       <div class="replay-text"></div>
       <div class="replay-dots">${steps.map(() => `<span class="replay-dot"></span>`).join("")}</div>
-      <div class="replay-legend"><span class="hit">■ hit</span><span class="dry">■ kept dry</span><span class="gold">■ defence</span></div>`;
+      <div class="replay-legend"><span class="hit">■ hit</span><span class="dry">■ spared</span><span class="gold">■ defence</span></div>`;
     (this.el.querySelector(".replay-title") as HTMLElement).textContent = title;
     this.el.hidden = false;
     const text = this.el.querySelector(".replay-text") as HTMLElement;
@@ -70,7 +70,8 @@ export class ReplayCard {
         event.stopPropagation();
         finish();
       }, { signal: abort.signal });
-      document.addEventListener("keydown", (event) => {
+      // On window, like Maya's own Esc, so her closing a line cannot swallow it.
+      window.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
           event.stopPropagation();
           finish();

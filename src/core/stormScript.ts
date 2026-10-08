@@ -2,7 +2,6 @@ import { axialKey, neighbor } from "./hex";
 import { arrivalTime, hitTime, type DepthField } from "./hazard";
 import type { ChallengeOutcome } from "./zones";
 import { defendsAgainst, type StormRecord } from "./stormRecord";
-import { hazardsOf } from "./exposure";
 
 /**
  * The storm's script: every moment the visuals mark, in storm time, taken
@@ -44,6 +43,28 @@ function defenceResult(outcome: ChallengeOutcome, key: string): DefenceResult {
   return "held";
 }
 
+/**
+ * The defences this storm actually tested: those standing in a zone one of
+ * its fronts passed through, answering that front's hazard. A defence
+ * elsewhere (beside the sea, but off the storm's path) is never shown
+ * answering, because the resolver never counted it.
+ */
+export function testedDefences(record: StormRecord, defences: ReadonlyMap<string, string>, zoneOf: (key: string) => string | null): Map<string, string> {
+  const hazardsByZone = new Map<string, Set<string>>();
+  for (const zone of record.outcome.zones) {
+    const set = hazardsByZone.get(zone.zoneId) ?? new Set<string>();
+    set.add(zone.hazard);
+    hazardsByZone.set(zone.zoneId, set);
+  }
+  const tested = new Map<string, string>();
+  for (const [key, elementId] of defences) {
+    const zoneId = zoneOf(key);
+    const hazards = zoneId ? hazardsByZone.get(zoneId) : undefined;
+    if (hazards && defendsAgainst(elementId, [...hazards] as ("cyclone" | "flood")[])) tested.set(key, elementId);
+  }
+  return tested;
+}
+
 /** When water first reaches a tile or a neighbour of it (null: never). */
 function contactTime(field: DepthField, key: string): number | null {
   let best = arrivalTime(field, key);
@@ -60,17 +81,15 @@ function contactTime(field: DepthField, key: string): number | null {
  * when it came (key → element id): a failed structure is gone from the board
  * after resolution, so it has to be named from before.
  */
-export function buildStormScript(record: StormRecord, defences: ReadonlyMap<string, string>): StormScript {
+export function buildStormScript(record: StormRecord, defences: ReadonlyMap<string, string>, zoneOf: (key: string) => string | null): StormScript {
   const { field, outcome } = record;
   const events: StormEvent[] = [];
   for (const key of outcome.damagedHouses) {
     const t = hitTime(field, key);
     if (t !== null) events.push({ t, type: "house", key });
   }
-  const hazards = hazardsOf(record.kind);
   const contacts: { t: number; key: string; elementId: string }[] = [];
-  for (const [key, elementId] of defences) {
-    if (!defendsAgainst(elementId, hazards)) continue;
+  for (const [key, elementId] of testedDefences(record, defences, zoneOf)) {
     const t = contactTime(field, key);
     if (t === null) continue;
     contacts.push({ t, key, elementId });

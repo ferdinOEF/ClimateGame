@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { axialToWorld, axialKey, neighbor, type AxialCoord } from "@core/hex";
 import { STORM_TIMING, combinedDepth, type DepthField } from "@core/hazard";
 import { FRONTS, type ZoneIndex } from "@core/zones";
-import { buildStormScript, type StormEvent, type StormScript } from "@core/stormScript";
-import { defendsAgainst, type StormRecord } from "@core/stormRecord";
+import { buildStormScript, testedDefences, type StormEvent, type StormScript } from "@core/stormScript";
+import type { StormRecord } from "@core/stormRecord";
 import type { StormWater, WaterTile } from "@render/storm/stormWater";
 import type { StormSky } from "@render/storm/stormSky";
 import type { StormManager } from "@render/stormManager";
@@ -144,7 +144,10 @@ export class StormDirector {
     this.finish();
     this.record = record;
     this.field = record.field;
-    this.script = buildStormScript(record, defences);
+    const zoneOf = (key: string): string | null => this.deps.zones.zoneOf(key);
+    // Only the defences on the storm's path, answering its hazard, take part.
+    const tested = testedDefences(record, defences, zoneOf);
+    this.script = buildStormScript(record, defences, zoneOf);
     this.hooks = hooks;
     this.t = 0;
     this.nextEvent = 0;
@@ -153,21 +156,21 @@ export class StormDirector {
     this.labelled = 0;
     this.pulses.clear();
     this.contacted.clear();
-    this.phases = this.phasesFor(record, defences);
+    this.phases = this.phasesFor(record, tested);
     this.nextPhase = 0;
     this.fills.clear();
     this.layoutPaths(record);
     const tiles: WaterTile[] = this.deps.tiles.map(({ coord, terrainId }) => ({ key: axialKey(coord), q: coord.q, r: coord.r, terrainId, top: this.deps.heightAt(coord) }));
-    this.khazans = [...defences].filter(([, id]) => id === "khazan").map(([key]) => key);
-    const hazards = record.kind === "compound" ? (["cyclone", "flood"] as const) : ([record.kind] as const);
+    this.khazans = [...tested].filter(([, id]) => id === "khazan").map(([key]) => key);
     this.deps.water.begin(
       record.field,
       tiles,
-      (key) => defences.get(key) ?? this.deps.elementAt(key),
       (key) => {
-        const id = defences.get(key);
-        return id !== undefined && defendsAgainst(id, hazards);
-      }
+        // A khazan off the storm's path is not shown filling.
+        const id = defences.get(key) ?? this.deps.elementAt(key);
+        return id === "khazan" && !tested.has(key) ? undefined : id;
+      },
+      (key) => tested.has(key)
     );
     this.frameCamera();
     this.deps.weather.autoLightning = false;
@@ -185,8 +188,9 @@ export class StormDirector {
   private phasesFor(record: StormRecord, defences: ReadonlyMap<string, string>): { t: number; name: string; line: string }[] {
     const field = record.field;
     const landfall = field.landfall ?? STORM_TIMING.cyclone.landfall;
+    // Only what the resolution supports: khazans on the flood's path; mangroves that really saved homes.
     const hasKhazans = [...defences.values()].includes("khazan");
-    const hasMangroves = [...defences.values()].includes("mangrove");
+    const hasMangroves = record.savedBy.some((save) => save.elementId === "mangrove");
     if (record.kind === "cyclone") {
       return [
         { t: 4, name: "Approach", line: "A cyclone is forming offshore. The waves are getting bigger." },
@@ -420,7 +424,7 @@ export class StormDirector {
           const w = axialToWorld(coord, 1.0);
           this.deps.focusOn(w.x, w.z);
           this.deps.fitTo(20, 13);
-          window.setTimeout(() => {
+          this.later(() => {
             if (this.record) this.frameCamera();
           }, 2600);
         }
@@ -435,17 +439,36 @@ export class StormDirector {
           const angle = event.seed * 2.39;
           const x = this.landfall.x + Math.cos(angle) * 2.5 + this.seaward.x * 2;
           const z = this.landfall.y + Math.sin(angle) * 2.5 + this.seaward.y * 2;
-          this.deps.sky.strike(x, z, 0.4, nowMs, () => ((event.seed * 9301 + 49297) % 233280) / 233280);
+          // A seeded generator: a jagged bolt, the same for the same storm.
+          let s = (event.seed * 2654435761) >>> 0;
+          const random = (): number => {
+            s = (Math.imul(s ^ (s >>> 15), 2246822507) + 0x6d2b79f5) >>> 0;
+            return s / 4294967296;
+          };
+          this.deps.sky.strike(x, z, 0.4, nowMs, random);
           this.deps.screenFlash();
-          window.setTimeout(() => this.deps.sound?.("thunder"), 350 + (event.seed % 4) * 250);
+          this.later(() => this.deps.sound?.("thunder"), 350 + (event.seed % 4) * 250);
         }
         break;
       }
     }
   }
 
+  private readonly timers = new Set<number>();
+
+  /** A timeout that is cancelled if the storm ends (or the level closes) first. */
+  private later(fn: () => void, ms: number): void {
+    const id = window.setTimeout(() => {
+      this.timers.delete(id);
+      fn();
+    }, ms);
+    this.timers.add(id);
+  }
+
   /** Ends the storm now (its water drained, or a new one starting). */
   finish(): void {
+    for (const id of this.timers) window.clearTimeout(id);
+    this.timers.clear();
     if (!this.record) return;
     // Anything the script had not reached yet still happens (a hurried storm).
     if (this.script) while (this.nextEvent < this.script.events.length) {
