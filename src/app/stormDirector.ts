@@ -43,11 +43,13 @@ export interface StormDirectorDeps {
   /** A capped, rate-limited lightning flash on screen (alpha ≤ 0.25). */
   screenFlash: () => void;
   reducedMotion: () => boolean;
-  /** Sound cues (P7). */
-  sound?: (cue: StormCue, value?: number) => void;
+  /** Sound cues: thunder, a defence answering, the end. */
+  sound?: (cue: StormCue) => void;
+  /** The storm's sound levels, 0–1 each: wind, sea, rain. */
+  ambience?: (wind: number, sea: number, rain: number) => void;
 }
 
-export type StormCue = "begin" | "landfall" | "thunder" | "absorbed" | "overwhelmed" | "failed" | "house" | "calm" | "end" | "levels";
+export type StormCue = "begin" | "landfall" | "thunder" | "absorbed" | "overwhelmed" | "failed" | "house" | "end";
 
 export interface StormPlayHooks {
   onHouseLost: () => void;
@@ -108,6 +110,11 @@ export class StormDirector {
 
   get playing(): boolean {
     return this.record !== null;
+  }
+
+  /** Where the storm's wind blows toward (world x, z), while one plays. */
+  get windDirection(): THREE.Vector2 | undefined {
+    return this.record ? this.windDir : undefined;
   }
 
   /** Storm time now, seconds. */
@@ -308,7 +315,7 @@ export class StormDirector {
     this.deps.weather.setIntensity(levels.intensity);
     this.deps.weather.setWind(levels.wind);
     this.deps.weather.setRain(levels.rain);
-    this.deps.sound?.("levels", levels.wind);
+    this.deps.ambience?.(levels.wind, kind === "flood" ? 0.25 : Math.max(0.25, levels.wind), levels.rain);
 
     this.deps.water.update({ t, wind: levels.wind, fade: fadeIn * fadeOut, pulses: this.pulses, fills: this.fills });
     this.deps.water.tick(nowMs / 1000, this.windDir);

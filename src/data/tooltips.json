@@ -14,6 +14,8 @@
   "fieldGuide": "Your Field Guide: {found} of {species} creatures spotted, and {notes} of Maya's notes. Tap the creatures on the board to collect them.",
   "riskToggle": "Show risk (R): tints red the tiles the next storm will hit hardest, from five seasons out. Turn it off to see the map plain.",
   "mayaToggle": "Maya (M): turns her tips on or off. The red warning stays either way.",
+  "soundToggle": "Sound (S): the storm's wind, waves, rain and thunder, and the game's chimes. Nothing plays until you first click.",
+  "soundVolume": "Sound volume: {pct}%.",
   "mayaDismiss": "Closes Maya's tip. Esc does the same.",
   "getReady": "Optional jobs that help against the next storm. Each pays Coin the moment it is done; none of them is required.",
   "back": "Leaves this level and goes back to the menu.",

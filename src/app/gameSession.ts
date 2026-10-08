@@ -11,6 +11,7 @@ import { StormManager } from "@render/stormManager";
 import { StormWater } from "@render/storm/stormWater";
 import { StormSky } from "@render/storm/stormSky";
 import { StormDirector } from "./stormDirector";
+import { StormSound } from "@ui/stormSound";
 import { combinedDepth as combinedDepthAt } from "@core/hazard";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
 import { BuildFlourish } from "@render/buildFlourish";
@@ -1646,6 +1647,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * clears. The outcome was decided when the challenge landed; this shows it.
    */
   let stormDirector: StormDirector | null = null;
+  const stormSound = new StormSound();
   /** The words over defences answering a storm ("Absorbed"); they follow their tile as the camera moves. */
   const stormWords: { el: HTMLElement; coord: AxialCoord }[] = [];
   function placeStormWord(word: { el: HTMLElement; coord: AxialCoord }): void {
@@ -1698,7 +1700,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         void stormFlash.offsetWidth;
         stormFlash.classList.add("on");
       },
-      reducedMotion: () => storm.isReducedMotion
+      reducedMotion: () => storm.isReducedMotion,
+      ambience: (wind, sea, rain) => stormSound.levels(wind, sea, rain),
+      sound: (cue) => {
+        if (cue === "thunder") stormSound.thunder();
+        else if (cue === "absorbed") playSound("chime");
+        else if (cue === "overwhelmed") playSound("hazard_overwhelmed");
+        else if (cue === "end") stormSound.quiet();
+      }
     });
     return stormDirector;
   }
@@ -2054,6 +2063,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     storm.tick(nowMs, focusPoint());
     setShake(storm.shakeX, storm.shakeZ);
     elements.setWind(storm.windStrength);
+    townDecor?.setWind(storm.windStrength, nowMs, stormDirector?.windDirection);
 
     terrain.tick(nowMs);
     elements.tick(nowMs);
@@ -2354,6 +2364,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // session disposed mid-storm would be the last thing to touch those
     // values, and `createScene`'s own disposal does not restore them.
     storm.dispose();
+    stormSound.dispose();
+    stormWater.dispose();
+    stormSky.dispose();
     buildFlourish.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();

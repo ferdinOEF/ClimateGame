@@ -221,6 +221,7 @@ export const HUD_SELECTORS = [
   ".field-guide-button",
   ".houses-counter",
   ".panjim-toggles button",
+  ".panjim-toggles input",
   ".maya-dismiss",
   ".get-ready",
   ".map-layer-control input",

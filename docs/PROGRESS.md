@@ -7161,3 +7161,36 @@ its recorded depth field:
   - the slow-motion push has not yet been seen in a recorded sequence;
   - P9 still has to wire Low/Medium/High and the in-game reduce-motion switch
     through to these layers.
+
+### P7 — sound — DONE
+
+**Silent until the first click.** All of the game's audio now goes through one
+master gain in `ui/audioHooks.ts`:
+- nothing at all plays until the first click or key press;
+- the AudioContext is only made after that.
+
+**The controls:**
+- A **Sound (S)** switch sits in the HUD's switch column, under Show risk (R)
+  and Maya (M), each with a tooltip.
+- A **volume slider** sits beside it.
+- Both are remembered on this device; storage is wrapped in try/catch, so a
+  refusal just means the default.
+- S is separate from Maya's M.
+
+**The storm** (`ui/stormSound.ts`) is synthesised with Web Audio, with no files:
+- **wind:** band-passed brown noise with a wandering pitch, following the
+  storm's wind, so the lull before the hit is heard as a hush;
+- **waves:** low-passed noise swelling slowly;
+- **rain:** high-passed noise;
+- **thunder:** a low burst with a 2.6 s tail, a beat after each flash;
+- **a calm bed:** two soft detuned tones with birdsong chirps, for the calm
+  ending in P8.
+
+A defence answering plays the chime; one overwhelmed plays a new low tone.
+
+Also in this round: the garden trees in the town now bend with the storm's
+wind (a vertex sway on their one instanced material).
+
+**Self-assessment.** It could not be heard here (headless). The levels were
+chosen low: wind at most 0.32 and rain 0.12 on a 0.7 master. It needs a
+listen on real speakers.

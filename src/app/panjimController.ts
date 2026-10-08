@@ -1,6 +1,7 @@
 import { ActionRun, quarterLabel, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import type { GameState } from "@core/gameState";
 import type { StormRecord } from "@core/stormRecord";
+import { setSoundEnabled, setSoundVolume, soundVolume } from "@ui/audioHooks";
 import type { AxialCoord } from "@core/hex";
 import type { Telemetry } from "@core/telemetry";
 import type { LevelDef } from "@levels/levels";
@@ -150,6 +151,9 @@ export class PanjimController {
   readonly mayaDirector: MayaDirector;
   /** Maya's voice on or off (M). The heat stays either way. */
   readonly mayaToggle: PrefToggle;
+  /** Sound on or off (S), with the master volume beside it. Off until the first click whatever it says: browsers require one. */
+  readonly soundToggle: PrefToggle;
+  private readonly volumeSlider: HTMLInputElement;
   private nextPumpMs = 0;
 
   constructor(private readonly host: PanjimHost) {
@@ -186,12 +190,33 @@ export class PanjimController {
       { storageKey: "riptide-rising:maya-voice:v1", label: "Maya", shortcut: "M", defaultOn: true, className: "maya-toggle" },
       (on) => this.maya.setMuted(!on)
     );
+    this.soundToggle = new PrefToggle(
+      host.container,
+      { storageKey: "riptide-rising:sound", label: "Sound", shortcut: "S", defaultOn: true, className: "sound-toggle" },
+      (on) => {
+        setSoundEnabled(on);
+        this.volumeSlider.disabled = !on;
+      }
+    );
+    this.volumeSlider = document.createElement("input");
+    this.volumeSlider.type = "range";
+    this.volumeSlider.className = "sound-volume";
+    this.volumeSlider.min = "0";
+    this.volumeSlider.max = "100";
+    this.volumeSlider.step = "5";
+    this.volumeSlider.value = String(Math.round(soundVolume() * 100));
+    this.volumeSlider.disabled = !this.soundToggle.value;
+    this.volumeSlider.setAttribute("aria-label", "Sound volume");
+    this.volumeSlider.addEventListener("input", () => setSoundVolume(Number(this.volumeSlider.value) / 100));
+    this.volumeSlider.addEventListener("pointerdown", (event) => event.stopPropagation());
+    this.soundToggle.el.after(this.volumeSlider);
     document.addEventListener(
       "keydown",
       (event) => {
         if (event.ctrlKey || event.metaKey || event.altKey || isTyping(event)) return;
         if (event.key === "r" || event.key === "R") this.riskToggle.toggle();
         if (event.key === "m" || event.key === "M") this.mayaToggle.toggle();
+        if (event.key === "s" || event.key === "S") this.soundToggle.toggle();
       },
       { signal: this.keyAbort.signal }
     );
@@ -266,6 +291,8 @@ export class PanjimController {
     tips.attach(this.riskToggle.el, "riskToggle");
     if (!this.voicesLive) tips.attach(this.getReady.el, "getReady");
     tips.attach(this.mayaToggle.el, "mayaToggle");
+    tips.attach(this.soundToggle.el, "soundToggle");
+    tips.attach(this.volumeSlider, "soundVolume", () => ({ pct: this.volumeSlider.value }));
     const dismiss = this.maya.el.querySelector<HTMLElement>(".maya-dismiss");
     if (dismiss) tips.attach(dismiss, "mayaDismiss");
   }
@@ -1251,6 +1278,8 @@ export class PanjimController {
     this.keyAbort.abort();
     this.maya.dispose();
     this.mayaToggle.dispose();
+    this.soundToggle.dispose();
+    this.volumeSlider.remove();
     this.riskToggle.dispose();
     this.housesCounter.dispose();
     this.finaleCard.dispose();

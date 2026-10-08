@@ -1787,3 +1787,13 @@
   0%, 85% { opacity: 1; transform: translate(-50%, -100%); }
   100% { opacity: 0; transform: translate(-50%, -100%); }
 }
+
+/* The master volume, under the Sound switch. */
+.sound-volume {
+  pointer-events: auto;
+  width: 96px;
+  margin: -2px 4px 2px 0;
+  accent-color: #e8a64a;
+}
+.sound-volume:disabled { opacity: 0.4; }
+.sound-volume:focus-visible { outline: 2px solid #f2c35b; outline-offset: 2px; }

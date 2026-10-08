@@ -26,6 +26,8 @@ function seeded(key: string): number {
 export class TownDecor {
   readonly group = new THREE.Group();
   private readonly meshes: THREE.InstancedMesh[] = [];
+  /** Wind (0–1), its direction and the clock, for the gardens' trees to bend in a storm (vertex shader; no per-frame CPU work). */
+  private readonly sway = { uWind: { value: 0 }, uTime: { value: 0 }, uWindDir: { value: new THREE.Vector2(1, 0.3).normalize() } };
 
   constructor(town: TownLayout, heightAt: (coord: AxialCoord) => number) {
     const coordOf = (key: string): AxialCoord => {
@@ -36,6 +38,24 @@ export class TownDecor {
     // Gardens.
     if (town.gardens.size > 0) {
       const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9, vertexColors: true });
+      material.onBeforeCompile = (shader) => {
+        Object.assign(shader.uniforms, this.sway);
+        shader.vertexShader = shader.vertexShader
+          .replace("#include <common>", "#include <common>\nuniform float uWind;\nuniform float uTime;\nuniform vec2 uWindDir;")
+          .replace(
+            "#include <begin_vertex>",
+            `#include <begin_vertex>
+            #ifdef USE_INSTANCING
+              // Taller parts bend further, all the same way: the wind direction
+              // turned into this instance's own frame, plus a gusting wobble.
+              vec3 local = transpose(mat3(instanceMatrix)) * vec3(uWindDir.x, 0.0, uWindDir.y);
+              vec2 dir = normalize(local.xz + vec2(0.0001));
+              float h = max(0.0, position.y);
+              float gust = 0.75 + 0.25 * sin(uTime * 3.1 + instanceMatrix[3].x * 0.7 + instanceMatrix[3].z * 0.5);
+              transformed.xz += dir * h * h * uWind * gust * 0.55;
+            #endif`
+          );
+      };
       const gardens = new THREE.InstancedMesh(gardenGeometry(), material, town.gardens.size);
       gardens.name = "town-gardens";
       const matrix = new THREE.Matrix4();
@@ -51,6 +71,13 @@ export class TownDecor {
       gardens.instanceMatrix.needsUpdate = true;
       this.add(gardens);
     }
+  }
+
+  /** The storm's wind (0–1) and where it blows from the sea toward, for the garden trees. */
+  setWind(wind: number, nowMs: number, direction?: THREE.Vector2): void {
+    this.sway.uWind.value = wind;
+    this.sway.uTime.value = nowMs / 1000;
+    if (direction && direction.lengthSq() > 0) this.sway.uWindDir.value.copy(direction).normalize();
   }
 
   private add(mesh: THREE.InstancedMesh): void {
