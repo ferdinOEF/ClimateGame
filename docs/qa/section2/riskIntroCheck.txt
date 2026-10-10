@@ -1,0 +1,23 @@
+PASS  nothing plays before the first warning
+PASS  reached the first warning (heat-4)
+PASS  the sequence plays on the first warning
+PASS  High quality plays the full sequence
+PASS  the full sequence creates the droplets and the ball shader
+PASS  the build menu opened mid-sequence
+PASS  opening the build menu cancels it and leaves nothing behind ({"running":false,"end":"menu","canvasHidden":true,"balls":0,"button":"panjim-toggle risk-toggle on"})
+fps during the sequence, High, 1920x1080: 1.5 (worst frame 1300 ms)
+PASS  gate: plays on the first warning
+PASS  gate: played through storm 1
+PASS  gate: reached warning 2
+PASS  gate: does NOT play on warning 2 (risk tiles showing: 305)
+PASS  gate: played through storm 2
+PASS  gate: reached warning 3
+PASS  gate: does NOT play on warning 3 (risk tiles showing: 308)
+PASS  reduced motion: the reduced sequence
+PASS  reduced motion: no particle system and no shader were ever created
+PASS  reduced motion: it ends and leaves nothing behind
+PASS  Low quality: the flat sequence
+fps during the sequence, Low, 1920x1080: 1.5 (worst frame 833 ms)
+PASS  Low quality: no particle system and no shader were ever created
+PASS  Low quality: still none after a second play
+PASS  no console errors or warnings

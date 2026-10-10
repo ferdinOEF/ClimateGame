@@ -28,6 +28,7 @@ import { axialToWorld } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
 import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
+import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
 import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
 import { tooltipText } from "@ui/tooltip";
 import { Maya } from "@ui/panjim/maya";
@@ -112,6 +113,10 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
+  /** Plays the first-warning risk sequence over these tiles (ui/riskIntroFx.ts). */
+  startRiskIntro: (mode: RiskIntroMode, keys: string[]) => void;
+  /** Stops it at once, leaving the normal risk view. */
+  cancelRiskIntro: (reason: string) => void;
   /** Glides the camera to a board coordinate (fractional allowed); `close` also zooms in a little. Cancelled by any drag. */
   focusCamera: (coord: AxialCoord, close?: boolean, zoom?: number) => void;
   /** The map's named places, for Maya to call a spot by name. */
@@ -135,6 +140,8 @@ export class PanjimController {
   private readonly getReady = new GetReadyPanel();
   readonly fieldGuide: FieldGuide;
   private busy = false;
+  /** The first-warning risk sequence plays once a playthrough (core/riskIntro.ts). */
+  private readonly riskGate = new RiskIntroGate();
   /** A challenge that landed during the current time-lapse, staged once the clock stops. */
   private pendingChallenge: { challenge: ScheduledChallenge; outcome: ChallengeOutcome; failedIds: string[] } | null = null;
   /** The last readiness reading for each challenge before it landed, for telemetry. */
@@ -197,7 +204,10 @@ export class PanjimController {
     this.riskToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: true, className: "risk-toggle" },
-      () => this.renderHeat()
+      (on) => {
+        if (!on) this.host.cancelRiskIntro("risk hidden");
+        this.renderHeat();
+      }
     );
     this.mayaToggle = new PrefToggle(
       host.container,
@@ -390,7 +400,15 @@ export class PanjimController {
     }
     const undefended = this.run.exposureFor(next, true);
     const terrain = (key: string): string | undefined => this.host.state.placed.get(key)?.terrainId;
-    this.host.showHeat(buildHeatView(this.exposure, undefended, quartersLeft, defences, terrain));
+    const view = buildHeatView(this.exposure, undefended, quartersLeft, defences, terrain);
+    this.host.showHeat(view);
+    // The first warning of the playthrough gets the risk sequence, once, if
+    // nothing else is going on (it never waits for, or blocks, the player).
+    const hot = view.filter((tile) => tile.heat > 0).map((tile) => tile.key);
+    if (hot.length > 0 && !this.riskGate.spent && !this.busy && !this.host.uiBlocked() && this.riskGate.offer(next.id)) {
+      const reduced = this.motionToggle.value || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+      this.host.startRiskIntro(riskIntroMode(reduced, this.quality), hot);
+    }
   }
 
   /** Repaints the Outlook from the current quarter. */
@@ -638,6 +656,7 @@ export class PanjimController {
 
   /** 2050: the skyline reveal, the title, then the finale card; then the shell's results. */
   private async finale(): Promise<void> {
+    this.host.cancelRiskIntro("hazard");
     this.busy = true;
     this.syncControls();
     const result = this.result();
@@ -823,6 +842,7 @@ export class PanjimController {
 
   /** Repair a worn defence or damaged house: one quarter and part of its cost. */
   repair(coord: AxialCoord): boolean {
+    this.host.cancelRiskIntro("build");
     if (this.busy) return false;
     this.noteBoard();
     const outcome = this.run.repair(coord);
@@ -854,6 +874,7 @@ export class PanjimController {
   }
 
   build(coord: AxialCoord, elementId: string): boolean {
+    this.host.cancelRiskIntro("build");
     if (this.busy) return false;
     this.noteBoard();
     const outcome = this.run.build(coord, elementId);
@@ -865,6 +886,7 @@ export class PanjimController {
   }
 
   demolish(coord: AxialCoord): boolean {
+    this.host.cancelRiskIntro("build");
     if (this.busy) return false;
     this.noteBoard();
     const outcome = this.run.demolish(coord);
@@ -906,6 +928,7 @@ export class PanjimController {
       else if (steps.length > 0) steps[steps.length - 1].extra.push(event);
       else this.handleEvent(event);
     }
+    this.host.cancelRiskIntro("time passing");
     this.busy = true;
     this.syncControls();
     const handled = new Set<number>();

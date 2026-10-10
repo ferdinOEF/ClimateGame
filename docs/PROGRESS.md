@@ -7773,3 +7773,75 @@ in Section 1, all fixed (details in `docs/QA_REPORT.md`).
   - the flash check now waits on storm time.
 - **Results:** all gate checks pass. Firefox and WebKit are not available
   here.
+
+## Section 2 — risk area: fill, breaking wave, and the fold into the button — DONE
+
+**What plays, and when:**
+- On the **first warning of a playthrough only** (`RiskIntroGate` in
+  `src/core/riskIntro.ts`), the risk tiles get a sequence over the normal
+  risk view.
+- Every later warning shows the normal risk view only: the red fill and
+  outline the heat overlay already draws.
+
+**The sequence:**
+- **Fill:** the area fills red to 50% over 0.4 s.
+- **Breaking wave, 0–3 s:**
+  - The crest crosses the area left to right, eased (not linear). It
+    crosses **row by row**, from each row's own left boundary to its own
+    right boundary. The coastal risk strip lies diagonally on screen, and a
+    single vertical line crossing its bounding box read as broken.
+  - The crest is a dark body (#4a0f14) trailing behind a curling lip, with
+    a broken foam edge and flecks just in front.
+  - Behind it, the fill eases from 50% down to its rest of 20%.
+- **Droplets:** at the right boundary the crest bursts into 56 translucent
+  droplets (round, sizes 2.5–7 px, lives 0.6–1.1 s), thrown up and then
+  falling.
+- **Rest:** the sheet rests at 20%.
+- **Fold, at 10 s:**
+  - Over 0.8 s the sheet gathers toward the centre of its on-screen part.
+    The outer edges swing round further than the middle, so it rolls up
+    rather than shrinking.
+  - It becomes the ball: a small WebGL sphere of swirling, turning red and
+    blue.
+- **Flight:** 1.0 s on a curved (quadratic) arc to Show Risk, shrinking
+  from 34 px to 11 px.
+- **Landing:** the ball lands with one ripple, and the button swells once.
+
+**Every value is in `src/data/riskIntro.json`:**
+- colours;
+- the 50% and 20% opacities;
+- 0.4 / 3 / 10 / 0.8 / 1.0 s;
+- the droplet count;
+- the ball sizes.
+
+**Fallbacks:**
+- **Reduced motion** (the system setting or Calm motion): the fill
+  appears, eases to 20% over 1 s, fades out, and the button glows once in
+  place. No wave, fold or flight.
+- **Low quality:** flat. The sheet eases to 20% and rests; at 10 s a plain
+  2D red/blue disc tweens straight to the button.
+- **Neither creates** the particle system or the ball shader
+  (`componentsFor`, plus the counters checked in the browser).
+- **Cancelling:** opening the build menu, the brief or help, building,
+  demolishing, repairing, time passing, a storm or the finale, or hiding
+  the risk view cancels it at once. No sheet, ball, disc or button class is
+  left behind.
+- **It never takes input:** the canvas and the ball are
+  `pointer-events: none`.
+- **Flash safety:** every opacity moves once and smoothly; the button
+  pulses once.
+
+**Checks:**
+- `tests/riskIntro.test.ts` (8 tests):
+  - first warning only;
+  - no particles or shader in reduced motion or on Low;
+  - the timeline values, and eased motion;
+  - the reduced and flat paths;
+  - every timing in data.
+- `tools/riskIntroCheck.ts`, in the browser:
+  - plays on warning 1 and not on warnings 2 and 3 (the run is played
+    through storms 1 and 2);
+  - the contact sheet (20 held frames);
+  - the reduced and Low modes, and the build-menu cancel;
+  - fps on High and Low;
+  - no console errors.

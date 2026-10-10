@@ -1768,3 +1768,84 @@
 .calm-motion .storm-flash.on { animation: none; }
 .calm-motion .maya,
 .calm-motion .maya * { animation: none !important; transition: none !important; }
+
+/* ---- First-warning risk sequence (ui/riskIntroFx.ts) ----------------------- */
+
+/* Over the board, under the labels (z 8) and the HUD; never takes a pointer. */
+.risk-intro-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+
+.risk-intro-canvas[hidden] {
+  display: none;
+}
+
+/* The ball flies over the HUD to land on the Show Risk button. */
+.risk-intro-ball,
+.risk-intro-disc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+}
+
+.risk-intro-ball[hidden] {
+  display: none;
+}
+
+/* Low quality: a plain flat disc, half red and half blue. */
+.risk-intro-disc {
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e2453a 0 50%, #2f6fd8 50% 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/*
+  The landing: one ripple ring spreading from the button, and one gentle
+  swell of the button itself. Once; no blinking (flash safety).
+*/
+.risk-toggle.risk-intro-landing {
+  animation: risk-intro-swell 600ms ease-out 1;
+}
+
+.risk-toggle.risk-intro-landing::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(226, 69, 58, 0.85);
+  pointer-events: none;
+  animation: risk-intro-ripple 600ms ease-out 1 forwards;
+}
+
+/* Reduced motion: no swell, no ripple; a single soft glow that fades. */
+.risk-toggle.risk-intro-pulse {
+  animation: risk-intro-glow 900ms ease-out 1;
+}
+
+@keyframes risk-intro-swell {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes risk-intro-ripple {
+  0% { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+
+@keyframes risk-intro-glow {
+  0% { box-shadow: 0 0 0 0 rgba(226, 69, 58, 0); }
+  40% { box-shadow: 0 0 0 4px rgba(226, 69, 58, 0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(226, 69, 58, 0); }
+}
+
+.risk-toggle {
+  position: relative;
+}
