@@ -28,7 +28,7 @@ import { closeSources } from "@ui/sourcesScreen";
 import { audioStateForTest, playSound } from "@ui/audioHooks";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
-import { MapLabelLayer } from "@ui/mapLabels";
+import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
 import { MapAttribution } from "@ui/attribution";
 import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
@@ -675,7 +675,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // cropped away — so an unfiltered label would be pinned to sea level over
     // empty space, naming a place that is not on the board. No level crops
     // today; this is guarding the feature, not a live fault.
-    levelMap.landmarks.filter((landmark) => presentTileKeys.has(`${landmark.q},${landmark.r}`))
+    labelsForMap(levelMap).filter((label) => presentTileKeys.has(`${label.q},${label.r}`))
   );
   /**
    * The OpenStreetMap credit, on any board whose geography was derived from
@@ -2337,6 +2337,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __missingTooltipsForTest: (): string[] => missingTooltips(container),
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
+    __labelsForTest: mapLabels,
     // Builds a specific element at a specific coord (rather than
     // reverse-engineering screen-pixel clicks through the popover).
     __buildForTest: (q: number, r: number, elementId: string, animate = true): boolean => {

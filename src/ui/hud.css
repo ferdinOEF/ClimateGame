@@ -1821,6 +1821,49 @@ html, body {
   transition: opacity 220ms ease-out;
 }
 
+/*
+  A label the placer did not draw this frame (labelPlacement.ts) is hidden at
+  once, never faded: a label fading out over another would overlap it.
+*/
+.map-label:not(.shown) {
+  visibility: hidden;
+  opacity: 0 !important;
+  transition: none;
+}
+
+/*
+  Locality names: our own ink, not a pill. Letterspaced small caps in a dark
+  warm ink (#181009, 10% darker than the darkest text on the OpenStreetMap
+  raster; see docs/PROGRESS.md, Section 1), with a pale halo so a name reads
+  over land and water alike.
+*/
+.map-label.locality {
+  padding: 1px 3px;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant: small-caps;
+  text-transform: none;
+  letter-spacing: 0.14em;
+  color: #181009;
+  background: none;
+  border: none;
+  border-radius: 0;
+  backdrop-filter: none;
+  text-shadow:
+    0 0 2px #fbf4e4,
+    1px 1px 0 #fbf4e4,
+    -1px 1px 0 #fbf4e4,
+    1px -1px 0 #fbf4e4,
+    -1px -1px 0 #fbf4e4,
+    0 0 6px rgba(251, 244, 228, 0.9);
+}
+
+.map-label.locality.rank-2 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .map-label {
     transition: none;

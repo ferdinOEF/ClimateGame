@@ -1,73 +1,151 @@
 import type { AxialCoord } from "@core/hex";
+import { placeLabels, type Box, type LabelCandidate } from "./labelPlacement";
 
 /**
- * Place names floated over the board.
- *
- * Without these, a map of Panaji is a pretty arrangement of coloured hexes that
- * the player has no reason to connect to anywhere. With them, the sand on the
- * west edge says "Miramar Beach" and the headland in the south-west says "Dona
- * Paula", and the thing the game is actually about — that this is a real place
- * with a real coast to lose — becomes visible rather than merely claimed in
- * the level brief.
+ * Names floated over the board: monuments, and the localities a player from
+ * Panjim will look for (Campal, Altinho, Fontainhas...).
  *
  * DOM, NOT 3D TEXT
  *
- * Three ways to put a word on a hex: a texture atlas, extruded geometry, or an
- * absolutely positioned element over the canvas. The first two cost a font
- * pipeline and render blurry at the zoom levels this camera uses; the third is
- * crisp at every zoom, costs nothing to load, inherits the HUD's typography
- * for free, and is readable by a screen reader. The only thing it costs is a
- * screen-space projection per label per frame, and there are sixteen labels.
+ * An absolutely positioned element over the canvas is crisp at every zoom,
+ * costs nothing to load, inherits the HUD's typography and stays out of the
+ * Three.js scene. The OSM raster underneath also prints names, but they are
+ * baked into its pixels at the overlay's opacity and cannot be darkened on
+ * their own; these are our own, in our own ink.
  *
- * WHY THEY FADE RATHER THAN TOGGLE
+ * NO LABEL EVER OVERLAPS ANOTHER, OR THE HUD, OR MAYA
  *
- * A label that pops in and out as the camera moves is worse than no label.
- * These fade on three things — distance from the screen edge, whether a hazard
- * is sweeping, and how far back the camera is — so panning and zooming reveal
- * names smoothly rather than flickering them.
+ * Every frame the labels are placed by `placeLabels` (labelPlacement.ts):
+ * each tries its home position and a few fallbacks, and is not drawn at all
+ * if none is free. Maya and every HUD panel are obstacles, so where a name
+ * would touch them it is the name that goes. Monument cards outrank major
+ * localities, which outrank minor ones; a label already showing keeps a small
+ * advantage, so names do not blink as the camera moves.
+ * `tools/labelOverlapTest.ts` checks this in a browser at three window sizes.
  */
-
 export interface MapLabel {
   name: string;
   q: number;
   r: number;
+  /** "landmark": a monument or a named place on a map without localities (pill style). "locality": a neighbourhood name (map ink). */
+  kind: "landmark" | "locality";
+  /** 0 landmark, 1 major locality, 2 minor locality. */
+  rank: 0 | 1 | 2;
 }
 
 /** Where a label's anchor tile currently sits on screen, in CSS pixels relative to the canvas. */
 export type ProjectToScreen = (coord: AxialCoord) => { x: number; y: number; depth: number } | null;
 
-/** Camera distance at which labels are fully visible, and the distance past which they are gone. */
+/** Camera distance at which landmark cards are fully visible, and the distance past which they are gone. */
 const LABEL_FADE_NEAR = 26;
 const LABEL_FADE_FAR = 40;
+/** Minor localities appear only when the camera is closer than this. */
+const MINOR_LOCALITY_DISTANCE = 30;
 
-/** Three's `MathUtils.clamp`, rewritten rather than imported — this module is DOM-only and has no other reason to pull in Three. */
+/**
+ * Everything a label must keep clear of. Maya and the HUD sit above the map,
+ * so a name that would touch one of them is dropped. A broad list on purpose:
+ * a panel missing from it would let a name slide under it.
+ */
+export const LABEL_OBSTACLES = [
+  ".maya-figure-wrap",
+  ".maya-bubble",
+  ".maya-badge",
+  ".instrument-cluster",
+  ".coin-jar",
+  ".field-guide-button",
+  ".panjim-clock",
+  ".hud-chrome",
+  ".houses-counter",
+  ".panjim-toggles",
+  ".objectives-panel",
+  ".get-ready",
+  ".nugget-badge",
+  ".map-corner",
+  ".map-layer-control",
+  ".empty-prompt",
+  ".era-banner",
+  ".build-popover",
+  ".hud-tooltip",
+  ".field-guide-toast",
+  ".aftermath-card",
+  ".field-guide-card",
+  ".finale-card",
+  ".brief-card",
+  ".replay-card",
+  ".tutorial-coach",
+  ".forecast-label",
+  ".storm-card",
+  ".hud-corner"
+];
+
+/** How often the HUD's rectangles are re-read, in milliseconds (reading them every frame would force layout). */
+const OBSTACLE_REFRESH_MS = 120;
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+interface Entry {
+  id: string;
+  label: MapLabel;
+  node: HTMLElement;
+  w: number;
+  h: number;
+}
+
+/**
+ * The labels a map shows: its monuments and localities when it has
+ * localities; otherwise its landmarks as before (the Tutorial's sea, beach,
+ * estuary, river and land). A locality that shares a name with a monument is
+ * left to the monument.
+ */
+export function labelsForMap(map: {
+  landmarks: readonly { name: string; q: number; r: number }[];
+  monuments: readonly { name: string; q: number; r: number }[];
+  localities: readonly { name: string; q: number; r: number; rank: 1 | 2 }[];
+}): MapLabel[] {
+  if (map.localities.length === 0) return map.landmarks.map((l) => ({ name: l.name, q: l.q, r: l.r, kind: "landmark", rank: 0 }));
+  const monumentNames = new Set(map.monuments.map((m) => m.name));
+  return [
+    ...map.monuments.map((m): MapLabel => ({ name: m.name, q: m.q, r: m.r, kind: "landmark", rank: 0 })),
+    ...map.localities.filter((l) => !monumentNames.has(l.name)).map((l): MapLabel => ({ name: l.name, q: l.q, r: l.r, kind: "locality", rank: l.rank }))
+  ];
+}
+
 export class MapLabelLayer {
   private readonly el: HTMLElement;
-  private readonly entries: { label: MapLabel; node: HTMLElement }[] = [];
+  private readonly entries: Entry[] = [];
   private visible = true;
-  /** True once every label has been hidden by zoom, so the fade-out writes styles once rather than every frame. */
-  private fadedOut = false;
+  private measured = false;
+  private obstacles: Box[] = [];
+  private obstaclesAt = -Infinity;
+  /** Last frame's placements: id → offset used. */
+  private previous = new Map<string, number>();
+  private readonly onResize = (): void => {
+    this.measured = false;
+    this.obstaclesAt = -Infinity;
+  };
 
-  constructor(container: HTMLElement, labels: readonly MapLabel[]) {
+  constructor(private readonly container: HTMLElement, labels: readonly MapLabel[]) {
     this.el = document.createElement("div");
     this.el.className = "map-labels";
     // Decorative duplication of what the level brief already says in prose, so
     // it is skipped rather than read out as a list of bare place names.
     this.el.setAttribute("aria-hidden", "true");
 
-    for (const label of labels) {
+    labels.forEach((label, index) => {
       const node = document.createElement("div");
-      node.className = "map-label";
+      node.className = label.kind === "locality" ? `map-label locality rank-${label.rank}` : "map-label";
       node.textContent = label.name;
       this.el.appendChild(node);
-      this.entries.push({ label, node });
-    }
+      this.entries.push({ id: `${index}:${label.name}`, label, node, w: 0, h: 0 });
+    });
 
     container.appendChild(this.el);
+    window.addEventListener("resize", this.onResize);
+    // Web fonts change label widths once they load.
+    void document.fonts?.ready.then(() => this.onResize());
   }
 
   /** Hides every label — used while a hazard is resolving, when the board needs the player's whole attention. */
@@ -75,76 +153,91 @@ export class MapLabelLayer {
     if (this.visible === visible) return;
     this.visible = visible;
     this.el.hidden = !visible;
+    if (!visible) this.previous.clear();
+  }
+
+  /** Last frame's candidates (name, anchor, size) and which were drawn, for the tests. */
+  lastFrame: { name: string; x: number; y: number; w: number; h: number; drawn: boolean }[] = [];
+
+  /** How long the last `update` took, in milliseconds (the perf check reads it). */
+  lastCostMs = 0;
+
+  /** The names currently drawn, for the tests. */
+  shownNames(): string[] {
+    return this.entries.filter((e) => this.previous.has(e.id)).map((e) => e.label.name);
+  }
+
+  private measure(): void {
+    for (const entry of this.entries) {
+      entry.w = entry.node.offsetWidth;
+      entry.h = entry.node.offsetHeight;
+    }
+    this.measured = this.entries.every((e) => e.w > 0) || this.entries.length === 0;
+  }
+
+  private readObstacles(nowMs: number): void {
+    if (nowMs - this.obstaclesAt < OBSTACLE_REFRESH_MS) return;
+    this.obstaclesAt = nowMs;
+    const origin = this.container.getBoundingClientRect();
+    const boxes: Box[] = [];
+    for (const el of Array.from(this.container.querySelectorAll<HTMLElement>(LABEL_OBSTACLES.join(",")))) {
+      if (el.closest("[hidden]") || this.el.contains(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      const style = getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
+      boxes.push({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height });
+    }
+    this.obstacles = boxes;
   }
 
   /**
-   * Repositions every label. Called once per frame from the render loop.
+   * Places every label. Called once per frame from the render loop.
    *
    * `project` returns null for a tile behind the camera, which cannot happen
-   * with this camera rig but is cheap to handle and means a future free-orbit
-   * camera does not put labels on the wrong side of the world.
+   * with this camera rig but is cheap to handle.
    */
   update(project: ProjectToScreen, viewportWidth: number, viewportHeight: number, cameraDistance: number): void {
     if (!this.visible) return;
+    const started = performance.now();
+    if (!this.measured) this.measure();
+    this.readObstacles(performance.now());
 
-    /*
-     * Labels fade out as the camera pulls back.
-     *
-     * Panaji carries sixteen of them. Pinned on at every zoom they overlap
-     * into an unreadable stack the moment the whole board is on screen, and
-     * they cover the buildings they are naming — which is backwards, because
-     * the buildings themselves are the better label once you are close enough
-     * to see them. Below `LABEL_FADE_NEAR` they are fully on; past
-     * `LABEL_FADE_FAR` they are gone and the board is just a board.
-     */
-    const zoomFade = clamp(
-      (LABEL_FADE_FAR - cameraDistance) / (LABEL_FADE_FAR - LABEL_FADE_NEAR),
-      0,
-      1
-    );
-    if (zoomFade <= 0) {
-      if (!this.fadedOut) {
-        for (const { node } of this.entries) node.style.opacity = "0";
-        this.fadedOut = true;
-      }
-      return;
-    }
-    this.fadedOut = false;
+    // Landmark cards fade with distance: pinned on at every zoom they would
+    // stack over the buildings they name, which are the better label up close.
+    const landmarkFade = clamp((LABEL_FADE_FAR - cameraDistance) / (LABEL_FADE_FAR - LABEL_FADE_NEAR), 0, 1);
 
-    for (const { label, node } of this.entries) {
+    const candidates: LabelCandidate[] = [];
+    const byId = new Map<string, Entry>();
+    for (const entry of this.entries) {
+      const { label } = entry;
+      if (label.kind === "landmark" && landmarkFade <= 0) continue;
+      if (label.rank === 2 && cameraDistance > MINOR_LOCALITY_DISTANCE) continue;
       const screen = project({ q: label.q, r: label.r });
-      if (!screen) {
-        node.style.opacity = "0";
-        continue;
-      }
-
-      // A margin rather than a hard viewport test: a label whose anchor is
-      // just off-screen should still be drawn, partly clipped, because its
-      // text extends inward. Cutting at exactly the edge makes names vanish
-      // while still half visible.
-      const margin = 80;
-      const onScreen =
-        screen.x > -margin && screen.x < viewportWidth + margin && screen.y > -margin && screen.y < viewportHeight + margin;
-      if (!onScreen) {
-        node.style.opacity = "0";
-        continue;
-      }
-
-      node.style.transform = `translate(-50%, -100%) translate(${screen.x.toFixed(1)}px, ${screen.y.toFixed(1)}px)`;
-
-      // Fade out as a label approaches the edge, so panning reveals names
-      // rather than flicking them on. 1 at the centre two-thirds, falling to 0
-      // over the outer sixth.
-      const edgeFade = Math.min(
-        1,
-        Math.min(screen.x, viewportWidth - screen.x) / (viewportWidth * 0.14),
-        Math.min(screen.y, viewportHeight - screen.y) / (viewportHeight * 0.14)
-      );
-      node.style.opacity = (Math.max(0, Math.min(1, edgeFade)) * zoomFade).toFixed(2);
+      if (!screen) continue;
+      candidates.push({ id: entry.id, priority: label.rank, anchorX: screen.x, anchorY: screen.y, w: entry.w, h: entry.h });
+      byId.set(entry.id, entry);
     }
+
+    const placements = placeLabels(candidates, this.obstacles, { width: viewportWidth, height: viewportHeight }, this.previous);
+    const next = new Map<string, number>();
+    for (const p of placements) {
+      next.set(p.id, p.offset);
+      const entry = byId.get(p.id)!;
+      entry.node.style.transform = `translate(${p.box.x.toFixed(1)}px, ${p.box.y.toFixed(1)}px)`;
+      entry.node.style.opacity = entry.label.kind === "landmark" ? landmarkFade.toFixed(2) : "1";
+      entry.node.classList.add("shown");
+    }
+    for (const entry of this.entries) {
+      if (!next.has(entry.id)) entry.node.classList.remove("shown");
+    }
+    this.previous = next;
+    this.lastCostMs = performance.now() - started;
+    this.lastFrame = candidates.map((c) => ({ name: byId.get(c.id)!.label.name, x: Math.round(c.anchorX), y: Math.round(c.anchorY), w: c.w, h: c.h, drawn: next.has(c.id) }));
   }
 
   dispose(): void {
+    window.removeEventListener("resize", this.onResize);
     this.el.remove();
   }
 }

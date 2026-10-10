@@ -27,7 +27,8 @@
     "mapgen:basemap": "tsx tools/mapgen/fetchPanajiBasemap.ts",
     "bots": "tsx tools/panjimBots/index.ts",
     "verify:maya": "tsx tools/verifyMaya.ts",
-    "test:layout": "tsx tools/mayaLayoutTest.ts"
+    "test:layout": "tsx tools/mayaLayoutTest.ts",
+    "test:labels": "tsx tools/labelOverlapTest.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",

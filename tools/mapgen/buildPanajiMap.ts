@@ -213,6 +213,36 @@ const PLACE_LABELS: { name: string; lat: number; lon: number }[] = [
 ];
 
 /**
+ * Locality names for the label layer (ui/mapLabels.ts), drawn in our own ink
+ * above the board rather than read off the raster.
+ *
+ * Rank 1 is a major locality, always a candidate for a label; rank 2 a minor
+ * one, shown only when the camera is close. Positions are the centres of the
+ * names as OpenStreetMap prints them on the basemap
+ * (`tools/mapgen/panaji-basemap.jpg`), measured at full resolution and
+ * converted back through its projection, the same method as `PLACE_LABELS`.
+ * A locality whose position falls outside the board is left out rather than
+ * moved onto it. Atal Setu is a bridge, not a locality; it is kept as a minor
+ * label because the board has always named it.
+ */
+const LOCALITIES: { name: string; lat: number; lon: number; rank: 1 | 2 }[] = [
+  { name: "Campal", lat: 15.4933, lon: 73.8195, rank: 1 },
+  { name: "Altinho", lat: 15.4878, lon: 73.8262, rank: 1 },
+  { name: "Fontainhas", lat: 15.4967, lon: 73.831, rank: 1 },
+  { name: "Miramar", lat: 15.4828, lon: 73.8093, rank: 1 },
+  { name: "Taleigao", lat: 15.4702, lon: 73.8226, rank: 1 },
+  { name: "St Cruz", lat: 15.4731, lon: 73.8468, rank: 1 },
+  { name: "Merces", lat: 15.4829, lon: 73.8538, rank: 1 },
+  { name: "Dona Paula", lat: 15.4582, lon: 73.8047, rank: 1 },
+  { name: "Sao Tome", lat: 15.4994, lon: 73.8322, rank: 2 },
+  { name: "Patto", lat: 15.4952, lon: 73.8354, rank: 2 },
+  { name: "Santa Inez", lat: 15.4869, lon: 73.8175, rank: 2 },
+  { name: "Caranzalem", lat: 15.4677, lon: 73.808, rank: 2 },
+  { name: "Ribandar", lat: 15.5029, lon: 73.8656, rank: 2 },
+  { name: "Atal Setu", lat: 15.5028, lon: 73.8366, rank: 2 }
+];
+
+/**
  * The four zones the Panjim 2050 challenges resolve through, as polygons in
  * latitude and longitude traced around real places.
  *
@@ -1477,6 +1507,14 @@ async function main(): Promise<void> {
       })
     ],
     monuments,
+    // Locality names for the label layer (see LOCALITIES): only those that land on the board.
+    localities: LOCALITIES.flatMap((place) => {
+      const { x, z } = geoToWorld(place.lat, place.lon);
+      const coord = worldToAxial(x, z, HEX_SIZE);
+      const onBoard = cells.some((cell) => cell.coord.q === coord.q && cell.coord.r === coord.r);
+      if (!onBoard) console.log(`locality ${place.name} falls off the board; left out`);
+      return onBoard ? [{ name: place.name, ...coord, rank: place.rank }] : [];
+    }),
     // The Panjim 2050 challenge zones (see ZONES).
     zones: assignZones(cells),
     // Major roads and bridges, read from the OSM picture (see findRoads).

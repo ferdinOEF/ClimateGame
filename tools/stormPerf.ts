@@ -8,6 +8,7 @@
  * the useful readings are the relative ones and the call/triangle counts.
  *
  * Usage: npx tsx tools/stormPerf.ts > docs/qa/perf.txt
+ * PERF_HAZARDS=calm (comma-separated) measures only those states.
  */
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
@@ -59,7 +60,7 @@ async function main(): Promise<void> {
       args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--enable-precise-memory-info"]
     });
     for (const quality of QUALITIES) {
-      for (const hazard of HAZARDS) {
+      for (const hazard of HAZARDS.filter((h) => !process.env.PERF_HAZARDS || process.env.PERF_HAZARDS.split(",").includes(h.name))) {
         const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
         await context.addInitScript(`try { localStorage.setItem("riptide-rising:quality", "${quality}"); } catch {}`);
         const page = await context.newPage();
