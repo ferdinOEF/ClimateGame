@@ -65,6 +65,15 @@ async function assertClear(page: Page, label: string, expectBubble: boolean): Pr
   await page.waitForTimeout(450);
   // A move fades her out and back in at the new spot; measure once she has arrived.
   for (let i = 0; i < 40 && (await page.evaluate("Boolean(document.querySelector('.maya.hopping'))")); i++) await page.waitForTimeout(100);
+  // Her bubble fades in over 220 ms; under software GL a slow first frame can leave it at
+  // opacity 0 when measured. Wait (up to 3 s) for the fade to finish; it still fails if it never shows.
+  if (expectBubble) {
+    for (let i = 0; i < 30; i++) {
+      const settled = await page.evaluate(`(() => { const b = document.querySelector(".maya-bubble"); return Boolean(b) && !b.closest("[hidden]") && Number(getComputedStyle(b).opacity) > 0.99; })()`);
+      if (settled) break;
+      await page.waitForTimeout(100);
+    }
+  }
   const { maya, others, view } = await measure(page);
   checks++;
   const problems: string[] = [];

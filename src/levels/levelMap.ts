@@ -123,6 +123,12 @@ export interface GameMap {
    * `src/render/monumentGeometry.ts`.
    */
   monuments: { id: string; name: string; category: string; kind: string; q: number; r: number }[];
+  /**
+   * Locality names for the label layer: rank 1 a major locality (always a
+   * candidate), rank 2 a minor one (only when the camera is close). Empty on
+   * maps without them, which then label their `landmarks` instead.
+   */
+  localities: { name: string; q: number; r: number; rank: 1 | 2 }[];
   /** Panjim 2050 challenge zones, from the map generator. Empty on maps without them. */
   zones: ZoneDef[];
   /** Land tiles a major road runs through, read from OpenStreetMap by the generator. Decoration and layout only. Empty on maps without them. */
@@ -146,6 +152,7 @@ interface MapFileShape {
   focus: { q: number; r: number };
   landmarks: { name: string; q: number; r: number }[];
   monuments?: { id: string; name: string; category: string; kind: string; q: number; r: number }[];
+  localities?: { name: string; q: number; r: number; rank: 1 | 2 }[];
   zones?: ZoneDef[];
   roads?: [number, number][];
   bridges?: [number, number][];
@@ -166,6 +173,7 @@ function fromFile(file: unknown): GameMap {
     focus: { q: data.focus.q, r: data.focus.r },
     landmarks: data.landmarks ?? [],
     monuments: data.monuments ?? [],
+    localities: data.localities ?? [],
     zones: data.zones ?? [],
     roads: data.roads ?? [],
     bridges: data.bridges ?? [],
@@ -214,6 +222,7 @@ const LEGACY_MAP: GameMap = (() => {
     focus,
     landmarks: [],
     monuments: [],
+    localities: [],
     zones: [],
     tiles: data.tiles.map((tile) => ({ coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }))
   };

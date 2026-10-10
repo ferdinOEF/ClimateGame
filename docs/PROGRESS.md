@@ -7660,3 +7660,116 @@ seeds:
   already switched off.
 
 **Checks:** tsc is clean; all tests pass; the build passes.
+
+# City, hill, risk wave and mechanics (four sections)
+
+**Safety copy:** the tag `pre-city-hill-mechanics` marks the base `f26cd0a`.
+This session's git proxy refuses tag pushes (HTTP 403), so the tag is
+local and the same commit is on GitHub as the branch
+`backup/pre-city-hill-mechanics`. The `pre-section-N` tags follow the same
+pattern.
+
+**Precondition:** everything the brief lists was already on master, from
+PR #10:
+- the Maya layout fix;
+- the sourced facts;
+- the cream "Brought to you by" strip;
+- the 21% OSM default;
+- the hazard visuals.
+
+## Section 1 — locality names as our own label layer — DONE
+
+**Where the names come from:**
+- The OSM raster (`public/maps/panaji-osm.webp`) has its names baked into
+  the pixels, so they cannot be darkened on their own. They were left
+  alone.
+- The board now carries its own names: `localities: [{ name, q, r, rank }]`
+  in `src/data/maps/panaji.json`, written by the generator
+  (`LOCALITIES` in `tools/mapgen/buildPanajiMap.ts`).
+
+**Localities:**
+- Each position is the centre of the name as OpenStreetMap prints it on
+  the checked-in basemap (`tools/mapgen/panaji-basemap.jpg`), measured at
+  full resolution and converted back through its projection. This is the
+  method the existing neighbourhood labels used.
+- Every one lands on a board tile. A locality off the board would be left
+  out, not moved.
+- **Rank 1:** Campal, Altinho, Fontainhas, Miramar, Taleigao, St Cruz,
+  Merces, Dona Paula.
+- **Rank 2:** Sao Tome, Patto, Santa Inez, Caranzalem, Ribandar.
+- **Atal Setu** (a bridge, not a locality) is kept as a minor label
+  because the board has always named it.
+- **Dona Paula:** the locality is dropped in favour of the monument card
+  of the same name.
+- **Regenerating** the map changed nothing else in it (checked key by key).
+
+**The ink:**
+- The darkest text on the OSM raster is the street-name glyph cores,
+  measured at **rgb(21, 22, 19), #151613** (relative luminance 0.0078).
+  The suburb names it prints are lighter: rgb(118, 118, 116), luminance
+  0.181.
+- 10% darker (each channel × 0.9) is **#131411** (luminance 0.0068).
+- The ink used is that, warmed: **#181009**. Its luminance (0.0058) is no
+  higher than #131411's.
+- The halo is #fbf4e4, contrast 17.2:1 against the ink.
+- The names are letterspaced small caps: 14 px for rank 1, 12 px for
+  rank 2.
+- The raster's opacity is unchanged (21%).
+
+**Zoom rules:**
+- Rank 1 names are always candidates.
+- Rank 2 names appear only when the camera is closer than 30 units.
+- Monument cards (the existing pills) keep their fade between 26 and 40
+  units.
+
+**The overlap rule** (`src/ui/labelPlacement.ts`, pure and unit-tested):
+- Each label tries its home position (centred above its tile), then four
+  fallbacks: below, right, left and higher.
+- The first box that is fully on screen and touches no placed label and no
+  obstacle wins; otherwise the label is not drawn.
+- **Order:** monument cards first, then rank 1, then rank 2. Within a
+  class, labels already showing come first, then the data's order. A
+  showing label tries its last offset first, so names neither blink nor
+  hop.
+- **Obstacles:** Maya's figure, bubble and badge, and every HUD panel,
+  re-read every 120 ms.
+- **Visibility:** a dropped label is hidden at once. Only fade-ins
+  animate, so a label fading out can never overlap one fading in.
+- The Tutorial keeps its own five labels (Open sea, Beach, Estuary, River,
+  Land) through the same engine.
+
+**Permanent test:** `npm run test:labels` (`tools/labelOverlapTest.ts`).
+- **What it covers:**
+  - 1366×768, 1920×1080 and 2560×1440;
+  - the opening view, one and two wheel steps in, and after a drag-pan;
+  - with Maya talking, and with Maya out on the board in a warning jump;
+  - the Tutorial.
+- **How it checks:** it reads back every drawn label's box and fails on
+  any label–label, label–HUD or label–Maya intersection, or a label
+  leaving the window.
+- **Result: 19 of 19 views pass.**
+- **Cost:** the label layer takes about 0.6 ms a frame (median), with 3–7
+  ms peaks on the frames that re-read the HUD's rectangles.
+
+**What gets dropped** (full lists in `docs/qa/section1/labels.txt`):
+- **Opening view:** only the localities near the city show:
+  - 1366: Campal, Altinho and Fontainhas;
+  - 1920: also Merces;
+  - 2560: also Miramar.
+- **Miramar at 1366 and 1920:** dropped because Maya's greeting bubble is
+  where it would go.
+- **Taleigao, St Cruz and Dona Paula:** off screen in that view.
+- **Close in:** 15–18 labels show, monument cards first. The minor
+  localities show where they fit.
+
+**Review and QA:** an independent reviewer found 3 MAJOR and 8 MINOR issues
+in Section 1, all fixed (details in `docs/QA_REPORT.md`).
+- **MAJOR:**
+  - obstacles are now read every frame;
+  - the test can no longer pass with nothing drawn;
+  - Dona Paula no longer vanishes when zoomed out.
+- **Two QA tools were also fixed:**
+  - the Maya layout test's fade-in wait now applies to every check;
+  - the flash check now waits on storm time.
+- **Results:** all gate checks pass. Firefox and WebKit are not available
+  here.

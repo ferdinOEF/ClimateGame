@@ -278,3 +278,123 @@ findings, each verified and fixed:
 - **The finale's ~40%:** not achievable without a model change (above).
 - **The moderate axe `region` rule** (content outside landmarks) remains on
   the game screens, as before.
+
+---
+
+# Section 1 — locality names as our own label layer
+
+Branch `section-1-locality-labels` off master `f26cd0a` (tag
+`pre-city-hill-mechanics`). Headless Chromium with software GL, as above.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build | Clean. 383 tests pass (6 skipped). 11 new tests in `labelPlacement.test.ts`. |
+| Label overlap test (`npm run test:labels`, permanent) | **25 of 25 pass.** The 19 settled views are 1366, 1920 and 2560 × the opening view, two zoom steps, after a pan, Maya talking, Maya on the board, plus the Tutorial. The other 6 are frame-by-frame passes during a drag-pan and during Maya's hop, at each size. No two labels touch, and no label touches the HUD or Maya, in any view or frame. Each Panaji view draws at least two locality names. |
+| Label-layer cost | About 0.6 ms a frame (median); worst frame 6.8 ms, under SwiftShader. |
+| Maya layout (`npm run test:layout`) | 105 of 105, three runs in a row (after the fade-in wait below). |
+| Walkthrough (menu, Tutorial, Panaji) | Clean, no console errors. The Tutorial loads and plays. |
+| Functional and axe (`docs/qa/section1/functional.md`) | See the bottom of this entry. |
+| Frame rate at 1920×1080, calm board (`docs/qa/section1/perf.txt`) | Low 1.7, Medium 1.9, High 1.7 fps. Draw calls 42 / 35 / 33. Software GL, so these show only that the layer adds no draw calls. Real-GPU frame rate cannot be measured here. |
+| Grayscale and deuteranopia | `docs/qa/section1/labels-gray-1920x1080.jpg` and `labels-deuteranopia-1920x1080.jpg`: names stay legible. Dark ink on a pale halo does not depend on hue. |
+| Cross-browser | Chromium only. Firefox and WebKit are not installed here (`/opt/pw-browsers` holds Chromium alone), and `playwright install` is not allowed. |
+
+## Screenshots (`docs/qa/labels/`)
+
+What was wrong, looked for before accepting:
+
+- **`panaji-zoom1-*` (opening view).**
+  - Only the city localities show: at 1366 Campal, Altinho and Fontainhas;
+    at 1920 also Merces; at 2560 also Miramar.
+  - Miramar is dropped at 1366 and 1920, correctly: Maya's greeting bubble
+    is where it would go. Taleigao, St Cruz and Dona Paula are off screen.
+  - Accepted: that is the overlap rule working.
+- **`panaji-zoom3-*`.**
+  - Monument pills fill the old centre, and our names sit just above the
+    raster's own faint copies.
+  - **Fixed:** localities are now centred on their point, so the halo
+    covers the raster's copy.
+- **`panaji-maya-1366x768`.**
+  - Washed-out monument pills (fade 0.01–0.3) were holding space.
+  - **Fixed:** cards are candidates only from half faded in.
+- **`panaji-pan-2560x1440`.**
+  - At 2560 the names are small for the screen: 14 px rank 1, now 13 px
+    rank 2.
+  - Accepted for now: the whole HUD is fixed-size CSS pixels at every
+    resolution.
+- **`tutorial-1920x1080`.** All five Tutorial labels as before.
+
+## Independent review (Section 1)
+
+**MAJOR (3), all fixed:**
+
+1. **Obstacles went stale while things moved.**
+   - The HUD was re-read every 120 ms, so a moving forecast label, Maya or
+     the build menu could overlap a name for a few frames.
+   - Now their rectangles are read every frame from the whole document; the
+     element list and their visibility are refreshed every 250 ms.
+   - A panel fading in counts as an obstacle.
+   - The test now checks every frame during a drag-pan and Maya's hop.
+2. **The test could pass with nothing drawn.**
+   - It now requires at least two locality names per Panaji view.
+   - It fails if a scenario returns false, if Maya does not move for the
+     jump, or if the test hook is missing.
+3. **Dona Paula (rank 1) vanished when zoomed out.**
+   - A locality named like a monument now stays, and gives way only in a
+     frame where that monument's card is drawn.
+
+**MINOR, all fixed:**
+
+- Near-invisible cards no longer push names out.
+- More obstacles are now covered: help, storm report, era end, welcome,
+  Sources and the Source credit. The test's own list gained these and
+  `.hud-corner`.
+- Edge and panel blinking: labels already showing get 2 px less
+  clearance.
+- The rank-2 zoom threshold now has a show/hide band (29.5 / 30.5).
+- Names sit on their point.
+- Labels are re-measured on font load and node resize, and measuring is
+  marked done after one pass.
+- The debug frame data is built only when a test asks for it.
+- The vacuous unit test was replaced, and edge-jitter, twin and
+  centring tests were added.
+
+**NIT:**
+
+- **Fixed:** São Tomé is now spelled as OSM prints it, and rank 2 is 13 px.
+- **Kept:**
+  - Atal Setu stays as a minor label in locality ink. The board has
+    always named it, and it is documented as a bridge.
+  - "St Cruz" stays: it is the board's existing name for the area.
+
+## Fixed in the QA tools while running this gate
+
+- **`mayaLayoutTest`: 3, then 2, of 105 failed intermittently.**
+  - Under software GL the first check after page load caught Maya's
+    bubble at opacity 0, at the start of its 220 ms fade-in.
+  - Every check that expects the bubble now waits up to 3 s for the fade
+    to finish, as the resize case already did. It still fails if the
+    bubble never shows.
+- **`qaFunctional` flash check saw 0 flashes.**
+  - Its window was a fixed 14 s of wall-clock time, and this run's frames
+    were slow enough that storm time only reached 8.4 s.
+  - It now waits on storm time (to 12 s, past landfall), capped at 90 s.
+
+## Functional and axe (Section 1, final run)
+
+All checks pass (`docs/qa/section1/functional.md`):
+- routing, refresh and Back;
+- sound unlocks only on the first click;
+- resize, hidden tab and fullscreen;
+- keyboard (17 HUD stops, each with a focus ring);
+- drawn depth equals core depth (worst difference 0);
+- flash: 1 onset, at most 1 a second, peak 0.15;
+- no console errors or failed requests.
+
+**axe-core:** no serious or critical violations on the menu, the Tutorial
+or Panaji. The menu with the strip and the Sources screen were already
+covered by `creditsCheck`.
+
+**Machine speed:** this container ran the flash check at roughly half the
+frame rate of last round's machine (load average about 4 on 4 cores, from
+the QA runs themselves). Labels are hidden during storms, so the label
+layer is not in that path.

@@ -1,0 +1,12 @@
+| low | calm | 1.7 | 0.9 | 1116.6 | 42 | 183664 |
+| medium | calm | 1.9 | 1.5 | 650.0 | 35 | 183432 |
+| high | calm | 1.7 | 0.8 | 1249.9 | 33 | 183216 |
+| quality | state | avg fps | 1% low | p95 frame ms | draw calls | triangles |
+|---|---|---|---|---|---|---|
+| low | calm | 1.7 | 0.9 | 1116.6 | 42 | 183664 |
+| medium | calm | 1.9 | 1.5 | 650.0 | 35 | 183432 |
+| high | calm | 1.7 | 0.8 | 1249.9 | 33 | 183216 |
+
+Leak check (three storms on one page): before {"heapMB":24,"dom":460}, after {"heapMB":25,"dom":479}
+
+console errors/warnings/failed requests: none
