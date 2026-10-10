@@ -259,11 +259,18 @@ async function main(): Promise<void> {
             }
             const t0 = performance.now();
             const startStorm = window.__stormForTest.time();
-            setTimeout(() => {
+            // Storm time advances with rendered frames, so wait for storm time (past landfall
+            // at 10 s, through the lightning window), not a fixed wall-clock span; at most 90 s.
+            const done = () => {
               let maxPerSecond = 0;
               for (const t of starts) maxPerSecond = Math.max(maxPerSecond, starts.filter((u) => u >= t && u < t + 1000).length);
               resolve({ peak, onsets: starts.length, maxPerSecond, seconds: (performance.now() - t0) / 1000, stormFrom: startStorm, stormTo: window.__stormForTest.time() });
-            }, 14000);
+            };
+            const poll = () => {
+              if (window.__stormForTest.time() >= 12 || performance.now() - t0 > 90000) done();
+              else setTimeout(poll, 250);
+            };
+            setTimeout(poll, 1000);
           })`)) as { peak: number; onsets: number; maxPerSecond: number; seconds: number; stormFrom: number; stormTo: number };
           check(flash.onsets > 0, "lightning flashes during the cyclone's height", `${flash.onsets} flashes, storm time ${flash.stormFrom?.toFixed(1)} → ${flash.stormTo?.toFixed(1)} s`);
           check(flash.peak > 0 && flash.peak <= 0.25 + 1e-6, "lightning overlay never brighter than 25%", `keyframe peak opacity ${flash.peak.toFixed(3)}`);

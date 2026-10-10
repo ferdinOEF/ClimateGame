@@ -7761,3 +7761,15 @@ PR #10:
 - **Taleigao, St Cruz and Dona Paula:** off screen in that view.
 - **Close in:** 15–18 labels show, monument cards first. The minor
   localities show where they fit.
+
+**Review and QA:** an independent reviewer found 3 MAJOR and 8 MINOR issues
+in Section 1, all fixed (details in `docs/QA_REPORT.md`).
+- **MAJOR:**
+  - obstacles are now read every frame;
+  - the test can no longer pass with nothing drawn;
+  - Dona Paula no longer vanishes when zoomed out.
+- **Two QA tools were also fixed:**
+  - the Maya layout test's fade-in wait now applies to every check;
+  - the flash check now waits on storm time.
+- **Results:** all gate checks pass. Firefox and WebKit are not available
+  here.
