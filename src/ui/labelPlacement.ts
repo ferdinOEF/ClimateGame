@@ -15,7 +15,10 @@
  * ones), then labels already showing before ones that are not (a small
  * advantage, so a name does not blink as the camera drifts), then by their
  * order in the data. A label that is showing also tries its last position
- * first, so it does not jump between offsets.
+ * first, so it does not jump between offsets, and is allowed a couple of
+ * pixels less clearance than a newcomer, so a sub-pixel drift of the camera
+ * near an edge or a panel does not make it blink. It never overlaps: the
+ * clearance shrinks, not to below zero.
  */
 export interface Box {
   x: number;
@@ -33,6 +36,10 @@ export interface LabelCandidate {
   anchorY: number;
   w: number;
   h: number;
+  /** Home is centred on the anchor rather than above it (a locality covers the raster's own copy of its name). */
+  centred?: boolean;
+  /** Not drawn when this other label is (a locality named like a monument whose card is showing). */
+  yieldsTo?: string;
 }
 
 export interface Placement {
@@ -46,12 +53,14 @@ export interface Placement {
 export const LABEL_GAP = 4;
 /** Space kept from the window's edge. */
 export const EDGE_MARGIN = 4;
+/** How much less clearance a label already showing needs (hysteresis); never below zero. */
+export const SHOWN_SLACK = 2;
 
 /** The home box (centred above the anchor) and the fallbacks, in order. */
 export function candidateBoxes(c: LabelCandidate): Box[] {
   const { anchorX: x, anchorY: y, w, h } = c;
   return [
-    { x: x - w / 2, y: y - h, w, h }, // home: centred above its point
+    { x: x - w / 2, y: c.centred ? y - h / 2 : y - h, w, h }, // home: centred above its point (or on it)
     { x: x - w / 2, y: y + 6, w, h }, // below
     { x: x + 8, y: y - h / 2, w, h }, // right
     { x: x - w - 8, y: y - h / 2, w, h }, // left
@@ -63,8 +72,8 @@ export function overlaps(a: Box, b: Box, gap = 0): boolean {
   return a.x < b.x + b.w + gap && a.x + a.w + gap > b.x && a.y < b.y + b.h + gap && a.y + a.h + gap > b.y;
 }
 
-function inside(box: Box, width: number, height: number): boolean {
-  return box.x >= EDGE_MARGIN && box.y >= EDGE_MARGIN && box.x + box.w <= width - EDGE_MARGIN && box.y + box.h <= height - EDGE_MARGIN;
+function inside(box: Box, width: number, height: number, margin: number): boolean {
+  return box.x >= margin && box.y >= margin && box.x + box.w <= width - margin && box.y + box.h <= height - margin;
 }
 
 /**
@@ -88,14 +97,18 @@ export function placeLabels(
     });
   const placed: Placement[] = [];
   for (const { c } of order) {
+    if (c.yieldsTo && placed.some((p) => p.id === c.yieldsTo)) continue;
+    const shown = previous.has(c.id);
+    const gap = shown ? LABEL_GAP - SHOWN_SLACK : LABEL_GAP;
+    const margin = shown ? EDGE_MARGIN - SHOWN_SLACK : EDGE_MARGIN;
     const boxes = candidateBoxes(c);
     const last = previous.get(c.id);
     const tries = last !== undefined && last < boxes.length ? [last, ...boxes.keys()].filter((v, i, all) => all.indexOf(v) === i) : [...boxes.keys()];
     for (const offset of tries) {
       const box = boxes[offset];
-      if (!inside(box, viewport.width, viewport.height)) continue;
-      if (obstacles.some((o) => overlaps(box, o, LABEL_GAP))) continue;
-      if (placed.some((p) => overlaps(box, p.box, LABEL_GAP))) continue;
+      if (!inside(box, viewport.width, viewport.height, margin)) continue;
+      if (obstacles.some((o) => overlaps(box, o, gap))) continue;
+      if (placed.some((p) => overlaps(box, p.box, gap))) continue;
       placed.push({ id: c.id, box, offset });
       break;
     }

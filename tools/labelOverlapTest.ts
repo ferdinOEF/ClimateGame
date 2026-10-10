@@ -6,7 +6,10 @@
  *
  * On Panaji at 1366x768, 1920x1080 and 2560x1440, at three zoom levels
  * (the opening view, a wheel step in, two wheel steps in), after a drag-pan,
- * and with Maya talking, it reads back the box of every drawn label
+ * and with Maya talking, it reads back the box of every drawn label. During
+ * the drag-pan and during Maya's hop onto the board it checks every frame.
+ * Each settled Panaji view must draw at least two locality names, so the test
+ * cannot pass with nothing on screen. It reads back the box of every drawn label
  * (`.map-label.shown`) and fails if:
  *   - two label boxes intersect;
  *   - a label box intersects Maya (figure, bubble, badge) or a HUD element;
@@ -33,7 +36,8 @@ const HUD = [
   ".instrument-cluster", ".coin-jar", ".field-guide-button", ".panjim-clock", ".hud-chrome", ".houses-counter",
   ".panjim-toggles", ".objectives-panel", ".get-ready", ".nugget-badge", ".map-corner", ".map-layer-control",
   ".empty-prompt", ".era-banner", ".build-popover", ".hud-tooltip", ".field-guide-toast", ".aftermath-card",
-  ".field-guide-card", ".finale-card", ".brief-card", ".replay-card", ".tutorial-coach", ".forecast-label", ".storm-card"
+  ".field-guide-card", ".finale-card", ".brief-card", ".replay-card", ".tutorial-coach", ".forecast-label", ".storm-card",
+  ".hud-corner", ".help-card", ".storm-report", ".era-end-card", ".welcome-card", ".sources-panel", ".nugget-credit"
 ];
 
 interface Rect { x: number; y: number; w: number; h: number; label: string }
@@ -60,21 +64,67 @@ async function measure(page: Page): Promise<{ labels: Rect[]; hud: Rect[]; hidde
   })()`) as Promise<{ labels: Rect[]; hud: Rect[]; hidden: string[]; view: { w: number; h: number } }>;
 }
 
+/**
+ * Starts checking every animation frame for `frames` frames, in the page, while
+ * the caller moves the camera or Maya. Returns the violations seen (deduplicated).
+ */
+async function startSampling(page: Page, frames: number): Promise<void> {
+  await page.evaluate(`(() => {
+    const sel = ${JSON.stringify(HUD)};
+    const visible = (el) => {
+      if (el.closest("[hidden]")) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) return false;
+      const r = el.getBoundingClientRect();
+      return r.width >= 1 && r.height >= 1;
+    };
+    const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    window.__labelSample = new Promise((resolve) => {
+      const seen = new Set();
+      let left = ${frames};
+      const tick = () => {
+        const labels = [...document.querySelectorAll(".map-label.shown")].filter(visible).map((el) => [el.textContent, el.getBoundingClientRect()]);
+        const hud = [];
+        for (const s of sel) for (const el of document.querySelectorAll(s)) if (!el.closest(".map-labels") && visible(el)) hud.push([s, el.getBoundingClientRect()]);
+        for (let i = 0; i < labels.length; i++) {
+          for (let j = i + 1; j < labels.length; j++) if (hit(labels[i][1], labels[j][1])) seen.add(labels[i][0] + " / " + labels[j][0]);
+          for (const [s, r] of hud) if (hit(labels[i][1], r)) seen.add(labels[i][0] + " / " + s);
+        }
+        if (--left > 0) requestAnimationFrame(tick);
+        else resolve([...seen]);
+      };
+      requestAnimationFrame(tick);
+    });
+  })()`);
+}
+
+async function endSampling(page: Page, tag: string): Promise<void> {
+  const seen = (await page.evaluate("window.__labelSample")) as string[];
+  checks++;
+  if (seen.length) {
+    failures.push(`${tag} (frame by frame): ${seen.join("; ")}`);
+    console.log(`FAIL  ${tag} (frame by frame)  ${seen.join("; ")}`);
+  } else console.log(`PASS  ${tag} (frame by frame): no overlap in any frame`);
+}
+
 const hit = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
-async function check(page: Page, tag: string, shot?: string): Promise<void> {
+async function check(page: Page, tag: string, shot?: string, minLocalities = 0): Promise<void> {
   // Let the camera glide finish and the layer re-read the HUD.
   await page.waitForTimeout(900);
   const { labels, hud, hidden, view } = await measure(page);
   checks++;
   const problems: string[] = [];
+  const localities = (await page.evaluate(`document.querySelectorAll(".map-label.locality.shown").length`)) as number;
+  if (localities < minLocalities) problems.push(`only ${localities} locality names drawn (expected at least ${minLocalities})`);
   for (let i = 0; i < labels.length; i++) {
     const a = labels[i];
     for (let j = i + 1; j < labels.length; j++) if (hit(a, labels[j])) problems.push(`"${a.label}" overlaps "${labels[j].label}"`);
     for (const h of hud) if (hit(a, h)) problems.push(`"${a.label}" overlaps ${h.label}`);
     if (a.x < 0 || a.y < 0 || a.x + a.w > view.w || a.y + a.h > view.h) problems.push(`"${a.label}" leaves the window`);
   }
-  const cost = (await page.evaluate(`(async () => { const l = window.__labelsForTest; if (!l) return [0, 0]; const v = []; for (let i = 0; i < 30; i++) { await new Promise((r) => requestAnimationFrame(r)); v.push(l.lastCostMs); } v.sort((a, b) => a - b); return [v[15], v[29]]; })()`)) as [number, number];
+  const cost = (await page.evaluate(`(async () => { const l = window.__labelsForTest; if (!l) return [-1, -1]; const v = []; for (let i = 0; i < 30; i++) { await new Promise((r) => requestAnimationFrame(r)); v.push(l.lastCostMs); } v.sort((a, b) => a - b); return [v[15], v[29]]; })()`)) as [number, number];
+  if (cost[0] < 0) problems.push("window.__labelsForTest is missing");
   costs.push(cost[1]);
   const line = `${tag}: label layer ${cost[0].toFixed(2)} ms median, ${cost[1].toFixed(2)} ms max a frame; ${labels.length} drawn [${labels.map((l) => l.label).join(", ")}]; dropped or out of view: ${hidden.length}`;
   report.push(line);
@@ -106,27 +156,35 @@ async function main(): Promise<void> {
       await page.locator(".brief-cta").first().click();
       await page.waitForTimeout(2000);
       await page.evaluate("window.__panjimForTest && (window.__panjimForTest.maya.holdLines = true)");
+      await page.evaluate("window.__labelsForTest && (window.__labelsForTest.collectDebug = true)");
       const cx = Math.round(size.w * 0.55);
       const cy = Math.round(size.h * 0.5);
       await page.mouse.move(cx, cy);
-      await check(page, `${tag} zoom 1 (opening view)`, `panaji-zoom1-${tag}`);
+      await check(page, `${tag} zoom 1 (opening view)`, `panaji-zoom1-${tag}`, 2);
       await page.mouse.wheel(0, -500);
-      await check(page, `${tag} zoom 2`, `panaji-zoom2-${tag}`);
+      await check(page, `${tag} zoom 2`, `panaji-zoom2-${tag}`, 2);
       await page.mouse.wheel(0, -500);
-      await check(page, `${tag} zoom 3 (close)`, `panaji-zoom3-${tag}`);
-      // A drag-pan across the city.
+      await check(page, `${tag} zoom 3 (close)`, `panaji-zoom3-${tag}`, 2);
+      // A drag-pan across the city, checked on every frame of the drag and the glide after it.
+      await startSampling(page, 90);
       await page.mouse.move(cx, cy);
       await page.mouse.down();
       await page.mouse.move(cx - Math.round(size.w * 0.2), cy - Math.round(size.h * 0.15), { steps: 14 });
       await page.mouse.up();
-      await check(page, `${tag} zoom 3 after a pan`, `panaji-pan-${tag}`);
+      await endSampling(page, `${tag} during a drag-pan`);
+      await check(page, `${tag} zoom 3 after a pan`, `panaji-pan-${tag}`, 2);
       // Back out a step, with Maya talking (her bubble outranks every name).
       await page.mouse.wheel(0, 500);
-      await page.evaluate(`window.__panjimScenarioForTest("maya:tip")`);
-      await check(page, `${tag} zoom 2, Maya talking`, `panaji-maya-${tag}`);
-      // A warning jump puts Maya out on the board, among the names.
-      await page.evaluate(`window.__panjimScenarioForTest("maya-jump-st-cruz")`);
-      await check(page, `${tag} Maya out on the board`);
+      if (!(await page.evaluate(`window.__panjimScenarioForTest("maya:tip")`))) failures.push(`${tag}: maya:tip scenario failed`);
+      await check(page, `${tag} zoom 2, Maya talking`, `panaji-maya-${tag}`, 2);
+      // A warning jump puts Maya out on the board, among the names: checked on every frame of the hop.
+      const before = (await page.evaluate(`JSON.stringify(document.querySelector(".maya-figure-wrap").getBoundingClientRect())`)) as string;
+      await startSampling(page, 90);
+      if (!(await page.evaluate(`window.__panjimScenarioForTest("maya-jump-st-cruz")`))) failures.push(`${tag}: maya-jump scenario failed`);
+      await endSampling(page, `${tag} during Maya's hop`);
+      const after = (await page.evaluate(`JSON.stringify(document.querySelector(".maya-figure-wrap").getBoundingClientRect())`)) as string;
+      if (before === after) failures.push(`${tag}: Maya did not move for the jump`);
+      await check(page, `${tag} Maya out on the board`, undefined, 1);
       await page.close();
     }
     // The Tutorial's own labels.

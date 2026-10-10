@@ -48,8 +48,33 @@ describe("label placement", () => {
     expect(placeLabels(input, [], VIEW)).toEqual(placeLabels(input, [], VIEW));
   });
 
-  it("drops a label whose box would leave the window", () => {
-    expect(placeLabels([label("edge", 1, 2, 2, 200, 20)], [], VIEW).every((p) => p.box.x >= 0 && p.box.y >= 0)).toBe(true);
+  it("moves a label whose home would leave the window to a fallback that fits", () => {
+    // Anchor near the top: home (above) would cross the top edge; "below" fits.
+    const placed = placeLabels([label("top", 1, 500, 10, 80, 16)], [], VIEW);
+    expect(placed).toHaveLength(1);
+    expect(placed[0].offset).toBe(1);
+    expect(placed[0].box.y).toBeGreaterThanOrEqual(0);
+  });
+
+  it("a label showing at an edge survives a 1 px drift instead of blinking", () => {
+    // Home box top sits exactly 3 px from the window's top: too close for a newcomer (4 px), fine for a shown label (2 px).
+    const shown = placeLabels([label("a", 1, 500, 19, 80, 16)], [], VIEW, new Map([["a", 0]]));
+    expect(shown.map((p) => p.offset)).toEqual([0]);
+    const fresh = placeLabels([label("a", 1, 500, 19, 80, 16)], [], VIEW);
+    expect(fresh[0]?.offset).not.toBe(0);
+  });
+
+  it("a locality yields to its twin monument card only when the card is drawn", () => {
+    const card = label("card", 0, 500, 400);
+    const locality = { ...label("loc", 1, 520, 450), yieldsTo: "card" };
+    expect(placeLabels([card, locality], [], VIEW).map((p) => p.id)).toEqual(["card"]);
+    expect(placeLabels([locality], [], VIEW).map((p) => p.id)).toEqual(["loc"]);
+  });
+
+  it("a centred label sits on its point", () => {
+    const [p] = placeLabels([{ ...label("c", 1, 500, 400, 80, 20), centred: true }], [], VIEW);
+    expect(p.box.y + p.box.h / 2).toBe(400);
+    expect(p.box.x + p.box.w / 2).toBe(500);
   });
 });
 
@@ -58,7 +83,11 @@ describe("Panaji's labels", () => {
     const map = mapById("panaji")!;
     const labels = labelsForMap(map);
     const names = labels.map((l) => l.name);
-    expect(new Set(names).size).toBe(names.length);
+    // A name appears twice only as a monument and a locality (Dona Paula): the locality yields to the card.
+    for (const name of new Set(names)) {
+      const same = labels.filter((l) => l.name === name);
+      if (same.length > 1) expect(same.map((l) => l.kind).sort()).toEqual(["landmark", "locality"]);
+    }
     for (const name of ["Campal", "Altinho", "Fontainhas", "Miramar", "Taleigao", "St Cruz", "Merces"]) expect(names).toContain(name);
     expect(labels.filter((l) => l.kind === "landmark").length).toBe(map.monuments.length);
     const tiles = new Set(map.tiles.map((t) => `${t.coord.q},${t.coord.r}`));

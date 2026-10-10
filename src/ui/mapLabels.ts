@@ -20,8 +20,11 @@ import { placeLabels, type Box, type LabelCandidate } from "./labelPlacement";
  * if none is free. Maya and every HUD panel are obstacles, so where a name
  * would touch them it is the name that goes. Monument cards outrank major
  * localities, which outrank minor ones; a label already showing keeps a small
- * advantage, so names do not blink as the camera moves.
- * `tools/labelOverlapTest.ts` checks this in a browser at three window sizes.
+ * advantage, so names do not blink as the camera moves. The obstacles'
+ * rectangles are read every frame (the render loop has already laid the page
+ * out by then), because Maya, the forecast label and the build menu move.
+ * `tools/labelOverlapTest.ts` checks this in a browser at three window sizes,
+ * on settled views and frame by frame while the camera pans and Maya hops.
  */
 export interface MapLabel {
   name: string;
@@ -39,8 +42,11 @@ export type ProjectToScreen = (coord: AxialCoord) => { x: number; y: number; dep
 /** Camera distance at which landmark cards are fully visible, and the distance past which they are gone. */
 const LABEL_FADE_NEAR = 26;
 const LABEL_FADE_FAR = 40;
-/** Minor localities appear only when the camera is closer than this. */
-const MINOR_LOCALITY_DISTANCE = 30;
+/** Minor localities appear when the camera comes closer than the first distance and go when it pulls back past the second (no blinking at the threshold). */
+const MINOR_LOCALITY_SHOW = 29.5;
+const MINOR_LOCALITY_HIDE = 30.5;
+/** A monument card is a candidate only once it is at least half faded in, so a near-invisible card does not hold space a locality could use. */
+const LANDMARK_MIN_FADE = 0.5;
 
 /**
  * Everything a label must keep clear of. Maya and the HUD sit above the map,
@@ -76,11 +82,17 @@ export const LABEL_OBSTACLES = [
   ".tutorial-coach",
   ".forecast-label",
   ".storm-card",
-  ".hud-corner"
+  ".hud-corner",
+  ".help-card",
+  ".storm-report",
+  ".era-end-card",
+  ".welcome-card",
+  ".sources-panel",
+  ".nugget-credit"
 ];
 
-/** How often the HUD's rectangles are re-read, in milliseconds (reading them every frame would force layout). */
-const OBSTACLE_REFRESH_MS = 120;
+/** How often the list of HUD elements, and whether each is visible, is re-read (their rectangles are read every frame). */
+const OBSTACLE_LIST_MS = 250;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -92,13 +104,16 @@ interface Entry {
   node: HTMLElement;
   w: number;
   h: number;
+  /** For a locality named like a monument: that monument's entry id. */
+  yieldsTo?: string;
 }
 
 /**
  * The labels a map shows: its monuments and localities when it has
  * localities; otherwise its landmarks as before (the Tutorial's sea, beach,
- * estuary, river and land). A locality that shares a name with a monument is
- * left to the monument.
+ * estuary, river and land). A locality named like a monument stays, and
+ * gives way only in a frame where the monument's card is drawn (Dona Paula
+ * keeps its name when zoomed out, where cards are not shown).
  */
 export function labelsForMap(map: {
   landmarks: readonly { name: string; q: number; r: number }[];
@@ -106,10 +121,9 @@ export function labelsForMap(map: {
   localities: readonly { name: string; q: number; r: number; rank: 1 | 2 }[];
 }): MapLabel[] {
   if (map.localities.length === 0) return map.landmarks.map((l) => ({ name: l.name, q: l.q, r: l.r, kind: "landmark", rank: 0 }));
-  const monumentNames = new Set(map.monuments.map((m) => m.name));
   return [
     ...map.monuments.map((m): MapLabel => ({ name: m.name, q: m.q, r: m.r, kind: "landmark", rank: 0 })),
-    ...map.localities.filter((l) => !monumentNames.has(l.name)).map((l): MapLabel => ({ name: l.name, q: l.q, r: l.r, kind: "locality", rank: l.rank }))
+    ...map.localities.map((l): MapLabel => ({ name: l.name, q: l.q, r: l.r, kind: "locality", rank: l.rank }))
   ];
 }
 
@@ -118,14 +132,26 @@ export class MapLabelLayer {
   private readonly entries: Entry[] = [];
   private visible = true;
   private measured = false;
-  private obstacles: Box[] = [];
-  private obstaclesAt = -Infinity;
+  /** HUD elements that are obstacles and currently visible; refreshed every OBSTACLE_LIST_MS. */
+  private obstacleEls: HTMLElement[] = [];
+  private obstacleListAt = -Infinity;
+  /** Whether minor localities are currently allowed (hysteresis on the zoom threshold). */
+  private minorOn = false;
   /** Last frame's placements: id → offset used. */
   private previous = new Map<string, number>();
-  private readonly onResize = (): void => {
+  private readonly sizeObserver: ResizeObserver | null;
+  private readonly invalidate = (): void => {
     this.measured = false;
-    this.obstaclesAt = -Infinity;
   };
+
+  /** Set by the tests to fill `lastFrame`; off in play, so nothing is built for them every frame. */
+  collectDebug = false;
+  /** Last frame's candidates (name, anchor, size) and which were drawn, when `collectDebug` is on. */
+  lastFrame: { name: string; x: number; y: number; w: number; h: number; drawn: boolean }[] = [];
+  /** How long the last `update` took, in milliseconds. */
+  lastCostMs = 0;
+  /** Last frame's obstacle rectangles, in container pixels (for the tests). */
+  obstacles: Box[] = [];
 
   constructor(private readonly container: HTMLElement, labels: readonly MapLabel[]) {
     this.el = document.createElement("div");
@@ -134,18 +160,23 @@ export class MapLabelLayer {
     // it is skipped rather than read out as a list of bare place names.
     this.el.setAttribute("aria-hidden", "true");
 
+    const monumentIds = new Map<string, string>();
     labels.forEach((label, index) => {
       const node = document.createElement("div");
       node.className = label.kind === "locality" ? `map-label locality rank-${label.rank}` : "map-label";
       node.textContent = label.name;
       this.el.appendChild(node);
-      this.entries.push({ id: `${index}:${label.name}`, label, node, w: 0, h: 0 });
+      const id = `${index}:${label.name}`;
+      if (label.kind === "landmark") monumentIds.set(label.name, id);
+      this.entries.push({ id, label, node, w: 0, h: 0, yieldsTo: label.kind === "locality" ? monumentIds.get(label.name) : undefined });
     });
 
     container.appendChild(this.el);
-    window.addEventListener("resize", this.onResize);
-    // Web fonts change label widths once they load.
-    void document.fonts?.ready.then(() => this.onResize());
+    window.addEventListener("resize", this.invalidate);
+    // A label's size changes when a web font arrives or its styles change: re-measure then.
+    document.fonts?.addEventListener?.("loadingdone", this.invalidate);
+    this.sizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(this.invalidate) : null;
+    for (const entry of this.entries) this.sizeObserver?.observe(entry.node);
   }
 
   /** Hides every label — used while a hazard is resolving, when the board needs the player's whole attention. */
@@ -155,12 +186,6 @@ export class MapLabelLayer {
     this.el.hidden = !visible;
     if (!visible) this.previous.clear();
   }
-
-  /** Last frame's candidates (name, anchor, size) and which were drawn, for the tests. */
-  lastFrame: { name: string; x: number; y: number; w: number; h: number; drawn: boolean }[] = [];
-
-  /** How long the last `update` took, in milliseconds (the perf check reads it). */
-  lastCostMs = 0;
 
   /** The names currently drawn, for the tests. */
   shownNames(): string[] {
@@ -172,23 +197,31 @@ export class MapLabelLayer {
       entry.w = entry.node.offsetWidth;
       entry.h = entry.node.offsetHeight;
     }
-    this.measured = this.entries.every((e) => e.w > 0) || this.entries.length === 0;
+    // One pass is enough: a label that measured 0 (laid out while hidden) is
+    // skipped until the size observer reports it.
+    this.measured = true;
   }
 
-  private readObstacles(nowMs: number): void {
-    if (nowMs - this.obstaclesAt < OBSTACLE_REFRESH_MS) return;
-    this.obstaclesAt = nowMs;
+  /** The HUD's rectangles now. The element list and their visibility are re-read every OBSTACLE_LIST_MS; the rectangles every frame. */
+  private readObstacles(nowMs: number): Box[] {
+    if (nowMs - this.obstacleListAt >= OBSTACLE_LIST_MS) {
+      this.obstacleListAt = nowMs;
+      // The whole document: some panels (the Sources screen) live outside the game's container.
+      this.obstacleEls = Array.from(document.querySelectorAll<HTMLElement>(LABEL_OBSTACLES.join(","))).filter((el) => {
+        if (this.el.contains(el) || el.closest("[hidden]")) return false;
+        const style = getComputedStyle(el);
+        // Opacity is not tested: a panel fading in is already an obstacle.
+        return style.display !== "none" && style.visibility !== "hidden";
+      });
+    }
     const origin = this.container.getBoundingClientRect();
     const boxes: Box[] = [];
-    for (const el of Array.from(this.container.querySelectorAll<HTMLElement>(LABEL_OBSTACLES.join(",")))) {
-      if (el.closest("[hidden]") || this.el.contains(el)) continue;
+    for (const el of this.obstacleEls) {
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
-      const style = getComputedStyle(el);
-      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) continue;
       boxes.push({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height });
     }
-    this.obstacles = boxes;
+    return boxes;
   }
 
   /**
@@ -201,21 +234,34 @@ export class MapLabelLayer {
     if (!this.visible) return;
     const started = performance.now();
     if (!this.measured) this.measure();
-    this.readObstacles(performance.now());
+    this.obstacles = this.readObstacles(started);
 
     // Landmark cards fade with distance: pinned on at every zoom they would
     // stack over the buildings they name, which are the better label up close.
     const landmarkFade = clamp((LABEL_FADE_FAR - cameraDistance) / (LABEL_FADE_FAR - LABEL_FADE_NEAR), 0, 1);
+    if (cameraDistance < MINOR_LOCALITY_SHOW) this.minorOn = true;
+    else if (cameraDistance > MINOR_LOCALITY_HIDE) this.minorOn = false;
 
     const candidates: LabelCandidate[] = [];
     const byId = new Map<string, Entry>();
     for (const entry of this.entries) {
       const { label } = entry;
-      if (label.kind === "landmark" && landmarkFade <= 0) continue;
-      if (label.rank === 2 && cameraDistance > MINOR_LOCALITY_DISTANCE) continue;
+      if (entry.w < 1) continue;
+      if (label.kind === "landmark" && landmarkFade < LANDMARK_MIN_FADE) continue;
+      if (label.rank === 2 && !this.minorOn) continue;
       const screen = project({ q: label.q, r: label.r });
       if (!screen) continue;
-      candidates.push({ id: entry.id, priority: label.rank, anchorX: screen.x, anchorY: screen.y, w: entry.w, h: entry.h });
+      candidates.push({
+        id: entry.id,
+        priority: label.rank,
+        anchorX: screen.x,
+        anchorY: screen.y,
+        w: entry.w,
+        h: entry.h,
+        // A locality sits on its point, over the raster's own faint copy of the name.
+        centred: label.kind === "locality",
+        yieldsTo: entry.yieldsTo
+      });
       byId.set(entry.id, entry);
     }
 
@@ -233,11 +279,15 @@ export class MapLabelLayer {
     }
     this.previous = next;
     this.lastCostMs = performance.now() - started;
-    this.lastFrame = candidates.map((c) => ({ name: byId.get(c.id)!.label.name, x: Math.round(c.anchorX), y: Math.round(c.anchorY), w: c.w, h: c.h, drawn: next.has(c.id) }));
+    if (this.collectDebug) {
+      this.lastFrame = candidates.map((c) => ({ name: byId.get(c.id)!.label.name, x: Math.round(c.anchorX), y: Math.round(c.anchorY), w: c.w, h: c.h, drawn: next.has(c.id) }));
+    }
   }
 
   dispose(): void {
-    window.removeEventListener("resize", this.onResize);
+    window.removeEventListener("resize", this.invalidate);
+    document.fonts?.removeEventListener?.("loadingdone", this.invalidate);
+    this.sizeObserver?.disconnect();
     this.el.remove();
   }
 }

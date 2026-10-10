@@ -234,7 +234,7 @@ const LOCALITIES: { name: string; lat: number; lon: number; rank: 1 | 2 }[] = [
   { name: "St Cruz", lat: 15.4731, lon: 73.8468, rank: 1 },
   { name: "Merces", lat: 15.4829, lon: 73.8538, rank: 1 },
   { name: "Dona Paula", lat: 15.4582, lon: 73.8047, rank: 1 },
-  { name: "Sao Tome", lat: 15.4994, lon: 73.8322, rank: 2 },
+  { name: "São Tomé", lat: 15.4994, lon: 73.8322, rank: 2 },
   { name: "Patto", lat: 15.4952, lon: 73.8354, rank: 2 },
   { name: "Santa Inez", lat: 15.4869, lon: 73.8175, rank: 2 },
   { name: "Caranzalem", lat: 15.4677, lon: 73.808, rank: 2 },
