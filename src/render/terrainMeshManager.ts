@@ -146,7 +146,7 @@ function reliefLandGeometry(height: number): THREE.BufferGeometry {
 }
 
 const HIGH_GROUND_TINT = new THREE.Color("#c9c48f");
-const HIGH_GROUND_MAX_BLEND = 0.32;
+
 const SWELL_PHASE_PER_Z = 0.27;
 
 /** The crest tint target. Shared constant so the swell allocates nothing per frame. */
@@ -323,7 +323,7 @@ export class TerrainMeshManager {
       const fullColor =
         terrainId === "land"
           ? relief
-            ? paletteColor(terrain.colorKey).clone().lerp(HIGH_GROUND_TINT, Math.sqrt((elevationM ?? 0) / highest) * HIGH_GROUND_MAX_BLEND)
+            ? paletteColor(terrain.colorKey).clone().lerp(HIGH_GROUND_TINT, Math.sqrt((elevationM ?? 0) / highest) * RELIEF.highGroundBlend)
             : jitterGrass(paletteColor(terrain.colorKey), seed)
           : jitterColor(paletteColor(terrain.colorKey), seed);
       const dimColor = dim(fullColor);

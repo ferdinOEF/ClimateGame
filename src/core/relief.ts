@@ -16,6 +16,8 @@ export interface ReliefConfig {
   contourLift: number;
   /** Width of a contour ribbon, world units. */
   contourWidth: number;
+  /** How far the highest ground's top colour moves toward the dry high-ground tint (0-1). */
+  highGroundBlend: number;
   /** How dark a raised tile's step sides are drawn, as a multiple of its top colour. */
   sideShade: number;
 }
