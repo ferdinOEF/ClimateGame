@@ -4,8 +4,11 @@ Usage:  python3 -I tools/mapgen/dem/cropCopernicusDem.py <Copernicus_DSM_COG_10_
 
 The tile is downloaded by hand from the public AWS bucket:
   https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N15_00_E073_00_DEM/Copernicus_DSM_COG_10_N15_00_E073_00_DEM.tif
-It is 3600 x 3600 float32 metres, 1 arc-second pixels, top-left corner at
-73.0 E, 16.0 N (pixel-is-area). The crop is written as little-endian int16
+It is 3600 x 3600 float32 metres, 1 arc-second pixels. Its georeference is
+read from the file: the tile is PixelIsPoint, so its tiepoint (73.0 E, 16.0 N)
+is the CENTRE of the top-left pixel, and the pixel corners lie half a pixel
+outside the whole degrees. The crop's metadata records the outer corner of
+its top-left pixel, which is what the generator expects. The crop is written as little-endian int16
 decimetres (panaji-cop30.bin) with its georeference in panaji-cop30.json, so the
 generator needs no TIFF reader and the repository holds about 150 KB, not 12 MB.
 
@@ -20,10 +23,18 @@ import tifffile
 
 # The board (tools/mapgen/buildPanajiMap.ts BOARD) plus a margin of 0.01 degrees.
 NORTH, SOUTH, WEST, EAST = 15.523, 15.436, 73.785, 73.880
-TILE_NORTH, TILE_WEST, PIXEL_DEG = 16.0, 73.0, 1.0 / 3600
-
 src = sys.argv[1]
-image = tifffile.imread(src).astype(np.float32)
+with tifffile.TiffFile(src) as tif:
+    page = tif.pages[0]
+    tie = page.tags["ModelTiepointTag"].value
+    scale = page.tags["ModelPixelScaleTag"].value
+    raster_type = (tif.geotiff_metadata or {}).get("GTRasterTypeGeoKey", 1)
+    image = page.asarray().astype(np.float32)
+PIXEL_DEG = scale[0]
+assert abs(scale[1] - PIXEL_DEG) < 1e-12 and tie[0] == 0 and tie[1] == 0
+# Outer corner of the tile's top-left pixel. PixelIsPoint (2): the tiepoint is a pixel centre.
+half = PIXEL_DEG / 2 if int(raster_type) == 2 else 0.0
+TILE_NORTH, TILE_WEST = tie[4] + half, tie[3] - half
 row0 = int(np.floor((TILE_NORTH - NORTH) / PIXEL_DEG))
 row1 = int(np.ceil((TILE_NORTH - SOUTH) / PIXEL_DEG))
 col0 = int(np.floor((WEST - TILE_WEST) / PIXEL_DEG))

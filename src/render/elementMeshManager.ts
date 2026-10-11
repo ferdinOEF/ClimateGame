@@ -281,6 +281,13 @@ export class ElementMeshManager {
     }
   }
 
+  /**
+   * Town Houses still dropping in. `SettleAnimator` lands an instance on a
+   * plain scale, so when one lands its full transform (its street-facing
+   * turn, its skyline height) is written back here, and its fabric appears.
+   */
+  private settling = new Set<ElementInstanceRef>();
+
   /** How many fabric structures are standing, for the QA report. */
   get fabricCount(): number {
     let count = 0;
@@ -416,8 +423,11 @@ export class ElementMeshManager {
     if (ref.roofColor) this.paintRoof(ref);
     if (ref.companions.length > 0) {
       this.paintCompanions(ref);
-      this.writeCompanions(ref);
+      // A House dropping in brings its block with it when it lands (see `settling`).
+      if (options.animate) this.hideCompanions(ref);
+      else this.writeCompanions(ref);
     }
+    if (options.animate && style) this.settling.add(ref);
   }
 
   /** The fabric's colours: its own, browner with the House's damage. */
@@ -436,6 +446,16 @@ export class ElementMeshManager {
         attribute.setXYZ(part.index, roof.r, roof.g, roof.b);
         attribute.needsUpdate = true;
       }
+    }
+  }
+
+  /** Takes a House's fabric off the board (its slots stay its own until it is destroyed). */
+  private hideCompanions(ref: ElementInstanceRef): void {
+    this.scratchMatrix.makeScale(0, 0, 0);
+    for (const part of ref.companions) {
+      part.mesh.setMatrixAt(part.index, this.scratchMatrix);
+      part.mesh.count = Math.max(part.mesh.count, part.index + 1);
+      part.mesh.instanceMatrix.needsUpdate = true;
     }
   }
 
@@ -520,10 +540,11 @@ export class ElementMeshManager {
     const ref = this.byCoord.get(key);
     if (!ref) return;
     this.animator.collapse(ref.mesh, ref.index, ref.x, ref.y, ref.z, performance.now());
-    for (const part of ref.companions) {
-      this.animator.collapse(part.mesh, part.index, ref.x + part.dx, ref.y, ref.z + part.dz, performance.now());
-      this.freeIndices.get(part.meshKey)!.push(part.index);
-    }
+    // The fabric goes at once: the collapse animation draws a plain upright
+    // shrink, which would first snap each structure out of its own turn and size.
+    this.hideCompanions(ref);
+    for (const part of ref.companions) this.freeIndices.get(part.meshKey)!.push(part.index);
+    this.settling.delete(ref);
     this.byCoord.delete(key);
     this.freeIndices.get(ref.meshKey)!.push(ref.index);
   }
@@ -632,6 +653,13 @@ export class ElementMeshManager {
 
   tick(nowMs: number): void {
     this.animator.tick(nowMs);
+    for (const ref of this.settling) {
+      if (this.animator.isAnimating(ref.index, ref.mesh)) continue;
+      this.settling.delete(ref);
+      this.writeTransform(ref);
+      ref.mesh.instanceMatrix.needsUpdate = true;
+      ref.mesh.boundingSphere = null;
+    }
     this.tickSway(nowMs);
   }
 
@@ -713,6 +741,7 @@ export class ElementMeshManager {
   /** Clears every placed element (a new era starting a fresh map). */
   reset(): void {
     this.byCoord.clear();
+    this.settling.clear();
     for (const key of this.nextIndex.keys()) {
       this.nextIndex.set(key, 0);
       this.freeIndices.set(key, []);

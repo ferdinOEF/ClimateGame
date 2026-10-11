@@ -573,7 +573,8 @@ export class TerrainMeshManager {
     if (points.length === 0) return;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-    const material = new THREE.MeshBasicMaterial({ color: RELIEF.contourColor, transparent: true, opacity: RELIEF.contourOpacity, depthWrite: false, side: THREE.DoubleSide });
+    // Pulled toward the camera in depth, so the ribbon does not flicker against the top it lies on.
+    const material = new THREE.MeshBasicMaterial({ color: RELIEF.contourColor, transparent: true, opacity: RELIEF.contourOpacity, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     this.contours = new THREE.Mesh(geometry, material);
     this.contours.name = "terrain-contours";
     this.contours.renderOrder = 2;

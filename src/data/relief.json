@@ -1,7 +1,7 @@
 {
   "_comment": "How real ground height is drawn. gameRule: a drawing choice, not a measurement. The heights themselves come from the Copernicus DEM (see the map's `elevation` block and docs/PROGRESS.md).",
   "worldUnitsPerMetre": 0.018,
-  "maxLiftWorld": 1.2,
+  "maxLiftWorld": 1.45,
   "contourIntervalM": 10,
   "contourColor": "#2a2418",
   "contourOpacity": 0.42,

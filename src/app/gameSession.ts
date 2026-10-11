@@ -338,7 +338,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const neighbourBuilding = (coord: AxialCoord): { w: number; d: number; h: number } | null => {
     if (!town) return null;
     let best: { w: number; d: number; h: number } | null = null;
-    for (const plot of nearestHouse(town, coord)) {
+    for (const { plot } of nearestHouse(town, coord)) {
       const geometry = buildingGeometry(plot.kind);
       geometry.computeBoundingBox();
       const b = geometry.boundingBox!;
@@ -519,13 +519,25 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       if (!def) continue;
       const [q, r] = key.split(",").map(Number);
       if ((def.matureQuarters ?? 0) > 0) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
-      else if (def.kind === "building") {
-        // Not every house rises equally: a fixed per-tile share, so the
-        // skyline grows uneven, the way a city does.
-        const share = 0.35 + (((q * 92821) ^ (r * 68917)) & 255) / 255;
-        elements.setHeightScale({ q, r }, 1 + age * 0.55 * share);
-      }
+      else if (def.kind === "building") elements.setHeightScale({ q, r }, skylineScale(q, r, age));
     }
+    // A monument rises with the street round it, so it keeps its standing over its neighbours.
+    if (town) {
+      monuments.setHeightGrowth((coord) => Math.max(1, ...nearestHouse(town, coord).map(({ key }) => {
+        const [q, r] = key.split(",").map(Number);
+        return state.elements.get(key)?.elementId === "house" ? skylineScale(q, r, age) : 1;
+      })));
+    }
+  }
+
+  /**
+   * How tall a House has grown, as a multiple of its built height. Not every
+   * house rises equally: a fixed per-tile share, so the skyline grows uneven,
+   * the way a city does.
+   */
+  function skylineScale(q: number, r: number, age: number): number {
+    const share = 0.35 + (((q * 92821) ^ (r * 68917)) & 255) / 255;
+    return 1 + age * 0.55 * share;
   }
 
   /**
@@ -2054,9 +2066,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // the only place in the game that teaches a player the board has real
     // places on it that they did not put there.
     const monument = monuments.at(coord);
-    // Selecting a monument keeps its name card up; selecting anything else lets it go.
-    selectedMonument = monument?.name ?? null;
-    mapLabels.setFocus(hoveredMonument ?? selectedMonument);
     if (monument) {
       buildPopover.showInfo(screen.x, screen.y, {
         name: monument.name,
@@ -2064,6 +2073,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         effects: {},
         note: "A Panjim landmark, placed from OpenStreetMap. It cannot be built on or removed."
       });
+      // Selected: its name card stays up while its popover is open.
+      selectedMonument = monument.name;
+      mapLabels.setFocus(hoveredMonument ?? selectedMonument);
       return;
     }
 
@@ -2178,24 +2190,59 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   let hoveredMonument: string | null = null;
   let selectedMonument: string | null = null;
   let lastHoverPick = -Infinity;
-  const hoverPointer = new THREE.Vector2();
+  /** Where the mouse rests on the board (normalised device coords), or null when it is off the board. */
+  let hoverAt: THREE.Vector2 | null = null;
+  /** Set when the mouse or the camera has moved since the last pick. */
+  let hoverDirty = false;
+  let lastHoverCamera = "";
+  const hoverTargets = [...terrain.raycastTargets, ...monuments.group.children];
+  const pickHover = (now: number): void => {
+    lastHoverPick = now;
+    hoverDirty = false;
+    if (!hoverAt) return;
+    raycaster.setFromCamera(hoverAt, camera);
+    // The monument building itself counts, not only its tile (a tall one hides its own tile).
+    const hit = raycaster.intersectObjects(hoverTargets)[0];
+    let name: string | null = null;
+    if (hit && hit.instanceId !== undefined) {
+      const monument = monuments.atHit(hit.object, hit.instanceId);
+      const coord = monument ? null : terrain.coordForHit(hit.object, hit.instanceId);
+      name = monument?.name ?? (coord ? (monuments.at(coord)?.name ?? null) : null);
+    }
+    hoveredMonument = name;
+    mapLabels.setFocus(hoveredMonument ?? selectedMonument);
+  };
   renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
     if (event.pointerType !== "mouse" || event.buttons !== 0) return;
-    const now = performance.now();
-    if (now - lastHoverPick < HOVER_PICK_MS) return;
-    lastHoverPick = now;
     const rect = renderer.domElement.getBoundingClientRect();
-    hoverPointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
-    raycaster.setFromCamera(hoverPointer, camera);
-    const hit = raycaster.intersectObjects(terrain.raycastTargets)[0];
-    const coord = hit && hit.instanceId !== undefined ? terrain.coordForHit(hit.object, hit.instanceId) : null;
-    hoveredMonument = coord ? (monuments.at(coord)?.name ?? null) : null;
-    mapLabels.setFocus(hoveredMonument ?? selectedMonument);
+    hoverAt = (hoverAt ?? new THREE.Vector2()).set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    hoverDirty = true;
   });
   renderer.domElement.addEventListener("pointerleave", () => {
+    hoverAt = null;
     hoveredMonument = null;
     mapLabels.setFocus(selectedMonument);
   });
+  // A popover closing, however it closes, lets its monument's card go.
+  buildPopover.onHide = () => {
+    selectedMonument = null;
+    mapLabels.setFocus(hoveredMonument);
+  };
+  /**
+   * Called every frame. Picks at most every HOVER_PICK_MS, but never drops
+   * the last move: a pick that was held back runs on a later frame. A camera
+   * moving under a still mouse (wheel, keys, glide) also counts as a move.
+   */
+  const updateHover = (now: number): void => {
+    if (!hoverAt) return;
+    const e = camera.matrixWorld.elements;
+    const cameraKey = `${e[12].toFixed(3)},${e[13].toFixed(3)},${e[14].toFixed(3)}`;
+    if (cameraKey !== lastHoverCamera) {
+      lastHoverCamera = cameraKey;
+      hoverDirty = true;
+    }
+    if (hoverDirty && now - lastHoverPick >= HOVER_PICK_MS) pickHover(now);
+  };
 
   renderer.domElement.addEventListener("click", (event: MouseEvent) => {
     if (wasDrag()) return; // a pan, not a click — don't also open a popover at the drag's end point
@@ -2217,10 +2264,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         return;
       }
     }
-    const hits = raycaster.intersectObjects(terrain.raycastTargets);
+    // A monument building counts as its tile: a tall one hides the tile it stands on.
+    const hits = raycaster.intersectObjects(hoverTargets);
     if (hits.length === 0 || hits[0].instanceId === undefined) return;
 
-    const coord = terrain.coordForHit(hits[0].object, hits[0].instanceId);
+    const coord = monuments.atHit(hits[0].object, hits[0].instanceId)?.coord ?? terrain.coordForHit(hits[0].object, hits[0].instanceId);
     if (!coord) return;
 
     openTilePopover(coord);
@@ -2269,6 +2317,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // glides rather than snapping (see scene.ts) — updating them only on
     // pointer events would leave them trailing behind the board mid-glide.
     const rect = renderer.domElement.getBoundingClientRect();
+    updateHover(nowMs);
     // The risk sequence gives way the moment the player opens a menu.
     if (riskIntro.isRunning && overlayOpen()) riskIntro.cancel("menu");
     riskIntro.frame(nowMs);
@@ -2276,8 +2325,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       (coord) => {
         // Anchored to the tile's top surface, so a label sits on the land
         // rather than floating at sea level over a raised tile; on a
-        // monument's tile, to the top of the building, so its card sits above
-        // the building it names rather than over it.
+        // monument's tile, to the top of the building (for any label on that
+        // tile: on Panaji no locality shares a monument's tile), so a card
+        // sits above the building it names rather than over it.
         const { x, z } = axialToWorld(coord, 1.0);
         const top = monuments.topAt(coord);
         const screen = worldToScreen(x, top !== null ? top + 0.08 : terrain.heightAt(coord) + 0.25, z);

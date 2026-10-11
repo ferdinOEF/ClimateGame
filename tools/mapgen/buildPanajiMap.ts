@@ -1568,7 +1568,9 @@ async function main(): Promise<void> {
       attribution: "© OpenStreetMap contributors",
       href: "https://www.openstreetmap.org/copyright",
       bounds: BOARD,
-      metresPerUnit: METRES_PER_UNIT
+      metresPerUnit: METRES_PER_UNIT,
+      // When the OpenStreetMap picture the board is read from was fetched.
+      accessed: (meta as BasemapMeta & { generatedAt?: string }).generatedAt?.slice(0, 10)
     },
     focus,
     /*

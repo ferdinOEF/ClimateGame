@@ -74,7 +74,7 @@ describe("monuments", () => {
     const rows: string[] = [];
     for (const m of panaji.monuments.filter((x) => MONUMENT_BUILDING_KINDS.includes(x.kind))) {
       let neighbour: { w: number; d: number; h: number } | null = null;
-      for (const plot of nearestHouse(town, { q: m.q, r: m.r })) {
+      for (const { plot } of nearestHouse(town, { q: m.q, r: m.r })) {
         const size = sizeOf(buildingGeometry(plot.kind), plot.scale);
         if (!neighbour || size.w * size.d * size.h > neighbour.w * neighbour.d * neighbour.h) neighbour = size;
       }
@@ -102,10 +102,13 @@ describe("monuments", () => {
   });
 
   it("shows no date that is not in a cited fact", () => {
-    const cited = JSON.stringify(facts);
+    // A year may appear only if a cited fact about that very place carries it.
+    const list = (facts as unknown as { facts?: unknown[] }).facts ?? (facts as unknown as unknown[]);
+    const texts = (Array.isArray(list) ? list : []).map((f) => JSON.stringify(f));
     for (const m of panaji.monuments) {
       for (const year of `${m.name} ${m.category}`.match(/\b1\d{3}s?\b|\b20\d{2}\b/g) ?? []) {
-        expect(cited.includes(year), `${m.name}: "${year}" is not in facts.json`).toBe(true);
+        const backed = texts.some((t) => t.includes(m.name) && t.includes(year));
+        expect(backed, `${m.name}: "${year}" is not in a cited fact about it`).toBe(true);
       }
     }
   });

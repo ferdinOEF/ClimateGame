@@ -71,6 +71,10 @@ export class MonumentMeshManager {
   private readonly byCoord = new Map<string, MonumentPlacement>();
   /** Each monument's drawn size and scale, for the tests and the QA report. */
   readonly sizes = new Map<string, { size: Size; neighbour: Size | null; sx: number; sy: number }>();
+  /** Each placed monument's resting transform parts, for `setHeightGrowth`. */
+  private readonly placed: { monument: MonumentPlacement; mesh: THREE.InstancedMesh; index: number; x: number; y: number; z: number; sx: number; sy: number; h: number; growth: number }[] = [];
+  /** Which monument each instance of each mesh is. */
+  private readonly byInstance = new Map<THREE.Object3D, MonumentPlacement[]>();
   /** Coord key -> world Y of the top of the monument standing there. */
   private readonly tops = new Map<string, number>();
 
@@ -151,6 +155,7 @@ export class MonumentMeshManager {
         y += PLAZA_HEIGHT;
       }
       mesh.setMatrixAt(index, matrix.makeScale(sx, sy, sx).setPosition(x, y, z));
+      this.placed.push({ monument, mesh, index, x, y, z, sx, sy, h: size.h, growth: 1 });
       this.tops.set(`${monument.coord.q},${monument.coord.r}`, y + size.h * sy);
 
       // Seeded off the coordinate so a given building looks the same every
@@ -159,6 +164,8 @@ export class MonumentMeshManager {
       mesh.setColorAt(index, jitterColor(NEUTRAL_TINT, seed));
 
       this.counts.set(key, index + 1);
+      if (!this.byInstance.has(mesh)) this.byInstance.set(mesh, []);
+      this.byInstance.get(mesh)![index] = monument;
       mesh.count = index + 1;
       this.byCoord.set(`${monument.coord.q},${monument.coord.r}`, monument);
     }
@@ -172,6 +179,34 @@ export class MonumentMeshManager {
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       mesh.boundingSphere = null;
     }
+  }
+
+  /**
+   * Raises each monument building by a factor (1 = as placed), so it grows
+   * with the houses round it as the skyline rises over a run. Open places
+   * are left alone.
+   */
+  setHeightGrowth(factorAt: (coord: AxialCoord) => number): void {
+    const matrix = new THREE.Matrix4();
+    const touched = new Set<THREE.InstancedMesh>();
+    for (const p of this.placed) {
+      if (!MONUMENT_BUILDING_KINDS.includes(p.monument.kind)) continue;
+      const growth = factorAt(p.monument.coord);
+      if (Math.abs(growth - p.growth) < 1e-3) continue;
+      p.growth = growth;
+      p.mesh.setMatrixAt(p.index, matrix.makeScale(p.sx, p.sy * growth, p.sx).setPosition(p.x, p.y, p.z));
+      this.tops.set(`${p.monument.coord.q},${p.monument.coord.r}`, p.y + p.h * p.sy * growth);
+      touched.add(p.mesh);
+    }
+    for (const mesh of touched) {
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.boundingSphere = null;
+    }
+  }
+
+  /** The monument a raycast hit on one of its meshes belongs to, if any. */
+  atHit(object: THREE.Object3D, instanceId: number): MonumentPlacement | null {
+    return this.byInstance.get(object)?.[instanceId] ?? null;
   }
 
   /** The monument standing on a tile, if any — so a click can name it rather than opening a build menu. */

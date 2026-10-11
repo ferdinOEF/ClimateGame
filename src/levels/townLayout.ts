@@ -335,12 +335,12 @@ function addFabric(
  * two tiles out. For sizing a monument against its street (some stand among
  * roads, water and other monuments, with no House right beside them).
  */
-export function nearestHouse(town: TownLayout, coord: AxialCoord): BuildingPlot[] {
+export function nearestHouse(town: TownLayout, coord: AxialCoord): { key: string; plot: BuildingPlot }[] {
   for (const ring of [1, 2]) {
-    const plots: BuildingPlot[] = [];
+    const plots: { key: string; plot: BuildingPlot }[] = [];
     for (const [key, plot] of town.buildings) {
       const [q, r] = key.split(",").map(Number);
-      if (axialDistance({ q, r }, coord) === ring) plots.push(plot);
+      if (axialDistance({ q, r }, coord) === ring) plots.push({ key, plot });
     }
     if (plots.length > 0) return plots;
   }

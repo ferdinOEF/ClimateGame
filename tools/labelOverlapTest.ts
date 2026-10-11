@@ -169,6 +169,8 @@ async function main(): Promise<void> {
       await check(page, `${tag} zoom 1 (opening view)`, `panaji-zoom1-${tag}`, 2);
       // A monument's name card at the opening zoom, where plain monument labels are not shown.
       await page.evaluate(`window.__labelsForTest.setFocus("Our Lady of the Immaculate Conception")`);
+      // Frames are slow under software GL: measure once the card is on screen.
+      for (let k = 0; k < 50 && !(await page.evaluate(`!!document.querySelector(".map-label.card.shown")`)); k++) await page.waitForTimeout(100);
       await check(page, `${tag} zoom 1, church name card`, `panaji-card-${tag}`, 2);
       checks++;
       const cardShown = (await page.evaluate(`!!document.querySelector(".map-label.card.shown")`)) as boolean;
@@ -180,7 +182,7 @@ async function main(): Promise<void> {
       // A real hover: the mouse over the Mahalaxmi Temple's tile brings up its card.
       const temple = (await page.evaluate(`(() => { const m = ${JSON.stringify(TEMPLE)}; return window.__projectTileForTest(m.q, m.r); })()`)) as { x: number; y: number };
       await page.mouse.move(temple.x, temple.y, { steps: 4 });
-      await page.waitForTimeout(600);
+      for (let k = 0; k < 50 && !(await page.evaluate(`!!document.querySelector(".map-label.card.shown")`)); k++) await page.waitForTimeout(100);
       checks++;
       const hovered = (await page.evaluate(`window.__labelsForTest.focus`)) as string | null;
       if (hovered !== "Mahalaxmi Temple") failures.push(`${tag}: hovering the temple's tile gave the card ${hovered}`);

@@ -5,8 +5,8 @@
   "accessed": "2026-10-10",
   "kind": "Digital surface model: heights include buildings and trees.",
   "units": "int16 decimetres above the EGM2008 geoid, little-endian, row-major from the north-west corner",
-  "north": 15.523055555555555,
-  "west": 73.78472222222223,
+  "north": 15.523194444444442,
+  "west": 73.78486111111111,
   "pixelDeg": 0.0002777777777777778,
   "width": 343,
   "height": 314

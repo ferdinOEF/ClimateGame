@@ -31,7 +31,7 @@ function mapDataItems(): HTMLLIElement[] {
     items.push(item);
   };
   for (const map of REAL_PLACE_MAPS) {
-    if (map.source) add([`${map.name}: coastline, rivers, roads, landmarks and street map from OpenStreetMap.`, `${map.source.attribution}, under the Open Database Licence.`], map.source.href);
+    if (map.source) add([`${map.name}: coastline, rivers, roads, landmarks and street map from OpenStreetMap.`, `${map.source.attribution}, under the Open Database Licence.${map.source.accessed ? ` Accessed ${map.source.accessed}.` : ""}`], map.source.href);
     const e = map.elevation;
     if (e) {
       const metresPerUnit = map.source?.metresPerUnit;
@@ -42,7 +42,9 @@ function mapDataItems(): HTMLLIElement[] {
           `${map.name}: ground heights from the ${e.source}. ${e.kind ?? ""}`.trim(),
           `${e.licence} Accessed ${e.accessed}.`,
           e.method ?? "",
-          exaggeration ? `In this game, heights are drawn about ${exaggeration.toFixed(1)} times steeper than true scale, so the hills read on screen.` : ""
+          exaggeration
+            ? `In this game, heights are drawn about ${exaggeration.toFixed(1)} times steeper than true scale, so the hills read on screen${RELIEF.maxLiftWorld < 100 * RELIEF.worldUnitsPerMetre ? `; ground above ${Math.round(RELIEF.maxLiftWorld / RELIEF.worldUnitsPerMetre)} m is drawn at that height` : ""}.`
+            : ""
         ].filter((line) => line.length > 0),
         e.href
       );

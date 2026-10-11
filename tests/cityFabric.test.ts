@@ -30,8 +30,14 @@ describe("city fabric (Section 3)", () => {
       expect(town.roads.has(key)).toBe(false);
       expect(town.bridges.has(key)).toBe(false);
       expect(monuments.has(key)).toBe(false);
-      // Inside its own hex (inner radius 0.866), with room for the shape.
-      for (const part of plot.fabric) expect(Math.hypot(part.dx, part.dz) + 0.3 * part.scale * 1.12).toBeLessThan(0.866);
+      // Inside its own hex (inner radius 0.866), whichever way the shape is turned.
+      for (const part of plot.fabric) {
+        const g = buildingGeometry(part.kind);
+        g.computeBoundingBox();
+        const b = g.boundingBox!;
+        const halfDiagonal = Math.max(...[b.min.x, b.max.x].flatMap((x) => [b.min.z, b.max.z].map((z) => Math.hypot(x, z))));
+        expect(Math.hypot(part.dx, part.dz) + halfDiagonal * part.scale).toBeLessThan(0.866);
+      }
     }
   });
 });

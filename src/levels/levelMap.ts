@@ -51,6 +51,8 @@ export interface MapSource {
   bounds: { north: number; south: number; west: number; east: number };
   /** Ground metres to one world unit, which is what sets how big a hex is. */
   metresPerUnit: number;
+  /** When the map data was fetched (YYYY-MM-DD). */
+  accessed?: string;
 }
 
 /**
