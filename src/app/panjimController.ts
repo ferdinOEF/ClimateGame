@@ -1100,7 +1100,7 @@ export class PanjimController {
 
   /**
    * Scenario helper: defends like a player reading the warning: up to
-   * `count` defences that answer the next storm, on buildable tiles beside
+   * `count` defences (fewer if the storm is too close) that answer the next storm, on buildable tiles beside
    * the houses shown at risk, cheapest first, through the player's own build
    * path (the jar tapped first).
    */
@@ -1115,7 +1115,8 @@ export class PanjimController {
     const risk = exposure.housesAtRisk.map((key) => key.split(",").map(Number));
     let built = 0;
     for (const [q, r] of risk) {
-      if (built >= count) break;
+      // Each build costs a quarter: stop a quarter short, so the storm never lands mid-scenario.
+      if (built >= count || this.run.quartersUntil(next) <= 1) break;
       for (const n of [{ q, r }, ...neighbors({ q, r })]) {
         this.collectJar();
         const def = answers.find((d) => this.host.state.canBuild(n, d.id) && this.host.state.coin >= d.buildCost);
