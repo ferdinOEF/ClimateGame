@@ -1,0 +1,283 @@
+<!doctype html><meta charset=utf-8><title>Maya field researcher</title>
+<style>
+body{margin:0;background:#0f1922;font-family:system-ui,Segoe UI,Arial;color:#eaf1f5;padding:22px;width:1200px}
+h1{font-size:20px;margin:0 0 2px}p.s{margin:0 0 18px;color:#9db2c0;font-size:13px}
+.row{display:flex;gap:16px;align-items:flex-start}
+.p{background:#1c2b34;border:1px solid #2c404c;border-radius:12px;padding:12px}
+.p h2{font-size:14px;margin:0 0 2px;color:#dce9f1;font-weight:600}
+.p small{display:block;color:#90a7b6;font-size:11.5px;margin-bottom:8px;line-height:1.35}
+svg{display:block;background:linear-gradient(#2b3e4a,#1a2730);border-radius:9px}
+.sw{display:flex;gap:9px;margin-top:16px;align-items:center;flex-wrap:wrap}
+.sw i{width:28px;height:28px;border-radius:7px;display:block;border:1px solid #334b58}
+.sw span{font-size:11px;color:#9db2c0}
+</style>
+<h1>Maya — field researcher</h1>
+<p class=s>Teal field shirt, olive cargo trousers, belt, daypack, boots. Binoculars in one hand, fingers drawn on both.</p>
+<div class=row id=row></div>
+<div class=sw id=sw></div>
+<script>
+const SKIN="#c98f68", SKIN_SH="#ab7551", SKIN_DP="#92603f", SKIN_LT="#dda882";
+const H_BASE="#33200f", H_MID="#6b4324", H_HI="#a1703f", H_TIP="#c08e55";
+const DRESS="#fbf7ef", DRESS_SH="#e4dac8", MOUTH="#9c4f45", LIP_HI="#c47b6c", CHEEK="#d4836c";
+const rnd=s=>{let x=s;return()=>{x=(x*48271)%2147483647;return (x-1)/2147483646}};
+
+/* one coiled ringlet: a spiral drawn as a smooth polyline */
+function coil(cx,cy,r0,turns,phase,squash,col,w,op){
+  const N=Math.round(turns*16), pts=[];
+  for(let i=0;i<=N;i++){
+    const t=i/N*turns*Math.PI*2;
+    const r=r0*(1-0.52*(i/N));
+    pts.push([cx+Math.cos(t+phase)*r, cy+Math.sin(t+phase)*r*squash + (i/N)*r0*0.55]);
+  }
+  const rot=(phase*57.3)%180-90;
+  return `<polyline transform="rotate(${rot.toFixed(0)} ${cx.toFixed(1)} ${cy.toFixed(1)})" points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"${op?` opacity="${op}"`:''}/>`;
+}
+/* hair mass: crown + shoulder-length sides. ends ~y=178 (shoulders are ~168) */
+const FACE={cx:100,cy:106,rx:30.5,ry:43};
+function inMass(x,y){
+  const crown=((x-100)/53)**2+((y-84)/47)**2<=1;
+  const sides=Math.abs(x-100)<56 && y>=74 && y<=176 && Math.abs(x-100)>17 &&
+              ((x-100)/(56-(y-74)*0.05))**2 < 1.5;
+  return crown||sides;
+}
+function inFace(x,y){return ((x-FACE.cx)/(FACE.rx-1))**2+((y-FACE.cy)/(FACE.ry-1))**2 <= 1}
+function hairSilhouette(){
+  return `<ellipse cx="100" cy="84" rx="53" ry="47" fill="${H_BASE}"/>
+    <path d="M44 96 C38 126 38 156 46 176 C62 182 78 180 88 172 C78 150 76 120 80 100 Z" fill="${H_BASE}"/>
+    <path d="M156 96 C162 126 162 156 154 176 C138 182 122 180 112 172 C122 150 124 120 120 100 Z" fill="${H_BASE}"/>
+    <path d="M70 66 Q100 44 130 66 Q132 82 100 80 Q68 82 70 66 Z" fill="${H_BASE}"/>`;
+}
+function ringlets(seed,front){
+  const R=rnd(seed); let out='';
+  const spots=[];
+  for(let i=0;i<900 && spots.length<(front?46:82);i++){
+    const x=100+(R()*2-1)*64, y=56+R()*126;
+    if(!inMass(x,y)) continue;
+    if(((x-FACE.cx)/(FACE.rx*1.22))**2+((y-FACE.cy)/(FACE.ry*1.06))**2 <= 1) continue;              // keep the face clear below the fringe
+    if(spots.some(s=>Math.hypot(s[0]-x,s[1]-y)<(front?9:8))) continue;
+    spots.push([x,y]);
+  }
+  for(const [x,y] of spots){
+    const edge=Math.abs(x-100)>44 || y>150;
+    const r0=(edge?7.5:6.2)+R()*4.2;
+    const tone=R(); const col = tone<0.52?H_MID : tone<0.86?H_HI : H_TIP;
+    const sq=0.52+R()*0.3;
+    out+=coil(x,y,r0,1.3+R()*0.8,R()*6.28,sq,H_BASE,r0*0.74,null);
+    out+=coil(x,y,r0*0.9,1.2+R()*0.75,R()*6.28,sq,col,r0*0.3,0.92);
+  }
+  return out;
+}
+function fringe(){  /* curly bangs across the forehead, stopping above the brows */
+  const R=rnd(5); let out='';
+  for(let i=0;i<21;i++){
+    const t=i/20, x=69+t*62, y=81+Math.sin(t*Math.PI)*-7+R()*4;
+    const r0=5.6+R()*3.4;
+    const sq=0.55+R()*0.25;out+=coil(x,y,r0,1.3,R()*6.28,sq,H_BASE,r0*0.8);
+    out+=coil(x,y,r0*0.88,1.2,R()*6.28,sq,R()<0.6?H_MID:H_HI,r0*0.3,0.92);
+  }
+  return out;
+}
+function face(state){
+  const eyes={
+   greet:`<path d="M80 103 q7.5 -6.5 15 0 q-7.5 6.5 -15 0z" fill="#fff"/><path d="M105 103 q7.5 -6.5 15 0 q-7.5 6.5 -15 0z" fill="#fff"/>
+     <circle cx="87.5" cy="103" r="4.3" fill="#45291a"/><circle cx="112.5" cy="103" r="4.3" fill="#45291a"/>
+     <circle cx="87.5" cy="103" r="2" fill="#1d120a"/><circle cx="112.5" cy="103" r="2" fill="#1d120a"/>
+     <circle cx="89.1" cy="101.3" r="1.5" fill="#fff"/><circle cx="114.1" cy="101.3" r="1.5" fill="#fff"/>`,
+   warn:`<path d="M79.5 103 q8 -7.5 16 0 q-8 7.5 -16 0z" fill="#fff"/><path d="M104.5 103 q8 -7.5 16 0 q-8 7.5 -16 0z" fill="#fff"/>
+     <circle cx="87.5" cy="103" r="4.6" fill="#45291a"/><circle cx="112.5" cy="103" r="4.6" fill="#45291a"/>
+     <circle cx="87.5" cy="103" r="2.1" fill="#1d120a"/><circle cx="112.5" cy="103" r="2.1" fill="#1d120a"/>
+     <circle cx="89.1" cy="101.2" r="1.6" fill="#fff"/><circle cx="114.1" cy="101.2" r="1.6" fill="#fff"/>`,
+   alarm:`<ellipse cx="87.5" cy="103" rx="7.6" ry="8.8" fill="#fff"/><ellipse cx="112.5" cy="103" rx="7.6" ry="8.8" fill="#fff"/>
+     <circle cx="87.5" cy="103.6" r="4.4" fill="#45291a"/><circle cx="112.5" cy="103.6" r="4.4" fill="#45291a"/>
+     <circle cx="87.5" cy="103.6" r="2" fill="#1d120a"/><circle cx="112.5" cy="103.6" r="2" fill="#1d120a"/>
+     <circle cx="89.1" cy="101.4" r="1.6" fill="#fff"/><circle cx="114.1" cy="101.4" r="1.6" fill="#fff"/>`,
+   happy:`<path d="M80 104 q7.5 -7.5 15 0" stroke="#3a2214" stroke-width="3" fill="none" stroke-linecap="round"/>
+     <path d="M105 104 q7.5 -7.5 15 0" stroke="#3a2214" stroke-width="3" fill="none" stroke-linecap="round"/>`
+  }[state];
+  const lashes = state==='happy'?'':
+   `<path d="M79.6 101.4 l-3.2 -2.2" stroke="#2c1a0f" stroke-width="2" stroke-linecap="round"/>
+    <path d="M120.4 101.4 l3.2 -2.2" stroke="#2c1a0f" stroke-width="2" stroke-linecap="round"/>`;
+  const brows={
+   greet:`<path d="M79.5 91.5 q8 -5 16 -1.5" stroke="#36220f" stroke-width="3" fill="none" stroke-linecap="round"/>
+     <path d="M104.5 90 q8 -3.5 16 1.5" stroke="#36220f" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+   warn:`<path d="M79.5 89 q8 -2 16 3" stroke="#36220f" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+     <path d="M104.5 92 q8 -5 16 -3" stroke="#36220f" stroke-width="3.2" fill="none" stroke-linecap="round"/>`,
+   alarm:`<path d="M79 87.5 q8.5 -1 16.5 4.5" stroke="#36220f" stroke-width="3.3" fill="none" stroke-linecap="round"/>
+     <path d="M104.5 92 q8 -5.5 16.5 -4.5" stroke="#36220f" stroke-width="3.3" fill="none" stroke-linecap="round"/>`,
+   happy:`<path d="M79.5 89.5 q8 -5.5 16 -2" stroke="#36220f" stroke-width="3" fill="none" stroke-linecap="round"/>
+     <path d="M104.5 87.5 q8 -3.5 16 2" stroke="#36220f" stroke-width="3" fill="none" stroke-linecap="round"/>`
+  }[state];
+  const mouth={
+   greet:`<path d="M92 125.5 q8 2.6 16 0 q-8 8 -16 0z" fill="${MOUTH}"/><path d="M94.6 126.8 q5.4 1.5 10.8 0" stroke="${LIP_HI}" stroke-width="1.7" fill="none" stroke-linecap="round"/>`,
+   warn:`<path d="M93.5 125.5 q6.5 2 13 0 q-6.5 5.6 -13 0z" fill="${MOUTH}"/>`,
+   alarm:`<ellipse cx="100" cy="127.5" rx="5.6" ry="7" fill="${MOUTH}"/><ellipse cx="100" cy="130.7" rx="3.4" ry="2.6" fill="#c4756a"/>`,
+   happy:`<path d="M89.5 123 q10.5 12 21 0 q-10.5 4 -21 0z" fill="${MOUTH}"/><path d="M91.6 124.2 q8.4 1.8 16.8 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+  }[state];
+  return `
+   <path d="M100 63 C74 63 69.5 80 70 100 C70.5 118 78 137 100 148 C122 137 129.5 118 130 100 C130.5 80 126 63 100 63 Z" fill="${SKIN}"/>
+   <path d="M100 63 C74 63 69.5 80 70 100 C70.5 118 78 137 100 148 C94 134 88 117 88 100 C88 82 92 70 100 63 Z" fill="${SKIN_SH}" opacity=".30"/>
+   <path d="M87 134 q13 8 26 0 q-13 10 -26 0z" fill="${SKIN_SH}" opacity=".26"/>
+   <ellipse cx="81.5" cy="114" rx="6.4" ry="4.4" fill="${CHEEK}" opacity=".36"/>
+   <ellipse cx="118.5" cy="114" rx="6.4" ry="4.4" fill="${CHEEK}" opacity=".36"/>
+   ${brows}${eyes}${lashes}
+   <path d="M99.2 104 q4 6.8 0.4 10.4 q-2 1.6 -4 0.4" stroke="${SKIN_DP}" stroke-width="2.1" fill="none" stroke-linecap="round" opacity=".75"/>
+   <ellipse cx="96.6" cy="115.2" rx="1.2" ry="0.85" fill="${SKIN_DP}" opacity=".55"/>
+   <ellipse cx="103.4" cy="115.2" rx="1.2" ry="0.85" fill="${SKIN_DP}" opacity=".55"/>
+   ${mouth}
+   <path d="M92 129 q8 1.8 16 0" stroke="${SKIN_SH}" stroke-width="1.3" fill="none" opacity=".4"/>`;
+}
+
+const SHIRT="#2f7d6e", SHIRT_SH="#24655a", SHIRT_DK="#1b4f46", SHIRT_LT="#3d9183";
+const PANT="#6f6a3a", PANT_SH="#5a5630", PANT_DK="#494526";
+const BELT="#523521", BELT_SH="#3d2718", BUCKLE="#c9a24a";
+const PACK="#4f5a33", PACK_SH="#3f4828", STRAP="#6b5a33", STRAP_SH="#52452a";
+const BOOT="#6b4428", BOOT_SH="#523321", SOLE="#3c2617";
+const VIAL="#8fd3e8", VIAL_CAP="#d9533f";
+
+/* ---------- hands ---------- */
+function handOpen(x,y,dir){            /* dir -1 = thumb toward the body on the left side */
+  let s='';
+  s+=`<path d="M${x-6} ${y-7} q6 -3 12 0 q2 9 0 14 q-6 3 -12 0 q-2 -5 0 -14z" fill="${SKIN_LT}"/>`;
+  const fx=[-4.2,-1.4,1.4,4.2], fl=[8.4,9.6,9.2,7.6];
+  for(let i=0;i<4;i++){
+    s+=`<path d="M${x+fx[i]} ${y+5} q${fx[i]*0.25} ${fl[i]*0.6} ${fx[i]*0.3} ${fl[i]}" stroke="${SKIN_LT}" stroke-width="3.3" fill="none" stroke-linecap="round"/>`;
+    s+=`<path d="M${x+fx[i]} ${y+5} q${fx[i]*0.25} ${fl[i]*0.6} ${fx[i]*0.3} ${fl[i]}" stroke="${SKIN_SH}" stroke-width="0.8" fill="none" stroke-linecap="round" opacity=".45"/>`;
+  }
+  s+=`<path d="M${x+dir*6} ${y-2} q${dir*5} 3 ${dir*5} 8" stroke="${SKIN_LT}" stroke-width="3.8" fill="none" stroke-linecap="round"/>`;
+  s+=`<path d="M${x-5} ${y+4.5} q5 2 10 0" stroke="${SKIN_SH}" stroke-width="0.9" fill="none" opacity=".5"/>`;
+  return s;
+}
+function handGrip(x,y){                /* fist closed around something */
+  let s='';
+  s+=`<path d="M${x-8} ${y-8} q8 -3 16 0 q3 11 0 19 q-8 3 -16 0 q-3 -8 0 -19z" fill="${SKIN_LT}"/>`;
+  for(let i=0;i<4;i++){
+    const fy=y-4.5+i*4.6;
+    s+=`<path d="M${x-7.4} ${fy} q7.4 -2.4 14.8 0" stroke="${SKIN}" stroke-width="3.2" fill="none" stroke-linecap="round"/>`;
+    s+=`<path d="M${x-7.4} ${fy+1.9} q7.4 -2.4 14.8 0" stroke="${SKIN_SH}" stroke-width="0.9" fill="none" opacity=".5"/>`;
+  }
+  s+=`<path d="M${x-8.5} ${y-4} q-4.5 5 -2.5 11.5 q3.5 3.5 6 0" fill="${SKIN_LT}"/>`;      /* thumb over the grip */
+  s+=`<path d="M${x-8.5} ${y-4} q-4.5 5 -2.5 11.5" stroke="${SKIN_SH}" stroke-width="1" fill="none" opacity=".5"/>`;
+  return s;
+}
+/* ---------- binoculars, hanging from the fist ---------- */
+const BINO="#46574a", BINO_SH="#374638", BINO_LT="#5c7060", LENS="#9fd3e4", LENS_RIM="#d8b45c";
+function binoculars(x,y){
+  let s='';
+  s+=`<path d="M${x-3} ${y-16} q3 -4 6 0" stroke="${BINO_SH}" stroke-width="2.6" fill="none"/>`;   /* strap loop */
+  
+  for(const [bx,col] of [[-6.5,BINO_SH],[6.5,BINO]]){
+    s+=`<rect x="${x+bx-5.5}" y="${y-10}" width="11" height="9" rx="2.5" fill="${col}"/>`;          /* eyepiece */
+    s+=`<rect x="${x+bx-7}" y="${y-2}" width="14" height="24" rx="4" fill="${col}"/>`;          /* barrel */
+    s+=`<rect x="${x+bx-7}" y="${y+7}" width="14" height="4.5" rx="1.5" fill="${BINO_LT}"/>`;         /* focus ring */
+    s+=`<ellipse cx="${x+bx}" cy="${y+22}" rx="6.6" ry="2.8" fill="${LENS_RIM}"/>`;
+    s+=`<ellipse cx="${x+bx}" cy="${y+22}" rx="4.6" ry="1.9" fill="${LENS}"/>`;
+  }
+  s+=`<rect x="${x-3}" y="${y-4}" width="6" height="12" rx="2" fill="${BINO_LT}"/>`;                /* bridge */
+  return s;
+}
+
+function limb(d,w,col){return `<path d="${d}" stroke="${col}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`}
+
+function pack(){ /* daypack behind her, visible at both sides */
+  let s='';
+  s+=`<path d="M60 186 C40 196 36 240 41 284 C50 296 70 296 80 286 C76 240 76 204 84 190 Z" fill="${PACK_SH}"/>`;
+  s+=`<path d="M140 186 C160 196 164 240 159 284 C150 296 130 296 120 286 C124 240 124 204 116 190 Z" fill="${PACK}"/>`;
+  s+=`<path d="M150 212 q10 3 10 22 q0 20 -10 22" fill="none" stroke="${PACK_SH}" stroke-width="3.4"/>`;
+  s+=`<path d="M44 214 q-8 3 -8 20 q0 18 8 20" fill="none" stroke="${PACK}" stroke-width="3" opacity=".8"/>`;
+  s+=`<path d="M126 206 h28 v9 h-28z" fill="${PACK_SH}" opacity=".9"/>`;
+  return s;
+}
+function straps(){
+  let s='';
+  for(const [x0,x1,col] of [[80,88,STRAP_SH],[120,112,STRAP]]){
+    s+=`<path d="M${x0} 170 C${x0-4} 200 ${x1-2} 226 ${x1} 252" stroke="${col}" stroke-width="10" fill="none" stroke-linecap="round"/>`;
+    s+=`<rect x="${Math.min(x0,x1)-5}" y="214" width="10" height="7" rx="1.5" fill="${BELT_SH}"/>`;
+  }
+  s+=`<path d="M88 214 q12 4 24 0" stroke="${STRAP_SH}" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+  s+=`<rect x="95" y="210" width="10" height="9" rx="2" fill="${BELT_SH}"/>`;
+  return s;
+}
+function figure(opts){
+  const withPack = opts.pack!==false;
+  let s='';
+  if(withPack) s+=pack();
+  /* ---- legs: cargo trousers ---- */
+  s+=limb("M87 282 C83 320 82 350 83 376",29,PANT);
+  s+=limb("M113 282 C117 320 118 350 117 376",29,PANT);
+  s+=limb("M83 372 C82 402 82 428 84 446",25,PANT);
+  s+=limb("M117 372 C118 402 118 428 116 446",25,PANT);
+  s+=limb("M90 300 C86 332 85 354 86 374",7,PANT_SH);
+  s+=limb("M87 382 C86 406 86 426 87 442",5,PANT_SH);
+  /* cargo pocket + seams */
+  s+=`<path d="M70 318 h17 q2 0 2 2 v24 q0 2 -2 2 h-17 q-2 0 -2 -2 v-24 q0 -2 2 -2z" fill="${PANT_SH}"/>`;
+  s+=`<path d="M68 318 h21 v6 h-21z" fill="${PANT_DK}"/>`;
+  s+=`<path d="M113 322 h16 v22 h-16z" fill="${PANT_SH}" opacity=".85"/>`;
+  s+=`<path d="M113 322 h16 v5 h-16z" fill="${PANT_DK}" opacity=".9"/>`;
+  s+=`<path d="M74 430 q10 4 20 0" stroke="${PANT_DK}" stroke-width="2.4" fill="none" opacity=".8"/>`;
+  s+=`<path d="M106 430 q10 4 20 0" stroke="${PANT_DK}" stroke-width="2.4" fill="none" opacity=".8"/>`;
+  /* ---- boots ---- */
+  for(const x of [84,116]){
+    s+=`<path d="M${x-14} 438 q14 -5 28 0 l0 18 q-14 7 -28 0z" fill="${BOOT}"/>`;
+    s+=`<path d="M${x-14} 442 q14 6 28 0" stroke="${BOOT_SH}" stroke-width="2.6" fill="none"/>`;
+    s+=`<path d="M${x-16} 454 q16 8 32 0 q3 12 -16 12 q-19 0 -16 -12z" fill="${SOLE}"/>`;
+    s+=`<path d="M${x-9} 446 q9 4 18 0" stroke="${BOOT_SH}" stroke-width="3.4" fill="none" stroke-linecap="round"/>`;
+  }
+  /* ---- arms ---- */
+  s+=limb("M72 186 C58 222 52 258 53 296",17,SKIN);
+  s+=limb("M128 186 C142 222 148 258 147 296",17,SKIN);
+  s+=limb("M70 198 C58 230 53 258 54 290",6,SKIN_SH);
+  s+=binoculars(53,324);
+  s+=handGrip(52,304);
+  s+=handOpen(148,303,1);
+  /* ---- neck ---- */
+  s+=`<path d="M91 144 h18 v28 h-18z" fill="${SKIN_SH}"/>`;
+  s+=`<path d="M91 144 h18 v10 q-9 7 -18 0z" fill="${SKIN_DP}" opacity=".5"/>`;
+  /* ---- shirt, tucked in at the belt ---- */
+  s+=`<path d="M100 166 C84 167 70 175 66 187 C62 206 62 228 68 254 C84 262 116 262 132 254
+       C138 228 138 206 134 187 C130 175 116 167 100 166 Z" fill="${SHIRT}"/>`;
+  s+=`<path d="M100 166 C84 167 70 175 66 187 C62 206 62 228 68 254 C76 258 84 260 92 261
+       C84 226 84 192 94 170 Z" fill="${SHIRT_SH}" opacity=".85"/>`;
+  /* collar + placket */
+  s+=`<path d="M91 164 L100 184 L109 164 Z" fill="${SKIN_SH}"/>`;
+  s+=`<path d="M91 164 L100 184 L92 186 L83 170 Z" fill="${SHIRT_DK}"/>`;
+  s+=`<path d="M109 164 L100 184 L108 186 L117 170 Z" fill="${SHIRT_LT}"/>`;
+  s+=`<path d="M100 182 v70" stroke="${SHIRT_DK}" stroke-width="2.2" fill="none"/>`;
+  for(const y of [196,212,228,244]) s+=`<circle cx="100" cy="${y}" r="1.9" fill="${BUCKLE}" opacity=".85"/>`;
+  /* chest pockets with flaps */
+  for(const x of [78,110]){
+    s+=`<path d="M${x} 196 h14 v16 h-14z" fill="${SHIRT_SH}"/>`;
+    s+=`<path d="M${x-1} 194 h16 v6 q-8 3 -16 0z" fill="${SHIRT_DK}"/>`;
+  }
+  /* short sleeves with a rolled cuff */
+  s+=`<path d="M72 172 C62 188 58 204 58 218 q12 6 24 0 C80 202 80 186 85 174 Z" fill="${SHIRT_SH}"/>`;
+  s+=`<path d="M128 172 C138 188 142 204 142 218 q-12 6 -24 0 C120 202 120 186 115 174 Z" fill="${SHIRT}"/>`;
+  s+=`<path d="M58 214 q12 7 24 0 l0 7 q-12 7 -24 0z" fill="${SHIRT_DK}"/>`;
+  s+=`<path d="M118 214 q12 7 24 0 l0 7 q-12 7 -24 0z" fill="${SHIRT_DK}" opacity=".8"/>`;
+  if(withPack) s+=straps();
+  /* ---- belt ---- */
+  s+=`<path d="M68 250 q32 10 64 0 l0 13 q-32 10 -64 0z" fill="${BELT}"/>`;
+  s+=`<path d="M68 258 q32 10 64 0" stroke="${BELT_SH}" stroke-width="2" fill="none"/>`;
+  s+=`<rect x="93" y="252" width="14" height="11" rx="2" fill="${BUCKLE}"/>`;
+  s+=`<rect x="97" y="255" width="6" height="5" rx="1" fill="${BELT_SH}"/>`;
+  /* sample vial clipped to the belt */
+  s+=`<rect x="70" y="258" width="9" height="22" rx="3" fill="${VIAL}" opacity=".9"/>`;
+  s+=`<rect x="70" y="256" width="9" height="5" rx="1.5" fill="${VIAL_CAP}"/>`;
+  s+=`<rect x="70" y="270" width="9" height="10" rx="2" fill="#6fb9d2" opacity=".9"/>`;
+  /* small notebook in the thigh pocket */
+  s+=`<path d="M71 314 h11 v7 h-11z" fill="#efe3c6"/>`;
+  return s;
+}
+function svg(w,h,vb,content){return `<svg viewBox="${vb}" width="${w}" height="${h}">${content}</svg>`}
+const FULL = `${hairSilhouette()}${ringlets(17,false)}${face('greet')}${figure({})}${ringlets(41,true)}${fringe()}`;
+const NOPACK = `${hairSilhouette()}${ringlets(17,false)}${face('greet')}${figure({pack:false})}${ringlets(41,true)}${fringe()}`;
+const BUST = `${hairSilhouette()}${ringlets(17,false)}${face('warn')}${figure({})}${ringlets(41,true)}${fringe()}`;
+document.getElementById('row').innerHTML=`
+ <div class=p><h2>Full figure — with daypack</h2><small>Field shirt, cargo trousers, belt with a sample vial, boots.</small>${svg(286,700,"0 0 200 490",FULL)}</div>
+ <div class=p><h2>Without the pack</h2><small>For scenes where the straps clutter her at small size.</small>${svg(286,700,"0 0 200 490",NOPACK)}</div>
+ <div class=p><h2>HUD crop, actual size</h2><small>What the player sees in the guide overlay — head and shoulders only, at 1x and 2x.</small>
+  <div style="display:flex;gap:12px;align-items:flex-end">${svg(150,188,"38 40 124 155",BUST)}${svg(300,375,"38 40 124 155",BUST)}</div></div>`;
+document.getElementById('sw').innerHTML=[["Skin",SKIN],["Hair base",H_BASE],["Hair light",H_HI],
+ ["Shirt",SHIRT],["Shirt shade",SHIRT_SH],["Trousers",PANT],["Trouser shade",PANT_SH],["Belt",BELT],
+ ["Buckle",BUCKLE],["Pack",PACK],["Strap",STRAP],["Boot",BOOT],["Vial",VIAL]]
+ .map(([n,c])=>`<i style="background:${c}"></i><span>${n}<br>${c}</span>`).join('');
+</script>

@@ -3,9 +3,10 @@
  * bottom-left corner of the HUD and says one short, specific thing at a time.
  *
  * Drawn as inline SVG and animated with CSS: no textures, no 3D, nothing to
- * load. Her look is an original design for this game: warm brown skin, dark
- * hair in a bun under an orange headband, a green field vest over a white
- * shirt, a notebook on her hip.
+ * load. Her look is an original design for this game (mayaArt.ts): a young
+ * Goan field researcher with shoulder-length curly hair, a teal field shirt,
+ * olive cargo trousers and binoculars. In the HUD she is head and shoulders,
+ * without her pack; the level brief and the Aftermath show her whole.
  *
  * STATES. Each is a class on the root; CSS moves her arms, face and props:
  *   idle      blinks and breathes
@@ -31,6 +32,7 @@
  * home when the line is done.
  */
 import { placeBubble, placeFigure, type Rect } from "./mayaLayout";
+import { headUrl, hudFigureSvg } from "./mayaArt";
 
 export type MayaState = "idle" | "greeting" | "tip" | "explains" | "warning" | "worried" | "celebrates" | "jump";
 
@@ -48,85 +50,8 @@ export interface MayaLine {
   onShow?: () => void;
 }
 
-const SVG = `
-<svg class="maya-figure" viewBox="0 0 120 190" width="96" height="152" aria-hidden="true" focusable="false">
-  <ellipse class="maya-shadow" cx="60" cy="182" rx="26" ry="5"/>
-  <g class="maya-body">
-    <g class="maya-legs">
-      <rect x="47" y="128" width="11" height="46" rx="4" fill="#7c6c4b"/>
-      <rect x="62" y="128" width="11" height="46" rx="4" fill="#7c6c4b"/>
-      <rect x="44" y="168" width="16" height="10" rx="3" fill="#4a3324"/>
-      <rect x="61" y="168" width="16" height="10" rx="3" fill="#4a3324"/>
-    </g>
-    <g class="maya-arm maya-arm-l">
-      <rect x="36" y="89" width="11" height="21" rx="5" fill="#f7f4ec" stroke="#d9d3c4" stroke-width="0.8"/>
-      <rect x="37.5" y="106" width="8" height="18" rx="4" fill="#8a5634"/>
-      <circle cx="41.5" cy="126" r="4.6" fill="#8a5634"/>
-    </g>
-    <g class="maya-torso">
-      <path d="M40 88 Q60 80 80 88 L84 132 Q60 138 36 132 Z" fill="#f7f4ec" stroke="#d9d3c4" stroke-width="0.8"/>
-      <path d="M40 88 Q48 84 55 86 L54 133 Q44 133 37 131 Z" fill="#3d7a4c"/>
-      <path d="M80 88 Q72 84 65 86 L66 133 Q76 133 83 131 Z" fill="#3d7a4c"/>
-      <rect x="41" y="104" width="9" height="8" rx="1.5" fill="#33683f"/>
-      <rect x="70" y="104" width="9" height="8" rx="1.5" fill="#33683f"/>
-      <path d="M54 86 L60 97 L66 86" fill="none" stroke="#d9d3c4" stroke-width="1.4"/>
-      <rect x="37" y="125" width="46" height="6" rx="2" fill="#5a4330"/>
-      <g class="maya-notebook">
-        <rect x="75" y="117" width="13" height="17" rx="2" fill="#c98b3d" stroke="#8a5a22" stroke-width="1"/>
-        <line x1="78" y1="117" x2="78" y2="134" stroke="#8a5a22" stroke-width="1"/>
-        <line x1="80" y1="122" x2="86" y2="122" stroke="#f4e3c4" stroke-width="0.9"/>
-        <line x1="80" y1="125" x2="86" y2="125" stroke="#f4e3c4" stroke-width="0.9"/>
-      </g>
-    </g>
-    <g class="maya-arm maya-arm-r">
-      <rect x="73" y="89" width="11" height="21" rx="5" fill="#f7f4ec" stroke="#d9d3c4" stroke-width="0.8"/>
-      <rect x="74.5" y="106" width="8" height="18" rx="4" fill="#8a5634"/>
-      <circle cx="78.5" cy="126" r="4.6" fill="#8a5634"/>
-    </g>
-    <rect x="55" y="72" width="10" height="13" rx="3" fill="#7d4c2d"/>
-    <g class="maya-head">
-      <circle cx="60" cy="31" r="9.5" fill="#24170f"/>
-      <ellipse cx="43.5" cy="58" rx="3" ry="4" fill="#7d4c2d"/>
-      <ellipse cx="76.5" cy="58" rx="3" ry="4" fill="#7d4c2d"/>
-      <circle cx="43.5" cy="64" r="1.6" fill="#f2c35b"/>
-      <circle cx="76.5" cy="64" r="1.6" fill="#f2c35b"/>
-      <ellipse cx="60" cy="56" rx="17" ry="19" fill="#8a5634"/>
-      <path d="M43 55 Q41 36 60 35 Q79 36 77 55 Q73 44 60 44 Q47 44 43 55 Z" fill="#24170f"/>
-      <path d="M43.6 49 Q60 37.5 76.4 49 L76 53.5 Q60 42.5 44 53.5 Z" fill="#f08a24"/>
-      <ellipse cx="49.5" cy="63.5" rx="3.2" ry="1.8" fill="#b4664a" opacity="0.4"/>
-      <ellipse cx="70.5" cy="63.5" rx="3.2" ry="1.8" fill="#b4664a" opacity="0.4"/>
-      <g class="maya-brows" fill="none" stroke="#24170f" stroke-width="1.7" stroke-linecap="round">
-        <path class="maya-brow-l" d="M49 51.5 Q53 49.5 57 51.5"/>
-        <path class="maya-brow-r" d="M63 51.5 Q67 49.5 71 51.5"/>
-      </g>
-      <g class="maya-eyes" fill="#20140d">
-        <ellipse cx="53" cy="57.5" rx="2.1" ry="2.7"/>
-        <ellipse cx="67" cy="57.5" rx="2.1" ry="2.7"/>
-      </g>
-      <path class="maya-mouth maya-mouth-smile" d="M54 66 Q60 71.5 66 66" fill="none" stroke="#4a1f12" stroke-width="1.8" stroke-linecap="round"/>
-      <ellipse class="maya-mouth maya-mouth-o" cx="60" cy="67.5" rx="2.6" ry="3.2" fill="#4a1f12"/>
-      <path class="maya-mouth maya-mouth-worry" d="M55 68.5 Q60 65 65 68.5" fill="none" stroke="#4a1f12" stroke-width="1.8" stroke-linecap="round"/>
-      <path class="maya-sweat" d="M79 41 Q76 46 79 48 Q82 46 79 41 Z" fill="#8fd0f0"/>
-    </g>
-  </g>
-  <g class="maya-bulb">
-    <circle cx="94" cy="20" r="7.5" fill="#ffd54a" stroke="#c99a1b" stroke-width="1.2"/>
-    <rect x="90.5" y="27" width="7" height="5" rx="1" fill="#9b9b8f"/>
-    <g stroke="#ffd54a" stroke-width="1.6" stroke-linecap="round">
-      <line x1="94" y1="6" x2="94" y2="9"/><line x1="83" y1="12" x2="85.5" y2="14"/><line x1="105" y1="12" x2="102.5" y2="14"/>
-    </g>
-  </g>
-  <g class="maya-alert">
-    <circle cx="95" cy="20" r="9" fill="#e0533a" stroke="#fdf6e6" stroke-width="1.5"/>
-    <rect x="93.6" y="13" width="2.8" height="9" rx="1.2" fill="#fdf6e6"/>
-    <circle cx="95" cy="25.5" r="1.6" fill="#fdf6e6"/>
-  </g>
-  <g class="maya-stars" fill="#f2c35b" stroke="#a8781b" stroke-width="0.6">
-    <path class="maya-star" d="M22 30 l2.4 5 5.4.6-4 3.7 1.1 5.3-4.9-2.7-4.9 2.7 1.1-5.3-4-3.7 5.4-.6z"/>
-    <path class="maya-star" d="M98 18 l2 4.2 4.6.5-3.4 3.1.9 4.5-4.1-2.3-4.1 2.3.9-4.5-3.4-3.1 4.6-.5z"/>
-    <path class="maya-star" d="M100 56 l1.6 3.3 3.6.4-2.7 2.5.7 3.5-3.2-1.8-3.2 1.8.7-3.5-2.7-2.5 3.6-.4z"/>
-  </g>
-</svg>`;
+/** Her HUD figure: head and shoulders, 118 x 136 (mayaArt.ts; panjim.css sizes it per screen). */
+const SVG = hudFigureSvg(118, 136);
 
 /** How long a line stays up if the player does not dismiss it: long enough to read twice. */
 function readingMs(text: string): number {
@@ -207,14 +132,7 @@ export class Maya {
         <button type="button" class="maya-dismiss">Got it</button>
       </div>
       <button type="button" class="maya-badge" aria-label="Show Maya" hidden>
-        <svg viewBox="40 30 40 44" width="34" height="34" aria-hidden="true">
-          <circle cx="60" cy="31" r="9.5" fill="#24170f"/>
-          <ellipse cx="60" cy="56" rx="17" ry="19" fill="#8a5634"/>
-          <path d="M43 55 Q41 36 60 35 Q79 36 77 55 Q73 44 60 44 Q47 44 43 55 Z" fill="#24170f"/>
-          <path d="M43.6 49 Q60 37.5 76.4 49 L76 53.5 Q60 42.5 44 53.5 Z" fill="#f08a24"/>
-          <ellipse cx="53" cy="57.5" rx="2.1" ry="2.7" fill="#20140d"/><ellipse cx="67" cy="57.5" rx="2.1" ry="2.7" fill="#20140d"/>
-          <path d="M54 66 Q60 71.5 66 66" fill="none" stroke="#4a1f12" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>
+        <img class="maya-badge-face" src="${headUrl()}" width="44" height="44" alt="" draggable="false">
       </button>`;
     this.figure = this.el.querySelector(".maya-figure-wrap")!;
     this.bubble = this.el.querySelector(".maya-bubble")!;

@@ -1,4 +1,11 @@
 import { playSound } from "@ui/audioHooks";
+import { fullFigureUrl, type MayaExpression } from "./mayaArt";
+import type { MayaState } from "./maya";
+
+/** Her face on the card, from the mood of her line. */
+function expressionFor(mood: MayaState | null | undefined): MayaExpression {
+  return mood === "celebrates" ? "happy" : mood === "worried" ? "warn" : mood === "warning" ? "alarm" : "greet";
+}
 
 /**
  * The Aftermath: a small card over the board once a challenge has played out.
@@ -23,6 +30,8 @@ export interface AftermathView {
   replayLabel: string | null;
   /** Maya's line about what actually happened. */
   maya?: string | null;
+  /** Her mood for that line, which sets her face on the card. */
+  mayaMood?: MayaState | null;
   /** The same storm with no defences (houses hit), and what each kind of defence saved: real resolver numbers. */
   comparison?: { without: number; savedBy: string[] } | null;
 }
@@ -40,6 +49,7 @@ export class AftermathCard {
   show(view: AftermathView): Promise<"continue" | "replay"> {
     this.backdrop.innerHTML = `
       <div class="aftermath-card" role="dialog" aria-label="Aftermath">
+        <img class="maya-full-figure" src="${fullFigureUrl({ pack: true, expression: expressionFor(view.mayaMood) })}" width="102" height="250" alt="" draggable="false">
         <div class="aftermath-eyebrow">Aftermath</div>
         <div class="aftermath-title"></div>
         <div class="aftermath-stars">${[0, 1, 2].map(() => `<span class="aftermath-star">★</span>`).join("")}</div>
