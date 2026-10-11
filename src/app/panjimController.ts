@@ -28,6 +28,7 @@ import { axialToWorld } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
 import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
+import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
 import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
 import { tooltipText } from "@ui/tooltip";
 import { Maya } from "@ui/panjim/maya";
@@ -112,6 +113,14 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
+  /** Whether any menu, card or modal is open (the risk sequence never starts under one). */
+  overlayOpen: () => boolean;
+  /** Whether any of these tiles is on screen now. */
+  riskAreaOnScreen: (keys: string[]) => boolean;
+  /** Plays the first-warning risk sequence over these tiles (ui/riskIntroFx.ts). */
+  startRiskIntro: (mode: RiskIntroMode, keys: string[]) => void;
+  /** Stops it at once, leaving the normal risk view. */
+  cancelRiskIntro: (reason: string) => void;
   /** Glides the camera to a board coordinate (fractional allowed); `close` also zooms in a little. Cancelled by any drag. */
   focusCamera: (coord: AxialCoord, close?: boolean, zoom?: number) => void;
   /** The map's named places, for Maya to call a spot by name. */
@@ -135,6 +144,8 @@ export class PanjimController {
   private readonly getReady = new GetReadyPanel();
   readonly fieldGuide: FieldGuide;
   private busy = false;
+  /** The first-warning risk sequence plays once a playthrough (core/riskIntro.ts). */
+  private readonly riskGate = new RiskIntroGate();
   /** A challenge that landed during the current time-lapse, staged once the clock stops. */
   private pendingChallenge: { challenge: ScheduledChallenge; outcome: ChallengeOutcome; failedIds: string[] } | null = null;
   /** The last readiness reading for each challenge before it landed, for telemetry. */
@@ -197,7 +208,10 @@ export class PanjimController {
     this.riskToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: true, className: "risk-toggle" },
-      () => this.renderHeat()
+      (on) => {
+        if (!on) this.host.cancelRiskIntro("risk hidden");
+        this.renderHeat();
+      }
     );
     this.mayaToggle = new PrefToggle(
       host.container,
@@ -215,7 +229,10 @@ export class PanjimController {
     this.motionToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:calm-motion", label: "Calm motion", shortcut: "", defaultOn: prefersReducedMotion(), className: "motion-toggle" },
-      (on) => host.setReducedMotion(on)
+      (on) => {
+        host.setReducedMotion(on);
+        this.recheckRiskIntroMode();
+      }
     );
     this.qualityButton = document.createElement("button");
     this.qualityButton.type = "button";
@@ -390,7 +407,16 @@ export class PanjimController {
     }
     const undefended = this.run.exposureFor(next, true);
     const terrain = (key: string): string | undefined => this.host.state.placed.get(key)?.terrainId;
-    this.host.showHeat(buildHeatView(this.exposure, undefended, quartersLeft, defences, terrain));
+    const view = buildHeatView(this.exposure, undefended, quartersLeft, defences, terrain);
+    this.host.showHeat(view);
+    // The first warning of the playthrough gets the risk sequence, once, if
+    // nothing else is going on (it never waits for, or blocks, the player).
+    const hot = view.filter((tile) => tile.heat > 0).map((tile) => tile.key);
+    if (hot.length > 0) this.riskGate.see(next.id);
+    if (hot.length > 0 && !this.riskGate.spent && !this.busy && !this.host.overlayOpen() && this.host.riskAreaOnScreen(hot) && this.riskGate.offer(next.id)) {
+      this.riskIntroModeStarted = this.currentRiskIntroMode();
+      this.host.startRiskIntro(this.riskIntroModeStarted, hot);
+    }
   }
 
   /** Repaints the Outlook from the current quarter. */
@@ -638,6 +664,7 @@ export class PanjimController {
 
   /** 2050: the skyline reveal, the title, then the finale card; then the shell's results. */
   private async finale(): Promise<void> {
+    this.host.cancelRiskIntro("hazard");
     this.busy = true;
     this.syncControls();
     const result = this.result();
@@ -697,6 +724,8 @@ export class PanjimController {
           snapshot: this.run.snapshot(),
           locks: [...this.run.lockSnapshots],
           playMs: this.playMsBefore + this.host.telemetry.elapsed(),
+          // The first-warning risk sequence plays once a playthrough, reloads included.
+          riskIntroSpent: this.riskGate.spent,
           savedAt: new Date().toISOString()
         })
       );
@@ -715,7 +744,7 @@ export class PanjimController {
 
   /** On load: if this level and seed have a save part-way through, the brief offers to continue it. */
   private offerSavedRun(): void {
-    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number } | null = null;
+    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number; riskIntroSpent?: boolean } | null = null;
     try {
       const raw = localStorage.getItem(this.saveKey());
       saved = raw ? JSON.parse(raw) : null;
@@ -729,6 +758,8 @@ export class PanjimController {
       this.run.restore(data.snapshot);
       for (const [id, lock] of data.locks) this.run.lockSnapshots.set(id, lock);
       this.playMsBefore = data.playMs ?? 0;
+      // Already seen in this playthrough (or a storm has passed): it does not play again.
+      if (data.riskIntroSpent || this.run.landed.size > 0) this.riskGate.markSpent();
       this.host.redrawBoard();
       const next = this.run.nextChallenge();
       if (next && this.run.locked.has(next.id)) this.showForecast(next);
@@ -786,6 +817,23 @@ export class PanjimController {
     this.qualityButton.innerHTML = `<span class="toggle-label"></span>`;
     (this.qualityButton.querySelector(".toggle-label") as HTMLElement).textContent = `Quality: ${this.qualityLabel()}`;
     this.host.setQuality(this.quality);
+    this.recheckRiskIntroMode();
+  }
+
+  /** The mode the risk sequence started in, while it may still be playing. */
+  private riskIntroModeStarted: RiskIntroMode | null = null;
+
+  private currentRiskIntroMode(): RiskIntroMode {
+    const reduced = this.motionToggle?.value || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    return riskIntroMode(Boolean(reduced), this.quality);
+  }
+
+  /** If Calm motion or the quality changes the sequence's mode while it plays, it stops (it never switches style half way). */
+  private recheckRiskIntroMode(): void {
+    if (this.riskIntroModeStarted && this.currentRiskIntroMode() !== this.riskIntroModeStarted) {
+      this.host.cancelRiskIntro("mode changed");
+      this.riskIntroModeStarted = null;
+    }
   }
 
   frame(): void {
@@ -823,6 +871,7 @@ export class PanjimController {
 
   /** Repair a worn defence or damaged house: one quarter and part of its cost. */
   repair(coord: AxialCoord): boolean {
+    this.host.cancelRiskIntro("build");
     if (this.busy) return false;
     this.noteBoard();
     const outcome = this.run.repair(coord);
@@ -854,6 +903,7 @@ export class PanjimController {
   }
 
   build(coord: AxialCoord, elementId: string): boolean {
+    this.host.cancelRiskIntro("build");
     if (this.busy) return false;
     this.noteBoard();
     const outcome = this.run.build(coord, elementId);
@@ -865,6 +915,7 @@ export class PanjimController {
   }
 
   demolish(coord: AxialCoord): boolean {
+    this.host.cancelRiskIntro("build");
     if (this.busy) return false;
     this.noteBoard();
     const outcome = this.run.demolish(coord);
@@ -906,6 +957,7 @@ export class PanjimController {
       else if (steps.length > 0) steps[steps.length - 1].extra.push(event);
       else this.handleEvent(event);
     }
+    this.host.cancelRiskIntro("time passing");
     this.busy = true;
     this.syncControls();
     const handled = new Set<number>();

@@ -29,6 +29,7 @@ import { audioStateForTest, playSound } from "@ui/audioHooks";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
+import { RiskIntroFx, type ScreenPolygon } from "@ui/riskIntroFx";
 import { MapAttribution } from "@ui/attribution";
 import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
@@ -518,6 +519,46 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   const objectivesPanel = new ObjectivesPanel(container, level, levelMap);
   /**
+   * The first-warning risk sequence (ui/riskIntroFx.ts): the risk tiles'
+   * hexagons, projected to the screen every frame so the sheet stays on the
+   * board while the camera moves.
+   */
+  let riskIntroTiles: AxialCoord[] = [];
+  /** Projects the risk tiles' hexagons in one pass: one rectangle read and one reused vector, and a hexagon behind the camera is skipped. */
+  const riskHexes = (coords: AxialCoord[]): ScreenPolygon[] => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const v = new THREE.Vector3();
+    const out: ScreenPolygon[] = [];
+    for (const coord of coords) {
+      const centre = axialToWorld(coord, 1.0);
+      const y = terrain.heightAt(coord) + 0.06;
+      const corners: ScreenPolygon = [];
+      let behind = false;
+      for (let i = 0; i < 6; i++) {
+        // Pointy-top hexes; a hair oversized so neighbours meet without seams.
+        const angle = ((60 * i - 30) * Math.PI) / 180;
+        v.set(centre.x + Math.cos(angle) * 1.02, y, centre.z + Math.sin(angle) * 1.02).project(camera);
+        if (v.z > 1) behind = true;
+        corners.push([((v.x + 1) / 2) * rect.width, ((-v.y + 1) / 2) * rect.height]);
+      }
+      if (!behind) out.push(corners);
+    }
+    return out;
+  };
+  /** Any overlay the risk sequence must give way to: it does not start under one, and stops if one opens. */
+  const overlayOpen = (): boolean =>
+    buildPopover.isOpen ||
+    objectivesPanel.briefOpen ||
+    Boolean(
+      document.querySelector(
+        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .sources-backdrop"
+      )
+    );
+  const riskIntro = new RiskIntroFx(container, {
+    polygons: (): ScreenPolygon[] => riskHexes(riskIntroTiles),
+    button: () => container.querySelector<HTMLElement>(".risk-toggle")
+  });
+  /**
    * The Panjim 2050 run, on a level whose time model is `"actions"` (see
    * src/core/actionRun.ts). `null` on every other level, the tutorial
    * included, which keep the turn model exactly as it was. Every call site
@@ -583,6 +624,24 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           },
           landmarks: levelMap.landmarks,
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
+          overlayOpen,
+          riskAreaOnScreen: (keys) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            return riskHexes(
+              keys.map((key) => {
+                const [q, r] = key.split(",").map(Number);
+                return { q, r };
+              })
+            ).some((poly) => poly.some(([x, y]) => x > 0 && x < rect.width && y > 0 && y < rect.height));
+          },
+          startRiskIntro: (mode, keys) => {
+            riskIntroTiles = keys.map((key) => {
+              const [q, r] = key.split(",").map(Number);
+              return { q, r };
+            });
+            riskIntro.start(mode, performance.now());
+          },
+          cancelRiskIntro: (reason) => riskIntro.cancel(reason),
           tooltips,
           focusCamera: (coord, close, zoom = 1) => {
             const world = axialToWorld(coord, 1.0);
@@ -2152,6 +2211,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // glides rather than snapping (see scene.ts) — updating them only on
     // pointer events would leave them trailing behind the board mid-glide.
     const rect = renderer.domElement.getBoundingClientRect();
+    // The risk sequence gives way the moment the player opens a menu.
+    if (riskIntro.isRunning && overlayOpen()) riskIntro.cancel("menu");
+    riskIntro.frame(nowMs);
     mapLabels.update(
       (coord) => {
         // Anchored to the tile's top surface, so a label sits on the land
@@ -2338,6 +2400,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     __labelsForTest: mapLabels,
+    __riskIntroForTest: riskIntro,
     // Builds a specific element at a specific coord (rather than
     // reverse-engineering screen-pixel clicks through the popover).
     __buildForTest: (q: number, r: number, elementId: string, animate = true): boolean => {
@@ -2429,6 +2492,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     panjim?.dispose();
     stormReport.dispose();
     mapLabels.dispose();
+    riskIntro.dispose();
     mapAttribution?.dispose();
     mapLayerControl?.dispose();
     overlayTexture?.dispose();

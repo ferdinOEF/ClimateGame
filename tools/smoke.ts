@@ -94,7 +94,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: screenshotPath });
 
     const canvasInfo = await page.evaluate(() => {
-      const c = document.querySelector("canvas");
+      const c = document.querySelector<HTMLCanvasElement>("canvas:not([class*=risk-intro])");
       return c ? { width: c.width, height: c.height } : null;
     });
 
