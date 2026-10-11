@@ -132,6 +132,9 @@ async function main(): Promise<void> {
     await page.keyboard.press("r");
     await page.waitForTimeout(200);
     check(await evalJs<boolean>(page, `window.__heatForTest.visibleCount === ${heated}`), "Panaji: R shows it again");
+    // The preview rule is stated for the warning's last quarter, when the cone is the real landfall ±1.
+    await page.evaluate("window.__panjimScenarioForTest('heat-1')");
+    await page.waitForTimeout(800);
     const preview = await evalJs<{ id: string; atRisk: string[] }>(
       page,
       "(() => { const c = window.__panjimForTest.run.nextChallenge(); return { id: c.id, atRisk: [...window.__panjimForTest.exposure.housesAtRisk].sort() }; })()"
