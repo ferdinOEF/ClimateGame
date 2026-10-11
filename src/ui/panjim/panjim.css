@@ -1645,6 +1645,13 @@
   .get-ready-row.just-done, .get-ready-pop { animation: none; }
 }
 
+/* Short windows (a laptop browser at 80% height): a smaller figure, the same
+   bottom edge, so her bubble still has room beside her. */
+@media (max-height: 700px) and (min-width: 701px) {
+  .maya-figure { width: 114px; height: 112px; }
+  .maya-figure-wrap { width: 114px; height: 112px; top: calc(100% - 190px); }
+}
+
 /* Phones are secondary: keep Maya and her bubble inside a narrow screen. */
 @media (max-width: 700px) {
   .maya-figure, .maya-figure-wrap { width: 94px; height: 92px; }

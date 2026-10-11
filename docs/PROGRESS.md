@@ -8048,6 +8048,7 @@ The proportions, 200-wide viewBox and colours are the reference's.
 - **HUD:** head and shoulders, no pack, clipped below the shoulders. Arms are drawn over the hair, so a raised hand is never lost in the curls. In the HUD the forearms are drawn at 0.4 of their length from the shoulder, so every gesture stays inside her box (a test checks every arm rotation in `panjim.css`). Pointing and waving use the free hand; the binoculars are in the other one.
 - **Level brief:** her full figure with the pack stands beside the card. The brief is shared by every level, so she appears in the Tutorial's intro too; the Tutorial has never had the HUD Maya, and still does not.
 - **Aftermath:** her full figure with the pack stands beside the card, with her face following her line's mood (happy, worried, alarmed, else greeting), and only when she has a line.
+- **Short windows (700 px tall or less):** the HUD figure is 114×112 instead of 139×136, with the same bottom edge. At 1366×768 shrunk to 80% (1093×614), the wider new figure left her bubble no room, and the layout manager held her line back; the smaller figure gives it room. This is a CSS size only; the layout rules are unchanged.
 - **Minimised badge:** her head.
 - **The full figures and the badge:** pre-rendered images (one DOM node each), built once and cached.
 
@@ -8069,7 +8070,7 @@ The proportions, 200-wide viewBox and colours are the reference's.
 **Cost:**
 - **HUD figure:** 66 SVG nodes before, about 405 after.
 - **Badge:** 8 nodes before, 1 image after.
-- **In the game at 1920×1080:** Maya costs 0.03–0.08 fps (software GL), and the old and new figures alone run at the same rate.
+- **In the game at 1920×1080 (software GL):** Maya costs 0.03–0.08 fps in the first run and 0.20 fps after the review fixes (0.87 shown against 1.07 hidden, where single samples range 0.7–1.3, so this is within noise). Her figure alone, on an otherwise empty page, runs at 1.3 fps new against 1.2 fps old; an empty page runs at 51 fps. The cost is the figure's existing drop shadow, not the curls.
 - **Hair:** it tilts with her head but no longer nods, so the curls are not redrawn every frame while she idles.
 - **Flattening:** below the brief's 2 fps threshold, so the hair is not flattened into a sprite.
 
