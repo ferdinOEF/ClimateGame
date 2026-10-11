@@ -8,7 +8,7 @@ import { jitterColor, paletteColor } from "./palette";
 import { SettleAnimator } from "./settleAnimation";
 import { MAX_ELEMENT_INSTANCES_PER_TYPE } from "./instanceLimits";
 import { buildingGeometry, ROOF_TOP } from "./townGeometry";
-import type { BuildingKind } from "@levels/townLayout";
+import type { BuildingKind, FabricKind } from "@levels/townLayout";
 
 /**
  * How a House on a town-plan tile is drawn (levels/townLayout.ts): which of
@@ -22,6 +22,36 @@ export interface BuildingStyle {
   roof: THREE.Color;
   scale: number;
   turns: number;
+  /** Rotation about the vertical, radians; overrides `turns` when given. */
+  rotY?: number;
+  /** The tile's other structures (the city fabric, levels/townLayout.ts). They share the House's fate. */
+  fabric?: FabricStyle[];
+}
+
+/** One structure of a tile's city fabric, as drawn. */
+export interface FabricStyle {
+  kind: FabricKind;
+  dx: number;
+  dz: number;
+  rotY: number;
+  scale: number;
+  heightScale: number;
+  wall: THREE.Color;
+  roof: THREE.Color;
+}
+
+/** A fabric structure in its pool, attached to the House it stands with. */
+interface Companion {
+  meshKey: string;
+  mesh: THREE.InstancedMesh;
+  index: number;
+  dx: number;
+  dz: number;
+  rotY: number;
+  scale: number;
+  heightScale: number;
+  baseColor: THREE.Color;
+  roofColor: THREE.Color;
 }
 
 /**
@@ -176,6 +206,8 @@ interface ElementInstanceRef {
   degrade: number;
   /** Panjim 2050's skyline: buildings grow taller as the years pass. 1 everywhere else. */
   heightScale: number;
+  /** The rest of the tile's city fabric, if any (see `BuildingStyle.fabric`). */
+  companions: Companion[];
 }
 
 /** A just-planted defence is drawn at this fraction of its full size, growing to 1 at maturity. */
@@ -249,14 +281,21 @@ export class ElementMeshManager {
     }
   }
 
+  /** How many fabric structures are standing, for the QA report. */
+  get fabricCount(): number {
+    let count = 0;
+    for (const ref of this.byCoord.values()) count += ref.companions.length;
+    return count;
+  }
+
   /** Draws Houses as the town plan's buildings (see `BuildingStyle`). */
   setStyleResolver(resolver: ((coord: AxialCoord) => BuildingStyle | null) | null): void {
     this.styleOf = resolver;
   }
 
   /** The mesh pool for a building kind, made on first use: one InstancedMesh per kind. */
-  private buildingMesh(kind: BuildingKind): THREE.InstancedMesh {
-    const key = `house:${kind}`;
+  private buildingMesh(kind: BuildingKind, pool = "house"): THREE.InstancedMesh {
+    const key = `${pool}:${kind}`;
     let mesh = this.meshes.get(key);
     if (mesh) return mesh;
     const geometry = buildingGeometry(kind).clone();
@@ -270,6 +309,16 @@ export class ElementMeshManager {
     this.freeIndices.set(key, []);
     this.group.add(mesh);
     return mesh;
+  }
+
+  /** A free slot in a pool: a freed one first, else the next new one. */
+  private allocate(meshKey: string): number {
+    const free = this.freeIndices.get(meshKey)!;
+    if (free.length > 0) return free.pop()!;
+    const index = this.nextIndex.get(meshKey)!;
+    if (index >= MAX_ELEMENT_INSTANCES_PER_TYPE) throw new Error(`Element instance cap exceeded for ${meshKey}`);
+    this.nextIndex.set(meshKey, index + 1);
+    return index;
   }
 
   /**
@@ -291,22 +340,14 @@ export class ElementMeshManager {
     const style = elementId === "house" && this.styleOf ? this.styleOf(coord) : null;
     const meshKey = style ? `house:${style.kind}` : elementId;
     const mesh = style ? this.buildingMesh(style.kind) : this.meshes.get(elementId)!;
-    const free = this.freeIndices.get(meshKey)!;
-    let index: number;
-    if (free.length > 0) {
-      index = free.pop()!;
-    } else {
-      index = this.nextIndex.get(meshKey)!;
-      if (index >= MAX_ELEMENT_INSTANCES_PER_TYPE) throw new Error(`Element instance cap exceeded for ${meshKey}`);
-      this.nextIndex.set(meshKey, index + 1);
-    }
+    const index = this.allocate(meshKey);
 
     const { x, z } = axialToWorld(coord, HEX_SIZE);
 
     const growth = options.growth ?? 1;
     const landScale = growthScale(growth);
     const styleScale = style?.scale ?? 1;
-    const rotY = style ? (style.turns * Math.PI) / 2 : 0;
+    const rotY = style ? (style.rotY ?? (style.turns * Math.PI) / 2) : 0;
     if (options.animate) {
       this.animator.begin(mesh, index, x, z, terrainTopY, performance.now(), landScale * styleScale);
     } else {
@@ -352,10 +393,69 @@ export class ElementMeshManager {
       growthTarget: growth,
       paintedGrowth: growth,
       degrade: 0,
-      heightScale: 1
+      heightScale: 1,
+      companions: []
     };
+    for (const part of style?.fabric ?? []) {
+      const partKey = `fabric:${part.kind}`;
+      const partMesh = this.buildingMesh(part.kind, "fabric");
+      ref.companions.push({
+        meshKey: partKey,
+        mesh: partMesh,
+        index: this.allocate(partKey),
+        dx: part.dx,
+        dz: part.dz,
+        rotY: part.rotY,
+        scale: part.scale,
+        heightScale: part.heightScale,
+        baseColor: jitterColor(part.wall, seed + ref.companions.length * 7),
+        roofColor: part.roof.clone()
+      });
+    }
     this.byCoord.set(`${coord.q},${coord.r}`, ref);
     if (ref.roofColor) this.paintRoof(ref);
+    if (ref.companions.length > 0) {
+      this.paintCompanions(ref);
+      this.writeCompanions(ref);
+    }
+  }
+
+  /** The fabric's colours: its own, browner with the House's damage. */
+  private paintCompanions(ref: ElementInstanceRef): void {
+    for (const part of ref.companions) {
+      const wall = part.baseColor.clone();
+      const roof = part.roofColor.clone();
+      if (ref.damage > 0) {
+        wall.lerp(DEGRADED_TINT, 0.35 + ref.damage * 0.45);
+        roof.lerp(DEGRADED_TINT, 0.35 + ref.damage * 0.45);
+      }
+      part.mesh.setColorAt(part.index, wall);
+      if (part.mesh.instanceColor) part.mesh.instanceColor.needsUpdate = true;
+      const attribute = part.mesh.geometry.getAttribute("aRoofColor") as THREE.InstancedBufferAttribute | undefined;
+      if (attribute) {
+        attribute.setXYZ(part.index, roof.r, roof.g, roof.b);
+        attribute.needsUpdate = true;
+      }
+    }
+  }
+
+  /** The fabric's transforms: each on its own spot, leaning and settling with the House. */
+  private writeCompanions(ref: ElementInstanceRef): void {
+    const damage = Math.pow(ref.damage, 0.55);
+    const lean = damage * MAX_DAMAGE_LEAN;
+    const sink = damage * MAX_DAMAGE_SINK;
+    const slump = 1 - damage * MAX_DAMAGE_SLUMP;
+    for (const part of ref.companions) {
+      this.scratchEuler.set(Math.cos(ref.damageLean) * lean, part.rotY, Math.sin(ref.damageLean) * lean);
+      this.scratchQuaternion.setFromEuler(this.scratchEuler);
+      this.scratchMatrix.makeRotationFromQuaternion(this.scratchQuaternion);
+      this.scratchMatrix.scale(this.scratchScale.set(part.scale, slump * part.scale * part.heightScale * ref.heightScale, part.scale));
+      this.scratchMatrix.setPosition(ref.x + part.dx, ref.y - sink, ref.z + part.dz);
+      part.mesh.setMatrixAt(part.index, this.scratchMatrix);
+      part.mesh.count = Math.max(part.mesh.count, part.index + 1);
+      part.mesh.instanceMatrix.needsUpdate = true;
+      part.mesh.boundingSphere = null;
+    }
   }
 
   /** A town building's roof colour, browner with damage like its walls. */
@@ -379,6 +479,7 @@ export class ElementMeshManager {
     if (ref.mesh.instanceColor) ref.mesh.instanceColor.needsUpdate = true;
     ref.paintedGrowth = ref.growth;
     this.paintRoof(ref);
+    if (ref.companions.length > 0) this.paintCompanions(ref);
   }
 
   /**
@@ -419,6 +520,10 @@ export class ElementMeshManager {
     const ref = this.byCoord.get(key);
     if (!ref) return;
     this.animator.collapse(ref.mesh, ref.index, ref.x, ref.y, ref.z, performance.now());
+    for (const part of ref.companions) {
+      this.animator.collapse(part.mesh, part.index, ref.x + part.dx, ref.y, ref.z + part.dz, performance.now());
+      this.freeIndices.get(part.meshKey)!.push(part.index);
+    }
     this.byCoord.delete(key);
     this.freeIndices.get(ref.meshKey)!.push(ref.index);
   }
@@ -512,6 +617,7 @@ export class ElementMeshManager {
     this.scratchMatrix.scale(this.scratchScale.set(g, slump * g * ref.heightScale, g));
     this.scratchMatrix.setPosition(ref.x, ref.y - sink, ref.z);
     ref.mesh.setMatrixAt(ref.index, this.scratchMatrix);
+    if (ref.companions.length > 0) this.writeCompanions(ref);
   }
 
   /** Sway on or off (the in-game Calm motion switch, as well as the system setting). */

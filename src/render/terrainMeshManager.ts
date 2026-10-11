@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { AxialCoord } from "@core/hex";
-import { axialToWorld } from "@core/hex";
+import { axialKey, axialToWorld, neighbors } from "@core/hex";
+import { RELIEF, contoursBetween, reliefLift } from "@core/relief";
 import { TERRAIN_DEFS, TERRAIN_BY_ID } from "@core/terrain";
 import { createHexPrismGeometry } from "./hexGeometry";
 import { jitterColor, jitterGrass, paletteColor } from "./palette";
@@ -60,6 +61,8 @@ interface TerrainInstance {
   /** World position, cached so the swell does not re-derive it from the axial coord every frame. */
   x: number;
   z: number;
+  /** How far real ground height lifts this tile's top (land on a DEM-built map; 0 elsewhere). */
+  lift: number;
   /** This tile's offset into the swell cycle, in radians. Absent on land. */
   swellPhase?: number;
 }
@@ -115,6 +118,35 @@ const SWELL_BY_TERRAIN: Record<string, SwellProfile> = {
  * rows would read as the grid animating, not as water.
  */
 const SWELL_PHASE_PER_X = 0.42;
+
+/**
+ * Land on a relief map is drawn edge to edge (no gap) and in one even green,
+ * so the land reads as one surface rather than a patchwork of hexes. The
+ * step sides of a rise still show, because they face the light differently.
+ * A higher tile is a little paler and drier: the second cue, after the
+ * steps, that the ground climbs.
+ */
+const RELIEF_LAND_RADIUS = HEX_SIZE * 1.0;
+/**
+ * The land prism for a relief map: full size, with its step sides shaded
+ * darker than its top (vertex colours, multiplied by the instance colour).
+ * Flat shading alone left a raised tile's sides almost as bright as its top
+ * under the high sun, and the steps up Altinho barely showed.
+ */
+function reliefLandGeometry(height: number): THREE.BufferGeometry {
+  const geometry = createHexPrismGeometry(RELIEF_LAND_RADIUS, height).toNonIndexed();
+  const normals = geometry.getAttribute("normal");
+  const colors = new Float32Array(normals.count * 3);
+  for (let i = 0; i < normals.count; i++) {
+    const shade = normals.getY(i) > 0.5 ? 1 : RELIEF.sideShade;
+    colors.set([shade, shade, shade], i * 3);
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
+
+const HIGH_GROUND_TINT = new THREE.Color("#c9c48f");
+const HIGH_GROUND_MAX_BLEND = 0.32;
 const SWELL_PHASE_PER_Z = 0.27;
 
 /** The crest tint target. Shared constant so the swell allocates nothing per frame. */
@@ -193,6 +225,9 @@ export class TerrainMeshManager {
   private overlayReady = false;
   private overlayOpacity = 0;
 
+  /** Faint contour lines along the edges where the ground crosses a contour (see `buildContours`). */
+  private contours: THREE.Mesh | null = null;
+
   constructor() {
     for (const terrain of TERRAIN_DEFS) {
       const geometry = createHexPrismGeometry(HEX_SIZE * 0.98, terrain.height);
@@ -245,11 +280,34 @@ export class TerrainMeshManager {
     return this.placed.has(`${coord.q},${coord.r}`);
   }
 
-  /** Renders the entire fixed map at once, every tile dimmed/sunken (unclaimed) except `claimedCoords`. */
-  loadMap(mapTiles: { coord: AxialCoord; terrainId: string }[], claimedCoords: Iterable<AxialCoord>): void {
-    const claimedKeys = new Set(Array.from(claimedCoords, (c) => `${c.q},${c.r}`));
+  /**
+   * A tile's resting transform: on its spot, sunk if unclaimed, and stretched
+   * upward by its relief lift. The prism's base stays put, so a raised tile
+   * grows a taller side rather than floating.
+   */
+  private restMatrix(inst: TerrainInstance, target: THREE.Matrix4, yOffset = 0): THREE.Matrix4 {
+    const base = inst.claimed ? 0 : -UNCLAIMED_SINK;
+    const height = this.height(inst.terrainId);
+    return target.makeScale(1, (height + inst.lift) / height, 1).setPosition(inst.x, base + yOffset, inst.z);
+  }
 
-    for (const { coord, terrainId } of mapTiles) {
+  /** Renders the entire fixed map at once, every tile dimmed/sunken (unclaimed) except `claimedCoords`. */
+  loadMap(mapTiles: { coord: AxialCoord; terrainId: string; elevationM?: number }[], claimedCoords: Iterable<AxialCoord>): void {
+    const claimedKeys = new Set(Array.from(claimedCoords, (c) => `${c.q},${c.r}`));
+    // A map with real ground heights draws its land as one surface (see RELIEF_LAND_RADIUS).
+    const relief = mapTiles.some((tile) => tile.elevationM !== undefined);
+    if (relief) {
+      const land = this.meshes.get("land");
+      if (land) {
+        land.geometry.dispose();
+        land.geometry = reliefLandGeometry(this.height("land"));
+        (land.material as THREE.MeshStandardMaterial).vertexColors = true;
+        (land.material as THREE.MeshStandardMaterial).needsUpdate = true;
+      }
+    }
+    const highest = Math.max(1, ...mapTiles.map((tile) => tile.elevationM ?? 0));
+
+    for (const { coord, terrainId, elevationM } of mapTiles) {
       const terrain = TERRAIN_BY_ID.get(terrainId);
       if (!terrain) throw new Error(`Unknown terrain id: ${terrainId}`);
       const mesh = this.meshes.get(terrainId)!;
@@ -260,17 +318,19 @@ export class TerrainMeshManager {
       const key = `${coord.q},${coord.r}`;
       const claimed = claimedKeys.has(key);
       const seed = coord.q * 31 + coord.r * 17;
-      const fullColor = terrainId === "land" ? jitterGrass(paletteColor(terrain.colorKey), seed) : jitterColor(paletteColor(terrain.colorKey), seed);
+      const lift = reliefLift(elevationM);
+      const fullColor =
+        terrainId === "land"
+          ? relief
+            ? paletteColor(terrain.colorKey).clone().lerp(HIGH_GROUND_TINT, Math.sqrt((elevationM ?? 0) / highest) * HIGH_GROUND_MAX_BLEND)
+            : jitterGrass(paletteColor(terrain.colorKey), seed)
+          : jitterColor(paletteColor(terrain.colorKey), seed);
       const dimColor = dim(fullColor);
-
-      const y = claimed ? 0 : -UNCLAIMED_SINK;
-      mesh.setMatrixAt(index, new THREE.Matrix4().makeTranslation(x, y, z));
-      mesh.setColorAt(index, claimed ? fullColor : dimColor);
 
       this.counts.set(terrainId, index + 1);
       mesh.count = index + 1;
 
-      this.placed.set(key, {
+      const inst: TerrainInstance = {
         coord,
         index,
         terrainId,
@@ -279,9 +339,14 @@ export class TerrainMeshManager {
         claimed,
         x,
         z,
+        lift,
         swellPhase: SWELL_BY_TERRAIN[terrainId] ? x * SWELL_PHASE_PER_X + z * SWELL_PHASE_PER_Z : undefined
-      });
+      };
+      this.placed.set(key, inst);
+      mesh.setMatrixAt(index, this.restMatrix(inst, new THREE.Matrix4()));
+      mesh.setColorAt(index, claimed ? fullColor : dimColor);
     }
+    if (relief) this.buildContours(mapTiles);
 
     // One flat list of just the water tiles, built once here rather than
     // filtered out of `placed` on every frame. On the largest map that is 130
@@ -320,7 +385,11 @@ export class TerrainMeshManager {
 
     const mesh = this.meshes.get(inst.terrainId)!;
     const { x, z } = axialToWorld(coord, HEX_SIZE);
-    this.animator.begin(mesh, inst.index, x, z, 0, performance.now());
+    if (inst.lift > 0) {
+      // The settle animation writes a plain translation, which would drop the relief stretch.
+      mesh.setMatrixAt(inst.index, this.restMatrix(inst, new THREE.Matrix4()));
+      mesh.instanceMatrix.needsUpdate = true;
+    } else this.animator.begin(mesh, inst.index, x, z, 0, performance.now());
     mesh.setColorAt(inst.index, inst.fullColor);
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
@@ -414,9 +483,7 @@ export class TerrainMeshManager {
     for (const inst of this.placed.values()) {
       const mesh = this.meshes.get(inst.terrainId)!;
       inst.claimed = claimedKeys.has(`${inst.coord.q},${inst.coord.r}`);
-      const { x, z } = axialToWorld(inst.coord, HEX_SIZE);
-      const y = inst.claimed ? 0 : -UNCLAIMED_SINK;
-      mesh.setMatrixAt(inst.index, new THREE.Matrix4().makeTranslation(x, y, z));
+      mesh.setMatrixAt(inst.index, this.restMatrix(inst, new THREE.Matrix4()));
       mesh.setColorAt(inst.index, inst.claimed ? inst.fullColor : inst.dimColor);
     }
     for (const mesh of this.meshes.values()) {
@@ -447,9 +514,74 @@ export class TerrainMeshManager {
     return this.placed.get(`${coord.q},${coord.r}`)?.claimed ?? false;
   }
 
-  /** World-space Y a building/prop should sit at on this tile (its top surface). */
+  /** World-space Y a building/prop should sit at on this tile (its top surface, relief included). */
   heightAt(coord: AxialCoord): number {
-    const terrainId = this.terrainIdAt(coord);
-    return terrainId ? this.height(terrainId) : 0;
+    const inst = this.placed.get(`${coord.q},${coord.r}`);
+    return inst ? this.height(inst.terrainId) + inst.lift : 0;
+  }
+
+  /** How far relief lifts this tile (0 on flat maps and on every non-land tile). */
+  liftAt(coord: AxialCoord): number {
+    return this.placed.get(`${coord.q},${coord.r}`)?.lift ?? 0;
+  }
+
+  /**
+   * Faint contour lines, every `contourIntervalM` metres.
+   *
+   * On a hex board a contour runs along tile edges: wherever two neighbouring
+   * land tiles lie on either side of a contour height, their shared edge is
+   * drawn as a thin dark line on the higher tile's rim. One draw call.
+   */
+  private buildContours(mapTiles: { coord: AxialCoord; terrainId: string; elevationM?: number }[]): void {
+    const byKey = new Map(mapTiles.map((tile) => [axialKey(tile.coord), tile]));
+    const points: number[] = [];
+    const corners = (cx: number, cz: number): [number, number][] =>
+      Array.from({ length: 6 }, (_, i) => {
+        const angle = ((60 * i - 30) * Math.PI) / 180;
+        return [cx + RELIEF_LAND_RADIUS * Math.cos(angle), cz + RELIEF_LAND_RADIUS * Math.sin(angle)];
+      });
+    for (const tile of mapTiles) {
+      if (tile.elevationM === undefined) continue;
+      for (const n of neighbors(tile.coord)) {
+        const other = byKey.get(axialKey(n));
+        // Each edge once, drawn from its higher side.
+        if (!other || other.elevationM === undefined || other.elevationM >= tile.elevationM) continue;
+        if (contoursBetween(tile.elevationM, other.elevationM) < 1) continue;
+        const a = axialToWorld(tile.coord, HEX_SIZE);
+        const b = axialToWorld(n, HEX_SIZE);
+        const mx = (a.x + b.x) / 2;
+        const mz = (a.z + b.z) / 2;
+        const edge = corners(a.x, a.z)
+          .sort((p, q) => Math.hypot(p[0] - mx, p[1] - mz) - Math.hypot(q[0] - mx, q[1] - mz))
+          .slice(0, 2);
+        const y = this.height(tile.terrainId) + reliefLift(tile.elevationM) + RELIEF.contourLift;
+        // A thin ribbon lying on the higher tile's top, just inside its rim:
+        // a one-pixel GL line vanishes at most zooms.
+        const inset = (p: [number, number]): [number, number] => {
+          const k = (RELIEF_LAND_RADIUS - RELIEF.contourWidth) / RELIEF_LAND_RADIUS;
+          return [a.x + (p[0] - a.x) * k, a.z + (p[1] - a.z) * k];
+        };
+        const [p0, p1] = edge;
+        const [i0, i1] = [inset(p0), inset(p1)];
+        points.push(p0[0], y, p0[1], p1[0], y, p1[1], i1[0], y, i1[1], p0[0], y, p0[1], i1[0], y, i1[1], i0[0], y, i0[1]);
+      }
+    }
+    if (this.contours) {
+      this.group.remove(this.contours);
+      this.contours.geometry.dispose();
+    }
+    if (points.length === 0) return;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
+    const material = new THREE.MeshBasicMaterial({ color: RELIEF.contourColor, transparent: true, opacity: RELIEF.contourOpacity, depthWrite: false, side: THREE.DoubleSide });
+    this.contours = new THREE.Mesh(geometry, material);
+    this.contours.name = "terrain-contours";
+    this.contours.renderOrder = 2;
+    this.group.add(this.contours);
+  }
+
+  /** Edges carrying a contour line, for tests and the QA report. */
+  get contourEdgeCount(): number {
+    return this.contours ? this.contours.geometry.getAttribute("position").count / 6 : 0;
   }
 }

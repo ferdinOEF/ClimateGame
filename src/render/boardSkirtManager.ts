@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { AxialCoord } from "@core/hex";
 import { axialKey, axialToWorld, neighbors } from "@core/hex";
+import { reliefLift } from "@core/relief";
 import { TERRAIN_BY_ID } from "@core/terrain";
 import { createHexPrismGeometry } from "./hexGeometry";
 import { PALETTE, paletteColor } from "./palette";
@@ -86,6 +87,8 @@ interface SkirtTile {
   ring: number;
   /** The terrain of the board tile it continues. */
   terrainId: string;
+  /** Relief lift carried out from that board tile (0 on flat maps). */
+  lift: number;
 }
 
 /**
@@ -94,20 +97,20 @@ interface SkirtTile {
  * Exported so the tests can check the rule that matters most: no skirt hex is
  * ever a board hex.
  */
-export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: string }[], rings = RINGS): SkirtTile[] {
+export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number }[], rings = RINGS): SkirtTile[] {
   const terrainByKey = new Map(board.map((tile) => [axialKey(tile.coord), tile.terrainId]));
   const seen = new Set(terrainByKey.keys());
-  let frontier: { coord: AxialCoord; terrainId: string }[] = [...board];
+  let frontier: { coord: AxialCoord; terrainId: string; lift: number }[] = board.map((tile) => ({ coord: tile.coord, terrainId: tile.terrainId, lift: reliefLift(tile.elevationM) }));
   const out: SkirtTile[] = [];
 
   for (let ring = 1; ring <= rings; ring++) {
-    const next: { coord: AxialCoord; terrainId: string }[] = [];
+    const next: { coord: AxialCoord; terrainId: string; lift: number }[] = [];
     for (const from of frontier) {
       for (const coord of neighbors(from.coord)) {
         const key = axialKey(coord);
         if (seen.has(key)) continue;
         seen.add(key);
-        const tile = { coord, terrainId: from.terrainId };
+        const tile = { coord, terrainId: from.terrainId, lift: from.lift };
         next.push(tile);
         out.push({ ...tile, ring });
       }
@@ -120,7 +123,7 @@ export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: strin
 export class BoardSkirtManager {
   readonly group = new THREE.Group();
 
-  constructor(board: readonly { coord: AxialCoord; terrainId: string }[], overlay: OverlayUniforms) {
+  constructor(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number }[], overlay: OverlayUniforms) {
     const sky = PALETTE.sky.clone();
     const hillStops = [paletteColor("landGreen"), paletteColor("ghatsNear"), paletteColor("ghatsMid"), paletteColor("ghatsFar"), paletteColor("ghatsDistant")];
 
@@ -147,7 +150,7 @@ export class BoardSkirtManager {
       } else {
         const rise = smoothstep(tile.ring / RINGS) * HILL_RISE;
         const jitter = (valueNoise(x, z, 2) - 0.5) * 2 * HILL_JITTER * smoothstep(tile.ring / RINGS);
-        const height = baseHeight + rise + jitter;
+        const height = baseHeight + tile.lift + rise + jitter;
         // Colour walks the hill stops with distance, landGreen at the board,
         // then the outer rings take on some of the sky so the ridge recedes
         // instead of ending on a dark silhouette.

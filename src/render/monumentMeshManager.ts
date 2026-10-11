@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { axialToWorld, type AxialCoord } from "@core/hex";
 import { HEX_SIZE } from "./terrainMeshManager";
-import { createMonumentGeometry } from "./monumentGeometry";
+import { createMonumentGeometryFor, monumentGeometryKey, MONUMENT_BUILDING_KINDS } from "./monumentGeometry";
+import { monumentScale, type Size } from "./monumentScale";
 import { jitterColor } from "./palette";
 
 /**
@@ -53,7 +54,14 @@ export interface MonumentPlacement {
   name: string;
   kind: string;
   coord: AxialCoord;
+  /** Its category, for the name card ("Temple", "Museum, Patto"). */
+  category?: string;
 }
+
+/** The plaza under a monument building: a paved hex, a little inside its tile. */
+const PLAZA_RADIUS = 0.62;
+const PLAZA_HEIGHT = 0.025;
+const PLAZA_COLOUR = new THREE.Color("#c9bc9c");
 
 export class MonumentMeshManager {
   readonly group = new THREE.Group();
@@ -61,6 +69,10 @@ export class MonumentMeshManager {
   private readonly counts = new Map<string, number>();
   /** Coord key -> which monument stands there, for the click handler to name it. */
   private readonly byCoord = new Map<string, MonumentPlacement>();
+  /** Each monument's drawn size and scale, for the tests and the QA report. */
+  readonly sizes = new Map<string, { size: Size; neighbour: Size | null; sx: number; sy: number }>();
+  /** Coord key -> world Y of the top of the monument standing there. */
+  private readonly tops = new Map<string, number>();
 
   /**
    * Builds only the geometries the given monuments actually need.
@@ -69,11 +81,26 @@ export class MonumentMeshManager {
    * instanced meshes and nine merged geometries on the tutorial map, which has
    * no monuments at all.
    */
-  constructor(monuments: readonly MonumentPlacement[], heightAt: (coord: AxialCoord) => number) {
-    const kinds = [...new Set(monuments.map((monument) => monument.kind))];
+  /**
+   * `neighbourAt` gives the size of the largest House on the tiles round a
+   * monument (null where there is none, e.g. the beach): buildings are sized
+   * against it (see monumentScale.ts). Open places (the garden, the beach,
+   * the headland) keep the old flat scale.
+   */
+  constructor(
+    monuments: readonly MonumentPlacement[],
+    heightAt: (coord: AxialCoord) => number,
+    neighbourAt: (coord: AxialCoord) => Size | null = () => null
+  ) {
+    const kinds = [...new Set(monuments.map((monument) => monumentGeometryKey(monument.id, monument.kind)))];
+    const geometryFor = new Map<string, THREE.BufferGeometry>();
+    for (const monument of monuments) {
+      const key = monumentGeometryKey(monument.id, monument.kind);
+      if (!geometryFor.has(key)) geometryFor.set(key, createMonumentGeometryFor(monument.id, monument.kind));
+    }
 
     for (const kind of kinds) {
-      const geometry = createMonumentGeometry(kind);
+      const geometry = geometryFor.get(kind)!;
       const material = new THREE.MeshStandardMaterial({
         flatShading: true,
         roughness: 0.82,
@@ -89,32 +116,57 @@ export class MonumentMeshManager {
       this.group.add(mesh);
     }
 
+    const buildings = monuments.filter((monument) => MONUMENT_BUILDING_KINDS.includes(monument.kind));
+    const plaza = buildings.length > 0 ? new THREE.InstancedMesh(new THREE.CylinderGeometry(PLAZA_RADIUS, PLAZA_RADIUS, PLAZA_HEIGHT, 6), new THREE.MeshStandardMaterial({ color: PLAZA_COLOUR, roughness: 0.95, flatShading: true }), buildings.length) : null;
+    if (plaza) {
+      plaza.name = "monument-plazas";
+      plaza.count = 0;
+      this.group.add(plaza);
+    }
+
     const matrix = new THREE.Matrix4();
     for (const monument of monuments) {
-      const mesh = this.meshes.get(monument.kind);
+      const key = monumentGeometryKey(monument.id, monument.kind);
+      const mesh = this.meshes.get(key);
       if (!mesh) continue;
-      const index = this.counts.get(monument.kind)!;
+      const index = this.counts.get(key)!;
       if (index >= MAX_INSTANCES_PER_KIND) {
         console.warn(`[monuments] more than ${MAX_INSTANCES_PER_KIND} of kind "${monument.kind}"; the rest are not drawn`);
         continue;
       }
 
       const { x, z } = axialToWorld(monument.coord, HEX_SIZE);
-      mesh.setMatrixAt(
-        index,
-        matrix.makeScale(MONUMENT_SCALE, MONUMENT_SCALE, MONUMENT_SCALE).setPosition(x, heightAt(monument.coord), z)
-      );
+      const geometry = geometryFor.get(key)!;
+      geometry.computeBoundingBox();
+      const bounds = geometry.boundingBox!;
+      const size: Size = { w: bounds.max.x - bounds.min.x, d: bounds.max.z - bounds.min.z, h: bounds.max.y };
+      const isBuilding = MONUMENT_BUILDING_KINDS.includes(monument.kind);
+      const neighbour = isBuilding ? neighbourAt(monument.coord) : null;
+      const { sx, sy } = neighbour ? monumentScale(size, neighbour) : { sx: MONUMENT_SCALE, sy: MONUMENT_SCALE };
+      this.sizes.set(monument.id, { size, neighbour, sx, sy });
+      let y = heightAt(monument.coord);
+      if (plaza && isBuilding) {
+        plaza.setMatrixAt(plaza.count, matrix.makeTranslation(x, y + PLAZA_HEIGHT / 2, z));
+        plaza.count += 1;
+        y += PLAZA_HEIGHT;
+      }
+      mesh.setMatrixAt(index, matrix.makeScale(sx, sy, sx).setPosition(x, y, z));
+      this.tops.set(`${monument.coord.q},${monument.coord.r}`, y + size.h * sy);
 
       // Seeded off the coordinate so a given building looks the same every
       // time the level is loaded.
       const seed = monument.coord.q * 53 + monument.coord.r * 29;
       mesh.setColorAt(index, jitterColor(NEUTRAL_TINT, seed));
 
-      this.counts.set(monument.kind, index + 1);
+      this.counts.set(key, index + 1);
       mesh.count = index + 1;
       this.byCoord.set(`${monument.coord.q},${monument.coord.r}`, monument);
     }
 
+    if (plaza) {
+      plaza.instanceMatrix.needsUpdate = true;
+      plaza.boundingSphere = null;
+    }
     for (const mesh of this.meshes.values()) {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -125,6 +177,11 @@ export class MonumentMeshManager {
   /** The monument standing on a tile, if any — so a click can name it rather than opening a build menu. */
   at(coord: AxialCoord): MonumentPlacement | null {
     return this.byCoord.get(`${coord.q},${coord.r}`) ?? null;
+  }
+
+  /** The world Y of the top of the monument on a tile, or null (so its name card can sit above it). */
+  topAt(coord: AxialCoord): number | null {
+    return this.tops.get(`${coord.q},${coord.r}`) ?? null;
   }
 
   /** Every tile a monument occupies, for `GameState.reserved`. */

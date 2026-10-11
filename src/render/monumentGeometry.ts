@@ -24,19 +24,22 @@ import { box, taperedSlab, coneFrustum, dome, blade, plan, rotate, move } from "
  * quarters of a hex across has no room for detail that is not silhouette, and
  * trying anyway produces mush.
  *
- * Seven of the sixteen share the `institution` building — the colleges, the
- * museum, the Institute Menezes Braganza and the Kala Academy. That is honest
- * rather than lazy: they genuinely are mid-century civic blocks of a similar
- * kind, and giving each a distinct invented silhouette would be making things
- * up about real buildings.
+ * Eight of the sixteen are `institution`s: the schools, the colleges, the
+ * museum, the Polytechnic, the Institute Menezes Braganza and the Kala
+ * Academy. Each gets its own massing (a bar, an L, a U, an H, a stepped
+ * block, a long low slab, a tall block with a workshop shed) and its own trim
+ * colour, so the eight can be told apart on the board and matched to their
+ * name cards. These are stylised to tell them apart, NOT drawings of the real
+ * façades: nothing about a real building's plan or features is claimed. See
+ * `CIVIC_VARIANTS`.
  *
  * SCALE
  *
- * Deliberately larger than the buildable elements — up to about 1.3 units
- * tall against a House's 0.6. A landmark that does not stand out from the
- * houses around it is not doing its job. Everything stays inside roughly 0.78
- * of the hex centre, since the hex inradius is about 0.87 and anything beyond
- * that visually belongs to the neighbour.
+ * Authored in the same units as the town's buildings. How big each is drawn
+ * is set per monument by `monumentScale.ts`: about 1.6 times the footprint
+ * and 1.55 times the height of the largest House beside it, so a landmark
+ * stands out from its street without swallowing it, and stays inside its hex.
+ * Open places (the garden, the beach, the headland) keep a flat 1.4.
  */
 
 /**
@@ -531,6 +534,133 @@ function viewpointGeometry(): THREE.BufferGeometry {
 
   return mergeGeometries(parts);
 }
+
+/**
+ * One civic block, from a plan made of rectangular wings.
+ *
+ * Every wing is whitewash with a parapet, a band of windows per storey on its
+ * long faces, and a trim colour on the parapet and the door. A portico marks
+ * the front (+z) of the first wing.
+ */
+interface CivicWing {
+  x: number;
+  z: number;
+  w: number;
+  d: number;
+  storeys: number;
+}
+
+const STOREY_H = 0.16;
+
+function civicGeometry(wings: CivicWing[], trim: string, extras: THREE.BufferGeometry[] = []): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [...extras];
+  wings.forEach((wing, i) => {
+    const h = wing.storeys * STOREY_H;
+    parts.push(move(box(wing.w, h, wing.d, i === 0 ? "#f2eee0" : "#efe9d8", 0), wing.x, 0, wing.z));
+    parts.push(move(box(wing.w + 0.03, 0.04, wing.d + 0.03, trim, h), wing.x, 0, wing.z));
+    for (let storey = 0; storey < wing.storeys; storey++) {
+      const y = storey * STOREY_H + STOREY_H * 0.35;
+      // Window bands on the long faces.
+      if (wing.w >= wing.d) {
+        for (const side of [-1, 1]) parts.push(move(box(wing.w * 0.84, 0.05, 0.016, TEAL, y), wing.x, 0, wing.z + (side * wing.d) / 2));
+      } else {
+        for (const side of [-1, 1]) parts.push(move(box(0.016, 0.05, wing.d * 0.84, TEAL, y), wing.x + (side * wing.w) / 2, 0, wing.z));
+      }
+    }
+  });
+  // The front door and a shallow canopy on the first wing.
+  const front = wings[0];
+  parts.push(move(box(0.12, 0.13, 0.02, "#5a4a36", 0.01), front.x, 0, front.z + front.d / 2 + 0.005));
+  parts.push(move(box(0.24, 0.025, 0.09, trim, 0.15), front.x, 0, front.z + front.d / 2 + 0.04));
+  parts.push(move(box(0.26, 0.02, 0.07, "#ded6c0", 0), front.x, 0, front.z + front.d / 2 + 0.05));
+  return mergeGeometries(parts);
+}
+
+/**
+ * The eight civic buildings, each its own massing and trim (see the header:
+ * stylised to tell them apart, not their real façades). Keyed by monument id.
+ */
+const CIVIC_VARIANTS: Record<string, () => THREE.BufferGeometry> = {
+  // A two-storey bar with a colonnade across the front.
+  institute_menezes_braganza: () =>
+    civicGeometry([{ x: 0, z: -0.04, w: 0.62, d: 0.34, storeys: 2 }], "#b5502e", [
+      ...[-0.24, -0.12, 0, 0.12, 0.24].map((x) => move(coneFrustum(0.016, 0.02, 0.3, 6, WHITEWASH, 0), x, 0, 0.17))
+    ]),
+  // A long three-storey block with a wing at one end: an L.
+  don_bosco_high_school: () =>
+    civicGeometry(
+      [
+        { x: 0.04, z: 0.1, w: 0.62, d: 0.2, storeys: 3 },
+        { x: -0.2, z: -0.15, w: 0.2, d: 0.32, storeys: 3 }
+      ],
+      "#4f7fb8"
+    ),
+  // Two wings at right angles, a stair tower where they meet.
+  don_bosco_college: () =>
+    civicGeometry(
+      [
+        { x: -0.06, z: 0.12, w: 0.5, d: 0.2, storeys: 2 },
+        { x: 0.2, z: -0.12, w: 0.2, d: 0.36, storeys: 2 },
+        { x: 0.2, z: 0.12, w: 0.14, d: 0.14, storeys: 3 }
+      ],
+      "#3f9a96"
+    ),
+  // A low U round a courtyard.
+  sharada_mandir_school: () =>
+    civicGeometry(
+      [
+        { x: 0, z: -0.16, w: 0.6, d: 0.16, storeys: 2 },
+        { x: -0.22, z: 0.06, w: 0.16, d: 0.3, storeys: 2 },
+        { x: 0.22, z: 0.06, w: 0.16, d: 0.3, storeys: 2 }
+      ],
+      "#d9a441"
+    ),
+  // A tall four-storey block beside a long single-storey workshop shed.
+  government_polytechnic_panaji: () =>
+    civicGeometry([{ x: -0.12, z: 0, w: 0.34, d: 0.3, storeys: 4 }], "#7d8288", [
+      move(box(0.22, 0.14, 0.46, "#d8d2c2", 0), 0.2, 0, 0),
+      move(taperedSlab(0.26, 0.04, 0.06, 0.5, "#8a8f91", 0.14), 0.2, 0, 0)
+    ]),
+  // A long, low horizontal slab under a deep overhanging roof, with stepped seating in front.
+  kala_academy: () =>
+    civicGeometry([{ x: 0, z: -0.06, w: 0.66, d: 0.3, storeys: 1 }], "#c4643c", [
+      move(box(0.76, 0.03, 0.42, "#e6e0cd", STOREY_H + 0.04), 0, 0, -0.04),
+      ...[0, 1, 2].map((i) => move(box(0.44 - i * 0.08, 0.025, 0.05, "#ded6c0", i * 0.025), 0, 0, 0.18 + (2 - i) * 0.05))
+    ]),
+  // A stepped block: a wide lower storey and a narrower upper one.
+  goa_state_museum: () =>
+    civicGeometry(
+      [
+        { x: 0, z: 0, w: 0.6, d: 0.38, storeys: 1 },
+        { x: 0, z: -0.04, w: 0.4, d: 0.26, storeys: 2 }
+      ],
+      "#9c5a37"
+    ),
+  // An H: two parallel wings joined across the middle.
+  dhempe_college: () =>
+    civicGeometry(
+      [
+        { x: 0, z: 0, w: 0.3, d: 0.14, storeys: 2 },
+        { x: -0.22, z: 0, w: 0.16, d: 0.5, storeys: 3 },
+        { x: 0.22, z: 0, w: 0.16, d: 0.5, storeys: 3 }
+      ],
+      "#2f6b5e"
+    )
+};
+
+/** The geometry for one monument: its own civic variant where it has one, else its kind's building. */
+export function createMonumentGeometryFor(id: string, kind: string): THREE.BufferGeometry {
+  const variant = kind === "institution" ? CIVIC_VARIANTS[id] : undefined;
+  return variant ? variant() : createMonumentGeometry(kind);
+}
+
+/** Which geometry a monument uses: one shared per kind, except the civic variants. */
+export function monumentGeometryKey(id: string, kind: string): string {
+  return kind === "institution" && CIVIC_VARIANTS[id] ? `institution:${id}` : kind;
+}
+
+/** Kinds that are buildings (sized against their neighbours, on a plaza), as opposed to open places. */
+export const MONUMENT_BUILDING_KINDS: readonly string[] = ["church", "temple", "mosque", "market", "palace", "institution"];
 
 const BUILDERS: Record<string, () => THREE.BufferGeometry> = {
   church: churchGeometry,

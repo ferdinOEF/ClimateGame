@@ -7855,3 +7855,67 @@ in Section 1, all fixed (details in `docs/QA_REPORT.md`).
   - a saved and continued run does not play it again;
   - fps on High and Low;
   - no console errors.
+
+## Section 3 — Panjim as a city, Altinho as a hill — DONE
+
+**Elevation: real, from a DEM.**
+- **Source:**
+  - Copernicus DEM GLO-30, tile `Copernicus_DSM_COG_10_N15_00_E073_00_DEM`, from the public AWS registry (https://registry.opendata.aws/copernicus-dem/).
+  - Accessed 2026-10-10.
+- **Licence:** free use with attribution, under the Copernicus DEM licence. Attribution: "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA; all rights reserved."
+- **Credit placement:** the credit is in the map's `elevation` block, and in "Map data" on the Sources screen.
+- **Sources I tried that were not reachable from here:** OpenTopography, Bhuvan, USGS and opentopodata.
+- **Checked in:** the crop around the board as int16 decimetres:
+  - `tools/mapgen/dem/panaji-cop30.bin`, 343×314 px, 215 KB;
+  - its georeference in `panaji-cop30.json`;
+  - the crop script, `cropCopernicusDem.py`.
+
+  The generator reads that crop; it does not need the 12 MB tile.
+- **How a tile gets its height (`sampleElevation` in `buildPanajiMap.ts`):**
+  - Land tiles only.
+  - The 25th percentile of the 1-arc-second pixels within 128 m of the tile centre, rounded to 0.5 m. About 60 pixels per tile.
+  - Why the 25th percentile: GLO-30 is a *surface* model, so a pixel on a roof or in a tree reads the roof or the canopy. The low end of a tile's pixels is far more often open ground. This is a modelling choice.
+- **Result:**
+  - 675 land tiles, from 0 to 78.5 m, median 13.5 m.
+  - Altinho's name tile is 42.5 m, and the Polytechnic on Altinho is 48 m.
+  - The church, Campal and Fontainhas are 7–8 m; Patto and the museum are 2.5 m.
+  - The Taleigao–Bambolim plateau to the south-east and the Reis Magos hill across the river come out high, as they are.
+  - Picture: `tools/mapgen/debug/panaji-elevation.jpg`.
+- **Unchanged:** water, beach and wetland tiles have no `elevationM` and are drawn exactly as before. Every tile's position and terrain is byte-for-byte what it was (a sha256 test).
+
+**Relief on the board (`src/core/relief.ts`, `src/data/relief.json`; all gameRule):**
+- **Lift:** a land tile's top stands `elevationM × 0.018` world units higher, capped at 1.2. That is about 2.4 times steeper than true scale (135 m per world unit across). The Sources screen says so, as a game rule.
+- **Steps:** the prism is stretched up from its base, so a raised tile shows a step side. The sides are shaded at 0.68 of the top colour, through vertex colours.
+- **Contours:** faint dark ribbons every 10 m, along the shared edges where neighbouring land crosses a contour height.
+- **High ground:** slightly paler and drier in colour.
+- **Seamless land:** land is drawn edge to edge, with no gap and no per-tile colour jitter, so hex edges on land are nearly invisible. The grid itself (picking, building, outlines) is unchanged.
+- **Board skirt:** carries the edge tiles' height outward, so the board does not end in a cliff.
+
+**The city fabric (`addFabric` in `levels/townLayout.ts`):**
+- **Count:** 1 to 7 structures on each built land tile, seeded, from the same density field that decides which tiles are built. Panaji has 1,608 structures on 449 tiles.
+- **Shapes:** four instanced meshes:
+  - the pitched Goan house;
+  - the flat concrete block;
+  - the apartment at two to four storeys;
+  - the long shed.
+- **Colours:** terracotta pitched roofs, concrete flat ones, Fontainhas wall colours.
+- **Placement:**
+  - The House stands in the centre, and up to six more structures stand on a ring.
+  - The ring slots sit on the lines to the edge midpoints, with seeded swing and reach so a block does not read as a ring. Slots facing a road or bridge fill first, and face the street.
+  - The House faces the nearest street.
+  - Everything stays inside its own hex, so nothing ever stands on a road tile.
+- **Game rules unchanged:** a tile is still one House in the game. Its fabric shares its fate (damage, loss, rebuild, the skyline growing).
+- **Unchanged:** trees, palms, gardens and the OSM raster.
+
+**Monuments:**
+- **Sizing (`render/monumentScale.ts`):** each building is drawn at 1.6× the footprint and 1.55× the height of the largest House beside it (two tiles out, where none is next to it). The test records every one: footprint 1.60×, height 1.38–1.55×.
+- **Distortion cap:** long, low buildings (the market, the palace) may be drawn up to 3 times taller than their plan scale to reach that height.
+- **Open places:** the garden, the beach and the headland keep a flat 1.4.
+- **Plazas:** each monument building stands on a paved hexagonal plaza.
+- **Civic buildings:** the eight each have their own massing and trim (a bar with a colonnade, an L, two wings with a stair tower, a U, a tall block with a workshop shed, a low slab under a deep roof, a stepped block, an H). These are stylised to tell them apart. They are not drawings of the real façades, and the code says so.
+- **Distinct shapes kept:** the church (zigzag stair, twin towers), the palace (arcade), the temple (deepstambha), the mosque and the market keep their own shapes.
+- **Name cards:**
+  - A mouse resting on a monument's tile (or a click on it) brings up its card in the label layer, at any zoom: the name, then the category.
+  - The card outranks every other label but still never overlaps the HUD or Maya.
+  - It sits above the building, not over it.
+- **No uncited dates:** the categories carried years ("1541", "1871", …) that are not in the cited facts. They are removed at the source (`panajiPlaces.json`), and a test fails on any year in a name or category that `facts.json` does not contain.

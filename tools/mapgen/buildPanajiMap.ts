@@ -60,6 +60,9 @@ const PLACES = path.join(ROOT, "tools/mapgen/panajiPlaces.json");
 const OUT = path.join(ROOT, "src/data/maps/panaji.json");
 /** Debug images for checking the board by eye. Checked in, never shipped (not under `public/`). */
 const DEBUG_DIR = path.join(ROOT, "tools/mapgen/debug");
+/** The Copernicus DEM crop (see tools/mapgen/dem/cropCopernicusDem.py). */
+const DEM_META = path.join(ROOT, "tools/mapgen/dem/panaji-cop30.json");
+const DEM_DATA = path.join(ROOT, "tools/mapgen/dem/panaji-cop30.bin");
 /** The OpenStreetMap layer the player can show over the board. Served from `public/`, so it ships. */
 const OVERLAY_OUT = path.join(ROOT, "public/maps/panaji-osm.webp");
 /** The path the game requests it at, relative to the site's base URL. */
@@ -443,6 +446,83 @@ function buildGrid(meta: BasemapMeta): Cell[] {
   }
 
   return cells;
+}
+
+// ---- elevation ----------------------------------------------------------
+
+interface DemMeta {
+  source: string;
+  href: string;
+  licence: string;
+  accessed: string;
+  kind: string;
+  north: number;
+  west: number;
+  pixelDeg: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Which share of the DEM pixels under a hex is taken as its ground height.
+ *
+ * Copernicus GLO-30 is a surface model: a pixel on a roof or in a tree reads
+ * the roof or the canopy, not the ground. A hex covers about 60 of its
+ * pixels, and the low end of those is much more often open ground (a street,
+ * a yard, a field) than the high end. The 25th percentile keeps the shape of
+ * the land (Altinho stays a hill, the khazan fields stay low) while ignoring
+ * most of what stands on it. It is a modelling choice, stated in PROGRESS.
+ */
+const ELEVATION_PERCENTILE = 0.25;
+
+/**
+ * Ground height in metres for each land hex, read from the DEM.
+ *
+ * Only land gets one: water, beach and wetland keep the flat heights they
+ * have always had (the brief keeps those tiles exactly as they were).
+ * Rounded to half a metre, and never below 0.
+ */
+function sampleElevation(cells: Cell[]): { demMeta: DemMeta; byIndex: Map<number, number> } {
+  const demMeta = JSON.parse(fs.readFileSync(DEM_META, "utf8")) as DemMeta;
+  const raw = fs.readFileSync(DEM_DATA);
+  const values = new Int16Array(raw.buffer, raw.byteOffset, raw.byteLength / 2);
+  if (values.length !== demMeta.width * demMeta.height) throw new Error("DEM size does not match its metadata");
+  const radiusM = HEX_SIZE * SAMPLE_RADIUS_FRACTION * METRES_PER_UNIT;
+  const byIndex = new Map<number, number>();
+  cells.forEach((cell, index) => {
+    if (cell.terrainId !== "land") return;
+    const dLat = radiusM / METRES_PER_DEG_LAT;
+    const dLon = radiusM / METRES_PER_DEG_LON;
+    const row0 = Math.max(0, Math.floor((demMeta.north - (cell.lat + dLat)) / demMeta.pixelDeg));
+    const row1 = Math.min(demMeta.height - 1, Math.floor((demMeta.north - (cell.lat - dLat)) / demMeta.pixelDeg));
+    const col0 = Math.max(0, Math.floor((cell.lon - dLon - demMeta.west) / demMeta.pixelDeg));
+    const col1 = Math.min(demMeta.width - 1, Math.floor((cell.lon + dLon - demMeta.west) / demMeta.pixelDeg));
+    const heights: number[] = [];
+    for (let row = row0; row <= row1; row++) {
+      const lat = demMeta.north - (row + 0.5) * demMeta.pixelDeg;
+      for (let col = col0; col <= col1; col++) {
+        const lon = demMeta.west + (col + 0.5) * demMeta.pixelDeg;
+        const north = (lat - cell.lat) * METRES_PER_DEG_LAT;
+        const east = (lon - cell.lon) * METRES_PER_DEG_LON;
+        if (north * north + east * east > radiusM * radiusM) continue;
+        heights.push(values[row * demMeta.width + col] / 10);
+      }
+    }
+    if (heights.length === 0) throw new Error(`no DEM pixels under ${axialKey(cell.coord)}`);
+    heights.sort((a, b) => a - b);
+    const ground = heights[Math.floor((heights.length - 1) * ELEVATION_PERCENTILE)];
+    byIndex.set(index, Math.max(0, Math.round(ground * 2) / 2));
+  });
+  return { demMeta, byIndex };
+}
+
+/** Elevation, as a debug picture: land hexes shaded from 0 m (dark) to the board's highest (white). */
+function elevationCells(cells: Cell[], byIndex: Map<number, number>): Cell[] {
+  return cells.map((cell, i) => {
+    const m = byIndex.get(i);
+    const band = m === undefined ? "none" : m < 5 ? "elev0" : m < 10 ? "elev5" : m < 20 ? "elev10" : m < 35 ? "elev20" : "elev35";
+    return { ...cell, terrainId: band };
+  });
 }
 
 // ---- reading the picture ----------------------------------------------
@@ -1177,7 +1257,12 @@ async function writeDebugImage(
           land: `rgba(70,150,60,${hexAlpha * 0.6})`,
           road: `rgba(220,40,40,${hexAlpha})`,
           bridge: `rgba(150,40,220,${hexAlpha})`,
-          none: "rgba(0,0,0,0)"
+          none: "rgba(0,0,0,0)",
+          elev0: `rgba(20,40,120,${hexAlpha})`,
+          elev5: `rgba(40,140,170,${hexAlpha})`,
+          elev10: `rgba(120,190,90,${hexAlpha})`,
+          elev20: `rgba(230,190,60,${hexAlpha})`,
+          elev35: `rgba(200,60,40,${hexAlpha})`
         };
 
         for (const hex of hexes) {
@@ -1235,12 +1320,15 @@ async function writeDebugImage(
 
         // Legend, in image space.
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        const rows: [string, string][] = [
-          ["coast (sea)", FILL.coast], ["river", FILL.river], ["estuary (wetland)", FILL.estuary],
-          ["beach", FILL.beach], ["land", FILL.land]
-        ];
+        const elevation = hexes.some((hex) => hex.terrainId.startsWith("elev"));
+        const rows: [string, string][] = elevation
+          ? [["land under 5 m", FILL.elev0], ["5-10 m", FILL.elev5], ["10-20 m", FILL.elev10], ["20-35 m", FILL.elev20], ["35 m and over", FILL.elev35]]
+          : [
+              ["coast (sea)", FILL.coast], ["river", FILL.river], ["estuary (wetland)", FILL.estuary],
+              ["beach", FILL.beach], ["land", FILL.land]
+            ];
         ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.fillRect(10, 10, 300, 40 + rows.length * 26);
+        ctx.fillRect(10, 10, 420, 40 + rows.length * 26);
         ctx.font = "bold 18px sans-serif";
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
@@ -1415,6 +1503,10 @@ async function main(): Promise<void> {
 
   const { monuments, notes, placements } = placeMonuments(places, cells);
 
+  const { demMeta, byIndex: elevation } = sampleElevation(cells);
+  const landHeights = [...elevation.values()].sort((a, b) => a - b);
+  console.log(`elevation: ${landHeights.length} land tiles, ${landHeights[0]}..${landHeights[landHeights.length - 1]} m, median ${landHeights[Math.floor(landHeights.length / 2)]} m`);
+
   const monumentKeys = new Set(monuments.map((m) => `${m.q},${m.r}`));
   const found = findRoads(cells);
   const roads = found.roads.filter((coord) => !monumentKeys.has(axialKey(coord)));
@@ -1515,6 +1607,19 @@ async function main(): Promise<void> {
       if (!onBoard) console.log(`locality ${place.name} falls off the board; left out`);
       return onBoard ? [{ name: place.name, ...coord, rank: place.rank }] : [];
     }),
+    /*
+     * Where each land tile's height came from (see sampleElevation). Shown
+     * on the Sources screen with the map's other credits.
+     */
+    elevation: {
+      elevationSource: "dem",
+      source: demMeta.source,
+      href: demMeta.href,
+      licence: demMeta.licence,
+      accessed: demMeta.accessed,
+      kind: demMeta.kind,
+      method: `Land tiles only: the ${ELEVATION_PERCENTILE * 100}th percentile of the 1-arc-second DEM pixels within ${Math.round(HEX_SIZE * SAMPLE_RADIUS_FRACTION * METRES_PER_UNIT)} m of the tile centre, rounded to 0.5 m.`
+    },
     // The Panjim 2050 challenge zones (see ZONES).
     zones: assignZones(cells),
     // Major roads and bridges, read from the OSM picture (see findRoads).
@@ -1522,7 +1627,7 @@ async function main(): Promise<void> {
     bridges: bridges.map((coord) => [coord.q, coord.r]),
     // Which neighbouring road tiles the road actually runs between (see linkRoads).
     roadLinks,
-    tiles: cells.map((cell) => ({ q: cell.coord.q, r: cell.coord.r, terrainId: cell.terrainId }))
+    tiles: cells.map((cell, i) => (elevation.has(i) ? { q: cell.coord.q, r: cell.coord.r, terrainId: cell.terrainId, elevationM: elevation.get(i)! } : { q: cell.coord.q, r: cell.coord.r, terrainId: cell.terrainId }))
   };
   for (const zone of file.zones) {
     const terrain = new Map<string, number>();
@@ -1546,6 +1651,7 @@ async function main(): Promise<void> {
   const roadKeys = new Set([...roads, ...bridges].map((coord) => axialKey(coord)));
   const roadCells = cells.map((cell) => ({ ...cell, terrainId: roadKeys.has(axialKey(cell.coord)) ? (cell.terrainId === "land" ? "road" : "bridge") : "none" }));
   await writeDebugImage(meta, roadCells, [], path.join(DEBUG_DIR, "panaji-roads.jpg"), { hexAlpha: 0.55, title: "Panaji: road and bridge tiles" });
+  await writeDebugImage(meta, elevationCells(cells, elevation), [], path.join(DEBUG_DIR, "panaji-elevation.jpg"), { hexAlpha: 0.6, title: "Panaji: land elevation (Copernicus DEM)" });
 
   // Landmarks: monuments first, then the neighbourhood labels, numbered in
   // that order in both the image and the table.

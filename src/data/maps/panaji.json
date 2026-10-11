@@ -153,7 +153,7 @@
     {
       "id": "panjim_church",
       "name": "Our Lady of the Immaculate Conception",
-      "category": "Heritage church, 1541",
+      "category": "Heritage church",
       "kind": "church",
       "q": 11,
       "r": 8
@@ -161,7 +161,7 @@
     {
       "id": "idalcao_palace",
       "name": "Adil Shah Palace",
-      "category": "Old Secretariat, 1500s",
+      "category": "Old Secretariat",
       "kind": "palace",
       "q": 11,
       "r": 7
@@ -177,7 +177,7 @@
     {
       "id": "institute_menezes_braganza",
       "name": "Institute Menezes Braganza",
-      "category": "Library and gallery, 1871",
+      "category": "Library and gallery",
       "kind": "institution",
       "q": 10,
       "r": 7
@@ -185,7 +185,7 @@
     {
       "id": "mahalaxmi_temple",
       "name": "Mahalaxmi Temple",
-      "category": "Temple, 1818",
+      "category": "Temple",
       "kind": "temple",
       "q": 10,
       "r": 10
@@ -201,7 +201,7 @@
     {
       "id": "don_bosco_high_school",
       "name": "Don Bosco High School",
-      "category": "School, 1935",
+      "category": "School",
       "kind": "institution",
       "q": 8,
       "r": 9
@@ -233,7 +233,7 @@
     {
       "id": "kala_academy",
       "name": "Kala Academy",
-      "category": "Arts centre, 1983",
+      "category": "Arts centre",
       "kind": "institution",
       "q": 5,
       "r": 11
@@ -365,6 +365,15 @@
       "rank": 2
     }
   ],
+  "elevation": {
+    "elevationSource": "dem",
+    "source": "Copernicus DEM GLO-30 (tile Copernicus_DSM_COG_10_N15_00_E073_00_DEM)",
+    "href": "https://registry.opendata.aws/copernicus-dem/",
+    "licence": "Copernicus DEM licence: free use with attribution. © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+    "accessed": "2026-10-10",
+    "kind": "Digital surface model: heights include buildings and trees.",
+    "method": "Land tiles only: the 25th percentile of the 1-arc-second DEM pixels within 128 m of the tile centre, rounded to 0.5 m."
+  },
   "zones": [
     {
       "id": "z1",
@@ -3808,82 +3817,98 @@
     {
       "q": 7,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0.5
     },
     {
       "q": 8,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 29
     },
     {
       "q": 9,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 10,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 11,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 12,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 13,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51.5
     },
     {
       "q": 14,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 46
     },
     {
       "q": 15,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48.5
     },
     {
       "q": 16,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 47
     },
     {
       "q": 17,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 18,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 24.5
     },
     {
       "q": 19,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 60
     },
     {
       "q": 20,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52
     },
     {
       "q": 21,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 26.5
     },
     {
       "q": 22,
       "r": 0,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9.5
     },
     {
       "q": 23,
@@ -3978,22 +4003,26 @@
     {
       "q": 6,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 7,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 33.5
     },
     {
       "q": 8,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20
     },
     {
       "q": 9,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 10,
@@ -4003,32 +4032,38 @@
     {
       "q": 11,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": 12,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 22
     },
     {
       "q": 13,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 38
     },
     {
       "q": 14,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20
     },
     {
       "q": 15,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 43.5
     },
     {
       "q": 16,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21.5
     },
     {
       "q": 17,
@@ -4038,22 +4073,26 @@
     {
       "q": 18,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 45.5
     },
     {
       "q": 19,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 59
     },
     {
       "q": 20,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21.5
     },
     {
       "q": 21,
       "r": 1,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 22,
@@ -4118,7 +4157,8 @@
     {
       "q": -1,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 0,
@@ -4133,32 +4173,38 @@
     {
       "q": 2,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 3,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": 4,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 5,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": 6,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 18.5
     },
     {
       "q": 7,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21.5
     },
     {
       "q": 8,
@@ -4183,22 +4229,26 @@
     {
       "q": 12,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11
     },
     {
       "q": 13,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 14,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 29.5
     },
     {
       "q": 15,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 35
     },
     {
       "q": 16,
@@ -4208,27 +4258,32 @@
     {
       "q": 17,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 17
     },
     {
       "q": 18,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 46
     },
     {
       "q": 19,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 42.5
     },
     {
       "q": 20,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 21,
       "r": 2,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": 22,
@@ -4293,42 +4348,50 @@
     {
       "q": -1,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 0,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10.5
     },
     {
       "q": 1,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 2,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 3,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14.5
     },
     {
       "q": 4,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13
     },
     {
       "q": 5,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15
     },
     {
       "q": 6,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13
     },
     {
       "q": 7,
@@ -4358,47 +4421,56 @@
     {
       "q": 12,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 13,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21.5
     },
     {
       "q": 14,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 27
     },
     {
       "q": 15,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 16,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9.5
     },
     {
       "q": 17,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 32
     },
     {
       "q": 18,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 18
     },
     {
       "q": 19,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 25
     },
     {
       "q": 20,
       "r": 3,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 21,
@@ -4463,42 +4535,50 @@
     {
       "q": -2,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41.5
     },
     {
       "q": -1,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51.5
     },
     {
       "q": 0,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 26.5
     },
     {
       "q": 1,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 33
     },
     {
       "q": 2,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 42.5
     },
     {
       "q": 3,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40
     },
     {
       "q": 4,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39.5
     },
     {
       "q": 5,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11
     },
     {
       "q": 6,
@@ -4553,12 +4633,14 @@
     {
       "q": 16,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 17,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 18,
@@ -4623,7 +4705,8 @@
     {
       "q": 30,
       "r": 4,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": 31,
@@ -4638,37 +4721,44 @@
     {
       "q": -2,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 61
     },
     {
       "q": -1,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 56
     },
     {
       "q": 0,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51
     },
     {
       "q": 1,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 53.5
     },
     {
       "q": 2,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 60.5
     },
     {
       "q": 3,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 59.5
     },
     {
       "q": 4,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 19.5
     },
     {
       "q": 5,
@@ -4793,57 +4883,68 @@
     {
       "q": 29,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 30,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 30.5
     },
     {
       "q": 31,
       "r": 5,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": -3,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50
     },
     {
       "q": -2,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51.5
     },
     {
       "q": -1,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41
     },
     {
       "q": 0,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44
     },
     {
       "q": 1,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55
     },
     {
       "q": 2,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 57
     },
     {
       "q": 3,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51.5
     },
     {
       "q": 4,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 5,
@@ -4943,7 +5044,8 @@
     {
       "q": 24,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": 25,
@@ -4953,7 +5055,8 @@
     {
       "q": 26,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 27,
@@ -4963,62 +5066,74 @@
     {
       "q": 28,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9.5
     },
     {
       "q": 29,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 25
     },
     {
       "q": 30,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 26.5
     },
     {
       "q": 31,
       "r": 6,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": -3,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20.5
     },
     {
       "q": -2,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": -1,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 33.5
     },
     {
       "q": 0,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51.5
     },
     {
       "q": 1,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48.5
     },
     {
       "q": 2,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 36.5
     },
     {
       "q": 3,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 42.5
     },
     {
       "q": 4,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 5,
@@ -5038,32 +5153,38 @@
     {
       "q": 8,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": 9,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": 10,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 11,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 12,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 13,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 14,
@@ -5123,7 +5244,8 @@
     {
       "q": 25,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 26,
@@ -5133,22 +5255,26 @@
     {
       "q": 27,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 28,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 23.5
     },
     {
       "q": 29,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 34
     },
     {
       "q": 30,
       "r": 7,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39.5
     },
     {
       "q": -4,
@@ -5163,32 +5289,38 @@
     {
       "q": -2,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11
     },
     {
       "q": -1,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20
     },
     {
       "q": 0,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41.5
     },
     {
       "q": 1,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41
     },
     {
       "q": 2,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 22.5
     },
     {
       "q": 3,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 4,
@@ -5208,47 +5340,56 @@
     {
       "q": 7,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 8,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 9,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 10,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 11,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 12,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 13,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 14,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 15,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 16,
@@ -5293,12 +5434,14 @@
     {
       "q": 24,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 25,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 26,
@@ -5308,22 +5451,26 @@
     {
       "q": 27,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 28,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 29,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 17.5
     },
     {
       "q": 30,
       "r": 8,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 24.5
     },
     {
       "q": -4,
@@ -5343,12 +5490,14 @@
     {
       "q": -1,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 0,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 1,
@@ -5358,7 +5507,8 @@
     {
       "q": 2,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 3,
@@ -5383,47 +5533,56 @@
     {
       "q": 7,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 8,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 9,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 10,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 11,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 16
     },
     {
       "q": 12,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 13,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0.5
     },
     {
       "q": 14,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 15,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 16,
@@ -5458,22 +5617,26 @@
     {
       "q": 22,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 23,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 24,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": 25,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 26,
@@ -5493,7 +5656,8 @@
     {
       "q": 29,
       "r": 9,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": -5,
@@ -5553,52 +5717,62 @@
     {
       "q": 6,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 7,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 8,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11
     },
     {
       "q": 9,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13
     },
     {
       "q": 10,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 33
     },
     {
       "q": 11,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 12,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": 13,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 14,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 15,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 16,
@@ -5628,12 +5802,14 @@
     {
       "q": 21,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 22,
       "r": 10,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": 23,
@@ -5723,47 +5899,56 @@
     {
       "q": 5,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 6,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 7,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9.5
     },
     {
       "q": 8,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50
     },
     {
       "q": 9,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 53.5
     },
     {
       "q": 10,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 32
     },
     {
       "q": 11,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": 12,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 13,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 14,
@@ -5798,7 +5983,8 @@
     {
       "q": 20,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 21,
@@ -5808,7 +5994,8 @@
     {
       "q": 22,
       "r": 11,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 23,
@@ -5898,37 +6085,44 @@
     {
       "q": 5,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": 6,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 7,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52.5
     },
     {
       "q": 8,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 60
     },
     {
       "q": 9,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55
     },
     {
       "q": 10,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 11,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": 12,
@@ -5958,7 +6152,8 @@
     {
       "q": 17,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": 18,
@@ -5978,12 +6173,14 @@
     {
       "q": 21,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 22,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 23,
@@ -5993,7 +6190,8 @@
     {
       "q": 24,
       "r": 12,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1
     },
     {
       "q": 25,
@@ -6063,42 +6261,50 @@
     {
       "q": 3,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": 4,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": 5,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9.5
     },
     {
       "q": 6,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 22.5
     },
     {
       "q": 7,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 42.5
     },
     {
       "q": 8,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54
     },
     {
       "q": 9,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 38.5
     },
     {
       "q": 10,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 11,
@@ -6138,7 +6344,8 @@
     {
       "q": 18,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 19,
@@ -6158,12 +6365,14 @@
     {
       "q": 22,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 23,
       "r": 13,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 24,
@@ -6228,52 +6437,62 @@
     {
       "q": 1,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 2,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 3,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 4,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 5,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 6,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21.5
     },
     {
       "q": 7,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 42.5
     },
     {
       "q": 8,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51
     },
     {
       "q": 9,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 47.5
     },
     {
       "q": 10,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 11,
@@ -6318,7 +6537,8 @@
     {
       "q": 19,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9.5
     },
     {
       "q": 20,
@@ -6333,22 +6553,26 @@
     {
       "q": 22,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 23,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 24,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 25,
       "r": 14,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 26,
@@ -6398,52 +6622,62 @@
     {
       "q": 0,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 1,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 2,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 3,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 4,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 5,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10.5
     },
     {
       "q": 6,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48
     },
     {
       "q": 7,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48.5
     },
     {
       "q": 8,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21
     },
     {
       "q": 9,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 10,
@@ -6493,42 +6727,50 @@
     {
       "q": 19,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11
     },
     {
       "q": 20,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 21,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 22,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 23,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 43.5
     },
     {
       "q": 24,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48
     },
     {
       "q": 25,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14.5
     },
     {
       "q": 26,
       "r": 15,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": -8,
@@ -6568,22 +6810,26 @@
     {
       "q": -1,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 0,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 1,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 2,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 3,
@@ -6593,27 +6839,32 @@
     {
       "q": 4,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 5,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15
     },
     {
       "q": 6,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50.5
     },
     {
       "q": 7,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 37
     },
     {
       "q": 8,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 9,
@@ -6663,47 +6914,56 @@
     {
       "q": 18,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 19,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11
     },
     {
       "q": 20,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 21,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 22,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14
     },
     {
       "q": 23,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 56.5
     },
     {
       "q": 24,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 47.5
     },
     {
       "q": 25,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 26,
       "r": 16,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": -8,
@@ -6738,47 +6998,56 @@
     {
       "q": -2,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": -1,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 0,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 1,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 2,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 3,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": 4,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 5,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 6,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 7,
@@ -6823,7 +7092,8 @@
     {
       "q": 15,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 16,
@@ -6838,42 +7108,50 @@
     {
       "q": 18,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 19,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 20,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 21,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 22,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 25.5
     },
     {
       "q": 23,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54
     },
     {
       "q": 24,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 28
     },
     {
       "q": 25,
       "r": 17,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 26
     },
     {
       "q": -9,
@@ -6918,17 +7196,20 @@
     {
       "q": -1,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 0,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 1,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 2,
@@ -6938,17 +7219,20 @@
     {
       "q": 3,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 4,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 5,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 6,
@@ -6988,17 +7272,20 @@
     {
       "q": 13,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 14,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 15,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 16,
@@ -7008,47 +7295,56 @@
     {
       "q": 17,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 18,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 19,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 20,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 21,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14
     },
     {
       "q": 22,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 26.5
     },
     {
       "q": 23,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48.5
     },
     {
       "q": 24,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48.5
     },
     {
       "q": 25,
       "r": 18,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 68
     },
     {
       "q": -9,
@@ -7083,7 +7379,8 @@
     {
       "q": -3,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": -2,
@@ -7108,22 +7405,26 @@
     {
       "q": 2,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": 3,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 4,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 5,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 6,
@@ -7158,67 +7459,80 @@
     {
       "q": 12,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 13,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 14,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 15,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": 16,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 17,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10.5
     },
     {
       "q": 18,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 19,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 20,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 21,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14.5
     },
     {
       "q": 22,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 24.5
     },
     {
       "q": 23,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 62.5
     },
     {
       "q": 24,
       "r": 19,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 71
     },
     {
       "q": -10,
@@ -7258,22 +7572,26 @@
     {
       "q": -3,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": -2,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": -1,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 0,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 1,
@@ -7283,22 +7601,26 @@
     {
       "q": 2,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 3,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 4,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 5,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": 6,
@@ -7333,67 +7655,80 @@
     {
       "q": 12,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 13,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 14,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 15,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 16,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 17,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13
     },
     {
       "q": 18,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 19,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 20,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 17
     },
     {
       "q": 21,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 18.5
     },
     {
       "q": 22,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39
     },
     {
       "q": 23,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 61.5
     },
     {
       "q": 24,
       "r": 20,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 73.5
     },
     {
       "q": -10,
@@ -7428,52 +7763,62 @@
     {
       "q": -4,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": -3,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": -2,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": -1,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 0,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 1,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 2,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 3,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 4,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 5,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 6,
@@ -7508,17 +7853,20 @@
     {
       "q": 12,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": 13,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 14,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11
     },
     {
       "q": 15,
@@ -7528,42 +7876,50 @@
     {
       "q": 16,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": 17,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 18,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 19,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21.5
     },
     {
       "q": 20,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48
     },
     {
       "q": 21,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 31.5
     },
     {
       "q": 22,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 53
     },
     {
       "q": 23,
       "r": 21,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 68
     },
     {
       "q": -11,
@@ -7598,52 +7954,62 @@
     {
       "q": -5,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": -4,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": -3,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": -2,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": -1,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 0,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 1,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 2,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 3,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 4,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 5,
@@ -7678,22 +8044,26 @@
     {
       "q": 11,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 12,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 13,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 14,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 15,
@@ -7703,42 +8073,50 @@
     {
       "q": 16,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 17,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 18,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13
     },
     {
       "q": 19,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54
     },
     {
       "q": 20,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 58
     },
     {
       "q": 21,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 64
     },
     {
       "q": 22,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 71
     },
     {
       "q": 23,
       "r": 22,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 74
     },
     {
       "q": -11,
@@ -7773,52 +8151,62 @@
     {
       "q": -5,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": -4,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": -3,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": -2,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": -1,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 0,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 1,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 2,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13
     },
     {
       "q": 3,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 4,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": 5,
@@ -7848,67 +8236,80 @@
     {
       "q": 10,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": 11,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11
     },
     {
       "q": 12,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 13,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 14,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 15,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": 16,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 17,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 18,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 43.5
     },
     {
       "q": 19,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 56
     },
     {
       "q": 20,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 67.5
     },
     {
       "q": 21,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 74.5
     },
     {
       "q": 22,
       "r": 23,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 76.5
     },
     {
       "q": -12,
@@ -7943,47 +8344,56 @@
     {
       "q": -6,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": -5,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": -4,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": -3,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": -2,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": -1,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": 0,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 1,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 2,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": 3,
@@ -8028,62 +8438,74 @@
     {
       "q": 11,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 12,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 13,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 14,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15.5
     },
     {
       "q": 15,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 16,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": 17,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 17.5
     },
     {
       "q": 18,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 35
     },
     {
       "q": 19,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 57.5
     },
     {
       "q": 20,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 65.5
     },
     {
       "q": 21,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 70.5
     },
     {
       "q": 22,
       "r": 24,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 78.5
     },
     {
       "q": -12,
@@ -8113,42 +8535,50 @@
     {
       "q": -7,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": -6,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": -5,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": -4,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": -3,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": -2,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": -1,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 0,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 1,
@@ -8188,7 +8618,8 @@
     {
       "q": 8,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": 9,
@@ -8203,57 +8634,68 @@
     {
       "q": 11,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 12,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 13,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 17.5
     },
     {
       "q": 14,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 45
     },
     {
       "q": 15,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 53
     },
     {
       "q": 16,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40
     },
     {
       "q": 17,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 37.5
     },
     {
       "q": 18,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 63
     },
     {
       "q": 19,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 66.5
     },
     {
       "q": 20,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 68
     },
     {
       "q": 21,
       "r": 25,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 74.5
     },
     {
       "q": -13,
@@ -8283,17 +8725,20 @@
     {
       "q": -8,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": -7,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": -6,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": -5,
@@ -8303,27 +8748,32 @@
     {
       "q": -4,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": -3,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4.5
     },
     {
       "q": -2,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": -1,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 0,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 1,
@@ -8333,37 +8783,44 @@
     {
       "q": 2,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7.5
     },
     {
       "q": 3,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5.5
     },
     {
       "q": 4,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 5,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10
     },
     {
       "q": 6,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 18
     },
     {
       "q": 7,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 8,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 25.5
     },
     {
       "q": 9,
@@ -8373,62 +8830,74 @@
     {
       "q": 10,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 11,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14
     },
     {
       "q": 12,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 33
     },
     {
       "q": 13,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 35
     },
     {
       "q": 14,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 57.5
     },
     {
       "q": 15,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 67.5
     },
     {
       "q": 16,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 66.5
     },
     {
       "q": 17,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 67.5
     },
     {
       "q": 18,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 66.5
     },
     {
       "q": 19,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 64
     },
     {
       "q": 20,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 74
     },
     {
       "q": 21,
       "r": 26,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 74
     },
     {
       "q": -13,
@@ -8453,152 +8922,182 @@
     {
       "q": -9,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": -8,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": -7,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": -6,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9.5
     },
     {
       "q": -5,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 33
     },
     {
       "q": -4,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20.5
     },
     {
       "q": -3,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14.5
     },
     {
       "q": -2,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 31
     },
     {
       "q": -1,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 16.5
     },
     {
       "q": 0,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2
     },
     {
       "q": 1,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 2,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 23.5
     },
     {
       "q": 3,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 47.5
     },
     {
       "q": 4,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 49.5
     },
     {
       "q": 5,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52.5
     },
     {
       "q": 6,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52
     },
     {
       "q": 7,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 36.5
     },
     {
       "q": 8,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14
     },
     {
       "q": 9,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13.5
     },
     {
       "q": 10,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 23.5
     },
     {
       "q": 11,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 43.5
     },
     {
       "q": 12,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 59.5
     },
     {
       "q": 13,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55.5
     },
     {
       "q": 14,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 68
     },
     {
       "q": 15,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 70.5
     },
     {
       "q": 16,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 71
     },
     {
       "q": 17,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39
     },
     {
       "q": 18,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40
     },
     {
       "q": 19,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 65.5
     },
     {
       "q": 20,
       "r": 27,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 73
     },
     {
       "q": -14,
@@ -8623,87 +9122,104 @@
     {
       "q": -10,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 4
     },
     {
       "q": -9,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": -8,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 31.5
     },
     {
       "q": -7,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 32
     },
     {
       "q": -6,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44.5
     },
     {
       "q": -5,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44
     },
     {
       "q": -4,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40.5
     },
     {
       "q": -3,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 43.5
     },
     {
       "q": -2,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 42
     },
     {
       "q": -1,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10.5
     },
     {
       "q": 0,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15.5
     },
     {
       "q": 1,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 26
     },
     {
       "q": 2,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 30.5
     },
     {
       "q": 3,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 47.5
     },
     {
       "q": 4,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 53.5
     },
     {
       "q": 5,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55
     },
     {
       "q": 6,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 19
     },
     {
       "q": 7,
@@ -8713,72 +9229,86 @@
     {
       "q": 8,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39.5
     },
     {
       "q": 9,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40.5
     },
     {
       "q": 10,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52
     },
     {
       "q": 11,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55
     },
     {
       "q": 12,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 59
     },
     {
       "q": 13,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 53
     },
     {
       "q": 14,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 60
     },
     {
       "q": 15,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 58.5
     },
     {
       "q": 16,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 27.5
     },
     {
       "q": 17,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 22.5
     },
     {
       "q": 18,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 53
     },
     {
       "q": 19,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 73
     },
     {
       "q": 20,
       "r": 28,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 72
     },
     {
       "q": -14,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21.5
     },
     {
       "q": -13,
@@ -8788,167 +9318,200 @@
     {
       "q": -12,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 2.5
     },
     {
       "q": -11,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3
     },
     {
       "q": -10,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 13
     },
     {
       "q": -9,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 43.5
     },
     {
       "q": -8,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48.5
     },
     {
       "q": -7,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 45.5
     },
     {
       "q": -6,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44
     },
     {
       "q": -5,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39
     },
     {
       "q": -4,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41
     },
     {
       "q": -3,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 45
     },
     {
       "q": -2,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40.5
     },
     {
       "q": -1,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40
     },
     {
       "q": 0,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 46.5
     },
     {
       "q": 1,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51.5
     },
     {
       "q": 2,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48.5
     },
     {
       "q": 3,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52
     },
     {
       "q": 4,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55.5
     },
     {
       "q": 5,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 38
     },
     {
       "q": 6,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 28.5
     },
     {
       "q": 7,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20
     },
     {
       "q": 8,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51.5
     },
     {
       "q": 9,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 57.5
     },
     {
       "q": 10,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 58.5
     },
     {
       "q": 11,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 59.5
     },
     {
       "q": 12,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39
     },
     {
       "q": 13,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 33
     },
     {
       "q": 14,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 24
     },
     {
       "q": 15,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 19.5
     },
     {
       "q": 16,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15
     },
     {
       "q": 17,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 36.5
     },
     {
       "q": 18,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 66
     },
     {
       "q": 19,
       "r": 29,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54
     },
     {
       "q": -15,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": -14,
@@ -8958,102 +9521,122 @@
     {
       "q": -13,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 16
     },
     {
       "q": -12,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": -11,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12.5
     },
     {
       "q": -10,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39
     },
     {
       "q": -9,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44
     },
     {
       "q": -8,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 45.5
     },
     {
       "q": -7,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40.5
     },
     {
       "q": -6,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": -5,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9.5
     },
     {
       "q": -4,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 39
     },
     {
       "q": -3,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48
     },
     {
       "q": -2,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48
     },
     {
       "q": -1,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 47.5
     },
     {
       "q": 0,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 47.5
     },
     {
       "q": 1,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50.5
     },
     {
       "q": 2,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50.5
     },
     {
       "q": 3,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55.5
     },
     {
       "q": 4,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52.5
     },
     {
       "q": 5,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54.5
     },
     {
       "q": 6,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 56
     },
     {
       "q": 7,
@@ -9063,27 +9646,32 @@
     {
       "q": 8,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54
     },
     {
       "q": 9,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 57.5
     },
     {
       "q": 10,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 57
     },
     {
       "q": 11,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40
     },
     {
       "q": 12,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15.5
     },
     {
       "q": 13,
@@ -9098,27 +9686,32 @@
     {
       "q": 15,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 16,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20.5
     },
     {
       "q": 17,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52.5
     },
     {
       "q": 18,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 63
     },
     {
       "q": 19,
       "r": 30,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 21.5
     },
     {
       "q": -15,
@@ -9128,97 +9721,116 @@
     {
       "q": -14,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8
     },
     {
       "q": -13,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 25.5
     },
     {
       "q": -12,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 27
     },
     {
       "q": -11,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15.5
     },
     {
       "q": -10,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 30.5
     },
     {
       "q": -9,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41
     },
     {
       "q": -8,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": -7,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": -6,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": -5,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 27.5
     },
     {
       "q": -4,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40.5
     },
     {
       "q": -3,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 32
     },
     {
       "q": -2,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44
     },
     {
       "q": -1,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50
     },
     {
       "q": 0,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 47
     },
     {
       "q": 1,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 42.5
     },
     {
       "q": 2,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50.5
     },
     {
       "q": 3,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54
     },
     {
       "q": 4,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55
     },
     {
       "q": 5,
@@ -9233,27 +9845,32 @@
     {
       "q": 7,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55.5
     },
     {
       "q": 8,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55
     },
     {
       "q": 9,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52
     },
     {
       "q": 10,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15.5
     },
     {
       "q": 11,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 12,
@@ -9268,27 +9885,32 @@
     {
       "q": 14,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 16
     },
     {
       "q": 15,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44.5
     },
     {
       "q": 16,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 55
     },
     {
       "q": 17,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 65
     },
     {
       "q": 18,
       "r": 31,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 43
     },
     {
       "q": -16,
@@ -9308,7 +9930,8 @@
     {
       "q": -13,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 16
     },
     {
       "q": -12,
@@ -9343,7 +9966,8 @@
     {
       "q": -6,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 28
     },
     {
       "q": -5,
@@ -9368,102 +9992,122 @@
     {
       "q": -1,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 0,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10.5
     },
     {
       "q": 1,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44
     },
     {
       "q": 2,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51
     },
     {
       "q": 3,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 44
     },
     {
       "q": 4,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52
     },
     {
       "q": 5,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 52
     },
     {
       "q": 6,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41
     },
     {
       "q": 7,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50
     },
     {
       "q": 8,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 23
     },
     {
       "q": 9,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 9
     },
     {
       "q": 10,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6.5
     },
     {
       "q": 11,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 5
     },
     {
       "q": 12,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 18.5
     },
     {
       "q": 13,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 30
     },
     {
       "q": 14,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50
     },
     {
       "q": 15,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 65.5
     },
     {
       "q": 16,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 66.5
     },
     {
       "q": 17,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 70
     },
     {
       "q": 18,
       "r": 32,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 31.5
     },
     {
       "q": -16,
@@ -9553,32 +10197,38 @@
     {
       "q": 1,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": 2,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10.5
     },
     {
       "q": 3,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20
     },
     {
       "q": 4,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 51
     },
     {
       "q": 5,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14
     },
     {
       "q": 6,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 15.5
     },
     {
       "q": 7,
@@ -9593,47 +10243,56 @@
     {
       "q": 9,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 6
     },
     {
       "q": 10,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 8.5
     },
     {
       "q": 11,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 14
     },
     {
       "q": 12,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 42
     },
     {
       "q": 13,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 56
     },
     {
       "q": 14,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54.5
     },
     {
       "q": 15,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 60
     },
     {
       "q": 16,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 61.5
     },
     {
       "q": 17,
       "r": 33,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 40
     },
     {
       "q": -17,
@@ -9738,12 +10397,14 @@
     {
       "q": 3,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 1.5
     },
     {
       "q": 4,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 29
     },
     {
       "q": 5,
@@ -9768,47 +10429,56 @@
     {
       "q": 9,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 7
     },
     {
       "q": 10,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 11.5
     },
     {
       "q": 11,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 17
     },
     {
       "q": 12,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41.5
     },
     {
       "q": 13,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 49.5
     },
     {
       "q": 14,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 54.5
     },
     {
       "q": 15,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 61
     },
     {
       "q": 16,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 41.5
     },
     {
       "q": 17,
       "r": 34,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 10.5
     },
     {
       "q": -17,
@@ -9943,42 +10613,50 @@
     {
       "q": 9,
       "r": 35,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 0
     },
     {
       "q": 10,
       "r": 35,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 16
     },
     {
       "q": 11,
       "r": 35,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 65
     },
     {
       "q": 12,
       "r": 35,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 62.5
     },
     {
       "q": 13,
       "r": 35,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 60
     },
     {
       "q": 14,
       "r": 35,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 56
     },
     {
       "q": 15,
       "r": 35,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 50
     },
     {
       "q": 16,
       "r": 35,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 20
     },
     {
       "q": -18,
@@ -10123,32 +10801,38 @@
     {
       "q": 10,
       "r": 36,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 48.5
     },
     {
       "q": 11,
       "r": 36,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 62
     },
     {
       "q": 12,
       "r": 36,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 60
     },
     {
       "q": 13,
       "r": 36,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 28.5
     },
     {
       "q": 14,
       "r": 36,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 12
     },
     {
       "q": 15,
       "r": 36,
-      "terrainId": "land"
+      "terrainId": "land",
+      "elevationM": 3.5
     },
     {
       "q": 16,

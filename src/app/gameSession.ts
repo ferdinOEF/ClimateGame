@@ -19,6 +19,7 @@ import { ForecastOutline } from "@render/forecastOutline";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
+import { buildingGeometry } from "@render/townGeometry";
 import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
@@ -35,7 +36,7 @@ import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
 import { TownDecor } from "@render/townDecor";
 import { AmbientLife } from "@render/ambientLife";
-import { townLayout, WALL_COLOURS, ROOF_COLOURS } from "@levels/townLayout";
+import { nearestHouse, townLayout, WALL_COLOURS, ROOF_COLOURS } from "@levels/townLayout";
 import { Tooltips, buildWhat, tooltipText, missingTooltips } from "@ui/tooltip";
 import { StormReport } from "@ui/stormReport";
 // `SessionResult` is defined in @core/levelScore (it is expressed purely
@@ -332,6 +333,20 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * `state.elements` entirely, so no meter, objective, hazard or achievement
    * can see them (see `GameState.reserved`).
    */
+  const town = level.houses?.fillLand ? townLayout(levelMap, level.id) : null;
+  /** The largest of the nearest Houses to a coord, as drawn (for sizing a monument against its street). */
+  const neighbourBuilding = (coord: AxialCoord): { w: number; d: number; h: number } | null => {
+    if (!town) return null;
+    let best: { w: number; d: number; h: number } | null = null;
+    for (const plot of nearestHouse(town, coord)) {
+      const geometry = buildingGeometry(plot.kind);
+      geometry.computeBoundingBox();
+      const b = geometry.boundingBox!;
+      const size = { w: (b.max.x - b.min.x) * plot.scale, d: (b.max.z - b.min.z) * plot.scale, h: b.max.y * plot.scale };
+      if (!best || size.w * size.d * size.h > best.w * best.d * best.h) best = size;
+    }
+    return best;
+  };
   const monuments = new MonumentMeshManager(
     levelMap.monuments
       // A monument whose tile was cropped away by `mapRadius` would float over
@@ -341,9 +356,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         id: monument.id,
         name: monument.name,
         kind: monument.kind,
+        category: monument.category,
         coord: { q: monument.q, r: monument.r }
       })),
-    (coord) => terrain.heightAt(coord)
+    (coord) => terrain.heightAt(coord),
+    neighbourBuilding
   );
   scene.add(monuments.group);
   for (const key of monuments.occupiedKeys()) state.reserved.add(key);
@@ -354,7 +371,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * gardens, and the major roads. Purely how the town looks; the game counts
    * every building as one House.
    */
-  const town = level.houses?.fillLand ? townLayout(levelMap, level.id) : null;
   let townDecor: TownDecor | null = null;
   let ambientLife: AmbientLife | null = null;
   if (town) {
@@ -362,7 +378,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const roofs = ROOF_COLOURS.map((hex) => new THREE.Color(hex));
     elements.setStyleResolver((coord) => {
       const plot = town.buildings.get(`${coord.q},${coord.r}`);
-      return plot ? { kind: plot.kind, wall: walls[plot.wall], roof: roofs[plot.roof], scale: plot.scale, turns: plot.turns } : null;
+      return plot
+        ? {
+            kind: plot.kind,
+            wall: walls[plot.wall],
+            roof: roofs[plot.roof],
+            scale: plot.scale,
+            turns: plot.turns,
+            rotY: plot.rotY,
+            fabric: plot.fabric.map((part) => ({ ...part, wall: walls[part.wall], roof: roofs[part.roof] }))
+          }
+        : null;
     });
     townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord));
     scene.add(townDecor.group);
@@ -2028,6 +2054,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // the only place in the game that teaches a player the board has real
     // places on it that they did not put there.
     const monument = monuments.at(coord);
+    // Selecting a monument keeps its name card up; selecting anything else lets it go.
+    selectedMonument = monument?.name ?? null;
+    mapLabels.setFocus(hoveredMonument ?? selectedMonument);
     if (monument) {
       buildPopover.showInfo(screen.x, screen.y, {
         name: monument.name,
@@ -2139,6 +2168,35 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
 
+  /*
+   * Monument name cards (Section 3): a mouse resting on a monument's tile
+   * brings up its card in the label layer, and a click keeps it up. Mouse
+   * only: on touch the tap that selects it does the same job. The raycast
+   * runs at most every HOVER_PICK_MS, not on every pointer event.
+   */
+  const HOVER_PICK_MS = 120;
+  let hoveredMonument: string | null = null;
+  let selectedMonument: string | null = null;
+  let lastHoverPick = -Infinity;
+  const hoverPointer = new THREE.Vector2();
+  renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
+    if (event.pointerType !== "mouse" || event.buttons !== 0) return;
+    const now = performance.now();
+    if (now - lastHoverPick < HOVER_PICK_MS) return;
+    lastHoverPick = now;
+    const rect = renderer.domElement.getBoundingClientRect();
+    hoverPointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(hoverPointer, camera);
+    const hit = raycaster.intersectObjects(terrain.raycastTargets)[0];
+    const coord = hit && hit.instanceId !== undefined ? terrain.coordForHit(hit.object, hit.instanceId) : null;
+    hoveredMonument = coord ? (monuments.at(coord)?.name ?? null) : null;
+    mapLabels.setFocus(hoveredMonument ?? selectedMonument);
+  });
+  renderer.domElement.addEventListener("pointerleave", () => {
+    hoveredMonument = null;
+    mapLabels.setFocus(selectedMonument);
+  });
+
   renderer.domElement.addEventListener("click", (event: MouseEvent) => {
     if (wasDrag()) return; // a pan, not a click — don't also open a popover at the drag's end point
     if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
@@ -2217,9 +2275,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     mapLabels.update(
       (coord) => {
         // Anchored to the tile's top surface, so a label sits on the land
-        // rather than floating at sea level over a raised tile.
+        // rather than floating at sea level over a raised tile; on a
+        // monument's tile, to the top of the building, so its card sits above
+        // the building it names rather than over it.
         const { x, z } = axialToWorld(coord, 1.0);
-        const screen = worldToScreen(x, terrain.heightAt(coord) + 0.25, z);
+        const top = monuments.topAt(coord);
+        const screen = worldToScreen(x, top !== null ? top + 0.08 : terrain.heightAt(coord) + 0.25, z);
         return { x: screen.x, y: screen.y, depth: 0 };
       },
       rect.width,
@@ -2400,6 +2461,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     __labelsForTest: mapLabels,
+    /** A tile's top surface on screen, in client pixels (for tests that hover a tile). */
+    __projectTileForTest: (q: number, r: number): { x: number; y: number } => {
+      const { x, z } = axialToWorld({ q, r }, 1.0);
+      const screen = worldToScreen(x, terrain.heightAt({ q, r }), z);
+      const rect = renderer.domElement.getBoundingClientRect();
+      return { x: rect.left + screen.x, y: rect.top + screen.y };
+    },
     __riskIntroForTest: riskIntro,
     // Builds a specific element at a specific coord (rather than
     // reverse-engineering screen-pixel clicks through the popover).
