@@ -56,7 +56,8 @@ overlay, the storm animation and the damage resolution share.
 | `defence.metresPerResilience` | 0.45 | Game metres of protection per point of an element's resilience | gameRule |
 | `defence.radiusHex`, `defence.falloff` | 3, [1, 0.9, 0.7, 0.45] | How far a defence's protection reaches, and how it fades | gameRule |
 | `defence.stackCap` | 1.6 | Different kinds of defence on a tile add up to at most 1.6 × the strongest; several of one kind count once (layered defence) | gameRule |
-| `defence.maxProtectionM` | 3.2 | No tile is protected by more than this | gameRule |
+| `defence.maxProtectionM` | 3.2 | Living defences together protect a tile by no more than this | gameRule |
+| `defence.engineeredMaxProtectionM` | 4.5 | An engineered structure's own protection may rise to this (a seawall reaches further than a breakwater) | gameRule |
 | `defence.pathShare`, `defence.neighbourShare` | 0.3, 0.5 | Drag on water passing through a defended tile and its neighbours | gameRule |
 | `defence.comboMetresPerPoint` | 0.4 | Extra protection from a combo | gameRule |
 | `defence.failDepthPerUnit` | 8.7 | Water depth (× an engineered element's failureThreshold) that breaks it | gameRule |
@@ -75,8 +76,8 @@ the same thing.
 | Element | Cost | Resilience | Answers | Matures (quarters) | Breaks / wears at | Kind |
 |---|---|---|---|---|---|---|
 | Dune | 15 | 4 | cyclone | 8 | overwhelm 1.3 | gameRule |
-| Pandanus (sandy vegetation) | 10 | 2.5 | cyclone | 8 | overwhelm 1.1 | gameRule |
-| Seawall | 90 | 16 | cyclone | 0 | fails 1.2 | gameRule |
+| Pandanus (sandy vegetation) | 10 | 3 | cyclone | 8 | overwhelm 1.1 | gameRule |
+| Seawall | 80 | 16 | cyclone | 0 | fails 1.2 | gameRule |
 | Breakwater | 85 | 12 | cyclone | 0 | fails 1.25 | gameRule |
 | Mangrove | 30 | 5 | cyclone, flood | 20 | overwhelm 1.4 | gameRule |
 | Khazan | 65 | 5 | flood | 12 | overwhelm 1.6 | gameRule |
