@@ -52,6 +52,8 @@ export interface HazardModelConfig {
     stackCap: number;
     /** However many defences stand round a tile, together they hold back at most this much water there. */
     maxProtectionM: number;
+    /** The ceiling where an engineered structure is among the defences (defaults to maxProtectionM). */
+    engineeredMaxProtectionM?: number;
     pathShare: number;
     neighbourShare: number;
     comboMetresPerPoint: number;
@@ -311,7 +313,11 @@ export function areaProtection(board: WaterBoard, own: Map<string, number>, conf
   for (const [key, kinds] of best) {
     const values = [...kinds.values()];
     const sum = values.reduce((a, b) => a + b, 0);
-    out.set(key, Math.min(sum, Math.max(...values) * stackCap, config.defence.maxProtectionM));
+    // An engineered wall's own protection may rise above the ceiling, to engineeredMaxProtectionM: hard structures hold back more than any living defence.
+    let hard = 0;
+    for (const [kind, m] of kinds) if (ELEMENT_BY_ID.get(kind)?.category === "engineered") hard = Math.max(hard, m);
+    const ceiling = Math.min(config.defence.engineeredMaxProtectionM ?? config.defence.maxProtectionM, Math.max(config.defence.maxProtectionM, hard));
+    out.set(key, Math.min(sum, Math.max(...values) * stackCap, ceiling));
   }
   for (const [key, h] of harm) out.set(key, (out.get(key) ?? 0) + h);
   return out;

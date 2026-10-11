@@ -53,6 +53,8 @@ export interface BotResult {
   score: number;
   /** Time-costing decisions that changed the board: builds, repairs, demolitions. */
   decisions: number;
+  /** Builds per element id. */
+  built: Record<string, number>;
   fastForwardQuarters: number;
   jarTaps: number;
   /** Estimated real milliseconds for a human playing the same moves. */
@@ -100,11 +102,17 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
   return new ActionRun(state, level.timeline!, { climate: level.climate, seed, zones: MAP.zones, houseStars: level.houseStars, houseRule: level.houses?.rule, prep: level.prep });
 }
 
+type LoggedAction = { type: "tap" } | { type: "ff" } | { type: "build"; coord: AxialCoord; elementId: string } | { type: "repair"; coord: AxialCoord };
+
 class Player {
   readonly run: ActionRun;
   readonly rng: Rng;
   ms = TIME.briefRead;
   decisions = 0;
+  /** Builds per element id, for the balance report. */
+  readonly built: Record<string, number> = {};
+  /** Every action that went through, in order, so a run can be replayed (the per-element margin). */
+  readonly log: LoggedAction[] = [];
   ffQuarters = 0;
   jarTaps = 0;
   checkpoint2Ms = 0;
@@ -126,6 +134,7 @@ class Player {
   tapJar(): void {
     const coins = this.run.collectJar();
     if (coins <= 0) return;
+    this.log.push({ type: "tap" });
     this.jarTaps++;
     this.ms += TIME.jarTap;
     this.reward();
@@ -138,6 +147,8 @@ class Player {
   build(coord: AxialCoord, elementId: string): boolean {
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
+    this.built[elementId] = (this.built[elementId] ?? 0) + 1;
+    this.log.push({ type: "build", coord, elementId });
     this.decisions++;
     this.ms += TIME.decision + outcome.quarters * TIME.tickAction;
     if (this.firstActionMs < 0) this.firstActionMs = this.ms;
@@ -148,15 +159,24 @@ class Player {
   repair(coord: AxialCoord): boolean {
     const outcome = this.run.repair(coord);
     if (!outcome.ok) return false;
+    this.log.push({ type: "repair", coord });
     this.decisions++;
     this.ms += TIME.decision + outcome.quarters * TIME.tickAction;
     this.events(outcome.events);
     return true;
   }
 
+  /** Lets one quarter pass doing nothing (a replayed action that no longer applies). */
+  waitQuarter(): void {
+    const outcome = this.run.waitQuarters(1);
+    if (!outcome.ok) return;
+    this.events(outcome.events);
+  }
+
   fastForwardYear(): void {
     const outcome = this.run.fastForwardYear();
     if (!outcome.ok) return;
+    this.log.push({ type: "ff" });
     this.ffQuarters += outcome.quarters;
     this.ms += 1000 + outcome.quarters * TIME.tickLapse;
     if (this.firstActionMs < 0) this.firstActionMs = this.ms;
@@ -239,7 +259,8 @@ class Player {
       estimatedMs: this.ms + TIME.finale,
       checkpoint2Ms: this.checkpoint2Ms,
       firstActionMs: this.firstActionMs,
-      firstRewardMs: this.firstRewardMs
+      firstRewardMs: this.firstRewardMs,
+      built: { ...this.built }
     };
   }
 }
@@ -500,6 +521,30 @@ const PLAY: Record<Persona, (p: Player) => void> = {
 export function runSmartWithout(elementId: string, seed: string): BotResult {
   const player = new Player("smart", seed);
   smartPlayer(elementId)(player);
+  return player.result();
+}
+
+/**
+ * Smart's own run, replayed action for action with every build of
+ * `elementId` left out: each of those builds (and any repair that no longer
+ * applies) becomes a quarter of waiting, so the clock, the jar and every
+ * other build are exactly as before. The houses this loses is what that
+ * element did in Smart's plan ("removing it from an otherwise identical
+ * Smart run", Section 4.6), with no re-planning round it.
+ */
+export function replaySmartWithout(elementId: string, seed: string): BotResult {
+  const original = new Player("smart", seed);
+  smartPlayer(null)(original);
+  const player = new Player("smart", seed);
+  for (const action of original.log) {
+    if (player.run.finished) break;
+    if (action.type === "tap") player.tapJar();
+    else if (action.type === "ff") player.fastForwardYear();
+    else if (action.type === "build") {
+      if (action.elementId === elementId || !player.build(action.coord, action.elementId)) player.waitQuarter();
+    } else if (!player.repair(action.coord)) player.waitQuarter();
+  }
+  while (!player.run.finished) player.fastForwardYear();
   return player.result();
 }
 

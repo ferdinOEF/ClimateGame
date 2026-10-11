@@ -1,68 +1,96 @@
 /**
  * The Section 4 balance report: every archetype on every seed, over a full
- * playthrough of Panaji, and each defence's margin in Smart's hands.
+ * playthrough of Panaji, each defence's margin in Smart's hands, and Smart
+ * held to one kind of defence.
  *
  * Usage:  npm run bots            (archetypes)
- *         npm run bots -- margins (also: Smart with each defence left out)
+ *         npm run bots -- margins (also: the margins and the one-kind runs)
  *         BOT_SEEDS=5 npm run bots (fewer seeds, for a quick look)
- *
- * Smart is slow (it simulates every candidate build), so the margins run in
- * parallel child processes, BOT_JOBS at a time (default 3).
  *
  * Writes the tables to stdout as Markdown; docs/qa/section4/bots.md keeps the
  * last full run. Seeds are listed so any row can be re-run.
+ *
+ * Smart is slow (it simulates every candidate build), so its runs are split
+ * by seed over BOT_JOBS child processes (default 3). Each child plays Smart
+ * on its seeds, replays each Smart run with one element left out (the
+ * margin), and, with margins, plays Smart limited to one kind.
  */
 import { spawn } from "node:child_process";
-import { PERSONAS, SEEDS, runBot, runSmartOnly, runSmartWithout, savedShare, type BotResult, type Persona } from "./bots";
+import { PERSONAS, SEEDS, replaySmartWithout, runBot, runSmartOnly, savedShare, type BotResult, type Persona } from "./bots";
 
 const seeds = SEEDS.slice(0, Number(process.env.BOT_SEEDS ?? SEEDS.length));
-const MARGIN_ELEMENTS = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
+const ELEMENTS = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
+const withMargins = process.argv.includes("margins");
 
-// A child process: one element left out (--without=) or the only one built (--only=), printed as JSON.
-const arg = (name: string): string | undefined => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
-const without = arg("without");
-const only = arg("only");
-if (without || only) {
-  console.log(JSON.stringify(seeds.map((seed) => savedShare(without ? runSmartWithout(without, seed) : runSmartOnly(only!, seed)))));
+interface SmartSeed {
+  smart: BotResult;
+  /** Houses saved with each element's builds replayed as waiting. */
+  without: Record<string, number>;
+  /** Houses saved by Smart building only that element. */
+  only: Record<string, number>;
+}
+
+// A child process: Smart on the seeds it was given, printed as JSON.
+const childSeeds = process.argv.find((a) => a.startsWith("--seeds="))?.slice("--seeds=".length);
+if (childSeeds !== undefined) {
+  const out: Record<string, SmartSeed> = {};
+  for (const seed of childSeeds.split(",").filter(Boolean)) {
+    const without: Record<string, number> = {};
+    const only: Record<string, number> = {};
+    if (withMargins) {
+      for (const id of ELEMENTS) {
+        without[id] = savedShare(replaySmartWithout(id, seed));
+        only[id] = savedShare(runSmartOnly(id, seed));
+      }
+    }
+    out[seed] = { smart: runBot("smart", seed), without, only };
+  }
+  console.log(JSON.stringify(out));
   process.exit(0);
 }
 
-/** Runs each left-out element in its own process, `jobs` at a time. */
-async function marginShares(jobs: number): Promise<Map<string, number[]>> {
-  const out = new Map<string, number[]>();
-  const queue = MARGIN_ELEMENTS.flatMap((id) => [`without=${id}`, `only=${id}`]);
-  const worker = async (): Promise<void> => {
-    for (let id = queue.shift(); id; id = queue.shift()) {
-      const text = await new Promise<string>((resolve, reject) => {
-        const child = spawn(process.execPath, [...process.execArgv, process.argv[1], `--${id}`], { env: process.env, stdio: ["ignore", "pipe", "inherit"] });
-        let buf = "";
-        child.stdout.on("data", (d) => (buf += d));
-        child.on("exit", (code) => (code === 0 ? resolve(buf) : reject(new Error(`margin ${id} exited ${code}`))));
-      });
-      out.set(id, JSON.parse(text.trim().split("\n").pop()!));
-    }
-  };
-  await Promise.all(Array.from({ length: jobs }, worker));
-  return out;
+/** Smart's seeds, split over `jobs` child processes. */
+async function smartRuns(jobs: number): Promise<Map<string, SmartSeed>> {
+  const chunks: string[][] = Array.from({ length: jobs }, () => []);
+  seeds.forEach((seed, i) => chunks[i % jobs].push(seed));
+  const parts = await Promise.all(
+    chunks
+      .filter((c) => c.length > 0)
+      .map(
+        (chunk) =>
+          new Promise<Record<string, SmartSeed>>((resolve, reject) => {
+            const args = [...process.execArgv, process.argv[1], `--seeds=${chunk.join(",")}`, ...(withMargins ? ["margins"] : [])];
+            const child = spawn(process.execPath, args, { env: process.env, stdio: ["ignore", "pipe", "inherit"] });
+            let buf = "";
+            child.stdout.on("data", (d) => (buf += d));
+            child.on("exit", (code) => (code === 0 ? resolve(JSON.parse(buf.trim().split("\n").pop()!)) : reject(new Error(`smart ${chunk} exited ${code}`))));
+          })
+      )
+  );
+  return new Map(parts.flatMap((p) => Object.entries(p)));
 }
 
-const margins = process.argv.includes("margins") ? marginShares(Number(process.env.BOT_JOBS ?? 3)) : null;
+const smartPromise = smartRuns(Number(process.env.BOT_JOBS ?? 3));
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
+const mean = (xs: number[]): number => xs.reduce((s, x) => s + x, 0) / xs.length;
 const lines: string[] = [];
 const results = new Map<Persona, BotResult[]>();
-
-for (const persona of PERSONAS) results.set(persona, seeds.map((seed) => runBot(persona, seed)));
+for (const persona of PERSONAS) if (persona !== "smart") results.set(persona, seeds.map((seed) => runBot(persona, seed)));
+const smart = await smartPromise;
+results.set("smart", seeds.map((seed) => smart.get(seed)!.smart));
 
 lines.push("## Archetypes", "", `${seeds.length} seeds: ${seeds.join(", ")}`, "");
 lines.push("| Archetype | Houses saved (all storms) | min | median | max | Stars per storm (mean) | Index (mean) |", "|---|---|---|---|---|---|---|");
 for (const persona of PERSONAS) {
   const rs = results.get(persona)!;
   const shares = rs.map(savedShare).sort((a, b) => a - b);
-  const mean = shares.reduce((s, x) => s + x, 0) / shares.length;
   const stars = [0, 1, 2].map((i) => (rs.reduce((s, r) => s + (r.stars[i] ?? 0), 0) / rs.length).toFixed(1)).join(" / ");
   const index = Math.round(rs.reduce((s, r) => s + r.index, 0) / rs.length);
-  lines.push(`| ${persona} | ${pct(mean)} | ${pct(shares[0])} | ${pct(shares[Math.floor(shares.length / 2)])} | ${pct(shares[shares.length - 1])} | ${stars} | ${index} |`);
+  lines.push(`| ${persona} | ${pct(mean(shares))} | ${pct(shares[0])} | ${pct(shares[Math.floor(shares.length / 2)])} | ${pct(shares[shares.length - 1])} | ${stars} | ${index} |`);
 }
+const casual = results.get("casual")!;
+const greedyWins = results.get("greedy")!.filter((g, i) => savedShare(g) > savedShare(casual[i])).map((g) => g.seed);
+lines.push("", `Greedy beats Casual on ${greedyWins.length} of ${seeds.length} seeds${greedyWins.length ? ` (${greedyWins.join(", ")})` : ""}.`);
 
 lines.push("", "## Every run", "", "| Archetype | Seed | Storm 1 saved | Storm 2 saved | Storm 3 saved | All | Stars | Resilience | Biodiversity | Livelihoods | Population | Food |", "|---|---|---|---|---|---|---|---|---|---|---|---|");
 for (const persona of PERSONAS) {
@@ -74,21 +102,29 @@ for (const persona of PERSONAS) {
   }
 }
 
-if (margins) {
-  const smart = results.get("smart")!;
-  const base = smart.reduce((s, r) => s + savedShare(r), 0) / smart.length;
-  const shares = await margins;
-  lines.push("", "## Each defence's margin (Smart, with that defence never built)", "", `Smart with everything: ${pct(base)} of houses in the storms' paths saved.`, "", "| Left out | Houses saved | Margin (points) | Per seed |", "|---|---|---|---|");
-  for (const elementId of MARGIN_ELEMENTS) {
-    const rs = shares.get(`without=${elementId}`)!;
-    const share = rs.reduce((s, x) => s + x, 0) / rs.length;
-    lines.push(`| ${elementId} | ${pct(share)} | ${((base - share) * 100).toFixed(1)} | ${rs.map(pct).join(" ")} |`);
+const smartRows = results.get("smart")!;
+lines.push("", "## What Smart builds (mean per run)", "", `| ${ELEMENTS.join(" | ")} |`, `|${ELEMENTS.map(() => "---").join("|")}|`);
+lines.push(`| ${ELEMENTS.map((id) => (smartRows.reduce((s, r) => s + (r.built[id] ?? 0), 0) / smartRows.length).toFixed(1)).join(" | ")} |`);
+
+if (withMargins) {
+  const base = mean(smartRows.map(savedShare));
+  lines.push(
+    "",
+    "## Each defence's margin (Smart's own run, replayed with that defence left out)",
+    "",
+    `Smart with everything: ${pct(base)} of houses in the storms' paths saved. Each build of the left-out defence becomes a quarter of waiting; every other action is replayed as it was, so nothing re-plans round the gap.`,
+    "",
+    "| Left out | Houses saved | Margin (points) | Margin per seed (points) |",
+    "|---|---|---|---|"
+  );
+  for (const id of ELEMENTS) {
+    const per = seeds.map((seed) => savedShare(smart.get(seed)!.smart) - smart.get(seed)!.without[id]);
+    lines.push(`| ${id} | ${pct(base - mean(per))} | ${(mean(per) * 100).toFixed(1)} | ${per.map((x) => (x * 100).toFixed(0)).join(" ")} |`);
   }
   lines.push("", "## One kind only (Smart, building nothing but that defence)", "", "No single defence should come near the mix.", "", "| Only | Houses saved | Behind Smart (points) | Per seed |", "|---|---|---|---|");
-  for (const elementId of MARGIN_ELEMENTS) {
-    const rs = shares.get(`only=${elementId}`)!;
-    const share = rs.reduce((s, x) => s + x, 0) / rs.length;
-    lines.push(`| ${elementId} | ${pct(share)} | ${((base - share) * 100).toFixed(1)} | ${rs.map(pct).join(" ")} |`);
+  for (const id of ELEMENTS) {
+    const rs = seeds.map((seed) => smart.get(seed)!.only[id]);
+    lines.push(`| ${id} | ${pct(mean(rs))} | ${((base - mean(rs)) * 100).toFixed(1)} | ${rs.map(pct).join(" ")} |`);
   }
 }
 

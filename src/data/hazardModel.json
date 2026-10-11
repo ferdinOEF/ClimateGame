@@ -32,7 +32,7 @@
     "backwaterExponent": 1.2
   },
   "defence": {
-    "_comment": "A defence protects the area round it: water within radiusHex hexes stands lower by metresPerResilience x its resilience (scaled by maturity and wear) x falloff[distance]. On a tile only the strongest defence of each kind counts; different kinds add up (layered defence), to at most stackCap times the strongest single one there, so a mix of defences does more than many of one kind. pathShare of that also slows water passing through its own tile and its neighbours. Negative resilience (sand mining, a resort) lets water through more easily. Engineered structures fail when the water on their tile is deeper than failureThreshold x failDepthPerUnit, and then give no protection; nature defences over overwhelmSeverity x overwhelmDepthPerUnit protect at their overwhelmed share and are worn. However many defences stand round a tile, together they hold back at most maxProtectionM there: the front line of a big storm is lost even behind the best defences, and what a player saves is the streets behind it.",
+    "_comment": "A defence protects the area round it: water within radiusHex hexes stands lower by metresPerResilience x its resilience (scaled by maturity and wear) x falloff[distance]. On a tile only the strongest defence of each kind counts; different kinds add up (layered defence), to at most stackCap times the strongest single one there, so a mix of defences does more than many of one kind. pathShare of that also slows water passing through its own tile and its neighbours. Negative resilience (sand mining, a resort) lets water through more easily. Engineered structures fail when the water on their tile is deeper than failureThreshold x failDepthPerUnit, and then give no protection; nature defences over overwhelmSeverity x overwhelmDepthPerUnit protect at their overwhelmed share and are worn. However many defences stand round a tile, together they hold back at most maxProtectionM there (an engineered structure's own protection may reach engineeredMaxProtectionM): the front line of a big storm is lost even behind the best defences, and what a player saves is the streets behind it.",
     "metresPerResilience": 0.45,
     "radiusHex": 3,
     "falloff": [
@@ -47,7 +47,8 @@
     "comboMetresPerPoint": 0.4,
     "failDepthPerUnit": 8.7,
     "overwhelmDepthPerUnit": 3.5,
-    "maxProtectionM": 3.2
+    "maxProtectionM": 3.2,
+    "engineeredMaxProtectionM": 4.5
   },
   "houseLossDepthM": 0.6,
   "landfall": {
