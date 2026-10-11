@@ -26,33 +26,33 @@
   },
   "compound": {
     "_comment": "Cyclone and flood together. The surge holds the river back at the mouth: every channel tile also gets a backwater level = backwaterShare x (surge level at the mouth) x (riverIndex/mouthIndex)^backwaterExponent on top of the flood's own level there.",
-    "surgeShare": 0.7,
+    "surgeShare": 0.9,
     "floodShare": 0.85,
     "backwaterShare": 0.6,
     "backwaterExponent": 1.2
   },
   "defence": {
-    "_comment": "A defence protects the area round it: water within radiusHex hexes stands lower by metresPerResilience x its resilience (scaled by maturity and wear) x falloff[distance]. Protection from several defences adds up, to at most stackCap times the strongest single one there. pathShare of that also slows water passing through its own tile and its neighbours. Negative resilience (sand mining, a resort) lets water through more easily. Engineered structures fail when the water on their tile is deeper than failureThreshold x failDepthPerUnit, and then give no protection; nature defences over overwhelmSeverity x overwhelmDepthPerUnit protect at their overwhelmed share and are worn. However many defences stand round a tile, together they hold back at most maxProtectionM there: the front line of a big storm is lost even behind the best defences, and what a player saves is the streets behind it.",
-    "metresPerResilience": 0.8,
+    "_comment": "A defence protects the area round it: water within radiusHex hexes stands lower by metresPerResilience x its resilience (scaled by maturity and wear) x falloff[distance]. On a tile only the strongest defence of each kind counts; different kinds add up (layered defence), to at most stackCap times the strongest single one there, so a mix of defences does more than many of one kind. pathShare of that also slows water passing through its own tile and its neighbours. Negative resilience (sand mining, a resort) lets water through more easily. Engineered structures fail when the water on their tile is deeper than failureThreshold x failDepthPerUnit, and then give no protection; nature defences over overwhelmSeverity x overwhelmDepthPerUnit protect at their overwhelmed share and are worn. However many defences stand round a tile, together they hold back at most maxProtectionM there: the front line of a big storm is lost even behind the best defences, and what a player saves is the streets behind it.",
+    "metresPerResilience": 0.45,
     "radiusHex": 3,
     "falloff": [
       1,
-      0.85,
-      0.6,
-      0.35
+      0.9,
+      0.7,
+      0.45
     ],
-    "stackCap": 1.1,
+    "stackCap": 1.6,
     "pathShare": 0.3,
     "neighbourShare": 0.5,
     "comboMetresPerPoint": 0.4,
-    "failDepthPerUnit": 5,
+    "failDepthPerUnit": 8.7,
     "overwhelmDepthPerUnit": 3.5,
-    "maxProtectionM": 2.4
+    "maxProtectionM": 3.2
   },
   "houseLossDepthM": 0.6,
   "landfall": {
     "_comment": "Where a cyclone can come ashore: open-sea tiles on the shore, ordered along the coast. The schedule picks a forecast centre and the real site is within jitterSites of it (bounded: a player who defends the forecast cone is never caught out). The forecast cone shown to the player narrows from coneFarSites half-width when the storm is first in view to jitterSites by the time the forecast locks.",
-    "jitterSites": 2,
+    "jitterSites": 1,
     "coneFarSites": 7,
     "centreMin": 0.15,
     "centreMax": 0.85

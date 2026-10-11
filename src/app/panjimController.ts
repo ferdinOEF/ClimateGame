@@ -27,6 +27,7 @@ import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIn
 import { axialToWorld } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
+import { coneTiles } from "@core/hazardModel";
 import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
 import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
 import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
@@ -113,6 +114,8 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
+  /** The cyclone's forecast cone at sea (coord keys); empty hides it. */
+  showLandfallCone?: (keys: string[]) => void;
   /** Whether any menu, card or modal is open (the risk sequence never starts under one). */
   overlayOpen: () => boolean;
   /** Whether any of these tiles is on screen now. */
@@ -397,8 +400,12 @@ export class PanjimController {
     this.exposure = next && quartersLeft >= 1 && quartersLeft <= HEAT_LEAD_QUARTERS ? this.run.exposureFor(next) : null;
     if (!next || !this.exposure || !this.riskToggle.value) {
       this.host.showHeat([]);
+      this.host.showLandfallCone?.([]);
       return;
     }
+    // Where a cyclone may come ashore: the cone narrows each quarter to the bounded jitter.
+    const cone = this.run.landfallCone(next);
+    this.host.showLandfallCone?.(cone ? coneTiles(this.run.board(), cone) : []);
     const hazards = hazardsOf(next.kind);
     const defences: string[] = [];
     for (const [key, inst] of this.host.state.elements) {

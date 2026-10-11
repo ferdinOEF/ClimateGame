@@ -249,7 +249,8 @@ class Player {
 // Section 4's archetypes, all playing the real rules through ActionRun:
 //   casual    builds a little, late: a few random defences once a storm is near.
 //   greedy    maximises income (resorts, sand mining, dams) and defends only in
-//             the last quarters before a storm, cheaply.
+//             the last quarters before a storm; how greedy is drawn per run,
+//             so it is a gamble: sometimes ahead of Casual, often far behind.
 //   smart     reads the forecast: defends where the warning says the water will
 //             come, ranking each candidate by the houses it actually saves (the
 //             same resolver, on a copy of the board), plants slow-growing
@@ -323,7 +324,7 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
  * the tiles the warning shows at risk, each scored by the houses it saves per
  * Coin. Null when nothing affordable saves a house.
  */
-function bestDefence(p: Player, challenge: ScheduledChallenge, maxCoin: number, longLeadOnly = false, perCoin = true): { coord: AxialCoord; elementId: string; saves: number } | null {
+function bestDefence(p: Player, challenge: ScheduledChallenge, maxCoin: number, longLeadOnly = false, perCoin = true, skip: string | null = null, only: string | null = null): { coord: AxialCoord; elementId: string; saves: number } | null {
   const exposure = p.run.exposureFor(challenge);
   if (!exposure || exposure.housesAtRisk.length === 0) return null;
   const near = around([...exposure.housesAtRisk, ...exposure.exposure.keys()], 1);
@@ -332,7 +333,7 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, maxCoin: number, 
   for (const key of near) {
     const coord = coordOf(key);
     for (const elementId of DEFENCES) {
-      if (!answers(elementId, challenge.kind)) continue;
+      if (elementId === skip || (only && elementId !== only) || !answers(elementId, challenge.kind)) continue;
       if (longLeadOnly && !["mangrove", "khazan"].includes(elementId)) continue;
       const def = ELEMENT_BY_ID.get(elementId)!;
       if (def.buildCost > maxCoin || !p.state.canBuild(coord, elementId)) continue;
@@ -364,14 +365,14 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, maxCoin: number, 
 }
 
 function playCasual(p: Player): void {
-  // Builds a little, late: from about three years before a storm, now and
+  // Builds a little, late: from about four and a half years before a storm, now and
   // then a defence on the obvious spot, next to the most red houses it can
   // afford to cover. It never checks what a build actually saves.
   while (!p.run.finished) {
     if (p.rng.next() < 0.6) p.tapJar();
     const next = p.run.nextChallenge();
-    const near = next ? p.run.quartersUntil(next) <= 12 : false;
-    if (!next || !near || p.rng.next() < 0.3) {
+    const near = next ? p.run.quartersUntil(next) <= 18 : false;
+    if (!next || !near || p.rng.next() < 0.15) {
       p.fastForwardYear();
       continue;
     }
@@ -412,18 +413,24 @@ function moneyPerCoin(elementId: string): number {
 
 function playGreedy(p: Player): void {
   const ranked = [...INCOME].sort((a, b) => moneyPerCoin(b) - moneyPerCoin(a));
+  // How greedy, drawn per run: the greediest builds three dozen money-makers
+  // and defends only in the last two quarters before a storm; the least
+  // greedy, eight, and from two years out. A gamble that sometimes pays.
+  const greed = p.rng.next();
+  const incomeCap = Math.round(8 + 28 * greed);
+  const window = Math.round(8 - 6 * greed);
   let incomeBuilds = 0;
   while (!p.run.finished) {
     p.tapJar();
     const next = p.run.nextChallenge();
-    // Defends late: only in the last six quarters before a storm.
-    if (next && p.run.quartersUntil(next) <= 6) {
+    // Defends late: only in the last few quarters before a storm.
+    if (next && p.run.quartersUntil(next) <= window) {
       const pick = bestDefence(p, next, p.state.coin, false, false);
       if (pick && p.build(pick.coord, pick.elementId)) continue;
     }
-    // Income first, up to a couple of dozen money-makers; then it banks and waits for the storms.
+    // Income first, up to its cap of money-makers; then it banks and waits for the storms.
     let built = false;
-    if (incomeBuilds < 24) {
+    if (incomeBuilds < incomeCap) {
       for (const elementId of ranked) {
         const spots = p.spots(elementId, null);
         if (spots.length === 0) continue;
@@ -443,7 +450,7 @@ function playRusher(p: Player): void {
 }
 
 /** Smart, with an optional element left out (the per-element margin test). */
-function smartPlayer(skip: string | null): (p: Player) => void {
+function smartPlayer(skip: string | null, only: string | null = null): (p: Player) => void {
   return (p) => {
     const reserve = 30;
     while (!p.run.finished) {
@@ -461,8 +468,8 @@ function smartPlayer(skip: string | null): (p: Player) => void {
       // Every storm still to come, nearest first: long-lead defences for the later ones.
       const upcoming = p.run.schedule.filter((c) => !p.run.landed.has(c.id));
       for (const [i, challenge] of upcoming.entries()) {
-        const pick = bestDefence(p, challenge, p.state.coin - reserve, i > 0);
-        if (pick && pick.elementId !== skip && p.build(pick.coord, pick.elementId)) {
+        const pick = bestDefence(p, challenge, p.state.coin - reserve, i > 0 && !only, true, skip, only);
+        if (pick && p.build(pick.coord, pick.elementId)) {
           acted = true;
           break;
         }
@@ -493,6 +500,13 @@ const PLAY: Record<Persona, (p: Player) => void> = {
 export function runSmartWithout(elementId: string, seed: string): BotResult {
   const player = new Player("smart", seed);
   smartPlayer(elementId)(player);
+  return player.result();
+}
+
+/** Smart building only one kind of defence, for "no single defence dominates". */
+export function runSmartOnly(elementId: string, seed: string): BotResult {
+  const player = new Player("smart", seed);
+  smartPlayer(null, elementId)(player);
   return player.result();
 }
 

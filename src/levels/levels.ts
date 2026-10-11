@@ -92,9 +92,9 @@ export interface LevelDef {
 }
 
 /**
- * The levels, exactly as written in levels.json. There is one baseline: the
- * temporary "easy-test" pilot preset (and the preset mechanism with it) was
- * deleted in Section 4, so the numbers in the file are the numbers played.
+ * The levels, exactly as written in levels.json. There is one baseline and
+ * no balance presets (Section 4): the numbers in the file are the numbers
+ * played.
  */
 export const LEVELS: LevelDef[] = levelData as unknown as LevelDef[];
 export const LEVEL_BY_ID = new Map(LEVELS.map((level) => [level.id, level]));

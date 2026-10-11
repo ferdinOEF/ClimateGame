@@ -6,12 +6,47 @@
  *         npm run bots -- margins (also: Smart with each defence left out)
  *         BOT_SEEDS=5 npm run bots (fewer seeds, for a quick look)
  *
+ * Smart is slow (it simulates every candidate build), so the margins run in
+ * parallel child processes, BOT_JOBS at a time (default 3).
+ *
  * Writes the tables to stdout as Markdown; docs/qa/section4/bots.md keeps the
  * last full run. Seeds are listed so any row can be re-run.
  */
-import { PERSONAS, SEEDS, runBot, runSmartWithout, savedShare, type BotResult, type Persona } from "./bots";
+import { spawn } from "node:child_process";
+import { PERSONAS, SEEDS, runBot, runSmartOnly, runSmartWithout, savedShare, type BotResult, type Persona } from "./bots";
 
 const seeds = SEEDS.slice(0, Number(process.env.BOT_SEEDS ?? SEEDS.length));
+const MARGIN_ELEMENTS = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
+
+// A child process: one element left out (--without=) or the only one built (--only=), printed as JSON.
+const arg = (name: string): string | undefined => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
+const without = arg("without");
+const only = arg("only");
+if (without || only) {
+  console.log(JSON.stringify(seeds.map((seed) => savedShare(without ? runSmartWithout(without, seed) : runSmartOnly(only!, seed)))));
+  process.exit(0);
+}
+
+/** Runs each left-out element in its own process, `jobs` at a time. */
+async function marginShares(jobs: number): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>();
+  const queue = MARGIN_ELEMENTS.flatMap((id) => [`without=${id}`, `only=${id}`]);
+  const worker = async (): Promise<void> => {
+    for (let id = queue.shift(); id; id = queue.shift()) {
+      const text = await new Promise<string>((resolve, reject) => {
+        const child = spawn(process.execPath, [...process.execArgv, process.argv[1], `--${id}`], { env: process.env, stdio: ["ignore", "pipe", "inherit"] });
+        let buf = "";
+        child.stdout.on("data", (d) => (buf += d));
+        child.on("exit", (code) => (code === 0 ? resolve(buf) : reject(new Error(`margin ${id} exited ${code}`))));
+      });
+      out.set(id, JSON.parse(text.trim().split("\n").pop()!));
+    }
+  };
+  await Promise.all(Array.from({ length: jobs }, worker));
+  return out;
+}
+
+const margins = process.argv.includes("margins") ? marginShares(Number(process.env.BOT_JOBS ?? 3)) : null;
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 const lines: string[] = [];
 const results = new Map<Persona, BotResult[]>();
@@ -39,14 +74,21 @@ for (const persona of PERSONAS) {
   }
 }
 
-if (process.argv.includes("margins")) {
+if (margins) {
   const smart = results.get("smart")!;
   const base = smart.reduce((s, r) => s + savedShare(r), 0) / smart.length;
-  lines.push("", "## Each defence's margin (Smart, with that defence never built)", "", `Smart with everything: ${pct(base)} of houses in the storms' paths saved.`, "", "| Left out | Houses saved | Margin (points) |", "|---|---|---|");
-  for (const elementId of ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"]) {
-    const rs = seeds.map((seed) => runSmartWithout(elementId, seed));
-    const share = rs.reduce((s, r) => s + savedShare(r), 0) / rs.length;
-    lines.push(`| ${elementId} | ${pct(share)} | ${((base - share) * 100).toFixed(1)} |`);
+  const shares = await margins;
+  lines.push("", "## Each defence's margin (Smart, with that defence never built)", "", `Smart with everything: ${pct(base)} of houses in the storms' paths saved.`, "", "| Left out | Houses saved | Margin (points) | Per seed |", "|---|---|---|---|");
+  for (const elementId of MARGIN_ELEMENTS) {
+    const rs = shares.get(`without=${elementId}`)!;
+    const share = rs.reduce((s, x) => s + x, 0) / rs.length;
+    lines.push(`| ${elementId} | ${pct(share)} | ${((base - share) * 100).toFixed(1)} | ${rs.map(pct).join(" ")} |`);
+  }
+  lines.push("", "## One kind only (Smart, building nothing but that defence)", "", "No single defence should come near the mix.", "", "| Only | Houses saved | Behind Smart (points) | Per seed |", "|---|---|---|---|");
+  for (const elementId of MARGIN_ELEMENTS) {
+    const rs = shares.get(`only=${elementId}`)!;
+    const share = rs.reduce((s, x) => s + x, 0) / rs.length;
+    lines.push(`| ${elementId} | ${pct(share)} | ${((base - share) * 100).toFixed(1)} | ${rs.map(pct).join(" ")} |`);
   }
 }
 

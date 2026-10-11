@@ -71,7 +71,8 @@ export const VISUAL_DEPTH_CAP = 2.5;
 /** Resolves a storm on `state` (mutating it) and returns the outcome with its depth field. */
 function resolveWithField(state: GameState, args: StormArgs): { outcome: ChallengeOutcome; field: DepthField } {
   const houses = new Set<string>();
-  for (const key of state.elements.keys()) if (isBuilding(state, key)) houses.add(key);
+  // Standing houses only: one an earlier storm took is already down and cannot fall again.
+  for (const [key, inst] of state.elements) if (isBuilding(state, key) && inst.degradeAmount < 1) houses.add(key);
   const samples = new Map<string, { cyclone?: number; flood?: number }>();
   const resilienceUnit = args.houseRule?.resilience ?? args.strengthUnit;
   // The sea's and the river's own levels, for the water drawn on them (the same model, before the board changes).

@@ -184,6 +184,29 @@ export function forecastCone(board: WaterBoard, challenge: { landfallCentre?: nu
   return coneSites(board, forecastSite(board, challenge), half);
 }
 
+/**
+ * The sea the forecast cone covers, for drawing it: the landfall sites in
+ * `sites` and the open sea within `rings` hexes of them. Narrows with the
+ * cone, so the player sees the possible landfall close in quarter by quarter.
+ */
+export function coneTiles(board: WaterBoard, sites: readonly number[], rings = 2): string[] {
+  const out = new Set<string>();
+  let frontier = sites.map((i) => board.sites[i]).filter((key): key is string => !!key);
+  for (const key of frontier) out.add(key);
+  for (let d = 0; d < rings; d++) {
+    const next: string[] = [];
+    for (const key of frontier) {
+      for (const n of board.tiles.get(key)?.neighbours ?? []) {
+        if (out.has(n) || board.tiles.get(n)?.terrainId !== "coast") continue;
+        out.add(n);
+        next.push(n);
+      }
+    }
+    frontier = next;
+  }
+  return [...out];
+}
+
 /** What a storm is: its kind, its strength (the level's 1-3 scale), and for a cyclone where it comes ashore. */
 export interface StormInput {
   kind: ChallengeKind;
@@ -249,14 +272,19 @@ function pathDrag(board: WaterBoard, own: Map<string, number>, config: HazardMod
 /**
  * How much lower water stands on each tile because of the defences round it:
  * each protects tiles within `radiusHex`, by its metres × `falloff[distance]`
- * (negative ones — sand mining — make it stand higher). Several add up, to
- * at most `stackCap` × the strongest single one.
+ * (negative ones — sand mining — make it stand higher). On a tile only the
+ * strongest defence of each kind counts, and different kinds add up (layered
+ * defence: a dune line and a mangrove belt behind it do more than either
+ * twice over), to at most `stackCap` × the strongest single one, and never
+ * more than `maxProtectionM`. `kindOf` names a defence's kind; without it
+ * every defence is its own kind.
  */
-export function areaProtection(board: WaterBoard, own: Map<string, number>, config: HazardModelConfig = HAZARD_MODEL): Map<string, number> {
-  const sum = new Map<string, number>();
-  const strongest = new Map<string, number>();
+export function areaProtection(board: WaterBoard, own: Map<string, number>, config: HazardModelConfig = HAZARD_MODEL, kindOf: (key: string) => string = (key) => key): Map<string, number> {
+  const best = new Map<string, Map<string, number>>();
+  const harm = new Map<string, number>();
   const { radiusHex, falloff, stackCap } = config.defence;
   for (const [key, m] of own) {
+    const kind = kindOf(key);
     // Rings outward from the defence.
     const seen = new Set([key]);
     let frontier = [key];
@@ -264,8 +292,11 @@ export function areaProtection(board: WaterBoard, own: Map<string, number>, conf
       const f = falloff[Math.min(d, falloff.length - 1)];
       const next: string[] = [];
       for (const t of frontier) {
-        sum.set(t, (sum.get(t) ?? 0) + m * f);
-        if (m > 0) strongest.set(t, Math.max(strongest.get(t) ?? 0, m * f));
+        if (m > 0) {
+          const kinds = best.get(t) ?? new Map<string, number>();
+          kinds.set(kind, Math.max(kinds.get(kind) ?? 0, m * f));
+          best.set(t, kinds);
+        } else harm.set(t, (harm.get(t) ?? 0) + m * f);
         if (d === radiusHex) continue;
         for (const n of board.tiles.get(t)?.neighbours ?? []) {
           if (seen.has(n)) continue;
@@ -277,7 +308,12 @@ export function areaProtection(board: WaterBoard, own: Map<string, number>, conf
     }
   }
   const out = new Map<string, number>();
-  for (const [key, s] of sum) out.set(key, s > 0 ? Math.min(s, (strongest.get(key) ?? 0) * stackCap, config.defence.maxProtectionM) : s);
+  for (const [key, kinds] of best) {
+    const values = [...kinds.values()];
+    const sum = values.reduce((a, b) => a + b, 0);
+    out.set(key, Math.min(sum, Math.max(...values) * stackCap, config.defence.maxProtectionM));
+  }
+  for (const [key, h] of harm) out.set(key, (out.get(key) ?? 0) + h);
   return out;
 }
 
@@ -377,6 +413,7 @@ function floodLoss(config: HazardModelConfig): (tile: BoardTile) => number {
 function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: ReadonlyMap<string, number> | undefined, skip: ReadonlySet<string>, weaken: ReadonlyMap<string, number>, config: HazardModelConfig) {
   const hasSurge = storm.kind !== "flood" && storm.landfall !== null && board.sites.length > 0;
   const hasFlood = storm.kind !== "cyclone";
+  const kindOf = (key: string): string => state.elements.get(key)?.elementId ?? key;
   const c = config.compound;
   let surgeLevel = 0;
   let surge = new Map<string, number>();
@@ -384,7 +421,7 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
     surgeLevel = (config.surge.baseM + config.surge.perStrengthM * storm.strength) * (storm.kind === "compound" ? c.surgeShare : 1);
     const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall!))];
     const own = ownMetres(state, "cyclone", skip, weaken, combos, config);
-    surge = protect(spread(board, new Map([[site, surgeLevel]]), surgeLoss(config), pathDrag(board, own, config)), areaProtection(board, own, config));
+    surge = protect(spread(board, new Map([[site, surgeLevel]]), surgeLoss(config), pathDrag(board, own, config)), areaProtection(board, own, config, kindOf));
   }
   let floodLevel = 0;
   let flood = new Map<string, number>();
@@ -408,7 +445,7 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
       }
     }
     const own = ownMetres(state, "flood", skip, weaken, combos, config);
-    flood = protect(spread(board, sources, floodLoss(config), pathDrag(board, own, config)), areaProtection(board, own, config));
+    flood = protect(spread(board, sources, floodLoss(config), pathDrag(board, own, config)), areaProtection(board, own, config, kindOf));
   }
   const surgeDepth = depthOf(board, surge);
   const floodDepth = depthOf(board, flood);

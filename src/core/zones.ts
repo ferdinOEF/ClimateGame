@@ -318,8 +318,8 @@ export function resolveChallenge(
   const scale = houseRule?.resilience ?? strengthUnit;
   if (probe) {
     const unit = scale / HAZARD_MODEL.houseLossDepthM;
-    for (const [key, d] of field.surge) probe(key, d * unit, "cyclone");
-    for (const [key, d] of field.flood) probe(key, d * unit, "flood");
+    // Each tile's water is the deeper of the surge and the river (they do not add), reported as that kind.
+    for (const [key, d] of field.depth) probe(key, d * unit, (field.surge.get(key) ?? 0) >= (field.flood.get(key) ?? 0) ? "cyclone" : "flood");
   }
 
   const pathHouses = new Set<string>();

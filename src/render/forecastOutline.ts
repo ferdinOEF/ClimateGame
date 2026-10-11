@@ -17,25 +17,24 @@ const LIFT = 0.62;
 export class ForecastOutline {
   readonly group = new THREE.Group();
   private mesh: THREE.Mesh | null = null;
-  private readonly material = new THREE.MeshBasicMaterial({
-    color: "#fff3c4",
-    transparent: true,
-    opacity: 0.9,
-    depthWrite: false,
-    side: THREE.DoubleSide
-  });
-  private readonly coreMaterial = new THREE.MeshBasicMaterial({
-    color: "#5a1d12",
-    transparent: true,
-    opacity: 0.85,
-    depthWrite: false,
-    side: THREE.DoubleSide
-  });
+  private readonly material: THREE.MeshBasicMaterial;
+  private readonly coreMaterial: THREE.MeshBasicMaterial;
   private core: THREE.Mesh | null = null;
+
+  /** `colours`: the light band and its dark core (defaults: the Forecast's warm cream and brick). */
+  constructor(colours: { band: string; core: string } = { band: "#fff3c4", core: "#5a1d12" }) {
+    this.material = new THREE.MeshBasicMaterial({ color: colours.band, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide });
+    this.coreMaterial = new THREE.MeshBasicMaterial({ color: colours.core, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+  }
+
+  /** How many tiles the outline currently surrounds (0 when hidden). */
+  tileCount = 0;
 
   /** Outlines `tiles`. `heightAt` gives each tile's top surface. */
   show(tiles: AxialCoord[], heightAt: (coord: AxialCoord) => number): void {
     this.clear();
+    this.tileCount = tiles.length;
+    if (tiles.length === 0) return;
     const inside = new Set(tiles.map((tile) => axialKey(tile)));
     const outer: number[] = [];
     const inner: number[] = [];
@@ -67,6 +66,7 @@ export class ForecastOutline {
   }
 
   clear(): void {
+    this.tileCount = 0;
     for (const mesh of [this.mesh, this.core]) {
       if (!mesh) continue;
       this.group.remove(mesh);

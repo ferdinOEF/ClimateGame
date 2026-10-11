@@ -188,7 +188,8 @@ export function buildHeatView(
   terrainOf: (key: string) => string | undefined
 ): HeatViewTile[] {
   const shielded = new Set<string>(undefended ? protectedTiles(current, undefended) : []);
-  const onPath = new Set(current.exposure.keys());
+  // On the path: where the storm reaches now, or would with no defences (a defence that keeps its own tile dry still earns its shield).
+  const onPath = new Set([...current.exposure.keys(), ...(undefended ? undefended.exposure.keys() : [])]);
   for (const key of defenceKeys) if (onPath.has(key)) shielded.add(key);
   // The pulse marks houses that will fall, hardest hit first, never empty
   // ground: the point is to draw the eye to what can still be saved.

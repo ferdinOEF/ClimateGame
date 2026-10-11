@@ -17,6 +17,7 @@ import type { ActionRun } from "../src/core/actionRun";
 import type { StormRecord } from "../src/core/stormRecord";
 import { buildStormScript, LIGHTNING_GAP, testedDefences } from "../src/core/stormScript";
 import { replaySteps } from "../src/core/stormReplay";
+import { axialKey, neighbors } from "../src/core/hex";
 
 /**
  * The water the hazard visuals draw is the storm the resolver decided. These
@@ -234,13 +235,22 @@ describe("only the defences a storm tested answer it", () => {
     expect(record.kind).toBe("flood");
     const defences = new Map([...run.state.elements].map(([key, inst]) => [key, inst.elementId]));
     const zoneOf = (key: string): string | null => run.zones!.zoneOf(key);
+    // Mangroves where the river water never came: dry tile, dry ground all round.
+    const wet = (key: string): boolean => {
+      const [q, r] = key.split(",").map(Number);
+      return [{ q, r }, ...neighbors({ q, r })].some((c) => arrivalTime(record.field, axialKey(c)) !== null);
+    };
+    for (const key of run.zones!.keys("z1").filter((k) => !wet(k) && !defences.has(k)).slice(0, 4)) defences.set(key, "mangrove");
     const script = buildStormScript(record, defences, zoneOf);
     const pathZones = new Set(record.outcome.zones.map((z) => z.zoneId));
-    for (const event of script.events) if (event.type === "defence") expect(pathZones.has(zoneOf(event.key)!)).toBe(true);
-    const offPath = [...defences].filter(([key, id]) => id === "mangrove" && zoneOf(key) === "z1");
+    for (const event of script.events) if (event.type === "defence") expect(pathZones.has(zoneOf(event.key)!) && wet(event.key)).toBe(true);
+    const offPath = [...defences].filter(([key, id]) => id === "mangrove" && !wet(key));
     expect(offPath.length).toBeGreaterThan(0);
     for (const [key] of offPath) expect(script.events.some((e) => e.type === "defence" && e.key === key)).toBe(false);
-    expect([...testedDefences(record, defences, zoneOf).keys()].every((key) => pathZones.has(zoneOf(key)!))).toBe(true);
+    const tested = testedDefences(record, defences, zoneOf);
+    expect([...tested.keys()].every((key) => pathZones.has(zoneOf(key)!) && wet(key))).toBe(true);
+    // One on the water's path does answer it.
+    expect([...tested.values()].length).toBeGreaterThan(0);
     // The record keeps the defences that faced the storm.
     for (const [key, id] of record.defences) expect(defences.get(key) ?? id).toBe(id);
   });

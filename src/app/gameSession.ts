@@ -258,6 +258,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   /** Panjim 2050: the locked Forecast's zone edge — see ForecastOutline. Empty on every other level. */
   const forecastOutline = new ForecastOutline();
   scene.add(forecastOutline.group);
+  // The cyclone's forecast cone at sea: cool, so it never reads as the warm zone outline or the red heat.
+  const landfallCone = new ForecastOutline({ band: "#e8f6ff", core: "#0d3550" });
+  landfallCone.group.name = "landfall-cone";
+  scene.add(landfallCone.group);
   /**
    * Panjim 2050: the warning heat, one instanced layer over the board (see
    * HeatOverlay). Empty on every other level and outside a storm's last five
@@ -659,6 +663,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // The heat takes over from the Forecast's zone outline: one
             // statement about where the storm goes, not two on top of each other.
             forecastOutline.group.visible = !tiles.some((tile) => tile.heat > 0);
+          },
+          showLandfallCone: (keys) => {
+            landfallCone.show(
+              keys.map((key) => {
+                const [q, r] = key.split(",").map(Number);
+                return { q, r };
+              }),
+              (coord) => terrain.heightAt(coord)
+            );
           },
           landmarks: levelMap.landmarks,
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
@@ -2306,6 +2319,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormDirector?.tick(nowMs);
     for (const word of stormWords) placeStormWord(word);
     forecastOutline.tick(nowMs);
+    landfallCone.tick(nowMs);
     heatOverlay.tick(nowMs);
     if (ambientLife) {
       ambientLife.setWind(storm.windStrength);
@@ -2491,6 +2505,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
     __heatForTest: heatOverlay,
+    __landfallConeForTest: landfallCone,
     __ambientLifeForTest: () => ambientLife,
     // The town plan as drawn: how many road tiles, and whether any holds a building.
     __townForTest: () =>
@@ -2632,6 +2647,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormSky.dispose();
     buildFlourish.dispose();
     forecastOutline.dispose();
+    landfallCone.dispose();
     heatOverlay.dispose();
     townDecor?.dispose();
     ambientLife?.dispose();
