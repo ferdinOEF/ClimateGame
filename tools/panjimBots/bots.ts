@@ -102,7 +102,7 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
   return new ActionRun(state, level.timeline!, { climate: level.climate, seed, zones: MAP.zones, houseStars: level.houseStars, houseRule: level.houses?.rule, prep: level.prep });
 }
 
-type LoggedAction = { type: "tap" } | { type: "ff" } | { type: "build"; coord: AxialCoord; elementId: string } | { type: "repair"; coord: AxialCoord };
+export type LoggedAction = { type: "tap" } | { type: "ff" } | { type: "build"; coord: AxialCoord; elementId: string } | { type: "repair"; coord: AxialCoord };
 
 class Player {
   readonly run: ActionRun;
@@ -524,6 +524,17 @@ export function runSmartWithout(elementId: string, seed: string): BotResult {
   return player.result();
 }
 
+/** Smart's run on `seed`: its result and every action it took, for replays. */
+export function smartRun(seed: string): { result: BotResult; log: LoggedAction[] } {
+  const player = new Player("smart", seed);
+  smartPlayer(null)(player);
+  return { result: player.result(), log: player.log };
+}
+
+function smartLog(seed: string): LoggedAction[] {
+  return smartRun(seed).log;
+}
+
 /**
  * Smart's own run, replayed action for action with every build of
  * `elementId` left out: each of those builds (and any repair that no longer
@@ -532,11 +543,9 @@ export function runSmartWithout(elementId: string, seed: string): BotResult {
  * element did in Smart's plan ("removing it from an otherwise identical
  * Smart run", Section 4.6), with no re-planning round it.
  */
-export function replaySmartWithout(elementId: string, seed: string): BotResult {
-  const original = new Player("smart", seed);
-  smartPlayer(null)(original);
+export function replaySmartWithout(elementId: string, seed: string, log: readonly LoggedAction[] = smartLog(seed)): BotResult {
   const player = new Player("smart", seed);
-  for (const action of original.log) {
+  for (const action of log) {
     if (player.run.finished) break;
     if (action.type === "tap") player.tapJar();
     else if (action.type === "ff") player.fastForwardYear();

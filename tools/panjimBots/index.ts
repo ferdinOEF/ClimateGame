@@ -16,7 +16,7 @@
  * margin), and, with margins, plays Smart limited to one kind.
  */
 import { spawn } from "node:child_process";
-import { PERSONAS, SEEDS, replaySmartWithout, runBot, runSmartOnly, savedShare, type BotResult, type Persona } from "./bots";
+import { PERSONAS, SEEDS, replaySmartWithout, runBot, runSmartOnly, smartRun, savedShare, type BotResult, type Persona } from "./bots";
 
 const seeds = SEEDS.slice(0, Number(process.env.BOT_SEEDS ?? SEEDS.length));
 const ELEMENTS = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
@@ -37,13 +37,14 @@ if (childSeeds !== undefined) {
   for (const seed of childSeeds.split(",").filter(Boolean)) {
     const without: Record<string, number> = {};
     const only: Record<string, number> = {};
+    const { result, log } = smartRun(seed);
     if (withMargins) {
       for (const id of ELEMENTS) {
-        without[id] = savedShare(replaySmartWithout(id, seed));
+        without[id] = savedShare(replaySmartWithout(id, seed, log));
         only[id] = savedShare(runSmartOnly(id, seed));
       }
     }
-    out[seed] = { smart: runBot("smart", seed), without, only };
+    out[seed] = { smart: result, without, only };
   }
   console.log(JSON.stringify(out));
   process.exit(0);
