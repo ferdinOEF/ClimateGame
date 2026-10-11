@@ -50,8 +50,8 @@ export interface MayaLine {
   onShow?: () => void;
 }
 
-/** Her HUD figure: head and shoulders, 118 x 136 (mayaArt.ts; panjim.css sizes it per screen). */
-const SVG = hudFigureSvg(118, 136);
+/** Her HUD figure: head and shoulders, 139 x 136 (mayaArt.ts; panjim.css sizes it per screen). */
+const SVG = hudFigureSvg(139, 136);
 
 /** How long a line stays up if the player does not dismiss it: long enough to read twice. */
 function readingMs(text: string): number {
@@ -357,7 +357,7 @@ export class Maya {
       }
       return;
     }
-    const size = { w: this.figure.offsetWidth || 96, h: this.figure.offsetHeight || 152 };
+    const size = { w: this.figure.offsetWidth || 139, h: this.figure.offsetHeight || 136 };
     const target = this.anchor ? this.anchor() : null;
     const spot = placeFigure(size, obstacles, viewport, target) ?? placeFigure(size, obstacles, viewport, null);
     if (!spot) {

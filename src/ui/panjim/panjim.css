@@ -1098,7 +1098,7 @@
   position: absolute;
   left: 14px;
   top: calc(100% - 214px);
-  width: 118px;
+  width: 139px;
   height: 136px;
   pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
@@ -1169,10 +1169,6 @@
   border-radius: 50%;
   background: #e0533a;
   border: 2px solid #fdf6e6;
-}
-
-.maya-shadow {
-  fill: rgba(0, 0, 0, 0.28);
 }
 
 .maya-bubble {
@@ -1276,7 +1272,7 @@
  * crop x 38-172, y 40-195): the neck, the waist, the eyes, the brows and
  * the shoulders.
  */
-.maya-figure g {
+.maya-body, .maya-torso, .maya-head, .maya-eyes, .maya-arm {
   transform-box: view-box;
 }
 .maya-body { transform-origin: 100px 195px; }
@@ -1297,6 +1293,8 @@
 .maya-eyes { animation: maya-blink 4.6s infinite; }
 .maya-torso { animation: maya-breathe 3.6s ease-in-out infinite; }
 .maya-head { animation: maya-nod 3.6s ease-in-out infinite; }
+/* Her hair tilts with her head but does not nod: hundreds of curls, left still while she idles. */
+.maya-head.maya-hair { animation: none; }
 
 @keyframes maya-blink {
   0%, 92%, 100% { transform: scaleY(1); }
@@ -1341,7 +1339,7 @@
   50% { transform: translateY(-2px); }
 }
 
-/* Worried: brows up in the middle, a sweat drop, hands together. */
+/* Worried: brows up in the middle, a frown, a sweat drop (her hands, below the crop, come together). */
 /* Inner ends up (the left brow tilts anticlockwise, the right clockwise): worry, not anger. */
 .maya.state-worried .maya-brow-l { transform: rotate(-12deg); }
 .maya.state-worried .maya-brow-r { transform: rotate(12deg); }
@@ -1481,8 +1479,8 @@
 
 /* A little larger on big screens: she should read at a glance at 1440p and 4K. */
 @media (min-width: 1700px) and (min-height: 900px) {
-  .maya-figure { width: 138px; height: 160px; }
-  .maya-figure-wrap { width: 138px; height: 160px; top: calc(100% - 238px); }
+  .maya-figure { width: 163px; height: 160px; }
+  .maya-figure-wrap { width: 163px; height: 160px; top: calc(100% - 238px); }
   .maya-bubble { font-size: 16px; }
 }
 
@@ -1649,7 +1647,7 @@
 
 /* Phones are secondary: keep Maya and her bubble inside a narrow screen. */
 @media (max-width: 700px) {
-  .maya-figure, .maya-figure-wrap { width: 80px; height: 92px; }
+  .maya-figure, .maya-figure-wrap { width: 94px; height: 92px; }
   .maya-bubble { font-size: 14px; }
   .panjim-toggles { top: 120px; right: 8px; }
 }

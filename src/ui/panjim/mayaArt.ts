@@ -77,7 +77,7 @@ export const MAYA_PALETTE = {
   sweat: "#8fd0f0"
 } as const;
 
-export type MayaToken = keyof typeof MAYA_PALETTE;
+type MayaToken = keyof typeof MAYA_PALETTE;
 
 /** How a token becomes a colour: a CSS variable (live) or its hex (a sprite). */
 type Paint = (token: MayaToken) => string;
@@ -136,14 +136,14 @@ function polyline(pts: [number, number][], paint: Paint, col: MayaToken, w: numb
  * touch one (`clearOfFeatures`), so the expression always reads.
  */
 export const FEATURE_BOXES: Record<string, [number, number, number, number]> = {
-  brows: [75, 84.5, 125, 94],
+  brows: [75, 82.5, 125, 95.5],
   eyes: [75, 93, 125, 113],
   nose: [92, 102, 107, 118],
   mouth: [87, 120, 113, 137]
 };
 
 /** True when a stroke of width `w` along `pts` stays clear of every feature box. */
-export function clearOfFeatures(pts: [number, number][], w: number): boolean {
+function clearOfFeatures(pts: [number, number][], w: number): boolean {
   const h = w / 2;
   for (const [x, y] of pts) {
     for (const [x1, y1, x2, y2] of Object.values(FEATURE_BOXES)) if (x + h > x1 && x - h < x2 && y + h > y1 && y - h < y2) return false;
@@ -166,9 +166,12 @@ function inMass(x: number, y: number): boolean {
   return crown || sides;
 }
 
-/** True where a curl's centre would fall on the face: about 1.2x the face ellipse across, kept clear below the fringe. */
+/** How far round the face no ringlet's centre may fall: 1.2 times the face ellipse, both ways. */
+export const FACE_CLEARANCE = 1.2;
+
+/** True where a curl's centre would fall within FACE_CLEARANCE of the face oval. */
 export function onFace(x: number, y: number): boolean {
-  return ((x - FACE.cx) / (FACE.rx * 1.22)) ** 2 + ((y - FACE.cy) / (FACE.ry * 1.06)) ** 2 <= 1;
+  return ((x - FACE.cx) / (FACE.rx * FACE_CLEARANCE)) ** 2 + ((y - FACE.cy) / (FACE.ry * FACE_CLEARANCE)) ** 2 <= 1;
 }
 
 function hairSilhouette(paint: Paint): string {
@@ -196,16 +199,10 @@ function ringletSpots(seed: number, front: boolean): { spots: [number, number][]
 
 /** Where every ringlet sits, behind and in front, and the fringe's curls: for the tests. */
 export function allCurlCentres(): { ringlets: [number, number][]; fringe: [number, number][] } {
-  const fr: [number, number][] = [];
-  const R = rnd(5);
-  for (let i = 0; i < 21; i++) {
-    const t = i / 20;
-    const y = FRINGE.y + Math.sin(t * Math.PI) * -FRINGE.arch + R() * FRINGE.jitter;
-    fr.push([69 + t * 62, y]);
-    // r0, squash, the two coils' phases and the tone: the same draws fringe() makes.
-    for (let k = 0; k < 5; k++) R();
-  }
-  return { ringlets: [...ringletSpots(BACK_SEED, false).spots, ...ringletSpots(FRONT_SEED, true).spots], fringe: fr };
+  return {
+    ringlets: [...ringletSpots(BACK_SEED, false).spots, ...ringletSpots(FRONT_SEED, true).spots],
+    fringe: fringeCurls().map((c) => [c.x, c.y])
+  };
 }
 
 function ringlets(paint: Paint, seed: number, front: boolean): string {
@@ -231,10 +228,20 @@ function ringlets(paint: Paint, seed: number, front: boolean): string {
 /** Where the fringe sits: its row, the arch over the forehead, and the curls' size. */
 const FRINGE = { y: 75, arch: 6, jitter: 3, r: 4.8, rSpread: 2.6 };
 
-/** Curly bangs across the forehead, stopping above the brows. */
-function fringe(paint: Paint): string {
+interface FringeCurl {
+  x: number;
+  y: number;
+  r0: number;
+  sq: number;
+  basePhase: number;
+  litPhase: number;
+  col: MayaToken;
+}
+
+/** The fringe's curls, drawn from one seeded generator (the reference's draws, in its order). */
+function fringeCurls(): FringeCurl[] {
   const R = rnd(5);
-  let out = "";
+  const out: FringeCurl[] = [];
   for (let i = 0; i < 21; i++) {
     const t = i / 20;
     const x = 69 + t * 62;
@@ -245,9 +252,16 @@ function fringe(paint: Paint): string {
     const basePhase = R() * 6.28;
     const litPhase = R() * 6.28;
     const col: MayaToken = R() < 0.6 ? "hair-mid" : "hair-light";
-    out += ringlet(paint, x, y, r0, { turns: 1.3, phase: basePhase, w: r0 * 0.8 }, { r: r0 * 0.88, turns: 1.2, phase: litPhase, w: r0 * 0.3, col }, sq, true);
+    out.push({ x, y, r0, sq, basePhase, litPhase, col });
   }
   return out;
+}
+
+/** Curly bangs across the forehead, stopping above the brows. */
+function fringe(paint: Paint): string {
+  return fringeCurls()
+    .map(({ x, y, r0, sq, basePhase, litPhase, col }) => ringlet(paint, x, y, r0, { turns: 1.3, phase: basePhase, w: r0 * 0.8 }, { r: r0 * 0.88, turns: 1.2, phase: litPhase, w: r0 * 0.3, col }, sq, true))
+    .join("");
 }
 
 export type MayaExpression = "greet" | "warn" | "alarm" | "happy";
@@ -329,6 +343,22 @@ function brows(paint: Paint, kind: MayaExpression, classed: boolean): string {
     <path${classed ? ' class="maya-brow-r"' : ""} d="${r}" stroke="${s}" stroke-width="${w}" fill="none" stroke-linecap="round"/>`;
 }
 
+/** The worried mouth (the HUD's frown). */
+function worryMouth(paint: Paint): string {
+  return `<path d="M92.5 130 q7.5 -5.5 15 0" stroke="${paint("mouth")}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
+}
+
+/** Every drawn face feature, in every expression, by the FEATURE_BOXES name that must contain it: for the tests. */
+export function featureMarkup(): Record<"brows" | "eyes" | "nose" | "mouth", string> {
+  const kinds: MayaExpression[] = ["greet", "warn", "alarm", "happy"];
+  return {
+    brows: kinds.map((k) => brows(literal, k, false)).join(""),
+    eyes: kinds.map((k) => eyes(literal, k)).join(""),
+    nose: nose(literal),
+    mouth: kinds.map((k) => mouth(literal, k)).join("") + worryMouth(literal)
+  };
+}
+
 /** A face with one fixed expression (the full figures). */
 function face(paint: Paint, kind: MayaExpression): string {
   return `${faceSkin(paint)}${brows(paint, kind, false)}${eyes(paint, kind)}${nose(paint)}${mouth(paint, kind)}${chin(paint)}`;
@@ -349,7 +379,7 @@ function stateFace(paint: Paint): string {
     ${nose(paint)}
     <g class="maya-mouth maya-mouth-smile">${mouth(paint, "greet")}</g>
     <g class="maya-mouth maya-mouth-o">${mouth(paint, "alarm")}</g>
-    <g class="maya-mouth maya-mouth-worry"><path d="M92.5 130 q7.5 -5.5 15 0" stroke="${paint("mouth")}" stroke-width="2.8" fill="none" stroke-linecap="round"/></g>
+    <g class="maya-mouth maya-mouth-worry">${worryMouth(paint)}</g>
     <g class="maya-mouth maya-mouth-happy">${mouth(paint, "happy")}</g>
     ${chin(paint)}`;
 }
@@ -531,67 +561,106 @@ export function fullFigureSvg(options: { pack: boolean; expression?: MayaExpress
   return `<svg xmlns="http://www.w3.org/2000/svg" class="maya-art maya-full" viewBox="0 0 200 490" width="${options.width}" height="${options.height}"${style} aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
-/** The full figure as an image URL: one pre-rendered node instead of hundreds (nothing in it moves). */
-export function fullFigureUrl(options: { pack: boolean; expression?: MayaExpression }): string {
-  const svg = fullFigureSvg({ ...options, width: 200, height: 490, paint: "literal" });
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+/** An SVG as a data URL, escaping only what a URL in an HTML attribute needs. */
+function svgUrl(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${svg.replace(/%/g, "%25").replace(/#/g, "%23").replace(/</g, "%3C").replace(/>/g, "%3E").replace(/"/g, "'").replace(/\s+/g, " ")}`;
 }
 
-/** Just the head (hair and face), for the minimised badge: a small image. */
+const urls = new Map<string, string>();
+function cachedUrl(key: string, make: () => string): string {
+  let url = urls.get(key);
+  if (!url) {
+    url = svgUrl(make());
+    urls.set(key, url);
+  }
+  return url;
+}
+
+/** The full figure as an image URL: one pre-rendered node instead of hundreds (nothing in it moves). Built once per variant. */
+export function fullFigureUrl(options: { pack: boolean; expression?: MayaExpression }): string {
+  return cachedUrl(`full:${options.pack}:${options.expression ?? "greet"}`, () => fullFigureSvg({ ...options, width: 200, height: 490, paint: "literal" }));
+}
+
+/** Just the head (hair and face), for the minimised badge: a small image, built once. */
 export function headUrl(): string {
-  const paint = literal;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 30 120 120">${hairSilhouette(paint)}${ringlets(paint, BACK_SEED, false)}${face(paint, "greet")}${ringlets(paint, FRONT_SEED, true)}${fringe(paint)}</svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  return cachedUrl("head", () => {
+    const paint = literal;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 30 120 120">${hairSilhouette(paint)}${ringlets(paint, BACK_SEED, false)}${face(paint, "greet")}${ringlets(paint, FRONT_SEED, true)}${fringe(paint)}</svg>`;
+  });
 }
 
 /**
- * The HUD figure: head and shoulders, no pack (the straps clutter her at
- * small size). Everything below the crop is clipped, so nothing under her
- * shoulders shows; her arms rotate up into view when she waves, points or
- * raises her hands. In the HUD the forearms are drawn shorter (HUD_FOREARM)
- * so a gesture stays beside her and clear of her bubble, and the arms are
- * drawn over the hair so a raised hand is never lost in the curls. Group
- * names are the ones panjim.css animates. The hair is two static layers
- * (behind the face and in front of it) that move only with the head.
+ * The HUD crop, in the art's units: head and shoulders, wide enough that
+ * every gesture (an arm rotated by any state in panjim.css, at HUD_FOREARM)
+ * stays inside it (tests/mayaArt.test.ts checks this against the CSS).
  */
-export const HUD_VIEWBOX = { x: 38, y: 40, width: 134, height: 155 };
+export const HUD_VIEWBOX = { x: 28, y: 40, width: 158, height: 155 };
 
 /** The HUD's forearms, drawn at this share of their length from the shoulder: a gesture stays beside her, clear of her bubble. */
-const HUD_FOREARM = 0.45;
+export const HUD_FOREARM = 0.4;
+
+/**
+ * The outer points of each hand (and the binoculars), before the forearm is
+ * scaled and the arm rotated: what must stay inside the crop in every pose.
+ */
+export const HUD_ARMS = {
+  l: { pivot: [72, 180] as [number, number], reach: [[39, 296], [67, 296], [67, 350], [39, 350]] as [number, number][] },
+  r: { pivot: [128, 180] as [number, number], reach: [[142, 296], [159, 296], [159, 314], [142, 314]] as [number, number][] }
+};
 
 /** `content` scaled about a shoulder pivot. */
 function fromShoulder(px: number, py: number, k: number, content: string): string {
   return `<g transform="translate(${px} ${py}) scale(${k}) translate(${-px} ${-py})">${content}</g>`;
 }
 
+let hudInstances = 0;
+
+/**
+ * The HUD figure: head and shoulders, no pack (the straps clutter her at
+ * small size). Everything below the crop is clipped (by a static wrapper, so
+ * the cut never moves when she hops), so nothing under her shoulders shows;
+ * her arms rotate up into view when she waves, points or raises her hands.
+ * In the HUD the forearms are drawn shorter (HUD_FOREARM) so a gesture stays
+ * beside her and clear of her bubble, and the arms are drawn over the hair
+ * so a raised hand is never lost in the curls. Group names are the ones
+ * panjim.css animates. The hair is two static layers (behind the face and in
+ * front of it): they tilt with her head but do not nod, so the hundreds of
+ * curls are not redrawn every frame while she idles. The props (bulb,
+ * alert, stars) sit on her left, clear of the minimise button.
+ */
 export function hudFigureSvg(width: number, height: number): string {
   const paint = live;
   const { x, y, width: w, height: h } = HUD_VIEWBOX;
+  const clipId = `maya-hud-crop-${++hudInstances}`;
   const props = `<g class="maya-bulb">
-      <circle cx="148" cy="54" r="9.5" fill="${paint("bulb")}" stroke="${paint("bulb-edge")}" stroke-width="1.5"/>
-      <rect x="143.5" y="63" width="9" height="6" rx="1.2" fill="${paint("bulb-base")}"/>
+      <circle cx="52" cy="56" r="9.5" fill="${paint("bulb")}" stroke="${paint("bulb-edge")}" stroke-width="1.5"/>
+      <rect x="47.5" y="65" width="9" height="6" rx="1.2" fill="${paint("bulb-base")}"/>
       <g stroke="${paint("bulb")}" stroke-width="2" stroke-linecap="round">
-        <line x1="148" y1="38" x2="148" y2="41.5"/><line x1="134.5" y1="45" x2="137.5" y2="47.5"/><line x1="161.5" y1="45" x2="158.5" y2="47.5"/>
+        <line x1="52" y1="40" x2="52" y2="43.5"/><line x1="38.5" y1="47" x2="41.5" y2="49.5"/><line x1="65.5" y1="47" x2="62.5" y2="49.5"/>
       </g>
     </g>
     <g class="maya-alert">
-      <circle cx="150" cy="54" r="11" fill="${paint("alert")}" stroke="${paint("alert-mark")}" stroke-width="1.8"/>
-      <rect x="148.3" y="45.5" width="3.4" height="11" rx="1.4" fill="${paint("alert-mark")}"/>
-      <circle cx="150" cy="60.8" r="2" fill="${paint("alert-mark")}"/>
+      <circle cx="50" cy="56" r="11" fill="${paint("alert")}" stroke="${paint("alert-mark")}" stroke-width="1.8"/>
+      <rect x="48.3" y="47.5" width="3.4" height="11" rx="1.4" fill="${paint("alert-mark")}"/>
+      <circle cx="50" cy="62.8" r="2" fill="${paint("alert-mark")}"/>
     </g>
     <g class="maya-stars" fill="${paint("star")}" stroke="${paint("star-edge")}" stroke-width="0.7">
-      <path class="maya-star" d="M50 52 l2.9 6 6.5.7-4.8 4.5 1.3 6.4-5.9-3.2-5.9 3.2 1.3-6.4-4.8-4.5 6.5-.7z"/>
-      <path class="maya-star" d="M150 46 l2.4 5 5.5.6-4.1 3.7 1.1 5.4-4.9-2.8-4.9 2.8 1.1-5.4-4.1-3.7 5.5-.6z"/>
-      <path class="maya-star" d="M154 104 l1.9 4 4.3.5-3.2 3 .8 4.2-3.8-2.2-3.8 2.2.8-4.2-3.2-3 4.3-.5z"/>
+      <path class="maya-star" d="M46 50 l2.9 6 6.5.7-4.8 4.5 1.3 6.4-5.9-3.2-5.9 3.2 1.3-6.4-4.8-4.5 6.5-.7z"/>
+      <path class="maya-star" d="M38 92 l2.4 5 5.5.6-4.1 3.7 1.1 5.4-4.9-2.8-4.9 2.8 1.1-5.4-4.1-3.7 5.5-.6z"/>
+      <path class="maya-star" d="M164 104 l1.9 4 4.3.5-3.2 3 .8 4.2-3.8-2.2-3.8 2.2.8-4.2-3.2-3 4.3-.5z"/>
     </g>`;
   return `<svg class="maya-figure maya-art" viewBox="${x} ${y} ${w} ${h}" width="${width}" height="${height}" style="${paletteStyle()}" aria-hidden="true" focusable="false">
-  <defs><clipPath id="maya-hud-crop"><rect x="-200" y="-200" width="600" height="${y + h + 200}"/></clipPath></defs>
-  <g class="maya-body" clip-path="url(#maya-hud-crop)">
-    <g class="maya-head">${hairSilhouette(paint)}${ringlets(paint, BACK_SEED, false)}</g>
-    <g class="maya-torso">${torsoUpper(paint)}${torsoLower(paint, false)}</g>
-    <g class="maya-head">${stateFace(paint)}${ringlets(paint, FRONT_SEED, true)}${fringe(paint)}<path class="maya-sweat" d="M127.5 84 Q123 92 127.5 95.5 Q132 92 127.5 84 Z" fill="${paint("sweat")}" stroke="${paint("alert-mark")}" stroke-width="0.8"/></g>
-    <g class="maya-arm maya-arm-l">${fromShoulder(72, 180, HUD_FOREARM, armLimbL(paint))}${sleeveL(paint)}</g>
-    <g class="maya-arm maya-arm-r">${fromShoulder(128, 180, HUD_FOREARM, armLimbR(paint))}${sleeveR(paint)}</g>
+  <defs><clipPath id="${clipId}"><rect x="-200" y="-200" width="600" height="${y + h + 200}"/></clipPath></defs>
+  <g clip-path="url(#${clipId})">
+    <g class="maya-body">
+      <g class="maya-head maya-hair">${hairSilhouette(paint)}${ringlets(paint, BACK_SEED, false)}</g>
+      <g class="maya-torso">${torsoUpper(paint)}${torsoLower(paint, false)}</g>
+      <g class="maya-head">${stateFace(paint)}</g>
+      <g class="maya-head maya-hair">${ringlets(paint, FRONT_SEED, true)}${fringe(paint)}</g>
+      <g class="maya-head"><path class="maya-sweat" d="M127.5 84 Q123 92 127.5 95.5 Q132 92 127.5 84 Z" fill="${paint("sweat")}" stroke="${paint("alert-mark")}" stroke-width="0.8"/></g>
+      <g class="maya-arm maya-arm-l">${fromShoulder(72, 180, HUD_FOREARM, armLimbL(paint))}${sleeveL(paint)}</g>
+      <g class="maya-arm maya-arm-r">${fromShoulder(128, 180, HUD_FOREARM, armLimbR(paint))}${sleeveR(paint)}</g>
+    </g>
   </g>
   ${props}
 </svg>`;

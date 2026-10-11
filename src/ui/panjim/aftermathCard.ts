@@ -49,7 +49,7 @@ export class AftermathCard {
   show(view: AftermathView): Promise<"continue" | "replay"> {
     this.backdrop.innerHTML = `
       <div class="aftermath-card" role="dialog" aria-label="Aftermath">
-        <img class="maya-full-figure" src="${fullFigureUrl({ pack: true, expression: expressionFor(view.mayaMood) })}" width="102" height="250" alt="" draggable="false">
+        ${view.maya ? `<img class="maya-full-figure" src="${fullFigureUrl({ pack: true, expression: expressionFor(view.mayaMood) })}" width="102" height="250" alt="" draggable="false">` : ""}
         <div class="aftermath-eyebrow">Aftermath</div>
         <div class="aftermath-title"></div>
         <div class="aftermath-stars">${[0, 1, 2].map(() => `<span class="aftermath-star">★</span>`).join("")}</div>
