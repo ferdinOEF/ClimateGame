@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { buildSchedule, outlookFor, challengeStrength, strengthIcons, baselineMultiplier } from "../src/core/climate";
 import { ActionRun } from "../src/core/actionRun";
 import { GameState } from "../src/core/gameState";
-import { dailyChallengeLevel, levelWithPreset } from "../src/levels/levels";
+import { dailyChallengeLevel, LEVEL_BY_ID } from "../src/levels/levels";
 
-const level = levelWithPreset("l01-first-rains", "strict")!;
+const level = LEVEL_BY_ID.get("l01-first-rains")!;
 const climate = level.climate!;
 const START = 2025;
 const END = 2050;

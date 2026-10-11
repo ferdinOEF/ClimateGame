@@ -2,6 +2,7 @@ import { axialKey, neighbor } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
+import { computeWater, defenceMetres, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE, siteAt, waterBoard } from "./hazardModel";
 
 /**
  * Zones and zone-local challenge resolution for Panjim 2050.
@@ -53,15 +54,6 @@ export const FRONTS: Record<ChallengeKind, Front[]> = {
     { hazard: "flood", path: ["z2", "z3", "z4"], share: 0.75 }
   ]
 };
-
-/** How much of the shortfall carries on to the next zone. */
-export const ZONE_CARRY = 0.75;
-/**
- * Converts an element's authored severity thresholds (written for the old
- * whole-map resolver, where 1.0 was a typical storm) to this model's
- * strength scale (where a challenge is 1–4).
- */
-export const THRESHOLD_SCALE = 2.2;
 
 export interface ZoneOutcome {
   zoneId: string;
@@ -153,101 +145,23 @@ export class ZoneIndex {
 }
 
 /**
- * How a house stands up to what gets past the defences: a house is lost when
- * the hazard's local intensity at its tile exceeds `resilience`. Local
- * intensity is the zone's leak, falling off by `exposureDecay` for every hex
- * the house stands from the water the hazard comes from (wind carries
- * further inland than floodwater does).
+ * The scale probes report in: `resilience` is one house-loss depth
+ * (core/hazardModel.ts `houseLossDepthM`), so a probe value of `resilience`
+ * at a house means the water there is just deep enough to take it.
  */
 export interface HouseRule {
   resilience: number;
-  exposureDecay: Record<HazardId, number>;
 }
 
 /**
- * What a storm's leak through a zone does at one tile: the leak, faded by
- * `exposureDecay` for every hex the tile stands back from the water the hazard
- * comes from. A house is lost where this exceeds the rule's `resilience`.
- *
- * The one formula both the resolver and the warning-heat preview use (see
- * core/exposure.ts), so the heat cannot say anything the storm will not do.
- */
-export function localIntensity(leak: number, distanceFromWater: number, rule: HouseRule, hazard: HazardId): number {
-  return leak * Math.pow(rule.exposureDecay[hazard], Math.max(0, distanceFromWater - 1));
-}
-
-/**
- * Called by `resolveChallenge` for every tile of every zone a front passes
- * through, with the hazard's local intensity there (0 where the defences
- * ahead stopped it). A tile on two fronts' paths is reported once per front.
+ * Called by `resolveChallenge` once for every wet tile, with the water there
+ * (the deeper of surge and river, scaled by the house rule) and which kind it is.
  */
 export type TileProbe = (key: string, intensity: number, hazard: HazardId) => void;
-
-/**
- * Reports a zone's tiles to a probe. A house an earlier front already judged
- * is skipped, exactly as the resolver skips it (`housesSeen`), so a house is
- * only ever reported at the intensity that decided its fate.
- */
-function probeZone(probe: TileProbe, zones: ZoneIndex, zoneId: string, housesSeen: Set<string>, at: (key: string) => number, hazard: HazardId): void {
-  for (const key of zones.keys(zoneId)) {
-    if (housesSeen.has(key)) continue;
-    probe(key, at(key), hazard);
-  }
-}
 
 /** Extra defence per tile from perfect-fit combos (P6). Keyed by coord key. */
 export type ComboBonus = Map<string, number>;
 
-/**
- * One element's contribution to its zone's defence against `hazard`, right
- * now: its `resilience` effect, scaled by maturity and by any wear. A
- * negative resilience (Sand Mining, a Resort) weakens the zone against every
- * hazard; a positive one counts only against the hazards the element answers.
- */
-export function elementDefence(state: GameState, key: string, hazard: HazardId): number {
-  const inst = state.elements.get(key);
-  if (!inst) return 0;
-  const def = ELEMENT_BY_ID.get(inst.elementId);
-  if (!def) return 0;
-  const value = def.effects.resilience ?? 0;
-  if (value === 0) return 0;
-  if (value > 0 && !def.targetsHazards?.includes(hazard)) return 0;
-  const maturity = state.maturityFraction(inst, def);
-  const wear = Math.max(0, 1 - inst.degradeAmount);
-  return value * (value > 0 ? maturity * wear : 1);
-}
-
-export function zoneDefence(state: GameState, zones: ZoneIndex, zoneId: string, hazard: HazardId, combos?: ComboBonus): number {
-  let total = 0;
-  for (const key of zones.keys(zoneId)) {
-    total += elementDefence(state, key, hazard);
-    if (combos && state.elements.has(key)) {
-      const inst = state.elements.get(key)!;
-      const def = ELEMENT_BY_ID.get(inst.elementId);
-      if (def?.targetsHazards?.includes(hazard)) total += combos.get(key) ?? 0;
-    }
-  }
-  return Math.max(0, total);
-}
-
-/**
- * The standing houses in a zone, most exposed first: nearest the sea for a
- * cyclone, nearest open water (river or estuary) for a flood. A storm that
- * gets through a zone's defences takes the houses in that order, so the ones
- * lost are the ones on the front line, not whichever the file lists first.
- */
-function housesIn(state: GameState, zones: ZoneIndex, zoneId: string, hazard: HazardId = "cyclone"): string[] {
-  const exposure = zones.exposure(state, hazard);
-  return zones
-    .keys(zoneId)
-    .filter((key) => {
-      const inst = state.elements.get(key);
-      return inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building" && inst.degradeAmount < 1;
-    })
-    .sort((a, b) => (exposure.get(a) ?? 99) - (exposure.get(b) ?? 99) || (a < b ? -1 : 1));
-}
-
-/** Stars from protection. A city that stands always earns at least one. */
 /** Stars from the share of houses in the storm's path that were saved. A city that stands always earns at least one. */
 export function starsForHouses(saved: number, total: number, thresholds: { three: number; two: number }): 1 | 2 | 3 {
   const share = total > 0 ? saved / total : 1;
@@ -262,10 +176,21 @@ export function starsFor(protection: number): 1 | 2 | 3 {
   return 1;
 }
 
+/** The zone id the resolver reports for houses outside every named zone. */
+export const CITY_ZONE = "city";
+
 /**
- * Resolves a challenge of `kind` at `intensity` against the board, zone by
- * zone. MUTATES `state` (failed structures removed, nature defences worn,
- * houses damaged), so a preview must pass a clone.
+ * Resolves a challenge of `kind` at `intensity` against the board, tile by
+ * tile, through the hazard model (core/hazardModel.ts): the water's depth on
+ * each tile decides which houses are lost. MUTATES `state` (failed structures
+ * removed, overwhelmed nature defences worn, houses lost), so a preview must
+ * pass a clone.
+ *
+ * The houses "in the storm's path" (the KPI's total) are those the same storm
+ * would flood on the same board with no defences at all: the houses the
+ * player could have saved. Zones are kept for reporting (the staging and the
+ * Aftermath walk them in order); houses outside every zone report as
+ * `CITY_ZONE`.
  */
 export function resolveChallenge(
   state: GameState,
@@ -276,130 +201,107 @@ export function resolveChallenge(
   combos?: ComboBonus,
   /** When set, stars come from the share of houses saved rather than from protection (the Houses-saved KPI). */
   houseStars?: { three: number; two: number },
-  /** When set, houses are lost one by one by local intensity; otherwise a zone loses a share of its houses. */
+  /** Sets the scale the probe reports in (its `resilience` is one house-loss depth). */
   houseRule?: HouseRule,
-  /** Reports the local intensity at every tile on the path (the warning heat's source). Never changes the outcome. */
-  probe?: TileProbe
+  /** Reports the water at every wet tile, per hazard, scaled so `resilience` is the depth that takes a house. Never changes the outcome. */
+  probe?: TileProbe,
+  /** Where a cyclone comes ashore (index into the board's landfall sites). Defaults to the middle of the coast. */
+  landfall?: number | null
 ): ChallengeOutcome {
-  const outcomes: ZoneOutcome[] = [];
-  // Defence is a budget per zone and hazard: a front that spends it leaves
-  // less for the next front through the same zone.
-  const spent = new Map<string, number>();
-  let leakTotal = 0;
-  let undefendedTotal = 0;
-  const damagedHouses: string[] = [];
-  const housesSeen = new Set<string>();
-  /** Every house in the storm's path, standing or already lost to an earlier storm: the KPI's total. */
-  const pathHouses = new Set<string>();
-  const addPath = (zoneId: string): void => {
-    for (const key of zones.keys(zoneId)) {
-      const inst = state.elements.get(key);
-      if (inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building") pathHouses.add(key);
-    }
-  };
+  const strength = intensity / strengthUnit;
+  const landfallZoneTiles = zones.keys(LANDFALL_ZONE);
+  const board = waterBoard(state, landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined);
+  const site = kind === "flood" ? null : (landfall ?? siteAt(board, 0.5));
+  const storm = { kind, strength, landfall: site };
+  const options = { combos, landfallZoneTiles: landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined };
 
-  for (const front of FRONTS[kind]) {
-    let carry = intensity * front.share;
-    let undefendedCarry = carry;
-    const frontSeverity = carry / strengthUnit;
-    for (const zoneId of front.path) {
-      addPath(zoneId);
-      if (carry <= 0.01) {
-        // Stopped before it got here: every house in this zone was saved by
-        // the defences ahead of it.
-        if (probe) probeZone(probe, zones, zoneId, housesSeen, () => 0, front.hazard);
-        for (const key of housesIn(state, zones, zoneId, front.hazard)) housesSeen.add(key);
-        undefendedTotal += undefendedCarry;
-        undefendedCarry *= ZONE_CARRY;
-        continue;
-      }
-      const budgetKey = `${zoneId}:${front.hazard}`;
-      const severity = carry / strengthUnit;
-      const failed: string[] = [];
-      const overwhelmed: string[] = [];
-      let dumped = 0;
-      // Engineered structures over their limit fail before they can help,
-      // and release what they were holding. Nature defences over their limit
-      // still help, at their overwhelmed rate, and are worn by it.
-      for (const key of zones.keys(zoneId)) {
-        const inst = state.elements.get(key);
-        if (!inst) continue;
-        const def = ELEMENT_BY_ID.get(inst.elementId);
-        if (!def?.targetsHazards?.includes(front.hazard)) continue;
-        // A reservoir (anything with a flood buffer) carries the whole
-        // catchment's rain, not just what got past the zones upstream of it,
-        // so it is tested against the front's full strength. A wall faces
-        // only the water that reaches it.
-        const load = def.floodBufferCapacityM3 !== undefined ? frontSeverity : severity;
-        if (def.category === "engineered" && def.failureThreshold !== undefined && load > def.failureThreshold * THRESHOLD_SCALE) {
-          dumped += elementDefence(state, key, front.hazard) * (def.failureRedirectMultiplier ?? 1);
-          state.elements.delete(key);
-          failed.push(key);
-        } else if (def.overwhelmSeverity !== undefined && severity > def.overwhelmSeverity * THRESHOLD_SCALE) {
-          overwhelmed.push(key);
-        }
-      }
-      let defence = zoneDefence(state, zones, zoneId, front.hazard, combos) - (spent.get(budgetKey) ?? 0);
-      for (const key of overwhelmed) {
-        const inst = state.elements.get(key)!;
-        const def = ELEMENT_BY_ID.get(inst.elementId)!;
-        defence -= elementDefence(state, key, front.hazard) * (1 - (def.overwhelmedAbsorptionMultiplier ?? 0.5));
-        inst.degradeAmount = Math.min(0.9, inst.degradeAmount + (def.gracefulDegradeStep ?? 0.15));
-      }
-      defence = Math.max(0, defence);
-      carry += dumped;
-      const absorbed = Math.min(carry, defence);
-      spent.set(budgetKey, (spent.get(budgetKey) ?? 0) + absorbed);
-      const leak = carry - absorbed;
-      const houses = housesIn(state, zones, zoneId, front.hazard).filter((key) => !housesSeen.has(key));
-      let lost: string[];
-      if (houseRule) {
-        // House by house: lost where what got through, faded by distance
-        // from the water, is more than the house can stand.
-        const exposure = zones.exposure(state, front.hazard);
-        lost = houses.filter((key) => localIntensity(leak, exposure.get(key) ?? 0, houseRule, front.hazard) > houseRule.resilience);
-        if (probe) probeZone(probe, zones, zoneId, housesSeen, (key) => localIntensity(leak, exposure.get(key) ?? 0, houseRule, front.hazard), front.hazard);
-      } else {
-        // A share of the zone's houses, most exposed first.
-        const damageShare = carry > 0 ? Math.min(1, leak / Math.max(carry, strengthUnit)) : 0;
-        lost = houses.slice(0, Math.round(houses.length * damageShare));
-        if (probe) probeZone(probe, zones, zoneId, housesSeen, () => leak, front.hazard);
-      }
-      const hit = lost.length;
-      for (const key of lost) {
-        state.elements.get(key)!.degradeAmount = 1;
-        damagedHouses.push(key);
-      }
-      for (const key of houses) housesSeen.add(key);
-      outcomes.push({
-        zoneId,
-        hazard: front.hazard,
-        incoming: carry,
-        defence,
-        absorbed,
-        leak,
-        held: leak <= carry * 0.05,
-        housesInZone: houses.length,
-        housesDamaged: hit,
-        failed,
-        overwhelmed
-      });
-      leakTotal += leak;
-      undefendedTotal += undefendedCarry;
-      undefendedCarry *= ZONE_CARRY;
-      carry = leak * ZONE_CARRY;
-    }
+  const isHouse = (key: string): boolean => {
+    const inst = state.elements.get(key);
+    return !!inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
+  };
+  // What the storm would do with no defences at all: the path, and the yardstick for protection.
+  const bare = state.clone();
+  for (const [key, inst] of [...bare.elements]) {
+    const def = ELEMENT_BY_ID.get(inst.elementId);
+    if (def && (def.effects.resilience ?? 0) > 0) bare.elements.delete(key);
+  }
+  const field = computeWater(state, storm, options);
+  // A board with no defences is its own undefended comparison: one water pass, not two.
+  const undefended = bare.elements.size === state.elements.size ? field : computeWater(bare, storm, options);
+
+  const scale = houseRule?.resilience ?? strengthUnit;
+  if (probe) {
+    const unit = scale / HAZARD_MODEL.houseLossDepthM;
+    // Each tile's water is the deeper of the surge and the river (they do not add), reported as that kind.
+    for (const [key, d] of field.depth) probe(key, d * unit, (field.surge.get(key) ?? 0) >= (field.flood.get(key) ?? 0) ? "cyclone" : "flood");
   }
 
-  const protection = undefendedTotal > 0 ? Math.max(0, 1 - leakTotal / undefendedTotal) : 1;
+  const pathHouses = new Set<string>();
+  for (const [key, d] of undefended.depth) if (floodsHouse(d) && isHouse(key)) pathHouses.add(key);
+  const standing = [...pathHouses].filter((key) => state.elements.get(key)!.degradeAmount < 1);
+  const lost = standing.filter((key) => floodsHouse(field.depth.get(key) ?? 0));
+  const undefendedLost = standing.length;
+
+  // Apply: engineered failures removed, nature defences worn, houses lost.
+  for (const key of field.failed) state.elements.delete(key);
+  for (const key of field.overwhelmed) {
+    const inst = state.elements.get(key);
+    const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
+    if (inst && def) inst.degradeAmount = Math.min(0.9, inst.degradeAmount + (def.gracefulDegradeStep ?? 0.15));
+  }
+  for (const key of lost) state.elements.get(key)!.degradeAmount = 1;
+
+  // Per zone, for the staging and the Aftermath, in the order the storm meets them.
+  const zoneOf = (key: string): string => zones.zoneOf(key) ?? CITY_ZONE;
+  const order = [...new Set([...FRONTS[kind].flatMap((front) => front.path), ...zones.zones.map((z) => z.id), CITY_ZONE])];
+  const lostSet = new Set(lost);
+  const failedSet = new Set(field.failed);
+  const overSet = new Set(field.overwhelmed);
+  const outcomes: ZoneOutcome[] = [];
+  for (const zoneId of order) {
+    const keys = zoneId === CITY_ZONE ? [...undefended.depth.keys()].filter((key) => !zones.zoneOf(key)) : zones.keys(zoneId);
+    const inZone = standing.filter((key) => zoneOf(key) === zoneId);
+    const zoneFailed = field.failed.filter((key) => zoneOf(key) === zoneId);
+    const zoneOver = field.overwhelmed.filter((key) => zoneOf(key) === zoneId);
+    if (inZone.length === 0 && zoneFailed.length === 0 && zoneOver.length === 0) continue;
+    let incoming = 0;
+    let leak = 0;
+    let surgeShare = 0;
+    let floodShare = 0;
+    for (const key of keys) {
+      incoming = Math.max(incoming, undefended.depth.get(key) ?? 0);
+      leak = Math.max(leak, field.depth.get(key) ?? 0);
+      surgeShare = Math.max(surgeShare, field.surge.get(key) ?? 0);
+      floodShare = Math.max(floodShare, field.flood.get(key) ?? 0);
+    }
+    let defence = 0;
+    for (const key of keys) if (!failedSet.has(key)) defence += Math.max(0, defenceMetres(state, key, surgeShare >= floodShare ? "cyclone" : "flood"));
+    const toUnits = scale / HAZARD_MODEL.houseLossDepthM;
+    const hit = inZone.filter((key) => lostSet.has(key)).length;
+    outcomes.push({
+      zoneId,
+      hazard: surgeShare >= floodShare ? "cyclone" : "flood",
+      incoming: incoming * toUnits,
+      defence: defence * toUnits,
+      absorbed: Math.max(0, incoming - leak) * toUnits,
+      leak: leak * toUnits,
+      held: hit === 0,
+      housesInZone: inZone.length,
+      housesDamaged: hit,
+      failed: zoneFailed,
+      overwhelmed: zoneOver.filter((key) => !failedSet.has(key) && overSet.has(key))
+    });
+  }
+
+  const protection = undefendedLost > 0 ? Math.max(0, 1 - lost.length / undefendedLost) : 1;
   return {
     intensity,
     zones: outcomes,
     protection,
-    stars: houseStars && pathHouses.size > 0 ? starsForHouses(housesSeen.size - damagedHouses.length, pathHouses.size, houseStars) : starsFor(protection),
-    housesSaved: housesSeen.size - damagedHouses.length,
+    stars: houseStars && pathHouses.size > 0 ? starsForHouses(standing.length - lost.length, pathHouses.size, houseStars) : starsFor(protection),
+    housesSaved: standing.length - lost.length,
     housesTotal: pathHouses.size,
-    housesDamaged: damagedHouses.length,
-    damagedHouses
+    housesDamaged: lost.length,
+    damagedHouses: lost
   };
 }

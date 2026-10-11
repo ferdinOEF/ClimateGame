@@ -53,7 +53,7 @@
     "subtitle": "Panjim 2050",
     "brief": "Twenty-five years of Goa's capital, from 2025 to 2050. Every patch of land is already home to someone: the city fills it. Time moves only when you act. Build on the beach, the wetlands, the river and the near sea to protect those homes from three storms, and count the houses you save.",
     "mapId": "panaji",
-    "startingCoin": 350,
+    "startingCoin": 500,
     "parTurns": 40,
     "mapRadius": null,
     "hazards": {
@@ -78,7 +78,7 @@
         "fastForwardYear": 4
       },
       "economy": {
-        "incomeScale": 0.2,
+        "incomeScale": 0.35,
         "jarStart": 40
       }
     },
@@ -123,41 +123,7 @@
       ],
       "coastBuildRange": 4,
       "rule": {
-        "resilience": 45,
-        "exposureDecay": {
-          "cyclone": 0.8,
-          "flood": 0.6
-        }
-      }
-    },
-    "balancePreset": "easy-test",
-    "balancePresets": {
-      "easy-test": {
-        "coinMultiplier": 10,
-        "severityScale": {
-          "c1-cyclone": 0.5,
-          "c2-flood": 0.6,
-          "c3-compound": 0.85
-        },
-        "houseStars": {
-          "three": 0.9,
-          "two": 0.6
-        },
-        "houseRule": {
-          "resilience": 55,
-          "exposureDecay": {
-            "cyclone": 0.8,
-            "flood": 0.6
-          }
-        }
-      },
-      "strict": {
-        "coinMultiplier": 1,
-        "severityScale": {},
-        "houseStars": {
-          "three": 0.9,
-          "two": 0.6
-        }
+        "resilience": 45
       }
     },
     "objectives": [
@@ -236,6 +202,10 @@
           "label": "Build {count} seawall at {place}"
         }
       ]
+    },
+    "houseStars": {
+      "three": 0.9,
+      "two": 0.6
     }
   }
 ]

@@ -2,7 +2,7 @@
  * The finale's defence experiment: the same "Cyclone and flood" on the same
  * board, with no defences, with a mangrove belt only, with khazans only, and
  * with both, every defence fully grown. Reports homes hit for each and the
- * reduction against none, per preset, averaged over the bot seeds.
+ * reduction against none, averaged over the bot seeds.
  *
  * The brief's target: belt + khazans together cut homes hit by about 40%
  * against none, and neither alone is enough.
@@ -12,7 +12,7 @@
 import { resolveChallenge } from "../../src/core/zones";
 import { axialKey } from "../../src/core/hex";
 import type { GameState } from "../../src/core/gameState";
-import { BOT_LEVELS, SEEDS, newRun, type Preset } from "./bots";
+import { BOT_LEVEL, SEEDS, newRun } from "./bots";
 
 const MANGROVES = Number(process.argv[2] ?? 6);
 const KHAZANS = Number(process.argv[3] ?? 4);
@@ -41,8 +41,8 @@ function plant(state: GameState, zoneLists: string[][], elementId: string, count
   return placed;
 }
 
-export function finaleExperiment(preset: Preset, seed: string, mangroves = MANGROVES, khazans = KHAZANS, layout: "packed" | "spread" = "spread"): Record<string, number> {
-  const run = newRun(seed, BOT_LEVELS[preset]);
+export function finaleExperiment(seed: string, mangroves = MANGROVES, khazans = KHAZANS, layout: "packed" | "spread" = "spread"): Record<string, number> {
+  const run = newRun(seed, BOT_LEVEL);
   const finale = run.schedule[run.schedule.length - 1];
   while (run.quartersUntil(finale) > 4 && !run.finished) run.fastForwardYear();
   const base = run.state.clone();
@@ -64,15 +64,15 @@ export function finaleExperiment(preset: Preset, seed: string, mangroves = MANGR
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
-  for (const [preset, layout] of [["easy-test", "spread"], ["easy-test", "packed"], ["strict", "spread"], ["strict", "packed"]] as [Preset, "packed" | "spread"][]) {
+  for (const layout of ["spread", "packed"] as const) {
     const totals: Record<string, number> = { none: 0, belt: 0, khazans: 0, both: 0 };
     for (const seed of SEEDS) {
-      const r = finaleExperiment(preset, seed, MANGROVES, KHAZANS, layout);
+      const r = finaleExperiment(seed, MANGROVES, KHAZANS, layout);
       for (const k of Object.keys(totals)) totals[k] += r[k];
     }
     const avg = (k: string): number => totals[k] / SEEDS.length;
     const cut = (k: string): string => (avg("none") > 0 ? `${Math.round((1 - avg(k) / avg("none")) * 100)}%` : "–");
-    console.log(`${preset}, ${layout} (mangroves ${MANGROVES}, khazans ${KHAZANS}): homes hit, mean of ${SEEDS.length} seeds`);
+    console.log(`${layout} (mangroves ${MANGROVES}, khazans ${KHAZANS}): homes hit, mean of ${SEEDS.length} seeds`);
     console.log(`  none ${avg("none").toFixed(1)} | belt ${avg("belt").toFixed(1)} (${cut("belt")}) | khazans ${avg("khazans").toFixed(1)} (${cut("khazans")}) | both ${avg("both").toFixed(1)} (${cut("both")})`);
   }
 }

@@ -11,8 +11,9 @@
  *   - the street map defaults to 21%;
  *   - roads render, with no building on any road tile;
  *   - Maya greets with "Hello", mutes with M, the heat toggles with R;
- *   - the heat's previewed houses at risk equal the houses the storm then
- *     takes, in the real browser run (no builds in between);
+ *   - the heat's previewed houses at risk cover the houses the storm then
+ *     takes (exactly, for the flood; within the forecast cone, for the
+ *     cyclone), in the real browser run (no builds in between);
  *   - frame cost.
  *
  * Usage: npx tsx tools/verifyMaya.ts
@@ -131,15 +132,20 @@ async function main(): Promise<void> {
     await page.keyboard.press("r");
     await page.waitForTimeout(200);
     check(await evalJs<boolean>(page, `window.__heatForTest.visibleCount === ${heated}`), "Panaji: R shows it again");
+    // The preview rule is stated for the warning's last quarter, when the cone is the real landfall ±1.
+    await page.evaluate("window.__panjimScenarioForTest('heat-1')");
+    await page.waitForTimeout(800);
     const preview = await evalJs<{ id: string; atRisk: string[] }>(
       page,
       "(() => { const c = window.__panjimForTest.run.nextChallenge(); return { id: c.id, atRisk: [...window.__panjimForTest.exposure.housesAtRisk].sort() }; })()"
     );
     await page.evaluate("window.__panjimScenarioForTest('past-storm')");
     const lost = await evalJs<string[]>(page, `[...window.__panjimForTest.run.outcomes.get(${JSON.stringify(preview.id)}).damagedHouses].sort()`);
-    check(JSON.stringify(preview.atRisk) === JSON.stringify(lost), `Panaji: heat preview matches the storm (${preview.atRisk.length} previewed at risk, ${lost.length} lost)`);
+    // A cyclone's heat covers its forecast cone (tests/exposure.test.ts): every house lost was shown, and at most half of those shown stand.
+    const shown = new Set(preview.atRisk);
+    check(lost.every((key) => shown.has(key)) && lost.length >= shown.size * 0.5, `Panaji: heat preview covers the storm (${preview.atRisk.length} previewed at risk, ${lost.length} lost)`);
 
-    // The next storm: the flood takes houses on easy-test.
+    // The next storm: the flood takes houses.
     await page.evaluate("window.__panjimScenarioForTest('heat-2')");
     await page.waitForTimeout(500);
     const flood = await evalJs<{ id: string; atRisk: string[] }>(

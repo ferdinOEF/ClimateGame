@@ -1,8 +1,8 @@
 /** Balance sweep over the jar's income scale. Tuning aid, not part of the build. */
 import { PERSONAS, SEEDS, percentile, runBot } from "./bots";
-import { BOT_LEVELS } from "./bots";
+import { BOT_LEVEL } from "./bots";
 
-const timeline = BOT_LEVELS.strict.timeline!;
+const timeline = BOT_LEVEL.timeline!;
 for (const value of process.argv.slice(2).map(Number)) {
   timeline.economy!.incomeScale = value;
   const line: string[] = [`income ${value}:`];

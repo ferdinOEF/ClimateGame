@@ -1,7 +1,7 @@
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
-import type { ChallengeOutcome, ZoneIndex } from "./zones";
+import { CITY_ZONE, type ChallengeOutcome, type ZoneIndex } from "./zones";
 
 /**
  * The one line under an Aftermath's stars: specific to what just happened,
@@ -21,13 +21,18 @@ const SHORT_ZONE: Record<string, string> = {
 };
 
 function place(zoneId: string, zones: ZoneIndex): string {
-  return SHORT_ZONE[zoneId] ?? zones.name(zoneId);
+  return SHORT_ZONE[zoneId] ?? (zoneId === CITY_ZONE ? "the town" : zones.name(zoneId));
+}
+
+/** The tiles of a zone; the town is every tile in no zone. */
+function keysOf(state: GameState, zones: ZoneIndex, zoneId: string): string[] {
+  return zoneId === CITY_ZONE ? [...state.elements.keys()].filter((key) => !zones.zoneOf(key)) : zones.keys(zoneId);
 }
 
 /** The element type doing most of the defending in a zone, as a plural noun ("dunes", "mangroves"). */
 function mainDefence(state: GameState, zones: ZoneIndex, zoneId: string, hazard: string): string | null {
   const tally = new Map<string, number>();
-  for (const key of zones.keys(zoneId)) {
+  for (const key of keysOf(state, zones, zoneId)) {
     const inst = state.elements.get(key);
     const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
     if (!def?.targetsHazards?.includes(hazard) || (def.effects.resilience ?? 0) <= 0) continue;
@@ -80,7 +85,7 @@ export function aftermathLine(kind: ChallengeKind, outcome: ChallengeOutcome, st
     const spared = outcome.housesSaved;
     const took = holder.held ? "took it" : "took most of it";
     return what
-      ? `The ${what} at ${place(holder.zoneId, zones)} ${took}${spared > 0 ? `: ${spared} house${spared === 1 ? "" : "s"} never got wet` : ""}.`
+      ? `The ${what} at ${place(holder.zoneId, zones)} ${took}${spared > 0 ? `: ${spared} house${spared === 1 ? "" : "s"} stayed standing` : ""}.`
       : `${place(holder.zoneId, zones)} held.`;
   }
   const hit = outcome.zones.filter((zone) => zone.housesDamaged > 0).sort((a, b) => b.housesDamaged - a.housesDamaged)[0];
@@ -104,21 +109,24 @@ export function aftermathLine(kind: ChallengeKind, outcome: ChallengeOutcome, st
  */
 export function topDefenceLine(outcome: ChallengeOutcome, state: GameState, zones: ZoneIndex): string | null {
   if (outcome.housesSaved <= 0) return null;
-  const totalAbsorbed = outcome.zones.reduce((sum, zone) => sum + zone.absorbed, 0);
-  if (totalAbsorbed <= 0) return null;
-  const credit = new Map<string, number>();
-  for (const zone of outcome.zones) {
-    if (zone.absorbed <= 0) continue;
+  // Each zone's defences by type; zones with none did no defending.
+  const defended = outcome.zones.flatMap((zone) => {
+    if (zone.absorbed <= 0) return [];
     const byType = new Map<string, number>();
-    let zoneDefence = 0;
-    for (const key of zones.keys(zone.zoneId)) {
+    for (const key of keysOf(state, zones, zone.zoneId)) {
       const inst = state.elements.get(key);
       const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
       const value = def?.effects.resilience ?? 0;
       if (!def || value <= 0 || !def.targetsHazards?.includes(zone.hazard)) continue;
       byType.set(def.id, (byType.get(def.id) ?? 0) + value);
-      zoneDefence += value;
     }
+    return byType.size > 0 ? [{ zone, byType }] : [];
+  });
+  const totalAbsorbed = defended.reduce((sum, { zone }) => sum + zone.absorbed, 0);
+  if (totalAbsorbed <= 0) return null;
+  const credit = new Map<string, number>();
+  for (const { zone, byType } of defended) {
+    const zoneDefence = [...byType.values()].reduce((a, b) => a + b, 0);
     for (const [id, value] of byType) {
       credit.set(id, (credit.get(id) ?? 0) + (zone.absorbed / totalAbsorbed) * (value / zoneDefence) * outcome.housesSaved);
     }

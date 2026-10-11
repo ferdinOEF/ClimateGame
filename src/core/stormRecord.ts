@@ -3,6 +3,7 @@ import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
 import { FRONTS, resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId, type HouseRule, type ZoneIndex } from "./zones";
 import { buildDepthField, type DepthField } from "./hazard";
+import { computeWater, LANDFALL_ZONE, waterBoard, siteAt } from "./hazardModel";
 import { hazardsOf } from "./exposure";
 import { computeCombos } from "./combos";
 
@@ -39,6 +40,8 @@ export interface StormRecord {
   savedBy: DefenceSave[];
   /** The defences against this storm standing when it came (key → element id), before any failed. */
   defences: Map<string, string>;
+  /** The sea tile a cyclone came ashore at (null for a flood): the animation stages landfall there. */
+  landfallKey?: string | null;
 }
 
 export interface StormArgs {
@@ -49,6 +52,8 @@ export interface StormArgs {
   combos?: ComboBonus;
   houseStars?: { three: number; two: number };
   houseRule?: HouseRule;
+  /** Where a cyclone comes ashore (index into the board's landfall sites). */
+  landfall?: number | null;
 }
 
 function isBuilding(state: GameState, key: string): boolean {
@@ -62,18 +67,41 @@ export function defendsAgainst(elementId: string, hazards: readonly HazardId[]):
   return !!def && (def.effects.resilience ?? 0) > 0 && !!def.targetsHazards?.some((h) => hazards.includes(h as HazardId));
 }
 
+/** How deep the animation draws water, at most, in house-loss depths. Presentation only. */
+export const VISUAL_DEPTH_CAP = 2.5;
+
 /** Resolves a storm on `state` (mutating it) and returns the outcome with its depth field. */
 function resolveWithField(state: GameState, args: StormArgs): { outcome: ChallengeOutcome; field: DepthField } {
   const houses = new Set<string>();
-  for (const key of state.elements.keys()) if (isBuilding(state, key)) houses.add(key);
+  // Standing houses only: one an earlier storm took is already down and cannot fall again.
+  for (const [key, inst] of state.elements) if (isBuilding(state, key) && inst.degradeAmount < 1) houses.add(key);
   const samples = new Map<string, { cyclone?: number; flood?: number }>();
-  const outcome = resolveChallenge(state, args.zones, args.kind, args.intensity, args.strengthUnit, args.combos, args.houseStars, args.houseRule, (key, value, hazard) => {
-    const sample = samples.get(key) ?? {};
-    sample[hazard] = Math.max(sample[hazard] ?? 0, value);
-    samples.set(key, sample);
-  });
+  const resilienceUnit = args.houseRule?.resilience ?? args.strengthUnit;
+  // The sea's and the river's own levels, for the water drawn on them (the same model, before the board changes).
+  const landfallTiles = args.zones.keys(LANDFALL_ZONE);
+  const levels = computeWater(state, { kind: args.kind, strength: args.intensity / args.strengthUnit, landfall: args.kind === "flood" ? null : (args.landfall ?? null) }, { combos: args.combos, landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined });
+  const outcome = resolveChallenge(
+    state,
+    args.zones,
+    args.kind,
+    args.intensity,
+    args.strengthUnit,
+    args.combos,
+    args.houseStars,
+    args.houseRule,
+    (key, value, hazard) => {
+      const sample = samples.get(key) ?? {};
+      // Drawn no deeper than VISUAL_DEPTH_CAP house-loss depths: deep water reads as deep without towering.
+      // A house is lost at 1, so the cap never changes what the animation shows falling.
+      sample[hazard] = Math.max(sample[hazard] ?? 0, Math.min(value, VISUAL_DEPTH_CAP * resilienceUnit));
+      samples.set(key, sample);
+    },
+    args.landfall
+  );
   const frontStrength: { cyclone?: number; flood?: number } = {};
-  for (const front of FRONTS[args.kind]) frontStrength[front.hazard] = Math.max(frontStrength[front.hazard] ?? 0, args.intensity * front.share);
+  // The swollen sea and river, in house-loss depths, capped like the tiles.
+  if (levels.surgeLevel > 0) frontStrength.cyclone = Math.min(VISUAL_DEPTH_CAP, 1 + levels.surgeLevel / 10) * resilienceUnit;
+  if (levels.floodLevel > 0) frontStrength.flood = Math.min(VISUAL_DEPTH_CAP, 1 + levels.floodLevel / 10) * resilienceUnit;
   const field = buildDepthField({
     kind: args.kind,
     tiles: [...state.placed.entries()].map(([key, tile]) => ({ key, terrainId: tile.terrainId })),
@@ -107,12 +135,15 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   const savedBy: DefenceSave[] = [];
   for (const [elementId, count] of counts) {
     const copy = without((id) => id !== elementId);
-    const lost = resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, argsFor(copy).combos, args.houseStars, args.houseRule).housesDamaged;
+    const lost = resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, argsFor(copy).combos, args.houseStars, args.houseRule, undefined, args.landfall).housesDamaged;
     const houses = lost - outcome.housesDamaged;
     if (houses > 0) savedBy.push({ elementId, count, houses });
   }
   savedBy.sort((a, b) => b.houses - a.houses || (a.elementId < b.elementId ? -1 : 1));
   const defences = new Map<string, string>();
   for (const [key, inst] of before.elements) if (defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
-  return { kind: args.kind, outcome, field, undefended, savedBy, defences };
+  const landfallTiles = args.zones.keys(LANDFALL_ZONE);
+  const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
+  const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);
+  return { kind: args.kind, outcome, field, undefended, savedBy, defences, landfallKey };
 }

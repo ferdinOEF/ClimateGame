@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { MAYA, mayaAftermath, placeName, riskHotspot, warningLine } from "../src/core/mayaLines";
-import { BOT_LEVELS, newRun } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { mapById } from "../src/levels/levelMap";
+import { GameState } from "../src/core/gameState";
+import { resolveChallenge, ZoneIndex } from "../src/core/zones";
+import { boardSetup } from "../src/levels/balance";
+import { computeWater, LANDFALL_ZONE } from "../src/core/hazardModel";
 
 /**
  * Maya's lines are worked out from the game's own numbers. These check the
@@ -50,7 +54,7 @@ describe("where Maya goes", () => {
 describe("Maya's Aftermath line", () => {
   it("describes the resolved storm: celebrates a clean save, is worried about losses, never says '1 homes'", () => {
     // Strict flood with nothing built: houses are lost.
-    const bare = newRun("s7", BOT_LEVELS.strict);
+    const bare = newRun("s7", BOT_LEVEL);
     while (bare.landed.size < 2) bare.fastForwardYear();
     const lost = bare.outcomes.get("c2-flood")!;
     expect(lost.housesDamaged).toBeGreaterThan(0);
@@ -58,29 +62,29 @@ describe("Maya's Aftermath line", () => {
     expect(worried.mood).toBe("worried");
     expect(worried.text).not.toMatch(/\b1 homes\b/);
 
-    // Easy cyclone with dunes on the beach: nothing lost.
-    const run = newRun("panjim", BOT_LEVELS["easy-test"]);
-    for (let i = 0; i < 3; i++) {
-      for (const key of run.zones!.keys("z1")) {
-        const [q, r] = key.split(",").map(Number);
-        if (run.state.canBuild({ q, r }, "dune")) {
-          run.build({ q, r }, "dune");
-          break;
-        }
-      }
+    // A cyclone met by seawalls on every tile it wets: nothing lost.
+    const map = mapById("panaji")!;
+    const state = new GameState(map.tiles, boardSetup(BOT_LEVEL, map).startingElements, 100000);
+    state.maturityField = "matureQuarters";
+    for (const m of map.monuments) state.reserved.add(`${m.q},${m.r}`);
+    const zones = new ZoneIndex(map.zones);
+    const water = computeWater(state, { kind: "cyclone", strength: 1.2, landfall: 10 }, { landfallZoneTiles: zones.keys(LANDFALL_ZONE) });
+    for (const key of water.depth.keys()) {
+      const [q, r] = key.split(",").map(Number);
+      if (state.canBuild({ q, r }, "seawall")) state.build({ q, r }, "seawall", false);
     }
-    while (run.landed.size < 1) run.fastForwardYear();
-    const saved = run.outcomes.get("c1-cyclone")!;
+    const saved = resolveChallenge(state, zones, "cyclone", 24, 20, undefined, undefined, undefined, undefined, 10);
+    expect(saved.housesTotal).toBeGreaterThan(0);
     expect(saved.housesDamaged).toBe(0);
-    const happy = mayaAftermath(saved, run.state, run.zones!);
+    const happy = mayaAftermath(saved, state, zones);
     expect(happy.mood).toBe("celebrates");
-    expect(happy.text).toMatch(/dune|Every home/);
+    expect(happy.text).toMatch(/seawall|Every home/);
   });
 });
 
 describe("Maya's Aftermath line with the storm's real comparisons", () => {
   it("quotes what a kind of defence really saved, and claims nothing when none did", () => {
-    const run = newRun("panjim", BOT_LEVELS.strict);
+    const run = newRun("panjim", BOT_LEVEL);
     for (let i = 0; i < 3; i++) {
       for (const key of run.zones!.keys("z1")) {
         const [q, r] = key.split(",").map(Number);

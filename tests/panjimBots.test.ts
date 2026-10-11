@@ -1,92 +1,58 @@
 import { describe, expect, it } from "vitest";
-import { MONOCULTURES, PERSONAS, SEEDS, runBot, type BotResult, type Persona, type Preset } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, SEEDS, replaySmartWithout, runBot, runSmartOnly, savedShare, smartRun, type BotResult } from "../tools/panjimBots/bots";
 
 /**
- * The Panjim 2050 balance contract, played out by bots on the real rules,
- * under both balance presets. If tuning breaks any of these, the build
- * fails. `npm run bots` prints the full tables (docs/PROGRESS.md).
+ * The Section 4 balance contract, played out by bots on the real rules. The
+ * full tables run 20 seeds per archetype (`npm run bots`, kept in
+ * docs/qa/section4/bots.md); this unit test plays a few seeds so it stays
+ * quick, with bands wide enough for a few seeds' spread round the 20-seed
+ * means. Smart is the slow one (it simulates every candidate build), so it
+ * plays one seed here.
  */
-const ALL: Persona[] = [...PERSONAS, ...MONOCULTURES];
-function play(preset: Preset): Map<Persona, BotResult[]> {
-  return new Map(ALL.map((persona) => [persona, SEEDS.map((seed) => runBot(persona, seed, preset))]));
-}
-const strict = play("strict");
-const easy = play("easy-test");
+const FAST = SEEDS.slice(0, 10);
+const mean = (rows: BotResult[]): number => rows.reduce((s, r) => s + savedShare(r), 0) / rows.length;
+const casual = FAST.map((seed) => runBot("casual", seed));
+const greedy = FAST.map((seed) => runBot("greedy", seed));
+const rusher = FAST.map((seed) => runBot("rusher", seed));
 
-const threeStarShare = (rows: BotResult[]) => {
-  const stars = rows.flatMap((r) => r.stars);
-  return stars.filter((s) => s === 3).length / stars.length;
-};
-const mean = (rows: BotResult[], pick: (r: BotResult) => number) => rows.reduce((sum, r) => sum + pick(r), 0) / rows.length;
-
-describe("Panjim 2050 bots, strict preset (20 seeds per persona)", () => {
-  const all = (p: Persona) => strict.get(p)!;
-
-  it("Casual always reaches 2050 with at least one star per challenge", () => {
-    for (const run of all("casual")) {
-      expect(run.stars).toHaveLength(3);
-      for (const s of run.stars) expect(s).toBeGreaterThanOrEqual(1);
-    }
+describe("Panjim bots (Section 4 targets)", () => {
+  it("does nothing and saves nothing: the do-nothing player sits at the floor", () => {
+    for (const run of rusher) expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.05);
   });
 
-  it("Greedy gets three stars in no more than 25% of challenges", () => {
-    expect(threeStarShare(all("greedy"))).toBeLessThanOrEqual(0.25);
+  it("Casual saves roughly a quarter to a third of the houses in the storms' paths", () => {
+    expect(mean(casual)).toBeGreaterThanOrEqual(0.18);
+    expect(mean(casual)).toBeLessThanOrEqual(0.4);
   });
 
-  it("Smart gets three stars in at least 70% of challenges", () => {
-    expect(threeStarShare(all("smart"))).toBeGreaterThanOrEqual(0.7);
+  it("Greedy swings: sometimes beats Casual on the same seed, sometimes far behind", () => {
+    const share = greedy.map(savedShare);
+    expect(Math.max(...share) - Math.min(...share)).toBeGreaterThan(0.1);
+    expect(greedy.some((g, i) => savedShare(g) >= savedShare(casual[i]))).toBe(true);
   });
 
-  it("Rusher gets at most one star in at least two of the three challenges", () => {
-    for (const run of all("rusher")) expect(run.stars.filter((s) => s <= 1).length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("Banker never beats Smart's index on the same seed", () => {
-    all("banker").forEach((banker, i) => expect(banker.index, banker.seed).toBeLessThanOrEqual(all("smart")[i].index));
-  });
+  it(
+    "Smart saves most of them, but not all; every defence it builds pulls its weight; mangroves alone cannot match it",
+    () => {
+      const { result: smart, log } = smartRun(SEEDS[0]);
+      expect(savedShare(smart)).toBeGreaterThanOrEqual(0.65);
+      expect(savedShare(smart)).toBeLessThan(0.95);
+      expect(savedShare(smart)).toBeGreaterThan(savedShare(casual[0]));
+      // Smart's own run replayed without each defence it built: never better without it.
+      for (const id of Object.keys(smart.built).filter((id) => id !== "house")) expect(savedShare(replaySmartWithout(id, SEEDS[0], log)), id).toBeLessThanOrEqual(savedShare(smart) + 1e-9);
+      // The strongest single kind (mangroves, docs/qa/section4/bots.md) stays well behind the mix.
+      expect(savedShare(runSmartOnly("mangrove", SEEDS[0]))).toBeLessThan(savedShare(smart) - 0.1);
+    },
+    600_000
+  );
 
   it("gives identical results for the same seed", () => {
-    for (const persona of PERSONAS) expect(runBot(persona, SEEDS[3], "strict")).toEqual(all(persona)[3]);
+    expect(runBot("casual", FAST[2])).toEqual(casual[2]);
+    expect(runBot("greedy", FAST[1])).toEqual(greedy[1]);
   });
 
-  it("lets no single strategy dominate", () => {
-    // Neither one-trick build beats the balanced plan on the index or on
-    // total stars; and the money-maker really does out-earn the planner.
-    for (const mono of MONOCULTURES) {
-      expect(mean(all(mono), (r) => r.index), mono).toBeLessThan(mean(all("smart"), (r) => r.index));
-      expect(mean(all(mono), (r) => r.stars.reduce((a, b) => a + b, 0)), mono).toBeLessThanOrEqual(mean(all("smart"), (r) => r.stars.reduce((a, b) => a + b, 0)));
-    }
-    expect(mean(all("greedy"), (r) => r.components.livelihoods)).toBeGreaterThan(mean(all("smart"), (r) => r.components.livelihoods));
-  });
-
-  it("sizes the economy so a careful player makes 40 to 70 meaningful decisions", () => {
-    const decisions = all("smart").map((r) => r.decisions).sort((a, b) => a - b);
-    const median = decisions[Math.floor(decisions.length / 2)];
-    expect(median).toBeGreaterThanOrEqual(40);
-    expect(median).toBeLessThanOrEqual(70);
-  });
-});
-
-describe("Panjim 2050 bots, easy-test preset (20 seeds per persona)", () => {
-  const all = (p: Persona) => easy.get(p)!;
-
-  it("Casual gets at least two stars on the first two storms", () => {
-    for (const run of all("casual")) {
-      expect(run.stars[0], run.seed).toBeGreaterThanOrEqual(2);
-      expect(run.stars[1], run.seed).toBeGreaterThanOrEqual(2);
-    }
-  });
-
-  it("Smart gets three stars on all three storms", () => {
-    for (const run of all("smart")) expect(run.stars, run.seed).toEqual([3, 3, 3]);
-  });
-
-  it("nobody loses every house in the first two storms", () => {
-    for (const persona of ALL) {
-      for (const run of all(persona)) {
-        expect(run.houses[0].saved, `${persona} ${run.seed}`).toBeGreaterThan(0);
-        expect(run.houses[1].saved, `${persona} ${run.seed}`).toBeGreaterThan(0);
-      }
-    }
+  it("plays the one real level, at the real coin rate", () => {
+    expect(BOT_LEVEL.id).toBe("l01-first-rains");
+    for (const run of casual) expect(run.houses).toHaveLength(3);
   });
 });

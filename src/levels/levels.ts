@@ -4,7 +4,7 @@ import { dailyChallengeId, hashSeed, Rng } from "@core/rng";
 import type { TimelineConfig } from "@core/actionRun";
 import type { ClimateConfig } from "@core/climate";
 import type { PrepConfig } from "@core/prep";
-import { applyBalance, type BalancePreset, type HouseFill } from "./balance";
+import type { HouseFill } from "./balance";
 
 /**
  * Level definitions — the campaign, loaded from data, never hardcoded.
@@ -83,10 +83,7 @@ export interface LevelDef {
   climate?: ClimateConfig;
   /** "Get ready": optional jobs for each coming storm (core/prep.ts). */
   prep?: PrepConfig;
-  /** The active balance preset's name, and the presets this level offers (see levels/balance.ts). */
-  balancePreset?: string;
-  balancePresets?: Record<string, BalancePreset>;
-  /** Set from the active preset: stars per storm by the share of houses saved. */
+  /** Stars per storm by the share of houses in its path that were saved. */
   houseStars?: { three: number; two: number };
   /** Houses pre-built on the land, and how they count (levels/balance.ts). */
   houses?: HouseFill;
@@ -94,16 +91,12 @@ export interface LevelDef {
   starThresholds: [number, number, number];
 }
 
-/** The levels exactly as written in levels.json, before any balance preset is applied. */
-export const RAW_LEVELS: LevelDef[] = levelData as unknown as LevelDef[];
-/** The levels as played: each with its active balance preset folded in. */
-export const LEVELS: LevelDef[] = RAW_LEVELS.map((level) => applyBalance(level));
-
-/** A level under a named preset, for comparing presets (the bots, the tests). */
-export function levelWithPreset(levelId: string, preset: string): LevelDef | null {
-  const raw = RAW_LEVELS.find((level) => level.id === levelId);
-  return raw ? applyBalance(raw, preset) : null;
-}
+/**
+ * The levels, exactly as written in levels.json. There is one baseline and
+ * no difficulty variants (Section 4): the numbers in the file are the numbers
+ * played.
+ */
+export const LEVELS: LevelDef[] = levelData as unknown as LevelDef[];
 export const LEVEL_BY_ID = new Map(LEVELS.map((level) => [level.id, level]));
 
 export function levelIndex(levelId: string): number {

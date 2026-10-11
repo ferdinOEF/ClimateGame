@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOT_LEVELS, newRun } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { prepProgress } from "../src/core/prep";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import type { ActionRun } from "../src/core/actionRun";
@@ -25,9 +25,9 @@ function build(run: ActionRun, zone: string, elementId: string, times: number): 
 }
 
 describe("Get ready jobs", () => {
-  for (const preset of ["easy-test", "strict"] as const) {
-    it(`${preset}: 2-3 jobs per storm, each a defence against it, buildable where it points`, () => {
-      const run = newRun("panjim", BOT_LEVELS[preset]);
+  {
+    it(`2-3 jobs per storm, each a defence against it, buildable where it points`, () => {
+      const run = newRun("panjim", BOT_LEVEL);
       for (let storm = 0; storm < 3; storm++) {
         const next = run.nextChallenge()!;
         expect(run.prep.length).toBeGreaterThanOrEqual(2);
@@ -45,9 +45,9 @@ describe("Get ready jobs", () => {
   }
 
   it("completes when the matching builds are made, and pays its reward once", () => {
-    const run = newRun("panjim", BOT_LEVELS["easy-test"]);
+    const run = newRun("panjim", BOT_LEVEL);
     const job = run.prep[0];
-    const level = BOT_LEVELS["easy-test"];
+    const level = BOT_LEVEL;
     const template = level.prep!.templates.find((t) => t.id === job.templateId)!;
     expect(job.reward).toBe(template.reward);
     const before = run.state.coin;
@@ -66,14 +66,8 @@ describe("Get ready jobs", () => {
     expect(before).toBeGreaterThan(0);
   });
 
-  it("rewards follow the coin preset (x10 on easy-test)", () => {
-    const easy = BOT_LEVELS["easy-test"].prep!.templates.map((t) => t.reward);
-    const strict = BOT_LEVELS.strict.prep!.templates.map((t) => t.reward);
-    expect(easy).toEqual(strict.map((r) => r * 10));
-  });
-
   it("refreshes when the next storm is announced, dropping the old jobs", () => {
-    const run = newRun("panjim", BOT_LEVELS.strict);
+    const run = newRun("panjim", BOT_LEVEL);
     const first = run.prep.map((job) => job.id);
     const c1 = run.nextChallenge()!;
     while (!run.landed.has(c1.id)) run.fastForwardYear();
@@ -83,7 +77,7 @@ describe("Get ready jobs", () => {
   });
 
   it("survives a snapshot and restore", () => {
-    const run = newRun("panjim", BOT_LEVELS.strict);
+    const run = newRun("panjim", BOT_LEVEL);
     const snap = run.snapshot();
     const ids = run.prep.map((job) => job.id);
     run.fastForwardYear();

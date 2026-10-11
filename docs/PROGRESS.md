@@ -7941,3 +7941,92 @@ in Section 1, all fixed (details in `docs/QA_REPORT.md`).
 - The DEM was half a pixel off. The georeference is now read from the GeoTIFF.
 - There was no companion lifecycle test. `tests/fabricLifecycle.test.ts` now covers it.
 - **NITs:** real bounding boxes in the fabric bounds test, a date test that matches the fact to the place, contour polygon offset, and a comment.
+
+## Section 4 — survival, propagation and balance — DONE
+
+**The break (4.1).** The geography stays real and the numbers become game
+design. Fixed: the OSM tile map, terrain, coastline, channels, DEM elevation,
+real positions and the placement rules. Free, and every one labelled
+**gameRule**: surge, flood, propagation, defence strengths, damage, costs
+and income. `docs/HAZARD_ELEMENT_CITATIONS.md` lists every number and its
+kind. The cited facts in `facts.json` are unchanged and are not used as
+model numbers.
+
+**One baseline (4.2).**
+- The easy-test preset is deleted, with the preset mechanism (`BalancePreset`, `applyBalance`, `levelWithPreset`) and the coin multiplier. The numbers in `levels.json` are the numbers played.
+- `tests/section4.test.ts` fails if any source, tool or test mentions it again, if a level carries presets, or if income is not exactly `state.income × incomeScale`.
+- Economy: starting coin 500, `incomeScale` 0.35, jar start 40. The dearest defence costs 85, so a first defence is always affordable; one cheap defence on every tile the first storm wets costs more than twice the purse (a test).
+
+**One hazard model (4.3), `src/core/hazardModel.ts`, `src/data/hazardModel.json`.**
+- **The single source of truth:** the forecast preview (`computeExposure`), the risk heat, the storm animation (`stormRecord`) and the resolution (`resolveChallenge`) all call `computeWater`. There is no second implementation.
+- **Water spreads tile by tile.** It spreads from its sources over the hex board, highest first, and drops a set amount per hex by terrain. Depth = level − the tile's DEM ground. A house is lost at 0.6 game metres.
+- **Cyclone:** comes ashore at one landfall site on the open-sea shore (z1). It loses 0.43 m per hex at sea, 0.35 up a channel (the funnelling), 0.8 over sand and 0.7 over land.
+- **Flood:** rises from the upstream river. It loses little down the channel (0.25) and across the khazan wetland (0.2), and more up the banks.
+- **Compound:** both, at 0.9 and 0.85 of their strength. The surge at the mouth backs the river up (a backwater on every channel tile, growing toward the mouth).
+- **Defences:**
+  - Each protects the area round it (3 hexes, falloff 1 / 0.9 / 0.7 / 0.45) by 0.45 m per resilience point, and drags water passing through (0.4 of its metres on its tile, half that next door; strongest of each kind once).
+  - On a tile only the strongest defence of each kind counts, and different kinds add up to 1.6× the strongest: layered defence beats many of one kind.
+  - Living defences together give at most 3.2 m. An engineered structure's own protection may reach 4.5 m.
+  - Engineered structures fail when the water on them is over failureThreshold × 8.7 m; nature defences over overwhelmSeverity × 3.5 m are worn.
+- **Elevation:** Altinho and everything within a hex of its name stay dry in every storm at strength 3.8, above the finale's 2.6. In the monsoon flood more than half the low wetland tiles (2 m or lower) take water (`zones.test.ts`).
+- **The finale is survivable:** at the level's strength, at three landfalls, a plain 500-coin plan (dune, mangrove, dam, khazan, nearest the homes the storm would take, no simulation) loses 32–40% fewer houses than no defence, 37% on average (`section4.test.ts`, 30–50% each, 35–45% mean).
+
+**Suspense (4.4).**
+- **Forecast cone:** landfall sites are the open-sea tiles on the shore, ordered by walking the shore, so one site is one short step. Each cyclone has a forecast centre along the coast (between 15% and 85% of it). From five quarters out the cone covers that centre ± 7 landfall sites, narrowing every quarter to ± 1 on the last quarter. It is drawn at sea as a pale band (`landfallCone`, `coneTiles`), and the heat on the town is the worst case over the cone.
+- **Jitter bound (in data: `landfall.jitterSites` = 1):** the real landfall is at most **one coastal landfall site** from the forecast centre, drawn per seed and storm. A player who defends the whole last-quarter warning is never caught out: the real site is always inside the cone (a test over 10 seeds × every cyclone).
+- **Escalation:** strengths 1.2, 1.8, 2.6 over 2032, 2040 and 2048, with sea level creeping up. It is a staircase, not a wall: Smart keeps 3, 2 and 2 stars on average.
+
+**Preview equals resolution (4.5), `tests/exposure.test.ts`, 6 seeds, every storm, with and without defences:**
+- **No miss:** every house a storm takes was shown at risk on the last quarter, at full exposure.
+- **Bounded over-call:** at most **50%** of the houses shown at risk still stand. That is the width of the ±1 cone.
+- **Exact at the real site:** the same preview computed at the real landfall is exactly the houses lost.
+- **Flood:** the flood has no cone, so its preview is exact.
+
+**Balance (4.6), 20 seeds (`docs/qa/section4/bots.md`, `npm run bots -- margins`):**
+
+| Archetype | Houses saved | min–max |
+|---|---|---|
+| Casual (builds a little, late) | 30% | 15–46% |
+| Smart (reads the forecast, keeps a reserve) | 79% | 74–84% |
+| Greedy (income first, defends late, greed drawn per run) | 15% | 4–29%; beats Casual on 3 of 20 seeds |
+| Do nothing | 0% | 0% |
+
+- **Each defence's margin:** Smart's own run, replayed with that defence's builds turned into waiting (as long as each build would have taken), with nothing re-planned. Points of houses saved:
+  - mangrove 41.2;
+  - khazan 18.4;
+  - seawall 9.2;
+  - pandanus 6.7;
+  - breakwater 6.4;
+  - dune 6.2;
+  - small dam 6.0.
+- **Nothing dominates:** Smart limited to one kind saves at most 48% (mangroves; next seawall 21%) against 79% for the mix.
+- **Tuning moves that got here** (all gameRule):
+  - per-kind stacking, so mangroves alone no longer match the mix (they did at 67–73%);
+  - metresPerResilience 0.8 → 0.45, maxProtectionM 2.4 → 3.2, the engineered ceiling 4.5;
+  - seawall 90 → 80, pandanus resilience 2.5 → 3;
+  - path drag counts the strongest defence of each kind once, pathShare 0.3 → 0.4.
+- **Bot changes:**
+  - Casual now builds over the 18 quarters before a storm, not 12;
+  - Greedy's greed is drawn per run;
+  - a bug fixed in the margin runs, where Smart stopped building when its top pick was the left-out element.
+
+**Also fixed on the way:**
+- A compound storm's surge and river water no longer add up in the animation. Each tile draws the deeper of the two, as the resolver counts it.
+- A house an earlier storm took cannot fall again.
+- A defence the water never reached is never shown answering a storm.
+- The Aftermath's "saved the most homes" now counts the town behind the zones.
+
+**Independent review (Section 4): 1 MAJOR, 8 MINOR, NITs; all fixed:**
+- **MAJOR, heat cost:** the water board's cache missed every preview copy, and the undefended comparison ran twice. Each build inside the warning stalled the page for about half a second. The cache now survives `clone()` and is keyed by landfall coast too, and a board with no defences is its own comparison. Heat, undefended heat and gauge together, five quarters out: about 560 ms down to about 106 ms in Node.
+- **Old zone fronts:** the storm animation framed the old cyclone zone (the Mandovi waterfront for the finale), and the Forecast label, Get ready and "growing" counted old zones. All now come from the hazard model: the record carries the landfall site, and the Forecast outlines the water's reach over the cone.
+- **Gauge:** the readiness gauge read the forecast centre. Inside the warning it now reads the worst landfall still in the cone, as the heat does.
+- **Board cache:** the cache ignored the landfall coast; now part of the key.
+- **Landfall sites:** sorted by row, consecutive sites were up to 4 hexes apart. They are now ordered by walking the shore.
+- **Margin replay:** a skipped two-quarter build waited one quarter. It now waits as long as the build would have taken.
+- **Dead code:** the old zone resolver's helpers are deleted, and the exposure header rewritten.
+- **Path drag:** several defences of one kind dragged without limit. Now the strongest of each kind counts once. New unit tests cover fade, per-kind stacking, `stackCap`, both ceilings and harm.
+- **Balance contract:** `npm run test` checks again that Smart is never better without a defence it built, and that mangroves alone stay over 10 points behind.
+- **NITs:**
+  - the preview test now runs at exactly one quarter out, on the board as it will stand;
+  - the easy-test check looks for the real key names;
+  - stale comments are fixed (panjimIndex, prep, the cone in hazardModel.json, build quarters, bot personas, BOT_LEVEL).

@@ -8,28 +8,24 @@ import { resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId
  *
  * The warning heat (the red tint that builds over the last five quarters
  * before a storm) is only worth showing if it is true. So nothing here
- * approximates the storm. `computeExposure` runs the real zone-local resolver
- * (`resolveChallenge`) on a throwaway copy of the board, and asks it, through
- * its tile probe, how hard the storm hits each tile: the zone's leak, faded by
- * distance from the water, by the same `localIntensity` formula that decides
- * which houses fall. A tile previewed at zero takes nothing; the houses the
- * preview calls at risk are the houses the resolver loses.
+ * approximates the storm. `computeExposure` runs the real resolver
+ * (`resolveChallenge`, which calls the one hazard model,
+ * core/hazardModel.ts `computeWater`) on a throwaway copy of the board, and
+ * asks it, through its tile probe, how deep the water stands on each tile.
+ * For a cyclone it does that at every landfall site still in the forecast
+ * cone and keeps the worst case, so a house shown safe is safe wherever in
+ * the cone the storm comes ashore.
  *
- * Defences therefore change the heat exactly as much as they change the
- * outcome. A mangrove that raises its zone's defence lowers the leak, and so
- * the heat, on every tile of that zone behind it; it does nothing for a zone
- * the storm never reaches through it. That is a per-zone effect, not a
- * per-tile glow, and the heat does not pretend otherwise. (The brief asked
- * for defences to cool their own tile and, more weakly, their neighbours. The
- * resolver has no such rule, so drawing one would be a promise the storm does
- * not keep. The green shields mark what a defence protected instead: see
- * `protectedTiles`.)
+ * Defences change the heat exactly as much as they change the outcome: each
+ * protects the area round it and slows water passing through, so the heat
+ * cools behind a defence on the water's way in, and nowhere the water does
+ * not pass. The green shields mark what a defence protected (`protectedTiles`).
  *
  * Pure, like the rest of core/: no DOM, no renderer.
  */
 export interface Exposure {
   kind: ChallengeKind;
-  /** Local intensity at every tile on the storm's path, in zone-defence points. 0 where defences stopped it. */
+  /** Water at every wet tile, in house-rule units (`resilience` is one house-loss depth); the worst over the cone. */
   intensity: Map<string, number>;
   /**
    * 0–1 per tile: (intensity / a house's resilience)², capped at 1. A house at
@@ -50,6 +46,13 @@ export interface ExposureOptions {
   houseStars?: { three: number; two: number };
   /** Resolve as if every defence against this storm were gone: the "before you built anything" picture the shields compare to. */
   withoutDefences?: boolean;
+  /**
+   * A cyclone's possible landfall sites (the forecast cone). The exposure is
+   * the worst over all of them: what the player is warned of is everywhere
+   * the storm may still hit. The outcome is the middle site's. One site is
+   * an exact preview.
+   */
+  landfallSites?: number[] | null;
 }
 
 /** The hazards a challenge kind brings. */
@@ -79,23 +82,33 @@ export function computeExposure(
     }
   }
   const tileIntensity = new Map<string, number>();
-  const outcome = resolveChallenge(
-    copy,
-    zones,
-    kind,
-    intensity,
-    strengthUnit,
-    options.combos,
-    options.houseStars,
-    options.houseRule,
-    (key, value) => tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, value))
-  );
-  // Without a house rule (other levels), a zone loses a share of its houses
-  // and there is no per-house threshold; the scale is one challenge unit.
+  const sites = options.landfallSites && options.landfallSites.length > 0 ? options.landfallSites : [null];
+  const middle = sites[Math.floor((sites.length - 1) / 2)];
+  const atRisk = new Set<string>();
+  let outcome: ChallengeOutcome | null = null;
+  for (const site of sites) {
+    // Each site on its own copy: the resolver changes the board it is given.
+    const board = sites.length > 1 ? copy.clone() : copy;
+    const result = resolveChallenge(
+      board,
+      zones,
+      kind,
+      intensity,
+      strengthUnit,
+      options.combos,
+      options.houseStars,
+      options.houseRule,
+      (key, value) => tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, value)),
+      site
+    );
+    for (const key of result.damagedHouses) atRisk.add(key);
+    if (site === middle) outcome = result;
+  }
+  // The resolver's scale: one house-loss depth is `resilience` (one challenge unit without a house rule).
   const scale = options.houseRule?.resilience ?? strengthUnit;
   const exposure = new Map<string, number>();
   for (const [key, value] of tileIntensity) exposure.set(key, Math.min(1, (value / scale) ** 2));
-  return { kind, intensity: tileIntensity, exposure, housesAtRisk: [...outcome.damagedHouses], outcome };
+  return { kind, intensity: tileIntensity, exposure, housesAtRisk: [...atRisk], outcome: outcome! };
 }
 
 /** Quarters of warning: the heat starts this many quarters before a storm lands. */
@@ -171,7 +184,8 @@ export function buildHeatView(
   terrainOf: (key: string) => string | undefined
 ): HeatViewTile[] {
   const shielded = new Set<string>(undefended ? protectedTiles(current, undefended) : []);
-  const onPath = new Set(current.exposure.keys());
+  // On the path: where the storm reaches now, or would with no defences (a defence that keeps its own tile dry still earns its shield).
+  const onPath = new Set([...current.exposure.keys(), ...(undefended ? undefended.exposure.keys() : [])]);
   for (const key of defenceKeys) if (onPath.has(key)) shielded.add(key);
   // The pulse marks houses that will fall, hardest hit first, never empty
   // ground: the point is to draw the eye to what can still be saved.

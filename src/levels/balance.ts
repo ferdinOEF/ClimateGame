@@ -5,27 +5,6 @@ import { axialKey, neighbor } from "@core/hex";
 import type { HouseRule } from "@core/zones";
 import { townLayout } from "./townLayout";
 
-/**
- * Balance presets: named groups of difficulty settings, kept in levels.json.
- *
- * A level names its active preset (`balancePreset`) and lists the presets it
- * offers (`balancePresets`). Switching between "easy-test" and "strict" is
- * one value in the data. `applyBalance` folds the preset into the level
- * when the levels load, so the engine only ever sees plain numbers: a
- * starting Coin, an income scale, a challenge's severity. Nothing downstream
- * needs to know a preset exists.
- */
-export interface BalancePreset {
-  /** Multiplies every source of Coin: starting Coin, jar income, the jar's opening gift and Get ready rewards. Never build costs. */
-  coinMultiplier: number;
-  /** Per-challenge severity scale, by challenge id. Missing ids are 1. */
-  severityScale: Record<string, number>;
-  /** Stars per storm from the share of houses in its path that were saved: at least `three` is 3 stars, at least `two` is 2, else 1. */
-  houseStars: { three: number; two: number };
-  /** Overrides the level's house rule: how much a house withstands before it is lost. */
-  houseRule?: HouseRule;
-}
-
 /** Panjim's settlement: houses pre-built across the land, and how much they count. */
 export interface HouseFill {
   /**
@@ -46,36 +25,6 @@ export interface HouseFill {
   coastBuildRange?: number;
   /** How a house stands up to a storm, house by house (core/zones.ts `HouseRule`). */
   rule?: HouseRule;
-}
-
-export function applyBalance(level: LevelDef, presetName: string | undefined = level.balancePreset): LevelDef {
-  const preset = presetName ? level.balancePresets?.[presetName] : undefined;
-  if (!preset) return level;
-  const m = preset.coinMultiplier;
-  return {
-    ...level,
-    balancePreset: presetName,
-    startingCoin: level.startingCoin * m,
-    timeline: level.timeline && {
-      ...level.timeline,
-      economy: level.timeline.economy && {
-        ...level.timeline.economy,
-        incomeScale: level.timeline.economy.incomeScale * m,
-        jarStart: level.timeline.economy.jarStart * m,
-        coinMultiplier: m
-      }
-    },
-    climate: level.climate && {
-      ...level.climate,
-      challenges: level.climate.challenges.map((challenge) => ({
-        ...challenge,
-        severityScale: (challenge.severityScale ?? 1) * (preset.severityScale[challenge.id] ?? 1)
-      }))
-    },
-    prep: level.prep && { ...level.prep, templates: level.prep.templates.map((template) => ({ ...template, reward: template.reward * m })) },
-    houseStars: preset.houseStars,
-    houses: level.houses && preset.houseRule ? { ...level.houses, rule: preset.houseRule } : level.houses
-  };
 }
 
 export interface BoardSetup {

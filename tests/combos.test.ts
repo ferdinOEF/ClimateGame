@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GameState } from "../src/core/gameState";
 import { computeCombos, newComboMembers } from "../src/core/combos";
-import { ZoneIndex, zoneDefence } from "../src/core/zones";
+import { HAZARD_MODEL, ownMetres } from "../src/core/hazardModel";
 
 function strip(terrain: string, n: number): GameState {
   const tiles = Array.from({ length: n }, (_, q) => ({ coord: { q, r: 0 }, terrainId: terrain }));
@@ -35,16 +35,20 @@ describe("perfect-fit combos", () => {
     expect([...computeCombos(sand).members.get("beach_shield")!].sort()).toEqual(["0,0", "1,0"]);
   });
 
-  it("adds a real defence bonus in the zone", () => {
+  it("adds a real defence bonus to each member", () => {
     const state = strip("estuary", 3);
     state.maturityField = "matureQuarters";
     state.turn = 0;
     for (let q = 0; q < 3; q++) state.build({ q, r: 0 }, "mangrove", false);
     state.turn = 40;
-    const zones = new ZoneIndex([{ id: "z2", name: "z2", tiles: [[0, 0], [1, 0], [2, 0]] }]);
-    const plain = zoneDefence(state, zones, "z2", "flood");
-    const withBelt = zoneDefence(state, zones, "z2", "flood", computeCombos(state).bonus);
-    expect(plain).toBe(15);
-    expect(withBelt).toBe(21);
+    const plain = ownMetres(state, "flood", new Set(), new Map(), undefined, HAZARD_MODEL);
+    const bonus = computeCombos(state).bonus;
+    const withBelt = ownMetres(state, "flood", new Set(), new Map(), bonus, HAZARD_MODEL);
+    for (let q = 0; q < 3; q++) {
+      const key = `${q},0`;
+      expect(plain.get(key)).toBeCloseTo(5 * HAZARD_MODEL.defence.metresPerResilience);
+      expect(withBelt.get(key)! - plain.get(key)!).toBeCloseTo((bonus.get(key) ?? 0) * HAZARD_MODEL.defence.comboMetresPerPoint);
+      expect(bonus.get(key) ?? 0).toBeGreaterThan(0);
+    }
   });
 });

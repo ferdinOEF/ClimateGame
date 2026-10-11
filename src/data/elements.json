@@ -46,7 +46,7 @@
     "effects": {
       "biodiversity": 2,
       "carbon": 1,
-      "resilience": 2.5
+      "resilience": 3
     },
     "failureMode": "No destruction. Weaker physical protection than a Dune, but the cheapest defense on the roster and the best biodiversity return per Coin.",
     "note": "absorptionAtMaturity (0.2) is REASONED EXTRAPOLATION, not directly cited (STEP_PROMPT_hazard_science.md Section 1) \u2014 Pandanus wasn't in McIvor et al. (2012)'s studied species (that citation is Mangrove's, a different tangled-stilt canopy structure). Kept meaningfully below Mangrove's ceiling (0.55) deliberately; don't raise it toward Mangrove's number without real species-specific wave-attenuation data."
@@ -102,7 +102,7 @@
       "beach",
       "coast"
     ],
-    "buildCost": 90,
+    "buildCost": 80,
     "maintenanceCostPerTurn": 5,
     "maintenanceNeglectPenaltyPerTurn": 0.08,
     "matureTurns": 0,

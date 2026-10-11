@@ -24,9 +24,10 @@ import type { RunSnapshot } from "@core/actionRun";
 import { AftermathCard } from "@ui/panjim/aftermathCard";
 import { FinaleCard } from "@ui/panjim/finaleCard";
 import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIndex";
-import { axialToWorld } from "@core/hex";
+import { axialToWorld, neighbors } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
+import { coneTiles, forecastSite } from "@core/hazardModel";
 import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
 import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
 import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
@@ -113,6 +114,8 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
+  /** The cyclone's forecast cone at sea (coord keys); empty hides it. */
+  showLandfallCone?: (keys: string[]) => void;
   /** Whether any menu, card or modal is open (the risk sequence never starts under one). */
   overlayOpen: () => boolean;
   /** Whether any of these tiles is on screen now. */
@@ -397,8 +400,12 @@ export class PanjimController {
     this.exposure = next && quartersLeft >= 1 && quartersLeft <= HEAT_LEAD_QUARTERS ? this.run.exposureFor(next) : null;
     if (!next || !this.exposure || !this.riskToggle.value) {
       this.host.showHeat([]);
+      this.host.showLandfallCone?.([]);
       return;
     }
+    // Where a cyclone may come ashore: the cone narrows each quarter to the bounded jitter.
+    const cone = this.run.landfallCone(next);
+    this.host.showLandfallCone?.(cone ? coneTiles(this.run.board(), cone) : []);
     const hazards = hazardsOf(next.kind);
     const defences: string[] = [];
     for (const [key, inst] of this.host.state.elements) {
@@ -466,18 +473,14 @@ export class PanjimController {
     );
   }
 
-  /** Defences in the challenge's zones that have not reached full strength yet. */
+  /** Defences against the challenge's hazards that have not reached full strength yet. */
   private growingIn(challenge: ScheduledChallenge): number {
-    if (!this.run.zones) return 0;
+    const hazards = hazardsOf(challenge.kind);
     let count = 0;
-    for (const front of FRONTS[challenge.kind]) {
-      for (const zoneId of front.path) {
-        for (const key of this.run.zones.keys(zoneId)) {
-          const inst = this.host.state.elements.get(key);
-          const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
-          if (inst && def && (def.matureQuarters ?? 0) > 0 && this.host.state.maturityFraction(inst, def) < 1) count++;
-        }
-      }
+    for (const inst of this.host.state.elements.values()) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def || (def.effects.resilience ?? 0) <= 0 || !def.targetsHazards?.some((h) => hazards.includes(h as "cyclone" | "flood"))) continue;
+      if ((def.matureQuarters ?? 0) > 0 && this.host.state.maturityFraction(inst, def) < 1) count++;
     }
     return count;
   }
@@ -657,8 +660,7 @@ export class PanjimController {
     return computePanjimIndex({
       state: this.host.state,
       outcomes: this.run.schedule.map((c) => this.run.outcomes.get(c.id)).filter((o): o is ChallengeOutcome => o !== undefined),
-      incomePerQuarter: this.run.incomePerQuarter,
-      coinMultiplier: this.run.config.economy?.coinMultiplier
+      incomePerQuarter: this.run.incomePerQuarter
     });
   }
 
@@ -770,24 +772,26 @@ export class PanjimController {
     });
   }
 
-  /** Draws the locked Forecast in the scene: the path's zones, the first one strongest, and the strength label over it. */
+  /**
+   * Draws the locked Forecast in the scene: every tile the storm's water
+   * could reach anywhere in the forecast cone (the same hazard model the
+   * storm runs, on a board with no defences), hardest hit strongest, and the
+   * strength label at the forecast landfall (a cyclone) or over the
+   * hardest-hit water nearest the city (a flood).
+   */
   private showForecast(challenge: ScheduledChallenge): void {
     if (!this.run.zones || !this.run.climate) return;
+    const reach = this.run.exposureFor(challenge, true);
     const tiles: { coord: AxialCoord; weight: number }[] = [];
-    const seen = new Set<string>();
-    for (const front of FRONTS[challenge.kind]) {
-      front.path.forEach((zoneId, index) => {
-        for (const key of this.run.zones!.keys(zoneId)) {
-          if (seen.has(key)) continue;
-          seen.add(key);
-          const [q, r] = key.split(",").map(Number);
-          tiles.push({ coord: { q, r }, weight: Math.max(0.35, 1 - index * 0.3) });
-        }
-      });
+    for (const [key, value] of reach?.exposure ?? []) {
+      if (value <= 0) continue;
+      const [q, r] = key.split(",").map(Number);
+      tiles.push({ coord: { q, r }, weight: Math.max(0.35, value) });
     }
     this.host.showForecastZones(tiles);
-    const firstZone = FRONTS[challenge.kind][0].path[0];
-    this.forecastAnchor = nearestTo(this.run.zones.keys(firstZone), this.host.focus);
+    const centre = challenge.kind === "flood" ? null : this.run.board().sites[forecastSite(this.run.board(), challenge)];
+    const hardest = [...(reach?.exposure ?? [])].filter(([, v]) => v >= 1).map(([key]) => key);
+    this.forecastAnchor = centre ? nearestTo([centre], this.host.focus) : nearestTo(hardest.length > 0 ? hardest : tiles.map((t) => `${t.coord.q},${t.coord.r}`), this.host.focus);
     const icons = strengthIcons(challengeStrength(this.run.climate, challenge));
     const what = challenge.kind === "cyclone" ? "Cyclone landfall" : challenge.kind === "flood" ? "Flood rises here" : "Surge and flood meet here";
     this.forecastLabel.innerHTML = `<b>${what}</b> <span class="forecast-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span><span class="forecast-when">${this.labelFor(challenge.quarter)}</span>`;
@@ -1092,10 +1096,54 @@ export class PanjimController {
     }
   }
 
-  /** Scenario helper: frames the camera on the next storm's first zone. */
+  /**
+   * Scenario helper: defends like a player reading the warning: up to
+   * `count` defences (fewer if the storm is too close) that answer the next
+   * storm, on buildable tiles beside the houses shown at risk, the one that
+   * will be strongest when the storm lands first, through the player's own
+   * build path (the jar tapped first).
+   */
+  private async defendRisk(count: number): Promise<number> {
+    const next = this.run.nextChallenge();
+    const exposure = next ? this.run.exposureFor(next) : null;
+    if (!next || !exposure) return 0;
+    const hazards = hazardsOf(next.kind);
+    // Strongest by the time the storm lands first: a young dune planted a year out has grown only so far.
+    const landing = (def: { matureQuarters?: number; effects: { resilience?: number } }): number =>
+      (def.effects.resilience ?? 0) * Math.min(1, this.run.quartersUntil(next) / Math.max(1, def.matureQuarters ?? 0));
+    const answers = [...ELEMENT_BY_ID.values()]
+      .filter((def) => (def.effects.resilience ?? 0) > 0 && def.targetsHazards?.some((h) => hazards.includes(h as "cyclone" | "flood")))
+      .sort((a, b) => landing(b) - landing(a) || a.buildCost - b.buildCost);
+    const risk = exposure.housesAtRisk.map((key) => key.split(",").map(Number));
+    let built = 0;
+    for (const [q, r] of risk) {
+      // Each build costs a quarter: stop a quarter short, so the storm never lands mid-scenario.
+      if (built >= count || this.run.quartersUntil(next) <= 1) break;
+      for (const n of [{ q, r }, ...neighbors({ q, r })]) {
+        this.collectJar();
+        const def = answers.find((d) => this.host.state.canBuild(n, d.id) && this.host.state.coin >= d.buildCost);
+        if (def && this.build(n, def.id)) {
+          built++;
+          await this.idle();
+          break;
+        }
+      }
+    }
+    return built;
+  }
+
+  /** Scenario helper: frames the camera on the next storm: a cyclone's forecast landfall, else its first zone. */
   private frameNextStorm(): void {
     const next = this.run.nextChallenge();
     if (!next || !this.run.zones) return;
+    if (next.kind !== "flood") {
+      const key = this.run.board().sites[forecastSite(this.run.board(), next)];
+      if (key) {
+        const [q, r] = key.split(",").map(Number);
+        this.host.focusCamera({ q, r }, true);
+        return;
+      }
+    }
     const keys = this.run.zones.keys(FRONTS[next.kind][0].path[0]);
     const coords = keys.map((key) => {
       const [q, r] = key.split(",").map(Number);
@@ -1228,6 +1276,12 @@ export class PanjimController {
         await this.plantForNext(3);
         this.frameNextStorm();
         return true;
+      }
+      case "defend-risk": {
+        // A player's answer to the warning: defences beside the red houses.
+        const built = await this.defendRisk(8);
+        this.frameNextStorm();
+        return built > 0;
       }
       case "forecast": {
         // Up to the lock (two years out), then a few beach defences, so the

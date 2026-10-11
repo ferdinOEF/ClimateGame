@@ -1,0 +1,61 @@
+{
+  "_comment": "The hazard model's numbers (core/hazardModel.ts). EVERY value here is a gameRule: tuned so Panaji plays as a fair build-and-protect game. None is a measurement or claims to come from a study. Water is in 'game metres', compared with the DEM ground height of each tile; the real Panaji ground is real, the water is game design.",
+  "surge": {
+    "_comment": "Cyclone storm surge. Level at the landfall site = baseM + perStrengthM x strength. Each hex the water moves it loses: seaM along the open sea, channelM up a river or creek (it funnels further there), beachM over sand, landM over land.",
+    "baseM": 8.5,
+    "perStrengthM": 1.45,
+    "lossPerHex": {
+      "sea": 0.43,
+      "channel": 0.35,
+      "beach": 0.8,
+      "land": 0.7
+    }
+  },
+  "flood": {
+    "_comment": "Monsoon river flood. Sources are the upstream part of the river (riverIndex up to sourceShare of the mouth index). Level at a source = baseM + perStrengthM x strength. It loses channelM per hex down the river and creeks, wetlandM per hex into the wetland (khazan) fields, landM per hex up the banks.",
+    "baseM": 5,
+    "perStrengthM": 1.9,
+    "sourceShare": 0.35,
+    "lossPerHex": {
+      "sea": 3,
+      "channel": 0.25,
+      "wetland": 0.2,
+      "beach": 1,
+      "land": 0.35
+    }
+  },
+  "compound": {
+    "_comment": "Cyclone and flood together. The surge holds the river back at the mouth: every channel tile also gets a backwater level = backwaterShare x (surge level at the mouth) x (riverIndex/mouthIndex)^backwaterExponent on top of the flood's own level there.",
+    "surgeShare": 0.9,
+    "floodShare": 0.85,
+    "backwaterShare": 0.6,
+    "backwaterExponent": 1.2
+  },
+  "defence": {
+    "_comment": "A defence protects the area round it: water within radiusHex hexes stands lower by metresPerResilience x its resilience (scaled by maturity and wear) x falloff[distance]. On a tile only the strongest defence of each kind counts; different kinds add up (layered defence), to at most stackCap times the strongest single one there, so a mix of defences does more than many of one kind. pathShare of that also slows water passing through its own tile and its neighbours. Negative resilience (sand mining, a resort) lets water through more easily. Engineered structures fail when the water on their tile is deeper than failureThreshold x failDepthPerUnit, and then give no protection; nature defences over overwhelmSeverity x overwhelmDepthPerUnit protect at their overwhelmed share and are worn. However many defences stand round a tile, together they hold back at most maxProtectionM there (an engineered structure's own protection may reach engineeredMaxProtectionM): the front line of a big storm is lost even behind the best defences, and what a player saves is the streets behind it.",
+    "metresPerResilience": 0.45,
+    "radiusHex": 3,
+    "falloff": [
+      1,
+      0.9,
+      0.7,
+      0.45
+    ],
+    "stackCap": 1.6,
+    "pathShare": 0.4,
+    "neighbourShare": 0.5,
+    "comboMetresPerPoint": 0.4,
+    "failDepthPerUnit": 8.7,
+    "overwhelmDepthPerUnit": 3.5,
+    "maxProtectionM": 3.2,
+    "engineeredMaxProtectionM": 4.5
+  },
+  "houseLossDepthM": 0.6,
+  "landfall": {
+    "_comment": "Where a cyclone can come ashore: open-sea tiles on the shore, ordered along the coast. The schedule picks a forecast centre and the real site is within jitterSites of it (bounded: a player who defends the forecast cone is never caught out). The forecast cone, shown from five quarters before the storm (the warning), narrows quarter by quarter from coneFarSites either side of the forecast centre to jitterSites on the last quarter. Sites are ordered along the shore, so one site is one short step along the coast.",
+    "jitterSites": 1,
+    "coneFarSites": 7,
+    "centreMin": 0.15,
+    "centreMax": 0.85
+  }
+}

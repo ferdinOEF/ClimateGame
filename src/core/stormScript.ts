@@ -44,10 +44,10 @@ function defenceResult(outcome: ChallengeOutcome, key: string): DefenceResult {
 }
 
 /**
- * The defences this storm actually tested: those standing in a zone one of
- * its fronts passed through, answering that front's hazard. A defence
- * elsewhere (beside the sea, but off the storm's path) is never shown
- * answering, because the resolver never counted it.
+ * The defences this storm actually tested: those standing in a zone the
+ * storm reached, answering its hazard there, with the water on their tile or
+ * the tile beside it. A defence elsewhere (beside the sea, but off the
+ * storm's path) is never shown answering.
  */
 export function testedDefences(record: StormRecord, defences: ReadonlyMap<string, string>, zoneOf: (key: string) => string | null): Map<string, string> {
   const hazardsByZone = new Map<string, Set<string>>();
@@ -60,7 +60,8 @@ export function testedDefences(record: StormRecord, defences: ReadonlyMap<string
   for (const [key, elementId] of defences) {
     const zoneId = zoneOf(key);
     const hazards = zoneId ? hazardsByZone.get(zoneId) : undefined;
-    if (hazards && defendsAgainst(elementId, [...hazards] as ("cyclone" | "flood")[])) tested.set(key, elementId);
+    // It answers the storm only if the water reached it or the tile beside it.
+    if (hazards && defendsAgainst(elementId, [...hazards] as ("cyclone" | "flood")[]) && contactTime(record.field, key) !== null) tested.set(key, elementId);
   }
   return tested;
 }

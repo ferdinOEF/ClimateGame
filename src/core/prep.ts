@@ -1,7 +1,7 @@
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
 import type { Exposure } from "./exposure";
-import { FRONTS, type ZoneIndex } from "./zones";
+import type { ZoneIndex } from "./zones";
 
 /**
  * "Get ready": two or three small, optional jobs for the storm that is
@@ -26,7 +26,7 @@ export interface PrepTemplate {
   kinds: ChallengeKind[];
   elementId: string;
   count: number;
-  /** Coin paid on completion, before the balance preset's multiplier. */
+  /** Coin paid on completion. */
   reward: number;
   /** "Plant {count} pandanus on the beach at {place}". */
   label: string;
@@ -84,7 +84,6 @@ export function generatePrep(
   zones: ZoneIndex,
   config: PrepConfig
 ): PrepObjective[] {
-  const path = [...new Set(FRONTS[challenge.kind].flatMap((front) => front.path))];
   const atRisk = new Map<string, number>();
   for (const key of exposure.housesAtRisk) {
     const zone = zones.zoneOf(key);
@@ -95,6 +94,8 @@ export function generatePrep(
     const zone = zones.zoneOf(key);
     if (zone) heat.set(zone, (heat.get(zone) ?? 0) + value);
   }
+  // Every zone the storm's water reaches (the hazard model, through the exposure), most houses at risk first.
+  const path = [...new Set([...atRisk.keys(), ...heat.keys()])].filter((zone) => (heat.get(zone) ?? 0) > 0 || (atRisk.get(zone) ?? 0) > 0);
   const ranked = path.sort((a, b) => (atRisk.get(b) ?? 0) - (atRisk.get(a) ?? 0) || (heat.get(b) ?? 0) - (heat.get(a) ?? 0) || (a < b ? -1 : 1));
   const templates = config.templates.filter((template) => template.kinds.includes(challenge.kind));
   const max = config.max ?? 3;

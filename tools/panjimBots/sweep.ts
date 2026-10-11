@@ -1,8 +1,8 @@
 /** Balance sweep: replays every persona at a few challenge intensities. Tuning aid, not part of the build. */
 import { PERSONAS, SEEDS, percentile, runBot } from "./bots";
-import { BOT_LEVELS } from "./bots";
+import { BOT_LEVEL } from "./bots";
 
-const climate = BOT_LEVELS.strict.climate!;
+const climate = BOT_LEVEL.climate!;
 const values = process.argv.slice(2).map(Number);
 for (const value of values.length ? values : [20, 30, 40, 50]) {
   climate.intensityPerStrength = value;
