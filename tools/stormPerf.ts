@@ -9,12 +9,18 @@
  *
  * Usage: npx tsx tools/stormPerf.ts > docs/qa/perf.txt
  * PERF_HAZARDS=calm (comma-separated) measures only those states.
+ * PERF_SIZE=2560x1440 measures at that window size (default 1920x1080).
  */
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
 
 const PORT = 5195;
+/** PERF_SIZE=1366x768 (default 1920x1080) measures at another window size. */
+const VIEWPORT = (() => {
+  const [width, height] = (process.env.PERF_SIZE ?? "1920x1080").split("x").map(Number);
+  return { width, height };
+})();
 const QUALITIES = ["low", "medium", "high"] as const;
 const HAZARDS: { name: string; steps: string[] }[] = [
   { name: "calm", steps: [] },
@@ -61,7 +67,7 @@ async function main(): Promise<void> {
     });
     for (const quality of QUALITIES) {
       for (const hazard of HAZARDS.filter((h) => !process.env.PERF_HAZARDS || process.env.PERF_HAZARDS.split(",").includes(h.name))) {
-        const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+        const context = await browser.newContext({ viewport: VIEWPORT });
         await context.addInitScript(`try { localStorage.setItem("riptide-rising:quality", "${quality}"); } catch {}`);
         const page = await context.newPage();
         page.on("pageerror", (err) => errors.push(`${quality}/${hazard.name}: ${err}`));
@@ -82,7 +88,7 @@ async function main(): Promise<void> {
       }
     }
     // Leak check: three storms played through on one page.
-    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+    const context = await browser.newContext({ viewport: VIEWPORT });
     const page = await context.newPage();
     page.on("pageerror", (err) => errors.push(`leak: ${err}`));
     await page.goto(`http://localhost:${PORT}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });

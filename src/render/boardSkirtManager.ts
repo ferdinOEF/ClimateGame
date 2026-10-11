@@ -100,7 +100,7 @@ interface SkirtTile {
 export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number }[], rings = RINGS): SkirtTile[] {
   const terrainByKey = new Map(board.map((tile) => [axialKey(tile.coord), tile.terrainId]));
   const seen = new Set(terrainByKey.keys());
-  let frontier: { coord: AxialCoord; terrainId: string; lift: number }[] = board.map((tile) => ({ coord: tile.coord, terrainId: tile.terrainId, lift: reliefLift(tile.elevationM) }));
+  let frontier: { coord: AxialCoord; terrainId: string; lift: number }[] = board.map((tile) => ({ coord: tile.coord, terrainId: tile.terrainId, lift: tile.terrainId === "land" ? reliefLift(tile.elevationM) : 0 }));
   const out: SkirtTile[] = [];
 
   for (let ring = 1; ring <= rings; ring++) {

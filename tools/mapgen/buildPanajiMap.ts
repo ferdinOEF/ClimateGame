@@ -476,11 +476,12 @@ interface DemMeta {
 const ELEVATION_PERCENTILE = 0.25;
 
 /**
- * Ground height in metres for each land hex, read from the DEM.
+ * Height in metres for every hex, read from the DEM, rounded to half a metre
+ * and never below 0 (open water reads 0).
  *
- * Only land gets one: water, beach and wetland keep the flat heights they
- * have always had (the brief keeps those tiles exactly as they were).
- * Rounded to half a metre, and never below 0.
+ * Every tile carries one, because the hazard model needs to know how low a
+ * khazan field or a creek margin lies. Only land is DRAWN raised: water,
+ * beach and wetland keep the flat look they have always had.
  */
 function sampleElevation(cells: Cell[]): { demMeta: DemMeta; byIndex: Map<number, number> } {
   const demMeta = JSON.parse(fs.readFileSync(DEM_META, "utf8")) as DemMeta;
@@ -490,7 +491,6 @@ function sampleElevation(cells: Cell[]): { demMeta: DemMeta; byIndex: Map<number
   const radiusM = HEX_SIZE * SAMPLE_RADIUS_FRACTION * METRES_PER_UNIT;
   const byIndex = new Map<number, number>();
   cells.forEach((cell, index) => {
-    if (cell.terrainId !== "land") return;
     const dLat = radiusM / METRES_PER_DEG_LAT;
     const dLon = radiusM / METRES_PER_DEG_LON;
     const row0 = Math.max(0, Math.floor((demMeta.north - (cell.lat + dLat)) / demMeta.pixelDeg));
@@ -516,10 +516,10 @@ function sampleElevation(cells: Cell[]): { demMeta: DemMeta; byIndex: Map<number
   return { demMeta, byIndex };
 }
 
-/** Elevation, as a debug picture: land hexes shaded from 0 m (dark) to the board's highest (white). */
+/** Elevation, as a debug picture: every hex banded by height. */
 function elevationCells(cells: Cell[], byIndex: Map<number, number>): Cell[] {
   return cells.map((cell, i) => {
-    const m = byIndex.get(i);
+    const m = cell.terrainId === "coast" || cell.terrainId === "river" ? undefined : byIndex.get(i);
     const band = m === undefined ? "none" : m < 5 ? "elev0" : m < 10 ? "elev5" : m < 20 ? "elev10" : m < 35 ? "elev20" : "elev35";
     return { ...cell, terrainId: band };
   });
@@ -1322,7 +1322,7 @@ async function writeDebugImage(
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         const elevation = hexes.some((hex) => hex.terrainId.startsWith("elev"));
         const rows: [string, string][] = elevation
-          ? [["land under 5 m", FILL.elev0], ["5-10 m", FILL.elev5], ["10-20 m", FILL.elev10], ["20-35 m", FILL.elev20], ["35 m and over", FILL.elev35]]
+          ? [["under 5 m", FILL.elev0], ["5-10 m", FILL.elev5], ["10-20 m", FILL.elev10], ["20-35 m", FILL.elev20], ["35 m and over", FILL.elev35]]
           : [
               ["coast (sea)", FILL.coast], ["river", FILL.river], ["estuary (wetland)", FILL.estuary],
               ["beach", FILL.beach], ["land", FILL.land]
@@ -1504,7 +1504,7 @@ async function main(): Promise<void> {
   const { monuments, notes, placements } = placeMonuments(places, cells);
 
   const { demMeta, byIndex: elevation } = sampleElevation(cells);
-  const landHeights = [...elevation.values()].sort((a, b) => a - b);
+  const landHeights = cells.flatMap((cell, i) => (cell.terrainId === "land" ? [elevation.get(i)!] : [])).sort((a, b) => a - b);
   console.log(`elevation: ${landHeights.length} land tiles, ${landHeights[0]}..${landHeights[landHeights.length - 1]} m, median ${landHeights[Math.floor(landHeights.length / 2)]} m`);
 
   const monumentKeys = new Set(monuments.map((m) => `${m.q},${m.r}`));
@@ -1620,7 +1620,7 @@ async function main(): Promise<void> {
       licence: demMeta.licence,
       accessed: demMeta.accessed,
       kind: demMeta.kind,
-      method: `Land tiles only: the ${ELEVATION_PERCENTILE * 100}th percentile of the 1-arc-second DEM pixels within ${Math.round(HEX_SIZE * SAMPLE_RADIUS_FRACTION * METRES_PER_UNIT)} m of the tile centre, rounded to 0.5 m.`
+      method: `Every tile: the ${ELEVATION_PERCENTILE * 100}th percentile of the 1-arc-second DEM pixels within ${Math.round(HEX_SIZE * SAMPLE_RADIUS_FRACTION * METRES_PER_UNIT)} m of the tile centre, rounded to 0.5 m.`
     },
     // The Panjim 2050 challenge zones (see ZONES).
     zones: assignZones(cells),

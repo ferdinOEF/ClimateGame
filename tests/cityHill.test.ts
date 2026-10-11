@@ -32,11 +32,8 @@ describe("the board's tiles are what they were", () => {
 });
 
 describe("elevation from the DEM", () => {
-  it("is on land tiles only, and on every one of them", () => {
-    for (const tile of panaji.tiles) {
-      if (tile.terrainId === "land") expect(tile.elevationM).toBeTypeOf("number");
-      else expect(tile.elevationM).toBeUndefined();
-    }
+  it("is on every tile", () => {
+    for (const tile of panaji.tiles) expect(tile.elevationM).toBeTypeOf("number");
     expect(panaji.elevation?.elevationSource).toBe("dem");
     expect(panaji.elevation?.licence).toMatch(/Copernicus/);
   });
@@ -49,6 +46,9 @@ describe("elevation from the DEM", () => {
     const [q, r] = locality("Altinho").split(",").map(Number);
     const near = panaji.tiles.filter((t) => axialDistance(t.coord, { q, r }) <= 2).map((t) => t.elevationM ?? 0);
     expect(Math.max(...near)).toBeGreaterThan(40);
+    // The khazan fields and creek margins (wetland) lie low: most within a few metres of the sea.
+    const wet = panaji.tiles.filter((t) => t.terrainId === "estuary").map((t) => t.elevationM!).sort((a, b) => a - b);
+    expect(wet[Math.floor(wet.length / 2)]).toBeLessThanOrEqual(5);
   });
 
   it("draws height as a capped lift, with contours every interval", () => {

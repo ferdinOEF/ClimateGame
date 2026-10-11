@@ -295,7 +295,8 @@ export class TerrainMeshManager {
   loadMap(mapTiles: { coord: AxialCoord; terrainId: string; elevationM?: number }[], claimedCoords: Iterable<AxialCoord>): void {
     const claimedKeys = new Set(Array.from(claimedCoords, (c) => `${c.q},${c.r}`));
     // A map with real ground heights draws its land as one surface (see RELIEF_LAND_RADIUS).
-    const relief = mapTiles.some((tile) => tile.elevationM !== undefined);
+    // Only land is drawn raised; water, beach and wetland keep their flat look.
+    const relief = mapTiles.some((tile) => tile.terrainId === "land" && tile.elevationM !== undefined);
     if (relief) {
       const land = this.meshes.get("land");
       if (land) {
@@ -305,7 +306,7 @@ export class TerrainMeshManager {
         (land.material as THREE.MeshStandardMaterial).needsUpdate = true;
       }
     }
-    const highest = Math.max(1, ...mapTiles.map((tile) => tile.elevationM ?? 0));
+    const highest = Math.max(1, ...mapTiles.map((tile) => (tile.terrainId === "land" ? (tile.elevationM ?? 0) : 0)));
 
     for (const { coord, terrainId, elevationM } of mapTiles) {
       const terrain = TERRAIN_BY_ID.get(terrainId);
@@ -318,7 +319,7 @@ export class TerrainMeshManager {
       const key = `${coord.q},${coord.r}`;
       const claimed = claimedKeys.has(key);
       const seed = coord.q * 31 + coord.r * 17;
-      const lift = reliefLift(elevationM);
+      const lift = terrainId === "land" ? reliefLift(elevationM) : 0;
       const fullColor =
         terrainId === "land"
           ? relief
@@ -541,11 +542,11 @@ export class TerrainMeshManager {
         return [cx + RELIEF_LAND_RADIUS * Math.cos(angle), cz + RELIEF_LAND_RADIUS * Math.sin(angle)];
       });
     for (const tile of mapTiles) {
-      if (tile.elevationM === undefined) continue;
+      if (tile.terrainId !== "land" || tile.elevationM === undefined) continue;
       for (const n of neighbors(tile.coord)) {
         const other = byKey.get(axialKey(n));
-        // Each edge once, drawn from its higher side.
-        if (!other || other.elevationM === undefined || other.elevationM >= tile.elevationM) continue;
+        // Land to land only, each edge once, drawn from its higher side.
+        if (!other || other.terrainId !== "land" || other.elevationM === undefined || other.elevationM >= tile.elevationM) continue;
         if (contoursBetween(tile.elevationM, other.elevationM) < 1) continue;
         const a = axialToWorld(tile.coord, HEX_SIZE);
         const b = axialToWorld(n, HEX_SIZE);

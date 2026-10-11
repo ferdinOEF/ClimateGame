@@ -324,6 +324,14 @@ function palaceGeometry(): THREE.BufferGeometry {
     parts.push(opening);
   }
 
+  // The waterfront terrace in front, with old cannons pointing out over the river.
+  parts.push(move(box(0.8, 0.03, 0.14, STONE, 0), 0, 0, 0.36));
+  for (const x of [-0.26, 0, 0.26]) {
+    parts.push(move(box(0.07, 0.035, 0.06, "#6b4a2e", 0.03), x, 0, 0.36));
+    const barrel = rotate(coneFrustum(0.016, 0.022, 0.13, 8, "#3a3d3f", -0.065), Math.PI / 2, 0, 0);
+    parts.push(move(barrel, x, 0.085, 0.38));
+  }
+
   return mergeGeometries(parts);
 }
 

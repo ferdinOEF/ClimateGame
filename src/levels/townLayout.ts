@@ -90,7 +90,22 @@ export interface TownLayout {
 }
 
 /** Whitewash, ochre, laterite red, terracotta, Fontainhas blue, teal, pink, mustard, mint, soft grey. */
-export const WALL_COLOURS = ["#f3eee2", "#d9a441", "#b5523b", "#cf7a4f", "#4f7fb8", "#3f9a96", "#e59ab0", "#d8b13a", "#9fd3b0", "#b9b9b2"];
+export const WALL_COLOURS = [
+  "#f3eee2", "#d9a441", "#b5523b", "#cf7a4f", "#4f7fb8", "#3f9a96", "#e59ab0", "#d8b13a", "#9fd3b0", "#b9b9b2",
+  // Calmer walls for the rest of the city: cream, sand, pale sage, pale rose, pale ochre.
+  "#ece4d2", "#ddd2ba", "#cfd6c8", "#e8d6cc", "#e6d3a8"
+];
+
+/**
+ * Which walls a district uses (indices into WALL_COLOURS). Fontainhas, the
+ * old Latin quarter, is the saturated ochre, blue, green and red the
+ * neighbourhood is known for; the rest of the city is calmer, mostly
+ * whitewash and pale tints with the occasional colour.
+ */
+export const FONTAINHAS_WALLS = [1, 2, 3, 4, 5, 7, 8, 6];
+export const CALM_WALLS = [0, 0, 10, 11, 12, 13, 14, 9, 1, 4];
+/** How far from the Fontainhas name (in tiles) the saturated palette reaches. */
+const FONTAINHAS_REACH = 2;
 /** Red tile, grey, blue; then two more terracotta tones for the fabric's pitched roofs. */
 export const ROOF_COLOURS = ["#b5452f", "#7d8288", "#4b6a8f", "#a8492c", "#c4643c"];
 
@@ -150,6 +165,9 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
   const monuments = new Set(map.monuments.map((m) => `${m.q},${m.r}`));
   const roads = new Set(map.roads.map(([q, r]) => `${q},${r}`).filter((key) => terrain.get(key) === "land" && !monuments.has(key)));
   const bridges = new Set(map.bridges.map(([q, r]) => `${q},${r}`).filter((key) => terrain.has(key)));
+  const fontainhas = map.localities.find((l) => l.name === "Fontainhas");
+  const paletteFor = (coord: AxialCoord): number[] =>
+    fontainhas && axialDistance(coord, fontainhas) <= FONTAINHAS_REACH ? FONTAINHAS_WALLS : CALM_WALLS;
   const zoneOf = new Map<string, string>();
   for (const zone of map.zones) for (const [q, r] of zone.tiles) zoneOf.set(`${q},${r}`, zone.id);
   const core = map.landmarks.find((l) => l.name === CORE_LANDMARK) ?? map.focus;
@@ -212,8 +230,10 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
         .map((n) => buildings.get(axialKey(n))?.wall)
         .filter((w): w is number => w !== undefined)
     );
-    let wall = Math.floor(unit(seed, plot.coord, "wall") * WALL_COLOURS.length);
-    for (let step = 0; step < WALL_COLOURS.length && taken.has(wall); step++) wall = (wall + 1) % WALL_COLOURS.length;
+    const walls = paletteFor(plot.coord);
+    let choice = Math.floor(unit(seed, plot.coord, "wall") * walls.length);
+    for (let step = 0; step < walls.length && taken.has(walls[choice]); step++) choice = (choice + 1) % walls.length;
+    const wall = walls[choice];
     const roofRoll = unit(seed, plot.coord, "roof");
     // Red tile for half the pitched roofs, grey and blue for the rest; flat
     // roofs are concrete grey or painted blue. Enough variety that the town
@@ -229,7 +249,7 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
       fabric: []
     });
   }
-  addFabric(seed, plots, buildings, roads, bridges);
+  addFabric(seed, paletteFor, plots, buildings, roads, bridges);
   const network = new Set([...roads, ...bridges]);
   const links = map.roadLinks
     .map(([q1, r1, q2, r2]) => [`${q1},${r1}`, `${q2},${r2}`] as [string, string])
@@ -256,6 +276,7 @@ function facing(from: AxialCoord, to: AxialCoord): number {
  */
 function addFabric(
   seed: string,
+  paletteFor: (coord: AxialCoord) => number[],
   plots: { key: string; coord: AxialCoord; density: number; district: District; nearWater: boolean }[],
   buildings: Map<string, BuildingPlot>,
   roads: Set<string>,
@@ -306,8 +327,9 @@ function addFabric(
               ? roll < 0.6 ? "small_house" : roll < 0.8 ? "shop" : roll < 0.95 ? "apartment" : "godown"
               : roll < 0.62 ? "small_house" : roll < 0.84 ? "shop" : roll < 0.93 ? "apartment" : "godown";
       const wallRoll = unit(seed, plot.coord, `${salt}wall`);
-      let wall = Math.floor(wallRoll * WALL_COLOURS.length);
-      if (wall === house.wall) wall = (wall + 1) % WALL_COLOURS.length;
+      const walls = paletteFor(plot.coord);
+      let wall = walls[Math.floor(wallRoll * walls.length)];
+      if (wall === house.wall) wall = walls[(walls.indexOf(wall) + 1) % walls.length];
       const roofRoll = unit(seed, plot.coord, `${salt}roof`);
       // Pitched roofs are terracotta; flat ones are concrete grey, now and then painted blue.
       const roof = kind === "small_house" || kind === "godown" ? (roofRoll < 0.34 ? 0 : roofRoll < 0.67 ? 3 : 4) : roofRoll < 0.85 ? 1 : 2;
