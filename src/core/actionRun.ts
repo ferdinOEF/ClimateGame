@@ -72,7 +72,7 @@ export interface ActionRunOptions {
   seed?: string;
   /** The map's challenge zones. Without them a challenge is reported but not resolved. */
   zones?: readonly ZoneDef[];
-  /** Stars per storm by the share of houses saved (the level's balance preset). Without it, by protection. */
+  /** Stars per storm by the share of houses saved (the level's houseStars). Without it, by protection. */
   houseStars?: { three: number; two: number };
   /** How houses stand up to a storm, house by house (the level's `houses` block). */
   houseRule?: HouseRule;
@@ -299,10 +299,27 @@ export class ActionRun {
   readinessFor(challenge: ScheduledChallenge): Readiness | null {
     const preview = this.previewBoard(challenge);
     if (!preview || !this.climate || !this.zones) return null;
-    // The gauge reads the forecast centre: the expected landfall.
-    const site = challenge.kind === "flood" ? null : forecastSite(this.board(), challenge);
-    const outcome = resolveChallenge(preview.board, this.zones, challenge.kind, preview.strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule, undefined, site);
+    // Before the warning, the expected landfall (the forecast centre). Inside
+    // it, the worst landfall still in the cone, as the heat shows: a gauge on
+    // green means green wherever in the cone the storm comes ashore.
+    const sites: (number | null)[] =
+      challenge.kind === "flood" ? [null] : this.quartersUntil(challenge) <= HEAT_LEAD_QUARTERS ? (this.landfallCone(challenge) ?? []) : [forecastSite(this.board(), challenge)];
+    let outcome: ChallengeOutcome | null = null;
+    for (const site of sites) {
+      const board = sites.length > 1 ? preview.board.clone() : preview.board;
+      const result = resolveChallenge(board, this.zones, challenge.kind, preview.strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule, undefined, site);
+      if (!outcome || result.housesDamaged > outcome.housesDamaged) outcome = result;
+    }
+    if (!outcome) return null;
     return { challenge, strength: preview.strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
+  }
+
+  /** The strength `challenge` is tested at now: exact once its Forecast locks, the expected one before. */
+  strengthFor(challenge: ScheduledChallenge): number | null {
+    if (!this.climate || this.landed.has(challenge.id)) return null;
+    const lockedNow = outlookFor(this.climate, challenge, this.quarter, this.config.startYear).phase === "locked";
+    const nominal = { ...challenge, quarter: Math.round((challenge.year - this.config.startYear) * QUARTERS_PER_YEAR) };
+    return challengeStrength(this.climate, lockedNow ? challenge : nominal);
   }
 
   /**
@@ -313,10 +330,8 @@ export class ActionRun {
    * so the two can never disagree.
    */
   private previewBoard(challenge: ScheduledChallenge): { board: GameState; strength: number } | null {
-    if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
-    const lockedNow = outlookFor(this.climate, challenge, this.quarter, this.config.startYear).phase === "locked";
-    const nominal = { ...challenge, quarter: Math.round((challenge.year - this.config.startYear) * QUARTERS_PER_YEAR) };
-    const strength = challengeStrength(this.climate, lockedNow ? challenge : nominal);
+    const strength = this.strengthFor(challenge);
+    if (strength === null || !this.zones) return null;
     const board = this.state.clone();
     board.turn = Math.max(this.quarter, challenge.quarter);
     return { board, strength };

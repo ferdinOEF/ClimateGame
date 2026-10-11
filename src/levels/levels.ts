@@ -93,7 +93,7 @@ export interface LevelDef {
 
 /**
  * The levels, exactly as written in levels.json. There is one baseline and
- * no balance presets (Section 4): the numbers in the file are the numbers
+ * no difficulty variants (Section 4): the numbers in the file are the numbers
  * played.
  */
 export const LEVELS: LevelDef[] = levelData as unknown as LevelDef[];

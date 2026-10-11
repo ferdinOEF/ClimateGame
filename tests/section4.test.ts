@@ -36,13 +36,14 @@ describe("one baseline: the easy-test preset is gone", () => {
     expect(sources.length).toBeGreaterThan(50);
     for (const path of sources) {
       const text = readFileSync(path, "utf8");
-      expect(text, path).not.toMatch(/easy[-_ ]?test|easyTest|coinMultiplier|levelWithPreset|applyBalance|BalancePreset/i);
+      expect(text, path).not.toMatch(/easy[-_ ]?test|easyTest|coin[-_ ]?multiplier|balance[-_ ]?preset|levelWithPreset|applyBalance/i);
     }
   });
 
   it("levels carry no presets, and the economy pays at its real rate", () => {
-    for (const level of levelsJson as Record<string, unknown>[]) expect(level).not.toHaveProperty("presets");
-    for (const level of LEVELS) expect(level).not.toHaveProperty("presets");
+    // The keys the removed preset lived under (balancePreset on the level, balancePresets beside it).
+    for (const level of levelsJson as Record<string, unknown>[]) for (const key of ["balancePreset", "balancePresets", "presets"]) expect(level).not.toHaveProperty(key);
+    for (const level of LEVELS) for (const key of ["balancePreset", "balancePresets", "presets"]) expect(level).not.toHaveProperty(key);
     const run = newRun(SEEDS[0], BOT_LEVEL);
     expect(run.state.coin).toBe(BOT_LEVEL.startingCoin);
     // The jar fills at incomeScale x the board's money: the coin multiplier is 1.

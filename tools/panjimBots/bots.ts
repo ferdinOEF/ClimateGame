@@ -7,16 +7,11 @@
  * rule; a bot only decides which action to take next, through the same calls
  * a click makes.
  *
- * Personas (from the brief):
- *   casual  random valid actions, ignores the Outlook.
- *   greedy  maximises Coin: Resorts, Small Dams, Sand Mining, Houses;
- *           fast-forwards when broke.
- *   smart   reads the Outlook: long-lead defences early, tops up the
- *           threatened zones before each challenge, builds combos,
- *           repairs.
- *   rusher  only fast-forwards (the "skip years" exploit).
- *   banker  banks coin by fast-forwarding, and only builds once a Forecast
- *           has locked.
+ * Personas (Section 4's archetypes; see "personas" below):
+ *   casual  builds a little, late, on the obvious spot; never simulates.
+ *   greedy  maximises income first, defends late; how greedy is drawn per run.
+ *   smart   reads the forecast, defends where the warning says, keeps a reserve.
+ *   rusher  only fast-forwards: the do-nothing control.
  *
  * A human-time model turns each run into an estimated real duration: fixed
  * animation and time-lapse lengths, about 2.5 s a decision, and 5 s of
@@ -80,7 +75,11 @@ export const TIME = {
   finale: 3800 + 5000
 };
 
-/** Panaji as played (one baseline since Section 4). The tuning sweeps mutate a copy to try other numbers. */
+/**
+ * Panaji as played (one baseline since Section 4). This is the game's own
+ * level object: the tuning sweeps (sweep.ts, sweepIncome.ts) change its
+ * numbers inside their own process only, never the data on disk.
+ */
 export const BOT_LEVEL: LevelDef = LEVEL_BY_ID.get("l01-first-rains")!;
 const MAP = mapById("panaji")!;
 const ZONES = new ZoneIndex(MAP.zones);
@@ -166,9 +165,9 @@ class Player {
     return true;
   }
 
-  /** Lets one quarter pass doing nothing (a replayed action that no longer applies). */
-  waitQuarter(): void {
-    const outcome = this.run.waitQuarters(1);
+  /** Lets `quarters` quarters pass doing nothing (a replayed action that no longer applies). */
+  wait(quarters: number): void {
+    const outcome = this.run.waitQuarters(quarters);
     if (!outcome.ok) return;
     this.events(outcome.events);
   }
@@ -323,8 +322,7 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
   const board = run.state.clone();
   board.turn = Math.max(run.quarter, challenge.quarter);
   if (extra) board.elements.set(extra.key, { elementId: extra.elementId, builtOnTurn: run.state.turn, degradeAmount: 0, floodBufferFilled: 0 });
-  const readiness = run.readinessFor(challenge);
-  const strength = readiness ? readiness.strength : 1;
+  const strength = run.strengthFor(challenge) ?? 1;
   const site = challenge.kind === "flood" ? null : forecastSite(run.board(), challenge);
   const water = computeWater(board, { kind: challenge.kind, strength, landfall: site }, { combos: computeCombos(board).bonus, landfallZoneTiles: ZONES.keys(LANDFALL_ZONE) });
   let lost = 0;
@@ -517,13 +515,6 @@ const PLAY: Record<Persona, (p: Player) => void> = {
   rusher: playRusher
 };
 
-/** Smart without one element, for "every defence is measurably worth building". */
-export function runSmartWithout(elementId: string, seed: string): BotResult {
-  const player = new Player("smart", seed);
-  smartPlayer(elementId)(player);
-  return player.result();
-}
-
 /** Smart's run on `seed`: its result and every action it took, for replays. */
 export function smartRun(seed: string): { result: BotResult; log: LoggedAction[] } {
   const player = new Player("smart", seed);
@@ -537,9 +528,9 @@ function smartLog(seed: string): LoggedAction[] {
 
 /**
  * Smart's own run, replayed action for action with every build of
- * `elementId` left out: each of those builds (and any repair that no longer
- * applies) becomes a quarter of waiting, so the clock, the jar and every
- * other build are exactly as before. The houses this loses is what that
+ * `elementId` left out: each of those builds (and any action that no longer
+ * applies) becomes waiting for as many quarters as it would have taken, so
+ * the clock and every other build keep their dates. The houses this loses is what that
  * element did in Smart's plan ("removing it from an otherwise identical
  * Smart run", Section 4.6), with no re-planning round it.
  */
@@ -550,8 +541,9 @@ export function replaySmartWithout(elementId: string, seed: string, log: readonl
     if (action.type === "tap") player.tapJar();
     else if (action.type === "ff") player.fastForwardYear();
     else if (action.type === "build") {
-      if (action.elementId === elementId || !player.build(action.coord, action.elementId)) player.waitQuarter();
-    } else if (!player.repair(action.coord)) player.waitQuarter();
+      // As long as the build would have taken (heavy engineering takes two quarters).
+      if (action.elementId === elementId || !player.build(action.coord, action.elementId)) player.wait(player.run.buildCost(action.elementId));
+    } else if (!player.repair(action.coord)) player.wait(player.run.config.costs.repair);
   }
   while (!player.run.finished) player.fastForwardYear();
   return player.result();

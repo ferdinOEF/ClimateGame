@@ -90,14 +90,19 @@ const CHANNEL = new Set(["river", "estuary"]);
 /** The zone of open coast cyclones come in on (the Miramar to Dona Paula beach). */
 export const LANDFALL_ZONE = "z1";
 
-const boards = new WeakMap<object, WaterBoard>();
+const boards = new WeakMap<object, Map<string, WaterBoard>>();
 
 /**
  * The water board for a game state's map. Terrain never changes in play, so
- * it is worked out once per map (keyed by the state's tile map).
+ * it is worked out once per map and landfall coast. The cache is keyed by
+ * the map's first tile object, which `GameState.clone()` shares, so every
+ * preview copy of a board reuses it.
  */
 export function waterBoard(state: GameState, landfallZoneTiles?: readonly string[]): WaterBoard {
-  const cached = boards.get(state.placed);
+  const first = state.placed.values().next().value as object | undefined;
+  const coastKey = landfallZoneTiles ? [...landfallZoneTiles].sort().join(";") : "";
+  const perMap = first ? boards.get(first) : undefined;
+  const cached = perMap?.get(coastKey);
   if (cached) return cached;
   const tiles = new Map<string, BoardTile>();
   for (const [key, tile] of state.placed) {
@@ -138,15 +143,40 @@ export function waterBoard(state: GameState, landfallZoneTiles?: readonly string
     .filter((tile) => tile.terrainId === "coast" && tile.neighbours.some((n) => ["beach", "land"].includes(tiles.get(n)!.terrainId)))
     .filter((tile) => !onCoast || onCoast.has(tile.key) || tile.neighbours.some((n) => onCoast.has(n)))
     .map((tile) => tile.key);
-  // Along the coast: north to south (r), then west to east.
-  sites.sort((a, b) => {
-    const [qa, ra] = a.split(",").map(Number);
-    const [qb, rb] = b.split(",").map(Number);
-    return ra - rb || qa - qb;
-  });
-  const board: WaterBoard = { tiles, riverIndex, mouthIndex, sites };
-  boards.set(state.placed, board);
+  const board: WaterBoard = { tiles, riverIndex, mouthIndex, sites: alongTheCoast(sites) };
+  if (first) {
+    const map = boards.get(first) ?? new Map<string, WaterBoard>();
+    map.set(coastKey, board);
+    boards.set(first, map);
+  }
   return board;
+}
+
+/**
+ * Orders landfall sites along the shore: from the northernmost, each next
+ * site is the nearest one not yet taken (ties to the north, then the west).
+ * So one site along the list is one short step along the coast, and a
+ * forecast cone is one stretch of sea, not scattered patches.
+ */
+function alongTheCoast(keys: string[]): string[] {
+  const coords = keys.map((key) => {
+    const [q, r] = key.split(",").map(Number);
+    return { key, q, r };
+  });
+  const before = (a: { q: number; r: number }, b: { q: number; r: number }): number => a.r - b.r || a.q - b.q;
+  const distance = (a: { q: number; r: number }, b: { q: number; r: number }): number => (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - b.q - b.r)) / 2;
+  const left = [...coords].sort(before);
+  const out: string[] = [];
+  let at = left.shift();
+  while (at) {
+    out.push(at.key);
+    let best = -1;
+    for (let i = 0; i < left.length; i++) {
+      if (best < 0 || distance(at, left[i]) < distance(at, left[best]) || (distance(at, left[i]) === distance(at, left[best]) && before(left[i], left[best]) < 0)) best = i;
+    }
+    at = best >= 0 ? left.splice(best, 1)[0] : undefined;
+  }
+  return out;
 }
 
 /** The site index a forecast centre (0-1 along the coast) points at. */
@@ -246,7 +276,7 @@ export function defenceMetres(state: GameState, key: string, hazard: WaterHazard
 }
 
 /** Each defence's own protection now against `hazard`, game metres (combo bonus included, failures skipped, overwhelmed weakened). */
-function ownMetres(state: GameState, hazard: WaterHazard, skip: ReadonlySet<string>, weaken: ReadonlyMap<string, number>, combos: ReadonlyMap<string, number> | undefined, config: HazardModelConfig): Map<string, number> {
+export function ownMetres(state: GameState, hazard: WaterHazard, skip: ReadonlySet<string>, weaken: ReadonlyMap<string, number>, combos: ReadonlyMap<string, number> | undefined, config: HazardModelConfig): Map<string, number> {
   const own = new Map<string, number>();
   for (const key of state.elements.keys()) {
     if (skip.has(key)) continue;
@@ -258,16 +288,36 @@ function ownMetres(state: GameState, hazard: WaterHazard, skip: ReadonlySet<stri
   return own;
 }
 
-/** Drag on water passing through a defended tile and its neighbours: `pathShare` of each defence's metres. */
-function pathDrag(board: WaterBoard, own: Map<string, number>, config: HazardModelConfig): Map<string, number> {
-  const out = new Map<string, number>();
+/**
+ * Drag on water passing through a defended tile and its neighbours:
+ * `pathShare` of a defence's metres on its own tile, `neighbourShare` of
+ * that next door. Like the area protection, only the strongest defence of
+ * each kind counts on a tile. Drag slows the water as it crosses defended
+ * ground, on top of the area protection's ceiling; it is what lets a line of
+ * defences, not one, hold back a long run of surge.
+ */
+function pathDrag(board: WaterBoard, own: Map<string, number>, config: HazardModelConfig, kindOf: (key: string) => string): Map<string, number> {
+  const byKind = new Map<string, Map<string, number>>();
+  const add = (tile: string, kind: string, m: number): void => {
+    const kinds = byKind.get(tile) ?? new Map<string, number>();
+    kinds.set(kind, Math.max(kinds.get(kind) ?? 0, m));
+    byKind.set(tile, kinds);
+  };
+  // Negative ones (sand mining, a resort) let water through more easily, and each adds its harm.
+  const harm = new Map<string, number>();
   for (const [key, m] of own) {
     const drag = m * config.defence.pathShare;
-    out.set(key, (out.get(key) ?? 0) + drag);
-    const tile = board.tiles.get(key);
-    if (!tile) continue;
-    for (const n of tile.neighbours) out.set(n, (out.get(n) ?? 0) + drag * config.defence.neighbourShare);
+    if (m < 0) {
+      harm.set(key, (harm.get(key) ?? 0) + drag);
+      for (const n of board.tiles.get(key)?.neighbours ?? []) harm.set(n, (harm.get(n) ?? 0) + drag * config.defence.neighbourShare);
+      continue;
+    }
+    const kind = kindOf(key);
+    add(key, kind, drag);
+    for (const n of board.tiles.get(key)?.neighbours ?? []) add(n, kind, drag * config.defence.neighbourShare);
   }
+  const out = new Map<string, number>(harm);
+  for (const [tile, kinds] of byKind) out.set(tile, (out.get(tile) ?? 0) + [...kinds.values()].reduce((a, b) => a + b, 0));
   return out;
 }
 
@@ -427,7 +477,7 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
     surgeLevel = (config.surge.baseM + config.surge.perStrengthM * storm.strength) * (storm.kind === "compound" ? c.surgeShare : 1);
     const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall!))];
     const own = ownMetres(state, "cyclone", skip, weaken, combos, config);
-    surge = protect(spread(board, new Map([[site, surgeLevel]]), surgeLoss(config), pathDrag(board, own, config)), areaProtection(board, own, config, kindOf));
+    surge = protect(spread(board, new Map([[site, surgeLevel]]), surgeLoss(config), pathDrag(board, own, config, kindOf)), areaProtection(board, own, config, kindOf));
   }
   let floodLevel = 0;
   let flood = new Map<string, number>();
@@ -451,7 +501,7 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
       }
     }
     const own = ownMetres(state, "flood", skip, weaken, combos, config);
-    flood = protect(spread(board, sources, floodLoss(config), pathDrag(board, own, config)), areaProtection(board, own, config, kindOf));
+    flood = protect(spread(board, sources, floodLoss(config), pathDrag(board, own, config, kindOf)), areaProtection(board, own, config, kindOf));
   }
   const surgeDepth = depthOf(board, surge);
   const floodDepth = depthOf(board, flood);

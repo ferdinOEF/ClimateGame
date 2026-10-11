@@ -55,15 +55,6 @@ export const FRONTS: Record<ChallengeKind, Front[]> = {
   ]
 };
 
-/** How much of the shortfall carries on to the next zone. */
-export const ZONE_CARRY = 0.75;
-/**
- * Converts an element's authored severity thresholds (written for the old
- * whole-map resolver, where 1.0 was a typical storm) to this model's
- * strength scale (where a challenge is 1–4).
- */
-export const THRESHOLD_SCALE = 2.2;
-
 export interface ZoneOutcome {
   zoneId: string;
   hazard: HazardId;
@@ -154,101 +145,23 @@ export class ZoneIndex {
 }
 
 /**
- * How a house stands up to what gets past the defences: a house is lost when
- * the hazard's local intensity at its tile exceeds `resilience`. Local
- * intensity is the zone's leak, falling off by `exposureDecay` for every hex
- * the house stands from the water the hazard comes from (wind carries
- * further inland than floodwater does).
+ * The scale probes report in: `resilience` is one house-loss depth
+ * (core/hazardModel.ts `houseLossDepthM`), so a probe value of `resilience`
+ * at a house means the water there is just deep enough to take it.
  */
 export interface HouseRule {
   resilience: number;
-  exposureDecay: Record<HazardId, number>;
 }
 
 /**
- * What a storm's leak through a zone does at one tile: the leak, faded by
- * `exposureDecay` for every hex the tile stands back from the water the hazard
- * comes from. A house is lost where this exceeds the rule's `resilience`.
- *
- * The one formula both the resolver and the warning-heat preview use (see
- * core/exposure.ts), so the heat cannot say anything the storm will not do.
- */
-export function localIntensity(leak: number, distanceFromWater: number, rule: HouseRule, hazard: HazardId): number {
-  return leak * Math.pow(rule.exposureDecay[hazard], Math.max(0, distanceFromWater - 1));
-}
-
-/**
- * Called by `resolveChallenge` for every tile of every zone a front passes
- * through, with the hazard's local intensity there (0 where the defences
- * ahead stopped it). A tile on two fronts' paths is reported once per front.
+ * Called by `resolveChallenge` once for every wet tile, with the water there
+ * (the deeper of surge and river, scaled by the house rule) and which kind it is.
  */
 export type TileProbe = (key: string, intensity: number, hazard: HazardId) => void;
-
-/**
- * Reports a zone's tiles to a probe. A house an earlier front already judged
- * is skipped, exactly as the resolver skips it (`housesSeen`), so a house is
- * only ever reported at the intensity that decided its fate.
- */
-function probeZone(probe: TileProbe, zones: ZoneIndex, zoneId: string, housesSeen: Set<string>, at: (key: string) => number, hazard: HazardId): void {
-  for (const key of zones.keys(zoneId)) {
-    if (housesSeen.has(key)) continue;
-    probe(key, at(key), hazard);
-  }
-}
 
 /** Extra defence per tile from perfect-fit combos (P6). Keyed by coord key. */
 export type ComboBonus = Map<string, number>;
 
-/**
- * One element's contribution to its zone's defence against `hazard`, right
- * now: its `resilience` effect, scaled by maturity and by any wear. A
- * negative resilience (Sand Mining, a Resort) weakens the zone against every
- * hazard; a positive one counts only against the hazards the element answers.
- */
-export function elementDefence(state: GameState, key: string, hazard: HazardId): number {
-  const inst = state.elements.get(key);
-  if (!inst) return 0;
-  const def = ELEMENT_BY_ID.get(inst.elementId);
-  if (!def) return 0;
-  const value = def.effects.resilience ?? 0;
-  if (value === 0) return 0;
-  if (value > 0 && !def.targetsHazards?.includes(hazard)) return 0;
-  const maturity = state.maturityFraction(inst, def);
-  const wear = Math.max(0, 1 - inst.degradeAmount);
-  return value * (value > 0 ? maturity * wear : 1);
-}
-
-export function zoneDefence(state: GameState, zones: ZoneIndex, zoneId: string, hazard: HazardId, combos?: ComboBonus): number {
-  let total = 0;
-  for (const key of zones.keys(zoneId)) {
-    total += elementDefence(state, key, hazard);
-    if (combos && state.elements.has(key)) {
-      const inst = state.elements.get(key)!;
-      const def = ELEMENT_BY_ID.get(inst.elementId);
-      if (def?.targetsHazards?.includes(hazard)) total += combos.get(key) ?? 0;
-    }
-  }
-  return Math.max(0, total);
-}
-
-/**
- * The standing houses in a zone, most exposed first: nearest the sea for a
- * cyclone, nearest open water (river or estuary) for a flood. A storm that
- * gets through a zone's defences takes the houses in that order, so the ones
- * lost are the ones on the front line, not whichever the file lists first.
- */
-function housesIn(state: GameState, zones: ZoneIndex, zoneId: string, hazard: HazardId = "cyclone"): string[] {
-  const exposure = zones.exposure(state, hazard);
-  return zones
-    .keys(zoneId)
-    .filter((key) => {
-      const inst = state.elements.get(key);
-      return inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building" && inst.degradeAmount < 1;
-    })
-    .sort((a, b) => (exposure.get(a) ?? 99) - (exposure.get(b) ?? 99) || (a < b ? -1 : 1));
-}
-
-/** Stars from protection. A city that stands always earns at least one. */
 /** Stars from the share of houses in the storm's path that were saved. A city that stands always earns at least one. */
 export function starsForHouses(saved: number, total: number, thresholds: { three: number; two: number }): 1 | 2 | 3 {
   const share = total > 0 ? saved / total : 1;
@@ -312,8 +225,9 @@ export function resolveChallenge(
     const def = ELEMENT_BY_ID.get(inst.elementId);
     if (def && (def.effects.resilience ?? 0) > 0) bare.elements.delete(key);
   }
-  const undefended = computeWater(bare, storm, options);
   const field = computeWater(state, storm, options);
+  // A board with no defences is its own undefended comparison: one water pass, not two.
+  const undefended = bare.elements.size === state.elements.size ? field : computeWater(bare, storm, options);
 
   const scale = houseRule?.resilience ?? strengthUnit;
   if (probe) {

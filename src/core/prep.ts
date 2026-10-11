@@ -26,7 +26,7 @@ export interface PrepTemplate {
   kinds: ChallengeKind[];
   elementId: string;
   count: number;
-  /** Coin paid on completion, before the balance preset's multiplier. */
+  /** Coin paid on completion. */
   reward: number;
   /** "Plant {count} pandanus on the beach at {place}". */
   label: string;

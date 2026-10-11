@@ -20,7 +20,6 @@ export interface IndexInput {
   state: GameState;
   outcomes: ChallengeOutcome[];
   incomePerQuarter: number;
-  /** The balance preset's coin multiplier, so a ×10 economy does not read as ×10 livelihoods. */
 }
 
 export interface PanjimIndex {

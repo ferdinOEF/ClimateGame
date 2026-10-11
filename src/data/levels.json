@@ -123,11 +123,7 @@
       ],
       "coastBuildRange": 4,
       "rule": {
-        "resilience": 45,
-        "exposureDecay": {
-          "cyclone": 0.8,
-          "flood": 0.6
-        }
+        "resilience": 45
       }
     },
     "objectives": [

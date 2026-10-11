@@ -52,7 +52,7 @@
   },
   "houseLossDepthM": 0.6,
   "landfall": {
-    "_comment": "Where a cyclone can come ashore: open-sea tiles on the shore, ordered along the coast. The schedule picks a forecast centre and the real site is within jitterSites of it (bounded: a player who defends the forecast cone is never caught out). The forecast cone shown to the player narrows from coneFarSites half-width when the storm is first in view to jitterSites by the time the forecast locks.",
+    "_comment": "Where a cyclone can come ashore: open-sea tiles on the shore, ordered along the coast. The schedule picks a forecast centre and the real site is within jitterSites of it (bounded: a player who defends the forecast cone is never caught out). The forecast cone, shown from five quarters before the storm (the warning), narrows quarter by quarter from coneFarSites either side of the forecast centre to jitterSites on the last quarter. Sites are ordered along the shore, so one site is one short step along the coast.",
     "jitterSites": 1,
     "coneFarSites": 7,
     "centreMin": 0.15,

@@ -8,28 +8,24 @@ import { resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId
  *
  * The warning heat (the red tint that builds over the last five quarters
  * before a storm) is only worth showing if it is true. So nothing here
- * approximates the storm. `computeExposure` runs the real zone-local resolver
- * (`resolveChallenge`) on a throwaway copy of the board, and asks it, through
- * its tile probe, how hard the storm hits each tile: the zone's leak, faded by
- * distance from the water, by the same `localIntensity` formula that decides
- * which houses fall. A tile previewed at zero takes nothing; the houses the
- * preview calls at risk are the houses the resolver loses.
+ * approximates the storm. `computeExposure` runs the real resolver
+ * (`resolveChallenge`, which calls the one hazard model,
+ * core/hazardModel.ts `computeWater`) on a throwaway copy of the board, and
+ * asks it, through its tile probe, how deep the water stands on each tile.
+ * For a cyclone it does that at every landfall site still in the forecast
+ * cone and keeps the worst case, so a house shown safe is safe wherever in
+ * the cone the storm comes ashore.
  *
- * Defences therefore change the heat exactly as much as they change the
- * outcome. A mangrove that raises its zone's defence lowers the leak, and so
- * the heat, on every tile of that zone behind it; it does nothing for a zone
- * the storm never reaches through it. That is a per-zone effect, not a
- * per-tile glow, and the heat does not pretend otherwise. (The brief asked
- * for defences to cool their own tile and, more weakly, their neighbours. The
- * resolver has no such rule, so drawing one would be a promise the storm does
- * not keep. The green shields mark what a defence protected instead: see
- * `protectedTiles`.)
+ * Defences change the heat exactly as much as they change the outcome: each
+ * protects the area round it and slows water passing through, so the heat
+ * cools behind a defence on the water's way in, and nowhere the water does
+ * not pass. The green shields mark what a defence protected (`protectedTiles`).
  *
  * Pure, like the rest of core/: no DOM, no renderer.
  */
 export interface Exposure {
   kind: ChallengeKind;
-  /** Local intensity at every tile on the storm's path, in zone-defence points. 0 where defences stopped it. */
+  /** Water at every wet tile, in house-rule units (`resilience` is one house-loss depth); the worst over the cone. */
   intensity: Map<string, number>;
   /**
    * 0–1 per tile: (intensity / a house's resilience)², capped at 1. A house at

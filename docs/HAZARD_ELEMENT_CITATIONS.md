@@ -97,7 +97,7 @@ are gameRule too.
 | Storm years, `jitterYears`, `strength` (1.2 / 1.8 / 2.6) | – | gameRule: the escalation, not a forecast for Goa |
 | `climate.intensityPerStrength`, `baselinePerYear`, `seaLevelCmPerYear` | 50, 0.02, 0.4 | gameRule |
 | `houseStars` (three 0.9, two 0.6) | – | gameRule |
-| Time costs (build 1 quarter, fast-forward 4) | – | gameRule |
+| Time costs (build 1 quarter, 2 for a seawall or small dam; fast-forward a year 4) | – | gameRule |
 
 The easy-test balance preset (coin × 10, softened storms) is deleted. There
 is one baseline (`tests/section4.test.ts`).

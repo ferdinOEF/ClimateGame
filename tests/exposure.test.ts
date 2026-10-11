@@ -41,6 +41,9 @@ function approach(run: ActionRun, quartersBefore: number, plant: [string, string
       }
     }
   }
+  // Then wait out the rest, to exactly `quartersBefore` (the warning's last quarter when 1).
+  const left = run.quartersUntil(next);
+  if (left > quartersBefore) run.waitQuarters(left - quartersBefore);
 }
 
 function land(run: ActionRun): ReturnType<typeof run.outcomes.get> {
@@ -63,6 +66,13 @@ const SEEDS = ["panjim", "s1", "s7", "s13", "s21", "s34"];
  */
 const OVERCALL = 0.5;
 
+/** The board as it will stand when `next` lands (defences grown to that date), as the resolver sees it. */
+function onTheDay(run: ActionRun, next: NonNullable<ReturnType<ActionRun["nextChallenge"]>>) {
+  const board = run.state.clone();
+  board.turn = Math.max(run.quarter, next.quarter);
+  return board;
+}
+
 function realSite(run: ActionRun, next: NonNullable<ReturnType<ActionRun["nextChallenge"]>>): number[] | null {
   return next.kind === "flood" ? null : [landfallSite(run.board(), next)];
 }
@@ -75,7 +85,7 @@ describe("computeExposure matches the storm it previews (preview equals resoluti
         approach(run, 1);
         const next = run.nextChallenge()!;
         const preview = run.exposureFor(next)!;
-        const exact = computeExposure(run.state.clone(), run.zones!, next.kind, run.intensityOf(next), run.climate!.intensityPerStrength, {
+        const exact = computeExposure(onTheDay(run, next), run.zones!, next.kind, run.intensityOf(next), run.climate!.intensityPerStrength, {
           combos: run.combos,
           houseRule: run.houseRule,
           houseStars: run.houseStars,
@@ -97,7 +107,7 @@ describe("computeExposure matches the storm it previews (preview equals resoluti
       approach(run, 1);
       const next = run.nextChallenge()!;
       const preview = run.exposureFor(next)!;
-      const exact = computeExposure(run.state.clone(), run.zones!, next.kind, run.intensityOf(next), run.climate!.intensityPerStrength, {
+      const exact = computeExposure(onTheDay(run, next), run.zones!, next.kind, run.intensityOf(next), run.climate!.intensityPerStrength, {
         combos: run.combos,
         houseRule: run.houseRule,
         houseStars: run.houseStars,
