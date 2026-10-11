@@ -1100,18 +1100,22 @@ export class PanjimController {
 
   /**
    * Scenario helper: defends like a player reading the warning: up to
-   * `count` defences (fewer if the storm is too close) that answer the next storm, on buildable tiles beside
-   * the houses shown at risk, cheapest first, through the player's own build
-   * path (the jar tapped first).
+   * `count` defences (fewer if the storm is too close) that answer the next
+   * storm, on buildable tiles beside the houses shown at risk, the one that
+   * will be strongest when the storm lands first, through the player's own
+   * build path (the jar tapped first).
    */
   private async defendRisk(count: number): Promise<number> {
     const next = this.run.nextChallenge();
     const exposure = next ? this.run.exposureFor(next) : null;
     if (!next || !exposure) return 0;
     const hazards = hazardsOf(next.kind);
+    // Strongest by the time the storm lands first: a young dune planted a year out has grown only so far.
+    const landing = (def: { matureQuarters?: number; effects: { resilience?: number } }): number =>
+      (def.effects.resilience ?? 0) * Math.min(1, this.run.quartersUntil(next) / Math.max(1, def.matureQuarters ?? 0));
     const answers = [...ELEMENT_BY_ID.values()]
       .filter((def) => (def.effects.resilience ?? 0) > 0 && def.targetsHazards?.some((h) => hazards.includes(h as "cyclone" | "flood")))
-      .sort((a, b) => a.buildCost - b.buildCost);
+      .sort((a, b) => landing(b) - landing(a) || a.buildCost - b.buildCost);
     const risk = exposure.housesAtRisk.map((key) => key.split(",").map(Number));
     let built = 0;
     for (const [q, r] of risk) {

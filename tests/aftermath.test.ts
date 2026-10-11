@@ -38,7 +38,7 @@ describe("aftermath line", () => {
     const { state, zones } = defended("seawall");
     const outcome = storm(state, zones);
     expect(outcome.housesSaved).toBe(outcome.housesTotal);
-    expect(aftermathLine("cyclone", outcome, state, zones, [])).toBe(`The seawalls at Miramar took it: ${outcome.housesSaved} houses never got wet.`);
+    expect(aftermathLine("cyclone", outcome, state, zones, [])).toBe(`The seawalls at Miramar took it: ${outcome.housesSaved} houses stayed standing.`);
   });
 
   it("credits the main defence when it took some but not all of a storm", () => {
@@ -46,7 +46,7 @@ describe("aftermath line", () => {
     const outcome = storm(state, zones);
     expect(outcome.housesDamaged).toBeGreaterThan(0);
     expect(outcome.housesSaved).toBeGreaterThan(0);
-    expect(aftermathLine("cyclone", outcome, state, zones, [])).toMatch(new RegExp(`^The mangroves at (Taleigao|the waterfront|the Ourem creek) took it: ${outcome.housesSaved} houses never got wet\\.$`));
+    expect(aftermathLine("cyclone", outcome, state, zones, [])).toMatch(new RegExp(`^The mangroves at (Taleigao|the waterfront|the Ourem creek) took it: ${outcome.housesSaved} houses stayed standing\\.$`));
   });
 
   it("says plainly when the first zone was bare", () => {

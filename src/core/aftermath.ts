@@ -85,7 +85,7 @@ export function aftermathLine(kind: ChallengeKind, outcome: ChallengeOutcome, st
     const spared = outcome.housesSaved;
     const took = holder.held ? "took it" : "took most of it";
     return what
-      ? `The ${what} at ${place(holder.zoneId, zones)} ${took}${spared > 0 ? `: ${spared} house${spared === 1 ? "" : "s"} never got wet` : ""}.`
+      ? `The ${what} at ${place(holder.zoneId, zones)} ${took}${spared > 0 ? `: ${spared} house${spared === 1 ? "" : "s"} stayed standing` : ""}.`
       : `${place(holder.zoneId, zones)} held.`;
   }
   const hit = outcome.zones.filter((zone) => zone.housesDamaged > 0).sort((a, b) => b.housesDamaged - a.housesDamaged)[0];
