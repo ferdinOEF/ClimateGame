@@ -1784,13 +1784,13 @@
   display: none;
 }
 
-/* The ball flies over the HUD to land on the Show Risk button. */
+/* The ball flies over the HUD (z 10–12) to land on the Show Risk button, but stays under every modal (z 30 and up). */
 .risk-intro-ball,
 .risk-intro-disc {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 40;
+  z-index: 14;
   pointer-events: none;
   transform-origin: 50% 50%;
 }

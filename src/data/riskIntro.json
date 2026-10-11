@@ -1,6 +1,6 @@
 {
   "note": "The first-warning risk sequence (src/core/riskIntro.ts, src/ui/riskIntroFx.ts). Every timing, colour and count is a presentation choice, not data about the world.",
-  "fillColor": "#d9382c",
+  "fillColor": "#e0241c",
   "fillOpacity": 0.5,
   "restOpacity": 0.2,
   "fillInSeconds": 0.4,
@@ -14,11 +14,13 @@
   "reducedFadeSeconds": 0.8,
   "crestColor": "#4a0f14",
   "foamColor": "#fff1ea",
-  "dropletCount": 56,
+  "dropletCount": 40,
   "ballColors": [
     "#e2453a",
     "#2f6fd8"
   ],
   "ballRadiusPx": 34,
-  "ballLandRadiusPx": 11
+  "ballLandRadiusPx": 11,
+  "reducedLandingSeconds": 0.9,
+  "flatSheetFadeSeconds": 0.3
 }

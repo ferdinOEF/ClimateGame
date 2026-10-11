@@ -87,7 +87,8 @@ async function main(): Promise<void> {
       await page.waitForTimeout(300);
       check((await fx(page, "fx.plays")) === 1, "the sequence plays on the first warning");
       check((await fx(page, "fx.currentMode")) === "full", "High quality plays the full sequence");
-      check((await fx(page, "fx.created.particles")) === 1 && (await fx(page, "fx.created.shader")) === 1, "the full sequence creates the droplets and the ball shader");
+      check((await fx(page, "fx.created.particles")) === 1, "the full sequence creates the droplets");
+      check((await fx(page, "fx.created.shader")) === 0, "the ball shader waits for the fold");
       // Contact sheet: held frames from fill to pulse.
       const times = [0.15, 0.4, 0.9, 1.5, 2.1, 2.7, 3.05, 3.3, 3.7, 6.0, 10.15, 10.4, 10.65, 10.85, 11.1, 11.4, 11.65, 11.85, 12.05, 12.3];
       let i = 0;
@@ -98,6 +99,7 @@ async function main(): Promise<void> {
         await page.screenshot({ path: path.join(OUT, "contact", `${String(i++).padStart(2, "0")}-t${t.toFixed(2)}.jpg`), type: "jpeg", quality: 70 });
       }
       await fx(page, "(fx.hold(null), true)");
+      check((await fx(page, "fx.created.shader")) === 1, "the fold creates the ball shader, once");
       // Opening a menu mid-sequence cancels it cleanly.
       await fx(page, `(fx.start("full", performance.now()), fx.hold(1.5), true)`);
       await page.waitForTimeout(200);
@@ -114,6 +116,20 @@ async function main(): Promise<void> {
       })`)) as { running: boolean; end: string; canvasHidden: boolean; balls: number; button: string };
       check(!after.running && after.end === "menu" && after.canvasHidden && after.balls === 0 && !/risk-intro/.test(after.button), `opening the build menu cancels it and leaves nothing behind (${JSON.stringify(after)})`);
       await page.keyboard.press("Escape");
+      // The Field Guide and the Sources screen cancel it the same way.
+      // Each is closed with its own close button: Escape outside the build menu is the quit key.
+      const cancelledBy = async (what: string, open: string, close: string): Promise<void> => {
+        await fx(page, `(fx.start("full", performance.now()), fx.hold(1.5), true)`);
+        await page.waitForTimeout(200);
+        await page.evaluate(open);
+        for (let k = 0; k < 50 && (await fx(page, "fx.isRunning")); k++) await page.waitForTimeout(100);
+        const gone = (await page.evaluate(`!window.__riskIntroForTest.isRunning && document.querySelectorAll(".risk-intro-ball, .risk-intro-disc").length === 0`)) as boolean;
+        check(gone, `opening ${what} cancels it`);
+        await page.evaluate(close);
+        await page.waitForTimeout(400);
+      };
+      await cancelledBy("the Field Guide", `document.querySelector(".field-guide-button").click()`, `document.querySelector(".field-guide-close").click()`);
+      await cancelledBy("the Sources screen", `(window.__nuggetPopupForTest.show("dune", "dunes-barrier"), document.querySelector(".nugget-source").click())`, `(document.querySelector(".sources-close").click(), window.__nuggetPopupForTest.reset())`);
       // Frame rate on High, the whole sequence in real time.
       await fx(page, `(fx.start("full", performance.now()), true)`);
       const high = await sampleFps(page, 12.5);
@@ -152,6 +168,25 @@ async function main(): Promise<void> {
         check((await fx(page, "fx.plays")) === 1, `gate: does NOT play on warning ${n} (risk tiles showing: ${hot})`);
       }
       await page.close();
+    }
+    // ---- A reload does not play it again ------------------------------------
+    {
+      const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+      const page = await ctx.newPage();
+      watch(page, "reload");
+      await startPanaji(page, server.url);
+      await scenario(page, "heat-4");
+      await page.waitForTimeout(300);
+      check((await fx(page, "fx.plays")) === 1, "reload: plays on the first warning");
+      await page.evaluate("window.__panjimForTest.saveRun()");
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".brief-resume", { timeout: 90000 });
+      await page.locator(".brief-resume").first().click();
+      await page.waitForTimeout(1500);
+      await scenario(page, "heat-4");
+      await page.waitForTimeout(400);
+      check((await fx(page, "fx.plays")) === 0, "reload: the continued run does NOT play it again");
+      await ctx.close();
     }
     // ---- Reduced motion -----------------------------------------------------
     {

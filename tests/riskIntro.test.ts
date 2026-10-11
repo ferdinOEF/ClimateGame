@@ -10,11 +10,26 @@ describe("first-warning risk sequence", () => {
     expect(gate.offer("c3-compound")).toBe(false);
   });
 
-  it("a later warning does not play even if the first was never offered twice", () => {
+  it("a first warning seen while a menu was open still plays once the player is free", () => {
     const gate = new RiskIntroGate();
+    gate.see("c1-cyclone"); // showing, but blocked: not offered
+    expect(gate.spent).toBe(false);
     expect(gate.offer("c1-cyclone")).toBe(true);
     expect(gate.spent).toBe(true);
+  });
+
+  it("if the first warning passes without playing, a later one never plays", () => {
+    const gate = new RiskIntroGate();
+    gate.see("c1-cyclone");
+    gate.see("c2-flood");
+    expect(gate.spent).toBe(true);
     expect(gate.offer("c2-flood")).toBe(false);
+  });
+
+  it("a restored run that already saw it does not play it again", () => {
+    const gate = new RiskIntroGate();
+    gate.markSpent();
+    expect(gate.offer("c1-cyclone")).toBe(false);
   });
 
   it("reduced motion and Low quality create neither the particles nor the shader", () => {
@@ -72,6 +87,14 @@ describe("first-warning risk sequence", () => {
     expect(frameAt(6, "flat").aheadOpacity).toBeCloseTo(c.restOpacity);
     expect(frameAt(c.holdSeconds + 0.1, "flat").fold).toBeNull();
     expect(frameAt(c.holdSeconds + c.flightSeconds / 2, "flat").flight).toBeCloseTo(0.5, 1);
+    // The flat sheet fades out over the start of the flight instead of vanishing in one frame.
+    expect(frameAt(c.holdSeconds + 0.01, "flat").aheadOpacity).toBeGreaterThan(0.15);
+    expect(frameAt(c.holdSeconds + c.flatSheetFadeSeconds + 0.01, "flat").aheadOpacity).toBe(0);
+  });
+
+  it("reduced motion's glow is not cut short", () => {
+    const tl = timeline("reduced");
+    expect(tl.end - tl.fadeEnd).toBeGreaterThanOrEqual(0.9 - 1e-9);
   });
 
   it("every timing lives in the data file", () => {

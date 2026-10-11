@@ -113,6 +113,10 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
+  /** Whether any menu, card or modal is open (the risk sequence never starts under one). */
+  overlayOpen: () => boolean;
+  /** Whether any of these tiles is on screen now. */
+  riskAreaOnScreen: (keys: string[]) => boolean;
   /** Plays the first-warning risk sequence over these tiles (ui/riskIntroFx.ts). */
   startRiskIntro: (mode: RiskIntroMode, keys: string[]) => void;
   /** Stops it at once, leaving the normal risk view. */
@@ -225,7 +229,10 @@ export class PanjimController {
     this.motionToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:calm-motion", label: "Calm motion", shortcut: "", defaultOn: prefersReducedMotion(), className: "motion-toggle" },
-      (on) => host.setReducedMotion(on)
+      (on) => {
+        host.setReducedMotion(on);
+        this.recheckRiskIntroMode();
+      }
     );
     this.qualityButton = document.createElement("button");
     this.qualityButton.type = "button";
@@ -405,9 +412,10 @@ export class PanjimController {
     // The first warning of the playthrough gets the risk sequence, once, if
     // nothing else is going on (it never waits for, or blocks, the player).
     const hot = view.filter((tile) => tile.heat > 0).map((tile) => tile.key);
-    if (hot.length > 0 && !this.riskGate.spent && !this.busy && !this.host.uiBlocked() && this.riskGate.offer(next.id)) {
-      const reduced = this.motionToggle.value || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
-      this.host.startRiskIntro(riskIntroMode(reduced, this.quality), hot);
+    if (hot.length > 0) this.riskGate.see(next.id);
+    if (hot.length > 0 && !this.riskGate.spent && !this.busy && !this.host.overlayOpen() && this.host.riskAreaOnScreen(hot) && this.riskGate.offer(next.id)) {
+      this.riskIntroModeStarted = this.currentRiskIntroMode();
+      this.host.startRiskIntro(this.riskIntroModeStarted, hot);
     }
   }
 
@@ -716,6 +724,8 @@ export class PanjimController {
           snapshot: this.run.snapshot(),
           locks: [...this.run.lockSnapshots],
           playMs: this.playMsBefore + this.host.telemetry.elapsed(),
+          // The first-warning risk sequence plays once a playthrough, reloads included.
+          riskIntroSpent: this.riskGate.spent,
           savedAt: new Date().toISOString()
         })
       );
@@ -734,7 +744,7 @@ export class PanjimController {
 
   /** On load: if this level and seed have a save part-way through, the brief offers to continue it. */
   private offerSavedRun(): void {
-    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number } | null = null;
+    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number; riskIntroSpent?: boolean } | null = null;
     try {
       const raw = localStorage.getItem(this.saveKey());
       saved = raw ? JSON.parse(raw) : null;
@@ -748,6 +758,8 @@ export class PanjimController {
       this.run.restore(data.snapshot);
       for (const [id, lock] of data.locks) this.run.lockSnapshots.set(id, lock);
       this.playMsBefore = data.playMs ?? 0;
+      // Already seen in this playthrough (or a storm has passed): it does not play again.
+      if (data.riskIntroSpent || this.run.landed.size > 0) this.riskGate.markSpent();
       this.host.redrawBoard();
       const next = this.run.nextChallenge();
       if (next && this.run.locked.has(next.id)) this.showForecast(next);
@@ -805,6 +817,23 @@ export class PanjimController {
     this.qualityButton.innerHTML = `<span class="toggle-label"></span>`;
     (this.qualityButton.querySelector(".toggle-label") as HTMLElement).textContent = `Quality: ${this.qualityLabel()}`;
     this.host.setQuality(this.quality);
+    this.recheckRiskIntroMode();
+  }
+
+  /** The mode the risk sequence started in, while it may still be playing. */
+  private riskIntroModeStarted: RiskIntroMode | null = null;
+
+  private currentRiskIntroMode(): RiskIntroMode {
+    const reduced = this.motionToggle?.value || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    return riskIntroMode(Boolean(reduced), this.quality);
+  }
+
+  /** If Calm motion or the quality changes the sequence's mode while it plays, it stops (it never switches style half way). */
+  private recheckRiskIntroMode(): void {
+    if (this.riskIntroModeStarted && this.currentRiskIntroMode() !== this.riskIntroModeStarted) {
+      this.host.cancelRiskIntro("mode changed");
+      this.riskIntroModeStarted = null;
+    }
   }
 
   frame(): void {

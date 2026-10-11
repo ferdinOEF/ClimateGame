@@ -7793,16 +7793,18 @@ in Section 1, all fixed (details in `docs/QA_REPORT.md`).
   - The crest is a dark body (#4a0f14) trailing behind a curling lip, with
     a broken foam edge and flecks just in front.
   - Behind it, the fill eases from 50% down to its rest of 20%.
-- **Droplets:** at the right boundary the crest bursts into 56 translucent
-  droplets (round, sizes 2.5–7 px, lives 0.6–1.1 s), thrown up and then
-  falling.
+- **Droplets:** at the right boundary the crest bursts into 40 translucent
+  droplets (round, radius 2–6 px, alpha 0.6), thrown up and then falling,
+  from the middle 40% of the rows so they read as one burst.
 - **Rest:** the sheet rests at 20%.
 - **Fold, at 10 s:**
   - Over 0.8 s the sheet gathers toward the centre of its on-screen part.
     The outer edges swing round further than the middle, so it rolls up
     rather than shrinking.
   - It becomes the ball: a small WebGL sphere of swirling, turning red and
-    blue.
+    blue. The shader is created only when the fold starts (a plain disc
+    stands in if WebGL is unavailable), and its canvas follows the device
+    pixel ratio.
 - **Flight:** 1.0 s on a curved (quadratic) arc to Show Risk, shrinking
   from 34 px to 11 px.
 - **Landing:** the ball lands with one ripple, and the button swells once.
@@ -7822,17 +7824,23 @@ in Section 1, all fixed (details in `docs/QA_REPORT.md`).
   2D red/blue disc tweens straight to the button.
 - **Neither creates** the particle system or the ball shader
   (`componentsFor`, plus the counters checked in the browser).
-- **Cancelling:** opening the build menu, the brief or help, building,
-  demolishing, repairing, time passing, a storm or the finale, or hiding
-  the risk view cancels it at once. No sheet, ball, disc or button class is
-  left behind.
+- **Cancelling:** opening the build menu, the brief, help, the Field
+  Guide, the Sources screen or any other modal, building, demolishing,
+  repairing, time passing, a storm or the finale, hiding the risk view, or
+  switching quality or Calm motion mid-play cancels it at once. No sheet,
+  ball, disc or button class is left behind. The ball sits under every
+  modal (z-index 14).
+- **Once means once:** the save records `riskIntroSpent`, so continuing a
+  run after a reload does not play it again; an old save with any storm
+  already landed counts as spent. It only starts if some of the risk area
+  is on screen.
 - **It never takes input:** the canvas and the ball are
   `pointer-events: none`.
 - **Flash safety:** every opacity moves once and smoothly; the button
   pulses once.
 
 **Checks:**
-- `tests/riskIntro.test.ts` (8 tests):
+- `tests/riskIntro.test.ts` (11 tests):
   - first warning only;
   - no particles or shader in reduced motion or on Low;
   - the timeline values, and eased motion;
@@ -7842,6 +7850,8 @@ in Section 1, all fixed (details in `docs/QA_REPORT.md`).
   - plays on warning 1 and not on warnings 2 and 3 (the run is played
     through storms 1 and 2);
   - the contact sheet (20 held frames);
-  - the reduced and Low modes, and the build-menu cancel;
+  - the reduced and Low modes;
+  - cancelling under the build menu, the Field Guide and Sources;
+  - a saved and continued run does not play it again;
   - fps on High and Low;
   - no console errors.

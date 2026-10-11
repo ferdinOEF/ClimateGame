@@ -37,24 +37,34 @@ export function componentsFor(mode: RiskIntroMode): { particles: boolean; shader
 }
 
 /**
- * Once per playthrough, on the first warning only. `offer` is called with the
- * challenge whose warning is showing; it says yes exactly once, for the first
- * challenge it is ever offered, and never again (not for that challenge after
- * it played or was cancelled, and not for any later one).
+ * Once per playthrough, on the first warning only.
+ *
+ * `see` is called whenever a warning is showing, whether or not the sequence
+ * can play at that moment (a menu may be open). The first challenge ever seen
+ * is "the first warning". `offer` says yes exactly once, and only for that
+ * challenge: if it could not play while that warning showed and a later
+ * challenge's warning appears, the chance is gone. `markSpent` is for a run
+ * restored from a save in which it already played.
  */
 export class RiskIntroGate {
   private first: string | null = null;
   private done = false;
 
-  offer(challengeId: string): boolean {
-    if (this.done) return false;
+  see(challengeId: string): void {
+    if (this.done) return;
     if (this.first === null) this.first = challengeId;
-    if (challengeId !== this.first) {
-      this.done = true;
-      return false;
-    }
+    else if (challengeId !== this.first) this.done = true;
+  }
+
+  offer(challengeId: string): boolean {
+    this.see(challengeId);
+    if (this.done || challengeId !== this.first) return false;
     this.done = true;
     return true;
+  }
+
+  markSpent(): void {
+    this.done = true;
   }
 
   /** Whether it has been used up. */
@@ -68,7 +78,7 @@ export function timeline(mode: RiskIntroMode, c: RiskIntroConfig = RISK_INTRO) {
   if (mode === "reduced") {
     const rest = c.fillInSeconds + c.reducedEaseSeconds;
     const fadeEnd = rest + c.reducedFadeSeconds;
-    return { fillEnd: c.fillInSeconds, waveEnd: c.fillInSeconds, dropletsEnd: c.fillInSeconds, foldStart: fadeEnd, foldEnd: fadeEnd, flightEnd: fadeEnd, end: fadeEnd + c.landingSeconds, rest, fadeEnd };
+    return { fillEnd: c.fillInSeconds, waveEnd: c.fillInSeconds, dropletsEnd: c.fillInSeconds, foldStart: fadeEnd, foldEnd: fadeEnd, flightEnd: fadeEnd, end: fadeEnd + c.reducedLandingSeconds, rest, fadeEnd };
   }
   const foldStart = c.holdSeconds;
   const foldEnd = mode === "full" ? foldStart + c.foldSeconds : foldStart;
@@ -133,7 +143,9 @@ export function frameAt(t: number, mode: RiskIntroMode, c: RiskIntroConfig = RIS
     return { aheadOpacity: c.restOpacity, behindOpacity: c.restOpacity, crest: null, fold: easeInOut((t - tl.foldStart) / c.foldSeconds), flight: null, landing: false, droplets: null, done: false };
   }
   if (t < tl.flightEnd) {
-    return { aheadOpacity: 0, behindOpacity: 0, crest: null, fold: null, flight: easeInOut((t - tl.foldEnd) / c.flightSeconds), landing: false, droplets: null, done: false };
+    // Low quality has no fold: its sheet fades out over the start of the flight rather than vanishing.
+    const sheet = mode === "flat" ? c.restOpacity * (1 - easeInOut((t - tl.foldEnd) / c.flatSheetFadeSeconds)) : 0;
+    return { aheadOpacity: sheet, behindOpacity: sheet, crest: null, fold: null, flight: easeInOut((t - tl.foldEnd) / c.flightSeconds), landing: false, droplets: null, done: false };
   }
   return { aheadOpacity: 0, behindOpacity: 0, crest: null, fold: null, flight: null, landing: t < tl.end, droplets: null, done: t >= tl.end };
 }

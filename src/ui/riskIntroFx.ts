@@ -38,7 +38,7 @@ export class DropletSystem {
     if (points.length === 0) return;
     for (let i = 0; i < this.count; i++) {
       const [x, y] = points[Math.floor(random() * points.length)];
-      this.drops.push({ x, y, vx: 40 + random() * 110, vy: -(90 + random() * 150), r: 2.5 + random() * 4.5, life: 0.6 + random() * 0.5 });
+      this.drops.push({ x, y, vx: 30 + random() * 80, vy: -(35 + random() * 65), r: 2 + random() * 4, life: 0.55 + random() * 0.5 });
     }
   }
 
@@ -49,7 +49,7 @@ export class DropletSystem {
     for (const d of this.drops) {
       if (age > d.life) continue;
       const fade = 1 - age / d.life;
-      g.globalAlpha = 0.8 * fade;
+      g.globalAlpha = 0.6 * fade;
       g.beginPath();
       g.arc(d.x + d.vx * age, d.y + d.vy * age + 0.5 * 420 * age * age, d.r * (0.8 + 0.2 * fade), 0, Math.PI * 2);
       g.fill();
@@ -90,7 +90,9 @@ export class BallShader {
   constructor(size: number, colors: [string, string]) {
     this.el = document.createElement("canvas");
     this.el.className = "risk-intro-ball";
-    this.el.width = this.el.height = size * 2;
+    this.el.setAttribute("aria-hidden", "true");
+    // Backed at the screen's pixel density (up to 2x), so it is sharp on high-DPI screens.
+    this.el.width = this.el.height = Math.round(size * 2 * Math.min(window.devicePixelRatio || 1, 2));
     this.el.style.width = this.el.style.height = `${size * 2}px`;
     this.gl = this.el.getContext("webgl", { premultipliedAlpha: false, alpha: true });
     const gl = this.gl;
@@ -128,6 +130,11 @@ export class BallShader {
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.uniform1f(this.timeLoc, seconds);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  /** Whether WebGL was available; without it the plain disc stands in. */
+  get ok(): boolean {
+    return this.gl !== null;
   }
 
   dispose(): void {
@@ -190,6 +197,17 @@ function rowExtents(polys: ScreenPolygon[], minY: number, maxY: number, step: nu
   return rows;
 }
 
+/** The rows worth drawing: those on screen (a long strip can run far past the window). */
+function clampBounds(b: { minX: number; maxX: number; minY: number; maxY: number }, height: number): { minX: number; maxX: number; minY: number; maxY: number } {
+  return { minX: b.minX, maxX: b.maxX, minY: Math.max(b.minY, -8), maxY: Math.min(b.maxY, height + 8) };
+}
+
+/** The centre of the part of the area on screen, so the ball forms where the player is looking. */
+function visibleCentroid(polys: ScreenPolygon[], width: number, height: number): [number, number] {
+  const onScreen = polys.filter((poly) => poly.some(([x, y]) => x > 0 && x < width && y > 0 && y < height));
+  return centroid(onScreen.length ? onScreen : polys);
+}
+
 function tracePolys(g: CanvasRenderingContext2D, polys: ScreenPolygon[], transform?: (p: [number, number]) => [number, number]): void {
   g.beginPath();
   for (const poly of polys) {
@@ -227,8 +245,9 @@ export class RiskIntroFx {
   private ball: BallShader | null = null;
   private disc: HTMLElement | null = null;
   private landed = false;
-  /** Where the fold ends: the ball's start, fixed once the fold begins so the flight does not drift with the camera. */
+  /** Where the ball sets off: the centre of the visible part of the area, updated through the fold and fixed when the flight starts. */
   private ballFrom: [number, number] | null = null;
+  private wantsShader = false;
   /** What has been built in this page, for the tests: reduced motion and Low must leave both at zero. */
   readonly created = { particles: 0, shader: 0 };
   /** How many times the sequence has started, for the tests. */
@@ -268,12 +287,8 @@ export class RiskIntroFx {
       this.droplets = new DropletSystem(RISK_INTRO.dropletCount);
       this.created.particles++;
     }
-    if (parts.shader) {
-      this.ball = new BallShader(RISK_INTRO.ballRadiusPx, RISK_INTRO.ballColors as [string, string]);
-      this.ball.el.hidden = true;
-      this.container.appendChild(this.ball.el);
-      this.created.shader++;
-    }
+    // The ball's shader is made when the fold begins (not at t = 0), and only for the full sequence.
+    this.wantsShader = parts.shader;
     this.canvas.hidden = false;
   }
 
@@ -286,6 +301,7 @@ export class RiskIntroFx {
     this.canvas.hidden = true;
     this.g.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.droplets = null;
+    this.wantsShader = false;
     this.ball?.dispose();
     this.ball = null;
     this.disc?.remove();
@@ -327,8 +343,8 @@ export class RiskIntroFx {
     const polys = this.host.polygons();
     const color = RISK_INTRO.fillColor;
 
-    if (f.fold === null && f.flight === null && (f.aheadOpacity > 0 || f.behindOpacity > 0) && polys.length) {
-      const b = bounds(polys);
+    if (f.fold === null && (f.aheadOpacity > 0 || f.behindOpacity > 0) && polys.length) {
+      const b = clampBounds(bounds(polys), this.container.clientHeight);
       g.save();
       tracePolys(g, polys);
       g.clip();
@@ -343,7 +359,10 @@ export class RiskIntroFx {
       if (f.droplets !== null && this.droplets) {
         if (!this.burstDone) {
           // Points along the right boundary, where the crest broke.
-          const edge = rowExtents(polys, b.minY, b.maxY, 6).map((row): [number, number] => [row.right, row.y]);
+          // A burst where the wave broke, in the middle of what is on screen: not a line of specks along the whole edge.
+          const rows = rowExtents(polys, b.minY, b.maxY, 6);
+          const band = rows.slice(Math.floor(rows.length * 0.3), Math.ceil(rows.length * 0.7));
+          const edge = (band.length ? band : rows).map((row): [number, number] => [row.right, row.y]);
           this.droplets.burst(edge.length ? edge : [[b.maxX, (b.minY + b.maxY) / 2]], rng(7));
           this.burstDone = true;
         }
@@ -352,42 +371,58 @@ export class RiskIntroFx {
     }
 
     if (f.fold !== null && polys.length) {
-      // The sheet curls in from its edges and gathers at the centre of the
-      // part on screen (the risk area can run off the edge of the view), so the
-      // ball forms where the player is looking.
-      const w = this.container.clientWidth;
-      const h = this.container.clientHeight;
-      const onScreen = polys.filter((poly) => poly.some(([x, y]) => x > 0 && x < w && y > 0 && y < h));
-      const [cx, cy] = centroid(onScreen.length ? onScreen : polys);
+      if (this.wantsShader && !this.ball) {
+        this.ball = new BallShader(RISK_INTRO.ballRadiusPx, RISK_INTRO.ballColors as [string, string]);
+        this.created.shader++;
+        if (this.ball.ok) {
+          this.ball.el.hidden = true;
+          this.container.appendChild(this.ball.el);
+        } else {
+          // No WebGL: the plain disc flies instead.
+          this.ball.dispose();
+          this.ball = null;
+          this.wantsShader = false;
+        }
+      }
+      // The sheet rolls up: its edges race in toward the centre of the visible
+      // part faster than its middle and swing round as they go, under a darker
+      // rim, so it reads as a sheet curling into a ball rather than shrinking.
+      const [cx, cy] = visibleCentroid(polys, this.container.clientWidth, this.container.clientHeight);
       this.ballFrom = [cx, cy];
       let maxD = 1;
       for (const poly of polys) for (const [x, y] of poly) maxD = Math.max(maxD, Math.hypot(x - cx, y - cy));
-      // Gathering to the centre, faster at the end; the outer edges swing round
-      // further than the middle, so the sheet rolls up rather than shrinks.
       const fold = f.fold;
-      const k = Math.pow(1 - fold, 1.6) * 0.98 + 0.02;
-      g.save();
-      g.globalAlpha = RISK_INTRO.restOpacity + (0.85 - RISK_INTRO.restOpacity) * f.fold;
-      g.fillStyle = color;
-      tracePolys(g, polys, ([x, y]) => {
-        const d = Math.hypot(x - cx, y - cy) / maxD;
-        const angle = fold * 1.4 * d;
+      const curl = ([x, y]: [number, number]): [number, number] => {
+        const d = Math.min(1, Math.hypot(x - cx, y - cy) / maxD);
+        // Outer points shrink sooner (higher power of the remaining fold).
+        const k = Math.pow(1 - fold, 1.2 + 1.6 * d) * 0.98 + 0.02;
+        const angle = fold * 1.2 * d;
         const c = Math.cos(angle);
         const s = Math.sin(angle);
         const dx = (x - cx) * k;
         const dy = (y - cy) * k;
         return [cx + dx * c - dy * s, cy + dx * s + dy * c];
-      });
+      };
+      g.save();
+      g.globalAlpha = RISK_INTRO.restOpacity + (0.85 - RISK_INTRO.restOpacity) * fold;
+      g.fillStyle = color;
+      tracePolys(g, polys, curl);
       g.fill();
+      g.globalAlpha = 0.35 + 0.4 * fold;
+      g.strokeStyle = RISK_INTRO.crestColor;
+      g.lineWidth = 2 + 4 * fold;
+      g.stroke();
       g.restore();
-      if (f.fold > 0.7) this.placeBall(cx, cy, RISK_INTRO.ballRadiusPx * ((f.fold - 0.7) / 0.3), t);
+      if (fold > 0.7) this.placeBall(cx, cy, RISK_INTRO.ballRadiusPx * ((fold - 0.7) / 0.3), t);
     }
 
     if (f.flight !== null) {
       const button = this.host.button();
-      const from = this.ballFrom ?? (polys.length ? centroid(polys) : [this.container.clientWidth / 2, this.container.clientHeight / 2]);
+      if (!this.ballFrom) this.ballFrom = polys.length ? visibleCentroid(polys, this.container.clientWidth, this.container.clientHeight) : [this.container.clientWidth / 2, this.container.clientHeight / 2];
+      const from = this.ballFrom;
       const box = this.container.getBoundingClientRect();
-      const target = button?.getBoundingClientRect();
+      const rect = button?.getBoundingClientRect();
+      const target = rect && rect.width > 0 && rect.height > 0 ? rect : undefined;
       const tx = target ? target.left - box.left + target.width / 2 : this.container.clientWidth - 60;
       const ty = target ? target.top - box.top + target.height / 2 : 150;
       const r = RISK_INTRO.ballRadiusPx + (RISK_INTRO.ballLandRadiusPx - RISK_INTRO.ballRadiusPx) * f.flight;
@@ -490,11 +525,10 @@ export class RiskIntroFx {
   }
 
   private placeBall(x: number, y: number, r: number, t: number): void {
-    if (this.mode === "flat") {
+    if (this.mode === "flat" || !this.ball) {
       this.placeDisc(x, y, r);
       return;
     }
-    if (!this.ball) return;
     const el = this.ball.el;
     el.hidden = r < 1;
     const scale = r / RISK_INTRO.ballRadiusPx;
@@ -506,6 +540,7 @@ export class RiskIntroFx {
     if (!this.disc) {
       this.disc = document.createElement("div");
       this.disc.className = "risk-intro-disc";
+      this.disc.setAttribute("aria-hidden", "true");
       this.container.appendChild(this.disc);
     }
     const size = RISK_INTRO.ballRadiusPx * 2;
