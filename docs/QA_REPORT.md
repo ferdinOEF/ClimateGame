@@ -493,3 +493,37 @@ Headless Chromium with software GL, as above.
   - **The fix:** the check now waits for a fresh, clean layout pass before measuring. It also fails on any page error, which would stop her layout.
   - **Result:** 4 of 4 runs at 1366 clean, then the full run.
   - **Master:** passed 3 of 3 before the fix, with lighter frames.
+
+# Section 4 — survival, propagation and balance
+
+Branch `section-4-mechanics`, off master `a47fc7f` (Section 3's merge).
+Headless Chromium with software GL, as above. Everything is in `docs/qa/section4/`.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build | Clean. 390 tests pass (6 skipped). New or rewritten: `section4.test.ts` (6), the tile-by-tile `zones.test.ts` (13, with the protection rules), `exposure.test.ts` (preview equals resolution, 20), `panjimBots.test.ts` (6), `aftermath`, `hazardDepth`, `maya`, `combos`. `easyTest.test.ts` deleted with the preset. |
+| Preview equals resolution | 6 seeds, every storm, undefended and defended, checked on the warning's last quarter. No house is lost that was not shown at risk. At most 50% of the houses shown at risk stand (the ±1 cone). The preview at the real landfall is exactly the houses lost. Flood previews are exact. |
+| Easy-test gone | No source, tool, test or level file mentions it, a balance preset or a coin multiplier. No level carries `balancePreset`, `balancePresets` or `presets`. Income is exactly `state.income × incomeScale`. |
+| Finale survivable | A plain 500-coin defence at three landfalls: 32–40% fewer houses lost than none, 37% on average. |
+| Elevation | Altinho and every tile next to its name stay dry in flood, cyclone and compound at strength 3.8. Most low wetland takes the monsoon flood. |
+| Bots, 20 seeds | Casual 30%, Smart 79%, Greedy 15% (4–29%, beats Casual on 3 seeds), do-nothing 0%. Every defence's margin is 6.0–41.2 points. One kind alone saves at most 48% (mangroves). Full tables: `bots.md`. |
+| Walkthrough | Clean, no console errors. The Tutorial loads and plays. |
+| Playthrough (`tools/section4Shots.ts`) | Three storms played at human pace through the real build path, 19 shots, no console errors. The cone narrows from 58 sea tiles five quarters out to 13 on the last quarter (cyclone), and from 53 to 20 (finale). |
+| Functional and axe (`functional.md`) | All checks pass on an idle machine, with no serious or critical axe issues. Drawn depth equals the model's depth on every wet tile for all three storms. A first run beside the 20-seed bot run (all four cores busy) failed two "canvas fills the window" checks: the resize event fired after the 900 ms wait. |
+| Grayscale and deuteranopia | `warning-1920x1080-gray`, `warning-deuteranopia-1920x1080`. The cone reads as a light-and-dark double band in both, and the heat as darker tiles in grayscale. |
+| Cross-browser | Chromium only. |
+
+**Frame rate at 1920×1080 (`perf-1920x1080.txt`, software GL):**
+
+| Quality | calm | cyclone | flood | finale | Draw calls | Triangles |
+|---|---|---|---|---|---|---|
+| Low | 1.0 | 1.3 | 1.2 | 1.1 | 32–52 | 347–355k |
+| Medium | 1.2 | 1.2 | 1.0 | 0.5 | 31–45 | 349–403k |
+| High | 1.3 | 1.4 | 0.8 | 1.0 | 31–48 | 350–442k |
+
+- **What the numbers mean:** SwiftShader renders on the CPU, so these numbers say nothing about a real GPU. The draw calls and triangles are in line with Section 3.
+- **The cone's cost:** two meshes.
+- **Memory:** no leak over three storms (heap 29 MB before and after).
+- **Heat redraw:** what changed in the frame is the redraw itself, measured in Node. It is about 106 ms worst case, five quarters out (heat, undefended heat and gauge together), down from about 560 ms before the review fix.
+
+**Independent review:** 1 MAJOR, 8 MINOR and several NITs, all fixed. They are listed in PROGRESS, Section 4.
