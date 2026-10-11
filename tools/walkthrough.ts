@@ -179,7 +179,7 @@ async function main(): Promise<void> {
     // there repeating itself until the player happened to build something.
     stage = "tutorial-tile-click";
     const stepBeforeClick = (await page.locator(".coach-step").textContent())?.trim();
-    const canvasBox = await page.locator("canvas").boundingBox();
+    const canvasBox = await page.locator("canvas:not([class*=risk-intro])").boundingBox();
     if (!canvasBox) problems.push("[tutorial-tile-click] no canvas to click");
     else {
       await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
