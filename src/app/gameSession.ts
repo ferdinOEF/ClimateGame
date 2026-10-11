@@ -2557,6 +2557,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const counts: Record<string, number> = {};
       for (const child of monuments.group.children) {
         const mesh = child as THREE.InstancedMesh;
+        // The plazas under the buildings are not monuments.
+        if (mesh.name === "monument-plazas") continue;
         counts[mesh.name.replace(/^monument-/, "")] = mesh.count;
       }
       return counts;

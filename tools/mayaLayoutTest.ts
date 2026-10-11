@@ -63,8 +63,9 @@ function overlap(a: Rect, b: Rect): boolean {
 
 async function assertClear(page: Page, label: string, expectBubble: boolean): Promise<void> {
   await page.waitForTimeout(450);
-  // A move fades her out and back in at the new spot; measure once she has arrived.
-  for (let i = 0; i < 40 && (await page.evaluate("Boolean(document.querySelector('.maya.hopping'))")); i++) await page.waitForTimeout(100);
+  // A move fades her out and back in at the new spot; measure once she has arrived. Under
+  // software GL with the full city on the board a frame can take over a second, so allow 10 s.
+  for (let i = 0; i < 100 && (await page.evaluate("Boolean(document.querySelector('.maya.hopping'))")); i++) await page.waitForTimeout(100);
   // Her bubble fades in over 220 ms; under software GL a slow first frame can leave it at
   // opacity 0 when measured. Wait (up to 3 s) for the fade to finish; it still fails if it never shows.
   if (expectBubble) {
@@ -74,6 +75,17 @@ async function assertClear(page: Page, label: string, expectBubble: boolean): Pr
       await page.waitForTimeout(100);
     }
   }
+  // Measure a layout made after everything above settled: her layout runs on the game's frame,
+  // and under software GL with the whole city drawn a frame can take a second, so a check taken
+  // between frames would read a layout made before the HUD last changed. Wait (up to 10 s) for a
+  // fresh, clean layout pass.
+  await page.evaluate(`new Promise((resolve) => {
+    const m = window.__panjimForTest.maya;
+    const since = performance.now();
+    const t0 = since;
+    const tick = () => (m.lastLayoutMs > since && !m.layoutDirty) || performance.now() - t0 > 10000 ? resolve(null) : requestAnimationFrame(tick);
+    requestAnimationFrame(tick);
+  })`);
   const { maya, others, view } = await measure(page);
   checks++;
   const problems: string[] = [];
@@ -84,7 +96,10 @@ async function assertClear(page: Page, label: string, expectBubble: boolean): Pr
   }
   for (const m of maya) {
     if (m.x < 0 || m.y < 0 || m.x + m.w > view.w + 0.5 || m.y + m.h > view.h + 0.5) problems.push(`${m.label} leaves the viewport (${JSON.stringify(m)})`);
-    for (const o of others) if (overlap(m, o)) problems.push(`${m.label} overlaps ${o.label}`);
+    for (const o of others) if (overlap(m, o)) problems.push(`${m.label} ${JSON.stringify([m.x, m.y, m.w, m.h].map(Math.round))} overlaps ${o.label} ${JSON.stringify([o.x, o.y, o.w, o.h].map(Math.round))}`);
+  }
+  if (problems.length && process.env.LAYOUT_DEBUG) {
+    problems.push(String(await page.evaluate(`(() => { const m = window.__panjimForTest.maya; const p = document.querySelector(".empty-prompt"); return JSON.stringify({ obstacles: m.obstacles().map((r) => [r.x, r.y, r.w, r.h].map(Math.round)), anchor: m.anchor ? m.anchor() : null, placed: m.placed, lastLayoutMs: Math.round(m.lastLayoutMs), now: Math.round(performance.now()), dirty: m.layoutDirty, minimised: m.minimised, current: m.current && m.current.id, figVis: m.figure.style.visibility, prompt: p ? { hidden: p.hidden, closestHidden: !!p.closest("[hidden]"), vis: getComputedStyle(p).visibility, disp: getComputedStyle(p).display, inMayaContainer: m.container.contains(p) } : null }); })()`)));
   }
   if (problems.length) failures.push(`${label}: ${problems.join("; ")}`);
   console.log(`${problems.length ? "FAIL" : "PASS"}  ${label}${problems.length ? "  " + problems.join("; ") : ""}`);
@@ -99,6 +114,11 @@ async function main(): Promise<void> {
     });
     for (const res of RESOLUTIONS) {
       const page = await (await browser.newContext({ viewport: { width: res.w, height: res.h } })).newPage();
+      // A page error stops the game's frame loop, and with it Maya's layout: fail on any.
+      page.on("pageerror", (e) => {
+        failures.push(`${res.w}x${res.h}: page error: ${e.message}`);
+        console.log(`FAIL  ${res.w}x${res.h} page error: ${e.message}\n${e.stack ?? ""}`);
+      });
       await page.goto(`http://localhost:${PORT}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".brief-card", { timeout: 60000 });
       await page.locator(".brief-cta").first().click();
