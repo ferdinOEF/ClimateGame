@@ -1858,6 +1858,35 @@ html, body {
     0 0 6px rgba(251, 244, 228, 0.9);
 }
 
+/* A monument's category line: only on its name card. */
+.map-label-sub {
+  display: none;
+}
+
+/*
+  The name card: a monument hovered or selected. The same pill, a little
+  larger and fully opaque, with its category on a second line in sentence
+  case. It outranks every other label (see MapLabelLayer.setFocus).
+*/
+.map-label.card {
+  padding: 4px 11px 5px;
+  font-size: 13px;
+  border-radius: 10px;
+  background: rgba(16, 24, 20, 0.86);
+  border-color: rgba(253, 246, 230, 0.45);
+  text-align: center;
+}
+
+.map-label.card .map-label-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: #e9dfc6;
+}
+
 .map-label.locality.rank-2 {
   font-size: 13px;
   font-weight: 600;
@@ -2257,4 +2286,10 @@ html, body {
 /* The card takes the pointer (so it stays up while read, and its Source can be reached); the corner around it does not. */
 .nugget-badge {
   pointer-events: auto;
+}
+
+/* The map-data credits: plain entries, not numbered facts. */
+.sources-map-data {
+  list-style: none;
+  padding-left: 0;
 }

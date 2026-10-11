@@ -19,6 +19,7 @@ import { ForecastOutline } from "@render/forecastOutline";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
+import { buildingGeometry } from "@render/townGeometry";
 import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
@@ -35,7 +36,7 @@ import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
 import { TownDecor } from "@render/townDecor";
 import { AmbientLife } from "@render/ambientLife";
-import { townLayout, WALL_COLOURS, ROOF_COLOURS } from "@levels/townLayout";
+import { nearestHouse, townLayout, WALL_COLOURS, ROOF_COLOURS } from "@levels/townLayout";
 import { Tooltips, buildWhat, tooltipText, missingTooltips } from "@ui/tooltip";
 import { StormReport } from "@ui/stormReport";
 // `SessionResult` is defined in @core/levelScore (it is expressed purely
@@ -332,6 +333,20 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * `state.elements` entirely, so no meter, objective, hazard or achievement
    * can see them (see `GameState.reserved`).
    */
+  const town = level.houses?.fillLand ? townLayout(levelMap, level.id) : null;
+  /** The largest of the nearest Houses to a coord, as drawn (for sizing a monument against its street). */
+  const neighbourBuilding = (coord: AxialCoord): { w: number; d: number; h: number } | null => {
+    if (!town) return null;
+    let best: { w: number; d: number; h: number } | null = null;
+    for (const { plot } of nearestHouse(town, coord)) {
+      const geometry = buildingGeometry(plot.kind);
+      geometry.computeBoundingBox();
+      const b = geometry.boundingBox!;
+      const size = { w: (b.max.x - b.min.x) * plot.scale, d: (b.max.z - b.min.z) * plot.scale, h: b.max.y * plot.scale };
+      if (!best || size.w * size.d * size.h > best.w * best.d * best.h) best = size;
+    }
+    return best;
+  };
   const monuments = new MonumentMeshManager(
     levelMap.monuments
       // A monument whose tile was cropped away by `mapRadius` would float over
@@ -341,9 +356,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         id: monument.id,
         name: monument.name,
         kind: monument.kind,
+        category: monument.category,
         coord: { q: monument.q, r: monument.r }
       })),
-    (coord) => terrain.heightAt(coord)
+    (coord) => terrain.heightAt(coord),
+    neighbourBuilding
   );
   scene.add(monuments.group);
   for (const key of monuments.occupiedKeys()) state.reserved.add(key);
@@ -354,7 +371,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * gardens, and the major roads. Purely how the town looks; the game counts
    * every building as one House.
    */
-  const town = level.houses?.fillLand ? townLayout(levelMap, level.id) : null;
   let townDecor: TownDecor | null = null;
   let ambientLife: AmbientLife | null = null;
   if (town) {
@@ -362,7 +378,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const roofs = ROOF_COLOURS.map((hex) => new THREE.Color(hex));
     elements.setStyleResolver((coord) => {
       const plot = town.buildings.get(`${coord.q},${coord.r}`);
-      return plot ? { kind: plot.kind, wall: walls[plot.wall], roof: roofs[plot.roof], scale: plot.scale, turns: plot.turns } : null;
+      return plot
+        ? {
+            kind: plot.kind,
+            wall: walls[plot.wall],
+            roof: roofs[plot.roof],
+            scale: plot.scale,
+            turns: plot.turns,
+            rotY: plot.rotY,
+            fabric: plot.fabric.map((part) => ({ ...part, wall: walls[part.wall], roof: roofs[part.roof] }))
+          }
+        : null;
     });
     townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord));
     scene.add(townDecor.group);
@@ -493,13 +519,25 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       if (!def) continue;
       const [q, r] = key.split(",").map(Number);
       if ((def.matureQuarters ?? 0) > 0) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
-      else if (def.kind === "building") {
-        // Not every house rises equally: a fixed per-tile share, so the
-        // skyline grows uneven, the way a city does.
-        const share = 0.35 + (((q * 92821) ^ (r * 68917)) & 255) / 255;
-        elements.setHeightScale({ q, r }, 1 + age * 0.55 * share);
-      }
+      else if (def.kind === "building") elements.setHeightScale({ q, r }, skylineScale(q, r, age));
     }
+    // A monument rises with the street round it, so it keeps its standing over its neighbours.
+    if (town) {
+      monuments.setHeightGrowth((coord) => Math.max(1, ...nearestHouse(town, coord).map(({ key }) => {
+        const [q, r] = key.split(",").map(Number);
+        return state.elements.get(key)?.elementId === "house" ? skylineScale(q, r, age) : 1;
+      })));
+    }
+  }
+
+  /**
+   * How tall a House has grown, as a multiple of its built height. Not every
+   * house rises equally: a fixed per-tile share, so the skyline grows uneven,
+   * the way a city does.
+   */
+  function skylineScale(q: number, r: number, age: number): number {
+    const share = 0.35 + (((q * 92821) ^ (r * 68917)) & 255) / 255;
+    return 1 + age * 0.55 * share;
   }
 
   /**
@@ -2035,6 +2073,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         effects: {},
         note: "A Panjim landmark, placed from OpenStreetMap. It cannot be built on or removed."
       });
+      // Selected: its name card stays up while its popover is open.
+      selectedMonument = monument.name;
+      mapLabels.setFocus(hoveredMonument ?? selectedMonument);
       return;
     }
 
@@ -2139,6 +2180,70 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
 
+  /*
+   * Monument name cards (Section 3): a mouse resting on a monument's tile
+   * brings up its card in the label layer, and a click keeps it up. Mouse
+   * only: on touch the tap that selects it does the same job. The raycast
+   * runs at most every HOVER_PICK_MS, not on every pointer event.
+   */
+  const HOVER_PICK_MS = 120;
+  let hoveredMonument: string | null = null;
+  let selectedMonument: string | null = null;
+  let lastHoverPick = -Infinity;
+  /** Where the mouse rests on the board (normalised device coords), or null when it is off the board. */
+  let hoverAt: THREE.Vector2 | null = null;
+  /** Set when the mouse or the camera has moved since the last pick. */
+  let hoverDirty = false;
+  let lastHoverCamera = "";
+  const hoverTargets = [...terrain.raycastTargets, ...monuments.group.children];
+  const pickHover = (now: number): void => {
+    lastHoverPick = now;
+    hoverDirty = false;
+    if (!hoverAt) return;
+    raycaster.setFromCamera(hoverAt, camera);
+    // The monument building itself counts, not only its tile (a tall one hides its own tile).
+    const hit = raycaster.intersectObjects(hoverTargets)[0];
+    let name: string | null = null;
+    if (hit && hit.instanceId !== undefined) {
+      const monument = monuments.atHit(hit.object, hit.instanceId);
+      const coord = monument ? null : terrain.coordForHit(hit.object, hit.instanceId);
+      name = monument?.name ?? (coord ? (monuments.at(coord)?.name ?? null) : null);
+    }
+    hoveredMonument = name;
+    mapLabels.setFocus(hoveredMonument ?? selectedMonument);
+  };
+  renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
+    if (event.pointerType !== "mouse" || event.buttons !== 0) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    hoverAt = (hoverAt ?? new THREE.Vector2()).set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    hoverDirty = true;
+  });
+  renderer.domElement.addEventListener("pointerleave", () => {
+    hoverAt = null;
+    hoveredMonument = null;
+    mapLabels.setFocus(selectedMonument);
+  });
+  // A popover closing, however it closes, lets its monument's card go.
+  buildPopover.onHide = () => {
+    selectedMonument = null;
+    mapLabels.setFocus(hoveredMonument);
+  };
+  /**
+   * Called every frame. Picks at most every HOVER_PICK_MS, but never drops
+   * the last move: a pick that was held back runs on a later frame. A camera
+   * moving under a still mouse (wheel, keys, glide) also counts as a move.
+   */
+  const updateHover = (now: number): void => {
+    if (!hoverAt) return;
+    const e = camera.matrixWorld.elements;
+    const cameraKey = `${e[12].toFixed(3)},${e[13].toFixed(3)},${e[14].toFixed(3)}`;
+    if (cameraKey !== lastHoverCamera) {
+      lastHoverCamera = cameraKey;
+      hoverDirty = true;
+    }
+    if (hoverDirty && now - lastHoverPick >= HOVER_PICK_MS) pickHover(now);
+  };
+
   renderer.domElement.addEventListener("click", (event: MouseEvent) => {
     if (wasDrag()) return; // a pan, not a click — don't also open a popover at the drag's end point
     if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
@@ -2159,10 +2264,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         return;
       }
     }
-    const hits = raycaster.intersectObjects(terrain.raycastTargets);
+    // A monument building counts as its tile: a tall one hides the tile it stands on.
+    const hits = raycaster.intersectObjects(hoverTargets);
     if (hits.length === 0 || hits[0].instanceId === undefined) return;
 
-    const coord = terrain.coordForHit(hits[0].object, hits[0].instanceId);
+    const coord = monuments.atHit(hits[0].object, hits[0].instanceId)?.coord ?? terrain.coordForHit(hits[0].object, hits[0].instanceId);
     if (!coord) return;
 
     openTilePopover(coord);
@@ -2211,15 +2317,20 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // glides rather than snapping (see scene.ts) — updating them only on
     // pointer events would leave them trailing behind the board mid-glide.
     const rect = renderer.domElement.getBoundingClientRect();
+    updateHover(nowMs);
     // The risk sequence gives way the moment the player opens a menu.
     if (riskIntro.isRunning && overlayOpen()) riskIntro.cancel("menu");
     riskIntro.frame(nowMs);
     mapLabels.update(
       (coord) => {
         // Anchored to the tile's top surface, so a label sits on the land
-        // rather than floating at sea level over a raised tile.
+        // rather than floating at sea level over a raised tile; on a
+        // monument's tile, to the top of the building (for any label on that
+        // tile: on Panaji no locality shares a monument's tile), so a card
+        // sits above the building it names rather than over it.
         const { x, z } = axialToWorld(coord, 1.0);
-        const screen = worldToScreen(x, terrain.heightAt(coord) + 0.25, z);
+        const top = monuments.topAt(coord);
+        const screen = worldToScreen(x, top !== null ? top + 0.08 : terrain.heightAt(coord) + 0.25, z);
         return { x: screen.x, y: screen.y, depth: 0 };
       },
       rect.width,
@@ -2400,6 +2511,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     __labelsForTest: mapLabels,
+    /** A tile's top surface on screen, in client pixels (for tests that hover a tile). */
+    __projectTileForTest: (q: number, r: number): { x: number; y: number } => {
+      const { x, z } = axialToWorld({ q, r }, 1.0);
+      const screen = worldToScreen(x, terrain.heightAt({ q, r }), z);
+      const rect = renderer.domElement.getBoundingClientRect();
+      return { x: rect.left + screen.x, y: rect.top + screen.y };
+    },
     __riskIntroForTest: riskIntro,
     // Builds a specific element at a specific coord (rather than
     // reverse-engineering screen-pixel clicks through the popover).
@@ -2439,6 +2557,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const counts: Record<string, number> = {};
       for (const child of monuments.group.children) {
         const mesh = child as THREE.InstancedMesh;
+        // The plazas under the buildings are not monuments.
+        if (mesh.name === "monument-plazas") continue;
         counts[mesh.name.replace(/^monument-/, "")] = mesh.count;
       }
       return counts;

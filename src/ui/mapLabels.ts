@@ -34,6 +34,8 @@ export interface MapLabel {
   kind: "landmark" | "locality";
   /** 0 landmark, 1 major locality, 2 minor locality. */
   rank: 0 | 1 | 2;
+  /** A monument's category ("Temple", "Museum, Patto"): the second line of its name card. */
+  sub?: string;
 }
 
 /** Where a label's anchor tile currently sits on screen, in CSS pixels relative to the canvas. */
@@ -117,12 +119,12 @@ interface Entry {
  */
 export function labelsForMap(map: {
   landmarks: readonly { name: string; q: number; r: number }[];
-  monuments: readonly { name: string; q: number; r: number }[];
+  monuments: readonly { name: string; q: number; r: number; category?: string }[];
   localities: readonly { name: string; q: number; r: number; rank: 1 | 2 }[];
 }): MapLabel[] {
   if (map.localities.length === 0) return map.landmarks.map((l) => ({ name: l.name, q: l.q, r: l.r, kind: "landmark", rank: 0 }));
   return [
-    ...map.monuments.map((m): MapLabel => ({ name: m.name, q: m.q, r: m.r, kind: "landmark", rank: 0 })),
+    ...map.monuments.map((m): MapLabel => ({ name: m.name, q: m.q, r: m.r, kind: "landmark", rank: 0, sub: m.category })),
     ...map.localities.map((l): MapLabel => ({ name: l.name, q: l.q, r: l.r, kind: "locality", rank: l.rank }))
   ];
 }
@@ -164,7 +166,17 @@ export class MapLabelLayer {
     labels.forEach((label, index) => {
       const node = document.createElement("div");
       node.className = label.kind === "locality" ? `map-label locality rank-${label.rank}` : "map-label";
-      node.textContent = label.name;
+      const name = document.createElement("span");
+      name.className = "map-label-name";
+      name.textContent = label.name;
+      node.appendChild(name);
+      if (label.sub) {
+        // Shown only on the name card (hover or selection): the category line.
+        const sub = document.createElement("span");
+        sub.className = "map-label-sub";
+        sub.textContent = label.sub;
+        node.appendChild(sub);
+      }
       this.el.appendChild(node);
       const id = `${index}:${label.name}`;
       if (label.kind === "landmark") monumentIds.set(label.name, id);
@@ -177,6 +189,30 @@ export class MapLabelLayer {
     document.fonts?.addEventListener?.("loadingdone", this.invalidate);
     this.sizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(this.invalidate) : null;
     for (const entry of this.entries) this.sizeObserver?.observe(entry.node);
+  }
+
+  /** The monument whose name card is up (hovered or selected), by name. */
+  private focusName: string | null = null;
+
+  /**
+   * Shows one monument's name card: its name and category, at any zoom, ahead
+   * of every other label (the placer still never lets it overlap the HUD or
+   * Maya). Null puts the labels back to normal.
+   */
+  setFocus(name: string | null): void {
+    if (this.focusName === name) return;
+    this.focusName = name;
+    for (const entry of this.entries) {
+      const focused = entry.label.kind === "landmark" && entry.label.name === name;
+      entry.node.classList.toggle("card", focused);
+    }
+    // The card is a different size from the plain label.
+    this.measured = false;
+  }
+
+  /** The monument whose card is up, for the tests. */
+  get focus(): string | null {
+    return this.focusName;
   }
 
   /** Hides every label — used while a hazard is resolving, when the board needs the player's whole attention. */
@@ -247,13 +283,15 @@ export class MapLabelLayer {
     for (const entry of this.entries) {
       const { label } = entry;
       if (entry.w < 1) continue;
-      if (label.kind === "landmark" && landmarkFade < LANDMARK_MIN_FADE) continue;
+      const focused = label.kind === "landmark" && label.name === this.focusName;
+      if (label.kind === "landmark" && landmarkFade < LANDMARK_MIN_FADE && !focused) continue;
       if (label.rank === 2 && !this.minorOn) continue;
       const screen = project({ q: label.q, r: label.r });
       if (!screen) continue;
       candidates.push({
         id: entry.id,
-        priority: label.rank,
+        // The name card outranks everything, localities and other monuments alike.
+        priority: focused ? -1 : label.rank,
         anchorX: screen.x,
         anchorY: screen.y,
         w: entry.w,
@@ -271,7 +309,8 @@ export class MapLabelLayer {
       next.set(p.id, p.offset);
       const entry = byId.get(p.id)!;
       entry.node.style.transform = `translate(${p.box.x.toFixed(1)}px, ${p.box.y.toFixed(1)}px)`;
-      entry.node.style.opacity = entry.label.kind === "landmark" ? landmarkFade.toFixed(2) : "1";
+      const focused = entry.label.kind === "landmark" && entry.label.name === this.focusName;
+      entry.node.style.opacity = entry.label.kind === "landmark" && !focused ? landmarkFade.toFixed(2) : "1";
       entry.node.classList.add("shown");
     }
     for (const entry of this.entries) {

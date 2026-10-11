@@ -219,8 +219,12 @@ export class BuildPopover {
     this.el.style.top = `${top}px`;
   }
 
+  /** Called whenever the popover closes, however it closes. */
+  onHide: (() => void) | null = null;
+
   hide(): void {
     this.backdrop.hidden = true;
     this.tooltips?.hide();
+    this.onHide?.();
   }
 }

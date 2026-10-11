@@ -1,4 +1,4 @@
-import { axialDistance, axialKey, neighbors, type AxialCoord } from "@core/hex";
+import { axialDistance, axialKey, axialToWorld, neighbors, type AxialCoord } from "@core/hex";
 import { hashSeed } from "@core/rng";
 import type { GameMap } from "./levelMap";
 
@@ -35,6 +35,31 @@ import type { GameMap } from "./levelMap";
 export type BuildingKind = "small_house" | "bungalow" | "two_storey" | "apartment" | "cafe" | "shop" | "godown";
 export const BUILDING_KINDS: BuildingKind[] = ["small_house", "bungalow", "two_storey", "apartment", "cafe", "shop", "godown"];
 
+/**
+ * The city fabric: the extra structures that stand round a tile's House, so
+ * a built tile reads as a block of the city (one to seven buildings) rather
+ * than one house on a lawn. Four shapes: the pitched Goan house, the flat
+ * concrete block, the apartment at two to four storeys, and the long shed.
+ * Decoration only: the tile is still one House in the game, and its fabric
+ * shares the House's fate (damage, loss, rebuild).
+ */
+export type FabricKind = "small_house" | "shop" | "apartment" | "godown";
+export const FABRIC_KINDS: FabricKind[] = ["small_house", "shop", "apartment", "godown"];
+
+export interface FabricPart {
+  kind: FabricKind;
+  /** Offset from the tile centre, world units. */
+  dx: number;
+  dz: number;
+  /** Rotation about the vertical, radians: its front faces the street. */
+  rotY: number;
+  scale: number;
+  /** 1 for the authored height; apartments use 0.5 to 1 for two to four storeys. */
+  heightScale: number;
+  wall: number;
+  roof: number;
+}
+
 export interface BuildingPlot {
   kind: BuildingKind;
   /** Index into `WALL_COLOURS`. */
@@ -43,8 +68,12 @@ export interface BuildingPlot {
   roof: number;
   /** About 0.88 to 1.12. */
   scale: number;
-  /** Quarter turns, 0 to 3. */
+  /** Quarter turns, 0 to 3 (the plot's seeded turn, kept for old callers). */
   turns: number;
+  /** Rotation about the vertical, radians: the House's front faces the nearest street. */
+  rotY: number;
+  /** The other structures on the tile (see FabricPart); empty where the House stands alone. */
+  fabric: FabricPart[];
 }
 
 export interface TownLayout {
@@ -61,12 +90,44 @@ export interface TownLayout {
 }
 
 /** Whitewash, ochre, laterite red, terracotta, Fontainhas blue, teal, pink, mustard, mint, soft grey. */
-export const WALL_COLOURS = ["#f3eee2", "#d9a441", "#b5523b", "#cf7a4f", "#4f7fb8", "#3f9a96", "#e59ab0", "#d8b13a", "#9fd3b0", "#b9b9b2"];
-/** Red tile, grey, blue. */
-export const ROOF_COLOURS = ["#b5452f", "#7d8288", "#4b6a8f"];
+export const WALL_COLOURS = [
+  "#f3eee2", "#d9a441", "#b5523b", "#cf7a4f", "#4f7fb8", "#3f9a96", "#e59ab0", "#d8b13a", "#9fd3b0", "#b9b9b2",
+  // Calmer walls for the rest of the city: cream, sand, pale sage, pale rose, pale ochre.
+  "#ece4d2", "#ddd2ba", "#cfd6c8", "#e8d6cc", "#e6d3a8"
+];
+
+/**
+ * Which walls a district uses (indices into WALL_COLOURS). Fontainhas, the
+ * old Latin quarter, is the saturated ochre, blue, green and red the
+ * neighbourhood is known for; the rest of the city is calmer, mostly
+ * whitewash and pale tints with the occasional colour.
+ */
+export const FONTAINHAS_WALLS = [1, 2, 3, 4, 5, 7, 8, 6];
+export const CALM_WALLS = [0, 0, 10, 11, 12, 13, 14, 9, 1, 4];
+/** How far from the Fontainhas name (in tiles) the saturated palette reaches. */
+const FONTAINHAS_REACH = 2;
+/** Red tile, grey, blue; then two more terracotta tones for the fabric's pitched roofs. */
+export const ROOF_COLOURS = ["#b5452f", "#7d8288", "#4b6a8f", "#a8492c", "#c4643c"];
 
 /** The share of buildable land (not road, not a landmark) left as gardens. */
 export const EMPTY_SHARE = 0.16;
+
+/** Fewest and most structures on a built tile (the House included). */
+export const FABRIC_MIN = 1;
+export const FABRIC_MAX = 7;
+/**
+ * The fabric's slots: the centre and a ring of six, each on a line from the
+ * centre to an edge's midpoint, so the blocks line up with the grid and the
+ * streets. The radius keeps the largest shape clear of the tile's edge (the
+ * inner radius is 0.866), so nothing ever stands on a neighbouring road.
+ */
+const FABRIC_RING = 0.52;
+/** How far a slot may swing off its line, radians (each way: half this). */
+const FABRIC_SWING = 0.5;
+/** A companion structure's size, relative to the authored building. */
+const FABRIC_SCALE: [number, number] = [0.56, 0.68];
+/** The House's own size on a tile with company, so the block does not crowd. */
+const CROWDED_HOUSE_SCALE = 0.8;
 
 /** A stable number in [0, 1) for a tile, a seed and a purpose. */
 function unit(seed: string, coord: AxialCoord, salt: string): number {
@@ -104,6 +165,9 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
   const monuments = new Set(map.monuments.map((m) => `${m.q},${m.r}`));
   const roads = new Set(map.roads.map(([q, r]) => `${q},${r}`).filter((key) => terrain.get(key) === "land" && !monuments.has(key)));
   const bridges = new Set(map.bridges.map(([q, r]) => `${q},${r}`).filter((key) => terrain.has(key)));
+  const fontainhas = map.localities.find((l) => l.name === "Fontainhas");
+  const paletteFor = (coord: AxialCoord): number[] =>
+    fontainhas && axialDistance(coord, fontainhas) <= FONTAINHAS_REACH ? FONTAINHAS_WALLS : CALM_WALLS;
   const zoneOf = new Map<string, string>();
   for (const zone of map.zones) for (const [q, r] of zone.tiles) zoneOf.set(`${q},${r}`, zone.id);
   const core = map.landmarks.find((l) => l.name === CORE_LANDMARK) ?? map.focus;
@@ -166,8 +230,10 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
         .map((n) => buildings.get(axialKey(n))?.wall)
         .filter((w): w is number => w !== undefined)
     );
-    let wall = Math.floor(unit(seed, plot.coord, "wall") * WALL_COLOURS.length);
-    for (let step = 0; step < WALL_COLOURS.length && taken.has(wall); step++) wall = (wall + 1) % WALL_COLOURS.length;
+    const walls = paletteFor(plot.coord);
+    let choice = Math.floor(unit(seed, plot.coord, "wall") * walls.length);
+    for (let step = 0; step < walls.length && taken.has(walls[choice]); step++) choice = (choice + 1) % walls.length;
+    const wall = walls[choice];
     const roofRoll = unit(seed, plot.coord, "roof");
     // Red tile for half the pitched roofs, grey and blue for the rest; flat
     // roofs are concrete grey or painted blue. Enough variety that the town
@@ -178,12 +244,127 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
       wall,
       roof,
       scale: 0.88 + unit(seed, plot.coord, "scale") * 0.24,
-      turns: Math.floor(unit(seed, plot.coord, "turn") * 4)
+      turns: Math.floor(unit(seed, plot.coord, "turn") * 4),
+      rotY: (Math.floor(unit(seed, plot.coord, "turn") * 4) * Math.PI) / 2,
+      fabric: []
     });
   }
+  addFabric(seed, paletteFor, plots, buildings, roads, bridges);
   const network = new Set([...roads, ...bridges]);
   const links = map.roadLinks
     .map(([q1, r1, q2, r2]) => [`${q1},${r1}`, `${q2},${r2}`] as [string, string])
     .filter(([a, b]) => network.has(a) && network.has(b));
   return { buildings, gardens, roads, bridges, links };
+}
+
+/** The angle (for `makeRotationY`) that turns a building's front (+z) toward `to` from `from`. */
+function facing(from: AxialCoord, to: AxialCoord): number {
+  const a = axialToWorld(from, 1);
+  const b = axialToWorld(to, 1);
+  return Math.atan2(b.x - a.x, b.z - a.z);
+}
+
+/**
+ * Fills each built tile with its fabric: how many structures (from the same
+ * density field that decided the tile is built), which shapes, where, and
+ * which way they face.
+ *
+ * Facing: toward a neighbouring road or bridge where there is one (the
+ * street front), else toward the nearest road within two tiles, else along
+ * the grid. Slots facing the street fill first, so a block's buildings line
+ * its street.
+ */
+function addFabric(
+  seed: string,
+  paletteFor: (coord: AxialCoord) => number[],
+  plots: { key: string; coord: AxialCoord; density: number; district: District; nearWater: boolean }[],
+  buildings: Map<string, BuildingPlot>,
+  roads: Set<string>,
+  bridges: Set<string>
+): void {
+  const built = plots.filter((plot) => buildings.has(plot.key));
+  if (built.length === 0) return;
+  const lo = Math.min(...built.map((p) => p.density));
+  const hi = Math.max(...built.map((p) => p.density));
+  const street = (key: string): boolean => roads.has(key) || bridges.has(key);
+  for (const plot of built) {
+    const house = buildings.get(plot.key)!;
+    const around = neighbors(plot.coord);
+    const fronts = around.filter((n) => street(axialKey(n)));
+    let face: AxialCoord | null = fronts[0] ?? null;
+    if (!face) {
+      // The nearest road two tiles away: face the neighbour on the way to it.
+      for (const n of around) {
+        if (neighbors(n).some((m) => street(axialKey(m)))) {
+          face = n;
+          break;
+        }
+      }
+    }
+    const baseAngle = face ? facing(plot.coord, face) : facing(plot.coord, around[Math.floor(unit(seed, plot.coord, "grid") * 6)]);
+    house.rotY = baseAngle;
+
+    const t = hi > lo ? (plot.density - lo) / (hi - lo) : 0.5;
+    const count = Math.max(FABRIC_MIN, Math.min(FABRIC_MAX, Math.round(FABRIC_MIN + t * (FABRIC_MAX - FABRIC_MIN) + (unit(seed, plot.coord, "count") - 0.5) * 2)));
+    if (count <= 1) continue;
+    if (count >= 5) house.scale *= CROWDED_HOUSE_SCALE;
+
+    // Ring slots, the street-facing ones first.
+    const slots = around
+      .map((n) => ({ n, angle: facing(plot.coord, n), street: street(axialKey(n)) }))
+      .sort((a, b) => Number(b.street) - Number(a.street) || unit(seed, a.n, "slot") - unit(seed, b.n, "slot"));
+    // The House keeps the centre; the ring holds up to six more.
+    for (let i = 0; i < count - 1 && i < slots.length; i++) {
+      const slot = slots[i];
+      const salt = `fabric${i}`;
+      const roll = unit(seed, plot.coord, `${salt}kind`);
+      const kind: FabricKind =
+        plot.nearWater && plot.district !== "seaside" && roll < 0.12
+          ? "godown"
+          : plot.district === "core"
+            ? roll < 0.35 ? "small_house" : roll < 0.65 ? "shop" : roll < 0.95 ? "apartment" : "godown"
+            : plot.district === "seaside"
+              ? roll < 0.6 ? "small_house" : roll < 0.8 ? "shop" : roll < 0.95 ? "apartment" : "godown"
+              : roll < 0.62 ? "small_house" : roll < 0.84 ? "shop" : roll < 0.93 ? "apartment" : "godown";
+      const wallRoll = unit(seed, plot.coord, `${salt}wall`);
+      const walls = paletteFor(plot.coord);
+      let wall = walls[Math.floor(wallRoll * walls.length)];
+      if (wall === house.wall) wall = walls[(walls.indexOf(wall) + 1) % walls.length];
+      const roofRoll = unit(seed, plot.coord, `${salt}roof`);
+      // Pitched roofs are terracotta; flat ones are concrete grey, now and then painted blue.
+      const roof = kind === "small_house" || kind === "godown" ? (roofRoll < 0.34 ? 0 : roofRoll < 0.67 ? 3 : 4) : roofRoll < 0.85 ? 1 : 2;
+      // Facing the street if this slot is on it; otherwise the same way as the House.
+      const rotY = slot.street ? slot.angle : baseAngle;
+      // A little off the slot's line and radius, so a block does not read as a ring.
+      const angle = slot.angle + (unit(seed, plot.coord, `${salt}swing`) - 0.5) * FABRIC_SWING;
+      const radius = FABRIC_RING * (0.82 + unit(seed, plot.coord, `${salt}reach`) * 0.18);
+      house.fabric.push({
+        kind,
+        dx: Math.sin(angle) * radius,
+        dz: Math.cos(angle) * radius,
+        rotY,
+        scale: FABRIC_SCALE[0] + unit(seed, plot.coord, `${salt}scale`) * (FABRIC_SCALE[1] - FABRIC_SCALE[0]),
+        heightScale: kind === "apartment" ? 0.5 + Math.floor(unit(seed, plot.coord, `${salt}storeys`) * 3) * 0.25 : 1,
+        wall,
+        roof
+      });
+    }
+  }
+}
+
+/**
+ * The Houses nearest a tile: those on its neighbours, or if it has none, those
+ * two tiles out. For sizing a monument against its street (some stand among
+ * roads, water and other monuments, with no House right beside them).
+ */
+export function nearestHouse(town: TownLayout, coord: AxialCoord): { key: string; plot: BuildingPlot }[] {
+  for (const ring of [1, 2]) {
+    const plots: { key: string; plot: BuildingPlot }[] = [];
+    for (const [key, plot] of town.buildings) {
+      const [q, r] = key.split(",").map(Number);
+      if (axialDistance({ q, r }, coord) === ring) plots.push({ key, plot });
+    }
+    if (plots.length > 0) return plots;
+  }
+  return [];
 }

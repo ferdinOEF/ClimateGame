@@ -51,6 +51,8 @@ export interface MapSource {
   bounds: { north: number; south: number; west: number; east: number };
   /** Ground metres to one world unit, which is what sets how big a hex is. */
   metresPerUnit: number;
+  /** When the map data was fetched (YYYY-MM-DD). */
+  accessed?: string;
 }
 
 /**
@@ -71,6 +73,17 @@ export interface MapOverlay {
   world: { x: number; z: number; width: number; depth: number };
   attribution: string;
   href?: string;
+}
+
+/** Where a map's per-tile ground heights came from (Panaji: the Copernicus DEM). */
+export interface MapElevation {
+  elevationSource: "dem" | "authored";
+  source: string;
+  href?: string;
+  licence: string;
+  accessed: string;
+  kind?: string;
+  method?: string;
 }
 
 /** A place a level is played on. */
@@ -129,6 +142,8 @@ export interface GameMap {
    * maps without them, which then label their `landmarks` instead.
    */
   localities: { name: string; q: number; r: number; rank: 1 | 2 }[];
+  /** Where the tiles' `elevationM` came from, when they have one. */
+  elevation?: MapElevation;
   /** Panjim 2050 challenge zones, from the map generator. Empty on maps without them. */
   zones: ZoneDef[];
   /** Land tiles a major road runs through, read from OpenStreetMap by the generator. Decoration and layout only. Empty on maps without them. */
@@ -153,11 +168,12 @@ interface MapFileShape {
   landmarks: { name: string; q: number; r: number }[];
   monuments?: { id: string; name: string; category: string; kind: string; q: number; r: number }[];
   localities?: { name: string; q: number; r: number; rank: 1 | 2 }[];
+  elevation?: MapElevation;
   zones?: ZoneDef[];
   roads?: [number, number][];
   bridges?: [number, number][];
   roadLinks?: [number, number, number, number][];
-  tiles: { q: number; r: number; terrainId: string }[];
+  tiles: { q: number; r: number; terrainId: string; elevationM?: number }[];
 }
 
 function fromFile(file: unknown): GameMap {
@@ -174,11 +190,16 @@ function fromFile(file: unknown): GameMap {
     landmarks: data.landmarks ?? [],
     monuments: data.monuments ?? [],
     localities: data.localities ?? [],
+    elevation: data.elevation,
     zones: data.zones ?? [],
     roads: data.roads ?? [],
     bridges: data.bridges ?? [],
     roadLinks: data.roadLinks ?? [],
-    tiles: data.tiles.map((tile) => ({ coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }))
+    tiles: data.tiles.map((tile) =>
+      tile.elevationM === undefined
+        ? { coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }
+        : { coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId, elevationM: tile.elevationM }
+    )
   };
 }
 

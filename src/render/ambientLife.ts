@@ -223,7 +223,11 @@ export class AmbientLife {
       const ox = (-dz / len) * 0.06 * w.side;
       const oz = (dx / len) * 0.06 * w.side;
       const bob = moving ? Math.abs(Math.sin(nowMs / 160 + i)) * 0.006 : 0;
-      this.position.set(a.x + dx * w.t + ox, ya + (yb - ya) * w.t + bob, a.z + dz * w.t + oz);
+      // Level on each tile, stepping up or down at the shared edge (t = 0.5): on
+      // a hillside the tiles are terraces, and a straight ramp between their
+      // centres would sink a walker into the higher one or float it off the lower.
+      const step = Math.min(1, Math.max(0, (w.t - 0.46) / 0.08));
+      this.position.set(a.x + dx * w.t + ox, ya + (yb - ya) * step + bob, a.z + dz * w.t + oz);
       const s = Math.max(0.0001, w.shown);
       this.matrix.compose(this.position, this.quaternion.identity(), this.scaleVec.set(s, s, s));
       this.people.setMatrixAt(i, this.matrix);

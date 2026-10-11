@@ -42,6 +42,12 @@ const HUD = [
 
 interface Rect { x: number; y: number; w: number; h: number; label: string }
 let checks = 0;
+/** The Mahalaxmi Temple's tile, for the hover check. */
+const TEMPLE = (() => {
+  const map = JSON.parse(fs.readFileSync(path.join(ROOT, "src/data/maps/panaji.json"), "utf8")) as { monuments: { id: string; q: number; r: number }[] };
+  const { q, r } = map.monuments.find((m) => m.id === "mahalaxmi_temple")!;
+  return { q, r };
+})();
 const costs: number[] = [];
 const failures: string[] = [];
 const report: string[] = [];
@@ -161,8 +167,28 @@ async function main(): Promise<void> {
       const cy = Math.round(size.h * 0.5);
       await page.mouse.move(cx, cy);
       await check(page, `${tag} zoom 1 (opening view)`, `panaji-zoom1-${tag}`, 2);
+      // A monument's name card at the opening zoom, where plain monument labels are not shown.
+      await page.evaluate(`window.__labelsForTest.setFocus("Our Lady of the Immaculate Conception")`);
+      // Frames are slow under software GL: measure once the card is on screen.
+      for (let k = 0; k < 50 && !(await page.evaluate(`!!document.querySelector(".map-label.card.shown")`)); k++) await page.waitForTimeout(100);
+      await check(page, `${tag} zoom 1, church name card`, `panaji-card-${tag}`, 2);
+      checks++;
+      const cardShown = (await page.evaluate(`!!document.querySelector(".map-label.card.shown")`)) as boolean;
+      if (!cardShown) failures.push(`${tag}: the church's name card was not drawn`);
+      console.log(`${cardShown ? "PASS" : "FAIL"}  ${tag} the name card is drawn, ahead of the localities`);
+      await page.evaluate(`window.__labelsForTest.setFocus(null)`);
       await page.mouse.wheel(0, -500);
       await check(page, `${tag} zoom 2`, `panaji-zoom2-${tag}`, 2);
+      // A real hover: the mouse over the Mahalaxmi Temple's tile brings up its card.
+      const temple = (await page.evaluate(`(() => { const m = ${JSON.stringify(TEMPLE)}; return window.__projectTileForTest(m.q, m.r); })()`)) as { x: number; y: number };
+      await page.mouse.move(temple.x, temple.y, { steps: 4 });
+      for (let k = 0; k < 50 && !(await page.evaluate(`!!document.querySelector(".map-label.card.shown")`)); k++) await page.waitForTimeout(100);
+      checks++;
+      const hovered = (await page.evaluate(`window.__labelsForTest.focus`)) as string | null;
+      if (hovered !== "Mahalaxmi Temple") failures.push(`${tag}: hovering the temple's tile gave the card ${hovered}`);
+      console.log(`${hovered === "Mahalaxmi Temple" ? "PASS" : "FAIL"}  ${tag} hovering the temple's tile brings up its card (${hovered})`);
+      await check(page, `${tag} zoom 2, temple hovered`, `panaji-hover-${tag}`, 1);
+      await page.mouse.move(cx, cy);
       await page.mouse.wheel(0, -500);
       await check(page, `${tag} zoom 3 (close)`, `panaji-zoom3-${tag}`, 2);
       // A drag-pan across the city, checked on every frame of the drag and the glide after it.

@@ -1,4 +1,57 @@
 import { CITED_FACTS, SHOWN_FACTS, displayText, fullReference } from "@core/facts";
+import { RELIEF } from "@core/relief";
+import { REAL_PLACE_MAPS } from "@levels/levelMap";
+
+/**
+ * The map data each real-place board is built from: the street map and,
+ * where the board has ground heights, the elevation model, each with its
+ * licence. Read from the maps' own `source` and `elevation` blocks, so a
+ * board cannot gain data without its credit appearing here.
+ */
+function mapDataItems(): HTMLLIElement[] {
+  const items: HTMLLIElement[] = [];
+  const add = (lines: string[], href?: string): void => {
+    const item = document.createElement("li");
+    item.className = "sources-item";
+    lines.forEach((line, i) => {
+      const p = document.createElement("p");
+      p.className = i === 0 ? "sources-fact" : "sources-note";
+      p.textContent = line;
+      item.appendChild(p);
+    });
+    if (href) {
+      const link = document.createElement("a");
+      link.className = "sources-link";
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = href;
+      item.appendChild(link);
+    }
+    items.push(item);
+  };
+  for (const map of REAL_PLACE_MAPS) {
+    if (map.source) add([`${map.name}: coastline, rivers, roads, landmarks and street map from OpenStreetMap.`, `${map.source.attribution}, under the Open Database Licence.${map.source.accessed ? ` Accessed ${map.source.accessed}.` : ""}`], map.source.href);
+    const e = map.elevation;
+    if (e) {
+      const metresPerUnit = map.source?.metresPerUnit;
+      // How much steeper than true scale the board draws its hills: a drawing choice, said as one.
+      const exaggeration = metresPerUnit ? RELIEF.worldUnitsPerMetre * metresPerUnit : null;
+      add(
+        [
+          `${map.name}: ground heights from the ${e.source}. ${e.kind ?? ""}`.trim(),
+          `${e.licence} Accessed ${e.accessed}.`,
+          e.method ?? "",
+          exaggeration
+            ? `In this game, heights are drawn about ${exaggeration.toFixed(1)} times steeper than true scale, so the hills read on screen${RELIEF.maxLiftWorld < 100 * RELIEF.worldUnitsPerMetre ? `; ground above ${Math.round(RELIEF.maxLiftWorld / RELIEF.worldUnitsPerMetre)} m is drawn at that height` : ""}.`
+            : ""
+        ].filter((line) => line.length > 0),
+        e.href
+      );
+    }
+  }
+  return items;
+}
 
 /**
  * "Sources": every real-world fact the game shows, each with its full
@@ -121,6 +174,13 @@ export function openSources(factId?: string): HTMLElement {
     list.appendChild(item);
   }
 
+  const mapHead = document.createElement("h3");
+  mapHead.className = "sources-subhead";
+  mapHead.textContent = "Map data";
+  const mapList = document.createElement("ul");
+  mapList.className = "sources-list sources-map-data";
+  mapList.append(...mapDataItems());
+
   const rulesHead = document.createElement("h3");
   rulesHead.className = "sources-subhead";
   rulesHead.textContent = "Game rules";
@@ -136,7 +196,7 @@ export function openSources(factId?: string): HTMLElement {
 
   const body = document.createElement("div");
   body.className = "sources-body";
-  body.append(intro, list, rulesHead, rules);
+  body.append(intro, list, mapHead, mapList, rulesHead, rules);
   panel.append(head, body);
   backdrop.appendChild(panel);
   backdrop.addEventListener("click", (event) => {

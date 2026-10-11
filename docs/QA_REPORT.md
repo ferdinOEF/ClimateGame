@@ -440,3 +440,56 @@ Headless Chromium with software GL, as above.
 
 - `tools/walkthrough.ts` and `tools/smoke.ts` found "the canvas" with a bare `canvas` selector. The risk sequence adds its own canvas, so that became ambiguous. They now select the board's canvas only.
 - The browser check closes the Field Guide and Sources with their own close buttons. Escape outside the build menu is the quit key and left the level.
+
+# Section 3 — Panjim as a city, Altinho as a hill
+
+Branch `section-3-city-hill`, with master `4563615` (Section 2's merge) merged in.
+Headless Chromium with software GL, as above.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build | Clean. 406 tests pass (6 skipped). New: `cityHill.test.ts` (8), `cityFabric.test.ts` (2), `fabricLifecycle.test.ts` (2). |
+| Board unchanged | Every tile's position and terrain is byte-for-byte the board before this section (sha256 of `[q, r, terrainId]`). No building sits on a non-land, road, bridge or monument tile. Water, beach and wetland render as before (no lift, same geometry, same colour path). |
+| Elevation | Copernicus DEM GLO-30, on every tile. Altinho over 40 m within two tiles of its name; Campal, Fontainhas, Patto and São Tomé under a third of that; the wetland's median 5 m or less. |
+| Label overlap (`npm run test:labels`) | **37 of 37 pass.** Now includes a monument name card at the opening zoom at each size (drawn, ahead of the localities, overlapping nothing) and a real mouse hover over the Mahalaxmi Temple's tile bringing up its card. |
+| Walkthrough | Clean, no console errors. The Tutorial loads and plays (it has no relief and no town). |
+| Maya layout (`npm run test:layout`) | 105 of 105 (see below for the test fix). |
+| Functional and axe | All checks pass; no serious or critical axe issues. |
+| Monument sizes (`cityHill.test.ts`) | Every building: footprint 1.60x and height 1.38–1.55x the largest House beside it. |
+| Grayscale and deuteranopia | `oldcity-gray`, `oldcity-deuteranopia`, `core-gray`, `core-deuteranopia`. The monuments stand apart from the fabric by silhouette (domes, minarets, lamp tower, sheds, the church stair) and by their pale plazas, without colour. |
+| Cross-browser | Chromium only. |
+
+**Frame rate (`docs/qa/section3/perf-*.txt`, calm board, software GL):**
+
+| Size | Low | Medium | High | Draw calls | Triangles |
+|---|---|---|---|---|---|
+| 1366×768 | 1.7 | 1.7 | 1.8 | 49–51 | about 350k |
+| 1920×1080 | 1.2 | 1.4 | 1.3 | 50–54 | about 350k |
+| 2560×1440 | 1.0 | 1.0 | 1.0 | 45–50 | about 349k |
+
+- **Before this section:** 32 draw calls and 183k triangles.
+- **What the fabric costs:** 1,608 instanced structures, 4 draw calls, about 225k triangles.
+- **What the fps figures mean:** SwiftShader renders on the CPU, so these say nothing about a real GPU. The spec's "reduce density if High is under 50 fps at 1920" cannot be judged here.
+- **What I can say:** the city adds a handful of draw calls and a quarter of a million triangles, which desktop GPUs draw easily. So I did not reduce the density. If it proves heavy on real hardware, the place to cut is `FABRIC_MAX` in `townLayout.ts`.
+- **Memory and errors:** no leaks over three storms, and no console errors.
+
+**Screenshots (`docs/qa/section3/`):**
+- **Views:** `full`, `core`, `altinho` and `oldcity` (with the church's name card) at 1366, 1920 and 2560.
+- **Before/after pair:** `before-after-1920x1080.jpg` (left: before, right: after, same cameras).
+- **What I saw:**
+  - **Altinho:** close up it is unmistakably a hill: terraces of raised tiles with dark step sides and contour rims. From the opening camera it reads as raised ground behind the old city.
+    - At my first setting (2.4 times true scale) it did not; it read as flat. I raised the exaggeration to about 3.8 times.
+    - The hill is clear but not dramatic at that zoom, because the street map dominates the land's tops there.
+  - **The city:** it reads as dense blocks along streets rather than one house per tile. Fontainhas is the saturated quarter, and the rest is calmer.
+
+**Independent review:** 1 MAJOR and 10 MINOR findings, all fixed (listed in PROGRESS, Section 3).
+
+**Fixed in the QA tools while running this gate:**
+- `labelOverlapTest.ts` now waits for the card before measuring. Frames take over a second under software GL with the city drawn.
+- `__monumentsForTest` no longer counts the plazas as monuments.
+- `mayaLayoutTest.ts`:
+  - **The symptom:** "resized to 80%" failed in about half the runs (Maya over the bottom prompt).
+  - **The cause:** her layout runs on the game's frame, and with the city drawn a frame takes about a second under software GL. The check read a layout made before the Discovery card closed and the prompt came back, with the re-layout already pending (`layoutDirty`, 750 ms since the last pass). On a real GPU that is under a quarter of a second.
+  - **The fix:** the check now waits for a fresh, clean layout pass before measuring. It also fails on any page error, which would stop her layout.
+  - **Result:** 4 of 4 runs at 1366 clean, then the full run.
+  - **Master:** passed 3 of 3 before the fix, with lighter frames.

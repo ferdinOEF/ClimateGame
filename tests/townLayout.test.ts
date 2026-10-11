@@ -37,8 +37,10 @@ describe("the town plan", () => {
     const counts = new Map<string, number>();
     for (const plot of town.buildings.values()) {
       counts.set(plot.kind, (counts.get(plot.kind) ?? 0) + 1);
-      expect(plot.scale).toBeGreaterThanOrEqual(0.88);
-      expect(plot.scale).toBeLessThanOrEqual(1.12);
+      // A House among four or more other structures is drawn at 0.8 of its size (Section 3's city fabric).
+      const crowd = plot.fabric.length >= 4 ? 0.8 : 1;
+      expect(plot.scale).toBeGreaterThanOrEqual(0.88 * crowd - 1e-9);
+      expect(plot.scale).toBeLessThanOrEqual(1.12 * crowd + 1e-9);
       expect([0, 1, 2, 3]).toContain(plot.turns);
       expect(plot.wall).toBeLessThan(WALL_COLOURS.length);
     }

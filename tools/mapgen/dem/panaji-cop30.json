@@ -1,0 +1,13 @@
+{
+  "source": "Copernicus DEM GLO-30 (tile Copernicus_DSM_COG_10_N15_00_E073_00_DEM)",
+  "href": "https://registry.opendata.aws/copernicus-dem/",
+  "licence": "Copernicus DEM licence: free use with attribution. \u00a9 DLR e.V. 2010-2014 and \u00a9 Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+  "accessed": "2026-10-10",
+  "kind": "Digital surface model: heights include buildings and trees.",
+  "units": "int16 decimetres above the EGM2008 geoid, little-endian, row-major from the north-west corner",
+  "north": 15.523194444444442,
+  "west": 73.78486111111111,
+  "pixelDeg": 0.0002777777777777778,
+  "width": 343,
+  "height": 314
+}

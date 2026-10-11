@@ -5,7 +5,7 @@
     {
       "id": "panjim_church",
       "name": "Our Lady of the Immaculate Conception",
-      "category": "Heritage church, 1541",
+      "category": "Heritage church",
       "kind": "church",
       "how": "beside the OSM label Church Square, the square the church fronts",
       "lat": 15.4989,
@@ -15,7 +15,7 @@
     {
       "id": "idalcao_palace",
       "name": "Adil Shah Palace",
-      "category": "Old Secretariat, 1500s",
+      "category": "Old Secretariat",
       "kind": "palace",
       "how": "the waterfront block on Avenida Dom Joao de Castro, west of Church Square",
       "lat": 15.4998,
@@ -35,7 +35,7 @@
     {
       "id": "institute_menezes_braganza",
       "name": "Institute Menezes Braganza",
-      "category": "Library and gallery, 1871",
+      "category": "Library and gallery",
       "kind": "institution",
       "how": "beside Azad Maidan, the green square behind the ferry terminal",
       "lat": 15.50044,
@@ -48,7 +48,7 @@
     {
       "id": "mahalaxmi_temple",
       "name": "Mahalaxmi Temple",
-      "category": "Temple, 1818",
+      "category": "Temple",
       "kind": "temple",
       "how": "on Dr Dada Vaidya Road at the foot of Altinho; the temple is not labelled at this zoom",
       "lat": 15.4944,
@@ -68,7 +68,7 @@
     {
       "id": "don_bosco_high_school",
       "name": "Don Bosco High School",
-      "category": "School, 1935",
+      "category": "School",
       "kind": "institution",
       "how": "the school grounds on Mahatma Gandhi Road, west end of the old town",
       "lat": 15.49704,
@@ -117,7 +117,7 @@
     {
       "id": "kala_academy",
       "name": "Kala Academy",
-      "category": "Arts centre, 1983",
+      "category": "Arts centre",
       "kind": "institution",
       "how": "the riverfront building at Campal",
       "lat": 15.49421,

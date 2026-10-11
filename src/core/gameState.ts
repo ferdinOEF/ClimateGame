@@ -4,6 +4,8 @@ import { ELEMENT_BY_ID, type ElementDef } from "./elements";
 export interface PlacedTile {
   coord: AxialCoord;
   terrainId: string;
+  /** Ground height in metres, on maps built from a DEM (land tiles only). */
+  elevationM?: number;
 }
 
 export interface ElementInstance {
