@@ -113,7 +113,7 @@ if (withMargins) {
     "",
     "## Each defence's margin (Smart's own run, replayed with that defence left out)",
     "",
-    `Smart with everything: ${pct(base)} of houses in the storms' paths saved. Each build of the left-out defence becomes a quarter of waiting; every other action is replayed as it was, so nothing re-plans round the gap.`,
+    `Smart with everything: ${pct(base)} of houses in the storms' paths saved. Each build of the left-out defence becomes waiting, for as many quarters as it would have taken; every other action is replayed as it was, so nothing re-plans round the gap.`,
     "",
     "| Left out | Houses saved | Margin (points) | Margin per seed (points) |",
     "|---|---|---|---|"
