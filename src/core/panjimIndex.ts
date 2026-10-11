@@ -21,7 +21,6 @@ export interface IndexInput {
   outcomes: ChallengeOutcome[];
   incomePerQuarter: number;
   /** The balance preset's coin multiplier, so a ×10 economy does not read as ×10 livelihoods. */
-  coinMultiplier?: number;
 }
 
 export interface PanjimIndex {
@@ -48,7 +47,7 @@ export function computePanjimIndex(input: IndexInput): PanjimIndex {
   const protection = outcomes.length > 0 ? outcomes.reduce((sum, o) => sum + o.protection, 0) / outcomes.length : 0;
   const resilience = clamp100(protection * 100);
   const biodiversity = clamp100((state.biodiversity / 60) * 100);
-  const livelihoods = clamp100((input.incomePerQuarter / (30 * (input.coinMultiplier ?? 1))) * 100);
+  const livelihoods = clamp100((input.incomePerQuarter / 30) * 100);
   const population = clamp100(((state.population - 50) / 150) * 100);
   const food = clamp100(50 + state.food * 3);
   const index = clamp100((resilience + biodiversity + livelihoods + population + food) / 5);

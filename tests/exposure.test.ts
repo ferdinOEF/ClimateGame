@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { heatRamp, tileHeat, computeExposure, protectedTiles, buildHeatView, HEAT_LEAD_QUARTERS } from "../src/core/exposure";
 import { resolveChallenge } from "../src/core/zones";
-import { BOT_LEVELS, newRun, type Preset } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import type { ActionRun } from "../src/core/actionRun";
 
 /**
@@ -50,14 +50,14 @@ function land(run: ActionRun): ReturnType<typeof run.outcomes.get> {
   return run.outcomes.get(next.id);
 }
 
-const PRESETS: Preset[] = ["easy-test", "strict"];
+const PRESETS = ["baseline"] as const;
 const SEEDS = ["panjim", "s1", "s7", "s13"];
 
 describe("computeExposure matches the storm it previews", () => {
   for (const preset of PRESETS) {
     for (const seed of SEEDS) {
       it(`${preset} · ${seed}: undefended, every storm`, () => {
-        const run = newRun(seed, BOT_LEVELS[preset]);
+        const run = newRun(seed, BOT_LEVEL);
         for (let i = 0; i < 3; i++) {
           approach(run, 1);
           const next = run.nextChallenge()!;
@@ -73,7 +73,7 @@ describe("computeExposure matches the storm it previews", () => {
       });
 
       it(`${preset} · ${seed}: with defences planted inside the warning window`, () => {
-        const run = newRun(seed, BOT_LEVELS[preset]);
+        const run = newRun(seed, BOT_LEVEL);
         approach(run, 5, [["z1", "dune"], ["z1", "sandy_vegetation"], ["z2", "mangrove"]]);
         const next = run.nextChallenge()!;
         const preview = run.exposureFor(next)!;
@@ -84,8 +84,8 @@ describe("computeExposure matches the storm it previews", () => {
   }
 
   it("never changes the outcome: the probe only reads", () => {
-    const a = newRun("panjim", BOT_LEVELS.strict);
-    const b = newRun("panjim", BOT_LEVELS.strict);
+    const a = newRun("panjim", BOT_LEVEL);
+    const b = newRun("panjim", BOT_LEVEL);
     const next = a.nextChallenge()!;
     const intensity = a.intensityOf(next);
     const unit = a.climate!.intensityPerStrength;
@@ -95,7 +95,7 @@ describe("computeExposure matches the storm it previews", () => {
   });
 
   it("leaves the real board untouched", () => {
-    const run = newRun("panjim", BOT_LEVELS.strict);
+    const run = newRun("panjim", BOT_LEVEL);
     const before = JSON.stringify([...run.state.elements]);
     run.exposureFor(run.nextChallenge()!);
     run.exposureFor(run.nextChallenge()!, true);
@@ -103,7 +103,7 @@ describe("computeExposure matches the storm it previews", () => {
   });
 
   it("marks tiles a defence protected, and only those", () => {
-    const run = newRun("panjim", BOT_LEVELS.strict);
+    const run = newRun("panjim", BOT_LEVEL);
     approach(run, 5, [["z1", "dune"], ["z1", "dune"], ["z1", "sandy_vegetation"]]);
     const next = run.nextChallenge()!;
     const now = run.exposureFor(next)!;
@@ -111,13 +111,13 @@ describe("computeExposure matches the storm it previews", () => {
     const shielded = protectedTiles(now, bare);
     for (const key of shielded) expect((bare.exposure.get(key) ?? 0) - (now.exposure.get(key) ?? 0)).toBeGreaterThanOrEqual(0.15);
     // With no defences built, nothing is protected.
-    const fresh = newRun("panjim", BOT_LEVELS.strict);
+    const fresh = newRun("panjim", BOT_LEVEL);
     const c = fresh.nextChallenge()!;
     expect(protectedTiles(fresh.exposureFor(c)!, fresh.exposureFor(c, true)!)).toEqual([]);
   });
 
   it("covers only tiles on the storm's path", () => {
-    const run = newRun("panjim", BOT_LEVELS.strict);
+    const run = newRun("panjim", BOT_LEVEL);
     const next = run.nextChallenge()!;
     const preview = computeExposure(run.state, run.zones!, "cyclone", 100, 50, { houseRule: run.houseRule });
     const path = new Set([...run.zones!.keys("z1"), ...run.zones!.keys("z2")]);
@@ -128,7 +128,7 @@ describe("computeExposure matches the storm it previews", () => {
 
 describe("buildHeatView", () => {
   it("heats only dry tiles, hatches above 30%, pulses at most 24 falling houses, and shields defences", () => {
-    const run = newRun("s7", BOT_LEVELS.strict);
+    const run = newRun("s7", BOT_LEVEL);
     approach(run, 1, [["z1", "dune"], ["z1", "dune"]]);
     const next = run.nextChallenge()!;
     const now = run.exposureFor(next)!;
@@ -155,7 +155,7 @@ describe("buildHeatView", () => {
 describe("the heat is information only", () => {
   it("a run that computes the heat, the shields and Get ready every quarter ends exactly like one that never looks", () => {
     const play = (look: boolean): string => {
-      const run = newRun("s13", BOT_LEVELS["easy-test"]);
+      const run = newRun("s13", BOT_LEVEL);
       const terrain = new Map([...run.state.placed.values()].map((t) => [`${t.coord.q},${t.coord.r}`, t.terrainId]));
       let step = 0;
       while (!run.finished && step < 200) {

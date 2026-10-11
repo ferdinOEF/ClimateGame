@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { BOT_LEVELS, newRun } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { MAYA, refreshSavedNotes } from "../src/core/mayaLines";
 import type { RunSnapshot } from "../src/core/actionRun";
 
 /** Things saved on a player's device by earlier builds must still load, in today's words. */
 describe("saves from earlier builds", () => {
   it("an autosave that still carries the old requests' status restores", () => {
-    const run = newRun("panjim", BOT_LEVELS["easy-test"]);
+    const run = newRun("panjim", BOT_LEVEL);
     const snap = run.snapshot();
     const old = { ...snap, voiceStatus: [["voice-anthony-dunes", "active"]] } as unknown as RunSnapshot;
-    const again = newRun("panjim", BOT_LEVELS["easy-test"]);
+    const again = newRun("panjim", BOT_LEVEL);
     expect(() => again.restore(old)).not.toThrow();
     expect(again.snapshot().quarter).toBe(snap.quarter);
     expect(JSON.stringify(again.snapshot())).not.toContain("voice");

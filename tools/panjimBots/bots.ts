@@ -26,16 +26,19 @@ import { ActionRun, type RunEvent } from "../../src/core/actionRun";
 import { GameState } from "../../src/core/gameState";
 import { ELEMENT_BY_ID } from "../../src/core/elements";
 import { axialKey, neighbor, type AxialCoord } from "../../src/core/hex";
-import { FRONTS, ZoneIndex } from "../../src/core/zones";
+import { resolveChallenge, ZoneIndex } from "../../src/core/zones";
+import { computeCombos } from "../../src/core/combos";
+import { computeWater, floodsHouse, forecastSite, HAZARD_MODEL, LANDFALL_ZONE } from "../../src/core/hazardModel";
+import type { ChallengeKind, ScheduledChallenge } from "../../src/core/climate";
 import { outlookFor } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
 import { hashSeed, Rng } from "../../src/core/rng";
-import { levelWithPreset, type LevelDef } from "../../src/levels/levels";
+import { LEVEL_BY_ID, type LevelDef } from "../../src/levels/levels";
 import { boardSetup } from "../../src/levels/balance";
 import { mapById } from "../../src/levels/levelMap";
 
-export type Persona = "casual" | "greedy" | "smart" | "rusher" | "banker" | "walls" | "mangroves";
-export const PERSONAS: Persona[] = ["casual", "greedy", "smart", "rusher", "banker"];
+export type Persona = "casual" | "greedy" | "smart" | "rusher";
+export const PERSONAS: Persona[] = ["casual", "greedy", "smart", "rusher"];
 
 export interface BotResult {
   persona: Persona;
@@ -75,13 +78,8 @@ export const TIME = {
   finale: 3800 + 5000
 };
 
-export type Preset = "strict" | "easy-test";
-
-/** Panaji under each balance preset, built once. The tuning sweeps mutate these to try other numbers. */
-export const BOT_LEVELS: Record<Preset, LevelDef> = {
-  strict: levelWithPreset("l01-first-rains", "strict")!,
-  "easy-test": levelWithPreset("l01-first-rains", "easy-test")!
-};
+/** Panaji as played (one baseline since Section 4). The tuning sweeps mutate a copy to try other numbers. */
+export const BOT_LEVEL: LevelDef = LEVEL_BY_ID.get("l01-first-rains")!;
 const MAP = mapById("panaji")!;
 const ZONES = new ZoneIndex(MAP.zones);
 const RESERVED = new Set(MAP.monuments.map((m) => `${m.q},${m.r}`));
@@ -114,8 +112,8 @@ class Player {
   firstRewardMs = -1;
   private phaseSeen = new Map<string, string>();
 
-  constructor(readonly persona: Persona, readonly seed: string, readonly preset: Preset = "strict") {
-    this.run = newRun(seed, BOT_LEVELS[preset]);
+  constructor(readonly persona: Persona, readonly seed: string, readonly level: LevelDef = BOT_LEVEL) {
+    this.run = newRun(seed, level);
     this.rng = new Rng(hashSeed(`${persona}:${seed}`));
   }
 
@@ -219,7 +217,7 @@ class Player {
 
   result(): BotResult {
     const outcomes = this.run.schedule.map((c) => this.run.outcomes.get(c.id)!).filter(Boolean);
-    const index = computePanjimIndex({ state: this.state, outcomes, incomePerQuarter: this.run.incomePerQuarter, coinMultiplier: this.run.config.economy?.coinMultiplier });
+    const index = computePanjimIndex({ state: this.state, outcomes, incomePerQuarter: this.run.incomePerQuarter });
     return {
       persona: this.persona,
       seed: this.seed,
@@ -247,21 +245,163 @@ class Player {
 }
 
 // ---- personas ------------------------------------------------------------------
+//
+// Section 4's archetypes, all playing the real rules through ActionRun:
+//   casual    builds a little, late: a few random defences once a storm is near.
+//   greedy    maximises income (resorts, sand mining, dams) and defends only in
+//             the last quarters before a storm, cheaply.
+//   smart     reads the forecast: defends where the warning says the water will
+//             come, ranking each candidate by the houses it actually saves (the
+//             same resolver, on a copy of the board), plants slow-growing
+//             mangroves and khazans early, and keeps a reserve.
+//   rusher    the do-nothing control: only fast-forwards.
 
-const ALL_BUILDABLE = ["dune", "sandy_vegetation", "beachside_resort", "house", "seawall", "mangrove", "khazan", "small_dam", "sand_mining", "breakwater"];
+const DEFENCES = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
+const INCOME = ["sand_mining", "small_dam", "beachside_resort"];
+
+function hazardsOfKind(kind: ChallengeKind): string[] {
+  return kind === "compound" ? ["cyclone", "flood"] : [kind];
+}
+
+function answers(elementId: string, kind: ChallengeKind): boolean {
+  const def = ELEMENT_BY_ID.get(elementId)!;
+  return (def.effects.resilience ?? 0) > 0 && !!def.targetsHazards?.some((h) => hazardsOfKind(kind).includes(h));
+}
+
+/** Tiles within `radius` hexes of any of `keys`. */
+function around(keys: Iterable<string>, radius: number): Set<string> {
+  const out = new Set<string>();
+  let frontier = [...keys];
+  for (const key of frontier) out.add(key);
+  for (let ring = 0; ring < radius; ring++) {
+    const next: string[] = [];
+    for (const key of frontier) {
+      for (let dir = 0; dir < 6; dir++) {
+        const n = axialKey(neighbor(coordOf(key), dir));
+        if (out.has(n)) continue;
+        out.add(n);
+        next.push(n);
+      }
+    }
+    frontier = next;
+  }
+  return out;
+}
+
+/**
+ * What `challenge` would do if it landed at its forecast centre on the board
+ * as it stands with `extra` built now: houses lost, and how deep the water
+ * stands over the house-loss line on the houses at risk (so a build that
+ * lowers the water without yet saving a house still counts; a careful player
+ * knows two or three defences together save a street). The same water model
+ * the game resolves storms with.
+ */
+function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: string; elementId: string } | null): { lost: number; excess: number } {
+  const run = p.run;
+  const board = run.state.clone();
+  board.turn = Math.max(run.quarter, challenge.quarter);
+  if (extra) board.elements.set(extra.key, { elementId: extra.elementId, builtOnTurn: run.state.turn, degradeAmount: 0, floodBufferFilled: 0 });
+  const readiness = run.readinessFor(challenge);
+  const strength = readiness ? readiness.strength : 1;
+  const site = challenge.kind === "flood" ? null : forecastSite(run.board(), challenge);
+  const water = computeWater(board, { kind: challenge.kind, strength, landfall: site }, { combos: computeCombos(board).bonus, landfallZoneTiles: ZONES.keys(LANDFALL_ZONE) });
+  let lost = 0;
+  let excess = 0;
+  for (const [key, inst] of board.elements) {
+    if (inst.elementId !== "house" || inst.degradeAmount >= 1) continue;
+    const d = water.depth.get(key) ?? 0;
+    if (floodsHouse(d)) {
+      lost++;
+      excess += d - HAZARD_MODEL.houseLossDepthM;
+    }
+  }
+  return { lost, excess };
+}
+
+/**
+ * The best defence to build now against `challenge`: candidates on and around
+ * the tiles the warning shows at risk, each scored by the houses it saves per
+ * Coin. Null when nothing affordable saves a house.
+ */
+function bestDefence(p: Player, challenge: ScheduledChallenge, maxCoin: number, longLeadOnly = false, perCoin = true): { coord: AxialCoord; elementId: string; saves: number } | null {
+  const exposure = p.run.exposureFor(challenge);
+  if (!exposure || exposure.housesAtRisk.length === 0) return null;
+  const near = around([...exposure.housesAtRisk, ...exposure.exposure.keys()], 1);
+  const candidates: { key: string; elementId: string; score: number }[] = [];
+  const risk = new Set(exposure.housesAtRisk);
+  for (const key of near) {
+    const coord = coordOf(key);
+    for (const elementId of DEFENCES) {
+      if (!answers(elementId, challenge.kind)) continue;
+      if (longLeadOnly && !["mangrove", "khazan"].includes(elementId)) continue;
+      const def = ELEMENT_BY_ID.get(elementId)!;
+      if (def.buildCost > maxCoin || !p.state.canBuild(coord, elementId)) continue;
+      let score = 0;
+      for (const n of around([key], 2)) if (risk.has(n)) score++;
+      candidates.push({ key, elementId, score: (score + (exposure.exposure.get(key) ?? 0)) / def.buildCost });
+    }
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  // The best few of each kind, so a strong but dear defence is weighed too.
+  const shortlist: typeof candidates = [];
+  const perKind = new Map<string, number>();
+  for (const c of candidates) {
+    if ((perKind.get(c.elementId) ?? 0) >= 3) continue;
+    perKind.set(c.elementId, (perKind.get(c.elementId) ?? 0) + 1);
+    shortlist.push(c);
+  }
+  const base = lossesWith(p, challenge, null);
+  let best: { coord: AxialCoord; elementId: string; saves: number; value: number } | null = null;
+  for (const c of shortlist) {
+    const after = lossesWith(p, challenge, c);
+    const saves = base.lost - after.lost;
+    // A house saved is worth a lot; water taken off the houses at risk (in metres) counts too.
+    const gain = saves * 4 + (base.excess - after.excess);
+    const value = perCoin ? gain / ELEMENT_BY_ID.get(c.elementId)!.buildCost : gain;
+    if (gain > 0.5 && (!best || value > best.value)) best = { coord: coordOf(c.key), elementId: c.elementId, saves, value };
+  }
+  return best;
+}
 
 function playCasual(p: Player): void {
+  // Builds a little, late: from about three years before a storm, now and
+  // then a defence on the obvious spot, next to the most red houses it can
+  // afford to cover. It never checks what a build actually saves.
   while (!p.run.finished) {
-    if (p.rng.next() < 0.5) p.tapJar();
-    const roll = p.rng.next();
-    if (roll < 0.22) {
+    if (p.rng.next() < 0.6) p.tapJar();
+    const next = p.run.nextChallenge();
+    const near = next ? p.run.quartersUntil(next) <= 12 : false;
+    if (!next || !near || p.rng.next() < 0.3) {
       p.fastForwardYear();
       continue;
     }
-    const elementId = p.rng.pick(ALL_BUILDABLE);
-    const spots = p.spots(elementId, null);
-    if (spots.length === 0 || !p.build(p.rng.pick(spots.slice(0, 200)), elementId)) p.fastForwardYear();
+    const exposure = p.run.exposureFor(next);
+    if (!exposure || exposure.housesAtRisk.length === 0) {
+      p.fastForwardYear();
+      continue;
+    }
+    const risk = new Set(exposure.housesAtRisk);
+    let best: { coord: AxialCoord; id: string; score: number } | null = null;
+    for (const key of around(exposure.exposure.keys(), 1)) {
+      const coord = coordOf(key);
+      let red = 0;
+      for (const n of around([key], 2)) if (risk.has(n)) red++;
+      if (red === 0) continue;
+      for (const id of DEFENCES) {
+        if (!answers(id, next.kind) || ELEMENT_BY_ID.get(id)!.buildCost > p.state.coin || !p.state.canBuild(coord, id)) continue;
+        const score = red + p.rng.next();
+        if (!best || score > best.score) best = { coord, id, score };
+      }
+    }
+    if (!best || !p.build(best.coord, best.id)) p.fastForwardYear();
   }
+}
+
+/** Hex distance from `c` to the nearest of `targets` (99 if none). */
+function nearest(c: AxialCoord, targets: AxialCoord[]): number {
+  let best = 99;
+  for (const t of targets) best = Math.min(best, (Math.abs(c.q - t.q) + Math.abs(c.r - t.r) + Math.abs(c.q + c.r - t.q - t.r)) / 2);
+  return best;
 }
 
 /** Coin per quarter for each Coin spent, the Greedy bot's only measure. */
@@ -271,16 +411,27 @@ function moneyPerCoin(elementId: string): number {
 }
 
 function playGreedy(p: Player): void {
-  const ranked = ["sand_mining", "small_dam", "house", "beachside_resort", "khazan", "mangrove"].sort((a, b) => moneyPerCoin(b) - moneyPerCoin(a));
+  const ranked = [...INCOME].sort((a, b) => moneyPerCoin(b) - moneyPerCoin(a));
+  let incomeBuilds = 0;
   while (!p.run.finished) {
     p.tapJar();
+    const next = p.run.nextChallenge();
+    // Defends late: only in the last six quarters before a storm.
+    if (next && p.run.quartersUntil(next) <= 6) {
+      const pick = bestDefence(p, next, p.state.coin, false, false);
+      if (pick && p.build(pick.coord, pick.elementId)) continue;
+    }
+    // Income first, up to a couple of dozen money-makers; then it banks and waits for the storms.
     let built = false;
-    for (const elementId of ranked) {
-      const spots = p.spots(elementId, null);
-      if (spots.length === 0) continue;
-      if (p.build(p.rng.pick(spots.slice(0, 40)), elementId)) {
-        built = true;
-        break;
+    if (incomeBuilds < 24) {
+      for (const elementId of ranked) {
+        const spots = p.spots(elementId, null);
+        if (spots.length === 0) continue;
+        if (p.build(p.rng.pick(spots.slice(0, 40)), elementId)) {
+          built = true;
+          incomeBuilds++;
+          break;
+        }
       }
     }
     if (!built) p.fastForwardYear();
@@ -291,141 +442,69 @@ function playRusher(p: Player): void {
   while (!p.run.finished) p.fastForwardYear();
 }
 
-/**
- * What a careful player wants on the board for a challenge: per zone on its
- * path, the defences that answer it, in preference order, with the neighbours
- * that make a combo.
- */
-function wishesFor(kind: "cyclone" | "flood" | "compound"): { zone: string; element: string; near: string[] }[] {
-  const out: { zone: string; element: string; near: string[] }[] = [];
-  for (const front of FRONTS[kind]) {
-    for (const zone of front.path) {
-      if (front.hazard === "cyclone") {
-        out.push({ zone, element: "dune", near: ["sandy_vegetation", "dune"] });
-        out.push({ zone, element: "sandy_vegetation", near: ["dune"] });
-        out.push({ zone, element: "mangrove", near: ["mangrove"] });
-        out.push({ zone, element: "breakwater", near: [] });
-      } else {
-        out.push({ zone, element: "mangrove", near: ["mangrove", "khazan"] });
-        out.push({ zone, element: "khazan", near: ["mangrove"] });
+/** Smart, with an optional element left out (the per-element margin test). */
+function smartPlayer(skip: string | null): (p: Player) => void {
+  return (p) => {
+    const reserve = 30;
+    while (!p.run.finished) {
+      p.tapJar();
+      let acted = false;
+      // Repair worn defences first (a worn one protects less).
+      for (const [key, inst] of p.state.elements) {
+        if (ELEMENT_BY_ID.get(inst.elementId)?.kind === "building") continue;
+        if (p.run.needsRepair(coordOf(key)) && p.state.coin >= p.run.repairCoin(coordOf(key)) + reserve && p.repair(coordOf(key))) {
+          acted = true;
+          break;
+        }
       }
-    }
-  }
-  return out;
-}
-
-/** One careful decision: repair, prepare for the next storm, look further ahead, grow income. Returns false when nothing was worth doing. */
-function smartStep(p: Player, opts: { lookahead: boolean; houses: number; grow?: boolean; only?: string[] }): boolean {
-  const run = p.run;
-  p.tapJar();
-  // Repair anything worn or damaged.
-  for (const [key, inst] of p.state.elements) {
-    if (inst.degradeAmount > 0 && p.repair(coordOf(key))) return true;
-  }
-  // A little income early.
-  const houses = [...p.state.elements.values()].filter((inst) => inst.elementId === "house").length;
-  if (houses < opts.houses) {
-    const spot = p.safeHouseSpot();
-    if (spot && p.build(spot, "house")) return true;
-  }
-  // The next challenge, while it is not yet green.
-  const readiness = run.readiness();
-  if (readiness && readiness.level !== "green") {
-    for (const wish of opts.only ? onlyWishes(readiness.challenge.kind, opts.only) : wishesFor(readiness.challenge.kind)) {
-      const spots = p.spots(wish.element, wish.zone, wish.near);
-      if (spots.length > 0 && p.build(spots[0], wish.element)) return true;
-    }
-  }
-  // Long-lead planting for the challenges after it: mangroves take five years.
-  if (opts.lookahead) {
-    const next = run.nextChallenge();
-    for (const challenge of run.schedule) {
-      if (!next || challenge.quarter <= next.quarter || run.landed.has(challenge.id)) continue;
-      const preview = run.readinessFor(challenge);
-      if (preview && preview.level === "green") continue;
-      for (const wish of wishesFor(challenge.kind)) {
-        if (wish.element !== "mangrove" && wish.element !== "khazan") continue;
-        const spots = p.spots(wish.element, wish.zone, wish.near);
-        if (spots.length > 0 && p.build(spots[0], wish.element)) return true;
+      if (acted) continue;
+      // Every storm still to come, nearest first: long-lead defences for the later ones.
+      const upcoming = p.run.schedule.filter((c) => !p.run.landed.has(c.id));
+      for (const [i, challenge] of upcoming.entries()) {
+        const pick = bestDefence(p, challenge, p.state.coin - reserve, i > 0);
+        if (pick && pick.elementId !== skip && p.build(pick.coord, pick.elementId)) {
+          acted = true;
+          break;
+        }
       }
+      // Nothing worth building: rebuild a lost home, on high ground first.
+      if (!acted) {
+        for (const [key, inst] of p.state.elements) {
+          if (inst.elementId !== "house" || !p.run.needsRepair(coordOf(key))) continue;
+          if (p.state.coin >= p.run.repairCoin(coordOf(key)) + reserve && p.repair(coordOf(key))) {
+            acted = true;
+            break;
+          }
+        }
+      }
+      if (!acted) p.fastForwardYear();
     }
-  }
-  // Then the city itself, while Coin allows and a reserve stays for
-  // repairs: homes away from the storm paths (population, livelihoods), and
-  // khazan and mangroves in the wetlands (food, wildlife, flood defence).
-  if (opts.grow && p.state.coin > 120) {
-    const homes = [...p.state.elements.values()].filter((inst) => inst.elementId === "house").length;
-    const growers: [string, string | null, string[]][] = [
-      ["khazan", "z2", ["mangrove"]],
-      ["mangrove", "z2", ["mangrove", "khazan"]]
-    ];
-    if (homes < 20 && p.state.food >= 0) {
-      const spot = p.safeHouseSpot();
-      if (spot && p.build(spot, "house")) return true;
-    }
-    for (const [element, zone, near] of growers) {
-      const spots = p.spots(element, zone, near);
-      if (spots.length > 0 && p.build(spots[0], element)) return true;
-    }
-  }
-  return false;
-}
-
-/** A monoculture's wishes: only its own elements, in every zone on the path. */
-function onlyWishes(kind: "cyclone" | "flood" | "compound", only: string[]): { zone: string; element: string; near: string[] }[] {
-  const out: { zone: string; element: string; near: string[] }[] = [];
-  for (const front of FRONTS[kind]) for (const zone of front.path) for (const element of only) out.push({ zone, element, near: [element] });
-  return out;
-}
-
-/** "Walls": a careful player who only ever builds engineered defences. One of the two monocultures that must not dominate. */
-function playWalls(p: Player): void {
-  while (!p.run.finished) {
-    if (!smartStep(p, { lookahead: false, houses: 8, only: ["seawall", "breakwater", "small_dam"] })) p.fastForwardYear();
-  }
-}
-
-/** "Mangroves": a careful player who only ever plants mangroves. */
-function playMangroves(p: Player): void {
-  while (!p.run.finished) {
-    if (!smartStep(p, { lookahead: false, houses: 8, only: ["mangrove"] })) p.fastForwardYear();
-  }
-}
-
-function playSmart(p: Player): void {
-  while (!p.run.finished) {
-    if (!smartStep(p, { lookahead: true, houses: 8, grow: true })) p.fastForwardYear();
-  }
-}
-
-function playBanker(p: Player): void {
-  while (!p.run.finished) {
-    p.tapJar();
-    const next = p.run.nextChallenge();
-    const locked = next ? p.run.locked.has(next.id) : true;
-    if (!locked) {
-      p.fastForwardYear();
-      continue;
-    }
-    if (!smartStep(p, { lookahead: false, houses: 0 })) p.fastForwardYear();
-  }
+  };
 }
 
 const PLAY: Record<Persona, (p: Player) => void> = {
   casual: playCasual,
   greedy: playGreedy,
-  smart: playSmart,
-  rusher: playRusher,
-  banker: playBanker,
-  walls: playWalls,
-  mangroves: playMangroves
+  smart: smartPlayer(null),
+  rusher: playRusher
 };
 
-/** The two single-trick strategies, for the "no single strategy dominates" check. */
-export const MONOCULTURES: Persona[] = ["walls", "mangroves"];
+/** Smart without one element, for "every defence is measurably worth building". */
+export function runSmartWithout(elementId: string, seed: string): BotResult {
+  const player = new Player("smart", seed);
+  smartPlayer(elementId)(player);
+  return player.result();
+}
 
-export function runBot(persona: Persona, seed: string, preset: Preset = "strict"): BotResult {
-  const player = new Player(persona, seed, preset);
+/** Houses saved over the whole run: saved over in-path, across the three storms. */
+export function savedShare(result: BotResult): number {
+  const saved = result.houses.reduce((s, h) => s + h.saved, 0);
+  const total = result.houses.reduce((s, h) => s + h.total, 0);
+  return total > 0 ? saved / total : 1;
+}
+
+export function runBot(persona: Persona, seed: string, level: LevelDef = BOT_LEVEL): BotResult {
+  const player = new Player(persona, seed, level);
   PLAY[persona](player);
   return player.result();
 }

@@ -12,7 +12,7 @@ import {
   waterEnvelope,
   type DepthField
 } from "../src/core/hazard";
-import { BOT_LEVELS, newRun, type Preset } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import type { ActionRun } from "../src/core/actionRun";
 import type { StormRecord } from "../src/core/stormRecord";
 import { buildStormScript, LIGHTNING_GAP, testedDefences } from "../src/core/stormScript";
@@ -77,19 +77,19 @@ function checkRecord(record: StormRecord): void {
   for (const save of record.savedBy) expect(save.houses).toBeGreaterThan(0);
 }
 
-const PRESETS: Preset[] = ["easy-test", "strict"];
+const PRESETS = ["baseline"] as const;
 const SEEDS = ["panjim", "s1", "s7"];
 
 describe("water depth matches the resolution", () => {
   for (const preset of PRESETS) {
     for (const seed of SEEDS) {
       it(`${preset} · ${seed}: undefended, every storm`, () => {
-        const run = newRun(seed, BOT_LEVELS[preset]);
+        const run = newRun(seed, BOT_LEVEL);
         for (let i = 0; i < 3; i++) checkRecord(nextStorm(run));
       });
 
       it(`${preset} · ${seed}: with defences`, () => {
-        const run = newRun(seed, BOT_LEVELS[preset]);
+        const run = newRun(seed, BOT_LEVEL);
         checkRecord(nextStorm(run, [["z1", "dune"], ["z1", "sandy_vegetation"], ["z2", "mangrove"]]));
         checkRecord(nextStorm(run, [["z2", "khazan"], ["z2", "khazan"], ["z3", "mangrove"]]));
         checkRecord(nextStorm(run, [["z4", "mangrove"], ["z2", "khazan"]]));
@@ -99,7 +99,7 @@ describe("water depth matches the resolution", () => {
 });
 
 describe("the storm's script", () => {
-  const run = newRun("panjim", BOT_LEVELS["easy-test"]);
+  const run = newRun("panjim", BOT_LEVEL);
   const records = [nextStorm(run), nextStorm(run), nextStorm(run)];
   const [cyclone, flood, compound] = records;
 
@@ -178,7 +178,7 @@ describe("the storm's script", () => {
 describe("the storm script marks only what the resolution decided", () => {
   for (const preset of PRESETS) {
     it(`${preset}: houses, defences and lightning`, () => {
-      const run = newRun("s7", BOT_LEVELS[preset]);
+      const run = newRun("s7", BOT_LEVEL);
       for (let i = 0; i < 3; i++) {
         const before = new Map([...run.state.elements].map(([key, inst]) => [key, inst.elementId]));
         const plant: [string, string][] = i === 0 ? [["z1", "dune"], ["z1", "sandy_vegetation"]] : i === 1 ? [["z2", "khazan"], ["z3", "mangrove"]] : [["z4", "mangrove"]];
@@ -206,7 +206,7 @@ describe("the storm script marks only what the resolution decided", () => {
 
 describe("the Aftermath replay quotes the record", () => {
   it("uses the resolver's numbers, step by step", () => {
-    const run = newRun("panjim", BOT_LEVELS.strict);
+    const run = newRun("panjim", BOT_LEVEL);
     const before = new Map<string, string>();
     const record = nextStorm(run, [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "dune"]]);
     for (const [key, inst] of run.state.elements) before.set(key, inst.elementId);
@@ -228,7 +228,7 @@ describe("the Aftermath replay quotes the record", () => {
 
 describe("only the defences a storm tested answer it", () => {
   it("a mangrove off the flood's path never shows answering, one on it can", () => {
-    const run = newRun("panjim", BOT_LEVELS["easy-test"]);
+    const run = newRun("panjim", BOT_LEVEL);
     nextStorm(run); // past the cyclone
     const record = nextStorm(run, [["z1", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"]]);
     expect(record.kind).toBe("flood");

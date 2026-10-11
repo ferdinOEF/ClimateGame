@@ -657,8 +657,7 @@ export class PanjimController {
     return computePanjimIndex({
       state: this.host.state,
       outcomes: this.run.schedule.map((c) => this.run.outcomes.get(c.id)).filter((o): o is ChallengeOutcome => o !== undefined),
-      incomePerQuarter: this.run.incomePerQuarter,
-      coinMultiplier: this.run.config.economy?.coinMultiplier
+      incomePerQuarter: this.run.incomePerQuarter
     });
   }
 

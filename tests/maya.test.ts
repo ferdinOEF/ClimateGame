@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MAYA, mayaAftermath, placeName, riskHotspot, warningLine } from "../src/core/mayaLines";
-import { BOT_LEVELS, newRun } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { mapById } from "../src/levels/levelMap";
 
 /**
@@ -50,7 +50,7 @@ describe("where Maya goes", () => {
 describe("Maya's Aftermath line", () => {
   it("describes the resolved storm: celebrates a clean save, is worried about losses, never says '1 homes'", () => {
     // Strict flood with nothing built: houses are lost.
-    const bare = newRun("s7", BOT_LEVELS.strict);
+    const bare = newRun("s7", BOT_LEVEL);
     while (bare.landed.size < 2) bare.fastForwardYear();
     const lost = bare.outcomes.get("c2-flood")!;
     expect(lost.housesDamaged).toBeGreaterThan(0);
@@ -59,7 +59,7 @@ describe("Maya's Aftermath line", () => {
     expect(worried.text).not.toMatch(/\b1 homes\b/);
 
     // Easy cyclone with dunes on the beach: nothing lost.
-    const run = newRun("panjim", BOT_LEVELS["easy-test"]);
+    const run = newRun("panjim", BOT_LEVEL);
     for (let i = 0; i < 3; i++) {
       for (const key of run.zones!.keys("z1")) {
         const [q, r] = key.split(",").map(Number);
@@ -80,7 +80,7 @@ describe("Maya's Aftermath line", () => {
 
 describe("Maya's Aftermath line with the storm's real comparisons", () => {
   it("quotes what a kind of defence really saved, and claims nothing when none did", () => {
-    const run = newRun("panjim", BOT_LEVELS.strict);
+    const run = newRun("panjim", BOT_LEVEL);
     for (let i = 0; i < 3; i++) {
       for (const key of run.zones!.keys("z1")) {
         const [q, r] = key.split(",").map(Number);

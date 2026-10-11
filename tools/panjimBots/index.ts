@@ -1,72 +1,53 @@
 /**
- * `npm run bots`: plays every persona on every seed and prints the tables
- * that go into docs/PROGRESS.md. The assertions themselves live in
- * tests/panjimBots.test.ts, so a broken balance fails `npm run test`.
+ * The Section 4 balance report: every archetype on every seed, over a full
+ * playthrough of Panaji, and each defence's margin in Smart's hands.
  *
- * `npm run bots -- strict` or `npm run bots -- easy-test` picks the balance
- * preset (default: easy-test, the level's own).
+ * Usage:  npm run bots            (archetypes)
+ *         npm run bots -- margins (also: Smart with each defence left out)
+ *         BOT_SEEDS=5 npm run bots (fewer seeds, for a quick look)
+ *
+ * Writes the tables to stdout as Markdown; docs/qa/section4/bots.md keeps the
+ * last full run. Seeds are listed so any row can be re-run.
  */
-import { MONOCULTURES, PERSONAS as MAIN, SEEDS, percentile, runBot, type BotResult } from "./bots";
+import { PERSONAS, SEEDS, runBot, runSmartWithout, savedShare, type BotResult, type Persona } from "./bots";
 
-const preset = process.argv[2] === "strict" ? "strict" : "easy-test";
-console.log(`Balance preset: ${preset}`);
+const seeds = SEEDS.slice(0, Number(process.env.BOT_SEEDS ?? SEEDS.length));
+const pct = (x: number): string => `${Math.round(x * 100)}%`;
+const lines: string[] = [];
+const results = new Map<Persona, BotResult[]>();
 
-const PERSONAS = [...MAIN, ...MONOCULTURES];
+for (const persona of PERSONAS) results.set(persona, seeds.map((seed) => runBot(persona, seed)));
 
-const results: BotResult[] = [];
-for (const persona of PERSONAS) for (const seed of SEEDS) results.push(runBot(persona, seed, preset));
-
-const minutes = (ms: number): string => (ms / 60000).toFixed(1);
-console.log("| Persona | 1★ | 2★ | 3★ | 3★ share | Index p10 / median / p90 | Decisions (median) | FF quarters (median) |");
-console.log("|---|---|---|---|---|---|---|---|");
+lines.push("## Archetypes", "", `${seeds.length} seeds: ${seeds.join(", ")}`, "");
+lines.push("| Archetype | Houses saved (all storms) | min | median | max | Stars per storm (mean) | Index (mean) |", "|---|---|---|---|---|---|---|");
 for (const persona of PERSONAS) {
-  const rows = results.filter((r) => r.persona === persona);
-  const stars = rows.flatMap((r) => r.stars);
-  const count = (n: number) => stars.filter((s) => s === n).length;
-  const index = rows.map((r) => r.index);
-  console.log(
-    `| ${persona} | ${count(1)} | ${count(2)} | ${count(3)} | ${Math.round((count(3) / stars.length) * 100)}% | ${percentile(index, 10)} / ${percentile(index, 50)} / ${percentile(index, 90)} | ${percentile(rows.map((r) => r.decisions), 50)} | ${percentile(rows.map((r) => r.fastForwardQuarters), 50)} |`
-  );
-}
-console.log("");
-console.log("| Persona | Est. minutes p10 / median / p90 | 2nd challenge at (median, min) | First action (s) | First reward (s) |");
-console.log("|---|---|---|---|---|");
-for (const persona of PERSONAS) {
-  const rows = results.filter((r) => r.persona === persona);
-  const est = rows.map((r) => r.estimatedMs);
-  const firstReward = rows.map((r) => r.firstRewardMs).filter((ms) => ms >= 0);
-  console.log(
-    `| ${persona} | ${minutes(percentile(est, 10))} / ${minutes(percentile(est, 50))} / ${minutes(percentile(est, 90))} | ${minutes(percentile(rows.map((r) => r.checkpoint2Ms), 50))} | ${(percentile(rows.map((r) => r.firstActionMs), 50) / 1000).toFixed(1)} | ${firstReward.length ? (percentile(firstReward, 50) / 1000).toFixed(1) : "never"} |`
-  );
-}
-console.log("");
-console.log("Per-challenge star share (1/2/3):");
-for (const persona of PERSONAS) {
-  const rows = results.filter((r) => r.persona === persona);
-  const parts = [0, 1, 2].map((i) => {
-    const s = rows.map((r) => r.stars[i]);
-    return `${s.filter((x) => x === 1).length}/${s.filter((x) => x === 2).length}/${s.filter((x) => x === 3).length}`;
-  });
-  console.log(`  ${persona.padEnd(7)} cyclone ${parts[0]}  flood ${parts[1]}  compound ${parts[2]}`);
+  const rs = results.get(persona)!;
+  const shares = rs.map(savedShare).sort((a, b) => a - b);
+  const mean = shares.reduce((s, x) => s + x, 0) / shares.length;
+  const stars = [0, 1, 2].map((i) => (rs.reduce((s, r) => s + (r.stars[i] ?? 0), 0) / rs.length).toFixed(1)).join(" / ");
+  const index = Math.round(rs.reduce((s, r) => s + r.index, 0) / rs.length);
+  lines.push(`| ${persona} | ${pct(mean)} | ${pct(shares[0])} | ${pct(shares[Math.floor(shares.length / 2)])} | ${pct(shares[shares.length - 1])} | ${stars} | ${index} |`);
 }
 
-console.log("");
-console.log("| Persona | Resilience | Biodiversity | Livelihoods | Population | Food | (medians) |");
-console.log("|---|---|---|---|---|---|---|");
+lines.push("", "## Every run", "", "| Archetype | Seed | Storm 1 saved | Storm 2 saved | Storm 3 saved | All | Stars | Resilience | Biodiversity | Livelihoods | Population | Food |", "|---|---|---|---|---|---|---|---|---|---|---|---|");
 for (const persona of PERSONAS) {
-  const rows = results.filter((r) => r.persona === persona);
-  const med = (key: keyof BotResult["components"]) => percentile(rows.map((r) => r.components[key]), 50);
-  console.log(`| ${persona} | ${med("resilience")} | ${med("biodiversity")} | ${med("livelihoods")} | ${med("population")} | ${med("food")} | |`);
+  for (const r of results.get(persona)!) {
+    const storms = r.houses.map((h) => `${h.saved}/${h.total}`);
+    while (storms.length < 3) storms.push("–");
+    const c = r.components;
+    lines.push(`| ${persona} | ${r.seed} | ${storms.join(" | ")} | ${pct(savedShare(r))} | ${r.stars.join("")} | ${c.resilience} | ${c.biodiversity} | ${c.livelihoods} | ${c.population} | ${c.food} |`);
+  }
 }
 
-console.log("");
-console.log("Houses saved per storm (median saved / total in path, and the worst seed):");
-for (const persona of PERSONAS) {
-  const rows = results.filter((r) => r.persona === persona);
-  const parts = [0, 1, 2].map((i) => {
-    const saved = rows.map((r) => r.houses[i]?.saved ?? 0);
-    const total = rows.map((r) => r.houses[i]?.total ?? 0);
-    return `${percentile(saved, 50)}/${percentile(total, 50)} (min ${Math.min(...saved)})`;
-  });
-  console.log(`  ${persona.padEnd(9)} cyclone ${parts[0]}  flood ${parts[1]}  compound ${parts[2]}`);
+if (process.argv.includes("margins")) {
+  const smart = results.get("smart")!;
+  const base = smart.reduce((s, r) => s + savedShare(r), 0) / smart.length;
+  lines.push("", "## Each defence's margin (Smart, with that defence never built)", "", `Smart with everything: ${pct(base)} of houses in the storms' paths saved.`, "", "| Left out | Houses saved | Margin (points) |", "|---|---|---|");
+  for (const elementId of ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"]) {
+    const rs = seeds.map((seed) => runSmartWithout(elementId, seed));
+    const share = rs.reduce((s, r) => s + savedShare(r), 0) / rs.length;
+    lines.push(`| ${elementId} | ${pct(share)} | ${((base - share) * 100).toFixed(1)} |`);
+  }
 }
+
+console.log(lines.join("\n"));

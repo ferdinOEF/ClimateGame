@@ -50,6 +50,13 @@ export interface ExposureOptions {
   houseStars?: { three: number; two: number };
   /** Resolve as if every defence against this storm were gone: the "before you built anything" picture the shields compare to. */
   withoutDefences?: boolean;
+  /**
+   * A cyclone's possible landfall sites (the forecast cone). The exposure is
+   * the worst over all of them: what the player is warned of is everywhere
+   * the storm may still hit. The outcome is the middle site's. One site is
+   * an exact preview.
+   */
+  landfallSites?: number[] | null;
 }
 
 /** The hazards a challenge kind brings. */
@@ -79,23 +86,33 @@ export function computeExposure(
     }
   }
   const tileIntensity = new Map<string, number>();
-  const outcome = resolveChallenge(
-    copy,
-    zones,
-    kind,
-    intensity,
-    strengthUnit,
-    options.combos,
-    options.houseStars,
-    options.houseRule,
-    (key, value) => tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, value))
-  );
-  // Without a house rule (other levels), a zone loses a share of its houses
-  // and there is no per-house threshold; the scale is one challenge unit.
+  const sites = options.landfallSites && options.landfallSites.length > 0 ? options.landfallSites : [null];
+  const middle = sites[Math.floor((sites.length - 1) / 2)];
+  const atRisk = new Set<string>();
+  let outcome: ChallengeOutcome | null = null;
+  for (const site of sites) {
+    // Each site on its own copy: the resolver changes the board it is given.
+    const board = sites.length > 1 ? copy.clone() : copy;
+    const result = resolveChallenge(
+      board,
+      zones,
+      kind,
+      intensity,
+      strengthUnit,
+      options.combos,
+      options.houseStars,
+      options.houseRule,
+      (key, value) => tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, value)),
+      site
+    );
+    for (const key of result.damagedHouses) atRisk.add(key);
+    if (site === middle) outcome = result;
+  }
+  // The resolver's scale: one house-loss depth is `resilience` (one challenge unit without a house rule).
   const scale = options.houseRule?.resilience ?? strengthUnit;
   const exposure = new Map<string, number>();
   for (const [key, value] of tileIntensity) exposure.set(key, Math.min(1, (value / scale) ** 2));
-  return { kind, intensity: tileIntensity, exposure, housesAtRisk: [...outcome.damagedHouses], outcome };
+  return { kind, intensity: tileIntensity, exposure, housesAtRisk: [...atRisk], outcome: outcome! };
 }
 
 /** Quarters of warning: the heat starts this many quarters before a storm lands. */

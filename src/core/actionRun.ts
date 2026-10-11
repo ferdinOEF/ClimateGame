@@ -5,7 +5,8 @@ import { QUARTERS_PER_YEAR } from "./quarters";
 import { buildSchedule, challengeStrength, outlookFor, type ClimateConfig, type ScheduledChallenge } from "./climate";
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
-import { computeExposure, type Exposure } from "./exposure";
+import { computeExposure, HEAT_LEAD_QUARTERS, type Exposure } from "./exposure";
+import { forecastCone, forecastSite, landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
 import { generatePrep, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
 import { resolveStorm, type StormRecord } from "./stormRecord";
 
@@ -45,7 +46,7 @@ export interface TimelineConfig {
    * economy: the run should afford roughly 40–70 meaningful decisions, never
    * everything. `jarStart` is a small gift so the first tap comes early.
    */
-  economy?: { incomeScale: number; jarStart: number; coinMultiplier?: number };
+  economy?: { incomeScale: number; jarStart: number };
 }
 
 export { QUARTERS_PER_YEAR };
@@ -298,7 +299,9 @@ export class ActionRun {
   readinessFor(challenge: ScheduledChallenge): Readiness | null {
     const preview = this.previewBoard(challenge);
     if (!preview || !this.climate || !this.zones) return null;
-    const outcome = resolveChallenge(preview.board, this.zones, challenge.kind, preview.strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule);
+    // The gauge reads the forecast centre: the expected landfall.
+    const site = challenge.kind === "flood" ? null : forecastSite(this.board(), challenge);
+    const outcome = resolveChallenge(preview.board, this.zones, challenge.kind, preview.strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule, undefined, site);
     return { challenge, strength: preview.strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
   }
 
@@ -332,8 +335,25 @@ export class ActionRun {
       combos: this.combos,
       houseRule: this.houseRule,
       houseStars: this.houseStars,
-      withoutDefences
+      withoutDefences,
+      landfallSites: this.landfallCone(challenge)
     });
+  }
+
+  /** The water board for this run's map (core/hazardModel.ts). */
+  board(): WaterBoard {
+    const landfallTiles = this.zones?.keys(LANDFALL_ZONE) ?? [];
+    return waterBoard(this.state, landfallTiles.length > 0 ? landfallTiles : undefined);
+  }
+
+  /**
+   * The landfall sites a storm may still come ashore at, as the player is
+   * told now: the forecast cone, narrowing over the warning's last quarters
+   * (core/hazardModel.ts `forecastCone`). Null for a flood.
+   */
+  landfallCone(challenge: ScheduledChallenge): number[] | null {
+    if (challenge.kind === "flood") return null;
+    return forecastCone(this.board(), challenge, this.quartersUntil(challenge), HEAT_LEAD_QUARTERS);
   }
 
   /** Quarters until `challenge` lands, from now. */
@@ -509,7 +529,8 @@ export class ActionRun {
         strengthUnit: this.climate.intensityPerStrength,
         combos: this.combos,
         houseStars: this.houseStars,
-        houseRule: this.houseRule
+        houseRule: this.houseRule,
+        landfall: challenge.kind === "flood" ? null : landfallSite(this.board(), challenge)
       });
       const outcome = record.outcome;
       this.outcomes.set(challenge.id, outcome);

@@ -1,3 +1,4 @@
+import { HAZARD_MODEL } from "./hazardModel";
 import { hashSeed, Rng } from "./rng";
 import { QUARTERS_PER_YEAR } from "./quarters";
 
@@ -44,8 +45,6 @@ export interface ChallengeDef {
   jitterYears: number;
   /** Base strength before the rising baseline, on the 1–3 scale. */
   strength: number;
-  /** Multiplies the strength, from the level's balance preset (1 when absent): "easy-test" halves the first storm. */
-  severityScale?: number;
 }
 
 export interface ClimateConfig {
@@ -67,6 +66,10 @@ export interface ScheduledChallenge extends ChallengeDef {
   quarter: number;
   /** Seeded offset in [-1, 1] that skews the narrowing window so its centre is not the answer. */
   windowSkew: number;
+  /** Cyclone and compound only: the forecast centre of landfall, 0-1 along the coast (core/hazardModel.ts). */
+  landfallCentre?: number;
+  /** Cyclone and compound only: where it really comes ashore, in landfall sites from the centre (within the data's bound). */
+  landfallOffset?: number;
 }
 
 /** The quarters of the year each kind may land in, 0-based (0 = Q1). */
@@ -92,7 +95,15 @@ export function buildSchedule(config: ClimateConfig, seedText: string, startYear
     quarter = snapToSeason(quarter, SEASONS[def.kind]);
     quarter = Math.min(lastQuarter, Math.max(earliest, quarter));
     if (!SEASONS[def.kind].includes(quarter % QUARTERS_PER_YEAR)) quarter = snapToSeason(quarter, SEASONS[def.kind], lastQuarter);
-    schedule.push({ ...def, quarter, windowSkew: rng.range(-1, 1) });
+    const scheduled: ScheduledChallenge = { ...def, quarter, windowSkew: rng.range(-1, 1) };
+    if (def.kind !== "flood") {
+      // Its own stream, so adding landfall did not move any storm's date.
+      const where = new Rng(hashSeed(`landfall:${seedText}:${def.id}`));
+      const bound = HAZARD_MODEL.landfall;
+      scheduled.landfallCentre = where.range(bound.centreMin, bound.centreMax);
+      scheduled.landfallOffset = Math.round(where.range(-bound.jitterSites, bound.jitterSites));
+    }
+    schedule.push(scheduled);
     earliest = quarter + 2 * QUARTERS_PER_YEAR;
   }
   return schedule;
@@ -126,7 +137,7 @@ export function seaLevelCm(config: ClimateConfig, quarter: number): number {
 
 /** A challenge's strength when it lands: base strength scaled by the baseline on its date. */
 export function challengeStrength(config: ClimateConfig, challenge: ScheduledChallenge): number {
-  return challenge.strength * (challenge.severityScale ?? 1) * baselineMultiplier(config, challenge.quarter);
+  return challenge.strength * baselineMultiplier(config, challenge.quarter);
 }
 
 /** The 1–3 icon rating the Forecast shows. */
