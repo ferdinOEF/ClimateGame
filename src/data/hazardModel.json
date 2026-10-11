@@ -42,7 +42,7 @@
       0.45
     ],
     "stackCap": 1.6,
-    "pathShare": 0.3,
+    "pathShare": 0.4,
     "neighbourShare": 0.5,
     "comboMetresPerPoint": 0.4,
     "failDepthPerUnit": 8.7,

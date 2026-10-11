@@ -218,7 +218,8 @@ export class StormDirector {
     const terrain = new Map(this.deps.tiles.map((t) => [axialKey(t.coord), t.terrainId]));
     const cycloneFront = FRONTS[record.kind].find((front) => front.hazard === "cyclone");
     if (cycloneFront) {
-      const zoneKeys = zones.keys(cycloneFront.path[0]);
+      // Where the storm really came ashore: the coast within a few hexes of its landfall site (the old zone if the record has none).
+      const zoneKeys = record.landfallKey ? nearKeys(record.landfallKey, 3, terrain) : zones.keys(cycloneFront.path[0]);
       const shore: AxialCoord[] = [];
       const sea: AxialCoord[] = [];
       for (const key of zoneKeys) {
@@ -491,4 +492,17 @@ export class StormDirector {
     this.resolve = null;
     resolve?.();
   }
+}
+
+/** Every board tile within `radius` hexes of `key`. */
+function nearKeys(key: string, radius: number, terrain: ReadonlyMap<string, string>): string[] {
+  const [q0, r0] = key.split(",").map(Number);
+  const out: string[] = [];
+  for (let dq = -radius; dq <= radius; dq++) {
+    for (let dr = Math.max(-radius, -dq - radius); dr <= Math.min(radius, -dq + radius); dr++) {
+      const k = `${q0 + dq},${r0 + dr}`;
+      if (terrain.has(k)) out.push(k);
+    }
+  }
+  return out;
 }

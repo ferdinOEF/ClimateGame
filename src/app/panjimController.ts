@@ -473,18 +473,14 @@ export class PanjimController {
     );
   }
 
-  /** Defences in the challenge's zones that have not reached full strength yet. */
+  /** Defences against the challenge's hazards that have not reached full strength yet. */
   private growingIn(challenge: ScheduledChallenge): number {
-    if (!this.run.zones) return 0;
+    const hazards = hazardsOf(challenge.kind);
     let count = 0;
-    for (const front of FRONTS[challenge.kind]) {
-      for (const zoneId of front.path) {
-        for (const key of this.run.zones.keys(zoneId)) {
-          const inst = this.host.state.elements.get(key);
-          const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
-          if (inst && def && (def.matureQuarters ?? 0) > 0 && this.host.state.maturityFraction(inst, def) < 1) count++;
-        }
-      }
+    for (const inst of this.host.state.elements.values()) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def || (def.effects.resilience ?? 0) <= 0 || !def.targetsHazards?.some((h) => hazards.includes(h as "cyclone" | "flood"))) continue;
+      if ((def.matureQuarters ?? 0) > 0 && this.host.state.maturityFraction(inst, def) < 1) count++;
     }
     return count;
   }
@@ -776,24 +772,26 @@ export class PanjimController {
     });
   }
 
-  /** Draws the locked Forecast in the scene: the path's zones, the first one strongest, and the strength label over it. */
+  /**
+   * Draws the locked Forecast in the scene: every tile the storm's water
+   * could reach anywhere in the forecast cone (the same hazard model the
+   * storm runs, on a board with no defences), hardest hit strongest, and the
+   * strength label at the forecast landfall (a cyclone) or over the
+   * hardest-hit water nearest the city (a flood).
+   */
   private showForecast(challenge: ScheduledChallenge): void {
     if (!this.run.zones || !this.run.climate) return;
+    const reach = this.run.exposureFor(challenge, true);
     const tiles: { coord: AxialCoord; weight: number }[] = [];
-    const seen = new Set<string>();
-    for (const front of FRONTS[challenge.kind]) {
-      front.path.forEach((zoneId, index) => {
-        for (const key of this.run.zones!.keys(zoneId)) {
-          if (seen.has(key)) continue;
-          seen.add(key);
-          const [q, r] = key.split(",").map(Number);
-          tiles.push({ coord: { q, r }, weight: Math.max(0.35, 1 - index * 0.3) });
-        }
-      });
+    for (const [key, value] of reach?.exposure ?? []) {
+      if (value <= 0) continue;
+      const [q, r] = key.split(",").map(Number);
+      tiles.push({ coord: { q, r }, weight: Math.max(0.35, value) });
     }
     this.host.showForecastZones(tiles);
-    const firstZone = FRONTS[challenge.kind][0].path[0];
-    this.forecastAnchor = nearestTo(this.run.zones.keys(firstZone), this.host.focus);
+    const centre = challenge.kind === "flood" ? null : this.run.board().sites[forecastSite(this.run.board(), challenge)];
+    const hardest = [...(reach?.exposure ?? [])].filter(([, v]) => v >= 1).map(([key]) => key);
+    this.forecastAnchor = centre ? nearestTo([centre], this.host.focus) : nearestTo(hardest.length > 0 ? hardest : tiles.map((t) => `${t.coord.q},${t.coord.r}`), this.host.focus);
     const icons = strengthIcons(challengeStrength(this.run.climate, challenge));
     const what = challenge.kind === "cyclone" ? "Cyclone landfall" : challenge.kind === "flood" ? "Flood rises here" : "Surge and flood meet here";
     this.forecastLabel.innerHTML = `<b>${what}</b> <span class="forecast-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span><span class="forecast-when">${this.labelFor(challenge.quarter)}</span>`;

@@ -3,7 +3,7 @@ import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
 import { FRONTS, resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId, type HouseRule, type ZoneIndex } from "./zones";
 import { buildDepthField, type DepthField } from "./hazard";
-import { computeWater, LANDFALL_ZONE } from "./hazardModel";
+import { computeWater, LANDFALL_ZONE, waterBoard, siteAt } from "./hazardModel";
 import { hazardsOf } from "./exposure";
 import { computeCombos } from "./combos";
 
@@ -40,6 +40,8 @@ export interface StormRecord {
   savedBy: DefenceSave[];
   /** The defences against this storm standing when it came (key → element id), before any failed. */
   defences: Map<string, string>;
+  /** The sea tile a cyclone came ashore at (null for a flood): the animation stages landfall there. */
+  landfallKey?: string | null;
 }
 
 export interface StormArgs {
@@ -140,5 +142,8 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   savedBy.sort((a, b) => b.houses - a.houses || (a.elementId < b.elementId ? -1 : 1));
   const defences = new Map<string, string>();
   for (const [key, inst] of before.elements) if (defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
-  return { kind: args.kind, outcome, field, undefended, savedBy, defences };
+  const landfallTiles = args.zones.keys(LANDFALL_ZONE);
+  const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
+  const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);
+  return { kind: args.kind, outcome, field, undefended, savedBy, defences, landfallKey };
 }

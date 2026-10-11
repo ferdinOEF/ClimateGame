@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOT_LEVEL, SEEDS, runBot, savedShare, type BotResult } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, SEEDS, replaySmartWithout, runBot, runSmartOnly, savedShare, smartRun, type BotResult } from "../tools/panjimBots/bots";
 
 /**
  * The Section 4 balance contract, played out by bots on the real rules. The
@@ -32,14 +32,18 @@ describe("Panjim bots (Section 4 targets)", () => {
   });
 
   it(
-    "Smart saves most of them, but not all",
+    "Smart saves most of them, but not all; every defence it builds pulls its weight; mangroves alone cannot match it",
     () => {
-      const smart = runBot("smart", SEEDS[0]);
+      const { result: smart, log } = smartRun(SEEDS[0]);
       expect(savedShare(smart)).toBeGreaterThanOrEqual(0.65);
       expect(savedShare(smart)).toBeLessThan(0.95);
-      for (const run of casual.slice(0, 1)) expect(savedShare(smart)).toBeGreaterThan(savedShare(run));
+      expect(savedShare(smart)).toBeGreaterThan(savedShare(casual[0]));
+      // Smart's own run replayed without each defence it built: never better without it.
+      for (const id of Object.keys(smart.built).filter((id) => id !== "house")) expect(savedShare(replaySmartWithout(id, SEEDS[0], log)), id).toBeLessThanOrEqual(savedShare(smart) + 1e-9);
+      // The strongest single kind (mangroves, docs/qa/section4/bots.md) stays well behind the mix.
+      expect(savedShare(runSmartOnly("mangrove", SEEDS[0]))).toBeLessThan(savedShare(smart) - 0.1);
     },
-    240_000
+    600_000
   );
 
   it("gives identical results for the same seed", () => {
