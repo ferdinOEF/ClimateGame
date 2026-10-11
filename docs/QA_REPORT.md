@@ -411,7 +411,7 @@ Headless Chromium with software GL, as above.
 | Contact sheet (`docs/qa/section2/contact-sheet.jpg`, 20 held frames) | Looked at. The fill and the left-to-right dark crest with its foam edge read clearly as a wave crossing the area, and the droplets burst at the right edge. The fold (10.4 s) reads as the sheet gathering and crumpling into a smaller patch, then a ball. It does **not** read as a wave rolling itself up. The flight and the button's pulse read. |
 | Label overlap (`npm run test:labels`) | 25 of 25 pass. |
 | Walkthrough (menu, Tutorial, Panaji) | Clean, no console errors. The Tutorial loads and plays. |
-| Maya layout (`npm run test:layout`) | See below. |
+| Maya layout (`npm run test:layout`) | 105 of 105 layouts at 1366, 1920 and 2560. |
 | Functional and axe (`tools/qaFunctional.ts`) | All checks pass. axe: no serious or critical issues on the menu or the Tutorial (moderate "region" only, as before). |
 | Frame rate at 1920×1080 while it plays | High 1.3 fps (worst frame 2.2 s), Low 1.5 fps (worst frame 0.9 s), under SwiftShader. These numbers say nothing about a real GPU. The spec's "reduce particles if High < 50 fps" cannot be judged here. The droplets are 40 small 2D circles on a canvas, and the shader is one quad. Medium was not measured separately: the sequence has only two modes on screen (full on High and Medium, flat on Low). |
 | Grayscale and deuteranopia | `wave-gray-1920x1080.jpg` and `wave-deuteranopia-1920x1080.jpg`. The crest stays readable without hue: a dark band behind a white dashed foam edge. |
