@@ -1,6 +1,7 @@
 import { describeObjective, type ObjectiveProgress } from "@core/objectives";
 import type { LevelDef } from "@levels/levels";
 import type { GameMap } from "@levels/levelMap";
+import { fullFigureUrl } from "./panjim/mayaArt";
 
 /**
  * The live objective checklist, plus the level's opening brief.
@@ -102,7 +103,13 @@ export class ObjectivesPanel {
     }
 
     card.querySelector(".brief-cta")!.addEventListener("click", () => this.hideBrief());
-    this.briefBackdrop.appendChild(card);
+    // Maya stands beside the brief, whole, with her pack: a sibling of the
+    // card (which scrolls), in a box that is only as big as the card.
+    const stage = document.createElement("div");
+    stage.className = "brief-stage";
+    stage.innerHTML = `<img class="maya-full-figure" src="${fullFigureUrl({ pack: true })}" width="102" height="250" alt="" draggable="false">`;
+    stage.appendChild(card);
+    this.briefBackdrop.appendChild(stage);
     container.appendChild(this.briefBackdrop);
   }
 

@@ -1097,9 +1097,9 @@
 .maya-figure-wrap {
   position: absolute;
   left: 14px;
-  top: calc(100% - 230px);
-  width: 96px;
-  height: 152px;
+  top: calc(100% - 214px);
+  width: 139px;
+  height: 136px;
   pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }
@@ -1169,10 +1169,6 @@
   border-radius: 50%;
   background: #e0533a;
   border: 2px solid #fdf6e6;
-}
-
-.maya-shadow {
-  fill: rgba(0, 0, 0, 0.28);
 }
 
 .maya-bubble {
@@ -1271,21 +1267,25 @@
   from { opacity: 0; transform: translateY(6px) scale(0.97); }
 }
 
-/* Pivots, in the SVG's own 120 x 190 units. */
-.maya-figure g {
+/*
+ * Pivots, in the art's own 200-wide units (mayaArt.ts; the HUD shows the
+ * crop x 38-172, y 40-195): the neck, the waist, the eyes, the brows and
+ * the shoulders.
+ */
+.maya-body, .maya-torso, .maya-head, .maya-eyes, .maya-arm {
   transform-box: view-box;
 }
-.maya-body { transform-origin: 60px 180px; }
-.maya-torso { transform-origin: 60px 132px; }
-.maya-head { transform-origin: 60px 74px; }
-.maya-eyes { transform-origin: 60px 57.5px; }
-.maya-arm-l { transform-origin: 41.5px 93px; transform: rotate(9deg); transition: transform 260ms ease-out; }
-.maya-arm-r { transform-origin: 78.5px 93px; transform: rotate(-9deg); transition: transform 260ms ease-out; }
+.maya-body { transform-origin: 100px 195px; }
+.maya-torso { transform-origin: 100px 250px; }
+.maya-head { transform-origin: 100px 150px; }
+.maya-eyes { transform-origin: 100px 103px; }
+.maya-arm-l { transform-origin: 72px 180px; transform: rotate(0deg); transition: transform 260ms ease-out; }
+.maya-arm-r { transform-origin: 128px 180px; transform: rotate(0deg); transition: transform 260ms ease-out; }
 .maya-brow-l, .maya-brow-r { transform-box: view-box; transition: transform 200ms ease-out; }
-.maya-brow-l { transform-origin: 53px 51px; }
-.maya-brow-r { transform-origin: 67px 51px; }
+.maya-brow-l { transform-origin: 87.5px 90px; }
+.maya-brow-r { transform-origin: 112.5px 90px; }
 
-.maya-mouth-o, .maya-mouth-worry, .maya-sweat, .maya-bulb, .maya-alert, .maya-stars {
+.maya-mouth-o, .maya-mouth-worry, .maya-mouth-happy, .maya-eyes-wide, .maya-eyes-happy, .maya-sweat, .maya-bulb, .maya-alert, .maya-stars {
   display: none;
 }
 
@@ -1293,6 +1293,8 @@
 .maya-eyes { animation: maya-blink 4.6s infinite; }
 .maya-torso { animation: maya-breathe 3.6s ease-in-out infinite; }
 .maya-head { animation: maya-nod 3.6s ease-in-out infinite; }
+/* Her hair tilts with her head but does not nod: hundreds of curls, left still while she idles. */
+.maya-head.maya-hair { animation: none; }
 
 @keyframes maya-blink {
   0%, 92%, 100% { transform: scaleY(1); }
@@ -1329,15 +1331,18 @@
 .maya.state-warning .maya-alert { display: inline; animation: maya-alert 0.8s ease-in-out infinite; }
 .maya.state-warning .maya-mouth-smile { display: none; }
 .maya.state-warning .maya-mouth-o { display: inline; }
+.maya.state-warning .maya-eyes { display: none; }
+.maya.state-warning .maya-eyes-wide { display: inline; }
 .maya.state-warning .maya-brow-l { transform: translateY(-1.5px) rotate(-8deg); }
 .maya.state-warning .maya-brow-r { transform: translateY(-1.5px) rotate(8deg); }
 @keyframes maya-alert {
   50% { transform: translateY(-2px); }
 }
 
-/* Worried: brows up in the middle, a sweat drop, hands together. */
-.maya.state-worried .maya-brow-l { transform: rotate(12deg); }
-.maya.state-worried .maya-brow-r { transform: rotate(-12deg); }
+/* Worried: brows up in the middle, a frown, a sweat drop (her hands, below the crop, come together). */
+/* Inner ends up (the left brow tilts anticlockwise, the right clockwise): worry, not anger. */
+.maya.state-worried .maya-brow-l { transform: rotate(-12deg); }
+.maya.state-worried .maya-brow-r { transform: rotate(12deg); }
 .maya.state-worried .maya-mouth-smile { display: none; }
 .maya.state-worried .maya-mouth-worry, .maya.state-worried .maya-sweat { display: inline; }
 .maya.state-worried .maya-arm-l { transform: rotate(-14deg); }
@@ -1347,6 +1352,8 @@
 .maya.state-celebrates .maya-arm-l { transform: rotate(140deg); }
 .maya.state-celebrates .maya-arm-r { transform: rotate(-140deg); }
 .maya.state-celebrates .maya-stars { display: inline; }
+.maya.state-celebrates .maya-mouth-smile, .maya.state-celebrates .maya-eyes { display: none; }
+.maya.state-celebrates .maya-mouth-happy, .maya.state-celebrates .maya-eyes-happy { display: inline; }
 .maya.state-celebrates .maya-star { transform-box: fill-box; transform-origin: center; animation: maya-twinkle 1s ease-in-out infinite; }
 .maya.state-celebrates .maya-star:nth-child(2) { animation-delay: 0.3s; }
 .maya.state-celebrates .maya-star:nth-child(3) { animation-delay: 0.6s; }
@@ -1472,8 +1479,8 @@
 
 /* A little larger on big screens: she should read at a glance at 1440p and 4K. */
 @media (min-width: 1700px) and (min-height: 900px) {
-  .maya-figure { width: 112px; height: 177px; }
-  .maya-figure-wrap { width: 112px; height: 177px; }
+  .maya-figure { width: 163px; height: 160px; }
+  .maya-figure-wrap { width: 163px; height: 160px; top: calc(100% - 238px); }
   .maya-bubble { font-size: 16px; }
 }
 
@@ -1638,9 +1645,16 @@
   .get-ready-row.just-done, .get-ready-pop { animation: none; }
 }
 
+/* Short windows (a laptop browser at 80% height): a smaller figure, the same
+   bottom edge, so her bubble still has room beside her. */
+@media (max-height: 700px) and (min-width: 701px) {
+  .maya-figure { width: 114px; height: 112px; }
+  .maya-figure-wrap { width: 114px; height: 112px; top: calc(100% - 190px); }
+}
+
 /* Phones are secondary: keep Maya and her bubble inside a narrow screen. */
 @media (max-width: 700px) {
-  .maya-figure, .maya-figure-wrap { width: 72px; height: 114px; }
+  .maya-figure, .maya-figure-wrap { width: 94px; height: 92px; }
   .maya-bubble { font-size: 14px; }
   .panjim-toggles { top: 120px; right: 8px; }
 }
@@ -1848,4 +1862,33 @@
 
 .risk-toggle {
   position: relative;
+}
+
+/* The minimised badge: her head, a small pre-rendered image (mayaArt.ts headUrl). */
+.maya-badge { overflow: hidden; }
+.maya-badge-face { display: block; width: 44px; height: 44px; border-radius: 50%; pointer-events: none; }
+
+/*
+ * Maya whole, with her pack, standing beside the level brief and the
+ * Aftermath card (mayaArt.ts fullFigureUrl): the moments with room for the
+ * hands, binoculars and kit to read. Outside the card, on its left, feet on
+ * its bottom edge; hidden where the screen is too narrow to spare the room.
+ */
+.brief-stage {
+  position: relative;
+}
+.aftermath-card {
+  position: relative;
+}
+.maya-full-figure {
+  position: absolute;
+  right: calc(100% + 14px);
+  bottom: 0;
+  width: 102px;
+  height: 250px;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+}
+@media (max-width: 900px), (max-height: 560px) {
+  .maya-full-figure { display: none; }
 }

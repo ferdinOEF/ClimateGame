@@ -8030,3 +8030,61 @@ model numbers.
   - the preview test now runs at exactly one quarter out, on the board as it will stand;
   - the easy-test check looks for the real key names;
   - stale comments are fixed (panjimIndex, prep, the cone in hazardModel.json, build quarters, bot personas, BOT_LEVEL).
+
+## Section 1b — Maya's appearance — DONE
+
+**Artwork only.** Maya is now a young Goan field researcher: shoulder-length curly hair, a teal field shirt, olive cargo trousers, a belt with a sample vial, boots, a daypack and binoculars. She is an original stylised character, not a likeness of anyone.
+
+**Unchanged:** her states, state machine, dialogue, the layout manager and its placement rules.
+
+**The port (`src/ui/panjim/mayaArt.ts`).** The approved reference (`docs/design/maya_field_researcher_reference.html`, copied into the repo) is ported with its construction kept:
+- the seeded coil (ringlet) generator, each ringlet drawn twice (thick base tone, thinner lit tone);
+- the hair silhouette, the drawn face path, the garment paths, the open-hand and fist builders;
+- the binoculars, drawn before the fist.
+
+The proportions, 200-wide viewBox and colours are the reference's.
+
+**Where each version shows:**
+- **HUD:** head and shoulders, no pack, clipped below the shoulders. Arms are drawn over the hair, so a raised hand is never lost in the curls. In the HUD the forearms are drawn at 0.4 of their length from the shoulder, so every gesture stays inside her box (a test checks every arm rotation in `panjim.css`). Pointing and waving use the free hand; the binoculars are in the other one.
+- **Level brief:** her full figure with the pack stands beside the card. The brief is shared by every level, so she appears in the Tutorial's intro too; the Tutorial has never had the HUD Maya, and still does not.
+- **Aftermath:** her full figure with the pack stands beside the card, with her face following her line's mood (happy, worried, alarmed, else greeting), and only when she has a line.
+- **Short windows (700 px tall or less):** the HUD figure is 114×112 instead of 139×136, with the same bottom edge. At 1366×768 shrunk to 80% (1093×614), the wider new figure left her bubble no room, and the layout manager held her line back; the smaller figure gives it room. This is a CSS size only; the layout rules are unchanged.
+- **Minimised badge:** her head.
+- **The full figures and the badge:** pre-rendered images (one DOM node each), built once and cached.
+
+**The face is never covered:**
+- No ringlet's centre falls within 1.2 times the face oval, both ways.
+- Any curl whose drawn stroke would touch the boxes round the brows, eyes, nose or mouth is left out, with its seeded draws still made so the rest never move: 5 of the 67 front curls.
+- The boxes are tested to contain every feature in every expression and every brow pose the states apply.
+- **Fringe:** sits higher and a little smaller than the reference's (y 75 against 81, radius 4.8–7.4 against 5.6–9), whose lower coils reached the brows.
+- **Seeded:** the curls are identical on every load, in every state and on every frame.
+
+**Expressions (art in the existing states):**
+- **Warning:** wide eyes and an open mouth.
+- **Celebrates:** happy closed eyes and a big smile.
+- **Worried:** a small frown and a sweat drop on top of the hair, where it shows.
+- **Worried brows:** they now tilt inner-ends-up, as the rule's comment always said. They used to tilt the other way and read as angry. This is the one change to a state's pose.
+
+**Palette:** one table, `MAYA_PALETTE`, holding the brief's colours by name. The live HUD figure reads them as CSS custom properties set on its root; the images get them inlined. A test fails on any colour literal elsewhere in the art.
+
+**Cost:**
+- **HUD figure:** 66 SVG nodes before, about 405 after.
+- **Badge:** 8 nodes before, 1 image after.
+- **In the game at 1920×1080 (software GL):** Maya costs 0.03–0.08 fps in the first run and 0.20 fps after the review fixes (0.87 shown against 1.07 hidden, where single samples range 0.7–1.3, so this is within noise). Her figure alone, on an otherwise empty page, runs at 1.3 fps new against 1.2 fps old; an empty page runs at 51 fps. The cost is the figure's existing drop shadow, not the curls.
+- **Hair:** it tilts with her head but no longer nods, so the curls are not redrawn every frame while she idles.
+- **Flattening:** below the brief's 2 fps threshold, so the hair is not flattened into a sprite.
+
+**Independent review (Section 1b): 1 MAJOR, 6 MINOR, NITs; all fixed:**
+- **MAJOR:** the pointing hand reached about 16 px past her box, into the bubble's 8 px gap. The crop is now wider and the forearms shorter, with a test over every CSS arm rotation.
+- **Props:** the bulb, alert and stars sat under the minimise button. They moved to her left.
+- **Crop:** the clip moved with a hop. It now sits on a static wrapper, with a unique id per figure.
+- **Face clearance:** it was 1.22 × 1.06. It is now a true 1.2 both ways.
+- **Tests:** three of them could not fail. They now measure the drawn features against the protected boxes, and the curls against an independent ellipse.
+- **Animation:** the hair nodded every frame; it now does not.
+- **Images:** they were rebuilt on every card. They are now cached, with lighter escaping.
+- **NITs:**
+  - the Aftermath figure without a line;
+  - the worried pose change, now noted above;
+  - dead CSS and exports;
+  - the old 96×152 fallback;
+  - `transform-box` narrowed to the animated groups.

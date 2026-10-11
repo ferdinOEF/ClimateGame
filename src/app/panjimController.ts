@@ -582,6 +582,7 @@ export class PanjimController {
     this.maya.setState(told?.mood ?? "idle");
     const choice = await this.aftermath.show({
       maya: told?.text ?? null,
+      mayaMood: told?.mood ?? null,
       title: `${challenge.name} · ${this.labelFor(challenge.quarter)}`,
       stars: outcome.stars,
       housesSaved: outcome.housesSaved,

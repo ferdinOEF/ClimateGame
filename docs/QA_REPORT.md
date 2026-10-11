@@ -530,3 +530,30 @@ Headless Chromium with software GL, as above. Everything is in `docs/qa/section4
 - **Heat redraw:** what changed in the frame is the redraw itself, measured in Node. It is about 106 ms worst case, five quarters out (heat, undefended heat and gauge together), down from about 560 ms before the review fix.
 
 **Independent review:** 1 MAJOR, 8 MINOR and several NITs, all fixed. They are listed in PROGRESS, Section 4.
+
+# Section 1b — Maya's appearance
+
+Branch `section-1b-maya`, off master `82e3776` (Section 4's merge).
+Headless Chromium with software GL, as above. Everything is in `docs/qa/section1b/`.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build | Clean. 402 tests pass (6 skipped), including `mayaArt.test.ts` (12). Those tests cover: the feature boxes hold every expression and brow pose; no ringlet centre lies inside 1.2× the face oval; no front curl touches a feature; the art is seeded; the arms stay inside the HUD box for every CSS rotation; the palette is the only source of colour. |
+| States contact sheet | `maya-states.png` (+ `-gray`): every state in the game. Eyes, brows, nose and mouth are never covered. |
+| Full figure | `maya-full.png`, large: the fingers, the fist and the binoculars (gold lens rims) read. `maya-hud-crop.png` is the HUD crop. |
+| Screenshots | 1366×768, 1920×1080 and 2560×1440: the brief, docked over the map, over the pale old city and over the dark river, each with a `-gray` copy. Also an Aftermath card and the Tutorial's brief at 1920. The teal shirt reads against both city and water. |
+| Label overlap (`npm run test:labels`) | **37 of 37 pass**; label layer at most 6.8 ms a frame. |
+| Maya layout (`npm run test:layout`) | **105 of 105.** The first run failed one case: 1366×768 resized to 80% (1093×614). The wider figure left her bubble no room, so the line was held back. Windows 700 px tall or less now draw the HUD figure at 114×112. That is CSS size only; the layout rules are unchanged. |
+| Walkthrough | Clean. |
+| Console errors | None (`tools/section1bShots.ts`). |
+| Tutorial | Loads. Maya's full figure stands beside its brief. The Tutorial has never had the HUD Maya. |
+| SVG nodes | HUD figure 66 → 404 SVG nodes (413 in her HUD layer). Badge 8 nodes → 1 image. Full figures are one cached image each. |
+| Frame rate, 1920×1080 (`tools/mayaPerf.ts`) | Panaji, Medium: 0.87 fps shown against 1.07 hidden. Single samples range 0.7–1.3, so the gap is within noise and well under the 2 fps threshold; the hair is not flattened. Her figure alone: new 1.3 fps, old 1.2 fps, empty page 51 fps. |
+| Cross-browser | Chromium only. The pivots use `transform-box: view-box` with a non-zero viewBox origin. Firefox and Safari are unverified. |
+
+**Deviations from the reference:**
+- The fringe sits higher and a little smaller: its lower coils reached the brows.
+- HUD forearms are drawn at 0.4 length, and the crop is wider, so every gesture stays in her box.
+- The worried brows now tilt with their inner ends up.
+- The brief and Aftermath figures are images beside the card.
+- The props (bulb, alert, stars) moved to her left, clear of the minimise button.
