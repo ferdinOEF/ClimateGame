@@ -24,10 +24,10 @@ import type { RunSnapshot } from "@core/actionRun";
 import { AftermathCard } from "@ui/panjim/aftermathCard";
 import { FinaleCard } from "@ui/panjim/finaleCard";
 import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIndex";
-import { axialToWorld } from "@core/hex";
+import { axialToWorld, neighbors } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
 import { playSound } from "@ui/audioHooks";
-import { coneTiles } from "@core/hazardModel";
+import { coneTiles, forecastSite } from "@core/hazardModel";
 import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
 import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
 import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
@@ -1098,10 +1098,49 @@ export class PanjimController {
     }
   }
 
-  /** Scenario helper: frames the camera on the next storm's first zone. */
+  /**
+   * Scenario helper: defends like a player reading the warning: up to
+   * `count` defences that answer the next storm, on buildable tiles beside
+   * the houses shown at risk, cheapest first, through the player's own build
+   * path (the jar tapped first).
+   */
+  private async defendRisk(count: number): Promise<number> {
+    const next = this.run.nextChallenge();
+    const exposure = next ? this.run.exposureFor(next) : null;
+    if (!next || !exposure) return 0;
+    const hazards = hazardsOf(next.kind);
+    const answers = [...ELEMENT_BY_ID.values()]
+      .filter((def) => (def.effects.resilience ?? 0) > 0 && def.targetsHazards?.some((h) => hazards.includes(h as "cyclone" | "flood")))
+      .sort((a, b) => a.buildCost - b.buildCost);
+    const risk = exposure.housesAtRisk.map((key) => key.split(",").map(Number));
+    let built = 0;
+    for (const [q, r] of risk) {
+      if (built >= count) break;
+      for (const n of [{ q, r }, ...neighbors({ q, r })]) {
+        this.collectJar();
+        const def = answers.find((d) => this.host.state.canBuild(n, d.id) && this.host.state.coin >= d.buildCost);
+        if (def && this.build(n, def.id)) {
+          built++;
+          await this.idle();
+          break;
+        }
+      }
+    }
+    return built;
+  }
+
+  /** Scenario helper: frames the camera on the next storm: a cyclone's forecast landfall, else its first zone. */
   private frameNextStorm(): void {
     const next = this.run.nextChallenge();
     if (!next || !this.run.zones) return;
+    if (next.kind !== "flood") {
+      const key = this.run.board().sites[forecastSite(this.run.board(), next)];
+      if (key) {
+        const [q, r] = key.split(",").map(Number);
+        this.host.focusCamera({ q, r }, true);
+        return;
+      }
+    }
     const keys = this.run.zones.keys(FRONTS[next.kind][0].path[0]);
     const coords = keys.map((key) => {
       const [q, r] = key.split(",").map(Number);
@@ -1234,6 +1273,12 @@ export class PanjimController {
         await this.plantForNext(3);
         this.frameNextStorm();
         return true;
+      }
+      case "defend-risk": {
+        // A player's answer to the warning: defences beside the red houses.
+        const built = await this.defendRisk(8);
+        this.frameNextStorm();
+        return built > 0;
       }
       case "forecast": {
         // Up to the lock (two years out), then a few beach defences, so the
