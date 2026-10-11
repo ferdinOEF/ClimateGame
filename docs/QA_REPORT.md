@@ -398,3 +398,45 @@ covered by `creditsCheck`.
 frame rate of last round's machine (load average about 4 on 4 cores, from
 the QA runs themselves). Labels are hidden during storms, so the label
 layer is not in that path.
+
+# Section 2 — risk area: red fill, breaking wave, fold into the button
+
+Branch `section-2-risk-wave` off master `5dda14e` (Section 1's merge).
+Headless Chromium with software GL, as above.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build | Clean. 394 tests pass (6 skipped). `tests/riskIntro.test.ts` has 11 tests: first warning only (and not the 2nd or 3rd), the gate surviving a save, no particles or shader in reduced motion or on Low, eased motion, the timeline, every timing in data. |
+| Browser check (`tools/riskIntroCheck.ts`, `docs/qa/section2/riskIntroCheck.txt`) | **27 of 27 pass.** Plays on warning 1 and not on warnings 2 and 3, across a run played through storms 1 and 2. A saved and continued run does not play it again. The shader is created at the fold, not before. Opening the build menu, the Field Guide or the Sources screen mid-sequence cancels it and leaves nothing behind. Reduced motion and Low never create the particle system or the shader. No console errors or warnings. |
+| Contact sheet (`docs/qa/section2/contact-sheet.jpg`, 20 held frames) | Looked at. The fill and the left-to-right dark crest with its foam edge read clearly as a wave crossing the area, and the droplets burst at the right edge. The fold (10.4 s) reads as the sheet gathering and crumpling into a smaller patch, then a ball. It does **not** read as a wave rolling itself up. The flight and the button's pulse read. |
+| Label overlap (`npm run test:labels`) | 25 of 25 pass. |
+| Walkthrough (menu, Tutorial, Panaji) | Clean, no console errors. The Tutorial loads and plays. |
+| Maya layout (`npm run test:layout`) | 105 of 105 layouts at 1366, 1920 and 2560. |
+| Functional and axe (`tools/qaFunctional.ts`) | All checks pass. axe: no serious or critical issues on the menu or the Tutorial (moderate "region" only, as before). |
+| Frame rate at 1920×1080 while it plays | High 1.3 fps (worst frame 2.2 s), Low 1.5 fps (worst frame 0.9 s), under SwiftShader. These numbers say nothing about a real GPU. The spec's "reduce particles if High < 50 fps" cannot be judged here. The droplets are 40 small 2D circles on a canvas, and the shader is one quad. Medium was not measured separately: the sequence has only two modes on screen (full on High and Medium, flat on Low). |
+| Grayscale and deuteranopia | `wave-gray-1920x1080.jpg` and `wave-deuteranopia-1920x1080.jpg`. The crest stays readable without hue: a dark band behind a white dashed foam edge. |
+| Cross-browser | Chromium only (Firefox and WebKit are not installed, and `playwright install` is not allowed). |
+
+## Independent review (Section 2)
+
+- **MAJOR, both fixed:**
+  - Overlays other than the build menu did not cancel the sequence, and the ball drew over modals. Now every modal cancels it (Field Guide, Sources, help, reports, era end), and the ball sits under them (z-index 14).
+  - The once-per-playthrough gate was not saved, so continuing a run replayed it. Now the save records `riskIntroSpent`, and an old save with a storm already landed counts as spent.
+- **MINOR, all fixed except one:**
+  - Gate semantics: first warning only, and spent if a later one is seen.
+  - Projection cost, and hexes behind the camera.
+  - The reduced-motion glow was cut short.
+  - The flat sheet now fades out, and the sequence aims for the on-screen centroid.
+  - Shader: created lazily, with a disc fallback, and correct for device pixel ratio.
+  - A quality or motion change mid-play cancels it.
+  - The fold now curls, with a dark rim.
+  - Droplets come from the middle rows.
+  - A redder fill.
+  - It plays only when the area is on screen.
+  - `aria-hidden`, and a zero-size button.
+- **Not changed:** the 10 s rest before the fold is the spec's own timing, so it stays as written.
+
+## Fixed in the QA tools while running this gate
+
+- `tools/walkthrough.ts` and `tools/smoke.ts` found "the canvas" with a bare `canvas` selector. The risk sequence adds its own canvas, so that became ambiguous. They now select the board's canvas only.
+- The browser check closes the Field Guide and Sources with their own close buttons. Escape outside the build menu is the quit key and left the level.
