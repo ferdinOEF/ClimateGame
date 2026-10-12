@@ -8088,3 +8088,16 @@ The proportions, 200-wide viewBox and colours are the reference's.
   - dead CSS and exports;
   - the old 96×152 fallback;
   - `transform-box` narrowed to the animated groups.
+
+## Section 1c — Maya: rounder chin, whole body in the HUD, 70% — DONE
+
+**Artwork and sizing only.** Her states, state machine, dialogue and the layout manager's rules are unchanged.
+
+- **Chin:** both face paths in `faceSkin` use the rounder curve (chin to y146); no copy of the old one remains (code, HUD, badge, the reference in `docs/design/`). The jaw shadow and chin line are tested to lie inside it.
+- **Whole body in the HUD:** `hudFigureSvg` draws her head to boots, still without the pack. Legs and boots are one static group inside `.maya-body`, behind the torso, as in the full figure. `HUD_VIEWBOX` is 168 × 442 art units from (28, 34). Her arms hang at full length. `HUD_FOREARM` and the shortening helper are gone.
+- **Gestures:** a pose that would reach into her bubble also shortens the arm about the shoulder (a `scale()` in `panjim.css`: tip 0.4, explains 0.55, celebrates 0.75). Warning and celebrates raise only the right arm; the binoculars hand is her resting arm. The wave is a 10° swing, because the old one lay the arm along her cheek at full length. `tests/mayaArt.test.ts` checks every pose against her box and against her face.
+- **70% as one entity:** `MAYA_SCALE = 0.7` in `mayaLayout.ts`, with `scaled()` and `figureSize()`. maya.ts sets `--maya-scale`, `--maya-fig-w` and `--maya-fig-h` on her root; the CSS multiplies every size of hers by them (figure, bubble, tail, Got-it, minimise button, badge). Her drawing keeps its pixel size per art unit, so the figure is 103 × 271 px at 1366×768. The screen tiers (large ×1.17, short ×0.82, phone ×0.68) are one `--maya-tier` variable. Bubble text holds at 12 px; only its box scales. The minimise button is 15 px with a 25 px hit area.
+- **Layout:** `placeBubble`'s gap and widths scale with her; her figure is placed from its real box, bottom-left.
+- **Cost:** HUD SVG 405 → 425 nodes; her cost in the game 0.05 fps (1.70 shown, 1.75 hidden, software GL).
+- **Tools:** `tools/mayaChin.ts` (old and new chin), `tools/section1cShots.ts`; `mayaSheet`, `mayaStates` and `mayaPerf` updated.
+- **Checks:** 105 of 105 layouts, 37 of 37 labels, no console errors. Screenshots and sheets in `docs/qa/section1c/`.

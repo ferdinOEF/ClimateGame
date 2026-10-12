@@ -7,12 +7,15 @@ import {
   fullFigureSvg,
   fullFigureUrl,
   HUD_ARMS,
-  HUD_FOREARM,
+  HUD_UNIT_PX,
+  handMarkup,
   HUD_VIEWBOX,
+  headUrl,
   hudFigureSvg,
   MAYA_PALETTE,
   paletteStyle
 } from "../src/ui/panjim/mayaArt";
+import { figureSize, MAYA_SCALE } from "../src/ui/panjim/mayaLayout";
 
 /**
  * Section 1b: Maya's artwork. The rules the brief makes hard: no ringlet in
@@ -155,27 +158,85 @@ describe("Maya's HUD figure", () => {
     }
   });
 
-  it("keeps every gesture inside her box: each arm, at every rotation a state gives it in panjim.css", () => {
+  /** Every pose the CSS gives an arm: its rotation and how much it is shortened about the shoulder (1 = full length). */
+  function armPoses(): Record<"l" | "r", { deg: number; k: number }[]> {
     const css = readFileSync("src/ui/panjim/panjim.css", "utf8");
-    const rotations: Record<"l" | "r", number[]> = { l: [0], r: [0] };
-    for (const m of css.matchAll(/\.maya\.state-\w+ \.maya-arm-(l|r) \{[^}]*?transform: rotate\((-?\d+)deg\)/g)) rotations[m[1] as "l" | "r"].push(Number(m[2]));
+    const poses: Record<"l" | "r", { deg: number; k: number }[]> = { l: [{ deg: 0, k: 1 }], r: [{ deg: 0, k: 1 }] };
+    for (const m of css.matchAll(/\.maya\.state-\w+ \.maya-arm-(l|r) \{[^}]*?transform: rotate\((-?\d+)deg\) scale\(([\d.]+)\)/g)) {
+      poses[m[1] as "l" | "r"].push({ deg: Number(m[2]), k: Number(m[3]) });
+    }
     const wave = /@keyframes maya-wave \{([\s\S]*?)\n\}/.exec(css)![1];
-    for (const m of wave.matchAll(/rotate\((-?\d+)deg\)/g)) rotations.r.push(Number(m[1]));
-    expect(rotations.r.length).toBeGreaterThan(5);
+    for (const m of wave.matchAll(/rotate\((-?\d+)deg\) scale\(([\d.]+)\)/g)) poses.r.push({ deg: Number(m[1]), k: Number(m[2]) });
+    return poses;
+  }
+  const posed = (side: "l" | "r", [px, py]: Pt, { deg, k }: { deg: number; k: number }): Pt => {
+    const { pivot } = HUD_ARMS[side];
+    return rotateAbout(pivot, deg)([pivot[0] + (px - pivot[0]) * k, pivot[1] + (py - pivot[1]) * k]);
+  };
+
+  it("keeps every gesture inside her box: each arm, in every pose a state gives it in panjim.css", () => {
+    const poses = armPoses();
+    // 1 at rest, then: wave (3), tip, explains, warning, worried (2), celebrates.
+    expect(poses.r.length).toBeGreaterThan(8);
+    expect(poses.l.length).toBeGreaterThanOrEqual(2);
     const { x, y, width, height } = HUD_VIEWBOX;
     for (const side of ["l", "r"] as const) {
-      const { pivot, reach } = HUD_ARMS[side];
-      for (const deg of rotations[side]) {
-        for (const [px, py] of reach) {
-          const scaled: Pt = [pivot[0] + (px - pivot[0]) * HUD_FOREARM, pivot[1] + (py - pivot[1]) * HUD_FOREARM];
-          const [rx, ry] = rotateAbout(pivot, deg)(scaled);
-          if (ry > y + height) continue; // below the crop: clipped, never seen
-          expect(rx, `${side} arm at ${deg} deg`).toBeGreaterThanOrEqual(x);
-          expect(rx, `${side} arm at ${deg} deg`).toBeLessThanOrEqual(x + width);
-          expect(ry, `${side} arm at ${deg} deg`).toBeGreaterThanOrEqual(y);
+      for (const pose of poses[side]) {
+        for (const pt of HUD_ARMS[side].reach) {
+          const [rx, ry] = posed(side, pt, pose);
+          const label = `${side} arm at ${pose.deg} deg, ${pose.k} long`;
+          expect(rx, label).toBeGreaterThanOrEqual(x);
+          expect(rx, label).toBeLessThanOrEqual(x + width);
+          expect(ry, label).toBeGreaterThanOrEqual(y);
+          expect(ry, label).toBeLessThanOrEqual(y + height);
         }
       }
     }
+  });
+
+  it("never puts a hand or the binoculars through her face", () => {
+    // The arm's centre line, shoulder to hand, in every pose; her face oval widened by the arm's half width (and the hand's).
+    const hands = { l: [53, 304] as Pt, r: [148, 303] as Pt };
+    const WIDEN = 9;
+    for (const side of ["l", "r"] as const) {
+      for (const pose of armPoses()[side]) {
+        const [ex, ey] = posed(side, hands[side], pose);
+        const [sx, sy] = HUD_ARMS[side].pivot;
+        for (let i = 0; i <= 20; i++) {
+          const x = sx + ((ex - sx) * i) / 20;
+          const y = sy + ((ey - sy) * i) / 20;
+          const inFace = ((x - 100) / (30.5 + WIDEN)) ** 2 + ((y - 106) / (43 + WIDEN)) ** 2 < 1;
+          expect(inFace, `${side} arm at ${pose.deg} deg, ${pose.k} long, ${x.toFixed(0)},${y.toFixed(0)}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("leaves the binoculars hand at rest in every state that raises or points an arm", () => {
+    // Her gestures use the other arm: the binoculars arm only ever draws in toward her.
+    for (const pose of armPoses().l) expect(Math.abs(pose.deg)).toBeLessThanOrEqual(14);
+  });
+
+  it("has hands that fit inside the points the gestures are checked with", () => {
+    const hands = handMarkup();
+    for (const side of ["l", "r"] as const) {
+      const b = bbox(hands[side]);
+      const xs = HUD_ARMS[side].reach.map((p) => p[0]);
+      const ys = HUD_ARMS[side].reach.map((p) => p[1]);
+      expect(b[0], `${side} hand left`).toBeGreaterThanOrEqual(Math.min(...xs));
+      expect(b[2], `${side} hand right`).toBeLessThanOrEqual(Math.max(...xs));
+      expect(b[3], `${side} hand bottom`).toBeLessThanOrEqual(Math.max(...ys));
+    }
+  });
+
+  it("draws her legs and boots inside the crop, behind the torso, in the body group", () => {
+    const svg = hudFigureSvg(97, 268);
+    const legs = svg.indexOf('class="maya-legs"');
+    expect(legs).toBeGreaterThan(svg.indexOf('class="maya-body"'));
+    expect(legs).toBeLessThan(svg.indexOf('class="maya-torso"'));
+    const boots = bbox(fullFigureSvg({ pack: false, width: 200, height: 490 }).match(/<path d="M70 438[^>]*>/)![0]);
+    expect(boots[3]).toBeLessThan(HUD_VIEWBOX.y + HUD_VIEWBOX.height);
+    expect(hudFigureSvg(97, 268)).not.toContain("var(--maya-pack)");
   });
 
   it("gives every figure on a page its own clip", () => {
@@ -183,10 +244,16 @@ describe("Maya's HUD figure", () => {
     expect(ids[0]).not.toBe(ids[1]);
   });
 
-  it("is sized in the CSS to its crop's shape", () => {
+  it("is sized from her crop's shape and the one scale, in the CSS and in the code", () => {
     const css = readFileSync("src/ui/panjim/panjim.css", "utf8");
-    const box = /\.maya-figure-wrap \{[^}]*?width: (\d+)px;\s*height: (\d+)px;/.exec(css)!;
-    expect(Number(box[1]) / Number(box[2])).toBeCloseTo(HUD_VIEWBOX.width / HUD_VIEWBOX.height, 1);
+    const box = figureSize(HUD_VIEWBOX, HUD_UNIT_PX);
+    expect(box.w / box.h).toBeCloseTo(HUD_VIEWBOX.width / HUD_VIEWBOX.height, 2);
+    // Her drawing keeps the size it always had in the HUD (139 px for a 158-unit crop), times MAYA_SCALE.
+    expect(HUD_UNIT_PX * 158).toBeCloseTo(139, 5);
+    expect(box.w).toBe(Math.round(HUD_VIEWBOX.width * HUD_UNIT_PX * MAYA_SCALE));
+    // The CSS takes the box from the variables maya.ts sets from it, and every tier scales width and height together.
+    expect(css).toMatch(/\.maya-figure-wrap \{[^}]*?width: calc\(var\(--maya-fig-w\) \* var\(--maya-tier\)\);\s*height: calc\(var\(--maya-fig-h\) \* var\(--maya-tier\)\);/);
+    expect(css).not.toMatch(/\.maya-figure-wrap \{[^}]*?width: \d+px/);
   });
 });
 
@@ -219,5 +286,52 @@ describe("Maya's palette", () => {
     expect(MAYA_PALETTE["lens-rim"]).toBe("#d8b45c");
     expect(paletteStyle()).toContain("--maya-shirt:#2f7d6e");
     expect(hudFigureSvg(139, 136)).toContain("var(--maya-shirt)");
+  });
+});
+
+describe("Maya's chin", () => {
+  const svg = fullFigureSvg({ pack: false, width: 200, height: 490, paint: "literal" });
+  const OLD = "C70.5 118 78 137 100 148";
+
+  it("is the rounder one in both face paths, in the full figure, the HUD and the badge, and the old point is gone", () => {
+    for (const markup of [svg, hudFigureSvg(97, 268), headUrl()]) {
+      const text = decodeURIComponent(markup);
+      expect(text).not.toContain(OLD);
+      expect(text).toContain("C70.5 120 83 141 100 146 C117 141 129.5 120 130 100");
+    }
+    expect(svg).toContain("C70.5 120 83 141 100 146 C94 133 88 117 88 100");
+    expect(readFileSync("docs/design/maya_field_researcher_reference.html", "utf8")).not.toContain(OLD);
+  });
+
+  it("holds the jaw shadow inside it", () => {
+    // The face outline, sampled: M100 63 C74 63 69.5 80 70 100 C70.5 120 83 141 100 146 C117 141 129.5 120 130 100 C130.5 80 126 63 100 63.
+    const cubic = (p: Pt[], n = 40): Pt[] =>
+      Array.from({ length: n + 1 }, (_, i) => {
+        const t = i / n;
+        const u = 1 - t;
+        const f = (k: 0 | 1) => u ** 3 * p[0][k] + 3 * u * u * t * p[1][k] + 3 * u * t * t * p[2][k] + t ** 3 * p[3][k];
+        return [f(0), f(1)] as Pt;
+      });
+    const outline = [
+      ...cubic([[100, 63], [74, 63], [69.5, 80], [70, 100]]),
+      ...cubic([[70, 100], [70.5, 120], [83, 141], [100, 146]]),
+      ...cubic([[100, 146], [117, 141], [129.5, 120], [130, 100]]),
+      ...cubic([[130, 100], [130.5, 80], [126, 63], [100, 63]])
+    ];
+    const within = ([x, y]: Pt): boolean => {
+      let c = false;
+      for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+        const [xi, yi] = outline[i];
+        const [xj, yj] = outline[j];
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+      }
+      return c;
+    };
+    // The jaw-shadow crescent: M87 134 q13 8 26 0 q-13 10 -26 0z, sampled along both curves.
+    const quad = (a: Pt, c: Pt, b: Pt): Pt[] => Array.from({ length: 21 }, (_, i) => { const t = i / 20; const u = 1 - t; return [u * u * a[0] + 2 * u * t * c[0] + t * t * b[0], u * u * a[1] + 2 * u * t * c[1] + t * t * b[1]] as Pt; });
+    expect(svg).toContain("M87 134 q13 8 26 0 q-13 10 -26 0z");
+    for (const pt of [...quad([87, 134], [100, 142], [113, 134]), ...quad([113, 134], [100, 144], [87, 134])]) expect(within(pt), `${pt}`).toBe(true);
+    // And the chin-line stroke under the mouth.
+    for (const pt of quad([92, 129], [100, 130.8], [108, 129])) expect(within(pt), `${pt}`).toBe(true);
   });
 });

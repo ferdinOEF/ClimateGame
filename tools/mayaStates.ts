@@ -1,15 +1,15 @@
 /**
- * Section 1b: a contact sheet of every one of Maya's states with her new
+ * Section 1b/1c: a contact sheet of every one of Maya's states with her new
  * artwork, photographed in the real game (her real component, CSS and
  * layout), so the face can be checked state by state.
  *
  * Usage:  npx tsx tools/mayaStates.ts [outDir]
- *   outDir defaults to docs/qa/section1b.
+ *   outDir defaults to docs/qa/section1c.
  *
  * Opens Panaji at 1920x1080, puts Maya in each state through the
  * `maya:<state>` scenario, lets the pose settle and photographs her figure
- * at HUD size, then lays the crops out as `maya-states.png` (each at 1x and
- * enlarged 2x; and a `-gray` twin). The vector detail is in maya-hud-crop.png
+ * at HUD size (her whole body now), then lays the crops out as
+ * `maya-states.png` (all at 1x in a strip, then each enlarged 2x; and a `-gray` twin). The vector detail is in maya-hud-crop.png
  * (tools/mayaSheet.ts). At device scale 2 the software renderer's frames
  * took long enough that some state changes were not yet painted when the
  * photograph was taken, so this runs at 1x. Exits 1 on a console error.
@@ -20,7 +20,7 @@ import path from "node:path";
 import { startDevServer } from "./devServer";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section1b");
+const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section1c");
 const PORT = Number(process.env.SHOTS_PORT ?? 5294);
 const STATES = ["idle", "greeting", "tip", "explains", "warning", "worried", "celebrates", "jump"];
 
@@ -56,12 +56,11 @@ async function main(): Promise<void> {
       crops.push({ state, hud: file, big: file });
     }
     // The sheet: each crop at HUD size (1x of the CSS box) and at 2x.
-    const img = (file: string, scale: number): string => `<img src="data:image/png;base64,${fs.readFileSync(file).toString("base64")}" style="width:${scale}px;image-rendering:auto">`;
-    const cells = crops
-      .map(({ state, hud }) => `<figure style="margin:0;display:flex;flex-direction:column;align-items:center;gap:6px">${img(hud, 340)}<div style="display:flex;align-items:flex-end;gap:8px">${img(hud, 170)}</div><figcaption>${state}</figcaption></figure>`)
-      .join("");
-    const sheet = await (await browser.newContext({ viewport: { width: 1520, height: 1100 } })).newPage();
-    await sheet.setContent(`<!doctype html><html><body style="margin:0;padding:20px;background:#22313a;color:#dfe8ee;font:15px system-ui;display:grid;grid-template-columns:repeat(4,1fr);gap:18px">${cells}</body></html>`);
+    const img = (file: string, zoom: number): string => `<img src="data:image/png;base64,${fs.readFileSync(file).toString("base64")}" style="${zoom ? `zoom:${zoom}` : ""};image-rendering:auto">`;
+    const strip = crops.map(({ state, hud }) => `<figure style="margin:0;text-align:center">${img(hud, 0)}<figcaption>${state}</figcaption></figure>`).join("");
+    const cells = crops.map(({ state, hud }) => `<figure style="margin:0;text-align:center">${img(hud, 2)}<figcaption>${state}</figcaption></figure>`).join("");
+    const sheet = await (await browser.newContext({ viewport: { width: 1360, height: 900 } })).newPage();
+    await sheet.setContent(`<!doctype html><html><body style="margin:0;padding:20px;background:#22313a;color:#dfe8ee;font:15px system-ui"><div style="display:flex;gap:6px;align-items:flex-end">${strip}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:24px">${cells}</div></body></html>`);
     await sheet.screenshot({ path: path.join(OUT, "maya-states.png"), fullPage: true });
     await sheet.addStyleTag({ content: "html { filter: grayscale(1); }" });
     await sheet.screenshot({ path: path.join(OUT, "maya-states-gray.png"), fullPage: true });

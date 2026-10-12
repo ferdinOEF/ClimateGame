@@ -5,8 +5,9 @@
  * Drawn as inline SVG and animated with CSS: no textures, no 3D, nothing to
  * load. Her look is an original design for this game (mayaArt.ts): a young
  * Goan field researcher with shoulder-length curly hair, a teal field shirt,
- * olive cargo trousers and binoculars. In the HUD she is head and shoulders,
- * without her pack; the level brief and the Aftermath show her whole.
+ * olive cargo trousers and binoculars. In the HUD she is shown whole, head to
+ * boots, without her pack (the level brief and the Aftermath show her with
+ * it), at MAYA_SCALE of her natural size, bubble and badge included.
  *
  * STATES. Each is a class on the root; CSS moves her arms, face and props:
  *   idle      blinks and breathes
@@ -31,8 +32,8 @@
  * point on the board (`goTo`), following it as the camera moves, then hop
  * home when the line is done.
  */
-import { placeBubble, placeFigure, type Rect } from "./mayaLayout";
-import { headUrl, hudFigureSvg } from "./mayaArt";
+import { MAYA_SCALE, figureSize, placeBubble, placeFigure, scaled, type Rect } from "./mayaLayout";
+import { HUD_UNIT_PX, HUD_VIEWBOX, headUrl, hudFigureSvg } from "./mayaArt";
 
 export type MayaState = "idle" | "greeting" | "tip" | "explains" | "warning" | "worried" | "celebrates" | "jump";
 
@@ -50,8 +51,9 @@ export interface MayaLine {
   onShow?: () => void;
 }
 
-/** Her HUD figure: head and shoulders, 139 x 136 (mayaArt.ts; panjim.css sizes it per screen). */
-const SVG = hudFigureSvg(139, 136);
+/** Her HUD figure: head to boots, at her scale (mayaLayout.ts MAYA_SCALE). panjim.css sizes it per screen from these. */
+const FIGURE = figureSize(HUD_VIEWBOX, HUD_UNIT_PX);
+const SVG = hudFigureSvg(FIGURE.w, FIGURE.h);
 
 /** How long a line stays up if the player does not dismiss it: long enough to read twice. */
 function readingMs(text: string): number {
@@ -87,7 +89,7 @@ export const HUD_OBSTACLES = [
   ".quality-control"
 ];
 
-const BADGE_SIZE = { w: 52, h: 52 };
+const BADGE_SIZE = { w: scaled(52), h: scaled(52) };
 
 export class Maya {
   readonly el: HTMLElement;
@@ -123,6 +125,10 @@ export class Maya {
     this.muted = options.muted;
     this.el = document.createElement("div");
     this.el.className = "maya state-idle";
+    // The one scale and the figure's box, for panjim.css (every size of hers is a multiple of --maya-scale).
+    this.el.style.setProperty("--maya-scale", String(MAYA_SCALE));
+    this.el.style.setProperty("--maya-fig-w", `${FIGURE.w}px`);
+    this.el.style.setProperty("--maya-fig-h", `${FIGURE.h}px`);
     if (options.reducedMotion) this.el.classList.add("reduced-motion");
     this.el.innerHTML = `
       <div class="maya-figure-wrap">${SVG}<button type="button" class="maya-minimise" aria-label="Minimise Maya">&minus;</button></div>
@@ -357,7 +363,7 @@ export class Maya {
       }
       return;
     }
-    const size = { w: this.figure.offsetWidth || 139, h: this.figure.offsetHeight || 136 };
+    const size = { w: this.figure.offsetWidth || FIGURE.w, h: this.figure.offsetHeight || FIGURE.h };
     const target = this.anchor ? this.anchor() : null;
     const spot = placeFigure(size, obstacles, viewport, target) ?? placeFigure(size, obstacles, viewport, null);
     if (!spot) {
@@ -400,7 +406,7 @@ export class Maya {
     let spot = placeBubble(figure, measure, obstacles, viewport);
     if (!spot) {
       this.bubble.classList.add("compact");
-      spot = placeBubble(figure, measure, obstacles, viewport, 260);
+      spot = placeBubble(figure, measure, obstacles, viewport, scaled(260));
     }
     if (!spot) {
       // No room anywhere beside her: hold the line back and try again later.
