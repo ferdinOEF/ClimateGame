@@ -133,7 +133,7 @@ describe("a discovery never jumps ahead of a hazard warning", () => {
 });
 
 describe("the card is gone", () => {
-  it("no 'New discovery' text and no nugget-badge anywhere in the source", () => {
+  it("the eyebrow label and the card's classes are gone from the source", () => {
     const hits: string[] = [];
     const walk = (dir: string): void => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -141,12 +141,12 @@ describe("the card is gone", () => {
         if (entry.isDirectory()) walk(full);
         else if (/\.(ts|css|json|html)$/.test(entry.name)) {
           const text = fs.readFileSync(full, "utf8");
-          if (/new discovery/i.test(text) || /nugget-badge|nugget-source|nugget-credit/.test(text)) hits.push(full);
+          if (/new\s+discovery/i.test(text) || /nugget-badge|nugget-source|nugget-credit/.test(text)) hits.push(full);
         }
       }
     };
     walk("src");
     expect(hits).toEqual([]);
-    expect(fs.readFileSync("index.html", "utf8")).not.toMatch(/new discovery/i);
+    expect(fs.readFileSync("index.html", "utf8")).not.toMatch(/new\s+discovery/i);
   });
 });

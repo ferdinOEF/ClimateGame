@@ -7,7 +7,7 @@
  *   - one of each of the ten nugget-eligible elements is built; Maya says one of
  *     that element's facts, in her tip state (worried for the resort, sand
  *     mining and the yacht), once, with "N of 21", a Source button on a cited
- *     fact and a "Game rule" tag on a rule; no card, no "New discovery";
+ *     fact and a "Game rule" tag on a rule; no card, no eyebrow label;
  *   - a fact and a hazard warning arriving together: the warning first;
  *   - Esc and "Got it" dismiss, with and without reduced motion; the Source is
  *     reached with the keyboard and opens the Sources screen;
@@ -60,22 +60,24 @@ async function openPanaji(browser: Browser, url: string, size: [number, number],
 
 /** What the bubble shows now. */
 async function bubble(page: Page): Promise<{ text: string; count: string; source: boolean; rule: boolean; state: string } | null> {
-  return page.evaluate(() => {
-    const b = document.querySelector(".maya-bubble") as HTMLElement | null;
+  return page.evaluate(`(() => {
+    var b = document.querySelector(".maya-bubble");
     if (!b || b.hidden) return null;
-    const vis = (sel: string): boolean => {
-      const el = document.querySelector(sel) as HTMLElement | null;
-      return Boolean(el) && !el!.hidden && el!.getClientRects().length > 0;
-    };
-    const root = document.querySelector(".maya")!;
+    function vis(sel) {
+      var el = document.querySelector(sel);
+      return Boolean(el) && !el.hidden && el.getClientRects().length > 0;
+    }
+    var root = document.querySelector(".maya");
+    var state = "";
+    root.classList.forEach(function (c) { if (c.indexOf("state-") === 0) state = c; });
     return {
-      text: (document.querySelector(".maya-text") as HTMLElement).textContent ?? "",
-      count: vis(".maya-count") ? (document.querySelector(".maya-count") as HTMLElement).textContent ?? "" : "",
+      text: document.querySelector(".maya-text").textContent || "",
+      count: vis(".maya-count") ? document.querySelector(".maya-count").textContent || "" : "",
       source: vis(".maya-source"),
       rule: vis(".maya-rule"),
-      state: [...root.classList].find((c) => c.startsWith("state-")) ?? ""
+      state: state
     };
-  });
+  })()`) as Promise<{ text: string; count: string; source: boolean; rule: boolean; state: string } | null>;
 }
 
 async function waitForBubble(page: Page, ms = 60000): Promise<NonNullable<Awaited<ReturnType<typeof bubble>>>> {
@@ -134,8 +136,8 @@ async function main(): Promise<void> {
       check(/^\d+ of 21$/.test(b.count), `${element}: count "${b.count}"`);
       check(b.source === (fact.kind === "fact"), `${element}: Source button ${b.source ? "shown" : "hidden"} (${fact.kind})`);
       check(b.rule === (fact.kind === "gameRule"), `${element}: "Game rule" tag ${b.rule ? "shown" : "hidden"} (${fact.kind})`);
-      const leftovers = await page.evaluate(`document.querySelectorAll(".nugget-badge, .nugget-badge-eyebrow").length + (/new discovery/i.test(document.body.innerText) ? 1 : 0)`);
-      check(leftovers === 0, `${element}: no card, no "New discovery"`);
+      const leftovers = await page.evaluate(`document.querySelectorAll(".nugget-badge, .nugget-badge-eyebrow").length + (/new\\s+discovery/i.test(document.body.innerText) ? 1 : 0)`);
+      check(leftovers === 0, `${element}: no card, no eyebrow label`);
       if (element === "mangrove") await page.screenshot({ path: path.join(OUT, "built-mangrove-1920x1080.jpg"), type: "jpeg", quality: 85 });
       await page.evaluate("window.__panjimForTest.maya.dismiss()");
       await page.waitForTimeout(200);
@@ -144,6 +146,8 @@ async function main(): Promise<void> {
 
     // ---- A fact and a warning together ------------------------------------------
     await page.evaluate("window.__panjimForTest.maya.dismiss(); window.__panjimForTest.maya.withdraw(() => true)");
+    // She says at most one line a quarter: let a quarter pass (one more build) so both are free to be said.
+    await page.evaluate(`(async () => { const p = window.__panjimForTest; p.build(p.firstBuildable("sandy_vegetation", undefined), "sandy_vegetation"); await p.idle(); })()`);
     await page.evaluate(`(() => {
       const maya = window.__panjimForTest.maya;
       window.__nuggetPopupForTest.show("seawall", "seawall-fails");
@@ -152,6 +156,9 @@ async function main(): Promise<void> {
     const first = await waitForBubble(page);
     check(/exposed/.test(first.text), `warning first ("${first.text.slice(0, 40)}...")`);
     await page.evaluate("window.__panjimForTest.maya.dismiss()");
+    // The fact waits for the next quarter (one line a quarter), behind nothing else.
+    check((await page.evaluate("window.__panjimForTest.maya.peek() && window.__panjimForTest.maya.peek().id")) === "seawall-fails", "the fact is next in her queue, ahead of any ordinary tip");
+    await page.evaluate(`(async () => { const p = window.__panjimForTest; p.build(p.firstBuildable("sandy_vegetation", undefined), "sandy_vegetation"); await p.idle(); })()`);
     const second = await waitForBubble(page);
     check(/seawall pushed past its limit/.test(second.text), `then the fact ("${second.text.slice(0, 40)}...")`);
     await page.evaluate("window.__panjimForTest.maya.dismiss()");
@@ -262,9 +269,7 @@ async function main(): Promise<void> {
         await shot.screenshot({ path: path.join(OUT, `discovery-${name}-${tag}.jpg`), type: "jpeg", quality: 85 });
         await shot.addStyleTag({ content: "html { filter: grayscale(1) !important; }" });
         await shot.screenshot({ path: path.join(OUT, `discovery-${name}-${tag}-gray.jpg`), type: "jpeg", quality: 70 });
-        await shot.evaluate(() => {
-          for (const style of Array.from(document.querySelectorAll("style"))) if (style.textContent?.includes("grayscale(1) !important")) style.remove();
-        });
+        await shot.evaluate(`Array.from(document.querySelectorAll("style")).forEach(function (st) { if ((st.textContent || "").indexOf("grayscale(1) !important") >= 0) st.remove(); })`);
         await shot.evaluate("window.__panjimForTest.maya.dismiss()");
       }
       await shot.context().close();
