@@ -8101,3 +8101,15 @@ The proportions, 200-wide viewBox and colours are the reference's.
 - **Cost:** HUD SVG 405 → 425 nodes; her cost in the game 0.05 fps (1.70 shown, 1.75 hidden, software GL).
 - **Tools:** `tools/mayaChin.ts` (old and new chin), `tools/section1cShots.ts`; `mayaSheet`, `mayaStates` and `mayaPerf` updated.
 - **Checks:** 105 of 105 layouts, 37 of 37 labels, no console errors. Screenshots and sheets in `docs/qa/section1c/`.
+
+## Section 1d — one guide — DONE
+
+**One voice.** The Discovery card is gone. `NuggetPopup` (`src/ui/nuggetPopup.ts`) still decides which fact and when (same triggers, same eligible elements, same shuffle that never repeats a fact straight away), then hands it to Maya with `maya.say`. Her queue rules apply: one line at a time, never mid-build or over a modal, each line once per session (or again from the Field Guide), and behind any hazard warning. A discovery goes ahead of ordinary tips (`insertLine` in `maya.ts`) and skips their two-quarter rest (`mayaDirector.pump`).
+
+- **Removed:** the card's DOM, timers, sparkle and tint classes, the `.nugget-badge` CSS and its `HUD_OBSTACLES` entry, the "New discovery" label, `Hud.setEmptyPromptSuppressed`, and the map-corner height observer that only the card used.
+- **In her bubble:** under the line, muted, "N of 21" (counted when she says it); a "Source" text button (opens the Sources screen) on a cited fact; a "Game rule" tag on a rule of this game, so a rule is never presented as science. A line waits while the pointer or keyboard focus is in the bubble.
+- **Field Guide:** shows her count and keeps each fact as a note (`factNote` in `mayaLines.ts`; saved notes take today's wording).
+- **Wording:** all 21 facts and her four rule tips are rewritten in `facts.json` and `maya.json`, 20 words or fewer for a fact, no "In this game," opener, every number, place and source kept. `docs/qa/section1d/wording.md` is the table.
+- **Size:** `MAYA_SCALE` is 0.45; her bubble and badge keep a minimum size (`mayaLayout.ts`). Her text stays at 12 px or more.
+- **Tutorial:** it has no Maya, so it shows no discoveries.
+- **Checks:** `tools/section1dChecks.ts` (97 checks), layout 105 of 105, labels 37 of 37, axe clean, no console errors. See `docs/QA_REPORT.md`.

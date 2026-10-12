@@ -68,7 +68,6 @@ export const LABEL_OBSTACLES = [
   ".panjim-toggles",
   ".objectives-panel",
   ".get-ready",
-  ".nugget-badge",
   ".map-corner",
   ".map-layer-control",
   ".empty-prompt",
@@ -89,8 +88,7 @@ export const LABEL_OBSTACLES = [
   ".storm-report",
   ".era-end-card",
   ".welcome-card",
-  ".sources-panel",
-  ".nugget-credit"
+  ".sources-panel"
 ];
 
 /** How often the list of HUD elements, and whether each is visible, is re-read (their rectangles are read every frame). */

@@ -32,7 +32,8 @@
  * point on the board (`goTo`), following it as the camera moves, then hop
  * home when the line is done.
  */
-import { MAYA_SCALE, figureSize, placeBubble, placeFigure, scaled, type Rect } from "./mayaLayout";
+import { openSources } from "../sourcesScreen";
+import { BADGE_PX, MAYA_SCALE, MINIMISE_PX, figureSize, placeBubble, placeFigure, type Rect } from "./mayaLayout";
 import { HUD_UNIT_PX, HUD_VIEWBOX, headUrl, hudFigureSvg } from "./mayaArt";
 
 export type MayaState = "idle" | "greeting" | "tip" | "explains" | "warning" | "worried" | "celebrates" | "jump";
@@ -47,13 +48,40 @@ export interface MayaLine {
   force?: boolean;
   /** A screen point to hop to while saying it (see `goTo`). */
   anchor?: () => { x: number; y: number } | null;
-  /** Runs when the line is shown (a warning's camera glide). */
+  /** Runs when the line is shown (a warning's camera glide, a discovery counted). */
   onShow?: () => void;
+  /** A game rule, not a fact about the world: the bubble says so ("Game rule"). */
+  rule?: boolean;
+  /**
+   * A discovery (nuggetPopup.ts): the bubble shows its running count under
+   * the line ("2 of 21"), and a Source button when it has a `credit`. It
+   * waits behind a warning but goes ahead of ordinary tips.
+   */
+  fact?: { id: string; credit?: string; progress: () => string };
 }
 
 /** Her HUD figure: head to boots, at her scale (mayaLayout.ts MAYA_SCALE). panjim.css sizes it per screen from these. */
 const FIGURE = figureSize(HUD_VIEWBOX, HUD_UNIT_PX);
 const SVG = hudFigureSvg(FIGURE.w, FIGURE.h);
+
+/**
+ * Where a new line waits. Warnings (urgent) go first; a discovery goes after
+ * them and ahead of ordinary tips, so it is said while it is news, never
+ * ahead of a hazard warning; everything else queues in order.
+ */
+export function insertLine(queue: MayaLine[], line: MayaLine): void {
+  if (line.urgent) {
+    queue.unshift(line);
+    return;
+  }
+  if (line.fact) {
+    const at = queue.findIndex((queued) => !queued.urgent && !queued.fact);
+    if (at >= 0) queue.splice(at, 0, line);
+    else queue.push(line);
+    return;
+  }
+  queue.push(line);
+}
 
 /** How long a line stays up if the player does not dismiss it: long enough to read twice. */
 function readingMs(text: string): number {
@@ -73,7 +101,6 @@ export const HUD_OBSTACLES = [
   ".houses-counter",
   ".panjim-toggles",
   ".objectives-panel",
-  ".nugget-badge",
   ".map-corner",
   ".empty-prompt",
   ".era-banner",
@@ -89,19 +116,24 @@ export const HUD_OBSTACLES = [
   ".quality-control"
 ];
 
-const BADGE_SIZE = { w: scaled(52), h: scaled(52) };
+const BADGE_SIZE = { w: BADGE_PX, h: BADGE_PX };
 
 export class Maya {
   readonly el: HTMLElement;
   private readonly figure: HTMLElement;
   private readonly bubble: HTMLElement;
   private readonly textEl: HTMLElement;
+  private readonly factEl: HTMLElement;
+  private readonly countEl: HTMLElement;
+  private readonly ruleEl: HTMLElement;
+  private readonly sourceEl: HTMLButtonElement;
   private readonly badge: HTMLButtonElement;
   private readonly queue: MayaLine[] = [];
   /** Lines already spoken this session, by id. */
   private readonly spoken = new Set<string>();
   private current: MayaLine | null = null;
   private hideTimer = 0;
+  private holding = false;
   private state: MayaState = "idle";
   private muted: boolean;
   private minimised = false;
@@ -129,12 +161,19 @@ export class Maya {
     this.el.style.setProperty("--maya-scale", String(MAYA_SCALE));
     this.el.style.setProperty("--maya-fig-w", `${FIGURE.w}px`);
     this.el.style.setProperty("--maya-fig-h", `${FIGURE.h}px`);
+    this.el.style.setProperty("--maya-badge", `${BADGE_PX}px`);
+    this.el.style.setProperty("--maya-minimise", `${MINIMISE_PX}px`);
     if (options.reducedMotion) this.el.classList.add("reduced-motion");
     this.el.innerHTML = `
       <div class="maya-figure-wrap">${SVG}<button type="button" class="maya-minimise" aria-label="Minimise Maya">&minus;</button></div>
       <div class="maya-bubble side-right" role="status" aria-live="polite" hidden>
         <span class="maya-name">Maya</span>
         <p class="maya-text"></p>
+        <div class="maya-fact" hidden>
+          <span class="maya-count"></span>
+          <span class="maya-rule" hidden>Game rule</span>
+          <button type="button" class="maya-source" hidden>Source</button>
+        </div>
         <button type="button" class="maya-dismiss">Got it</button>
       </div>
       <button type="button" class="maya-badge" aria-label="Show Maya" hidden>
@@ -143,6 +182,26 @@ export class Maya {
     this.figure = this.el.querySelector(".maya-figure-wrap")!;
     this.bubble = this.el.querySelector(".maya-bubble")!;
     this.textEl = this.el.querySelector(".maya-text")!;
+    this.factEl = this.el.querySelector(".maya-fact")!;
+    this.countEl = this.el.querySelector(".maya-count")!;
+    this.ruleEl = this.el.querySelector(".maya-rule")!;
+    this.sourceEl = this.el.querySelector(".maya-source")!;
+    this.sourceEl.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const fact = this.current?.fact;
+      this.dismiss();
+      if (fact) openSources(fact.id);
+    });
+    // A line waits while the pointer or keyboard focus is in the bubble, so its Source can be reached and read.
+    const hold = (on: boolean): void => {
+      this.holding = on;
+      if (on) window.clearTimeout(this.hideTimer);
+      else if (this.current && !this.holdLines) this.armHide(this.current, 4000);
+    };
+    this.bubble.addEventListener("pointerenter", () => hold(true));
+    this.bubble.addEventListener("pointerleave", () => hold(false));
+    this.bubble.addEventListener("focusin", () => hold(true));
+    this.bubble.addEventListener("focusout", () => hold(false));
     this.badge = this.el.querySelector(".maya-badge")!;
     this.el.querySelector(".maya-dismiss")!.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -227,8 +286,7 @@ export class Maya {
   say(line: MayaLine): void {
     if (!line.force && this.spoken.has(line.id)) return;
     if (this.queue.some((queued) => queued.id === line.id) || this.current?.id === line.id) return;
-    if (line.urgent) this.queue.unshift(line);
-    else this.queue.push(line);
+    insertLine(this.queue, line);
     this.el.classList.toggle("has-pending", this.queue.length > 0);
   }
 
@@ -261,10 +319,31 @@ export class Maya {
     this.setState(line.state);
     if (line.anchor) this.goTo(line.anchor);
     line.onShow?.();
+    this.renderFact(line);
     window.clearTimeout(this.hideTimer);
-    if (!this.holdLines) this.hideTimer = window.setTimeout(() => this.dismiss(), readingMs(line.text) + (line.anchor ? 2500 : 0));
+    this.holding = false;
+    if (!this.holdLines) this.armHide(line);
     this.onSpoken?.(line);
     this.layout(performance.now());
+  }
+
+  /** The footer under a discovery or a rule: its count, "Game rule", a Source button. Nothing for an ordinary line. */
+  private renderFact(line: MayaLine): void {
+    const fact = line.fact;
+    this.countEl.textContent = fact ? fact.progress() : "";
+    this.countEl.hidden = !fact;
+    this.ruleEl.hidden = !line.rule;
+    this.sourceEl.hidden = !fact?.credit;
+    if (fact?.credit) {
+      this.sourceEl.setAttribute("aria-label", `Source: ${fact.credit}`);
+      this.sourceEl.title = fact.credit;
+    }
+    this.factEl.hidden = !fact && !line.rule;
+  }
+
+  private armHide(line: MayaLine, minMs = 0): void {
+    window.clearTimeout(this.hideTimer);
+    this.hideTimer = window.setTimeout(() => this.dismiss(), Math.max(minMs, readingMs(line.text) + (line.anchor ? 2500 : 0)));
   }
 
   /** Closes the current line and goes home. */
@@ -388,7 +467,7 @@ export class Maya {
 
   private placeBubble(figure: Rect, obstacles: Rect[], viewport: { w: number; h: number }): void {
     // Heights by width for this line (and look), so a re-layout does not force a reflow per candidate.
-    const cacheKey = this.textEl.textContent ?? "";
+    const cacheKey = `${this.textEl.textContent ?? ""}|${this.factEl.hidden}|${this.sourceEl.hidden}|${this.ruleEl.hidden}`;
     if (this.heightCacheKey !== cacheKey) {
       this.heightCache.clear();
       this.heightCacheKey = cacheKey;
@@ -406,7 +485,7 @@ export class Maya {
     let spot = placeBubble(figure, measure, obstacles, viewport);
     if (!spot) {
       this.bubble.classList.add("compact");
-      spot = placeBubble(figure, measure, obstacles, viewport, scaled(260));
+      spot = placeBubble(figure, measure, obstacles, viewport, 260);
     }
     if (!spot) {
       // No room anywhere beside her: hold the line back and try again later.

@@ -24,7 +24,6 @@ import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/ha
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
-import { NuggetPopup } from "@ui/nuggetPopup";
 import { closeSources } from "@ui/sourcesScreen";
 import { audioStateForTest, playSound } from "@ui/audioHooks";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
@@ -803,7 +802,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // cluster, whose height changes as it collapses, so its bottom is tracked.
   const mapCorner = levelMap.source ? document.createElement("div") : null;
   let mapCornerObserver: ResizeObserver | null = null;
-  let mapCornerHeightObserver: ResizeObserver | null = null;
   if (mapCorner) {
     mapCorner.className = "map-corner";
     container.appendChild(mapCorner);
@@ -818,15 +816,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       mapCornerObserver.observe(container);
       place();
     }
-    // The Discovery card shares the bottom-left corner: it sits above the
-    // street-map switch and the credit, so the credit is never covered.
-    container.classList.add("has-map-corner");
-    const height = (): void => container.style.setProperty("--map-corner-h", `${Math.round(mapCorner.getBoundingClientRect().height)}px`);
-    if (typeof ResizeObserver === "function") {
-      mapCornerHeightObserver = new ResizeObserver(height);
-      mapCornerHeightObserver.observe(mapCorner);
-    }
-    height();
   }
   const mapAttribution = levelMap.source && mapCorner ? new MapAttribution(mapCorner, levelMap.source.attribution) : null;
 
@@ -874,17 +863,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   /** Set the first time a tile menu opens — the coach's second step waits on it. */
   let hasOpenedTileMenu = false;
   /**
-   * STEP_PROMPT_knowledge_nuggets.md Part C: the "Discovery Badge" —
-   * appears from `openTilePopover()`'s build callback below, on any
-   * successful build of a nugget-eligible element. A player-facing
-   * moment, not something a scripted bulk-build should spam — the
-   * `devAutoBuild`/`__buildForTest` dev-only paths deliberately don't
-   * call `nuggetPopup.show()`. The visibility callback suppresses
-   * `.empty-prompt` (bottom-center) for exactly as long as the badge
-   * itself is showing — see `Hud.setEmptyPromptSuppressed()`'s own
-   * comment for the real overlap this fixes.
+   * STEP_PROMPT_knowledge_nuggets.md Part C, as Section 1d left it: on any
+   * successful build of a nugget-eligible element (see `openTilePopover()`'s
+   * build callback below) the game picks one of its facts and Maya says it.
+   * A player-facing moment, not something a scripted bulk-build should spam:
+   * the `devAutoBuild`/`__buildForTest` dev-only paths deliberately don't
+   * call `nuggetPopup.show()`.
    */
-  const nuggetPopup = new NuggetPopup(container, (visible) => hud.setEmptyPromptSuppressed(visible));
+  // Maya says the fact (nuggetPopup.ts). The Tutorial has no Maya: its coach is its one voice, so there is nothing to say a fact there.
+  const nuggetPopup = panjim?.nuggets ?? null;
   /**
    * STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: the same category of tool
    * as `devAutoBuild`/`?coinboost`/`?resilienceboost` — testing-only, not
@@ -1697,7 +1684,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     elements.reset();
     hazardOverlay.reset();
     hazardTestPanel?.reset(); // STEP_PROMPT_hazard_test_sliders.md's Verify: panel state doesn't need to persist across a reset
-    nuggetPopup.reset(); // STEP_PROMPT_knowledge_nuggets.md Part C: same "doesn't need to persist across a reset" convention
+    nuggetPopup?.reset(); // STEP_PROMPT_knowledge_nuggets.md Part C: same "doesn't need to persist across a reset" convention
     clearAllPreviews(); // STEP_PROMPT_pacing_telegraph_preview.md Section 3: a stale preview from before the reset shouldn't survive it
 
     state.startNewEra(); // clears built elements (re-seeding the pre-built Houses) — state.claimed stays every tile, same as always now
@@ -2146,14 +2133,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         // The controller spends the quarters, draws the element and ticks the
         // clock. The run ends at 2050, never on an objective.
         if (!panjim.build(coord, id)) return;
-        nuggetPopup.show(id);
+        nuggetPopup?.show(id);
         playSound("build");
         return;
       }
       if (!state.build(coord, id)) return;
       telemetry.action("build", 1);
       placeElement(coord, id, true);
-      nuggetPopup.show(id);
       playSound("build");
       // STEP_PROMPT_pacing_telegraph_preview.md: checkHazardSchedule() now
       // runs BEFORE refreshHud() (was the other way around) — it's what
@@ -2632,10 +2618,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     mapLayerControl?.dispose();
     overlayTexture?.dispose();
     mapCornerObserver?.disconnect();
-    mapCornerHeightObserver?.disconnect();
     mapCorner?.remove();
-    container.classList.remove("has-map-corner");
-    container.style.removeProperty("--map-corner-h");
     closeSources();
     // Puts the sky and sun back before the scene goes. Without it a
     // session disposed mid-storm would be the last thing to touch those

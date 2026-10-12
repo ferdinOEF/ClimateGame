@@ -21,11 +21,11 @@ describe("Maya's words", () => {
 
   it("covers the four tips the brief asks for", () => {
     const text = MAYA.tips.map((tip) => tip.text).join(" ");
-    // Phrased as rules of this game (src/data/facts.json, docs/FACTS_AUDIT.md).
-    expect(text).toMatch(/In this game, mangroves slow the surge before it reaches the houses/);
-    expect(text).toMatch(/In this game, a Khazan holds floodwater so nearby homes stay drier/);
-    expect(text).toMatch(/In this game, dunes and pandanus shield the beach/);
-    expect(text).toMatch(/In this game, a seawall costs more and holds no water/);
+    // Rules of this game (src/data/facts.json, docs/FACTS_AUDIT.md): Maya tags them "Game rule" in her bubble.
+    expect(text).toMatch(/Mangroves slow the surge before it reaches the houses/);
+    expect(text).toMatch(/A khazan holds floodwater, so nearby homes stay drier/);
+    expect(text).toMatch(/Dunes and pandanus shield the beach/);
+    expect(text).toMatch(/A seawall costs more and holds no water/);
   });
 
   it("fills the warning templates", () => {

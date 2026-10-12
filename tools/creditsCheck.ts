@@ -82,9 +82,9 @@ async function main(): Promise<void> {
       if (w === 1920 && dpr === 1) {
         await page.locator(".menu-credits-sources").click();
         await page.waitForSelector(".sources-panel");
-        const listed = await page.locator(".sources-list .sources-item").evaluateAll((items) => items.map((i) => (i as HTMLElement).dataset.factId));
+        const listed = await page.locator(".sources-list:not(.sources-map-data) .sources-item").evaluateAll((items) => items.map((i) => (i as HTMLElement).dataset.factId));
         check(JSON.stringify(listed) === JSON.stringify(CITED_FACTS.map((f) => f.id)), `Sources screen lists every cited fact (${listed.length})`);
-        const links = await page.locator(".sources-list .sources-link").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
+        const links = await page.locator(".sources-list:not(.sources-map-data) .sources-link").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
         check(links.every((u) => u.startsWith("https://")), "Sources links are https");
         await page.screenshot({ path: path.join(OUT, `sources-${label}.jpg`), quality: 85 });
         // axe-core on the menu with the strip and on the open Sources screen.
@@ -96,46 +96,39 @@ async function main(): Promise<void> {
         check(axeResult.length === 0, `axe-core: menu + Sources screen, no serious or critical violations${axeResult.length ? ": " + axeResult.join(", ") : ""}`);
         await page.keyboard.press("Escape");
         check((await page.locator(".sources-panel").count()) === 0, "Esc closes the Sources screen");
-        // Into a level: no strip, and a Discovery card with its Source.
+        // Into a level: no strip.
         await page.goto(`${server.url}#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-card", { timeout: 60000 });
         await page.locator(".brief-cta").first().click();
         await page.waitForTimeout(1500);
         check((await page.locator(".menu-credits").count()) === 0, "No credits strip inside a level");
-        await page.evaluate(`(() => { const p = window.__nuggetPopupForTest; for (let i = 0; i < 6; i++) { p.show("mangrove"); if (!document.querySelector(".nugget-source-row").hidden) break; } })()`);
-        const sourceShown = await page.locator(".nugget-source-row:not([hidden])").count();
-        check(sourceShown === 1, "Discovery card shows a Source control on a cited fact");
-        await page.locator(".nugget-source").hover();
-        await page.waitForTimeout(300);
-        const credit = await page.locator(".nugget-credit").textContent();
-        check(/\d{4}|n\.d\./.test(credit ?? ""), `Source tooltip: "${credit}"`);
+        // On Panaji Maya tells the fact: her bubble carries its count and a Source button.
+        await page.goto(`${server.url}#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+        await page.waitForSelector(".brief-card", { timeout: 60000 });
+        await page.locator(".brief-cta").first().click();
+        await page.waitForTimeout(1500);
+        await page.evaluate(`(() => { window.__panjimForTest.maya.holdLines = true; window.__nuggetPopupForTest.replay("mangrove-waves"); })()`);
+        await page.waitForSelector(".maya-source:not([hidden])");
+        check((await page.locator(".maya-source").count()) === 1, "Maya's bubble shows a Source button on a cited fact");
+        const credit = await page.locator(".maya-source").getAttribute("title");
+        check(/\d{4}|n\.d\./.test(credit ?? ""), `Source credit: "${credit}"`);
+        check(/^\d+ of \d+$/.test((await page.locator(".maya-count").textContent()) ?? ""), "the bubble shows the running count");
         await page.screenshot({ path: path.join(OUT, `discovery-source-${label}.jpg`), quality: 85 });
-        await page.locator(".nugget-source").click();
+        await page.locator(".maya-source").click();
         await page.waitForSelector(".sources-item.highlight");
-        await page.screenshot({ path: path.join(OUT, `sources-from-card-${label}.jpg`), quality: 85 });
+        await page.screenshot({ path: path.join(OUT, `sources-from-maya-${label}.jpg`), quality: 85 });
         // Keyboard: Tab stays inside the dialog; one Esc closes it.
         for (let i = 0; i < 25; i++) await page.keyboard.press("Tab");
         check(await page.evaluate<boolean>(`Boolean(document.activeElement && document.activeElement.closest(".sources-backdrop"))`), "Tab stays inside the Sources screen");
         await page.keyboard.press("Escape");
         check((await page.locator(".sources-backdrop").count()) === 0, "one Esc closes the Sources screen in a level");
         check(await page.evaluate<boolean>(`[...document.body.children].every((el) => !el.inert)`), "the page is reachable again after it closes");
-        // On Panaji, with Maya talking: one Esc still closes the Sources screen first.
-        await page.goto(`${server.url}#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-        await page.waitForSelector(".brief-card", { timeout: 60000 });
-        await page.locator(".brief-cta").first().click();
-        await page.waitForTimeout(1500);
-        await page.evaluate(`window.__panjimScenarioForTest("maya:tip")`);
-        await page.evaluate(`window.__nuggetPopupForTest.show("dune", "dunes-barrier")`);
-        await page.locator(".nugget-source").click();
+        // With Maya talking: one Esc still closes the Sources screen first.
+        await page.evaluate(`window.__nuggetPopupForTest.replay("dunes-barrier")`);
+        await page.locator(".maya-source").click();
         await page.waitForSelector(".sources-panel");
         await page.keyboard.press("Escape");
         check((await page.locator(".sources-backdrop").count()) === 0, "with Maya talking, one Esc closes the Sources screen");
-        const cardBottom = await page.evaluate<boolean>(`(() => { const c = document.querySelector(".map-corner").getBoundingClientRect(); const b = document.querySelector(".nugget-badge").getBoundingClientRect(); return b.bottom <= c.top + 1; })()`);
-        check(cardBottom, "on Panaji the Discovery card sits above the street-map switch and credit");
-        // Back to the Tutorial: the card is in its own corner again (no street map there).
-        await page.goto(`${server.url}#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
-        await page.waitForSelector(".brief-card", { timeout: 60000 });
-        check(await page.evaluate<boolean>(`!document.querySelector(".has-map-corner")`), "leaving Panaji clears the map-corner class");
       }
       await page.close();
     }

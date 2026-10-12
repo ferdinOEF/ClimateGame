@@ -5,7 +5,7 @@
  * The rule is simple and absolute: neither her figure nor her bubble may
  * overlap any other HUD element (with `CLEARANCE` px to spare) or leave the
  * viewport. The session hands in the rectangles of everything on screen
- * (the Discovery card, Get ready, the top bar, the build menu, tooltips,
+ * (the Get ready list, the top bar, the build menu, tooltips,
  * cards); these functions find the nearest free spot.
  */
 export interface Rect {
@@ -24,11 +24,31 @@ export const CLEARANCE = 12;
  * it resizes all of her together. The space she keeps from other HUD elements
  * (`CLEARANCE`) does not scale.
  */
-export const MAYA_SCALE = 0.7;
+export const MAYA_SCALE = 0.45;
 
 /** A size of hers (in px), at her scale. */
 export function scaled(px: number): number {
   return Math.round(px * MAYA_SCALE);
+}
+
+/**
+ * What does not shrink with her. Her text never goes under 12 px, so her
+ * bubble keeps a width that text can wrap in; her badge and minimise button
+ * stay big enough to hit. Everything else about her box is a multiple of
+ * MAYA_SCALE.
+ */
+export const BUBBLE_MIN_WIDTH = 190;
+export const BADGE_MIN_PX = 30;
+export const MINIMISE_MIN_PX = 14;
+
+/** Her badge and minimise button, in px (the CSS reads them as `--maya-badge` and `--maya-minimise`). */
+export const BADGE_PX = Math.max(BADGE_MIN_PX, scaled(52));
+export const MINIMISE_PX = Math.max(MINIMISE_MIN_PX, scaled(22));
+
+/** The widths her bubble is tried at, widest first: her scaled widths, none narrower than the text can use. */
+export function bubbleWidths(maxWidth = 320): number[] {
+  const widths = [maxWidth, 280, 250, 220].filter((w) => w <= maxWidth).map((w) => Math.max(BUBBLE_MIN_WIDTH, scaled(w)));
+  return widths.filter((w, i) => widths.indexOf(w) === i);
 }
 
 /** Her figure's box for a crop `view` (art units) drawn at `unitPx` px per unit: the width at her scale, the height from the crop's aspect ratio. */
@@ -53,8 +73,8 @@ function free(r: Rect, obstacles: readonly Rect[], viewport: { w: number; h: num
  * Her figure's spot.
  *
  * Docked (`target` null): the left edge, searched from the bottom up, so she
- * stands just above whatever holds the bottom-left corner (the Discovery
- * card, the street-map switch) and moves with it; failing that, along the
+ * stands just above whatever holds the bottom-left corner (the
+ * street-map switch) and moves with it; failing that, along the
  * bottom edge; failing that, anywhere free.
  *
  * Away (`target` a point on the board): her feet as near that point as a
@@ -105,7 +125,7 @@ export type BubbleSide = "right" | "above" | "left";
  * Her bubble's spot, beside her figure and toward free space: to her right
  * first (level with her head), then above her, then to her left; each at a
  * few heights. `measure(width)` gives the bubble's height at a width, since
- * text reflows. Widths are tried from `maxWidth` down to the narrowest (all at her scale). Null if
+ * text reflows. Widths (`maxWidth` is in unscaled px) come from `bubbleWidths`, widest first. Null if
  * nothing fits: the caller shrinks the text or holds the line back.
  */
 export function placeBubble(
@@ -113,11 +133,11 @@ export function placeBubble(
   measure: (width: number) => number,
   obstacles: readonly Rect[],
   viewport: { w: number; h: number },
-  maxWidth = scaled(320),
+  maxWidth = 320,
   clearance = CLEARANCE
 ): { rect: Rect; side: BubbleSide } | null {
   const gap = scaled(8);
-  for (const width of [maxWidth, ...[280, 250, 220].map(scaled)].filter((w) => w <= maxWidth)) {
+  for (const width of bubbleWidths(maxWidth)) {
     const h = measure(width);
     const headY = figure.y + figure.h * 0.15;
     const candidates: { rect: Rect; side: BubbleSide }[] = [];

@@ -6,7 +6,7 @@
       "elements": [
         "mangrove"
       ],
-      "text": "Across the studies reviewed, 100 m of mangroves cut wave height by between 13% and 66%. Most of those measurements were of small waves, under 70 cm high.",
+      "text": "Studies found 100 m of mangroves cut wave height by 13% to 66%, mostly for waves under 70 cm.",
       "citation": {
         "title": "Reduction of Wind and Swell Waves by Mangroves",
         "authors": "McIvor, A.L., Möller, I., Spencer, T. and Spalding, M.",
@@ -23,7 +23,7 @@
       "elements": [
         "dune"
       ],
-      "text": "Research on dunes in England and Wales found that sand dunes can be an important natural defence against coastal flooding, standing as a barrier between the sea and the land behind, and are best managed as dynamic natural defences.",
+      "text": "Research in England and Wales found sand dunes can be an important natural barrier against coastal flooding.",
       "citation": {
         "title": "Sand Dune Processes and Management for Flood and Coastal Defence: Summary (FD1302)",
         "authors": "Pye, K., Saye, S. and Blott, S.",
@@ -39,7 +39,7 @@
       "elements": [
         "khazan"
       ],
-      "text": "Khazans are Goa's coastal wetlands reclaimed from the marshes. Bunds keep out the tide and sluice gates control the water, and the land is shared by farmers and fishers.",
+      "text": "Khazans are Goa's coastal wetlands, reclaimed from marsh. Bunds keep out the tide, and farmers and fishers share the land.",
       "citation": {
         "title": "The Khazans of Goa: A Socio-Cultural Perspective",
         "authors": "Jacob, G.J.",
@@ -56,7 +56,7 @@
         "khazan",
         "mangrove"
       ],
-      "text": "On the outer bund of a khazan, mangroves act as wave breakers against the tide.",
+      "text": "The mangroves on a khazan's outer bund work as wave breakers against the tide.",
       "citation": {
         "title": "The Khazans of Goa: A Socio-Cultural Perspective",
         "authors": "Jacob, G.J.",
@@ -73,7 +73,7 @@
       "elements": [
         "khazan"
       ],
-      "text": "Where khazan bunds breach, mangroves grow back over the old fields.",
+      "text": "When a khazan bund breaks, mangroves grow back over the old fields.",
       "citation": {
         "title": "Mangroves and Khazan agriculture: Sustaining Goa's promise for fish, curry and rice",
         "authors": "Lobo, A.S.",
@@ -86,7 +86,7 @@
     {
       "id": "khazan-holds-floodwater",
       "kind": "gameRule",
-      "text": "In this game, a Khazan holds floodwater so nearby homes stay drier.",
+      "text": "A khazan holds floodwater, so nearby homes stay drier.",
       "elements": [
         "khazan"
       ]
@@ -94,7 +94,7 @@
     {
       "id": "mangrove-grow",
       "kind": "gameRule",
-      "text": "In this game, mangroves take a few years to reach full strength, so plant them early.",
+      "text": "Mangroves take a few years to reach full strength, so plant them early.",
       "elements": [
         "mangrove"
       ]
@@ -102,7 +102,7 @@
     {
       "id": "pandanus-cheap",
       "kind": "gameRule",
-      "text": "In this game, pandanus is the cheapest defence you can build. It softens a storm surge a little, on sand where mangroves cannot grow.",
+      "text": "Pandanus is the cheapest defence you can build. It softens a surge a little, on sand where mangroves can't grow.",
       "elements": [
         "sandy_vegetation"
       ]
@@ -110,7 +110,7 @@
     {
       "id": "dune-shrinks",
       "kind": "gameRule",
-      "text": "In this game, a dune that takes a beating is not destroyed: it weakens for that storm and is still there for the next one.",
+      "text": "A dune that takes a beating isn't destroyed: it weakens for that storm and is still there for the next.",
       "elements": [
         "dune"
       ]
@@ -118,7 +118,7 @@
     {
       "id": "seawall-holds",
       "kind": "gameRule",
-      "text": "In this game, a seawall stops most of a surge while it holds, and it is strong from the day it is built.",
+      "text": "A seawall stops most of a surge while it holds, and it's strong from the day it's built.",
       "elements": [
         "seawall"
       ]
@@ -126,7 +126,7 @@
     {
       "id": "seawall-fails",
       "kind": "gameRule",
-      "text": "In this game, a seawall pushed past its limit fails all at once, and the surge goes on past it.",
+      "text": "A seawall pushed past its limit fails all at once, and the surge goes on past it.",
       "elements": [
         "seawall"
       ]
@@ -134,7 +134,7 @@
     {
       "id": "seawall-no-wildlife",
       "kind": "gameRule",
-      "text": "In this game, a seawall lowers biodiversity: nothing in the game lives on it.",
+      "text": "A seawall lowers biodiversity: nothing in the game lives on it.",
       "elements": [
         "seawall"
       ]
@@ -142,7 +142,7 @@
     {
       "id": "breakwater-offshore",
       "kind": "gameRule",
-      "text": "In this game, a breakwater sits out at sea and takes the force out of a cyclone's waves before they reach the beach.",
+      "text": "A breakwater sits out at sea and takes the force out of a cyclone's waves before they reach the beach.",
       "elements": [
         "breakwater"
       ]
@@ -150,7 +150,7 @@
     {
       "id": "dam-fails",
       "kind": "gameRule",
-      "text": "In this game, a small dam holds back the river until a flood is too big for it, then fails all at once.",
+      "text": "A small dam holds the river back until a flood is too big, then fails all at once.",
       "elements": [
         "small_dam"
       ]
@@ -158,7 +158,7 @@
     {
       "id": "dam-coin",
       "kind": "gameRule",
-      "text": "In this game, a small dam earns Coin and protects against floods, but it lowers biodiversity.",
+      "text": "A small dam earns Coin and protects against floods, but it lowers biodiversity.",
       "elements": [
         "small_dam"
       ]
@@ -166,7 +166,7 @@
     {
       "id": "resort-coin",
       "kind": "gameRule",
-      "text": "In this game, a resort earns Coin every season but lowers biodiversity and the city's resilience.",
+      "text": "A resort earns Coin every season, but it lowers biodiversity and the city's resilience.",
       "elements": [
         "beachside_resort"
       ]
@@ -174,7 +174,7 @@
     {
       "id": "resort-no-defence",
       "kind": "gameRule",
-      "text": "In this game, a resort defends nothing: a storm that reaches it does damage.",
+      "text": "A resort defends nothing: a storm that reaches it does damage.",
       "elements": [
         "beachside_resort"
       ]
@@ -182,7 +182,7 @@
     {
       "id": "sandmining-coin",
       "kind": "gameRule",
-      "text": "In this game, sand mining earns more Coin than anything else, and weakens the city against floods.",
+      "text": "Sand mining earns more Coin than anything else, and it weakens the city against floods.",
       "elements": [
         "sand_mining"
       ]
@@ -190,7 +190,7 @@
     {
       "id": "sandmining-biodiversity",
       "kind": "gameRule",
-      "text": "In this game, sand mining lowers biodiversity more than any other build.",
+      "text": "Sand mining lowers biodiversity more than any other build.",
       "elements": [
         "sand_mining"
       ]
@@ -198,7 +198,7 @@
     {
       "id": "yacht-nothing",
       "kind": "gameRule",
-      "text": "In this game, the Yacht does nothing for your Coin, your defences or your resilience. It is there to be seen.",
+      "text": "The Yacht does nothing for your Coin, your defences or your resilience. It's there to be seen.",
       "elements": [
         "yacht"
       ]
@@ -206,7 +206,7 @@
     {
       "id": "yacht-cost",
       "kind": "gameRule",
-      "text": "In this game, the Yacht is the most expensive thing you can build.",
+      "text": "The Yacht is the most expensive thing you can build.",
       "elements": [
         "yacht"
       ]

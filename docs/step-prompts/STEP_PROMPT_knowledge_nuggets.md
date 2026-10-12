@@ -1,3 +1,5 @@
+> **Superseded by Section 1d:** the Discovery card this describes is gone. Maya says each fact in her speech bubble (`src/ui/nuggetPopup.ts` still chooses which). Kept as the record of the original brief.
+
 # Khazan — Step Prompt: Knowledge Nugget Popup + Two HUD Corner Changes
 
 **How to use this document:** three related changes, landed as their own commits per this project's usual convention — Part A and Part B are small, mechanical, and exist specifically to clear the two HUD corners Part C needs. Do Part A and Part B first; Part C depends on both being done (it claims the corner Part A frees, and needs the corner Part B vacates to not collide with it).
@@ -138,7 +140,7 @@ export class NuggetPopup {
 <div class="hud-corner bottom-left nugget-badge" hidden>
   <div class="nugget-badge-icon"><!-- small inline SVG glyph, tint-colored --></div>
   <div class="nugget-badge-body">
-    <div class="nugget-badge-eyebrow">New discovery</div>
+    <!-- the "eyebrow" label was removed in Section 1d -->
     <div class="nugget-badge-label"><!-- element display name --></div>
     <p class="nugget-badge-text"><!-- the fact --></p>
     <div class="nugget-badge-track"><div class="nugget-badge-fill"></div></div>

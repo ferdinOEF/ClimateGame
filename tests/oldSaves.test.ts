@@ -25,6 +25,11 @@ describe("saves from earlier builds", () => {
     const notes = refreshSavedNotes(saved);
     expect(notes.map((n) => n.id)).toEqual(["dunes"]);
     expect(notes[0].text).toBe(MAYA.tips.find((t) => t.id === "dunes")!.text);
-    expect(notes[0].text.startsWith("In this game, ")).toBe(true);
+    expect(notes[0].text).not.toMatch(/^In this game/);
+  });
+
+  it("a saved discovery takes today's wording and its element's name for a title", () => {
+    const notes = refreshSavedNotes([{ id: "mangrove-grow", title: "old", text: "In this game, mangroves take a few years to reach full strength, so plant them early." }]);
+    expect(notes).toEqual([{ id: "mangrove-grow", title: "Mangrove", text: "Mangroves take a few years to reach full strength, so plant them early." }]);
   });
 });

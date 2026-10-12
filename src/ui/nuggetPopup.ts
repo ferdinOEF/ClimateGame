@@ -1,26 +1,14 @@
-import { ELEMENT_BY_ID } from "@core/elements";
-import { discoveryFacts, discoveryTotal, displayText, shortCredit, type Fact } from "@core/facts";
-import { openSources } from "./sourcesScreen";
+import { discoveryFacts, discoveryTotal, displayText, factById, isShown, shortCredit, type Fact } from "@core/facts";
+import type { Maya, MayaLine } from "./panjim/maya";
 
-/** Every distinct fact a card can show (nuggets.json lists them by id; facts.json holds them). Never hardcoded. */
+/** Every distinct fact Maya can say on a build (nuggets.json lists them by id; facts.json holds them). Never hardcoded. */
 const TOTAL_FACTS = discoveryTotal();
 
 /**
- * C.2: a positive/negative framing decided in chat, not a per-element
- * color — `PALETTE.defenseMangrove`/`PALETTE.defenseSandMining` from
- * palette.ts, duplicated here as literal hex (and again in hud.css's own
- * `.nugget-badge.tint-*` rules) since hud.css can't import from
- * palette.ts — a different module system, same as every other palette
- * color already duplicated into hud.css as a literal (e.g.
- * `.hazard-test-row.storm`'s own `#3e86b0` comment explains why).
+ * The elements Maya is wary of: she says their facts in her worried state,
+ * the rest in her neutral "tip" state.
  */
 const CAUTION_IDS = new Set(["beachside_resort", "sand_mining", "yacht"]);
-
-const DISMISS_MS = 5000;
-
-/** A simple 4-point sparkle — the "new discovery" glyph, tint-colored via the badge's own circular background, not the glyph itself. */
-const DISCOVERY_ICON_SVG =
-  '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3 L14 10 L21 12 L14 14 L12 21 L10 14 L3 12 L10 10 Z" fill="#fdf6e6"/></svg>';
 
 /**
  * Fisher-Yates, optionally avoiding a given first element — used when
@@ -41,106 +29,35 @@ function shuffledIndices(n: number, avoidFirst?: number): number[] {
 }
 
 /**
- * STEP_PROMPT_knowledge_nuggets.md Part C: the "Discovery Badge" that
- * appears the instant a player successfully builds one of the ten
- * nugget-eligible elements — one of that element's cards (a cited fact,
- * with its Source, or a rule of this game), plus a running "N of M
- * discoveries" count across the session.
- * `house` deliberately has no entry in nuggets.json, so `show()` no-ops
- * for it (and for any future element added without nuggets yet) rather
- * than throwing.
+ * STEP_PROMPT_knowledge_nuggets.md Part C, as Section 1d left it: the moment
+ * a player successfully builds one of the ten nugget-eligible elements, this
+ * picks which of that element's facts to tell (a cited fact, or a rule of
+ * this game) and hands it to Maya, who says it in her speech bubble: there is
+ * no card of its own. Maya's queue decides when (one line at a time, never
+ * mid-build or over a modal, each line once per session, behind any hazard
+ * warning), and her bubble carries the running "N of M" count and the
+ * Source button.
+ *
+ * `house` deliberately has no entry in nuggets.json, so `show()` no-ops for
+ * it (and for any future element added without nuggets yet). With no Maya (the
+ * Tutorial, where its coach is the one voice) it also no-ops.
  */
 export class NuggetPopup {
-  private el: HTMLElement;
-  private labelEl: HTMLElement;
-  private textEl: HTMLElement;
-  private fillEl: HTMLElement;
-  private progressEl: HTMLElement;
-  private sourceEl: HTMLButtonElement;
-  private creditEl: HTMLElement;
-  private factId: string | null = null;
-  private hovered = false;
-  private dismissTimer: number | null = null;
   /** Per-element shuffle state — a fresh shuffle on first build of that type, reshuffled (never immediately repeating) once exhausted. */
   private pickState = new Map<string, { order: number[]; cursor: number }>();
-  /** Fact ids — a Set, not a raw counter, so a repeat shown again can be told apart from a genuinely new fact for the progress bar. */
+  /** Fact ids Maya has said — a Set, so the same fact said again does not count twice. */
   private discovered = new Set<string>();
-  private onVisibilityChange?: (visible: boolean) => void;
 
-  /**
-   * `onVisibilityChange` (optional — not part of the step prompt's own
-   * constructor sketch, added to fix a real bug the sketch didn't
-   * anticipate): the badge and `.empty-prompt` (bottom-center, "N hexes
-   * still empty") both anchor near the bottom of the viewport and
-   * measurably overlap at every required mobile breakpoint once the
-   * badge's real multi-line content is on screen — confirmed live, not a
-   * hypothetical. `main.ts` wires this to `Hud.setEmptyPromptSuppressed`,
-   * the single source of truth for "is a badge currently showing" rather
-   * than a second, independently-timed 5000ms guess in main.ts that could
-   * drift out of sync with `DISMISS_MS` below.
-   */
-  constructor(container: HTMLElement, onVisibilityChange?: (visible: boolean) => void) {
-    this.onVisibilityChange = onVisibilityChange;
-    const el = document.createElement("div");
-    el.className = "hud-corner bottom-left nugget-badge";
-    el.hidden = true;
-    el.innerHTML = `
-      <div class="nugget-badge-icon">${DISCOVERY_ICON_SVG}</div>
-      <div class="nugget-badge-body">
-        <div class="nugget-badge-eyebrow">New discovery</div>
-        <div class="nugget-badge-label"></div>
-        <p class="nugget-badge-text"></p>
-        <div class="nugget-source-row" hidden>
-          <button type="button" class="nugget-source" aria-describedby="nugget-credit">Source</button>
-          <span class="nugget-credit" id="nugget-credit" role="tooltip"></span>
-        </div>
-        <div class="nugget-badge-track"><div class="nugget-badge-fill"></div></div>
-        <div class="nugget-badge-progress"></div>
-      </div>`;
-    container.appendChild(el);
-    this.el = el;
-    this.labelEl = el.querySelector(".nugget-badge-label")!;
-    this.textEl = el.querySelector(".nugget-badge-text")!;
-    this.fillEl = el.querySelector(".nugget-badge-fill")!;
-    this.progressEl = el.querySelector(".nugget-badge-progress")!;
-    this.sourceEl = el.querySelector(".nugget-source")!;
-    this.creditEl = el.querySelector(".nugget-credit")!;
-    this.sourceEl.addEventListener("click", () => {
-      if (this.factId) openSources(this.factId);
-      this.hide();
-    });
-    // The card waits while the pointer or focus is on it, so the Source can be read.
-    const hold = (on: boolean): void => {
-      this.hovered = on;
-      if (!on && !this.el.hidden) this.armDismiss();
-    };
-    el.addEventListener("pointerenter", () => hold(true));
-    el.addEventListener("pointerleave", () => hold(false));
-    el.addEventListener("focusin", () => hold(true));
-    el.addEventListener("focusout", () => hold(false));
-  }
+  constructor(private readonly maya: Maya | null) {}
 
-  private armDismiss(): void {
-    if (this.dismissTimer !== null) window.clearTimeout(this.dismissTimer);
-    this.dismissTimer = window.setTimeout(() => {
-      this.dismissTimer = null;
-      if (this.hovered) return;
-      this.hide();
-    }, DISMISS_MS);
-  }
-
-  private hide(): void {
-    if (this.dismissTimer !== null) window.clearTimeout(this.dismissTimer);
-    this.dismissTimer = null;
-    this.hovered = false;
-    if (this.el.hidden) return;
-    this.el.hidden = true;
-    this.onVisibilityChange?.(false);
+  /** "2 of 21": how many of the facts she can say have been said. */
+  get progress(): string {
+    return `${this.discovered.size} of ${TOTAL_FACTS}`;
   }
 
   /**
    * No-ops silently if elementId has no entry in nuggets.json. `factId`
-   * picks a particular card (the layout test shows the tallest); otherwise
+   * picks a particular fact (the layout test shows the tallest); otherwise
    * the next one in this element's shuffle.
    */
   show(elementId: string, factId?: string): void {
@@ -148,7 +65,7 @@ export class NuggetPopup {
     if (!facts || facts.length === 0) return;
     const chosen = factId ? facts.findIndex((fact) => fact.id === factId) : -1;
     if (chosen >= 0) {
-      this.present(elementId, facts[chosen]);
+      this.offer(elementId, facts[chosen]);
       return;
     }
 
@@ -161,51 +78,39 @@ export class NuggetPopup {
     const factIndex = state.order[state.cursor];
     state.cursor++;
 
-    this.present(elementId, facts[factIndex]);
+    this.offer(elementId, facts[factIndex]);
   }
 
-  private present(elementId: string, fact: Fact): void {
-    this.discovered.add(fact.id);
-    this.factId = fact.id;
-
-    const caution = CAUTION_IDS.has(elementId);
-    this.el.classList.toggle("tint-caution", caution);
-    this.el.classList.toggle("tint-positive", !caution);
-    this.labelEl.textContent = ELEMENT_BY_ID.get(elementId)?.name ?? elementId;
-    this.textEl.textContent = displayText(fact);
-    const row = this.el.querySelector<HTMLElement>(".nugget-source-row")!;
-    row.hidden = !fact.citation;
-    this.creditEl.textContent = fact.citation ? shortCredit(fact.citation) : "";
-    this.fillEl.style.width = `${(this.discovered.size / TOTAL_FACTS) * 100}%`;
-    this.progressEl.textContent = `${this.discovered.size} of ${TOTAL_FACTS} discoveries`;
-
-    if (this.dismissTimer !== null) window.clearTimeout(this.dismissTimer);
-    this.el.hidden = false;
-    this.onVisibilityChange?.(true);
-    // Same "restart cleanly" pattern Hud.flashArrival() already uses —
-    // remove the animating class, force a reflow, re-add it — so a
-    // second nugget built while one is still showing replaces the
-    // content and genuinely restarts the entrance animation, rather than
-    // a no-op class toggle silently doing nothing.
-    this.el.classList.remove("entering");
-    void this.el.offsetWidth;
-    this.el.classList.add("entering");
-
-    this.armDismiss();
+  /** Says a fact again, at once (reopened from the Field Guide). False if `id` is not a fact she can say. */
+  replay(id: string): boolean {
+    const fact = factById(id);
+    if (!fact || !isShown(fact) || !this.maya) return false;
+    this.maya.dismiss();
+    this.maya.say({ ...this.line(fact.elements[0] ?? "", fact), force: true, urgent: true });
+    this.maya.next();
+    return true;
   }
 
-  /** Same "doesn't need to persist across a reset" convention as HazardTestPanel.reset() — clears the per-element pick-order state and the discovered-count back to zero. */
+  /** The line Maya says for a fact: first person, in her tip state (worried for the elements she is wary of). */
+  private line(elementId: string, fact: Fact): MayaLine {
+    return {
+      id: fact.id,
+      text: displayText(fact),
+      state: CAUTION_IDS.has(elementId) ? "worried" : "tip",
+      urgent: false,
+      rule: fact.kind === "gameRule",
+      fact: { id: fact.id, credit: fact.citation ? shortCredit(fact.citation) : undefined, progress: () => this.progress },
+      onShow: () => this.discovered.add(fact.id)
+    };
+  }
+
+  private offer(elementId: string, fact: Fact): void {
+    this.maya?.say(this.line(elementId, fact));
+  }
+
+  /** Same "doesn't need to persist across a reset" convention as HazardTestPanel.reset() — clears the per-element pick-order state and the count back to zero. */
   reset(): void {
-    if (this.dismissTimer !== null) {
-      window.clearTimeout(this.dismissTimer);
-      this.dismissTimer = null;
-    }
     this.pickState.clear();
     this.discovered.clear();
-    this.hovered = false;
-    const wasVisible = !this.el.hidden;
-    this.el.hidden = true;
-    this.el.classList.remove("entering");
-    if (wasVisible) this.onVisibilityChange?.(false);
   }
 }
