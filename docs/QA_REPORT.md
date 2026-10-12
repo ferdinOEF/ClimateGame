@@ -585,3 +585,36 @@ Headless Chromium with software GL, as above. Everything is in `docs/qa/section1
 - **The wave swings 10° (-148° to -158°),** not 22°: at -172° the full-length arm lay along her cheek.
 - **The crop is 168 × 442 art units from y34** (was 158 wide): room for the wave and the shoulder-high hand.
 - The reference copy in `docs/design/` is the new one with the rounder chin.
+
+# Section 1d — one guide: Maya says everything the Discovery card said
+
+Branch `section-1d-one-guide`, off master `0ba9d9d` (Section 1c's merge).
+Headless Chromium with software GL (about 1 fps, so the browser tools are slow). Everything is in `docs/qa/section1d/`; the wording before and after is `wording.md`.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build, walkthrough | Clean. 419 tests pass (6 skipped). New: `discoveries.test.ts` (8: one line per element in the right state, the count is made when she says it, the pick order is kept, nothing without a Maya, replay, the queue order, the director's order, and the card's classes and label are gone from the source). Rewritten in `facts.test.ts`: every shown fact is 20 words or fewer, none opens "In this game", a rule has no citation, her tips are rules or guidance, none of her lines runs over 25 words. |
+| One of each element (`tools/section1dChecks.ts`, `checks.txt`) | 97 checks pass. A real build of each of the ten elements: Maya says one of its facts, ten different facts in all, in her tip state (worried for the resort, sand mining and the yacht), once, with "N of 21", a Source button on a cited fact and a "Game rule" tag on a rule, and no card or label left on screen. |
+| Warning and fact together | The warning is said first, the fact is next in her queue and is said at the next quarter. |
+| Keyboard and reduced motion | Tab from her minimise button reaches Source, then Got it; Enter on Source opens the Sources screen (her line goes away) and Esc closes it. Esc and Got it dismiss, with and without reduced motion. A line waits past its reading time while focus or the pointer is in the bubble. |
+| axe-core | No violations on her bubble with a cited fact up and with a game rule up. |
+| Field Guide | Shows her count ("11 of 21") and keeps each fact as a note that she says again. |
+| Text size | 12 px at least in every part of the bubble at 1366×768, 1920×1080 and 2560×1440 (her name label is 10 px). |
+| Screenshots | `discovery-fact-*` and `discovery-rule-*` at the three sizes, each with a `-gray` copy; Maya at 45%. |
+| Label overlap (`npm run test:labels`) | **37 of 37 pass**; label layer at most 7.3 ms a frame. |
+| Maya layout (`npm run test:layout`) | **105 of 105**, with a discovery (the tallest cited fact) in place of her tip in half the cases. |
+| Credits and Sources (`tools/creditsCheck.ts`) | Pass. Its check of the Sources list had been counting the map-data entries since Section 3; it now counts the cited facts only. It now reads Source from Maya's bubble. |
+| Leftovers | No "New discovery" text, `nugget-badge`, `nugget-source` or `nugget-credit` anywhere in `src`, `tools`, `tests`, `index.html`, the docs or the built bundle. |
+| Console errors | None. The Tutorial loads, with its coach and no card or bubble. |
+| Frame rate, 1920×1080 | Her cost 0.07 fps (1.60 shown, 1.67 hidden); her figure alone 1.6 fps now and on master; SVG nodes 425 and 425. |
+| Cross-browser | Chromium only. |
+
+**Decisions and deviations:**
+- **`MAYA_SCALE` is 0.45** (it was 0.7), taken from the brief's "Maya at 45%". The bubble keeps a 190 px minimum width, and her badge (30 px) and minimise button (14 px, 26 px hit area) keep a minimum size.
+- **The Tutorial has no Maya,** so it no longer shows discoveries; its coach is its one voice.
+- **Muting or minimising Maya** holds the facts back with her lines.
+- **A discovery skips the two-quarter rest between tips,** and goes ahead of ordinary tips but never ahead of a warning; the one-line-a-quarter limit still holds.
+- **The four "In this game," tips were rewritten** and tagged "Game rule", so the khazan tip still matches the khazan rule word for word.
+- **Each discovery is kept as a Field Guide note** (so it can be heard again), and the guide shows her count.
+- **A fact is counted when she says it,** not when it is picked.
+- **A line is not repeated within a session:** after every fact of an element has been said, a further build says nothing.

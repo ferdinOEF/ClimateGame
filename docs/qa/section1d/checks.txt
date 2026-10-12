@@ -1,73 +1,73 @@
-PASS  mangrove: Maya says one of its facts ("The mangroves on a khazan's outer bund work as wave breakers...")
+PASS  mangrove: Maya says one of its facts ("Mangroves take a few years to reach full strength, so plant ...")
 PASS  mangrove: state state-tip
-PASS  mangrove: khazan-mangrove-bund not said before
+PASS  mangrove: mangrove-grow not said before
 PASS  mangrove: count "1 of 21"
-PASS  mangrove: Source button shown (fact)
-PASS  mangrove: "Game rule" tag hidden (fact)
-PASS  mangrove: no card, no "New discovery"
+PASS  mangrove: Source button hidden (gameRule)
+PASS  mangrove: "Game rule" tag shown (gameRule)
+PASS  mangrove: no card, no eyebrow label
 PASS  sandy_vegetation: Maya says one of its facts ("Pandanus is the cheapest defence you can build. It softens a...")
 PASS  sandy_vegetation: state state-tip
 PASS  sandy_vegetation: pandanus-cheap not said before
 PASS  sandy_vegetation: count "2 of 21"
 PASS  sandy_vegetation: Source button hidden (gameRule)
 PASS  sandy_vegetation: "Game rule" tag shown (gameRule)
-PASS  sandy_vegetation: no card, no "New discovery"
+PASS  sandy_vegetation: no card, no eyebrow label
 PASS  dune: Maya says one of its facts ("A dune that takes a beating isn't destroyed: it weakens for ...")
 PASS  dune: state state-tip
 PASS  dune: dune-shrinks not said before
 PASS  dune: count "3 of 21"
 PASS  dune: Source button hidden (gameRule)
 PASS  dune: "Game rule" tag shown (gameRule)
-PASS  dune: no card, no "New discovery"
+PASS  dune: no card, no eyebrow label
 PASS  seawall: Maya says one of its facts ("A seawall lowers biodiversity: nothing in the game lives on ...")
 PASS  seawall: state state-tip
 PASS  seawall: seawall-no-wildlife not said before
 PASS  seawall: count "4 of 21"
 PASS  seawall: Source button hidden (gameRule)
 PASS  seawall: "Game rule" tag shown (gameRule)
-PASS  seawall: no card, no "New discovery"
+PASS  seawall: no card, no eyebrow label
 PASS  breakwater: Maya says one of its facts ("A breakwater sits out at sea and takes the force out of a cy...")
 PASS  breakwater: state state-tip
 PASS  breakwater: breakwater-offshore not said before
 PASS  breakwater: count "5 of 21"
 PASS  breakwater: Source button hidden (gameRule)
 PASS  breakwater: "Game rule" tag shown (gameRule)
-PASS  breakwater: no card, no "New discovery"
-PASS  khazan: Maya says one of its facts ("A khazan holds floodwater, so nearby homes stay drier.")
+PASS  breakwater: no card, no eyebrow label
+PASS  khazan: Maya says one of its facts ("As reported by Lobo (2020): When a khazan bund breaks, mangr...")
 PASS  khazan: state state-tip
-PASS  khazan: khazan-holds-floodwater not said before
+PASS  khazan: khazan-bund-breach not said before
 PASS  khazan: count "6 of 21"
-PASS  khazan: Source button hidden (gameRule)
-PASS  khazan: "Game rule" tag shown (gameRule)
-PASS  khazan: no card, no "New discovery"
-PASS  small_dam: Maya says one of its facts ("A small dam earns Coin and protects against floods, but it l...")
+PASS  khazan: Source button shown (fact)
+PASS  khazan: "Game rule" tag hidden (fact)
+PASS  khazan: no card, no eyebrow label
+PASS  small_dam: Maya says one of its facts ("A small dam holds the river back until a flood is too big, t...")
 PASS  small_dam: state state-tip
-PASS  small_dam: dam-coin not said before
+PASS  small_dam: dam-fails not said before
 PASS  small_dam: count "7 of 21"
 PASS  small_dam: Source button hidden (gameRule)
 PASS  small_dam: "Game rule" tag shown (gameRule)
-PASS  small_dam: no card, no "New discovery"
+PASS  small_dam: no card, no eyebrow label
 PASS  beachside_resort: Maya says one of its facts ("A resort earns Coin every season, but it lowers biodiversity...")
 PASS  beachside_resort: state state-worried
 PASS  beachside_resort: resort-coin not said before
 PASS  beachside_resort: count "8 of 21"
 PASS  beachside_resort: Source button hidden (gameRule)
 PASS  beachside_resort: "Game rule" tag shown (gameRule)
-PASS  beachside_resort: no card, no "New discovery"
-PASS  sand_mining: Maya says one of its facts ("Sand mining lowers biodiversity more than any other build.")
+PASS  beachside_resort: no card, no eyebrow label
+PASS  sand_mining: Maya says one of its facts ("Sand mining earns more Coin than anything else, and it weake...")
 PASS  sand_mining: state state-worried
-PASS  sand_mining: sandmining-biodiversity not said before
+PASS  sand_mining: sandmining-coin not said before
 PASS  sand_mining: count "9 of 21"
 PASS  sand_mining: Source button hidden (gameRule)
 PASS  sand_mining: "Game rule" tag shown (gameRule)
-PASS  sand_mining: no card, no "New discovery"
+PASS  sand_mining: no card, no eyebrow label
 PASS  yacht: Maya says one of its facts ("The Yacht does nothing for your Coin, your defences or your ...")
 PASS  yacht: state state-worried
 PASS  yacht: yacht-nothing not said before
 PASS  yacht: count "10 of 21"
 PASS  yacht: Source button hidden (gameRule)
 PASS  yacht: "Game rule" tag shown (gameRule)
-PASS  yacht: no card, no "New discovery"
+PASS  yacht: no card, no eyebrow label
 PASS  ten elements, ten different facts said (10)
 PASS  warning first ("Taleigao is exposed! Strengthen it befor...")
 PASS  the fact is next in her queue, ahead of any ordinary tip

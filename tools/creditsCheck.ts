@@ -82,9 +82,9 @@ async function main(): Promise<void> {
       if (w === 1920 && dpr === 1) {
         await page.locator(".menu-credits-sources").click();
         await page.waitForSelector(".sources-panel");
-        const listed = await page.locator(".sources-list .sources-item").evaluateAll((items) => items.map((i) => (i as HTMLElement).dataset.factId));
+        const listed = await page.locator(".sources-list:not(.sources-map-data) .sources-item").evaluateAll((items) => items.map((i) => (i as HTMLElement).dataset.factId));
         check(JSON.stringify(listed) === JSON.stringify(CITED_FACTS.map((f) => f.id)), `Sources screen lists every cited fact (${listed.length})`);
-        const links = await page.locator(".sources-list .sources-link").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
+        const links = await page.locator(".sources-list:not(.sources-map-data) .sources-link").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
         check(links.every((u) => u.startsWith("https://")), "Sources links are https");
         await page.screenshot({ path: path.join(OUT, `sources-${label}.jpg`), quality: 85 });
         // axe-core on the menu with the strip and on the open Sources screen.
