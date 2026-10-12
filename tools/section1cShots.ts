@@ -54,8 +54,12 @@ async function main(): Promise<void> {
       await shot(page, `brief-${tag}`);
       await page.locator(".brief-cta").first().click();
       await page.waitForTimeout(3000);
+      // Idle: any line she opened with is dismissed and none is left queued, so there is no bubble.
+      await page.evaluate("window.__panjimForTest.maya.withdraw(() => true); window.__panjimForTest.maya.dismiss()");
+      await page.waitForTimeout(1500);
       const quiet = await page.evaluate(`document.querySelector(".maya-bubble") ? document.querySelector(".maya-bubble").hidden : true`);
       console.log(`${tag}: idle shot, bubble ${quiet ? "hidden" : "SHOWING"}`);
+      if (!quiet) errors.push(`${tag}: the idle shot still has a bubble`);
       await shot(page, `idle-${tag}`);
       await scenario(page, "maya:greeting");
       await page.waitForTimeout(3000);
