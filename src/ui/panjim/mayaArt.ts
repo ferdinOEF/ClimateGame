@@ -6,7 +6,7 @@
  * A port of the approved reference, docs/design/maya_field_researcher_reference.html,
  * keeping its construction: the coil (ringlet) generator, the hair
  * silhouette, the face path, the garment paths and the hand builders. Drawn
- * in a 200-wide viewBox: face y63-148, shoulders ~y172, waist ~y240, hips
+ * in a 200-wide viewBox: face y63-146, shoulders ~y172, waist ~y240, hips
  * ~y282, boots ending ~y470.
  *
  * Everything is seeded: the same curls on every load, in every state, on
@@ -318,8 +318,8 @@ function mouth(paint: Paint, kind: MayaExpression): string {
 
 /** The face's skin: the drawn oval, the shadow down one side, the jaw shadow, the cheeks. */
 function faceSkin(paint: Paint): string {
-  return `<path d="M100 63 C74 63 69.5 80 70 100 C70.5 118 78 137 100 148 C122 137 129.5 118 130 100 C130.5 80 126 63 100 63 Z" fill="${paint("skin")}"/>
-    <path d="M100 63 C74 63 69.5 80 70 100 C70.5 118 78 137 100 148 C94 134 88 117 88 100 C88 82 92 70 100 63 Z" fill="${paint("skin-shadow")}" opacity=".30"/>
+  return `<path d="M100 63 C74 63 69.5 80 70 100 C70.5 120 83 141 100 146 C117 141 129.5 120 130 100 C130.5 80 126 63 100 63 Z" fill="${paint("skin")}"/>
+    <path d="M100 63 C74 63 69.5 80 70 100 C70.5 120 83 141 100 146 C94 133 88 117 88 100 C88 82 92 70 100 63 Z" fill="${paint("skin-shadow")}" opacity=".30"/>
     <path d="M87 134 q13 8 26 0 q-13 10 -26 0z" fill="${paint("skin-shadow")}" opacity=".26"/>
     <ellipse cx="81.5" cy="114" rx="6.4" ry="4.4" fill="${paint("cheek")}" opacity=".38"/>
     <ellipse cx="118.5" cy="114" rx="6.4" ry="4.4" fill="${paint("cheek")}" opacity=".38"/>`;
@@ -590,39 +590,41 @@ export function headUrl(): string {
 }
 
 /**
- * The HUD crop, in the art's units: head and shoulders, wide enough that
- * every gesture (an arm rotated by any state in panjim.css, at HUD_FOREARM)
- * stays inside it (tests/mayaArt.test.ts checks this against the CSS).
+ * The HUD crop, in the art's units: her whole figure, head to boots (the
+ * boots end near y466), wide enough that every gesture (an arm rotated, and
+ * for the long reaches shortened, by a state in panjim.css) stays inside it
+ * (tests/mayaArt.test.ts checks this against the CSS).
  */
-export const HUD_VIEWBOX = { x: 28, y: 40, width: 158, height: 155 };
+export const HUD_VIEWBOX = { x: 28, y: 34, width: 168, height: 442 };
 
-/** The HUD's forearms, drawn at this share of their length from the shoulder: a gesture stays beside her, clear of her bubble. */
-export const HUD_FOREARM = 0.4;
+/** Pixels per art unit before MAYA_SCALE (mayaLayout.ts): the size her head and shoulders have always had in the HUD (139 px for a 158-unit crop; the crop is wider now, the drawing the same size). */
+export const HUD_UNIT_PX = 139 / 158;
 
 /**
- * The outer points of each hand (and the binoculars), before the forearm is
- * scaled and the arm rotated: what must stay inside the crop in every pose.
+ * The outer points of each hand (and the binoculars) at rest, with the arm
+ * hanging at full length: what must stay inside the crop in every pose.
  */
 export const HUD_ARMS = {
   l: { pivot: [72, 180] as [number, number], reach: [[39, 296], [67, 296], [67, 350], [39, 350]] as [number, number][] },
-  r: { pivot: [128, 180] as [number, number], reach: [[142, 296], [159, 296], [159, 314], [142, 314]] as [number, number][] }
+  r: { pivot: [128, 180] as [number, number], reach: [[140, 296], [161, 296], [161, 320], [140, 320]] as [number, number][] }
 };
 
-/** `content` scaled about a shoulder pivot. */
-function fromShoulder(px: number, py: number, k: number, content: string): string {
-  return `<g transform="translate(${px} ${py}) scale(${k}) translate(${-px} ${-py})">${content}</g>`;
+/** Her hands as drawn, for the test that HUD_ARMS encloses them: the binoculars and fist (left), the open hand (right). */
+export function handMarkup(): { l: string; r: string } {
+  return { l: `${binoculars(literal, 53, 324)}${handGrip(literal, 52, 304)}`, r: handOpen(literal, 148, 303, 1) };
 }
 
 let hudInstances = 0;
 
 /**
- * The HUD figure: head and shoulders, no pack (the straps clutter her at
- * small size). Everything below the crop is clipped (by a static wrapper, so
- * the cut never moves when she hops), so nothing under her shoulders shows;
- * her arms rotate up into view when she waves, points or raises her hands.
- * In the HUD the forearms are drawn shorter (HUD_FOREARM) so a gesture stays
- * beside her and clear of her bubble, and the arms are drawn over the hair
- * so a raised hand is never lost in the curls. Group names are the ones
+ * The HUD figure: her whole body, head to boots, no pack (the straps clutter
+ * her at small size). The crop's bottom edge is a clip on a static wrapper, so
+ * the cut never moves when she hops. Her legs are drawn behind the torso, as
+ * in the full figure, and never animate; her arms hang at full length and
+ * rotate when she waves, points or raises a hand (the long reaches shorten
+ * in panjim.css so a gesture stays beside her and clear of her bubble). The
+ * arms are drawn over the hair so a raised hand is never lost in the curls.
+ * The binoculars hand is her resting arm. Group names are the ones
  * panjim.css animates. The hair is two static layers (behind the face and in
  * front of it): they tilt with her head but do not nod, so the hundreds of
  * curls are not redrawn every frame while she idles. The props (bulb,
@@ -654,12 +656,13 @@ export function hudFigureSvg(width: number, height: number): string {
   <g clip-path="url(#${clipId})">
     <g class="maya-body">
       <g class="maya-head maya-hair">${hairSilhouette(paint)}${ringlets(paint, BACK_SEED, false)}</g>
+      <g class="maya-legs">${legsAndBoots(paint)}</g>
       <g class="maya-torso">${torsoUpper(paint)}${torsoLower(paint, false)}</g>
       <g class="maya-head">${stateFace(paint)}</g>
       <g class="maya-head maya-hair">${ringlets(paint, FRONT_SEED, true)}${fringe(paint)}</g>
       <g class="maya-head"><path class="maya-sweat" d="M127.5 84 Q123 92 127.5 95.5 Q132 92 127.5 84 Z" fill="${paint("sweat")}" stroke="${paint("alert-mark")}" stroke-width="0.8"/></g>
-      <g class="maya-arm maya-arm-l">${fromShoulder(72, 180, HUD_FOREARM, armLimbL(paint))}${sleeveL(paint)}</g>
-      <g class="maya-arm maya-arm-r">${fromShoulder(128, 180, HUD_FOREARM, armLimbR(paint))}${sleeveR(paint)}</g>
+      <g class="maya-arm maya-arm-l">${armLimbL(paint)}${sleeveL(paint)}</g>
+      <g class="maya-arm maya-arm-r">${armLimbR(paint)}${sleeveR(paint)}</g>
     </g>
   </g>
   ${props}

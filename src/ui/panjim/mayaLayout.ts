@@ -17,6 +17,26 @@ export interface Rect {
 
 export const CLEARANCE = 12;
 
+/**
+ * How big the whole field guide is: her figure, speech bubble, Got-it button,
+ * minimise button and badge, as one entity. Every size of hers comes from this
+ * one number (the CSS reads it as `--maya-scale`, set by maya.ts), so changing
+ * it resizes all of her together. The space she keeps from other HUD elements
+ * (`CLEARANCE`) does not scale.
+ */
+export const MAYA_SCALE = 0.7;
+
+/** A size of hers (in px), at her scale. */
+export function scaled(px: number): number {
+  return Math.round(px * MAYA_SCALE);
+}
+
+/** Her figure's box for a crop `view` (art units) drawn at `unitPx` px per unit: the width at her scale, the height from the crop's aspect ratio. */
+export function figureSize(view: { width: number; height: number }, unitPx: number): { w: number; h: number } {
+  const w = Math.round(view.width * unitPx * MAYA_SCALE);
+  return { w, h: Math.round((w * view.height) / view.width) };
+}
+
 export function intersects(a: Rect, b: Rect, pad = 0): boolean {
   return a.x < b.x + b.w + pad && a.x + a.w + pad > b.x && a.y < b.y + b.h + pad && a.y + a.h + pad > b.y;
 }
@@ -85,7 +105,7 @@ export type BubbleSide = "right" | "above" | "left";
  * Her bubble's spot, beside her figure and toward free space: to her right
  * first (level with her head), then above her, then to her left; each at a
  * few heights. `measure(width)` gives the bubble's height at a width, since
- * text reflows. Widths are tried from `maxWidth` down to 220 px. Null if
+ * text reflows. Widths are tried from `maxWidth` down to the narrowest (all at her scale). Null if
  * nothing fits: the caller shrinks the text or holds the line back.
  */
 export function placeBubble(
@@ -93,11 +113,11 @@ export function placeBubble(
   measure: (width: number) => number,
   obstacles: readonly Rect[],
   viewport: { w: number; h: number },
-  maxWidth = 320,
+  maxWidth = scaled(320),
   clearance = CLEARANCE
 ): { rect: Rect; side: BubbleSide } | null {
-  const gap = 8;
-  for (const width of [maxWidth, 280, 250, 220].filter((w) => w <= maxWidth)) {
+  const gap = scaled(8);
+  for (const width of [maxWidth, ...[280, 250, 220].map(scaled)].filter((w) => w <= maxWidth)) {
     const h = measure(width);
     const headY = figure.y + figure.h * 0.15;
     const candidates: { rect: Rect; side: BubbleSide }[] = [];

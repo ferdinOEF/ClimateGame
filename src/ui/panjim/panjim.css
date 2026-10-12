@@ -1092,14 +1092,22 @@
   inset: 0;
   z-index: 12;
   pointer-events: none;
+  /*
+   * One scale for all of her (mayaLayout.ts MAYA_SCALE, set by maya.ts as
+   * --maya-scale, with her figure's box as --maya-fig-w / --maya-fig-h). Every
+   * size below is a multiple of it, so she resizes as one entity. --maya-tier
+   * is the screen-size step (large screens a little bigger, short or narrow
+   * windows smaller), applied to the whole figure.
+   */
+  --maya-tier: 1;
 }
 
 .maya-figure-wrap {
   position: absolute;
   left: 14px;
-  top: calc(100% - 214px);
-  width: 139px;
-  height: 136px;
+  top: calc(100% - 78px - var(--maya-fig-h) * var(--maya-tier));
+  width: calc(var(--maya-fig-w) * var(--maya-tier));
+  height: calc(var(--maya-fig-h) * var(--maya-tier));
   pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }
@@ -1107,25 +1115,35 @@
 .maya-figure {
   display: block;
   overflow: visible;
+  width: 100%;
+  height: 100%;
 }
 
 .maya-minimise {
   position: absolute;
   top: 2px;
   right: -2px;
-  width: 22px;
-  height: 22px;
+  width: calc(22px * var(--maya-scale));
+  height: calc(22px * var(--maya-scale));
   border-radius: 50%;
   border: 1.5px solid #2f6a3e;
   background: #fdf6e6;
   color: #1c2420;
   font: inherit;
-  font-size: 15px;
-  line-height: 17px;
+  font-size: calc(15px * var(--maya-scale));
+  line-height: calc(17px * var(--maya-scale));
   padding: 0;
   cursor: pointer;
   pointer-events: auto;
   opacity: 0.85;
+}
+
+/* Drawn small with her, but still an easy target: the hit area stays about 24 px. */
+.maya-minimise::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
 }
 
 .maya-minimise:hover,
@@ -1137,8 +1155,8 @@
 
 .maya-badge {
   position: absolute;
-  width: 52px;
-  height: 52px;
+  width: calc(52px * var(--maya-scale));
+  height: calc(52px * var(--maya-scale));
   border-radius: 50%;
   border: 2px solid #3d7a4c;
   background: #fdf6e6;
@@ -1162,10 +1180,10 @@
 .maya.has-pending .maya-badge::after {
   content: "";
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 11px;
-  height: 11px;
+  top: 1px;
+  right: 1px;
+  width: calc(11px * var(--maya-scale));
+  height: calc(11px * var(--maya-scale));
   border-radius: 50%;
   background: #e0533a;
   border: 2px solid #fdf6e6;
@@ -1177,21 +1195,22 @@
   left: 0;
   top: 0;
   box-sizing: border-box;
-  padding: 10px 14px 10px;
-  border-radius: 14px;
+  padding: calc(10px * var(--maya-scale)) calc(14px * var(--maya-scale));
+  border-radius: calc(14px * var(--maya-scale));
   background: #fdf6e6;
   color: #1c2420;
   border: 2px solid #3d7a4c;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  font-size: 15px;
+  /* Her text never goes under 12 px: past that only the box scales. */
+  font-size: max(12px, calc(15px * var(--maya-scale)));
   line-height: 1.38;
   animation: maya-bubble-in 220ms ease-out;
 }
 
 .maya-bubble.compact {
-  font-size: 13px;
+  font-size: max(12px, calc(13px * var(--maya-scale)));
   line-height: 1.3;
-  padding: 7px 10px;
+  padding: calc(7px * var(--maya-scale)) calc(10px * var(--maya-scale));
 }
 
 .maya-bubble[hidden] {
@@ -1201,33 +1220,33 @@
 .maya-bubble::before {
   content: "";
   position: absolute;
-  border: 8px solid transparent;
+  border: calc(8px * var(--maya-scale)) solid transparent;
 }
 
 .maya-bubble.side-right::before {
-  left: -9px;
-  top: 22px;
+  left: calc(-9px * var(--maya-scale));
+  top: calc(22px * var(--maya-scale));
   border-right-color: #3d7a4c;
   border-left-width: 0;
 }
 
 .maya-bubble.side-left::before {
-  right: -9px;
-  top: 22px;
+  right: calc(-9px * var(--maya-scale));
+  top: calc(22px * var(--maya-scale));
   border-left-color: #3d7a4c;
   border-right-width: 0;
 }
 
 .maya-bubble.side-above::before {
-  bottom: -9px;
-  left: 30px;
+  bottom: calc(-9px * var(--maya-scale));
+  left: calc(30px * var(--maya-scale));
   border-top-color: #3d7a4c;
   border-bottom-width: 0;
 }
 
 .maya-name {
   display: block;
-  font-size: 11px;
+  font-size: max(10px, calc(11px * var(--maya-scale)));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1235,14 +1254,14 @@
 }
 
 .maya-text {
-  margin: 2px 0 8px;
+  margin: calc(2px * var(--maya-scale)) 0 calc(8px * var(--maya-scale));
 }
 
 .maya-dismiss {
   font: inherit;
-  font-size: 13px;
+  font-size: max(12px, calc(13px * var(--maya-scale)));
   font-weight: 600;
-  padding: 4px 12px;
+  padding: calc(4px * var(--maya-scale)) calc(12px * var(--maya-scale));
   border-radius: 999px;
   border: 1.5px solid #2f6a3e;
   background: #2f6a3e;
@@ -1279,8 +1298,8 @@
 .maya-torso { transform-origin: 100px 250px; }
 .maya-head { transform-origin: 100px 150px; }
 .maya-eyes { transform-origin: 100px 103px; }
-.maya-arm-l { transform-origin: 72px 180px; transform: rotate(0deg); transition: transform 260ms ease-out; }
-.maya-arm-r { transform-origin: 128px 180px; transform: rotate(0deg); transition: transform 260ms ease-out; }
+.maya-arm-l { transform-origin: 72px 180px; transform: rotate(0deg) scale(1); transition: transform 260ms ease-out; }
+.maya-arm-r { transform-origin: 128px 180px; transform: rotate(0deg) scale(1); transition: transform 260ms ease-out; }
 .maya-brow-l, .maya-brow-r { transform-box: view-box; transition: transform 200ms ease-out; }
 .maya-brow-l { transform-origin: 87.5px 90px; }
 .maya-brow-r { transform-origin: 112.5px 90px; }
@@ -1308,26 +1327,33 @@
 }
 
 /* Greeting: a wave. */
-.maya.state-greeting .maya-arm-r { animation: maya-wave 0.9s ease-in-out 3; transform: rotate(-158deg); }
+.maya.state-greeting .maya-arm-r { animation: maya-wave 0.9s ease-in-out 3; transform: rotate(-154deg) scale(1); }
 @keyframes maya-wave {
-  0%, 100% { transform: rotate(-150deg); }
-  50% { transform: rotate(-172deg); }
+  0%, 100% { transform: rotate(-148deg) scale(1); }
+  50% { transform: rotate(-158deg) scale(1); }
 }
 
+/*
+ * Her arms hang at full length. A gesture that would reach out of her box
+ * (into her bubble beside her) also shortens the arm about the shoulder:
+ * `scale()` below is the longest that stays inside (tests/mayaArt.test.ts
+ * checks every one). Her binoculars hand is her resting arm: only the other
+ * arm gestures, so the binoculars never swing up past her face.
+ */
+
 /* Tip: pointing at the board. */
-.maya.state-tip .maya-arm-r { transform: rotate(-82deg); }
+.maya.state-tip .maya-arm-r { transform: rotate(-82deg) scale(0.4); }
 .maya.state-tip .maya-head { transform: rotate(4deg); animation: none; }
 
 /* Explains: a finger up and a lightbulb. */
-.maya.state-explains .maya-arm-r { transform: rotate(-130deg); }
+.maya.state-explains .maya-arm-r { transform: rotate(-130deg) scale(0.55); }
 .maya.state-explains .maya-bulb { display: inline; animation: maya-glow 1.6s ease-in-out infinite; }
 @keyframes maya-glow {
   50% { opacity: 0.65; }
 }
 
-/* Warning: arms up, alert badge, mouth open. */
-.maya.state-warning .maya-arm-l { transform: rotate(150deg); }
-.maya.state-warning .maya-arm-r { transform: rotate(-150deg); }
+/* Warning: an arm up, alert badge, mouth open. */
+.maya.state-warning .maya-arm-r { transform: rotate(-150deg) scale(1); }
 .maya.state-warning .maya-alert { display: inline; animation: maya-alert 0.8s ease-in-out infinite; }
 .maya.state-warning .maya-mouth-smile { display: none; }
 .maya.state-warning .maya-mouth-o { display: inline; }
@@ -1339,18 +1365,17 @@
   50% { transform: translateY(-2px); }
 }
 
-/* Worried: brows up in the middle, a frown, a sweat drop (her hands, below the crop, come together). */
+/* Worried: brows up in the middle, a frown, a sweat drop (her hands draw in toward her). */
 /* Inner ends up (the left brow tilts anticlockwise, the right clockwise): worry, not anger. */
 .maya.state-worried .maya-brow-l { transform: rotate(-12deg); }
 .maya.state-worried .maya-brow-r { transform: rotate(12deg); }
 .maya.state-worried .maya-mouth-smile { display: none; }
 .maya.state-worried .maya-mouth-worry, .maya.state-worried .maya-sweat { display: inline; }
-.maya.state-worried .maya-arm-l { transform: rotate(-14deg); }
-.maya.state-worried .maya-arm-r { transform: rotate(14deg); }
+.maya.state-worried .maya-arm-l { transform: rotate(-14deg) scale(1); }
+.maya.state-worried .maya-arm-r { transform: rotate(14deg) scale(1); }
 
-/* Celebrates: arms up, stars, a bounce. */
-.maya.state-celebrates .maya-arm-l { transform: rotate(140deg); }
-.maya.state-celebrates .maya-arm-r { transform: rotate(-140deg); }
+/* Celebrates: an arm up, stars, a bounce. */
+.maya.state-celebrates .maya-arm-r { transform: rotate(-140deg) scale(0.75); }
 .maya.state-celebrates .maya-stars { display: inline; }
 .maya.state-celebrates .maya-mouth-smile, .maya.state-celebrates .maya-eyes { display: none; }
 .maya.state-celebrates .maya-mouth-happy, .maya.state-celebrates .maya-eyes-happy { display: inline; }
@@ -1479,9 +1504,8 @@
 
 /* A little larger on big screens: she should read at a glance at 1440p and 4K. */
 @media (min-width: 1700px) and (min-height: 900px) {
-  .maya-figure { width: 163px; height: 160px; }
-  .maya-figure-wrap { width: 163px; height: 160px; top: calc(100% - 238px); }
-  .maya-bubble { font-size: 16px; }
+  .maya { --maya-tier: 1.17; }
+  .maya-bubble { font-size: max(12px, calc(16px * var(--maya-scale))); }
 }
 
 /* ---- HUD tooltips (ui/tooltip.ts) ------------------------------------------------- */
@@ -1648,14 +1672,13 @@
 /* Short windows (a laptop browser at 80% height): a smaller figure, the same
    bottom edge, so her bubble still has room beside her. */
 @media (max-height: 700px) and (min-width: 701px) {
-  .maya-figure { width: 114px; height: 112px; }
-  .maya-figure-wrap { width: 114px; height: 112px; top: calc(100% - 190px); }
+  .maya { --maya-tier: 0.82; }
 }
 
 /* Phones are secondary: keep Maya and her bubble inside a narrow screen. */
 @media (max-width: 700px) {
-  .maya-figure, .maya-figure-wrap { width: 94px; height: 92px; }
-  .maya-bubble { font-size: 14px; }
+  .maya { --maya-tier: 0.68; }
+  .maya-bubble { font-size: 12px; }
   .panjim-toggles { top: 120px; right: 8px; }
 }
 
@@ -1866,7 +1889,7 @@
 
 /* The minimised badge: her head, a small pre-rendered image (mayaArt.ts headUrl). */
 .maya-badge { overflow: hidden; }
-.maya-badge-face { display: block; width: 44px; height: 44px; border-radius: 50%; pointer-events: none; }
+.maya-badge-face { display: block; width: calc(44px * var(--maya-scale)); height: calc(44px * var(--maya-scale)); border-radius: 50%; pointer-events: none; }
 
 /*
  * Maya whole, with her pack, standing beside the level brief and the
