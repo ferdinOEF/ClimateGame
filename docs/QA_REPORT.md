@@ -557,3 +557,31 @@ Headless Chromium with software GL, as above. Everything is in `docs/qa/section1
 - The worried brows now tilt with their inner ends up.
 - The brief and Aftermath figures are images beside the card.
 - The props (bulb, alert, stars) moved to her left, clear of the minimise button.
+
+# Section 1c — Maya: rounder chin, whole body in the HUD, 70% size
+
+Branch `section-1c-maya`, off master `c7c3dd3` (Section 1b's merge).
+Headless Chromium with software GL, as above. Everything is in `docs/qa/section1c/`.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build, walkthrough | Clean. New or rewritten in `mayaArt.test.ts` (18): every arm pose in `panjim.css` (rotation and shortening) stays inside her box; no pose puts a hand or the binoculars through her face; the binoculars arm only ever draws in; her hands fit inside the checked reach points; the legs sit behind the torso in the body group; the box is sized from the crop's aspect and the one scale; the new chin is in both face paths, the full figure, the HUD and the badge, the old curve is gone, and the jaw shadow and chin line lie inside the shorter chin. |
+| Chin | `maya-chin.png`: old and new at 4x. Visibly rounder; brows, eyes, nose and mouth untouched. |
+| States | `maya-states.png` (+ `-gray`), every state in the real game, whole body: idle, greeting, tip, explains, warning, worried, celebrates, jump. No hand or binocular crosses the face, nothing clipped. |
+| Full body | `maya-hud-crop.png` (+ gray): the HUD figure at about 1x, 2x and 4x. Boots included; fingers and binoculars read. |
+| Screenshots | 1366×768, 1920×1080, 2560×1440: idle with no line, with a line showing, over the pale old city and over the dark river, each with a `-gray` copy; the brief, the Aftermath card and the Tutorial's brief at 1920. Whole body and boots visible, the bubble clear of her and of the HUD. |
+| Label overlap (`npm run test:labels`) | **37 of 37 pass**; label layer at most 6.6 ms a frame. |
+| Maya layout (`npm run test:layout`) | **105 of 105.** |
+| Console errors | None. The Tutorial loads and its brief shows Maya. |
+| SVG nodes | HUD figure: 405 on master (Section 1b), 425 now (66 before Section 1b). Her legs add 20 nodes; they are one static group. DOM nodes in her HUD layer: 433. |
+| Frame rate, 1920×1080 (`tools/mayaPerf.ts`) | Panaji, Medium: 1.70 fps shown, 1.75 hidden; her cost 0.05 fps. Her figure alone: 1.7 fps now, 1.8 on master; an empty page 56 fps. Far inside the 2 fps limit, so the legs were not flattened to an image. |
+| Cross-browser | Chromium only. |
+
+**Size:** `MAYA_SCALE = 0.7` (`mayaLayout.ts`) is the only scale. maya.ts sets it as `--maya-scale` with the figure's box (`--maya-fig-w`, `--maya-fig-h`), and the CSS multiplies every size of hers by it: figure, bubble padding and radius, tail, Got-it button, minimise button, badge. Her drawing keeps the size it had (139 px per 158 art units), so the figure is 103×271 at 1366×768 (×1.17 on large screens, ×0.82 under 700 px tall, ×0.68 on phones). Bubble text holds at 12 px (the name label at 10 px) and only its box scales. The minimise button is 15 px, with a 25 px hit area.
+
+**Deviations from the brief:**
+- **HUD_FOREARM and `fromShoulder` are gone.** At full length (1) they did nothing. A pointing or explaining arm would reach into her bubble, so `panjim.css` shortens that one arm about the shoulder (`scale(0.4)` tip, `0.55` explains, `0.75` celebrates); every other pose is full length.
+- **Warning and celebrates raise only the right arm.** Raising the binoculars arm swung them out of her box and over her head. The binoculars hand is her resting arm.
+- **The wave swings 10° (-148° to -158°),** not 22°: at -172° the full-length arm lay along her cheek.
+- **The crop is 168 × 442 art units from y34** (was 158 wide): room for the wave and the shoulder-high hand.
+- The reference copy in `docs/design/` is the new one with the rounder chin.
