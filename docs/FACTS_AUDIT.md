@@ -11,8 +11,11 @@ rules below.
   complete citation (title, authors, publisher, year, https URL, and a note
   of what the source says). It may hold a number only if the source note
   states that number, with its context.
-- A **game rule** describes this game, not the world. It always starts
-  "In this game, ..." and carries no citation.
+- A **game rule** describes this game, not the world. It carries no
+  citation and is always labelled **"Game rule"** where it is shown (Maya's
+  bubble; the Sources screen lists them under "Game rules"). Until Section
+  1d it opened with "In this game, ..."; the label replaced the opener, so a
+  rule is still never presented as science.
 - An entry marked `needsSource` is kept in the data for the record and is
   never shown.
 - Following `docs/step-prompts/STEP_PROMPT_hazard_science.md`, only claims
@@ -37,7 +40,7 @@ those results on 8 October 2026.
 | # | Fact id | Source | What the search text confirms | Status |
 |---|---|---|---|---|
 | 1 | `mangrove-waves` | McIvor, Möller, Spencer & Spalding (2012), TNC / Wetlands International | "wave height can be reduced by between 13 and 66% over 100 m of mangroves"; research has focused on small waves (< 70 cm) | Shown |
-| 2 | `dunes-barrier` | Pye, Saye & Blott (2007), Defra / Environment Agency FD1302 summary | dunes "can provide an important natural coastal flood defence"; their importance lies in "their function as barriers to coastal flooding"; managed as dynamic natural defences; scope is England and Wales | Shown. The card text names the scope ("Research on dunes in England and Wales found...") and says no more than "managed as dynamic natural defences" (tightened after review) |
+| 2 | `dunes-barrier` | Pye, Saye & Blott (2007), Defra / Environment Agency FD1302 summary | dunes "can provide an important natural coastal flood defence"; their importance lies in "their function as barriers to coastal flooding"; managed as dynamic natural defences; scope is England and Wales | Shown. The line names the scope ("Research in England and Wales found...") and says no more than "managed as dynamic natural defences" (tightened after review) |
 | 3 | `khazan-what` | Jacob, Sahapedia (no date on the page) | an agro-aqua integrated system for sharing resources between farmers and fishers; land reclaimed from marshes; bunds keep out tidal water; a sluice gate regulates the flow | Shown |
 | 4 | `khazan-mangrove-bund` | Jacob, Sahapedia | "the outer embankment comprises mangroves that act as wave breakers against tidal action" | Shown, cited to Sahapedia only (see below) |
 | 5 | `khazan-bund-breach` | Lobo (24 July 2020), Down To Earth | mangroves reclaiming khazan lands because of breaching bunds (the article's photo caption) | Shown as "As reported by Lobo (2020)" |
@@ -63,10 +66,11 @@ and confirm each note before release. If a page no longer says what its
 note says, set `needsSource: true` on that fact; it then disappears from
 the game and the Sources screen.
 
-## Discovery cards (formerly `nuggets.json`, 30 lines)
+## Discoveries (formerly the Discovery card; formerly `nuggets.json`, 30 lines)
 
-The Discovery card now shows entries from `facts.json`; `nuggets.json`
-lists them by id for each element. Verdicts:
+Maya now says entries from `facts.json` when an element is built (Section
+1d: the card is gone); `nuggets.json` lists them by id for each element.
+Verdicts:
 
 | Element | Old line (abridged) | Verdict | Now |
 |---|---|---|---|
@@ -103,8 +107,8 @@ lists them by id for each element. Verdicts:
 
 **Totals:**
 
-- The cards now show 21 entries, all reached from the cards: 5 cited facts
-  and 16 game rules.
+- Maya says 21 entries, all reached from a build: 5 cited facts and 16 game
+  rules.
 - 9 entries are hidden pending a source.
 - 2 lines were removed: one meaningless, one untrue in this game.
 
@@ -115,19 +119,29 @@ requests) are dropped (`refreshSavedNotes`, tested in
 `tests/oldSaves.test.ts`). So no old, unsourced wording survives on a
 device.
 
-The card's progress line now reads "N of 21 discoveries", because most
-entries are game rules, not facts. The count is computed, never written
-into the code.
+The count under her line reads "N of 21", because most entries are game
+rules, not facts. It is computed, never written into the code, and it
+counts a fact when she says it.
+
+**Section 1d wording.** Every shown entry was rewritten as Maya would say it
+(20 words at most, no "In this game," opener; `tests/facts.test.ts` holds
+both). Each keeps its numbers, its place and its source. Where a rewrite
+dropped a detail to fit, it is one the source note does not need for the
+claim: the dunes line no longer adds "managed as dynamic natural
+defences", and the khazan description no longer mentions the sluice gates.
+The full before and after is in `docs/qa/section1d/wording.md`.
 
 ## Maya
 
 | Tip | Verdict | Now |
 |---|---|---|
 | heat, shields, get-ready | Practical guidance about the screen | unchanged |
-| mangroves | Game rule | "In this game, mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow." |
-| khazans | Game rule (the brief's wording) | "In this game, a Khazan holds floodwater so nearby homes stay drier." |
-| dunes | "Pandanus roots hold the sand when the wind gets up" was a real-world claim | "In this game, dunes and pandanus shield the beach from a cyclone's surge." |
-| seawall | Game rule | "In this game, a seawall costs more and holds no water. If a storm is bigger than the wall, the wall fails all at once." |
+| mangroves | Game rule | "Mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow." |
+| khazans | Game rule (the brief's wording; the same words as the khazan rule) | "A khazan holds floodwater, so nearby homes stay drier." |
+| dunes | "Pandanus roots hold the sand when the wind gets up" was a real-world claim | "Dunes and pandanus shield the beach from a cyclone's surge." |
+| seawall | Game rule | "A seawall costs more and holds no water. If a storm is bigger than the wall, it fails all at once." |
+
+These four are tagged "Game rule" in her bubble (`"rule": true` in `maya.json`).
 
 **Her other lines:**
 
