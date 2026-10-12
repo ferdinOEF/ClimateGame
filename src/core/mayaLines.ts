@@ -1,5 +1,6 @@
 import mayaData from "@data/maya.json";
 import { ELEMENT_BY_ID } from "./elements";
+import { discoveryFacts, discoveryNoteTitle, displayText, type Fact } from "./facts";
 import type { GameState } from "./gameState";
 import { axialDistance as hexDistance, type AxialCoord } from "./hex";
 import type { ChallengeKind } from "./climate";
@@ -19,13 +20,23 @@ export interface SavedNote {
   text: string;
 }
 
+/** Every discovery she can say, as a Field Guide note keyed by its fact id. */
+const DISCOVERY_NOTES: [string, SavedNote][] = [...ELEMENT_BY_ID.keys()].flatMap((element) =>
+  discoveryFacts(element).map((fact): [string, SavedNote] => [fact.id, factNote(fact)])
+);
+
+/** A discovery as a Field Guide note: titled by the first element it belongs to, worded as she says it. */
+export function factNote(fact: Fact): SavedNote {
+  return { id: fact.id, title: discoveryNoteTitle(fact), text: displayText(fact) };
+}
+
 /**
  * Notes saved on the device, brought up to date: a note whose line still
  * exists takes its current title and text (so a rewording reaches players
  * who heard the old one), and a note whose line is gone is dropped.
  */
 export function refreshSavedNotes(saved: readonly SavedNote[]): SavedNote[] {
-  const current = new Map<string, SavedNote>([[MAYA.greeting.id, MAYA.greeting], ...MAYA.tips.map((tip) => [tip.id, tip] as [string, SavedNote])]);
+  const current = new Map<string, SavedNote>([[MAYA.greeting.id, MAYA.greeting], ...MAYA.tips.map((tip) => [tip.id, tip] as [string, SavedNote]), ...DISCOVERY_NOTES]);
   const out: SavedNote[] = [];
   for (const note of saved) {
     const line = current.get(note.id);

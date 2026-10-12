@@ -59,7 +59,7 @@ function mapDataItems(): HTMLLIElement[] {
  * (which describe this game, not the world, and so need none).
  *
  * One overlay, opened from the menu's "Facts & sources" link and from the
- * "Source" button on a Discovery card (which scrolls to that fact). Esc,
+ * "Source" button in Maya's bubble when she tells a fact (which scrolls to it). Esc,
  * the close button or a click on the backdrop closes it.
  */
 let open: { backdrop: HTMLElement; previousFocus: Element | null; inerted: HTMLElement[] } | null = null;
@@ -105,7 +105,7 @@ export function closeSources(): void {
   open = null;
   for (const el of inerted) el.inert = false;
   backdrop.remove();
-  // Back to where the player was, if that is still on screen (a Discovery card may have closed).
+  // Back to where the player was, if that is still on screen (Maya's line may have closed).
   const back = previousFocus as HTMLElement | null;
   if (back && back.isConnected && back.getClientRects().length > 0) back.focus({ preventScroll: true });
 }
@@ -137,7 +137,7 @@ export function openSources(factId?: string): HTMLElement {
   const intro = document.createElement("p");
   intro.className = "sources-intro";
   intro.textContent =
-    "Every fact about the real world in this game, with where it comes from. Lines that start “In this game” describe the game's rules, not the world.";
+    "Every fact about the real world in this game, with where it comes from. Maya tags a rule of this game “Game rule”: those describe the game, not the world, and are listed at the end.";
 
   const list = document.createElement("ol");
   list.className = "sources-list";

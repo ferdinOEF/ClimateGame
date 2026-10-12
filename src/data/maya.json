@@ -13,22 +13,26 @@
     {
       "id": "mangroves",
       "title": "Mangroves",
-      "text": "In this game, mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow."
+      "rule": true,
+      "text": "Mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow."
     },
     {
       "id": "khazans",
       "title": "Khazans",
-      "text": "In this game, a Khazan holds floodwater so nearby homes stay drier."
+      "rule": true,
+      "text": "A khazan holds floodwater, so nearby homes stay drier."
     },
     {
       "id": "dunes",
       "title": "Dunes and pandanus",
-      "text": "In this game, dunes and pandanus shield the beach from a cyclone's surge."
+      "rule": true,
+      "text": "Dunes and pandanus shield the beach from a cyclone's surge."
     },
     {
       "id": "seawall",
       "title": "Seawalls",
-      "text": "In this game, a seawall costs more and holds no water. If a storm is bigger than the wall, the wall fails all at once."
+      "rule": true,
+      "text": "A seawall costs more and holds no water. If a storm is bigger than the wall, it fails all at once."
     },
     {
       "id": "shields",

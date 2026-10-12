@@ -1,5 +1,6 @@
 import factsData from "@data/facts.json";
 import nuggetsData from "@data/nuggets.json";
+import { ELEMENT_BY_ID } from "./elements";
 
 /**
  * Everything the game says about the real world, in one place
@@ -7,8 +8,9 @@ import nuggetsData from "@data/nuggets.json";
  *
  * A `fact` is a claim about the real world and must carry a citation; it is
  * shown only as written there, with its numbers only when the source states
- * them. A `gameRule` describes how this game works and always reads
- * "In this game, ...". An entry with `needsSource` is kept for the record
+ * them. A `gameRule` describes how this game works, so it carries no
+ * citation and is always labelled "Game rule" where it is shown (Maya's
+ * bubble, the Sources screen), never presented as science. An entry with `needsSource` is kept for the record
  * (docs/FACTS_AUDIT.md) but never shown.
  *
  * Pure data and string helpers: no DOM.
@@ -30,7 +32,7 @@ export interface Fact {
   id: string;
   kind: "fact" | "gameRule";
   text: string;
-  /** Elements whose Discovery card can show it. */
+  /** Elements whose build can bring Maya to say it. */
   elements: string[];
   citation?: Citation;
   /** Shown as "As reported by <author> (<year>)": a single, non-peer-reviewed source. */
@@ -57,19 +59,25 @@ export function factById(id: string): Fact | undefined {
   return BY_ID.get(id);
 }
 
-/** The Discovery card's facts for an element, in order; hidden ones dropped. */
+/** The facts Maya can say when an element is built, in order; hidden ones dropped. */
 export function discoveryFacts(elementId: string): Fact[] {
   const ids = (nuggetsData as Record<string, string[]>)[elementId] ?? [];
   return ids.map((id) => BY_ID.get(id)).filter((fact): fact is Fact => Boolean(fact && isShown(fact)));
 }
 
-/** Every distinct fact the Discovery card can show: the "N of M discoveries" denominator. */
+/** Every distinct fact Maya can say on a build: the "N of M" denominator. */
 export function discoveryTotal(): number {
   const ids = new Set<string>();
   for (const list of Object.values(nuggetsData as Record<string, string[]>)) {
     for (const id of list) if (BY_ID.get(id) && isShown(BY_ID.get(id)!)) ids.add(id);
   }
   return ids.size;
+}
+
+/** The title a discovery gets in the Field Guide's notes: the first element it belongs to. */
+export function discoveryNoteTitle(fact: Fact): string {
+  const id = fact.elements[0] ?? fact.id;
+  return ELEMENT_BY_ID.get(id)?.name ?? id;
 }
 
 /** "McIvor et al." / "Lobo": the first author's surname, for short credits. */

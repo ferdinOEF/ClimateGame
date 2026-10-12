@@ -34,6 +34,9 @@ import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
 import { tooltipText } from "@ui/tooltip";
 import { Maya } from "@ui/panjim/maya";
 import { MayaDirector, GUIDE_NOTES } from "./mayaDirector";
+import { factById } from "@core/facts";
+import { factNote } from "@core/mayaLines";
+import { NuggetPopup } from "@ui/nuggetPopup";
 import { mayaAftermath, stormWord } from "@core/mayaLines";
 import type { Tooltips } from "@ui/tooltip";
 
@@ -169,6 +172,8 @@ export class PanjimController {
   /** Maya, the field guide, and the rules for when she speaks. */
   readonly maya: Maya;
   readonly mayaDirector: MayaDirector;
+  /** Picks the fact Maya tells when an element is built (nuggetPopup.ts). */
+  readonly nuggets: NuggetPopup;
   /** Maya's voice on or off (M). The heat stays either way. */
   readonly mayaToggle: PrefToggle;
   private readonly replayCard: ReplayCard;
@@ -290,11 +295,16 @@ export class PanjimController {
       focus: (coord) => this.host.focusCamera(coord),
       landmarks: host.landmarks
     });
+    this.nuggets = new NuggetPopup(this.maya);
     this.maya.onSpoken = (line) => {
-      const note = GUIDE_NOTES.get(line.id);
+      const fact = line.fact ? factById(line.fact.id) : undefined;
+      const note = fact ? factNote(fact) : GUIDE_NOTES.get(line.id);
       if (note) this.fieldGuide.addNote(note);
     };
-    this.fieldGuide.onReplayNote = (note) => this.mayaDirector.replay(note);
+    this.fieldGuide.onReplayNote = (note) => {
+      if (!this.nuggets.replay(note.id)) this.mayaDirector.replay(note);
+    };
+    this.fieldGuide.discoveries = () => this.nuggets.progress;
     this.attachTooltips();
     this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
@@ -1184,8 +1194,8 @@ export class PanjimController {
     if (pose) {
       const samples: Record<string, string> = {
         greeting: "Hello! I am Maya. Let us keep Panjim dry.",
-        tip: "In this game, dunes and pandanus shield the beach from a cyclone's surge.",
-        explains: "In this game, a Khazan holds floodwater so nearby homes stay drier.",
+        tip: "Dunes and pandanus shield the beach from a cyclone's surge.",
+        explains: "A khazan holds floodwater, so nearby homes stay drier.",
         warning: "Taleigao is exposed! Strengthen it before the flood.",
         worried: "We lost 6 homes at Taleigao. A few more defences there next time and they will stand.",
         celebrates: "The mangroves at Taleigao held 40 homes.",

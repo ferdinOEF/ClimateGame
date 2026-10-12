@@ -60,6 +60,8 @@ export class FieldGuide {
   private readonly notes = loadNotes();
   /** Asks Maya to say a note again (the "Hear it again" button on its page). */
   onReplayNote: ((note: GuideNote) => void) | null = null;
+  /** The running count of what Maya has told the player ("2 of 21"), shown in the guide. */
+  discoveries: (() => string) | null = null;
   private readonly button: HTMLButtonElement;
   private readonly backdrop: HTMLElement;
   private readonly grid: HTMLElement;
@@ -85,6 +87,7 @@ export class FieldGuide {
         <p class="field-guide-hint">Tap the creatures that visit what you build. Free: no time passes.</p>
         <div class="field-guide-grid"></div>
         <div class="field-guide-notes-head"><b>Maya's notes</b><span class="field-guide-notes-count"></span></div>
+        <p class="field-guide-discoveries" hidden>Things she has told you: <b class="field-guide-discoveries-count"></b></p>
         <ul class="field-guide-notes"></ul>
       </div>`;
     this.backdrop.addEventListener("click", (event) => {
@@ -189,6 +192,9 @@ export class FieldGuide {
       }
       this.grid.appendChild(page);
     }
+    const tally = this.backdrop.querySelector(".field-guide-discoveries") as HTMLElement;
+    tally.hidden = !this.discoveries;
+    if (this.discoveries) (this.backdrop.querySelector(".field-guide-discoveries-count") as HTMLElement).textContent = this.discoveries();
     const list = this.backdrop.querySelector(".field-guide-notes") as HTMLElement;
     (this.backdrop.querySelector(".field-guide-notes-count") as HTMLElement).textContent =
       this.notes.length === 0 ? "None yet: Maya's tips land here." : `${this.notes.length}`;

@@ -9,7 +9,9 @@ import type { Maya, MayaLine, MayaState } from "@ui/panjim/maya";
  * than chatty:
  *
  *   - at most one line per quarter, and a quarter's rest between ordinary
- *     tips (warnings skip the rest, never the one-per-quarter limit);
+ *     tips (warnings skip the rest, never the one-per-quarter limit;
+ *     discoveries, the fact about what was just built, skip it too and go
+ *     ahead of ordinary tips, never ahead of a warning);
  *   - never while a time-lapse or a storm plays, never while the build menu
  *     or any card is open (`blocked`);
  *   - each line once per session (the Field Guide can replay it);
@@ -145,7 +147,8 @@ export class MayaDirector {
       if (!line.urgent) return;
       this.maya.dismiss();
     }
-    if (!line.urgent && this.lastSpokenQuarter >= 0 && quarter - this.lastSpokenQuarter < 2) return;
+    // Ordinary tips rest two quarters between them; a discovery is news about what was just built, so it does not wait out that rest.
+    if (!line.urgent && !line.fact && this.lastSpokenQuarter >= 0 && quarter - this.lastSpokenQuarter < 2) return;
     if (this.maya.next()) this.lastSpokenQuarter = quarter;
   }
 

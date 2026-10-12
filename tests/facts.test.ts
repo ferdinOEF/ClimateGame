@@ -38,11 +38,13 @@ describe("facts.json", () => {
     }
   });
 
-  it("game rules say they are game rules, and carry no citation", () => {
-    for (const fact of ALL_FACTS.filter((f) => f.kind === "gameRule")) {
-      expect(fact.text.startsWith("In this game, "), fact.id).toBe(true);
-      expect(fact.citation, fact.id).toBeUndefined();
-    }
+  it("game rules carry no citation (Maya's bubble labels them \"Game rule\"), and nothing opens with \"In this game\"", () => {
+    for (const fact of ALL_FACTS.filter((f) => f.kind === "gameRule")) expect(fact.citation, fact.id).toBeUndefined();
+    for (const fact of ALL_FACTS) expect(fact.text, fact.id).not.toMatch(/^In this game/);
+  });
+
+  it("every shown fact is short: 20 words at most, as she would say it", () => {
+    for (const fact of SHOWN_FACTS) expect(fact.text.split(/\s+/).length, `${fact.id}: ${fact.text}`).toBeLessThanOrEqual(20);
   });
 
   it("an entry without a source is never shown", () => {
@@ -74,7 +76,7 @@ describe("facts.json", () => {
   });
 });
 
-describe("Discovery cards", () => {
+describe("Discoveries (Maya says each one)", () => {
   it("list only known, shown facts", () => {
     for (const [element, ids] of Object.entries(nuggets as Record<string, string[]>)) {
       for (const id of ids) {
@@ -91,7 +93,7 @@ describe("Discovery cards", () => {
     expect(discoveryTotal()).toBe(ids.size);
   });
 
-  it("every cited fact the game shows is reachable from a card", () => {
+  it("every cited fact the game shows is reachable from a build", () => {
     const onCards = new Set(Object.values(nuggets as Record<string, string[]>).flat());
     for (const fact of CITED_FACTS) expect(onCards.has(fact.id), fact.id).toBe(true);
   });
@@ -111,11 +113,17 @@ describe("Sources screen", () => {
 describe("Maya", () => {
   // Practical guidance about the screen; everything else she teaches is a game rule.
   const GUIDANCE = new Set(["heat", "shields", "get-ready"]);
-  it("her tips are game rules or practical guidance", () => {
-    for (const tip of maya.tips) {
-      if (GUIDANCE.has(tip.id)) continue;
-      expect(tip.text.startsWith("In this game, "), tip.id).toBe(true);
+  it("her tips are game rules (tagged as such in her bubble) or practical guidance", () => {
+    for (const tip of maya.tips as { id: string; text: string; rule?: boolean }[]) {
+      if (GUIDANCE.has(tip.id)) expect(tip.rule, tip.id).toBeUndefined();
+      else expect(tip.rule, tip.id).toBe(true);
+      expect(tip.text, tip.id).not.toMatch(/^In this game/);
     }
+  });
+
+  it("none of her lines runs over 25 words", () => {
+    const lines: string[] = [maya.greeting.text, ...maya.tips.map((t) => t.text), ...Object.values(maya.warning), ...Object.values(maya.aftermath)];
+    for (const line of lines) expect(line.split(/\s+/).length, line).toBeLessThanOrEqual(25);
   });
 
   it("her khazan tip is the game rule, word for word", () => {

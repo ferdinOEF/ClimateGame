@@ -129,7 +129,7 @@ async function main(): Promise<void> {
         await page.waitForTimeout(400);
       };
       await cancelledBy("the Field Guide", `document.querySelector(".field-guide-button").click()`, `document.querySelector(".field-guide-close").click()`);
-      await cancelledBy("the Sources screen", `(window.__nuggetPopupForTest.show("dune", "dunes-barrier"), document.querySelector(".nugget-source").click())`, `(document.querySelector(".sources-close").click(), window.__nuggetPopupForTest.reset())`);
+      await cancelledBy("the Sources screen", `(window.__nuggetPopupForTest.replay("dunes-barrier"), document.querySelector(".maya-source").click())`, `(document.querySelector(".sources-close").click(), window.__nuggetPopupForTest.reset())`);
       // Frame rate on High, the whole sequence in real time.
       await fx(page, `(fx.start("full", performance.now()), true)`);
       const high = await sampleFps(page, 12.5);

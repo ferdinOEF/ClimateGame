@@ -27,7 +27,7 @@ const RESOLUTIONS = ALL_RESOLUTIONS.filter((r) => !process.env.LAYOUT_ONLY || St
 /** Everything Maya must keep clear of: a deliberately broad list, independent of the one the layout manager uses. */
 const OTHER_HUD = [
   ".instrument-cluster", ".coin-jar", ".field-guide-button", ".panjim-clock", ".hud-chrome", ".houses-counter",
-  ".panjim-toggles", ".objectives-panel", ".get-ready", ".nugget-badge", ".map-corner", ".map-layer-control",
+  ".panjim-toggles", ".objectives-panel", ".get-ready", ".map-corner", ".map-layer-control",
   ".empty-prompt", ".era-banner", ".build-popover", ".hud-tooltip", ".forecast-label", ".sound-toggle", ".quality-control"
 ];
 
@@ -136,10 +136,11 @@ async function main(): Promise<void> {
                 if (panel && panel.classList.contains("collapsed") === ${getReadyOpen}) panel.querySelector(".get-ready-toggle").click();
                 window.__tooltipsForTest.hide();
               })()`);
-              if (discovery) await page.evaluate("window.__nuggetPopupForTest.show('dune', 'dunes-barrier')");
               await page.evaluate(`window.__panjimScenarioForTest(${JSON.stringify(jump ? `maya-jump-${jump}` : "maya:tip")})`);
+              // A discovery: the tallest fact (a cited one, with its count and Source), said by Maya in place of her tip.
+              if (discovery) await page.evaluate("window.__nuggetPopupForTest.replay('khazan-what')");
               if (tooltip) await page.evaluate(`(() => { const el = document.querySelector('[data-tip="getReady"]') || document.querySelector('[data-tip="coin"]'); window.__tooltipsForTest.show(el); })()`);
-              await assertClear(page, `${tag} discovery=${discovery ? "shown" : "hidden"} getReady=${getReadyOpen ? "open" : "collapsed"} tooltip=${tooltip ? "open" : "none"} ${jump ? `jump=${jump}` : "docked"}`, true);
+              await assertClear(page, `${tag} discovery=${discovery ? "said" : "no"} getReady=${getReadyOpen ? "open" : "collapsed"} tooltip=${tooltip ? "open" : "none"} ${jump ? `jump=${jump}` : "docked"}`, true);
             }
           }
         }
@@ -153,10 +154,9 @@ async function main(): Promise<void> {
       await page.waitForTimeout(300);
       if (process.env.LAYOUT_SHOTS) {
         fs.mkdirSync("docs/qa/layout", { recursive: true });
-        await page.evaluate("window.__nuggetPopupForTest.show('dune', 'dunes-barrier')");
-        await page.evaluate("window.__panjimScenarioForTest('maya:explains')");
+        await page.evaluate("window.__nuggetPopupForTest.replay('khazan-what')");
         await page.waitForTimeout(900);
-        await page.screenshot({ path: `docs/qa/layout/maya-discovery-shown-${tag}.jpg`, type: "jpeg", quality: 75 });
+        await page.screenshot({ path: `docs/qa/layout/maya-discovery-said-${tag}.jpg`, type: "jpeg", quality: 75 });
         await page.waitForTimeout(5200);
         await page.evaluate("window.__panjimScenarioForTest('maya:tip')");
         await page.waitForTimeout(900);
