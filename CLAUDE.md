@@ -39,7 +39,8 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
   people, no unsourced statistics. `tests/facts.test.ts` and
   `tests/noInventedPeople.test.ts` enforce this.
 - **Maya: do not redraw her.** Edit only `src/ui/panjim/mayaArt.ts`, `maya.ts` and
-  `panjim.css`. Her colours come from `MAYA_PALETTE`. Whenever any HUD element
+  `panjim.css`. She is locked in place (`tests/mayaLocked.test.ts`). Her colours
+  come from `MAYA_PALETTE`. Whenever any HUD element
   moves, update `HUD_OBSTACLES` (in `maya.ts`) and her layout rules.
 - **Desktop browsers first** (Chrome, Edge, Firefox, Safari; mouse, wheel,
   keyboard; 1080p to 4K; test at 1920x1080 at least). Never make desktop worse
