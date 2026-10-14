@@ -7,7 +7,7 @@
  * On Panaji at 1366x768, 1920x1080 and 2560x1440, at three zoom levels
  * (the opening view, a wheel step in, two wheel steps in), after a drag-pan,
  * and with Maya talking, it reads back the box of every drawn label. During
- * the drag-pan and during Maya's hop onto the board it checks every frame.
+ * the drag-pan and during a warning's camera glide it checks every frame.
  * Each settled Panaji view must draw at least two locality names, so the test
  * cannot pass with nothing on screen. It reads back the box of every drawn label
  * (`.map-label.shown`) and fails if:
@@ -203,14 +203,14 @@ async function main(): Promise<void> {
       await page.mouse.wheel(0, 500);
       if (!(await page.evaluate(`window.__panjimScenarioForTest("maya:tip")`))) failures.push(`${tag}: maya:tip scenario failed`);
       await check(page, `${tag} zoom 2, Maya talking`, `panaji-maya-${tag}`, 2);
-      // A warning jump puts Maya out on the board, among the names: checked on every frame of the hop.
+      // A warning glides the camera over the board, among the names: checked on every frame. Maya does not move.
       const before = (await page.evaluate(`JSON.stringify(document.querySelector(".maya-figure-wrap").getBoundingClientRect())`)) as string;
       await startSampling(page, 90);
-      if (!(await page.evaluate(`window.__panjimScenarioForTest("maya-jump-st-cruz")`))) failures.push(`${tag}: maya-jump scenario failed`);
-      await endSampling(page, `${tag} during Maya's hop`);
+      if (!(await page.evaluate(`window.__panjimScenarioForTest("maya-warn-st-cruz")`))) failures.push(`${tag}: maya-warn scenario failed`);
+      await endSampling(page, `${tag} during a warning's camera glide`);
       const after = (await page.evaluate(`JSON.stringify(document.querySelector(".maya-figure-wrap").getBoundingClientRect())`)) as string;
-      if (before === after) failures.push(`${tag}: Maya did not move for the jump`);
-      await check(page, `${tag} Maya out on the board`, undefined, 1);
+      if (before !== after) failures.push(`${tag}: Maya moved for a warning (${before} then ${after})`);
+      await check(page, `${tag} warning showing`, undefined, 1);
       await page.close();
     }
     // The Tutorial's own labels.

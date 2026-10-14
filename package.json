@@ -28,7 +28,8 @@
     "bots": "tsx tools/panjimBots/index.ts",
     "verify:maya": "tsx tools/verifyMaya.ts",
     "test:layout": "tsx tools/mayaLayoutTest.ts",
-    "test:labels": "tsx tools/labelOverlapTest.ts"
+    "test:labels": "tsx tools/labelOverlapTest.ts",
+    "test:maya": "tsx tools/mayaStability.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",

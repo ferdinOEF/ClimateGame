@@ -1,12 +1,18 @@
 /**
- * Where Maya and her speech bubble may stand: pure rectangle geometry, so
- * the rules are unit-tested without a browser.
+ * Where Maya and her speech bubble stand: pure rectangle geometry, so the
+ * rules are unit-tested without a browser.
  *
- * The rule is simple and absolute: neither her figure nor her bubble may
- * overlap any other HUD element (with `CLEARANCE` px to spare) or leave the
- * viewport. The session hands in the rectangles of everything on screen
- * (the Get ready list, the top bar, the build menu, tooltips,
- * cards); these functions find the nearest free spot.
+ * She never moves. Her figure has one fixed home, the bottom-left corner of
+ * the screen, a `HOME_MARGIN` in from both edges; it is the same on every
+ * frame and in every state, and if something else would cover it, that
+ * other element moves (the street-map corner steps right of her), not her.
+ *
+ * Her bubble is the only thing that is placed. It goes beside her figure
+ * (to her right, else above her) and clear of every other HUD element by
+ * `CLEARANCE` px; the session hands in the rectangles of everything on
+ * screen (the Get ready list, the top bar, the build menu, tooltips, cards)
+ * and this finds the nearest free spot, or says there is none and the line
+ * waits.
  */
 export interface Rect {
   x: number;
@@ -24,7 +30,7 @@ export const CLEARANCE = 12;
  * it resizes all of her together. The space she keeps from other HUD elements
  * (`CLEARANCE`) does not scale.
  */
-export const MAYA_SCALE = 0.45;
+export const MAYA_SCALE = 0.315;
 
 /** A size of hers (in px), at her scale. */
 export function scaled(px: number): number {
@@ -45,16 +51,42 @@ export const MINIMISE_MIN_PX = 14;
 export const BADGE_PX = Math.max(BADGE_MIN_PX, scaled(52));
 export const MINIMISE_PX = Math.max(MINIMISE_MIN_PX, scaled(22));
 
+/** Her home: how far her figure (or her badge) stands from the left and the bottom edge of the screen, in whole pixels. */
+export const HOME_MARGIN = 12;
+
 /** The widths her bubble is tried at, widest first: her scaled widths, none narrower than the text can use. */
 export function bubbleWidths(maxWidth = 320): number[] {
   const widths = [maxWidth, 280, 250, 220].filter((w) => w <= maxWidth).map((w) => Math.max(BUBBLE_MIN_WIDTH, scaled(w)));
   return widths.filter((w, i) => widths.indexOf(w) === i);
 }
 
-/** Her figure's box for a crop `view` (art units) drawn at `unitPx` px per unit: the width at her scale, the height from the crop's aspect ratio. */
-export function figureSize(view: { width: number; height: number }, unitPx: number): { w: number; h: number } {
-  const w = Math.round(view.width * unitPx * MAYA_SCALE);
+/**
+ * The screen-size step: a little bigger on big screens, smaller in a short
+ * or narrow window (the same steps the HUD's own media queries make).
+ */
+export function screenTier(viewport: { w: number; h: number }): number {
+  if (viewport.w <= 700) return 0.68;
+  if (viewport.w >= 1700 && viewport.h >= 900) return 1.17;
+  if (viewport.h <= 700) return 0.82;
+  return 1;
+}
+
+/**
+ * Her figure's box for a crop `view` (art units) drawn at `unitPx` px per
+ * unit: the width at her scale and the screen's tier, the height from the
+ * crop's aspect ratio. Whole pixels, so she is never drawn between them.
+ */
+export function figureSize(view: { width: number; height: number }, unitPx: number, tier = 1): { w: number; h: number } {
+  const w = Math.round(view.width * unitPx * MAYA_SCALE * tier);
   return { w, h: Math.round((w * view.height) / view.width) };
+}
+
+/**
+ * Her home: the box of a figure (or badge) of `size`, at the bottom-left of
+ * the screen. The one place she ever stands.
+ */
+export function homeRect(size: { w: number; h: number }, viewport: { w: number; h: number }): Rect {
+  return { x: HOME_MARGIN, y: Math.round(viewport.h) - size.h - HOME_MARGIN, w: size.w, h: size.h };
 }
 
 export function intersects(a: Rect, b: Rect, pad = 0): boolean {
@@ -69,64 +101,15 @@ function free(r: Rect, obstacles: readonly Rect[], viewport: { w: number; h: num
   return inside(r, viewport, Math.min(clearance, 8)) && obstacles.every((o) => !intersects(r, o, clearance));
 }
 
-/**
- * Her figure's spot.
- *
- * Docked (`target` null): the left edge, searched from the bottom up, so she
- * stands just above whatever holds the bottom-left corner (the
- * street-map switch) and moves with it; failing that, along the
- * bottom edge; failing that, anywhere free.
- *
- * Away (`target` a point on the board): her feet as near that point as a
- * free spot allows, searching outward ring by ring.
- */
-export function placeFigure(
-  size: { w: number; h: number },
-  obstacles: readonly Rect[],
-  viewport: { w: number; h: number },
-  target: { x: number; y: number } | null,
-  clearance = CLEARANCE
-): Rect | null {
-  const at = (x: number, y: number): Rect => ({ x: Math.round(x), y: Math.round(y), w: size.w, h: size.h });
-  if (target) {
-    const base = at(target.x - size.w / 2, target.y - size.h);
-    if (free(base, obstacles, viewport, clearance)) return base;
-    for (let radius = 16; radius <= Math.max(viewport.w, viewport.h); radius += 16) {
-      const steps = Math.max(8, Math.round(radius / 10));
-      for (let i = 0; i < steps; i++) {
-        const angle = (i / steps) * Math.PI * 2;
-        const r = at(base.x + Math.cos(angle) * radius, base.y + Math.sin(angle) * radius);
-        if (free(r, obstacles, viewport, clearance)) return r;
-      }
-    }
-    return null;
-  }
-  const left = clearance;
-  for (let y = viewport.h - size.h - clearance; y >= clearance; y -= 8) {
-    const r = at(left, y);
-    if (free(r, obstacles, viewport, clearance)) return r;
-  }
-  for (let x = clearance; x <= viewport.w - size.w - clearance; x += 12) {
-    const r = at(x, viewport.h - size.h - clearance);
-    if (free(r, obstacles, viewport, clearance)) return r;
-  }
-  for (let y = viewport.h - size.h - clearance; y >= clearance; y -= 16) {
-    for (let x = clearance; x <= viewport.w - size.w - clearance; x += 16) {
-      const r = at(x, y);
-      if (free(r, obstacles, viewport, clearance)) return r;
-    }
-  }
-  return null;
-}
-
-export type BubbleSide = "right" | "above" | "left";
+export type BubbleSide = "right" | "above";
 
 /**
  * Her bubble's spot, beside her figure and toward free space: to her right
- * first (level with her head), then above her, then to her left; each at a
- * few heights. `measure(width)` gives the bubble's height at a width, since
- * text reflows. Widths (`maxWidth` is in unscaled px) come from `bubbleWidths`, widest first. Null if
- * nothing fits: the caller shrinks the text or holds the line back.
+ * first (level with her head), then above her; each at a few heights.
+ * `measure(width)` gives the bubble's height at a width, since text reflows.
+ * Widths (`maxWidth` is in unscaled px) come from `bubbleWidths`, widest first.
+ * Null if nothing fits: the caller tries a more compact bubble, then holds the
+ * line back until something moves. The figure is never the thing that gives way.
  */
 export function placeBubble(
   figure: Rect,
@@ -146,9 +129,6 @@ export function placeBubble(
     }
     for (const dx of [0, -width * 0.5, figure.w - width, -width + figure.w * 0.5]) {
       candidates.push({ side: "above", rect: { x: figure.x + dx, y: figure.y - gap - h, w: width, h } });
-    }
-    for (const dy of [0, -h * 0.5, -h]) {
-      candidates.push({ side: "left", rect: { x: figure.x - gap - width, y: headY + dy, w: width, h } });
     }
     for (const c of candidates) {
       const rect = { x: Math.round(c.rect.x), y: Math.round(c.rect.y), w: c.rect.w, h: Math.round(c.rect.h) };

@@ -614,26 +614,70 @@ export function handMarkup(): { l: string; r: string } {
   return { l: `${binoculars(literal, 53, 324)}${handGrip(literal, 52, 304)}`, r: handOpen(literal, 148, 303, 1) };
 }
 
-let hudInstances = 0;
+/** The pieces of her HUD figure that never change, each drawn once as a picture: hair and legs behind, the shirt, the hair in front, and each arm. */
+export type HudLayer = "back" | "torso" | "hair" | "armL" | "armR";
+
+function hudLayerContent(layer: HudLayer, paint: Paint): string {
+  switch (layer) {
+    case "back":
+      return `${hairSilhouette(paint)}${ringlets(paint, BACK_SEED, false)}${legsAndBoots(paint)}`;
+    case "torso":
+      return `${torsoUpper(paint)}${torsoLower(paint, false)}`;
+    case "hair":
+      return `${ringlets(paint, FRONT_SEED, true)}${fringe(paint)}`;
+    case "armL":
+      return `${armLimbL(paint)}${sleeveL(paint)}`;
+    case "armR":
+      return `${armLimbR(paint)}${sleeveR(paint)}`;
+  }
+}
+
+/**
+ * A soft shadow under what a layer draws, baked into its picture: she lifts
+ * off the map the way the old `filter: drop-shadow` made her, but nothing is
+ * filtered while she animates (a filter on a figure that moves is redone every
+ * frame).
+ */
+const LAYER_SHADOW = `<defs><filter id="s" x="-15%" y="-8%" width="130%" height="116%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="3.2"/><feOffset dy="5" result="o"/><feComponentTransfer in="o" result="c"><feFuncA type="linear" slope=".35"/></feComponentTransfer><feMerge><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+
+/** One static layer as a picture (literal colours, the HUD crop's viewBox, the shadow baked in). */
+export function hudLayerSvg(layer: HudLayer): string {
+  const { x, y, width: w, height: h } = HUD_VIEWBOX;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}">${LAYER_SHADOW}<g filter="url(#s)">${hudLayerContent(layer, literal)}</g></svg>`;
+}
+
+/** The same, as an image URL, built once. */
+export function hudLayerUrl(layer: HudLayer): string {
+  return cachedUrl(`hud:${layer}`, () => hudLayerSvg(layer));
+}
+
+/** The stacking and size every layer has; inline, so the figure holds together wherever it is shown (the game's stylesheet adds the poses). */
+const LAYER_BOX = "position:absolute;left:0;top:0;width:100%;height:100%;display:block;pointer-events:none";
 
 /**
  * The HUD figure: her whole body, head to boots, no pack (the straps clutter
- * her at small size). The crop's bottom edge is a clip on a static wrapper, so
- * the cut never moves when she hops. Her legs are drawn behind the torso, as
- * in the full figure, and never animate; her arms hang at full length and
- * rotate when she waves, points or raises a hand (the long reaches shorten
- * in panjim.css so a gesture stays beside her and clear of her bubble). The
- * arms are drawn over the hair so a raised hand is never lost in the curls.
- * The binoculars hand is her resting arm. Group names are the ones
- * panjim.css animates. The hair is two static layers (behind the face and in
- * front of it): they tilt with her head but do not nod, so the hundreds of
- * curls are not redrawn every frame while she idles. The props (bulb,
- * alert, stars) sit on her left, clear of the minimise button.
+ * her at small size), as a stack of layers.
+ *
+ * Only what changes is live. Her face (eyes, brows, mouth, which change with
+ * her state) and the props (bulb, alert, stars, sweat) are small inline SVGs.
+ * Everything else never changes, so it is a picture drawn once and turned
+ * into a compositor layer: hair and legs behind, the shirt (which breathes),
+ * the hair in front of the face, and each arm (which turn about the shoulder
+ * and, for the long reaches, shorten in panjim.css so a gesture stays beside
+ * her and clear of her bubble). Animating a transform on a layer costs the
+ * compositor, not a repaint of hundreds of curls, and the layers are never
+ * filtered. The legs are drawn behind the torso, as in the full figure; the
+ * arms in front of the hair so a raised hand is never lost in the curls. The
+ * binoculars hand is her resting arm. Class names are the ones panjim.css
+ * animates; their pivots are percentages of the layer (tests/mayaArt.test.ts
+ * checks them against the art's units).
  */
-export function hudFigureSvg(width: number, height: number): string {
+export function hudFigureSvg(width: number | string, height: number | string): string {
   const paint = live;
+  const px = (v: number | string): string => (typeof v === "number" ? `${v}px` : v);
   const { x, y, width: w, height: h } = HUD_VIEWBOX;
-  const clipId = `maya-hud-crop-${++hudInstances}`;
+  const view = `viewBox="${x} ${y} ${w} ${h}"`;
+  const img = (layer: HudLayer, cls: string): string => `<img class="maya-layer ${cls}" src="${hudLayerUrl(layer)}" alt="" draggable="false" style="${LAYER_BOX}">`;
   const props = `<g class="maya-bulb">
       <circle cx="52" cy="56" r="9.5" fill="${paint("bulb")}" stroke="${paint("bulb-edge")}" stroke-width="1.5"/>
       <rect x="47.5" y="65" width="9" height="6" rx="1.2" fill="${paint("bulb-base")}"/>
@@ -650,21 +694,17 @@ export function hudFigureSvg(width: number, height: number): string {
       <path class="maya-star" d="M46 50 l2.9 6 6.5.7-4.8 4.5 1.3 6.4-5.9-3.2-5.9 3.2 1.3-6.4-4.8-4.5 6.5-.7z"/>
       <path class="maya-star" d="M38 92 l2.4 5 5.5.6-4.1 3.7 1.1 5.4-4.9-2.8-4.9 2.8 1.1-5.4-4.1-3.7 5.5-.6z"/>
       <path class="maya-star" d="M164 104 l1.9 4 4.3.5-3.2 3 .8 4.2-3.8-2.2-3.8 2.2.8-4.2-3.2-3 4.3-.5z"/>
-    </g>`;
-  return `<svg class="maya-figure maya-art" viewBox="${x} ${y} ${w} ${h}" width="${width}" height="${height}" style="${paletteStyle()}" aria-hidden="true" focusable="false">
-  <defs><clipPath id="${clipId}"><rect x="-200" y="-200" width="600" height="${y + h + 200}"/></clipPath></defs>
-  <g clip-path="url(#${clipId})">
-    <g class="maya-body">
-      <g class="maya-head maya-hair">${hairSilhouette(paint)}${ringlets(paint, BACK_SEED, false)}</g>
-      <g class="maya-legs">${legsAndBoots(paint)}</g>
-      <g class="maya-torso">${torsoUpper(paint)}${torsoLower(paint, false)}</g>
-      <g class="maya-head">${stateFace(paint)}</g>
-      <g class="maya-head maya-hair">${ringlets(paint, FRONT_SEED, true)}${fringe(paint)}</g>
-      <g class="maya-head"><path class="maya-sweat" d="M127.5 84 Q123 92 127.5 95.5 Q132 92 127.5 84 Z" fill="${paint("sweat")}" stroke="${paint("alert-mark")}" stroke-width="0.8"/></g>
-      <g class="maya-arm maya-arm-l">${armLimbL(paint)}${sleeveL(paint)}</g>
-      <g class="maya-arm maya-arm-r">${armLimbR(paint)}${sleeveR(paint)}</g>
     </g>
-  </g>
-  ${props}
-</svg>`;
+    <path class="maya-sweat" d="M127.5 84 Q123 92 127.5 95.5 Q132 92 127.5 84 Z" fill="${paint("sweat")}" stroke="${paint("alert-mark")}" stroke-width="0.8"/>`;
+  return `<div class="maya-figure maya-art maya-body" style="${paletteStyle()};position:relative;width:${px(width)};height:${px(height)}" aria-hidden="true">
+  ${img("back", "maya-back")}
+  ${img("torso", "maya-torso")}
+  <div class="maya-head" style="${LAYER_BOX}">
+    <svg class="maya-layer maya-face" ${view} style="${LAYER_BOX};overflow:visible" focusable="false">${stateFace(paint)}</svg>
+    ${img("hair", "maya-hair")}
+  </div>
+  ${img("armL", "maya-arm maya-arm-l")}
+  ${img("armR", "maya-arm maya-arm-r")}
+  <svg class="maya-layer maya-props" ${view} style="${LAYER_BOX};overflow:visible" focusable="false">${props}</svg>
+</div>`;
 }

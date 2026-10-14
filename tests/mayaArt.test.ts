@@ -12,6 +12,8 @@ import {
   HUD_VIEWBOX,
   headUrl,
   hudFigureSvg,
+  hudLayerSvg,
+  hudLayerUrl,
   MAYA_PALETTE,
   paletteStyle
 } from "../src/ui/panjim/mayaArt";
@@ -26,11 +28,9 @@ import { figureSize, MAYA_SCALE } from "../src/ui/panjim/mayaLayout";
 
 type Pt = [number, number];
 
-/** Every polyline drawn over the face: in the HUD, the front hair layer (the second maya-hair group). */
+/** Every polyline drawn over the face: in the HUD, the front hair layer (a picture of its own). */
 function frontCurls(svg: string): { pts: Pt[]; w: number }[] {
-  const start = svg.lastIndexOf('<g class="maya-head maya-hair">');
-  const front = svg.slice(start, svg.indexOf("</g>", start));
-  return [...front.matchAll(/<polyline points="([^"]+)"[^>]*stroke-width="([\d.]+)"/g)].map((m) => ({
+  return [...svg.matchAll(/<polyline points="([^"]+)"[^>]*stroke-width="([\d.]+)"/g)].map((m) => ({
     pts: m[1].split(" ").map((p) => p.split(",").map(Number) as Pt),
     w: Number(m[2])
   }));
@@ -129,7 +129,7 @@ describe("Maya's face is never covered", () => {
   });
 
   it("never draws a curl over a feature box (every stroke, at its width)", () => {
-    const curls = frontCurls(hudFigureSvg(139, 136));
+    const curls = frontCurls(hudLayerSvg("hair"));
     // Most of the front ringlets and the fringe are drawn; a few are left out to keep the face clear.
     expect(curls.length).toBeGreaterThan(110);
     for (const { pts, w } of curls) {
@@ -143,8 +143,9 @@ describe("Maya's face is never covered", () => {
   });
 
   it("is seeded: the same curls on every call, so she never shimmers or re-scatters", () => {
-    const strip = (svg: string) => svg.replace(/maya-hud-crop-\d+/g, "crop");
-    expect(strip(hudFigureSvg(139, 136))).toBe(strip(hudFigureSvg(139, 136)));
+    expect(hudFigureSvg(139, 136)).toBe(hudFigureSvg(139, 136));
+    expect(hudLayerSvg("back")).toBe(hudLayerSvg("back"));
+    expect(hudLayerUrl("hair")).toBe(hudLayerUrl("hair"));
     expect(fullFigureSvg({ pack: true, width: 200, height: 490 })).toBe(fullFigureSvg({ pack: true, width: 200, height: 490 }));
     expect(fullFigureUrl({ pack: true })).toBe(fullFigureUrl({ pack: true }));
   });
@@ -229,19 +230,49 @@ describe("Maya's HUD figure", () => {
     }
   });
 
-  it("draws her legs and boots inside the crop, behind the torso, in the body group", () => {
+  it("draws her legs and boots inside the crop, behind the torso", () => {
     const svg = hudFigureSvg(97, 268);
-    const legs = svg.indexOf('class="maya-legs"');
-    expect(legs).toBeGreaterThan(svg.indexOf('class="maya-body"'));
-    expect(legs).toBeLessThan(svg.indexOf('class="maya-torso"'));
+    // The legs are in the back picture, which is under the shirt's.
+    expect(svg.indexOf("maya-back")).toBeGreaterThan(svg.indexOf('class="maya-figure maya-art maya-body"'));
+    expect(svg.indexOf("maya-back")).toBeLessThan(svg.indexOf("maya-torso"));
+    expect(hudLayerSvg("back")).toContain(MAYA_PALETTE.boot);
     const boots = bbox(fullFigureSvg({ pack: false, width: 200, height: 490 }).match(/<path d="M70 438[^>]*>/)![0]);
     expect(boots[3]).toBeLessThan(HUD_VIEWBOX.y + HUD_VIEWBOX.height);
-    expect(hudFigureSvg(97, 268)).not.toContain("var(--maya-pack)");
+    expect(svg).not.toContain("var(--maya-pack)");
   });
 
-  it("gives every figure on a page its own clip", () => {
-    const ids = [hudFigureSvg(139, 136), hudFigureSvg(139, 136)].map((svg) => /clipPath id="([^"]+)"/.exec(svg)![1]);
-    expect(ids[0]).not.toBe(ids[1]);
+  it("is a stack of layers: the pieces that never change are pictures, only the face and props are live", () => {
+    const svg = hudFigureSvg("100%", "100%");
+    expect((svg.match(/<img /g) ?? []).length).toBe(5);
+    expect((svg.match(/<svg /g) ?? []).length).toBe(2);
+    expect((svg.match(/<polyline/g) ?? []).length).toBe(0);
+    // Far fewer nodes than the single drawing had (about 425).
+    expect((svg.match(/<[a-zA-Z]/g) ?? []).length).toBeLessThan(110);
+    // The shadow is baked into the pictures; nothing is filtered live.
+    expect(hudLayerSvg("armL")).toContain("feGaussianBlur");
+    expect(svg).not.toContain("filter:");
+  });
+
+  it("turns every layer about a point given as a share of its box, matching the art's pivots", () => {
+    const css = readFileSync("src/ui/panjim/panjim.css", "utf8");
+    const { x, y, width, height } = HUD_VIEWBOX;
+    const share = (px: number, py: number): [number, number] => [((px - x) / width) * 100, ((py - y) / height) * 100];
+    const origin = (selector: string): [number, number] => {
+      const m = new RegExp(`${selector.replace(/[.]/g, "\\.")} \\{ transform-origin: ([\\d.]+)% ([\\d.]+)%`).exec(css);
+      expect(m, selector).not.toBeNull();
+      return [Number(m![1]), Number(m![2])];
+    };
+    const expected: [string, [number, number]][] = [
+      [".maya-torso", share(100, 250)],
+      [".maya-head", share(100, 150)],
+      [".maya-arm-l", share(...HUD_ARMS.l.pivot)],
+      [".maya-arm-r", share(...HUD_ARMS.r.pivot)]
+    ];
+    for (const [selector, [ex, ey]] of expected) {
+      const [ox, oy] = origin(selector);
+      expect(ox, `${selector} x`).toBeCloseTo(ex, 1);
+      expect(oy, `${selector} y`).toBeCloseTo(ey, 1);
+    }
   });
 
   it("is sized from her crop's shape and the one scale, in the CSS and in the code", () => {
@@ -251,9 +282,10 @@ describe("Maya's HUD figure", () => {
     // Her drawing keeps the size it always had in the HUD (139 px for a 158-unit crop), times MAYA_SCALE.
     expect(HUD_UNIT_PX * 158).toBeCloseTo(139, 5);
     expect(box.w).toBe(Math.round(HUD_VIEWBOX.width * HUD_UNIT_PX * MAYA_SCALE));
-    // The CSS takes the box from the variables maya.ts sets from it, and every tier scales width and height together.
-    expect(css).toMatch(/\.maya-figure-wrap \{[^}]*?width: calc\(var\(--maya-fig-w\) \* var\(--maya-tier\)\);\s*height: calc\(var\(--maya-fig-h\) \* var\(--maya-tier\)\);/);
-    expect(css).not.toMatch(/\.maya-figure-wrap \{[^}]*?width: \d+px/);
+    // The CSS takes the box (whole pixels, tiered for the screen) from the variables maya.ts sets, and stands her at her home by one fixed rule.
+    expect(css).toMatch(/\.maya-figure-wrap \{\s*position: absolute;\s*left: var\(--maya-home\);\s*bottom: var\(--maya-home\);\s*width: var\(--maya-fig-w\);\s*height: var\(--maya-fig-h\);/);
+    expect(css).not.toMatch(/\.maya-figure-wrap \{[^}]*?(?:filter|top:|width: \d+px)/);
+    expect(css).not.toContain("--maya-tier");
   });
 });
 
@@ -285,7 +317,9 @@ describe("Maya's palette", () => {
     expect(MAYA_PALETTE["hair-base"]).toBe("#33200f");
     expect(MAYA_PALETTE["lens-rim"]).toBe("#d8b45c");
     expect(paletteStyle()).toContain("--maya-shirt:#2f7d6e");
-    expect(hudFigureSvg(139, 136)).toContain("var(--maya-shirt)");
+    // The live parts (her face) read the properties; the pictures (her shirt) have the same colours inlined.
+    expect(hudFigureSvg(139, 136)).toContain("var(--maya-skin)");
+    expect(hudLayerSvg("torso")).toContain(MAYA_PALETTE.shirt);
   });
 });
 
@@ -294,8 +328,8 @@ describe("Maya's chin", () => {
   const OLD = "C70.5 118 78 137 100 148";
 
   it("is the rounder one in both face paths, in the full figure, the HUD and the badge, and the old point is gone", () => {
-    for (const markup of [svg, hudFigureSvg(97, 268), headUrl()]) {
-      const text = decodeURIComponent(markup);
+    for (const markup of [svg, hudFigureSvg(97, 268), decodeURIComponent(headUrl())]) {
+      const text = markup;
       expect(text).not.toContain(OLD);
       expect(text).toContain("C70.5 120 83 141 100 146 C117 141 129.5 120 130 100");
     }
