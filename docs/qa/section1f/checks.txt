@@ -1,0 +1,61 @@
+PASS  1366x768: opening Settings closes Status
+PASS  1366x768: both shut again
+PASS  1920x1080: opening Settings closes Status
+PASS  1920x1080: both shut again
+PASS  Status: button 36 x 36 px (36 or more)
+PASS  Status: accessible name "Status"
+PASS  Status: aria-expanded false while shut
+PASS  Status: no text and no number on the shut button
+PASS  Status: the shut panel is just its button (36 x 36)
+PASS  Settings: button 36 x 36 px (36 or more)
+PASS  Settings: accessible name "Settings"
+PASS  Settings: aria-expanded false while shut
+PASS  Settings: no text and no number on the shut button
+PASS  Settings: the shut panel is just its button (36 x 36)
+PASS  the tooltip is hidden until hover or focus
+PASS  the tooltip shows on hover
+PASS  shut: .instrument-cluster is out of the way
+PASS  shut: .coin-jar is out of the way
+PASS  shut: .field-guide-button is out of the way
+PASS  shut: .panjim-toggles is out of the way
+PASS  shut: .risk-toggle is out of the way
+PASS  shut: .maya-toggle is out of the way
+PASS  shut: .sound-toggle is out of the way
+PASS  shut: .quality-control is out of the way
+PASS  Tab reaches both buttons (Status, Settings)
+PASS  a visible focus ring on the focused button
+PASS  Enter opens Status
+PASS  aria-expanded true while open
+PASS  Esc closes it
+PASS  focus is back on the button
+PASS  Space opens Settings
+PASS  Esc closes Settings
+PASS  R toggles .risk-toggle with both shut
+PASS  M toggles .maya-toggle with both shut
+PASS  S toggles .sound-toggle with both shut
+PASS  R toggles .risk-toggle with Status open
+PASS  M toggles .maya-toggle with Status open
+PASS  S toggles .sound-toggle with Status open
+PASS  R toggles .risk-toggle with Settings open
+PASS  M toggles .maya-toggle with Settings open
+PASS  S toggles .sound-toggle with Settings open
+PASS  Settings is open before the map is pressed
+PASS  a press on the map closes the open panel
+PASS  axe-core, both shut: no serious or critical violations
+PASS  axe-core, Status open: no serious or critical violations
+PASS  axe-core, Settings open: no serious or critical violations
+PASS  the jar's gain floats beside the shut Status button ({"text":"+40","right":true,"y":true})
+PASS  and it is gone again
+PASS  2560x1440: opening Settings closes Status
+PASS  2560x1440: both shut again
+PASS  no danger mark on a calm load
+PASS  a fall in Resilience shows the danger mark on the shut Status button
+PASS  its accessible name says so ("Status: danger")
+PASS  the mark is a ringed diamond, not only a colour
+PASS  opening Status marks the fall as seen: the mark is gone
+PASS  reached a storm warning (heat-3)
+PASS  a storm warning shows the danger mark
+PASS  opening the panel does not hide a warning that is still up
+PASS  the Tutorial loads with its coach
+PASS  the Tutorial's HUD is as it was (no panels, its own cluster)
+PASS  zero console errors

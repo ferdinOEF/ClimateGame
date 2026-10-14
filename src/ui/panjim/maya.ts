@@ -96,17 +96,17 @@ function readingMs(text: string): number {
 }
 
 /**
- * Everything on screen Maya must keep clear of. Read fresh on every layout,
- * so a card that appears, grows or collapses moves her with it.
+ * Everything on screen her bubble must keep clear of. Read fresh on every
+ * layout, so a card that appears, grows or collapses is allowed for. The two
+ * HUD panels (hudPanels.ts) stand for everything in them: the status cluster,
+ * the coin jar, the Field Guide button, and the settings toggles; shut, a panel
+ * is just its small button.
  */
 export const HUD_OBSTACLES = [
-  ".instrument-cluster",
-  ".coin-jar",
-  ".field-guide-button",
+  ".hud-panel",
   ".panjim-clock",
   ".hud-chrome",
   ".houses-counter",
-  ".panjim-toggles",
   ".objectives-panel",
   ".map-corner",
   ".empty-prompt",
@@ -118,9 +118,7 @@ export const HUD_OBSTACLES = [
   ".field-guide-card",
   ".finale-card",
   ".brief-card",
-  ".replay-card",
-  ".sound-toggle",
-  ".quality-control"
+  ".replay-card"
 ];
 
 export class Maya {

@@ -597,7 +597,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     );
   const riskIntro = new RiskIntroFx(container, {
     polygons: (): ScreenPolygon[] => riskHexes(riskIntroTiles),
-    button: () => container.querySelector<HTMLElement>(".risk-toggle")
+    // The Show risk toggle; with the Settings panel shut it is hidden away, so the wave flies to the Settings button.
+    button: () => {
+      const toggle = container.querySelector<HTMLElement>(".risk-toggle");
+      if (toggle && toggle.getClientRects().length > 0) return toggle;
+      return container.querySelector<HTMLElement>(".hud-panel-settings .hud-panel-button") ?? toggle;
+    }
   });
   /**
    * The Panjim 2050 run, on a level whose time model is `"actions"` (see
