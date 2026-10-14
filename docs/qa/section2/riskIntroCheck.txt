@@ -4,26 +4,28 @@ PASS  the sequence plays on the first warning
 PASS  High quality plays the full sequence
 PASS  the full sequence creates the droplets
 PASS  the ball shader waits for the fold
+PASS  with Settings shut the wave flies to the Settings button (hud-panel-button)
+PASS  with Settings open it flies to the Show risk control (panjim-toggle risk-toggle on)
 PASS  the fold creates the ball shader, once
 PASS  the build menu opened mid-sequence
-PASS  opening the build menu cancels it and leaves nothing behind ({"running":false,"end":"menu","canvasHidden":true,"balls":0,"button":"panjim-toggle risk-toggle on"})
+PASS  opening the build menu cancels it and leaves nothing behind ({"running":false,"end":"menu","canvasHidden":true,"balls":0,"button":"panjim-toggle risk-toggle on hud-panel-button"})
 PASS  opening the Field Guide cancels it
 PASS  opening the Sources screen cancels it
-fps during the sequence, High, 1920x1080: 1.3 (worst frame 2200 ms)
+fps during the sequence, High, 1920x1080: 1.1 (worst frame 1600 ms)
 PASS  gate: plays on the first warning
 PASS  gate: played through storm 1
 PASS  gate: reached warning 2
-PASS  gate: does NOT play on warning 2 (risk tiles showing: 305)
+PASS  gate: does NOT play on warning 2 (risk tiles showing: 327)
 PASS  gate: played through storm 2
 PASS  gate: reached warning 3
-PASS  gate: does NOT play on warning 3 (risk tiles showing: 308)
+PASS  gate: does NOT play on warning 3 (risk tiles showing: 457)
 PASS  reload: plays on the first warning
 PASS  reload: the continued run does NOT play it again
 PASS  reduced motion: the reduced sequence
 PASS  reduced motion: no particle system and no shader were ever created
 PASS  reduced motion: it ends and leaves nothing behind
 PASS  Low quality: the flat sequence
-fps during the sequence, Low, 1920x1080: 1.5 (worst frame 883 ms)
+fps during the sequence, Low, 1920x1080: 1.6 (worst frame 867 ms)
 PASS  Low quality: no particle system and no shader were ever created
 PASS  Low quality: still none after a second play
 PASS  no console errors or warnings
