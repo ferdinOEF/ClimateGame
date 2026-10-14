@@ -89,6 +89,12 @@ async function main(): Promise<void> {
       check((await fx(page, "fx.currentMode")) === "full", "High quality plays the full sequence");
       check((await fx(page, "fx.created.particles")) === 1, "the full sequence creates the droplets");
       check((await fx(page, "fx.created.shader")) === 0, "the ball shader waits for the fold");
+      // Section 1f: the Settings panel is shut, so the wave flies to the Settings button; with it open, to the Show risk control.
+      const target = async (): Promise<string> => (await page.evaluate(`window.__riskIntroForTest.host.button().className`)) as string;
+      check(/hud-panel-button/.test(await target()), `with Settings shut the wave flies to the Settings button (${await target()})`);
+      await page.locator(".hud-panel-settings .hud-panel-button").click();
+      check(/risk-toggle/.test(await target()), `with Settings open it flies to the Show risk control (${await target()})`);
+      await page.locator(".hud-panel-settings .hud-panel-button").click();
       // Contact sheet: held frames from fill to pulse.
       const times = [0.15, 0.4, 0.9, 1.5, 2.1, 2.7, 3.05, 3.3, 3.7, 6.0, 10.15, 10.4, 10.65, 10.85, 11.1, 11.4, 11.65, 11.85, 12.05, 12.3];
       let i = 0;
@@ -112,7 +118,7 @@ async function main(): Promise<void> {
         end: window.__riskIntroForTest.lastEnd,
         canvasHidden: document.querySelector(".risk-intro-canvas").hidden,
         balls: document.querySelectorAll(".risk-intro-ball, .risk-intro-disc").length,
-        button: document.querySelector(".risk-toggle").className
+        button: document.querySelector(".risk-toggle").className + " " + document.querySelector(".hud-panel-settings .hud-panel-button").className
       })`)) as { running: boolean; end: string; canvasHidden: boolean; balls: number; button: string };
       check(!after.running && after.end === "menu" && after.canvasHidden && after.balls === 0 && !/risk-intro/.test(after.button), `opening the build menu cancels it and leaves nothing behind (${JSON.stringify(after)})`);
       await page.keyboard.press("Escape");

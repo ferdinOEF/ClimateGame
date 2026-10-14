@@ -1094,29 +1094,37 @@
   pointer-events: none;
   /*
    * One scale for all of her (mayaLayout.ts MAYA_SCALE, set by maya.ts as
-   * --maya-scale, with her figure's box as --maya-fig-w / --maya-fig-h). Every
-   * size below is a multiple of it, so she resizes as one entity. --maya-tier
-   * is the screen-size step (large screens a little bigger, short or narrow
-   * windows smaller), applied to the whole figure.
+   * --maya-scale). Every size below is a multiple of it, so she resizes as one
+   * entity. Her figure's box (--maya-fig-w / --maya-fig-h, whole pixels, for
+   * the screen's size) and her home (--maya-home) are set by maya.ts too.
    */
-  --maya-tier: 1;
 }
 
+/*
+ * Her home: the bottom-left corner, one fixed rule. Never written by script,
+ * never animated, never moved; if something would cover it, that element
+ * moves (--maya-reserve, hud.css). No filter: a filter on a figure that
+ * animates is redone every frame, so her shadow is baked into her pictures.
+ */
 .maya-figure-wrap {
   position: absolute;
-  left: 14px;
-  top: calc(100% - 78px - var(--maya-fig-h) * var(--maya-tier));
-  width: calc(var(--maya-fig-w) * var(--maya-tier));
-  height: calc(var(--maya-fig-h) * var(--maya-tier));
+  left: var(--maya-home);
+  bottom: var(--maya-home);
+  width: var(--maya-fig-w);
+  height: var(--maya-fig-h);
   pointer-events: none;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }
 
+/* Her figure is a stack of layers (mayaArt.ts hudFigureSvg): the stack fills her box. */
 .maya-figure {
   display: block;
-  overflow: visible;
   width: 100%;
   height: 100%;
+}
+
+/* The pieces that animate get a layer of their own: a transform on a layer costs the compositor, not a repaint. */
+.maya-torso, .maya-arm, .maya-head, .maya-body {
+  will-change: transform;
 }
 
 .maya-minimise {
@@ -1156,6 +1164,8 @@
 
 .maya-badge {
   position: absolute;
+  left: var(--maya-home);
+  bottom: var(--maya-home);
   /* --maya-badge: her scaled 52 px, never under 30 (mayaLayout.ts). */
   width: var(--maya-badge);
   height: var(--maya-badge);
@@ -1338,19 +1348,18 @@
 }
 
 /*
- * Pivots, in the art's own 200-wide units (mayaArt.ts; the HUD shows the
- * crop x 38-172, y 40-195): the neck, the waist, the eyes, the brows and
- * the shoulders.
+ * Pivots. The layers (torso, head, arms, whole figure) turn about a point given as
+ * a share of the layer's box: the art's units (mayaArt.ts HUD_VIEWBOX, x 28-196
+ * and y 34-476) as percentages, so they hold in every browser (tests/mayaArt.test.ts
+ * checks each against the art's pivot). The eyes and brows are inside the face's
+ * own drawing, so theirs stay in its units.
  */
-.maya-body, .maya-torso, .maya-head, .maya-eyes, .maya-arm {
-  transform-box: view-box;
-}
-.maya-body { transform-origin: 100px 195px; }
-.maya-torso { transform-origin: 100px 250px; }
-.maya-head { transform-origin: 100px 150px; }
-.maya-eyes { transform-origin: 100px 103px; }
-.maya-arm-l { transform-origin: 72px 180px; transform: rotate(0deg) scale(1); transition: transform 260ms ease-out; }
-.maya-arm-r { transform-origin: 128px 180px; transform: rotate(0deg) scale(1); transition: transform 260ms ease-out; }
+.maya-body { transform-origin: 50% 40%; }
+.maya-torso { transform-origin: 42.857% 48.869%; }   /* the waist, 100 250 */
+.maya-head { transform-origin: 42.857% 26.244%; }    /* the neck, 100 150 */
+.maya-arm-l { transform-origin: 26.19% 33.032%; transform: rotate(0deg) scale(1); transition: transform 260ms ease-out; }   /* her shoulder, 72 180 */
+.maya-arm-r { transform-origin: 59.524% 33.032%; transform: rotate(0deg) scale(1); transition: transform 260ms ease-out; }  /* her shoulder, 128 180 */
+.maya-eyes { transform-box: view-box; transform-origin: 100px 103px; }
 .maya-brow-l, .maya-brow-r { transform-box: view-box; transition: transform 200ms ease-out; }
 .maya-brow-l { transform-origin: 87.5px 90px; }
 .maya-brow-r { transform-origin: 112.5px 90px; }
@@ -1359,12 +1368,9 @@
   display: none;
 }
 
-/* Idle: blink and breathe, always. */
+/* Idle: blink and breathe, always. (Her head does not nod: at her size it is a fraction of a pixel, and only shimmers.) */
 .maya-eyes { animation: maya-blink 4.6s infinite; }
 .maya-torso { animation: maya-breathe 3.6s ease-in-out infinite; }
-.maya-head { animation: maya-nod 3.6s ease-in-out infinite; }
-/* Her hair tilts with her head but does not nod: hundreds of curls, left still while she idles. */
-.maya-head.maya-hair { animation: none; }
 
 @keyframes maya-blink {
   0%, 92%, 100% { transform: scaleY(1); }
@@ -1372,9 +1378,6 @@
 }
 @keyframes maya-breathe {
   50% { transform: scaleY(1.02); }
-}
-@keyframes maya-nod {
-  50% { transform: translateY(0.6px); }
 }
 
 /* Greeting: a wave. */
@@ -1394,7 +1397,7 @@
 
 /* Tip: pointing at the board. */
 .maya.state-tip .maya-arm-r { transform: rotate(-82deg) scale(0.4); }
-.maya.state-tip .maya-head { transform: rotate(4deg); animation: none; }
+.maya.state-tip .maya-head { transform: rotate(4deg); }
 
 /* Explains: a finger up and a lightbulb. */
 .maya.state-explains .maya-arm-r { transform: rotate(-130deg) scale(0.55); }
@@ -1438,32 +1441,14 @@
   50% { transform: scale(0.6) rotate(20deg); opacity: 0.6; }
 }
 @keyframes maya-bounce {
-  50% { transform: translateY(-6px); }
+  50% { transform: translateY(-2px); }
 }
 
-/* Jump; and every move between dock and tile: a fade and a hop in place
-   (never a sweep across the HUD). */
-.maya.state-jump .maya-body { animation: maya-hop 0.35s ease-in-out 2; }
-.maya.hopping .maya-figure-wrap { animation: maya-arrive 0.5s ease-out; }
-@keyframes maya-arrive {
-  0% { opacity: 0; transform: translateY(-14px); }
-  60% { opacity: 1; transform: translateY(2px); }
-  100% { transform: translateY(0); }
-}
-@keyframes maya-hop {
-  50% { transform: translateY(-8px) scaleY(1.04); }
-}
-
-/* Reduced motion: still poses, no loops; moves fade instead of hop. */
+/* Reduced motion: still poses, no loops. */
 @media (prefers-reduced-motion: reduce) {
   .maya *, .maya { animation: none !important; transition: none !important; }
-  .maya.hopping .maya-figure-wrap { animation: maya-fade 0.3s linear !important; }
-}
-@keyframes maya-fade {
-  from { opacity: 0; }
 }
 .maya.reduced-motion *, .maya.reduced-motion { animation: none !important; transition: none !important; }
-.maya.reduced-motion.hopping .maya-figure-wrap { animation: maya-fade 0.3s linear !important; }
 
 /* ---- Field Guide: Maya's notes --------------------------------------------------- */
 
@@ -1551,12 +1536,6 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #9fd8c6;
-}
-
-/* A little larger on big screens: she should read at a glance at 1440p and 4K. */
-@media (min-width: 1700px) and (min-height: 900px) {
-  .maya { --maya-tier: 1.17; }
-  .maya-bubble { font-size: max(12px, calc(16px * var(--maya-scale))); }
 }
 
 /* ---- HUD tooltips (ui/tooltip.ts) ------------------------------------------------- */
@@ -1720,15 +1699,8 @@
   .get-ready-row.just-done, .get-ready-pop { animation: none; }
 }
 
-/* Short windows (a laptop browser at 80% height): a smaller figure, the same
-   bottom edge, so her bubble still has room beside her. */
-@media (max-height: 700px) and (min-width: 701px) {
-  .maya { --maya-tier: 0.82; }
-}
-
 /* Phones are secondary: keep Maya and her bubble inside a narrow screen. */
 @media (max-width: 700px) {
-  .maya { --maya-tier: 0.68; }
   .maya-bubble { font-size: 12px; }
   .panjim-toggles { top: 120px; right: 8px; }
 }
@@ -1898,11 +1870,13 @@
   The landing: one ripple ring spreading from the button, and one gentle
   swell of the button itself. Once; no blinking (flash safety).
 */
-.risk-toggle.risk-intro-landing {
+.risk-toggle.risk-intro-landing,
+.hud-panel-button.risk-intro-landing {
   animation: risk-intro-swell 600ms ease-out 1;
 }
 
-.risk-toggle.risk-intro-landing::after {
+.risk-toggle.risk-intro-landing::after,
+.hud-panel-button.risk-intro-landing::after {
   content: "";
   position: absolute;
   inset: -2px;
@@ -1913,7 +1887,8 @@
 }
 
 /* Reduced motion: no swell, no ripple; a single soft glow that fades. */
-.risk-toggle.risk-intro-pulse {
+.risk-toggle.risk-intro-pulse,
+.hud-panel-button.risk-intro-pulse {
   animation: risk-intro-glow 900ms ease-out 1;
 }
 
@@ -1965,4 +1940,204 @@
 }
 @media (max-width: 900px), (max-height: 560px) {
   .maya-full-figure { display: none; }
+}
+
+/* ---- The minimal HUD: two panels, each shut to a small button (hudPanels.ts) ------------ */
+
+/*
+ * Status (top-left): the instrument cluster, the coin jar, the Field Guide button.
+ * Settings (top-right, under the Houses counter where the toggles stood): Show risk,
+ * Maya, Sound, Calm motion, Quality. Shut, each is one 36 px round button with a plain
+ * glyph, no label and no number; open, its old contents sit under it, unchanged.
+ */
+.hud-panel {
+  position: absolute;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.hud-panel > * {
+  pointer-events: auto;
+}
+
+.hud-panel-status {
+  left: 12px;
+  top: 12px;
+  align-items: flex-start;
+}
+
+.hud-panel-settings {
+  right: 12px;
+  top: 134px;
+  align-items: flex-end;
+}
+
+.hud-panel-button {
+  position: relative;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(253, 246, 230, 0.3);
+  background: rgba(20, 30, 26, 0.72);
+  color: #fdf6e6;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.hud-panel-button svg {
+  display: block;
+  fill: currentColor;
+}
+
+.hud-panel-button:hover,
+.hud-panel.open .hud-panel-button {
+  background: rgba(20, 30, 26, 0.92);
+  border-color: rgba(253, 246, 230, 0.55);
+}
+
+.hud-panel-button:focus-visible {
+  outline: 3px solid #f2c35b;
+  outline-offset: 2px;
+}
+
+/* The tooltip: the button's name, on hover and keyboard focus only (::after is the risk wave's landing ring). */
+.hud-panel-button::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 50%;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgba(16, 24, 20, 0.94);
+  color: #fdf6e6;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+}
+
+.hud-panel-status .hud-panel-button::before { left: calc(100% + 8px); }
+.hud-panel-settings .hud-panel-button::before { right: calc(100% + 8px); }
+
+.hud-panel-button:hover::before,
+.hud-panel-button:focus-visible::before {
+  opacity: 1;
+}
+
+.hud-panel.open .hud-panel-button::before {
+  display: none;
+}
+
+/*
+ * The danger mark (Status only): a storm warning is up, or Resilience has fallen. No number. A
+ * diamond with a light ring and a lit rim on the button, so it reads without its colour.
+ */
+.hud-panel-danger {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 11px;
+  height: 11px;
+  box-sizing: border-box;
+  border: 2px solid #fdf6e6;
+  border-radius: 2px;
+  background: #e0533a;
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.hud-panel-danger[hidden] {
+  display: none;
+}
+
+.hud-panel.danger .hud-panel-button {
+  border-color: #fdf6e6;
+  border-width: 2px;
+}
+
+/* The body: its old look, in a column under the button, growing from it. */
+.hud-panel-body {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: hud-panel-open 180ms ease-out;
+}
+
+.hud-panel-status .hud-panel-body { align-items: flex-start; transform-origin: 18px 0; }
+.hud-panel-settings .hud-panel-body { align-items: flex-end; transform-origin: calc(100% - 18px) 0; }
+
+.hud-panel-body[hidden] {
+  display: none;
+}
+
+@keyframes hud-panel-open {
+  from { opacity: 0; transform: scale(0.92); }
+}
+
+/* The elements moved into a panel flow in it, whatever corner they were pinned to. */
+.hud-panel .hud-panel-body > .instrument-cluster,
+.hud-panel .hud-panel-body > .coin-jar,
+.hud-panel .hud-panel-body > .field-guide-button,
+.hud-panel .hud-panel-body > .panjim-toggles {
+  position: relative;
+  inset: auto;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: auto;
+}
+
+/* The cluster's own collapse (its chevron and pill) is the panel's job now: inside it, the card is always open. */
+.hud-panel-body .instrument-cluster .cluster-collapse-toggle,
+.hud-panel-body .instrument-cluster .cluster-pill {
+  display: none !important;
+}
+
+/* The jar's gain, floated beside the shut Status button, and gone. */
+.hud-panel-pop {
+  position: absolute;
+  left: 46px;
+  top: 7px;
+  color: #ffe9a8;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  animation: hud-panel-pop 1.3s ease-out forwards;
+}
+
+@keyframes hud-panel-pop {
+  0% { opacity: 0; transform: translateY(6px); }
+  15% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-12px); }
+}
+
+/* Reduced motion and Calm motion: opens at once, the gain only fades. */
+@media (prefers-reduced-motion: reduce) {
+  .hud-panel-body { animation: none; }
+  .hud-panel-pop { animation: hud-panel-fade 1.3s linear forwards; }
+}
+.calm-motion .hud-panel-body { animation: none; }
+.calm-motion .hud-panel-pop { animation: hud-panel-fade 1.3s linear forwards; }
+@keyframes hud-panel-fade {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (max-width: 700px) {
+  .hud-panel-settings { top: 120px; right: 8px; }
 }

@@ -2,7 +2,7 @@
  * Section 1b/1c: Maya's artwork on its own, for looking at.
  *
  * Usage:  npx tsx tools/mayaSheet.ts [outDir]
- *   outDir defaults to docs/qa/section1c.
+ *   outDir defaults to docs/qa/section1e.
  *
  * Writes:
  *   - maya-full.png: the full figure, with and without the pack, at 2.5x
@@ -18,7 +18,7 @@ import path from "node:path";
 import { fullFigureSvg, HUD_VIEWBOX, hudFigureSvg } from "../src/ui/panjim/mayaArt";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section1c");
+const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section1e");
 
 const nodes = (svg: string): number => (svg.match(/<[a-zA-Z]/g) ?? []).length;
 

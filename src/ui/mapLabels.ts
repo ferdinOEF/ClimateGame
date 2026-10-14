@@ -59,6 +59,7 @@ export const LABEL_OBSTACLES = [
   ".maya-figure-wrap",
   ".maya-bubble",
   ".maya-badge",
+  ".hud-panel",
   ".instrument-cluster",
   ".coin-jar",
   ".field-guide-button",

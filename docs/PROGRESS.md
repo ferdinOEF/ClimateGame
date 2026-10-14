@@ -8113,3 +8113,27 @@ The proportions, 200-wide viewBox and colours are the reference's.
 - **Size:** `MAYA_SCALE` is 0.45; her bubble and badge keep a minimum size (`mayaLayout.ts`). Her text stays at 12 px or more.
 - **Tutorial:** it has no Maya, so it shows no discoveries.
 - **Checks:** `tools/section1dChecks.ts` (97 checks), layout 105 of 105, labels 37 of 37, axe clean, no console errors. See `docs/QA_REPORT.md`.
+
+## Section 1e — Maya: 30% smaller, locked in place, no glitching — DONE
+
+**She never moves.** Her home is the bottom-left corner, `HOME_MARGIN` (12 px) in from both edges, set by one fixed CSS rule on whole pixels (`mayaLayout.ts`, `panjim.css`): no search for a free spot, no following the camera, no hop. Deleted: `goTo`, `goHome`, the `anchor` field and every `anchor:` in a line, the `away` and `hopping` classes, the hop and fade animations, the `jump` state and the head's nod (`tests/mayaLocked.test.ts` keeps them gone). A warning keeps its words and its camera glide (`onShow`); the layout tests' warning scenario is now `maya-warn-<place>`. Her bubble is the only thing placed: beside her (right, else above), clear of the HUD, and only when the page is resized or one of the HUD elements it must clear changes. If something would cover her home, it moves: the street-map switch and credit stand to her right (`--maya-reserve`).
+
+**30% smaller.** `MAYA_SCALE` is 0.315 (0.45 × 0.7), still the one constant (a test checks there is no other). At 1920x1080 she is 54 x 142 px; at 1366x768, 47 x 124 px. The badge (30 px) and minimise button (14 px) keep a minimum size, and her text is 12 px. At 1x her face is about 17 x 24 px: it reads as a face, the binoculars read, the fingers do not; on a 2x screen all of it reads (`docs/qa/section1e/maya-zoom-*.png`). The scale was not changed to suit.
+
+**The glitching.** Found from counters and from isolating her in a page of her own (`docs/qa/section1e/FINDINGS.md`):
+- Her layout observer watched the whole page, and the map's name labels rewrite their `class` 30 times a frame, so her layout ran every frame. The observer now watches only the HUD elements her bubble must clear, one at a time; layouts a second: 1.0 to 1.2 at 1.5 fps (about 60 on a real display) down to 0 while idle.
+- One 425-node SVG, repainted every frame by its animations (48 fps against 60 without them) under a live `drop-shadow` filter (about 5 fps more). Her HUD figure is now a stack of layers (`hudFigureSvg`, 73 nodes): hair and legs, shirt, hair in front, each arm as a picture drawn once with its shadow baked in; only her face and props are live SVG. Only transforms on layers animate (the arms, the shirt's breathing). Alone on a page: 60.0 fps now, 43.9 on master. In the game her cost is 0.00 fps.
+- Her box was fractional (78.375 x 205.906 px); it is whole pixels now. The layers turn about percentages of their own box (tested against the art's pivots), so they no longer depend on `transform-box: view-box`.
+- Not real: hop toggling while docked (0 restarts a second), the clip, pivots in Chromium.
+
+**Permanent test.** `npm run test:maya` (`tools/mayaStability.ts`): in each state her rectangle never moves and she stands at home on whole pixels; idle for 3 seconds on a still page is stable; with animations off no pixel of her changes. `test:layout` (105 of 105) now also asserts her home at every case; `test:labels` 37 of 37.
+
+## Section 1f — Minimal HUD: two panels, each shut to a small button — DONE
+
+On a Panjim load the player sees the map, Maya and two plain 36 px buttons (`src/ui/panjim/hudPanels.ts`). Both start shut every load; nothing is remembered.
+- **Status** (top-left): the instrument cluster, the coin jar and the Field Guide button. **Settings** (top-right, where the toggle row stood under the Houses counter): Show risk, Maya, Sound and its volume, Calm motion, Quality. Each is one container with one open state; the existing elements are moved into it (`adopt`), not rebuilt, so their handlers, ids and the R, M and S shortcuts are unchanged. The cluster's own chevron and pill are hidden inside the panel.
+- **Shut:** a round glass button with a plain glyph (a 2x2 dot grid; three short lines), `aria-label`, `aria-expanded`, a tooltip only on hover and focus, a focus ring. The one thing a shut button can show is the Status danger mark: a ringed diamond (a shape, a ring and a colour) while a storm warning is up, or Resilience has fallen and the panel has not been opened since. It has no number. The jar's gain floats as "+N" beside the shut Status button.
+- **Open:** a click, Enter or Space; the body grows from its button in 180 ms (transform and opacity; at once with reduced or calm motion). The button, Esc (Maya's own Esc first) or a press outside closes it; opening one closes the other.
+- **Layout:** the two panels stand in for what they hold in `HUD_OBSTACLES` and `LABEL_OBSTACLES`; everything not in them (the clock, objectives, tooltips, build menu, map corner) stays where it was.
+- **Risk wave:** it flies to the Show risk control, or to the Settings button while Settings is shut (`gameSession.ts`, `riskIntroCheck.ts`).
+- **Checks:** 61 browser checks (`tools/section1fChecks.ts`), layout 105 of 105, labels 37 of 37, the risk-wave tool, axe clean. See `docs/QA_REPORT.md`.

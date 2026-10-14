@@ -63,10 +63,10 @@ async function main(): Promise<void> {
         console.log(`Maya's HUD layer: ${count} DOM nodes, ${svg} of them in her figure's SVG`);
       }
       // Over the pale old city (the church), then over the dark river (the Atal Setu bridge).
-      await scenario(page, "maya-jump-immaculate");
+      await scenario(page, "maya-warn-immaculate");
       await page.waitForTimeout(3500);
       await shot(page, `city-${tag}`);
-      await scenario(page, "maya-jump-atal-setu");
+      await scenario(page, "maya-warn-atal-setu");
       await page.waitForTimeout(3500);
       await shot(page, `water-${tag}`);
       if (w === 1920) {

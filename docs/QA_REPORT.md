@@ -618,3 +618,61 @@ Headless Chromium with software GL (about 1 fps, so the browser tools are slow).
 - **Each discovery is kept as a Field Guide note** (so it can be heard again), and the guide shows her count.
 - **A fact is counted when she says it,** not when it is picked.
 - **A line is not repeated within a session:** after every fact of an element has been said, a further build says nothing.
+
+# Section 1e — Maya: 30% smaller, locked in place, no glitching
+
+Branch `section-1e-maya-locked`, off master `5490cdf` (Section 1d's merge).
+Headless Chromium with software GL (about 1.5 fps with the city on screen, so a 60 fps recording is not possible here). Everything is in `docs/qa/section1e/`; the cause of the glitching, and the evidence, is `FINDINGS.md`.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build, walkthrough | Clean. 428 tests pass (6 skipped). New or rewritten: `mayaLocked.test.ts` (4: the travelling code is gone from the source, the figure is placed by CSS and never by script, only the HUD is watched, at most one layout a frame); `mayaLayout.test.ts` (her home is the bottom-left corner on whole pixels, nothing changes it, her scale is in one place, her bubble flips above her and never moves her); `mayaArt.test.ts` (her figure is a stack of layers, 73 nodes, each layer turns about the point the art says). |
+| Permanent stability test (`npm run test:maya`) | 38 checks pass. In each of seven states, over 10 seconds: her figure's rectangle never moved, she stands 12 px from the left and 12 px from the bottom, on whole pixels. Idle for 3 seconds on a still page: stable. With her animations off, no pixel of her changes between photographs, in any state. The Tutorial loads. Zero console errors. |
+| Before and after (`stability-before.md`, `stability-after.md`) | Layouts a second: 1.0 to 1.2 before (one per frame; 60 a second on a real display), **0 after while she is idle**, about 0.35 while a line is up. Her box before: 78.375 x 205.906 px; after: 54 x 142 px at 12, 926. With animations off, one pixel changed in her warning state before; none in any of the seven states after. |
+| The cause | The map's labels write `class` on every frame (30 writes a frame), which fired her layout observer every frame. Her one SVG of 425 nodes was repainted every frame by its animations (48 fps alone against 60 without), and the live drop-shadow filter cost about 5 fps more. Both are fixed; see FINDINGS.md for each of the seven suspects and which were real. |
+| Frame rate, 1920x1080 (`tools/mayaPerf.ts`) | Her figure alone: **60.0 fps now, 43.9 fps on master** (an empty page: 59.9). In the game (Panaji, Medium): her cost 0.00 fps (1.57 shown, 1.57 hidden); 0.07 before. HUD figure nodes 425 → 73. |
+| Contact sheet | `maya-states.png` (+ gray), her seven states in the game at 1366x768. The eighth, jump, no longer exists. |
+| Screenshots | `idle-*` and `warning-*` at 1366x768, 1920x1080 and 2560x1440, each with a `-gray` copy. Her box is the same with and without the warning at every size (checked in the tool). The street-map switch and credit stand to her right; the bubble is beside her and clear of the HUD. |
+| Zoom crops | `maya-zoom-1920x1080.png` (the pixels on a 1x screen, enlarged 8x with no smoothing) and `maya-zoom-dpr2.png` (a 2x screen). At 1x her face (about 17 x 24 px) reads as a face; the binoculars read; the fingers do not. On a 2x screen all of it reads. The scale was not changed. |
+| Label overlap (`npm run test:labels`) | **37 of 37 pass.** During a warning's camera glide, frame by frame, no overlap, and she does not move. |
+| Maya layout (`npm run test:layout`) | **105 of 105**, now also asserting at every case that her figure (or badge) is at her home, on whole pixels, and clear of every other HUD element. |
+| Cross-browser | Chromium only. The layers' pivots are percentages of their own box, so they no longer depend on `transform-box: view-box`; only her eyes and brows still do. |
+
+**Deviations and things to know:**
+- **`MAYA_SCALE` is 0.315** (0.45 × 0.7), the one constant. Her badge (30 px) and minimise button (14 px, 26 px hit area) keep a minimum size, and her text stays 12 px.
+- **The street-map switch and credit moved right** (`--maya-reserve`) so that nothing covers her home.
+- **Celebrates still bounces** (2 px, in place); the box she stands in does not move. The head no longer nods.
+- **Her figure's shadow** is baked into each of her pictures, on the hair, legs, shirt and arms, instead of one filter on the whole figure.
+- **Lines held back:** if no bubble spot is free beside her (a tiny window), the line waits; she does not move to make room.
+- **The map's name labels** rewrite their `class` on every frame (480 writes in 16 frames). They no longer touch her, but it is a cost of their own, and is not changed here.
+
+# Section 1f — Minimal HUD: two panels, each shut to a small button
+
+Branch `section-1f-minimal-hud`, off master `2ea1beb` (Section 1e's merge).
+Headless Chromium with software GL. Everything is in `docs/qa/section1f/`.
+
+| Gate | Result |
+|---|---|
+| tsc, tests, build, walkthrough | Clean. 436 tests pass (6 skipped). New: `hudPanels.test.ts` (8: the obstacle lists, elements moved not rebuilt, 36 px round buttons with no text, names and focus ring, the 180 ms transform-and-opacity open and its reduced-motion and calm-motion form, Esc and outside press, no storage, the danger mark's shape and ring, the jar's gain). |
+| Browser checks (`tools/section1fChecks.ts`, `checks.txt`) | 61 checks pass. |
+| Screenshots | `shut-`, `status-open-`, `settings-open-` and `both-shut-` at 1366x768, 1920x1080 and 2560x1440, each with a `-gray` copy. With both shut the map, the labels and Maya are unobstructed: all that is left is two 36 px buttons. |
+| The buttons | Both 36 x 36 px, no text and no number, the names "Status" and "Settings" (aria-label), aria-expanded false and true, a tooltip only on hover and keyboard focus, a visible focus ring. A shut panel is just its button (36 x 36). |
+| Out of the way while shut | The instrument cluster, coin jar, Field Guide button, the toggle row, and Show risk, Maya, Sound and Quality are not rendered. |
+| Keyboard | Tab reaches both buttons; Enter and Space open; Esc closes and returns focus to the button; R, M and S toggle Show risk, Maya and Sound with both panels shut, with Status open and with Settings open; opening one closes the other; a press on the map closes an open panel. |
+| axe-core | No serious or critical violations: both shut, Status open, Settings open. |
+| Danger mark | Not shown on a calm load. Shown on the shut Status button for a fall in Resilience (until the panel is opened) and for a storm warning (still shown after opening, while it is up); its name becomes "Status: danger". It is a ringed diamond on a lit rim: readable in `danger-resilience-1920x1080-gray.jpg`. |
+| The jar's gain | A "+N" floats beside the shut Status button and is gone in about a second (`gain-pop-1920x1080.jpg`). |
+| Risk wave | `tools/riskIntroCheck.ts` passes with its target updated: with Settings shut the wave flies to the Settings button (and lands on it); with Settings open, to the Show risk control. |
+| Label overlap (`npm run test:labels`) | **37 of 37**; label layer at most 5.8 ms a frame. |
+| Maya layout (`npm run test:layout`) | **105 of 105.** |
+| Tutorial | Loads with its own HUD as it was: no panels. |
+| Console errors | None. |
+| Cross-browser | Chromium only. |
+
+**Decisions and things to know:**
+- **The Settings button is under the Houses counter, not in the very corner:** the top-right corner is held by Back and Help, so the button stands where the toggles stood (134 px down). Its panel opens downward from it.
+- **Opening Status moves the cluster down 44 px** (it opens under its button, where it used to stand at the corner).
+- **The cluster's own collapse (its chevron and pill) is hidden inside the panel:** the panel is the collapse now. The elements are the same ones; nothing was rebuilt.
+- **Tutorial:** the panels are Panjim's only; the Tutorial keeps its cluster, as it has no coin jar, Field Guide or toggles.
+- **The jar's gain floats when coin lands in the jar and when it is banked,** not on the first look at load.
+- **What counts as danger:** a storm warning up (the heat is on), or a fall in Resilience since the panel was last opened.

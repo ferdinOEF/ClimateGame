@@ -81,7 +81,7 @@ export class ReplayCard {
       window.setTimeout(() => {
         document.addEventListener("pointerdown", (event) => {
           const target = event.target;
-          if (target instanceof Element && target.closest(".replay-card, .maya, .panjim-toggles")) return;
+          if (target instanceof Element && target.closest(".replay-card, .maya, .hud-panel")) return;
           finish();
         }, { signal: abort.signal, capture: true });
       }, 300);
