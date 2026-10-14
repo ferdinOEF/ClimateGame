@@ -4,13 +4,10 @@ A coastal resilience game set in Goa. Plant mangroves, raise seawalls,
 restore Khazan fields, and find out whether your slice of coast survives
 the monsoon — and what each kind of defence really costs.
 
-Built with Vite, TypeScript and Three.js. Deploys to the Firebase **Spark
-(free)** tier.
+Built with Vite, TypeScript and Three.js, set in Panjim (Panaji), Goa.
+Hosted on Vercel: every push to `master` deploys to production.
 
-**Play it: <https://rootandruin.web.app>**
-
-The project's original default address, <https://rootride-4ddaa.web.app>, is
-deployed alongside it and serves the same build, so older links keep working.
+**Play it: <https://climate-game-psi.vercel.app>**
 
 ---
 
@@ -21,12 +18,11 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173>. That is the whole setup — **no Firebase
-project needed**. Without cloud config the game runs against
-`localStorage`: the full campaign, levels, stars, badges and personal bests
-all work. Only the shared leaderboard and cross-device sync are unavailable.
-
-To connect a backend, follow [`docs/DEPLOY.md`](docs/DEPLOY.md).
+Open <http://localhost:5173>. That is the whole setup — no backend is needed.
+Without cloud config the game runs against `localStorage`: progress, stars and
+personal bests all work. An optional Firebase backend (shared leaderboard,
+cross-device sync) is described in [`docs/DEPLOY.md`](docs/DEPLOY.md); it is
+not required, and the game does not ask players for an email address.
 
 ## Scripts
 
@@ -37,6 +33,8 @@ To connect a backend, follow [`docs/DEPLOY.md`](docs/DEPLOY.md).
 | `npm run preview` | Serve the production build locally |
 | `npm test` | Unit tests (vitest, no browser needed) |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm run test:labels` / `test:layout` / `test:maya` | Label overlap, Maya layout and Maya stability checks |
+| `npm run bots` | Bot playthroughs over many seeds |
 | `npm run emulators` | Firebase Auth + Firestore emulators |
 | `npm run deploy` | Build and deploy everything |
 | `npm run deploy:hosting` | Deploy the site only |
@@ -67,7 +65,8 @@ telegraphed storm lands when its countdown reaches zero regardless.
 
 ### The campaign
 
-A guided tutorial, then one level: **Panaji**, on the Mandovi estuary.
+A guided tutorial, then one level: **Panaji**, on the Mandovi estuary. The
+main menu offers just two things: **Tutorial** and **Choose a level**.
 
 The Panaji board is **743 hexes of real Panjim geography**. The coastline from
 Miramar down to Dona Paula, the Mandovi and its estuary fringe, the sand, and
@@ -114,20 +113,18 @@ map files and the coordinates they came from are still on disk under
 they are no longer imported, so they cost nothing in the bundle. Re-adding one
 is a line in `levelMap.ts` plus a line in `levels.json`.
 
-**Both levels are unlocked.** Flip `ALL_LEVELS_UNLOCKED` in
-`src/levels/progression.ts` back to `false` to restore sequential unlocking.
+All levels are unlocked; flip `ALL_LEVELS_UNLOCKED` in
+`src/levels/progression.ts` to `false` to restore sequential unlocking.
 
-Plus a **daily challenge** seeded from the UTC date, so every player worldwide
-gets the same storms on the same coast.
+A daily challenge seeded from the UTC date exists in the code but is hidden from
+the menu (`VITE_SHOW_MENU_EXTRAS`, off by default).
 
 ### Before you play
 
-The first time someone presses Start, they are asked for a name, an age and
-an email, once. It is saved on the device and mirrored to
-`playtesters/{uid}` in Firestore so a test session leaves a record somebody
-can act on. Only the name is ever shown to another player. See
-[`docs/DEPLOY.md`](docs/DEPLOY.md) for what is stored, what the rules
-enforce, and how to check the write is landing.
+Nothing is asked of you. Pressing Play goes straight into the level: no name,
+age or email field. The account and email features still exist in the code but
+are switched off; `VITE_REQUIRE_EMAIL=true` at build time turns them back on
+(see `src/services/features.ts` and [`docs/DEPLOY.md`](docs/DEPLOY.md)).
 
 ## Project layout
 
@@ -136,13 +133,15 @@ src/core/       pure game logic (no DOM, no Three.js, no network)
 src/render/     Three.js scene + mesh managers
 src/ui/         HUD, popovers, place labels, and the shell screens
 src/levels/     campaign data, the map registry, progression, achievements
-src/services/   Firebase, auth, leaderboard, player registry, persistence
+src/services/   optional Firebase, auth, leaderboard, persistence, feature flags
 src/app/        entry point, shell, and the game session
 src/data/       authored JSON: elements, levels, nuggets
 src/data/maps/  one file per playable board — generated, never hand-edited
 tools/mapgen/   the coordinates the maps are built from, and the rasteriser
 tools/          balance simulation, the headless walkthrough, smoke tests
-docs/           deployment, architecture, and build history
+docs/           architecture, build history, QA report, deployment notes
+
+Working rules for contributors and agents are in [`CLAUDE.md`](CLAUDE.md).
 ```
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how it fits
