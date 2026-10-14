@@ -67,6 +67,8 @@ async function main(): Promise<void> {
     const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
     console.log(`Panaji at 1920x1080, Medium: Maya shown ${mean(shown).toFixed(2)} fps (${shown.map((x) => x.toFixed(2)).join(", ")}), hidden ${mean(hidden).toFixed(2)} fps (${hidden.map((x) => x.toFixed(2)).join(", ")}); her cost ${(mean(hidden) - mean(shown)).toFixed(2)} fps`);
 
+    // The game's page is closed first: left running it shares the one software renderer and drags every page after it down to its own 1-2 fps.
+    await page.context().close();
     // Her figure alone, animated by each version's own stylesheet: the new one against master's, with nothing else on the page.
     const nodes = (svg: string): number => (svg.match(/<[a-zA-Z]/g) ?? []).length;
     const box = figureSize(HUD_VIEWBOX, HUD_UNIT_PX);

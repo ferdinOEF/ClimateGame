@@ -1,0 +1,361 @@
+{
+ "label": "after",
+ "live": [
+  {
+   "state": "idle",
+   "seconds": 10.1,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.46
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    22398,
+    22402,
+    13639
+   ]
+  },
+  {
+   "state": "greeting",
+   "seconds": 10.1,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.39,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.46
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    15357,
+    16345,
+    16195
+   ]
+  },
+  {
+   "state": "tip",
+   "seconds": 12.9,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.31,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.25
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    9664,
+    15133,
+    13945
+   ]
+  },
+  {
+   "state": "explains",
+   "seconds": 10.3,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.39,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.51
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    15571,
+    16400,
+    6833
+   ]
+  },
+  {
+   "state": "warning",
+   "seconds": 10.4,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.38,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.4
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    14433,
+    15274,
+    15211
+   ]
+  },
+  {
+   "state": "worried",
+   "seconds": 11.1,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.36,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.44
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    15392,
+    5092,
+    15122
+   ]
+  },
+  {
+   "state": "celebrates",
+   "seconds": 11.9,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.34,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.36
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    10282,
+    16401,
+    15039
+   ]
+  }
+ ],
+ "calm": [
+  {
+   "state": "idle",
+   "seconds": 6.9,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.3
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "greeting",
+   "seconds": 6.7,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.45,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.4
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "tip",
+   "seconds": 6.6,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.3,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.41
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "explains",
+   "seconds": 5.1,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.39,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.72
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "warning",
+   "seconds": 6.2,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.32,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.41
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "worried",
+   "seconds": 6.1,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.33,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.13
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "celebrates",
+   "seconds": 7.3,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.28,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.2
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  }
+ ],
+ "idleStill": {
+  "moved": false,
+  "frames": 2
+ }
+}

@@ -6,7 +6,7 @@
  * Usage:  npx tsx tools/mayaStates.ts [outDir]
  *   outDir defaults to docs/qa/section1e.
  *
- * Opens Panaji at 1920x1080, puts Maya in each state through the
+ * Opens Panaji at 1366x768 (STATES_VIEW=WxH for another size), puts Maya in each state through the
  * `maya:<state>` scenario, lets the pose settle and photographs her figure
  * at HUD size (her whole body now), then lays the crops out as
  * `maya-states.png` (all at 1x in a strip, then each enlarged 2x; and a `-gray` twin). The vector detail is in maya-hud-crop.png
@@ -34,7 +34,8 @@ async function main(): Promise<void> {
   const errors: string[] = [];
   const crops: { state: string; hud: string; big: string }[] = [];
   try {
-    const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
+    const [vw, vh] = (process.env.STATES_VIEW ?? "1366x768").split("x").map(Number);
+    const page = await (await browser.newContext({ viewport: { width: vw, height: vh } })).newPage();
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("console", (m) => {
       if (m.type() === "error") errors.push(m.text());
