@@ -30,11 +30,12 @@ import { playSound } from "@ui/audioHooks";
 import { coneTiles, forecastSite } from "@core/hazardModel";
 import { buildHeatView, hazardsOf, HEAT_LEAD_QUARTERS, type Exposure, type HeatViewTile } from "@core/exposure";
 import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
-import { PrefToggle, isTyping } from "@ui/panjim/hudToggles";
+import { PrefToggle, isTyping, togglesRow } from "@ui/panjim/hudToggles";
 import { tooltipText } from "@ui/tooltip";
 import { Maya } from "@ui/panjim/maya";
 import { MayaDirector, GUIDE_NOTES } from "./mayaDirector";
 import { factById } from "@core/facts";
+import { HudPanels } from "@ui/panjim/hudPanels";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
 import { mayaAftermath, stormWord } from "@core/mayaLines";
@@ -174,6 +175,12 @@ export class PanjimController {
   readonly mayaDirector: MayaDirector;
   /** Picks the fact Maya tells when an element is built (nuggetPopup.ts). */
   readonly nuggets: NuggetPopup;
+  /** The HUD's two panels, each shut to a small button (hudPanels.ts). */
+  readonly panels: HudPanels;
+  private lastResilience: number | null = null;
+  /** Resilience has fallen since the Status panel was last opened. */
+  private resilienceDropUnseen = false;
+  private nextDangerMs = 0;
   /** Maya's voice on or off (M). The heat stays either way. */
   readonly mayaToggle: PrefToggle;
   private readonly replayCard: ReplayCard;
@@ -305,6 +312,17 @@ export class PanjimController {
       if (!this.nuggets.replay(note.id)) this.mayaDirector.replay(note);
     };
     this.fieldGuide.discoveries = () => this.nuggets.progress;
+    // The HUD kept almost out of the way (hudPanels.ts): the instrument cluster, coin jar and Field Guide
+    // button go into one panel and the toggles into another, each shut to a small button. The elements
+    // are moved, not rebuilt: their handlers, ids and shortcuts (R, M, S) are the ones they were.
+    this.panels = new HudPanels(host.container);
+    this.panels.status.adopt(host.container.querySelector<HTMLElement>(".instrument-cluster"), this.jar.el, this.fieldGuide.buttonEl);
+    this.panels.settings.adopt(togglesRow(host.container));
+    this.panels.status.onOpen = () => {
+      this.resilienceDropUnseen = false;
+      this.updateDanger();
+    };
+    this.jar.onGain = (text) => this.panels.status.floatText(text);
     this.attachTooltips();
     this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
@@ -452,6 +470,7 @@ export class PanjimController {
     // A jar reads full at about two years of the current income, and never
     // below a small floor, so even a young city sees it fill.
     this.jar.render(this.run.jar, Math.max(60, this.run.incomePerQuarter * 8));
+    this.updateDanger();
     const climate = this.run.climate;
     if (!climate) return;
     const startYear = this.run.config.startYear;
@@ -520,7 +539,7 @@ export class PanjimController {
       "pointerdown",
       (event) => {
         const target = event.target;
-        if (target instanceof Element && target.closest(".panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready, .houses-counter")) return;
+        if (target instanceof Element && target.closest(".hud-panel, .panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready, .houses-counter")) return;
         hurry = true;
       },
       { signal: abort.signal, capture: true }
@@ -851,8 +870,23 @@ export class PanjimController {
     }
   }
 
+  /**
+   * The Status button's danger mark: a storm warning is up (the heat is on),
+   * or Resilience has fallen since the panel was last opened. Never a number.
+   */
+  private updateDanger(): void {
+    const resilience = this.host.state.resilience;
+    if (this.lastResilience !== null && resilience < this.lastResilience - 0.001) this.resilienceDropUnseen = true;
+    this.lastResilience = resilience;
+    this.panels.status.setDanger(this.exposure !== null || this.resilienceDropUnseen);
+  }
+
   frame(): void {
     const now = performance.now();
+    if (now >= this.nextDangerMs) {
+      this.nextDangerMs = now + 300;
+      this.updateDanger();
+    }
     // Auto quality: average the frame rate a few seconds at a time and step down if it is low.
     const fps = this.sampler.frame(now, this.lastFrameMs);
     this.lastFrameMs = now;
@@ -1566,6 +1600,7 @@ export class PanjimController {
     this.aftermath.dispose();
     this.jar.dispose();
     this.fieldGuide.dispose();
+    this.panels.dispose();
     this.forecastLabel.remove();
     this.clock.dispose();
     this.host.container.classList.remove("has-panjim-clock");

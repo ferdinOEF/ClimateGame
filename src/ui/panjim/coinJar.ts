@@ -14,6 +14,13 @@ export class CoinJar {
   private readonly fillEl: SVGRectElement;
   private readonly amountEl: HTMLElement;
   private readonly popLayer: HTMLElement;
+  /** The whole coin in the jar at the last render (null before the first), to tell a gain from a first look. */
+  private lastWhole: number | null = null;
+  /**
+   * Called with "+N" when coin lands in the jar or is banked: the Status panel
+   * floats it beside its button while the jar itself is shut away in the panel.
+   */
+  onGain: ((text: string) => void) | null = null;
 
   constructor(container: HTMLElement, private readonly onCollect: () => number) {
     this.el = document.createElement("button");
@@ -48,6 +55,8 @@ export class CoinJar {
   /** `amount` is the coin in the jar; the jar reads full at `fullAt`. */
   render(amount: number, fullAt: number): void {
     const whole = Math.floor(amount);
+    if (this.lastWhole !== null && whole > this.lastWhole) this.onGain?.(`+${whole - this.lastWhole}`);
+    this.lastWhole = whole;
     this.amountEl.textContent = whole > 0 ? `+${whole}` : "0";
     const share = Math.max(0, Math.min(1, amount / Math.max(1, fullAt)));
     const height = 39 * share;
@@ -58,6 +67,7 @@ export class CoinJar {
   }
 
   private pop(text: string): void {
+    this.onGain?.(text);
     const pop = document.createElement("span");
     pop.className = "jar-pop";
     pop.textContent = text;

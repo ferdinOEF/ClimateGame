@@ -1870,11 +1870,13 @@
   The landing: one ripple ring spreading from the button, and one gentle
   swell of the button itself. Once; no blinking (flash safety).
 */
-.risk-toggle.risk-intro-landing {
+.risk-toggle.risk-intro-landing,
+.hud-panel-button.risk-intro-landing {
   animation: risk-intro-swell 600ms ease-out 1;
 }
 
-.risk-toggle.risk-intro-landing::after {
+.risk-toggle.risk-intro-landing::after,
+.hud-panel-button.risk-intro-landing::after {
   content: "";
   position: absolute;
   inset: -2px;
@@ -1885,7 +1887,8 @@
 }
 
 /* Reduced motion: no swell, no ripple; a single soft glow that fades. */
-.risk-toggle.risk-intro-pulse {
+.risk-toggle.risk-intro-pulse,
+.hud-panel-button.risk-intro-pulse {
   animation: risk-intro-glow 900ms ease-out 1;
 }
 
@@ -1937,4 +1940,204 @@
 }
 @media (max-width: 900px), (max-height: 560px) {
   .maya-full-figure { display: none; }
+}
+
+/* ---- The minimal HUD: two panels, each shut to a small button (hudPanels.ts) ------------ */
+
+/*
+ * Status (top-left): the instrument cluster, the coin jar, the Field Guide button.
+ * Settings (top-right, under the Houses counter where the toggles stood): Show risk,
+ * Maya, Sound, Calm motion, Quality. Shut, each is one 36 px round button with a plain
+ * glyph, no label and no number; open, its old contents sit under it, unchanged.
+ */
+.hud-panel {
+  position: absolute;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.hud-panel > * {
+  pointer-events: auto;
+}
+
+.hud-panel-status {
+  left: 12px;
+  top: 12px;
+  align-items: flex-start;
+}
+
+.hud-panel-settings {
+  right: 12px;
+  top: 134px;
+  align-items: flex-end;
+}
+
+.hud-panel-button {
+  position: relative;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(253, 246, 230, 0.3);
+  background: rgba(20, 30, 26, 0.72);
+  color: #fdf6e6;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.hud-panel-button svg {
+  display: block;
+  fill: currentColor;
+}
+
+.hud-panel-button:hover,
+.hud-panel.open .hud-panel-button {
+  background: rgba(20, 30, 26, 0.92);
+  border-color: rgba(253, 246, 230, 0.55);
+}
+
+.hud-panel-button:focus-visible {
+  outline: 3px solid #f2c35b;
+  outline-offset: 2px;
+}
+
+/* The tooltip: the button's name, on hover and keyboard focus only (::after is the risk wave's landing ring). */
+.hud-panel-button::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 50%;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgba(16, 24, 20, 0.94);
+  color: #fdf6e6;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+}
+
+.hud-panel-status .hud-panel-button::before { left: calc(100% + 8px); }
+.hud-panel-settings .hud-panel-button::before { right: calc(100% + 8px); }
+
+.hud-panel-button:hover::before,
+.hud-panel-button:focus-visible::before {
+  opacity: 1;
+}
+
+.hud-panel.open .hud-panel-button::before {
+  display: none;
+}
+
+/*
+ * The danger mark (Status only): a storm warning is up, or Resilience has fallen. No number. A
+ * diamond with a light ring and a lit rim on the button, so it reads without its colour.
+ */
+.hud-panel-danger {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 11px;
+  height: 11px;
+  box-sizing: border-box;
+  border: 2px solid #fdf6e6;
+  border-radius: 2px;
+  background: #e0533a;
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.hud-panel-danger[hidden] {
+  display: none;
+}
+
+.hud-panel.danger .hud-panel-button {
+  border-color: #fdf6e6;
+  border-width: 2px;
+}
+
+/* The body: its old look, in a column under the button, growing from it. */
+.hud-panel-body {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: hud-panel-open 180ms ease-out;
+}
+
+.hud-panel-status .hud-panel-body { align-items: flex-start; transform-origin: 18px 0; }
+.hud-panel-settings .hud-panel-body { align-items: flex-end; transform-origin: calc(100% - 18px) 0; }
+
+.hud-panel-body[hidden] {
+  display: none;
+}
+
+@keyframes hud-panel-open {
+  from { opacity: 0; transform: scale(0.92); }
+}
+
+/* The elements moved into a panel flow in it, whatever corner they were pinned to. */
+.hud-panel .hud-panel-body > .instrument-cluster,
+.hud-panel .hud-panel-body > .coin-jar,
+.hud-panel .hud-panel-body > .field-guide-button,
+.hud-panel .hud-panel-body > .panjim-toggles {
+  position: relative;
+  inset: auto;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: auto;
+}
+
+/* The cluster's own collapse (its chevron and pill) is the panel's job now: inside it, the card is always open. */
+.hud-panel-body .instrument-cluster .cluster-collapse-toggle,
+.hud-panel-body .instrument-cluster .cluster-pill {
+  display: none !important;
+}
+
+/* The jar's gain, floated beside the shut Status button, and gone. */
+.hud-panel-pop {
+  position: absolute;
+  left: 46px;
+  top: 7px;
+  color: #ffe9a8;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  animation: hud-panel-pop 1.3s ease-out forwards;
+}
+
+@keyframes hud-panel-pop {
+  0% { opacity: 0; transform: translateY(6px); }
+  15% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-12px); }
+}
+
+/* Reduced motion and Calm motion: opens at once, the gain only fades. */
+@media (prefers-reduced-motion: reduce) {
+  .hud-panel-body { animation: none; }
+  .hud-panel-pop { animation: hud-panel-fade 1.3s linear forwards; }
+}
+.calm-motion .hud-panel-body { animation: none; }
+.calm-motion .hud-panel-pop { animation: hud-panel-fade 1.3s linear forwards; }
+@keyframes hud-panel-fade {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (max-width: 700px) {
+  .hud-panel-settings { top: 120px; right: 8px; }
 }
