@@ -105,7 +105,6 @@ export class MayaDirector {
           text: warningLine("exposed", place, next.kind),
           state: "warning",
           urgent: true,
-          anchor: () => this.ctx.project(coord),
           onShow: () => this.ctx.focus(coord)
         });
       }
@@ -121,8 +120,7 @@ export class MayaDirector {
             text: warningLine("lastCall", place, next.kind, exposure.housesAtRisk.length),
             state: "warning",
             urgent: true,
-            anchor: () => this.ctx.project(coord),
-            onShow: () => this.ctx.focus(coord)
+              onShow: () => this.ctx.focus(coord)
           });
         } else if (this.warned.has(next.id)) {
           this.maya.say({ id: `fixed:${next.id}`, text: warningLine("fixed", this.lastPlace ?? "Panjim", next.kind), state: "celebrates", urgent: true });

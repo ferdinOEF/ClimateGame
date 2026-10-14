@@ -19,7 +19,7 @@ import path from "node:path";
 import { execSync } from "node:child_process";
 import { startDevServer } from "./devServer";
 import { HUD_UNIT_PX, HUD_VIEWBOX, hudFigureSvg } from "../src/ui/panjim/mayaArt";
-import { figureSize } from "../src/ui/panjim/mayaLayout";
+import { MAYA_SCALE, figureSize } from "../src/ui/panjim/mayaLayout";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -77,16 +77,16 @@ async function main(): Promise<void> {
     fs.writeFileSync(oldArtFile, execSync("git show master:src/ui/panjim/mayaArt.ts", { cwd: ROOT, encoding: "utf8" }));
     const oldArt = (await import(oldArtFile)) as { hudFigureSvg: (w: number, h: number) => string };
     fs.rmSync(oldArtFile);
-    const newSvg = hudFigureSvg(box.w, box.h);
+    const newSvg = hudFigureSvg("100%", "100%");
     const oldSvg = oldArt.hudFigureSvg(139, 136);
     console.log(`HUD figure SVG nodes: master ${nodes(oldSvg)}, now ${nodes(newSvg)}`);
     const pages: [string, string, string, string][] = [
-      ["new", css, newSvg, `--maya-scale:0.7;--maya-fig-w:${box.w}px;--maya-fig-h:${box.h}px`],
+      ["new", css, newSvg, `--maya-scale:${MAYA_SCALE};--maya-home:12px;--maya-fig-w:${box.w}px;--maya-fig-h:${box.h}px;--maya-badge:30px;--maya-minimise:14px`],
       ["master", oldCss, oldSvg, ""]
     ];
     for (const [name, sheet, svg, vars] of pages) {
       const alone = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
-      await alone.setContent(`<!doctype html><html><head><style>${sheet}</style></head><body style="margin:0;background:#3b6b5c"><div class="maya state-idle" style="${vars}"><div class="maya-figure-wrap" style="top:auto;bottom:80px">${svg}</div></div></body></html>`);
+      await alone.setContent(`<!doctype html><html><head><style>${sheet}</style></head><body style="margin:0;background:#3b6b5c"><div class="maya state-idle" style="${vars}"><div class="maya-figure-wrap" style="top:auto;left:12px;bottom:80px">${svg}</div></div></body></html>`);
       await alone.waitForTimeout(1500);
       console.log(`Her figure alone, idling (${name}): ${(await rafFps(alone)).toFixed(1)} fps`);
       await alone.close();

@@ -1171,20 +1171,21 @@ export class PanjimController {
   async scenario(name: string): Promise<boolean> {
     // "heat-N": stop the clock N quarters before the next storm, building
     // nothing. "heat-defend": plant three defences on its path first.
-    // "maya-jump-<place>": a warning that hops her to a named place (the layout tests).
-    const jump = /^maya-jump-(.+)$/.exec(name);
-    if (jump) {
-      const wanted = jump[1].replace(/-/g, " ").toLowerCase();
+    // "maya-warn-<place>": a warning about a named place, with the camera glide a real one has (the layout tests).
+    // She does not move: only the camera does.
+    const warn = /^maya-warn-(.+)$/.exec(name);
+    if (warn) {
+      const wanted = warn[1].replace(/-/g, " ").toLowerCase();
       const spot = this.host.landmarks.find((l) => l.name.toLowerCase().includes(wanted));
       if (!spot) return false;
       const coord = { q: spot.q, r: spot.r };
       this.maya.dismiss();
       this.maya.say({
-        id: `sample-jump:${performance.now()}`,
+        id: `sample-warn:${performance.now()}`,
         text: `${spot.name} is exposed! Strengthen it before the storm.`,
         state: "warning",
         urgent: true,
-        anchor: () => this.host.project(coord)
+        onShow: () => this.host.focusCamera(coord)
       });
       this.maya.next();
       return true;
@@ -1198,8 +1199,7 @@ export class PanjimController {
         explains: "A khazan holds floodwater, so nearby homes stay drier.",
         warning: "Taleigao is exposed! Strengthen it before the flood.",
         worried: "We lost 6 homes at Taleigao. A few more defences there next time and they will stand.",
-        celebrates: "The mangroves at Taleigao held 40 homes.",
-        jump: "Over here!"
+        celebrates: "The mangroves at Taleigao held 40 homes."
       };
       this.maya.dismiss();
       this.maya.say({ id: `sample:${pose[1]}:${performance.now()}`, text: samples[pose[1]] ?? pose[1], state: pose[1] as never, urgent: true });

@@ -4,7 +4,7 @@
  * layout), so the face can be checked state by state.
  *
  * Usage:  npx tsx tools/mayaStates.ts [outDir]
- *   outDir defaults to docs/qa/section1c.
+ *   outDir defaults to docs/qa/section1e.
  *
  * Opens Panaji at 1920x1080, puts Maya in each state through the
  * `maya:<state>` scenario, lets the pose settle and photographs her figure
@@ -20,9 +20,9 @@ import path from "node:path";
 import { startDevServer } from "./devServer";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section1c");
+const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section1e");
 const PORT = Number(process.env.SHOTS_PORT ?? 5294);
-const STATES = ["idle", "greeting", "tip", "explains", "warning", "worried", "celebrates", "jump"];
+const STATES = ["idle", "greeting", "tip", "explains", "warning", "worried", "celebrates"];
 
 async function main(): Promise<void> {
   fs.mkdirSync(OUT, { recursive: true });

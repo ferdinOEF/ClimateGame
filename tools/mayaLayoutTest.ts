@@ -7,7 +7,7 @@
  *   x the Discovery card hidden and shown (its tallest card: the longest cited fact, dunes-barrier, with its Source row)
  *   x the Get ready panel open and collapsed
  *   x no tooltip and a tooltip open
- *   x Maya docked with a tip, and mid warning jump to three places
+ *   x Maya with a tip, and with a warning (the camera glides to three places; she never moves)
  *
  * Fails (exit code 1) on the first overlap, with the offending pair.
  * `npm run test:layout`.
@@ -63,9 +63,6 @@ function overlap(a: Rect, b: Rect): boolean {
 
 async function assertClear(page: Page, label: string, expectBubble: boolean): Promise<void> {
   await page.waitForTimeout(450);
-  // A move fades her out and back in at the new spot; measure once she has arrived. Under
-  // software GL with the full city on the board a frame can take over a second, so allow 10 s.
-  for (let i = 0; i < 100 && (await page.evaluate("Boolean(document.querySelector('.maya.hopping'))")); i++) await page.waitForTimeout(100);
   // Her bubble fades in over 220 ms; under software GL a slow first frame can leave it at
   // opacity 0 when measured. Wait (up to 3 s) for the fade to finish; it still fails if it never shows.
   if (expectBubble) {
@@ -81,9 +78,8 @@ async function assertClear(page: Page, label: string, expectBubble: boolean): Pr
   // fresh, clean layout pass.
   await page.evaluate(`new Promise((resolve) => {
     const m = window.__panjimForTest.maya;
-    const since = performance.now();
-    const t0 = since;
-    const tick = () => (m.lastLayoutMs > since && !m.layoutDirty) || performance.now() - t0 > 10000 ? resolve(null) : requestAnimationFrame(tick);
+    const t0 = performance.now();
+    const tick = () => !m.layoutDirty || performance.now() - t0 > 10000 ? resolve(null) : requestAnimationFrame(tick);
     requestAnimationFrame(tick);
   })`);
   const { maya, others, view } = await measure(page);
@@ -93,6 +89,11 @@ async function assertClear(page: Page, label: string, expectBubble: boolean): Pr
   if (expectBubble && !maya.some((r) => r.label === "bubble")) {
     const why = await page.evaluate(`(() => { const m = window.__panjimForTest.maya; return JSON.stringify({ current: m.current && m.current.id, pending: m.pending, heldBack: m.heldBack, minimised: m.minimised, muted: m.muted, bubbleHidden: m.bubble.hidden, view: [innerWidth, innerHeight] }); })()`);
     problems.push(`her bubble is not showing ${why}`);
+  }
+  // She never moves: her figure (or her badge) stands at her home, a fixed margin in from the bottom-left corner, on whole pixels.
+  for (const m of maya.filter((r) => r.label === "figure" || r.label === "badge")) {
+    if (m.x !== 12 || Math.abs(view.h - (m.y + m.h) - 12) > 0.001) problems.push(`${m.label} is not at home: ${JSON.stringify([m.x, m.y, m.w, m.h])} on ${view.w}x${view.h}`);
+    if (![m.x, m.y, m.w, m.h].every(Number.isInteger)) problems.push(`${m.label} is not on whole pixels: ${JSON.stringify([m.x, m.y, m.w, m.h])}`);
   }
   for (const m of maya) {
     if (m.x < 0 || m.y < 0 || m.x + m.w > view.w + 0.5 || m.y + m.h > view.h + 0.5) problems.push(`${m.label} leaves the viewport (${JSON.stringify(m)})`);
@@ -129,18 +130,18 @@ async function main(): Promise<void> {
       for (const discovery of [false, true]) {
         for (const getReadyOpen of [true, false]) {
           for (const tooltip of [false, true]) {
-            for (const jump of [null, "st-cruz", "merces", "miramar"]) {
+            for (const warn of [null, "st-cruz", "merces", "miramar"]) {
               // Reset the HUD state for this case.
               await page.evaluate(`(() => {
                 const panel = document.querySelector(".get-ready");
                 if (panel && panel.classList.contains("collapsed") === ${getReadyOpen}) panel.querySelector(".get-ready-toggle").click();
                 window.__tooltipsForTest.hide();
               })()`);
-              await page.evaluate(`window.__panjimScenarioForTest(${JSON.stringify(jump ? `maya-jump-${jump}` : "maya:tip")})`);
+              await page.evaluate(`window.__panjimScenarioForTest(${JSON.stringify(warn ? `maya-warn-${warn}` : "maya:tip")})`);
               // A discovery: the tallest fact (a cited one, with its count and Source), said by Maya in place of her tip.
               if (discovery) await page.evaluate("window.__nuggetPopupForTest.replay('khazan-what')");
               if (tooltip) await page.evaluate(`(() => { const el = document.querySelector('[data-tip="getReady"]') || document.querySelector('[data-tip="coin"]'); window.__tooltipsForTest.show(el); })()`);
-              await assertClear(page, `${tag} discovery=${discovery ? "said" : "no"} getReady=${getReadyOpen ? "open" : "collapsed"} tooltip=${tooltip ? "open" : "none"} ${jump ? `jump=${jump}` : "docked"}`, true);
+              await assertClear(page, `${tag} discovery=${discovery ? "said" : "no"} getReady=${getReadyOpen ? "open" : "collapsed"} tooltip=${tooltip ? "open" : "none"} ${warn ? `warning=${warn}` : "tip"}`, true);
             }
           }
         }

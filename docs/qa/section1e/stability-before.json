@@ -1,0 +1,407 @@
+{
+ "label": "before",
+ "live": [
+  {
+   "state": "idle",
+   "seconds": 11.2,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.07,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 1.97
+   },
+   "framesChanged": 2,
+   "strongChanged": 2,
+   "changedList": [
+    36854,
+    26680
+   ]
+  },
+  {
+   "state": "greeting",
+   "seconds": 10.7,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.03,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.15
+   },
+   "framesChanged": 2,
+   "strongChanged": 2,
+   "changedList": [
+    18169,
+    19339
+   ]
+  },
+  {
+   "state": "tip",
+   "seconds": 11,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.1,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.19
+   },
+   "framesChanged": 2,
+   "strongChanged": 2,
+   "changedList": [
+    29973,
+    20514
+   ]
+  },
+  {
+   "state": "explains",
+   "seconds": 11,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.09,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.09
+   },
+   "framesChanged": 2,
+   "strongChanged": 2,
+   "changedList": [
+    27772,
+    21988
+   ]
+  },
+  {
+   "state": "warning",
+   "seconds": 11.7,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.11,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.38
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    30049,
+    26625,
+    23916
+   ]
+  },
+  {
+   "state": "worried",
+   "seconds": 12,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.17,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.43
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    21745,
+    21488,
+    24520
+   ]
+  },
+  {
+   "state": "celebrates",
+   "seconds": 12.1,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.16
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    27596,
+    31453,
+    27794
+   ]
+  },
+  {
+   "state": "jump",
+   "seconds": 12.9,
+   "frames": 4,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.24,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.25
+   },
+   "framesChanged": 3,
+   "strongChanged": 3,
+   "changedList": [
+    12354,
+    26567,
+    31495
+   ]
+  }
+ ],
+ "calm": [
+  {
+   "state": "idle",
+   "seconds": 7,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.28
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "greeting",
+   "seconds": 7,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.15,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.16
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "tip",
+   "seconds": 6.2,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 0.97,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.11
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "explains",
+   "seconds": 5.5,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.26,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.34
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "warning",
+   "seconds": 6.4,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.24,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.17
+   },
+   "framesChanged": 1,
+   "strongChanged": 0,
+   "changedList": [
+    2
+   ]
+  },
+  {
+   "state": "worried",
+   "seconds": 6.4,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.09,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.34
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "celebrates",
+   "seconds": 6.9,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.02,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.18
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "jump",
+   "seconds": 7.5,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 806,
+    "w": 78.375,
+    "h": 205.90625
+   },
+   "perSecond": {
+    "layouts": 1.21,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.15
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  }
+ ],
+ "idleStill": {
+  "moved": false,
+  "frames": 1
+ }
+}
