@@ -446,6 +446,7 @@ export class PanjimController {
     const clock = this.clock.parts;
     tips.attach(clock.face, "clock", () => ({ label: this.run.label, turn: Math.min(this.run.turnNumber, this.run.totalYears), total: this.run.totalYears }));
     tips.attach(clock.until, "buildsUntil");
+    tips.attach(clock.skip, "skipYear");
     const outlook = this.outlook.parts;
     tips.attach(outlook.track, "outlookTrack", () => ({ start: this.run.config.startYear, end: this.run.config.endYear }));
     tips.attach(outlook.line, "outlookNext", () => ({ next: this.outlook.nextText }));

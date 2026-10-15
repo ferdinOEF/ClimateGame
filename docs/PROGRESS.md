@@ -8303,3 +8303,5 @@ Every archetype uses every build of every year it plays.
 - **The first objective** fits its 5 builds: 2 pandanus, 2 dunes and 1 breakwater, all on the Kala Academy to Sharada Mandir stretch (tested).
 
 **The bots** build once a year. A bot with nothing worth building near the danger builds on the free tile farthest from every storm. The do-nothing control can no longer do nothing, so it builds only far away; Section 10 renames it. The numeric balance bands are back to structural checks until Section 10 re-tunes for 25 builds.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 8). Maya's mechanics were left alone at the owner's request.

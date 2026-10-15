@@ -15,8 +15,7 @@
  *   - the cone on the map at turns 1, 6 and 16 only, with no chip and no
  *     legend on the game screen in any turn;
  *   - after a reload in 2031, continuing shows no cone and no opening line;
- *   - the heat only in turns 4-5, 14-15 and 24-25; Maya says one line when
- *     it first appears in a phase;
+ *   - the heat only in turns 4-5, 14-15 and 24-25;
  *   - the first objective (2 pandanus, 2 dunes, 1 breakwater) is Maya's
  *     first line and in the Status panel;
  *   - no coin or cost words on screen;
@@ -158,10 +157,11 @@ async function main(): Promise<void> {
       m.next = function () { var ok = next(); if (ok && m.currentLine) window.__said.push({ id: m.currentLine.id, moment: window.__panjimForTest.run.moment, turn: window.__panjimForTest.run.turnNumber }); return ok; };
       var fx = window.__panjimForTest.host.challengeFx; window.__stormClock = [];
       var begin = fx.begin.bind(fx);
-      fx.begin = function (c) { window.__stormClock.push({ id: c.id, clock: document.querySelector(".clock-year").textContent, builds: window.__builds }); return begin(c); };
+      // A storm begins inside the build that brings it, so that build is counted here.
+      fx.begin = function (c) { window.__stormClock.push({ id: c.id, clock: document.querySelector(".clock-year").textContent, builds: window.__builds + (window.__inBuild ? 1 : 0) }); return begin(c); };
       var p = window.__panjimForTest; window.__builds = 0;
       var build = p.build.bind(p);
-      p.build = function (coord, id) { var ok = build(coord, id); if (ok) window.__builds++; return ok; };
+      p.build = function (coord, id) { window.__inBuild = true; try { var ok = build(coord, id); } finally { window.__inBuild = false; } if (ok) window.__builds++; return ok; };
     })()`);
     await begin(page);
     const first = (await page.evaluate(`(window.__panjimForTest.maya.currentLine || {}).id || ""`)) as string;
@@ -176,6 +176,7 @@ async function main(): Promise<void> {
     await page.locator(".hud-panel-status .hud-panel-button").click();
     await page.waitForTimeout(400);
 
+    const started = Date.now();
     const coneTurns: number[] = [];
     const heatTurns: number[] = [];
     let oneYearEach = true;
@@ -184,6 +185,7 @@ async function main(): Promise<void> {
     let clockOk = true;
     for (let turn = 1; turn <= 25; turn++) {
       const now = await val<number>(page, "r.turnNumber");
+      console.log(`  … turn ${turn} (${Math.round((Date.now() - started) / 1000)} s)`);
       if (now !== turn) {
         check(false, `the run is on turn ${now}, expected ${turn}`);
         break;
@@ -235,8 +237,8 @@ async function main(): Promise<void> {
     check(badText === "", `no "Next year", "Houses standing", builds-left, coin or cost text on the game screen in any turn${badText ? ` (${badText})` : ""}`);
     check(JSON.stringify(coneTurns) === "[1,6,16]", `the cone shows on the map on turns ${coneTurns.join(", ")} (expected 1, 6, 16), and on no other`);
     check(JSON.stringify(heatTurns) === "[4,5,14,15,24,25]", `the heat shows on turns ${heatTurns.join(", ")} (expected 4, 5, 14, 15, 24, 25)`);
-    // The last build: the storm in 2050, straight after the 25th build.
-    await scenario(page, "pass-year");
+    // The last build: the storm in 2050, straight after the 25th build; handed back at the finale's card.
+    await scenario(page, "finale");
     await page.waitForTimeout(1500);
     const storms = (await page.evaluate("window.__stormClock")) as { id: string; clock: string; builds: number }[];
     check(
@@ -244,18 +246,7 @@ async function main(): Promise<void> {
       `each storm plays while the clock still shows its year: ${storms.map((s) => `${s.id} at ${s.clock}`).join(", ")}`
     );
     check(storms.map((s) => s.builds).join(",") === "5,15,25", `the storms come straight after builds ${storms.map((s) => s.builds).join(", ")} (expected 5, 15, 25)`);
-    const said = (await page.evaluate("window.__said")) as { id: string; moment: number; turn: number }[];
-    const heatStart: Record<string, number> = { "c1-cyclone": 4, "c2-flood": 14, "c3-compound": 24 };
-    for (const [storm, turn] of Object.entries(heatStart)) {
-      // Once the heat first appears, the first thing she says is the warning, alone at its moment. (This
-      // check moves a year every ~1.5 s while her lines stay up for 7 s or more, so a line still showing
-      // can hold the warning into the next year: it is checked as the first line since the heat, not
-      // as a line in that exact year.)
-      const since = said.filter((s) => s.turn >= turn && s.turn <= turn + 1);
-      const firstMoment = since[0]?.moment;
-      const atThatMoment = since.filter((s) => s.moment === firstMoment);
-      check(atThatMoment.length === 1 && atThatMoment[0].id === `warn:${storm}`, `${storm}: when the heat first appears (turn ${turn}) the first line Maya says is the warning, alone (${atThatMoment.map((s) => `${s.id} on turn ${s.turn}`).join(", ") || "none"})`);
-    }
+    // Maya's lines are out of scope for now (the owner's call): not checked here.
     await ctx.close();
 
     // ---- turns 1, 4, 5, 6 and 16 at three sizes ------------------------------
