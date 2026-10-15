@@ -1,22 +1,30 @@
-import type { ChallengeKind, ChallengeOutlook } from "@core/climate";
+import { strengthIcons, type ChallengeKind, type ScheduledChallenge } from "@core/climate";
 
 /**
- * The Climate Outlook: a 2025–2050 timeline under the clock with a marker for
- * each of the three challenges, and one line about the next one.
+ * The Climate Outlook: the run's years as a timeline under the clock, with a
+ * marker for each of the three storms at the end of its year, and one line
+ * about the next one: "Next: Cyclone · end of 2030 · 5 years".
  *
- * Far out a marker is a soft, wide band ("cyclone season, 2030–2034"). It
- * narrows as the date approaches, and two years out it locks into a pin with
- * the exact quarter and a 1–3 strength rating. Never a modal: the player
- * reads it at a glance and keeps building.
+ * The calendar is fixed (Section 5), so every marker is a pin from the start,
+ * with its 1–3 strength rating. Never a modal: the player reads it at a
+ * glance and keeps building.
  */
+export interface OutlookStorm {
+  challenge: ScheduledChallenge;
+  /** Years until it comes, counting this one (1 in its own year). */
+  yearsUntil: number;
+  past: boolean;
+}
+
 export interface OutlookView {
   startYear: number;
+  /** The last year of the run (inclusive). */
   endYear: number;
-  /** Current time, in fractional years. */
-  now: number;
-  outlooks: ChallengeOutlook[];
+  /** The current year. */
+  year: number;
+  storms: OutlookStorm[];
   seaLevelCm: number;
-  /** Stars earned by challenges that have landed, by id. */
+  /** Stars earned by storms that have resolved, by id. */
   results: Map<string, number>;
 }
 
@@ -70,52 +78,65 @@ export class OutlookBar {
     this.seaEl = this.el.querySelector(".outlook-sea")!;
     this.gaugeSlot = this.el.querySelector(".outlook-gauge")!;
 
-    const ticks = this.el.querySelector(".outlook-ticks")!;
-    for (const year of [2030, 2035, 2040, 2045]) {
-      const tick = document.createElement("span");
-      tick.className = "outlook-tick";
-      tick.style.left = `${((year - 2025) / 25) * 100}%`;
-      tick.textContent = String(year);
-      ticks.appendChild(tick);
-    }
   }
 
   render(view: OutlookView): void {
-    const span = view.endYear - view.startYear;
+    // The track runs from the first day of the start year to the last day of the end year.
+    const span = view.endYear + 1 - view.startYear;
     const pct = (year: number): number => Math.max(0, Math.min(100, ((year - view.startYear) / span) * 100));
-    this.fillEl.style.width = `${pct(view.now)}%`;
-    this.nowEl.style.left = `${pct(view.now)}%`;
+    if (this.ticksFor !== `${view.startYear}-${view.endYear}`) {
+      this.ticksFor = `${view.startYear}-${view.endYear}`;
+      const ticks = this.el.querySelector(".outlook-ticks")!;
+      ticks.innerHTML = "";
+      for (let year = Math.ceil(view.startYear / 5) * 5; year <= view.endYear; year += 5) {
+        const tick = document.createElement("span");
+        tick.className = "outlook-tick";
+        tick.style.left = `${pct(year)}%`;
+        tick.textContent = String(year);
+        ticks.appendChild(tick);
+      }
+    }
+    this.fillEl.style.width = `${pct(view.year)}%`;
+    this.nowEl.style.left = `${pct(view.year)}%`;
 
     this.markersEl.innerHTML = "";
-    for (const outlook of view.outlooks) {
+    for (const storm of view.storms) {
       const marker = document.createElement("div");
-      const stars = view.results.get(outlook.challenge.id);
-      marker.className = `outlook-marker phase-${outlook.phase} kind-${outlook.challenge.kind}`;
-      marker.style.left = `${pct(outlook.windowStart)}%`;
-      marker.style.width = `${Math.max(1.2, pct(outlook.windowEnd) - pct(outlook.windowStart))}%`;
-      // An image of the storm window, named by its label (a bare div may not carry one).
+      const stars = view.results.get(storm.challenge.id);
+      const icons = strengthIcons(storm.challenge.strength);
+      // Past; the next storm inside its two-year warning (the one pin that pulses); or still to come.
+      const phase = storm.past ? "past" : storm === view.storms.find((st) => !st.past) && storm.yearsUntil <= 2 ? "soon" : "coming";
+      marker.className = `outlook-marker phase-${phase} kind-${storm.challenge.kind}`;
+      // A pin at the end of its year; the last one is held inside the track.
+      const at = pct(storm.challenge.year + 1);
+      marker.style.left = `${at}%`;
+      marker.classList.toggle("at-end", at >= 99);
+      // An image of the storm, named by its label (a bare div may not carry one).
       marker.setAttribute("role", "img");
-      marker.setAttribute("aria-label", describe(outlook, view.startYear));
-      marker.innerHTML = `<span class="outlook-icon">${ICON[outlook.challenge.kind]}</span>${
-        outlook.phase === "locked" ? `<span class="outlook-strength">${"●".repeat(outlook.icons ?? 1)}${"○".repeat(3 - (outlook.icons ?? 1))}</span>` : ""
+      marker.setAttribute("aria-label", describe(storm));
+      marker.innerHTML = `<span class="outlook-icon">${ICON[storm.challenge.kind]}</span>${
+        storm.past ? "" : `<span class="outlook-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span>`
       }${stars !== undefined ? `<span class="outlook-stars">${"★".repeat(stars)}</span>` : ""}`;
       this.markersEl.appendChild(marker);
     }
 
-    const next = view.outlooks.find((outlook) => outlook.phase !== "past");
-    this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, view.startYear)}` : "<b>All three storms are behind you.</b> Finish the city by 2050.";
-    this.nextText = next ? describe(next, view.startYear) : "All three storms are behind you. Finish the city by 2050.";
-    this.lineEl.classList.toggle("locked", next?.phase === "locked");
+    const next = view.storms.find((storm) => !storm.past);
+    const done = `Every storm is behind you. Finish the city by ${view.endYear}.`;
+    this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next)}` : `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.`;
+    this.nextText = next ? describe(next) : done;
+    this.lineEl.classList.toggle("locked", next !== undefined && next.yearsUntil <= 2);
     this.seaEl.textContent = `Sea +${view.seaLevelCm} cm`;
   }
 
+  private ticksFor = "";
+
   /**
-   * The readiness gauge for the next challenge: predicted stars if it landed
-   * on the board as it stands (defences counted at the maturity they will
-   * have reached by then). Red, amber or green, with the stars as shapes so
-   * it reads in grayscale too.
+   * The readiness gauge for the next storm: predicted stars if it came on the
+   * board as it stands. Red, amber or green, with the stars as shapes so it
+   * reads in grayscale too. `growing` counts defences still growing (growth
+   * on only; 0 hides it).
    */
-  renderGauge(gauge: { level: "red" | "amber" | "green"; stars: number; protection: number; exact: boolean; growing: number } | null): void {
+  renderGauge(gauge: { level: "red" | "amber" | "green"; stars: number; protection: number; growing: number } | null): void {
     if (!gauge) {
       this.gaugeSlot.hidden = true;
       return;
@@ -133,7 +154,7 @@ export class OutlookBar {
     return { track: this.trackEl, line: this.lineEl, sea: this.seaEl };
   }
 
-  /** Pulses the next marker, when its Forecast locks. */
+  /** Pulses the track, when a storm's warning begins. */
   pulse(): void {
     this.trackEl.classList.remove("pulse");
     void this.trackEl.offsetWidth;
@@ -141,23 +162,11 @@ export class OutlookBar {
   }
 }
 
-function describe(outlook: ChallengeOutlook, startYear: number): string {
-  const name = outlook.challenge.name;
-  switch (outlook.phase) {
-    case "far":
-    case "near": {
-      const from = Math.floor(outlook.windowStart);
-      const to = Math.floor(outlook.windowEnd - 0.01);
-      const what = outlook.challenge.kind === "cyclone" ? "Cyclone season" : name;
-      return from === to ? `${what}, ${from}` : `${what}, ${from}–${to}`;
-    }
-    case "locked": {
-      const q = outlook.exactQuarter ?? 0;
-      const label = `Q${(q % 4) + 1} ${startYear + Math.floor(q / 4)}`;
-      const words = ["", "mild", "strong", "severe"][outlook.icons ?? 1];
-      return `Forecast locked · ${name} · ${label} · ${words} · in ${outlook.quartersUntil} qtr`;
-    }
-    case "past":
-      return `${name} has passed`;
-  }
+/** "Cyclone · end of 2030 · 5 years", "… · this year", or "Cyclone has passed". */
+export function describe(storm: OutlookStorm): string {
+  const name = storm.challenge.name;
+  if (storm.past) return `${name} has passed`;
+  const when = storm.yearsUntil <= 1 ? "this year" : `${storm.yearsUntil} years`;
+  const words = ["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)];
+  return `${name} · end of ${storm.challenge.year} · ${words} · ${when}`;
 }

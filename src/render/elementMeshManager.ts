@@ -504,7 +504,7 @@ export class ElementMeshManager {
 
   /**
    * Panjim 2050: how mature a growing defence is, 0 to 1. A young mangrove is
-   * drawn small and pale and fills out as the quarters pass; on a swaying
+   * drawn small and pale and fills out as the years pass (growth on only); on a swaying
    * element the change eases in over a few frames rather than jumping.
    */
   setGrowth(coord: AxialCoord, target: number): void {

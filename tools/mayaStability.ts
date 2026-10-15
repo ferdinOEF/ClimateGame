@@ -139,12 +139,19 @@ interface StateResult {
   changedList: number[];
 }
 
-async function measureState(browser: Browser, page: Page, state: string, seconds: number): Promise<StateResult> {
+/**
+ * `onlyHer`: the board's canvas is hidden while she is photographed, so the
+ * comparison sees her own pixels only. The board under the 40 px margin keeps
+ * moving in reduced motion (walkers, boats, water), and a boat passing her
+ * feet is not a glitch of hers.
+ */
+async function measureState(browser: Browser, page: Page, state: string, seconds: number, onlyHer = false): Promise<StateResult> {
   await page.evaluate(`window.__panjimForTest.maya.dismiss(); window.__panjimForTest.maya.withdraw(function () { return true; })`);
   await page.evaluate(`window.__panjimScenarioForTest(${JSON.stringify(state === "idle" ? "maya:greeting" : `maya:${state}`)})`);
   if (state === "idle") await page.evaluate("window.__panjimForTest.maya.dismiss()");
   await page.waitForTimeout(1500);
   const home = await figureBox(page);
+  if (onlyHer) await page.evaluate(`document.querySelectorAll("canvas").forEach(function (c) { c.style.visibility = "hidden"; })`);
   const before = (await page.evaluate("JSON.stringify(window.__mayaProbes)")) as string;
   const probes0 = JSON.parse(before) as { layouts: number; figureWrites: number; classWrites: number; hops: number; observerHits: number; rects: number[][] };
   const margin = 40;
@@ -153,6 +160,7 @@ async function measureState(browser: Browser, page: Page, state: string, seconds
   const started = Date.now();
   while (Date.now() - started < seconds * 1000) photos.push((await page.screenshot({ clip })).toString("base64"));
   const probes1 = (await page.evaluate("JSON.parse(JSON.stringify(window.__mayaProbes))")) as typeof probes0;
+  if (onlyHer) await page.evaluate(`document.querySelectorAll("canvas").forEach(function (c) { c.style.visibility = ""; })`);
   const elapsed = (Date.now() - started) / 1000;
   const sampled = probes1.rects.slice(probes0.rects.length);
   const moved = sampled.some((r) => r.some((v, i) => Math.abs(v - [home.x, home.y, home.w, home.h][i]) > 0.001));
@@ -223,7 +231,7 @@ async function main(): Promise<void> {
     const calm = await open(browser, server.url, true);
     await calm.evaluate(PROBES);
     for (const state of STATES) {
-      const r = await measureState(browser, calm, state, Math.min(SECONDS, 5));
+      const r = await measureState(browser, calm, state, Math.min(SECONDS, 5), true);
       result.calm.push(r);
       check(!r.moved, `reduced motion, ${state}: her box never moved`);
       check(r.framesChanged === 0, `reduced motion, ${state}: no pixel of her changes between ${r.frames} photographs (${r.framesChanged} did)`);

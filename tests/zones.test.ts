@@ -232,7 +232,7 @@ describe("Panaji zones", () => {
     const level = LEVEL_BY_ID.get("l01-first-rains")!;
     const state = new GameState(map.tiles, boardSetup(level, map).startingElements, 100000);
     for (const m of map.monuments) state.reserved.add(`${m.q},${m.r}`);
-    const run = new ActionRun(state, level.timeline!, { climate: level.climate, seed: level.id, zones: map.zones });
+    const run = new ActionRun(state, level.timeline!, { climate: level.climate, zones: map.zones, economy: level.economy, growth: level.growth });
     const before = run.readiness()!;
     expect(before.challenge.kind).toBe("cyclone");
     expect(before.level).toBe("red");

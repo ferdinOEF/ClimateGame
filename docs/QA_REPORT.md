@@ -676,3 +676,56 @@ Headless Chromium with software GL. Everything is in `docs/qa/section1f/`.
 - **Tutorial:** the panels are Panjim's only; the Tutorial keeps its cluster, as it has no coin jar, Field Guide or toggles.
 - **The jar's gain floats when coin lands in the jar and when it is banked,** not on the first look at load.
 - **What counts as danger:** a storm warning up (the heat is on), or a fall in Resilience since the panel was last opened.
+
+# Section 5 — yearly turns, coins off, instant defences
+
+Branch `section-5-yearly-turns`, off master `895a487` (tag `pre-section-5`;
+the git proxy refuses tag pushes, so `backup/pre-section-5` on GitHub marks
+the same commit). Headless Chromium with software GL. Evidence in
+`docs/qa/section5/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 433 pass, 6 skipped (the existing hand-edit skips in `mapgen.test.ts`). New or rewritten: `actionRun.test.ts` (the yearly clock, the cap, Next year at 0/1/4 builds, demolition and repair, homes not demolishable, coins off, growth off, a defence built in the storm's year at full strength), `climate.test.ts` (the fixed calendar, every seed meets the same storms at turns 5/15/25 and 1.2/1.8/2.6), `exposure.test.ts` (heat equals loss, exactly), `tutorialLocked.test.ts`. |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean: 8 screenshots, no console errors. |
+| `npm run test:labels` | 37 of 37 views; label layer at most 5.7 ms a frame. |
+| `npm run test:layout` | 105 of 105 layouts. |
+| `npm run test:maya` | Pass, after a fix to the tool (below). |
+| `npm run verify:maya` | All checks pass; in the browser the cyclone's heat showed 28 houses at risk and the storm took those 28; the flood 33 and 33. |
+| Section 5 browser checks (`tools/section5Checks.ts`, `checks.txt`) | **41 of 41.** |
+| Tutorial (`tools/tutorialDiff.ts`, `tutorial/diff.txt` and `*-diff.png`, magenta where a pixel differs) | Against the `pre-section-5` build, five states (brief, coach steps 1 and 2, a tile's build menu, How to Play): **text identical, 0.000% of pixels differ** by more than 24/255 in every one. Its level entry and map are pinned by `tests/tutorialLocked.test.ts`. |
+| axe-core | No serious or critical violations: the board at the start, Status open, the build menu with no builds left. |
+| Console errors | None in any run. |
+| Bots, 20 seeds (`bots.md`) | Run and recorded. Balance is not tuned here (Section 7): Casual 58%, Greedy 45% (6 of 20 above Casual), Smart 98%, do-nothing 0%. |
+| Cross-browser, real GPU | Not run: Chromium with software GL only (Firefox and WebKit are not installed here; no GPU). |
+
+**What the browser checks prove** (`checks.txt`):
+- The clock reads "2026 Year 1 of 25"; "Builds left this year 4 of 4"; "Next: Cyclone · end of 2030 · mild · 5 years"; one Next year button.
+- Four builds go through in 2026, a fifth is refused; the build menu then says "No builds left this year. Press Next year to go on." with every option disabled, and its Next year button moves to 2027 with four fresh builds. Next year works after 0 and 1 builds too.
+- Building never changes Coin (10000 throughout).
+- **No coin, price, cost, reward, earning, growing or quarter wording** in the visible text, labels, titles or any tooltip on screen, and no coin jar, price column, reward, "growing" or Coin counter drawn, in 15 states: the brief, the board, Status, Settings, How to Play, the build menu, the menu with no builds left, an info card, two years before the cyclone, its year, mid-storm, the storm's replay, the Aftermath, after the storm, the finale card, the results.
+- The cyclone resolves on Next year in 2030 (the Aftermath reads "end of 2030", Replay offers 2029) and the run goes on in 2031; all three storms resolve by the finale.
+
+**Screenshots** (`start-`, `menu-`, `status-`, `heat-`, `brief-` at 1366x768, 1920x1080, 2560x1440, each with `-gray`; `-deut` copies of `start-1920x1080`, `heat-1920x1080` and the key shot `cap-1920x1080`). Looked at, and fixed what was wrong:
+- the build menu's options were centred once the price column went: left-aligned (scoped to Panaji's coin-free menu);
+- the Outlook's year labels were hidden under the storm pins, and all three pins pulsed for the whole run (every storm was "locked"): pins now sit in the top of the track above the labels, and only the next storm inside its warning glows (still under reduced motion);
+- the "Cyclone landfall" label sat under the warning banner at 1366x768: it is kept below the banner;
+- at two years out the heat was too faint to hatch, so it read by colour alone (seen in review): two years out is now 35%, over the hatch line;
+- still true and noted: a focused control's tooltip shows after a click (by design, from Section 1f); the warning banner and the build-cap banner are transient.
+
+**Independent review (Section 5): 0 BLOCKER, 1 MAJOR, 5 MINOR, 8 NIT; all fixed except where noted.**
+- **MAJOR, free demolition:** demolishing cost nothing, so a player could clear the houses the heat marks and take three stars without a defence. Demolishing now uses one of the year's builds, and the city's homes cannot be demolished.
+- **The Outlook moved to the next year while the storm was still staged:** it now reads the storm's year until the new year ticks in.
+- **No hatch in the first warning year:** fixed (above).
+- **The landfall label under the banner:** fixed (above).
+- **QA record and bots:** this section and `bots.md`.
+- **Reload lost the years since the last storm:** the run is saved on every Next year and after a Replay; old quarterly saves are cleared.
+- **NITs fixed:** the seed test now also pins that no seed reaches the calendar; the new CSS rule is scoped to Panaji's coin-free menu; the dead landfall-cone overlay and its helpers are gone; stale "quarter" wording (coin jar, heat overlay, growth) and the save comment are corrected; "three storms" is no longer written into the Outlook, Help or the readiness tooltip; the seawall's "strong at once" is now "strong, but".
+- **NITs left:** the finale's Livelihoods bar still comes from the city's income, which is not shown while coins are off (it is a count in the Panjim 2050 index, not a price); the container's Chromium path in the walkthrough and map generator follows the other tools' existing pattern.
+
+**Fixed in the QA tools while running this gate:**
+- `walkthrough` and `mapgen:panaji` launched Playwright's bundled headless shell, absent here; they now use the container's Chromium when present, like the other tools.
+- `test:maya`'s reduced-motion pass compared a 40 px margin of the moving board round Maya, so a passing boat failed "no pixel of her changes" (it failed the same way on the untouched `pre-section-5` build). It now hides the board's canvas while photographing her, so only her pixels are compared: 0 changed in every state.
+- Two first runs of `test:maya` and `verify:maya` were void: the source was being edited, and the dev server reloaded the page under them. Both were re-run on the final source.

@@ -1,9 +1,9 @@
 import type { PrepObjective } from "@core/prep";
 
 /**
- * "Get ready": the compact panel bottom-right. Two or three optional jobs for the next storm, each with its
- * progress and reward; a finished one ticks, pops its Coin and stays checked
- * until the storm passes. Collapsible to its title bar, so it never competes
+ * "Get ready": the compact panel bottom-right. Two or three optional jobs for
+ * the next storm, each with its progress (and, with coins on, its reward); a
+ * finished one ticks and stays checked until the storm passes. Collapsible to its title bar, so it never competes
  * with the map. Purely a bonus: nothing here ever blocks play.
  */
 export interface GetReadyRow {
@@ -20,7 +20,11 @@ export class GetReadyPanel {
   private readonly rows = new Map<string, HTMLElement>();
   private collapsed = false;
 
-  constructor() {
+  /**
+   * @param showRewards With coins off (Section 5) no reward is shown or popped.
+   */
+  // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+  constructor(private readonly showRewards = true) {
     this.el = document.createElement("section");
     this.el.className = "get-ready";
     this.el.setAttribute("aria-label", "Get ready");
@@ -61,9 +65,10 @@ export class GetReadyPanel {
       if (!el) {
         el = document.createElement("li");
         el.className = "get-ready-row";
-        el.innerHTML = `<span class="get-ready-check" aria-hidden="true"></span><span class="get-ready-label"></span><span class="get-ready-progress"></span><span class="get-ready-reward"></span>`;
+        el.innerHTML = `<span class="get-ready-check" aria-hidden="true"></span><span class="get-ready-label"></span><span class="get-ready-progress"></span>${this.showRewards ? `<span class="get-ready-reward"></span>` : ""}`;
         (el.querySelector(".get-ready-label") as HTMLElement).textContent = row.job.label;
-        (el.querySelector(".get-ready-reward") as HTMLElement).textContent = `+${row.job.reward}`;
+        const reward = el.querySelector<HTMLElement>(".get-ready-reward");
+        if (reward) reward.textContent = `+${row.job.reward}`;
         this.list.appendChild(el);
         this.rows.set(row.job.id, el);
       }
@@ -73,11 +78,15 @@ export class GetReadyPanel {
     this.el.hidden = rows.length === 0;
   }
 
-  /** A finished job: a coin pop on its row. */
+  /** A finished job: a tick on its row, and a coin pop with coins on. */
   celebrate(job: PrepObjective): void {
     const el = this.rows.get(job.id);
     if (!el) return;
     el.classList.add("done", "just-done");
+    if (!this.showRewards) {
+      window.setTimeout(() => el.classList.remove("just-done"), 1400);
+      return;
+    }
     const pop = document.createElement("span");
     pop.className = "get-ready-pop";
     pop.textContent = `+${job.reward}`;

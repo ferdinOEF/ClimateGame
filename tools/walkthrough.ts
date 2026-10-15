@@ -92,7 +92,11 @@ async function main(): Promise<void> {
 `);
 
   try {
-    const browser = await chromium.launch();
+    // The container's Chromium when it has one (the bundled headless shell may not match this Playwright).
+    const browser = await chromium.launch({
+      executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
+      args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
+    });
     const page = await browser.newPage({ viewport: { width: 1360, height: 860 } });
 
     // Collected per-stage so a failure says WHERE it happened. A bare list of

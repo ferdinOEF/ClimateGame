@@ -51,9 +51,9 @@
     "id": "l01-first-rains",
     "name": "Panaji",
     "subtitle": "Panjim 2050",
-    "brief": "Twenty-five years of Goa's capital, from 2025 to 2050. Every patch of land is already home to someone: the city fills it. Time moves only when you act. Build on the beach, the wetlands, the river and the near sea to protect those homes from three storms, and count the houses you save.",
+    "brief": "Twenty-five years of Goa's capital, from 2026 to 2050, one year at a time. Every patch of land is already home to someone: the city fills it. Each year you can make a few builds, then press Next year. Build on the beach, the wetlands, the river and the near sea to protect those homes from three storms, and count the houses you save.",
     "mapId": "panaji",
-    "startingCoin": 500,
+    "startingCoin": 10000,
     "parTurns": 40,
     "mapRadius": null,
     "hazards": {
@@ -67,51 +67,46 @@
       "severitySpread": 0.25,
       "severityCreepPerHazard": 0.01
     },
-    "timeModel": "actions",
+    "timeModel": "years",
     "timeline": {
-      "startYear": 2025,
+      "startYear": 2026,
       "endYear": 2050,
-      "costs": {
-        "build": 1,
-        "repair": 1,
-        "demolish": 1,
-        "fastForwardYear": 4
-      },
-      "economy": {
-        "incomeScale": 0.35,
-        "jarStart": 40
-      }
+      "buildsPerYear": 4
+    },
+    "economy": {
+      "enabled": false,
+      "incomeScale": 0.35,
+      "jarStart": 40
+    },
+    "growth": {
+      "enabled": false
     },
     "climate": {
-      "baselinePerYear": 0.02,
       "seaLevelCmPerYear": 0.4,
-      "forecastLockQuarters": 8,
-      "narrowFromQuarters": 20,
       "intensityPerStrength": 50,
       "challenges": [
         {
           "id": "c1-cyclone",
           "name": "Cyclone",
           "kind": "cyclone",
-          "year": 2032,
-          "jitterYears": 1.5,
-          "strength": 1.2
+          "year": 2030,
+          "strength": 1.2,
+          "landfall": "0,13"
         },
         {
           "id": "c2-flood",
           "name": "Monsoon flood",
           "kind": "flood",
           "year": 2040,
-          "jitterYears": 1.5,
           "strength": 1.8
         },
         {
           "id": "c3-compound",
           "name": "Cyclone and flood",
           "kind": "compound",
-          "year": 2048,
-          "jitterYears": 1,
-          "strength": 2.6
+          "year": 2050,
+          "strength": 2.6,
+          "landfall": "2,12"
         }
       ]
     },

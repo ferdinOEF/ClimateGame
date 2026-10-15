@@ -108,7 +108,7 @@ export function stormWord(kind: ChallengeKind): string {
   return (MAYA.stormNames as Record<string, string>)[kind] ?? "storm";
 }
 
-/** The warning she gives three quarters out, and the last call one quarter out. */
+/** The warning she gives two years out, and the last call in the storm's own year. */
 export function warningLine(kind: "exposed" | "lastCall" | "fixed", place: string, storm: ChallengeKind, count = 0): string {
   return fill(MAYA.warning[kind], { place, storm: stormWord(storm), count });
 }

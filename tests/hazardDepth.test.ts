@@ -39,7 +39,7 @@ function nextStorm(run: ActionRun, plant: [string, string][] = []): StormRecord 
       }
     }
   }
-  while (!run.landed.has(next.id)) run.fastForwardYear();
+  while (!run.landed.has(next.id)) run.nextYear();
   return run.stormRecords.get(next.id)!;
 }
 

@@ -1,7 +1,7 @@
 import levelData from "@data/levels.json";
 import type { Objective } from "@core/objectives";
 import { dailyChallengeId, hashSeed, Rng } from "@core/rng";
-import type { TimelineConfig } from "@core/actionRun";
+import type { EconomyConfig, TimelineConfig } from "@core/actionRun";
 import type { ClimateConfig } from "@core/climate";
 import type { PrepConfig } from "@core/prep";
 import type { HouseFill } from "./balance";
@@ -72,15 +72,23 @@ export interface LevelDef {
   /**
    * How time moves. `"turns"` (the default, and the tutorial's) is the
    * original model: a build is a turn and hazards come on turn intervals.
-   * `"actions"` is the Panjim 2050 run: a 25-year clock in quarters that moves
-   * only when the player spends an action, with scheduled challenges instead
-   * of interval hazards. See core/actionRun.ts.
+   * `"years"` is the Panjim 2050 run: one turn a year, a few builds a year,
+   * then Next year, with three storms on a fixed calendar instead of
+   * interval hazards. See core/actionRun.ts.
    */
-  timeModel?: "turns" | "actions";
-  /** Required when `timeModel` is `"actions"`. */
+  timeModel?: "turns" | "years";
+  /** Required when `timeModel` is `"years"`: the years and the builds per year. */
   timeline?: TimelineConfig;
-  /** The action-driven run's scheduled challenges and rising baseline (core/climate.ts). */
+  /** The yearly run's three storms on their fixed calendar (core/climate.ts). */
   climate?: ClimateConfig;
+  /**
+   * Coins on or off. Off on Panaji (Section 5): building is free and no
+   * coin, price or cost is shown. `startingCoin` and these numbers are kept
+   * for when coins return.
+   */
+  economy?: EconomyConfig;
+  /** Growth on or off. Off on Panaji (Section 5): a defence is at full strength the moment it is built. */
+  growth?: { enabled: boolean };
   /** "Get ready": optional jobs for each coming storm (core/prep.ts). */
   prep?: PrepConfig;
   /** Stars per storm by the share of houses in its path that were saved. */

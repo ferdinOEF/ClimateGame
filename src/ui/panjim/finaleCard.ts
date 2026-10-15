@@ -32,11 +32,11 @@ export class FinaleCard {
     container.appendChild(this.root);
   }
 
-  /** The title moment over the board. Resolves when it has played. */
-  async title(): Promise<void> {
+  /** The title moment over the board: "25 years · 3 storms", from the run's own numbers. Resolves when it has played. */
+  async title(years: number, storms: number): Promise<void> {
     const title = document.createElement("div");
     title.className = "finale-title";
-    title.innerHTML = `<div class="finale-title-eyebrow">25 years · 3 storms</div><div class="finale-title-main">Panjim, 2050</div>`;
+    title.innerHTML = `<div class="finale-title-eyebrow">${years} years · ${storms} storms</div><div class="finale-title-main">Panjim, 2050</div>`;
     this.container.appendChild(title);
     playSound("combo");
     await wait(3200);

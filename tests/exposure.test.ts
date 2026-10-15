@@ -1,124 +1,104 @@
 import { describe, expect, it } from "vitest";
-import { heatRamp, tileHeat, computeExposure, protectedTiles, buildHeatView, HEAT_LEAD_QUARTERS } from "../src/core/exposure";
+import { heatRamp, tileHeat, computeExposure, protectedTiles, buildHeatView, HATCH_THRESHOLD, HEAT_LEAD_YEARS } from "../src/core/exposure";
 import { resolveChallenge } from "../src/core/zones";
-import { computeWater, landfallSite } from "../src/core/hazardModel";
+import { computeWater } from "../src/core/hazardModel";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import type { ActionRun } from "../src/core/actionRun";
 
 /**
  * The warning heat is information only, and it has to be true. These tests
  * play the real Panaji run and compare what the heat previewed with what the
- * storm then did, on the same seed (see "preview equals resolution" below
- * for the rule and its tolerance).
+ * storm then did (see "preview equals resolution" below).
  */
 describe("heat ramp", () => {
-  it("ramps linearly from 5% five quarters out to 50% on the last quarter", () => {
-    expect([5, 4, 3, 2, 1].map((q) => Number(heatRamp(q).toFixed(4)))).toEqual([0.05, 0.1625, 0.275, 0.3875, 0.5]);
-    expect(heatRamp(6)).toBe(0);
-    expect(heatRamp(0)).toBe(0);
-    expect(HEAT_LEAD_QUARTERS).toBe(5);
+  it("shows in the last two years before a storm: 35% two years out, 50% in its own year", () => {
+    expect([3, 2, 1, 0].map((y) => Number(heatRamp(y).toFixed(4)))).toEqual([0, 0.35, 0.5, 0]);
+    // A house that will be lost is hatched from the first warning year.
+    expect(tileHeat(2, 1)).toBeGreaterThan(HATCH_THRESHOLD);
+    expect(HEAT_LEAD_YEARS).toBe(2);
   });
 
   it("scales by exposure and never exceeds 50%", () => {
     expect(tileHeat(1, 1)).toBe(0.5);
     expect(tileHeat(1, 0.5)).toBe(0.25);
     expect(tileHeat(1, 0.01)).toBe(0);
-    for (let q = 0; q <= 8; q++) for (const e of [0, 0.3, 1]) expect(tileHeat(q, e)).toBeLessThanOrEqual(0.5);
+    for (let y = 0; y <= 8; y++) for (const e of [0, 0.3, 1]) expect(tileHeat(y, e)).toBeLessThanOrEqual(0.5);
   });
 });
 
-/** Plays to `quartersBefore` the next storm, building `plant` (zone, element) pairs on the way if given. */
-function approach(run: ActionRun, quartersBefore: number, plant: [string, string][] = []): void {
+/**
+ * Plays to `yearsBefore` the next storm (1 = its own year), pressing Next
+ * year, and builds `plant` (zone, element) pairs on the way: in the year it
+ * gets there, or the year before when there are more than that year's builds.
+ */
+function approach(run: ActionRun, yearsBefore: number, plant: [string, string][] = []): void {
   const next = run.nextChallenge()!;
-  while (run.quartersUntil(next) - 4 >= Math.max(quartersBefore, 1) + plant.length * 2) run.fastForwardYear();
+  while (run.yearsUntil(next) > yearsBefore) run.nextYear();
   for (const [zoneId, elementId] of plant) {
-    run.collectJar();
+    if (run.buildsLeft <= 0) throw new Error("approach: more plants than builds this year");
     for (const key of run.zones!.keys(zoneId)) {
       const [q, r] = key.split(",").map(Number);
-      if (run.state.canBuild({ q, r }, elementId) && run.state.coin >= 100) {
+      if (run.state.canBuild({ q, r }, elementId)) {
         run.build({ q, r }, elementId);
         break;
       }
     }
   }
-  // Then wait out the rest, to exactly `quartersBefore` (the warning's last quarter when 1).
-  const left = run.quartersUntil(next);
-  if (left > quartersBefore) run.waitQuarters(left - quartersBefore);
 }
 
+/** Presses Next year until the next storm has resolved; its outcome. */
 function land(run: ActionRun): ReturnType<typeof run.outcomes.get> {
   const next = run.nextChallenge()!;
-  while (!run.landed.has(next.id)) run.fastForwardYear();
+  while (!run.landed.has(next.id)) run.nextYear();
   return run.outcomes.get(next.id);
 }
 
-const SEEDS = ["panjim", "s1", "s7", "s13", "s21", "s34"];
 /**
- * PREVIEW EQUALS RESOLUTION (Section 4.5). The heat on the last quarter
- * before a storm is the worst case over the forecast cone, which by then is
- * the real landfall site ± `jitterSites`. The rule:
- *   - no miss: every house the storm takes was shown at risk;
- *   - bounded over-call: at most OVERCALL of the houses shown at risk stand
- *     (the cone's width; a player who defends the whole red is never caught
- *     out, and is not asked to defend much more than the storm takes);
- *   - exact at the real site: the same preview, at the real landfall, is
- *     exactly the houses lost.
+ * PREVIEW EQUALS RESOLUTION (Section 4.5, kept for yearly turns in Section
+ * 5). The calendar, strength and landfall are fixed, so the heat is not a
+ * worst case over a cone any more: the houses it shows at risk are exactly
+ * the houses the storm takes if nothing more is built. No miss and no
+ * over-call, in either warning year, with or without defences.
  */
-const OVERCALL = 0.5;
+const RUNS = ["panjim", "s1", "s7"];
 
-/** The board as it will stand when `next` lands (defences grown to that date), as the resolver sees it. */
-function onTheDay(run: ActionRun, next: NonNullable<ReturnType<ActionRun["nextChallenge"]>>) {
-  const board = run.state.clone();
-  board.turn = Math.max(run.quarter, next.quarter);
-  return board;
-}
-
-function realSite(run: ActionRun, next: NonNullable<ReturnType<ActionRun["nextChallenge"]>>): number[] | null {
-  return next.kind === "flood" ? null : [landfallSite(run.board(), next)];
-}
-
-describe("computeExposure matches the storm it previews (preview equals resolution)", () => {
-  for (const seed of SEEDS) {
-    it(`${seed}: undefended, every storm`, () => {
+describe("the heat equals the loss (preview equals resolution)", () => {
+  for (const seed of RUNS) {
+    it(`${seed}: undefended, every storm, from both warning years`, () => {
       const run = newRun(seed, BOT_LEVEL);
       for (let i = 0; i < 3; i++) {
-        approach(run, 1);
+        approach(run, 2);
         const next = run.nextChallenge()!;
-        const preview = run.exposureFor(next)!;
-        const exact = computeExposure(onTheDay(run, next), run.zones!, next.kind, run.intensityOf(next), run.climate!.intensityPerStrength, {
-          combos: run.combos,
-          houseRule: run.houseRule,
-          houseStars: run.houseStars,
-          landfallSites: realSite(run, next)
-        });
+        const twoOut = [...run.exposureFor(next)!.housesAtRisk].sort();
+        run.nextYear();
+        const ownYear = run.exposureFor(next)!;
+        expect([...ownYear.housesAtRisk].sort()).toEqual(twoOut);
         const outcome = land(run)!;
-        const shown = new Set(preview.housesAtRisk);
-        for (const key of outcome.damagedHouses) expect(shown.has(key), `${seed} storm ${i + 1}: ${key} lost but not warned of`).toBe(true);
-        expect(shown.size === 0 ? 0 : 1 - outcome.damagedHouses.length / shown.size).toBeLessThanOrEqual(OVERCALL);
-        expect([...exact.housesAtRisk].sort()).toEqual([...outcome.damagedHouses].sort());
+        expect([...outcome.damagedHouses].sort(), `${seed} storm ${i + 1}`).toEqual(twoOut);
         // Every lost house was previewed at full exposure.
-        for (const key of outcome.damagedHouses) expect(preview.exposure.get(key)).toBe(1);
+        for (const key of outcome.damagedHouses) expect(ownYear.exposure.get(key)).toBe(1);
       }
     });
-
-    it(`${seed}: with defences planted inside the warning window`, () => {
-      const run = newRun(seed, BOT_LEVEL);
-      approach(run, 5, [["z1", "dune"], ["z1", "sandy_vegetation"], ["z2", "mangrove"]]);
-      approach(run, 1);
-      const next = run.nextChallenge()!;
-      const preview = run.exposureFor(next)!;
-      const exact = computeExposure(onTheDay(run, next), run.zones!, next.kind, run.intensityOf(next), run.climate!.intensityPerStrength, {
-        combos: run.combos,
-        houseRule: run.houseRule,
-        houseStars: run.houseStars,
-        landfallSites: realSite(run, next)
-      });
-      const outcome = land(run)!;
-      const shown = new Set(preview.housesAtRisk);
-      for (const key of outcome.damagedHouses) expect(shown.has(key)).toBe(true);
-      expect([...exact.housesAtRisk].sort()).toEqual([...outcome.damagedHouses].sort());
-    });
   }
+
+  it("with defences built in each warning year, the heat drops to exactly what is still lost", () => {
+    const run = newRun("panjim", BOT_LEVEL);
+    const plans: [string, string][][] = [
+      [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "dune"], ["z2", "mangrove"]],
+      [["z2", "khazan"], ["z2", "mangrove"], ["z3", "mangrove"], ["z4", "mangrove"]],
+      [["z4", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"], ["z1", "dune"]]
+    ];
+    for (const plan of plans) {
+      approach(run, 2, plan.slice(0, 2));
+      const next = run.nextChallenge()!;
+      const before = run.exposureFor(next)!.housesAtRisk.length;
+      approach(run, 1, plan.slice(2));
+      const preview = [...run.exposureFor(next)!.housesAtRisk].sort();
+      expect(preview.length).toBeLessThanOrEqual(before);
+      const outcome = land(run)!;
+      expect([...outcome.damagedHouses].sort()).toEqual(preview);
+    }
+  });
 });
 
 describe("computeExposure", () => {
@@ -143,7 +123,7 @@ describe("computeExposure", () => {
 
   it("marks tiles a defence protected, and only those", () => {
     const run = newRun("panjim", BOT_LEVEL);
-    approach(run, 5, [["z1", "dune"], ["z1", "dune"], ["z1", "sandy_vegetation"]]);
+    approach(run, 2, [["z1", "dune"], ["z1", "dune"], ["z1", "sandy_vegetation"]]);
     const next = run.nextChallenge()!;
     const now = run.exposureFor(next)!;
     const bare = run.exposureFor(next, true)!;
@@ -168,11 +148,10 @@ describe("computeExposure", () => {
 describe("buildHeatView", () => {
   it("heats only dry tiles, hatches above 30%, pulses at most 24 falling houses, and shields defences", () => {
     const run = newRun("s7", BOT_LEVEL);
-    approach(run, 3);
+    approach(run, 2);
     const next = run.nextChallenge()!;
     // Two dunes on beach the storm would reach.
     const reach = run.exposureFor(next, true)!;
-    run.collectJar();
     let planted = 0;
     for (const key of reach.exposure.keys()) {
       const [q, r] = key.split(",").map(Number);
@@ -183,8 +162,8 @@ describe("buildHeatView", () => {
     const bare = run.exposureFor(next, true)!;
     const terrain = new Map([...run.state.placed.values()].map((t) => [`${t.coord.q},${t.coord.r}`, t.terrainId]));
     const defences = [...run.state.elements].filter(([, inst]) => inst.elementId === "dune").map(([key]) => key);
-    const quarters = run.quartersUntil(next);
-    const view = buildHeatView(now, bare, quarters, defences, (key) => terrain.get(key));
+    const years = run.yearsUntil(next);
+    const view = buildHeatView(now, bare, years, defences, (key) => terrain.get(key));
     expect(view.length).toBeGreaterThan(0);
     for (const tile of view) {
       if (tile.heat > 0) expect(["land", "beach", "estuary"]).toContain(terrain.get(tile.key));
@@ -195,13 +174,13 @@ describe("buildHeatView", () => {
     const atRisk = new Set(now.housesAtRisk);
     for (const tile of view.filter((t) => t.pulse)) expect(atRisk.has(tile.key)).toBe(true);
     for (const key of defences) expect(view.find((t) => t.key === key)?.shield).toBe(true);
-    // Outside the five-quarter window there is no heat at all, only shields.
-    expect(buildHeatView(now, bare, 7, defences, (key) => terrain.get(key)).every((t) => t.heat === 0)).toBe(true);
+    // Outside the two-year window there is no heat at all, only shields.
+    expect(buildHeatView(now, bare, 3, defences, (key) => terrain.get(key)).every((t) => t.heat === 0)).toBe(true);
   });
 });
 
 describe("the heat is information only", () => {
-  it("a run that computes the heat, the shields and Get ready every quarter ends exactly like one that never looks", () => {
+  it("a run that computes the heat, the shields and Get ready at every step ends exactly like one that never looks", () => {
     const play = (look: boolean): string => {
       const run = newRun("s13", BOT_LEVEL);
       const terrain = new Map([...run.state.placed.values()].map((t) => [`${t.coord.q},${t.coord.r}`, t.terrainId]));
@@ -213,11 +192,10 @@ describe("the heat is information only", () => {
           if (next) {
             const now = run.exposureFor(next)!;
             const bare = run.exposureFor(next, true)!;
-            buildHeatView(now, bare, run.quartersUntil(next), [...run.state.elements.keys()], (key) => terrain.get(key));
+            buildHeatView(now, bare, run.yearsUntil(next), [...run.state.elements.keys()], (key) => terrain.get(key));
             run.readiness();
           }
         }
-        run.collectJar();
         // A few builds on the way, the same in both runs.
         if (step % 3 === 0) {
           for (const [zone, element] of [["z1", "dune"], ["z2", "mangrove"], ["z2", "khazan"]] as const) {
@@ -225,14 +203,14 @@ describe("the heat is information only", () => {
               const [q, r] = k.split(",").map(Number);
               return run.state.canBuild({ q, r }, element);
             });
-            if (key && run.state.coin > 200) {
+            if (key) {
               const [q, r] = key.split(",").map(Number);
               run.build({ q, r }, element);
               break;
             }
           }
         } else {
-          run.fastForwardYear();
+          run.nextYear();
         }
       }
       return JSON.stringify({ snapshot: run.snapshot(), outcomes: [...run.outcomes] });

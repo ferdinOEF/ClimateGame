@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
-import { ALL_FACTS, CITED_FACTS, SHOWN_FACTS, discoveryFacts, discoveryTotal, displayText, firstAuthor, isShown } from "../src/core/facts";
+import { ALL_FACTS, CITED_FACTS, FEATURES_OFF, SHOWN_FACTS, discoveryFacts, discoveryTotal, displayText, firstAuthor, isShown } from "../src/core/facts";
 import nuggets from "../src/data/nuggets.json";
 import maya from "../src/data/maya.json";
 
@@ -77,20 +77,28 @@ describe("facts.json", () => {
 });
 
 describe("Discoveries (Maya says each one)", () => {
-  it("list only known, shown facts", () => {
+  it("list only known facts, shown unless they are about a feature this version has switched off", () => {
     for (const [element, ids] of Object.entries(nuggets as Record<string, string[]>)) {
+      let shown = 0;
       for (const id of ids) {
         const fact = ALL_FACTS.find((f) => f.id === id);
         expect(fact, `${element}: ${id}`).toBeDefined();
-        expect(isShown(fact!), `${element}: ${id} is hidden`).toBe(true);
+        // Coins and growth are off (Section 5): their rules are kept but not said.
+        const off = fact!.needs?.some((feature) => FEATURES_OFF.has(feature)) ?? false;
+        expect(isShown(fact!), `${element}: ${id} is hidden`).toBe(!off);
+        if (!off) shown++;
       }
-      expect(discoveryFacts(element).length).toBe(ids.length);
+      expect(discoveryFacts(element).length).toBe(shown);
     }
   });
 
-  it("count distinct facts for the progress bar", () => {
-    const ids = new Set(Object.values(nuggets as Record<string, string[]>).flat());
+  it("count distinct shown facts for the progress bar", () => {
+    const ids = new Set(Object.values(nuggets as Record<string, string[]>).flat().filter((id) => isShown(ALL_FACTS.find((f) => f.id === id)!)));
     expect(discoveryTotal()).toBe(ids.size);
+  });
+
+  it("names no coin, price or growing time in anything shown (coins and growth are off)", () => {
+    for (const fact of ALL_FACTS.filter(isShown)) expect(fact.text, fact.id).not.toMatch(/\bcoin|cheap|expensive|price|cost|take[s]? (a few|\d+) years|to grow|grows? stronger|matur/i);
   });
 
   it("every cited fact the game shows is reachable from a build", () => {

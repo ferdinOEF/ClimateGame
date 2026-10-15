@@ -28,13 +28,18 @@ describe("tooltip copy", () => {
 
   it("describes every element in the build menu", () => {
     for (const def of ELEMENT_DEFS) expect(buildWhat(def.id), def.id).not.toBe("");
+    // Panaji's own wording names no price, income or growing time (coins and growth are off).
+    for (const def of ELEMENT_DEFS) {
+      expect(buildWhat(def.id, true), def.id).not.toBe("");
+      expect(buildWhat(def.id, true), def.id).not.toMatch(/coin|cheap|expensive|cost|earn|grow|year/i);
+    }
   });
 
   it("fills live values, and leaves no raw placeholder", () => {
     const text = tooltipText("readiness", { pct: 72, storm: "flood", saved: 150, total: 181, stars: 2 });
     expect(text).toContain("Ready 72%");
     expect(text).toContain("150 of the 181 homes");
-    expect(tooltipText("ffYear")).toBe("Pressing this will fast-forward the timeline by 1 year. Defences keep growing while you wait, but so does the sea.");
+    expect(tooltipText("buildsLeft", { per: 4, left: 3 })).toBe("You can build 4 times a year. 3 left this year. Next year gives you a fresh set.");
     expect(tooltipText("coin", {})).not.toMatch(/\{\w+\}/);
   });
 });

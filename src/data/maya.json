@@ -8,13 +8,13 @@
     {
       "id": "heat",
       "title": "The red warning",
-      "text": "See the red? That is where the next storm will hit hardest. It grows redder each season until the day it comes."
+      "text": "See the red? That is where the next storm will hit hardest. It shows in the two years before the storm comes."
     },
     {
       "id": "mangroves",
       "title": "Mangroves",
       "rule": true,
-      "text": "Mangroves slow the surge before it reaches the houses. Plant them on the wetland edge early: they take a few years to grow."
+      "text": "Mangroves slow the surge before it reaches the houses. Plant them on the wetland edge."
     },
     {
       "id": "khazans",
@@ -32,7 +32,7 @@
       "id": "seawall",
       "title": "Seawalls",
       "rule": true,
-      "text": "A seawall costs more and holds no water. If a storm is bigger than the wall, it fails all at once."
+      "text": "A seawall holds no water. If a storm is bigger than the wall, it fails all at once."
     },
     {
       "id": "shields",
@@ -42,7 +42,7 @@
     {
       "id": "get-ready",
       "title": "Get ready",
-      "text": "I keep a short Get ready list for the next storm, bottom right. Every item is optional, and each one pays."
+      "text": "I keep a short Get ready list for the next storm, bottom right. Every item is optional."
     }
   ],
   "warning": {
@@ -57,7 +57,7 @@
     "someLost": "We lost {lost} homes at {place}. A few more defences there next time and they will stand.",
     "noDefence": "Nothing stood between the {hazard} and {place}. Next time, plant something there first.",
     "saved": "Without your {defence}, {count} more homes would have been hit.",
-    "notYet": "The {hazard} reached {place} before the defences there could make a difference. More of them, given time to grow, will hold it."
+    "notYet": "The {hazard} reached {place} before the defences there could make a difference. More of them there will hold it."
   },
   "zonePlaces": {
     "z1": "Miramar",

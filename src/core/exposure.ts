@@ -6,15 +6,14 @@ import { resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId
 /**
  * Exposure: what a storm will do to each tile, read from the resolver itself.
  *
- * The warning heat (the red tint that builds over the last five quarters
- * before a storm) is only worth showing if it is true. So nothing here
- * approximates the storm. `computeExposure` runs the real resolver
+ * The warning heat (the red tint over the last two years before a storm)
+ * is only worth showing if it is true. So nothing here approximates the
+ * storm. `computeExposure` runs the real resolver
  * (`resolveChallenge`, which calls the one hazard model,
  * core/hazardModel.ts `computeWater`) on a throwaway copy of the board, and
  * asks it, through its tile probe, how deep the water stands on each tile.
- * For a cyclone it does that at every landfall site still in the forecast
- * cone and keeps the worst case, so a house shown safe is safe wherever in
- * the cone the storm comes ashore.
+ * A cyclone's landfall is fixed by the calendar, so the heat is exactly
+ * what the storm would do to the board as it stands.
  *
  * Defences change the heat exactly as much as they change the outcome: each
  * protects the area round it and slows water passing through, so the heat
@@ -25,7 +24,7 @@ import { resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId
  */
 export interface Exposure {
   kind: ChallengeKind;
-  /** Water at every wet tile, in house-rule units (`resilience` is one house-loss depth); the worst over the cone. */
+  /** Water at every wet tile, in house-rule units (`resilience` is one house-loss depth); the worst over the landfall sites given. */
   intensity: Map<string, number>;
   /**
    * 0–1 per tile: (intensity / a house's resilience)², capped at 1. A house at
@@ -47,10 +46,9 @@ export interface ExposureOptions {
   /** Resolve as if every defence against this storm were gone: the "before you built anything" picture the shields compare to. */
   withoutDefences?: boolean;
   /**
-   * A cyclone's possible landfall sites (the forecast cone). The exposure is
-   * the worst over all of them: what the player is warned of is everywhere
-   * the storm may still hit. The outcome is the middle site's. One site is
-   * an exact preview.
+   * A cyclone's landfall site, as a one-item list (the calendar fixes it).
+   * With several sites the exposure is the worst over all of them and the
+   * outcome the middle site's; one site is an exact preview.
    */
   landfallSites?: number[] | null;
 }
@@ -111,20 +109,25 @@ export function computeExposure(
   return { kind, intensity: tileIntensity, exposure, housesAtRisk: [...atRisk], outcome: outcome! };
 }
 
-/** Quarters of warning: the heat starts this many quarters before a storm lands. */
-export const HEAT_LEAD_QUARTERS = 5;
-/** Heat opacity five quarters out and on the last quarter. Capped so terrain and the street map stay readable underneath. */
-export const HEAT_MIN = 0.05;
+/** Years of warning: the heat shows in the last two years before a storm (turns 4-5, 14-15 and 24-25). */
+export const HEAT_LEAD_YEARS = 2;
+/**
+ * Heat opacity two years out and in the storm's own year. Capped so terrain
+ * and the street map stay readable underneath. Two years out is just over the
+ * hatch threshold, so a tile that will flood is hatched from the first
+ * warning year: the cue that does not rely on colour.
+ */
+export const HEAT_MIN = 0.35;
 export const HEAT_MAX = 0.5;
 
 /**
- * The heat ramp: how red the most exposed tile is, by quarters left before
- * the storm. Linear from 5% at five quarters out to 50% on the last quarter
- * (5, 16.25, 27.5, 38.75, 50%), and nothing outside that window.
+ * The heat ramp: how red the most exposed tile is, by years left before the
+ * storm (1 in its own year): 35% two years out, 50% in its year, and nothing
+ * outside that window.
  */
-export function heatRamp(quartersLeft: number): number {
-  if (quartersLeft < 1 || quartersLeft > HEAT_LEAD_QUARTERS) return 0;
-  return HEAT_MIN + ((HEAT_LEAD_QUARTERS - quartersLeft) / (HEAT_LEAD_QUARTERS - 1)) * (HEAT_MAX - HEAT_MIN);
+export function heatRamp(yearsLeft: number): number {
+  if (yearsLeft < 1 || yearsLeft > HEAT_LEAD_YEARS) return 0;
+  return HEAT_MIN + ((HEAT_LEAD_YEARS - yearsLeft) / (HEAT_LEAD_YEARS - 1)) * (HEAT_MAX - HEAT_MIN);
 }
 
 /** Tiles above this heat get the diagonal hatch, the second cue that does not rely on colour. */
@@ -134,8 +137,8 @@ export const HATCH_THRESHOLD = 0.3;
  * The heat a tile shows: the ramp times its exposure. Exposure below 5% is
  * shown as none, so a tile the storm barely brushes does not flicker pink.
  */
-export function tileHeat(quartersLeft: number, exposure: number): number {
-  return exposure < 0.05 ? 0 : heatRamp(quartersLeft) * exposure;
+export function tileHeat(yearsLeft: number, exposure: number): number {
+  return exposure < 0.05 ? 0 : heatRamp(yearsLeft) * exposure;
 }
 
 /**
@@ -179,7 +182,7 @@ export interface HeatViewTile {
 export function buildHeatView(
   current: Exposure,
   undefended: Exposure | null,
-  quartersLeft: number,
+  yearsLeft: number,
   defenceKeys: Iterable<string>,
   terrainOf: (key: string) => string | undefined
 ): HeatViewTile[] {
@@ -195,10 +198,13 @@ export function buildHeatView(
       .slice(0, PULSE_LIMIT)
   );
   const tiles: HeatViewTile[] = [];
-  for (const [key, exposure] of current.exposure) {
+  // Every wet tile, and every shielded one: a defence that keeps its own tile dry still shows its shield.
+  const keys = new Set([...current.exposure.keys(), ...shielded]);
+  for (const key of keys) {
+    const exposure = current.exposure.get(key) ?? 0;
     const terrain = terrainOf(key);
     const dry = terrain === "land" || terrain === "beach" || terrain === "estuary";
-    const heat = dry ? tileHeat(quartersLeft, exposure) : 0;
+    const heat = dry ? tileHeat(yearsLeft, exposure) : 0;
     const shield = shielded.has(key);
     if (heat <= 0 && !shield) continue;
     tiles.push({ key, heat, hatch: heat > HATCH_THRESHOLD, pulse: heat > 0 && pulse.has(key), shield });

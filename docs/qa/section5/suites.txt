@@ -1,0 +1,130 @@
+=== build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 159 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     3.39 kB │ gzip:   1.62 kB
+dist/assets/index-Cwzzlz_4.css     75.66 kB │ gzip:  14.84 kB
+dist/assets/three-DyAd6hu3.js     518.35 kB │ gzip: 132.47 kB │ map: 2,036.77 kB
+dist/assets/index-sUqMwqKX.js     538.61 kB │ gzip: 166.32 kB │ map: 1,874.56 kB
+dist/assets/firebase-BjV68ouP.js  697.61 kB │ gzip: 163.32 kB │ map: 2,453.84 kB
+✓ built in 4.54s
+=== build exit 0
+=== walkthrough
+coach: "Step 2 of 10" -> "Step 3 of 10" after a tile click
+  shot: tools/screenshots/walkthrough/04-tutorial-after-tile-click.png
+tutorial builds: {"mapId":"tutorial","dune":true,"mangrove":true,"house":true}
+  shot: tools/screenshots/walkthrough/05-tutorial-built.png
+in-level Back button returns to the menu
+  shot: tools/screenshots/walkthrough/06-after-back-button.png
+browser Back: http://localhost:5184/#/play/l00-tutorial -> http://localhost:5184/ (menu: true)
+  shot: tools/screenshots/walkthrough/07-after-browser-back.png
+l01-first-rains: "Panaji" on map "panaji", 30 place labels, 16 monuments
+  shot: tools/screenshots/walkthrough/08-level-l01-first-rains.png
+
+Walkthrough clean: 8 screenshots, no console errors.
+=== walkthrough exit 0
+=== test:labels
+PASS  2560x1440 zoom 2: label layer 0.50 ms median, 1.20 ms max a frame; 4 drawn [Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 26
+PASS  2560x1440 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  2560x1440 zoom 2, temple hovered: label layer 0.50 ms median, 0.80 ms max a frame; 4 drawn [Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 26
+PASS  2560x1440 zoom 3 (close): label layer 0.60 ms median, 1.40 ms max a frame; 4 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  2560x1440 during a drag-pan (frame by frame): no overlap in any frame
+PASS  2560x1440 zoom 3 after a pan: label layer 0.60 ms median, 2.50 ms max a frame; 17 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Panjim Municipal MarketCity market, Institute Menezes BraganzaLibrary and gallery, Mahalaxmi TempleTemple, Jama MasjidMosque, Don Bosco High SchoolSchool, Don Bosco CollegeCollege, Government PolytechnicTechnical college, Altinho, Kala AcademyArts centre, Goa State MuseumMuseum, Patto, Campal GardenRiverside garden, Campal, Altinho, Fontainhas, São Tomé, Patto]; dropped or out of view: 13
+PASS  2560x1440 zoom 2, Maya talking: label layer 0.40 ms median, 1.60 ms max a frame; 14 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Institute Menezes BraganzaLibrary and gallery, Mahalaxmi TempleTemple, Jama MasjidMosque, Don Bosco High SchoolSchool, Don Bosco CollegeCollege, Government PolytechnicTechnical college, Altinho, Kala AcademyArts centre, Goa State MuseumMuseum, Patto, Campal GardenRiverside garden, Campal, Altinho, Fontainhas]; dropped or out of view: 16
+PASS  2560x1440 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  2560x1440 warning showing: label layer 0.40 ms median, 0.70 ms max a frame; 3 drawn [Altinho, St Cruz, Merces]; dropped or out of view: 27
+PASS  Tutorial 1920x1080: label layer 0.30 ms median, 5.70 ms max a frame; 5 drawn [Open sea, Beach, Estuary, River, Land]; dropped or out of view: 0
+
+37 views checked, 0 failed; label layer at most 5.70 ms a frame
+=== test:labels exit 0
+=== test:layout
+PASS  2560x1440 discovery=said getReady=collapsed tooltip=none warning=st-cruz
+PASS  2560x1440 discovery=said getReady=collapsed tooltip=none warning=merces
+PASS  2560x1440 discovery=said getReady=collapsed tooltip=none warning=miramar
+PASS  2560x1440 discovery=said getReady=collapsed tooltip=open tip
+PASS  2560x1440 discovery=said getReady=collapsed tooltip=open warning=st-cruz
+PASS  2560x1440 discovery=said getReady=collapsed tooltip=open warning=merces
+PASS  2560x1440 discovery=said getReady=collapsed tooltip=open warning=miramar
+PASS  2560x1440 build menu open
+PASS  2560x1440 minimised
+PASS  2560x1440 resized to 80%
+
+105 layouts checked, 0 failed
+=== test:layout exit 0
+=== test:maya
+PASS  reduced motion, explains: her box never moved
+FAIL  reduced motion, explains: no pixel of her changes between 3 photographs (1 did)
+PASS  reduced motion, warning: her box never moved
+PASS  reduced motion, warning: no pixel of her changes between 3 photographs (0 did)
+PASS  reduced motion, worried: her box never moved
+PASS  reduced motion, worried: no pixel of her changes between 3 photographs (0 did)
+PASS  reduced motion, celebrates: her box never moved
+PASS  reduced motion, celebrates: no pixel of her changes between 3 photographs (0 did)
+PASS  the Tutorial loads
+PASS  zero console errors
+
+1 check(s) failed.
+=== test:maya exit 1
+=== verify:maya
+PASS  Panaji: all 32 tooltips show real text
+PASS  Panaji: M mutes Maya
+PASS  Panaji: M unmutes Maya
+PASS  Panaji: warning heat shows two years out (123 tiles)
+PASS  Panaji: R hides the heat
+PASS  Panaji: R shows it again
+PASS  Panaji: cyclone preview matches (28 previewed at risk, 28 lost)
+PASS  Panaji: flood preview matches (33 previewed at risk, 33 lost)
+frame cost so far: 2.76 ms update, 35 draw calls, 348332 triangles
+PASS  zero console errors
+
+ALL CHECKS PASSED
+=== verify:maya exit 0
+=== s5
+PASS  no coin, price, cost, reward or growing text, the brief
+PASS  the clock reads 2026, Year 1 of 25 ("2026 Year 1 of 25")
+PASS  builds left: "Builds left this year 4 of 4"
+PASS  years until the next storm: "Next: Cyclone · end of 2030 · mild · 5 years"
+PASS  one Next year button; +1 year and Next event are gone
+PASS  no coin, price, cost, reward or growing text, the board at the start
+PASS  axe-core, the board at the start: no serious or critical violations
+PASS  no coin, price, cost, reward or growing text, Status open
+PASS  axe-core, Status open: no serious or critical violations
+PASS  no coin, price, cost, reward or growing text, Settings open
+PASS  no coin, price, cost, reward or growing text, How to Play open
+PASS  How to Play describes years, the cap and the calendar from the data
+PASS  no coin, price, cost, reward or growing text, the build menu
+PASS  build menu options carry no number: Dune NBS; Sandy Vegetation (Pandanus) NBS; Beachside Resort BUILDING; Seawall ENGINEERED
+PASS  four builds in 2026 go through
+PASS  building changes no coin value (10000 before and after)
+PASS  a fifth build in the same year is refused
+PASS  the build menu says no builds are left and points to Next year ("No builds left this year. Press Next year to go on. Next year")
+PASS  every option in that menu is disabled
+PASS  no coin, price, cost, reward or growing text, the build menu with no builds left
+PASS  axe-core, the build menu with no builds left: no serious or critical violations
+PASS  the menu's Next year moves to 2027 with four fresh builds
+PASS  the info card names no money ("Dune NBS biodiversity +1 · resilience +4 Demolish · uses 1 build")
+PASS  no coin, price, cost, reward or growing text, an info card
+PASS  Next year with 0 builds made
+PASS  Next year with 1 build made
+PASS  Coin still unchanged after more builds and years
+PASS  no coin, price, cost, reward or growing text, two years before the cyclone (heat on)
+PASS  no coin, price, cost, reward or growing text, the cyclone's year
+PASS  the cyclone's year is 2030, turn 5
+PASS  no coin, price, cost, reward or growing text, mid-storm
+PASS  no coin, price, cost, reward or growing text, the storm's replay or Aftermath
+PASS  no coin, price, cost, reward or growing text, the Aftermath card
+PASS  the Aftermath says end of 2030
+PASS  Replay rewinds to the start of the warning, 2029
+PASS  the cyclone resolved when Next year was pressed in 2030; now 2031
+PASS  no coin, price, cost, reward or growing text, after the cyclone
+PASS  all three storms resolved (c1-cyclone:true,c2-flood:true,c3-compound:true)
+PASS  no coin, price, cost, reward or growing text, the finale card
+PASS  no coin, price, cost, reward or growing text, the results screen
+PASS  zero console errors
+
+41 of 41 checks pass.
+=== s5 exit 0
+done

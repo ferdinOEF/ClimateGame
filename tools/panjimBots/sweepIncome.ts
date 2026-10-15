@@ -2,9 +2,10 @@
 import { PERSONAS, SEEDS, percentile, runBot } from "./bots";
 import { BOT_LEVEL } from "./bots";
 
-const timeline = BOT_LEVEL.timeline!;
+// ECONOMY_DISABLED_V1: coin mechanics reserved for a future version (a sweep over the jar matters only with coins on).
+const economy = BOT_LEVEL.economy!;
 for (const value of process.argv.slice(2).map(Number)) {
-  timeline.economy!.incomeScale = value;
+  economy.incomeScale = value;
   const line: string[] = [`income ${value}:`];
   for (const persona of PERSONAS) {
     const rows = SEEDS.map((seed) => runBot(persona, seed));

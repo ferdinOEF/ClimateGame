@@ -552,7 +552,8 @@ async function readBasemap(meta: BasemapMeta, cells: Cell[], pairs: Pair[] = [])
   const metresPerPixel = ((meta.bounds.east - meta.bounds.west) * METRES_PER_DEG_LON) / meta.width;
   const sampleRadiusPx = (inradiusMetres / metresPerPixel) * SAMPLE_RADIUS_FRACTION;
 
-  const browser = await chromium.launch();
+  // The container's Chromium when it has one (the bundled headless shell may not match this Playwright).
+  const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined });
   try {
     const page = await browser.newPage();
     /*
@@ -1227,7 +1228,7 @@ async function writeDebugImage(
     h: Math.ceil(se.py - nw.py + 2 * radiusPx)
   };
 
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined });
   try {
     const page = await browser.newPage();
     await page.setContent("<html><body></body></html>");
@@ -1407,7 +1408,7 @@ async function writeOverlay(meta: BasemapMeta): Promise<{ width: number; height:
     rows.push(geoToPixel(meta, lat, bounds.west).py);
   }
 
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined });
   try {
     const page = await browser.newPage();
     await page.setContent("<html><body></body></html>");

@@ -8,8 +8,9 @@ import type { Maya, MayaLine, MayaState } from "@ui/panjim/maya";
  * When Maya speaks, and what about. The rules that keep her helpful rather
  * than chatty:
  *
- *   - at most one line per quarter, and a quarter's rest between ordinary
- *     tips (warnings skip the rest, never the one-per-quarter limit;
+ *   - at most one line per moment (each build, repair or demolition, and
+ *     each new year, is a moment), and a moment's rest between ordinary
+ *     tips (warnings skip the rest, never the one-per-moment limit;
  *     discoveries, the fact about what was just built, skip it too and go
  *     ahead of ordinary tips, never ahead of a warning);
  *   - never while a time-lapse or a storm plays, never while the build menu
@@ -52,7 +53,7 @@ function coordOf(key: string): AxialCoord {
 }
 
 export class MayaDirector {
-  private lastSpokenQuarter = -1;
+  private lastSpokenMoment = -1;
   private readonly warned = new Set<string>();
   private readonly lastCalled = new Set<string>();
 
@@ -75,11 +76,11 @@ export class MayaDirector {
     const run = this.ctx.run;
     const next = run.nextChallenge();
     if (!next) return;
-    const quartersLeft = run.quartersUntil(next);
+    const yearsLeft = run.yearsUntil(next);
     const exposure = this.ctx.exposure();
 
     // Tips about the storm that is coming, once it is within three years.
-    if (quartersLeft <= 12) for (const id of TIPS_FOR[next.kind] ?? []) this.tip(id, id === "khazans" ? "explains" : "tip");
+    if (yearsLeft <= 3) for (const id of TIPS_FOR[next.kind] ?? []) this.tip(id, id === "khazans" ? "explains" : "tip");
     // Anything engineered on the board earns the seawall tip.
     for (const inst of run.state.elements.values()) {
       if (inst.elementId === "seawall" || inst.elementId === "breakwater") {
@@ -88,16 +89,16 @@ export class MayaDirector {
       }
     }
 
-    if (exposure && quartersLeft >= 1 && quartersLeft <= 5) {
+    if (exposure && yearsLeft >= 1 && yearsLeft <= 2) {
       this.tip("heat", "explains");
       const defended = [...run.state.elements.values()].some((inst) => ["dune", "sandy_vegetation", "mangrove", "khazan", "seawall", "breakwater", "small_dam"].includes(inst.elementId));
       if (defended) this.tip("shields", "tip");
       const hotspot = riskHotspot(exposure.housesAtRisk, exposure.intensity);
       const place = hotspot ? placeName(coordOf(hotspot.key), this.ctx.landmarks, run.zones?.zoneOf(hotspot.key) ?? null) : null;
 
-      // Three quarters out (or the first look inside three, after a skip):
-      // hop to where the most homes are at risk and say so. Quiet if none are.
-      if (quartersLeft <= 3 && quartersLeft >= 2 && !this.warned.has(next.id) && hotspot && place) {
+      // Two years out, when the warning begins: point to where the most
+      // homes are at risk and say so. Quiet if none are.
+      if (yearsLeft === 2 && !this.warned.has(next.id) && hotspot && place) {
         this.warned.add(next.id);
         const coord = coordOf(hotspot.key);
         this.maya.say({
@@ -108,9 +109,9 @@ export class MayaDirector {
           onShow: () => this.ctx.focus(coord)
         });
       }
-      // The last quarter: a last call if homes are still at risk, a cheer if
-      // the warned place was fixed.
-      if (quartersLeft === 1 && !this.lastCalled.has(next.id)) {
+      // The storm's own year: a last call if homes are still at risk, a cheer
+      // if the warned place was fixed.
+      if (yearsLeft === 1 && !this.lastCalled.has(next.id)) {
         this.lastCalled.add(next.id);
         this.maya.withdraw((line) => line.id === `warn:${next.id}`);
         if (hotspot && place) {
@@ -135,22 +136,22 @@ export class MayaDirector {
   /** Called a few times a second: lets her say the next queued line if she may. */
   pump(): void {
     if (this.maya.isMuted || this.ctx.blocked()) return;
-    const quarter = this.ctx.run.quarter;
+    const moment = this.ctx.run.moment;
     const line = this.maya.peek();
     if (!line) return;
-    if (quarter === this.lastSpokenQuarter) return;
+    if (moment === this.lastSpokenMoment) return;
     // A warning does not wait behind a line left over from an earlier
-    // quarter: it replaces it. (Still never two lines in one quarter.)
+    // moment: it replaces it. (Still never two lines in one moment.)
     if (this.maya.speaking) {
       if (!line.urgent) return;
       this.maya.dismiss();
     }
-    // Ordinary tips rest two quarters between them; a discovery is news about what was just built, so it does not wait out that rest.
-    if (!line.urgent && !line.fact && this.lastSpokenQuarter >= 0 && quarter - this.lastSpokenQuarter < 2) return;
-    if (this.maya.next()) this.lastSpokenQuarter = quarter;
+    // Ordinary tips rest two moments between them; a discovery is news about what was just built, so it does not wait out that rest.
+    if (!line.urgent && !line.fact && this.lastSpokenMoment >= 0 && moment - this.lastSpokenMoment < 2) return;
+    if (this.maya.next()) this.lastSpokenMoment = moment;
   }
 
-  /** A note reopened from the Field Guide: said at once, whatever the quarter. */
+  /** A note reopened from the Field Guide: said at once, whatever the moment. */
   replay(note: Note): void {
     this.maya.dismiss();
     this.maya.say({ id: note.id, text: note.text, state: "tip", force: true, urgent: true });

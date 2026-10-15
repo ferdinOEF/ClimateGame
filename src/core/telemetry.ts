@@ -17,6 +17,7 @@ export type TelemetryEventName =
   | "first_reward_ms"
   | "action"
   | "fast_forward"
+  | "next_year"
   | "request_complete"
   | "challenge_start"
   | "challenge_end"
@@ -56,14 +57,14 @@ export class Telemetry {
     return this.actionCount;
   }
 
-  /** A time-costing player action. The first one also logs `first_action_ms`. */
-  action(type: string, quarters: number): void {
+  /** A player action, with how many of the year's builds it used. The first one also logs `first_action_ms`. */
+  action(type: string, builds: number): void {
     this.actionCount++;
     if (!this.firstActionSeen) {
       this.firstActionSeen = true;
       this.emit("first_action_ms", { ms: this.elapsed() });
     }
-    this.emit("action", { type, quarters });
+    this.emit("action", { type, builds });
   }
 
   /** Anything that hands the player a reward: a coin pop, a combo, a request. The first one logs `first_reward_ms`. */
