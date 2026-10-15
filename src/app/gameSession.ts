@@ -2162,7 +2162,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         // The controller draws the element and ends the year: one build is
         // one year. The run ends at 2050, never on an objective.
         if (!panjim.build(coord, id)) return;
-        nuggetPopup?.show(id);
+        // Not when this build brought a storm: nothing of Maya's starts over it.
+        if (!panjim.stormComing) nuggetPopup?.show(id);
         playSound("build");
         return;
       }

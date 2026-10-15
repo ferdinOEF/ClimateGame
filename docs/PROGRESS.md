@@ -8260,3 +8260,48 @@ Every archetype uses every build of every year it plays.
   - none dominant.
 - `tests/section4.test.ts`'s finale plan is now 20 builds instead of a 500-coin purse.
 - The coin-era sweeps (`sweep.ts`, `sweepIncome.ts`, `finaleDefences.ts`) were removed; `sweep7.ts` replaces them.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 7). No file under `src/` changed in this section.
+
+## Section 8 — one build a year, the forecast on the start popup, a cleaner HUD — DONE
+
+**One build is one turn is one year (8.1).**
+- There is no cap any more: `ActionRun.build`, `demolish` and `repair` each end the year the moment they go through. `buildsPerYear` is gone from the level and the timeline type.
+- A refused build moves nothing: not the year, not the board, not Maya's moment.
+- **When the storms hit:**
+  - the cyclone straight after build 5, in 2030;
+  - the flood after build 15, in 2040;
+  - the two together after build 25, in 2050;
+  - each plays while the clock still shows its year, and the next phase starts the year after;
+  - tests pin the build numbers and years.
+- **"Next year" is gone:**
+  - the button, the build menu's notice, the tooltips, the help text and the brief;
+  - the telemetry event (now `year_end`) and the scenario names;
+  - the bots and the tests.
+  - The tests that need an undefended board at a later year move the clock with a test-only helper, `tests/helpers/passYear.ts`; the game itself has no such path.
+  - The QA tools build "away from the storms" instead (`passYear` scenario: the free tile farthest from every storm's reach).
+- **"Skip this year"** is a fallback button that appears only when nothing can be built anywhere (`ActionRun.canBuildAnywhere`, `skipYear`, refused otherwise). Panaji's board cannot get there: it has more than 200 free places at the start, and 25 builds use at most 25 (tested).
+- **HUD:** the year, "Year N of 25" and "N builds until the cyclone" (or "the flood", or "the cyclone and flood"). "Builds left this year" is gone.
+- **Saves:** they are now version 3. Older saves (several builds a year) are cleared, not offered.
+
+**The Houses standing box is gone (8.2).**
+- The house count is on the result cards (Section 9).
+- `HUD_OBSTACLES` and the label obstacles no longer list it.
+- The settings panel moved up into its place (top 64 px).
+
+**The forecast is on the start popup (8.3).**
+- **What the popup shows:**
+  - the line "The first cyclone lands in 5 years";
+  - a small map drawn from the real board and the real cone (`ui/panjim/conePreview.ts`, an SVG): the three bands, the dashed track with its arrowhead, the dashed area to protect, and Kala Academy and Sharada Mandir named;
+  - the legend.
+- **Layout:** the popup is two columns on Panaji only, so it fits 1366x768 with no scrolling.
+- **The game screen:**
+  - shows no chip and no legend in any turn;
+  - shows the cone itself on the map at turns 1, 6 and 16, and it goes for good with the phase's first build.
+- **The cone's fade** now runs on wall time: under software GL it lingered for seconds after the first build.
+- **The heat** is unchanged: turns 4-5, 14-15 and 24-25, recomputed after every build. The preview-equals-resolution test is kept, with the defences built one a year.
+- **The first objective** fits its 5 builds: 2 pandanus, 2 dunes and 1 breakwater, all on the Kala Academy to Sharada Mandir stretch (tested).
+
+**The bots** build once a year. A bot with nothing worth building near the danger builds on the free tile farthest from every storm. The do-nothing control can no longer do nothing, so it builds only far away; Section 10 renames it. The numeric balance bands are back to structural checks until Section 10 re-tunes for 25 builds.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 8). Maya's mechanics were left alone at the owner's request.

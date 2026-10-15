@@ -101,10 +101,9 @@ export interface PanjimHost {
   calmEnding: (ms: number) => Promise<void>;
   /** Rebuilds every element's mesh from the game state, after a rewind or a resume. */
   redrawBoard: () => void;
-  /** Adds a second button to the level brief ("Continue from 2032"). */
   /** A panel beside the opening brief's text (the first storm's forecast map). */
   addBriefFeature: (el: HTMLElement) => void;
-  /** `onBegin` runs instead when the player starts afresh. */
+  /** Adds a second button to the level brief ("Continue from 2032"). `onBegin` runs instead when the player starts afresh. */
   offerResume: (label: string, onResume: () => void, onBegin: () => void) => void;
   /** The map's challenge zones. */
   zones: readonly ZoneDef[];
@@ -452,6 +451,7 @@ export class PanjimController {
     const clock = this.clock.parts;
     tips.attach(clock.face, "clock", () => ({ label: this.run.label, turn: Math.min(this.run.turnNumber, this.run.totalYears), total: this.run.totalYears }));
     tips.attach(clock.until, "buildsUntil");
+    tips.attach(clock.skip, "skipYear");
     const outlook = this.outlook.parts;
     tips.attach(outlook.track, "outlookTrack", () => ({ start: this.run.config.startYear, end: this.run.config.endYear }));
     tips.attach(outlook.line, "outlookNext", () => ({ next: this.outlook.nextText }));
@@ -885,6 +885,9 @@ export class PanjimController {
       for (const id of data.conesSeen ?? []) this.coneSeen.add(id);
       for (const challenge of this.run.schedule) if (this.run.phaseStart(challenge) <= this.run.turnNumber) this.coneSeen.add(challenge.id);
       this.hideCone();
+      // The start popup's forecast is about 2026: gone when continuing a later year.
+      this.host.container.querySelector(".brief-feature")?.remove();
+      this.host.container.querySelector(".brief-card.with-feature")?.classList.remove("with-feature");
       // Her opening line is about the first objective: gone once that phase is behind the save.
       if (!this.run.prep.some((job) => job.heading)) this.maya.withdraw((line) => line.id === MAYA.opening.id);
       this.host.redrawBoard();
@@ -921,7 +924,7 @@ export class PanjimController {
     this.forecastAnchor = centre ? nearestTo([centre], this.host.focus) : nearestTo(hardest.length > 0 ? hardest : tiles.map((t) => `${t.coord.q},${t.coord.r}`), this.host.focus);
     const icons = strengthIcons(challengeStrength(this.run.climate, challenge));
     const what = challenge.kind === "cyclone" ? "Cyclone landfall" : challenge.kind === "flood" ? "Flood rises here" : "Surge and flood meet here";
-    this.forecastLabel.innerHTML = `<b>${what}</b> <span class="forecast-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span><span class="forecast-when">end of ${challenge.year}</span>`;
+    this.forecastLabel.innerHTML = `<b>${what}</b> <span class="forecast-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span><span class="forecast-when">in ${challenge.year}</span>`;
     this.forecastLabel.hidden = false;
   }
 
@@ -1021,7 +1024,9 @@ export class PanjimController {
     this.host.cancelRiskIntro("build");
     if (this.busy) return false;
     this.noteBoard();
+    const turn = this.run.turnNumber;
     const outcome = this.run.repair(coord);
+    this.lastTurnEnded = turn;
     if (!outcome.ok) {
       if (outcome.reason) this.host.showBanner(outcome.reason, 2000);
       return false;
@@ -1030,6 +1035,14 @@ export class PanjimController {
     this.host.telemetry.action("repair", 1);
     void this.endTurn(outcome);
     return true;
+  }
+
+  /** The turn the last action ended, for telemetry. */
+  private lastTurnEnded = 0;
+
+  /** True while a storm that the last build brought is being staged: no fact or tip should start over it. */
+  get stormComing(): boolean {
+    return this.stagingYearEnd;
   }
 
   /** True while a storm plays: the board waits for it rather than queueing actions behind it. */
@@ -1049,8 +1062,10 @@ export class PanjimController {
     if (this.busy) return false;
     this.noteBoard();
     // A refused build changes nothing, the year included.
+    const turn = this.run.turnNumber;
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
+    this.lastTurnEnded = turn;
     this.host.placeElement(coord, elementId);
     this.host.telemetry.action("build", 1);
     void this.endTurn(outcome);
@@ -1061,8 +1076,10 @@ export class PanjimController {
     this.host.cancelRiskIntro("build");
     if (this.busy) return false;
     this.noteBoard();
+    const turn = this.run.turnNumber;
     const outcome = this.run.demolish(coord);
     if (!outcome.ok) return false;
+    this.lastTurnEnded = turn;
     this.host.removeElementVisual(coord);
     this.host.telemetry.action("demolish", 0);
     void this.endTurn(outcome);
@@ -1097,7 +1114,7 @@ export class PanjimController {
     const now = yearEnd < 0 ? outcome.events : outcome.events.slice(0, yearEnd);
     const later = yearEnd < 0 ? [] : outcome.events.slice(yearEnd);
     for (const event of now) this.handleEvent(event);
-    this.host.telemetry.emit("year_end", { turn: this.run.turnNumber });
+    this.host.telemetry.emit("year_end", { turn: this.lastTurnEnded || this.run.turnNumber - 1 });
     this.busy = true;
     this.syncControls();
     try {
@@ -1133,7 +1150,7 @@ export class PanjimController {
       case "warning": {
         playSound("hazard_telegraph");
         this.outlook.pulse();
-        this.host.showBanner(`${event.challenge.name} at the end of ${event.challenge.year}. The red shows where it will hit.`, 4200);
+        this.host.showBanner(`${event.challenge.name} in ${event.challenge.year}. The red shows where it will hit.`, 4200);
         this.showForecast(event.challenge);
         break;
       }
@@ -1309,7 +1326,14 @@ export class PanjimController {
   /** Scenario helper: the year's build (`act`, or `passYear` when it makes none) and, while a storm plays, hurries it and closes its Aftermath like a player would, until the year has turned. */
   private async buildThrough(stopAt?: () => boolean, act?: () => boolean): Promise<boolean> {
     const turn = this.run.turnNumber;
-    if (!act?.()) void this.passYear();
+    if (!act?.()) {
+      const built = this.passYear();
+      // Nowhere to build (never on Panaji): stop rather than wait for a year that will not turn.
+      if (this.run.turnNumber === turn && !this.busy) {
+        await built;
+        if (this.run.turnNumber === turn && !this.busy) return true;
+      }
+    }
     await wait(60);
     while (this.busy) {
       if (stopAt?.()) return true;

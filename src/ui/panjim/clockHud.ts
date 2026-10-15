@@ -88,8 +88,8 @@ export class ClockHud {
   }
 
   /** The parts, for their tooltips. */
-  get parts(): { face: HTMLElement; until: HTMLElement } {
-    return { face: this.el.querySelector(".clock-face")!, until: this.untilEl };
+  get parts(): { face: HTMLElement; until: HTMLElement; skip: HTMLButtonElement } {
+    return { face: this.el.querySelector(".clock-face")!, until: this.untilEl, skip: this.skipBtn };
   }
 
   dispose(): void {
