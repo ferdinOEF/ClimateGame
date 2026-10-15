@@ -1,12 +1,13 @@
 /**
  * Section 7's tuning sweep: every archetype over the bot seeds with some of
  * the game's numbers changed in this process only (never the data on disk),
- * reporting win rates (every storm at two stars or more) and houses saved per
- * storm. A tuning aid, not part of the build.
+ * reporting win rates (the level ends on three stars; also every storm at two
+ * stars or more), houses saved per storm, and the finale met by a plain plan.
+ * A tuning aid, not part of the build.
  *
  * Usage:  npx tsx tools/panjimBots/sweep7.ts defence.metresPerResilience=0.55 houseStars.two=0.55 ...
- *   a key starting "houseStars." sets the level's star thresholds; any other
- *   is a path into hazardModel.json. BOT_SEEDS=n uses the first n seeds.
+ *   a key starting "houseStars." or "timeline." sets the level's own numbers;
+ *   any other is a path into hazardModel.json. BOT_SEEDS=n uses the first n seeds.
  */
 import { computeWater, HAZARD_MODEL, LANDFALL_ZONE, siteAt, waterBoard } from "../../src/core/hazardModel";
 import { GameState } from "../../src/core/gameState";
@@ -20,7 +21,8 @@ for (const pair of overrides) {
   const [path, raw] = pair.split("=");
   const value = Number(raw);
   const parts = path.split(".");
-  let target: Record<string, unknown> = parts[0] === "houseStars" ? (BOT_LEVEL as unknown as Record<string, unknown>) : (HAZARD_MODEL as unknown as Record<string, unknown>);
+  const onLevel = parts[0] === "houseStars" || parts[0] === "timeline";
+  let target: Record<string, unknown> = onLevel ? (BOT_LEVEL as unknown as Record<string, unknown>) : (HAZARD_MODEL as unknown as Record<string, unknown>);
   for (const part of parts.slice(0, -1)) target = target[part] as Record<string, unknown>;
   target[parts[parts.length - 1]] = value;
 }

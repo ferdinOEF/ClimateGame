@@ -24,6 +24,7 @@ import { axialKey, neighbor, type AxialCoord } from "../../src/core/hex";
 import { resolveChallenge, ZoneIndex } from "../../src/core/zones";
 import { computeCombos } from "../../src/core/combos";
 import { computeWater, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE } from "../../src/core/hazardModel";
+import { HEAT_LEAD_YEARS } from "../../src/core/exposure";
 import type { ChallengeKind, ScheduledChallenge } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
 import { hashSeed, Rng } from "../../src/core/rng";
@@ -77,8 +78,8 @@ export const TIME = {
 
 /**
  * Panaji as played (one baseline since Section 4). This is the game's own
- * level object: the tuning sweeps (sweep.ts, sweepIncome.ts) change its
- * numbers inside their own process only, never the data on disk.
+ * level object: the tuning sweep (sweep7.ts) changes its
+ * numbers inside its own process only, never the data on disk.
  */
 export const BOT_LEVEL: LevelDef = LEVEL_BY_ID.get("l01-first-rains")!;
 const MAP = mapById("panaji")!;
@@ -125,6 +126,8 @@ class Player {
   readonly log: LoggedAction[] = [];
   yearsWithBuildsLeft = 0;
   jarTaps = 0;
+  /** Each storm's forecast cone as the player saw it at the start of its phase: the houses in its area to protect and the tiles it covered. */
+  readonly cones = new Map<string, { area: string[]; tiles: string[] }>();
   checkpoint2Ms = 0;
   firstActionMs = -1;
   firstRewardMs = -1;
@@ -358,11 +361,12 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
  * nothing saves a house or takes water off one.
  */
 function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infinity, skip: string | null = null, only: string | null = null): { coord: AxialCoord; elementId: string; saves: number } | null {
-  const exposure = p.run.exposureFor(challenge);
-  if (!exposure || exposure.housesAtRisk.length === 0) return null;
-  const near = around([...exposure.housesAtRisk, ...exposure.exposure.keys()], 1);
+  const seen = visibleRisk(p, challenge);
+  if (seen.risk.length === 0) return null;
+  const near = around([...seen.risk, ...seen.tiles], 1);
   const candidates: { key: string; elementId: string; score: number }[] = [];
-  const risk = new Set(exposure.housesAtRisk);
+  const risk = new Set(seen.risk);
+  const onPath = new Set(seen.tiles);
   for (const key of near) {
     const coord = coordOf(key);
     for (const elementId of DEFENCES) {
@@ -370,7 +374,7 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infin
       if (!p.state.canBuild(coord, elementId)) continue;
       let score = 0;
       for (const n of around([key], 2)) if (risk.has(n)) score++;
-      candidates.push({ key, elementId, score: score + (exposure.exposure.get(key) ?? 0) });
+      candidates.push({ key, elementId, score: score + (onPath.has(key) ? 1 : 0) });
     }
   }
   candidates.sort((a, b) => b.score - a.score || (a.key < b.key ? -1 : a.key > b.key ? 1 : a.elementId < b.elementId ? -1 : 1));
@@ -407,24 +411,54 @@ function playYears(p: Player, build: () => boolean): void {
   }
 }
 
-/** Casual's pick by eye: next to the most red houses (roughly), a defence that answers the storm. Never simulates. */
+/**
+ * What the screen shows about `next` now, as the player can know it: in the
+ * last two years before it, the heat (recomputed after every build); before
+ * that, the forecast cone they saw at the start of the phase (it is drawn
+ * once and not refreshed, so they remember it as it was). The houses marked
+ * red, and the tiles the water reaches.
+ */
+function visibleRisk(p: Player, next: ScheduledChallenge): { risk: string[]; tiles: string[] } {
+  if (!p.cones.has(next.id) && p.run.turnNumber >= p.run.phaseStart(next)) {
+    const cone = p.run.forecastCone(next);
+    if (cone) p.cones.set(next.id, { area: [...cone.area], tiles: [...cone.bands.keys()] });
+  }
+  const remembered = p.cones.get(next.id) ?? { area: [], tiles: [] };
+  if (p.run.yearsUntil(next) <= HEAT_LEAD_YEARS) {
+    const heat = p.run.exposureFor(next);
+    if (heat && heat.housesAtRisk.length > 0) return { risk: heat.housesAtRisk, tiles: [...heat.exposure.keys()] };
+  }
+  return { risk: remembered.area, tiles: remembered.tiles };
+}
+
+/**
+ * Casual's pick by eye, from what the screen shows: next to the most red
+ * houses (roughly), a defence that answers the storm. When no free spot is
+ * next to a red house, anywhere the forecast shows water, next to the most
+ * houses. Never simulates.
+ */
 function byEye(p: Player, next: ScheduledChallenge): { coord: AxialCoord; id: string } | null {
-  const exposure = p.run.exposureFor(next);
-  if (!exposure || exposure.housesAtRisk.length === 0) return null;
-  const risk = new Set(exposure.housesAtRisk);
+  const { risk, tiles } = visibleRisk(p, next);
+  if (tiles.length === 0) return null;
+  const red = new Set(risk);
   let best: { coord: AxialCoord; id: string; score: number } | null = null;
-  for (const key of around(exposure.exposure.keys(), 1)) {
+  let fallback: { coord: AxialCoord; id: string; score: number } | null = null;
+  for (const key of around(tiles, 1)) {
     const coord = coordOf(key);
-    let red = 0;
-    for (const n of around([key], 2)) if (risk.has(n)) red++;
-    if (red === 0) continue;
+    let nearRed = 0;
+    let nearHomes = 0;
+    for (const n of around([key], 2)) {
+      if (red.has(n)) nearRed++;
+      if (p.state.elements.get(n)?.elementId === "house") nearHomes++;
+    }
     for (const id of DEFENCES) {
       if (!answers(id, next.kind) || !p.state.canBuild(coord, id)) continue;
-      const score = red * (0.5 + p.rng.next());
-      if (!best || score > best.score) best = { coord, id, score };
+      const jitter = 0.5 + p.rng.next();
+      if (nearRed > 0 && (!best || nearRed * jitter > best.score)) best = { coord, id, score: nearRed * jitter };
+      if (!fallback || nearHomes * jitter > fallback.score) fallback = { coord, id, score: nearHomes * jitter };
     }
   }
-  return best;
+  return best ?? fallback;
 }
 
 function playCasual(p: Player): void {
@@ -454,7 +488,7 @@ function playGreedy(p: Player): void {
       }
     }
   };
-  while (streets.length < GREEDY_STREETS) adopt();
+  while (streets.length < Math.min(GREEDY_STREETS, houses.length)) adopt();
   let turn = 0;
   playYears(p, () => {
     // Every build next to one of its streets in turn, any defence that fits; it never looks at the cone or the heat.
@@ -503,6 +537,11 @@ function smartPlayer(skip: string | null, only: string | null = null): (p: Playe
       }
       const pick = bestDefence(p, next, attention, skip, only);
       if (pick && p.build(pick.coord, pick.elementId)) return true;
+      // Nothing it weighed would save more: the rest of the year's builds go by eye, like anyone's.
+      if (!only && !skip) {
+        const guess = byEye(p, next);
+        if (guess && p.build(guess.coord, guess.id)) return true;
+      }
       // Nothing worth building against this storm: mend a worn defence or a lost home.
       for (const [key, inst] of p.state.elements) {
         if (!p.run.needsRepair(coordOf(key))) continue;
