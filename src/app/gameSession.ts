@@ -16,6 +16,7 @@ import { combinedDepth as combinedDepthAt } from "@core/hazard";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
 import { BuildFlourish } from "@render/buildFlourish";
 import { ForecastOutline } from "@render/forecastOutline";
+import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { axialToWorld, type AxialCoord } from "@core/hex";
@@ -265,6 +266,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   const heatOverlay = new HeatOverlay(levelTiles.length, prefersReducedMotionNow());
   scene.add(heatOverlay.mesh);
+  /** Panjim 2050: the forecast cone at the start of each storm's phase (Section 6). Empty on every other level. */
+  const coneOverlay = new ForecastConeOverlay(levelTiles.length);
+  coneOverlay.reducedMotion = prefersReducedMotionNow();
+  scene.add(coneOverlay.group);
   /**
    * Panjim 2050's storms: the water (one instanced layer, drawn from the
    * storm's depth field) and the sky (the cyclone's spiral, the flood's rain
@@ -673,6 +678,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // statement about where the storm goes, not two on top of each other.
             forecastOutline.group.visible = !tiles.some((tile) => tile.heat > 0);
           },
+          showCone: (cone) => {
+            if (cone) coneOverlay.show(cone, (coord) => terrain.heightAt(coord));
+            else coneOverlay.hide();
+          },
+          frameWorld: (box) => {
+            // A gentle glide (cancelled by any drag) to frame the box, a little wider than it.
+            focusOn((box.minX + box.maxX) / 2, (box.minZ + box.maxZ) / 2, false);
+            fitTo(Math.max(18, (box.maxX - box.minX) * 1.15), Math.max(12, (box.maxZ - box.minZ) * 1.2), false);
+          },
           landmarks: levelMap.landmarks,
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           overlayOpen,
@@ -744,6 +758,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             storm.setReducedMotion(reduced);
             stormWater.setReducedMotion(reduced);
             elements.setSwayEnabled(!reduced);
+            coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
           offerResume: (label, onResume) => objectivesPanel.addBriefAction(label, onResume)
@@ -2326,6 +2341,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     for (const word of stormWords) placeStormWord(word);
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
+    coneOverlay.tick(nowMs);
     if (ambientLife) {
       ambientLife.setWind(storm.windStrength);
       ambientLife.tick(nowMs);
@@ -2424,6 +2440,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __telemetry: telemetry.events,
     // Frame cost counters for tools/phaseShots.ts (see scene.ts `frameStats`).
     __frameStatsForTest: frameStats,
+    __coneForTest: coneOverlay,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
     __audioForTest: audioStateForTest,
@@ -2657,6 +2674,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     buildFlourish.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();
+    coneOverlay.dispose();
     townDecor?.dispose();
     ambientLife?.dispose();
     tooltips.dispose();

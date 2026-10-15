@@ -8178,3 +8178,26 @@ growth in this version.
 **The Outlook during a storm** still reads the storm's own year (its "now" mark, sea level and the next storm's years) until the new year ticks in, like the clock.
 
 **Heat** is 35% two years out and 50% in the storm's year, so a house that will fall is hatched from the first warning year (the hatch starts above 30%): the cue that does not rely on colour.
+
+## Section 6 — forecast cone at phase start, heat before each storm, first objective — DONE
+
+**The first cyclone is small (6.1).** Its landfall is now `-2,15`, on the Miramar beach between Dhempe College and Sharada Mandir, and two game rules in `hazardModel.json` keep its surge near where it lands (terrain, geography, CRZ, OSM and elevation untouched):
+- `surge.baseM` 8.5 → 7 and `perStrengthM` 1.45 → 2.027: the same surge level as before at the finale's strength (2.6), lower for a weaker storm;
+- `surge.weakStorm`: a storm weaker than 2.6 loses more height per hex at sea and up the channels, × (2.6 / strength) to the power 1.42 at sea and 0.9 up the channels. The finale and the flood are unchanged by it.
+- Undefended, the cyclone now takes **9 houses, every one on land between Kala Academy and Sharada Mandir**, at most 4.9 hexes inland (before: 28 to 38 houses, reaching up the Mandovi). The tiles are listed in `docs/QA_REPORT.md`.
+
+**The forecast cone (6.1)** shows at the start of turns 1, 6 and 16, for that phase's storm only (`ActionRun.phaseStart`); it goes for good on Next year, and is never shown again after a reload (the save carries `conesSeen`, and a resumed run counts every phase that began before it as seen). The camera glides to frame it.
+- **From the hazard model** (`core/forecastCone.ts`), on a board with no defences (the worst a player can face):
+  - **bands** are how sure the water is to reach a tile: **Most likely** where even a storm at 60% of its strength reaches, **Likely** at 80%, **Possible** where the storm itself reaches; so every house that could be lost lies in Possible (tested);
+  - at sea, for a cyclone, only the wedge it comes in through (35° either side of its approach, 8 hexes out);
+  - **Area to protect** is exactly the houses the storm takes with the defences standing now (the resolver's own answer; tested against the storm);
+  - **Where they meet** (the compound storm): tiles where the surge and the river water stand within 25% of each other's height, which is the Mandovi waterfront and the creek mouth by Miramar;
+  - **tracks**: the cyclone's from open sea through its landfall a little way inland; the flood's along the channels from the most upstream (eastern) Mandovi tile to the wetland it floods deepest, in Taleigao.
+- **Drawn** by `render/forecastConeOverlay.ts`: dark, mid and light red bands (they differ by lightness); indigo with white diagonal hatching for where they meet; a dashed dark outline on a light halo round the area to protect; each track a dashed dark line on a light halo with an arrowhead. The bands sit on the tile tops like the heat (under buildings); the outline and tracks draw over the board; all of it is under the DOM labels, the HUD and Maya.
+- **Words** (`ui/panjim/forecastConeCard.ts`), top centre under the clock: the chip ("Cyclone lands end of 2030 · 5 years", "Flood in 2040 · 10 years", "Cyclone and flood in 2050 · 10 years") and a small legend (Most likely, Likely, Possible, Area to protect, and Where they meet for the compound). It is in `HUD_OBSTACLES` and `LABEL_OBSTACLES`; the warning banner moves below it while it shows.
+- **Motion:** a 600 ms fade in and out, nothing else; with reduced motion (or Calm motion) it appears and goes at once. Nothing flashes, pulses or moves.
+- **Honesty:** nothing says the cone narrows. Two game rules are on the Sources screen: the flood's cone shows where the water comes from and where it goes, and is not a weather service's forecast; and what the bands mean.
+
+**Heat (6.2).** The heat was moved to the last two years before each storm in Section 5 (turns 4-5, 14-15, 24-25), recomputed after every build, and the preview-equals-resolution test is exact. No cone in that window. **Maya** now says one line when the heat first appears in a phase: "The red shows where the {storm} will hit. {place} is most at risk: strengthen it now." (practical guidance, no invented numbers); the shields tip waits for a build after it, and a storm's warning lines are withdrawn once it has passed.
+
+**First objective (6.3).** On the prep system: `prep.opening` in levels.json, "Protect Kala Academy to Sharada Mandir", on the stretch between those two places (`core/stretch.ts`: between them along the coast, up to 6 hexes inland and 4 out to sea; 88 tiles, of which 6 beach and 24 sea tiles near enough for a breakwater). Steps: **plant 3 pandanus** on that beach, **add 3 dunes** there (the 6 beach tiles take both), **build 2 breakwaters** on the coast in front of it: 8 builds of the 20 before the storm. No reward. It is the Get ready list, a block in the Status panel, and Maya's first line ("Before the cyclone, our first job is to protect Kala Academy to Sharada Mandir. The steps are in your Status panel."). Done in full, it keeps all 9 houses standing; after the cyclone the usual jobs return.

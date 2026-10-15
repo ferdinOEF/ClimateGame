@@ -6,7 +6,9 @@ import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, ty
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
 import { landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
-import { generatePrep, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
+import { generatePrep, openingJobs, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
+import { stretchTiles } from "./stretch";
+import { forecastCone, type ForecastCone } from "./forecastCone";
 import { resolveStorm, type StormRecord } from "./stormRecord";
 
 /**
@@ -81,6 +83,8 @@ export interface ActionRunOptions {
   economy?: EconomyConfig;
   /** The level's growth switch. Absent or disabled: everything is at full strength when built. */
   growth?: { enabled: boolean };
+  /** The map's named places, for an opening objective's stretch of coast. */
+  landmarks?: readonly { name: string; q: number; r: number }[];
 }
 
 /** The readiness gauge: what the next storm would do to the board as it stands. */
@@ -151,6 +155,8 @@ export class ActionRun {
   readonly prepConfig?: PrepConfig;
   /** The Get ready jobs for the next storm, done or not. */
   prep: PrepObjective[] = [];
+  /** The opening objective's stretch of coast (its tiles), when the level has one and its places are on the map. */
+  readonly openingTiles: ReadonlySet<string> | null;
   /**
    * The run as it stood when each storm's warning began (two years out), by
    * storm id: what "Replay from 2029" rewinds to.
@@ -192,6 +198,10 @@ export class ActionRun {
     this.houseStars = options.houseStars;
     this.houseRule = options.houseRule;
     this.prepConfig = options.prep;
+    const region = options.prep?.opening?.region;
+    const from = region && options.landmarks?.find((l) => l.name === region.from);
+    const to = region && options.landmarks?.find((l) => l.name === region.to);
+    this.openingTiles = region && from && to ? stretchTiles(state.placed.values(), { from, to, inland: region.inland, seaward: region.seaward }) : null;
     this.refreshPrep();
   }
 
@@ -204,6 +214,12 @@ export class ActionRun {
     const next = this.nextChallenge();
     if (!this.prepConfig || !next || !this.zones) {
       this.prep = [];
+      return this.prep;
+    }
+    // The first storm's own objective, when the level has one (Section 6.3).
+    const opening = this.prepConfig.opening;
+    if (opening && opening.challengeId === next.id && this.openingTiles) {
+      this.prep = openingJobs(opening, this.openingTiles, this.state, this.zones);
       return this.prep;
     }
     const exposure = this.exposureFor(next);
@@ -346,6 +362,25 @@ export class ActionRun {
   /** Years until `challenge`, counting this one: 1 in its own year. */
   yearsUntil(challenge: ScheduledChallenge): number {
     return yearsUntil(challenge, this.turnNumber);
+  }
+
+  /**
+   * The first turn of a storm's phase: the turn after the storm before it
+   * resolved (turn 1 for the first). The forecast cone shows then (Section 6).
+   */
+  phaseStart(challenge: ScheduledChallenge): number {
+    const index = this.schedule.findIndex((c) => c.id === challenge.id);
+    return index > 0 ? this.schedule[index - 1].turn + 1 : 1;
+  }
+
+  /** The forecast cone for a storm still to come, from the hazard model and the board as it stands (core/forecastCone.ts). */
+  forecastCone(challenge: ScheduledChallenge): ForecastCone | null {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
+    const lost = this.exposureFor(challenge)?.housesAtRisk ?? [];
+    const landfallTiles = this.zones.keys(LANDFALL_ZONE);
+    return forecastCone(challenge.id, this.state, this.board(), { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge) }, lost, {
+      landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined
+    });
   }
 
   /** The next storm that has not resolved yet, or null after the last. */

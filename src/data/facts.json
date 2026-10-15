@@ -315,6 +315,18 @@
       ],
       "needsSource": true,
       "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "flood-cone",
+      "kind": "gameRule",
+      "text": "The flood's cone shows where the water comes from and where it goes. It is not a weather service's forecast.",
+      "elements": []
+    },
+    {
+      "id": "cone-bands",
+      "kind": "gameRule",
+      "text": "A storm's cone shows its reach: Most likely is reached even by a weaker storm, Possible only at full strength.",
+      "elements": []
     }
   ]
 }

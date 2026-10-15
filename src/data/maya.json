@@ -4,6 +4,11 @@
     "title": "Hello",
     "text": "Hello! I am Maya. Let us keep Panjim dry."
   },
+  "opening": {
+    "id": "first-job",
+    "title": "First job",
+    "text": "Hello! I am Maya. Before the {storm}, our first job is to {objective}. The steps are in your Status panel."
+  },
   "tips": [
     {
       "id": "heat",
@@ -46,7 +51,7 @@
     }
   ],
   "warning": {
-    "exposed": "{place} is exposed! Strengthen it before the {storm}.",
+    "exposed": "The red shows where the {storm} will hit. {place} is most at risk: strengthen it now.",
     "lastCall": "Last call! {count} homes are still in danger, most of them around {place}.",
     "fixed": "{place} looks safe now. Well done!"
   },

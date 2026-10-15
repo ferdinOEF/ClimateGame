@@ -2248,3 +2248,195 @@
 .build-popover.hide-cost .build-option > span:only-child {
   text-align: left;
 }
+
+/* The first storm's objective, in the Status panel (Section 6.3). */
+.status-objective {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(20, 30, 26, 0.86);
+  border: 1px solid rgba(255, 243, 196, 0.3);
+  border-radius: 10px;
+  color: #fdf6e6;
+  max-width: 280px;
+  text-align: left;
+  pointer-events: auto;
+}
+
+.status-objective[hidden] {
+  display: none;
+}
+
+.status-objective-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f2c35b;
+}
+
+.status-objective-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 2px 0 6px;
+}
+
+.status-objective-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-objective-step {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.status-objective-check {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(253, 246, 230, 0.7);
+  border-radius: 3px;
+}
+
+/* Done: a filled box with a tick mark and struck text, so it reads without colour. */
+.status-objective-step.done .status-objective-check {
+  background: #6fc2a8;
+  border-color: #6fc2a8;
+  box-shadow: inset 0 0 0 2px rgba(20, 30, 26, 0.86);
+}
+
+.status-objective-step.done .status-objective-label {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.status-objective-progress {
+  font-variant-numeric: tabular-nums;
+  color: #9fd8c6;
+}
+
+/*
+ * The forecast cone's chip and legend (Section 6.1), top centre under the
+ * clock. Fades in with the cone; at once with reduced motion. Never flashes.
+ */
+.forecast-cone-card {
+  position: absolute;
+  top: calc(186px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  animation: cone-card-in 600ms ease-out;
+}
+
+.forecast-cone-card[hidden] {
+  display: none;
+}
+
+@keyframes cone-card-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forecast-cone-card {
+    animation: none;
+  }
+}
+
+.calm-motion .forecast-cone-card {
+  animation: none;
+}
+
+.cone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #7f1418;
+  border: 2px solid #fdf6e6;
+  color: #fdf6e6;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+}
+
+.cone-chip-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.cone-legend {
+  list-style: none;
+  margin: 0;
+  padding: 5px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  background: rgba(20, 30, 26, 0.86);
+  border: 1px solid rgba(255, 243, 196, 0.3);
+  border-radius: 10px;
+  color: #fdf6e6;
+  font-size: 12px;
+}
+
+.cone-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cone-legend li[hidden] {
+  display: none;
+}
+
+.cone-swatch {
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* The three bands differ by lightness, matching the board. */
+.cone-swatch.band-3 {
+  background: #821a1c;
+}
+
+.cone-swatch.band-2 {
+  background: #dc5a4a;
+}
+
+.cone-swatch.band-1 {
+  background: #fdc2b4;
+}
+
+/* Area to protect: a dashed outline, as on the board. */
+.cone-swatch.area {
+  background: transparent;
+  border: 2px dashed #fdf6e6;
+}
+
+/* Where they meet: indigo, hatched. */
+.cone-swatch.meet {
+  background: repeating-linear-gradient(-45deg, #4c38b3 0 3px, #ecebff 3px 5px);
+}
+
+/* The warning banner moves below the cone's card while it shows. */
+.has-forecast-cone .era-banner {
+  top: calc(262px + env(safe-area-inset-top));
+}

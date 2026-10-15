@@ -91,7 +91,7 @@
           "kind": "cyclone",
           "year": 2030,
           "strength": 1.2,
-          "landfall": "0,13"
+          "landfall": "-2,15"
         },
         {
           "id": "c2-flood",
@@ -196,7 +196,37 @@
           "reward": 50,
           "label": "Build {count} seawall at {place}"
         }
-      ]
+      ],
+      "opening": {
+        "challengeId": "c1-cyclone",
+        "title": "Protect Kala Academy to Sharada Mandir",
+        "region": {
+          "from": "Kala Academy",
+          "to": "Sharada Mandir School",
+          "inland": 6,
+          "seaward": 4
+        },
+        "steps": [
+          {
+            "id": "pandanus",
+            "elementId": "sandy_vegetation",
+            "count": 3,
+            "label": "Plant 3 pandanus on that beach"
+          },
+          {
+            "id": "dunes",
+            "elementId": "dune",
+            "count": 3,
+            "label": "Add 3 dunes there"
+          },
+          {
+            "id": "breakwater",
+            "elementId": "breakwater",
+            "count": 2,
+            "label": "Build 2 breakwaters on the coast in front of it"
+          }
+        ]
+      }
     },
     "houseStars": {
       "three": 0.9,

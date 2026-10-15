@@ -46,7 +46,7 @@ describe("aftermath line", () => {
     const outcome = storm(state, zones);
     expect(outcome.housesDamaged).toBeGreaterThan(0);
     expect(outcome.housesSaved).toBeGreaterThan(0);
-    expect(aftermathLine("cyclone", outcome, state, zones, [])).toMatch(new RegExp(`^The mangroves at (Taleigao|the waterfront|the Ourem creek) took it: ${outcome.housesSaved} houses stayed standing\\.$`));
+    expect(aftermathLine("cyclone", outcome, state, zones, [])).toMatch(new RegExp(`^The mangroves at (Taleigao|the waterfront|the Ourem creek) took (it|most of it): ${outcome.housesSaved} houses stayed standing\\.$`));
   });
 
   it("says plainly when the first zone was bare", () => {

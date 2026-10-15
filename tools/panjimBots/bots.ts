@@ -107,7 +107,8 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
     houseRule: level.houses?.rule,
     prep: level.prep,
     economy: level.economy,
-    growth: level.growth
+    growth: level.growth,
+    landmarks: MAP.landmarks
   });
 }
 

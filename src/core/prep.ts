@@ -32,8 +32,25 @@ export interface PrepTemplate {
   label: string;
 }
 
+/**
+ * The first storm's own objective (Section 6.3): a named job in steps on one
+ * stretch of coast, set at the start of the run instead of the generated
+ * jobs. Built on the same jobs: each step is a job that counts its element
+ * in the stretch's tiles.
+ */
+export interface OpeningObjective {
+  /** The storm it is for. */
+  challengeId: string;
+  title: string;
+  /** The stretch, by the names of two places on the map (core/stretch.ts). */
+  region: { from: string; to: string; inland: number; seaward: number };
+  steps: { id: string; elementId: string; count: number; label: string }[];
+}
+
 export interface PrepConfig {
   templates: PrepTemplate[];
+  /** The first storm's own objective, in place of the generated jobs for it. */
+  opening?: OpeningObjective;
   /** What to call each zone in a label: "the Ourem creek". */
   places: Record<string, string>;
   /** At most this many jobs per storm (default 3). */
@@ -52,14 +69,35 @@ export interface PrepObjective {
   reward: number;
   label: string;
   done: boolean;
+  /** For an opening objective's step: the stretch's tiles it counts in (instead of `zone`), and the objective's title. */
+  tiles?: string[];
+  heading?: string;
 }
 
-function standingIn(state: GameState, zones: ZoneIndex, elementId: string, zone: string): number {
+function standingIn(state: GameState, zones: ZoneIndex, elementId: string, zone: string, tiles?: ReadonlySet<string>): number {
   let count = 0;
   for (const [key, inst] of state.elements) {
-    if (inst.elementId === elementId && zones.zoneOf(key) === zone) count++;
+    if (inst.elementId === elementId && (tiles ? tiles.has(key) : zones.zoneOf(key) === zone)) count++;
   }
   return count;
+}
+
+/** The opening objective's steps as jobs, counting in the stretch's tiles. */
+export function openingJobs(opening: OpeningObjective, tiles: ReadonlySet<string>, state: GameState, zones: ZoneIndex): PrepObjective[] {
+  return opening.steps.map((step) => ({
+    id: `${opening.challengeId}:opening:${step.id}`,
+    challengeId: opening.challengeId,
+    templateId: `opening:${step.id}`,
+    elementId: step.elementId,
+    zone: "",
+    count: step.count,
+    baseline: standingIn(state, zones, step.elementId, "", tiles),
+    reward: 0,
+    label: step.label,
+    done: false,
+    tiles: [...tiles],
+    heading: opening.title
+  }));
 }
 
 /** Free tiles in `zone` where `elementId` can be built now. */
@@ -134,6 +172,6 @@ export function generatePrep(
 
 /** How far along a job is: what has been built for it, out of `count`. */
 export function prepProgress(job: PrepObjective, state: GameState, zones: ZoneIndex): { current: number; target: number } {
-  const current = Math.max(0, standingIn(state, zones, job.elementId, job.zone) - job.baseline);
+  const current = Math.max(0, standingIn(state, zones, job.elementId, job.zone, job.tiles ? new Set(job.tiles) : undefined) - job.baseline);
   return { current: Math.min(current, job.count), target: job.count };
 }

@@ -42,7 +42,13 @@ import type { ChallengeKind } from "./climate";
  * measurement. Pure: no DOM, no renderer.
  */
 export interface HazardModelConfig {
-  surge: { baseM: number; perStrengthM: number; lossPerHex: { sea: number; channel: number; beach: number; land: number } };
+  surge: {
+    baseM: number;
+    perStrengthM: number;
+    lossPerHex: { sea: number; channel: number; beach: number; land: number };
+    /** A storm weaker than `refStrength` loses more per hex at sea and up the channels: × (refStrength / strength) ^ exponent. */
+    weakStorm?: { refStrength: number; seaExponent: number; channelExponent: number };
+  };
   flood: { baseM: number; perStrengthM: number; sourceShare: number; lossPerHex: { sea: number; channel: number; wetland: number; beach: number; land: number } };
   compound: { surgeShare: number; floodShare: number; backwaterShare: number; backwaterExponent: number };
   defence: {
@@ -421,9 +427,14 @@ function depthOf(board: WaterBoard, level: Map<string, number>): Map<string, num
   return depth;
 }
 
-function surgeLoss(config: HazardModelConfig): (tile: BoardTile) => number {
+function surgeLoss(config: HazardModelConfig, strength: number): (tile: BoardTile) => number {
   const loss = config.surge.lossPerHex;
-  return (tile) => (tile.terrainId === "coast" ? loss.sea : CHANNEL.has(tile.terrainId) ? loss.channel : tile.terrainId === "beach" ? loss.beach : loss.land);
+  // A weaker storm's surge stays nearer its landfall: it loses more at sea and up the creeks (a game rule; none below or at refStrength).
+  const weak = config.surge.weakStorm;
+  const ratio = weak && strength > 0 && strength < weak.refStrength ? weak.refStrength / strength : 1;
+  const sea = loss.sea * (weak ? ratio ** weak.seaExponent : 1);
+  const channel = loss.channel * (weak ? ratio ** weak.channelExponent : 1);
+  return (tile) => (tile.terrainId === "coast" ? sea : CHANNEL.has(tile.terrainId) ? channel : tile.terrainId === "beach" ? loss.beach : loss.land);
 }
 
 function floodLoss(config: HazardModelConfig): (tile: BoardTile) => number {
@@ -444,7 +455,7 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
     surgeLevel = (config.surge.baseM + config.surge.perStrengthM * storm.strength) * (storm.kind === "compound" ? c.surgeShare : 1);
     const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall!))];
     const own = ownMetres(state, "cyclone", skip, weaken, combos, config);
-    surge = protect(spread(board, new Map([[site, surgeLevel]]), surgeLoss(config), pathDrag(board, own, config, kindOf)), areaProtection(board, own, config, kindOf));
+    surge = protect(spread(board, new Map([[site, surgeLevel]]), surgeLoss(config, storm.strength), pathDrag(board, own, config, kindOf)), areaProtection(board, own, config, kindOf));
   }
   let floodLevel = 0;
   let flood = new Map<string, number>();

@@ -1,7 +1,7 @@
 import type { ActionRun } from "@core/actionRun";
 import type { AxialCoord } from "@core/hex";
 import type { Exposure } from "@core/exposure";
-import { MAYA, placeName, riskHotspot, warningLine } from "@core/mayaLines";
+import { MAYA, openingLine, placeName, riskHotspot, stormWord, warningLine } from "@core/mayaLines";
 import type { Maya, MayaLine, MayaState } from "@ui/panjim/maya";
 
 /**
@@ -56,9 +56,18 @@ export class MayaDirector {
   private lastSpokenMoment = -1;
   private readonly warned = new Set<string>();
   private readonly lastCalled = new Set<string>();
+  /** The moment each storm's warning line was queued: the shields tip waits for a build after it. */
+  private readonly warnedAt = new Map<string, number>();
 
   constructor(private readonly maya: Maya, private readonly ctx: DirectorContext) {
-    this.say(MAYA.greeting, "greeting");
+    // Her first line: the first storm's objective, when there is one (Section 6.3); else hello.
+    const job = ctx.run.prep.find((j) => j.heading);
+    const next = ctx.run.nextChallenge();
+    if (job && next && job.challengeId === next.id) {
+      const text = openingLine(job.heading!, stormWord(next.kind));
+      this.maya.say({ id: MAYA.opening.id, text, state: "greeting" });
+      GUIDE_NOTES.set(MAYA.opening.id, { id: MAYA.opening.id, title: MAYA.opening.title, text });
+    } else this.say(MAYA.greeting, "greeting");
   }
 
   private say(note: Note, state: MayaState, extra: Partial<MayaLine> = {}): void {
@@ -90,16 +99,20 @@ export class MayaDirector {
     }
 
     if (exposure && yearsLeft >= 1 && yearsLeft <= 2) {
-      this.tip("heat", "explains");
-      const defended = [...run.state.elements.values()].some((inst) => ["dune", "sandy_vegetation", "mangrove", "khazan", "seawall", "breakwater", "small_dam"].includes(inst.elementId));
-      if (defended) this.tip("shields", "tip");
+      // The shields tip once the player has built after the warning, never on top of it.
+      const warnedAt = this.warnedAt.get(next.id);
+      if (warnedAt !== undefined && run.moment > warnedAt) {
+        const defended = [...run.state.elements.values()].some((inst) => ["dune", "sandy_vegetation", "mangrove", "khazan", "seawall", "breakwater", "small_dam"].includes(inst.elementId));
+        if (defended) this.tip("shields", "tip");
+      }
       const hotspot = riskHotspot(exposure.housesAtRisk, exposure.intensity);
       const place = hotspot ? placeName(coordOf(hotspot.key), this.ctx.landmarks, run.zones?.zoneOf(hotspot.key) ?? null) : null;
 
-      // Two years out, when the warning begins: point to where the most
-      // homes are at risk and say so. Quiet if none are.
-      if (yearsLeft === 2 && !this.warned.has(next.id) && hotspot && place) {
+      // When the heat first appears in this storm's phase: one line, where
+      // the most homes are at risk and what to do. Quiet if none are.
+      if (!this.warned.has(next.id) && !this.lastCalled.has(next.id) && hotspot && place) {
         this.warned.add(next.id);
+        this.warnedAt.set(next.id, run.moment);
         const coord = coordOf(hotspot.key);
         this.maya.say({
           id: `warn:${next.id}`,

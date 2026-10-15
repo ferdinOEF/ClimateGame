@@ -51,9 +51,10 @@ export class GetReadyPanel {
     this.toggle.setAttribute("aria-label", collapsed ? "Expand Get ready" : "Collapse Get ready");
   }
 
-  /** Repaints the jobs. `storm` names the storm they are for ("Cyclone"). */
+  /** Repaints the jobs. `storm` names the storm they are for ("Cyclone"); an opening objective's jobs carry its title instead. */
   render(storm: string | null, rows: GetReadyRow[]): void {
-    this.titleEl.textContent = storm ? `Get ready · ${storm}` : "Get ready";
+    const heading = rows.find((row) => row.job.heading)?.job.heading;
+    this.titleEl.textContent = heading ?? (storm ? `Get ready · ${storm}` : "Get ready");
     const live = new Set(rows.map((row) => row.job.id));
     for (const [id, el] of this.rows) {
       if (live.has(id)) continue;
