@@ -7,11 +7,11 @@
  * rule; a bot only decides which action to take next, through the same calls
  * a click makes.
  *
- * Personas (Section 4's archetypes; see "personas" below):
- *   casual  builds a little, late, on the obvious spot; never simulates.
- *   greedy  maximises income first, defends late; how greedy is drawn per run.
- *   smart   reads the forecast, defends where the warning says, keeps a reserve.
- *   rusher  only fast-forwards: the do-nothing control.
+ * Personas (Section 7's archetypes; see "personas" below):
+ *   casual  builds by eye next to the houses the forecast marks red; never simulates.
+ *   greedy  builds near houses every year and ignores the forecast.
+ *   smart   reads the forecast cone and the heat; weighs a handful of spots per build.
+ *   rusher  only presses Next year: the do-nothing control.
  *
  * A human-time model turns each run into an estimated real duration: fixed
  * animation and time-lapse lengths, about 2.5 s a decision, and 5 s of
@@ -261,19 +261,39 @@ class Player {
 
 // ---- personas ------------------------------------------------------------------
 //
-// Section 4's archetypes, all playing the real rules through ActionRun:
-//   casual    builds a little, late: a few random defences once a storm is near.
-//   greedy    maximises income (resorts, sand mining, dams) and defends only in
-//             the last quarters before a storm; how greedy is drawn per run,
-//             so it is a gamble: sometimes ahead of Casual, often far behind.
-//   smart     reads the forecast: defends where the warning says the water will
-//             come, ranking each candidate by the houses it actually saves (the
-//             same resolver, on a copy of the board), plants slow-growing
-//             mangroves and khazans early, and keeps a reserve.
-//   rusher    the do-nothing control: only fast-forwards.
+// Section 7's archetypes for yearly turns with no coins. Each plays the real
+// rules through ActionRun, and uses every build of every year it plays:
+//   casual    builds by eye: every build of every year on a tile next to the
+//             most houses the forecast marks red (the cone's area to protect,
+//             then the heat), a defence that answers the storm; it never
+//             checks what a build saves.
+//   greedy    builds near houses and ignores the forecast: it picks a few
+//             waterside streets of its own at the start and puts
+//             every build of every year next to them, any defence that fits;
+//             never the cone, never the heat. Whether its streets lie in the
+//             storms' paths is luck, so its results swing.
+//   smart     reads the forecast cone from the start of each storm's phase and
+//             the heat after: every build goes where the hazard model says it
+//             saves the most houses. It is a person, not a solver: for each
+//             build it weighs a handful of the candidates (its attention,
+//             drawn per run), so on some runs it misses the best spot.
+//   rusher    the do-nothing control: only presses Next year.
 
 const DEFENCES = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
-const INCOME = ["sand_mining", "small_dam", "beachside_resort"];
+
+/**
+ * A run is won when the level ends on three stars, the game's own top result
+ * (`computePanjimIndex`'s levelStars: the storms' stars averaged and rounded),
+ * so at most one storm short of three stars and none below two.
+ */
+export function won(result: BotResult): boolean {
+  return result.stars.length > 0 && Math.round(result.stars.reduce((s, x) => s + x, 0) / result.stars.length) >= 3;
+}
+
+/** The softer reading: every storm at two stars or more. */
+export function survived(result: BotResult): boolean {
+  return result.stars.length > 0 && result.stars.every((s) => s >= 2);
+}
 
 function hazardsOfKind(kind: ChallengeKind): string[] {
   return kind === "compound" ? ["cyclone", "flood"] : [kind];
@@ -305,20 +325,18 @@ function around(keys: Iterable<string>, radius: number): Set<string> {
 }
 
 /**
- * What `challenge` would do if it landed at its forecast centre on the board
- * as it stands with `extra` built now: houses lost, and how deep the water
- * stands over the house-loss line on the houses at risk (so a build that
- * lowers the water without yet saving a house still counts; a careful player
- * knows two or three defences together save a street). The same water model
- * the game resolves storms with.
+ * What `challenge` would do on the board as it stands with `extra` built now:
+ * houses lost, and how deep the water stands over the house-loss line on the
+ * houses at risk (so a build that lowers the water without yet saving a house
+ * still counts; two or three defences together save a street). The same
+ * water model the game resolves storms with.
  */
 function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: string; elementId: string } | null): { lost: number; excess: number } {
   const run = p.run;
   const board = run.state.clone();
   if (extra) board.elements.set(extra.key, { elementId: extra.elementId, builtOnTurn: run.state.turn, degradeAmount: 0, floodBufferFilled: 0 });
-  const strength = challenge.strength;
   const site = run.landfallOf(challenge);
-  const water = computeWater(board, { kind: challenge.kind, strength, landfall: site }, { combos: computeCombos(board).bonus, landfallZoneTiles: ZONES.keys(LANDFALL_ZONE) });
+  const water = computeWater(board, { kind: challenge.kind, strength: challenge.strength, landfall: site }, { combos: computeCombos(board).bonus, landfallZoneTiles: ZONES.keys(LANDFALL_ZONE) });
   let lost = 0;
   let excess = 0;
   for (const [key, inst] of board.elements) {
@@ -333,11 +351,13 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
 }
 
 /**
- * The best defence to build now against `challenge`: candidates on and around
- * the tiles the warning shows at risk, each scored by the houses it saves per
- * Coin. Null when nothing affordable saves a house.
+ * The best defence to build now against `challenge`, of the candidates on and
+ * around the tiles at risk (the cone's area, then the heat): each scored by
+ * the houses it saves on a copy of the board. `attention` is how many of the
+ * shortlist it weighs (a random handful; Infinity weighs them all). Null when
+ * nothing saves a house or takes water off one.
  */
-function bestDefence(p: Player, challenge: ScheduledChallenge, maxCoin: number, longLeadOnly = false, perCoin = true, skip: string | null = null, only: string | null = null): { coord: AxialCoord; elementId: string; saves: number } | null {
+function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infinity, skip: string | null = null, only: string | null = null): { coord: AxialCoord; elementId: string; saves: number } | null {
   const exposure = p.run.exposureFor(challenge);
   if (!exposure || exposure.housesAtRisk.length === 0) return null;
   const near = around([...exposure.housesAtRisk, ...exposure.exposure.keys()], 1);
@@ -347,158 +367,150 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, maxCoin: number, 
     const coord = coordOf(key);
     for (const elementId of DEFENCES) {
       if (elementId === skip || (only && elementId !== only) || !answers(elementId, challenge.kind)) continue;
-      if (longLeadOnly && !["mangrove", "khazan"].includes(elementId)) continue;
-      const def = ELEMENT_BY_ID.get(elementId)!;
-      if (def.buildCost > maxCoin || !p.state.canBuild(coord, elementId)) continue;
+      if (!p.state.canBuild(coord, elementId)) continue;
       let score = 0;
       for (const n of around([key], 2)) if (risk.has(n)) score++;
-      candidates.push({ key, elementId, score: (score + (exposure.exposure.get(key) ?? 0)) / def.buildCost });
+      candidates.push({ key, elementId, score: score + (exposure.exposure.get(key) ?? 0) });
     }
   }
-  candidates.sort((a, b) => b.score - a.score);
-  // The best few of each kind, so a strong but dear defence is weighed too.
-  const shortlist: typeof candidates = [];
+  candidates.sort((a, b) => b.score - a.score || (a.key < b.key ? -1 : a.key > b.key ? 1 : a.elementId < b.elementId ? -1 : 1));
+  // The best few of each kind, so every kind of defence is weighed.
+  let shortlist: typeof candidates = [];
   const perKind = new Map<string, number>();
   for (const c of candidates) {
     if ((perKind.get(c.elementId) ?? 0) >= 3) continue;
     perKind.set(c.elementId, (perKind.get(c.elementId) ?? 0) + 1);
     shortlist.push(c);
   }
+  if (shortlist.length > attention) {
+    const pool = [...shortlist];
+    shortlist = [];
+    while (shortlist.length < attention && pool.length > 0) shortlist.push(pool.splice(Math.floor(p.rng.next() * pool.length), 1)[0]);
+  }
   const base = lossesWith(p, challenge, null);
-  let best: { coord: AxialCoord; elementId: string; saves: number; value: number } | null = null;
+  let best: { coord: AxialCoord; elementId: string; saves: number; gain: number } | null = null;
   for (const c of shortlist) {
     const after = lossesWith(p, challenge, c);
     const saves = base.lost - after.lost;
     // A house saved is worth a lot; water taken off the houses at risk (in metres) counts too.
     const gain = saves * 4 + (base.excess - after.excess);
-    const value = perCoin ? gain / ELEMENT_BY_ID.get(c.elementId)!.buildCost : gain;
-    if (gain > 0.5 && (!best || value > best.value)) best = { coord: coordOf(c.key), elementId: c.elementId, saves, value };
+    if (gain > 0.5 && (!best || gain > best.gain)) best = { coord: coordOf(c.key), elementId: c.elementId, saves, gain };
+  }
+  return best;
+}
+
+/** Presses Next year once the year's builds are used, or when `build` finds nothing to build. */
+function playYears(p: Player, build: () => boolean): void {
+  while (!p.run.finished) {
+    if (p.run.buildsLeft > 0 && build()) continue;
+    p.nextYear();
+  }
+}
+
+/** Casual's pick by eye: next to the most red houses (roughly), a defence that answers the storm. Never simulates. */
+function byEye(p: Player, next: ScheduledChallenge): { coord: AxialCoord; id: string } | null {
+  const exposure = p.run.exposureFor(next);
+  if (!exposure || exposure.housesAtRisk.length === 0) return null;
+  const risk = new Set(exposure.housesAtRisk);
+  let best: { coord: AxialCoord; id: string; score: number } | null = null;
+  for (const key of around(exposure.exposure.keys(), 1)) {
+    const coord = coordOf(key);
+    let red = 0;
+    for (const n of around([key], 2)) if (risk.has(n)) red++;
+    if (red === 0) continue;
+    for (const id of DEFENCES) {
+      if (!answers(id, next.kind) || !p.state.canBuild(coord, id)) continue;
+      const score = red * (0.5 + p.rng.next());
+      if (!best || score > best.score) best = { coord, id, score };
+    }
   }
   return best;
 }
 
 function playCasual(p: Player): void {
-  // Builds a little, late: from about four and a half years before a storm, now and
-  // then a defence on the obvious spot, next to the most red houses it can
-  // afford to cover. It never checks what a build actually saves.
-  while (!p.run.finished) {
-    if (p.rng.next() < 0.6) p.tapJar();
+  playYears(p, () => {
     const next = p.run.nextChallenge();
-    const near = next ? p.run.yearsUntil(next) <= 4 : false;
-    if (!next || !near || p.rng.next() < 0.15) {
-      p.nextYear();
-      continue;
-    }
-    const exposure = p.run.exposureFor(next);
-    if (!exposure || exposure.housesAtRisk.length === 0) {
-      p.nextYear();
-      continue;
-    }
-    const risk = new Set(exposure.housesAtRisk);
-    let best: { coord: AxialCoord; id: string; score: number } | null = null;
-    for (const key of around(exposure.exposure.keys(), 1)) {
-      const coord = coordOf(key);
-      let red = 0;
-      for (const n of around([key], 2)) if (risk.has(n)) red++;
-      if (red === 0) continue;
-      for (const id of DEFENCES) {
-        if (!answers(id, next.kind) || ELEMENT_BY_ID.get(id)!.buildCost > p.state.coin || !p.state.canBuild(coord, id)) continue;
-        const score = red + p.rng.next();
-        if (!best || score > best.score) best = { coord, id, score };
-      }
-    }
-    if (!best || !p.build(best.coord, best.id)) p.nextYear();
-  }
+    if (!next) return false;
+    const pick = byEye(p, next);
+    return !!pick && p.build(pick.coord, pick.id);
+  });
 }
 
-/** Hex distance from `c` to the nearest of `targets` (99 if none). */
-function nearest(c: AxialCoord, targets: AxialCoord[]): number {
-  let best = 99;
-  for (const t of targets) best = Math.min(best, (Math.abs(c.q - t.q) + Math.abs(c.r - t.r) + Math.abs(c.q + c.r - t.q - t.r)) / 2);
-  return best;
-}
-
-/** Coin per quarter for each Coin spent, the Greedy bot's only measure. */
-function moneyPerCoin(elementId: string): number {
-  const def = ELEMENT_BY_ID.get(elementId)!;
-  return (def.effects.money ?? 0) / def.buildCost;
-}
+/** How many streets Greedy defends in a run. */
+export const GREEDY_STREETS = Number(process.env.GREEDY_STREETS ?? 6);
 
 function playGreedy(p: Player): void {
-  const ranked = [...INCOME].sort((a, b) => moneyPerCoin(b) - moneyPerCoin(a));
-  // How greedy, drawn per run: the greediest builds three dozen money-makers
-  // and defends only in the last two quarters before a storm; the least
-  // greedy, eight, and from two years out. A gamble that sometimes pays.
-  const greed = p.rng.next();
-  const incomeCap = Math.round(8 + 28 * greed);
-  const window = Math.round(2 - greed);
-  let incomeBuilds = 0;
-  while (!p.run.finished) {
-    p.tapJar();
-    const next = p.run.nextChallenge();
-    // Defends late: only in the last few quarters before a storm.
-    if (next && p.run.yearsUntil(next) <= window) {
-      const pick = bestDefence(p, next, p.state.coin, false, false);
-      if (pick && p.build(pick.coord, pick.elementId)) continue;
+  // The streets it cares about, drawn once per run: a few houses by the water (where a defence can go), anywhere in the city.
+  const houses = [...p.state.elements]
+    .filter(([key, inst]) => inst.elementId === "house" && [...around([key], 2)].some((n) => DEFENCES.some((id) => p.state.canBuild(coordOf(n), id))))
+    .map(([key]) => key);
+  const streets: string[] = [];
+  const adopt = (): void => {
+    for (let i = 0; i < 50; i++) {
+      const key = houses[Math.floor(p.rng.next() * houses.length)];
+      if (!streets.includes(key)) {
+        streets.push(key);
+        return;
+      }
     }
-    // Income first, up to its cap of money-makers; then it banks and waits for the storms.
-    let built = false;
-    if (incomeBuilds < incomeCap) {
-      for (const elementId of ranked) {
-        const spots = p.spots(elementId, null);
-        if (spots.length === 0) continue;
-        if (p.build(p.rng.pick(spots.slice(0, 40)), elementId)) {
-          built = true;
-          incomeBuilds++;
-          break;
+  };
+  while (streets.length < GREEDY_STREETS) adopt();
+  let turn = 0;
+  playYears(p, () => {
+    // Every build next to one of its streets in turn, any defence that fits; it never looks at the cone or the heat.
+    // When its streets have no room left, it takes on another.
+    for (let tries = 0; tries < streets.length * 2 + 20; tries++) {
+      if (tries >= streets.length * 2 && streets.length < houses.length) adopt();
+      const street = streets[turn++ % streets.length];
+      for (const radius of [1, 2, 3]) {
+        const options: { coord: AxialCoord; id: string }[] = [];
+        for (const key of around([street], radius)) {
+          const coord = coordOf(key);
+          for (const id of DEFENCES) if (p.state.canBuild(coord, id)) options.push({ coord, id });
+        }
+        if (options.length > 0) {
+          const pick = options[Math.floor(p.rng.next() * options.length)];
+          if (p.build(pick.coord, pick.id)) return true;
         }
       }
     }
-    if (!built) p.nextYear();
-  }
+    return false;
+  });
 }
 
 function playRusher(p: Player): void {
   while (!p.run.finished) p.nextYear();
 }
 
-/** Smart, with an optional element left out (the per-element margin test). */
+/** Smart's slips: the most of its builds it makes by eye instead (each run draws its own share, from none up to this). */
+export const SMART_SLIP = Number(process.env.SMART_SLIP ?? 0.4);
+
+/** Smart's attention: how many shortlisted candidates it weighs for a build, drawn per run. */
+export const SMART_ATTENTION = { min: Number(process.env.SMART_MIN ?? 4), max: Number(process.env.SMART_MAX ?? 12) };
+
+/** Smart, with an optional element left out (the per-element margin test) or the only one it builds. */
 function smartPlayer(skip: string | null, only: string | null = null): (p: Player) => void {
   return (p) => {
-    const reserve = 30;
-    while (!p.run.finished) {
-      p.tapJar();
-      let acted = false;
-      // Repair worn defences first (a worn one protects less).
+    const attention = SMART_ATTENTION.min + Math.floor(p.rng.next() * (SMART_ATTENTION.max - SMART_ATTENTION.min + 1));
+    const slip = SMART_SLIP * p.rng.next();
+    playYears(p, () => {
+      const next = p.run.nextChallenge();
+      if (!next) return false;
+      // Now and then it goes by eye, like anyone.
+      if (!only && !skip && p.rng.next() < slip) {
+        const guess = byEye(p, next);
+        if (guess && p.build(guess.coord, guess.id)) return true;
+      }
+      const pick = bestDefence(p, next, attention, skip, only);
+      if (pick && p.build(pick.coord, pick.elementId)) return true;
+      // Nothing worth building against this storm: mend a worn defence or a lost home.
       for (const [key, inst] of p.state.elements) {
-        if (ELEMENT_BY_ID.get(inst.elementId)?.kind === "building") continue;
-        if (p.run.needsRepair(coordOf(key)) && p.state.coin >= p.run.repairCoin(coordOf(key)) + reserve && p.repair(coordOf(key))) {
-          acted = true;
-          break;
-        }
+        if (!p.run.needsRepair(coordOf(key))) continue;
+        if (inst.elementId !== "house" && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building") continue;
+        if (p.repair(coordOf(key))) return true;
       }
-      if (acted) continue;
-      // Every storm still to come, nearest first: long-lead defences for the later ones.
-      const upcoming = p.run.schedule.filter((c) => !p.run.landed.has(c.id));
-      for (const [i, challenge] of upcoming.entries()) {
-        const pick = bestDefence(p, challenge, p.state.coin - reserve, i > 0 && !only, true, skip, only);
-        if (pick && p.build(pick.coord, pick.elementId)) {
-          acted = true;
-          break;
-        }
-      }
-      // Nothing worth building: rebuild a lost home, on high ground first.
-      if (!acted) {
-        for (const [key, inst] of p.state.elements) {
-          if (inst.elementId !== "house" || !p.run.needsRepair(coordOf(key))) continue;
-          if (p.state.coin >= p.run.repairCoin(coordOf(key)) + reserve && p.repair(coordOf(key))) {
-            acted = true;
-            break;
-          }
-        }
-      }
-      if (!acted) p.nextYear();
-    }
+      return false;
+    });
   };
 }
 
