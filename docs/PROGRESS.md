@@ -8201,3 +8201,62 @@ growth in this version.
 **Heat (6.2).** The heat was moved to the last two years before each storm in Section 5 (turns 4-5, 14-15, 24-25), recomputed after every build, and the preview-equals-resolution test is exact. No cone in that window. **Maya** now says one line when the heat first appears in a phase: "The red shows where the {storm} will hit. {place} is most at risk: strengthen it now." (practical guidance, no invented numbers); the shields tip waits for a build after it, and a storm's warning lines are withdrawn once it has passed.
 
 **First objective (6.3).** On the prep system: `prep.opening` in levels.json, "Protect Kala Academy to Sharada Mandir", on the stretch between those two places (`core/stretch.ts`: between them along the coast, up to 6 hexes inland and 4 out to sea; 88 tiles, of which 6 beach and 24 sea tiles near enough for a breakwater). Steps: **plant 3 pandanus** on that beach, **add 3 dunes** there (the 6 beach tiles take both), **build 2 breakwaters** on the coast in front of it: 8 builds of the 20 before the storm. No reward. It is the Get ready list, a block in the Status panel, and Maya's first line ("Before the cyclone, our first job is to protect Kala Academy to Sharada Mandir. The steps are in your Status panel."), withdrawn when a save from after the cyclone is continued. Done in full, it keeps all 9 houses standing; after the cyclone the usual jobs return.
+
+**Shipped.** Merged to master as `571169d`. Production deployment `dpl_hmiHfYio7gX9YcVVDhUkumGKX11o` is READY on that commit.
+
+## Section 7 — balance for yearly turns — DONE (no game change)
+
+**The bots** (`tools/panjimBots/bots.ts`) were rewritten for yearly turns with coins off.
+
+What every archetype can see is limited to what the screen shows:
+- the forecast cone at the start of a storm's phase (drawn once, so it is remembered as it was);
+- the heat in the last two years before the storm (recomputed after builds).
+
+Every archetype uses every build of every year it plays.
+
+**The archetypes:**
+- **Casual (by eye):** builds next to the most houses the forecast marks red, a defence that answers the storm. When no free spot is next to a red house, it builds anywhere the forecast shows water, next to the most homes. It never checks what a build saves.
+- **Greedy (builds near houses, ignores the forecast):** draws 6 waterside streets at the start of a run, and adopts another when they are full. Each build goes next to one of them, any defence that fits. It never looks at the cone or the heat.
+- **Smart:**
+  - takes its candidates from the same visible red;
+  - judges each with the hazard model, as an experienced player who reads the Ready gauge would;
+  - weighs only 4-12 candidates per build, and makes up to 40% of its builds by eye (both drawn per run);
+  - when nothing it weighs would save more, builds by eye.
+- **Do-nothing:** only presses Next year.
+
+**A run is won** when the level ends on three stars: the game's own `levelStars`, the storms' stars averaged and rounded.
+
+**Results** (20 seeds, `docs/qa/section7/bots.md`), against the brief's targets:
+
+| Archetype | Target | Result |
+|---|---|---|
+| Smart | 70-85% | 80% |
+| Casual | 25-35% | **0%, below target** |
+| Greedy | high variance | 0 wins; houses saved range 28-61% |
+| Do-nothing | about 0% | 0% |
+
+- **Every defence pulls its weight:**
+  - leaving out any one of them never helps, and over 3 seeds each has a positive margin;
+  - mangroves (27 points) and khazans (22) carry the flood and the finale;
+  - dunes, pandanus and breakwaters matter in the first cyclone, which is 9 houses of about 143 in the storms' paths, so their margin over the whole run is small.
+- **None dominates:** the best single kind alone saves 49% of houses, against 87% for the mix.
+- **The finale:** a plain plan of 20 builds cuts houses lost by 40%, 32% and 39% at three landfalls, mean 37% (the brief: about 40%). Real players do much better: Smart loses about 10% of the finale's houses.
+
+**Why there is no game change:**
+- **One house decides a win.** Every bot's first cyclone is 3★ and every bot's flood is 2★, so a win comes down to the finale reaching the 3★ line: 84 or 86 of its 95 houses.
+- **The bots' results are tight:** Casual's finale saves 80-86%, Smart's 86-89%.
+- **The 3★ line:** at 88% Casual wins 25% but Smart wins 100%, and that fits the bots by a single house. So the line stays at 90%.
+- **Defence strength, radius and protection cap** (swept with `tools/panjimBots/sweep7.ts`): settings that bring Casual into its band push Smart out of its band. They also cut the finale's plain-plan benefit to about 20%.
+- **Builds per year:** 3 or 2 a year widens the gap between Casual and Smart instead of closing it. `buildsPerYear` stays 4.
+
+**Tests:**
+- `tests/panjimBots.test.ts` pins the measured balance with numeric bands:
+  - Smart 70-90% won;
+  - Casual at most 15% won, 75-90% of houses saved;
+  - Greedy never wins and spreads at least 25 points;
+  - do-nothing at the floor;
+  - every build used;
+  - the margins;
+  - none dominant.
+- `tests/section4.test.ts`'s finale plan is now 20 builds instead of a 500-coin purse.
+- The coin-era sweeps (`sweep.ts`, `sweepIncome.ts`, `finaleDefences.ts`) were removed; `sweep7.ts` replaces them.
