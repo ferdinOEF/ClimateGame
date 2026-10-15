@@ -2467,6 +2467,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       },
       script: () => stormDirector?.currentScript ?? null
     },
+    /** Glides the camera to a tile, for the QA tools (nothing opens). */
+    __focusTileForTest: (q: number, r: number) => {
+      const world = axialToWorld({ q, r }, 1.0);
+      focusOn(world.x, world.z, true);
+    },
     /** Opens a tile's popover (build menu or info card) as a click would, for the QA tools. */
     __openTileForTest: (q: number, r: number) => {
       const world = axialToWorld({ q, r }, 1.0);
