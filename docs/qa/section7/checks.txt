@@ -1,0 +1,22 @@
+PASS  Maya's first line is the objective (first-job)
+PASS  her first line names it: "Maya
+        Hello! I am Maya. Before the cyclone, our first job is to protect Kala Academy to Sharada Mandir. The steps"
+PASS  the objective is in the Status panel: "OBJECTIVE Protect Kala Academy to Sharada Mandir Plant 3 pandanus on that beach 0/3 Add 3 dunes there 0/3 Build 2 breakwaters on the coast in front of it 0/2"
+PASS  axe-core, the cone on turn 1: no serious or critical violations
+PASS  axe-core, the cone on turn 6: no serious or critical violations
+PASS  after a reload in 2031 the brief offers to continue
+PASS  after the reload no cone shows behind the brief while it offers to continue
+PASS  continuing resumes in 2031 (turn 6)
+PASS  after the reload the flood's cone does not show again
+PASS  after the reload Maya does not give the first objective's line again
+PASS  axe-core, the cone on turn 16: no serious or critical violations
+PASS  the cone shows on turns 1, 6, 16 (expected 1, 6, 16), and on no other
+PASS  the heat shows on turns 4, 5, 14, 15, 24, 25 (expected 4, 5, 14, 15, 24, 25)
+PASS  turn 1 chip: "Cyclone lands end of 2030 · 5 years"
+PASS  turn 6 chip: "Flood in 2040 · 10 years"
+PASS  turn 16 chip: "Cyclone and flood in 2050 · 10 years"
+PASS  legends: "Most likely | Likely | Possible | Area to protect" / "Most likely | Likely | Possible | Area to protect | Where they meet"
+PASS  c1-cyclone: when the heat first appears (turn 4) Maya says one line (warn:c1-cyclone)
+FAIL  c2-flood: when the heat first appears (turn 14) Maya says one line (none)
+PASS  c3-compound: when the heat first appears (turn 24) Maya says one line (warn:c3-compound)
+PASS  zero console errors
