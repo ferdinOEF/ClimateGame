@@ -126,6 +126,12 @@ export interface SessionResult {
   /** Standing element counts on the final board — achievements read these rather than re-walking the game state. */
   standingByElement: Map<string, number>;
   standingByCategory: Map<string, number>;
+  /**
+   * Where to go instead of the results screen, when the level's own last card
+   * already showed the result (Panjim 2050's final card, Section 9): play the
+   * level again, or back to the menu. Absent everywhere else.
+   */
+  then?: "again" | "menu";
 }
 
 /** The rows the level-complete screen lists, in display order. Built here so the screen never re-derives which terms exist. */

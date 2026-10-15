@@ -57,6 +57,7 @@ const LANDMARK_MIN_FADE = 0.5;
  */
 export const LABEL_OBSTACLES = [
   ".maya-figure-wrap",
+  ".result-cards",
   ".maya-bubble",
   ".maya-badge",
   ".hud-panel",
@@ -75,7 +76,6 @@ export const LABEL_OBSTACLES = [
   ".build-popover",
   ".hud-tooltip",
   ".field-guide-toast",
-  ".aftermath-card",
   ".field-guide-card",
   ".finale-card",
   ".brief-card",

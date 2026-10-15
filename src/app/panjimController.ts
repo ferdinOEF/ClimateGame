@@ -3,7 +3,7 @@ import type { GameState } from "@core/gameState";
 import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
 import type { StormRecord } from "@core/stormRecord";
 import { drawStormCard, type StormCardInput } from "@ui/panjim/stormCard";
-import { DEFENCE_PLURAL, replaySteps } from "@core/stormReplay";
+import { replaySteps } from "@core/stormReplay";
 import { ReplayCard } from "@ui/panjim/replayCard";
 import { setSoundEnabled, setSoundVolume, soundVolume } from "@ui/audioHooks";
 import type { AxialCoord } from "@core/hex";
@@ -19,9 +19,10 @@ import { FieldGuide } from "@ui/panjim/fieldGuide";
 import { COMBO_INFO, type ComboId } from "@core/combos";
 import { seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
-import { aftermathLine, topDefenceLine } from "@core/aftermath";
 import type { RunSnapshot } from "@core/actionRun";
-import { AftermathCard } from "@ui/panjim/aftermathCard";
+import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, type CardSpec } from "@ui/panjim/resultCards";
+import { nextLabel, phaseResult, type Place } from "@core/phaseResult";
+import MAYA_DATA from "@data/maya.json";
 import { FinaleCard } from "@ui/panjim/finaleCard";
 import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIndex";
 import { axialToWorld, neighbors } from "@core/hex";
@@ -81,7 +82,8 @@ export interface PanjimHost {
   /** Repaints the HUD after state changed. */
   refresh: () => void;
   /** The run reached 2050 and the finale has played. */
-  onRunComplete: (result: PanjimIndex) => void;
+  /** The run is over: record it, then the results screen, or (`then`) play again or the menu. */
+  onRunComplete: (result: PanjimIndex, then?: "again" | "menu") => void;
   /** The skyline reveal: the camera pulls back over the whole city. */
   revealSkyline: () => void;
   showBanner: (text: string, ms?: number) => void;
@@ -137,6 +139,8 @@ export interface PanjimHost {
   focusCamera: (coord: AxialCoord, close?: boolean, zoom?: number) => void;
   /** The map's named places, for Maya to call a spot by name. */
   landmarks: readonly { name: string; q: number; r: number }[];
+  /** The map's monuments (named buildings), for the result cards' places. */
+  monuments: readonly { name: string; q: number; r: number }[];
   /** True while the build menu or the opening brief is open: Maya stays quiet. */
   uiBlocked: () => boolean;
   /** The session's tooltip manager, for this run's own controls. */
@@ -168,7 +172,8 @@ export class PanjimController {
   private pendingChallenges: { challenge: ScheduledChallenge; outcome: ChallengeOutcome; failedIds: string[] }[] = [];
   /** The last readiness reading for each challenge before it landed, for telemetry. */
   private readonly readinessById = new Map<string, string>();
-  private readonly aftermath: AftermathCard;
+  /** The end-of-phase result cards (Section 9). */
+  private readonly resultCards: ResultCards;
   private readonly finaleCard: FinaleCard;
   /** Real milliseconds played before this session, when resuming a save: the tempo badge counts the whole run. */
   playMsBefore = 0;
@@ -228,7 +233,7 @@ export class PanjimController {
     this.getReady = new GetReadyPanel(this.run.economyEnabled);
     host.mountPanel(this.getReady.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
-    this.aftermath = new AftermathCard(host.container);
+    this.resultCards = new ResultCards(host.container);
     this.finaleCard = new FinaleCard(host.container);
     this.replayCard = new ReplayCard(host.container);
     this.riskToggle = new PrefToggle(
@@ -308,7 +313,7 @@ export class PanjimController {
     this.mayaDirector = new MayaDirector(this.maya, {
       run: this.run,
       exposure: () => this.exposure,
-      blocked: () => this.busy || this.host.uiBlocked() || this.aftermath.isOpen || this.fieldGuide.isOpen || Boolean(this.host.container.querySelector(".finale-card")),
+      blocked: () => this.busy || this.host.uiBlocked() || this.resultCards.isOpen || this.fieldGuide.isOpen || Boolean(this.host.container.querySelector(".finale-card")),
       project: (coord) => this.host.project(coord),
       focus: (coord) => this.host.focusCamera(coord),
       landmarks: host.landmarks
@@ -681,34 +686,40 @@ export class PanjimController {
       houses_total: outcome.housesTotal
     });
 
-    const lock = this.run.replaySnapshots.get(challenge.id);
-    // Maya explains what actually happened, from the resolved storm.
-    const told = this.run.zones ? mayaAftermath(outcome, this.host.state, this.run.zones, record?.savedBy) : null;
-    this.maya.setState(told?.mood ?? "idle");
-    const choice = await this.aftermath.show({
-      maya: told?.text ?? null,
-      mayaMood: told?.mood ?? null,
-      title: `${challenge.name} · end of ${challenge.year}`,
-      stars: outcome.stars,
-      housesSaved: outcome.housesSaved,
-      housesDamaged: outcome.housesDamaged,
-      housesTotal: outcome.housesTotal,
-      // With Maya's line, the card keeps one voice: the old line stays only
-      // to report a structure that failed, and the "saved the most" estimate
-      // only when Maya has nothing to say.
-      line: this.run.zones && (!told || outcome.zones.some((zone) => zone.failed.length > 0)) ? aftermathLine(challenge.kind, outcome, this.host.state, this.run.zones, failedIds) : "",
-      hero: this.run.zones && !told ? topDefenceLine(outcome, this.host.state, this.run.zones) : null,
-      replayLabel: lock && !this.run.finished ? `Replay from ${this.run.config.startYear + lock.turn}` : null,
-      comparison: record
-        ? {
-            without: record.undefended.outcome.housesDamaged,
-            savedBy: record.savedBy.slice(0, 3).map((save) => `${DEFENCE_PLURAL[save.elementId] ?? save.elementId} ×${save.count}: ${save.houses} saved`)
-          }
-        : null
-    });
+    // The result cards (Section 9): what the storm did, what protected the homes, and what comes next.
+    if (record) await this.showResults(challenge, record);
     this.maya.setState("idle");
-    if (choice === "replay" && lock) this.rewindTo(lock, challenge);
   }
+
+  /** The named places the result cards can list: the map's landmarks and monuments. */
+  private places(): Place[] {
+    return [...this.host.landmarks, ...this.host.monuments];
+  }
+
+  /**
+   * After a storm: card 1 (the result), card 2 (what protected the homes),
+   * and, before the flood and the finale, card 3 (the next storm's forecast).
+   * The next phase starts when they close, its cone on the map.
+   */
+  private async showResults(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
+    const result = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []);
+    const next = this.run.nextChallenge();
+    const top = result.defences.find((d) => d.homes > 0);
+    const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
+    const cards: CardSpec[] = [
+      { body: resultCard(result), button: "See what protected your city" },
+      { body: defencesCard(result, top ? results.byDefence[top.elementId] ?? null : null), button: nextLabel(next) }
+    ];
+    if (next) {
+      cards.push({
+        body: comingUpCard(`${next.name} in ${next.year}`, this.forecastPreview(next, false), results.comingUp[next.kind] ?? null),
+        button: `On to ${this.run.year}`
+      });
+    }
+    this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });
+    await this.resultCards.show(cards);
+  }
+
 
   /** The Aftermath replay: what the storm did, step by step, in the record's real numbers. Skippable. */
   private async replay(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
@@ -742,21 +753,6 @@ export class PanjimController {
     });
   }
 
-  /** Rewinds to a snapshot (the start of a storm's warning), redraws the board and re-shows its path. Measured: it must stay well under 3 s. */
-  private rewindTo(snapshot: RunSnapshot, challenge: ScheduledChallenge): void {
-    const start = performance.now();
-    this.run.restore(snapshot);
-    this.host.redrawBoard();
-    this.showForecast(challenge);
-    this.clock.set(this.clockView());
-    this.renderOutlook();
-    this.host.refresh();
-    this.syncControls();
-    this.saveRun();
-    this.host.telemetry.emit("checkpoint", { rewind: challenge.id, ms: Math.round(performance.now() - start) });
-    this.host.showBanner(`Back to ${this.run.label}. The ${challenge.name.toLowerCase()} comes at the end of ${challenge.year}.`, 4500);
-  }
-
   /** Real milliseconds played on this run, across any resume. */
   playMs(): number {
     return this.playMsBefore + this.host.telemetry.elapsed();
@@ -771,7 +767,12 @@ export class PanjimController {
     });
   }
 
-  /** 2050: the skyline reveal, the title, then the finale card; then the shell's results. */
+  /**
+   * 2050: the skyline reveal and the title, then the final card (Section 9):
+   * the three phases with the homes each saved, the total and the overall
+   * stars. "Play again" starts the level afresh; the quieter link goes to the
+   * menu. The run is recorded either way.
+   */
   private async finale(): Promise<void> {
     this.host.cancelRiskIntro("hazard");
     this.busy = true;
@@ -779,14 +780,13 @@ export class PanjimController {
     const result = this.result();
     this.host.revealSkyline();
     await this.finaleCard.title(this.run.totalYears, this.run.schedule.length);
-    await this.finaleCard.show({
-      index: result,
-      challengeNames: this.run.schedule.map((c) => c.name),
-      tempo: tempoBadge(this.playMs()),
-      seed: this.host.seed,
-      stormCard: this.stormCardInput()
+    const phases = this.run.schedule.map((c) => {
+      const outcome = this.run.outcomes.get(c.id);
+      return { label: `${c.year} · ${c.name}`, saved: outcome?.housesSaved ?? 0, total: outcome?.housesTotal ?? 0 };
     });
-    this.host.onRunComplete(result);
+    this.host.telemetry.emit("checkpoint", { final: true, stars: result.levelStars, tempo: tempoBadge(this.playMs()).name });
+    const choice = await this.resultCards.show([{ body: finalCard(phases, result.levelStars), button: "Play again", link: "Back to the menu" }]);
+    this.host.onRunComplete(result, choice === "link" ? "menu" : "again");
   }
 
   /** The storm card as a PNG data URL (for the screenshots). */
@@ -1314,8 +1314,9 @@ export class PanjimController {
     while (this.busy) {
       if (stopAt?.()) return true;
       if (this.host.challengeFx.isPlaying() || this.replayCard.isOpen) document.dispatchEvent(new PointerEvent("pointerdown"));
-      const cont = this.host.container.querySelector<HTMLButtonElement>(".aftermath-continue");
-      if (this.aftermath.isOpen && cont) cont.click();
+      // Through the result cards, as a player pressing their buttons would.
+      const cont = this.host.container.querySelector<HTMLButtonElement>(".result-cards .result-next");
+      if (this.resultCards.isOpen && cont) cont.click();
       await wait(100);
     }
     if (this.run.turnNumber === turn && !stopAt?.()) await this.idle();
@@ -1485,7 +1486,7 @@ export class PanjimController {
         if (!(await this.waitUntilYearsLeft(1))) return false;
         void this.passYear();
         if (name === "challenge") {
-          while (!this.aftermath.isOpen) await wait(100);
+          while (!this.resultCards.isOpen) await wait(100);
           await wait(1800); // the stars fill
         } else {
           while (!this.host.challengeFx.isPlaying()) await wait(50);
@@ -1529,19 +1530,12 @@ export class PanjimController {
         await this.playCarefully(() => this.run.nextChallenge() !== null && this.run.yearsUntil(this.run.nextChallenge()!) <= HEAT_LEAD_YEARS && this.isGreen());
         return true;
       case "smart-aftermath":
-        await this.playCarefully(() => this.aftermath.isOpen, true);
+        await this.playCarefully(() => this.resultCards.isOpen, true);
         await wait(1800);
         return true;
       case "smart-finale":
         await this.playCarefully(() => Boolean(this.host.container.querySelector(".finale-card")));
         return true;
-      case "replay": {
-        const replay = this.host.container.querySelector<HTMLButtonElement>(".aftermath-replay");
-        if (!replay) return false;
-        replay.click();
-        await this.idle();
-        return true;
-      }
       case "actions": {
         for (const elementId of ["dune", "mangrove", "seawall", "breakwater"]) {
           const coord = this.firstBuildable(elementId);
@@ -1594,7 +1588,7 @@ export class PanjimController {
         }
         return false;
       };
-      const stop = stopAtAftermath ? () => this.aftermath.isOpen && until() : () => until();
+      const stop = stopAtAftermath ? () => this.resultCards.isOpen && until() : () => until();
       // Answering any Aftermath the year brings.
       if (await this.buildThrough(stop, act)) return;
       await wait(30);
@@ -1644,7 +1638,7 @@ export class PanjimController {
     this.volumeSlider.remove();
     this.riskToggle.dispose();
     this.finaleCard.dispose();
-    this.aftermath.dispose();
+    this.resultCards.dispose();
     this.jar?.dispose();
     this.fieldGuide.dispose();
     this.panels.dispose();

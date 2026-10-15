@@ -635,7 +635,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             refreshHud();
             refreshPreview();
           },
-          onRunComplete: (result) => finishRun(true, result),
+          onRunComplete: (result, then) => finishRun(true, result, then),
           revealSkyline: () => {
             // Up and back over the whole city, the light clearing.
             stormImpactActive = false;
@@ -688,6 +688,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             fitTo(Math.max(18, (box.maxX - box.minX) * 1.15), Math.max(12, (box.maxZ - box.minZ) * 1.2), false);
           },
           landmarks: levelMap.landmarks,
+          monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           overlayOpen,
           riskAreaOnScreen: (keys) => {
@@ -1088,7 +1089,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * both completes the level and starts the storm that kills the player
    * could report the run twice.
    */
-  function finishRun(completed: boolean, panjimResult?: import("@core/panjimIndex").PanjimIndex): void {
+  function finishRun(completed: boolean, panjimResult?: import("@core/panjimIndex").PanjimIndex, then?: "again" | "menu"): void {
     if (sessionFinished) return;
     sessionFinished = true;
 
@@ -1137,7 +1138,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       stats,
       turns: state.turn,
       standingByElement: counts.byElement,
-      standingByCategory: counts.byCategory
+      standingByCategory: counts.byCategory,
+      then
     });
   }
 
