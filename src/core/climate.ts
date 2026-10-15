@@ -5,8 +5,8 @@
  *
  * The run is 25 years, 2026 to 2050, one turn a year. Each storm comes at the
  * end of a fixed year, at a fixed strength and, for a cyclone, a fixed
- * landfall: the cyclone at the end of 2030 (turn 5), the monsoon flood at the
- * end of 2040 (turn 15), the cyclone and flood together at the end of 2050
+ * landfall: the cyclone in 2030 (turn 5), the monsoon flood in 2040
+ * (turn 15), the cyclone and flood together in 2050
  * (turn 25). Nothing here is drawn from a seed: every player meets the same
  * three storms at the same moments, so the game is about where to build, not
  * about guessing when.

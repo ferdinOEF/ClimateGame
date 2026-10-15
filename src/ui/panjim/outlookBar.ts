@@ -3,7 +3,7 @@ import { strengthIcons, type ChallengeKind, type ScheduledChallenge } from "@cor
 /**
  * The Climate Outlook: the run's years as a timeline under the clock, with a
  * marker for each of the three storms at the end of its year, and one line
- * about the next one: "Next: Cyclone · end of 2030 · 5 years".
+ * about the next one: "Next: Cyclone · 2030 · 5 years".
  *
  * The calendar is fixed (Section 5), so every marker is a pin from the start,
  * with its 1–3 strength rating. Never a modal: the player reads it at a
@@ -162,11 +162,11 @@ export class OutlookBar {
   }
 }
 
-/** "Cyclone · end of 2030 · 5 years", "… · this year", or "Cyclone has passed". */
+/** "Cyclone · 2030 · 5 years", "… · this year", or "Cyclone has passed". */
 export function describe(storm: OutlookStorm): string {
   const name = storm.challenge.name;
   if (storm.past) return `${name} has passed`;
   const when = storm.yearsUntil <= 1 ? "this year" : `${storm.yearsUntil} years`;
   const words = ["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)];
-  return `${name} · end of ${storm.challenge.year} · ${words} · ${when}`;
+  return `${name} · ${storm.challenge.year} · ${words} · ${when}`;
 }
