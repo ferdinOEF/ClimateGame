@@ -24,8 +24,8 @@ describe("the two HUD panels", () => {
   });
 
   it("moves the existing elements into the panels, never rebuilding them", () => {
-    // The coin jar is there only with coins on (Section 5): with coins off its slot is null.
-    expect(controller).toMatch(/panels\.status\.adopt\(host\.container\.querySelector<HTMLElement>\("\.instrument-cluster"\), this\.jar\?\.el \?\? null, this\.fieldGuide\.buttonEl\)/);
+    // The first storm's objective (Section 6) joins the Status panel; the coin jar is there only with coins on (Section 5).
+    expect(controller).toMatch(/panels\.status\.adopt\(host\.container\.querySelector<HTMLElement>\("\.instrument-cluster"\), this\.statusObjective\.el, this\.jar\?\.el \?\? null, this\.fieldGuide\.buttonEl\)/);
     expect(controller).toMatch(/panels\.settings\.adopt\(togglesRow\(host\.container\)\)/);
     expect(panels).toContain("this.body.appendChild(el)");
   });

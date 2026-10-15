@@ -729,3 +729,75 @@ the same commit). Headless Chromium with software GL. Evidence in
 - `walkthrough` and `mapgen:panaji` launched Playwright's bundled headless shell, absent here; they now use the container's Chromium when present, like the other tools.
 - `test:maya`'s reduced-motion pass compared a 40 px margin of the moving board round Maya, so a passing boat failed "no pixel of her changes" (it failed the same way on the untouched `pre-section-5` build). It now hides the board's canvas while photographing her, so only her pixels are compared: 0 changed in every state.
 - Two first runs of `test:maya` and `verify:maya` were void: the source was being edited, and the dev server reloaded the page under them. Both were re-run on the final source.
+
+# Section 6 — forecast cone, heat before each storm, first objective
+
+Branch `section-6-forecast`, off master `af9296c` (Section 5's merge; tag
+`pre-section-6`, and `backup/pre-section-6` on GitHub since the git proxy
+refuses tag pushes). Headless Chromium with software GL. Evidence in
+`docs/qa/section6/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 444 pass, 6 skipped (the existing `mapgen.test.ts` skips). New: `forecastCone.test.ts` (phase starts 1/6/16, the chip texts, area to protect equals the storm's own losses, every house that could be lost is in the cone, each band holds at least a tenth of it, the tracks, the small first cyclone, the depth ranking), opening-objective cases in `prep.test.ts`. |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean: 8 screenshots, no console errors. |
+| `npm run test:labels` | 37 of 37 views (after a fix to the tool, below); label layer at most 7.7 ms a frame. |
+| `npm run test:layout` | 105 of 105 layouts. |
+| `npm run test:maya` | Pass. |
+| `npm run verify:maya` | All checks pass (after a fix to the tool, below). The heat's houses at risk equal the houses lost: cyclone 9 and 9, flood 39 and 39. |
+| Section 6 browser checks (`tools/section6Checks.ts`, `checks.txt`) | **21 of 21.** |
+| Section 5 checks again (`docs/qa/section6/s5-regression/`) | **41 of 41.** |
+| Tutorial (`tools/tutorialDiff.ts`, `docs/qa/section6/tutorial/`) | Against the `pre-section-6` build: **text identical, 0.000% of pixels differ** in all five states. `tests/tutorialLocked.test.ts` still pins its level entry and map. |
+| axe-core | No serious or critical violations with each cone up (turns 1, 6, 16). A first run before the review fixes reported one color-contrast issue on turn 16; it did not recur in that run's rerun, in isolation, or in this final run. |
+| Console errors | None in any run. |
+| Bots, 20 seeds | Run (the surge numbers changed). Smart keeps 97% of houses on every seed; do-nothing 0%. Balance is Section 7's work. |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**What the browser checks prove** (`checks.txt`):
+- The cone shows on turns 1, 6 and 16 and on no other turn. It is gone after Next year.
+- **After a reload:**
+  - no cone shows behind the brief;
+  - "Continue from 2031" resumes on turn 6 without the flood's cone;
+  - Maya does not repeat the first objective's line.
+- The chips read exactly "Cyclone lands end of 2030 · 5 years", "Flood in 2040 · 10 years" and "Cyclone and flood in 2050 · 10 years". The legend reads "Most likely | Likely | Possible | Area to protect", plus "Where they meet" for the compound storm.
+- The heat shows on turns 4, 5, 14, 15, 24 and 25 only. Maya says one line when it first appears in each phase.
+- The first objective is Maya's first line and is in the Status panel.
+
+**The first cyclone, undefended** (landfall `-2,15`): it takes **9 houses**, at `0,18 1,16 1,18 2,15 2,16 2,17 2,19 3,13 3,17`. All are on land between Kala Academy (5,11) and Sharada Mandir (-3,18): 0.26 to 0.76 of the way along, at most 4.9 hexes inland. Eight more dry-ground tiles outside that stretch get shallow water, with no loss: `-4,19 -4,20 -5,21 -6,22 2,9 -7,24 -8,25 -9,26`. Done in full, the opening objective keeps all 9 standing.
+
+**The cones** (tiles on a run with nothing built; bands by depth, deepest third Most likely):
+
+| Storm | Possible | Likely | Most likely | Area to protect | Where they meet |
+|---|---|---|---|---|---|
+| Cyclone 2030 | 23 | 19 | 28 | 9 | — |
+| Flood 2040 | 126 | 126 | 126 | 39 | — |
+| Compound 2050 | 171 | 171 | 171 | 47 | 42 |
+
+**Screenshots:**
+- `cone-{cyclone,flood,compound}-{1366x768,1920x1080,2560x1440}`, each with `-gray` and `-deut` copies;
+- `objective-status-1920x1080`.
+
+I looked at them. The bands differ by lightness and stay apart in gray and deuteranopia. The hatching and dashes carry where they meet and the area to protect.
+
+**Independent review (Section 6): 0 BLOCKER, 4 MAJOR, 6 MINOR.**
+
+Fixed:
+- **MAJOR, the flood cone was one band.** Bands cut at 60% and 80% of the storm's strength put 95% of the flood in Most likely, because the river and wetlands flood at any strength. Bands are now the depth thirds of the cone, and the game rule says so. A test makes each band hold at least a tenth of the cone.
+- **MAJOR, the cyclone's cone showed behind the brief on reload.** With a save on offer, the first cone now waits for Begin.
+- **MAJOR, Maya's opening line after continuing a later save.** It is withdrawn when the first objective is behind the save.
+- **MAJOR, missing QA evidence:** this entry and the bot run.
+- **MINOR, the "Area to protect" swatch did not match the board:** it is now dark dashes on cream.
+- **MINOR, screen readers were not told the forecast appeared:** the chip text is `aria-live="polite"`.
+
+Left, with reasons:
+- **At 1366x768 the legend card covers the start of the cyclone's track.** The arrowhead and the area to protect stay clear.
+- **The flood's track runs into Taleigao only,** the wetland it floods deepest. The bands themselves cover the St Cruz and Merces wetlands.
+- **The cone's words are game rules on the Sources screen,** not on the card.
+- **When the player has defended everything,** the old reach outline from before this section can still show in a heat year.
+- **The walkthrough's Tutorial PNGs differ slightly between runs** (camera settle and growth frame). The Tutorial diff above shows no change.
+
+**Fixed in the QA tools:**
+- `verify:maya` expected the old greeting. Maya's first line is now the objective (6.3).
+- `test:labels` failed at 1366x768: the opening camera now frames the cyclone's cone, so the church whose name card it checks was off screen. The tool now glides to the church first, with a test-only hook, `__focusTileForTest`.

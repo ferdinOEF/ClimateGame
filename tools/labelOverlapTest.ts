@@ -167,7 +167,10 @@ async function main(): Promise<void> {
       const cy = Math.round(size.h * 0.5);
       await page.mouse.move(cx, cy);
       await check(page, `${tag} zoom 1 (opening view)`, `panaji-zoom1-${tag}`, 2);
-      // A monument's name card at the opening zoom, where plain monument labels are not shown.
+      // A monument's name card at the opening zoom, where plain monument labels are not shown. The
+      // opening view frames the first cyclone's cone (Section 6), so the camera goes to the church (11,8) first.
+      await page.evaluate(`window.__focusTileForTest(11, 8)`);
+      await page.waitForTimeout(1500);
       await page.evaluate(`window.__labelsForTest.setFocus("Our Lady of the Immaculate Conception")`);
       // Frames are slow under software GL: measure once the card is on screen.
       for (let k = 0; k < 50 && !(await page.evaluate(`!!document.querySelector(".map-label.card.shown")`)); k++) await page.waitForTimeout(100);

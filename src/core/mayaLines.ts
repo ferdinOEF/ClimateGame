@@ -108,7 +108,12 @@ export function stormWord(kind: ChallengeKind): string {
   return (MAYA.stormNames as Record<string, string>)[kind] ?? "storm";
 }
 
-/** The warning she gives two years out, and the last call in the storm's own year. */
+/** Her first line when the first storm has its own objective: "...our first job is to protect Kala Academy to Sharada Mandir." */
+export function openingLine(objective: string, storm: string): string {
+  return fill(MAYA.opening.text, { storm, objective: objective.charAt(0).toLowerCase() + objective.slice(1) });
+}
+
+/** The line she gives when the heat first appears, and the last call in the storm's own year. */
 export function warningLine(kind: "exposed" | "lastCall" | "fixed", place: string, storm: ChallengeKind, count = 0): string {
   return fill(MAYA.warning[kind], { place, storm: stormWord(storm), count });
 }

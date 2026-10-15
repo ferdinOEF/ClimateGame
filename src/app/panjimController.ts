@@ -13,6 +13,7 @@ import { ClockHud, type ClockView } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
 import { CoinJar } from "@ui/panjim/coinJar";
 import { GetReadyPanel } from "@ui/panjim/getReady";
+import { StatusObjective } from "@ui/panjim/statusObjective";
 import { prepProgress } from "@core/prep";
 import { FieldGuide } from "@ui/panjim/fieldGuide";
 import { COMBO_INFO, type ComboId } from "@core/combos";
@@ -35,9 +36,12 @@ import { Maya } from "@ui/panjim/maya";
 import { MayaDirector, GUIDE_NOTES } from "./mayaDirector";
 import { factById } from "@core/facts";
 import { HudPanels } from "@ui/panjim/hudPanels";
+import { ForecastConeCard } from "@ui/panjim/forecastConeCard";
+import { coneChip } from "@core/forecastCone";
+import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { mayaAftermath, stormWord } from "@core/mayaLines";
+import { MAYA, mayaAftermath, stormWord } from "@core/mayaLines";
 import type { Tooltips } from "@ui/tooltip";
 
 /**
@@ -97,7 +101,8 @@ export interface PanjimHost {
   /** Rebuilds every element's mesh from the game state, after a rewind or a resume. */
   redrawBoard: () => void;
   /** Adds a second button to the level brief ("Continue from 2032"). */
-  offerResume: (label: string, onResume: () => void) => void;
+  /** `onBegin` runs instead when the player starts afresh. */
+  offerResume: (label: string, onResume: () => void, onBegin: () => void) => void;
   /** The map's challenge zones. */
   zones: readonly ZoneDef[];
   /** Shows a storm's path as a translucent in-scene overlay: each tile with a 0–1 weight. */
@@ -113,6 +118,10 @@ export interface PanjimHost {
   mountPanel: (el: HTMLElement) => void;
   /** Sparkle, ring and glow over tiles that just joined a combo. */
   celebrateCombo: (tiles: AxialCoord[]) => void;
+  /** Draws the forecast cone (null fades it out). */
+  showCone: (cone: ConeShow | null) => void;
+  /** Glides the camera to frame a box of the board, in world x/z. */
+  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }) => void;
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
   /** Whether any menu, card or modal is open (the risk sequence never starts under one). */
@@ -142,10 +151,16 @@ export class PanjimController {
   private readonly jar: CoinJar | null;
   /** "Get ready": the jobs for the next storm. */
   private readonly getReady: GetReadyPanel;
+  /** The first storm's objective, in the Status panel. */
+  private readonly statusObjective = new StatusObjective();
   readonly fieldGuide: FieldGuide;
   private busy = false;
   /** The first-warning risk sequence plays once a playthrough (core/riskIntro.ts). */
   private readonly riskGate = new RiskIntroGate();
+  /** The forecast cone's chip and legend (Section 6.1). */
+  private readonly coneCard: ForecastConeCard;
+  /** Storms whose cone has been shown: each shows once, at the start of its phase, never again (a reload included). */
+  private readonly coneSeen = new Set<string>();
   /** True while storms that ended a year are being staged: the HUD still shows that year. */
   private stagingYearEnd = false;
   /** Storms that resolved at the end of this year, staged before the next year shows. */
@@ -201,7 +216,8 @@ export class PanjimController {
       houseRule: host.level.houses?.rule,
       prep: host.level.prep,
       economy: host.level.economy,
-      growth: host.level.growth
+      growth: host.level.growth,
+      landmarks: host.landmarks
     });
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, { onNextYear: () => void this.nextYear() });
@@ -289,6 +305,8 @@ export class PanjimController {
       },
       { signal: this.keyAbort.signal }
     );
+    // Before Maya, so her layout already knows the card is there.
+    this.coneCard = new ForecastConeCard(host.container);
     this.maya = new Maya(host.container, { muted: !this.mayaToggle.value, reducedMotion: prefersReducedMotion() });
     this.mayaDirector = new MayaDirector(this.maya, {
       run: this.run,
@@ -312,7 +330,7 @@ export class PanjimController {
     // button go into one panel and the toggles into another, each shut to a small button. The elements
     // are moved, not rebuilt: their handlers, ids and shortcuts (R, M, S) are the ones they were.
     this.panels = new HudPanels(host.container);
-    this.panels.status.adopt(host.container.querySelector<HTMLElement>(".instrument-cluster"), this.jar?.el ?? null, this.fieldGuide.buttonEl);
+    this.panels.status.adopt(host.container.querySelector<HTMLElement>(".instrument-cluster"), this.statusObjective.el, this.jar?.el ?? null, this.fieldGuide.buttonEl);
     this.panels.settings.adopt(togglesRow(host.container));
     this.panels.status.onOpen = () => {
       this.resilienceDropUnseen = false;
@@ -320,7 +338,7 @@ export class PanjimController {
     };
     if (this.jar) this.jar.onGain = (text) => this.panels.status.floatText(text);
     this.attachTooltips();
-    this.offerSavedRun();
+    const saveOffered = this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
     this.forecastLabel.hidden = true;
@@ -328,6 +346,43 @@ export class PanjimController {
     this.clock.set(this.clockView());
     this.renderOutlook();
     this.syncControls();
+    // With a save on offer, the first cone waits for Begin: a player who continues never sees it.
+    if (!saveOffered) this.showConeIfPhaseStart();
+  }
+
+  /**
+   * The forecast cone, at the start of a storm's phase only (turns 1, 6 and
+   * 16), for that storm only, and once: it goes for good on Next year, and a
+   * cone already shown is never shown again, after a reload included.
+   */
+  private showConeIfPhaseStart(): void {
+    const next = this.run.nextChallenge();
+    if (!next || this.coneSeen.has(next.id) || this.run.turnNumber !== this.run.phaseStart(next)) return;
+    const cone = this.run.forecastCone(next);
+    if (!cone) return;
+    this.coneSeen.add(next.id);
+    this.host.showCone(cone);
+    // Frame what the cone covers on land and its tracks, so the whole of it is in view.
+    const points = [...cone.tracks.flatMap((t) => t.points), ...[...cone.bands.keys(), ...cone.meet, ...cone.area].filter((key) => this.host.state.placed.get(key)?.terrainId !== "coast").map((key) => {
+      const [q, r] = key.split(",").map(Number);
+      return axialToWorld({ q, r }, 1);
+    })];
+    if (points.length > 0) {
+      this.host.frameWorld({
+        minX: Math.min(...points.map((p) => p.x)),
+        maxX: Math.max(...points.map((p) => p.x)),
+        minZ: Math.min(...points.map((p) => p.z)),
+        maxZ: Math.max(...points.map((p) => p.z))
+      });
+    }
+    this.coneCard.show(next.kind, coneChip(next.kind, next.year, this.run.yearsUntil(next)));
+    this.host.telemetry.emit("checkpoint", { cone: next.id, tiles: cone.bands.size, area: cone.area.length });
+  }
+
+  private hideCone(): void {
+    if (!this.coneCard.isShown) return;
+    this.host.showCone(null);
+    this.coneCard.hide();
   }
 
   /** What the clock shows now. */
@@ -413,10 +468,9 @@ export class PanjimController {
   private renderGetReady(): void {
     const next = this.run.nextChallenge();
     const zones = this.run.zones;
-    this.getReady.render(
-      next ? next.name : null,
-      zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : []
-    );
+    const rows = zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : [];
+    this.getReady.render(next ? next.name : null, rows);
+    this.statusObjective.render(rows);
     if (this.run.prep.length > 0) this.mayaDirector?.tip("get-ready");
   }
 
@@ -763,6 +817,8 @@ export class PanjimController {
           playMs: this.playMsBefore + this.host.telemetry.elapsed(),
           // The first-warning risk sequence plays once a playthrough, reloads included.
           riskIntroSpent: this.riskGate.spent,
+          // Each forecast cone shows once, never again after a reload.
+          conesSeen: [...this.coneSeen],
           savedAt: new Date().toISOString()
         })
       );
@@ -779,8 +835,8 @@ export class PanjimController {
     }
   }
 
-  /** On load: if this level has a save part-way through, the brief offers to continue it. */
-  private offerSavedRun(): void {
+  /** On load: if this level has a save part-way through, the brief offers to continue it. True when it does. */
+  private offerSavedRun(): boolean {
     // Saves from the quarterly clock (v1, keyed by level and seed) cannot be continued: they are cleared.
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -790,7 +846,7 @@ export class PanjimController {
     } catch {
       // Storage blocked: nothing to clear.
     }
-    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number; riskIntroSpent?: boolean } | null = null;
+    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number; riskIntroSpent?: boolean; conesSeen?: string[] } | null = null;
     try {
       const raw = localStorage.getItem(this.saveKey());
       saved = raw ? JSON.parse(raw) : null;
@@ -798,7 +854,7 @@ export class PanjimController {
       saved = null;
     }
     // A save from the quarterly clock (version 1) cannot be read by the yearly one: it is not offered.
-    if (!saved || saved.snapshot?.version !== 2 || saved.snapshot.turn >= this.run.totalYears) return;
+    if (!saved || saved.snapshot?.version !== 2 || saved.snapshot.turn >= this.run.totalYears) return false;
     const label = String(this.run.config.startYear + saved.snapshot.turn);
     const data = saved;
     this.host.offerResume(`Continue from ${label}`, () => {
@@ -807,6 +863,12 @@ export class PanjimController {
       this.playMsBefore = data.playMs ?? 0;
       // Already seen in this playthrough (or a storm has passed): it does not play again.
       if (data.riskIntroSpent || this.run.landed.size > 0) this.riskGate.markSpent();
+      // A reload never shows a cone again: those seen, and any whose phase began before the save.
+      for (const id of data.conesSeen ?? []) this.coneSeen.add(id);
+      for (const challenge of this.run.schedule) if (this.run.phaseStart(challenge) <= this.run.turnNumber) this.coneSeen.add(challenge.id);
+      this.hideCone();
+      // Her opening line is about the first objective: gone once that phase is behind the save.
+      if (!this.run.prep.some((job) => job.heading)) this.maya.withdraw((line) => line.id === MAYA.opening.id);
       this.host.redrawBoard();
       const next = this.run.nextChallenge();
       if (next && this.run.yearsUntil(next) <= HEAT_LEAD_YEARS) this.showForecast(next);
@@ -814,7 +876,8 @@ export class PanjimController {
       this.renderOutlook();
       this.host.refresh();
       this.syncControls();
-    });
+    }, () => this.showConeIfPhaseStart());
+    return true;
   }
 
   /**
@@ -1017,6 +1080,8 @@ export class PanjimController {
     const outcome = this.run.nextYear();
     if (!outcome.ok) return;
     this.host.telemetry.action("next_year", 0);
+    // The cone goes for good the moment the year ends.
+    this.hideCone();
     this.host.telemetry.emit("next_year", { turn: this.run.turnNumber, buildsUnused: left });
     this.busy = true;
     this.syncControls();
@@ -1031,6 +1096,7 @@ export class PanjimController {
       for (const event of outcome.events) if (event.type !== "challenge") this.handleEvent(event);
       if (!this.run.finished) this.clock.tick(this.clockView());
       else this.clock.set(this.clockView());
+      this.showConeIfPhaseStart();
     } finally {
       this.stagingYearEnd = false;
       this.busy = false;
@@ -1059,6 +1125,9 @@ export class PanjimController {
       case "challenge": {
         playSound("hazard_arrival");
         this.clearForecast();
+        // Its warnings are over: a line about it still waiting would be stale after the storm.
+        const id = event.challenge.id;
+        this.maya.withdraw((line) => line.id === `warn:${id}` || line.id === `last:${id}` || line.id === `fixed:${id}`);
         if (event.outcome) {
           // Which kinds of thing failed, read before the meshes go: the
           // resolver has already removed them from the game state.
@@ -1549,6 +1618,7 @@ export class PanjimController {
     this.fieldGuide.dispose();
     this.panels.dispose();
     this.forecastLabel.remove();
+    this.coneCard.dispose();
     this.clock.dispose();
     this.host.container.classList.remove("has-panjim-clock");
   }

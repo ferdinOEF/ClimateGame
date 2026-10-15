@@ -315,6 +315,18 @@
       ],
       "needsSource": true,
       "hiddenBecause": "No cited source yet."
+    },
+    {
+      "id": "flood-cone",
+      "kind": "gameRule",
+      "text": "The flood's cone shows where the water comes from and where it goes. It is not a weather service's forecast.",
+      "elements": []
+    },
+    {
+      "id": "cone-bands",
+      "kind": "gameRule",
+      "text": "The cone shows where water would reach with no defences: Most likely where deepest, Possible where shallowest.",
+      "elements": []
     }
   ]
 }

@@ -29,7 +29,7 @@ describe("Maya's words", () => {
   });
 
   it("fills the warning templates", () => {
-    expect(warningLine("exposed", "Taleigao", "cyclone")).toBe("Taleigao is exposed! Strengthen it before the cyclone.");
+    expect(warningLine("exposed", "Taleigao", "cyclone")).toBe("The red shows where the cyclone will hit. Taleigao is most at risk: strengthen it now.");
     expect(warningLine("lastCall", "Merces", "flood", 12)).toBe("Last call! 12 homes are still in danger, most of them around Merces.");
   });
 });

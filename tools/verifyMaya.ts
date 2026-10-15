@@ -10,7 +10,7 @@
  *   - Get ready shows 2-3 jobs on Panaji;
  *   - the street map defaults to 21%;
  *   - roads render, with no building on any road tile;
- *   - Maya greets with "Hello", mutes with M, the heat toggles with R;
+ *   - Maya greets with "Hello" and the first objective, mutes with M, the heat toggles with R;
  *   - the heat's previewed houses at risk cover the houses the storm then
  *     takes (exactly, for the flood; within the forecast cone, for the
  *     cyclone), in the real browser run (no builds in between);
@@ -113,7 +113,8 @@ async function main(): Promise<void> {
     check(town.roads > 50 && !town.decorMeshes.some((name) => name.startsWith("town-road")), `Panaji: roads come from the street map, not drawn strips (${town.roads} road tiles; meshes ${town.decorMeshes.join(", ")})`);
     check(town.buildingsOnRoads === 0, "Panaji: no building on any road tile");
     const greeting = (await page.locator(".maya-text").textContent()) ?? "";
-    check(greeting === "Hello! I am Maya. Let us keep Panjim dry.", `Panaji: Maya greets: "${greeting}"`);
+    // Section 6.3: her first line is the first objective's, and it still says hello.
+    check(greeting === "Hello! I am Maya. Before the cyclone, our first job is to protect Kala Academy to Sharada Mandir. The steps are in your Status panel.", `Panaji: Maya greets: "${greeting}"`);
     await tooltipCheck(page, "Panaji");
 
     await page.keyboard.press("m");

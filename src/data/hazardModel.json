@@ -1,14 +1,19 @@
 {
   "_comment": "The hazard model's numbers (core/hazardModel.ts). EVERY value here is a gameRule: tuned so Panaji plays as a fair build-and-protect game. None is a measurement or claims to come from a study. Water is in 'game metres', compared with the DEM ground height of each tile; the real Panaji ground is real, the water is game design.",
   "surge": {
-    "_comment": "Cyclone storm surge. Level at the landfall site = baseM + perStrengthM x strength. Each hex the water moves it loses: seaM along the open sea, channelM up a river or creek (it funnels further there), beachM over sand, landM over land.",
-    "baseM": 8.5,
-    "perStrengthM": 1.45,
+    "_comment": "Cyclone storm surge. Level at the landfall site = baseM + perStrengthM x strength. Each hex the water moves it loses: seaM along the open sea, channelM up a river or creek (it funnels further there), beachM over sand, landM over land. weakStorm: a storm weaker than refStrength loses more height per hex at sea and up the channels, by (refStrength / strength) to the given exponents, so a small cyclone's surge stays near where it comes ashore while the finale (at refStrength) is unchanged. All of it is a game rule.",
+    "baseM": 7,
+    "perStrengthM": 2.027,
     "lossPerHex": {
       "sea": 0.43,
       "channel": 0.35,
       "beach": 0.8,
       "land": 0.7
+    },
+    "weakStorm": {
+      "refStrength": 2.6,
+      "seaExponent": 1.42,
+      "channelExponent": 0.9
     }
   },
   "flood": {
