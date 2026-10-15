@@ -241,9 +241,10 @@ describe("Panaji zones", () => {
     let built = 0;
     for (const key of reach.exposure.keys()) {
       const [q, r] = key.split(",").map(Number);
-      for (const id of ["dune", "mangrove"]) if (built < 10 && state.canBuild({ q, r }, id) && run.build({ q, r }, id).ok) built++;
+      // Four builds, one a year: the fifth would bring the cyclone.
+      for (const id of ["dune", "mangrove"]) if (built < 4 && state.canBuild({ q, r }, id) && run.build({ q, r }, id).ok) built++;
     }
-    expect(built).toBeGreaterThan(3);
+    expect(built).toBe(4);
     const after = run.readiness()!;
     expect(after.outcome.protection).toBeGreaterThan(before.outcome.protection);
   });

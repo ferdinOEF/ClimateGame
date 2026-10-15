@@ -383,7 +383,7 @@ export class Hud {
   /** STEP_PROMPT_remove_claiming.md: a soft progress indicator, not a gate — every tile is already buildable, this just orients the player toward how much map is still untouched. */
   setEmptyTiles(count: number): void {
     if (this.yearMode) {
-      this.emptyPromptEl.textContent = "Build where the city is at risk, then press Next year";
+      this.emptyPromptEl.textContent = "Build where the city is at risk: each build is one year";
       return;
     }
     this.emptyPromptEl.textContent = count > 0 ? `${count} hex${count === 1 ? "" : "es"} still empty` : "Every hex has something built on it";

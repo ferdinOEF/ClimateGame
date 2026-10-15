@@ -91,7 +91,7 @@ async function main(): Promise<void> {
       // page instead (see `video` below); the frames are cut from it at
       // 0.25 s intervals by tools/contactSheet.py's companion ffmpeg step.
       void run(scenarioArg);
-      await page.waitForSelector(".houses-counter.live", { timeout: 300000 });
+      await page.waitForFunction("window.__panjimForTest && window.__panjimForTest.host.challengeFx.isPlaying()", undefined, { timeout: 300000 });
       fs.writeFileSync(path.join(OUT, "staging-start.txt"), String((Date.now() - pageStart) / 1000));
       await page.waitForTimeout(Number(a) * 1000);
     }

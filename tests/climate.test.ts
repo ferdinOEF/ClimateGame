@@ -1,3 +1,4 @@
+import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
 import { buildSchedule, challengeStrength, strengthIcons, yearsUntil } from "../src/core/climate";
 import { LEVEL_BY_ID } from "../src/levels/levels";
@@ -40,7 +41,7 @@ describe("the storm calendar", () => {
 });
 
 describe("every seed meets the same storms", () => {
-  it("resolves the three storms when Next year is pressed on turns 5, 15 and 25, at the stated strengths and landfall", () => {
+  it("resolves the three storms when the year ends on turns 5, 15 and 25, at the stated strengths and landfall", () => {
     const seen = new Set<string>();
     for (const seed of [...SEEDS, "l01-first-rains", "daily-2026-10-15", "replay-x"]) {
       const run = newRun(seed, BOT_LEVEL);
@@ -48,8 +49,8 @@ describe("every seed meets the same storms", () => {
       while (!run.finished) {
         const turn = run.turnNumber;
         const before = new Map(run.schedule.map((c) => [c.id, run.landed.has(c.id)]));
-        const outcome = run.nextYear();
-        for (const event of outcome.events) {
+        const events = passYear(run);
+        for (const event of events) {
           if (event.type !== "challenge") continue;
           expect(before.get(event.challenge.id)).toBe(false);
           expect(event.outcome!.intensity).toBe(event.challenge.strength * climate.intensityPerStrength);

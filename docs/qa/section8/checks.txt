@@ -1,0 +1,39 @@
+PASS  1366x768 popup line: "The first cyclone lands in 5 years"
+PASS  1366x768 popup legend: "Most likely | Likely | Possible | Area to protect"
+PASS  1366x768 popup map: 70 band tiles, 1 track with arrowhead, 2 dashed lines
+PASS  1366x768 popup map names: Kala Academy | Sharada Mandir School
+PASS  1366x768 popup fits with no scrolling
+PASS  1920x1080 popup line: "The first cyclone lands in 5 years"
+PASS  1920x1080 popup legend: "Most likely | Likely | Possible | Area to protect"
+PASS  1920x1080 popup map: 70 band tiles, 1 track with arrowhead, 2 dashed lines
+PASS  1920x1080 popup map names: Kala Academy | Sharada Mandir School
+PASS  1920x1080 popup fits with no scrolling
+PASS  axe-core, the start popup: no serious or critical violations
+PASS  2560x1440 popup line: "The first cyclone lands in 5 years"
+PASS  2560x1440 popup legend: "Most likely | Likely | Possible | Area to protect"
+PASS  2560x1440 popup map: 70 band tiles, 1 track with arrowhead, 2 dashed lines
+PASS  2560x1440 popup map names: Kala Academy | Sharada Mandir School
+PASS  2560x1440 popup fits with no scrolling
+PASS  Maya's first line is the objective (first-job)
+PASS  her first line names it: "Maya
+        Hello! I am Maya. Before the cyclone, our first job is to protect Kala Academy to Sharada Mandir. The steps"
+PASS  the objective is in the Status panel, 5 builds: "OBJECTIVE Protect Kala Academy to Sharada Mandir Plant 2 pandanus on that beach 0/2 Add 2 dunes there 0/2 Build 1 breakwater on the coast in front of it 0/1"
+PASS  axe-core, the cone on turn 6: no serious or critical violations
+PASS  after a reload in 2031 the brief offers to continue
+PASS  after the reload no cone shows behind the brief while it offers to continue
+PASS  continuing resumes in 2031 (turn 6)
+PASS  after the reload the flood's cone does not show again
+PASS  after the reload Maya does not give the first objective's line again
+PASS  axe-core, the cone on turn 16: no serious or critical violations
+PASS  each build advanced exactly one year, turns 1 to 25
+PASS  the clock read "Year N of 25" and "N builds until …" on every turn
+PASS  no forecast chip or legend on the game screen in any turn (0 seen)
+PASS  no "Next year", "Houses standing", builds-left, coin or cost text on the game screen in any turn
+PASS  the cone shows on the map on turns 1, 6, 16 (expected 1, 6, 16), and on no other
+PASS  the heat shows on turns 4, 5, 14, 15, 24, 25 (expected 4, 5, 14, 15, 24, 25)
+PASS  each storm plays while the clock still shows its year: c1-cyclone at 2030, c2-flood at 2040, c3-compound at 2050
+FAIL  the storms come straight after builds 4, 14, 24 (expected 5, 15, 25)
+PASS  c1-cyclone: when the heat first appears (turn 4) the first line Maya says is the warning, alone (warn:c1-cyclone on turn 4)
+FAIL  c2-flood: when the heat first appears (turn 14) the first line Maya says is the warning, alone (none)
+PASS  c3-compound: when the heat first appears (turn 24) the first line Maya says is the warning, alone (warn:c3-compound on turn 24)
+PASS  zero console errors

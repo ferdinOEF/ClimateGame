@@ -1,3 +1,4 @@
+import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
 import { MAYA, mayaAftermath, placeName, riskHotspot, warningLine } from "../src/core/mayaLines";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
@@ -55,7 +56,7 @@ describe("Maya's Aftermath line", () => {
   it("describes the resolved storm: celebrates a clean save, is worried about losses, never says '1 homes'", () => {
     // Strict flood with nothing built: houses are lost.
     const bare = newRun("s7", BOT_LEVEL);
-    while (bare.landed.size < 2) bare.nextYear();
+    while (bare.landed.size < 2) passYear(bare);
     const lost = bare.outcomes.get("c2-flood")!;
     expect(lost.housesDamaged).toBeGreaterThan(0);
     const worried = mayaAftermath(lost, bare.state, bare.zones!);
@@ -94,7 +95,7 @@ describe("Maya's Aftermath line with the storm's real comparisons", () => {
         }
       }
     }
-    while (run.landed.size < 1) run.nextYear();
+    while (run.landed.size < 1) passYear(run);
     const record = run.stormRecords.get("c1-cyclone")!;
     const told = mayaAftermath(record.outcome, run.state, run.zones!, record.savedBy);
     if (record.savedBy.length > 0) expect(told.text).toContain(`${record.savedBy[0].houses}`);

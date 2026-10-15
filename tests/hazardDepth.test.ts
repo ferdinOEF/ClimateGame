@@ -1,3 +1,4 @@
+import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
 import {
   DAMAGE_DEPTH,
@@ -39,7 +40,7 @@ function nextStorm(run: ActionRun, plant: [string, string][] = []): StormRecord 
       }
     }
   }
-  while (!run.landed.has(next.id)) run.nextYear();
+  while (!run.landed.has(next.id)) passYear(run);
   return run.stormRecords.get(next.id)!;
 }
 

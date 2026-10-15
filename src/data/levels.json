@@ -51,7 +51,7 @@
     "id": "l01-first-rains",
     "name": "Panaji",
     "subtitle": "Panjim 2050",
-    "brief": "Twenty-five years of Goa's capital, from 2026 to 2050, one year at a time. Every patch of land is already home to someone: the city fills it. Each year you can make a few builds, then press Next year. Build on the beach, the wetlands, the river and the near sea to protect those homes from three storms, and count the houses you save.",
+    "brief": "Twenty-five years of Goa's capital, from 2026 to 2050, one year at a time. Every patch of land is already home to someone: the city fills it. Each year you make one build, and every build moves the city on a year. Build on the beach, the wetlands, the river and the near sea to protect those homes from three storms, and count the houses you save.",
     "mapId": "panaji",
     "startingCoin": 10000,
     "parTurns": 40,
@@ -70,8 +70,7 @@
     "timeModel": "years",
     "timeline": {
       "startYear": 2026,
-      "endYear": 2050,
-      "buildsPerYear": 4
+      "endYear": 2050
     },
     "economy": {
       "enabled": false,
@@ -210,20 +209,20 @@
           {
             "id": "pandanus",
             "elementId": "sandy_vegetation",
-            "count": 3,
-            "label": "Plant 3 pandanus on that beach"
+            "count": 2,
+            "label": "Plant 2 pandanus on that beach"
           },
           {
             "id": "dunes",
             "elementId": "dune",
-            "count": 3,
-            "label": "Add 3 dunes there"
+            "count": 2,
+            "label": "Add 2 dunes there"
           },
           {
             "id": "breakwater",
             "elementId": "breakwater",
-            "count": 2,
-            "label": "Build 2 breakwaters on the coast in front of it"
+            "count": 1,
+            "label": "Build 1 breakwater on the coast in front of it"
           }
         ]
       }

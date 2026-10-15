@@ -105,9 +105,7 @@ function readingMs(text: string): number {
 export const HUD_OBSTACLES = [
   ".hud-panel",
   ".panjim-clock",
-  ".forecast-cone-card",
   ".hud-chrome",
-  ".houses-counter",
   ".objectives-panel",
   ".map-corner",
   ".empty-prompt",

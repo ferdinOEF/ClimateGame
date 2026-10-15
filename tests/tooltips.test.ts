@@ -39,7 +39,7 @@ describe("tooltip copy", () => {
     const text = tooltipText("readiness", { pct: 72, storm: "flood", saved: 150, total: 181, stars: 2 });
     expect(text).toContain("Ready 72%");
     expect(text).toContain("150 of the 181 homes");
-    expect(tooltipText("buildsLeft", { per: 4, left: 3 })).toBe("You can build 4 times a year. 3 left this year. Next year gives you a fresh set.");
+    expect(tooltipText("buildsUntil", {})).toBe("One build is one year. The storm comes straight after your last build before it, in that same year.");
     expect(tooltipText("coin", {})).not.toMatch(/\{\w+\}/);
   });
 });

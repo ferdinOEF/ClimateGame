@@ -12,15 +12,18 @@ import { forecastCone, type ForecastCone } from "./forecastCone";
 import { resolveStorm, type StormRecord } from "./stormRecord";
 
 /**
- * The Panjim 2050 run: 25 years of Panjim, one turn a year (Section 5).
+ * The Panjim 2050 run: 25 years of Panjim, one build a year (Section 8).
  *
- * Turn 1 is 2026 and turn 25 is 2050. Each year the player may build up to
- * `buildsPerYear` times, then presses Next year (which may also end a year
- * early). A storm whose year it is resolves when Next year is pressed on its
- * turn, before the next year begins: the cyclone at the end of 2030 (turn 5),
- * the flood at the end of 2040 (turn 15), the two together at the end of
- * 2050 (turn 25). Nothing is random: the calendar, the strengths and the
- * cyclone's landfall are fixed in the level's data.
+ * Turn 1 is 2026 and turn 25 is 2050. One build (or repair, or demolition)
+ * is one turn is one year: the moment it goes through, the year ends. A storm
+ * whose year it is resolves straight after that build, still in its year,
+ * before the next year begins: the cyclone after the 5th build (2030), the
+ * flood after the 15th (2040), the two together after the 25th (2050). A
+ * refused build does not move time. There is no other way to end a year,
+ * except `skipYear` when nothing can be built anywhere (which the Panaji
+ * board never reaches; tests/actionRun.test.ts). Nothing is random: the
+ * calendar, the strengths and the cyclone's landfall are fixed in the
+ * level's data.
  *
  * Coins and growth are off on Panaji in this version (the level's `economy`
  * and `growth` switches): building is free and a defence is at full strength
@@ -38,8 +41,6 @@ export interface TimelineConfig {
   startYear: number;
   /** The last turn's year (inclusive): the run ends when it does. */
   endYear: number;
-  /** How many builds the player may make in one year. */
-  buildsPerYear: number;
 }
 
 /**
@@ -100,11 +101,9 @@ export interface Readiness {
  * doubles as the autosave.
  */
 export interface RunSnapshot {
-  version: 2;
+  version: 3;
   /** Years elapsed: 0 during turn 1. The game state's turn counter is the same number. */
   turn: number;
-  /** Builds already made this year. */
-  buildsUsed: number;
   coin: number;
   trust: number;
   resilience: number;
@@ -127,7 +126,8 @@ export interface ActionOutcome {
   reason?: string;
 }
 
-export const NO_BUILDS_LEFT = "No builds left this year. Press Next year to go on.";
+/** Why `skipYear` is refused: there is a build to make. */
+export const SKIP_REFUSED = "There is still somewhere to build: build to end the year.";
 
 export class ActionRun {
   /** Turns in the run: 25 for 2026 to 2050. */
@@ -162,8 +162,6 @@ export class ActionRun {
    * storm id: what "Replay from 2029" rewinds to.
    */
   readonly replaySnapshots = new Map<string, RunSnapshot>();
-  /** Builds made so far this year. */
-  buildsUsed = 0;
   /** Every action and every new year counts one: Maya speaks at most once per moment. */
   moment = 0;
   // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -231,9 +229,8 @@ export class ActionRun {
     // Through JSON, so nothing in the snapshot shares an object with the live run.
     return JSON.parse(
       JSON.stringify({
-        version: 2,
+        version: 3,
         turn: this.state.turn,
-        buildsUsed: this.buildsUsed,
         coin: this.state.coin,
         trust: this.state.trust,
         resilience: this.state.resilience,
@@ -253,7 +250,6 @@ export class ActionRun {
     this.state.elements.clear();
     for (const [key, inst] of copy.elements) this.state.elements.set(key, inst);
     this.state.turn = copy.turn;
-    this.buildsUsed = copy.buildsUsed;
     this.state.coin = copy.coin;
     this.state.trust = copy.trust;
     this.state.resilience = copy.resilience;
@@ -406,12 +402,19 @@ export class ActionRun {
     return this.state.turn >= this.totalYears;
   }
 
-  get buildsPerYear(): number {
-    return this.config.buildsPerYear;
+  /** Builds until `challenge` hits, counting this year's: it hits straight after the last of them. */
+  buildsUntil(challenge: ScheduledChallenge): number {
+    return this.yearsUntil(challenge);
   }
 
-  get buildsLeft(): number {
-    return this.finished ? 0 : Math.max(0, this.config.buildsPerYear - this.buildsUsed);
+  /**
+   * Whether anything at all can be built anywhere on the board now. While it
+   * can, the only way to end a year is to build; `skipYear` is for the case
+   * where it cannot.
+   */
+  canBuildAnywhere(): boolean {
+    for (const tile of this.state.placed.values()) if (this.state.buildableAt(tile.coord).length > 0) return true;
+    return false;
   }
 
   /** What the city earns in a year at its current income, at the level's scale: the jar (coins on) and the finale's Livelihoods. */
@@ -419,18 +422,17 @@ export class ActionRun {
     return Math.max(0, this.state.income) * this.incomeScale;
   }
 
+  /** Builds `elementId` at `coord`. It ends the year: a storm due this year resolves straight after it. */
   build(coord: AxialCoord, elementId: string): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
-    if (this.buildsLeft <= 0) return refuse(NO_BUILDS_LEFT);
     if (!this.state.build(coord, elementId, false)) return refuse("Can't build that here.");
-    this.buildsUsed++;
     this.moment++;
-    return { ok: true, events: this.settle() };
+    return { ok: true, events: [...this.settle(), ...this.endYear()] };
   }
 
   /**
-   * Removes something the player built. Uses one of this year's builds, as
-   * building does. The city's homes cannot be demolished: they are what the
+   * Removes something the player built. It is the year's build, as building
+   * is, and ends the year. The city's homes cannot be demolished: they are what the
    * player is protecting, and removing one from a storm's path is not saving it.
    */
   demolish(coord: AxialCoord): ActionOutcome {
@@ -438,11 +440,9 @@ export class ActionRun {
     const key = axialKey(coord);
     if (!this.state.elements.has(key)) return refuse("Nothing to demolish.");
     if (!this.canDemolish(coord)) return refuse("The city's homes cannot be demolished.");
-    if (this.buildsLeft <= 0) return refuse(NO_BUILDS_LEFT);
     this.state.elements.delete(key);
-    this.buildsUsed++;
     this.moment++;
-    return { ok: true, events: this.settle() };
+    return { ok: true, events: [...this.settle(), ...this.endYear()] };
   }
 
   /**
@@ -481,10 +481,9 @@ export class ActionRun {
     return (this.state.elements.get(axialKey(coord))?.degradeAmount ?? 0) > 0;
   }
 
-  /** Restores a worn defence or a damaged house to full. Uses one of this year's builds. */
+  /** Restores a worn defence or a damaged house to full. It is the year's build, and ends the year. */
   repair(coord: AxialCoord): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
-    if (this.buildsLeft <= 0) return refuse(NO_BUILDS_LEFT);
     const inst = this.state.elements.get(axialKey(coord));
     if (!inst || inst.degradeAmount <= 0) return refuse("Nothing to repair.");
     const coin = this.repairCoin(coord);
@@ -492,18 +491,26 @@ export class ActionRun {
     if (this.economyEnabled && this.state.coin < coin) return refuse("Not enough Coin.");
     this.state.coin -= coin;
     inst.degradeAmount = 0;
-    this.buildsUsed++;
     this.moment++;
-    return { ok: true, events: this.settle() };
+    return { ok: true, events: [...this.settle(), ...this.endYear()] };
   }
 
   /**
-   * Ends this year, whatever builds are left: a storm whose year it is
-   * resolves first, against the board as it stands; then the next year
-   * begins with a fresh set of builds. On the last turn this ends the run.
+   * The fallback when nothing can be built anywhere: the year passes without
+   * a build. Refused while any build is possible.
    */
-  nextYear(): ActionOutcome {
+  skipYear(): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
+    if (this.canBuildAnywhere()) return refuse(SKIP_REFUSED);
+    return { ok: true, events: this.endYear() };
+  }
+
+  /**
+   * Ends this year: a storm whose year it is resolves first, against the
+   * board as it stands; then the next year begins. On the last turn this
+   * ends the run.
+   */
+  protected endYear(): RunEvent[] {
     const events: RunEvent[] = [];
     for (const challenge of this.schedule) {
       if (this.landed.has(challenge.id) || challenge.turn !== this.turnNumber) continue;
@@ -513,7 +520,6 @@ export class ActionRun {
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
     if (this.economyEnabled) this.jar += this.income;
     this.state.advanceTurn();
-    this.buildsUsed = 0;
     this.moment++;
     if (!this.finished) events.push({ type: "year", turn: this.turnNumber });
     // Two years out, a storm's warning begins: the moment "Replay" rewinds to.
@@ -523,7 +529,7 @@ export class ActionRun {
       events.push({ type: "warning", challenge });
     }
     events.push(...this.settle());
-    return { ok: true, events };
+    return events;
   }
 
   /** A storm resolves against the board. */

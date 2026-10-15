@@ -1,17 +1,17 @@
 import { playSound } from "@ui/audioHooks";
 
 /**
- * The Panjim 2050 clock, top centre (Section 5): the year and "Year N of 25",
- * the Outlook under it, then how many builds are left this year and the Next
- * year button.
+ * The Panjim 2050 clock, top centre (Section 8): the year and "Year N of 25",
+ * the Outlook under it, then "N builds until the cyclone" (or the flood, or
+ * the two together).
  *
- * Time moves only when the player presses Next year. Each new year flips the
- * face with a click, so the player always sees the year change when they ask
- * for it, and never when they don't. Next year is always there: a year can
- * end with builds unused.
+ * One build is one year: time moves only when the player builds. Each new
+ * year flips the face with a click, so the player always sees the year change
+ * when they build, and never when they don't. "Skip this year" appears only
+ * if nothing can be built anywhere on the board, which Panaji never reaches.
  */
 export interface ClockHudActions {
-  onNextYear: () => void;
+  onSkipYear: () => void;
 }
 
 export interface ClockView {
@@ -19,21 +19,27 @@ export interface ClockView {
   /** 1-based turn. */
   turn: number;
   totalYears: number;
-  buildsLeft: number;
-  buildsPerYear: number;
+  /** Builds until the next storm, which hits straight after the last of them; null after the last storm. */
+  until: { builds: number; storm: string } | null;
+  /** Nothing can be built anywhere: the year may pass without a build. */
+  canSkip: boolean;
   /** True once the run is over: the face shows the last year and the turn line goes. */
   finished?: boolean;
+}
+
+/** "3 builds until the cyclone", "1 build until the flood". */
+export function untilText(until: { builds: number; storm: string }): string {
+  return `${until.builds} ${until.builds === 1 ? "build" : "builds"} until ${until.storm}`;
 }
 
 export class ClockHud {
   readonly el: HTMLElement;
   private readonly yearEl: HTMLElement;
   private readonly turnEl: HTMLElement;
-  /** Where the Climate Outlook mounts, between the face and the buttons. */
+  /** Where the Climate Outlook mounts, between the face and the line under it. */
   readonly outlookSlot: HTMLElement;
-  private readonly buildsEl: HTMLElement;
-  private readonly buildsCountEl: HTMLElement;
-  private readonly nextBtn: HTMLButtonElement;
+  private readonly untilEl: HTMLElement;
+  private readonly skipBtn: HTMLButtonElement;
 
   constructor(container: HTMLElement, actions: ClockHudActions) {
     this.el = document.createElement("div");
@@ -44,18 +50,17 @@ export class ClockHud {
       </div>
       <div class="clock-outlook"></div>
       <div class="clock-buttons">
-        <span class="clock-builds" aria-live="polite"><span class="clock-builds-label">Builds left this year</span> <b class="clock-builds-count">4</b></span>
-        <button type="button" class="clock-ff clock-next-year">Next year</button>
+        <span class="clock-until" aria-live="polite"></span>
+        <button type="button" class="clock-ff clock-skip-year" hidden>Skip this year</button>
       </div>
     `;
     container.appendChild(this.el);
     this.yearEl = this.el.querySelector(".clock-year")!;
     this.turnEl = this.el.querySelector(".clock-turn")!;
     this.outlookSlot = this.el.querySelector(".clock-outlook")!;
-    this.buildsEl = this.el.querySelector(".clock-builds")!;
-    this.buildsCountEl = this.el.querySelector(".clock-builds-count")!;
-    this.nextBtn = this.el.querySelector(".clock-next-year")!;
-    this.nextBtn.addEventListener("click", () => actions.onNextYear());
+    this.untilEl = this.el.querySelector(".clock-until")!;
+    this.skipBtn = this.el.querySelector(".clock-skip-year")!;
+    this.skipBtn.addEventListener("click", () => actions.onSkipYear());
   }
 
   /** Paints the clock immediately, without a tick. */
@@ -63,9 +68,9 @@ export class ClockHud {
     this.yearEl.textContent = String(view.year);
     this.turnEl.textContent = view.finished ? "" : `Year ${view.turn} of ${view.totalYears}`;
     this.turnEl.hidden = Boolean(view.finished);
-    this.buildsCountEl.textContent = `${view.buildsLeft} of ${view.buildsPerYear}`;
-    this.buildsEl.classList.toggle("none-left", view.buildsLeft <= 0);
-    this.buildsEl.hidden = Boolean(view.finished);
+    this.untilEl.textContent = view.until ? untilText(view.until) : "";
+    this.untilEl.hidden = !view.until || Boolean(view.finished);
+    this.skipBtn.hidden = !view.canSkip;
   }
 
   /** A new year: flip the face and click. */
@@ -77,21 +82,14 @@ export class ClockHud {
     playSound("clock_tick");
   }
 
-  /** Whether Next year may be pressed (false while a storm plays, or at the end). */
+  /** Whether the fallback may be pressed (false while a storm plays, or at the end). */
   setControlsEnabled(enabled: boolean): void {
-    this.nextBtn.disabled = !enabled;
+    this.skipBtn.disabled = !enabled;
   }
 
-  /** The controls, for their tooltips. */
-  get parts(): { face: HTMLElement; next: HTMLButtonElement; builds: HTMLElement } {
-    return { face: this.el.querySelector(".clock-face")!, next: this.nextBtn, builds: this.buildsEl };
-  }
-
-  /** A short pulse on the builds count: what the build menu points to when the year's builds are used up. */
-  nudge(): void {
-    this.nextBtn.classList.remove("nudge");
-    void this.nextBtn.offsetWidth;
-    this.nextBtn.classList.add("nudge");
+  /** The parts, for their tooltips. */
+  get parts(): { face: HTMLElement; until: HTMLElement; skip: HTMLButtonElement } {
+    return { face: this.el.querySelector(".clock-face")!, until: this.untilEl, skip: this.skipBtn };
   }
 
   dispose(): void {

@@ -1,3 +1,4 @@
+import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { prepProgress } from "../src/core/prep";
@@ -18,7 +19,6 @@ function build(run: ActionRun, zone: string, elementId: string, times: number): 
     if (built >= times) break;
     const [q, r] = key.split(",").map(Number);
     if (run.state.canBuild({ q, r }, elementId)) {
-      if (run.buildsLeft <= 0) run.nextYear();
       if (run.build({ q, r }, elementId).ok) built++;
     }
   }
@@ -40,7 +40,7 @@ describe("Get ready jobs", () => {
           expect(job.done).toBe(false);
           expect(prepProgress(job, run.state, run.zones!).current).toBe(0);
         }
-        while (!run.landed.has(next.id)) run.nextYear();
+        while (!run.landed.has(next.id)) passYear(run);
       }
     });
   }
@@ -48,7 +48,7 @@ describe("Get ready jobs", () => {
   it("completes when the matching builds are made; with coins off it pays nothing", () => {
     // The second storm's generated jobs (the first storm has the opening objective).
     const run = newRun("panjim", BOT_LEVEL);
-    while (run.landed.size < 1) run.nextYear();
+    while (run.landed.size < 1) passYear(run);
     const job = run.prep[0];
     const template = BOT_LEVEL.prep!.templates.find((t) => t.id === job.templateId)!;
     expect(job.reward).toBe(template.reward);
@@ -63,7 +63,7 @@ describe("Get ready jobs", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const first = run.prep.map((job) => job.id);
     const c1 = run.nextChallenge()!;
-    while (!run.landed.has(c1.id)) run.nextYear();
+    while (!run.landed.has(c1.id)) passYear(run);
     const second = run.prep.map((job) => job.id);
     expect(second.every((id) => !first.includes(id))).toBe(true);
     expect(run.prep.every((job) => job.challengeId === run.nextChallenge()!.id)).toBe(true);
@@ -73,19 +73,19 @@ describe("Get ready jobs", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const snap = run.snapshot();
     const ids = run.prep.map((job) => job.id);
-    run.nextYear();
+    passYear(run);
     run.restore(snap);
     expect(run.prep.map((job) => job.id)).toEqual(ids);
   });
 });
 
 describe("the first storm's objective (Section 6.3)", () => {
-  it("is set at the start: Protect Kala Academy to Sharada Mandir, in three steps on that stretch", () => {
+  it("is set at the start: Protect Kala Academy to Sharada Mandir, in three steps on that stretch, 5 builds in all", () => {
     const run = newRun("panjim", BOT_LEVEL);
     expect(run.prep.map((job) => [job.heading, job.elementId, job.count])).toEqual([
-      ["Protect Kala Academy to Sharada Mandir", "sandy_vegetation", 3],
-      ["Protect Kala Academy to Sharada Mandir", "dune", 3],
-      ["Protect Kala Academy to Sharada Mandir", "breakwater", 2]
+      ["Protect Kala Academy to Sharada Mandir", "sandy_vegetation", 2],
+      ["Protect Kala Academy to Sharada Mandir", "dune", 2],
+      ["Protect Kala Academy to Sharada Mandir", "breakwater", 1]
     ]);
     for (const job of run.prep) expect(job.reward).toBe(0);
   });
@@ -98,26 +98,33 @@ describe("the first storm's objective (Section 6.3)", () => {
       return run.state.canBuild({ q, r }, id);
     }).length;
     // Pandanus and dunes share the stretch's beach: both steps fit on it together.
-    expect(buildable("dune")).toBeGreaterThanOrEqual(3 + 3);
-    expect(buildable("breakwater")).toBeGreaterThanOrEqual(2);
+    expect(buildable("dune")).toBeGreaterThanOrEqual(2 + 2);
+    expect(buildable("breakwater")).toBeGreaterThanOrEqual(1);
     const steps = run.prep.reduce((sum, job) => sum + job.count, 0);
     const cyclone = run.nextChallenge()!;
-    expect(steps).toBeLessThanOrEqual(cyclone.turn * BOT_LEVEL.timeline!.buildsPerYear);
+    // One build a year: the whole objective fits in the builds before the cyclone.
+    expect(steps).toBeLessThanOrEqual(cyclone.turn);
   });
 
   it("counts only what stands on the stretch, and is done when every step is", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const tiles = run.openingTiles!;
-    for (const job of run.prep) {
+    // Its five builds are the five before the cyclone: the fifth brings it, and the jobs then give way.
+    const completed: string[] = [];
+    for (const job of [...run.prep]) {
       let placed = 0;
       for (const key of tiles) {
         if (placed >= job.count) break;
         const [q, r] = key.split(",").map(Number);
-        if (run.buildsLeft <= 0) run.nextYear();
-        if (run.state.canBuild({ q, r }, job.elementId) && run.build({ q, r }, job.elementId).ok) placed++;
+        if (!run.state.canBuild({ q, r }, job.elementId)) continue;
+        const outcome = run.build({ q, r }, job.elementId);
+        if (!outcome.ok) continue;
+        placed++;
+        for (const e of outcome.events) if (e.type === "prep_complete") completed.push(e.objective.elementId);
       }
     }
-    expect(run.prep.every((job) => job.done)).toBe(true);
+    expect(completed.sort()).toEqual(["breakwater", "dune", "sandy_vegetation"]);
+    expect(run.landed.has("c1-cyclone")).toBe(true);
     // A dune off the stretch counts for nothing.
     const fresh = newRun("panjim", BOT_LEVEL);
     const away = [...fresh.state.placed.values()].find((t) => !tiles.has(`${t.coord.q},${t.coord.r}`) && fresh.state.canBuild(t.coord, "dune"))!;
@@ -127,7 +134,7 @@ describe("the first storm's objective (Section 6.3)", () => {
 
   it("then gives way to the usual jobs for the next storm", () => {
     const run = newRun("panjim", BOT_LEVEL);
-    while (run.landed.size < 1) run.nextYear();
+    while (run.landed.size < 1) passYear(run);
     expect(run.prep.every((job) => !job.heading)).toBe(true);
   });
 });

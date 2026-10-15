@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { ActionRun, NO_BUILDS_LEFT, type TimelineConfig } from "../src/core/actionRun";
+import { ActionRun, SKIP_REFUSED, type TimelineConfig } from "../src/core/actionRun";
 import { GameState } from "../src/core/gameState";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { defenceMetres, HAZARD_MODEL } from "../src/core/hazardModel";
 import { LEVEL_BY_ID } from "../src/levels/levels";
+import { passYear } from "./helpers/passYear";
 
 /**
- * Section 5: the yearly clock. One turn a year from 2026 to 2050, a cap on
- * builds per year, Next year at any point; coins and growth off on Panaji.
+ * Section 8: one build is one turn is one year, 2026 to 2050; a refused build
+ * moves nothing; there is no other way to end a year except the "Skip this
+ * year" fallback when nothing can be built anywhere. Coins and growth off on
+ * Panaji (Section 5).
  */
-const TIMELINE: TimelineConfig = { startYear: 2026, endYear: 2050, buildsPerYear: 4 };
+const TIMELINE: TimelineConfig = { startYear: 2026, endYear: 2050 };
 
 function board(coin = 1000): GameState {
   return new GameState(
@@ -28,60 +31,52 @@ function board(coin = 1000): GameState {
 
 const BEACH = [0, 1, 3, 4, 5].map((q) => ({ q, r: 0 }));
 
-describe("the yearly clock", () => {
-  it("runs turn 1 = 2026 to turn 25 = 2050, one Next year a turn", () => {
+describe("one build a year", () => {
+  it("runs turn 1 = 2026 to turn 25 = 2050, each build advancing exactly one year", () => {
     const run = new ActionRun(board(), TIMELINE);
     expect(run.totalYears).toBe(25);
     expect(run.turnNumber).toBe(1);
     expect(run.year).toBe(2026);
     expect(run.label).toBe("2026");
-    for (let turn = 1; turn < 25; turn++) run.nextYear();
-    expect(run.turnNumber).toBe(25);
-    expect(run.year).toBe(2050);
-    expect(run.finished).toBe(false);
-    run.nextYear();
-    expect(run.finished).toBe(true);
-    expect(run.label).toBe("2050");
-    expect(run.nextYear().ok).toBe(false);
-  });
-
-  it("caps builds per year at the level's buildsPerYear, and says why", () => {
-    const run = new ActionRun(board(), TIMELINE);
-    for (let i = 0; i < 4; i++) expect(run.build(BEACH[i], "dune").ok).toBe(true);
-    expect(run.buildsLeft).toBe(0);
-    const refused = run.build(BEACH[4], "dune");
-    expect(refused.ok).toBe(false);
-    expect(refused.reason).toBe(NO_BUILDS_LEFT);
-    expect(run.state.elements.has("5,0")).toBe(false);
-    run.nextYear();
-    expect(run.buildsLeft).toBe(4);
-    expect(run.build(BEACH[4], "dune").ok).toBe(true);
-  });
-
-  it("ends a year early: Next year works after 0, 1 and every build", () => {
-    for (const builds of [0, 1, 4]) {
-      const run = new ActionRun(board(), TIMELINE);
-      for (let i = 0; i < builds; i++) run.build(BEACH[i], "dune");
-      expect(run.buildsLeft).toBe(4 - builds);
-      const outcome = run.nextYear();
-      expect(outcome.ok).toBe(true);
-      expect(run.turnNumber).toBe(2);
-      expect(run.buildsLeft).toBe(4);
-      expect(outcome.events.some((e) => e.type === "year")).toBe(true);
-    }
-  });
-
-  it("demolishing and repairing each use one of the year's builds", () => {
-    const run = new ActionRun(board(), TIMELINE);
-    expect(run.demolish({ q: 2, r: 0 }).ok).toBe(false);
-    run.build(BEACH[0], "dune");
-    expect(run.demolish(BEACH[0]).ok).toBe(true);
-    expect(run.buildsLeft).toBe(2);
+    const outcome = run.build(BEACH[0], "dune");
+    expect(outcome.ok).toBe(true);
+    expect(run.turnNumber).toBe(2);
+    expect(run.year).toBe(2027);
+    expect(outcome.events.some((e) => e.type === "year" && e.turn === 2)).toBe(true);
+    run.demolish(BEACH[0]);
+    expect(run.turnNumber).toBe(3);
     run.build(BEACH[1], "dune");
     run.state.elements.get("1,0")!.degradeAmount = 0.3;
-    expect(run.repair(BEACH[1]).ok).toBe(true);
-    expect(run.buildsLeft).toBe(0);
-    expect(run.demolish(BEACH[1]).reason).toBe(NO_BUILDS_LEFT);
+    run.repair(BEACH[1]);
+    expect(run.turnNumber).toBe(5);
+  });
+
+  it("moves nothing on a refused build: the year, the board and the moment stay", () => {
+    const run = new ActionRun(board(), TIMELINE);
+    const moment = run.moment;
+    const refused = run.build({ q: 2, r: 0 }, "breakwater");
+    expect(refused.ok).toBe(false);
+    expect(refused.events).toEqual([]);
+    expect(run.turnNumber).toBe(1);
+    expect(run.moment).toBe(moment);
+    expect(run.state.elements.size).toBe(0);
+    expect(run.demolish(BEACH[0]).ok).toBe(false);
+    expect(run.repair(BEACH[0]).ok).toBe(false);
+    expect(run.turnNumber).toBe(1);
+  });
+
+  it("allows Skip this year only when nothing can be built anywhere", () => {
+    const run = new ActionRun(board(), TIMELINE);
+    expect(run.canBuildAnywhere()).toBe(true);
+    expect(run.skipYear()).toEqual({ ok: false, events: [], reason: SKIP_REFUSED });
+    expect(run.turnNumber).toBe(1);
+    const full = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "land" }], [], 0);
+    full.excludedElements.add("house");
+    for (const def of ELEMENT_BY_ID.values()) full.excludedElements.add(def.id);
+    const stuck = new ActionRun(full, TIMELINE);
+    expect(stuck.canBuildAnywhere()).toBe(false);
+    expect(stuck.skipYear().ok).toBe(true);
+    expect(stuck.turnNumber).toBe(2);
   });
 
   it("never demolishes the city's homes, so a home can't be taken out of a storm's path", () => {
@@ -92,18 +87,59 @@ describe("the yearly clock", () => {
     expect(run.canDemolish({ q: 2, r: 0 })).toBe(false);
     expect(run.demolish({ q: 2, r: 0 }).ok).toBe(false);
     expect(run.state.elements.has("2,0")).toBe(true);
-    expect(run.buildsLeft).toBe(4);
+    expect(run.turnNumber).toBe(1);
   });
 
   it("is a per-level setting: Panaji runs on years, the tutorial keeps turns", () => {
     const panaji = LEVEL_BY_ID.get("l01-first-rains")!;
     expect(panaji.timeModel).toBe("years");
-    expect(panaji.timeline).toEqual({ startYear: 2026, endYear: 2050, buildsPerYear: 4 });
+    expect(panaji.timeline).toEqual({ startYear: 2026, endYear: 2050 });
     const tutorial = LEVEL_BY_ID.get("l00-tutorial")!;
     expect(tutorial.timeModel ?? "turns").toBe("turns");
     expect(tutorial.timeline).toBeUndefined();
     expect(tutorial.economy).toBeUndefined();
     expect(tutorial.growth).toBeUndefined();
+  });
+});
+
+describe("the storms on Panaji's board, one build a year", () => {
+  it("hit straight after build 5, build 15 and build 25, in 2030, 2040 and 2050, and the next phase starts the year after", async () => {
+    const { BOT_LEVEL, newRun } = await import("../tools/panjimBots/bots");
+    const run = newRun("timing", BOT_LEVEL);
+    // Builds far from every storm, so nothing here changes what they do.
+    const away = [...run.state.placed.values()].map((t) => t.coord).filter((c) => run.state.buildableAt(c).length > 0).reverse();
+    const hits: { build: number; year: number; storm: string }[] = [];
+    for (let build = 1; build <= 25; build++) {
+      const year = run.year;
+      const coord = away.find((c) => run.state.buildableAt(c).length > 0)!;
+      const outcome = run.build(coord, run.state.buildableAt(coord)[0].id);
+      expect(outcome.ok).toBe(true);
+      for (const e of outcome.events) if (e.type === "challenge") hits.push({ build, year, storm: e.challenge.id });
+      if (build === 5) expect(run.year).toBe(2031);
+      if (build === 15) expect(run.year).toBe(2041);
+    }
+    expect(hits).toEqual([
+      { build: 5, year: 2030, storm: "c1-cyclone" },
+      { build: 15, year: 2040, storm: "c2-flood" },
+      { build: 25, year: 2050, storm: "c3-compound" }
+    ]);
+    expect(run.finished).toBe(true);
+    expect(run.build(away[0], "dune").ok).toBe(false);
+  });
+
+  it("never leaves the player with nothing to build: hundreds of free places before the first build and after the last", async () => {
+    const { BOT_LEVEL, newRun } = await import("../tools/panjimBots/bots");
+    const run = newRun("room", BOT_LEVEL);
+    const free = (): number => [...run.state.placed.values()].filter((t) => run.state.buildableAt(t.coord).length > 0).length;
+    const before = free();
+    expect(before).toBeGreaterThan(200);
+    for (let build = 0; build < 25; build++) {
+      expect(run.canBuildAnywhere()).toBe(true);
+      const tile = [...run.state.placed.values()].find((t) => run.state.buildableAt(t.coord).length > 0)!;
+      run.build(tile.coord, run.state.buildableAt(tile.coord)[0].id);
+    }
+    // 25 builds take at most 25 places, and storms only ever free more.
+    expect(free()).toBeGreaterThanOrEqual(before - 25);
   });
 });
 
@@ -120,7 +156,6 @@ describe("coins off (ECONOMY_DISABLED_V1)", () => {
     expect(run.economyEnabled).toBe(false);
     expect(run.build(BEACH[0], "seawall").ok).toBe(true);
     expect(run.build(BEACH[1], "dune").ok).toBe(true);
-    run.nextYear();
     run.build(BEACH[2], "sandy_vegetation");
     run.state.elements.get("0,0")!.degradeAmount = 0.5;
     run.repair(BEACH[0]);
@@ -134,7 +169,6 @@ describe("coins off (ECONOMY_DISABLED_V1)", () => {
     const run = new ActionRun(board(1000), TIMELINE, { economy: { enabled: true, incomeScale: 0.5, jarStart: 40 } });
     run.build({ q: 2, r: 0 }, "house");
     expect(run.state.coin).toBe(1000 - ELEMENT_BY_ID.get("house")!.buildCost);
-    run.nextYear();
     expect(run.jar).toBeGreaterThan(40);
     expect(run.collectJar()).toBeGreaterThan(0);
   });
@@ -164,26 +198,21 @@ describe("growth off (GROWTH_DISABLED_V1)", () => {
   });
 });
 
-describe("a defence built in the storm's own year (Section 5)", () => {
-  it("protects at full strength in that storm: the same as if built in 2026", async () => {
+describe("a defence built in the storm's own year", () => {
+  it("protects at full strength in that storm: the 5th build, in 2030, does what the 1st did in 2026", async () => {
     const { BOT_LEVEL, newRun } = await import("../tools/panjimBots/bots");
-    const plant = (run: ActionRun): number => {
-      // Four dunes on the beach the cyclone reaches.
-      const next = run.nextChallenge()!;
-      const reach = run.exposureFor(next, true)!;
-      let built = 0;
-      for (const key of reach.exposure.keys()) {
-        const [q, r] = key.split(",").map(Number);
-        if (built < 4 && run.state.canBuild({ q, r }, "dune") && run.build({ q, r }, "dune").ok) built++;
-      }
-      return built;
-    };
-    const play = (buildOnTurn: number | null): number => {
+    const play = (duneOnBuild: number | null): number => {
       const run = newRun("full-strength", BOT_LEVEL);
       const cyclone = run.schedule[0];
-      while (!run.landed.has(cyclone.id)) {
-        if (run.turnNumber === buildOnTurn) expect(plant(run)).toBe(4);
-        run.nextYear();
+      const reach = [...run.exposureFor(cyclone, true)!.exposure.keys()].map((key) => key.split(",").map(Number));
+      const dune = reach.map(([q, r]) => ({ q, r })).find((c) => run.state.canBuild(c, "dune"))!;
+      const away = [...run.state.placed.values()].map((t) => t.coord).filter((c) => !reach.some(([q, r]) => Math.abs(q - c.q) + Math.abs(r - c.r) < 12)).filter((c) => run.state.buildableAt(c).length > 0);
+      for (let build = 1; !run.landed.has(cyclone.id); build++) {
+        if (build === duneOnBuild) expect(run.build(dune, "dune").ok).toBe(true);
+        else {
+          const c = away.find((x) => run.state.buildableAt(x).length > 0)!;
+          expect(run.build(c, run.state.buildableAt(c)[0].id).ok).toBe(true);
+        }
       }
       return run.outcomes.get(cyclone.id)!.housesDamaged;
     };
@@ -192,5 +221,12 @@ describe("a defence built in the storm's own year (Section 5)", () => {
     const late = play(5);
     expect(early).toBeLessThan(none);
     expect(late).toBe(early);
+  });
+
+  it("the helper used by other tests ends a year without a build", () => {
+    const run = new ActionRun(board(), TIMELINE);
+    passYear(run);
+    expect(run.turnNumber).toBe(2);
+    expect(run.state.elements.size).toBe(0);
   });
 });

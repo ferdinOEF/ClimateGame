@@ -1,3 +1,4 @@
+import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
 import { GameState } from "../src/core/gameState";
 import { ActionRun } from "../src/core/actionRun";
@@ -83,13 +84,13 @@ describe("snapshots", () => {
       new ActionRun(new GameState(map.tiles, [], level.startingCoin), level.timeline!, { climate: level.climate, zones: map.zones, economy: level.economy, growth: level.growth });
     const run = make();
     const first = run.schedule[0];
-    while (!run.replaySnapshots.has(first.id)) run.nextYear();
+    while (!run.replaySnapshots.has(first.id)) passYear(run);
     const warningTurn = run.replaySnapshots.get(first.id)!.turn;
     // Two years out: turn 4 (2029) for a storm at the end of turn 5.
     expect(warningTurn + 1).toBe(first.turn - 1);
     const beach = map.zones[0].tiles.find(([q, r]) => run.state.placed.get(`${q},${r}`)?.terrainId === "beach")!;
     run.build({ q: beach[0], r: beach[1] }, "dune");
-    while (!run.landed.has(first.id)) run.nextYear();
+    while (!run.landed.has(first.id)) passYear(run);
     const snapshot = run.replaySnapshots.get(first.id)!;
     run.restore(snapshot);
     expect(run.state.turn).toBe(warningTurn);
@@ -98,7 +99,7 @@ describe("snapshots", () => {
     const replay = (): string => {
       run.restore(snapshot);
       run.build({ q: beach[0], r: beach[1] }, "dune");
-      while (!run.landed.has(first.id)) run.nextYear();
+      while (!run.landed.has(first.id)) passYear(run);
       return JSON.stringify(run.outcomes.get(first.id));
     };
     expect(replay()).toBe(replay());

@@ -33,7 +33,7 @@ const SIZES = [
 /** Everything a label must stay off. Kept independent of the game's own list (ui/mapLabels.ts) on purpose. */
 const HUD = [
   ".maya-figure-wrap", ".maya-bubble", ".maya-badge",
-  ".instrument-cluster", ".coin-jar", ".field-guide-button", ".panjim-clock", ".hud-chrome", ".houses-counter",
+  ".instrument-cluster", ".coin-jar", ".field-guide-button", ".panjim-clock", ".hud-chrome",
   ".hud-panel", ".panjim-toggles", ".objectives-panel", ".get-ready", ".map-corner", ".map-layer-control",
   ".empty-prompt", ".era-banner", ".build-popover", ".hud-tooltip", ".field-guide-toast", ".aftermath-card",
   ".field-guide-card", ".finale-card", ".brief-card", ".replay-card", ".tutorial-coach", ".forecast-label", ".storm-card",

@@ -26,7 +26,7 @@ const ALL_RESOLUTIONS = [
 const RESOLUTIONS = ALL_RESOLUTIONS.filter((r) => !process.env.LAYOUT_ONLY || String(r.w) === process.env.LAYOUT_ONLY);
 /** Everything Maya must keep clear of: a deliberately broad list, independent of the one the layout manager uses. */
 const OTHER_HUD = [
-  ".instrument-cluster", ".coin-jar", ".field-guide-button", ".panjim-clock", ".hud-chrome", ".houses-counter",
+  ".instrument-cluster", ".coin-jar", ".field-guide-button", ".panjim-clock", ".hud-chrome",
   ".hud-panel", ".panjim-toggles", ".objectives-panel", ".get-ready", ".map-corner", ".map-layer-control",
   ".empty-prompt", ".era-banner", ".build-popover", ".hud-tooltip", ".forecast-label", ".sound-toggle", ".quality-control"
 ];
