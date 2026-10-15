@@ -5,8 +5,10 @@ PASS  the objective is in the Status panel: "OBJECTIVE Protect Kala Academy to S
 PASS  axe-core, the cone on turn 1: no serious or critical violations
 PASS  axe-core, the cone on turn 6: no serious or critical violations
 PASS  after a reload in 2031 the brief offers to continue
+PASS  after the reload no cone shows behind the brief while it offers to continue
 PASS  continuing resumes in 2031 (turn 6)
 PASS  after the reload the flood's cone does not show again
+PASS  after the reload Maya does not give the first objective's line again
 PASS  axe-core, the cone on turn 16: no serious or critical violations
 PASS  the cone shows on turns 1, 6, 16 (expected 1, 6, 16), and on no other
 PASS  the heat shows on turns 4, 5, 14, 15, 24, 25 (expected 4, 5, 14, 15, 24, 25)
