@@ -8260,3 +8260,5 @@ Every archetype uses every build of every year it plays.
   - none dominant.
 - `tests/section4.test.ts`'s finale plan is now 20 builds instead of a 500-coin purse.
 - The coin-era sweeps (`sweep.ts`, `sweepIncome.ts`, `finaleDefences.ts`) were removed; `sweep7.ts` replaces them.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 7). No file under `src/` changed in this section.

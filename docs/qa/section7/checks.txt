@@ -17,6 +17,6 @@ PASS  turn 6 chip: "Flood in 2040 · 10 years"
 PASS  turn 16 chip: "Cyclone and flood in 2050 · 10 years"
 PASS  legends: "Most likely | Likely | Possible | Area to protect" / "Most likely | Likely | Possible | Area to protect | Where they meet"
 PASS  c1-cyclone: when the heat first appears (turn 4) Maya says one line (warn:c1-cyclone)
-FAIL  c2-flood: when the heat first appears (turn 14) Maya says one line (none)
+PASS  c2-flood: when the heat first appears (turn 14) Maya says one line (warn:c2-flood)
 PASS  c3-compound: when the heat first appears (turn 24) Maya says one line (warn:c3-compound)
 PASS  zero console errors

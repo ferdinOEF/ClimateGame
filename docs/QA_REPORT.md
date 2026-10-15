@@ -827,7 +827,7 @@ with software GL. Evidence in `docs/qa/section7/`.
 | `npm run test:maya` | Pass. |
 | `npm run verify:maya` | All checks pass. |
 | Section 5 checks again | 41 of 41. |
-| Section 6 checks again | 20 of 21. See below. |
+| Section 6 checks again | 21 of 21 run alone (20 of 21 twice when sharing the machine; see below). |
 | Tutorial (`docs/qa/section7/tutorial/`) | Text identical, 0.000% of pixels differ, in all five states. |
 | axe-core | No serious or critical violations (in the Section 6 checks, on each cone). |
 | Console errors | None. |
@@ -879,4 +879,5 @@ MINORs fixed:
 - Coin-era tools remained (removed).
 - A cast in the tests.
 
-**Flake check:** see the line added after the merge.
+
+**Flake check, settled:** run alone (nothing else on the machine), the Section 6 checks pass 21 of 21 on this branch, and 21 of 21 on the untouched master build. The two failures came from runs that shared the machine with other heavy jobs, which slowed the turns past the check's timing.
