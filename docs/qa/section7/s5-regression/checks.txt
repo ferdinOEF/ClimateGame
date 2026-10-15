@@ -1,0 +1,41 @@
+PASS  no coin, price, cost, reward or growing text, the brief
+PASS  the clock reads 2026, Year 1 of 25 ("2026 Year 1 of 25")
+PASS  builds left: "Builds left this year 4 of 4"
+PASS  years until the next storm: "Next: Cyclone · end of 2030 · mild · 5 years"
+PASS  one Next year button; +1 year and Next event are gone
+PASS  no coin, price, cost, reward or growing text, the board at the start
+PASS  axe-core, the board at the start: no serious or critical violations
+PASS  no coin, price, cost, reward or growing text, Status open
+PASS  axe-core, Status open: no serious or critical violations
+PASS  no coin, price, cost, reward or growing text, Settings open
+PASS  no coin, price, cost, reward or growing text, How to Play open
+PASS  How to Play describes years, the cap and the calendar from the data
+PASS  no coin, price, cost, reward or growing text, the build menu
+PASS  build menu options carry no number: Dune NBS; Sandy Vegetation (Pandanus) NBS; Beachside Resort BUILDING; Seawall ENGINEERED
+PASS  four builds in 2026 go through
+PASS  building changes no coin value (10000 before and after)
+PASS  a fifth build in the same year is refused
+PASS  the build menu says no builds are left and points to Next year ("No builds left this year. Press Next year to go on. Next year")
+PASS  every option in that menu is disabled
+PASS  no coin, price, cost, reward or growing text, the build menu with no builds left
+PASS  axe-core, the build menu with no builds left: no serious or critical violations
+PASS  the menu's Next year moves to 2027 with four fresh builds
+PASS  the info card names no money ("Dune NBS biodiversity +1 · resilience +4 Demolish · uses 1 build")
+PASS  no coin, price, cost, reward or growing text, an info card
+PASS  Next year with 0 builds made
+PASS  Next year with 1 build made
+PASS  Coin still unchanged after more builds and years
+PASS  no coin, price, cost, reward or growing text, two years before the cyclone (heat on)
+PASS  no coin, price, cost, reward or growing text, the cyclone's year
+PASS  the cyclone's year is 2030, turn 5
+PASS  no coin, price, cost, reward or growing text, mid-storm
+PASS  no coin, price, cost, reward or growing text, the storm's replay or Aftermath
+PASS  no coin, price, cost, reward or growing text, the Aftermath card
+PASS  the Aftermath says end of 2030
+PASS  Replay rewinds to the start of the warning, 2029
+PASS  the cyclone resolved when Next year was pressed in 2030; now 2031
+PASS  no coin, price, cost, reward or growing text, after the cyclone
+PASS  all three storms resolved (c1-cyclone:true,c2-flood:true,c3-compound:true)
+PASS  no coin, price, cost, reward or growing text, the finale card
+PASS  no coin, price, cost, reward or growing text, the results screen
+PASS  zero console errors

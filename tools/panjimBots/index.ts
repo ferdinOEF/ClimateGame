@@ -1,13 +1,13 @@
 /**
- * The Section 4 balance report: every archetype on every seed, over a full
- * playthrough of Panaji, each defence's margin in Smart's hands, and Smart
- * held to one kind of defence.
+ * The balance report (Section 7, yearly turns): every archetype on every
+ * seed, over a full playthrough of Panaji, with its win rate, each defence's
+ * margin in Smart's hands, and Smart held to one kind of defence.
  *
  * Usage:  npm run bots            (archetypes)
  *         npm run bots -- margins (also: the margins and the one-kind runs)
  *         BOT_SEEDS=5 npm run bots (fewer seeds, for a quick look)
  *
- * Writes the tables to stdout as Markdown; docs/qa/section4/bots.md keeps the
+ * Writes the tables to stdout as Markdown; docs/qa/section7/bots.md keeps the
  * last full run. Seeds are listed so any row can be re-run.
  *
  * Smart is slow (it simulates every candidate build), so its runs are split
@@ -16,7 +16,7 @@
  * margin), and, with margins, plays Smart limited to one kind.
  */
 import { spawn } from "node:child_process";
-import { PERSONAS, SEEDS, replaySmartWithout, runBot, runSmartOnly, smartRun, savedShare, type BotResult, type Persona } from "./bots";
+import { PERSONAS, SEEDS, replaySmartWithout, runBot, runSmartOnly, smartRun, savedShare, survived, won, type BotResult, type Persona } from "./bots";
 
 const seeds = SEEDS.slice(0, Number(process.env.BOT_SEEDS ?? SEEDS.length));
 const ELEMENTS = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
@@ -81,31 +81,37 @@ const smart = await smartPromise;
 results.set("smart", seeds.map((seed) => smart.get(seed)!.smart));
 
 lines.push("## Archetypes", "", `${seeds.length} seeds: ${seeds.join(", ")}`, "");
-lines.push("| Archetype | Houses saved (all storms) | min | median | max | Stars per storm (mean) | Index (mean) |", "|---|---|---|---|---|---|---|");
+lines.push("A run is **won** when the level ends on three stars (the storms' stars averaged and rounded: at most one storm short of three stars, none below two). **2★ every storm** is the softer reading: every storm at two stars or more.", "");
+lines.push("| Archetype | Won | 2★ every storm | Houses saved (all storms) | min | median | max | Stars per storm (mean) | Index (mean) |", "|---|---|---|---|---|---|---|---|---|");
 for (const persona of PERSONAS) {
   const rs = results.get(persona)!;
   const shares = rs.map(savedShare).sort((a, b) => a - b);
   const stars = [0, 1, 2].map((i) => (rs.reduce((s, r) => s + (r.stars[i] ?? 0), 0) / rs.length).toFixed(1)).join(" / ");
   const index = Math.round(rs.reduce((s, r) => s + r.index, 0) / rs.length);
-  lines.push(`| ${persona} | ${pct(mean(shares))} | ${pct(shares[0])} | ${pct(shares[Math.floor(shares.length / 2)])} | ${pct(shares[shares.length - 1])} | ${stars} | ${index} |`);
+  const wins = rs.filter(won).length;
+  const soft = rs.filter(survived).length;
+  lines.push(`| ${persona} | ${wins}/${rs.length} (${pct(wins / rs.length)}) | ${soft}/${rs.length} | ${pct(mean(shares))} | ${pct(shares[0])} | ${pct(shares[Math.floor(shares.length / 2)])} | ${pct(shares[shares.length - 1])} | ${stars} | ${index} |`);
 }
 const casual = results.get("casual")!;
 const greedyWins = results.get("greedy")!.filter((g, i) => savedShare(g) > savedShare(casual[i])).map((g) => g.seed);
 lines.push("", `Greedy beats Casual on ${greedyWins.length} of ${seeds.length} seeds${greedyWins.length ? ` (${greedyWins.join(", ")})` : ""}.`);
 
-lines.push("", "## Every run", "", "| Archetype | Seed | Storm 1 saved | Storm 2 saved | Storm 3 saved | All | Stars | Resilience | Biodiversity | Livelihoods | Population | Food |", "|---|---|---|---|---|---|---|---|---|---|---|---|");
+lines.push("", "## Every run", "", "| Archetype | Seed | Storm 1 saved | Storm 2 saved | Storm 3 saved | All | Stars | Won | Builds | Resilience | Biodiversity | Population | Food |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|");
 for (const persona of PERSONAS) {
   for (const r of results.get(persona)!) {
     const storms = r.houses.map((h) => `${h.saved}/${h.total}`);
     while (storms.length < 3) storms.push("–");
     const c = r.components;
-    lines.push(`| ${persona} | ${r.seed} | ${storms.join(" | ")} | ${pct(savedShare(r))} | ${r.stars.join("")} | ${c.resilience} | ${c.biodiversity} | ${c.livelihoods} | ${c.population} | ${c.food} |`);
+    lines.push(`| ${persona} | ${r.seed} | ${storms.join(" | ")} | ${pct(savedShare(r))} | ${r.stars.join("")} | ${won(r) ? "yes" : "no"} | ${r.decisions} | ${c.resilience} | ${c.biodiversity} | ${c.population} | ${c.food} |`);
   }
 }
 
 const smartRows = results.get("smart")!;
-lines.push("", "## What Smart builds (mean per run)", "", `| ${ELEMENTS.join(" | ")} |`, `|${ELEMENTS.map(() => "---").join("|")}|`);
-lines.push(`| ${ELEMENTS.map((id) => (smartRows.reduce((s, r) => s + (r.built[id] ?? 0), 0) / smartRows.length).toFixed(1)).join(" | ")} |`);
+lines.push("", "## What each builds (mean per run)", "", `| Archetype | ${ELEMENTS.join(" | ")} |`, `|---|${ELEMENTS.map(() => "---").join("|")}|`);
+for (const persona of PERSONAS) {
+  const rs = results.get(persona)!;
+  lines.push(`| ${persona} | ${ELEMENTS.map((id) => (rs.reduce((s, r) => s + (r.built[id] ?? 0), 0) / rs.length).toFixed(1)).join(" | ")} |`);
+}
 
 if (withMargins) {
   const base = mean(smartRows.map(savedShare));
@@ -113,7 +119,7 @@ if (withMargins) {
     "",
     "## Each defence's margin (Smart's own run, replayed with that defence left out)",
     "",
-    `Smart with everything: ${pct(base)} of houses in the storms' paths saved. Each build of the left-out defence becomes waiting, for as many quarters as it would have taken; every other action is replayed as it was, so nothing re-plans round the gap.`,
+    `Smart with everything: ${pct(base)} of houses in the storms' paths saved. Each build of the left-out defence becomes a build left unused that year; every other action is replayed as it was, so nothing re-plans round the gap.`,
     "",
     "| Left out | Houses saved | Margin (points) | Margin per seed (points) |",
     "|---|---|---|---|"

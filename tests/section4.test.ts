@@ -2,7 +2,6 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GameState } from "../src/core/gameState";
-import { ELEMENT_BY_ID } from "../src/core/elements";
 import { resolveChallenge, ZoneIndex } from "../src/core/zones";
 import { computeWater, LANDFALL_ZONE, landfallSite, siteAt, waterBoard } from "../src/core/hazardModel";
 import { mapById } from "../src/levels/levelMap";
@@ -77,14 +76,14 @@ function panaji(): { state: GameState; zones: ZoneIndex } {
 describe("the finale is survivable", () => {
   /**
    * The compound finale at the level's strength (2.6), landing at three
-   * points along the coast, met first by nothing and then by a plain plan a
-   * player could make with the starting purse (500 coin): working out from
-   * the homes the storm would take, a dune on sand, a mangrove on wetland, a
-   * dam on the river, cheapest first, grown. No simulation, no search.
-   * Section 4 asks for about 40% fewer houses lost.
+   * points along the coast, met first by nothing and then by a plain plan of
+   * 20 builds (five years at the level's 4 a year; coins are off since
+   * Section 5): working out from the homes the storm would take, a dune on
+   * sand, a mangrove on wetland, a dam on the river, a khazan. No simulation,
+   * no search. The brief asks for about 40% fewer houses lost.
    */
   const STRENGTH = 2.6;
-  const BUDGET = 500;
+  const BUILDS = 20;
   const unit = BOT_LEVEL.climate!.intensityPerStrength;
   const rows = [0.3, 0.5, 0.7].map((fraction) => {
     const probe = panaji();
@@ -98,27 +97,26 @@ describe("the finale is survivable", () => {
       const [q, r] = key.split(",").map(Number);
       return Math.min(...homes.map(([a, b]) => (Math.abs(q - a) + Math.abs(r - b) + Math.abs(q + r - a - b)) / 2));
     };
-    let spent = 0;
+    let builds = 0;
     for (const key of [...water.depth.keys()].sort((a, b) => distance(a) - distance(b) || (a < b ? -1 : 1))) {
       const [q, r] = key.split(",").map(Number);
       for (const id of ["dune", "mangrove", "small_dam", "khazan"]) {
-        const cost = ELEMENT_BY_ID.get(id)!.buildCost;
-        if (spent + cost <= BUDGET && plan.state.canBuild({ q, r }, id)) {
+        if (builds < BUILDS && plan.state.canBuild({ q, r }, id)) {
           plan.state.build({ q, r }, id, false);
-          spent += cost;
+          builds++;
           break;
         }
       }
     }
     plan.state.turn = 40;
     const defended = resolveChallenge(plan.state, plan.zones, "compound", STRENGTH * unit, unit, undefined, undefined, undefined, undefined, site);
-    return { fraction, site, undefended: undefended.housesDamaged, defended: defended.housesDamaged, spent };
+    return { fraction, site, undefended: undefended.housesDamaged, defended: defended.housesDamaged, builds };
   });
 
   it("loses about 40% fewer houses when defended (30-50% at each landfall, 35-45% on average)", () => {
     for (const row of rows) {
       expect(row.undefended, `${row.fraction}`).toBeGreaterThan(20);
-      expect(row.spent).toBeLessThanOrEqual(BUDGET);
+      expect(row.builds).toBe(BUILDS);
       const fewer = 1 - row.defended / row.undefended;
       expect(fewer, JSON.stringify(row)).toBeGreaterThanOrEqual(0.3);
       expect(fewer, JSON.stringify(row)).toBeLessThanOrEqual(0.5);
