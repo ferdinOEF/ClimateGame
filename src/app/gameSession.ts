@@ -761,13 +761,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
-          offerResume: (label, onResume, onBegin) => objectivesPanel.addBriefAction(label, onResume, onBegin)
+          offerResume: (label, onResume, onBegin) => objectivesPanel.addBriefAction(label, onResume, onBegin),
+          addBriefFeature: (el) => objectivesPanel.addBriefFeature(el)
         })
       : null;
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,
-      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, buildsPerYear: panjim.run.buildsPerYear, storms: panjim.run.schedule })
+      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule })
     );
   /**
    * The step-by-step coach, on the tutorial level only.
@@ -2114,13 +2115,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         kindLabel: kindLabel(def),
         // With coins off, what a thing earns is not shown: no money anywhere.
         effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
-        removeLabel: panjim ? "Demolish · uses 1 build" : undefined,
+        removeLabel: panjim ? "Demolish · uses this year's build" : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
             ? [
                 {
-                  label: economy ? `Repair · uses 1 build · ${panjim.run.repairCoin(coord)}c` : "Repair · uses 1 build",
-                  disabled: panjim.run.buildsLeft <= 0 || (economy && state.coin < panjim.run.repairCoin(coord)),
+                  label: economy ? `Repair · uses this year's build · ${panjim.run.repairCoin(coord)}c` : "Repair · uses this year's build",
+                  disabled: economy && state.coin < panjim.run.repairCoin(coord),
                   onClick: () => {
                     panjim.repair(coord);
                     buildPopover.hide();
@@ -2152,21 +2153,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         return { id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), tip };
       });
     if (popoverOptions.length === 0) return;
-    // The year's builds used up: the menu still shows what the tile takes, says so and points to Next year.
-    const noneLeft = panjim !== null && panjim.run.buildsLeft <= 0;
-    const mode = panjim
-      ? {
-          hideCost,
-          blocked: noneLeft,
-          notice: noneLeft ? tooltipText("noBuildsLeft") : undefined,
-          noticeAction: noneLeft ? { label: "Next year", onClick: () => void panjim.nextYear() } : undefined
-        }
-      : undefined;
+    const mode = panjim ? { hideCost } : undefined;
 
     buildPopover.show(screen.x, screen.y, popoverOptions, state.coin, (id) => {
       if (panjim) {
-        // The controller counts the build against the year's cap and draws
-        // the element. The run ends at 2050, never on an objective.
+        // The controller draws the element and ends the year: one build is
+        // one year. The run ends at 2050, never on an objective.
         if (!panjim.build(coord, id)) return;
         nuggetPopup?.show(id);
         playSound("build");

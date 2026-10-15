@@ -11,7 +11,7 @@
  *   casual  builds by eye next to the houses the forecast marks red; never simulates.
  *   greedy  builds near houses every year and ignores the forecast.
  *   smart   reads the forecast cone and the heat; weighs a handful of spots per build.
- *   rusher  only presses Next year: the do-nothing control.
+ *   rusher  builds only far from every storm: the control (one build is one year, so it cannot do nothing).
  *
  * A human-time model turns each run into an estimated real duration: fixed
  * animation and time-lapse lengths, about 2.5 s a decision, and 5 s of
@@ -50,8 +50,10 @@ export interface BotResult {
   decisions: number;
   /** Builds per element id. */
   built: Record<string, number>;
-  /** Years ended with builds unused. */
-  yearsWithBuildsLeft: number;
+  /** Years that passed without a build (nothing could be built anywhere). */
+  yearsSkipped: number;
+  /** Builds made away from every storm. */
+  buildsAway: number;
   jarTaps: number;
   /** Estimated real milliseconds for a human playing the same moves. */
   estimatedMs: number;
@@ -113,7 +115,7 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
   });
 }
 
-export type LoggedAction = { type: "tap" } | { type: "next" } | { type: "build"; coord: AxialCoord; elementId: string } | { type: "repair"; coord: AxialCoord };
+export type LoggedAction = { type: "tap" } | { type: "skip" } | { type: "build"; coord: AxialCoord; elementId: string; away?: boolean } | { type: "repair"; coord: AxialCoord };
 
 class Player {
   readonly run: ActionRun;
@@ -124,7 +126,10 @@ class Player {
   readonly built: Record<string, number> = {};
   /** Every action that went through, in order, so a run can be replayed (the per-element margin). */
   readonly log: LoggedAction[] = [];
-  yearsWithBuildsLeft = 0;
+  /** Years that passed without a build because nothing could be built anywhere (never on Panaji). */
+  yearsSkipped = 0;
+  /** Builds made away from every storm, because nothing near the danger was worth building. */
+  buildsAway = 0;
   jarTaps = 0;
   /** Each storm's forecast cone as the player saw it at the start of its phase: the houses in its area to protect and the tiles it covered. */
   readonly cones = new Map<string, { area: string[]; tiles: string[] }>();
@@ -155,11 +160,13 @@ class Player {
     if (this.firstRewardMs < 0) this.firstRewardMs = this.ms;
   }
 
-  build(coord: AxialCoord, elementId: string): boolean {
+  /** One build, which is the year's. `away`: a build made where it changes nothing a storm does (not counted as a defence). */
+  build(coord: AxialCoord, elementId: string, away = false): boolean {
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
-    this.built[elementId] = (this.built[elementId] ?? 0) + 1;
-    this.log.push({ type: "build", coord, elementId });
+    if (away) this.buildsAway++;
+    else this.built[elementId] = (this.built[elementId] ?? 0) + 1;
+    this.log.push(away ? { type: "build", coord, elementId, away } : { type: "build", coord, elementId });
     this.decisions++;
     this.ms += TIME.decision + TIME.tickAction;
     if (this.firstActionMs < 0) this.firstActionMs = this.ms;
@@ -177,15 +184,38 @@ class Player {
     return true;
   }
 
-  /** Presses Next year. */
-  nextYear(): void {
-    if (this.run.buildsLeft > 0) this.yearsWithBuildsLeft++;
-    const outcome = this.run.nextYear();
-    if (!outcome.ok) return;
-    this.log.push({ type: "next" });
-    this.ms += 1000 + TIME.tickLapse;
-    if (this.firstActionMs < 0) this.firstActionMs = this.ms;
+  /** Tiles no storm's water reaches on the bare board, farthest from it first: where a build changes nothing a storm does. */
+  private awayTiles: AxialCoord[] | null = null;
+
+  /**
+   * The year's build where it changes nothing a storm does: on the free tile
+   * farthest from every storm's reach. One build is one year, so a player who
+   * has nothing to build near the danger still builds (Section 8). If nothing
+   * can be built anywhere at all, the year is skipped (never on Panaji).
+   */
+  buildAway(): boolean {
+    if (!this.awayTiles) {
+      const reach = new Set<string>();
+      for (const challenge of this.run.schedule) for (const key of this.run.exposureFor(challenge, true)?.exposure.keys() ?? []) reach.add(key);
+      const reached = [...reach].map(coordOf);
+      const hex = (a: AxialCoord, b: AxialCoord): number => (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - b.q - b.r)) / 2;
+      this.awayTiles = [...this.state.placed.values()]
+        .map((tile) => tile.coord)
+        .filter((c) => !reach.has(axialKey(c)))
+        .map((c) => ({ c, d: Math.min(...reached.map((r) => hex(c, r))) }))
+        .sort((a, b) => b.d - a.d || a.c.q - b.c.q || a.c.r - b.c.r)
+        .map((x) => x.c);
+    }
+    for (const coord of this.awayTiles) {
+      const options = this.state.buildableAt(coord);
+      if (options.length > 0 && this.build(coord, options[0].id, true)) return true;
+    }
+    const outcome = this.run.skipYear();
+    if (!outcome.ok) return false;
+    this.log.push({ type: "skip" });
+    this.yearsSkipped++;
     this.events(outcome.events);
+    return true;
   }
 
   private events(events: RunEvent[]): void {
@@ -251,7 +281,8 @@ class Player {
       },
       score: index.score,
       decisions: this.decisions,
-      yearsWithBuildsLeft: this.yearsWithBuildsLeft,
+      yearsSkipped: this.yearsSkipped,
+      buildsAway: this.buildsAway,
       jarTaps: this.jarTaps,
       estimatedMs: this.ms + TIME.finale,
       checkpoint2Ms: this.checkpoint2Ms,
@@ -280,7 +311,8 @@ class Player {
 //             saves the most houses. It is a person, not a solver: for each
 //             build it weighs a handful of the candidates (its attention,
 //             drawn per run), so on some runs it misses the best spot.
-//   rusher    the do-nothing control: only presses Next year.
+//   rusher    the control: every build far from every storm (one build is one
+//             year, so doing nothing is no longer possible; Section 10 renames it).
 
 const DEFENCES = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
 
@@ -403,11 +435,11 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infin
   return best;
 }
 
-/** Presses Next year once the year's builds are used, or when `build` finds nothing to build. */
+/** One build a year: `build` makes the year's build, or, when it finds nothing worth building, the player builds away from the storms. */
 function playYears(p: Player, build: () => boolean): void {
   while (!p.run.finished) {
-    if (p.run.buildsLeft > 0 && build()) continue;
-    p.nextYear();
+    if (build()) continue;
+    if (!p.buildAway()) break;
   }
 }
 
@@ -513,7 +545,7 @@ function playGreedy(p: Player): void {
 }
 
 function playRusher(p: Player): void {
-  while (!p.run.finished) p.nextYear();
+  while (!p.run.finished && p.buildAway());
 }
 
 /** Smart's slips: the most of its builds it makes by eye instead (each run draws its own share, from none up to this). */
@@ -574,7 +606,7 @@ function smartLog(seed: string): LoggedAction[] {
 /**
  * Smart's own run, replayed action for action with every build of
  * `elementId` left out: each of those builds (and any action that no longer
- * applies) is a build slot left unused that year, so every other build keeps
+ * applies) is made away from the storms instead, so every other build keeps
  * its year. The houses this loses is what that element did in Smart's plan,
  * with no re-planning round it.
  */
@@ -583,12 +615,14 @@ export function replaySmartWithout(elementId: string, seed: string, log: readonl
   for (const action of log) {
     if (player.run.finished) break;
     if (action.type === "tap") player.tapJar();
-    else if (action.type === "next") player.nextYear();
+    else if (action.type === "skip") player.buildAway();
     else if (action.type === "build") {
-      if (action.elementId !== elementId) player.build(action.coord, action.elementId);
-    } else player.repair(action.coord);
+      // The left-out defence's build is still the year's build: made away from the storms instead.
+      const ok = action.elementId !== elementId && player.build(action.coord, action.elementId, action.away);
+      if (!ok) player.buildAway();
+    } else if (!player.repair(action.coord)) player.buildAway();
   }
-  while (!player.run.finished) player.nextYear();
+  while (!player.run.finished && player.buildAway());
   return player.result();
 }
 

@@ -143,6 +143,18 @@ export class ObjectivesPanel {
     cta.insertAdjacentElement("afterend", button);
   }
 
+  /**
+   * Adds a panel beside the brief's text (Panjim 2050's forecast map): the
+   * card widens to two columns, the text on the left and `el` on the right.
+   */
+  addBriefFeature(el: HTMLElement): void {
+    const card = this.briefBackdrop.querySelector(".brief-card");
+    if (!card) return;
+    card.classList.add("with-feature");
+    el.classList.add("brief-feature");
+    card.appendChild(el);
+  }
+
   /** True while the opening brief is on screen. */
   get briefOpen(): boolean {
     return !this.briefBackdrop.hidden;

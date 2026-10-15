@@ -17,7 +17,7 @@ export type TelemetryEventName =
   | "first_reward_ms"
   | "action"
   | "fast_forward"
-  | "next_year"
+  | "year_end"
   | "request_complete"
   | "challenge_start"
   | "challenge_end"

@@ -60,7 +60,7 @@ describe("one baseline: the easy-test preset is gone", () => {
       const [q, r] = key.split(",").map(Number);
       if (["dune", "mangrove", "seawall", "breakwater"].some((id) => run.state.canBuild({ q, r }, id))) buildable++;
     }
-    expect(buildable).toBeGreaterThan(first.turn * level.timeline!.buildsPerYear);
+    expect(buildable).toBeGreaterThan(first.turn);
   });
 });
 

@@ -49,7 +49,7 @@ export interface PopoverMode {
    */
   notice?: string;
   blocked?: boolean;
-  /** A button under the notice ("Next year"). */
+  /** A button under the notice. */
   noticeAction?: { label: string; onClick: () => void };
 }
 

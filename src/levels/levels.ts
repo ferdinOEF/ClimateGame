@@ -72,12 +72,12 @@ export interface LevelDef {
   /**
    * How time moves. `"turns"` (the default, and the tutorial's) is the
    * original model: a build is a turn and hazards come on turn intervals.
-   * `"years"` is the Panjim 2050 run: one turn a year, a few builds a year,
-   * then Next year, with three storms on a fixed calendar instead of
-   * interval hazards. See core/actionRun.ts.
+   * `"years"` is the Panjim 2050 run: one build is one turn is one year,
+   * with three storms on a fixed calendar instead of interval hazards. See
+   * core/actionRun.ts.
    */
   timeModel?: "turns" | "years";
-  /** Required when `timeModel` is `"years"`: the years and the builds per year. */
+  /** Required when `timeModel` is `"years"`: the first and last years. */
   timeline?: TimelineConfig;
   /** The yearly run's three storms on their fixed calendar (core/climate.ts). */
   climate?: ClimateConfig;

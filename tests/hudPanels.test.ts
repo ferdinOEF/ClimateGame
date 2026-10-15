@@ -20,7 +20,9 @@ describe("the two HUD panels", () => {
     }
     expect(LABEL_OBSTACLES).toContain(".hud-panel");
     // What is not in a panel stays where it was.
-    for (const stays of [".panjim-clock", ".houses-counter", ".objectives-panel", ".map-corner", ".build-popover", ".hud-tooltip", ".era-banner"]) expect(HUD_OBSTACLES, stays).toContain(stays);
+    // Section 8 removed the Houses standing box and the cone's chip from the game screen.
+    for (const gone of [".houses-counter", ".forecast-cone-card"]) expect(HUD_OBSTACLES, gone).not.toContain(gone);
+    for (const stays of [".panjim-clock", ".objectives-panel", ".map-corner", ".build-popover", ".hud-tooltip", ".era-banner"]) expect(HUD_OBSTACLES, stays).toContain(stays);
   });
 
   it("moves the existing elements into the panels, never rebuilding them", () => {

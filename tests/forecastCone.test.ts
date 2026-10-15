@@ -1,6 +1,7 @@
+import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
-import { coneBands, coneChip } from "../src/core/forecastCone";
+import { coneBands, forecastLine } from "../src/core/forecastCone";
 import { placeOnLine } from "../src/core/stretch";
 import { mapById } from "../src/levels/levelMap";
 
@@ -20,24 +21,24 @@ describe("the forecast cone", () => {
   });
 
   it("names the storm and when, as the spec words it", () => {
-    expect(coneChip("cyclone", 2030, 5)).toBe("Cyclone lands end of 2030 · 5 years");
-    expect(coneChip("flood", 2040, 10)).toBe("Flood in 2040 · 10 years");
-    expect(coneChip("compound", 2050, 10)).toBe("Cyclone and flood in 2050 · 10 years");
+    expect(forecastLine("cyclone", 5, true)).toBe("The first cyclone lands in 5 years");
+    expect(forecastLine("flood", 10, false)).toBe("The flood comes in 10 years");
+    expect(forecastLine("compound", 10, false)).toBe("The cyclone and flood arrive together in 10 years");
   });
 
   it("marks exactly the houses the storm would take as the area to protect, and they, and every house it could take, lie in Possible", () => {
     const run = newRun("cone", BOT_LEVEL);
     for (const challenge of [...run.schedule]) {
-      while (run.turnNumber < run.phaseStart(challenge)) run.nextYear();
+      while (run.turnNumber < run.phaseStart(challenge)) passYear(run);
       const cone = run.forecastCone(challenge)!;
       // The area to protect: what the storm takes if nothing more is built.
       const probe = newRun("cone", BOT_LEVEL);
       probe.restore(run.snapshot());
-      while (!probe.landed.has(challenge.id)) probe.nextYear();
+      while (!probe.landed.has(challenge.id)) passYear(probe);
       expect([...cone.area].sort(), challenge.id).toEqual([...probe.outcomes.get(challenge.id)!.damagedHouses].sort());
       // With no defences at all: every house lost is inside the bands.
       const bare = newRun("cone", BOT_LEVEL);
-      while (!bare.landed.has(challenge.id)) bare.nextYear();
+      while (!bare.landed.has(challenge.id)) passYear(bare);
       for (const key of bare.outcomes.get(challenge.id)!.damagedHouses) expect(cone.bands.has(key), `${challenge.id} ${key}`).toBe(true);
       // Three real bands: each holds at least a tenth of the cone, so none is the whole of it.
       for (const band of [1, 2, 3]) expect([...cone.bands.values()].filter((b) => b === band).length, `${challenge.id} band ${band}`).toBeGreaterThanOrEqual(cone.bands.size / 10);
@@ -75,7 +76,7 @@ describe("the forecast cone", () => {
   it("keeps the first cyclone small: undefended, everything it takes is on the beach and land between Kala Academy and Sharada Mandir", () => {
     const run = newRun("cone", BOT_LEVEL);
     const cyclone = run.schedule[0];
-    while (!run.landed.has(cyclone.id)) run.nextYear();
+    while (!run.landed.has(cyclone.id)) passYear(run);
     const lost = run.outcomes.get(cyclone.id)!.damagedHouses;
     expect(lost.length).toBeGreaterThan(0);
     for (const key of lost) {

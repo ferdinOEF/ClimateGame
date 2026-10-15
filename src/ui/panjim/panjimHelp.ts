@@ -1,7 +1,7 @@
 import type { ScheduledChallenge } from "@core/climate";
 
 /**
- * How to Play for Panjim 2050 (Section 5): one turn a year, a few builds a
+ * How to Play for Panjim 2050 (Section 8): one build is one turn is one
  * year, three storms on a fixed calendar. Built from the level's own numbers,
  * so it never disagrees with them. Names no price, income or growing time:
  * coins and growth are off in this version. Everything about what a defence
@@ -10,18 +10,18 @@ import type { ScheduledChallenge } from "@core/climate";
 export interface PanjimHelpInput {
   startYear: number;
   endYear: number;
-  buildsPerYear: number;
   storms: readonly ScheduledChallenge[];
 }
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six"];
 const countWord = (n: number): string => WORDS[n] ?? String(n);
+const ordinal = (n: number): string => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 
 const esc = (text: string): string => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 export function panjimHelpHtml(input: PanjimHelpInput): string {
   const years = input.endYear - input.startYear + 1;
-  const storms = input.storms.map((storm) => `<li><strong>${esc(storm.name)}</strong> at the end of ${storm.year}</li>`).join("");
+  const storms = input.storms.map((storm) => `<li><strong>${esc(storm.name)}</strong> in ${storm.year}, straight after your ${ordinal(storm.turn)} build</li>`).join("");
   return `
   <div class="help-header">
     <div class="help-title">How to Play</div>
@@ -37,9 +37,9 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
     <section class="help-section">
       <h3>A Year at a Time</h3>
       <ol class="help-steps">
-        <li><strong>Build.</strong> Click a tile and pick a defence that suits its ground. You can build up to ${input.buildsPerYear} times a year.</li>
-        <li><strong>Next year.</strong> Press Next year when you are done. You can end a year early.</li>
-        <li><strong>Weather the storm.</strong> A storm comes at the end of its year, after you press Next year. What you built meets it.</li>
+        <li><strong>Build.</strong> Click a tile and pick a defence that suits its ground.</li>
+        <li><strong>One build, one year.</strong> Each build you make ends the year, and the next year begins. A build you cancel or cannot make changes nothing.</li>
+        <li><strong>Weather the storm.</strong> A storm comes straight after your last build before it, in that same year. What you built meets it.</li>
       </ol>
     </section>
 

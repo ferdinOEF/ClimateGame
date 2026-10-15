@@ -172,7 +172,8 @@ export class ForecastConeOverlay {
   }
 
   tick(nowMs: number): void {
-    const dt = this.lastMs === null ? 0 : Math.min(100, nowMs - this.lastMs);
+    // Wall time, not capped per frame: on a slow frame rate the fade still takes its 600 ms.
+    const dt = this.lastMs === null ? 0 : Math.max(0, nowMs - this.lastMs);
     this.lastMs = nowMs;
     if (!this.group.visible) return;
     if (this.fade !== this.fadeTarget) {

@@ -1,3 +1,4 @@
+import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
 import { heatRamp, tileHeat, computeExposure, protectedTiles, buildHeatView, HATCH_THRESHOLD, HEAT_LEAD_YEARS } from "../src/core/exposure";
 import { resolveChallenge } from "../src/core/zones";
@@ -27,37 +28,36 @@ describe("heat ramp", () => {
 });
 
 /**
- * Plays to `yearsBefore` the next storm (1 = its own year), pressing Next
- * year, and builds `plant` (zone, element) pairs on the way: in the year it
- * gets there, or the year before when there are more than that year's builds.
+ * Plays to `yearsBefore` the next storm (1 = its own year), building `plant`
+ * (zone, element) pairs on the way, one a year, in the years just before it
+ * gets there; the years before those pass with nothing built.
  */
 function approach(run: ActionRun, yearsBefore: number, plant: [string, string][] = []): void {
   const next = run.nextChallenge()!;
-  while (run.yearsUntil(next) > yearsBefore) run.nextYear();
+  while (run.yearsUntil(next) > yearsBefore + plant.length) passYear(run);
   for (const [zoneId, elementId] of plant) {
-    if (run.buildsLeft <= 0) throw new Error("approach: more plants than builds this year");
-    for (const key of run.zones!.keys(zoneId)) {
-      const [q, r] = key.split(",").map(Number);
-      if (run.state.canBuild({ q, r }, elementId)) {
-        run.build({ q, r }, elementId);
-        break;
-      }
-    }
+    const key = run.zones!.keys(zoneId).find((k) => {
+      const [q, r] = k.split(",").map(Number);
+      return run.state.canBuild({ q, r }, elementId);
+    });
+    if (!key) throw new Error(`approach: nowhere for ${elementId} in ${zoneId}`);
+    const [q, r] = key.split(",").map(Number);
+    run.build({ q, r }, elementId);
   }
 }
 
-/** Presses Next year until the next storm has resolved; its outcome. */
+/** Moves the clock without a build until the next storm has resolved; its outcome. */
 function land(run: ActionRun): ReturnType<typeof run.outcomes.get> {
   const next = run.nextChallenge()!;
-  while (!run.landed.has(next.id)) run.nextYear();
+  while (!run.landed.has(next.id)) passYear(run);
   return run.outcomes.get(next.id);
 }
 
 /**
- * PREVIEW EQUALS RESOLUTION (Section 4.5, kept for yearly turns in Section
- * 5). The calendar, strength and landfall are fixed, so the heat is not a
- * worst case over a cone any more: the houses it shows at risk are exactly
- * the houses the storm takes if nothing more is built. No miss and no
+ * PREVIEW EQUALS RESOLUTION (Section 4.5, kept for one build a year in
+ * Section 8). The calendar, strength and landfall are fixed, so the heat is
+ * not a worst case over a cone any more: the houses it shows at risk are
+ * exactly the houses the storm takes if nothing more is built. No miss and no
  * over-call, in either warning year, with or without defences.
  */
 const RUNS = ["panjim", "s1", "s7"];
@@ -70,7 +70,7 @@ describe("the heat equals the loss (preview equals resolution)", () => {
         approach(run, 2);
         const next = run.nextChallenge()!;
         const twoOut = [...run.exposureFor(next)!.housesAtRisk].sort();
-        run.nextYear();
+        passYear(run);
         const ownYear = run.exposureFor(next)!;
         expect([...ownYear.housesAtRisk].sort()).toEqual(twoOut);
         const outcome = land(run)!;
@@ -84,15 +84,16 @@ describe("the heat equals the loss (preview equals resolution)", () => {
   it("with defences built in each warning year, the heat drops to exactly what is still lost", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const plans: [string, string][][] = [
-      [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "dune"], ["z2", "mangrove"]],
-      [["z2", "khazan"], ["z2", "mangrove"], ["z3", "mangrove"], ["z4", "mangrove"]],
-      [["z4", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"], ["z1", "dune"]]
+      [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "dune"]],
+      [["z2", "khazan"], ["z2", "mangrove"], ["z3", "mangrove"]],
+      [["z4", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"]]
     ];
     for (const plan of plans) {
-      approach(run, 2, plan.slice(0, 2));
+      // One build three years out, then one in each warning year, the heat recomputed after each.
+      approach(run, 3, plan.slice(0, 1));
       const next = run.nextChallenge()!;
       const before = run.exposureFor(next)!.housesAtRisk.length;
-      approach(run, 1, plan.slice(2));
+      approach(run, 1, plan.slice(1));
       const preview = [...run.exposureFor(next)!.housesAtRisk].sort();
       expect(preview.length).toBeLessThanOrEqual(before);
       const outcome = land(run)!;
@@ -148,9 +149,9 @@ describe("computeExposure", () => {
 describe("buildHeatView", () => {
   it("heats only dry tiles, hatches above 30%, pulses at most 24 falling houses, and shields defences", () => {
     const run = newRun("s7", BOT_LEVEL);
-    approach(run, 2);
+    approach(run, 3);
     const next = run.nextChallenge()!;
-    // Two dunes on beach the storm would reach.
+    // Two dunes on beach the storm would reach, one a year: into the storm's own year.
     const reach = run.exposureFor(next, true)!;
     let planted = 0;
     for (const key of reach.exposure.keys()) {
@@ -210,7 +211,7 @@ describe("the heat is information only", () => {
             }
           }
         } else {
-          run.nextYear();
+          passYear(run);
         }
       }
       return JSON.stringify({ snapshot: run.snapshot(), outcomes: [...run.outcomes] });

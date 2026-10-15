@@ -196,10 +196,14 @@ export function forecastCone(
   return { challengeId, kind: storm.kind, bands, area: [...lost], meet, tracks };
 }
 
-/** The chip at the top: "Cyclone lands end of 2030 · 5 years", "Flood in 2040 · 10 years", "Cyclone and flood in 2050 · 10 years". */
-export function coneChip(kind: ChallengeKind, year: number, yearsUntil: number): string {
-  const years = `${yearsUntil} year${yearsUntil === 1 ? "" : "s"}`;
-  if (kind === "cyclone") return `Cyclone lands end of ${year} · ${years}`;
-  if (kind === "flood") return `Flood in ${year} · ${years}`;
-  return `Cyclone and flood in ${year} · ${years}`;
+/**
+ * The line over the forecast's map (Section 8), on the start popup and the
+ * result cards: "The first cyclone lands in 5 years", "The flood comes in 10
+ * years", "The cyclone and flood arrive together in 10 years".
+ */
+export function forecastLine(kind: ChallengeKind, years: number, first: boolean): string {
+  const span = `${years} year${years === 1 ? "" : "s"}`;
+  if (kind === "cyclone") return `The ${first ? "first " : ""}cyclone lands in ${span}`;
+  if (kind === "flood") return `The flood comes in ${span}`;
+  return `The cyclone and flood arrive together in ${span}`;
 }

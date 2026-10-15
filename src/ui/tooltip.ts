@@ -222,7 +222,6 @@ export const HUD_SELECTORS = [
   ".panjim-clock .outlook-sea",
   ".coin-jar",
   ".field-guide-button",
-  ".houses-counter",
   ".panjim-toggles button",
   ".panjim-toggles input",
   ".maya-dismiss",
