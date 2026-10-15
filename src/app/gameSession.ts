@@ -602,7 +602,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     objectivesPanel.briefOpen ||
     Boolean(
       document.querySelector(
-        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .sources-backdrop"
+        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .result-cards:not([hidden]), .sources-backdrop"
       )
     );
   const riskIntro = new RiskIntroFx(container, {

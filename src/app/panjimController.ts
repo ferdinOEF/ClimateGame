@@ -1433,6 +1433,18 @@ export class PanjimController {
       return this.run.turnNumber === target;
     }
     switch (name) {
+      case "to-results": {
+        // The build that brings the next storm (away from it), the storm hurried through, handed back with the result cards open.
+        const next = this.run.nextChallenge();
+        if (!next || !(await this.waitUntilYearsLeft(1))) return false;
+        void this.passYear();
+        while (!this.resultCards.isOpen) {
+          if (this.host.challengeFx.isPlaying() || this.replayCard.isOpen) document.dispatchEvent(new PointerEvent("pointerdown"));
+          await wait(150);
+        }
+        await wait(400);
+        return true;
+      }
       case "pass-year": {
         await this.buildThrough();
         return true;
@@ -1545,7 +1557,7 @@ export class PanjimController {
       }
       case "finale": {
         // Plays the whole run, accepting each Aftermath, and hands back at the finale card.
-        const atFinale = (): boolean => Boolean(this.host.container.querySelector(".finale-card"));
+        const atFinale = (): boolean => this.atFinalCard();
         while (!this.run.finished) if (await this.buildThrough(atFinale)) return true;
         while (!atFinale()) await wait(100);
         return true;
@@ -1558,7 +1570,7 @@ export class PanjimController {
         await wait(1800);
         return true;
       case "smart-finale":
-        await this.playCarefully(() => Boolean(this.host.container.querySelector(".finale-card")));
+        await this.playCarefully(() => this.atFinalCard());
         return true;
       case "actions": {
         for (const elementId of ["dune", "mangrove", "seawall", "breakwater"]) {
@@ -1570,6 +1582,11 @@ export class PanjimController {
       default:
         return false;
     }
+  }
+
+  /** True while the final card (Panjim, 2026 to 2050) is up. */
+  atFinalCard(): boolean {
+    return this.run.finished && this.resultCards.isOpen;
   }
 
   /** True once the next storm's gauge is green. */
