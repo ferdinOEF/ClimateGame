@@ -48,6 +48,7 @@ import { RunTracker } from "@core/runStats";
 import { hashSeed, Rng } from "@core/rng";
 import { Telemetry } from "@core/telemetry";
 import { PanjimController } from "./panjimController";
+import { panjimHelpHtml } from "@ui/panjim/panjimHelp";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
@@ -254,13 +255,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(storm.group);
   scene.add(buildFlourish.group);
   scene.add(reactions.group);
-  /** Panjim 2050: the locked Forecast's zone edge — see ForecastOutline. Empty on every other level. */
+  /** Panjim 2050: a storm's path while its warning is up — see ForecastOutline. Empty on every other level. */
   const forecastOutline = new ForecastOutline();
   scene.add(forecastOutline.group);
-  // The cyclone's forecast cone at sea: cool, so it never reads as the warm zone outline or the red heat.
-  const landfallCone = new ForecastOutline({ band: "#e8f6ff", core: "#0d3550" });
-  landfallCone.group.name = "landfall-cone";
-  scene.add(landfallCone.group);
   /**
    * Panjim 2050: the warning heat, one instanced layer over the board (see
    * HeatOverlay). Empty on every other level and outside a storm's last five
@@ -495,7 +492,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     };
     attach(".instrument-cluster .coin-row", "coin", () => ({
       coin: Math.round(state.coin),
-      income: Math.round(panjim ? panjim.run.incomePerQuarter : state.income)
+      income: Math.round(panjim ? panjim.run.income : state.income)
     }));
     attach(".instrument-cluster .income-row", "income");
     attach(".instrument-cluster .resilience-gauge", "resilience");
@@ -509,19 +506,27 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     attach(".hud-chrome .help-button", "help");
   }
   /**
-   * Panjim 2050's slow changes, redrawn as the clock moves: each growing
-   * defence's maturity (small and pale when planted, full at maturity), and
-   * the skyline, whose houses rise a little as the decades pass so 2050 does
-   * not look like 2025. Cheap: one pass over the standing elements.
+   * Panjim 2050's slow changes, redrawn as the years pass: each growing
+   * defence's maturity (growth on only: small and pale when planted, full at
+   * maturity), and the skyline, whose houses rise a little as the decades
+   * pass so 2050 does not look like 2026. Cheap: one pass over the standing
+   * elements.
    */
+  /** Whether an element is drawn growing: only on Panjim, only with growth on, only for what takes time to grow. */
+  // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
+  function growsOnClock(def: { matureTurns: number; matureQuarters?: number }): boolean {
+    return Boolean(panjim) && state.growthEnabled && (def.matureQuarters ?? def.matureTurns ?? 0) > 0;
+  }
+
   function syncPanjimVisuals(): void {
     if (!panjim) return;
-    const age = panjim.run.quarter / panjim.run.totalQuarters;
+    const age = state.turn / panjim.run.totalYears;
     for (const [key, inst] of state.elements) {
       const def = ELEMENT_BY_ID.get(inst.elementId);
       if (!def) continue;
       const [q, r] = key.split(",").map(Number);
-      if ((def.matureQuarters ?? 0) > 0) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
+      // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
+      if (growsOnClock(def)) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
       else if (def.kind === "building") elements.setHeightScale({ q, r }, skylineScale(q, r, age));
     }
     // A monument rises with the street round it, so it keeps its standing over its neighbours.
@@ -605,14 +610,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
   });
   /**
-   * The Panjim 2050 run, on a level whose time model is `"actions"` (see
+   * The Panjim 2050 run, on a level whose time model is `"years"` (see
    * src/core/actionRun.ts). `null` on every other level, the tutorial
    * included, which keep the turn model exactly as it was. Every call site
    * below checks it, and it takes over pacing entirely when present: no
    * interval hazards, no objective-driven early finish.
    */
   const panjim =
-    level.timeModel === "actions" && level.timeline
+    level.timeModel === "years" && level.timeline
       ? new PanjimController({
           container,
           state,
@@ -667,15 +672,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // The heat takes over from the Forecast's zone outline: one
             // statement about where the storm goes, not two on top of each other.
             forecastOutline.group.visible = !tiles.some((tile) => tile.heat > 0);
-          },
-          showLandfallCone: (keys) => {
-            landfallCone.show(
-              keys.map((key) => {
-                const [q, r] = key.split(",").map(Number);
-                return { q, r };
-              }),
-              (coord) => terrain.heightAt(coord)
-            );
           },
           landmarks: levelMap.landmarks,
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
@@ -753,7 +749,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           offerResume: (label, onResume) => objectivesPanel.addBriefAction(label, onResume)
         })
       : null;
-  if (panjim) hud.useQuarterClock();
+  if (panjim)
+    hud.useYearClock(
+      panjim.run.economyEnabled,
+      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, buildsPerYear: panjim.run.buildsPerYear, storms: panjim.run.schedule })
+    );
   /**
    * The step-by-step coach, on the tutorial level only.
    *
@@ -971,8 +971,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   function refreshHud(): void {
     hud.setTileCount(state.claimed.size);
-    // Panjim 2050's income is per quarter, into the jar, at the level's scale.
-    hud.setCoin(state.coin, panjim ? panjim.run.incomePerQuarter : state.income);
+    // Panjim 2050's income is per year, into the jar, at the level's scale (shown only with coins on).
+    hud.setCoin(state.coin, panjim ? panjim.run.income : state.income);
     hud.setTurnEra(state.turn, state.erasCompleted + 1); // 1-based ("Era 1" from turn one)
     hud.setMeters({
       resilience: state.resilience,
@@ -1983,7 +1983,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const coord = { q, r };
       const def = ELEMENT_BY_ID.get(inst.elementId);
       if (!def) continue;
-      const growth = (def.matureQuarters ?? 0) > 0 ? state.maturityFraction(inst, def) : undefined;
+      // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
+      const growth = growsOnClock(def) ? state.maturityFraction(inst, def) : undefined;
       elements.place(coord, inst.elementId, terrain.heightAt(coord), { animate: false, growth });
       if (def.kind === "building" && inst.degradeAmount >= 1) elements.setBuildingDamagedVisual(coord);
       else if (inst.degradeAmount > 0) elements.setDegradeVisual(coord, inst.degradeAmount);
@@ -2091,17 +2092,20 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const spawned = reactions.trigger(built.elementId, wx, worldTop, wz);
       // Panjim 2050: whatever came to see is spotted for the Field Guide. Free.
       panjim?.spotted(spawned);
+      // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+      const economy = !panjim || panjim.run.economyEnabled;
       buildPopover.showInfo(screen.x, screen.y, {
         name: def.name,
         kindLabel: kindLabel(def),
-        effects: def.effects,
-        removeLabel: panjim ? "Demolish · 1 qtr" : undefined,
+        // With coins off, what a thing earns is not shown: no money anywhere.
+        effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
+        removeLabel: panjim ? "Demolish · uses 1 build" : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
             ? [
                 {
-                  label: `Repair · 1 qtr · ${panjim.run.repairCoin(coord)}c`,
-                  disabled: state.coin < panjim.run.repairCoin(coord),
+                  label: economy ? `Repair · uses 1 build · ${panjim.run.repairCoin(coord)}c` : "Repair · uses 1 build",
+                  disabled: panjim.run.buildsLeft <= 0 || (economy && state.coin < panjim.run.repairCoin(coord)),
                   onClick: () => {
                     panjim.repair(coord);
                     buildPopover.hide();
@@ -2109,7 +2113,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
                 }
               ]
             : undefined,
-        onRemove: () => {
+        // The city's homes cannot be demolished on Panaji (core/actionRun.ts `canDemolish`).
+        onRemove: panjim && !panjim.run.canDemolish(coord) ? undefined : () => {
           if (!panjim) {
             removeElement(coord);
             return;
@@ -2122,21 +2127,31 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       return;
     }
 
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    const hideCost = panjim !== null && !panjim.run.economyEnabled;
     const popoverOptions: PopoverOption[] = state
       .buildableAt(coord)
       .map((d) => {
-        const quarters = panjim?.buildQuarters(d.id);
-        const time = quarters ? ` and ${quarters} season${quarters === 1 ? "" : "s"}` : "";
-        const values = { name: d.name, what: buildWhat(d.id), cost: d.buildCost, time, coin: Math.round(state.coin) };
-        const tip = tooltipText(state.coin >= d.buildCost ? "build" : "buildUnaffordable", values);
-        return { id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), quarters, tip };
+        const values = { name: d.name, what: buildWhat(d.id, panjim !== null), cost: d.buildCost, time: "", coin: Math.round(state.coin) };
+        const tip = hideCost ? tooltipText("buildFree", values) : tooltipText(state.coin >= d.buildCost ? "build" : "buildUnaffordable", values);
+        return { id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), tip };
       });
     if (popoverOptions.length === 0) return;
+    // The year's builds used up: the menu still shows what the tile takes, says so and points to Next year.
+    const noneLeft = panjim !== null && panjim.run.buildsLeft <= 0;
+    const mode = panjim
+      ? {
+          hideCost,
+          blocked: noneLeft,
+          notice: noneLeft ? tooltipText("noBuildsLeft") : undefined,
+          noticeAction: noneLeft ? { label: "Next year", onClick: () => void panjim.nextYear() } : undefined
+        }
+      : undefined;
 
     buildPopover.show(screen.x, screen.y, popoverOptions, state.coin, (id) => {
       if (panjim) {
-        // The controller spends the quarters, draws the element and ticks the
-        // clock. The run ends at 2050, never on an objective.
+        // The controller counts the build against the year's cap and draws
+        // the element. The run ends at 2050, never on an objective.
         if (!panjim.build(coord, id)) return;
         nuggetPopup?.show(id);
         playSound("build");
@@ -2166,7 +2181,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // STEP_PROMPT_manual_only_mode.md: no automatic era-end check anymore
       // — nothing resets the board on its own, ever. The board only ever
       // resets via the manual "Reset Board" control.
-    });
+    }, mode);
   }
 
   // --- Input ---------------------------------------------------------------------
@@ -2310,7 +2325,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormDirector?.tick(nowMs);
     for (const word of stormWords) placeStormWord(word);
     forecastOutline.tick(nowMs);
-    landfallCone.tick(nowMs);
     heatOverlay.tick(nowMs);
     if (ambientLife) {
       ambientLife.setWind(storm.windStrength);
@@ -2372,10 +2386,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   function placeElement(coord: AxialCoord, elementId: string, animate: boolean): void {
     runTracker.recordBuild(elementId, ELEMENT_BY_ID.get(elementId)?.buildCost ?? 0);
     const topY = terrain.heightAt(coord);
-    // Panjim 2050: a growing defence is planted young and grows on the clock.
+    // Panjim 2050 with growth on: a growing defence is planted young and grows on the clock.
     const inst = state.elements.get(`${coord.q},${coord.r}`);
     const def = ELEMENT_BY_ID.get(elementId);
-    const growth = panjim && inst && def && (def.matureQuarters ?? 0) > 0 ? state.maturityFraction(inst, def) : undefined;
+    // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
+    const growth = panjim && inst && def && growsOnClock(def) ? state.maturityFraction(inst, def) : undefined;
     elements.place(coord, elementId, topY, { animate, growth });
     if (animate) {
       // The ground half of the placement animation — see BuildFlourish. Every
@@ -2434,6 +2449,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         return field ? [...field.tiles.values()].filter((tile) => tile.surgePeak > 0 || tile.floodPeak > 0 || tile.backwaterPeak > 0).map((tile) => tile.key) : [];
       },
       script: () => stormDirector?.currentScript ?? null
+    },
+    /** Opens a tile's popover (build menu or info card) as a click would, for the QA tools. */
+    __openTileForTest: (q: number, r: number) => {
+      const world = axialToWorld({ q, r }, 1.0);
+      focusOn(world.x, world.z, true);
+      openTilePopover({ q, r });
+      return buildPopover.isOpen;
     },
     __panjimScenarioForTest: async (name: string): Promise<boolean> => {
       if (!panjim) return false;
@@ -2496,7 +2518,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
     __heatForTest: heatOverlay,
-    __landfallConeForTest: landfallCone,
     __ambientLifeForTest: () => ambientLife,
     // The town plan as drawn: how many road tiles, and whether any holds a building.
     __townForTest: () =>
@@ -2635,7 +2656,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormSky.dispose();
     buildFlourish.dispose();
     forecastOutline.dispose();
-    landfallCone.dispose();
     heatOverlay.dispose();
     townDecor?.dispose();
     ambientLife?.dispose();

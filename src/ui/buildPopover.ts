@@ -6,8 +6,6 @@ export interface PopoverOption {
   buildCost: number;
   /** Shown as a small tag so a defense reads differently from a town building at a glance. */
   kindLabel?: string;
-  /** Panjim 2050: how many quarters of the clock this build spends, shown beside the Coin cost. */
-  quarters?: number;
   /** One sentence on what it does, for its hover tooltip. */
   tip?: string;
 }
@@ -35,6 +33,24 @@ export interface BuiltElementInfo {
   extraActions?: { label: string; onClick: () => void; disabled?: boolean }[];
   /** A short line under the name. Used by monuments to say what the building is; built elements get their effects instead. */
   note?: string;
+}
+
+/** How the build menu is drawn on a level that differs from the default. */
+export interface PopoverMode {
+  /**
+   * Coins off (Section 5): no price on any option, and nothing is greyed out
+   * for being unaffordable.
+   */
+  // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+  hideCost?: boolean;
+  /**
+   * A line at the top of the menu, e.g. that no builds are left this year.
+   * With `blocked`, every option is shown but none can be chosen.
+   */
+  notice?: string;
+  blocked?: boolean;
+  /** A button under the notice ("Next year"). */
+  noticeAction?: { label: string; onClick: () => void };
 }
 
 const VIEWPORT_MARGIN = 8;
@@ -105,20 +121,43 @@ export class BuildPopover {
     screenY: number,
     options: PopoverOption[],
     coin: number,
-    onSelect: (id: string) => void
+    onSelect: (id: string) => void,
+    mode: PopoverMode = {}
   ): void {
     this.el.innerHTML = "";
     if (options.length === 0) {
       this.hide();
       return;
     }
+    this.el.classList.toggle("hide-cost", Boolean(mode.hideCost));
+    if (mode.notice) {
+      const notice = document.createElement("div");
+      notice.className = "build-notice";
+      notice.setAttribute("role", "status");
+      notice.textContent = mode.notice;
+      if (mode.noticeAction) {
+        const action = mode.noticeAction;
+        const go = document.createElement("button");
+        go.type = "button";
+        go.className = "build-notice-action";
+        go.textContent = action.label;
+        go.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.hide();
+          action.onClick();
+        });
+        notice.appendChild(go);
+      }
+      this.el.appendChild(notice);
+    }
     for (const def of options) {
       const btn = document.createElement("button");
-      const affordable = coin >= def.buildCost;
+      // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+      const affordable = (mode.hideCost || coin >= def.buildCost) && !mode.blocked;
       btn.className = "build-option" + (affordable ? "" : " disabled");
       const label = def.kindLabel ? `${def.name} <em>${def.kindLabel}</em>` : def.name;
-      const time = def.quarters ? `<span class="time-cost" title="Seasons (quarters of a year) this takes">${def.quarters} qtr</span>` : "";
-      btn.innerHTML = `<span>${label}</span><span class="cost">${time}${def.buildCost}c</span>`;
+      btn.innerHTML = mode.hideCost ? `<span>${label}</span>` : `<span>${label}</span><span class="cost">${def.buildCost}c</span>`;
+      if (mode.blocked) btn.setAttribute("aria-disabled", "true");
       if (def.tip && this.tooltips) {
         const tip = def.tip;
         this.tooltips.attach(btn, () => tip, undefined, "right");

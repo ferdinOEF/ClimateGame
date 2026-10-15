@@ -4,8 +4,7 @@ import { describe, expect, it } from "vitest";
 import { GameState } from "../src/core/gameState";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { resolveChallenge, ZoneIndex } from "../src/core/zones";
-import { computeWater, coneTiles, forecastCone, HAZARD_MODEL, LANDFALL_ZONE, landfallSite, siteAt, waterBoard } from "../src/core/hazardModel";
-import { HEAT_LEAD_QUARTERS } from "../src/core/exposure";
+import { computeWater, LANDFALL_ZONE, landfallSite, siteAt, waterBoard } from "../src/core/hazardModel";
 import { mapById } from "../src/levels/levelMap";
 import { LEVEL_BY_ID, LEVELS } from "../src/levels/levels";
 import { boardSetup } from "../src/levels/balance";
@@ -13,9 +12,9 @@ import { BOT_LEVEL, newRun, SEEDS } from "../tools/panjimBots/bots";
 import levelsJson from "../src/data/levels.json";
 
 /**
- * Section 4's standing checks: one baseline (the easy-test preset is gone and
- * coin runs at its real rate), the finale is survivable, and the landfall
- * forecast narrows to a bounded jitter. The bot balance tables are in
+ * Section 4's standing checks, as they stand after Section 5: one baseline
+ * (the easy-test preset is gone), the finale is survivable, and the landfall
+ * is fixed (Section 5 removed the seeded jitter and the narrowing cone). The bot balance tables are in
  * tests/panjimBots.test.ts and docs/qa/section4/bots.md; preview equals
  * resolution in tests/exposure.test.ts; elevation in tests/zones.test.ts.
  */
@@ -40,7 +39,7 @@ describe("one baseline: the easy-test preset is gone", () => {
     }
   });
 
-  it("levels carry no presets, and the economy pays at its real rate", () => {
+  it("levels carry no presets, and the economy (kept for later) pays at its real rate", () => {
     // The keys the removed preset lived under (balancePreset on the level, balancePresets beside it).
     for (const level of levelsJson as Record<string, unknown>[]) for (const key of ["balancePreset", "balancePresets", "presets"]) expect(level).not.toHaveProperty(key);
     for (const level of LEVELS) for (const key of ["balancePreset", "balancePresets", "presets"]) expect(level).not.toHaveProperty(key);
@@ -48,23 +47,21 @@ describe("one baseline: the easy-test preset is gone", () => {
     expect(run.state.coin).toBe(BOT_LEVEL.startingCoin);
     // The jar fills at incomeScale x the board's money: the coin multiplier is 1.
     expect(run.state.income).toBeGreaterThan(0);
-    expect(run.incomePerQuarter).toBeCloseTo(run.state.income * BOT_LEVEL.timeline!.economy!.incomeScale, 9);
+    expect(run.income).toBeCloseTo(run.state.income * BOT_LEVEL.economy!.incomeScale!, 9);
   });
 
-  it("can afford a first defence on day one, but not everything", () => {
+  it("with coins off, the builds per year still keep the player from doing everything", () => {
     const level = LEVEL_BY_ID.get("l01-first-rains")!;
-    const defences = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"].map((id) => ELEMENT_BY_ID.get(id)!.buildCost);
-    expect(level.startingCoin).toBeGreaterThanOrEqual(Math.max(...defences));
-    // One of every defence on every tile the first storm wets would cost many times the purse.
+    // A defence on every tile the first storm wets takes more builds than the years before it allow.
     const run = newRun(SEEDS[0], BOT_LEVEL);
-    const wet = run.exposureFor(run.nextChallenge()!, true)!;
-    let cost = 0;
+    const first = run.nextChallenge()!;
+    const wet = run.exposureFor(first, true)!;
+    let buildable = 0;
     for (const key of wet.exposure.keys()) {
       const [q, r] = key.split(",").map(Number);
-      const costs = ["dune", "mangrove", "seawall", "breakwater"].filter((id) => run.state.canBuild({ q, r }, id)).map((id) => ELEMENT_BY_ID.get(id)!.buildCost);
-      if (costs.length > 0) cost += Math.min(...costs);
+      if (["dune", "mangrove", "seawall", "breakwater"].some((id) => run.state.canBuild({ q, r }, id))) buildable++;
     }
-    expect(cost).toBeGreaterThan(level.startingCoin * 2);
+    expect(buildable).toBeGreaterThan(first.turn * level.timeline!.buildsPerYear);
   });
 });
 
@@ -132,34 +129,16 @@ describe("the finale is survivable", () => {
   });
 });
 
-describe("suspense: the forecast cone", () => {
-  it("narrows over the warning to the bounded jitter, and always holds the real landfall", () => {
-    const { jitterSites, coneFarSites } = HAZARD_MODEL.landfall;
-    expect(jitterSites).toBe(1);
-    expect(coneFarSites).toBeGreaterThan(jitterSites);
-    for (const seed of SEEDS.slice(0, 10)) {
+describe("the storms (Section 5: fixed, no suspense from chance)", () => {
+  it("come ashore at their fixed landfall: a real landfall site on the open coast, the same on every seed", () => {
+    for (const seed of SEEDS.slice(0, 5)) {
       const run = newRun(seed, BOT_LEVEL);
       const board = run.board();
       for (const storm of run.schedule.filter((c) => c.kind !== "flood")) {
-        const real = landfallSite(board, storm);
-        // The real site is within the jitter of the forecast centre.
-        expect(storm.landfallOffset!).toBeGreaterThanOrEqual(-jitterSites);
-        expect(storm.landfallOffset!).toBeLessThanOrEqual(jitterSites);
-        let previous = Infinity;
-        for (let q = HEAT_LEAD_QUARTERS; q >= 1; q--) {
-          const cone = forecastCone(board, storm, q, HEAT_LEAD_QUARTERS);
-          expect(cone.length, `${seed} ${storm.id} at ${q}`).toBeLessThanOrEqual(previous);
-          expect(cone).toContain(real);
-          previous = cone.length;
-        }
-        expect(forecastCone(board, storm, 1, HEAT_LEAD_QUARTERS).length).toBeLessThanOrEqual(2 * jitterSites + 1);
-        // What the player sees at sea narrows with it, and is open sea round the real landfall.
-        const far = coneTiles(board, forecastCone(board, storm, HEAT_LEAD_QUARTERS, HEAT_LEAD_QUARTERS));
-        const near = coneTiles(board, forecastCone(board, storm, 1, HEAT_LEAD_QUARTERS));
-        expect(near.length).toBeLessThan(far.length);
-        expect(near).toContain(board.sites[real]);
-        for (const key of far) expect(board.tiles.get(key)!.terrainId).toBe("coast");
-        expect(forecastCone(board, storm, 0, HEAT_LEAD_QUARTERS)).toEqual([real]);
+        const site = landfallSite(board, storm);
+        expect(board.sites[site], storm.id).toBe(storm.landfall);
+        expect(board.tiles.get(board.sites[site])!.terrainId).toBe("coast");
+        expect(run.landfallOf(storm)).toBe(site);
       }
     }
   });

@@ -39,15 +39,27 @@ export interface Fact {
   reported?: boolean;
   /** No source yet: never shown. */
   needsSource?: boolean;
+  /** A game rule about a feature this version has switched off (coins, growth): not shown until it returns. */
+  needs?: ("economy" | "growth")[];
   hiddenBecause?: string;
 }
 
 export const ALL_FACTS: readonly Fact[] = (factsData as { facts: Fact[] }).facts;
 const BY_ID = new Map(ALL_FACTS.map((fact) => [fact.id, fact]));
 
-/** Whether a fact may be shown: game rules always, real-world facts only with a citation. */
+/**
+ * Features this version of the game has switched off (Section 5): the rules
+ * about them are kept but not shown, so nothing names a price or a growing
+ * time. Re-enabling coins or growth means taking it out of this set.
+ */
+// ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+// GROWTH_DISABLED_V1: growth and maturity reserved for a future version
+export const FEATURES_OFF: ReadonlySet<string> = new Set(["economy", "growth"]);
+
+/** Whether a fact may be shown: game rules always (unless about a feature that is off), real-world facts only with a citation. */
 export function isShown(fact: Fact): boolean {
   if (fact.needsSource) return false;
+  if (fact.needs?.some((feature) => FEATURES_OFF.has(feature))) return false;
   return fact.kind === "gameRule" || Boolean(fact.citation);
 }
 

@@ -36,9 +36,12 @@ export function tooltipText(key: string, values: Record<string, string | number>
   return template.replace(/\{(\w+)\}/g, (_, name: string) => (values[name] !== undefined ? String(values[name]) : ""));
 }
 
-/** The one-line description of an element in the build menu. */
-export function buildWhat(elementId: string): string {
-  const what = COPY.buildWhat as Record<string, string>;
+/**
+ * The one-line description of an element in the build menu. `panjim` gives
+ * Panaji's wording, which names no price, income or growth time (Section 5).
+ */
+export function buildWhat(elementId: string, panjim = false): string {
+  const what = (panjim ? COPY.buildWhatPanjim : COPY.buildWhat) as Record<string, string>;
   return what[elementId] ?? "";
 }
 

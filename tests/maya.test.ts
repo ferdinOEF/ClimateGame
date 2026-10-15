@@ -25,7 +25,7 @@ describe("Maya's words", () => {
     expect(text).toMatch(/Mangroves slow the surge before it reaches the houses/);
     expect(text).toMatch(/A khazan holds floodwater, so nearby homes stay drier/);
     expect(text).toMatch(/Dunes and pandanus shield the beach/);
-    expect(text).toMatch(/A seawall costs more and holds no water/);
+    expect(text).toMatch(/A seawall holds no water/);
   });
 
   it("fills the warning templates", () => {
@@ -55,7 +55,7 @@ describe("Maya's Aftermath line", () => {
   it("describes the resolved storm: celebrates a clean save, is worried about losses, never says '1 homes'", () => {
     // Strict flood with nothing built: houses are lost.
     const bare = newRun("s7", BOT_LEVEL);
-    while (bare.landed.size < 2) bare.fastForwardYear();
+    while (bare.landed.size < 2) bare.nextYear();
     const lost = bare.outcomes.get("c2-flood")!;
     expect(lost.housesDamaged).toBeGreaterThan(0);
     const worried = mayaAftermath(lost, bare.state, bare.zones!);
@@ -94,7 +94,7 @@ describe("Maya's Aftermath line with the storm's real comparisons", () => {
         }
       }
     }
-    while (run.landed.size < 1) run.fastForwardYear();
+    while (run.landed.size < 1) run.nextYear();
     const record = run.stormRecords.get("c1-cyclone")!;
     const told = mayaAftermath(record.outcome, run.state, run.zones!, record.savedBy);
     if (record.savedBy.length > 0) expect(told.text).toContain(`${record.savedBy[0].houses}`);

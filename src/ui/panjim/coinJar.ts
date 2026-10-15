@@ -1,7 +1,7 @@
 import { playSound } from "@ui/audioHooks";
 
 /**
- * The coin jar: where a quarter's income lands, under the instrument cluster.
+ * The coin jar (coins on only): where a year's income lands, under the instrument cluster.
  *
  * Tapping it banks everything in it into Coin. That is a free action: it
  * spends no time, so it never competes with building. It exists for the
@@ -27,7 +27,7 @@ export class CoinJar {
     this.el.type = "button";
     this.el.className = "coin-jar";
     this.el.setAttribute("aria-label", "Coin jar: tap to collect");
-    this.el.title = "Your city's income collects here every quarter. Tap to bank it. Free: no time passes.";
+    this.el.title = "Your city's income collects here every year. Tap to bank it. Free: it uses no build.";
     this.el.innerHTML = `
       <svg viewBox="0 0 48 56" width="48" height="56" aria-hidden="true">
         <defs><clipPath id="jar-clip"><path d="M10 14h28v4c4 3 6 7 6 13v15a7 7 0 0 1-7 7H11a7 7 0 0 1-7-7V31c0-6 2-10 6-13z"/></clipPath></defs>

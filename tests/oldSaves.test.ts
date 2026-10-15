@@ -11,7 +11,7 @@ describe("saves from earlier builds", () => {
     const old = { ...snap, voiceStatus: [["voice-anthony-dunes", "active"]] } as unknown as RunSnapshot;
     const again = newRun("panjim", BOT_LEVEL);
     expect(() => again.restore(old)).not.toThrow();
-    expect(again.snapshot().quarter).toBe(snap.quarter);
+    expect(again.snapshot().turn).toBe(snap.turn);
     expect(JSON.stringify(again.snapshot())).not.toContain("voice");
   });
 
@@ -29,7 +29,15 @@ describe("saves from earlier builds", () => {
   });
 
   it("a saved discovery takes today's wording and its element's name for a title", () => {
-    const notes = refreshSavedNotes([{ id: "mangrove-grow", title: "old", text: "In this game, mangroves take a few years to reach full strength, so plant them early." }]);
-    expect(notes).toEqual([{ id: "mangrove-grow", title: "Mangrove", text: "Mangroves take a few years to reach full strength, so plant them early." }]);
+    const notes = refreshSavedNotes([{ id: "pandanus-cheap", title: "old", text: "Pandanus is the cheapest defence you can build. It softens a surge a little, on sand where mangroves can't grow." }]);
+    expect(notes).toEqual([{ id: "pandanus-cheap", title: "Sandy Vegetation (Pandanus)", text: "Pandanus softens a surge a little, on sand where mangroves can't grow." }]);
+  });
+
+  it("a saved note about a feature this version has switched off (growth, coins) is dropped", () => {
+    const notes = refreshSavedNotes([
+      { id: "mangrove-grow", title: "Mangrove", text: "Mangroves take a few years to reach full strength, so plant them early." },
+      { id: "dam-coin", title: "Small Dam", text: "A small dam earns Coin and protects against floods, but it lowers biodiversity." }
+    ]);
+    expect(notes).toEqual([]);
   });
 });

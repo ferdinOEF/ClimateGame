@@ -1,75 +1,74 @@
 import { axialKey, type AxialCoord } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { ElementInstance, GameState } from "./gameState";
-import { QUARTERS_PER_YEAR } from "./quarters";
-import { buildSchedule, challengeStrength, outlookFor, type ClimateConfig, type ScheduledChallenge } from "./climate";
+import { buildSchedule, challengeStrength, yearsUntil, type ClimateConfig, type ScheduledChallenge } from "./climate";
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
-import { computeExposure, HEAT_LEAD_QUARTERS, type Exposure } from "./exposure";
-import { forecastCone, forecastSite, landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
+import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
+import { landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
 import { generatePrep, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
 import { resolveStorm, type StormRecord } from "./stormRecord";
 
 /**
- * The Panjim 2050 run: 25 years of Panjim in quarters, where time moves only
- * when the player acts.
+ * The Panjim 2050 run: 25 years of Panjim, one turn a year (Section 5).
  *
- * WHY TIME IS MEASURED IN ACTIONS
+ * Turn 1 is 2026 and turn 25 is 2050. Each year the player may build up to
+ * `buildsPerYear` times, then presses Next year (which may also end a year
+ * early). A storm whose year it is resolves when Next year is pressed on its
+ * turn, before the next year begins: the cyclone at the end of 2030 (turn 5),
+ * the flood at the end of 2040 (turn 15), the two together at the end of
+ * 2050 (turn 25). Nothing is random: the calendar, the strengths and the
+ * cyclone's landfall are fixed in the level's data.
  *
- * A wall-clock timer would punish reading the board and reward clicking fast.
- * Here a quarter passes only when the player spends one: building, repairing
- * or demolishing costs one quarter, heavy engineering (a Seawall, a Small Dam)
- * costs two, and fast-forwarding a year costs four. A fast player finishes
- * sooner and a careful one takes longer, and both reach the same 2050 having
- * made the same number of moves. Everything free (tapping the coin jar or a
- * creature, the camera, inspecting a tile, opening a menu) costs no time.
+ * Coins and growth are off on Panaji in this version (the level's `economy`
+ * and `growth` switches): building is free and a defence is at full strength
+ * the moment it is built. The coin and growth code stays, behind those
+ * switches, for a later version.
  *
  * Pure game logic, like the rest of core/: no DOM, no renderer. The session
- * turns the events this returns into a ticking clock and a time-lapse, and the
+ * turns the events this returns into the year ticking and the storms, and the
  * bots in tools/panjimBots play the very same class headless.
  */
 
-/** How the action-driven clock is configured for a level (levels.json `timeline`). */
+/** How the yearly clock is configured for a level (levels.json `timeline`). */
 export interface TimelineConfig {
+  /** Turn 1. */
   startYear: number;
-  /** The run ends when the clock reaches Q1 of this year. */
+  /** The last turn's year (inclusive): the run ends when it does. */
   endYear: number;
-  costs: {
-    build: number;
-    repair: number;
-    demolish: number;
-    fastForwardYear: number;
-  };
-  /**
-   * Income flows into a coin jar each quarter instead of straight into Coin;
-   * tapping the jar (free, no time) banks it. `incomeScale` sizes the whole
-   * economy: the run should afford roughly 40–70 meaningful decisions, never
-   * everything. `jarStart` is a small gift so the first tap comes early.
-   */
-  economy?: { incomeScale: number; jarStart: number };
+  /** How many builds the player may make in one year. */
+  buildsPerYear: number;
 }
 
-export { QUARTERS_PER_YEAR };
+/**
+ * The level's economy switch and numbers. Off on Panaji (Section 5); the
+ * numbers are kept for when coins return. With it on, income flows into a
+ * coin jar each year and tapping the jar banks it.
+ */
+export interface EconomyConfig {
+  enabled: boolean;
+  incomeScale?: number;
+  jarStart?: number;
+}
 
-/** One thing that happened while the clock moved. The session animates these in order. */
+/** One thing that happened. The session shows these in order. */
 export type RunEvent =
-  | { type: "quarter"; quarter: number }
-  /** A challenge's Forecast locked: exact quarter and strength are now known. */
-  | { type: "forecast_lock"; challenge: ScheduledChallenge }
-  /** A challenge landed this quarter, and how the city fared. */
+  /** A new year began (`turn` is its turn number, 1-based). */
+  | { type: "year"; turn: number }
+  /** A storm's last two years began: the warning heat is up. */
+  | { type: "warning"; challenge: ScheduledChallenge }
+  /** A storm resolved at the end of its year, and how the city fared. */
   | { type: "challenge"; challenge: ScheduledChallenge; outcome: ChallengeOutcome | null }
   /** Tiles just joined a perfect-fit combo. `all` is every tile in that combo now. */
   | { type: "combo"; combo: ComboId; tiles: string[]; all: string[] }
-  /** A Get ready job was finished: `reward` Coin paid at once. */
+  /** A Get ready job was finished (`reward` is 0 while coins are off). */
   | { type: "prep_complete"; objective: PrepObjective; reward: number }
   /** The Get ready jobs for the next storm were set. */
   | { type: "prep_new"; objectives: PrepObjective[] };
 
 export interface ActionRunOptions {
-  /** The level's climate: scheduled challenges and the rising baseline. */
+  /** The level's climate: the three storms on their fixed calendar. */
   climate?: ClimateConfig;
-  /** Seed text for the schedule's jitter. The level id by default; a daily or replay seed otherwise. */
-  seed?: string;
   /** The map's challenge zones. Without them a challenge is reported but not resolved. */
   zones?: readonly ZoneDef[];
   /** Stars per storm by the share of houses saved (the level's houseStars). Without it, by protection. */
@@ -78,27 +77,30 @@ export interface ActionRunOptions {
   houseRule?: HouseRule;
   /** "Get ready" jobs for each coming storm (core/prep.ts). */
   prep?: PrepConfig;
+  /** The level's economy. Absent or disabled: building is free and no coin moves. */
+  economy?: EconomyConfig;
+  /** The level's growth switch. Absent or disabled: everything is at full strength when built. */
+  growth?: { enabled: boolean };
 }
 
-/** The readiness gauge: what the next challenge would do to the board as it stands. */
+/** The readiness gauge: what the next storm would do to the board as it stands. */
 export interface Readiness {
   challenge: ScheduledChallenge;
-  /** Strength the prediction used: exact once the Forecast locks, the expected value before. */
   strength: number;
   outcome: ChallengeOutcome;
   level: "red" | "amber" | "green";
 }
 
-export type ActionKind = "build" | "repair" | "demolish" | "fast_forward_year" | "fast_forward_event";
-
 /**
- * Everything needed to put a run back exactly where it was: the board, the
- * clock, the jar, which challenges have locked and landed and how they went,
- * and the Get ready jobs. Plain JSON, so it doubles as the autosave.
+ * Everything needed to put a run back exactly where it was. Plain JSON, so it
+ * doubles as the autosave.
  */
 export interface RunSnapshot {
-  version: 1;
-  quarter: number;
+  version: 2;
+  /** Years elapsed: 0 during turn 1. The game state's turn counter is the same number. */
+  turn: number;
+  /** Builds already made this year. */
+  buildsUsed: number;
   coin: number;
   trust: number;
   resilience: number;
@@ -106,53 +108,43 @@ export interface RunSnapshot {
   jar: number;
   jarCollected: number;
   landed: string[];
-  locked: string[];
   outcomes: [string, ChallengeOutcome][];
-  /** Saves from before the requests panel was removed carry this; it is ignored. */
-  voiceStatus?: unknown;
-  /** The Get ready jobs at the time. Absent in saves from before they existed. */
+  /** The Get ready jobs at the time. */
   prep?: PrepObjective[];
 }
 
-/** Repairs cost this share of the element's build cost. */
+/** Repairs cost this share of the element's build cost (coins on only). */
 export const REPAIR_SHARE = 0.4;
 
 export interface ActionOutcome {
   ok: boolean;
-  /** Quarters actually spent. Can be fewer than the cost when a challenge or the end of the run interrupts a fast-forward. */
-  quarters: number;
   events: RunEvent[];
   /** Why the action was refused, for the UI to say. */
   reason?: string;
 }
 
-/** "Q2 2026" for a quarter index counted from Q1 of `startYear`. */
-export function quarterLabel(quarter: number, startYear: number): string {
-  const year = startYear + Math.floor(quarter / QUARTERS_PER_YEAR);
-  return `Q${(quarter % QUARTERS_PER_YEAR) + 1} ${year}`;
-}
+export const NO_BUILDS_LEFT = "No builds left this year. Press Next year to go on.";
 
 export class ActionRun {
-  readonly totalQuarters: number;
+  /** Turns in the run: 25 for 2026 to 2050. */
+  readonly totalYears: number;
   readonly climate: ClimateConfig | null;
-  /** The challenge calendar for this seed, in order. */
+  /** The storm calendar, in order. */
   readonly schedule: ScheduledChallenge[];
-  /** Ids of challenges that have landed. */
+  /** Ids of storms that have resolved. */
   readonly landed = new Set<string>();
-  /** Ids of challenges whose Forecast has locked. */
-  readonly locked = new Set<string>();
   readonly zones: ZoneIndex | null;
-  /** Outcome of each landed challenge, by id. */
+  /** Outcome of each resolved storm, by id. */
   readonly outcomes = new Map<string, ChallengeOutcome>();
   /**
-   * Each landed challenge recorded for showing (its water depth field and the
+   * Each resolved storm recorded for showing (its water depth field and the
    * replay's comparisons; core/stormRecord.ts), by id. Not saved: it is only
    * needed while the storm plays and its Aftermath is open.
    */
   readonly stormRecords = new Map<string, StormRecord>();
-  /** Perfect-fit combo bonuses (P6) the resolver adds to zone defence. */
+  /** Perfect-fit combo bonuses the resolver adds to defence. */
   combos: ComboBonus = new Map();
-  /** The board's perfect-fit combos, recomputed after every action and challenge. */
+  /** The board's perfect-fit combos, recomputed after every action and storm. */
   comboState: ComboState;
   readonly houseStars?: { three: number; two: number };
   readonly houseRule?: HouseRule;
@@ -160,26 +152,40 @@ export class ActionRun {
   /** The Get ready jobs for the next storm, done or not. */
   prep: PrepObjective[] = [];
   /**
-   * The run as it stood the quarter each challenge's Forecast locked, by
-   * challenge id: what "Replay from the forecast" rewinds to.
+   * The run as it stood when each storm's warning began (two years out), by
+   * storm id: what "Replay from 2029" rewinds to.
    */
-  readonly lockSnapshots = new Map<string, RunSnapshot>();
-  /** Coin waiting in the jar. Banked only when the player taps it. */
+  readonly replaySnapshots = new Map<string, RunSnapshot>();
+  /** Builds made so far this year. */
+  buildsUsed = 0;
+  /** Every action and every new year counts one: Maya speaks at most once per moment. */
+  moment = 0;
+  // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+  readonly economyEnabled: boolean;
+  /** Coin waiting in the jar (coins on only). */
   jar: number;
-  /** Everything ever banked from the jar, for the finale's Livelihoods. */
+  /** Everything ever banked from the jar. */
   jarCollected = 0;
+  private readonly incomeScale: number;
 
   constructor(
     readonly state: GameState,
     readonly config: TimelineConfig,
     options: ActionRunOptions = {}
   ) {
-    this.totalQuarters = (config.endYear - config.startYear) * QUARTERS_PER_YEAR;
-    state.autoCollectIncome = !config.economy;
-    state.maturityField = "matureQuarters";
-    this.jar = config.economy?.jarStart ?? 0;
+    this.totalYears = config.endYear - config.startYear + 1;
+    this.economyEnabled = options.economy?.enabled === true;
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    state.economyEnabled = this.economyEnabled;
+    // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
+    state.growthEnabled = options.growth?.enabled === true;
+    // Income goes into the jar (coins on), never straight into Coin; a turn is a year.
+    state.autoCollectIncome = false;
+    state.maturityField = "matureTurns";
+    this.incomeScale = options.economy?.incomeScale ?? 1;
+    this.jar = this.economyEnabled ? (options.economy?.jarStart ?? 0) : 0;
     this.climate = options.climate ?? null;
-    this.schedule = this.climate ? buildSchedule(this.climate, options.seed ?? "panjim", config.startYear, config.endYear) : [];
+    this.schedule = this.climate ? buildSchedule(this.climate, config.startYear, config.endYear) : [];
     this.zones = options.zones && options.zones.length > 0 ? new ZoneIndex(options.zones) : null;
     this.comboState = computeCombos(state);
     this.combos = this.comboState.bonus;
@@ -191,8 +197,8 @@ export class ActionRun {
 
   /**
    * Sets the Get ready jobs for the next storm, from its exposure as the
-   * board stands now. Called when the run starts and when a storm lands (the
-   * next one is announced); jobs from the storm that passed are dropped.
+   * board stands now. Called when the run starts and when a storm resolves;
+   * jobs from the storm that passed are dropped.
    */
   refreshPrep(): PrepObjective[] {
     const next = this.nextChallenge();
@@ -209,8 +215,9 @@ export class ActionRun {
     // Through JSON, so nothing in the snapshot shares an object with the live run.
     return JSON.parse(
       JSON.stringify({
-        version: 1,
-        quarter: this.quarter,
+        version: 2,
+        turn: this.state.turn,
+        buildsUsed: this.buildsUsed,
         coin: this.state.coin,
         trust: this.state.trust,
         resilience: this.state.resilience,
@@ -218,19 +225,19 @@ export class ActionRun {
         jar: this.jar,
         jarCollected: this.jarCollected,
         landed: [...this.landed],
-        locked: [...this.locked],
         outcomes: [...this.outcomes],
         prep: this.prep
       } satisfies RunSnapshot)
     ) as RunSnapshot;
   }
 
-  /** Puts the run back to `snapshot`. Lock snapshots taken after it are dropped; those before it stay. */
+  /** Puts the run back to `snapshot`. Replay snapshots taken after it are dropped; those before it stay. */
   restore(snapshot: RunSnapshot): void {
     const copy = JSON.parse(JSON.stringify(snapshot)) as RunSnapshot;
     this.state.elements.clear();
     for (const [key, inst] of copy.elements) this.state.elements.set(key, inst);
-    this.state.turn = copy.quarter;
+    this.state.turn = copy.turn;
+    this.buildsUsed = copy.buildsUsed;
     this.state.coin = copy.coin;
     this.state.trust = copy.trust;
     this.state.resilience = copy.resilience;
@@ -238,26 +245,24 @@ export class ActionRun {
     this.jarCollected = copy.jarCollected;
     this.landed.clear();
     for (const id of copy.landed) this.landed.add(id);
-    this.locked.clear();
-    for (const id of copy.locked) this.locked.add(id);
     this.outcomes.clear();
     for (const [id, outcome] of copy.outcomes) this.outcomes.set(id, outcome);
-    for (const id of [...this.lockSnapshots.keys()]) if (!this.locked.has(id)) this.lockSnapshots.delete(id);
+    for (const [id, saved] of [...this.replaySnapshots]) if (saved.turn > copy.turn) this.replaySnapshots.delete(id);
     this.comboState = computeCombos(this.state);
     this.combos = this.comboState.bonus;
     if (copy.prep) this.prep = copy.prep;
     else this.refreshPrep();
+    this.moment++;
   }
 
-  /** Era 1 runs to the first challenge, era 2 to the second, era 3 to 2050. */
+  /** Era 1 runs to the first storm, era 2 to the second, era 3 to 2050. */
   get era(): number {
     return Math.min(3, this.landed.size + 1);
   }
 
   /**
    * After anything that changed the board: recompute the combos (reporting
-   * tiles that just joined one) and pay out any Get ready job that is now
-   * done.
+   * tiles that just joined one) and mark any Get ready job that is now done.
    */
   private settle(): RunEvent[] {
     const events: RunEvent[] = [];
@@ -271,87 +276,59 @@ export class ActionRun {
         const { current, target } = prepProgress(job, this.state, this.zones);
         if (current < target) continue;
         job.done = true;
-        this.state.coin += job.reward;
-        events.push({ type: "prep_complete", objective: job, reward: job.reward });
+        // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+        const reward = this.economyEnabled ? job.reward : 0;
+        this.state.coin += reward;
+        events.push({ type: "prep_complete", objective: job, reward });
       }
     }
     return events;
   }
 
-  /** The intensity a challenge lands at: its strength (base times the baseline on its date) in zone-defence points. */
+  /** The intensity a storm lands at: its fixed strength in zone-defence points. */
   intensityOf(challenge: ScheduledChallenge): number {
     return this.climate ? challengeStrength(this.climate, challenge) * this.climate.intensityPerStrength : 0;
   }
 
-  /**
-   * The readiness gauge for the next challenge: resolves it against a copy of
-   * the board as it would stand on the challenge's date if the player built
-   * nothing more (so defences still growing are counted at the maturity they
-   * will have reached). Before the Forecast locks the strength is the
-   * expected one, from the nominal year; after, it is exact.
-   */
+  /** The readiness gauge for the next storm: it resolved against a copy of the board as it stands. */
   readiness(): Readiness | null {
     const challenge = this.nextChallenge();
     return challenge ? this.readinessFor(challenge) : null;
   }
 
-  /** The same prediction for any challenge still to come. */
+  /** The same prediction for any storm still to come. */
   readinessFor(challenge: ScheduledChallenge): Readiness | null {
-    const preview = this.previewBoard(challenge);
-    if (!preview || !this.climate || !this.zones) return null;
-    // Before the warning, the expected landfall (the forecast centre). Inside
-    // it, the worst landfall still in the cone, as the heat shows: a gauge on
-    // green means green wherever in the cone the storm comes ashore.
-    const sites: (number | null)[] =
-      challenge.kind === "flood" ? [null] : this.quartersUntil(challenge) <= HEAT_LEAD_QUARTERS ? (this.landfallCone(challenge) ?? []) : [forecastSite(this.board(), challenge)];
-    let outcome: ChallengeOutcome | null = null;
-    for (const site of sites) {
-      const board = sites.length > 1 ? preview.board.clone() : preview.board;
-      const result = resolveChallenge(board, this.zones, challenge.kind, preview.strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, this.combos, this.houseStars, this.houseRule, undefined, site);
-      if (!outcome || result.housesDamaged > outcome.housesDamaged) outcome = result;
-    }
-    if (!outcome) return null;
-    return { challenge, strength: preview.strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
-  }
-
-  /** The strength `challenge` is tested at now: exact once its Forecast locks, the expected one before. */
-  strengthFor(challenge: ScheduledChallenge): number | null {
-    if (!this.climate || this.landed.has(challenge.id)) return null;
-    const lockedNow = outlookFor(this.climate, challenge, this.quarter, this.config.startYear).phase === "locked";
-    const nominal = { ...challenge, quarter: Math.round((challenge.year - this.config.startYear) * QUARTERS_PER_YEAR) };
-    return challengeStrength(this.climate, lockedNow ? challenge : nominal);
+    if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
+    const outcome = resolveChallenge(
+      this.state.clone(),
+      this.zones,
+      challenge.kind,
+      this.intensityOf(challenge),
+      this.climate.intensityPerStrength,
+      this.combos,
+      this.houseStars,
+      this.houseRule,
+      undefined,
+      this.landfallOf(challenge)
+    );
+    return { challenge, strength: challenge.strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
   }
 
   /**
-   * The board as it will stand on `challenge`'s date if the player builds
-   * nothing more (defences counted at the maturity they will have by then),
-   * and the strength to test it at: exact once the Forecast locks, the
-   * expected one before. Shared by the readiness gauge and the warning heat,
-   * so the two can never disagree.
-   */
-  private previewBoard(challenge: ScheduledChallenge): { board: GameState; strength: number } | null {
-    const strength = this.strengthFor(challenge);
-    if (strength === null || !this.zones) return null;
-    const board = this.state.clone();
-    board.turn = Math.max(this.quarter, challenge.quarter);
-    return { board, strength };
-  }
-
-  /**
-   * The warning heat's source: `challenge` run on the board as it will stand
-   * on its date, tile by tile (core/exposure.ts). `withoutDefences` gives the
-   * same storm against a board with every defence against it removed, which
-   * is what the green shields compare to.
+   * What `challenge` would do to each tile if it came on the board as it
+   * stands now (core/exposure.ts): the warning heat's source and Get ready's.
+   * `withoutDefences` gives the same storm against a board with every
+   * defence against it removed, which is what the green shields compare to.
    */
   exposureFor(challenge: ScheduledChallenge, withoutDefences = false): Exposure | null {
-    const preview = this.previewBoard(challenge);
-    if (!preview || !this.climate || !this.zones) return null;
-    return computeExposure(preview.board, this.zones, challenge.kind, preview.strength * this.climate.intensityPerStrength, this.climate.intensityPerStrength, {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
+    const site = this.landfallOf(challenge);
+    return computeExposure(this.state, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, {
       combos: this.combos,
       houseRule: this.houseRule,
       houseStars: this.houseStars,
       withoutDefences,
-      landfallSites: this.landfallCone(challenge)
+      landfallSites: site === null ? null : [site]
     });
   }
 
@@ -361,80 +338,92 @@ export class ActionRun {
     return waterBoard(this.state, landfallTiles.length > 0 ? landfallTiles : undefined);
   }
 
-  /**
-   * The landfall sites a storm may still come ashore at, as the player is
-   * told now: the forecast cone, narrowing over the warning's last quarters
-   * (core/hazardModel.ts `forecastCone`). Null for a flood.
-   */
-  landfallCone(challenge: ScheduledChallenge): number[] | null {
-    if (challenge.kind === "flood") return null;
-    return forecastCone(this.board(), challenge, this.quartersUntil(challenge), HEAT_LEAD_QUARTERS);
+  /** Where a storm comes ashore (an index into the board's landfall sites): fixed in the data. Null for a flood. */
+  landfallOf(challenge: ScheduledChallenge): number | null {
+    return challenge.kind === "flood" ? null : landfallSite(this.board(), challenge);
   }
 
-  /** Quarters until `challenge` lands, from now. */
-  quartersUntil(challenge: ScheduledChallenge): number {
-    return challenge.quarter - this.quarter;
+  /** Years until `challenge`, counting this one: 1 in its own year. */
+  yearsUntil(challenge: ScheduledChallenge): number {
+    return yearsUntil(challenge, this.turnNumber);
   }
 
-  /** The next challenge that has not landed yet, or null after the last. */
+  /** The next storm that has not resolved yet, or null after the last. */
   nextChallenge(): ScheduledChallenge | null {
     return this.schedule.find((challenge) => !this.landed.has(challenge.id)) ?? null;
   }
 
-  /** Quarters "Next event" would spend: up to one quarter before the next challenge. 0 when there is nothing to skip. */
-  quartersToNextEvent(): number {
-    const next = this.nextChallenge();
-    if (!next) return 0;
-    return Math.max(0, next.quarter - 1 - this.quarter);
+  /** The turn now, 1 to 25 (26 once the run is over). */
+  get turnNumber(): number {
+    return this.state.turn + 1;
   }
 
-  /** Quarters elapsed since Q1 of the start year. The game state's turn counter is the same number. */
-  get quarter(): number {
-    return this.state.turn;
+  /** The calendar year now. */
+  get year(): number {
+    return this.config.startYear + Math.min(this.state.turn, this.totalYears - 1);
   }
 
   get label(): string {
-    return this.finished ? `${this.config.endYear}` : quarterLabel(this.quarter, this.config.startYear);
-  }
-
-  get year(): number {
-    return this.config.startYear + this.quarter / QUARTERS_PER_YEAR;
+    return String(this.year);
   }
 
   get finished(): boolean {
-    return this.quarter >= this.totalQuarters;
+    return this.state.turn >= this.totalYears;
   }
 
-  get quartersLeft(): number {
-    return Math.max(0, this.totalQuarters - this.quarter);
+  get buildsPerYear(): number {
+    return this.config.buildsPerYear;
   }
 
-  /** Quarters a build of this element takes: two for heavy engineering, one otherwise. */
-  buildCost(elementId: string): number {
-    return ELEMENT_BY_ID.get(elementId)?.buildQuarters ?? this.config.costs.build;
+  get buildsLeft(): number {
+    return this.finished ? 0 : Math.max(0, this.config.buildsPerYear - this.buildsUsed);
+  }
+
+  /** What the city earns in a year at its current income, at the level's scale: the jar (coins on) and the finale's Livelihoods. */
+  get income(): number {
+    return Math.max(0, this.state.income) * this.incomeScale;
   }
 
   build(coord: AxialCoord, elementId: string): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
+    if (this.buildsLeft <= 0) return refuse(NO_BUILDS_LEFT);
     if (!this.state.build(coord, elementId, false)) return refuse("Can't build that here.");
-    return this.spend(this.buildCost(elementId));
+    this.buildsUsed++;
+    this.moment++;
+    return { ok: true, events: this.settle() };
   }
 
+  /**
+   * Removes something the player built. Uses one of this year's builds, as
+   * building does. The city's homes cannot be demolished: they are what the
+   * player is protecting, and removing one from a storm's path is not saving it.
+   */
   demolish(coord: AxialCoord): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
     const key = axialKey(coord);
     if (!this.state.elements.has(key)) return refuse("Nothing to demolish.");
+    if (!this.canDemolish(coord)) return refuse("The city's homes cannot be demolished.");
+    if (this.buildsLeft <= 0) return refuse(NO_BUILDS_LEFT);
     this.state.elements.delete(key);
-    return this.spend(this.config.costs.demolish);
+    this.buildsUsed++;
+    this.moment++;
+    return { ok: true, events: this.settle() };
   }
 
-  /** Coin the jar gains per quarter at the board's current income. */
-  get incomePerQuarter(): number {
-    return Math.max(0, this.state.income) * (this.config.economy?.incomeScale ?? 1);
+  /**
+   * Whether what stands at `coord` may be demolished: anything the player
+   * could have built. The level's homes (excluded from building, levels.json
+   * `houses.excludeFromBuild`) are the city's, not the player's.
+   */
+  canDemolish(coord: AxialCoord): boolean {
+    const inst = this.state.elements.get(axialKey(coord));
+    return !!inst && !this.state.excludedElements.has(inst.elementId);
   }
 
-  /** Banks the jar into Coin: a free action. Returns the whole coins banked. */
+  // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+  /** Banks the jar into Coin (coins on only). Returns the whole coins banked. */
   collectJar(): number {
+    if (!this.economyEnabled) return 0;
     const coins = Math.floor(this.jar);
     if (coins <= 0) return 0;
     this.jar -= coins;
@@ -443,8 +432,10 @@ export class ActionRun {
     return coins;
   }
 
-  /** Coin a repair costs: a share of the element's build cost. */
+  // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+  /** Coin a repair costs (coins on only): a share of the element's build cost. */
   repairCoin(coord: AxialCoord): number {
+    if (!this.economyEnabled) return 0;
     const inst = this.state.elements.get(axialKey(coord));
     const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
     return def ? Math.ceil(def.buildCost * REPAIR_SHARE) : 0;
@@ -455,83 +446,52 @@ export class ActionRun {
     return (this.state.elements.get(axialKey(coord))?.degradeAmount ?? 0) > 0;
   }
 
-  /** Restores a worn defence or a damaged house to full: one quarter and part of its build cost. */
+  /** Restores a worn defence or a damaged house to full. Uses one of this year's builds. */
   repair(coord: AxialCoord): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
+    if (this.buildsLeft <= 0) return refuse(NO_BUILDS_LEFT);
     const inst = this.state.elements.get(axialKey(coord));
     if (!inst || inst.degradeAmount <= 0) return refuse("Nothing to repair.");
     const coin = this.repairCoin(coord);
-    if (this.state.coin < coin) return refuse("Not enough Coin.");
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    if (this.economyEnabled && this.state.coin < coin) return refuse("Not enough Coin.");
     this.state.coin -= coin;
     inst.degradeAmount = 0;
-    return this.spend(this.config.costs.repair);
-  }
-
-  /** One year of time-lapse: four quarters, stopping early at the end of the run. */
-  fastForwardYear(): ActionOutcome {
-    if (this.finished) return refuse("The run has reached 2050.");
-    return this.spend(this.config.costs.fastForwardYear);
+    this.buildsUsed++;
+    this.moment++;
+    return { ok: true, events: this.settle() };
   }
 
   /**
-   * Lets `quarters` quarters pass with no build. Not a player control (the
-   * player has +1 year and Next event); the screenshot scenarios use it to
-   * stop the clock on an exact quarter before a storm.
+   * Ends this year, whatever builds are left: a storm whose year it is
+   * resolves first, against the board as it stands; then the next year
+   * begins with a fresh set of builds. On the last turn this ends the run.
    */
-  waitQuarters(quarters: number): ActionOutcome {
+  nextYear(): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
-    return this.spend(Math.max(0, Math.floor(quarters)));
-  }
-
-  /** Skips to one quarter before the next challenge, as a time-lapse. */
-  fastForwardToNextEvent(): ActionOutcome {
-    if (this.finished) return refuse("The run has reached 2050.");
-    const quarters = this.quartersToNextEvent();
-    if (quarters <= 0) return refuse("Nothing to skip to.");
-    return this.spend(quarters);
-  }
-
-  /**
-   * Advances the clock `quarters` times, one quarter at a time, and reports
-   * each tick. A challenge interrupts: the clock stops on the quarter it
-   * lands, so a fast-forward never skips past one.
-   */
-  protected spend(quarters: number): ActionOutcome {
     const events: RunEvent[] = [];
-    let spent = 0;
-    while (spent < quarters && !this.finished) {
-      const tickEvents = this.tick();
-      events.push(...tickEvents);
-      spent++;
-      if (tickEvents.some((event) => event.type === "challenge")) break;
-    }
-    events.push(...this.settle());
-    return { ok: true, quarters: spent, events };
-  }
-
-  /** One quarter passes: the turn advances, then any Forecast that locks and any challenge that lands. */
-  protected tick(): RunEvent[] {
-    // Income for the quarter goes into the jar, at the maturity the board had
-    // during it (before the turn advances), as the turn model always did.
-    if (this.config.economy) this.jar += this.incomePerQuarter;
-    this.state.advanceTurn();
-    const events: RunEvent[] = [{ type: "quarter", quarter: this.quarter }];
-    if (!this.climate) return events;
     for (const challenge of this.schedule) {
-      if (this.locked.has(challenge.id) || challenge.quarter - this.quarter > this.climate.forecastLockQuarters) continue;
-      this.locked.add(challenge.id);
-      this.lockSnapshots.set(challenge.id, this.snapshot());
-      events.push({ type: "forecast_lock", challenge });
-    }
-    for (const challenge of this.schedule) {
-      if (this.landed.has(challenge.id) || challenge.quarter > this.quarter) continue;
+      if (this.landed.has(challenge.id) || challenge.turn !== this.turnNumber) continue;
       this.landed.add(challenge.id);
       events.push(...this.land(challenge));
     }
-    return events;
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    if (this.economyEnabled) this.jar += this.income;
+    this.state.advanceTurn();
+    this.buildsUsed = 0;
+    this.moment++;
+    if (!this.finished) events.push({ type: "year", turn: this.turnNumber });
+    // Two years out, a storm's warning begins: the moment "Replay" rewinds to.
+    for (const challenge of this.schedule) {
+      if (this.landed.has(challenge.id) || this.finished || this.yearsUntil(challenge) !== HEAT_LEAD_YEARS || this.replaySnapshots.has(challenge.id)) continue;
+      this.replaySnapshots.set(challenge.id, this.snapshot());
+      events.push({ type: "warning", challenge });
+    }
+    events.push(...this.settle());
+    return { ok: true, events };
   }
 
-  /** A challenge lands and resolves zone by zone against the board. */
+  /** A storm resolves against the board. */
   protected land(challenge: ScheduledChallenge): RunEvent[] {
     const events: RunEvent[] = [];
     if (!this.zones || !this.climate) {
@@ -545,12 +505,11 @@ export class ActionRun {
         combos: this.combos,
         houseStars: this.houseStars,
         houseRule: this.houseRule,
-        landfall: challenge.kind === "flood" ? null : landfallSite(this.board(), challenge)
+        landfall: this.landfallOf(challenge)
       });
-      const outcome = record.outcome;
-      this.outcomes.set(challenge.id, outcome);
+      this.outcomes.set(challenge.id, record.outcome);
       this.stormRecords.set(challenge.id, record);
-      events.push({ type: "challenge", challenge, outcome });
+      events.push({ type: "challenge", challenge, outcome: record.outcome });
     }
     // The next storm is announced: new Get ready jobs for it.
     const jobs = this.refreshPrep();
@@ -560,5 +519,5 @@ export class ActionRun {
 }
 
 function refuse(reason: string): ActionOutcome {
-  return { ok: false, quarters: 0, events: [], reason };
+  return { ok: false, events: [], reason };
 }

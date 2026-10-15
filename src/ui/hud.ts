@@ -52,8 +52,9 @@ export class Hud {
   private pillResilienceValueEl: HTMLElement;
   private pillResilienceDotEl: HTMLElement;
   private pillHazardValueEl: HTMLElement;
-  /** Panjim 2050: time is shown by the clock, in quarters. */
-  private quarterMode = false;
+  private readonly helpModal: HelpModal;
+  /** Panjim 2050: time is shown by the clock, in years. */
+  private yearMode = false;
 
   constructor(container: HTMLElement, actions: HudActions) {
     // STEP_PROMPT_how_to_play_button.md: static content, no game-state
@@ -61,6 +62,7 @@ export class Hud {
     // callback into main.ts), this never needs to reach outside itself,
     // so Hud owns the instance directly with no wiring through main.ts.
     const helpModal = new HelpModal(container);
+    this.helpModal = helpModal;
 
     const tileCounter = document.createElement("div");
     tileCounter.className = "hud-corner top-right";
@@ -245,18 +247,32 @@ export class Hud {
   }
 
   /**
-   * Panjim 2050: time is the clock at the top centre, in quarters, so the
-   * "Turn N · Era 1" readout goes and income is per quarter.
+   * Panjim 2050: time is the clock at the top centre, in years, so the
+   * "Turn N · Era 1" readout goes. With coins off (`economy` false) the Coin
+   * counter, its income line and the collapsed pill's coin go too: nothing
+   * on screen names a price.
    */
-  useQuarterClock(): void {
-    this.quarterMode = true;
+  useYearClock(economy: boolean, helpHtml?: string): void {
+    this.yearMode = true;
+    if (helpHtml) this.helpModal.setContent(helpHtml);
     this.turnValueEl.closest<HTMLElement>(".turn-era-row")!.hidden = true;
     // Every tile is open from the start, so a count of them says nothing here.
     for (const el of Array.from(this.tileCountEl.parentElement?.children ?? [])) {
       if (!el.classList.contains("hud-chrome")) (el as HTMLElement).hidden = true;
     }
     const unit = this.incomeEl.parentElement?.lastChild;
-    if (unit && unit.nodeType === Node.TEXT_NODE) unit.textContent = "/quarter";
+    if (unit && unit.nodeType === Node.TEXT_NODE) unit.textContent = "/year";
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    if (!economy) {
+      this.clusterEl.classList.add("no-economy");
+      this.coinEl.closest<HTMLElement>(".coin-row")!.hidden = true;
+      this.incomeEl.closest<HTMLElement>(".income-row")!.hidden = true;
+      const pillCoin = this.clusterEl.querySelector<HTMLElement>(".pill-coin");
+      if (pillCoin) {
+        pillCoin.hidden = true;
+        (pillCoin.nextElementSibling as HTMLElement | null)?.setAttribute("hidden", "");
+      }
+    }
   }
 
   /** STEP_PROMPT_hud_instrument_cluster.md: the header row's second half — `era` is 1-based ("Era 1" from turn one), matching `GameState.erasCompleted + 1`'s own convention (the same expression `main.ts`'s `refreshHud()` passes in here). */
@@ -366,8 +382,8 @@ export class Hud {
 
   /** STEP_PROMPT_remove_claiming.md: a soft progress indicator, not a gate — every tile is already buildable, this just orients the player toward how much map is still untouched. */
   setEmptyTiles(count: number): void {
-    if (this.quarterMode) {
-      this.emptyPromptEl.textContent = "Time moves only when you act: each build takes a season";
+    if (this.yearMode) {
+      this.emptyPromptEl.textContent = "Build where the city is at risk, then press Next year";
       return;
     }
     this.emptyPromptEl.textContent = count > 0 ? `${count} hex${count === 1 ? "" : "es"} still empty` : "Every hex has something built on it";

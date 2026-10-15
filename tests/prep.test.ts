@@ -5,9 +5,10 @@ import { ELEMENT_BY_ID } from "../src/core/elements";
 import type { ActionRun } from "../src/core/actionRun";
 
 /**
- * "Get ready" on Panaji. These check that the jobs are written for the storm that is coming (its exposure, defences
- * that answer it, buildable where they point), that they complete when the
- * matching builds are made and pay their reward.
+ * "Get ready" on Panaji. These check that the jobs are written for the storm
+ * that is coming (its exposure, defences that answer it, buildable where they
+ * point), and that they complete when the matching builds are made; with
+ * coins off they pay nothing.
  */
 const ANSWERS: Record<string, string[]> = { cyclone: ["dune", "sandy_vegetation", "mangrove", "seawall"], flood: ["khazan", "mangrove"], compound: ["dune", "sandy_vegetation", "mangrove", "khazan"] };
 
@@ -17,7 +18,7 @@ function build(run: ActionRun, zone: string, elementId: string, times: number): 
     if (built >= times) break;
     const [q, r] = key.split(",").map(Number);
     if (run.state.canBuild({ q, r }, elementId)) {
-      run.state.coin += 1000;
+      if (run.buildsLeft <= 0) run.nextYear();
       if (run.build({ q, r }, elementId).ok) built++;
     }
   }
@@ -39,38 +40,28 @@ describe("Get ready jobs", () => {
           expect(job.done).toBe(false);
           expect(prepProgress(job, run.state, run.zones!).current).toBe(0);
         }
-        while (!run.landed.has(next.id)) run.fastForwardYear();
+        while (!run.landed.has(next.id)) run.nextYear();
       }
     });
   }
 
-  it("completes when the matching builds are made, and pays its reward once", () => {
+  it("completes when the matching builds are made; with coins off it pays nothing", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const job = run.prep[0];
-    const level = BOT_LEVEL;
-    const template = level.prep!.templates.find((t) => t.id === job.templateId)!;
+    const template = BOT_LEVEL.prep!.templates.find((t) => t.id === job.templateId)!;
     expect(job.reward).toBe(template.reward);
-    const before = run.state.coin;
-    let paid = 0;
-    for (let i = 0; i < job.count; i++) {
-      const coinBefore = run.state.coin + 1000;
-      build(run, job.zone, job.elementId, 1);
-      paid += Math.max(0, run.state.coin - (coinBefore - ELEMENT_BY_ID.get(job.elementId)!.buildCost));
-    }
+    const coin = run.state.coin;
+    for (let i = 0; i < job.count; i++) build(run, job.zone, job.elementId, 1);
     expect(job.done).toBe(true);
-    expect(paid).toBeGreaterThanOrEqual(job.reward);
-    // Building more of the same pays nothing more.
-    const coinBefore = run.state.coin + 1000;
-    build(run, job.zone, job.elementId, 1);
-    expect(run.state.coin).toBeLessThanOrEqual(coinBefore);
-    expect(before).toBeGreaterThan(0);
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    expect(run.state.coin).toBe(coin);
   });
 
   it("refreshes when the next storm is announced, dropping the old jobs", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const first = run.prep.map((job) => job.id);
     const c1 = run.nextChallenge()!;
-    while (!run.landed.has(c1.id)) run.fastForwardYear();
+    while (!run.landed.has(c1.id)) run.nextYear();
     const second = run.prep.map((job) => job.id);
     expect(second.every((id) => !first.includes(id))).toBe(true);
     expect(run.prep.every((job) => job.challengeId === run.nextChallenge()!.id)).toBe(true);
@@ -80,7 +71,7 @@ describe("Get ready jobs", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const snap = run.snapshot();
     const ids = run.prep.map((job) => job.id);
-    run.fastForwardYear();
+    run.nextYear();
     run.restore(snap);
     expect(run.prep.map((job) => job.id)).toEqual(ids);
   });

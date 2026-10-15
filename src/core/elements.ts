@@ -26,13 +26,12 @@ export interface ElementDef {
   /** Turns until effects/absorption reach full strength. 0 = immediately mature. */
   matureTurns: number;
   /**
-   * Quarters until full strength in the action-driven Panjim 2050 run, where
-   * one action is one quarter of a year. Falls back to `matureTurns` when
-   * absent. PLACEHOLDER values (Dune 8, Mangrove 20, Khazan 12…), to be tuned
-   * with the bots.
+   * Quarters until full strength, from Panjim 2050's quarterly clock (before
+   * Section 5). The yearly run does not read it: growth is off there, and
+   * with growth back on it would use `matureTurns` as years. Kept as data.
    */
   matureQuarters?: number;
-  /** Panjim 2050: actions that take this many quarters instead of one (heavy engineering). */
+  /** From the quarterly clock: actions that took this many quarters. Unused by the yearly run. */
   buildQuarters?: number;
   absorptionAtMaturity?: number;
   overwhelmSeverity?: number;

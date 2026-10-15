@@ -44,9 +44,8 @@ function plant(state: GameState, zoneLists: string[][], elementId: string, count
 export function finaleExperiment(seed: string, mangroves = MANGROVES, khazans = KHAZANS, layout: "packed" | "spread" = "spread"): Record<string, number> {
   const run = newRun(seed, BOT_LEVEL);
   const finale = run.schedule[run.schedule.length - 1];
-  while (run.quartersUntil(finale) > 4 && !run.finished) run.fastForwardYear();
+  while (run.yearsUntil(finale) > 1 && !run.finished) run.nextYear();
   const base = run.state.clone();
-  base.turn = finale.quarter;
   const zones = run.zones!;
   // The belt along the waterfront and the creek, where the surge and the river meet; khazans in the wetlands upstream.
   const beltTiles = [zones.keys("z4"), zones.keys("z3"), zones.keys("z2")];
@@ -56,7 +55,7 @@ export function finaleExperiment(seed: string, mangroves = MANGROVES, khazans = 
     const state = base.clone();
     if (config === "belt" || config === "both") plant(state, beltTiles, "mangrove", mangroves, layout);
     if (config === "khazans" || config === "both") plant(state, khazanTiles, "khazan", khazans, layout);
-    const outcome = resolveChallenge(state, zones, finale.kind, run.intensityOf(finale), run.climate!.intensityPerStrength, run.combos, run.houseStars, run.houseRule);
+    const outcome = resolveChallenge(state, zones, finale.kind, run.intensityOf(finale), run.climate!.intensityPerStrength, run.combos, run.houseStars, run.houseRule, undefined, run.landfallOf(finale));
     result[config] = outcome.housesDamaged;
   }
   return result;

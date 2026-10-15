@@ -38,6 +38,12 @@ export class HelpModal {
     return !this.backdrop.hidden;
   }
 
+  /** Replaces the card's content (a level with its own rules, such as Panaji). It must include a `.help-close` button. */
+  setContent(html: string): void {
+    this.card.innerHTML = html;
+    this.card.querySelector(".help-close")?.addEventListener("click", () => this.hide());
+  }
+
   show(): void {
     this.backdrop.hidden = false;
   }

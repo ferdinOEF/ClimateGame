@@ -97,12 +97,15 @@
       "text": "Mangroves take a few years to reach full strength, so plant them early.",
       "elements": [
         "mangrove"
+      ],
+      "needs": [
+        "growth"
       ]
     },
     {
       "id": "pandanus-cheap",
       "kind": "gameRule",
-      "text": "Pandanus is the cheapest defence you can build. It softens a surge a little, on sand where mangroves can't grow.",
+      "text": "Pandanus softens a surge a little, on sand where mangroves can't grow.",
       "elements": [
         "sandy_vegetation"
       ]
@@ -161,6 +164,9 @@
       "text": "A small dam earns Coin and protects against floods, but it lowers biodiversity.",
       "elements": [
         "small_dam"
+      ],
+      "needs": [
+        "economy"
       ]
     },
     {
@@ -169,6 +175,9 @@
       "text": "A resort earns Coin every season, but it lowers biodiversity and the city's resilience.",
       "elements": [
         "beachside_resort"
+      ],
+      "needs": [
+        "economy"
       ]
     },
     {
@@ -185,6 +194,9 @@
       "text": "Sand mining earns more Coin than anything else, and it weakens the city against floods.",
       "elements": [
         "sand_mining"
+      ],
+      "needs": [
+        "economy"
       ]
     },
     {
@@ -198,7 +210,7 @@
     {
       "id": "yacht-nothing",
       "kind": "gameRule",
-      "text": "The Yacht does nothing for your Coin, your defences or your resilience. It's there to be seen.",
+      "text": "The Yacht does nothing for your defences or your resilience. It's there to be seen.",
       "elements": [
         "yacht"
       ]
@@ -209,6 +221,9 @@
       "text": "The Yacht is the most expensive thing you can build.",
       "elements": [
         "yacht"
+      ],
+      "needs": [
+        "economy"
       ]
     },
     {

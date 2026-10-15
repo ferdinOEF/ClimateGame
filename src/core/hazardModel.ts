@@ -61,7 +61,6 @@ export interface HazardModelConfig {
     overwhelmDepthPerUnit: number;
   };
   houseLossDepthM: number;
-  landfall: { jitterSites: number; coneFarSites: number; centreMin: number; centreMax: number };
 }
 
 export const HAZARD_MODEL: HazardModelConfig = MODEL_DATA as unknown as HazardModelConfig;
@@ -184,59 +183,27 @@ export function siteAt(board: WaterBoard, fraction: number): number {
   return Math.max(0, Math.min(board.sites.length - 1, Math.round(fraction * (board.sites.length - 1))));
 }
 
-/** The sites inside a forecast cone: `centre` ± `halfWidth`, clamped to the coast. */
-export function coneSites(board: WaterBoard, centre: number, halfWidth: number): number[] {
-  const out: number[] = [];
-  for (let i = Math.max(0, centre - halfWidth); i <= Math.min(board.sites.length - 1, centre + halfWidth); i++) out.push(i);
-  return out;
-}
-
-/** The forecast centre's site for a scheduled storm (the middle of the coast if it has none). */
-export function forecastSite(board: WaterBoard, challenge: { landfallCentre?: number }): number {
-  return siteAt(board, challenge.landfallCentre ?? 0.5);
-}
-
-/** Where a scheduled storm really comes ashore: its forecast centre plus its bounded offset. */
-export function landfallSite(board: WaterBoard, challenge: { landfallCentre?: number; landfallOffset?: number }): number {
-  return Math.max(0, Math.min(board.sites.length - 1, forecastSite(board, challenge) + (challenge.landfallOffset ?? 0)));
-}
-
 /**
- * The forecast cone: the landfall sites the player is shown as possible,
- * `quartersLeft` before the storm. Wide when the warning starts
- * (`coneFarSites` either side of the forecast centre, `leadQuarters` out),
- * narrowing quarter by quarter to `jitterSites` on the last quarter, which
- * always contains the real site; on landing, the real site alone.
+ * Where a storm comes ashore: the landfall site at its `landfall` tile ("q,r",
+ * fixed in the level data), or the nearest landfall site to it if the tile is
+ * not one; the middle of the coast if it names none. Fixed: no seed moves it.
  */
-export function forecastCone(board: WaterBoard, challenge: { landfallCentre?: number; landfallOffset?: number }, quartersLeft: number, leadQuarters: number, config: HazardModelConfig = HAZARD_MODEL): number[] {
-  if (quartersLeft <= 0) return [landfallSite(board, challenge)];
-  const { coneFarSites, jitterSites } = config.landfall;
-  const t = leadQuarters > 1 ? Math.min(1, Math.max(0, (quartersLeft - 1) / (leadQuarters - 1))) : 0;
-  const half = Math.round(jitterSites + t * (coneFarSites - jitterSites));
-  return coneSites(board, forecastSite(board, challenge), half);
-}
-
-/**
- * The sea the forecast cone covers, for drawing it: the landfall sites in
- * `sites` and the open sea within `rings` hexes of them. Narrows with the
- * cone, so the player sees the possible landfall close in quarter by quarter.
- */
-export function coneTiles(board: WaterBoard, sites: readonly number[], rings = 2): string[] {
-  const out = new Set<string>();
-  let frontier = sites.map((i) => board.sites[i]).filter((key): key is string => !!key);
-  for (const key of frontier) out.add(key);
-  for (let d = 0; d < rings; d++) {
-    const next: string[] = [];
-    for (const key of frontier) {
-      for (const n of board.tiles.get(key)?.neighbours ?? []) {
-        if (out.has(n) || board.tiles.get(n)?.terrainId !== "coast") continue;
-        out.add(n);
-        next.push(n);
-      }
+export function landfallSite(board: WaterBoard, challenge: { landfall?: string }): number {
+  if (!challenge.landfall) return siteAt(board, 0.5);
+  const exact = board.sites.indexOf(challenge.landfall);
+  if (exact >= 0) return exact;
+  const [q, r] = challenge.landfall.split(",").map(Number);
+  let best = 0;
+  let bestDistance = Infinity;
+  board.sites.forEach((key, i) => {
+    const [sq, sr] = key.split(",").map(Number);
+    const distance = (Math.abs(sq - q) + Math.abs(sr - r) + Math.abs(sq + sr - q - r)) / 2;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = i;
     }
-    frontier = next;
-  }
-  return [...out];
+  });
+  return best;
 }
 
 /** What a storm is: its kind, its strength (the level's 1-3 scale), and for a cyclone where it comes ashore. */

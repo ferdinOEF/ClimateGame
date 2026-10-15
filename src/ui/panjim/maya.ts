@@ -21,7 +21,7 @@
  * animation is switched off in CSS and the states stay as still poses.
  *
  * HOW SHE TALKS. Lines queue and never overlap. The controller decides when
- * she may speak (at most one line per quarter, never mid-build, never over a
+ * she may speak (at most one line per moment, never mid-build, never over a
  * modal) and calls `next()`; Maya shows the next line, which stays until the
  * player presses "Got it" (or Esc), or for long enough to read. Each line is
  * spoken once per session unless the player reopens it from the Field Guide.

@@ -1,136 +1,100 @@
 import { playSound } from "@ui/audioHooks";
 
 /**
- * The Panjim 2050 clock, top centre: the quarter and year, a thin bar for how
- * far through the 25 years the run is, and the two fast-forward controls.
+ * The Panjim 2050 clock, top centre (Section 5): the year and "Year N of 25",
+ * the Outlook under it, then how many builds are left this year and the Next
+ * year button.
  *
- * Each quarter that passes ticks the face (a short flip and a click), so a
- * player always sees time move when they act, and never sees it move when
- * they don't. A year's fast-forward plays as a visible time-lapse: four ticks
- * spaced out, skippable with a click anywhere or Space.
+ * Time moves only when the player presses Next year. Each new year flips the
+ * face with a click, so the player always sees the year change when they ask
+ * for it, and never when they don't. Next year is always there: a year can
+ * end with builds unused.
  */
 export interface ClockHudActions {
-  onFastForwardYear: () => void;
-  onFastForwardEvent: () => void;
+  onNextYear: () => void;
+}
+
+export interface ClockView {
+  year: number;
+  /** 1-based turn. */
+  turn: number;
+  totalYears: number;
+  buildsLeft: number;
+  buildsPerYear: number;
+  /** True once the run is over: the face shows the last year and the turn line goes. */
+  finished?: boolean;
 }
 
 export class ClockHud {
   readonly el: HTMLElement;
-  private readonly quarterEl: HTMLElement;
   private readonly yearEl: HTMLElement;
+  private readonly turnEl: HTMLElement;
   /** Where the Climate Outlook mounts, between the face and the buttons. */
   readonly outlookSlot: HTMLElement;
-  private readonly ffYearBtn: HTMLButtonElement;
-  private readonly ffEventBtn: HTMLButtonElement;
-  private readonly lapseEl: HTMLElement;
-  private skipRequested = false;
-  private lapsing = false;
-  private readonly abort = new AbortController();
+  private readonly buildsEl: HTMLElement;
+  private readonly buildsCountEl: HTMLElement;
+  private readonly nextBtn: HTMLButtonElement;
 
   constructor(container: HTMLElement, actions: ClockHudActions) {
     this.el = document.createElement("div");
     this.el.className = "hud-corner top-center panjim-clock";
     this.el.innerHTML = `
       <div class="clock-face" aria-live="polite">
-        <span class="clock-quarter">Q1</span><span class="clock-year">2025</span>
+        <span class="clock-year">2026</span><span class="clock-turn">Year 1 of 25</span>
       </div>
       <div class="clock-outlook"></div>
       <div class="clock-buttons">
-        <button type="button" class="clock-ff clock-ff-year">+1 year</button>
-        <button type="button" class="clock-ff clock-ff-event">Next event</button>
+        <span class="clock-builds" aria-live="polite"><span class="clock-builds-label">Builds left this year</span> <b class="clock-builds-count">4</b></span>
+        <button type="button" class="clock-ff clock-next-year">Next year</button>
       </div>
-      <div class="clock-lapse" hidden>Time-lapse · click or Space to skip</div>
     `;
     container.appendChild(this.el);
-    this.quarterEl = this.el.querySelector(".clock-quarter")!;
     this.yearEl = this.el.querySelector(".clock-year")!;
+    this.turnEl = this.el.querySelector(".clock-turn")!;
     this.outlookSlot = this.el.querySelector(".clock-outlook")!;
-    this.ffYearBtn = this.el.querySelector(".clock-ff-year")!;
-    this.ffEventBtn = this.el.querySelector(".clock-ff-event")!;
-    this.lapseEl = this.el.querySelector(".clock-lapse")!;
-    this.ffYearBtn.addEventListener("click", () => actions.onFastForwardYear());
-    this.ffEventBtn.addEventListener("click", () => actions.onFastForwardEvent());
-
-    const skip = (): void => {
-      if (this.lapsing) this.skipRequested = true;
-    };
-    document.addEventListener("pointerdown", skip, { signal: this.abort.signal, capture: true });
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === " " || event.key === "Escape") skip();
-      },
-      { signal: this.abort.signal }
-    );
+    this.buildsEl = this.el.querySelector(".clock-builds")!;
+    this.buildsCountEl = this.el.querySelector(".clock-builds-count")!;
+    this.nextBtn = this.el.querySelector(".clock-next-year")!;
+    this.nextBtn.addEventListener("click", () => actions.onNextYear());
   }
 
-  /** Paints the clock immediately, without a tick. `label` is "Q2 2026" or the bare end year. */
-  set(label: string, _progress: number): void {
-    const [quarter, year] = label.includes(" ") ? label.split(" ") : ["", label];
-    this.quarterEl.textContent = quarter;
-    this.yearEl.textContent = year;
+  /** Paints the clock immediately, without a tick. */
+  set(view: ClockView): void {
+    this.yearEl.textContent = String(view.year);
+    this.turnEl.textContent = view.finished ? "" : `Year ${view.turn} of ${view.totalYears}`;
+    this.turnEl.hidden = Boolean(view.finished);
+    this.buildsCountEl.textContent = `${view.buildsLeft} of ${view.buildsPerYear}`;
+    this.buildsEl.classList.toggle("none-left", view.buildsLeft <= 0);
+    this.buildsEl.hidden = Boolean(view.finished);
   }
 
-  /** One quarter passes: flip the face and click. */
-  tick(label: string, progress: number): void {
-    this.set(label, progress);
+  /** A new year: flip the face and click. */
+  tick(view: ClockView): void {
+    this.set(view);
     this.el.classList.remove("ticking");
     void this.el.offsetWidth; // restart the CSS animation
     this.el.classList.add("ticking");
     playSound("clock_tick");
   }
 
-  /** Whether the fast-forward controls may be used (false while a challenge plays, or at the end). */
-  setControlsEnabled(year: boolean, event: boolean): void {
-    this.ffYearBtn.disabled = !year;
-    this.ffEventBtn.disabled = !event;
+  /** Whether Next year may be pressed (false while a storm plays, or at the end). */
+  setControlsEnabled(enabled: boolean): void {
+    this.nextBtn.disabled = !enabled;
   }
 
   /** The controls, for their tooltips. */
-  get parts(): { face: HTMLElement; year: HTMLButtonElement; event: HTMLButtonElement } {
-    return { face: this.el.querySelector(".clock-face")!, year: this.ffYearBtn, event: this.ffEventBtn };
+  get parts(): { face: HTMLElement; next: HTMLButtonElement; builds: HTMLElement } {
+    return { face: this.el.querySelector(".clock-face")!, next: this.nextBtn, builds: this.buildsEl };
   }
 
-  get isLapsing(): boolean {
-    return this.lapsing;
-  }
-
-  /**
-   * Plays a sequence of quarter ticks as a time-lapse, `stepMs` apart, calling
-   * `onStep` for each so the board can grow with it. Resolves when done. A
-   * skip jumps straight to the last step.
-   */
-  async timeLapse(steps: { label: string; progress: number }[], stepMs: number, onStep: (index: number) => void): Promise<void> {
-    if (steps.length === 0) return;
-    this.lapsing = true;
-    this.skipRequested = false;
-    this.lapseEl.hidden = steps.length < 3;
-    this.el.classList.add("lapsing");
-    try {
-      for (let i = 0; i < steps.length; i++) {
-        if (this.skipRequested) {
-          const last = steps.length - 1;
-          this.tick(steps[last].label, steps[last].progress);
-          onStep(last);
-          break;
-        }
-        this.tick(steps[i].label, steps[i].progress);
-        onStep(i);
-        if (i < steps.length - 1) await wait(stepMs);
-      }
-    } finally {
-      this.lapsing = false;
-      this.lapseEl.hidden = true;
-      this.el.classList.remove("lapsing");
-    }
+  /** A short pulse on the builds count: what the build menu points to when the year's builds are used up. */
+  nudge(): void {
+    this.nextBtn.classList.remove("nudge");
+    void this.nextBtn.offsetWidth;
+    this.nextBtn.classList.add("nudge");
   }
 
   dispose(): void {
-    this.abort.abort();
     this.el.remove();
   }
-}
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }

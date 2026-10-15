@@ -17,7 +17,7 @@ const outcome = (protection: number, stars: 1 | 2 | 3): ChallengeOutcome => ({
 describe("Panjim 2050 index", () => {
   it("averages five 0–100 counts and adds 100 per star to the score", () => {
     const state = new GameState([], [], 0);
-    const result = computePanjimIndex({ state, outcomes: [outcome(1, 3), outcome(0.6, 2), outcome(0.2, 1)], incomePerQuarter: 15 });
+    const result = computePanjimIndex({ state, outcomes: [outcome(1, 3), outcome(0.6, 2), outcome(0.2, 1)], income: 15 });
     expect(result.resilience).toBe(60);
     expect(result.livelihoods).toBe(50);
     expect(result.food).toBe(50);
@@ -27,7 +27,7 @@ describe("Panjim 2050 index", () => {
   });
 
   it("never gives a finished run fewer than one star", () => {
-    const result = computePanjimIndex({ state: new GameState([], [], 0), outcomes: [outcome(0, 1), outcome(0, 1), outcome(0, 1)], incomePerQuarter: 0 });
+    const result = computePanjimIndex({ state: new GameState([], [], 0), outcomes: [outcome(0, 1), outcome(0, 1), outcome(0, 1)], income: 0 });
     expect(result.levelStars).toBe(1);
   });
 

@@ -8137,3 +8137,44 @@ On a Panjim load the player sees the map, Maya and two plain 36 px buttons (`src
 - **Layout:** the two panels stand in for what they hold in `HUD_OBSTACLES` and `LABEL_OBSTACLES`; everything not in them (the clock, objectives, tooltips, build menu, map corner) stays where it was.
 - **Risk wave:** it flies to the Show risk control, or to the Settings button while Settings is shut (`gameSession.ts`, `riskIntroCheck.ts`).
 - **Checks:** 61 browser checks (`tools/section1fChecks.ts`), layout 105 of 105, labels 37 of 37, the risk-wave tool, axe clean. See `docs/QA_REPORT.md`.
+
+# Panjim, year by year (Sections 5 to 7)
+
+Three sections on the Panaji level only (`l01-first-rains`); the Tutorial is
+untouched and locked by `tests/tutorialLocked.test.ts`. Decided by the owner:
+25 years, 2026 to 2050, one turn a year; three storms at fixed years with
+fixed strengths; a per-year build cap and a Next year button; no coins and no
+growth in this version.
+
+## Section 5 — yearly turns, coins off, instant defences — DONE
+
+**Time (5.1).**
+- `timeModel: "years"` in levels.json, with `timeline: { startYear: 2026, endYear: 2050, buildsPerYear: 4 }`. Turn 1 is 2026, turn 25 is 2050. `core/actionRun.ts` was rewritten for it: `build`, `repair` (each uses one of the year's builds), `demolish` (uses none) and `nextYear()`.
+- **The calendar** (`core/climate.ts`, `climate.challenges` in levels.json): the cyclone at the end of 2030 (turn 5, strength 1.2), the monsoon flood at the end of 2040 (turn 15, 1.8), the cyclone and flood at the end of 2050 (turn 25, 2.6). A storm resolves when Next year is pressed on its turn, against the board as it stands, before the next year begins.
+- **Nothing random moves a storm.** Gone: `jitterYears`, the seasons, the rising baseline (`baselinePerYear`), the seeded landfall centre and offset, and with them the Outlook's far/near/locked phases. A cyclone's landfall is a tile in the data (`landfall: "q,r"`), checked to be a real landfall site. The seed now varies only the bots' own choices and the save key no longer carries it.
+- **Removed with the quarterly clock:** the forecast lock and the narrowing landfall cone (`forecastLockQuarters`, `narrowFromQuarters`, `landfall.jitterSites`, `coneFarSites`), "+1 year" and "Next event". The spec placed the cone's removal in 6.2; it could not outlive the quarters it counted, so it went here.
+- **HUD:** the clock reads "2026 · Year 1 of 25", the Outlook line "Next: Cyclone · end of 2030 · mild · 5 years" (each storm a pin at the end of its year), and beside Next year "Builds left this year 4 of 4". With none left, the build menu shows a dashed notice, "No builds left this year. Press Next year to go on.", with its own Next year button, and every option disabled. Next year is always there and can end a year early.
+- **Replay** rewinds to the start of a storm's warning (two years out: "Replay from 2029"), the moment the old forecast lock used to be.
+- **Heat:** the existing warning heat now shows in the last two years before each storm (30%, then 50%), recomputed after every build. Its preview is exact (see Checks).
+- **How to Play** on Panaji has its own content (`ui/panjim/panjimHelp.ts`), built from the level's numbers: years, the cap, the three storms. The Tutorial keeps its own.
+
+**Coins off (5.2).** `economy: { enabled: false, incomeScale: 0.35, jarStart: 40 }` on the level, and `startingCoin: 10000` kept for when coins return. With it off:
+- no Coin counter, income line or pill coin (`Hud.useYearClock`, `.no-economy` in panjim.css), no coin jar (not built) and so no gain pop-up; there is no yacht goal on Panaji;
+- no price anywhere: the build menu shows names only (`PopoverMode.hideCost`), its tooltips use coin-free wording (`buildWhatPanjim`, `buildFree`), an info card drops the `money` effect, Repair reads "uses 1 build";
+- Get ready jobs show no reward and pay nothing; the rules about coin (`dam-coin`, `resort-coin`, `sandmining-coin`, `yacht-cost`) carry `needs: ["economy"]` and are not shown or said; "pandanus-cheap" and "yacht-nothing" were reworded without price; Maya's seawall and Get ready tips no longer mention cost or pay;
+- `GameState.economyEnabled` false: building never checks or spends Coin.
+- **Re-enabling coins:** set `economy.enabled` to `true` on the level and take `"economy"` out of `FEATURES_OFF` in `src/core/facts.ts`. Every disabled path is marked `// ECONOMY_DISABLED_V1: coin mechanics reserved for a future version` (`grep -rn ECONOMY_DISABLED_V1 src`).
+
+**Growth off (5.3).** `growth: { enabled: false }`. `GameState.growthEnabled` false makes `maturityFraction` 1, so a defence is at full strength the turn it is built; no growing visuals, no "N growing" on the gauge, and the growth rule (`mangrove-grow`, `needs: ["growth"]`) and Maya's "they take a few years to grow" are gone. Marked `// GROWTH_DISABLED_V1`. **Re-enabling growth:** set `growth.enabled` to `true` and take `"growth"` out of `FEATURES_OFF`; the yearly run then grows on `matureTurns`, read as years (Dune 2, Pandanus 3, Mangrove 4, Khazan 2).
+
+**Data fix (5.4).** Sharada Mandir School's category is "School, Miramar" (it is at Miramar), changed in `tools/mapgen/geocodePanaji.ts` and `panajiPlaces.json` and regenerated with `npm run mapgen:panaji`: the board JSON changed by that one line, and the street-map layer and debug images came out identical.
+
+**Tooling.** The walkthrough and the Panaji map generator launched Playwright's bundled headless shell, which this container does not have; both now use the container's Chromium when it is there, as the other tools already did.
+
+**Demolition (changed after the review).** Demolishing uses one of the year's builds, as it cost a quarter before, and the city's homes (the level's `excludeFromBuild`) cannot be demolished at all. Free demolition would have let a player clear the houses the heat marks and score three stars without building a defence.
+
+**Autosave** now runs on every Next year and after a Replay rewind, not only after a storm, so a reload continues from the year the player left. Old quarterly saves (`v1`) cannot be continued and are cleared from the device.
+
+**The Outlook during a storm** still reads the storm's own year (its "now" mark, sea level and the next storm's years) until the new year ticks in, like the clock.
+
+**Heat** is 35% two years out and 50% in the storm's year, so a house that will fall is hatched from the first warning year (the hatch starts above 30%): the cue that does not rely on colour.

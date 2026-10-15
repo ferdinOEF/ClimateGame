@@ -23,9 +23,8 @@ import { ELEMENT_BY_ID } from "../../src/core/elements";
 import { axialKey, neighbor, type AxialCoord } from "../../src/core/hex";
 import { resolveChallenge, ZoneIndex } from "../../src/core/zones";
 import { computeCombos } from "../../src/core/combos";
-import { computeWater, floodsHouse, forecastSite, HAZARD_MODEL, LANDFALL_ZONE } from "../../src/core/hazardModel";
+import { computeWater, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE } from "../../src/core/hazardModel";
 import type { ChallengeKind, ScheduledChallenge } from "../../src/core/climate";
-import { outlookFor } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
 import { hashSeed, Rng } from "../../src/core/rng";
 import { LEVEL_BY_ID, type LevelDef } from "../../src/levels/levels";
@@ -50,7 +49,8 @@ export interface BotResult {
   decisions: number;
   /** Builds per element id. */
   built: Record<string, number>;
-  fastForwardQuarters: number;
+  /** Years ended with builds unused. */
+  yearsWithBuildsLeft: number;
   jarTaps: number;
   /** Estimated real milliseconds for a human playing the same moves. */
   estimatedMs: number;
@@ -98,10 +98,20 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
   for (const id of setup.excluded) state.excludedElements.add(id);
   for (const key of setup.unbuildable) state.unbuildable.add(key);
   for (const key of RESERVED) state.reserved.add(key);
-  return new ActionRun(state, level.timeline!, { climate: level.climate, seed, zones: MAP.zones, houseStars: level.houseStars, houseRule: level.houses?.rule, prep: level.prep });
+  // The seed varies only the bots' own choices: the game's calendar, strengths and landfall are fixed.
+  void seed;
+  return new ActionRun(state, level.timeline!, {
+    climate: level.climate,
+    zones: MAP.zones,
+    houseStars: level.houseStars,
+    houseRule: level.houses?.rule,
+    prep: level.prep,
+    economy: level.economy,
+    growth: level.growth
+  });
 }
 
-export type LoggedAction = { type: "tap" } | { type: "ff" } | { type: "build"; coord: AxialCoord; elementId: string } | { type: "repair"; coord: AxialCoord };
+export type LoggedAction = { type: "tap" } | { type: "next" } | { type: "build"; coord: AxialCoord; elementId: string } | { type: "repair"; coord: AxialCoord };
 
 class Player {
   readonly run: ActionRun;
@@ -112,13 +122,11 @@ class Player {
   readonly built: Record<string, number> = {};
   /** Every action that went through, in order, so a run can be replayed (the per-element margin). */
   readonly log: LoggedAction[] = [];
-  ffQuarters = 0;
+  yearsWithBuildsLeft = 0;
   jarTaps = 0;
   checkpoint2Ms = 0;
   firstActionMs = -1;
   firstRewardMs = -1;
-  private phaseSeen = new Map<string, string>();
-
   constructor(readonly persona: Persona, readonly seed: string, readonly level: LevelDef = BOT_LEVEL) {
     this.run = newRun(seed, level);
     this.rng = new Rng(hashSeed(`${persona}:${seed}`));
@@ -149,7 +157,7 @@ class Player {
     this.built[elementId] = (this.built[elementId] ?? 0) + 1;
     this.log.push({ type: "build", coord, elementId });
     this.decisions++;
-    this.ms += TIME.decision + outcome.quarters * TIME.tickAction;
+    this.ms += TIME.decision + TIME.tickAction;
     if (this.firstActionMs < 0) this.firstActionMs = this.ms;
     this.events(outcome.events);
     return true;
@@ -160,24 +168,18 @@ class Player {
     if (!outcome.ok) return false;
     this.log.push({ type: "repair", coord });
     this.decisions++;
-    this.ms += TIME.decision + outcome.quarters * TIME.tickAction;
+    this.ms += TIME.decision + TIME.tickAction;
     this.events(outcome.events);
     return true;
   }
 
-  /** Lets `quarters` quarters pass doing nothing (a replayed action that no longer applies). */
-  wait(quarters: number): void {
-    const outcome = this.run.waitQuarters(quarters);
+  /** Presses Next year. */
+  nextYear(): void {
+    if (this.run.buildsLeft > 0) this.yearsWithBuildsLeft++;
+    const outcome = this.run.nextYear();
     if (!outcome.ok) return;
-    this.events(outcome.events);
-  }
-
-  fastForwardYear(): void {
-    const outcome = this.run.fastForwardYear();
-    if (!outcome.ok) return;
-    this.log.push({ type: "ff" });
-    this.ffQuarters += outcome.quarters;
-    this.ms += 1000 + outcome.quarters * TIME.tickLapse;
+    this.log.push({ type: "next" });
+    this.ms += 1000 + TIME.tickLapse;
     if (this.firstActionMs < 0) this.firstActionMs = this.ms;
     this.events(outcome.events);
   }
@@ -188,19 +190,11 @@ class Player {
         const zones = event.outcome?.zones.length ?? 1;
         this.ms += TIME.stageFixed + zones * TIME.stagePerZone + TIME.reading; // staging + Aftermath read
         if (this.run.landed.size === 2) this.checkpoint2Ms = this.ms;
-      } else if (event.type === "forecast_lock") {
+      } else if (event.type === "warning") {
         this.ms += TIME.reading;
       } else if (event.type === "combo") {
         this.reward();
       }
-    }
-    // Reading the Outlook when a marker changes phase (far to near).
-    if (!this.run.climate) return;
-    for (const challenge of this.run.schedule) {
-      const phase = outlookFor(this.run.climate, challenge, this.run.quarter, this.run.config.startYear).phase;
-      const before = this.phaseSeen.get(challenge.id);
-      if (before && before !== phase && phase === "near") this.ms += TIME.reading;
-      this.phaseSeen.set(challenge.id, phase);
     }
   }
 
@@ -236,7 +230,7 @@ class Player {
 
   result(): BotResult {
     const outcomes = this.run.schedule.map((c) => this.run.outcomes.get(c.id)!).filter(Boolean);
-    const index = computePanjimIndex({ state: this.state, outcomes, incomePerQuarter: this.run.incomePerQuarter });
+    const index = computePanjimIndex({ state: this.state, outcomes, income: this.run.income });
     return {
       persona: this.persona,
       seed: this.seed,
@@ -253,7 +247,7 @@ class Player {
       },
       score: index.score,
       decisions: this.decisions,
-      fastForwardQuarters: this.ffQuarters,
+      yearsWithBuildsLeft: this.yearsWithBuildsLeft,
       jarTaps: this.jarTaps,
       estimatedMs: this.ms + TIME.finale,
       checkpoint2Ms: this.checkpoint2Ms,
@@ -320,10 +314,9 @@ function around(keys: Iterable<string>, radius: number): Set<string> {
 function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: string; elementId: string } | null): { lost: number; excess: number } {
   const run = p.run;
   const board = run.state.clone();
-  board.turn = Math.max(run.quarter, challenge.quarter);
   if (extra) board.elements.set(extra.key, { elementId: extra.elementId, builtOnTurn: run.state.turn, degradeAmount: 0, floodBufferFilled: 0 });
-  const strength = run.strengthFor(challenge) ?? 1;
-  const site = challenge.kind === "flood" ? null : forecastSite(run.board(), challenge);
+  const strength = challenge.strength;
+  const site = run.landfallOf(challenge);
   const water = computeWater(board, { kind: challenge.kind, strength, landfall: site }, { combos: computeCombos(board).bonus, landfallZoneTiles: ZONES.keys(LANDFALL_ZONE) });
   let lost = 0;
   let excess = 0;
@@ -390,14 +383,14 @@ function playCasual(p: Player): void {
   while (!p.run.finished) {
     if (p.rng.next() < 0.6) p.tapJar();
     const next = p.run.nextChallenge();
-    const near = next ? p.run.quartersUntil(next) <= 18 : false;
+    const near = next ? p.run.yearsUntil(next) <= 4 : false;
     if (!next || !near || p.rng.next() < 0.15) {
-      p.fastForwardYear();
+      p.nextYear();
       continue;
     }
     const exposure = p.run.exposureFor(next);
     if (!exposure || exposure.housesAtRisk.length === 0) {
-      p.fastForwardYear();
+      p.nextYear();
       continue;
     }
     const risk = new Set(exposure.housesAtRisk);
@@ -413,7 +406,7 @@ function playCasual(p: Player): void {
         if (!best || score > best.score) best = { coord, id, score };
       }
     }
-    if (!best || !p.build(best.coord, best.id)) p.fastForwardYear();
+    if (!best || !p.build(best.coord, best.id)) p.nextYear();
   }
 }
 
@@ -437,13 +430,13 @@ function playGreedy(p: Player): void {
   // greedy, eight, and from two years out. A gamble that sometimes pays.
   const greed = p.rng.next();
   const incomeCap = Math.round(8 + 28 * greed);
-  const window = Math.round(8 - 6 * greed);
+  const window = Math.round(2 - greed);
   let incomeBuilds = 0;
   while (!p.run.finished) {
     p.tapJar();
     const next = p.run.nextChallenge();
     // Defends late: only in the last few quarters before a storm.
-    if (next && p.run.quartersUntil(next) <= window) {
+    if (next && p.run.yearsUntil(next) <= window) {
       const pick = bestDefence(p, next, p.state.coin, false, false);
       if (pick && p.build(pick.coord, pick.elementId)) continue;
     }
@@ -460,12 +453,12 @@ function playGreedy(p: Player): void {
         }
       }
     }
-    if (!built) p.fastForwardYear();
+    if (!built) p.nextYear();
   }
 }
 
 function playRusher(p: Player): void {
-  while (!p.run.finished) p.fastForwardYear();
+  while (!p.run.finished) p.nextYear();
 }
 
 /** Smart, with an optional element left out (the per-element margin test). */
@@ -503,7 +496,7 @@ function smartPlayer(skip: string | null, only: string | null = null): (p: Playe
           }
         }
       }
-      if (!acted) p.fastForwardYear();
+      if (!acted) p.nextYear();
     }
   };
 }
@@ -529,23 +522,21 @@ function smartLog(seed: string): LoggedAction[] {
 /**
  * Smart's own run, replayed action for action with every build of
  * `elementId` left out: each of those builds (and any action that no longer
- * applies) becomes waiting for as many quarters as it would have taken, so
- * the clock and every other build keep their dates. The houses this loses is what that
- * element did in Smart's plan ("removing it from an otherwise identical
- * Smart run", Section 4.6), with no re-planning round it.
+ * applies) is a build slot left unused that year, so every other build keeps
+ * its year. The houses this loses is what that element did in Smart's plan,
+ * with no re-planning round it.
  */
 export function replaySmartWithout(elementId: string, seed: string, log: readonly LoggedAction[] = smartLog(seed)): BotResult {
   const player = new Player("smart", seed);
   for (const action of log) {
     if (player.run.finished) break;
     if (action.type === "tap") player.tapJar();
-    else if (action.type === "ff") player.fastForwardYear();
+    else if (action.type === "next") player.nextYear();
     else if (action.type === "build") {
-      // As long as the build would have taken (heavy engineering takes two quarters).
-      if (action.elementId === elementId || !player.build(action.coord, action.elementId)) player.wait(player.run.buildCost(action.elementId));
-    } else if (!player.repair(action.coord)) player.wait(player.run.config.costs.repair);
+      if (action.elementId !== elementId) player.build(action.coord, action.elementId);
+    } else player.repair(action.coord);
   }
-  while (!player.run.finished) player.fastForwardYear();
+  while (!player.run.finished) player.nextYear();
   return player.result();
 }
 

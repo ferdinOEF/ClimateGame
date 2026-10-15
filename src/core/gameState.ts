@@ -115,6 +115,20 @@ export class GameState {
    */
   maturityField: "matureTurns" | "matureQuarters" = "matureTurns";
   /**
+   * Whether building checks and spends Coin. True everywhere but a level
+   * whose `economy.enabled` is false (Panaji, Section 5): there building is
+   * free and Coin is never read. The coin code stays for a later version.
+   */
+  // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+  economyEnabled = true;
+  /**
+   * Whether defences grow into their strength. False on a level whose
+   * `growth.enabled` is false (Panaji, Section 5): everything is at full
+   * strength the moment it is built.
+   */
+  // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
+  growthEnabled = true;
+  /**
    * Scales every effect of an element type (all of its `effects`), by element
    * id. Panjim's land is pre-filled with hundreds of houses; scaling them
    * keeps their total money, food and population near what ten used to give.
@@ -197,6 +211,8 @@ export class GameState {
     for (const id of this.excludedElements) copy.excludedElements.add(id);
     for (const key of this.unbuildable) copy.unbuildable.add(key);
     copy.maturityField = this.maturityField;
+    copy.economyEnabled = this.economyEnabled;
+    copy.growthEnabled = this.growthEnabled;
     for (const key of this.reserved) copy.reserved.add(key);
     return copy;
   }
@@ -220,6 +236,8 @@ export class GameState {
 
   /** 0 at the moment of building, rising linearly to 1 at the element's maturity time. */
   maturityFraction(inst: ElementInstance, def: ElementDef): number {
+    // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
+    if (!this.growthEnabled) return 1;
     const span = (this.maturityField === "matureQuarters" ? def.matureQuarters : def.matureTurns) ?? def.matureTurns;
     return span > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / span)) : 1;
   }
@@ -241,7 +259,8 @@ export class GameState {
    * directly (those callers don't collect income; only a real build does).
    */
   advanceTurn(): void {
-    if (this.autoCollectIncome) this.coin += this.income;
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    if (this.autoCollectIncome && this.economyEnabled) this.coin += this.income;
     this.turn++;
   }
 
@@ -260,7 +279,8 @@ export class GameState {
   canBuild(coord: AxialCoord, elementId: string): boolean {
     const def = ELEMENT_BY_ID.get(elementId);
     if (!def) return false;
-    if (this.coin < def.buildCost) return false;
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    if (this.economyEnabled && this.coin < def.buildCost) return false;
     return this.buildableAt(coord).some((d) => d.id === elementId);
   }
 
@@ -278,7 +298,8 @@ export class GameState {
   build(coord: AxialCoord, elementId: string, advance = true): boolean {
     if (!this.canBuild(coord, elementId)) return false;
     const def = ELEMENT_BY_ID.get(elementId)!;
-    this.coin -= def.buildCost;
+    // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
+    if (this.economyEnabled) this.coin -= def.buildCost;
     this.elements.set(axialKey(coord), { elementId, builtOnTurn: this.turn, degradeAmount: 0, floodBufferFilled: 0 });
     if (advance) this.advanceTurn();
     return true;

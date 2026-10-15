@@ -76,27 +76,29 @@ describe("aftermath line", () => {
 });
 
 describe("snapshots", () => {
-  it("rewinds to the forecast lock exactly, and replaying is deterministic", () => {
+  it("rewinds to the start of a storm's warning exactly, and replaying is deterministic", () => {
     const level = LEVEL_BY_ID.get("l01-first-rains")!;
     const map = mapById("panaji")!;
     const make = () =>
-      new ActionRun(new GameState(map.tiles, [], level.startingCoin), level.timeline!, { climate: level.climate, seed: level.id, zones: map.zones });
+      new ActionRun(new GameState(map.tiles, [], level.startingCoin), level.timeline!, { climate: level.climate, zones: map.zones, economy: level.economy, growth: level.growth });
     const run = make();
     const first = run.schedule[0];
-    while (!run.locked.has(first.id)) run.fastForwardYear();
-    const lockQuarter = run.lockSnapshots.get(first.id)!.quarter;
+    while (!run.replaySnapshots.has(first.id)) run.nextYear();
+    const warningTurn = run.replaySnapshots.get(first.id)!.turn;
+    // Two years out: turn 4 (2029) for a storm at the end of turn 5.
+    expect(warningTurn + 1).toBe(first.turn - 1);
     const beach = map.zones[0].tiles.find(([q, r]) => run.state.placed.get(`${q},${r}`)?.terrainId === "beach")!;
     run.build({ q: beach[0], r: beach[1] }, "dune");
-    while (!run.landed.has(first.id)) run.fastForwardYear();
-    const snapshot = run.lockSnapshots.get(first.id)!;
+    while (!run.landed.has(first.id)) run.nextYear();
+    const snapshot = run.replaySnapshots.get(first.id)!;
     run.restore(snapshot);
-    expect(run.quarter).toBe(lockQuarter);
+    expect(run.state.turn).toBe(warningTurn);
     expect(run.landed.has(first.id)).toBe(false);
-    expect(run.state.elements.has(`${beach[0]},${beach[1]}`)).toBe(false); // built after the lock, so undone
+    expect(run.state.elements.has(`${beach[0]},${beach[1]}`)).toBe(false); // built after the warning began, so undone
     const replay = (): string => {
       run.restore(snapshot);
       run.build({ q: beach[0], r: beach[1] }, "dune");
-      while (!run.landed.has(first.id)) run.fastForwardYear();
+      while (!run.landed.has(first.id)) run.nextYear();
       return JSON.stringify(run.outcomes.get(first.id));
     };
     expect(replay()).toBe(replay());

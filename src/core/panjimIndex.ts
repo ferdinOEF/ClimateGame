@@ -8,7 +8,7 @@ import type { ChallengeOutcome } from "./zones";
  *   Resilience   how well its defences did on the day, averaged over the
  *                three storms (their protection).
  *   Biodiversity the living coast: the generic biodiversity meter (60 is full).
- *   Livelihoods  what the city earns per quarter in 2050.
+ *   Livelihoods  what the city earns a year in 2050 (its income at the level's scale).
  *   Population   how many people it grew to house.
  *   Food         whether it feeds itself (khazan and mangroves against houses).
  *
@@ -19,7 +19,7 @@ import type { ChallengeOutcome } from "./zones";
 export interface IndexInput {
   state: GameState;
   outcomes: ChallengeOutcome[];
-  incomePerQuarter: number;
+  income: number;
 }
 
 export interface PanjimIndex {
@@ -46,7 +46,7 @@ export function computePanjimIndex(input: IndexInput): PanjimIndex {
   const protection = outcomes.length > 0 ? outcomes.reduce((sum, o) => sum + o.protection, 0) / outcomes.length : 0;
   const resilience = clamp100(protection * 100);
   const biodiversity = clamp100((state.biodiversity / 60) * 100);
-  const livelihoods = clamp100((input.incomePerQuarter / 30) * 100);
+  const livelihoods = clamp100((input.income / 30) * 100);
   const population = clamp100(((state.population - 50) / 150) * 100);
   const food = clamp100(50 + state.food * 3);
   const index = clamp100((resilience + biodiversity + livelihoods + population + food) / 5);

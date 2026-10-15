@@ -171,7 +171,7 @@ const PLACES: PlaceSpec[] = [
   {
     id: "sharada_mandir_school",
     name: "Sharada Mandir School",
-    category: "School, Altinho",
+    category: "School, Miramar",
     kind: "institution",
     query: "Sharada Mandir School, Miramar, Panaji, Goa, India",
     osm: { lat: 15.48043, lon: 73.80916, how: "Miramar, inland of Dr Jack Sequeira Road", onImage: true }

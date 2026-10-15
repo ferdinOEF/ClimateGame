@@ -121,18 +121,18 @@ async function main(): Promise<void> {
     await page.keyboard.press("m");
     check(await evalJs<boolean>(page, "!window.__panjimForTest.maya.isMuted"), "Panaji: M unmutes Maya");
 
-    // Into the warning window, nothing built: heat, then the storm.
-    await page.evaluate("window.__panjimScenarioForTest('heat-3')");
+    // Into the warning window (two years out), nothing built: heat, then the storm.
+    await page.evaluate("window.__panjimScenarioForTest('heat-2')");
     await page.waitForTimeout(800);
     const heated = await evalJs<number>(page, "window.__heatForTest.visibleCount");
-    check(heated > 0, `Panaji: warning heat shows 3 quarters out (${heated} tiles)`);
+    check(heated > 0, `Panaji: warning heat shows two years out (${heated} tiles)`);
     await page.keyboard.press("r");
     await page.waitForTimeout(200);
     check(await evalJs<boolean>(page, "window.__heatForTest.visibleCount === 0"), "Panaji: R hides the heat");
     await page.keyboard.press("r");
     await page.waitForTimeout(200);
     check(await evalJs<boolean>(page, `window.__heatForTest.visibleCount === ${heated}`), "Panaji: R shows it again");
-    // The preview rule is stated for the warning's last quarter, when the cone is the real landfall ±1.
+    // In the storm's own year the heat is exactly what it takes: the calendar and the landfall are fixed (tests/exposure.test.ts).
     await page.evaluate("window.__panjimScenarioForTest('heat-1')");
     await page.waitForTimeout(800);
     const preview = await evalJs<{ id: string; atRisk: string[] }>(
@@ -141,9 +141,7 @@ async function main(): Promise<void> {
     );
     await page.evaluate("window.__panjimScenarioForTest('past-storm')");
     const lost = await evalJs<string[]>(page, `[...window.__panjimForTest.run.outcomes.get(${JSON.stringify(preview.id)}).damagedHouses].sort()`);
-    // A cyclone's heat covers its forecast cone (tests/exposure.test.ts): every house lost was shown, and at most half of those shown stand.
-    const shown = new Set(preview.atRisk);
-    check(lost.every((key) => shown.has(key)) && lost.length >= shown.size * 0.5, `Panaji: heat preview covers the storm (${preview.atRisk.length} previewed at risk, ${lost.length} lost)`);
+    check(preview.atRisk.length > 0 && JSON.stringify(preview.atRisk) === JSON.stringify(lost), `Panaji: cyclone preview matches (${preview.atRisk.length} previewed at risk, ${lost.length} lost)`);
 
     // The next storm: the flood takes houses.
     await page.evaluate("window.__panjimScenarioForTest('heat-2')");

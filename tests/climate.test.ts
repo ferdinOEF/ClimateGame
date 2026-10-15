@@ -1,112 +1,85 @@
 import { describe, expect, it } from "vitest";
-import { buildSchedule, outlookFor, challengeStrength, strengthIcons, baselineMultiplier } from "../src/core/climate";
-import { ActionRun } from "../src/core/actionRun";
-import { GameState } from "../src/core/gameState";
-import { dailyChallengeLevel, LEVEL_BY_ID } from "../src/levels/levels";
+import { buildSchedule, challengeStrength, strengthIcons, yearsUntil } from "../src/core/climate";
+import { LEVEL_BY_ID } from "../src/levels/levels";
+import { BOT_LEVEL, newRun, SEEDS } from "../tools/panjimBots/bots";
+import { landfallSite } from "../src/core/hazardModel";
 
+/**
+ * Section 5: three storms on a fixed calendar. Nothing about when, how hard
+ * or where may depend on a seed.
+ */
 const level = LEVEL_BY_ID.get("l01-first-rains")!;
 const climate = level.climate!;
-const START = 2025;
-const END = 2050;
-const SEEDS = Array.from({ length: 200 }, (_, i) => `seed-${i}`);
+const START = level.timeline!.startYear;
+const END = level.timeline!.endYear;
 
-describe("challenge schedule", () => {
-  it("is deterministic per seed and differs across seeds", () => {
-    const a = buildSchedule(climate, "l01-first-rains", START, END).map((c) => c.quarter);
-    const b = buildSchedule(climate, "l01-first-rains", START, END).map((c) => c.quarter);
-    expect(a).toEqual(b);
-    const distinct = new Set(SEEDS.map((seed) => buildSchedule(climate, seed, START, END).map((c) => c.quarter).join(",")));
-    expect(distinct.size).toBeGreaterThan(20);
+describe("the storm calendar", () => {
+  it("puts each storm at the end of its year: turns 5, 15 and 25, at 1.2, 1.8 and 2.6", () => {
+    const schedule = buildSchedule(climate, START, END);
+    expect(schedule.map((c) => [c.id, c.kind, c.year, c.turn, c.strength])).toEqual([
+      ["c1-cyclone", "cyclone", 2030, 5, 1.2],
+      ["c2-flood", "flood", 2040, 15, 1.8],
+      ["c3-compound", "compound", 2050, 25, 2.6]
+    ]);
+    for (const c of schedule) expect(challengeStrength(climate, c)).toBe(c.strength);
+    expect(schedule.map((c) => strengthIcons(c.strength))).toEqual([1, 2, 3]);
   });
 
-  it("keeps each challenge near its year, in season, in order and inside the run", () => {
-    for (const seed of SEEDS) {
-      const schedule = buildSchedule(climate, seed, START, END);
-      expect(schedule.map((c) => c.id)).toEqual(["c1-cyclone", "c2-flood", "c3-compound"]);
-      schedule.forEach((challenge, i) => {
-        const year = START + challenge.quarter / 4;
-        expect(Math.abs(year - challenge.year)).toBeLessThanOrEqual(challenge.jitterYears + 0.75);
-        expect(challenge.quarter).toBeLessThan((END - START) * 4);
-        if (i > 0) expect(challenge.quarter - schedule[i - 1].quarter).toBeGreaterThanOrEqual(8);
-      });
-      expect([1, 3]).toContain(schedule[0].quarter % 4); // cyclone: Q2 or Q4
-      expect(schedule[1].quarter % 4).toBe(2); // monsoon flood: Q3
-    }
+  it("has nothing that could move a storm: no jitter, no lock, no narrowing, no seeded landfall", () => {
+    const text = JSON.stringify(climate);
+    for (const key of ["jitterYears", "forecastLockQuarters", "narrowFromQuarters", "baselinePerYear", "landfallCentre", "landfallOffset"]) expect(text).not.toContain(key);
+    expect(climate.challenges.filter((c) => c.kind !== "flood").every((c) => typeof c.landfall === "string")).toBe(true);
   });
 
-  it("gives the daily challenge its own calendar", () => {
-    const daily = dailyChallengeLevel("2026-10-07");
-    expect(daily.timeModel).toBe("actions");
-    const campaign = buildSchedule(climate, level.id, START, END).map((c) => c.quarter);
-    const days = ["2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10"].map((d) =>
-      buildSchedule(climate, `daily-${d}`, START, END).map((c) => c.quarter).join(",")
-    );
-    expect(days.some((d) => d !== campaign.join(","))).toBe(true);
+  it("counts years until a storm including this one", () => {
+    const [cyclone] = buildSchedule(climate, START, END);
+    expect(yearsUntil(cyclone, 1)).toBe(5);
+    expect(yearsUntil(cyclone, 4)).toBe(2);
+    expect(yearsUntil(cyclone, 5)).toBe(1);
   });
 });
 
-describe("climate outlook", () => {
-  it("shows a season far out, narrows around the true date, then locks two years before", () => {
-    for (const seed of SEEDS) {
-      for (const challenge of buildSchedule(climate, seed, START, END)) {
-        const trueYear = START + challenge.quarter / 4;
-        const far = outlookFor(climate, challenge, Math.max(0, challenge.quarter - 30), START);
-        if (challenge.quarter >= 30) {
-          expect(far.phase).toBe("far");
-          expect(far.exactQuarter).toBeUndefined();
-          // Centred on the nominal year: no hint of the jitter.
-          expect((far.windowStart + far.windowEnd) / 2).toBe(challenge.year);
+describe("every seed meets the same storms", () => {
+  it("resolves the three storms when Next year is pressed on turns 5, 15 and 25, at the stated strengths and landfall", () => {
+    const seen = new Set<string>();
+    for (const seed of [...SEEDS, "l01-first-rains", "daily-2026-10-15", "replay-x"]) {
+      const run = newRun(seed, BOT_LEVEL);
+      const resolved: string[] = [];
+      while (!run.finished) {
+        const turn = run.turnNumber;
+        const before = new Map(run.schedule.map((c) => [c.id, run.landed.has(c.id)]));
+        const outcome = run.nextYear();
+        for (const event of outcome.events) {
+          if (event.type !== "challenge") continue;
+          expect(before.get(event.challenge.id)).toBe(false);
+          expect(event.outcome!.intensity).toBe(event.challenge.strength * climate.intensityPerStrength);
+          const record = run.stormRecords.get(event.challenge.id)!;
+          const expectedSite = event.challenge.kind === "flood" ? null : run.board().sites[landfallSite(run.board(), event.challenge)];
+          expect(record.landfallKey ?? null).toBe(expectedSite);
+          resolved.push(`${event.challenge.id}@${turn}:${event.challenge.strength}:${expectedSite}`);
         }
-        let previousWidth = Infinity;
-        for (let until = climate.narrowFromQuarters; until > climate.forecastLockQuarters; until--) {
-          const near = outlookFor(climate, challenge, challenge.quarter - until, START);
-          expect(near.phase).toBe("near");
-          expect(near.windowStart).toBeLessThanOrEqual(trueYear);
-          expect(near.windowEnd).toBeGreaterThanOrEqual(trueYear + 0.25);
-          const width = near.windowEnd - near.windowStart;
-          expect(width).toBeLessThanOrEqual(previousWidth + 1e-9);
-          previousWidth = width;
-        }
-        const locked = outlookFor(climate, challenge, challenge.quarter - climate.forecastLockQuarters, START);
-        expect(locked.phase).toBe("locked");
-        expect(locked.exactQuarter).toBe(challenge.quarter);
-        expect([1, 2, 3]).toContain(locked.icons);
       }
+      expect(resolved.map((r) => r.split(":")[0])).toEqual(["c1-cyclone@5", "c2-flood@15", "c3-compound@25"]);
+      seen.add(resolved.join("|"));
     }
+    // One calendar, one set of strengths and landfalls for every seed.
+    expect(seen.size).toBe(1);
   });
 
-  it("raises the baseline every year, so later challenges are stronger", () => {
-    expect(baselineMultiplier(climate, 40)).toBeGreaterThan(baselineMultiplier(climate, 0));
-    const [c1, c2, c3] = buildSchedule(climate, level.id, START, END);
-    expect(strengthIcons(challengeStrength(climate, c1))).toBe(1);
-    expect(strengthIcons(challengeStrength(climate, c2))).toBe(2);
-    expect(strengthIcons(challengeStrength(climate, c3))).toBe(3);
-  });
-});
-
-describe("action run with a schedule", () => {
-  function run(): ActionRun {
-    return new ActionRun(new GameState([{ coord: { q: 0, r: 0 }, terrainId: "land" }], [], 1000), level.timeline!, { climate, seed: level.id });
-  }
-
-  it("locks each forecast and lands each challenge exactly once, stopping a fast-forward on it", () => {
-    const r = run();
-    const seen: string[] = [];
-    while (!r.finished) {
-      const outcome = r.fastForwardYear();
-      for (const event of outcome.events) if (event.type === "forecast_lock" || event.type === "challenge") seen.push(`${event.type}:${event.challenge.id}@${r.quarter}`);
-      const landedHere = outcome.events.find((e) => e.type === "challenge");
-      if (landedHere && landedHere.type === "challenge") expect(r.quarter).toBe(landedHere.challenge.quarter);
-    }
-    expect(seen.filter((s) => s.startsWith("challenge")).length).toBe(3);
-    expect(seen.filter((s) => s.startsWith("forecast_lock")).length).toBe(3);
+  it("gives the calendar no seed to read: neither the schedule nor the run takes one", async () => {
+    // newRun above passes no seed to the run, so the check above holds by construction; this pins why.
+    expect(buildSchedule.length).toBe(3);
+    const { readFileSync } = await import("node:fs");
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    const runOptions = controller.slice(controller.indexOf("new ActionRun("), controller.indexOf("});", controller.indexOf("new ActionRun(")));
+    expect(runOptions).not.toMatch(/seed/);
+    expect(readFileSync("src/core/actionRun.ts", "utf8")).not.toMatch(/seed\??:/);
   });
 
-  it("'Next event' stops one quarter before the next challenge", () => {
-    const r = run();
-    const next = r.nextChallenge()!;
-    r.fastForwardToNextEvent();
-    expect(r.quarter).toBe(next.quarter - 1);
-    expect(r.fastForwardToNextEvent().ok).toBe(false);
+  it("gives the daily challenge the same fixed calendar", async () => {
+    const { dailyChallengeLevel } = await import("../src/levels/levels");
+    const daily = dailyChallengeLevel("2026-10-07");
+    expect(daily.timeModel).toBe("years");
+    expect(buildSchedule(daily.climate!, START, END)).toEqual(buildSchedule(climate, START, END));
   });
 });

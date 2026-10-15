@@ -3,7 +3,7 @@ import { axialToWorld, type AxialCoord } from "@core/hex";
 
 /**
  * The warning heat: one translucent layer over the board that turns the
- * tiles a coming storm will hit red, a little more each quarter.
+ * tiles a coming storm will hit red, in the two years before it comes.
  *
  * ONE layer, by design. Every heated tile is an instance of one flat hex in
  * one `InstancedMesh` with one shader, so the whole overlay is a single draw

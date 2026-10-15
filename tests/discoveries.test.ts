@@ -77,10 +77,12 @@ describe("NuggetPopup hands the fact to Maya", () => {
     const { maya, said, calls } = fakeMaya();
     const picker = new NuggetPopup(maya);
     expect(picker.replay("heat")).toBe(false);
-    expect(picker.replay("mangrove-grow")).toBe(true);
-    expect(said[0]).toMatchObject({ id: "mangrove-grow", force: true, urgent: true });
+    expect(picker.replay("dune-shrinks")).toBe(true);
+    expect(said[0]).toMatchObject({ id: "dune-shrinks", force: true, urgent: true });
     expect(calls).toEqual(["dismiss", "next"]);
-    expect(factById("mangrove-grow")!.kind).toBe("gameRule");
+    expect(factById("dune-shrinks")!.kind).toBe("gameRule");
+    // A rule about growth, switched off in this version, is not a fact Maya can replay.
+    expect(picker.replay("mangrove-grow")).toBe(false);
   });
 });
 
@@ -98,7 +100,7 @@ describe("a discovery never jumps ahead of a hazard warning", () => {
     expect(queue.map((l) => l.id)).toEqual(["warn", "fact-1", "fact-2", "tip-a", "tip-b"]);
   });
 
-  it("is said in that order by the director, a quarter apart", () => {
+  it("is said in that order by the director, a moment apart", () => {
     const queue: MayaLine[] = [];
     const order: string[] = [];
     let speaking = false;
@@ -119,12 +121,12 @@ describe("a discovery never jumps ahead of a hazard warning", () => {
         return true;
       }
     } as unknown as Maya;
-    const run = { quarter: 4 };
+    const run = { moment: 4 };
     const director = new MayaDirector(maya, { run, blocked: () => false } as never);
     maya.say(line("fact-1", { fact }));
     maya.say(line("warn", { urgent: true, state: "warning" }));
     for (let q = 4; q < 9; q++) {
-      run.quarter = q;
+      run.moment = q;
       director.pump();
     }
     // The greeting (an ordinary line from the director's constructor) comes last.
