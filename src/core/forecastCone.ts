@@ -9,12 +9,11 @@ import { computeWater, type StormInput, type WaterBoard } from "./hazardModel";
  * storm will come from and what it will reach, drawn from the hazard model
  * itself, never a separate picture.
  *
- *   - BANDS: how sure the water is to reach a tile, on a board with no
- *     defences at all (the worst a player can face): "Most likely" where even
- *     a storm at 60% of its strength would reach, "Likely" at 80%, "Possible"
- *     where the storm itself reaches. So every house that could be lost lies
- *     inside Possible. At sea (a cyclone only), the same, inside the wedge the
- *     surge comes in through.
+ *   - BANDS: every tile the storm's water reaches on a board with no
+ *     defences at all (the worst a player can face), in three bands by how
+ *     deep it would stand (`coneBands`): the deeper, the surer. So every house
+ *     that could be lost lies inside the cone. At sea (a cyclone only), the
+ *     same, inside the wedge the surge comes in through.
  *   - AREA TO PROTECT: the houses the storm takes with the defences standing
  *     now (the resolver's own answer, passed in): exactly what is at stake.
  *   - WHERE THEY MEET (the compound storm): the tiles where the surge and
@@ -46,8 +45,23 @@ export interface ForecastCone {
   tracks: ConeTrack[];
 }
 
-/** The share of the storm's strength whose reach makes each band: 60% for Most likely, 80% for Likely (Possible is the storm itself). */
-export const BAND_STRENGTHS = { mostLikely: 0.6, likely: 0.8 };
+/**
+ * The bands by depth: the deepest third of the tiles the storm reaches is
+ * Most likely, the next third Likely, the shallowest third Possible (equal
+ * depths share the darker band). A rank, not a strength cut-off: the river
+ * and the wetlands flood at any strength, so a cut-off by strength put almost
+ * a whole flood in one band.
+ */
+export function coneBands(reached: readonly (readonly [string, number])[]): Map<string, ConeBand> {
+  const sorted = [...reached].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+  const bands = new Map<string, ConeBand>();
+  if (sorted.length === 0) return bands;
+  const cut = (share: number) => sorted[Math.max(0, Math.ceil(sorted.length * share) - 1)][1];
+  const mostLikely = cut(1 / 3);
+  const likely = cut(2 / 3);
+  for (const [key, depth] of sorted) bands.set(key, depth >= mostLikely ? 3 : depth >= likely ? 2 : 1);
+  return bands;
+}
 /** Where they meet: the surge and the river water within this ratio of each other. */
 export const MEET_RATIO = 0.75;
 /** The wedge at sea a cyclone comes in through: its half-angle and its reach in hexes. */
@@ -141,11 +155,7 @@ export function forecastCone(
   lost: readonly string[],
   options: { combos?: ReadonlyMap<string, number>; landfallZoneTiles?: readonly string[] } = {}
 ): ForecastCone {
-  const worst = bare(state);
-  const reach = (share: number) => computeWater(worst, { ...storm, strength: storm.strength * share }, { landfallZoneTiles: options.landfallZoneTiles });
-  const water = reach(1);
-  const likely = reach(BAND_STRENGTHS.likely);
-  const mostLikely = reach(BAND_STRENGTHS.mostLikely);
+  const water = computeWater(bare(state), storm, { landfallZoneTiles: options.landfallZoneTiles });
   const site = storm.kind !== "flood" && storm.landfall !== null ? board.sites[storm.landfall] : null;
   // At sea only the wedge a cyclone comes in through; the open sea elsewhere is not the forecast.
   const at = site ? world(site) : null;
@@ -160,11 +170,8 @@ export function forecastCone(
     if (distance > SEA_WEDGE.reachHex * Math.sqrt(3)) return false;
     return distance < 0.01 || (dx * out.x + dz * out.z) / distance >= cos;
   };
-  const bands = new Map<string, ConeBand>();
-  for (const key of water.depth.keys()) {
-    if (WATER.has(board.tiles.get(key)!.terrainId) && !inWedge(key)) continue;
-    bands.set(key, mostLikely.depth.has(key) ? 3 : likely.depth.has(key) ? 2 : 1);
-  }
+  const reached = [...water.depth.keys()].filter((key) => !WATER.has(board.tiles.get(key)!.terrainId) || inWedge(key));
+  const bands = coneBands(reached.map((key) => [key, water.depth.get(key)!] as const));
   const tracks: ConeTrack[] = [];
   if (site) tracks.push(cycloneTrack(board, site));
   let meet: string[] = [];

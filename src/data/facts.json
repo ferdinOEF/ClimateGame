@@ -325,7 +325,7 @@
     {
       "id": "cone-bands",
       "kind": "gameRule",
-      "text": "A storm's cone shows its reach: Most likely is reached even by a weaker storm, Possible only at full strength.",
+      "text": "The cone shows where water would reach with no defences: Most likely where deepest, Possible where shallowest.",
       "elements": []
     }
   ]

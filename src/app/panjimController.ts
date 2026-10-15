@@ -41,7 +41,7 @@ import { coneChip } from "@core/forecastCone";
 import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { mayaAftermath, stormWord } from "@core/mayaLines";
+import { MAYA, mayaAftermath, stormWord } from "@core/mayaLines";
 import type { Tooltips } from "@ui/tooltip";
 
 /**
@@ -101,7 +101,8 @@ export interface PanjimHost {
   /** Rebuilds every element's mesh from the game state, after a rewind or a resume. */
   redrawBoard: () => void;
   /** Adds a second button to the level brief ("Continue from 2032"). */
-  offerResume: (label: string, onResume: () => void) => void;
+  /** `onBegin` runs instead when the player starts afresh. */
+  offerResume: (label: string, onResume: () => void, onBegin: () => void) => void;
   /** The map's challenge zones. */
   zones: readonly ZoneDef[];
   /** Shows a storm's path as a translucent in-scene overlay: each tile with a 0–1 weight. */
@@ -337,7 +338,7 @@ export class PanjimController {
     };
     if (this.jar) this.jar.onGain = (text) => this.panels.status.floatText(text);
     this.attachTooltips();
-    this.offerSavedRun();
+    const saveOffered = this.offerSavedRun();
     this.forecastLabel = document.createElement("div");
     this.forecastLabel.className = "forecast-label";
     this.forecastLabel.hidden = true;
@@ -345,7 +346,8 @@ export class PanjimController {
     this.clock.set(this.clockView());
     this.renderOutlook();
     this.syncControls();
-    this.showConeIfPhaseStart();
+    // With a save on offer, the first cone waits for Begin: a player who continues never sees it.
+    if (!saveOffered) this.showConeIfPhaseStart();
   }
 
   /**
@@ -833,8 +835,8 @@ export class PanjimController {
     }
   }
 
-  /** On load: if this level has a save part-way through, the brief offers to continue it. */
-  private offerSavedRun(): void {
+  /** On load: if this level has a save part-way through, the brief offers to continue it. True when it does. */
+  private offerSavedRun(): boolean {
     // Saves from the quarterly clock (v1, keyed by level and seed) cannot be continued: they are cleared.
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -852,7 +854,7 @@ export class PanjimController {
       saved = null;
     }
     // A save from the quarterly clock (version 1) cannot be read by the yearly one: it is not offered.
-    if (!saved || saved.snapshot?.version !== 2 || saved.snapshot.turn >= this.run.totalYears) return;
+    if (!saved || saved.snapshot?.version !== 2 || saved.snapshot.turn >= this.run.totalYears) return false;
     const label = String(this.run.config.startYear + saved.snapshot.turn);
     const data = saved;
     this.host.offerResume(`Continue from ${label}`, () => {
@@ -865,6 +867,8 @@ export class PanjimController {
       for (const id of data.conesSeen ?? []) this.coneSeen.add(id);
       for (const challenge of this.run.schedule) if (this.run.phaseStart(challenge) <= this.run.turnNumber) this.coneSeen.add(challenge.id);
       this.hideCone();
+      // Her opening line is about the first objective: gone once that phase is behind the save.
+      if (!this.run.prep.some((job) => job.heading)) this.maya.withdraw((line) => line.id === MAYA.opening.id);
       this.host.redrawBoard();
       const next = this.run.nextChallenge();
       if (next && this.run.yearsUntil(next) <= HEAT_LEAD_YEARS) this.showForecast(next);
@@ -872,7 +876,8 @@ export class PanjimController {
       this.renderOutlook();
       this.host.refresh();
       this.syncControls();
-    });
+    }, () => this.showConeIfPhaseStart());
+    return true;
   }
 
   /**

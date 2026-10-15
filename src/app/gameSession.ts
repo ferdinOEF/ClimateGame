@@ -761,7 +761,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
-          offerResume: (label, onResume) => objectivesPanel.addBriefAction(label, onResume)
+          offerResume: (label, onResume, onBegin) => objectivesPanel.addBriefAction(label, onResume, onBegin)
         })
       : null;
   if (panjim)

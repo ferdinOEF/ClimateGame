@@ -19,7 +19,7 @@ export class ForecastConeCard {
     this.el.setAttribute("role", "note");
     this.el.setAttribute("aria-label", "Forecast");
     this.el.innerHTML = `
-      <div class="cone-chip"><span class="cone-chip-icon" aria-hidden="true"></span><span class="cone-chip-text"></span></div>
+      <div class="cone-chip"><span class="cone-chip-icon" aria-hidden="true"></span><span class="cone-chip-text" aria-live="polite"></span></div>
       <ul class="cone-legend">
         <li><span class="cone-swatch band-3" aria-hidden="true"></span>Most likely</li>
         <li><span class="cone-swatch band-2" aria-hidden="true"></span>Likely</li>

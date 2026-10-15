@@ -2427,8 +2427,8 @@
 
 /* Area to protect: a dashed outline, as on the board. */
 .cone-swatch.area {
-  background: transparent;
-  border: 2px dashed #fdf6e6;
+  background: #fff3e0;
+  border: 2px dashed #2a0c08;
 }
 
 /* Where they meet: indigo, hatched. */

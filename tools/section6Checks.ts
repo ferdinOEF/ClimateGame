@@ -153,11 +153,16 @@ async function main(): Promise<void> {
         const reload = await open(browser, server.url, 1920, 1080, ctx);
         const resume = reload.locator(".brief-cta", { hasText: /Continue/ });
         check((await resume.count()) === 1, "after a reload in 2031 the brief offers to continue");
+        await reload.waitForTimeout(1500);
+        check(await coneGone(reload), "after the reload no cone shows behind the brief while it offers to continue");
         if ((await resume.count()) === 1) {
           await resume.first().click();
           await reload.waitForTimeout(3000);
           check((await val<number>(reload, "r.turnNumber")) === 6, "continuing resumes in 2031 (turn 6)");
           check(await coneGone(reload), "after the reload the flood's cone does not show again");
+          await reload.waitForTimeout(4000);
+          const said = (await reload.evaluate(`document.body.innerText`)) as string;
+          check(!said.includes("our first job"), "after the reload Maya does not give the first objective's line again");
         }
         await reload.close();
       }

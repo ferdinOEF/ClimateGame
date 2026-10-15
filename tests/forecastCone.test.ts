@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
-import { coneChip } from "../src/core/forecastCone";
+import { coneBands, coneChip } from "../src/core/forecastCone";
 import { placeOnLine } from "../src/core/stretch";
 import { mapById } from "../src/levels/levelMap";
 
@@ -39,8 +39,8 @@ describe("the forecast cone", () => {
       const bare = newRun("cone", BOT_LEVEL);
       while (!bare.landed.has(challenge.id)) bare.nextYear();
       for (const key of bare.outcomes.get(challenge.id)!.damagedHouses) expect(cone.bands.has(key), `${challenge.id} ${key}`).toBe(true);
-      // Every band is one of three, and a tile in a darker band is reached by a weaker storm.
-      expect(new Set(cone.bands.values())).toEqual(new Set([1, 2, 3]));
+      // Three real bands: each holds at least a tenth of the cone, so none is the whole of it.
+      for (const band of [1, 2, 3]) expect([...cone.bands.values()].filter((b) => b === band).length, `${challenge.id} band ${band}`).toBeGreaterThanOrEqual(cone.bands.size / 10);
     }
   });
 
@@ -87,5 +87,13 @@ describe("the forecast cone", () => {
       expect(at.along, key).toBeLessThanOrEqual(1);
       expect(run.openingTiles!.has(key), key).toBe(true);
     }
+  });
+});
+
+describe("the cone's bands", () => {
+  it("rank the reached tiles by depth into thirds, equal depths sharing the darker band", () => {
+    const bands = coneBands([["a", 3], ["b", 2.5], ["c", 2], ["d", 1], ["e", 1], ["f", 0.2]]);
+    expect([...bands.entries()].sort()).toEqual([["a", 3], ["b", 3], ["c", 2], ["d", 2], ["e", 2], ["f", 1]]);
+    expect(coneBands([]).size).toBe(0);
   });
 });

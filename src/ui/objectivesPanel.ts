@@ -124,10 +124,14 @@ export class ObjectivesPanel {
     this.el.appendChild(body);
   }
 
-  /** Adds a second button to the opening brief, under Begin. Closes the brief and runs `onClick`. */
-  addBriefAction(label: string, onClick: () => void): void {
+  /**
+   * Adds a second button to the opening brief, under Begin. Closes the brief
+   * and runs `onClick`. `onBegin`, when given, runs if Begin is pressed instead.
+   */
+  addBriefAction(label: string, onClick: () => void, onBegin?: () => void): void {
     const cta = this.briefBackdrop.querySelector(".brief-cta");
     if (!cta) return;
+    if (onBegin) cta.addEventListener("click", onBegin);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "brief-cta brief-resume";
