@@ -1129,3 +1129,112 @@ The mix gets 74%, so no single kind comes near it.
 - the Section 10 PROGRESS entry is written.
 
 **MINOR left:** `tests/section10.test.ts` also passes on the old numbers. It pins the objective, not the re-tune; the bot bands and the finale test pin the re-tune.
+
+# Section 11 — the owner's Panaji map edits; the north bank as scenery
+
+Branch `section-11-map-edits`, off master `ff006ca` (Section 10's merge;
+tag `pre-section-11`, and `backup/pre-section-11` on GitHub). Headless
+Chromium with software GL. Evidence in `docs/qa/section11/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 468 pass, 6 skipped. See the tests list below. |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. |
+| `npm run test:labels` | 37 of 37 views. |
+| `npm run test:layout` | 105 of 105 layouts. |
+| `npm run test:maya` | Pass, zero console errors. |
+| `npm run verify:maya` | All checks pass, including the street map at 21%. |
+| Section 11 browser checks (`tools/section11Shots.ts`, `checks.txt`) | 9 of 9. See below. |
+| Tutorial (`docs/qa/section11/tutorial/`, against master `ff006ca`) | Text identical, 0.000% of pixels differ, in all five states. |
+| axe-core | No serious or critical violations on the opening view. |
+| Bots, 20 seeds (`bots.md`) | See below. |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**Tests:**
+- New: `tests/panajiHandEdits.test.ts` (every edit is in the map) and `tests/scenery.test.ts` (the north bank's rules).
+- Adjusted for the new board, each with its reason in the test: `cityHill`, `boardSkirt`, `monuments`, `forecastCone`, `climate`, `section10`, `section4`, `phaseResult`, `aftermath`, `exposure` and `panjimBots`.
+
+**What the browser checks prove:**
+- the 2026 cone is on the map at the start;
+- a click on the north bank shows only "North of the Mandovi: not part of this game";
+- a click on the playable beach still opens its build menu;
+- 2031 opens with the flood's cone, at all four sizes;
+- there are zero console errors.
+
+**Screenshots:**
+- at 1366x768, 1920x1080, 2560x1440 and 1280x600:
+  - the opening view, with -gray and -deut copies at 1920;
+  - the 2026 cyclone cone;
+  - Campal and Santa Inez with the new creek;
+  - Fontainhas with the Ourem creek;
+  - Miramar;
+  - the Dona Paula headland;
+  - the north bank close up (the opening view shows it from the opening camera);
+  - the 2031 flood cone;
+- the north-bank click note at 1920;
+- `board-before-after.jpg`: the generator's class map, master against this branch.
+
+I looked at them. Fixed from the first round:
+- the cyclone's track crossed the north bank;
+- the skirt grew hills into the sea west of Dona Paula;
+- the north bank's edge tiles were too bright (edge grey raised to 0.7).
+
+**Storms and balance** (details in `storms.md` and `bots.md`):
+
+| Storm | Undefended homes lost, before (master) | After | After, north bank counted |
+|---|---|---|---|
+| 2030 cyclone | 9 | 8 | 11 |
+| 2040 flood | 39 | 39 | 43 |
+| 2050 compound (in its path) | 95 | 92 | 104 |
+
+| Archetype | Homes saved, mean (min–max) | 2★ every storm |
+|---|---|---|
+| Casual | 72% (65–77%) | 1 of 20 |
+| Smart | 78% (72–81%) | 18 of 20 |
+| Greedy | 17% (3–41%) | 0 of 20 |
+| Far | 0% | 0 of 20 |
+
+- No archetype wins under the current three-star rule; win is deferred.
+- **Every defence counts:**
+
+  | Defence | Margin (points) |
+  |---|---|
+  | khazan | 22.9 |
+  | mangrove | 15.6 |
+  | breakwater | 10.4 |
+  | small dam | 9.5 |
+  | seawall | 7.4 |
+  | pandanus | 2.0 |
+  | dune | 1.1 |
+
+- The best single kind alone (seawall) gets 36%.
+- **Drift:** a plain 10-build finale plan cuts losses by 34%, 11% and 33% at the three landfalls (Section 10: about 40%). Its nearest tiles are now the new beach at Dona Paula and the closed Santa Inez creek. Players who read the forecast do better than in Section 10, so the mechanics were not retuned.
+
+**Independent review (Section 11): 0 BLOCKER, 2 MAJOR, 6 MINOR, 3 NIT.**
+
+MAJORs fixed:
+- **Storm water was not drawn over the north bank.** The scenery filter sat in the water probe the storm animation also reads. It is now on the heat only. A test checks the drawn field, and fails with the old code.
+- **The bots counted north-bank houses** in their loss estimate, Greedy's streets and the by-eye fallback. Fixed, and the bots were re-run. Greedy's 25-point swing band is restored.
+
+MINORs fixed:
+- the north bank in zone z4 (the generator now leaves it out of every zone; the resolver's zone and city reports skip it);
+- the house economy counting the north bank's houses;
+- the skirt rule applying to every map (now a Panaji map field);
+- tall skirt columns west of Dona Paula;
+- the exposure test's changed plan now gives its reason;
+- the PROGRESS and QA_REPORT entries.
+
+MINORs left, with reasons:
+- `section4`'s floor of 10% sits one point under the measured 11%. It pins the drift and says why.
+- The cone's area includes 6,9, which the objective cannot save; no text promises otherwise.
+
+NITs:
+- The new seaward rule changes every landfall's wedge a little; only Panaji uses it.
+- A monument move does not check its target. Both targets are land and free.
+- The note is one line, set `nowrap`.
+
+**Could not be run or checked here:**
+- Firefox and WebKit, and frame rates on a real GPU.
+- Production after the merge, in a browser: this container's network refuses the site. The deploy is checked through Vercel's API instead.
