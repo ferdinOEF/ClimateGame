@@ -134,7 +134,8 @@ async function checkMenu(page: Page, tag: string, ground: string, key: string, f
   const detail: string[] = [];
   for (const card of cards) {
     const model = await val<number | null>(page, `r.homesSavedBy(r.nextChallenge(), { q: ${q}, r: ${r} }, ${JSON.stringify(card.id)})`);
-    const expected = model === null ? "" : model > 0 ? `Protects ${model} ${model === 1 ? "home" : "homes"} here` : model < 0 ? `Puts ${-model} more ${model === -1 ? "home" : "homes"} at risk` : "Protects 0 homes here";
+    const defence = card.id !== "sand_mining";
+    const expected = model === null ? "" : model > 0 ? `Protects ${model} ${model === 1 ? "home" : "homes"} here` : model < 0 ? `Puts ${-model} more ${model === -1 ? "home" : "homes"} at risk` : defence ? "Protects 0 homes here" : "Saves no homes here";
     if (card.pill !== expected) exact = false;
     detail.push(`${card.id} "${card.pill}"`);
   }
@@ -145,9 +146,10 @@ async function checkMenu(page: Page, tag: string, ground: string, key: string, f
   const place = (await page.evaluate(`(function () {
     var m = document.querySelector(".build-popover").getBoundingClientRect();
     var hit = function (sel) { var e = document.querySelector(sel); if (!e) return false; var c = e.getBoundingClientRect(); return c.width > 0 && m.left < c.right && m.right > c.left && m.top < c.bottom && m.bottom > c.top; };
-    return { inside: m.left >= 0 && m.top >= 0 && m.right <= innerWidth && m.bottom <= innerHeight, chip: hit(".panjim-clock .clock-face"), outlook: hit(".panjim-clock .outlook") };
-  })()`)) as { inside: boolean; chip: boolean; outlook: boolean };
+    return { inside: m.left >= 0 && m.top >= 0 && m.right <= innerWidth && m.bottom <= innerHeight, chip: hit(".panjim-clock .clock-face"), outlook: hit(".panjim-clock .outlook"), ready: hit(".get-ready") };
+  })()`)) as { inside: boolean; chip: boolean; outlook: boolean; ready: boolean };
   check(place.inside && !place.chip && !place.outlook, `${tag} ${ground}: the cards fit on screen, clear of the year chip and the Outlook`);
+  if (place.ready) lines.push(`NOTE  ${tag} ${ground}: the cards touch the Get ready card (no clear spot beside this tile)`);
   check(ms < 50, `${tag} ${ground}: the numbers took ${ms.toFixed(1)} ms (under 50)`);
   await shot(page, `menu-${ground}-${tag}`, full && ground === "beach");
   if (full && ground === "beach") await axe(page, "the build menu");

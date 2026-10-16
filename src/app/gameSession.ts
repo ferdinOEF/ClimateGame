@@ -2216,7 +2216,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           if (!controller.stormComing) nuggetPopup?.show(id);
           playSound("build");
         },
-        { avoid: [".panjim-clock", ".outlook"] }
+        // The year chip first (never covered), then the rest of the HUD.
+        { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"] }
       );
       return;
     }

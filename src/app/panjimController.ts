@@ -39,7 +39,7 @@ import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
 import { panjimSaveKey } from "@levels/savedRun";
-import { isPhaseLine, MAYA, stormWord } from "@core/mayaLines";
+import { isPhaseLine, MAYA, noteIdsFor, stormWord } from "@core/mayaLines";
 import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
@@ -188,7 +188,6 @@ export class PanjimController {
   /** Real milliseconds played before this session, when resuming a save: the tempo badge counts the whole run. */
   playMsBefore = 0;
   /** The in-scene label over a storm's landfall or source while its warning is up: "Cyclone landfall ●○○". */
-  private forecastAnchor: AxialCoord | null = null;
   /** "Show risk": the warning heat on or off (R). On by default, remembered on this device. */
   readonly riskToggle: PrefToggle;
   /** The latest exposure preview of the next storm, while it is inside the warning window. Read by Maya and the Get ready panel. */
@@ -335,7 +334,9 @@ export class PanjimController {
     this.fieldGuide.onReplayNote = (note) => {
       if (!this.nuggets.replay(note.id)) this.mayaDirector.replay(note);
     };
-    // Her count and the Field Guide's are one number (Section 13).
+    // Her count and the Field Guide's are one number (Section 13), out of the notes this level can give:
+    // her first-job line or her hello (whichever she opened with), her tips, and the discoveries of what can be built.
+    this.fieldGuide.countable = noteIdsFor({ opening: this.run.prep.some((job) => job.heading), excluded: host.state.excludedElements });
     this.nuggets.progressText = (factId) => this.fieldGuide.notesProgress(factId);
     // The HUD kept almost out of the way (hudPanels.ts): the instrument cluster, coin jar and Field Guide
     // button go into one panel and the toggles into another, each shut to a small button. The elements
@@ -482,7 +483,8 @@ export class PanjimController {
     tips.attach(outlook.line, "outlookNext", () => ({ next: this.outlook.nextText }));
     tips.attach(outlook.risk, "homesAtRisk", () => {
       const next = this.run.nextChallenge();
-      return { homes: next ? this.run.homesAtRisk(next) : 0, storm: next ? stormWord(next.kind) : "storm" };
+      const homes = next ? this.run.homesAtRisk(next) : 0;
+      return { homes: `${homes} ${homes === 1 ? "home" : "homes"}`, storm: next ? stormWord(next.kind) : "storm" };
     });
 
     tips.attach(this.fieldGuide.buttonEl, "fieldGuide", () => ({ notes: this.fieldGuide.notesProgress(), found: this.fieldGuide.count, species: this.fieldGuide.speciesTotal }));
@@ -1058,7 +1060,7 @@ export class PanjimController {
     };
     const here = this.host.state.buildableAt(coord).map((def) => def).sort((a, b) => order(a.id) - order(b.id));
     const cards: BuildCard[] = here.map((def) => {
-      const { pill, tone } = cardPill(next ? this.run.homesSavedBy(next, coord, def.id) : null);
+      const { pill, tone } = cardPill(next ? this.run.homesSavedBy(next, coord, def.id) : null, (DEFENCE_ORDER as readonly string[]).includes(def.id));
       return { id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "", pill, tone };
     });
     for (const id of DEFENCE_ORDER) {
@@ -1813,13 +1815,13 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-/** What the clock names the next storm as: "3 builds until the cyclone". */
 /** "+3 homes safe", "+0 homes safe", "2 more homes at risk". */
 export function floatText(saved: number): string {
   if (saved < 0) return `${-saved} more ${saved === -1 ? "home" : "homes"} at risk`;
   return `+${saved} ${saved === 1 ? "home" : "homes"} safe`;
 }
 
+/** What the clock names the next storm as: "Cyclone in 3 builds". */
 function untilWord(kind: ScheduledChallenge["kind"]): string {
   return kind === "cyclone" ? "Cyclone" : kind === "flood" ? "Flood" : "Cyclone and flood";
 }

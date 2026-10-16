@@ -1,6 +1,6 @@
 import guideData from "@data/fieldGuide.json";
 import { playSound } from "@ui/audioHooks";
-import { notesProgress, refreshSavedNotes } from "@core/mayaLines";
+import { noteIdsFor, notesProgress, refreshSavedNotes } from "@core/mayaLines";
 
 /**
  * The Field Guide: ten species of the Panjim coast, collected by tapping the
@@ -158,8 +158,11 @@ export class FieldGuide {
 
   /** The Field Guide's one count (Section 13): Maya's notes held, of every note there is. Her bubble shows the same. */
   notesProgress(plus?: string): string {
-    return notesProgress(this.notes.map((note) => note.id), plus);
+    return notesProgress(this.notes.map((note) => note.id), this.countable, plus);
   }
+
+  /** The notes this level can give (set by the level; every note there is until then). */
+  countable: ReadonlySet<string> = noteIdsFor({ opening: false, excluded: new Set() });
 
   private renderButton(): void {
     this.button.textContent = `Field Guide ${this.notesProgress()}`;

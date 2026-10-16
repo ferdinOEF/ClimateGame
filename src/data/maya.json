@@ -40,11 +40,6 @@
       "text": "A seawall holds no water. If a storm is bigger than the wall, it fails all at once."
     },
     {
-      "id": "shields",
-      "title": "Green shields",
-      "text": "The green shields mark what your defences are protecting. Red with no shield is still open."
-    },
-    {
       "id": "get-ready",
       "title": "Get ready",
       "text": "I keep a short Get ready list for the next storm, bottom right. Every item is optional."

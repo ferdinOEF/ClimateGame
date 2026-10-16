@@ -2867,3 +2867,11 @@
 .empty-prompt.held {
   display: none !important;
 }
+
+.build-card-head {
+  padding: 0 4px 2px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e6b268;
+}

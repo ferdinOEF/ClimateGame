@@ -6,7 +6,7 @@
   "outlookNext": "{next}",
   "readiness": "Ready {pct}%: your defences would stop {pct}% of the {storm}'s damage if it hit now, and {saved} of the {total} homes in its path would stand ({stars} stars). Build where the map turns red to raise it.",
   "readinessNone": "Every storm is behind you.",
-  "homesAtRisk": "Homes at risk: the {storm} would take {homes} homes if it came now, by this game's model. Each build menu card says how many a defence would save.",
+  "homesAtRisk": "Homes at risk: if the {storm} came now, this game's model says it would take {homes}. Each build menu card says how many a defence would save.",
   "sea": "Sea level in this game: {cm} cm above {start}. It rises a little every year.",
   "coin": "Your Coin: {coin}. Spend it on defences. Your city earns {income} Coin a season, collecting in the jar below.",
   "fieldGuide": "Maya's notes in your Field Guide: {notes}. Her tips show the same count. Inside, you have spotted {found} of {species} creatures.",

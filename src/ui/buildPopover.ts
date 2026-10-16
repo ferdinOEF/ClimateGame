@@ -205,6 +205,11 @@ export class BuildPopover {
   showCards(screenX: number, screenY: number, cards: BuildCard[], onSelect: (id: string) => void, mode: { notice?: string; blocked?: boolean; avoid?: string[] } = {}): void {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
+    // What each card says is this game's rule, and its number this game's model.
+    const head = document.createElement("div");
+    head.className = "build-card-head";
+    head.textContent = "In this game";
+    this.el.appendChild(head);
     if (mode.notice) {
       const notice = document.createElement("div");
       notice.className = "build-notice";
@@ -239,7 +244,6 @@ export class BuildPopover {
         const item = document.createElement("div");
         item.className = "build-card-not-here";
         item.dataset.element = card.id;
-        item.setAttribute("aria-label", `${card.name}: not here`);
         item.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-name"></span><span class="build-card-tag">Not here</span>`;
         (item.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
         grid.appendChild(item);
@@ -247,10 +251,16 @@ export class BuildPopover {
       this.el.appendChild(grid);
     }
     this.placeBeside(screenX, screenY, mode.avoid ?? []);
+    this.returnFocus = document.activeElement instanceof HTMLElement && !this.el.contains(document.activeElement) ? document.activeElement : null;
     (this.el.querySelector<HTMLElement>(".build-card:not(.disabled)") ?? null)?.focus({ preventScroll: true });
   }
 
-  /** Beside the tile (right of it, or left if there is no room), clear of the viewport's edges and of `avoid`. */
+  /**
+   * Beside the tile, clear of the viewport's edges and of `avoid`: tries the
+   * right of the tile and the left, at the tile's height and just clear of
+   * each obstacle, and takes the spot that covers the least of the HUD (the
+   * first listed, the year chip, counts most), then the one nearest the tile.
+   */
   private placeBeside(screenX: number, screenY: number, avoid: string[]): void {
     this.el.style.left = "0px";
     this.el.style.top = "0px";
@@ -259,22 +269,33 @@ export class BuildPopover {
     const origin = (this.el.offsetParent as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, top: 0 };
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    let left = screenX + CARD_GAP;
-    if (left + width > vw - VIEWPORT_MARGIN) left = screenX - CARD_GAP - width;
-    left = Math.max(VIEWPORT_MARGIN, Math.min(vw - VIEWPORT_MARGIN - width, left));
-    let top = Math.max(VIEWPORT_MARGIN, Math.min(vh - VIEWPORT_MARGIN - height, screenY - height / 2));
-    // Never over the year chip and the strip under it: below them if the columns meet.
-    for (const selector of avoid) {
-      for (const el of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
-        const r = el.getBoundingClientRect();
-        if (r.width < 1 || r.height < 1) continue;
-        const across = left < r.right && left + width > r.left;
-        if (across && top < r.bottom && top + height > r.top) top = r.bottom + VIEWPORT_MARGIN;
+    const obstacles = avoid.flatMap((selector, rank) =>
+      Array.from(document.querySelectorAll<HTMLElement>(selector))
+        .map((el) => el.getBoundingClientRect())
+        .filter((r) => r.width >= 1 && r.height >= 1)
+        .map((r) => ({ r, weight: rank === 0 ? 1000 : 1 }))
+    );
+    const clampX = (x: number): number => Math.max(VIEWPORT_MARGIN, Math.min(vw - VIEWPORT_MARGIN - width, x));
+    const clampY = (y: number): number => Math.max(VIEWPORT_MARGIN, Math.min(vh - VIEWPORT_MARGIN - height, y));
+    const lefts = [clampX(screenX + CARD_GAP), clampX(screenX - CARD_GAP - width)];
+    const tops = [screenY - height / 2, ...obstacles.flatMap(({ r }) => [r.bottom + VIEWPORT_MARGIN, r.top - VIEWPORT_MARGIN - height])].map(clampY);
+    let best = { left: lefts[0], top: tops[0], cost: Infinity };
+    for (const left of lefts) {
+      for (const top of tops) {
+        let covered = 0;
+        for (const { r, weight } of obstacles) {
+          const w = Math.min(left + width, r.right) - Math.max(left, r.left);
+          const h = Math.min(top + height, r.bottom) - Math.max(top, r.top);
+          if (w > 0 && h > 0) covered += w * h * weight;
+        }
+        // Covering the tile itself is never wanted either; then nearer is better.
+        const overTile = screenX > left - 8 && screenX < left + width + 8 && screenY > top - 8 && screenY < top + height + 8 ? 1e6 : 0;
+        const cost = covered + overTile + Math.abs(top + height / 2 - screenY) * 0.5 + Math.abs(left - screenX) * 0.1;
+        if (cost < best.cost) best = { left, top, cost };
       }
     }
-    top = Math.min(top, vh - VIEWPORT_MARGIN - height);
-    this.el.style.left = `${Math.round(left - origin.left)}px`;
-    this.el.style.top = `${Math.round(top - origin.top)}px`;
+    this.el.style.left = `${Math.round(best.left - origin.left)}px`;
+    this.el.style.top = `${Math.round(best.top - origin.top)}px`;
   }
 
   /** A one-line note in place of a build menu (a tile that is not part of the game). */
@@ -376,8 +397,14 @@ export class BuildPopover {
   /** Called whenever the popover closes, however it closes. */
   onHide: (() => void) | null = null;
 
+  /** Where focus was before the cards took it: given back when they close. */
+  private returnFocus: HTMLElement | null = null;
+
   hide(): void {
+    const hadFocus = this.el.contains(document.activeElement);
     this.backdrop.hidden = true;
+    if (hadFocus && this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
+    this.returnFocus = null;
     this.tooltips?.hide();
     this.onHide?.();
   }

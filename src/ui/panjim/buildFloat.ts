@@ -16,6 +16,9 @@ export class BuildFloat {
   constructor(container: HTMLElement, private readonly project: Project) {
     this.layer = document.createElement("div");
     this.layer.className = "build-floats";
+    // One polite live region for every float, so each build is read out once.
+    this.layer.setAttribute("role", "status");
+    this.layer.setAttribute("aria-live", "polite");
     container.appendChild(this.layer);
   }
 
@@ -23,7 +26,6 @@ export class BuildFloat {
   show(text: string, tone: "good" | "zero" | "bad", at: { x: number; y: number; z: number }): void {
     const el = document.createElement("div");
     el.className = `build-float ${tone}`;
-    el.setAttribute("role", "status");
     el.textContent = text;
     this.layer.appendChild(el);
     this.live.push({ el, ...at, until: performance.now() + SHOW_MS });

@@ -44,8 +44,10 @@ export const CARD_ICON: Record<string, string> = {
 };
 
 /** The pill under a card's line: the model's number for this tile and the storm coming. */
-export function cardPill(saved: number | null): { pill: string | null; tone: "good" | "zero" | "bad" } {
+export function cardPill(saved: number | null, defence = true): { pill: string | null; tone: "good" | "zero" | "bad" } {
   if (saved === null) return { pill: null, tone: "zero" };
+  // Not a defence (sand mining): "Protects 0" would read as a defence that failed.
+  if (saved === 0 && !defence) return { pill: "Saves no homes here", tone: "zero" };
   if (saved > 0) return { pill: `Protects ${saved} ${saved === 1 ? "home" : "homes"} here`, tone: "good" };
   if (saved < 0) return { pill: `Puts ${-saved} more ${saved === -1 ? "home" : "homes"} at risk`, tone: "bad" };
   return { pill: "Protects 0 homes here", tone: "zero" };
