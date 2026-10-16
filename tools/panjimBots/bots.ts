@@ -376,7 +376,7 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
   let lost = 0;
   let excess = 0;
   for (const [key, inst] of board.elements) {
-    if (inst.elementId !== "house" || inst.degradeAmount >= 1) continue;
+    if (inst.elementId !== "house" || inst.degradeAmount >= 1 || board.isScenery(key)) continue;
     const d = water.depth.get(key) ?? 0;
     if (floodsHouse(d)) {
       lost++;
@@ -482,7 +482,7 @@ function byEye(p: Player, next: ScheduledChallenge): { coord: AxialCoord; id: st
     let nearHomes = 0;
     for (const n of around([key], 2)) {
       if (red.has(n)) nearRed++;
-      if (p.state.elements.get(n)?.elementId === "house") nearHomes++;
+      if (p.state.elements.get(n)?.elementId === "house" && !p.state.isScenery(n)) nearHomes++;
     }
     for (const id of DEFENCES) {
       if (!answers(id, next.kind) || !p.state.canBuild(coord, id)) continue;
@@ -509,7 +509,7 @@ export const GREEDY_STREETS = Number(process.env.GREEDY_STREETS ?? 6);
 function playGreedy(p: Player): void {
   // The streets it cares about, drawn once per run: a few houses by the water (where a defence can go), anywhere in the city.
   const houses = [...p.state.elements]
-    .filter(([key, inst]) => inst.elementId === "house" && [...around([key], 2)].some((n) => DEFENCES.some((id) => p.state.canBuild(coordOf(n), id))))
+    .filter(([key, inst]) => inst.elementId === "house" && !p.state.isScenery(key) && [...around([key], 2)].some((n) => DEFENCES.some((id) => p.state.canBuild(coordOf(n), id))))
     .map(([key]) => key);
   const streets: string[] = [];
   const adopt = (): void => {

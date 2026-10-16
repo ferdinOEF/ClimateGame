@@ -1740,8 +1740,11 @@ async function main(): Promise<void> {
       kind: demMeta.kind,
       method: `Every tile: the ${ELEVATION_PERCENTILE * 100}th percentile of the 1-arc-second DEM pixels within ${Math.round(HEX_SIZE * SAMPLE_RADIUS_FRACTION * METRES_PER_UNIT)} m of the tile centre, rounded to 0.5 m.`
     },
-    // The Panjim 2050 challenge zones (see ZONES).
-    zones: assignZones(cells),
+    // The Panjim 2050 challenge zones (see ZONES), never on the north bank (it is scenery).
+    zones: assignZones(cells.filter((cell) => !unplayable.has(axialKey(cell.coord)))),
+    // The board skirt: west of the board from this row south is the open Arabian Sea (the
+    // Dona Paula headland the owner added goes out only as far as its tip).
+    skirtOpenSeaWestFromRow: 10,
     // North of the Mandovi: on the board as scenery, not part of the game (Section 11.4).
     unplayable: [...unplayable].map((key) => key.split(",").map(Number) as [number, number]).sort((a, b) => a[1] - b[1] || a[0] - b[0]),
     // Major roads and bridges, read from the OSM picture (see findRoads).

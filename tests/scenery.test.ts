@@ -47,13 +47,23 @@ describe("the north bank (scenery)", () => {
     }
   });
 
-  it("still gets wet: the storms' water reaches it (drawn, never counted)", () => {
+  it("still gets wet on screen: the water drawn for each storm covers it where the model floods it (drawn, never counted)", () => {
     const run = newRun("north", BOT_LEVEL);
-    let wet = 0;
     for (const challenge of [...run.schedule]) {
       while (!run.landed.has(challenge.id)) passYear(run);
-      for (const key of run.stormRecords.get(challenge.id)!.depth.keys()) if (NORTH.has(key)) wet++;
+      const record = run.stormRecords.get(challenge.id)!;
+      const wet = [...record.depth.keys()].filter((key) => NORTH.has(key) && run.state.placed.get(key)!.terrainId === "land");
+      const drawn = wet.filter((key) => {
+        const tile = record.field.tiles.get(key);
+        return !!tile && tile.surgePeak + tile.floodPeak > 0;
+      });
+      // The drawn field is the storm animation's (core/hazard.ts); every flooded north-bank land tile is in it.
+      expect(drawn.length, challenge.id).toBe(wet.length);
+      if (challenge.kind !== "cyclone") expect(wet.length, challenge.id).toBeGreaterThan(0);
     }
-    expect(wet).toBeGreaterThan(0);
+  });
+
+  it("is in no zone", () => {
+    for (const zone of MAP.zones) for (const [q, r] of zone.tiles) expect(NORTH.has(`${q},${r}`), `${zone.id} ${q},${r}`).toBe(false);
   });
 });

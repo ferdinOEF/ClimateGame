@@ -234,7 +234,7 @@ export function resolveChallenge(
   if (probe) {
     const unit = scale / HAZARD_MODEL.houseLossDepthM;
     // Each tile's water is the deeper of the surge and the river (they do not add), reported as that kind.
-    for (const [key, d] of field.depth) if (!state.isScenery(key)) probe(key, d * unit, (field.surge.get(key) ?? 0) >= (field.flood.get(key) ?? 0) ? "cyclone" : "flood");
+    for (const [key, d] of field.depth) probe(key, d * unit, (field.surge.get(key) ?? 0) >= (field.flood.get(key) ?? 0) ? "cyclone" : "flood");
   }
 
   const pathHouses = new Set<string>();
@@ -260,7 +260,8 @@ export function resolveChallenge(
   const overSet = new Set(field.overwhelmed);
   const outcomes: ZoneOutcome[] = [];
   for (const zoneId of order) {
-    const keys = zoneId === CITY_ZONE ? [...undefended.depth.keys()].filter((key) => !zones.zoneOf(key)) : zones.keys(zoneId);
+    // Never the north bank (scenery): its water is drawn, not reported.
+    const keys = (zoneId === CITY_ZONE ? [...undefended.depth.keys()].filter((key) => !zones.zoneOf(key)) : zones.keys(zoneId)).filter((key) => !state.isScenery(key));
     const inZone = standing.filter((key) => zoneOf(key) === zoneId);
     const zoneFailed = field.failed.filter((key) => zoneOf(key) === zoneId);
     const zoneOver = field.overwhelmed.filter((key) => zoneOf(key) === zoneId);

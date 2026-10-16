@@ -96,7 +96,10 @@ export function computeExposure(
       options.combos,
       options.houseStars,
       options.houseRule,
-      (key, value) => tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, value)),
+      // The heat never covers scenery (the north bank): the storm still draws there, from the same probe.
+      (key, value) => {
+        if (!copy.isScenery(key)) tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, value));
+      },
       site
     );
     for (const key of result.damagedHouses) atRisk.add(key);

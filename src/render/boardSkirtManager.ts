@@ -82,9 +82,6 @@ function smoothstep(t: number): number {
   return x * x * (3 - 2 * x);
 }
 
-/** The first row south of the Mandovi's mouth: west of the board from here on is open sea. */
-const OPEN_SEA_FROM_ROW = 10;
-
 interface SkirtTile {
   coord: AxialCoord;
   ring: number;
@@ -102,7 +99,12 @@ interface SkirtTile {
  * Exported so the tests can check the rule that matters most: no skirt hex is
  * ever a board hex.
  */
-export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[], rings = RINGS): SkirtTile[] {
+export function skirtTiles(
+  board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[],
+  rings = RINGS,
+  /** The map's `skirtOpenSeaWestFromRow`: west of the board from this row south is open sea. */
+  openSeaWestFromRow?: number
+): SkirtTile[] {
   const terrainByKey = new Map(board.map((tile) => [axialKey(tile.coord), tile.terrainId]));
   const seen = new Set(terrainByKey.keys());
   // The skirt beyond a scenery bank stays as quiet as the bank (full grey, not the edge's fade).
@@ -120,8 +122,11 @@ export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: strin
         // West of the board's edge and south of the Mandovi's mouth is the open
         // Arabian Sea: land there (the Dona Paula headland the owner added in
         // Section 11) goes one ring out, its tip, and then the skirt is sea.
-        const openSea = ring >= 2 && !WATER.has(from.terrainId) && coord.q + coord.r / 2 < 0 && coord.r >= OPEN_SEA_FROM_ROW;
-        const tile = openSea ? { coord, terrainId: "coast", lift: 0, grey: 0 } : { coord, terrainId: from.terrainId, lift: from.lift, grey: from.grey };
+        // Its tip is drawn flat: the ring of sea beyond would leave a raised tip standing as a column.
+        const westSea = openSeaWestFromRow !== undefined && !WATER.has(from.terrainId) && coord.q + coord.r / 2 < 0 && coord.r >= openSeaWestFromRow;
+        const tile = westSea && ring >= 2
+          ? { coord, terrainId: "coast", lift: 0, grey: 0 }
+          : { coord, terrainId: from.terrainId, lift: westSea ? 0 : from.lift, grey: from.grey };
         next.push(tile);
         out.push({ ...tile, ring });
       }
@@ -134,14 +139,14 @@ export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: strin
 export class BoardSkirtManager {
   readonly group = new THREE.Group();
 
-  constructor(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[], overlay: OverlayUniforms) {
+  constructor(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[], overlay: OverlayUniforms, openSeaWestFromRow?: number) {
     const sky = PALETTE.sky.clone();
     const hillStops = [paletteColor("landGreen"), paletteColor("ghatsNear"), paletteColor("ghatsMid"), paletteColor("ghatsFar"), paletteColor("ghatsDistant")];
 
     const sea: { matrix: THREE.Matrix4; color: THREE.Color; fade: number; grey: number }[] = [];
     const land: { matrix: THREE.Matrix4; color: THREE.Color; fade: number; grey: number }[] = [];
 
-    for (const tile of skirtTiles(board)) {
+    for (const tile of skirtTiles(board, RINGS, openSeaWestFromRow)) {
       const t = tile.ring / (RINGS + 1);
       const { x, z } = axialToWorld(tile.coord, HEX_SIZE);
       const baseHeight = TERRAIN_BY_ID.get(tile.terrainId)?.height ?? 0.3;

@@ -18,16 +18,16 @@ describe("Panjim bots, 25 builds", () => {
     for (const run of far) expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.02);
   });
 
-  it("building by eye on what the forecast shows saves more than half the homes (Casual 60-85%)", () => {
+  it("building by eye on what the forecast shows saves more than half the homes (Casual 60-80%)", () => {
     for (const run of casual) {
       expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.6);
-      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.85);
+      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.8);
     }
   });
 
-  it("ignoring the forecast is a gamble: Greedy swings at least 20 points and always does worse than Casual on average", () => {
+  it("ignoring the forecast is a gamble: Greedy swings at least 25 points and always does worse than Casual on average", () => {
     const shares = greedy.map(savedShare);
-    expect(Math.max(...shares) - Math.min(...shares)).toBeGreaterThanOrEqual(0.2);
+    expect(Math.max(...shares) - Math.min(...shares)).toBeGreaterThanOrEqual(0.25);
     expect(mean(greedy)).toBeLessThan(mean(casual) - 0.2);
   });
 

@@ -33,7 +33,7 @@ describe("the board skirt", () => {
 
   it("continues the terrain it touches: sea off the west coast, land off the east, and land beside the Dona Paula headland's new land", () => {
     const panaji = mapById("panaji")!;
-    const skirt = skirtTiles(panaji.tiles);
+    const skirt = skirtTiles(panaji.tiles, undefined, panaji.skirtOpenSeaWestFromRow);
     // World x is sqrt(3) * (q + r/2); the board spans 0 to 34 in q + r/2.
     const column = (tile: { coord: { q: number; r: number } }): number => tile.coord.q + tile.coord.r / 2;
     // Rows 26-29: the owner's Section 11 edits added land west of the board's edge there (-17..-15, 27..29).

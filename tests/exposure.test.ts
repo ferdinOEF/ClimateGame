@@ -86,6 +86,8 @@ describe("the heat equals the loss (preview equals resolution)", () => {
     const plans: [string, string][][] = [
       [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "dune"]],
       [["z2", "khazan"], ["z2", "mangrove"], ["z3", "mangrove"]],
+      // Section 11: z4's wetland is gone (the owner's edits made it river, and the north bank's is scenery), so the
+      // third storm's first mangrove goes to the Taleigao wetlands instead; what is tested, preview = loss, is the same.
       [["z2", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"]]
     ];
     for (const plan of plans) {

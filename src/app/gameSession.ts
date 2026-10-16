@@ -224,7 +224,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // Purely cosmetic and never fed into GameState: the ground past the edge of
   // play, so the board dissolves into sea and hills instead of ending in a
   // cut. Replaces the old four-column Ghats backdrop — see the manager.
-  const boardSkirt = new BoardSkirtManager(levelTiles, terrain.overlayUniforms);
+  const boardSkirt = new BoardSkirtManager(levelTiles, terrain.overlayUniforms, levelMap.skirtOpenSeaWestFromRow);
   // STEP_PROMPT_ghats_wave_demo.md Section 2/3: the wave-front spectacle —
   // layered on top of hazardOverlay's own per-tile reveals, not a
   // replacement for them (see WaveFrontManager's own comment).

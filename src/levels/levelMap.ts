@@ -154,6 +154,8 @@ export interface GameMap {
   bridges: [number, number][];
   /** Which neighbouring road tiles the road runs between: [q1, r1, q2, r2]. */
   roadLinks: [number, number, number, number][];
+  /** The board skirt: west of the board from this row south is open sea, whatever land touches it (Panaji). */
+  skirtOpenSeaWestFromRow?: number;
   /** Tiles on the board as scenery only, not part of the game (Panaji's north bank). Their `PlacedTile.scenery` is set. Empty on maps without them. */
   unplayable: [number, number][];
   tiles: PlacedTile[];
@@ -178,6 +180,7 @@ interface MapFileShape {
   bridges?: [number, number][];
   roadLinks?: [number, number, number, number][];
   unplayable?: [number, number][];
+  skirtOpenSeaWestFromRow?: number;
   tiles: { q: number; r: number; terrainId: string; elevationM?: number }[];
 }
 
@@ -202,6 +205,7 @@ function fromFile(file: unknown): GameMap {
     bridges: data.bridges ?? [],
     roadLinks: data.roadLinks ?? [],
     unplayable: data.unplayable ?? [],
+    skirtOpenSeaWestFromRow: data.skirtOpenSeaWestFromRow,
     tiles: data.tiles.map((tile) => {
       const placed: PlacedTile = tile.elevationM === undefined
         ? { coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }

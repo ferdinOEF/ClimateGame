@@ -49,7 +49,10 @@ export function boardSetup(level: LevelDef, map: GameMap): BoardSetup {
       if (town.buildings.has(axialKey(tile.coord))) setup.startingElements.push({ coord: tile.coord, elementId: "house" });
     }
   }
-  setup.effectScale.set("house", fill.houseEconomyHouses / Math.max(1, setup.startingElements.length));
+  // Only the houses that are part of the game share the town's economy (the north bank is scenery).
+  const scenery = new Set(map.unplayable.map(([q, r]) => `${q},${r}`));
+  const counted = setup.startingElements.filter((seed) => !scenery.has(axialKey(seed.coord))).length;
+  setup.effectScale.set("house", fill.houseEconomyHouses / Math.max(1, counted));
   for (const id of fill.excludeFromBuild) setup.excluded.add(id);
   if (fill.coastBuildRange !== undefined) {
     // Distance from the nearest non-coast tile, walked over the coast only.
