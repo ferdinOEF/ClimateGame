@@ -2990,3 +2990,9 @@
 .brief-card.brief-tutorial.with-feature > .brief-body { grid-row: 4; font-size: 16px; }
 .brief-card.brief-tutorial.with-feature > .brief-cta { grid-row: 5; }
 .brief-card.brief-tutorial.with-feature > .brief-feature { grid-row: 1 / 7; }
+.calm-motion .build-card-pill.coach-pulse {
+  animation: none;
+}
+.panjim-help-note a {
+  color: #f4d9a6;
+}

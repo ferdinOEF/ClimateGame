@@ -82,6 +82,7 @@ export class MayaDirector {
 
   /** A tip by id (also used by the Get ready panel). */
   tip(id: string, state: MayaState = "tip"): void {
+    if (this.ctx.quiet) return;
     const note = TIPS.get(id);
     if (note) this.say(note, state);
   }

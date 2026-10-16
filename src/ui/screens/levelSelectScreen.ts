@@ -2,6 +2,7 @@ import { LEVELS } from "@levels/levels";
 import { isLevelUnlocked, recordFor, type PlayerProgress } from "@levels/progression";
 import { el, formatScore, starRow } from "./screenHelpers";
 import { savedRunYear } from "@levels/savedRun";
+import { mapById } from "@levels/levelMap";
 
 /**
  * The campaign list (Section 15): a centred card per level, each with a
@@ -42,6 +43,8 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
                 attrs: { "aria-hidden": "true" },
                 children: [el("img", { attrs: { src: `${import.meta.env.BASE_URL}art/level-${level.mapId}.jpg`, alt: "", decoding: "async", loading: "lazy", draggable: "false" } })]
               }),
+              // A board drawn from OpenStreetMap is credited wherever it is shown (src/ui/attribution.ts).
+              mapCredit(level.mapId),
               el("div", {
                 className: "level-card-top",
                 children: [
@@ -61,6 +64,12 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
   });
 
   root.appendChild(screen);
+}
+
+/** The map data credit under a thumbnail of a board drawn from OpenStreetMap; nothing for the made-up Tutorial coast. */
+function mapCredit(mapId: string): HTMLElement | null {
+  const attribution = mapById(mapId)?.source?.attribution;
+  return attribution ? el("div", { className: "level-card-credit", text: `Map data ${attribution}` }) : null;
 }
 
 /** What a run of the level is, from its own numbers: "3 builds · 1 cyclone" or "25 builds · 3 storms". */

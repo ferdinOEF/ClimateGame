@@ -15,6 +15,8 @@ export interface PanjimHelpInput {
   startYear: number;
   endYear: number;
   storms: readonly ScheduledChallenge[];
+  /** Years before a storm that its heat shows (one in the Tutorial). */
+  heatLeadYears?: number;
 }
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six"];
@@ -26,6 +28,8 @@ const esc = (text: string): string => text.replace(/[&<>"]/g, (c) => ({ "&": "&a
 function picture(name: string, alt: string): string {
   return `<img class="panjim-help-pic" src="${import.meta.env.BASE_URL}art/${name}" alt="${esc(alt)}" loading="lazy" decoding="async" draggable="false">`;
 }
+
+const heatLead = (years: number): string => (years === 1 ? "In a storm's own year" : `In the ${countWord(years)} years before a storm`);
 
 const RULE = `<span class="result-rule">Game rule</span>`;
 
@@ -73,7 +77,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       ${picture("help-heat.jpg", "Red striped tiles: homes the coming storm would flood")}
       <div>
         <h3>The heat ${RULE}</h3>
-        <p>In the ${countWord(HEAT_LEAD_YEARS)} years before a storm, red marks the homes it would flood.</p>
+        <p>${heatLead(input.heatLeadYears ?? HEAT_LEAD_YEARS)}, red marks the homes it would flood.</p>
       </div>
     </section>
 
@@ -85,7 +89,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       </div>
     </section>
 
-    <p class="panjim-help-note">Everything on this page is a rule of this game. What Maya tells you about real dunes, mangroves and khazans comes with its source: see Facts &amp; sources on the menu.</p>
+    <p class="panjim-help-note">Everything on this page is a rule of this game. What Maya tells you about real dunes, mangroves and khazans comes with its source: see Facts &amp; sources on the menu. The pictures are the game's own board; its map data is © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.</p>
   </div>
   </div>
 `;

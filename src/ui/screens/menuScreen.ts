@@ -12,6 +12,7 @@ import { getCurrentUser } from "@services/auth";
 import { el, formatScore, starRow } from "./screenHelpers";
 import { menuModel, type MenuButtonSpec } from "./menuModel";
 import { openSources } from "@ui/sourcesScreen";
+import { menuTagline } from "./runWords";
 
 /**
  * The title screen — the first thing a player sees.
@@ -91,7 +92,7 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
         children: [
           el("div", { className: "menu-eyebrow", text: "A coast defence game set in Goa" }),
           el("h1", { className: "menu-title", text: "Riptide Rising" }),
-          el("p", { className: "menu-tagline", text: MENU_TAGLINE })
+          el("p", { className: "menu-tagline", text: menuTagline() })
         ]
       }),
 
@@ -109,14 +110,13 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
 
   // The header: the game's own Panjim board (a render, tools/shellArt.ts), fading into the page.
   root.appendChild(menuArt());
+  root.appendChild(menuArtCredit());
   root.appendChild(screen);
   const credits = creditsStrip();
   root.appendChild(credits);
   keepCreditsClear(screen, credits);
 }
 
-/** The line under the title (Section 15): what the game is, in its own numbers. */
-export const MENU_TAGLINE = "Twenty-five years of Panjim. Three storms. One build a year.";
 
 function menuArt(): HTMLElement {
   const base = import.meta.env.BASE_URL;
@@ -124,6 +124,15 @@ function menuArt(): HTMLElement {
     className: "menu-art",
     attrs: { "aria-hidden": "true" },
     children: [el("img", { attrs: { src: `${base}art/menu-header.jpg`, alt: "", decoding: "async", draggable: "false" } })]
+  });
+}
+
+/** The header is a render of the Panjim board, whose streets and shore come from OpenStreetMap: credited as in the game. */
+function menuArtCredit(): HTMLElement {
+  return el("a", {
+    className: "menu-art-credit",
+    text: "Board render · map data © OpenStreetMap contributors",
+    attrs: { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener noreferrer" }
   });
 }
 

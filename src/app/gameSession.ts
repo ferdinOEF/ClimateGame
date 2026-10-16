@@ -901,7 +901,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,
-      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule })
+      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule, heatLeadYears: panjim.heatLeadYears })
     );
   /**
    * The step-by-step coach, on the tutorial level only.
@@ -1025,7 +1025,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * the `devAutoBuild`/`__buildForTest` dev-only paths deliberately don't
    * call `nuggetPopup.show()`.
    */
-  // Maya says the fact (nuggetPopup.ts). The Tutorial has no Maya: its coach is its one voice, so there is nothing to say a fact there.
+  // Maya says the fact (nuggetPopup.ts). Not in the Tutorial (Section 15): her coaching lines are its one voice.
   const nuggetPopup = panjim?.nuggets ?? null;
   /**
    * STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: the same category of tool
@@ -2481,7 +2481,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       else if (!leaveConfirm) options.onExit();
       // Not while a storm plays: the year is saved only once it has settled.
       else if (!leaveConfirm.isOpen && !panjim?.isBusy && (!overlayOpen() || objectivesPanel.briefOpen)) {
-        void leaveConfirm.ask(panjim?.hasSave ? "Your progress is saved." : "You haven't built anything yet.").then((leave) => {
+        const note = panjim?.tutorial ? "The Tutorial is not saved: leaving starts it again." : panjim?.hasSave ? "Your progress is saved." : "You haven't built anything yet.";
+        void leaveConfirm.ask(note).then((leave) => {
           if (leave) options.onExit();
         });
       }

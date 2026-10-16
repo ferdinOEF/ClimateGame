@@ -41,6 +41,7 @@ import { NuggetPopup } from "@ui/nuggetPopup";
 import { panjimSaveKey } from "@levels/savedRun";
 import { isPhaseLine, MAYA, noteIdsFor, stormWord, TUTORIAL_LINES } from "@core/mayaLines";
 import type { RunThen } from "@core/levelScore";
+import { PANAJI_LEVEL_ID } from "@ui/screens/runWords";
 import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
@@ -159,9 +160,6 @@ export interface PanjimHost {
   tooltips: Tooltips;
 }
 
-/** The level the Tutorial's last card leads to. */
-export const PANAJI_LEVEL_ID = "l01-first-rains";
-
 export class PanjimController {
   readonly run: ActionRun;
   /**
@@ -171,6 +169,10 @@ export class PanjimController {
    * is no finale and no save.
    */
   readonly tutorial: boolean;
+  /** Years before a storm that its red heat shows: the last one only in the Tutorial, where Maya explains it then (Section 15). */
+  get heatLeadYears(): number {
+    return this.tutorial ? 1 : HEAT_LEAD_YEARS;
+  }
   /** Which of the Tutorial's coaching lines have been said. */
   private readonly coached = new Set<string>();
   /** What the Tutorial's result card was closed with. */
@@ -235,6 +237,8 @@ export class PanjimController {
   constructor(private readonly host: PanjimHost) {
     if (!host.level.timeline) throw new Error("PanjimController needs a level timeline");
     this.tutorial = host.level.tutorial === true;
+    // No risk wave in the Tutorial: the heat comes with Maya's own line about it, and nothing competes with her.
+    if (this.tutorial) this.riskGate.markSpent();
     this.run = new ActionRun(host.state, host.level.timeline, {
       climate: host.level.climate,
       zones: host.zones,
@@ -554,7 +558,7 @@ export class PanjimController {
   renderHeat(): void {
     const next = this.run.nextChallenge();
     const yearsLeft = next ? this.run.yearsUntil(next) : 0;
-    this.exposure = next && yearsLeft >= 1 && yearsLeft <= HEAT_LEAD_YEARS ? this.run.exposureFor(next) : null;
+    this.exposure = next && yearsLeft >= 1 && yearsLeft <= this.heatLeadYears ? this.run.exposureFor(next) : null;
     if (!next || !this.exposure || !this.riskToggle.value) {
       this.host.showHeat([]);
       return;
@@ -1225,7 +1229,8 @@ export class PanjimController {
         playSound("hazard_telegraph");
         this.outlook.pulse();
         // No banner: Maya says the warning (Section 13, one voice at a time).
-        this.showForecast(event.challenge);
+        // In the Tutorial the storm's path waits for its last year, with the heat (Section 15).
+        if (!this.tutorial || this.run.yearsUntil(event.challenge) <= this.heatLeadYears) this.showForecast(event.challenge);
         break;
       }
       case "challenge": {
@@ -1335,7 +1340,8 @@ export class PanjimController {
   private coach(id: keyof typeof TUTORIAL_LINES, state: MayaState): void {
     if (!this.tutorial || this.coached.has(id)) return;
     this.coached.add(id);
-    this.maya.withdraw((line) => line.id === "tutorial:start");
+    // Only the line for now: one left waiting (Maya muted or shut) would be stale by the time she speaks.
+    this.maya.withdraw((line) => line.id.startsWith("tutorial:"));
     this.maya.dismiss();
     this.maya.say({ id: `tutorial:${id}`, text: TUTORIAL_LINES[id], state, urgent: true });
     this.maya.next();
@@ -1356,7 +1362,10 @@ export class PanjimController {
     if (!this.tutorial) return;
     const next = this.run.nextChallenge();
     if (!next) return;
-    if (this.run.yearsUntil(next) <= 1) this.coach("heat", "warning");
+    if (this.run.yearsUntil(next) <= 1) {
+      if (this.run.zones && this.run.climate) this.showForecast(next);
+      this.coach("heat", "warning");
+    }
     else if (this.run.turnNumber === 2) this.coach("outline", "tip");
   }
 

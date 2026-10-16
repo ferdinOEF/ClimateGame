@@ -1,5 +1,6 @@
 import type { PhaseResult } from "@core/phaseResult";
 import { resultHeadline } from "@core/phaseResult";
+import { panajiRunPhrase } from "@ui/screens/runWords";
 
 /**
  * The end-of-phase result cards (Section 9): after each storm, a short
@@ -105,7 +106,7 @@ export function tutorialResultCard(result: PhaseResult): HTMLElement {
   const most = Math.max(1, ...result.defences.map((d) => d.homes));
   const rows = result.defences.length
     ? `<h3 class="result-subtitle">What protected them</h3>
-       <p class="result-sub">Homes that would have been lost without each one.</p>
+       <p class="result-sub">Defences share the work: each number is the homes that would have been lost without that one alone, so they need not add up to the homes saved.</p>
        <ul class="result-rows">${result.defences
          .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span><span class="result-row-value">${d.homes}</span></li>`)
          .join("")}</ul>`
@@ -116,7 +117,7 @@ export function tutorialResultCard(result: PhaseResult): HTMLElement {
     ${starsHtml(result.stars)}
     ${homesHtml(result.homesSaved, result.homesTotal)}
     ${rows}
-    <p class="result-sub">Panaji is the real city: twenty-five builds and three storms.</p>
+    <p class="result-sub">Panaji is the real city: ${esc(panajiRunPhrase())}.</p>
   </div>`);
 }
 

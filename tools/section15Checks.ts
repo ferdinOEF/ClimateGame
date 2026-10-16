@@ -98,12 +98,13 @@ try {
         plateBottom: plate.bottom,
         plateTop: plate.top,
         scrollTop: layer.scrollTop,
-        title: document.querySelector(".menu-title")?.textContent
+        title: document.querySelector(".menu-title")?.textContent,
+        credit: (document.querySelector(".menu-art-credit")?.textContent ?? "").includes("OpenStreetMap")
       };
     });
     check(menu.plateTop >= 0 && menu.plateBottom <= h + 0.5 && menu.scrollTop === 0, `${tag} menu: the logo strip is on screen without scrolling (${Math.round(menu.plateTop)} to ${Math.round(menu.plateBottom)} of ${h})`);
     check(JSON.stringify(menu.buttons) === JSON.stringify(["Tutorial", "Choose a level"]), `${tag} menu: only Tutorial and Choose a level (${menu.buttons.join(", ")})`);
-    check(menu.title === "Riptide Rising" && menu.tagline === "Twenty-five years of Panjim. Three storms. One build a year.", `${tag} menu: the name and the tagline`);
+    check(menu.title === "Riptide Rising" && menu.tagline === "Twenty-five years of Panjim. Three storms. One build a year." && menu.credit, `${tag} menu: the name, the tagline, and the header render's OpenStreetMap credit`);
     await noForbidden(page, `${tag} menu`);
     await shot(page, `menu-${tag}`, full);
     if (full) await axe(page, "menu");
