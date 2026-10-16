@@ -55,6 +55,8 @@ export interface PrepConfig {
   places: Record<string, string>;
   /** At most this many jobs per storm (default 3). */
   max?: number;
+  /** Each phase's objective is chosen by the hazard model (core/phaseObjectives.ts; Section 12) instead of the templates. */
+  model?: boolean;
 }
 
 export interface PrepObjective {
@@ -72,6 +74,8 @@ export interface PrepObjective {
   /** For an opening objective's step: the stretch's tiles it counts in (instead of `zone`), and the objective's title. */
   tiles?: string[];
   heading?: string;
+  /** A model-chosen row (core/phaseObjectives.ts): the homes its picks saved in the model when it was set. */
+  homes?: number;
 }
 
 function standingIn(state: GameState, zones: ZoneIndex, elementId: string, zone: string, tiles?: ReadonlySet<string>): number {

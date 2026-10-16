@@ -42,6 +42,8 @@ export interface PhaseResult {
   homesTotal: number;
   places: PlaceResult[];
   defences: DefenceResult[];
+  /** Every row of the phase's objective was done when the storm came (Section 12): a badge, never stars. */
+  objectiveComplete?: boolean;
 }
 
 export interface Place {

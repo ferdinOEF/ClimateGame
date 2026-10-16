@@ -1,6 +1,14 @@
 import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
-import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
+import { BOT_LEVEL as PANAJI, newRun } from "../tools/panjimBots/bots";
+
+/**
+ * Section 12: Panaji's objectives are now chosen by the hazard model
+ * (tests/phaseObjectives.test.ts). These tests keep covering the template
+ * jobs and the named opening objective, which any level without the model
+ * flag still uses: on a copy of Panaji with the flag off.
+ */
+const BOT_LEVEL = { ...PANAJI, prep: { ...PANAJI.prep!, model: false } };
 import { prepProgress } from "../src/core/prep";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import type { ActionRun } from "../src/core/actionRun";

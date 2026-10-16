@@ -132,6 +132,7 @@
       900
     ],
     "prep": {
+      "model": true,
       "max": 3,
       "places": {
         "z1": "Miramar beach",

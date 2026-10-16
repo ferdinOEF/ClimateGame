@@ -7,6 +7,7 @@ import { computeCombos, newComboMembers, type ComboId, type ComboState } from ".
 import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
 import { landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
 import { generatePrep, openingJobs, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
+import { generatePhaseObjective, type PhaseObjective } from "./phaseObjectives";
 import { stretchTiles } from "./stretch";
 import { forecastCone, type ForecastCone } from "./forecastCone";
 import { resolveStorm, type StormRecord } from "./stormRecord";
@@ -86,6 +87,8 @@ export interface ActionRunOptions {
   growth?: { enabled: boolean };
   /** The map's named places, for an opening objective's stretch of coast. */
   landmarks?: readonly { name: string; q: number; r: number }[];
+  /** False skips choosing each phase's objective with the model (the bots: objectives never change an outcome). Default true. */
+  generateObjectives?: boolean;
 }
 
 /** The readiness gauge: what the next storm would do to the board as it stands. */
@@ -118,6 +121,8 @@ export interface RunSnapshot {
   areas?: [string, string[]][];
   /** The defences built in each phase, by the storm it led to (Section 9). */
   phaseBuilds?: [string, string[]][];
+  /** Storms whose phase objective was complete when they landed (Section 12). */
+  objectivesComplete?: string[];
 }
 
 /** Repairs cost this share of the element's build cost (coins on only). */
@@ -159,6 +164,10 @@ export class ActionRun {
   readonly prepConfig?: PrepConfig;
   /** The Get ready jobs for the next storm, done or not. */
   prep: PrepObjective[] = [];
+  /** The phase's model-chosen objective, with its picks (core/phaseObjectives.ts), when the level uses one. */
+  objective: PhaseObjective | null = null;
+  private readonly generateObjectives: boolean;
+  private readonly landmarkList: readonly { name: string; q: number; r: number }[];
   /** The opening objective's stretch of coast (its tiles), when the level has one and its places are on the map. */
   readonly openingTiles: ReadonlySet<string> | null;
   /**
@@ -173,6 +182,8 @@ export class ActionRun {
   readonly areas = new Map<string, string[]>();
   /** The defences the player built in each storm's phase, in order, by that storm's id: the result cards' rows. */
   readonly phaseBuilds = new Map<string, string[]>();
+  /** Storms whose phase objective had every row done when they landed: result card 1's "Objective complete" badge. */
+  readonly objectivesComplete = new Set<string>();
   /** Every action and every new year counts one: Maya speaks at most once per moment. */
   moment = 0;
   // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -207,6 +218,8 @@ export class ActionRun {
     this.houseStars = options.houseStars;
     this.houseRule = options.houseRule;
     this.prepConfig = options.prep;
+    this.generateObjectives = options.generateObjectives ?? true;
+    this.landmarkList = options.landmarks ?? [];
     const region = options.prep?.opening?.region;
     const from = region && options.landmarks?.find((l) => l.name === region.from);
     const to = region && options.landmarks?.find((l) => l.name === region.to);
@@ -242,6 +255,29 @@ export class ActionRun {
       this.prep = [];
       return this.prep;
     }
+    // Each phase's objective chosen by the hazard model (Section 12).
+    if (this.prepConfig.model) {
+      this.objective = null;
+      this.prep = [];
+      if (!this.generateObjectives) return this.prep;
+      const region = this.prepConfig.opening?.challengeId === next.id ? this.prepConfig.opening : undefined;
+      const landfallTiles = this.zones.keys(LANDFALL_ZONE);
+      this.objective = generatePhaseObjective({
+        state: this.state,
+        zones: this.zones,
+        challenge: next,
+        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next) },
+        landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
+        area: this.exposureFor(next)?.housesAtRisk ?? [],
+        // The phase's own builds (5, 10, 10): set as its storm lands, the clock still reads the year before.
+        budget: Math.min(this.buildsUntil(next), next.turn - this.phaseStart(next) + 1),
+        places: this.prepConfig.places,
+        localities: this.landmarkList,
+        stretch: region && this.openingTiles ? { tiles: this.openingTiles, place: `between ${region.region.from} and ${region.region.to}`, title: region.title } : null
+      });
+      this.prep = this.objective.rows;
+      return this.prep;
+    }
     // The first storm's own objective, when the level has one (Section 6.3).
     const opening = this.prepConfig.opening;
     if (opening && opening.challengeId === next.id && this.openingTiles) {
@@ -269,7 +305,8 @@ export class ActionRun {
         outcomes: [...this.outcomes],
         prep: this.prep,
         areas: [...this.areas],
-        phaseBuilds: [...this.phaseBuilds]
+        phaseBuilds: [...this.phaseBuilds],
+        objectivesComplete: [...this.objectivesComplete]
       } satisfies RunSnapshot)
     ) as RunSnapshot;
   }
@@ -298,6 +335,8 @@ export class ActionRun {
     for (const [id, area] of copy.areas ?? []) this.areas.set(id, area);
     this.phaseBuilds.clear();
     for (const [id, builds] of copy.phaseBuilds ?? []) this.phaseBuilds.set(id, builds);
+    this.objectivesComplete.clear();
+    for (const id of copy.objectivesComplete ?? []) this.objectivesComplete.add(id);
     this.notePhaseStart();
     this.moment++;
   }
@@ -572,6 +611,8 @@ export class ActionRun {
   /** A storm resolves against the board. */
   protected land(challenge: ScheduledChallenge): RunEvent[] {
     const events: RunEvent[] = [];
+    // The objective is judged as the storm comes, before it takes anything: optional, it never changes the outcome.
+    if (this.zones && this.prep.length > 0 && this.prep.every((job) => job.challengeId === challenge.id && prepProgress(job, this.state, this.zones!).done)) this.objectivesComplete.add(challenge.id);
     if (!this.zones || !this.climate) {
       events.push({ type: "challenge", challenge, outcome: null });
     } else {

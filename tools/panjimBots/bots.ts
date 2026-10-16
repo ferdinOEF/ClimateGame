@@ -113,7 +113,9 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
     prep: level.prep,
     economy: level.economy,
     growth: level.growth,
-    landmarks: MAP.landmarks
+    landmarks: MAP.landmarks,
+    // Objectives never change an outcome; choosing them costs time the bots do not need.
+    generateObjectives: false
   });
 }
 

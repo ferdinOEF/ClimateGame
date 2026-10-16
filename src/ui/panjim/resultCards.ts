@@ -62,6 +62,7 @@ export function resultCard(result: PhaseResult): HTMLElement {
     <div class="result-eyebrow">${esc(result.eyebrow)}</div>
     <h2 class="result-title">${esc(resultHeadline(result.stars))}</h2>
     ${starsHtml(result.stars)}
+    ${result.objectiveComplete ? `<div class="result-badge" role="note">Objective complete</div>` : ""}
     ${homesHtml(result.homesSaved, result.homesTotal)}
     ${places}
   </div>`);

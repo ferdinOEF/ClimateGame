@@ -730,7 +730,7 @@ export class PanjimController {
    * The next phase starts when they close, its cone on the map.
    */
   private async showResults(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
-    const result = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []);
+    const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
