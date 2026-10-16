@@ -215,9 +215,10 @@ export function resolveChallenge(
   const storm = { kind, strength, landfall: site };
   const options = { combos, landfallZoneTiles: landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined };
 
+  // A house on scenery (the north bank) is drawn, never counted.
   const isHouse = (key: string): boolean => {
     const inst = state.elements.get(key);
-    return !!inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
+    return !!inst && !state.isScenery(key) && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
   };
   // What the storm would do with no defences at all: the path, and the yardstick for protection.
   const bare = state.clone();
@@ -233,7 +234,7 @@ export function resolveChallenge(
   if (probe) {
     const unit = scale / HAZARD_MODEL.houseLossDepthM;
     // Each tile's water is the deeper of the surge and the river (they do not add), reported as that kind.
-    for (const [key, d] of field.depth) probe(key, d * unit, (field.surge.get(key) ?? 0) >= (field.flood.get(key) ?? 0) ? "cyclone" : "flood");
+    for (const [key, d] of field.depth) if (!state.isScenery(key)) probe(key, d * unit, (field.surge.get(key) ?? 0) >= (field.flood.get(key) ?? 0) ? "cyclone" : "flood");
   }
 
   const pathHouses = new Set<string>();

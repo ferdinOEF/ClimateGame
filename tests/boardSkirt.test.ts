@@ -31,12 +31,15 @@ describe("the board skirt", () => {
     }
   });
 
-  it("continues the terrain it touches: sea off the west coast, land off the east", () => {
+  it("continues the terrain it touches: sea off the west coast, land off the east, and land beside the Dona Paula headland's new land", () => {
     const panaji = mapById("panaji")!;
     const skirt = skirtTiles(panaji.tiles);
     // World x is sqrt(3) * (q + r/2); the board spans 0 to 34 in q + r/2.
     const column = (tile: { coord: { q: number; r: number } }): number => tile.coord.q + tile.coord.r / 2;
-    const west = skirt.filter((tile) => tile.ring === 1 && column(tile) < 0 && tile.coord.r > 10 && tile.coord.r < 30);
+    // Rows 26-29: the owner's Section 11 edits added land west of the board's edge there (-17..-15, 27..29).
+    const west = skirt.filter((tile) => tile.ring === 1 && column(tile) < 0 && tile.coord.r > 10 && tile.coord.r < 26);
+    const headland = skirt.filter((tile) => tile.ring === 1 && column(tile) < 0 && tile.coord.r >= 26 && tile.coord.r <= 29);
+    expect(headland.some((tile) => tile.terrainId === "land")).toBe(true);
     const east = skirt.filter((tile) => tile.ring === 1 && column(tile) > 34 && tile.coord.r > 16 && tile.coord.r < 32);
     expect(west.length).toBeGreaterThan(0);
     expect(east.length).toBeGreaterThan(0);

@@ -6,6 +6,12 @@ export interface PlacedTile {
   terrainId: string;
   /** Ground height in metres, on maps built from a DEM (land tiles only). */
   elevationM?: number;
+  /**
+   * On the board as scenery only, not part of the game (Panaji's north bank,
+   * Section 11.4): nothing can be built on it, and its houses are never
+   * counted. Storms still draw over it.
+   */
+  scenery?: boolean;
 }
 
 export interface ElementInstance {
@@ -268,7 +274,7 @@ export class GameState {
   buildableAt(coord: AxialCoord): ElementDef[] {
     const key = axialKey(coord);
     const tile = this.placed.get(key);
-    if (!tile || !this.claimed.has(key) || this.elements.has(key) || this.reserved.has(key) || this.unbuildable.has(key)) return [];
+    if (!tile || tile.scenery || !this.claimed.has(key) || this.elements.has(key) || this.reserved.has(key) || this.unbuildable.has(key)) return [];
     const results: ElementDef[] = [];
     for (const def of ELEMENT_BY_ID.values()) {
       if (def.validTerrainIds.includes(tile.terrainId) && !this.excludedElements.has(def.id)) results.push(def);
@@ -303,6 +309,11 @@ export class GameState {
     this.elements.set(axialKey(coord), { elementId, builtOnTurn: this.turn, degradeAmount: 0, floodBufferFilled: 0 });
     if (advance) this.advanceTurn();
     return true;
+  }
+
+  /** True on a tile that is scenery only (see `PlacedTile.scenery`). */
+  isScenery(key: string): boolean {
+    return this.placed.get(key)?.scenery === true;
   }
 
   /** True if a building-kind element (not a defense) is standing at this coord key — used by cyclone's Trust penalty. */

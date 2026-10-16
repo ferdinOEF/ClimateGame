@@ -67,7 +67,7 @@ export interface StormArgs {
 
 function isBuilding(state: GameState, key: string): boolean {
   const inst = state.elements.get(key);
-  return !!inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building" && inst.degradeAmount < 1;
+  return !!inst && !state.isScenery(key) && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building" && inst.degradeAmount < 1;
 }
 
 /** True for an element that defends against any of `hazards` (the ones the resolver counts). */

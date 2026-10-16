@@ -86,7 +86,7 @@ describe("the heat equals the loss (preview equals resolution)", () => {
     const plans: [string, string][][] = [
       [["z1", "dune"], ["z1", "sandy_vegetation"], ["z1", "dune"]],
       [["z2", "khazan"], ["z2", "mangrove"], ["z3", "mangrove"]],
-      [["z4", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"]]
+      [["z2", "mangrove"], ["z2", "khazan"], ["z3", "mangrove"]]
     ];
     for (const plan of plans) {
       // One build three years out, then one in each warning year, the heat recomputed after each.

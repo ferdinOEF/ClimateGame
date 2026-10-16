@@ -170,7 +170,8 @@ export function forecastCone(
     if (distance > SEA_WEDGE.reachHex * Math.sqrt(3)) return false;
     return distance < 0.01 || (dx * out.x + dz * out.z) / distance >= cos;
   };
-  const reached = [...water.depth.keys()].filter((key) => !WATER.has(board.tiles.get(key)!.terrainId) || inWedge(key));
+  // Never the north bank: it is scenery, not part of the game.
+  const reached = [...water.depth.keys()].filter((key) => !state.isScenery(key) && (!WATER.has(board.tiles.get(key)!.terrainId) || inWedge(key)));
   const bands = coneBands(reached.map((key) => [key, water.depth.get(key)!] as const));
   const tracks: ConeTrack[] = [];
   if (site) tracks.push(cycloneTrack(board, site));

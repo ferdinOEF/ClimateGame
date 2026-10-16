@@ -84,7 +84,7 @@ describe("the result cards' numbers", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const challenge = run.schedule[0];
     const area = run.areas.get(challenge.id)!;
-    expect(area.length).toBe(9);
+    expect(area.length).toBe(8);
     play(run, true);
     const result = phaseResult(challenge, run.stormRecords.get(challenge.id)!, area, PLACES, run.phaseBuilds.get(challenge.id) ?? []);
     expect(result.eyebrow).toBe("2030 · Cyclone");

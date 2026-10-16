@@ -14,12 +14,12 @@ position, the ring the hex the landmark stands on. Positions: `tools/mapgen/pana
 | 6 | Jama Masjid | 15.49482 | 73.82612 | unverified | 9,10 | land |  |
 | 7 | Don Bosco High School | 15.49704 | 73.82130 | nominatim+osm-image | 8,9 | land |  |
 | 8 | Don Bosco College | 15.49660 | 73.82250 | osm-image | 9,9 | land | its hex is taken by Don Bosco High School; moved 1 |
-| 9 | Sharada Mandir School | 15.48043 | 73.80916 | nominatim+osm-image | -3,18 | beach |  |
+| 9 | Sharada Mandir School | 15.48043 | 73.80916 | nominatim+osm-image | -2,18 | land | moved by hand to -2,18 |
 | 10 | Government Polytechnic | 15.48625 | 73.82388 | nominatim+osm-image | 6,15 | land |  |
 | 11 | Kala Academy | 15.49421 | 73.81741 | nominatim+osm-image | 5,11 | land | its hex reads as estuary in OSM; moved 1 to dry ground |
 | 12 | Goa State Museum | 15.49370 | 73.83560 | osm-image | 13,11 | land |  |
 | 13 | Campal Garden | 15.49682 | 73.81825 | osm-image | 7,8 | land | its hex reads as estuary in OSM; moved 1 to dry ground |
-| 14 | Dhempe College | 15.48120 | 73.80980 | osm-image | -2,17 | land |  |
+| 14 | Dhempe College | 15.48120 | 73.80980 | osm-image | -1,17 | land | moved by hand to -1,17 |
 | 15 | Miramar Beach | 15.47668 | 73.80668 | nominatim+osm-image | -4,20 | beach | its hex reads as coast in OSM; moved 1 to dry ground |
 | 16 | Dona Paula | 15.45360 | 73.80195 | osm-image | -13,32 | land |  |
 | 17 | Caranzalem (label) | 15.46770 | 73.80800 | OSM basemap label | -7,25 | land | |

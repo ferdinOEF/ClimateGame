@@ -89,8 +89,8 @@
           "name": "Cyclone",
           "kind": "cyclone",
           "year": 2030,
-          "strength": 1.2,
-          "landfall": "-2,15"
+          "strength": 1,
+          "landfall": "1,12"
         },
         {
           "id": "c2-flood",

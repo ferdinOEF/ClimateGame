@@ -57,6 +57,8 @@ const ROOT = path.resolve(process.cwd());
 const BASEMAP_META = path.join(ROOT, "tools/mapgen/panajiBasemap.json");
 const BASEMAP_IMAGE = path.join(ROOT, "tools/mapgen/panaji-basemap.jpg");
 const PLACES = path.join(ROOT, "tools/mapgen/panajiPlaces.json");
+/** The owner's hand edits, applied after the board is read from OSM (see applyHandEdits). */
+const HAND_EDITS = path.join(ROOT, "tools/mapgen/panaji-hand-edits.json");
 const OUT = path.join(ROOT, "src/data/maps/panaji.json");
 /** Debug images for checking the board by eye. Checked in, never shipped (not under `public/`). */
 const DEBUG_DIR = path.join(ROOT, "tools/mapgen/debug");
@@ -1183,6 +1185,94 @@ function hexDistance(a: AxialCoord, b: AxialCoord): number {
   return (Math.abs(dq) + Math.abs(dq + dr) + Math.abs(dr)) / 2;
 }
 
+// ---- the owner's hand edits ------------------------------------------
+
+interface HandEdits {
+  /** "q,r,from>to"; from "none" adds a tile. */
+  tiles: string[];
+  monuments: { id: string; from: [number, number]; to: [number, number] }[];
+  localities: { name: string; from: [number, number]; to: [number, number] }[];
+  /** The north bank, kept as scenery (see unplayableTiles). */
+  unplayable: [number, number][];
+}
+
+/**
+ * The owner's edits to the board, applied after it is read from OSM and before
+ * anything is derived from its terrain (heights, roads, zones), so every layer
+ * agrees with them and regenerating never loses them.
+ *
+ * Each edit names what the tile was as well as what it becomes; if OSM ever
+ * gives something else there, the build stops rather than overwrite a tile
+ * nobody looked at. A tile added where the board had none ("none>land") is
+ * placed through the same projection as every other hex. New tiles go at the
+ * end of `cells`, so the indices the road links were read with stay valid.
+ */
+function applyHandEdits(edits: HandEdits, meta: BasemapMeta, cells: Cell[], monuments: Monument[], placements: Placement[]): string[] {
+  const notes: string[] = [];
+  const byKey = new Map(cells.map((cell) => [axialKey(cell.coord), cell]));
+  for (const entry of edits.tiles) {
+    const match = /^(-?\d+),(-?\d+),(\w+)>(\w+)$/.exec(entry);
+    if (!match) throw new Error(`hand edit "${entry}" is not "q,r,from>to"`);
+    const coord = { q: Number(match[1]), r: Number(match[2]) };
+    const [from, to] = [match[3], match[4]];
+    if (!(to in GLYPHS)) throw new Error(`hand edit "${entry}": no terrain "${to}"`);
+    const cell = byKey.get(axialKey(coord));
+    if (from === "none") {
+      if (cell) throw new Error(`hand edit "${entry}": the tile already exists (${cell.terrainId})`);
+      const { x, z } = axialToWorld(coord, HEX_SIZE);
+      const { lat, lon } = worldToGeo(x, z);
+      const { px, py } = geoToPixel(meta, lat, lon);
+      const added: Cell = { coord, lat, lon, px, py, terrainId: to };
+      cells.push(added);
+      byKey.set(axialKey(coord), added);
+    } else {
+      if (!cell) throw new Error(`hand edit "${entry}": no such tile`);
+      if (cell.terrainId !== from) throw new Error(`hand edit "${entry}": OSM now gives ${cell.terrainId} there`);
+      cell.terrainId = to;
+    }
+  }
+  notes.push(`hand edits: ${edits.tiles.length} tiles`);
+  for (const move of edits.monuments) {
+    const monument = monuments.find((m) => m.id === move.id);
+    if (!monument) throw new Error(`hand edit: no monument ${move.id}`);
+    if (monument.q !== move.from[0] || monument.r !== move.from[1]) throw new Error(`hand edit: ${move.id} is at ${monument.q},${monument.r}, not ${move.from.join(",")}`);
+    monument.q = move.to[0];
+    monument.r = move.to[1];
+    const placement = placements.find((p) => p.place.id === move.id);
+    if (placement) {
+      placement.chosen = { q: move.to[0], r: move.to[1] };
+      placement.reason = `${placement.reason ? `${placement.reason}; ` : ""}moved by hand to ${move.to.join(",")}`;
+    }
+    notes.push(`hand edit: ${monument.name} moved ${move.from.join(",")} to ${move.to.join(",")}`);
+  }
+  return notes;
+}
+
+/**
+ * The north bank of the Mandovi (Section 11.4): every land, beach or estuary
+ * tile reachable from the top two rows through land, beach and estuary. River
+ * and sea stop it. The hand-edits file stores the result as data; this is the
+ * rule it is checked against.
+ */
+function unplayableTiles(cells: Cell[]): Set<string> {
+  const dry = new Set(["land", "beach", "estuary"]);
+  const byKey = new Map(cells.map((cell) => [axialKey(cell.coord), cell]));
+  const seen = new Set(cells.filter((cell) => cell.coord.r <= 1 && dry.has(cell.terrainId)).map((cell) => axialKey(cell.coord)));
+  const queue = [...seen];
+  while (queue.length > 0) {
+    const [q, r] = queue.pop()!.split(",").map(Number);
+    for (const n of neighbors({ q, r })) {
+      const key = axialKey(n);
+      const cell = byKey.get(key);
+      if (cell && !seen.has(key) && dry.has(cell.terrainId)) {
+        seen.add(key);
+        queue.push(key);
+      }
+    }
+  }
+  return seen;
+}
+
 // ---- looking at the result --------------------------------------------
 
 /** A numbered landmark on the debug image: where it really is, and the centre of the hex it was given. */
@@ -1504,6 +1594,16 @@ async function main(): Promise<void> {
 
   const { monuments, notes, placements } = placeMonuments(places, cells);
 
+  // The owner's hand edits, before heights, roads and zones are derived from the terrain.
+  const handEdits = JSON.parse(fs.readFileSync(HAND_EDITS, "utf8")) as HandEdits;
+  notes.push(...applyHandEdits(handEdits, meta, cells, monuments, placements));
+  console.log(`after the hand edits:   ${JSON.stringify(countTerrain(cells))}`);
+  const unplayable = unplayableTiles(cells);
+  const stored = new Set(handEdits.unplayable.map(([q, r]) => `${q},${r}`));
+  const unplayableDiff = [...unplayable].filter((key) => !stored.has(key)).concat([...stored].filter((key) => !unplayable.has(key)));
+  if (unplayableDiff.length > 0) throw new Error(`the stored unplayable tiles differ from the rule at ${unplayableDiff.join(" ")}`);
+  console.log(`unplayable (north of the Mandovi): ${unplayable.size} tiles`);
+
   const { demMeta, byIndex: elevation } = sampleElevation(cells);
   const landHeights = cells.flatMap((cell, i) => (cell.terrainId === "land" ? [elevation.get(i)!] : [])).sort((a, b) => a - b);
   console.log(`elevation: ${landHeights.length} land tiles, ${landHeights[0]}..${landHeights[landHeights.length - 1]} m, median ${landHeights[Math.floor(landHeights.length / 2)]} m`);
@@ -1547,7 +1647,7 @@ async function main(): Promise<void> {
     name: "Panaji",
     region: "Tiswadi, North Goa",
     blurb:
-      "Panjim, drawn from OpenStreetMap: the city on the Mandovi, the creeks and fields of Taleigao, St Cruz and Merces to the east, and the beach from Miramar to Caranzalem facing the sea.",
+      "Panjim, drawn from OpenStreetMap and adjusted by hand: the city on the Mandovi, the creeks and fields of Taleigao, St Cruz and Merces to the east, and the beach from Miramar to Caranzalem facing the sea.",
     geo: {
       originLat: BOARD.north,
       originLon: BOARD.west,
@@ -1605,9 +1705,24 @@ async function main(): Promise<void> {
     // Locality names for the label layer (see LOCALITIES): only those that land on the board.
     localities: LOCALITIES.flatMap((place) => {
       const { x, z } = geoToWorld(place.lat, place.lon);
-      const coord = worldToAxial(x, z, HEX_SIZE);
+      let coord = worldToAxial(x, z, HEX_SIZE);
       const onBoard = cells.some((cell) => cell.coord.q === coord.q && cell.coord.r === coord.r);
       if (!onBoard) console.log(`locality ${place.name} falls off the board; left out`);
+      const move = handEdits.localities.find((m) => m.name === place.name);
+      if (move) {
+        if (coord.q !== move.from[0] || coord.r !== move.from[1]) throw new Error(`hand edit: ${place.name} is at ${coord.q},${coord.r}, not ${move.from.join(",")}`);
+        coord = { q: move.to[0], r: move.to[1] };
+        notes.push(`hand edit: the ${place.name} label moved ${move.from.join(",")} to ${move.to.join(",")}`);
+      }
+      // A neighbourhood's name belongs on its ground; only a bridge's stands on the water.
+      const terrain = cells.find((cell) => cell.coord.q === coord.q && cell.coord.r === coord.r)?.terrainId;
+      if (onBoard && place.name !== "Atal Setu" && (terrain === "river" || terrain === "coast")) {
+        const nearest = cells
+          .filter((cell) => cell.terrainId === "land")
+          .map((cell) => ({ cell, d: Math.hypot(axialToWorld(cell.coord, HEX_SIZE).x - x, axialToWorld(cell.coord, HEX_SIZE).z - z) }))
+          .sort((a, b) => a.d - b.d)[0].cell.coord;
+        throw new Error(`the ${place.name} label is on ${terrain} at ${coord.q},${coord.r}; the land tile nearest its real position is ${nearest.q},${nearest.r}`);
+      }
       return onBoard ? [{ name: place.name, ...coord, rank: place.rank }] : [];
     }),
     /*
@@ -1625,6 +1740,8 @@ async function main(): Promise<void> {
     },
     // The Panjim 2050 challenge zones (see ZONES).
     zones: assignZones(cells),
+    // North of the Mandovi: on the board as scenery, not part of the game (Section 11.4).
+    unplayable: [...unplayable].map((key) => key.split(",").map(Number) as [number, number]).sort((a, b) => a[1] - b[1] || a[0] - b[0]),
     // Major roads and bridges, read from the OSM picture (see findRoads).
     roads: roads.map((coord) => [coord.q, coord.r]),
     bridges: bridges.map((coord) => [coord.q, coord.r]),
