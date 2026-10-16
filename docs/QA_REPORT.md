@@ -1477,3 +1477,72 @@ Left as they are:
 **Approximations, said plainly:**
 - **Storm motion on a defence is a shader cue** scaled by the storm's strength and wind direction: foliage whip, foam, gate lift, faster spill. The surge's height across the mangroves is the storm water's own model-driven layer, which was already there. No new per-tile wave was built.
 - **Wildlife size on screen:** at the default zoom a perched kingfisher is a few pixels. By measurement in the game, its flight towards the camera grows to about 35–60 px and the egret's to about 65 px before they fade, short of the HUD and the camera.
+
+# Section 15 — the new Tutorial, menu, level select and Help
+
+Branch `section-15-tutorial-menu`, off master `ed7304d` (Section 14's merge; tag `pre-section-15`, and `backup/pre-section-15` on GitHub). Headless Chromium with software GL. Evidence in `docs/qa/section15/` and `tools/screenshots/walkthrough/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 518 pass, 6 skipped. New: `tutorialRun` (the Tutorial's run, objective followed saves every home, nothing built loses homes), `runWords`. Tutorial re-locked with new fingerprints. |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. It now plays the Tutorial start to finish through the real build cards (`tools/tutorialPlay.ts`) and on to Panaji. |
+| `npm run test:labels` | 49 of 49 views. |
+| `npm run test:layout` | 140 of 140 layouts. |
+| `npm run test:maya` | Pass, zero console errors. |
+| `npm run verify:maya` | All checks pass, including the Tutorial played to Panaji, and previews equal what the storms take. |
+| Section 15 checks (`tools/section15Checks.ts`, `checks.txt`) | 51 of 51 at 1920x1080, 1280x600, 1366x768 and 2560x1440, zero console errors. See below. |
+| axe-core | No serious or critical violations on the menu, the level select, Help, the Tutorial's build cards and its result card. |
+| Bots | Not re-run: Panaji's mechanics and objectives are unchanged. The Tutorial's own outcome is pinned by `tests/tutorialRun.test.ts`. |
+| Tutorial pixel diff (`tools/tutorialDiff.ts`) | Not applicable: the Tutorial was redesigned on purpose in this section. The tool compares against the old one. |
+| Cross-browser, real GPU | Not run. Chromium with software GL only. |
+
+**What the Section 15 checks prove, at every size:**
+- **Menu:** only Tutorial and Choose a level; the name and the tagline; the OpenStreetMap credit on the header render; the logo strip on screen without scrolling (at 1280x600, 522 to 586 px of 600).
+- **Level select:** two cards, each with its board's picture, centred.
+- **Help:** five sections, each with a loaded game render and labelled a game rule; 169 words; no sideways scroll.
+- **The Tutorial, played start to finish:**
+  - the opening card's line, with the cone;
+  - the cone on the board at the start, and gone after the first build;
+  - Maya's four lines at their moments, and the pulse on "Protects N homes here";
+  - the cyclone;
+  - the result card with stars, "homes saved", "What protected them" and Play Panaji;
+  - Panaji's card opens, and the Tutorial is recorded as completed.
+- **No coin, meter or era text** on the menu, the level select, Help, or any Tutorial step.
+
+**Screenshots:**
+- The menu, level select, Help and each Tutorial step (brief, start, cards, outline, heat, cyclone, result, Panaji) at all four sizes.
+- Grayscale and deuteranopia copies of the menu and of the Tutorial's build cards.
+
+I looked at them. Fixed along the way:
+- the opening card's text stranded at the top beside the cone (it is now centred beside it);
+- "The estuary" and "The river" labels overlapping on the cone's small map (the anchors moved apart in the generator);
+- a ticked Get ready row reading "0/1";
+- the tagline wrapping;
+- the level cards out of line once the map credit was added.
+
+**Independent review (Section 15): 0 BLOCKER, 3 MAJOR, 5 MINOR, 3 NIT.**
+
+MAJORs fixed:
+- **The red heat and the risk wave showed in the Tutorial's second year,** while Maya talked about the outline. They now come in the cyclone's year, with her heat line, and there is no risk wave in the Tutorial.
+- **Esc mid-Tutorial said "You haven't built anything yet."** after builds (the Tutorial is never saved). It now says "The Tutorial is not saved: leaving starts it again."
+- **The board renders showed OpenStreetMap data with no credit.** The menu header, Panaji's level card and Help now credit it.
+
+MINORs fixed:
+- The Get ready tip could still queue in the Tutorial (quiet now covers it).
+- Coaching lines piled up while Maya was muted (a new one replaces any waiting).
+- The pulse ignored Calm motion.
+- The tagline and the Tutorial card's line hard-coded Panaji's run length (both now come from `levels.json`).
+- The result card's numbers seemed to contradict "pick the biggest" (it now says the defences share the work).
+
+NITs:
+- The stale comment is fixed.
+- Left as they are:
+  - The old turns-mode `TutorialCoach` stays in the code, unreachable; removing it would widen this section.
+  - Help's width and border use `:has()` (Firefox 121+); older browsers get the old card frame round the same brown page.
+  - The Panaji level id is a constant beside the run-words helper.
+
+**Tagline alternatives offered to the owner:**
+- "Read the forecast. Build where it counts. Keep Panjim's homes dry."
+- "Panjim, 2026 to 2050: one build a year before the storms."
