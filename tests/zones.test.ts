@@ -100,7 +100,7 @@ describe("area protection (layered defence and its ceilings)", () => {
     expect(mixed).toBeLessThanOrEqual(single * stackCap + 1e-9);
   });
 
-  it("never protects a tile by more than the ceiling: 3.2 m for living defences, 4.5 m with an engineered wall", () => {
+  it("never protects a tile by more than the ceiling: 5 m for living defences, 6 m with an engineered wall", () => {
     const living = row();
     // A dune line and a mangrove belt behind it: together over the ceiling, so it binds.
     for (const [q, id] of [[5, "dune"], [4, "sandy_vegetation"], [6, "mangrove"]] as const) expect(living.state.build({ q, r: 0 }, id, false)).toBeTruthy();

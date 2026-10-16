@@ -10,7 +10,7 @@ import { BOT_LEVEL, SEEDS, replaySmartWithout, runBot, runSmartOnly, savedShare,
  */
 const casual = SEEDS.map((seed) => runBot("casual", seed));
 const greedy = SEEDS.map((seed) => runBot("greedy", seed));
-const far = SEEDS.slice(0, 5).map((seed) => runBot("far", seed));
+const far = SEEDS.map((seed) => runBot("far", seed));
 const mean = (runs: BotResult[]): number => runs.reduce((s, r) => s + savedShare(r), 0) / runs.length;
 
 describe("Panjim bots, 25 builds", () => {
@@ -18,10 +18,10 @@ describe("Panjim bots, 25 builds", () => {
     for (const run of far) expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.02);
   });
 
-  it("building by eye on what the forecast shows saves more than half the homes (Casual 45-70%)", () => {
+  it("building by eye on what the forecast shows saves more than half the homes (Casual 55-75%)", () => {
     for (const run of casual) {
-      expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.45);
-      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.7);
+      expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.55);
+      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.75);
     }
   });
 
@@ -39,13 +39,16 @@ describe("Panjim bots, 25 builds", () => {
   });
 
   it(
-    "choosing the right tiles pays (Smart beats Casual on average), every defence pulls its weight, and none comes near the mix alone",
+    "choosing the right tiles pays (Smart at least 5 points ahead of Casual), every defence pulls its weight, and none comes near the mix alone",
     () => {
       const seeds = SEEDS.slice(0, 6);
       const runs = seeds.map((seed) => smartRun(seed));
       const smart = runs.map((r) => r.result);
-      expect(mean(smart)).toBeGreaterThan(mean(casual.slice(0, 6)));
+      expect(mean(smart)).toBeGreaterThanOrEqual(mean(casual.slice(0, 6)) + 0.05);
       // Smart's own runs replayed without each defence it built: never better without it, and over three seeds every one counts.
+      // The beach plantings (dune, pandanus) meet only the first cyclone, which other defences can also clear alone,
+      // so their margin is small (about 0.5 points); the rest must give at least 2 points on average.
+      const beach = new Set(["dune", "sandy_vegetation"]);
       const ids = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
       for (const id of ids) {
         let margin = 0;
@@ -55,6 +58,7 @@ describe("Panjim bots, 25 builds", () => {
           margin += savedShare(smart[i]) - without;
         }
         expect(margin, id).toBeGreaterThan(0);
+        if (!beach.has(id)) expect(margin / 3, id).toBeGreaterThanOrEqual(0.02);
       }
       // One kind only: clearly behind the mix.
       for (const id of ids) expect(savedShare(runSmartOnly(id, SEEDS[0])), id).toBeLessThanOrEqual(savedShare(smart[0]) - 0.08);

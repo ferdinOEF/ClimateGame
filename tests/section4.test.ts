@@ -113,7 +113,7 @@ describe("the finale is survivable", () => {
     return { fraction, site, undefended: undefended.housesDamaged, defended: defended.housesDamaged, builds };
   });
 
-  it("loses about 40% fewer houses when defended (30-50% at each landfall, 33-45% on average)", () => {
+  it("loses about 40% fewer houses when defended (30-50% at each landfall, 35-45% on average)", () => {
     for (const row of rows) {
       expect(row.undefended, `${row.fraction}`).toBeGreaterThan(20);
       expect(row.builds).toBe(BUILDS);
@@ -122,7 +122,7 @@ describe("the finale is survivable", () => {
       expect(fewer, JSON.stringify(row)).toBeLessThanOrEqual(0.5);
     }
     const mean = rows.reduce((s, r) => s + (1 - r.defended / r.undefended), 0) / rows.length;
-    expect(mean).toBeGreaterThanOrEqual(0.33);
+    expect(mean).toBeGreaterThanOrEqual(0.35);
     expect(mean).toBeLessThanOrEqual(0.45);
   });
 });

@@ -56,8 +56,8 @@ overlay, the storm animation and the damage resolution share.
 | `defence.metresPerResilience` | 0.9 | Game metres of protection per point of an element's resilience | gameRule |
 | `defence.radiusHex`, `defence.falloff` | 3, [1, 0.9, 0.7, 0.45] | How far a defence's protection reaches, and how it fades | gameRule |
 | `defence.stackCap` | 1.6 | Different kinds of defence on a tile add up to at most 1.6 × the strongest; several of one kind count once (layered defence) | gameRule |
-| `defence.maxProtectionM` | 3.2 | Living defences together protect a tile by no more than this | gameRule |
-| `defence.engineeredMaxProtectionM` | 4.5 | An engineered structure's own protection may rise to this (a seawall reaches further than a breakwater) | gameRule |
+| `defence.maxProtectionM` | 5 | Living defences together protect a tile by no more than this | gameRule |
+| `defence.engineeredMaxProtectionM` | 6 | An engineered structure's own protection may rise to this (a seawall reaches further than a breakwater) | gameRule |
 | `defence.pathShare`, `defence.neighbourShare` | 0.4, 0.5 | Drag on water passing through a defended tile and its neighbours (strongest of each kind counts once; on top of the area ceiling) | gameRule |
 | `defence.comboMetresPerPoint` | 0.4 | Extra protection from a combo | gameRule |
 | `defence.failDepthPerUnit` | 8.7 | Water depth (× an engineered element's failureThreshold) that breaks it | gameRule |

@@ -52,8 +52,8 @@
     "comboMetresPerPoint": 0.4,
     "failDepthPerUnit": 8.7,
     "overwhelmDepthPerUnit": 3.5,
-    "maxProtectionM": 3.2,
-    "engineeredMaxProtectionM": 4.5
+    "maxProtectionM": 5,
+    "engineeredMaxProtectionM": 6
   },
   "houseLossDepthM": 0.6
 }
