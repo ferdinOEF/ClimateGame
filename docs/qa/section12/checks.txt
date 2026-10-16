@@ -19,7 +19,7 @@ PASS  result card 1 says "Objective complete" when every row was done: "Objectiv
 PASS  1920x1080: the coming-up card fits with no scrolling
 PASS  2: at the start of 2031: "10 builds until the flood"
 PASS  4: Maya's line at the start of 2031 is not the cyclone phase's ("dunes")
-FAIL  6: Esc with nothing open asks "Leave Panjim?"
+PASS  6: Esc with nothing open asks "Leave Panjim?"
 PASS  axe-core, Leave Panjim?: no serious or critical violations
 PASS  6: Esc again closes it and play goes on
 PASS  6: Stay closes it
@@ -27,7 +27,7 @@ PASS  6: Leave goes (/)
 PASS  7: the level card says "In progress · 2031": "01 ☆ ☆ ☆ Tutorial How this works Have 1 Mangrove standing Have 1 Dune standing Have 1 House standing Weather 1 hazard Not yet played | 02 ☆ ☆ ☆ Panaji Panjim 20"
 PASS  5: with a save, the popup shows the flood's forecast: "The flood comes in 10 years Institute Menezes Braganza Mahalaxmi Temple Don Bosc"
 PASS  1280x600: the start popup fits with no scrolling
-FAIL  1280x600: Help fits with no scrolling
+PASS  1280x600: Help fits with no scrolling
 PASS  1280x600: after the first build the area to protect is outlined (9 tiles)
 PASS  1280x600: the coming-up card fits with no scrolling
 PASS  1366x768: the start popup fits with no scrolling
