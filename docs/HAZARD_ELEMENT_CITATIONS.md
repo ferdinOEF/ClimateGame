@@ -53,11 +53,11 @@ overlay, the storm animation and the damage resolution share.
 | `flood.lossPerHex` (sea, channel, wetland, beach, land) | 3, 0.25, 0.2, 1, 0.35 | How much the flood drops each hex; low wetland loss lets it spread across the khazan fields | gameRule |
 | `compound.surgeShare`, `compound.floodShare` | 0.9, 0.85 | Each part's share in the finale | gameRule |
 | `compound.backwaterShare`, `backwaterExponent` | 0.6, 1.2 | The surge holding the river back at the mouth | gameRule |
-| `defence.metresPerResilience` | 0.45 | Game metres of protection per point of an element's resilience | gameRule |
+| `defence.metresPerResilience` | 0.9 | Game metres of protection per point of an element's resilience | gameRule |
 | `defence.radiusHex`, `defence.falloff` | 3, [1, 0.9, 0.7, 0.45] | How far a defence's protection reaches, and how it fades | gameRule |
 | `defence.stackCap` | 1.6 | Different kinds of defence on a tile add up to at most 1.6 × the strongest; several of one kind count once (layered defence) | gameRule |
-| `defence.maxProtectionM` | 3.2 | Living defences together protect a tile by no more than this | gameRule |
-| `defence.engineeredMaxProtectionM` | 4.5 | An engineered structure's own protection may rise to this (a seawall reaches further than a breakwater) | gameRule |
+| `defence.maxProtectionM` | 5 | Living defences together protect a tile by no more than this | gameRule |
+| `defence.engineeredMaxProtectionM` | 6 | An engineered structure's own protection may rise to this (a seawall reaches further than a breakwater) | gameRule |
 | `defence.pathShare`, `defence.neighbourShare` | 0.4, 0.5 | Drag on water passing through a defended tile and its neighbours (strongest of each kind counts once; on top of the area ceiling) | gameRule |
 | `defence.comboMetresPerPoint` | 0.4 | Extra protection from a combo | gameRule |
 | `defence.failDepthPerUnit` | 8.7 | Water depth (× an engineered element's failureThreshold) that breaks it | gameRule |

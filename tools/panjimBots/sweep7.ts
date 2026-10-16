@@ -74,7 +74,7 @@ for (const persona of PERSONAS) {
   const shares = rows.map(savedShare).sort((a, b) => a - b);
   out.push(`  ${persona.padEnd(7)} won ${String(wins).padStart(2)}/${rows.length}  2★ all ${String(rows.filter(survived).length).padStart(2)}  storms ${storms.join("/")}%  all ${Math.round(shares[0] * 100)}-${Math.round(shares[shares.length - 1] * 100)}%`);
 }
-for (const builds of [20, 40]) {
+for (const builds of [10, 20]) {
   const rows = plainFinale(builds);
   out.push(`  plain finale, ${builds} builds: ${rows.map((r) => `${Math.round((1 - r.defended / r.undefended) * 100)}%`).join(" ")} fewer houses lost`);
 }

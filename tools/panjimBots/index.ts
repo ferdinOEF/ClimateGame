@@ -107,10 +107,10 @@ for (const persona of PERSONAS) {
 }
 
 const smartRows = results.get("smart")!;
-lines.push("", "## What each builds (mean per run)", "", `| Archetype | ${ELEMENTS.join(" | ")} |`, `|---|${ELEMENTS.map(() => "---").join("|")}|`);
+lines.push("", "## What each builds (mean per run)", "", "Away: builds made where no storm's water reaches (they protect nothing, so they are not counted as defences).", "", `| Archetype | ${ELEMENTS.join(" | ")} | away |`, `|---|${ELEMENTS.map(() => "---").join("|")}|---|`);
 for (const persona of PERSONAS) {
   const rs = results.get(persona)!;
-  lines.push(`| ${persona} | ${ELEMENTS.map((id) => (rs.reduce((s, r) => s + (r.built[id] ?? 0), 0) / rs.length).toFixed(1)).join(" | ")} |`);
+  lines.push(`| ${persona} | ${ELEMENTS.map((id) => (rs.reduce((s, r) => s + (r.built[id] ?? 0), 0) / rs.length).toFixed(1)).join(" | ")} | ${(rs.reduce((s, r) => s + r.buildsAway, 0) / rs.length).toFixed(1)} |`);
 }
 
 if (withMargins) {
@@ -119,7 +119,7 @@ if (withMargins) {
     "",
     "## Each defence's margin (Smart's own run, replayed with that defence left out)",
     "",
-    `Smart with everything: ${pct(base)} of houses in the storms' paths saved. Each build of the left-out defence becomes a build left unused that year; every other action is replayed as it was, so nothing re-plans round the gap.`,
+    `Smart with everything: ${pct(base)} of houses in the storms' paths saved. Each build of the left-out defence is made away from the storms instead (it is still the year's build); every other action is replayed as it was, so nothing re-plans round the gap.`,
     "",
     "| Left out | Houses saved | Margin (points) | Margin per seed (points) |",
     "|---|---|---|---|"

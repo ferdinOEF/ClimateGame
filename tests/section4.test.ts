@@ -77,13 +77,13 @@ describe("the finale is survivable", () => {
   /**
    * The compound finale at the level's strength (2.6), landing at three
    * points along the coast, met first by nothing and then by a plain plan of
-   * 20 builds (five years at the level's 4 a year; coins are off since
-   * Section 5): working out from the homes the storm would take, a dune on
-   * sand, a mangrove on wetland, a dam on the river, a khazan. No simulation,
-   * no search. The brief asks for about 40% fewer houses lost.
+   * 10 builds (the finale's whole phase at one build a year, Section 8):
+   * working out from the homes the storm would take, a dune on sand, a
+   * mangrove on wetland, a dam on the river, a khazan. No simulation, no
+   * search. The brief asks for about 40% fewer houses lost.
    */
   const STRENGTH = 2.6;
-  const BUILDS = 20;
+  const BUILDS = 10;
   const unit = BOT_LEVEL.climate!.intensityPerStrength;
   const rows = [0.3, 0.5, 0.7].map((fraction) => {
     const probe = panaji();

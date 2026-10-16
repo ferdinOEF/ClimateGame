@@ -11,7 +11,7 @@
  *   casual  builds by eye next to the houses the forecast marks red; never simulates.
  *   greedy  builds near houses every year and ignores the forecast.
  *   smart   reads the forecast cone and the heat; weighs a handful of spots per build.
- *   rusher  builds only far from every storm: the control (one build is one year, so it cannot do nothing).
+ *   far     builds far from the risk: every build on the free tile farthest from every storm (the control; one build is one year, so a player cannot do nothing).
  *
  * A human-time model turns each run into an estimated real duration: fixed
  * animation and time-lapse lengths, about 2.5 s a decision, and 5 s of
@@ -32,8 +32,8 @@ import { LEVEL_BY_ID, type LevelDef } from "../../src/levels/levels";
 import { boardSetup } from "../../src/levels/balance";
 import { mapById } from "../../src/levels/levelMap";
 
-export type Persona = "casual" | "greedy" | "smart" | "rusher";
-export const PERSONAS: Persona[] = ["casual", "greedy", "smart", "rusher"];
+export type Persona = "casual" | "greedy" | "smart" | "far";
+export const PERSONAS: Persona[] = ["casual", "greedy", "smart", "far"];
 
 export interface BotResult {
   persona: Persona;
@@ -311,8 +311,9 @@ class Player {
 //             saves the most houses. It is a person, not a solver: for each
 //             build it weighs a handful of the candidates (its attention,
 //             drawn per run), so on some runs it misses the best spot.
-//   rusher    the control: every build far from every storm (one build is one
-//             year, so doing nothing is no longer possible; Section 10 renames it).
+//   far       builds far from the risk: every build on the free tile farthest
+//             from every storm (the control; one build is one year, so doing
+//             nothing is not possible).
 
 const DEFENCES = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
 
@@ -544,7 +545,7 @@ function playGreedy(p: Player): void {
   });
 }
 
-function playRusher(p: Player): void {
+function playFar(p: Player): void {
   while (!p.run.finished && p.buildAway());
 }
 
@@ -589,7 +590,7 @@ const PLAY: Record<Persona, (p: Player) => void> = {
   casual: playCasual,
   greedy: playGreedy,
   smart: smartPlayer(null),
-  rusher: playRusher
+  far: playFar
 };
 
 /** Smart's run on `seed`: its result and every action it took, for replays. */
