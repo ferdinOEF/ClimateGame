@@ -43,8 +43,6 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
                 attrs: { "aria-hidden": "true" },
                 children: [el("img", { attrs: { src: `${import.meta.env.BASE_URL}art/level-${level.mapId}.jpg`, alt: "", decoding: "async", loading: "lazy", draggable: "false" } })]
               }),
-              // A board drawn from OpenStreetMap is credited wherever it is shown (src/ui/attribution.ts).
-              mapCredit(level.mapId),
               el("div", {
                 className: "level-card-top",
                 children: [
@@ -54,7 +52,9 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
               }),
               el("div", { className: "level-card-name", text: level.name }),
               el("div", { className: "level-card-sub", text: runSummary(level) }),
-              el("div", { className: `level-card-best${progressInfo.muted ? " muted" : ""}`, text: progressInfo.text })
+              el("div", { className: `level-card-best${progressInfo.muted ? " muted" : ""}`, text: progressInfo.text }),
+              // A board drawn from OpenStreetMap is credited wherever it is shown (src/ui/attribution.ts).
+              mapCredit(level.mapId)
             ]
           });
           return card;
