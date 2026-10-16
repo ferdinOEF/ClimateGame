@@ -87,6 +87,8 @@ async function main(): Promise<void> {
         await page.waitForTimeout(120);
       }
       await page.evaluate(`window.__focusTileForTest(${t.q}, ${t.r})`);
+      // The pointer off the board, so the hover outline is not in the shot.
+      await page.mouse.move(2, 1078);
       await page.waitForTimeout(1600);
       const at = (await page.evaluate(`window.__projectTileForTest(${t.q}, ${t.r})`)) as { x: number; y: number };
       const w = 560;

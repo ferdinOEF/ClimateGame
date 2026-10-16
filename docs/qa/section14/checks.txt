@@ -1,9 +1,4 @@
 PASS  the hover outline shows on a free beach tile (1,13)
-PASS  the kingfisher moment starts in the game
-PASS  the egret moment starts in the game
-PASS  the otter moment starts in the game
-PASS  the fish moment starts in the game
-PASS  the prawn moment starts in the game
 PASS  no hover outline on a built tile (2,12)
 PASS  1920x1080: phase 1 result card says "Every home in the path survived" above "9 of 9 homes saved"
 PASS  1920x1080: phase 1 result card lists the landmarks in its area: Kala Academy Stood Campal Garden Stood

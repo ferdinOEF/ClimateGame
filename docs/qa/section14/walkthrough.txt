@@ -1,0 +1,24 @@
+
+> riptide-rising@1.0.0 walkthrough
+> tsx tools/walkthrough.ts
+
+Target: http://localhost:5184 (local dev server)
+
+menu
+  shot: tools/screenshots/walkthrough/01-menu.png
+Start went straight to the level — no email sheet
+  shot: tools/screenshots/walkthrough/02-tutorial-brief.png
+tutorial coach: "This is a coast"
+  shot: tools/screenshots/walkthrough/03-tutorial-coach.png
+coach: "Step 2 of 10" -> "Step 3 of 10" after a tile click
+  shot: tools/screenshots/walkthrough/04-tutorial-after-tile-click.png
+tutorial builds: {"mapId":"tutorial","dune":true,"mangrove":true,"house":true}
+  shot: tools/screenshots/walkthrough/05-tutorial-built.png
+in-level Back button returns to the menu
+  shot: tools/screenshots/walkthrough/06-after-back-button.png
+browser Back: http://localhost:5184/#/play/l00-tutorial -> http://localhost:5184/ (menu: true)
+  shot: tools/screenshots/walkthrough/07-after-browser-back.png
+l01-first-rains: "Panaji" on map "panaji", 30 place labels, 16 monuments
+  shot: tools/screenshots/walkthrough/08-level-l01-first-rains.png
+
+Walkthrough clean: 8 screenshots, no console errors.

@@ -8618,3 +8618,5 @@ Panaji only. The Tutorial keeps its models: it is pixel-identical against master
   - the land skirt keeps its hill colours instead of fading grey.
   - The north bank is still the grey scenery it was.
 - **Estuary:** dark slate water (#2c5560), set apart from the sea's turquoise and from the fields.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 14).

@@ -449,7 +449,9 @@ function duneGeometry(): THREE.BufferGeometry {
         let cx = 0;
         for (const t of tri) {
           const [x, z] = quad[t];
-          pos.push(x, height(x, z), z);
+          // Where the sand runs out, the surface dips under the ground, so no flat rectangle shows round the ridge.
+          const y = height(x, z);
+          pos.push(x, y > 0.008 ? y : -0.03, z);
           cx += x;
         }
         const c = lee.clone().lerp(windward, Math.min(1, Math.max(0, (cx / 3 + 0.2) / 0.5)));
