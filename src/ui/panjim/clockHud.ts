@@ -29,7 +29,7 @@ export interface ClockView {
 
 /** "3 builds until the cyclone", "1 build until the flood". */
 export function untilText(until: { builds: number; storm: string }): string {
-  return `${until.builds} ${until.builds === 1 ? "build" : "builds"} until ${until.storm}`;
+  return `${until.storm} in ${until.builds} ${until.builds === 1 ? "build" : "builds"}`;
 }
 
 export class ClockHud {

@@ -53,7 +53,28 @@ export interface PopoverMode {
   noticeAction?: { label: string; onClick: () => void };
 }
 
+/**
+ * One card in the build menu (Section 13, Panjim): an icon, the name, a
+ * plain line on what it does, and the model's exact number for this tile.
+ */
+export interface BuildCard {
+  id: string;
+  name: string;
+  /** One line, in game wording. */
+  line: string;
+  /** Inline SVG markup. */
+  icon: string;
+  /** "Protects 3 homes here"; null when there is no storm left to meet. */
+  pill: string | null;
+  /** How the pill reads: some homes saved, none, or homes put at risk. */
+  tone: "good" | "zero" | "bad";
+  /** Cannot go on this ground: greyed, "Not here". */
+  notHere?: boolean;
+}
+
 const VIEWPORT_MARGIN = 8;
+/** Gap between the tile and the cards beside it. */
+const CARD_GAP = 34;
 
 /**
  * The contextual build menu: a small popover anchored to the clicked tile's
@@ -125,6 +146,7 @@ export class BuildPopover {
     mode: PopoverMode = {}
   ): void {
     this.el.innerHTML = "";
+    this.el.classList.remove("as-cards");
     if (options.length === 0) {
       this.hide();
       return;
@@ -174,9 +196,112 @@ export class BuildPopover {
     this.positionAndReveal(screenX, screenY);
   }
 
+  /**
+   * The build menu as cards (Section 13, Panjim), beside the tile rather than
+   * over it. Cards that can be built come first; the defences that cannot go
+   * on this ground follow, greyed and small, each saying "Not here".
+   * `avoid` lists HUD elements the cards must never cover (the year chip).
+   */
+  showCards(screenX: number, screenY: number, cards: BuildCard[], onSelect: (id: string) => void, mode: { notice?: string; blocked?: boolean; avoid?: string[] } = {}): void {
+    this.el.innerHTML = "";
+    this.el.classList.add("as-cards");
+    // What each card says is this game's rule, and its number this game's model.
+    const head = document.createElement("div");
+    head.className = "build-card-head";
+    head.textContent = "In this game";
+    this.el.appendChild(head);
+    if (mode.notice) {
+      const notice = document.createElement("div");
+      notice.className = "build-notice";
+      notice.setAttribute("role", "status");
+      notice.textContent = mode.notice;
+      this.el.appendChild(notice);
+    }
+    const open = cards.filter((card) => !card.notHere);
+    const elsewhere = cards.filter((card) => card.notHere);
+    for (const card of open) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "build-card" + (mode.blocked ? " disabled" : "");
+      btn.dataset.element = card.id;
+      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-name"></span><span class="build-card-line"></span>${card.pill ? `<span class="build-card-pill ${card.tone}"></span>` : ""}</span>`;
+      (btn.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
+      (btn.querySelector(".build-card-line") as HTMLElement).textContent = card.line;
+      if (card.pill) (btn.querySelector(".build-card-pill") as HTMLElement).textContent = card.pill;
+      if (mode.blocked) btn.setAttribute("aria-disabled", "true");
+      else
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onSelect(card.id);
+          this.hide();
+        });
+      this.el.appendChild(btn);
+    }
+    if (elsewhere.length > 0) {
+      const grid = document.createElement("div");
+      grid.className = "build-card-elsewhere";
+      for (const card of elsewhere) {
+        const item = document.createElement("div");
+        item.className = "build-card-not-here";
+        item.dataset.element = card.id;
+        item.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-name"></span><span class="build-card-tag">Not here</span>`;
+        (item.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
+        grid.appendChild(item);
+      }
+      this.el.appendChild(grid);
+    }
+    this.placeBeside(screenX, screenY, mode.avoid ?? []);
+    this.returnFocus = document.activeElement instanceof HTMLElement && !this.el.contains(document.activeElement) ? document.activeElement : null;
+    (this.el.querySelector<HTMLElement>(".build-card:not(.disabled)") ?? null)?.focus({ preventScroll: true });
+  }
+
+  /**
+   * Beside the tile, clear of the viewport's edges and of `avoid`: tries the
+   * right of the tile and the left, at the tile's height and just clear of
+   * each obstacle, and takes the spot that covers the least of the HUD (the
+   * first listed, the year chip, counts most), then the one nearest the tile.
+   */
+  private placeBeside(screenX: number, screenY: number, avoid: string[]): void {
+    this.el.style.left = "0px";
+    this.el.style.top = "0px";
+    this.backdrop.hidden = false;
+    const { width, height } = this.el.getBoundingClientRect();
+    const origin = (this.el.offsetParent as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, top: 0 };
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const obstacles = avoid.flatMap((selector, rank) =>
+      Array.from(document.querySelectorAll<HTMLElement>(selector))
+        .map((el) => el.getBoundingClientRect())
+        .filter((r) => r.width >= 1 && r.height >= 1)
+        .map((r) => ({ r, weight: rank === 0 ? 1000 : 1 }))
+    );
+    const clampX = (x: number): number => Math.max(VIEWPORT_MARGIN, Math.min(vw - VIEWPORT_MARGIN - width, x));
+    const clampY = (y: number): number => Math.max(VIEWPORT_MARGIN, Math.min(vh - VIEWPORT_MARGIN - height, y));
+    const lefts = [clampX(screenX + CARD_GAP), clampX(screenX - CARD_GAP - width)];
+    const tops = [screenY - height / 2, ...obstacles.flatMap(({ r }) => [r.bottom + VIEWPORT_MARGIN, r.top - VIEWPORT_MARGIN - height])].map(clampY);
+    let best = { left: lefts[0], top: tops[0], cost: Infinity };
+    for (const left of lefts) {
+      for (const top of tops) {
+        let covered = 0;
+        for (const { r, weight } of obstacles) {
+          const w = Math.min(left + width, r.right) - Math.max(left, r.left);
+          const h = Math.min(top + height, r.bottom) - Math.max(top, r.top);
+          if (w > 0 && h > 0) covered += w * h * weight;
+        }
+        // Covering the tile itself is never wanted either; then nearer is better.
+        const overTile = screenX > left - 8 && screenX < left + width + 8 && screenY > top - 8 && screenY < top + height + 8 ? 1e6 : 0;
+        const cost = covered + overTile + Math.abs(top + height / 2 - screenY) * 0.5 + Math.abs(left - screenX) * 0.1;
+        if (cost < best.cost) best = { left, top, cost };
+      }
+    }
+    this.el.style.left = `${Math.round(best.left - origin.left)}px`;
+    this.el.style.top = `${Math.round(best.top - origin.top)}px`;
+  }
+
   /** A one-line note in place of a build menu (a tile that is not part of the game). */
   showNote(screenX: number, screenY: number, text: string): void {
     this.el.innerHTML = "";
+    this.el.classList.remove("as-cards");
     const note = document.createElement("div");
     note.className = "built-info-note popover-note";
     note.textContent = text;
@@ -194,6 +319,7 @@ export class BuildPopover {
    */
   showInfo(screenX: number, screenY: number, info: BuiltElementInfo): void {
     this.el.innerHTML = "";
+    this.el.classList.remove("as-cards");
     const header = document.createElement("div");
     header.className = "build-option built-info-header";
     const label = info.kindLabel ? `${info.name} <em>${info.kindLabel}</em>` : info.name;
@@ -271,8 +397,14 @@ export class BuildPopover {
   /** Called whenever the popover closes, however it closes. */
   onHide: (() => void) | null = null;
 
+  /** Where focus was before the cards took it: given back when they close. */
+  private returnFocus: HTMLElement | null = null;
+
   hide(): void {
+    const hadFocus = this.el.contains(document.activeElement);
     this.backdrop.hidden = true;
+    if (hadFocus && this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
+    this.returnFocus = null;
     this.tooltips?.hide();
     this.onHide?.();
   }

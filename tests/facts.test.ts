@@ -120,7 +120,7 @@ describe("Sources screen", () => {
 
 describe("Maya", () => {
   // Practical guidance about the screen; everything else she teaches is a game rule.
-  const GUIDANCE = new Set(["heat", "shields", "get-ready"]);
+  const GUIDANCE = new Set(["heat", "get-ready"]);
   it("her tips are game rules (tagged as such in her bubble) or practical guidance", () => {
     for (const tip of maya.tips as { id: string; text: string; rule?: boolean }[]) {
       if (GUIDANCE.has(tip.id)) expect(tip.rule, tip.id).toBeUndefined();

@@ -1297,3 +1297,83 @@ Left as they are:
 **Not met, and reported:**
 - **Casual wins 20%**, against a target of 25–35%. No tested setting put Casual and Smart both in range.
 - **The cited source for shelterbelts could not be verified**: this container's network blocks FAO, USDA and Wikipedia. So the wind ships as game rules only.
+
+# Section 13 — build menu as cards, feedback after a build, one slim HUD, one voice
+
+Branch `section-13-build-feedback`, off master `df4f148` (Section 12's merge;
+tag `pre-section-13`, and `backup/pre-section-13` on GitHub). Headless
+Chromium with software GL. Evidence in `docs/qa/section13/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 491 pass, 6 skipped. New: `buildCards` (the counterfactual), `section13`. Updated: `hudPanels`, `section12`, `facts`. |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. |
+| `npm run test:labels` | 49 of 49 views. |
+| `npm run test:layout` | 140 of 140 layouts. |
+| `npm run test:maya` | Pass, zero console errors. |
+| `npm run verify:maya` | All checks pass (its greeting check now reads "…in the Get ready card, bottom right."). |
+| Preview equals resolution | `tests/preview.test.ts`; `tests/buildCards.test.ts` (card number = storm toll without minus with, 20 tiles on 3 boards). |
+| Section 13 browser checks (`tools/section13Checks.ts`, `checks.txt`) | 121 of 121, zero console errors. See below. |
+| Tutorial (`tutorial/`, against master `df4f148`) | Text identical, 0.000% of pixels differ, in all five states. |
+| axe-core | No serious or critical violations on the build menu. |
+| Bots | Not re-run: no mechanic, balance or objective changed (the cache only stores what the model already computed). `tests/panjimBots.test.ts` passes. |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**Build-menu timing** (each menu after a forced fresh board read, 16 menus at four sizes): median 9 ms, max 18 ms. The budget was about 50 ms.
+
+**What the browser checks prove:**
+- **The build menu**, on a beach, sea, wetland and river tile at all four sizes:
+  - it is cards, and every pill equals the model's number for that tile;
+  - the other defences show "Not here";
+  - there is no category tag;
+  - it is inside the window and clear of the year chip and the Outlook.
+- **The removed items are not in the page:** the Ready gauge, Sea +cm, the meters, the Status copy of the objectives, the landfall tag and the Field Guide's second tally.
+- **One countdown:** the clock says "Cyclone in 5 builds", and 2031 opens with "Flood in 10 builds". The Outlook counts no years.
+- **Feedback after three builds:**
+  - the floats read "+8 homes safe", "+1 home safe" and "+0 homes safe";
+  - Homes at risk goes 9 → 1 → 0 → 0.
+- **The Field Guide:**
+  - the button, the panel and Maya's fact line show the same count;
+  - Esc closes the panel.
+- **One voice:**
+  - the warning years begin with no warning banner and no landfall tag;
+  - there is no bottom prompt while the storm plays (held at 3 s) or while the result cards show, and it is back after them.
+
+**Screenshots:**
+- The build menu, at every size, on each ground.
+- At 1920:
+  - the float;
+  - the warning year;
+  - the storm;
+  - result card 1;
+  - 2031;
+  - Maya's count.
+- Gray and deuteranopia copies of the beach menu and the warning year.
+
+I looked at them. Fixed from the first rounds:
+- Maya's first line still sent the player to the Status panel;
+- the cards covered the Get ready card at 1280x600;
+- the Field Guide stayed open under the next storm (Esc never closed it).
+
+**Independent review (Section 13): 0 BLOCKER, 2 MAJOR, 6 MINOR, 4 NIT.**
+
+MAJORs fixed:
+- **The Field Guide's total ("of 25") could never be reached**, and her first-job note was dropped on a reload. The total is now the notes this level can give (21 on Panaji): her first-job line, not her hello; no resort or yacht facts with coins off; no "shields" tip. The first-job note now survives a reload (`tests/section13.test.ts`).
+- **Maya's "green shields" tip stayed** after the shields were removed, and the draft docs said it was gone. The tip is deleted, so a saved copy is dropped on the next load.
+
+MINORs fixed:
+- the cards now choose their spot clear of the Get ready card, Maya and the corners, as well as the year chip;
+- the 1280x600 shots were re-taken;
+- Maya's count is checked with a real fact line;
+- the cards sit under an "In this game" heading, and sand mining says "Saves no homes here" rather than "Protects 0";
+- focus goes back when the menu closes;
+- "Not here" items drop their bare `aria-label`;
+- the float is one polite live region;
+- the tooltip says "1 home".
+
+Left as they are, and why:
+- **On a phone the map corner can sit at its fallback height**: the meter cluster it measured is gone on Panaji. Desktop is unaffected.
+- **The shield set is still computed** in `exposure.ts` (shared with the heat, unused now).
+- **Unused tooltip keys** (`readiness`, `sea`) are kept for the tests that read them.

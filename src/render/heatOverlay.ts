@@ -22,7 +22,7 @@ import { axialToWorld, type AxialCoord } from "@core/hex";
  *     across tiles because they are laid out in world space);
  *   - a slow pulsing dark edge on the most exposed tiles (the houses that
  *     will fall);
- *   - a shield shape, not just a green tint, on what the defences protect.
+ *   - (until Section 13, a shield on what the defences protect: removed).
  */
 export interface HeatTile {
   coord: AxialCoord;
@@ -69,27 +69,10 @@ const FRAGMENT = /* glsl */ `
     return d / INRADIUS;
   }
 
-  // A heater shield: flat top, straight sides, curving to a point. Returns
-  // 1 inside, 0 outside, with a soft edge; 'outline' gets the rim.
-  float shield(vec2 p, out float outline) {
-    p.y = -p.y;
-    float w = 0.15;
-    float top = 0.17;
-    float bottom = -0.2;
-    float halfWidth = p.y > -0.02 ? w : w * clamp((p.y - bottom) / (-0.02 - bottom), 0.0, 1.0);
-    float inside = step(abs(p.x), halfWidth) * step(p.y, top) * step(bottom, p.y);
-    float rimWidth = 0.035;
-    float halfInner = max(0.0, halfWidth - rimWidth);
-    float core = step(abs(p.x), halfInner) * step(p.y, top - rimWidth) * step(bottom + rimWidth * 1.6, p.y);
-    outline = inside * (1.0 - core);
-    return inside;
-  }
-
   void main() {
     float edge = hexEdge(vLocal);
     float hatch = vFlags.x;
     float pulse = vFlags.y;
-    float isShield = vFlags.z;
 
     // Crimson rather than orange-red: over the beach's sand gold an orange
     // red reads as more sand, a crimson reads as a warning.
@@ -112,20 +95,9 @@ const FRAGMENT = /* glsl */ `
       alpha = max(alpha, band * (0.3 + 0.2 * wave));
     }
 
-    if (isShield > 0.5) {
-      // A faint green wash where nothing is hot, then the shield itself in
-      // the tile's upper-left, where a small building does not cover it.
-      if (vHeat < 0.02) {
-        color = vec3(0.16, 0.58, 0.32);
-        alpha = 0.16 * (1.0 - smoothstep(0.9, 1.0, edge));
-      }
-      float rim;
-      float inside = shield(vLocal - vec2(-0.48, -0.28), rim);
-      if (inside > 0.5) {
-        color = rim > 0.5 ? vec3(0.97, 0.98, 0.94) : vec3(0.12, 0.55, 0.28);
-        alpha = 0.92;
-      }
-    }
+    // No shield markers (Section 13.4): they marked what the defences protect,
+    // read as small white badges from the default zoom, and said nothing the
+    // player can act on. The flag stays in the data; nothing draws it.
 
     if (alpha < 0.004) discard;
     gl_FragColor = vec4(color, alpha);

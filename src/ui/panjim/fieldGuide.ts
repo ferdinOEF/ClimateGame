@@ -1,6 +1,6 @@
 import guideData from "@data/fieldGuide.json";
 import { playSound } from "@ui/audioHooks";
-import { refreshSavedNotes } from "@core/mayaLines";
+import { noteIdsFor, notesProgress, refreshSavedNotes } from "@core/mayaLines";
 
 /**
  * The Field Guide: ten species of the Panjim coast, collected by tapping the
@@ -60,8 +60,6 @@ export class FieldGuide {
   private readonly notes = loadNotes();
   /** Asks Maya to say a note again (the "Hear it again" button on its page). */
   onReplayNote: ((note: GuideNote) => void) | null = null;
-  /** The running count of what Maya has told the player ("2 of 21"), shown in the guide. */
-  discoveries: (() => string) | null = null;
   private readonly button: HTMLButtonElement;
   private readonly backdrop: HTMLElement;
   private readonly grid: HTMLElement;
@@ -84,10 +82,9 @@ export class FieldGuide {
     this.backdrop.innerHTML = `
       <div class="field-guide-card" role="dialog" aria-label="Field Guide">
         <div class="field-guide-head"><b>Field Guide</b><span class="field-guide-count"></span><button type="button" class="field-guide-close" aria-label="Close">×</button></div>
-        <p class="field-guide-hint">Tap the creatures that visit what you build. Free: no time passes.</p>
+        <p class="field-guide-hint">Tap the creatures that visit what you build. Free: no time passes. <span class="field-guide-creatures"></span></p>
         <div class="field-guide-grid"></div>
         <div class="field-guide-notes-head"><b>Maya's notes</b><span class="field-guide-notes-count"></span></div>
-        <p class="field-guide-discoveries" hidden>Things she has told you: <b class="field-guide-discoveries-count"></b></p>
         <ul class="field-guide-notes"></ul>
       </div>`;
     this.backdrop.addEventListener("click", (event) => {
@@ -95,6 +92,7 @@ export class FieldGuide {
     });
     this.backdrop.querySelector(".field-guide-close")!.addEventListener("click", () => this.close());
     container.appendChild(this.backdrop);
+    window.addEventListener("keydown", this.onKey, true);
     this.grid = this.backdrop.querySelector(".field-guide-grid")!;
 
     this.toast = document.createElement("div");
@@ -159,14 +157,16 @@ export class FieldGuide {
     return fresh;
   }
 
+  /** The Field Guide's one count (Section 13): Maya's notes held, of every note there is. Her bubble shows the same. */
+  notesProgress(plus?: string): string {
+    return notesProgress(this.notes.map((note) => note.id), this.countable, plus);
+  }
+
+  /** The notes this level can give (set by the level; every note there is until then). */
+  countable: ReadonlySet<string> = noteIdsFor({ opening: false, excluded: new Set() });
+
   private renderButton(): void {
-    this.button.textContent = `Field Guide ${this.count}/${SPECIES.length}`;
-    if (this.notes.length > 0) {
-      const notes = document.createElement("span");
-      notes.className = "field-guide-button-notes";
-      notes.textContent = ` · ${this.notes.length} note${this.notes.length === 1 ? "" : "s"}`;
-      this.button.appendChild(notes);
-    }
+    this.button.textContent = `Field Guide ${this.notesProgress()}`;
   }
 
   private showToast(text: string): void {
@@ -177,7 +177,8 @@ export class FieldGuide {
   }
 
   open(): void {
-    (this.backdrop.querySelector(".field-guide-count") as HTMLElement).textContent = `${this.count} of ${SPECIES.length}`;
+    (this.backdrop.querySelector(".field-guide-count") as HTMLElement).textContent = this.notesProgress();
+    (this.backdrop.querySelector(".field-guide-creatures") as HTMLElement).textContent = `Creatures you have spotted: ${this.count} of ${SPECIES.length}.`;
     this.grid.innerHTML = "";
     for (const species of SPECIES) {
       const page = document.createElement("div");
@@ -192,12 +193,8 @@ export class FieldGuide {
       }
       this.grid.appendChild(page);
     }
-    const tally = this.backdrop.querySelector(".field-guide-discoveries") as HTMLElement;
-    tally.hidden = !this.discoveries;
-    if (this.discoveries) (this.backdrop.querySelector(".field-guide-discoveries-count") as HTMLElement).textContent = this.discoveries();
     const list = this.backdrop.querySelector(".field-guide-notes") as HTMLElement;
-    (this.backdrop.querySelector(".field-guide-notes-count") as HTMLElement).textContent =
-      this.notes.length === 0 ? "None yet: Maya's tips land here." : `${this.notes.length}`;
+    (this.backdrop.querySelector(".field-guide-notes-count") as HTMLElement).textContent = this.notes.length === 0 ? "None yet: Maya's tips land here." : "";
     list.innerHTML = "";
     for (const note of this.notes) {
       const item = document.createElement("li");
@@ -218,11 +215,20 @@ export class FieldGuide {
     this.backdrop.hidden = true;
   }
 
+  /** Esc closes the open guide (and only that: the level's own Esc does not see it). */
+  private readonly onKey = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape" || !this.isOpen) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.close();
+  };
+
   get isOpen(): boolean {
     return !this.backdrop.hidden;
   }
 
   dispose(): void {
+    window.removeEventListener("keydown", this.onKey, true);
     window.clearTimeout(this.toastTimer);
     this.button.remove();
     this.backdrop.remove();

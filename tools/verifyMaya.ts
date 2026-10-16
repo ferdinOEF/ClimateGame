@@ -114,7 +114,7 @@ async function main(): Promise<void> {
     check(town.buildingsOnRoads === 0, "Panaji: no building on any road tile");
     const greeting = (await page.locator(".maya-text").textContent()) ?? "";
     // Section 6.3: her first line is the first objective's, and it still says hello.
-    check(greeting === "Hello! I am Maya. Before the cyclone, our first job is to protect Kala Academy to Sharada Mandir. The steps are in your Status panel.", `Panaji: Maya greets: "${greeting}"`);
+    check(greeting === "Hello! I am Maya. Before the cyclone, our first job is to protect Kala Academy to Sharada Mandir. The steps are in the Get ready card, bottom right.", `Panaji: Maya greets: "${greeting}"`);
     await tooltipCheck(page, "Panaji");
 
     await page.keyboard.press("m");

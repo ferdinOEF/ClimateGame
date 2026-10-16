@@ -61,8 +61,6 @@ export class MayaDirector {
   private lastSpokenMoment = -1;
   private readonly warned = new Set<string>();
   private readonly lastCalled = new Set<string>();
-  /** The moment each storm's warning line was queued: the shields tip waits for a build after it. */
-  private readonly warnedAt = new Map<string, number>();
 
   constructor(private readonly maya: Maya, private readonly ctx: DirectorContext) {
     // Her first line: the first storm's objective, when there is one (Section 6.3); else hello.
@@ -104,12 +102,6 @@ export class MayaDirector {
     }
 
     if (exposure && yearsLeft >= 1 && yearsLeft <= 2) {
-      // The shields tip once the player has built after the warning, never on top of it.
-      const warnedAt = this.warnedAt.get(next.id);
-      if (warnedAt !== undefined && run.moment > warnedAt) {
-        const defended = [...run.state.elements.values()].some((inst) => ["dune", "sandy_vegetation", "mangrove", "khazan", "seawall", "breakwater", "small_dam"].includes(inst.elementId));
-        if (defended) this.tip("shields", "tip");
-      }
       const hotspot = riskHotspot(exposure.housesAtRisk, exposure.intensity);
       const place = hotspot ? placeName(coordOf(hotspot.key), this.ctx.landmarks, run.zones?.zoneOf(hotspot.key) ?? null) : null;
 
@@ -117,7 +109,6 @@ export class MayaDirector {
       // the most homes are at risk and what to do. Quiet if none are.
       if (!this.warned.has(next.id) && !this.lastCalled.has(next.id) && hotspot && place) {
         this.warned.add(next.id);
-        this.warnedAt.set(next.id, run.moment);
         const coord = coordOf(hotspot.key);
         this.maya.say({
           id: `warn:${next.id}`,

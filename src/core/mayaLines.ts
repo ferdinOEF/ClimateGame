@@ -25,6 +25,27 @@ const DISCOVERY_NOTES: [string, SavedNote][] = [...ELEMENT_BY_ID.keys()].flatMap
   discoveryFacts(element).map((fact): [string, SavedNote] => [fact.id, factNote(fact)])
 );
 
+/**
+ * Every note the Field Guide can hold on a level (Section 13: one count
+ * everywhere, and a total the player can reach): her first line (the first
+ * job when the level opens with one, else her hello), her tips, and the
+ * discoveries of every element that can be built there.
+ */
+export function noteIdsFor(level: { opening: boolean; excluded: ReadonlySet<string> }): ReadonlySet<string> {
+  const ids = new Set<string>([level.opening ? MAYA.opening.id : MAYA.greeting.id, ...MAYA.tips.map((tip) => tip.id)]);
+  for (const element of ELEMENT_BY_ID.keys()) {
+    if (level.excluded.has(element)) continue;
+    for (const fact of discoveryFacts(element)) ids.add(fact.id);
+  }
+  return ids;
+}
+
+/** "5 of 26": the Field Guide's one count, the notes held of every note this level has (with `plus`, as if it were held too). */
+export function notesProgress(held: Iterable<string>, countable: ReadonlySet<string>, plus?: string): string {
+  const ids = new Set([...held, ...(plus ? [plus] : [])].filter((id) => countable.has(id)));
+  return `${ids.size} of ${countable.size}`;
+}
+
 /** A discovery as a Field Guide note: titled by the first element it belongs to, worded as she says it. */
 export function factNote(fact: Fact): SavedNote {
   return { id: fact.id, title: discoveryNoteTitle(fact), text: displayText(fact) };
@@ -39,6 +60,11 @@ export function refreshSavedNotes(saved: readonly SavedNote[]): SavedNote[] {
   const current = new Map<string, SavedNote>([[MAYA.greeting.id, MAYA.greeting], ...MAYA.tips.map((tip) => [tip.id, tip] as [string, SavedNote]), ...DISCOVERY_NOTES]);
   const out: SavedNote[] = [];
   for (const note of saved) {
+    // Her first-job line is worded for the level it opened: kept as it was said.
+    if (note.id === MAYA.opening.id && !out.some((kept) => kept.id === note.id)) {
+      out.push({ id: note.id, title: MAYA.opening.title, text: note.text });
+      continue;
+    }
     const line = current.get(note.id);
     if (line && !out.some((kept) => kept.id === line.id)) out.push({ id: line.id, title: line.title, text: line.text });
   }

@@ -8495,3 +8495,46 @@ Phases 2 and 3 above assume nothing was built before them. In play they are chos
 Undefended, the wind tips 1 of the first cyclone's 9 homes (8,7 at the river mouth).
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 12).
+
+## Section 13 — build menu as cards, feedback after a build, one slim HUD, one voice — DONE
+
+**13.1, the build menu as cards** (Panaji only; `ui/buildPopover.ts` `showCards`, `ui/panjim/defenceCards.ts`):
+- **One card per thing that can be built on the tile**, under an "In this game" heading:
+  - an icon, the name, one plain line in game wording;
+  - a pill with the model's exact number for the storm coming: "Protects 8 homes here" or "Protects 0 homes here";
+  - for sand mining, "Saves no homes here" or "Puts N more homes at risk" (amber, never red).
+- **The other defences** follow, small and greyed, each saying "Not here", so the menu teaches which ground takes which defence.
+- **No tags:** no NBS / ENGINEERED / BUILDING / COSMETIC tag, on the cards or on a built tile's card.
+- **Placement:** beside the tile, inside the window. Of the spots right and left of the tile, it takes the one that covers the least of the HUD: never the year chip and the Outlook, and the Get ready card, Maya and the corners only when nothing else fits. The first card takes keyboard focus, and focus goes back when the menu closes.
+- **The number:** `ActionRun.homesSavedBy` gives the homes the storm takes now minus the homes it would take with that defence there, by the same model. It is cached until the board or the clock changes.
+  - The board's own reading is made once per change, and each tile's options once.
+  - The cache is shared with the HUD count and the float.
+- **Timing** (headless Chromium, software GL, a fresh board read every time): median 9 ms, max 18 ms over 16 menus at four sizes, against the ~50 ms budget. The cache refreshes after each build or year instead of precomputing every tile per phase, because one tile's numbers cost a few milliseconds.
+- **Exactness:** `tests/buildCards.test.ts` checks 20 random tiles on 3 boards (a Smart bot's run stopped in each phase). The card's number equals the storm's real toll without the build minus its toll with it.
+
+**13.2, feedback after a build:**
+- **The float:** "+N homes safe" rises from the tile just built for 1.5 s (`ui/panjim/buildFloat.ts`), with the card's number. "+0 homes safe" when it saved none. It stays still with calm motion or the system's reduce-motion setting.
+- **"Homes at risk N"** in the Outlook: the storm coming's toll on the board as it stands, live, from the same cache. It drops by the card's number after each build (browser checks: 9 → 1 → 0).
+
+**13.3, one slim HUD:**
+- **Kept:** the year chip, "Cyclone in N builds" (or "Flood in…", "Cyclone and flood in…"), Homes at risk, and the timeline strip.
+- **Removed:**
+  - **"Ready" and its bar.**
+  - **The duplicate countdown:** the Outlook line no longer says "N years" ("Next: Cyclone · 2030 · mild"); the clock's chip is the one countdown.
+  - **The Status panel's copy of the objectives.** The bottom-right Get ready card stays. Maya's first line now points there.
+  - **"Sea +N cm".** Its rate (0.4 cm a year, `levels.json`) has no cited source: `HAZARD_ELEMENT_CITATIONS.md` and `FACTS_AUDIT.md` list it as a game setting, and `facts.json` has no sea-level fact.
+  - **The meters** (Biodiversity, Carbon, Food, Population and Resilience): removed from the page on Panaji. On Panaji the Resilience meter changes nothing the player sees. Stars, the result cards and the Panjim index count homes protected, not the meter. Its only use was the Status danger mark, now also gone: the panel had nothing about danger in it, and Maya says the warning.
+- **The Field Guide count** is one number: Maya's notes held, out of the notes this level can give ("3 of 21" on Panaji).
+  - The total counts her first-job line (not her hello, which Panaji never says), her tips, and the discoveries of what can be built (not the resort's or the yacht's, off with coins).
+  - It shows on the Field Guide button, in its panel, and on Maya's fact lines.
+  - The second tally ("Things she has told you") and the "· N notes" suffix are gone.
+  - Her first-job note now survives a reload.
+  - The creatures count stays inside the panel, labelled as creatures.
+  - Esc now closes the Field Guide; before, it did nothing, so the panel could stay open into a storm.
+
+**13.4, one voice at a time:**
+- **No banner** "Cyclone in 2030. The red shows where it will hit." and **no "Cyclone landfall" tag** on the map: Maya says the warning. The heat and the cone stay.
+- **The bottom prompt** ("Build where the city is at risk…") is hidden while a storm plays and while its result cards show.
+- **The small white shield markers** were drawn by the warning heat's shader on every tile a defence protected, or that held a defence on the path. They did not mean "you can build here", so they are removed, along with Maya's tip about them (`maya.json` "shields"; a saved copy of it is dropped on the next load).
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 13).
