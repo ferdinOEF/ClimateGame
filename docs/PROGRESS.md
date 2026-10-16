@@ -8305,3 +8305,34 @@ Every archetype uses every build of every year it plays.
 **The bots** build once a year. A bot with nothing worth building near the danger builds on the free tile farthest from every storm. The do-nothing control can no longer do nothing, so it builds only far away; Section 10 renames it. The numeric balance bands are back to structural checks until Section 10 re-tunes for 25 builds.
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 8). Maya's mechanics were left alone at the owner's request.
+
+## Section 9 — end-of-phase result cards — DONE
+
+**When they show:** after each storm, a short sequence of cards in a modal (`ui/panjim/resultCards.ts`).
+- **Keys and focus:**
+  - each button names what comes next, with Back on every card after the first;
+  - Enter goes on and Esc jumps to the last card;
+  - focus stays inside, and keys never reach the game behind;
+  - no motion with reduced motion or Calm motion.
+- **Card 1:**
+  - the storm's year and name;
+  - a headline by stars and the stars (the level's houseStars rule);
+  - "N of M homes saved" with a bar;
+  - the named places (landmarks and monuments) in or next to the area to protect, each Stood or Damaged.
+- **Card 2:** "What protected your homes", one row per kind of defence built in the phase.
+- **Card 3** (phases 1 and 2): the next storm's forecast map, its line and Maya's line.
+- **The final card:** the three phases, the total, the stars, Play again, and a link to the menu.
+
+**The numbers:**
+- They come from the storm's own record (`core/phaseResult.ts`, `core/stormRecord.ts`).
+- **Damaged** means the water on a place's tile, with the player's defences, is at or over the depth a house falls at.
+- **Card 2:** each row is the same storm re-run on the board as it stood just before, with that kind of defence removed and everything else equal (`housesLostWithout`; with nothing removed it reproduces the storm exactly, which is tested).
+- `ActionRun` records each phase's area to protect at its start and the defences built in it, and saves both.
+- Two game rules on the Sources screen say how the numbers are made.
+
+**Replaced:**
+- the Aftermath card and its "Replay from" rewind;
+- the finale's index card;
+- the results screen after Panaji. The shell skips it when the level's final card already showed the result (`SessionResult.then`), and still records the run.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 9).

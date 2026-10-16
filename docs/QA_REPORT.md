@@ -951,3 +951,94 @@ MINORs left:
 - The cone's fade ran per frame, capped. Under software GL it lingered for seconds after the first build. It now runs on wall time.
 - The check's last build waited for a year that never turns at the finale. It now hands back at the finale's card.
 - The check's timeout was raised: under software GL each storm takes about 45 s, and the run plays three storms and replays to turn 16 at three sizes.
+
+# Section 9 — end-of-phase result cards
+
+Branch `section-9-result-cards`, off master `dee5e02` (Section 8's merge;
+tag `pre-section-9`, and `backup/pre-section-9` on GitHub). Headless
+Chromium with software GL. Evidence in `docs/qa/section9/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 452 pass, 6 skipped. New: `tests/phaseResult.test.ts`. It checks: <ul><li>re-running each storm with nothing removed reproduces it house for house, on fixed seeds, undefended and defended;</li><li>every card-2 number equals a fresh exact re-run without that kind;</li><li>a place counts as Damaged at the same depth line houses fall at;</li><li>the places and rows come from the phase's own area and builds;</li><li>the headlines, the button wording, Maya's card lines (no wind, no numbers) and the two new game rules.</li></ul> |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. |
+| `npm run test:labels` | 37 of 37 views. |
+| `npm run test:layout` | 105 of 105 layouts. |
+| `npm run test:maya` | Pass. |
+| `npm run verify:maya` | All checks pass. |
+| Section 9 browser checks (`tools/section9Checks.ts`, `checks.txt`) | **85 of 85.** |
+| Tutorial (`docs/qa/section9/tutorial/`, against the `pre-section-9` build) | Text identical, 0.000% of pixels differ, in all five states. |
+| axe-core | No serious or critical violations on any card of any phase, or on the final card. |
+| Console errors | None. |
+| Bots | Not re-run: Section 9 changes no rule of play (the cards only read the storms' records). |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**What the browser checks prove** (85 checks, after each of the three storms in order):
+- **Card 1:**
+  - the eyebrow ("2030 · Cyclone", "2040 · Monsoon flood", "2050 · Cyclone and flood");
+  - the headline for its stars;
+  - "N of M homes saved" with a bar;
+  - the places each Stood or Damaged, with no heading;
+  - no "Iconic places", overlap, model or wind wording;
+  - the button "See what protected your city", with no Back;
+  - it fits with no scrolling, and Maya's bubble is never over it.
+- **Card 2:**
+  - "What protected your homes";
+  - rows with numbers, or "Nothing stood in the way this time.";
+  - its button "Next: the flood in 2040", "Next: cyclone and flood in 2050" or "Panjim in 2050", with Back.
+- **Card 3** (phases 1 and 2):
+  - "Coming up" with "Monsoon flood in 2040" or "Cyclone and flood in 2050";
+  - the line "The flood comes in 10 years" or "The cyclone and flood arrive together in 10 years";
+  - the forecast map and legend, and Maya's line;
+  - "On to 2031" or "On to 2041", with Back.
+- **Keys and focus:**
+  - Enter goes on, Back goes back, and Esc jumps to the last card;
+  - Tab and Shift+Tab stay inside the cards.
+- **The next phase:** it starts in 2031 (turn 6) and 2041 (turn 16), with the cards closed and the cone on the map.
+- **The final card:**
+  - "Panjim, 2026 to 2050", the three phases with homes saved each, the total and the stars;
+  - "Play again" and "Back to the menu", and focus stays inside;
+  - "Play again" starts a new run in 2026.
+- **Reduced motion:** the cards do not animate.
+
+**Screenshots:**
+- every card of every phase, and the final card, at 1366x768, 1920x1080 and 2560x1440;
+- card 1 and the final card each with -gray and -deut copies.
+
+I looked at them. The 1920x1080 final card was caught mid-fade (its 220 ms fade-in, stretched by software GL during the skyline camera move); the 1366x768 and 2560x1440 shots show it whole.
+
+**Independent review (Section 9): 0 BLOCKER, 3 MAJOR, 9 MINOR.** All MAJORs fixed:
+- **Esc could be taken by Maya's handler** before the cards'. The cards now listen on `window` in the capture phase, before anything else.
+- **Card 2's numbers came only from the kinds that answer the storm**, with 0 for the rest. Every kind of defence standing before the storm is now re-run without it (`StormRecord.withoutEach`, `housesLostWithout`), and a test checks each number against a fresh re-run.
+- **Skipping the results screen dropped the score submission's promise.** It now always has a handler.
+
+MINORs fixed:
+- a held Enter or Esc no longer rushes the cards;
+- `aria-live` dropped (focus moves to the button instead);
+- a duplicate scenario removed;
+- an unused import removed.
+
+MINORs left, with reasons:
+- **Places "in or next to" the area to protect.** The area is a set of house tiles and a monument's tile holds no house, so "next to" is what puts a landmark inside the drawn outline. The game rule says "on its tile".
+- **A kind built then demolished in the same phase still gets a row.** It shows 0 if it was gone when the storm came.
+- **Enter on a focused Back goes back**, as a focused button should.
+- **The final card is its own step** after the skyline reveal, so it has no Back.
+- **Overall stars are the game's own `levelStars`**: the storms' stars averaged and rounded, never below 1.
+- **Saves from before this section** have no recorded areas or builds. A run resumed from one shows no places, and "Nothing stood…" for that phase only.
+- **Dead code noted for later**:
+  - `FinaleCard.show`;
+  - `core/aftermath.ts`;
+  - the replay snapshots;
+  - the old Section 1 and 4 screenshot tools, which wait on the removed Aftermath card.
+
+**Removed features (the owner should know):**
+- **The Aftermath card:** the result cards replace it.
+- **Its "Replay from 2029" rewind:** the spec's cards have no place for it.
+- **The finale's index, tempo badge and storm card:** the final card replaces them.
+- **The results screen after Panaji:** "Play again" and the menu link replace it. The run is still recorded.
+
+**New game rules on the Sources screen:**
+- "A named place counts as damaged when the water on its tile would have destroyed a house there."
+- "Each defence's number is the homes the same storm would have taken with that kind removed, all else equal."

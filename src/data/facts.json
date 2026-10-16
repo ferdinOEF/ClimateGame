@@ -327,6 +327,18 @@
       "kind": "gameRule",
       "text": "The cone shows where water would reach with no defences: Most likely where deepest, Possible where shallowest.",
       "elements": []
+    },
+    {
+      "id": "place-damaged",
+      "kind": "gameRule",
+      "text": "A named place counts as damaged when the water on its tile would have destroyed a house there.",
+      "elements": []
+    },
+    {
+      "id": "defence-homes",
+      "kind": "gameRule",
+      "text": "Each defence's number is the homes the same storm would have taken with that kind removed, all else equal.",
+      "elements": []
     }
   ]
 }

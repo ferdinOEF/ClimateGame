@@ -446,6 +446,21 @@ export class AppShell {
             : { status: "offline" }
         );
 
+    // A level whose own last card already showed the result (Panjim 2050)
+    // goes where the player chose there; the run is recorded either way.
+    if (result.then) {
+      // No results screen to show the submission's outcome: it must still never reject unhandled.
+      submission.catch(() => undefined);
+    }
+    if (result.then === "again") {
+      this.requestLevel(level.id, "replace");
+      return;
+    }
+    if (result.then === "menu") {
+      this.enter({ name: "menu" }, "replace");
+      return;
+    }
+
     // `replace`: the results screen stands in for the run that just ended, so
     // Back from a score returns to wherever the player started the level
     // from rather than re-entering a level that is already over.

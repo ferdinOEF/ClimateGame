@@ -74,5 +74,48 @@
     "cyclone": "cyclone",
     "flood": "flood",
     "compound": "storm"
+  },
+  "results": {
+    "_comment": "Section 9: her one line on the result cards. 'byDefence' names the kind of defence that saved the most homes (a game rule about what it does here, waves and water only: the game does not model wind). 'comingUp' is about the next storm.",
+    "byDefence": {
+      "dune": {
+        "text": "Dunes took the first push of the waves and held the water back from the homes behind them.",
+        "rule": true
+      },
+      "sandy_vegetation": {
+        "text": "Pandanus and creepers bind the sand, so the water loses strength crossing the beach.",
+        "rule": true
+      },
+      "seawall": {
+        "text": "The seawall held the water back. A storm too big for it breaks through all at once.",
+        "rule": true
+      },
+      "breakwater": {
+        "text": "Breakwaters broke the waves out at sea, before they reached the beach.",
+        "rule": true
+      },
+      "mangrove": {
+        "text": "Mangroves slowed the water through their roots and sheltered the streets behind them.",
+        "rule": true
+      },
+      "khazan": {
+        "text": "Khazans held the floodwater in their fields, so the homes nearby stayed drier.",
+        "rule": true
+      },
+      "small_dam": {
+        "text": "The dam held back the river's rise upstream, so less water reached the wetlands.",
+        "rule": true
+      }
+    },
+    "comingUp": {
+      "flood": {
+        "text": "The flood comes down the Mandovi into the wetlands. Look at where the map turns red.",
+        "rule": false
+      },
+      "compound": {
+        "text": "Next time the waves and the river come together. The beach and the wetlands both need you.",
+        "rule": false
+      }
+    }
   }
 }

@@ -114,6 +114,10 @@ export interface RunSnapshot {
   outcomes: [string, ChallengeOutcome][];
   /** The Get ready jobs at the time. */
   prep?: PrepObjective[];
+  /** Each phase's area to protect as its forecast drew it (Section 9), by storm id. */
+  areas?: [string, string[]][];
+  /** The defences built in each phase, by the storm it led to (Section 9). */
+  phaseBuilds?: [string, string[]][];
 }
 
 /** Repairs cost this share of the element's build cost (coins on only). */
@@ -162,6 +166,13 @@ export class ActionRun {
    * storm id: what "Replay from 2029" rewinds to.
    */
   readonly replaySnapshots = new Map<string, RunSnapshot>();
+  /**
+   * Each storm's area to protect as its forecast drew it at the start of its
+   * phase (the houses it would take then): the result cards' places. By id.
+   */
+  readonly areas = new Map<string, string[]>();
+  /** The defences the player built in each storm's phase, in order, by that storm's id: the result cards' rows. */
+  readonly phaseBuilds = new Map<string, string[]>();
   /** Every action and every new year counts one: Maya speaks at most once per moment. */
   moment = 0;
   // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -201,6 +212,23 @@ export class ActionRun {
     const to = region && options.landmarks?.find((l) => l.name === region.to);
     this.openingTiles = region && from && to ? stretchTiles(state.placed.values(), { from, to, inland: region.inland, seaward: region.seaward }) : null;
     this.refreshPrep();
+    this.notePhaseStart();
+  }
+
+  /** At the start of a storm's phase: its area to protect, as the forecast draws it now. */
+  private notePhaseStart(): void {
+    const next = this.nextChallenge();
+    if (!next || this.areas.has(next.id) || this.turnNumber !== this.phaseStart(next)) return;
+    this.areas.set(next.id, [...(this.exposureFor(next)?.housesAtRisk ?? [])]);
+  }
+
+  /** A build in the phase of the storm to come. */
+  private noteBuild(elementId: string): void {
+    const next = this.nextChallenge();
+    if (!next) return;
+    const list = this.phaseBuilds.get(next.id) ?? [];
+    list.push(elementId);
+    this.phaseBuilds.set(next.id, list);
   }
 
   /**
@@ -239,7 +267,9 @@ export class ActionRun {
         jarCollected: this.jarCollected,
         landed: [...this.landed],
         outcomes: [...this.outcomes],
-        prep: this.prep
+        prep: this.prep,
+        areas: [...this.areas],
+        phaseBuilds: [...this.phaseBuilds]
       } satisfies RunSnapshot)
     ) as RunSnapshot;
   }
@@ -264,6 +294,11 @@ export class ActionRun {
     this.combos = this.comboState.bonus;
     if (copy.prep) this.prep = copy.prep;
     else this.refreshPrep();
+    this.areas.clear();
+    for (const [id, area] of copy.areas ?? []) this.areas.set(id, area);
+    this.phaseBuilds.clear();
+    for (const [id, builds] of copy.phaseBuilds ?? []) this.phaseBuilds.set(id, builds);
+    this.notePhaseStart();
     this.moment++;
   }
 
@@ -426,6 +461,7 @@ export class ActionRun {
   build(coord: AxialCoord, elementId: string): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
     if (!this.state.build(coord, elementId, false)) return refuse("Can't build that here.");
+    this.noteBuild(elementId);
     this.moment++;
     return { ok: true, events: [...this.settle(), ...this.endYear()] };
   }
@@ -522,6 +558,7 @@ export class ActionRun {
     this.state.advanceTurn();
     this.moment++;
     if (!this.finished) events.push({ type: "year", turn: this.turnNumber });
+    this.notePhaseStart();
     // Two years out, a storm's warning begins: the moment "Replay" rewinds to.
     for (const challenge of this.schedule) {
       if (this.landed.has(challenge.id) || this.finished || this.yearsUntil(challenge) !== HEAT_LEAD_YEARS || this.replaySnapshots.has(challenge.id)) continue;

@@ -113,9 +113,9 @@ export const HUD_OBSTACLES = [
   ".build-popover",
   ".hud-tooltip",
   ".field-guide-toast",
-  ".aftermath-card",
   ".field-guide-card",
   ".finale-card",
+  ".result-cards",
   ".brief-card",
   ".replay-card"
 ];

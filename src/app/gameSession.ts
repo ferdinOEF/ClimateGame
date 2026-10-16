@@ -602,7 +602,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     objectivesPanel.briefOpen ||
     Boolean(
       document.querySelector(
-        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .sources-backdrop"
+        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .result-cards:not([hidden]), .sources-backdrop"
       )
     );
   const riskIntro = new RiskIntroFx(container, {
@@ -635,7 +635,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             refreshHud();
             refreshPreview();
           },
-          onRunComplete: (result) => finishRun(true, result),
+          onRunComplete: (result, then) => finishRun(true, result, then),
           revealSkyline: () => {
             // Up and back over the whole city, the light clearing.
             stormImpactActive = false;
@@ -688,6 +688,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             fitTo(Math.max(18, (box.maxX - box.minX) * 1.15), Math.max(12, (box.maxZ - box.minZ) * 1.2), false);
           },
           landmarks: levelMap.landmarks,
+          monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           overlayOpen,
           riskAreaOnScreen: (keys) => {
@@ -1088,7 +1089,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * both completes the level and starts the storm that kills the player
    * could report the run twice.
    */
-  function finishRun(completed: boolean, panjimResult?: import("@core/panjimIndex").PanjimIndex): void {
+  function finishRun(completed: boolean, panjimResult?: import("@core/panjimIndex").PanjimIndex, then?: "again" | "menu"): void {
     if (sessionFinished) return;
     sessionFinished = true;
 
@@ -1137,7 +1138,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       stats,
       turns: state.turn,
       standingByElement: counts.byElement,
-      standingByCategory: counts.byCategory
+      standingByCategory: counts.byCategory,
+      then
     });
   }
 

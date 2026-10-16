@@ -42,6 +42,15 @@ export interface StormRecord {
   defences: Map<string, string>;
   /** The sea tile a cyclone came ashore at (null for a flood): the animation stages landfall there. */
   landfallKey?: string | null;
+  /** The water on every tile it reached, game metres, with the player's defences: the depth that decides which houses fall. */
+  depth: Map<string, number>;
+  /**
+   * Every kind of defence standing when it came (whatever it defends
+   * against: a khazan can still matter in a cyclone through a combo), with
+   * the homes the same storm takes beyond those it took when that kind is
+   * removed and everything else is equal (`housesLostWithout`). Can be 0.
+   */
+  withoutEach: Map<string, number>;
 }
 
 export interface StormArgs {
@@ -71,7 +80,7 @@ export function defendsAgainst(elementId: string, hazards: readonly HazardId[]):
 export const VISUAL_DEPTH_CAP = 2.5;
 
 /** Resolves a storm on `state` (mutating it) and returns the outcome with its depth field. */
-function resolveWithField(state: GameState, args: StormArgs): { outcome: ChallengeOutcome; field: DepthField } {
+function resolveWithField(state: GameState, args: StormArgs): { outcome: ChallengeOutcome; field: DepthField; depth: Map<string, number> } {
   const houses = new Set<string>();
   // Standing houses only: one an earlier storm took is already down and cannot fall again.
   for (const [key, inst] of state.elements) if (isBuilding(state, key) && inst.degradeAmount < 1) houses.add(key);
@@ -110,7 +119,21 @@ function resolveWithField(state: GameState, args: StormArgs): { outcome: Challen
     frontStrength,
     houses
   });
-  return { outcome, field };
+  return { outcome, field, depth: levels.depth };
+}
+
+/**
+ * The same storm re-run on a copy of `before` (the board just before it hit)
+ * with every defence of kind `removed` taken away and everything else equal:
+ * the houses it takes. With `removed` null nothing is taken away, and the
+ * result is the storm's own (tests/phaseResult.test.ts). Deterministic.
+ */
+export function housesLostWithout(before: GameState, args: StormArgs, removed: string | null): ChallengeOutcome {
+  const copy = before.clone();
+  if (removed) for (const [key, inst] of [...copy.elements]) if (inst.elementId === removed) copy.elements.delete(key);
+  // A copy's combo bonuses are its own: removing one kind breaks the combos it was part of.
+  const combos = args.combos ? computeCombos(copy).bonus : undefined;
+  return resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, combos, args.houseStars, args.houseRule, undefined, args.landfall);
 }
 
 /**
@@ -119,7 +142,7 @@ function resolveWithField(state: GameState, args: StormArgs): { outcome: Challen
  */
 export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   const before = state.clone();
-  const { outcome, field } = resolveWithField(state, args);
+  const { outcome, field, depth } = resolveWithField(state, args);
   const hazards = hazardsOf(args.kind);
   const without = (keep: (elementId: string) => boolean): GameState => {
     const copy = before.clone();
@@ -134,16 +157,19 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   for (const inst of before.elements.values()) if (defendsAgainst(inst.elementId, hazards)) counts.set(inst.elementId, (counts.get(inst.elementId) ?? 0) + 1);
   const savedBy: DefenceSave[] = [];
   for (const [elementId, count] of counts) {
-    const copy = without((id) => id !== elementId);
-    const lost = resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, argsFor(copy).combos, args.houseStars, args.houseRule, undefined, args.landfall).housesDamaged;
-    const houses = lost - outcome.housesDamaged;
+    const houses = housesLostWithout(before, args, elementId).housesDamaged - outcome.housesDamaged;
     if (houses > 0) savedBy.push({ elementId, count, houses });
   }
   savedBy.sort((a, b) => b.houses - a.houses || (a.elementId < b.elementId ? -1 : 1));
+  const withoutEach = new Map<string, number>();
+  for (const inst of before.elements.values()) {
+    if (withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
+    withoutEach.set(inst.elementId, Math.max(0, housesLostWithout(before, args, inst.elementId).housesDamaged - outcome.housesDamaged));
+  }
   const defences = new Map<string, string>();
   for (const [key, inst] of before.elements) if (defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
   const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
   const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);
-  return { kind: args.kind, outcome, field, undefended, savedBy, defences, landfallKey };
+  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field }, savedBy, defences, landfallKey, depth, withoutEach };
 }
