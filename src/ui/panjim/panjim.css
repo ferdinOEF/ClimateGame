@@ -2472,3 +2472,77 @@
   font-size: 13px;
   cursor: pointer;
 }
+
+/*
+ * "Leave Panjim?" (Section 12): Esc with nothing open asks first. Small, in
+ * the result cards' colours, above everything.
+ */
+.leave-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 14, 12, 0.45);
+  pointer-events: auto;
+}
+
+.leave-confirm-backdrop[hidden] {
+  display: none;
+}
+
+.leave-confirm {
+  width: min(320px, 90vw);
+  box-sizing: border-box;
+  padding: 18px 20px 16px;
+  border-radius: 14px;
+  color: #fbeed9;
+  background: linear-gradient(160deg, #6e2c16 0%, #3c1509 100%);
+  border: 1px solid rgba(230, 178, 104, 0.45);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+
+.leave-confirm-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f4d9a6;
+}
+
+.leave-confirm-text {
+  margin: 6px 0 14px;
+  font-size: 14px;
+  color: rgba(251, 238, 217, 0.88);
+}
+
+.leave-confirm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.leave-confirm-buttons button {
+  min-height: 36px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font: 600 14px/1 "Inter", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.leave-confirm-stay {
+  border: none;
+  color: #2a1408;
+  background: #f2c35b;
+}
+
+.leave-confirm-leave {
+  border: 1px solid rgba(244, 217, 166, 0.6);
+  color: #fbeed9;
+  background: transparent;
+}
+
+.leave-confirm-buttons button:focus-visible {
+  outline: 2px solid #fff3e0;
+  outline-offset: 2px;
+}

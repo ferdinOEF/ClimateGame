@@ -39,6 +39,7 @@ import { HudPanels } from "@ui/panjim/hudPanels";
 import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
+import { panjimSaveKey } from "@levels/savedRun";
 import { MAYA, stormWord } from "@core/mayaLines";
 import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
@@ -144,6 +145,14 @@ export interface PanjimHost {
   uiBlocked: () => boolean;
   /** The session's tooltip manager, for this run's own controls. */
   tooltips: Tooltips;
+}
+
+/**
+ * Maya's lines that belong to one phase: its storm calls, the replay, the
+ * calm, the warnings and the opening objective. Withdrawn when the phase ends.
+ */
+export function isPhaseLine(id: string): boolean {
+  return /^(storm|replay|calm|warn|last|fixed|sample-warn):/.test(id) || id === MAYA.opening.id;
 }
 
 export class PanjimController {
@@ -393,6 +402,22 @@ export class PanjimController {
     if (!next || this.run.turnNumber !== 1) return;
     const preview = this.forecastPreview(next, true);
     if (preview) this.host.addBriefFeature(preview);
+  }
+
+  /**
+   * The start popup's forecast for a saved run: the next storm as the save
+   * stands ("The flood comes in 10 years"), in place of 2026's. Read on the
+   * live run, put back exactly as it was.
+   */
+  private showSavedForecastOnBrief(snapshot: RunSnapshot): void {
+    const fresh = this.run.snapshot();
+    this.run.restore(snapshot);
+    const next = this.run.nextChallenge();
+    const preview = next ? this.forecastPreview(next, next.id === this.run.schedule[0]?.id) : null;
+    this.run.restore(fresh);
+    if (!preview) return;
+    this.host.container.querySelector(".brief-feature")?.remove();
+    this.host.addBriefFeature(preview);
   }
 
   /** The forecast's map for `challenge` as the board stands, with its line and legend (the start popup; the result cards). */
@@ -688,6 +713,9 @@ export class PanjimController {
 
     // The result cards (Section 9): what the storm did, what protected the homes, and what comes next.
     if (record) await this.showResults(challenge, record);
+    // The phase is over: nothing she queued about it may be said in the next one (Section 12).
+    this.maya.dismiss();
+    this.maya.withdraw((line) => isPhaseLine(line.id));
     this.maya.setState("idle");
   }
 
@@ -821,7 +849,7 @@ export class PanjimController {
   // ---- autosave -----------------------------------------------------------
 
   private saveKey(): string {
-    return `riptide-rising:panjim2050:v3:${this.host.level.id}`;
+    return panjimSaveKey(this.host.level.id);
   }
 
   /** Writes the run to this device: the board, every replay snapshot (so Replay survives a reload), and real time played. */
@@ -875,6 +903,8 @@ export class PanjimController {
     if (!saved || saved.snapshot?.version !== 3 || saved.snapshot.turn >= this.run.totalYears) return false;
     const label = String(this.run.config.startYear + saved.snapshot.turn);
     const data = saved;
+    // The popup's forecast is the saved phase's, so it shows what "Continue" leads to (Section 12).
+    this.showSavedForecastOnBrief(data.snapshot);
     this.host.offerResume(`Continue from ${label}`, () => {
       this.run.restore(data.snapshot);
       for (const [id, lock] of data.locks) this.run.replaySnapshots.set(id, lock);
@@ -1123,14 +1153,18 @@ export class PanjimController {
       const pending = this.pendingChallenges;
       this.pendingChallenges = [];
       this.stagingYearEnd = pending.length > 0;
+      // No countdowns while the storm and its result cards are on screen: they would read the old year.
+      this.holdCountdowns(pending.length > 0);
       for (const staged of pending) await this.stageChallenge(staged.challenge, staged.outcome, staged.failedIds);
       this.stagingYearEnd = false;
+      this.holdCountdowns(false);
       for (const event of later) if (event.type !== "challenge") this.handleEvent(event);
       if (!this.run.finished) this.clock.tick(this.clockView());
       else this.clock.set(this.clockView());
       this.showConeIfPhaseStart();
     } finally {
       this.stagingYearEnd = false;
+      this.holdCountdowns(false);
       this.busy = false;
     }
     this.renderOutlook();
@@ -1200,6 +1234,12 @@ export class PanjimController {
       case "year":
         break;
     }
+  }
+
+  /** Hides the build counter and the Outlook's "N years" while a storm or its result cards are on screen. */
+  private holdCountdowns(hold: boolean): void {
+    this.clock.setHold(hold);
+    this.outlook.setHold(hold);
   }
 
   private syncControls(): void {

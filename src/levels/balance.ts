@@ -27,6 +27,9 @@ export interface HouseFill {
   rule?: HouseRule;
 }
 
+/** Elements whose only purpose is money: hidden from the build menu while a level's economy is off. */
+export const MONEY_ONLY = ["beachside_resort", "yacht"] as const;
+
 export interface BoardSetup {
   startingElements: StartingElementSeed[];
   effectScale: Map<string, number>;
@@ -54,6 +57,8 @@ export function boardSetup(level: LevelDef, map: GameMap): BoardSetup {
   const counted = setup.startingElements.filter((seed) => !scenery.has(axialKey(seed.coord))).length;
   setup.effectScale.set("house", fill.houseEconomyHouses / Math.max(1, counted));
   for (const id of fill.excludeFromBuild) setup.excluded.add(id);
+  // With the economy off, the things that only earn money have no place in the build menu (Section 12).
+  if (level.economy && !level.economy.enabled) for (const id of MONEY_ONLY) setup.excluded.add(id);
   if (fill.coastBuildRange !== undefined) {
     // Distance from the nearest non-coast tile, walked over the coast only.
     const terrain = new Map(map.tiles.map((tile) => [axialKey(tile.coord), tile.terrainId]));

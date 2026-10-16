@@ -2,7 +2,7 @@ import { axialKey, neighbor } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
-import { computeWater, defenceMetres, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE, siteAt, waterBoard } from "./hazardModel";
+import { computeWater, damageAt, defenceMetres, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE, siteAt, waterBoard } from "./hazardModel";
 
 /**
  * Zones and zone-local challenge resolution for Panjim 2050.
@@ -157,7 +157,13 @@ export interface HouseRule {
  * Called by `resolveChallenge` once for every wet tile, with the water there
  * (the deeper of surge and river, scaled by the house rule) and which kind it is.
  */
-export type TileProbe = (key: string, intensity: number, hazard: HazardId) => void;
+/**
+ * Reports a tile's water (`intensity`, the deeper of surge and river, scaled so
+ * `resilience` is the depth that takes a house) and its `damage`: the water
+ * and the cyclone's wind together, in the same units (what decides a house).
+ * Tiles reached by the wind alone report 0 water.
+ */
+export type TileProbe = (key: string, intensity: number, hazard: HazardId, damage: number) => void;
 
 /** Extra defence per tile from perfect-fit combos (P6). Keyed by coord key. */
 export type ComboBonus = Map<string, number>;
@@ -234,13 +240,17 @@ export function resolveChallenge(
   if (probe) {
     const unit = scale / HAZARD_MODEL.houseLossDepthM;
     // Each tile's water is the deeper of the surge and the river (they do not add), reported as that kind.
-    for (const [key, d] of field.depth) probe(key, d * unit, (field.surge.get(key) ?? 0) >= (field.flood.get(key) ?? 0) ? "cyclone" : "flood");
+    for (const key of new Set([...field.depth.keys(), ...field.wind.keys()])) {
+      const d = field.depth.get(key) ?? 0;
+      probe(key, d * unit, (field.surge.get(key) ?? 0) >= (field.flood.get(key) ?? 0) ? "cyclone" : "flood", damageAt(field, key) * unit);
+    }
   }
 
   const pathHouses = new Set<string>();
-  for (const [key, d] of undefended.depth) if (floodsHouse(d) && isHouse(key)) pathHouses.add(key);
+  // Water and the cyclone's wind together decide a house (Section 12).
+  for (const key of new Set([...undefended.depth.keys(), ...undefended.wind.keys()])) if (isHouse(key) && floodsHouse(damageAt(undefended, key))) pathHouses.add(key);
   const standing = [...pathHouses].filter((key) => state.elements.get(key)!.degradeAmount < 1);
-  const lost = standing.filter((key) => floodsHouse(field.depth.get(key) ?? 0));
+  const lost = standing.filter((key) => floodsHouse(damageAt(field, key)));
   const undefendedLost = standing.length;
 
   // Apply: engineered failures removed, nature defences worn, houses lost.

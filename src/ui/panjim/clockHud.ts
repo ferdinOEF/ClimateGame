@@ -69,7 +69,7 @@ export class ClockHud {
     this.turnEl.textContent = view.finished ? "" : `Year ${view.turn} of ${view.totalYears}`;
     this.turnEl.hidden = Boolean(view.finished);
     this.untilEl.textContent = view.until ? untilText(view.until) : "";
-    this.untilEl.hidden = !view.until || Boolean(view.finished);
+    this.untilEl.hidden = !view.until || Boolean(view.finished) || this.el.classList.contains("holding");
     this.skipBtn.hidden = !view.canSkip;
   }
 
@@ -80,6 +80,12 @@ export class ClockHud {
     void this.el.offsetWidth; // restart the CSS animation
     this.el.classList.add("ticking");
     playSound("clock_tick");
+  }
+
+  /** Hides the build counter while a storm or its result cards are on screen (Section 12): it would be stale. */
+  setHold(hold: boolean): void {
+    this.el.classList.toggle("holding", hold);
+    if (hold) this.untilEl.hidden = true;
   }
 
   /** Whether the fallback may be pressed (false while a storm plays, or at the end). */

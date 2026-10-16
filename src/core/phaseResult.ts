@@ -1,5 +1,5 @@
 import { ELEMENT_BY_ID } from "./elements";
-import { floodsHouse } from "./hazardModel";
+import { damageAt, floodsHouse } from "./hazardModel";
 import type { ScheduledChallenge } from "./climate";
 import type { StormRecord } from "./stormRecord";
 
@@ -74,7 +74,7 @@ export function placesInArea(places: readonly Place[], area: readonly string[]):
 /** The result of one storm, for its cards. `area` is its area to protect at the start of its phase; `builtKinds` the defences the player built in the phase. */
 export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, area: readonly string[], places: readonly Place[], builtKinds: readonly string[]): PhaseResult {
   const outcome = record.outcome;
-  const placeResults = placesInArea(places, area).map((place) => ({ name: place.name, stood: !floodsHouse(record.depth.get(`${place.q},${place.r}`) ?? 0) }));
+  const placeResults = placesInArea(places, area).map((place) => ({ name: place.name, stood: !floodsHouse(damageAt(record, `${place.q},${place.r}`)) }));
   // Every kind built in the phase that still stood when the storm came was re-run without; one that was gone by then did nothing.
   const saved = record.withoutEach;
   const kinds = [...new Set(builtKinds)].filter((id) => (ELEMENT_BY_ID.get(id)?.effects.resilience ?? 0) > 0);

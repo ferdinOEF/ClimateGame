@@ -53,6 +53,7 @@ import { panjimHelpHtml } from "@ui/panjim/panjimHelp";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
+import { LeaveConfirm } from "@ui/panjim/leaveConfirm";
 import { greyColor, sceneryGreyLevels } from "@render/sceneryGrey";
 import startingStateData from "@data/startingState.json";
 
@@ -607,7 +608,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     objectivesPanel.briefOpen ||
     Boolean(
       document.querySelector(
-        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .result-cards:not([hidden]), .sources-backdrop"
+        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .result-cards:not([hidden]), .sources-backdrop, .leave-confirm-backdrop:not([hidden])"
       )
     );
   const riskIntro = new RiskIntroFx(container, {
@@ -2314,15 +2315,24 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     openTilePopover(coord);
   });
 
+  // "Leave Panjim?" on Esc (Section 12). Panjim only: the Tutorial keeps its behaviour.
+  const leaveConfirm = panjim ? new LeaveConfirm(container) : null;
   const keydownAbort = new AbortController();
   document.addEventListener(
     "keydown",
     (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // Escape closes the popover if one is open; otherwise it is the
-      // "get me out of here" key, which the shell turns into a quit prompt.
+      // "get me out of here" key. On Panjim it asks first (Section 12): the
+      // other overlays answer their own Esc, and the confirm its own.
       if (buildPopover.isOpen) buildPopover.hide();
-      else if (!sessionFinished) options.onExit();
+      else if (sessionFinished) return;
+      else if (!leaveConfirm) options.onExit();
+      else if (!leaveConfirm.isOpen && (!overlayOpen() || objectivesPanel.briefOpen)) {
+        void leaveConfirm.ask().then((leave) => {
+          if (leave) options.onExit();
+        });
+      }
     },
     { signal: keydownAbort.signal }
   );
@@ -2664,6 +2674,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     timers.clear();
 
     keydownAbort.abort();
+    leaveConfirm?.dispose();
     panjim?.dispose();
     stormReport.dispose();
     mapLabels.dispose();

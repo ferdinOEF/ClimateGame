@@ -10,6 +10,8 @@ export interface GetReadyRow {
   job: PrepObjective;
   current: number;
   target: number;
+  /** Ticked: the same count reached its target (core/prep.ts `prepProgress`). */
+  done: boolean;
 }
 
 export class GetReadyPanel {
@@ -73,7 +75,7 @@ export class GetReadyPanel {
         this.list.appendChild(el);
         this.rows.set(row.job.id, el);
       }
-      el.classList.toggle("done", row.job.done);
+      el.classList.toggle("done", row.done);
       (el.querySelector(".get-ready-progress") as HTMLElement).textContent = `${Math.min(row.current, row.target)}/${row.target}`;
     }
     this.el.hidden = rows.length === 0;

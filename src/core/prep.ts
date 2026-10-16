@@ -171,7 +171,13 @@ export function generatePrep(
 }
 
 /** How far along a job is: what has been built for it, out of `count`. */
-export function prepProgress(job: PrepObjective, state: GameState, zones: ZoneIndex): { current: number; target: number } {
-  const current = Math.max(0, standingIn(state, zones, job.elementId, job.zone, job.tiles ? new Set(job.tiles) : undefined) - job.baseline);
-  return { current: Math.min(current, job.count), target: job.count };
+/**
+ * A job's row as the player sees it: the count standing now, the target, and
+ * whether it is ticked. The tick and the counter come from the one count
+ * (Section 12): a row is never ticked below its target, even after a defence
+ * that once completed it is demolished or lost.
+ */
+export function prepProgress(job: PrepObjective, state: GameState, zones: ZoneIndex): { current: number; target: number; done: boolean } {
+  const current = Math.min(Math.max(0, standingIn(state, zones, job.elementId, job.zone, job.tiles ? new Set(job.tiles) : undefined) - job.baseline), job.count);
+  return { current, target: job.count, done: current >= job.count };
 }

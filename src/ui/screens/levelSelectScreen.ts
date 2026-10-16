@@ -2,6 +2,7 @@ import { LEVELS } from "@levels/levels";
 import { isLevelUnlocked, recordFor, type PlayerProgress } from "@levels/progression";
 import { describeObjective } from "@core/objectives";
 import { el, formatScore, starRow } from "./screenHelpers";
+import { savedRunYear } from "@levels/savedRun";
 
 /**
  * The campaign list.
@@ -54,12 +55,7 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
                   el("li", { text: describeObjective(objective) })
                 )
               }),
-              record.bestScore > 0
-                ? el("div", { className: "level-card-best", text: `Best ${formatScore(record.bestScore)}` })
-                : el("div", {
-                    className: "level-card-best muted",
-                    text: unlocked ? "Not yet played" : `Clear ${LEVELS[index - 1]?.name ?? "the previous level"} to unlock`
-                  })
+              el("div", { className: `level-card-best${progressLine(level, record, unlocked).muted ? " muted" : ""}`, text: progressLine(level, record, unlocked).text })
             ]
           });
           return card;
@@ -69,4 +65,22 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
   });
 
   root.appendChild(screen);
+}
+
+/**
+ * The card's last line (Section 12): "In progress · 2031" while a saved run
+ * waits, the best stars once a run has finished, else "Not yet played" (or
+ * how to unlock it).
+ */
+export function progressLine(
+  level: (typeof LEVELS)[number],
+  record: { stars: number; bestScore: number; completed: boolean },
+  unlocked: boolean,
+  savedYear: number | null = level.timeline ? savedRunYear(level.id, level.timeline.startYear, level.timeline.endYear - level.timeline.startYear + 1) : null
+): { text: string; muted: boolean } {
+  if (!unlocked) return { text: `Clear ${LEVELS[LEVELS.indexOf(level) - 1]?.name ?? "the previous level"} to unlock`, muted: true };
+  if (savedYear !== null) return { text: `In progress · ${savedYear}`, muted: false };
+  if (record.stars > 0) return { text: `Best ${"★".repeat(record.stars)}${"☆".repeat(Math.max(0, 3 - record.stars))}`, muted: false };
+  if (record.bestScore > 0) return { text: `Best ${formatScore(record.bestScore)}`, muted: false };
+  return { text: "Not yet played", muted: true };
 }

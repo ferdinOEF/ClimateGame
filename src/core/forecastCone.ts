@@ -2,7 +2,7 @@ import { axialToWorld } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
-import { computeWater, type StormInput, type WaterBoard } from "./hazardModel";
+import { computeWater, damageAt, seawardOf, type StormInput, type WaterBoard } from "./hazardModel";
 
 /**
  * The forecast cone at the start of a storm's phase (Section 6.1): where the
@@ -84,30 +84,8 @@ const world = (key: string): { x: number; z: number } => {
   return axialToWorld({ q, r }, 1);
 };
 
-/**
- * The direction from a landfall site out to open sea: towards the mass of sea
- * within six hexes of it. (It used to be "away from the land beside it", which
- * on a site where the coast bends, such as 1,12 by the river mouth since
- * Section 11, pointed the track in over the north bank.)
- */
-function seaward(board: WaterBoard, site: string): { x: number; z: number } {
-  const at = world(site);
-  const reach = 6 * Math.sqrt(3);
-  let x = 0;
-  let z = 0;
-  for (const [key, tile] of board.tiles) {
-    if (!WATER.has(tile.terrainId)) continue;
-    const p = world(key);
-    const dx = p.x - at.x;
-    const dz = p.z - at.z;
-    const distance = Math.hypot(dx, dz);
-    if (distance < 0.01 || distance > reach) continue;
-    x += dx / distance;
-    z += dz / distance;
-  }
-  const length = Math.hypot(x, z) || 1;
-  return { x: x / length, z: z / length };
-}
+/** The direction from a landfall site out to open sea (the hazard model's own, which the wind blows along). */
+const seaward = seawardOf;
 
 /** The cyclone's track: from open sea, through its landfall site, a little way inland. */
 function cycloneTrack(board: WaterBoard, site: string): ConeTrack {
@@ -181,8 +159,9 @@ export function forecastCone(
     return distance < 0.01 || (dx * out.x + dz * out.z) / distance >= cos;
   };
   // Never the north bank: it is scenery, not part of the game.
-  const reached = [...water.depth.keys()].filter((key) => !state.isScenery(key) && (!WATER.has(board.tiles.get(key)!.terrainId) || inWedge(key)));
-  const bands = coneBands(reached.map((key) => [key, water.depth.get(key)!] as const));
+  // Water and wind together (Section 12): every house the storm could take is inside the cone.
+  const reached = [...new Set([...water.depth.keys(), ...water.wind.keys()])].filter((key) => !state.isScenery(key) && (!WATER.has(board.tiles.get(key)!.terrainId) || inWedge(key)));
+  const bands = coneBands(reached.map((key) => [key, damageAt(water, key)] as const));
   const tracks: ConeTrack[] = [];
   if (site) tracks.push(cycloneTrack(board, site));
   let meet: string[] = [];

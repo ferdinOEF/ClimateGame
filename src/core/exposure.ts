@@ -97,8 +97,9 @@ export function computeExposure(
       options.houseStars,
       options.houseRule,
       // The heat never covers scenery (the north bank): the storm still draws there, from the same probe.
-      (key, value) => {
-        if (!copy.isScenery(key)) tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, value));
+      // The heat is the damage (water and wind together), so it marks every house the storm takes.
+      (key, _water, _hazard, damage) => {
+        if (!copy.isScenery(key)) tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, damage));
       },
       site
     );

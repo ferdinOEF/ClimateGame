@@ -138,12 +138,12 @@ describe("computeExposure", () => {
     expect(protectedTiles(fresh.exposureFor(c)!, fresh.exposureFor(c, true)!)).toEqual([]);
   });
 
-  it("covers only tiles the water reaches", () => {
+  it("covers only tiles the storm reaches (its water or, in a cyclone, its wind)", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const next = run.nextChallenge()!;
     const preview = computeExposure(run.state, run.zones!, "cyclone", 100, 50, { houseRule: run.houseRule, landfallSites: [3] });
     const water = computeWater(run.state, { kind: "cyclone", strength: 2, landfall: 3 }, { landfallZoneTiles: run.zones!.keys("z1") });
-    for (const key of preview.exposure.keys()) expect(water.depth.has(key)).toBe(true);
+    for (const key of preview.exposure.keys()) expect(water.depth.has(key) || water.wind.has(key)).toBe(true);
     expect(next.kind).toBe("cyclone");
   });
 });

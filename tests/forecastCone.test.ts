@@ -75,7 +75,8 @@ describe("the forecast cone", () => {
 
   // Section 11 (owner decision): the new 0 m land at the river mouth just north of Kala Academy, 5,10 and
   // 6,9, floods in any cyclone that reaches the mouth; it is the only damage outside the stretch.
-  const RIVER_MOUTH = ["5,10", "6,9"];
+  // Section 12: the cyclone's wind tips 8,7, one more home on the same river-mouth shore.
+  const RIVER_MOUTH = ["5,10", "6,9", "8,7"];
   it("keeps the first cyclone small: undefended, everything it takes is on the beach and land between Kala Academy and Sharada Mandir, but for the river mouth", () => {
     const run = newRun("cone", BOT_LEVEL);
     const cyclone = run.schedule[0];
