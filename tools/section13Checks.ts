@@ -93,15 +93,20 @@ async function open(page: Page, url: string): Promise<void> {
   })()`);
 }
 
-/** The free tile where `elementId` saves the most homes from the next storm (ties: nearest the homes at risk), as "q,r". */
+/** The free tile where `elementId` saves the most homes from the next storm (ties: nearest the homes at risk), as "q,r"; anywhere on the board if none is near them. */
 async function bestTile(page: Page, elementId: string): Promise<string | null> {
+  return (await bestWithin(page, elementId, 4)) ?? (await bestWithin(page, elementId, 99));
+}
+
+async function bestWithin(page: Page, elementId: string, reach: number): Promise<string | null> {
   return val<string | null>(page, `(function () {
+    var reach = ${reach};
     var next = r.nextChallenge(); var homes = (r.exposureFor(next) || { housesAtRisk: [] }).housesAtRisk.map(function (k) { var a = k.split(",").map(Number); return { q: a[0], r: a[1] }; });
     var best = null, bestSaved = -1, bestDist = 1e9;
     r.state.placed.forEach(function (tile) {
       var c = tile.coord; if (!r.state.canBuild(c, ${JSON.stringify(elementId)})) return;
-      var dist = 1e9; homes.forEach(function (h) { var d = (Math.abs(h.q - c.q) + Math.abs(h.r - c.r) + Math.abs(h.q + h.r - c.q - c.r)) / 2; if (d < dist) dist = d; });
-      if (dist > 4) return;
+      var dist = homes.length ? 1e9 : 0; homes.forEach(function (h) { var d = (Math.abs(h.q - c.q) + Math.abs(h.r - c.r) + Math.abs(h.q + h.r - c.q - c.r)) / 2; if (d < dist) dist = d; });
+      if (dist > reach) return;
       var saved = r.homesSavedBy(next, c, ${JSON.stringify(elementId)});
       if (saved > bestSaved || (saved === bestSaved && dist < bestDist)) { best = c.q + "," + c.r; bestSaved = saved; bestDist = dist; }
     });
@@ -222,7 +227,9 @@ async function main(): Promise<void> {
         }
 
         // The Field Guide: one count on the button, in the panel and on Maya's line.
-        const button = await text(page, ".field-guide-button");
+        await page.evaluate("(function () { var p = window.__panjimForTest; p.maya.withdraw(function () { return true; }); p.maya.dismiss(); p.nuggets.show('mangrove'); })()");
+        await page.waitForTimeout(800);
+        const button = (await page.evaluate("document.querySelector('.field-guide-button').textContent")) as string;
         const mayaCount = await page.evaluate("(function () { var e = document.querySelector('.maya-count'); return e && !e.hidden ? e.textContent : ''; })()") as string;
         await page.evaluate("document.querySelector('.field-guide-button').click()");
         await page.waitForTimeout(500);
@@ -230,7 +237,8 @@ async function main(): Promise<void> {
         await page.keyboard.press("Escape");
         await page.waitForTimeout(300);
         const n = /(\d+ of \d+)/.exec(button)?.[1] ?? "";
-        check(n !== "" && panel === n && (mayaCount === "" || mayaCount === n), `13.3: one Field Guide count: button "${button}", panel "${panel}", Maya "${mayaCount || "(no fact line up)"}"`);
+        check(n !== "" && panel === n && mayaCount === n, `13.3: one Field Guide count: button "${button}", panel "${panel}", Maya's fact line "${mayaCount}"`);
+        await shot(page, "maya-count-1920x1080");
 
         // The warning year: Maya's line, no banner, no landfall tag, no shields.
         await page.evaluate("window.__panjimScenarioForTest('heat-2')");
@@ -241,14 +249,14 @@ async function main(): Promise<void> {
         check((await count(page, ".forecast-label")) === 0, "13.4: no landfall tag");
         await shot(page, "warning-1920x1080", true);
 
-        // The storm and its cards: no bottom prompt.
-        await page.evaluate("window.__toResults = window.__panjimScenarioForTest('to-results')");
-        let sawStorm = false;
+        // The storm and its cards: no bottom prompt. Held at storm time 3 s to look, then let go.
+        await page.evaluate("window.__panjimScenarioForTest('storm-3')");
+        await page.waitForTimeout(1500);
+        check((await text(page, ".empty-prompt")) === "", "13.4: no bottom prompt while the storm plays");
+        await shot(page, "storm-1920x1080");
+        await page.evaluate("window.__panjimScenarioForTest('storm-release')");
         for (let k = 0; k < 600 && !(await page.evaluate("!!document.querySelector('.result-cards:not([hidden]) .result-next')")); k++) {
-          if (!sawStorm && ((await page.evaluate("!!(window.__stormForTest && window.__stormForTest.playing())")) as boolean)) {
-            sawStorm = true;
-            check((await text(page, ".empty-prompt")) === "", "13.4: no bottom prompt while the storm plays");
-          }
+          await page.evaluate("(function () { var s = window.__stormForTest; if (s && s.playing()) document.dispatchEvent(new PointerEvent('pointerdown')); if (document.querySelector('.replay-card:not([hidden])')) document.dispatchEvent(new PointerEvent('pointerdown')); })()");
           await page.waitForTimeout(400);
         }
         check((await text(page, ".empty-prompt")) === "", "13.4: no bottom prompt while the result cards show");

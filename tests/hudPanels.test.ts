@@ -72,9 +72,9 @@ describe("the two HUD panels", () => {
     expect(panels).toContain("setDanger(on: boolean)");
     expect(css).toMatch(/\.hud-panel-danger \{[^}]*border: 2px solid #fdf6e6;[^}]*transform: rotate\(45deg\);/);
     expect(css).toMatch(/\.hud-panel\.danger \.hud-panel-button \{[^}]*border-width: 2px;/);
-    // On the Status panel only, and driven by a warning or a fall in Resilience.
+    // On the Status panel only. Section 13: never set on Panaji (Maya says the warning; Status holds no meters).
     expect(panels).toContain('if (id === "status")');
-    expect(controller).toContain("this.panels.status.setDanger(this.exposure !== null || this.resilienceDropUnseen)");
+    expect(controller).toContain("this.panels.status.setDanger(false)");
   });
 
   it("floats the coin jar's gain beside the Status button while it is shut", () => {

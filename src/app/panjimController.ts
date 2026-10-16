@@ -201,9 +201,6 @@ export class PanjimController {
   readonly nuggets: NuggetPopup;
   /** The HUD's two panels, each shut to a small button (hudPanels.ts). */
   readonly panels: HudPanels;
-  private lastResilience: number | null = null;
-  /** Resilience has fallen since the Status panel was last opened. */
-  private resilienceDropUnseen = false;
   private nextDangerMs = 0;
   /** Maya's voice on or off (M). The heat stays either way. */
   readonly mayaToggle: PrefToggle;
@@ -350,10 +347,6 @@ export class PanjimController {
     host.container.querySelector<HTMLElement>(".instrument-cluster")?.remove();
     this.panels.status.adopt(this.jar?.el ?? null, this.fieldGuide.buttonEl);
     this.panels.settings.adopt(togglesRow(host.container));
-    this.panels.status.onOpen = () => {
-      this.resilienceDropUnseen = false;
-      this.updateDanger();
-    };
     if (this.jar) this.jar.onGain = (text) => this.panels.status.floatText(text);
     this.attachTooltips();
     this.addForecastToBrief();
@@ -995,10 +988,9 @@ export class PanjimController {
    * or Resilience has fallen since the panel was last opened. Never a number.
    */
   private updateDanger(): void {
-    const resilience = this.host.state.resilience;
-    if (this.lastResilience !== null && resilience < this.lastResilience - 0.001) this.resilienceDropUnseen = true;
-    this.lastResilience = resilience;
-    this.panels.status.setDanger(this.exposure !== null || this.resilienceDropUnseen);
+    // Section 13: no danger mark on Status. The panel holds no meters or warning now, and Maya says the
+    // warning (one voice at a time); the mark would point at a panel with nothing about danger in it.
+    this.panels.status.setDanger(false);
   }
 
   frame(): void {
