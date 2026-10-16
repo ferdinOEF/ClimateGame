@@ -1,11 +1,15 @@
 import type { ScheduledChallenge } from "@core/climate";
+import { HEAT_LEAD_YEARS } from "@core/exposure";
 
 /**
- * How to Play for Panjim 2050 (Section 8): one build is one turn is one
- * year, three storms on a fixed calendar. Built from the level's own numbers,
- * so it never disagrees with them. Names no price, income or growing time:
- * coins and growth are off in this version. Everything about what a defence
- * does is a rule of this game.
+ * How to Play for the Panjim game (Section 15): a short page in the result
+ * cards' brown, one small picture per idea, each picture a render of the game
+ * itself (public/art/help-*.jpg, made by tools/shellArt.ts). Built from the
+ * level's own numbers, so it never disagrees with them: the Tutorial's page
+ * says three builds and one cyclone, Panaji's twenty-five and three storms.
+ *
+ * Everything on it is a rule of this game, and says so. The facts Maya tells
+ * about real defences carry their own sources (Facts & sources).
  */
 export interface PanjimHelpInput {
   startYear: number;
@@ -19,76 +23,70 @@ const ordinal = (n: number): string => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "
 
 const esc = (text: string): string => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
+function picture(name: string, alt: string): string {
+  return `<img class="panjim-help-pic" src="${import.meta.env.BASE_URL}art/${name}" alt="${esc(alt)}" loading="lazy" decoding="async" draggable="false">`;
+}
+
+const RULE = `<span class="result-rule">Game rule</span>`;
+
 export function panjimHelpHtml(input: PanjimHelpInput): string {
   const years = input.endYear - input.startYear + 1;
-  const storms = input.storms.map((storm) => `<li><strong>${esc(storm.name)}</strong> in ${storm.year}, straight after your ${ordinal(storm.turn)} build</li>`).join("");
+  const count = input.storms.length;
+  const stormList = input.storms
+    .map((storm) => `<li><strong>${esc(storm.name)}</strong>, ${storm.year}: straight after your ${ordinal(storm.turn)} build</li>`)
+    .join("");
+  const stormsTitle = count === 1 ? "The storm" : `${countWord(count).replace(/^./, (c) => c.toUpperCase())} storms`;
   return `
+  <div class="panjim-help">
   <div class="help-header">
-    <div class="help-title">How to Play</div>
+    <div class="help-title">How to play</div>
     <button type="button" class="help-close" aria-label="Close">&times;</button>
   </div>
   <div class="help-body panjim-help-body">
 
-    <section class="help-section">
-      <h3>Objective</h3>
-      <p>Protect Panjim's homes from ${countWord(input.storms.length)} storms over ${years} years, from ${input.startYear} to ${input.endYear}. Every patch of land is already home to someone. Count the houses you save.</p>
+    <section class="panjim-help-item">
+      ${picture("help-clock.jpg", "The year at the top of the screen, with the next storm and the homes at risk")}
+      <div>
+        <h3>One build a year ${RULE}</h3>
+        <p>Click a tile and pick a card. That build ends the year. ${years} builds, ${input.startYear} to ${input.endYear}.</p>
+      </div>
     </section>
 
-    <section class="help-section">
-      <h3>A Year at a Time</h3>
-      <ol class="help-steps">
-        <li><strong>Build.</strong> Click a tile and pick a defence that suits its ground.</li>
-        <li><strong>One build, one year.</strong> Each build you make ends the year, and the next year begins. A build you cancel or cannot make changes nothing.</li>
-        <li><strong>Weather the storm.</strong> A storm comes straight after your last build before it, in that same year. What you built meets it.</li>
-      </ol>
+    <section class="panjim-help-item">
+      ${picture("help-result.jpg", "A storm's result card")}
+      <div>
+        <h3>${stormsTitle} ${RULE}</h3>
+        <ul>${stormList}</ul>
+        <p>After each, a result card: the stars, the homes saved, and what protected them.</p>
+      </div>
     </section>
 
-    <section class="help-section">
-      <h3>The Storms</h3>
-      <ul class="help-tips">${storms}</ul>
-      <p class="help-note">In the two years before each storm, red tiles show where it will hit hardest.</p>
+    <section class="panjim-help-item">
+      ${picture("help-cone.jpg", "The forecast cone over the board, with the area to protect outlined")}
+      <div>
+        <h3>The cone ${RULE}</h3>
+        <p>When a storm's years begin, the cone shows where it may go and the area to protect. It goes with your first build; a faint outline then marks the homes still at risk.</p>
+      </div>
     </section>
 
-    <section class="help-section">
-      <h3>What You Can Build</h3>
-      <p class="help-note">Grouped by ground. In this game, every defence is at full strength the day it is built.</p>
-
-      <div class="help-roster-group">
-        <div class="help-roster-terrain">Beach</div>
-        <div class="help-roster-item"><span>Dune</span><span>Soaks up part of a surge; weakens but is not destroyed.</span></div>
-        <div class="help-roster-item"><span>Sandy Vegetation</span><span>Pandanus and creepers. Softens a surge a little.</span></div>
-        <div class="help-roster-item"><span>Seawall</span><span>Strong, but fails all at once if a storm is too big for it.</span></div>
+    <section class="panjim-help-item">
+      ${picture("help-heat.jpg", "Red striped tiles: homes the coming storm would flood")}
+      <div>
+        <h3>The heat ${RULE}</h3>
+        <p>In the ${countWord(HEAT_LEAD_YEARS)} years before a storm, red marks the homes it would flood.</p>
       </div>
-
-      <div class="help-roster-group">
-        <div class="help-roster-terrain">Wetland</div>
-        <div class="help-roster-item"><span>Mangrove</span><span>The strongest living defence here. Adds food and biodiversity.</span></div>
-        <div class="help-roster-item"><span>Khazan</span><span>Bunds and a sluice. Holds floodwater and adds food.</span></div>
-      </div>
-
-      <div class="help-roster-group">
-        <div class="help-roster-terrain">River</div>
-        <div class="help-roster-item"><span>Small Dam</span><span>Holds back a flood, until a flood is too big for it.</span></div>
-        <div class="help-roster-item"><span>Sand Mining</span><span>Lowers biodiversity and makes floods worse.</span></div>
-      </div>
-
-      <div class="help-roster-group">
-        <div class="help-roster-terrain">Near sea</div>
-        <div class="help-roster-item"><span>Breakwater</span><span>Sits offshore and weakens a cyclone's waves before the beach.</span></div>
-      </div>
-
-</section>
-
-    <section class="help-section">
-      <h3>A Few Tips</h3>
-      <ul class="help-tips">
-        <li>Defend where the red is, before the storm's year ends.</li>
-        <li>Mix kinds of defence: in this game, different kinds together do more than many of one kind.</li>
-        <li>Don't put all your defence on one stretch of coast.</li>
-        <li>In this game, a cyclone brings wind as well as water, and rows of pandanus and mangroves slow it on the tiles behind them.</li>
-      </ul>
     </section>
 
+    <section class="panjim-help-item">
+      ${picture("help-cards.jpg", "The build cards for a beach tile, each with how many homes it protects")}
+      <div>
+        <h3>The numbers on the cards ${RULE}</h3>
+        <p>Each card says how many homes it protects here from the next storm, worked out the way the storm itself is. Pick the biggest.</p>
+      </div>
+    </section>
+
+    <p class="panjim-help-note">Everything on this page is a rule of this game. What Maya tells you about real dunes, mangroves and khazans comes with its source: see Facts &amp; sources on the menu.</p>
+  </div>
   </div>
 `;
 }

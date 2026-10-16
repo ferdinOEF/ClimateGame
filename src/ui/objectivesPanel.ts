@@ -102,6 +102,14 @@ export class ObjectivesPanel {
       goals.appendChild(item);
     }
 
+    // The Tutorial's card is one line and the forecast (Section 15): no place blurb, no list of goals.
+    if (level.tutorial && level.timeModel === "years") {
+      card.classList.add("brief-tutorial");
+      place.hidden = true;
+      (card.querySelector(".brief-goals-label") as HTMLElement).hidden = true;
+      goals.hidden = true;
+    }
+
     card.querySelector(".brief-cta")!.addEventListener("click", () => this.hideBrief());
     // Maya stands beside the brief, whole, with her pack: a sibling of the
     // card (which scrolls), in a box that is only as big as the card.

@@ -129,10 +129,14 @@ export interface SessionResult {
   /**
    * Where to go instead of the results screen, when the level's own last card
    * already showed the result (Panjim 2050's final card, Section 9): play the
-   * level again, or back to the menu. Absent everywhere else.
+   * level again, back to the menu, or (the Tutorial's last card, Section 15)
+   * another level. Absent everywhere else.
    */
-  then?: "again" | "menu";
+  then?: RunThen;
 }
+
+/** Where a run goes after its own last card: play again, the menu, or another level. */
+export type RunThen = "again" | "menu" | { levelId: string };
 
 /** The rows the level-complete screen lists, in display order. Built here so the screen never re-derives which terms exist. */
 export function scoreRows(breakdown: LevelScoreBreakdown): { label: string; value: number }[] {

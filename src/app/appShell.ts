@@ -460,6 +460,11 @@ export class AppShell {
       this.enter({ name: "menu" }, "replace");
       return;
     }
+    if (typeof result.then === "object") {
+      // The Tutorial's last card: straight on to Panaji.
+      this.requestLevel(result.then.levelId, "replace");
+      return;
+    }
 
     // `replace`: the results screen stands in for the run that just ended, so
     // Back from a score returns to wherever the player started the level

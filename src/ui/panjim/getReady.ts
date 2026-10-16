@@ -103,6 +103,9 @@ export class GetReadyPanel {
     const el = this.rows.get(job.id);
     if (!el) return;
     el.classList.add("done", "just-done");
+    // Its count reads full too: the build that finished the last row also brings the storm, and no later repaint comes.
+    const progress = el.querySelector<HTMLElement>(".get-ready-progress");
+    if (progress) progress.textContent = `${job.count}/${job.count}`;
     if (!this.showRewards) {
       window.setTimeout(() => el.classList.remove("just-done"), 1400);
       return;

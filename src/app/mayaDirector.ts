@@ -32,6 +32,8 @@ export interface DirectorContext {
   /** A gentle, cancellable camera glide to a tile. */
   focus: (coord: AxialCoord) => void;
   landmarks: readonly { name: string; q: number; r: number }[];
+  /** The Tutorial (Section 15): no hello, tips or warnings; the controller says its own coaching lines. */
+  quiet?: boolean;
 }
 
 type Note = { id: string; title: string; text: string };
@@ -63,6 +65,7 @@ export class MayaDirector {
   private readonly lastCalled = new Set<string>();
 
   constructor(private readonly maya: Maya, private readonly ctx: DirectorContext) {
+    if (ctx.quiet) return;
     // Her first line: the first storm's objective, when there is one (Section 6.3); else hello.
     const job = ctx.run.prep.find((j) => j.heading);
     const next = ctx.run.nextChallenge();
@@ -85,6 +88,7 @@ export class MayaDirector {
 
   /** After anything that changed the board or the clock: queue what this moment calls for. */
   consider(): void {
+    if (this.ctx.quiet) return;
     const run = this.ctx.run;
     const next = run.nextChallenge();
     if (!next) return;

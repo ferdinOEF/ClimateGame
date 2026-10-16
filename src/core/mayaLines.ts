@@ -13,6 +13,9 @@ import type { ChallengeOutcome, ZoneIndex } from "./zones";
  */
 export const MAYA = mayaData;
 
+/** The Tutorial's four coaching lines (Section 15): the start, the build cards' number, the faint outline, the red heat. */
+export const TUTORIAL_LINES = mayaData.tutorial;
+
 /** A line kept in the Field Guide's "Maya's notes". */
 export interface SavedNote {
   id: string;

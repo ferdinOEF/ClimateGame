@@ -100,6 +100,26 @@ export function comingUpCard(title: string, preview: HTMLElement | null, mayaLin
   return body;
 }
 
+/** The Tutorial's one card (Section 15): the stars, the homes saved and what protected them. */
+export function tutorialResultCard(result: PhaseResult): HTMLElement {
+  const most = Math.max(1, ...result.defences.map((d) => d.homes));
+  const rows = result.defences.length
+    ? `<h3 class="result-subtitle">What protected them</h3>
+       <p class="result-sub">Homes that would have been lost without each one.</p>
+       <ul class="result-rows">${result.defences
+         .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span><span class="result-row-value">${d.homes}</span></li>`)
+         .join("")}</ul>`
+    : `<p class="result-sub">Nothing stood in the cyclone's way this time.</p>`;
+  return el(`<div class="result-card-body tutorial-result">
+    <div class="result-eyebrow">Tutorial · ${esc(result.eyebrow)}</div>
+    <h2 class="result-title">${esc(resultHeadline(result.stars))}</h2>
+    ${starsHtml(result.stars)}
+    ${homesHtml(result.homesSaved, result.homesTotal)}
+    ${rows}
+    <p class="result-sub">Panaji is the real city: twenty-five builds and three storms.</p>
+  </div>`);
+}
+
 /** The final card: the three phases, the total and the overall stars. */
 export function finalCard(phases: { label: string; saved: number; total: number }[], stars: number): HTMLElement {
   const saved = phases.reduce((s, p) => s + p.saved, 0);
