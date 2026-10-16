@@ -186,6 +186,18 @@ function keepLabelsReadable(svg: SVGSVGElement, viewWidth: number, viewHeight: n
     }
     for (const dot of Array.from(svg.querySelectorAll<SVGCircleElement>(".cone-preview-place circle"))) dot.setAttribute("r", fmt(0.42 * Math.min(k, 1.6)));
   };
-  if (typeof ResizeObserver === "function") new ResizeObserver(fit).observe(svg);
+  if (typeof ResizeObserver === "function") {
+    let shown = false;
+    const observer = new ResizeObserver(() => {
+      // Let go once the map has been shown and taken off the page (its card closed).
+      if (svg.isConnected) shown = true;
+      else if (shown) {
+        observer.disconnect();
+        return;
+      }
+      fit();
+    });
+    observer.observe(svg);
+  }
   if (typeof requestAnimationFrame === "function") requestAnimationFrame(fit);
 }

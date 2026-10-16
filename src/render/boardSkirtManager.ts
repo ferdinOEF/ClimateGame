@@ -166,7 +166,8 @@ export class BoardSkirtManager {
       // edge is a ragged line of coves and spits.
       const fray = (tile.ring - 2) / (RINGS - 1);
       const water = WATER.has(tile.terrainId);
-      if (tile.ring >= 3 && valueNoise(x, z, 1) < fray && !(options.clean && water)) continue;
+      // Clean (Panaji): no fraying anywhere, so no loose grey hexes at the edge.
+      if (tile.ring >= 3 && valueNoise(x, z, 1) < fray && !options.clean) continue;
 
       if (water) {
         const own = options.colors?.get(tile.terrainId) ?? paletteColor(TERRAIN_BY_ID.get(tile.terrainId)?.colorKey ?? "seaTurquoise");
@@ -190,7 +191,7 @@ export class BoardSkirtManager {
         const color = hillStops[Math.floor(stop)]
           .clone()
           .lerp(hillStops[Math.floor(stop) + 1], stop - Math.floor(stop))
-          .lerp(sky, smoothstep((tile.ring - 3) / 3) * 0.5);
+          .lerp(sky, options.clean ? 0 : smoothstep((tile.ring - 3) / 3) * 0.5);
         land.push({ matrix: new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion(), new THREE.Vector3(1, height, 1)), color, fade: t, grey: tile.grey });
       }
     }

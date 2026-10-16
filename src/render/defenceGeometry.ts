@@ -644,9 +644,14 @@ export function defenceTriangleCounts(): Record<string, number> {
   return out;
 }
 
-/** The world direction a seaward-facing model should face, as a rotation about Y: local +X turned onto (dx, dz). */
+/**
+ * The rotation about Y that turns a model's local +X (seaward) towards (dx, dz),
+ * snapped to a sixth of a turn: the hex is the same under those turns, so the
+ * ring stays on the tile's outline and a seawall stands along a real tile edge.
+ */
 export function facingAngle(dx: number, dz: number): number {
-  return Math.atan2(-dz, dx);
+  const step = Math.PI / 3;
+  return Math.round(Math.atan2(-dz, dx) / step) * step;
 }
 
 export const DEFENCE_HALF_WIDTH = SQRT3_2;

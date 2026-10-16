@@ -73,7 +73,7 @@ vPhase = aPhase;
 float age = uTime - aBorn;
 vAge = age;
 // Build: pops up with a small overshoot (the ring draws itself instead).
-if (abs(aPart - 6.0) > 0.5 && uMotion > 0.5 && age < 0.6) {
+if (abs(aPart - 6.0) > 0.5 && uMotion > 0.5 && age >= 0.0 && age < 0.6) {
   float t = clamp(age / 0.6, 0.0, 1.0);
   float s = 1.0 - pow(1.0 - t, 3.0) + 0.16 * sin(t * 3.14159);
   transformed *= max(s, 0.001);
@@ -116,10 +116,11 @@ varying float vPhase;`
 if (abs(vPart - 6.0) < 0.5) {
   // The ring draws itself round the tile after the pop.
   float ang = atan(vLocal.z, vLocal.x) / 6.28318 + 0.5;
-  float prog = uMotion > 0.5 ? clamp((vAge - 0.2) / 0.5, 0.0, 1.0) : 1.0;
+  // A negative age (the shader clock wrapped after a day's uptime) counts as long built.
+  float prog = uMotion > 0.5 && vAge >= 0.0 ? clamp((vAge - 0.2) / 0.5, 0.0, 1.0) : 1.0;
   if (ang > prog) discard;
 }
-if (uMotion < 0.5 && vAge < 0.6) {
+if (uMotion < 0.5 && vAge >= 0.0 && vAge < 0.6) {
   // Calm motion: a fade in place of the pop (a dissolve, so nothing is transparent).
   float d = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
   if (d > vAge / 0.6) discard;

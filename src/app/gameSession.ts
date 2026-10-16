@@ -279,20 +279,34 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * with calm motion. Ambience only.
    */
   const WILDLIFE_AVOID = [".maya-figure-wrap", ".maya-bubble:not([hidden])", ".hud-panel", ".panjim-clock", ".get-ready", ".map-corner", ".hud-chrome", ".build-popover", ".result-cards:not([hidden])", ".brief-card", ".help-card", ".field-guide-card", ".leave-confirm", ".empty-prompt"];
+  const WILDLIFE_AVOID_SELECTOR = WILDLIFE_AVOID.join(",");
+  type Rect = { left: number; top: number; right: number; bottom: number };
+  const avoidCache: { at: number; rects: Rect[]; pool: Rect[] } = { at: -Infinity, rects: [], pool: [] };
   const wildlife = redrawnDefences
     ? new WildlifeDirector({
         scene,
         camera,
         viewport: () => ({ width: renderer.domElement.clientWidth, height: renderer.domElement.clientHeight }),
+        // Read from the page at most every 250 ms, into the same objects: no layout or garbage every frame.
         avoidRects: () => {
+          const now = performance.now();
+          if (now - avoidCache.at < 250) return avoidCache.rects;
+          avoidCache.at = now;
           const origin = renderer.domElement.getBoundingClientRect();
-          const rects: { left: number; top: number; right: number; bottom: number }[] = [];
-          for (const el of Array.from(document.querySelectorAll<HTMLElement>(WILDLIFE_AVOID.join(",")))) {
+          let n = 0;
+          for (const el of document.querySelectorAll<HTMLElement>(WILDLIFE_AVOID_SELECTOR)) {
             const r = el.getBoundingClientRect();
             if (r.width < 1 || r.height < 1) continue;
-            rects.push({ left: r.left - origin.left, top: r.top - origin.top, right: r.right - origin.left, bottom: r.bottom - origin.top });
+            const slot = avoidCache.pool[n] ?? (avoidCache.pool[n] = { left: 0, top: 0, right: 0, bottom: 0 });
+            slot.left = r.left - origin.left;
+            slot.top = r.top - origin.top;
+            slot.right = r.right - origin.left;
+            slot.bottom = r.bottom - origin.top;
+            n++;
           }
-          return rects;
+          avoidCache.rects.length = 0;
+          for (let i = 0; i < n; i++) avoidCache.rects.push(avoidCache.pool[i]);
+          return avoidCache.rects;
         }
       })
     : null;

@@ -560,7 +560,7 @@ export class ElementMeshManager {
     const clamped = THREE.MathUtils.clamp(target, 0, 1);
     if (Math.abs(clamped - ref.growthTarget) < 1e-4) return;
     ref.growthTarget = clamped;
-    if (this.swayEnabled && SWAY_BY_ELEMENT[ref.elementId]) return; // tickSway eases it in
+    if (this.swayEnabled && SWAY_BY_ELEMENT[ref.elementId] && ref.swayPhase !== undefined) return; // tickSway eases it in
     ref.growth = clamped;
     this.paint(ref);
     if (!this.animator.isAnimating(ref.index, ref.mesh)) {
@@ -586,7 +586,12 @@ export class ElementMeshManager {
     const key = `${coord.q},${coord.r}`;
     const ref = this.byCoord.get(key);
     if (!ref) return;
-    this.animator.collapse(ref.mesh, ref.index, ref.x, ref.y, ref.z, performance.now());
+    if (this.redrawn.has(ref.elementId)) {
+      // A redrawn defence is turned to face the sea; the upright collapse animation would snap it round. It goes at once.
+      this.scratchMatrix.makeScale(0, 0, 0);
+      ref.mesh.setMatrixAt(ref.index, this.scratchMatrix);
+      ref.mesh.instanceMatrix.needsUpdate = true;
+    } else this.animator.collapse(ref.mesh, ref.index, ref.x, ref.y, ref.z, performance.now());
     // The fabric goes at once: the collapse animation draws a plain upright
     // shrink, which would first snap each structure out of its own turn and size.
     this.hideCompanions(ref);

@@ -116,9 +116,10 @@ export class BuildPuff {
     this.colour.needsUpdate = true;
   }
 
-  /** Each frame: the clock, and the point size for the drawing buffer's height. */
   /** QA only: holds the clock at a moment (seconds), or lets it run with null. */
   frozenShaderSeconds: number | null = null;
+
+  /** Each frame: the clock, and the point size for the drawing buffer's height. */
 
   tick(nowMs: number, viewportHeight: number): void {
     this.uniforms.uTime.value = this.frozenShaderSeconds ?? shaderSeconds(nowMs);

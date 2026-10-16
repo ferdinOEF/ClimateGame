@@ -8538,3 +8538,83 @@ Undefended, the wind tips 1 of the first cyclone's 9 homes (8,7 at the river mou
 - **The small white shield markers** were drawn by the warning heat's shader on every tile a defence protected, or that held a defence on the path. They did not mean "you can build here", so they are removed, along with Maya's tip about them (`maya.json` "shields"; a saved copy of it is dropped on the next load).
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 13).
+
+## Section 14 — visual readability: the defences redrawn, their motion, wildlife, cones, board — DONE
+
+Panaji only. The Tutorial keeps its models: it is pixel-identical against master.
+
+**The seven defences redrawn** (`render/defenceGeometry.ts`; before and after in `docs/qa/section14/defences/`):
+- **Shared rules:**
+  - low-poly and flat-shaded, filling the tile at about 1.5x the old size;
+  - no red: a unit test checks every vertex by hue;
+  - a thin ring on the tile under each: green for mangrove, pandanus and dune; light grey for seawall, breakwater and small dam; ochre for khazan. Houses have none.
+- **Facing:** each model turns its seaward side to the nearest open sea (the small dam: downstream), in sixths of a turn, so the ring stays on the tile's outline and a seawall stands along a real tile edge.
+- **Mangrove:** 3 clumps of dark rounded canopy on 7 brown arching stilt roots each, with tide ripples round them.
+- **Pandanus:** 3 screw-pines, each a trunk forking into 4–5 limbs at different heights.
+  - Each limb ends in a tuft of 14–16 long, drooping strap leaves in three greens.
+  - Some tufts have a yellow-green fruit, and each tree has a skirt of 8 prop roots.
+  - In the shots it reads as a branching tree, not a coconut palm. Check the screenshots.
+- **Seawall:** a straight coursed stone wall on the seaward edge:
+  - staggered blocks;
+  - a pale cap with a curved wave-return lip;
+  - a darker stepped toe;
+  - sea and foam in front of it.
+- **Breakwater:** two rows of grey armour rocks in the sea, with a broken band of white foam on the seaward side.
+- **Dune:** a two-humped sand ridge with a saddle between, lighter on the windward face, with grass tufts on the crests.
+- **Khazan:** the owner's earlier design, restored.
+  - An earthen bund ring in #a9793f, lower on the camera side.
+  - A pond half in #4a90a4 and a paddy half with ridge rows in #3f6b3a and #6fa24a.
+  - A grey slatted sluice gate in #8a8f91.
+  - Its colours now render as written: these meshes are no longer multiplied by a palette tint, which had pushed the water to cyan.
+- **Small dam:** a concrete weir across the river with a blue spillway notch, the pool upstream a little higher, and white water below.
+
+**Their motion** is one shader with one time uniform (`render/defenceMaterial.ts`). Each instance has its own phase and build moment, so motion adds no draw calls and no per-object JavaScript.
+- **Build:**
+  - the defence pops up with a small overshoot (0.6 s), then its ring draws itself round the tile;
+  - a puff in its own material (`render/buildPuff.ts`): sand for dune and pandanus, leaves for mangrove, dust for the built ones, mud for khazan.
+  - Frames 0.1 s apart are in `build-pop-contact.jpg`.
+- **Idle:**
+  - canopies and leaves sway, dune grass ripples;
+  - water shimmers, foam pulses;
+  - the sluice gate rises and falls slowly, and the dam's spillway runs.
+- **Storm,** scaled by the storm's strength and its wind direction:
+  - foliage whips away from the sea and springs back;
+  - foam brightens;
+  - the gate lifts;
+  - the spillway runs faster.
+  - The water itself stays the storm's own model-driven layer (the khazan fills, the "defence worked" glow). Nothing on a defence shows water held back that the model let through.
+- **Calm motion or Low quality:** idle motion is off, the pop becomes a dissolve-in, there is no puff, and the storm is one gentle lean.
+
+**Wildlife** (`render/wildlife/`; models in `docs/qa/section14/wildlife/`, in the game in `wildlife-ingame/`):
+- **The animals** are realistic 3D models built procedurally, smooth-shaded with vertex-colour plumage:
+  - a common kingfisher (Alcedo atthis) and an egret, from the owner's references in `docs/design/birds/`;
+  - a smooth-coated otter;
+  - fish and prawns.
+- **The rigs:** wings hinge at the shoulder and fold at the wrist, with separate primary feathers. Head, neck, tail and legs are jointed, and the egret's knees bend backward.
+- **The moments:**
+  - the kingfisher perches, bobs, dives, splashes, comes out with a silver fish and flies towards the camera;
+  - the egret wades, then crouches, takes off and flies with its neck in an S and legs trailing;
+  - the otter surfaces among the roots, looks round and dives;
+  - fish and prawns jump from the khazan's pond half only, with splash rings.
+- **Rules:**
+  - at most one moment every 6–10 s, only from defences on screen;
+  - never over Maya, the HUD or an open card (the bird fades if it would be);
+  - flushed when a storm begins, and none during storms or result cards;
+  - off on Low quality and with calm motion;
+  - no allocations per frame.
+- **Size on screen:** a perched kingfisher is a few pixels at the default zoom. In flight, by measurement, it grows to about 35–60 px and the egret to about 65 px before fading out short of the camera.
+- **Ambience only:** no line of Maya's names these animals. On Panaji, the old low-poly creatures no longer appear on their own from mangrove and khazan tiles; these moments replace them. Clicking a built defence still brings its Field Guide creature, as before.
+
+**The rest:**
+- **Hover:** a light outline on the tile under the pointer, when a build is possible there.
+- **Forecast cones:**
+  - lighter bands (alpha 0.30 / 0.24 / 0.18, from 0.52 / 0.46 / 0.42);
+  - the area to protect drawn as merged shapes (`core/areaShape.ts`: a closing over gaps up to 3 tiles), not one island per house.
+- **Cone previews:** framed on the area to protect, with place labels never under 12 px on screen.
+- **Result card 1:** it says "Every home in the path survived" above "N of N homes saved" when no home in the path was lost. The landmarks in the area are listed with Stood or Damaged, as before.
+- **Board edge:**
+  - the sea past the edge stays level sea in its own colour;
+  - no rings fray into loose hexes;
+  - the land skirt keeps its hill colours instead of fading grey.
+  - The north bank is still the grey scenery it was.
+- **Estuary:** dark slate water (#2c5560), set apart from the sea's turquoise and from the fields.
