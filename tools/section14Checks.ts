@@ -136,29 +136,7 @@ async function main(): Promise<void> {
           await page.screenshot({ path: path.join(OUT, "pop", `pop-${String(i).padStart(2, "0")}.jpg`), type: "jpeg", quality: 85, clip: { x: Math.max(0, at.x - 200), y: Math.max(0, at.y - 170), width: 400, height: 300 } });
         }
         await page.evaluate("window.__freezeShaderTimeForTest(null)");
-        // The wildlife, in the game, beside the defences: a mangrove and a khazan drawn near the city, each moment forced in turn.
-        fs.mkdirSync(path.join(OUT, "wildlife-ingame"), { recursive: true });
-        const spots = (await val<{ m: { q: number; r: number } | null; k: { q: number; r: number } | null }>(page, `(function () {
-          var m = null, k = null; var f = { q: 6, r: 14 };
-          var d = function (a) { return (Math.abs(a.q - f.q) + Math.abs(a.r - f.r) + Math.abs(a.q + a.r - f.q - f.r)) / 2; };
-          var all = Array.from(r.state.placed.values()).map(function (t) { return t.coord; }).sort(function (a, b) { return d(a) - d(b); });
-          for (var i = 0; i < all.length; i++) { var c = all[i]; if (!m && r.state.canBuild(c, "mangrove")) m = c; else if (!k && r.state.canBuild(c, "khazan") && (!m || c.q !== m.q || c.r !== m.r)) k = c; }
-          return { m: m, k: k };
-        })()`))!;
-        if (spots.m) await page.evaluate(`window.__placeVisualForTest(${spots.m.q}, ${spots.m.r}, "mangrove", false)`);
-        if (spots.k) await page.evaluate(`window.__placeVisualForTest(${spots.k.q}, ${spots.k.r}, "khazan", false)`);
-        for (const [kind, spot] of [["kingfisher", spots.m], ["egret", spots.m], ["otter", spots.m], ["fish", spots.k], ["prawn", spots.k]] as [string, { q: number; r: number } | null][]) {
-          if (!spot) continue;
-          await page.evaluate(`window.__focusTileForTest(${spot.q}, ${spot.r})`);
-          await page.waitForTimeout(2200);
-          const started = (await page.evaluate(`(function () { var w = window.__wildlifeForTest(); return !!w && w.forceMoment(${JSON.stringify(kind)}); })()`)) as boolean;
-          check(started, `the ${kind} moment starts in the game`);
-          for (let f = 0; f < 8; f++) {
-            await page.waitForTimeout(kind === "fish" || kind === "prawn" ? 180 : 650);
-            await page.screenshot({ path: path.join(OUT, "wildlife-ingame", `${kind}-${f}.jpg`), type: "jpeg", quality: 82 });
-          }
-          for (let k = 0; k < 40 && ((await page.evaluate("(function () { var w = window.__wildlifeForTest(); return !!w && w.busy; })()")) as boolean); k++) await page.waitForTimeout(250);
-        }
+        // (The wildlife in the game is filmed by tools/wildlifeInGame.ts.)
         await page.mouse.move(at.x, at.y + 2);
         await page.waitForTimeout(400);
         // The game state still says the tile is free (the dune was drawn only), so the outline may still show; a real build is checked below.

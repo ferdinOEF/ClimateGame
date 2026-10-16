@@ -330,7 +330,8 @@ describe("wildlife director", () => {
     d.forceMoment("egret", 1);
     d.tick(16);
     d.tick(60_000);
-    expect((d as unknown as { clock: number }).clock).toBeLessThanOrEqual(16 + 50);
+    // At most one quarter-second step, however long the gap.
+    expect((d as unknown as { clock: number }).clock).toBeLessThanOrEqual(16 + 250);
     expect(d.current).toBe("egret");
   });
 

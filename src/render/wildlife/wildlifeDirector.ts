@@ -62,7 +62,7 @@ const EGRET_RADIUS = 0.34;
 const GAP_MIN = 6000;
 const GAP_SPAN = 4000;
 /** A flying bird at the end of its path fills about this fraction of half the screen height. */
-const END_SCREEN_FRACTION = 0.3;
+const END_SCREEN_FRACTION = 0.22;
 const EXTRA_SCALE = 0.3;
 
 // --- Scratch (never allocate in tick) -------------------------------------------
@@ -316,7 +316,8 @@ export class WildlifeDirector {
 
   tick(nowMs: number): void {
     if (this.lastNow === null) this.lastNow = nowMs;
-    const dt = Math.max(0, Math.min(50, nowMs - this.lastNow));
+    // A slow frame still moves the moment on (up to a quarter second a frame); a tab back from the background does not fast-forward.
+    const dt = Math.max(0, Math.min(250, nowMs - this.lastNow));
     this.lastNow = nowMs;
     if (!this.enabled) return;
     this.clock += dt;

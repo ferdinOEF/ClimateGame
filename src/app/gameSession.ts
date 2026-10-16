@@ -297,6 +297,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       })
     : null;
   let wildlifeSourcesAt = -Infinity;
+  /** QA only: the wildlife's clock stepped by hand (`__wildlifeStepForTest`) instead of by the frame loop. */
+  const wildlifeManual = { on: false, clock: 0 };
   const puffMotion = { reduced: false, low: false };
   scene.add(reactions.group);
   /** Panjim 2050: a storm's path while its warning is up — see ForecastOutline. Empty on every other level. */
@@ -2500,7 +2502,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         wildlife.setSources({ mangroves, khazanPonds });
       }
       wildlife.setCalm(!(panjim?.isBusy ?? false) && !stormDirector?.playing && !document.querySelector(".result-cards:not([hidden])"));
-      wildlife.tick(nowMs);
+      if (!wildlifeManual.on) wildlife.tick(nowMs);
     }
     panjim?.frame();
     stormDirector?.tick(nowMs);
@@ -2715,6 +2717,19 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __elementsForTest: elements,
     __tileHoverForTest: () => tileHover,
     __wildlifeForTest: () => wildlife,
+    /** Steps the wildlife's clock by `ms` in 50 ms ticks, and keeps it stepped by hand from then on (QA frames at exact moment times). */
+    __wildlifeStepForTest: (ms: number): void => {
+      if (!wildlife) return;
+      if (!wildlifeManual.on) {
+        wildlifeManual.on = true;
+        wildlifeManual.clock = performance.now();
+        wildlife.tick(wildlifeManual.clock);
+      }
+      for (let t = 0; t < ms; t += 50) {
+        wildlifeManual.clock += 50;
+        wildlife.tick(wildlifeManual.clock);
+      }
+    },
     /** Holds the defences' and puffs' shader clock (seconds on their clock), or null to let it run: frames of a build at exact ages. */
     __freezeShaderTimeForTest: (seconds: number | null): void => {
       elements.frozenShaderSeconds = seconds;
