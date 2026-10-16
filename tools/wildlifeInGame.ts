@@ -114,6 +114,12 @@ for i, f in enumerate(files):
 sheet.save(out, quality=84)
 `, OUT, kind, path.join(OUT, `sheet-${kind}.jpg`)]);
   }
+  // Keep the sheets and four frames a moment (first, middle, the close pass); the rest is too big for the repository.
+  for (const kind of KINDS) {
+    const frames = fs.readdirSync(OUT).filter((f) => f.startsWith(`${kind}-`)).sort();
+    const keep = new Set([frames[0], frames[Math.floor(frames.length / 2)], frames[frames.length - 3], frames[frames.length - 2]]);
+    for (const f of frames) if (!keep.has(f)) fs.rmSync(path.join(OUT, f));
+  }
   report.push(`console errors: ${errors.length ? errors.slice(0, 3).join(" | ") : "none"}`);
   fs.writeFileSync(path.join(OUT, "report.txt"), report.join("\n") + "\n");
   console.log(report.join("\n"));
