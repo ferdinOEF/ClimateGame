@@ -229,6 +229,12 @@ export class TerrainMeshManager {
   /** Faint contour lines along the edges where the ground crosses a contour (see `buildContours`). */
   private contours: THREE.Mesh | null = null;
 
+  /**
+   * A level's own colour for a terrain (Section 14, Panaji: the estuary set
+   * apart from the sea). Set before the board is built; the Tutorial sets none.
+   */
+  readonly colorOverrides = new Map<string, THREE.Color>();
+
   constructor() {
     for (const terrain of TERRAIN_DEFS) {
       const geometry = createHexPrismGeometry(HEX_SIZE * 0.98, terrain.height);
@@ -331,7 +337,7 @@ export class TerrainMeshManager {
           ? relief
             ? paletteColor(terrain.colorKey).clone().lerp(HIGH_GROUND_TINT, Math.sqrt((elevationM ?? 0) / highest) * RELIEF.highGroundBlend)
             : jitterGrass(paletteColor(terrain.colorKey), seed)
-          : jitterColor(paletteColor(terrain.colorKey), seed);
+          : jitterColor(this.colorOverrides.get(terrainId) ?? paletteColor(terrain.colorKey), seed);
       const dimColor = dim(fullColor);
 
       this.counts.set(terrainId, index + 1);

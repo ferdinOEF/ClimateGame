@@ -1,0 +1,7 @@
+kingfisher: started {"busy":true,"current":"kingfisher","sources":{"mangroves":[{"x":29.44486372867091,"y":0.32,"z":24}],"khazanPonds":[{"x":26.546787517317597,"y":0.33499999999999996,"z":25.5,"radius":0.24}]}}
+egret: started {"busy":true,"current":"egret","sources":{"mangroves":[{"x":29.44486372867091,"y":0.32,"z":24}],"khazanPonds":[{"x":26.546787517317597,"y":0.33499999999999996,"z":25.5,"radius":0.24}]}}
+otter: started {"busy":true,"current":"otter","sources":{"mangroves":[{"x":29.44486372867091,"y":0.32,"z":24}],"khazanPonds":[{"x":26.546787517317597,"y":0.33499999999999996,"z":25.5,"radius":0.24}]}}
+fish: started {"busy":true,"current":"fish","sources":{"mangroves":[{"x":29.44486372867091,"y":0.32,"z":24}],"khazanPonds":[{"x":26.546787517317597,"y":0.33499999999999996,"z":25.5,"radius":0.24}]}}
+prawn: started {"busy":true,"current":"prawn","sources":{"mangroves":[{"x":29.44486372867091,"y":0.32,"z":24}],"khazanPonds":[{"x":26.546787517317597,"y":0.33499999999999996,"z":25.5,"radius":0.24}]}}
+triangles: {"kingfisher":2816,"egret":2988,"otter":1348,"fish":624,"prawn":1370,"kingfisherFish":624,"perchTwig":112}
+console errors: none

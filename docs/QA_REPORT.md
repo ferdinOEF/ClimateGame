@@ -1377,3 +1377,103 @@ Left as they are, and why:
 - **On a phone the map corner can sit at its fallback height**: the meter cluster it measured is gone on Panaji. Desktop is unaffected.
 - **The shield set is still computed** in `exposure.ts` (shared with the heat, unused now).
 - **Unused tooltip keys** (`readiness`, `sea`) are kept for the tests that read them.
+
+# Section 14 — visual readability: defences, motion, wildlife, cones, board
+
+Branch `section-14-visuals`, off master `ade7a56` (Section 13's merge;
+tag `pre-section-14`, and `backup/pre-section-14` on GitHub). The wildlife
+module was built on `section-14-wildlife` and merged into this branch.
+Headless Chromium with software GL. Evidence in `docs/qa/section14/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 513 pass, 6 skipped. New: `defenceGeometry` (no red by hue, tags, rings, budgets, facing in sixths), `areaShape`, `wildlife` (18). |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. |
+| `npm run test:labels` | 49 of 49 views. |
+| `npm run test:layout` | 140 of 140 layouts. |
+| `npm run test:maya` | Pass, zero console errors. |
+| `npm run verify:maya` | All checks pass (street map at 21%; previews equal what the storms take). |
+| Section 14 browser checks (`tools/section14Checks.ts`, `checks.txt`) | 16 of 16, zero console errors. See below. |
+| Defences (`tools/defenceShots.ts`, `defences/`) | Close-ups, default zoom beside houses, before and after, grayscale contact sheet. Zero console errors. |
+| Wildlife in the game (`tools/wildlifeInGame.ts`, `wildlife-ingame/`) | All five moments run. Zero console errors. |
+| Wildlife models (`tools/wildlifeShots.ts`, `wildlife/`) | Close-ups and moment frames. |
+| Tutorial (`tutorial/`, against master `ade7a56`) | Text identical, 0.000% of pixels differ, in all five states. |
+| axe-core | No serious or critical violations on result card 1. |
+| Bots | Not re-run: no mechanic changed. |
+| Cross-browser, real GPU | Not run. Chromium with software GL only, so frame times here are no guide to a real GPU. |
+
+**Triangles per model** (each defence with its ring):
+
+| Model | Before | After |
+|---|---|---|
+| mangrove | 720 | 1,932 |
+| pandanus | 432 | 2,230 |
+| dune | 196 | 217 |
+| seawall | 48 | 402 |
+| breakwater | 84 | 532 |
+| khazan | 144 | 360 |
+| small dam | 60 | 124 |
+
+Wildlife: kingfisher 2,816, egret 2,988, otter 1,348, fish 624, prawn 1,370.
+
+**Frame cost with 140 defences on the board** (software GL):
+
+| | Before | After |
+|---|---|---|
+| Draw calls | 71 | 69 |
+| Triangles a frame | 377k | 433k |
+| Update | 1.85 ms | 2.01 ms |
+| Render | 1.95 ms | 1.35 ms |
+
+- **Motion adds no draw calls:** it is all in the shader.
+- **A bird on screen** adds about 25–30 draw calls (one mesh per part and feather) while it is out.
+
+**What the browser checks prove:**
+- **Hover outline:** it shows on a free beach tile and not on a built one.
+- **Result card 1 at all four sizes:** it says "Every home in the path survived" above "9 of 9 homes saved" when the first objective is followed, and lists the landmarks in the area (Kala Academy, Campal Garden: Stood).
+- **Phases 2 and 3 at 1920 and 1280x600:** their cards and cones were shot.
+
+**Screenshots:**
+- **Defences:**
+  - every defence close up and at the default zoom beside houses, before and after;
+  - the contact sheet in colour and grayscale: each one is identifiable by silhouette alone in grayscale.
+- **Motion:** the build pop, ring and puff as frames 0.1 s apart, and the defences mid-storm (cyclone held at 4 s).
+- **Cones:** at the start of each phase at 1920 and 1280x600, and phase 1 at 1366 and 2560, with gray and deuteranopia copies of the first.
+- **Result card 1:** each phase.
+- **Wildlife:** each animal close up, and each moment in the game.
+
+I looked at them. Fixed along the way:
+- the pandanus read as low clumps (now a taller candelabra);
+- the dune was one blob (now two humps, with no flat footprint showing);
+- the dam's flat pool and paper-like foam;
+- the ring hidden under the sea surface on coast tiles;
+- the cone's area as scattered islands (now merged over gaps up to 3 tiles);
+- the pop frames all caught after the pop: a screenshot takes longer than 0.6 s here, so the tool now holds the shader clock;
+- the wildlife's clock crawling on slow frames (now steps up to 0.25 s a frame);
+- the in-game filming missing the birds' close pass (the tool now steps the wildlife clock by hand).
+
+**Independent review (Section 14): 0 BLOCKER, 2 MAJOR, 8 MINOR, 3 NIT.**
+
+MAJORs fixed:
+- **The ring turned with each model,** off its hex. Facing is now snapped to sixths of a turn: the hex is the same under those, so the ring stays on the tile's outline, and a seawall stands along a real tile edge.
+- **The wildlife read the page every frame** (querySelectorAll and getBoundingClientRect on 14 selectors) and allocated each time. It now reads at most every 250 ms, into reused objects.
+
+MINORs fixed:
+- a destroyed redrawn defence snapped upright as it collapsed (it now goes at once);
+- a latent growth-easing gap on redrawn defences;
+- the shader clock wrapping after about 28 hours (a negative age counts as built);
+- the land skirt's grey frayed hexes (clean mode: no fraying, no fade to grey);
+- the cone preview's ResizeObserver now lets go when its card closes;
+- a misplaced comment.
+
+Left as they are:
+- **The merged area outline can include empty tiles between homes.** It is a shape round them, and no text calls those tiles homes.
+- **One cheap per-frame `querySelector` for the result cards.**
+- **Shadows don't follow the shader's sway.** These meshes cast no shadows in this scene.
+- **The QA-only hooks** (`__freezeShaderTimeForTest`, `__wildlifeStepForTest`) are present in the build, as the other `__…ForTest` hooks are. They do nothing unless called.
+
+**Approximations, said plainly:**
+- **Storm motion on a defence is a shader cue** scaled by the storm's strength and wind direction: foliage whip, foam, gate lift, faster spill. The surge's height across the mangroves is the storm water's own model-driven layer, which was already there. No new per-tile wave was built.
+- **Wildlife size on screen:** at the default zoom a perched kingfisher is a few pixels. By measurement in the game, its flight towards the camera grows to about 35–60 px and the egret's to about 65 px before they fade, short of the HUD and the camera.

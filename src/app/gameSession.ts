@@ -15,11 +15,15 @@ import { StormSound } from "@ui/stormSound";
 import { combinedDepth as combinedDepthAt } from "@core/hazard";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
 import { BuildFlourish } from "@render/buildFlourish";
+import { BuildPuff } from "@render/buildPuff";
+import { TileHover } from "@render/tileHover";
+import { WildlifeDirector } from "@render/wildlife";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
-import { axialToWorld, type AxialCoord } from "@core/hex";
+import { axialToWorld, neighbor, type AxialCoord } from "@core/hex";
+import { facingAngle } from "@render/defenceGeometry";
 import { buildingGeometry } from "@render/townGeometry";
 import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
 import { Hud } from "@ui/hud";
@@ -218,7 +222,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const params = new URLSearchParams(location.search);
 
   const terrain = new TerrainMeshManager();
-  const elements = new ElementMeshManager();
+  // Panaji (Section 14): the estuary a dark slate tidal water, clearly apart from the sea's bright turquoise and from the fields.
+  if (level.timeModel === "years" && level.timeline) terrain.colorOverrides.set("estuary", new THREE.Color("#2c5560"));
+  // Panaji (Section 14): the redrawn defences with their rings and shader motion; the Tutorial keeps its own.
+  const redrawnDefences = level.timeModel === "years" && Boolean(level.timeline);
+  const elements = new ElementMeshManager({ redrawnDefences });
   // STEP_PROMPT_hazard_science.md Section 6: one shared manager (not a
   // separate instance per hazard type) so it can tell whether a tile is
   // CURRENTLY showing the other hazard's overlay and blend to a genuine
@@ -228,7 +236,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // Purely cosmetic and never fed into GameState: the ground past the edge of
   // play, so the board dissolves into sea and hills instead of ending in a
   // cut. Replaces the old four-column Ghats backdrop — see the manager.
-  const boardSkirt = new BoardSkirtManager(levelTiles, terrain.overlayUniforms, levelMap.skirtOpenSeaWestFromRow);
+  const boardSkirt = new BoardSkirtManager(levelTiles, terrain.overlayUniforms, levelMap.skirtOpenSeaWestFromRow, { clean: redrawnDefences, colors: terrain.colorOverrides });
   // STEP_PROMPT_ghats_wave_demo.md Section 2/3: the wave-front spectacle —
   // layered on top of hazardOverlay's own per-tile reveals, not a
   // replacement for them (see WaveFrontManager's own comment).
@@ -242,6 +250,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const storm = new StormManager({ scene, sun });
   /** The ring that spreads across a tile as something lands on it — see BuildFlourish. */
   const buildFlourish = new BuildFlourish();
+  // Section 14: a puff in the defence's own material when one is built (Panaji only).
+  const buildPuff = redrawnDefences ? new BuildPuff() : null;
   /**
    * The creatures and props each element shows: a kingfisher off a mangrove,
    * a cat on a house step. They play on their own, on a staggered timer per
@@ -260,6 +270,50 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(waveFront.group);
   scene.add(storm.group);
   scene.add(buildFlourish.group);
+  if (buildPuff) scene.add(buildPuff.points);
+  /*
+   * Section 14 (Panaji): calm-year wildlife from the defences on screen — a
+   * kingfisher, an egret and an otter from the mangroves, fish and prawns from
+   * the khazans' ponds. One moment every 6–10 s at most; never over Maya, the
+   * HUD or an open card; flushed when a storm begins; off on Low quality and
+   * with calm motion. Ambience only.
+   */
+  const WILDLIFE_AVOID = [".maya-figure-wrap", ".maya-bubble:not([hidden])", ".hud-panel", ".panjim-clock", ".get-ready", ".map-corner", ".hud-chrome", ".build-popover", ".result-cards:not([hidden])", ".brief-card", ".help-card", ".field-guide-card", ".leave-confirm", ".empty-prompt"];
+  const WILDLIFE_AVOID_SELECTOR = WILDLIFE_AVOID.join(",");
+  type Rect = { left: number; top: number; right: number; bottom: number };
+  const avoidCache: { at: number; rects: Rect[]; pool: Rect[] } = { at: -Infinity, rects: [], pool: [] };
+  const wildlife = redrawnDefences
+    ? new WildlifeDirector({
+        scene,
+        camera,
+        viewport: () => ({ width: renderer.domElement.clientWidth, height: renderer.domElement.clientHeight }),
+        // Read from the page at most every 250 ms, into the same objects: no layout or garbage every frame.
+        avoidRects: () => {
+          const now = performance.now();
+          if (now - avoidCache.at < 250) return avoidCache.rects;
+          avoidCache.at = now;
+          const origin = renderer.domElement.getBoundingClientRect();
+          let n = 0;
+          for (const el of document.querySelectorAll<HTMLElement>(WILDLIFE_AVOID_SELECTOR)) {
+            const r = el.getBoundingClientRect();
+            if (r.width < 1 || r.height < 1) continue;
+            const slot = avoidCache.pool[n] ?? (avoidCache.pool[n] = { left: 0, top: 0, right: 0, bottom: 0 });
+            slot.left = r.left - origin.left;
+            slot.top = r.top - origin.top;
+            slot.right = r.right - origin.left;
+            slot.bottom = r.bottom - origin.top;
+            n++;
+          }
+          avoidCache.rects.length = 0;
+          for (let i = 0; i < n; i++) avoidCache.rects.push(avoidCache.pool[i]);
+          return avoidCache.rects;
+        }
+      })
+    : null;
+  let wildlifeSourcesAt = -Infinity;
+  /** QA only: the wildlife's clock stepped by hand (`__wildlifeStepForTest`) instead of by the frame loop. */
+  const wildlifeManual = { on: false, clock: 0 };
+  const puffMotion = { reduced: false, low: false };
   scene.add(reactions.group);
   /** Panjim 2050: a storm's path while its warning is up — see ForecastOutline. Empty on every other level. */
   const forecastOutline = new ForecastOutline();
@@ -334,6 +388,38 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // the main difficulty dials (see src/data/levels.json). The pre-built
   // houses and the map itself stay shared across every level.
   const state = new GameState(levelTiles, startingElements, level.startingCoin);
+  // Which way each redrawn defence faces (Section 14): its local +x towards the nearest open sea, found
+  // ring by ring out from the tile (for a small dam, that is downstream; the khazan keeps its gate to the camera).
+  if (redrawnDefences) {
+    elements.setFacingResolver((coord, elementId) => {
+      if (elementId === "khazan") return 0;
+      const here = axialToWorld(coord, 1.0);
+      let frontier: AxialCoord[] = [coord];
+      const seen = new Set([`${coord.q},${coord.r}`]);
+      for (let ring = 1; ring <= 8; ring++) {
+        const next: AxialCoord[] = [];
+        let dx = 0;
+        let dz = 0;
+        for (const at of frontier) {
+          for (let dir = 0; dir < 6; dir++) {
+            const n = neighbor(at, dir);
+            const key = `${n.q},${n.r}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            next.push(n);
+            if (state.placed.get(key)?.terrainId === "coast") {
+              const w = axialToWorld(n, 1.0);
+              dx += w.x - here.x;
+              dz += w.z - here.z;
+            }
+          }
+        }
+        if (dx !== 0 || dz !== 0) return facingAngle(dx, dz);
+        frontier = next;
+      }
+      return 0;
+    });
+  }
   for (const [id, scale] of setup.effectScale) state.effectScale.set(id, scale);
   for (const id of setup.excluded) state.excludedElements.add(id);
   for (const key of setup.unbuildable) state.unbuildable.add(key);
@@ -424,7 +510,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       return { key: `${key}:garden`, elementId: "garden", x, y: terrain.heightAt({ q, r }), z };
     });
     reactions.setAmbientSource(function* () {
-      yield* elements.placedElements();
+      // Panaji (Section 14): the mangroves' and khazans' wildlife is the 3D director's (render/wildlife), one moment at a time.
+      for (const placed of elements.placedElements()) if (!redrawnDefences || (placed.elementId !== "mangrove" && placed.elementId !== "khazan")) yield placed;
       yield* gardenPoints;
     });
     reactions.setAmbientRateCap("garden", 1);
@@ -792,11 +879,18 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             const cap = quality === "low" ? 1 : quality === "medium" ? 1.5 : 2;
             // setPixelRatio resizes the drawing buffer itself; the camera framing is left alone.
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
+            elements.setQualityMotion(quality !== "low");
+            puffMotion.low = quality === "low";
+            if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
+            wildlife?.setEnabled(!puffMotion.reduced && !puffMotion.low);
           },
           setReducedMotion: (reduced) => {
             storm.setReducedMotion(reduced);
             stormWater.setReducedMotion(reduced);
             elements.setSwayEnabled(!reduced);
+            puffMotion.reduced = reduced;
+            if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
+            wildlife?.setEnabled(!puffMotion.reduced && !puffMotion.low);
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
@@ -2281,6 +2375,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   let hoverDirty = false;
   let lastHoverCamera = "";
   const hoverTargets = [...terrain.raycastTargets, ...monuments.group.children];
+  // Section 14 (Panaji): a light outline on the tile under the pointer, when a build is possible there.
+  const tileHover = panjim ? new TileHover() : null;
+  if (tileHover) scene.add(tileHover.mesh);
   const pickHover = (now: number): void => {
     lastHoverPick = now;
     hoverDirty = false;
@@ -2296,6 +2393,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
     hoveredMonument = name;
     mapLabels.setFocus(hoveredMonument ?? selectedMonument);
+    if (tileHover) {
+      const coord = hit && hit.instanceId !== undefined && !name ? terrain.coordForHit(hit.object, hit.instanceId) : null;
+      const buildable = coord && !panjim?.isBusy && !overlayOpen() && state.buildableAt(coord).length > 0;
+      tileHover.show(buildable ? coord : null, coord ? terrain.heightAt(coord) : 0);
+    }
   };
   renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
     if (event.pointerType !== "mouse" || event.buttons !== 0) return;
@@ -2305,6 +2407,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   });
   renderer.domElement.addEventListener("pointerleave", () => {
     hoverAt = null;
+    tileHover?.show(null);
     hoveredMonument = null;
     mapLabels.setFocus(selectedMonument);
   });
@@ -2388,7 +2491,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // rather than the previous one's.
     storm.tick(nowMs, focusPoint());
     setShake(storm.shakeX, storm.shakeZ);
-    elements.setWind(storm.windStrength);
+    elements.setWind(storm.windStrength, stormDirector?.windDirection);
     townDecor?.setWind(storm.windStrength, nowMs, stormDirector?.windDirection);
 
     terrain.tick(nowMs);
@@ -2398,6 +2501,23 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     cloudLayer.tick(nowMs);
     waveFront.tick(nowMs);
     buildFlourish.tick(nowMs);
+    buildPuff?.tick(nowMs, renderer.domElement.height);
+    if (wildlife) {
+      // Its sources follow the board, read once a second (they change only with a build or a storm).
+      if (nowMs - wildlifeSourcesAt > 1000) {
+        wildlifeSourcesAt = nowMs;
+        const mangroves: { x: number; y: number; z: number }[] = [];
+        const khazanPonds: { x: number; y: number; z: number; radius: number }[] = [];
+        for (const placed of elements.placedElements()) {
+          if (placed.elementId === "mangrove") mangroves.push({ x: placed.x, y: placed.y + 0.02, z: placed.z });
+          // The khazan's pond is its west half (render/defenceGeometry.ts; a khazan is never turned).
+          else if (placed.elementId === "khazan") khazanPonds.push({ x: placed.x - 0.3, y: placed.y + 0.035, z: placed.z, radius: 0.24 });
+        }
+        wildlife.setSources({ mangroves, khazanPonds });
+      }
+      wildlife.setCalm(!(panjim?.isBusy ?? false) && !stormDirector?.playing && !document.querySelector(".result-cards:not([hidden])"));
+      if (!wildlifeManual.on) wildlife.tick(nowMs);
+    }
     panjim?.frame();
     stormDirector?.tick(nowMs);
     for (const word of stormWords) placeStormWord(word);
@@ -2479,6 +2599,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // board it landed.
       const world = axialToWorld(coord, 1.0);
       buildFlourish.play(world.x, topY, world.z, performance.now());
+      buildPuff?.play(elementId, world.x, topY, world.z, performance.now());
+      // The tile is taken now: no build outline on it until the pointer moves again.
+      tileHover?.show(null);
     }
   }
 
@@ -2606,6 +2729,30 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // precisely-timed screenshots to catch it mid-sweep.
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
+    __tileHoverForTest: () => tileHover,
+    __wildlifeForTest: () => wildlife,
+    /** Steps the wildlife's clock by `ms` in 50 ms ticks, and keeps it stepped by hand from then on (QA frames at exact moment times). */
+    __wildlifeStepForTest: (ms: number): void => {
+      if (!wildlife) return;
+      if (!wildlifeManual.on) {
+        wildlifeManual.on = true;
+        wildlifeManual.clock = performance.now();
+        wildlife.tick(wildlifeManual.clock);
+      }
+      for (let t = 0; t < ms; t += 50) {
+        wildlifeManual.clock += 50;
+        wildlife.tick(wildlifeManual.clock);
+      }
+    },
+    /** Holds the defences' and puffs' shader clock (seconds on their clock), or null to let it run: frames of a build at exact ages. */
+    __freezeShaderTimeForTest: (seconds: number | null): void => {
+      elements.frozenShaderSeconds = seconds;
+      if (buildPuff) buildPuff.frozenShaderSeconds = seconds;
+    },
+    /** Section 14 shots: draws an element on a tile (no game state changes), popping in when `animate`. */
+    __placeVisualForTest: (q: number, r: number, elementId: string, animate = false): void => {
+      elements.place({ q, r }, elementId, terrain.heightAt({ q, r }), { animate });
+    },
     __heatForTest: heatOverlay,
     __ambientLifeForTest: () => ambientLife,
     // The town plan as drawn: how many road tiles, and whether any holds a building.
@@ -2748,6 +2895,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormWater.dispose();
     stormSky.dispose();
     buildFlourish.dispose();
+    buildPuff?.dispose();
+    wildlife?.dispose();
+    tileHover?.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();
     coneOverlay.dispose();

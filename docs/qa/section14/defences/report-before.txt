@@ -1,0 +1,3 @@
+triangles per model (with ring): mangrove 720, sandy_vegetation 432, dune 196, seawall 48, breakwater 84, khazan 144, small_dam 60
+140 defences on the board: 71 draw calls, 377204 triangles a frame, update 1.85 ms, render 1.95 ms a frame (software GL)
+console errors: none

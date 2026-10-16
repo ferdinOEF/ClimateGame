@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergedArea } from "@core/areaShape";
 import { axialKey, axialToWorld, neighbor, type AxialCoord } from "@core/hex";
 import type { ConeBand, ConeTrack } from "@core/forecastCone";
 
@@ -55,8 +56,9 @@ const BAND_FRAGMENT = /* glsl */ `
   varying float vMeet;
   void main() {
     // Dark, mid and light red: the three bands differ by lightness.
-    vec3 color = vBand > 2.5 ? vec3(0.50, 0.05, 0.09) : vBand > 1.5 ? vec3(0.86, 0.30, 0.24) : vec3(0.99, 0.72, 0.64);
-    float alpha = vBand > 2.5 ? 0.52 : vBand > 1.5 ? 0.46 : 0.42;
+    // Section 14: lighter, so the terrain shows through.
+    vec3 color = vBand > 2.5 ? vec3(0.58, 0.08, 0.12) : vBand > 1.5 ? vec3(0.90, 0.38, 0.30) : vec3(0.99, 0.76, 0.68);
+    float alpha = vBand > 2.5 ? 0.3 : vBand > 1.5 ? 0.24 : 0.18;
     if (vMeet > 0.5) {
       // Where they meet: indigo, hatched against the board's diagonal.
       float stripe = step(0.5, fract((vWorld.x - vWorld.y) * 2.2));
@@ -134,7 +136,8 @@ export class ForecastConeOverlay {
     this.meetAttr.needsUpdate = true;
 
     // Area to protect: a dashed outline round the houses at stake.
-    const outline = dashedOutline(cone.area.map(coordOf), heightAt);
+    // One shape round tiles a gap apart, not an island round each (Section 14).
+    const outline = dashedOutline(mergedArea(cone.area).map(coordOf), heightAt);
     this.addLine(outline.halo, this.lightLine, 7);
     this.addLine(outline.dash, this.darkLine, 8);
 

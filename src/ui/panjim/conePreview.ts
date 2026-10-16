@@ -1,4 +1,5 @@
 import { axialToWorld, type AxialCoord } from "@core/hex";
+import { mergedArea } from "@core/areaShape";
 import type { ForecastCone } from "@core/forecastCone";
 
 /**
@@ -65,16 +66,19 @@ export function renderConePreview(input: ConePreviewInput): HTMLElement {
     return tile ? axialToWorld(tile.coord, 1) : null;
   };
 
-  // The frame: the cone on land, its area, its tracks and the named places, with a margin.
+  // The frame (Section 14): on the area to protect and the places it names, with a margin, so
+  // the homes at stake fill the map; the cone and its track run on past the edges. With no area,
+  // the cone on land and its tracks.
   const points: { x: number; z: number }[] = [];
-  for (const key of [...cone.bands.keys(), ...cone.area, ...cone.meet]) {
-    if (byKey.get(key)?.terrainId === "coast") continue;
+  const area = mergedArea(cone.area);
+  for (const key of area.length > 0 ? area : [...cone.bands.keys(), ...cone.meet]) {
+    if (area.length === 0 && byKey.get(key)?.terrainId === "coast") continue;
     const p = world(key);
     if (p) points.push(p);
   }
-  for (const track of cone.tracks) points.push(...track.points);
+  if (area.length === 0) for (const track of cone.tracks) points.push(...track.points);
   for (const label of input.labels) points.push(axialToWorld({ q: label.q, r: label.r }, 1));
-  const pad = 2.2;
+  const pad = area.length > 0 ? 3.2 : 2.2;
   let minX = Math.min(...points.map((p) => p.x)) - pad;
   let maxX = Math.max(...points.map((p) => p.x)) + pad;
   let minZ = Math.min(...points.map((p) => p.z)) - pad;
@@ -111,7 +115,7 @@ export function renderConePreview(input: ConePreviewInput): HTMLElement {
   // The area to protect: the outline of its tiles together (edges that only one of them has).
   const edges = new Map<string, [number, number, number, number]>();
   const count = new Map<string, number>();
-  for (const key of cone.area) {
+  for (const key of area) {
     const p = world(key);
     if (!p) continue;
     const c = corners(p.x, p.z);
@@ -161,5 +165,39 @@ export function renderConePreview(input: ConePreviewInput): HTMLElement {
       ${labels}
     </svg>
     ${coneLegendHtml(cone.meet.length > 0)}`;
+  const svg = figure.querySelector<SVGSVGElement>(".cone-preview-map");
+  if (svg) keepLabelsReadable(svg, maxX - minX, maxZ - minZ);
   return figure;
+}
+
+/** Labels never under 12 px on screen (Section 14): sized in map units for the size the map is drawn at. */
+const MIN_LABEL_PX = 12;
+function keepLabelsReadable(svg: SVGSVGElement, viewWidth: number, viewHeight: number): void {
+  const fit = (): void => {
+    const width = svg.clientWidth;
+    const height = svg.clientHeight;
+    if (width < 1 || height < 1) return;
+    const pxPerUnit = Math.min(width / viewWidth, height / viewHeight);
+    const font = Math.max(1.05, MIN_LABEL_PX / pxPerUnit);
+    const k = font / 1.05;
+    for (const text of Array.from(svg.querySelectorAll<SVGTextElement>(".cone-preview-place text"))) {
+      text.style.fontSize = `${font}px`;
+      text.style.strokeWidth = `${0.32 * k}px`;
+    }
+    for (const dot of Array.from(svg.querySelectorAll<SVGCircleElement>(".cone-preview-place circle"))) dot.setAttribute("r", fmt(0.42 * Math.min(k, 1.6)));
+  };
+  if (typeof ResizeObserver === "function") {
+    let shown = false;
+    const observer = new ResizeObserver(() => {
+      // Let go once the map has been shown and taken off the page (its card closed).
+      if (svg.isConnected) shown = true;
+      else if (shown) {
+        observer.disconnect();
+        return;
+      }
+      fit();
+    });
+    observer.observe(svg);
+  }
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(fit);
 }
