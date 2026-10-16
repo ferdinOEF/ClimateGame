@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { sceneryGreyLevels } from "./sceneryGrey";
 import type { AxialCoord } from "@core/hex";
 import { axialKey, axialToWorld, neighbors } from "@core/hex";
 import { RELIEF, contoursBetween, reliefLift } from "@core/relief";
@@ -240,7 +241,9 @@ export class TerrainMeshManager {
         roughness: 0.9,
         metalness: 0.0
       });
-      patchForOverlay(material, this.overlay, OVERLAY_STRENGTH[terrain.id] ?? 0.5);
+      patchForOverlay(material, this.overlay, OVERLAY_STRENGTH[terrain.id] ?? 0.5, { greyAttribute: true });
+      // Scenery tiles' grey level (render/sceneryGrey.ts), 0 everywhere else.
+      geometry.setAttribute("aGrey", new THREE.InstancedBufferAttribute(new Float32Array(MAX_TERRAIN_INSTANCES_PER_TYPE), 1));
       const mesh = new THREE.InstancedMesh(geometry, material, MAX_TERRAIN_INSTANCES_PER_TYPE);
       mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TERRAIN_INSTANCES_PER_TYPE * 3), 3);
       mesh.count = 0;
@@ -292,7 +295,7 @@ export class TerrainMeshManager {
   }
 
   /** Renders the entire fixed map at once, every tile dimmed/sunken (unclaimed) except `claimedCoords`. */
-  loadMap(mapTiles: { coord: AxialCoord; terrainId: string; elevationM?: number }[], claimedCoords: Iterable<AxialCoord>): void {
+  loadMap(mapTiles: { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[], claimedCoords: Iterable<AxialCoord>): void {
     const claimedKeys = new Set(Array.from(claimedCoords, (c) => `${c.q},${c.r}`));
     // A map with real ground heights draws its land as one surface (see RELIEF_LAND_RADIUS).
     // Only land is drawn raised; water, beach and wetland keep their flat look.
@@ -300,13 +303,16 @@ export class TerrainMeshManager {
     if (relief) {
       const land = this.meshes.get("land");
       if (land) {
+        const grey = land.geometry.getAttribute("aGrey");
         land.geometry.dispose();
         land.geometry = reliefLandGeometry(this.height("land"));
+        land.geometry.setAttribute("aGrey", grey);
         (land.material as THREE.MeshStandardMaterial).vertexColors = true;
         (land.material as THREE.MeshStandardMaterial).needsUpdate = true;
       }
     }
     const highest = Math.max(1, ...mapTiles.map((tile) => (tile.terrainId === "land" ? (tile.elevationM ?? 0) : 0)));
+    const greyLevels = sceneryGreyLevels(mapTiles);
 
     for (const { coord, terrainId, elevationM } of mapTiles) {
       const terrain = TERRAIN_BY_ID.get(terrainId);
@@ -346,6 +352,7 @@ export class TerrainMeshManager {
       this.placed.set(key, inst);
       mesh.setMatrixAt(index, this.restMatrix(inst, new THREE.Matrix4()));
       mesh.setColorAt(index, claimed ? fullColor : dimColor);
+      (mesh.geometry.getAttribute("aGrey") as THREE.InstancedBufferAttribute).setX(index, greyLevels.get(key) ?? 0);
     }
     if (relief) this.buildContours(mapTiles);
 
@@ -374,6 +381,7 @@ export class TerrainMeshManager {
     for (const mesh of this.meshes.values()) {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.geometry.getAttribute("aGrey").needsUpdate = true;
       mesh.boundingSphere = null;
     }
   }

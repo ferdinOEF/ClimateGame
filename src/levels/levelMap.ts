@@ -53,6 +53,8 @@ export interface MapSource {
   metresPerUnit: number;
   /** When the map data was fetched (YYYY-MM-DD). */
   accessed?: string;
+  /** True when the board was adjusted by hand after being read (Panaji, Section 11). */
+  adjustedByHand?: boolean;
 }
 
 /**

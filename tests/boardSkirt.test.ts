@@ -40,6 +40,10 @@ describe("the board skirt", () => {
     const west = skirt.filter((tile) => tile.ring === 1 && column(tile) < 0 && tile.coord.r > 10 && tile.coord.r < 26);
     const headland = skirt.filter((tile) => tile.ring === 1 && column(tile) < 0 && tile.coord.r >= 26 && tile.coord.r <= 29);
     expect(headland.some((tile) => tile.terrainId === "land")).toBe(true);
+    // ...only its tip: further west it is the open sea again.
+    const beyond = skirt.filter((tile) => tile.ring >= 2 && column(tile) < 0 && tile.coord.r >= 10);
+    expect(beyond.length).toBeGreaterThan(0);
+    expect(beyond.every((tile) => tile.terrainId === "coast")).toBe(true);
     const east = skirt.filter((tile) => tile.ring === 1 && column(tile) > 34 && tile.coord.r > 16 && tile.coord.r < 32);
     expect(west.length).toBeGreaterThan(0);
     expect(east.length).toBeGreaterThan(0);

@@ -84,16 +84,26 @@ const world = (key: string): { x: number; z: number } => {
   return axialToWorld({ q, r }, 1);
 };
 
-/** The direction from a landfall site out to open sea: away from the land beside it. */
+/**
+ * The direction from a landfall site out to open sea: towards the mass of sea
+ * within six hexes of it. (It used to be "away from the land beside it", which
+ * on a site where the coast bends, such as 1,12 by the river mouth since
+ * Section 11, pointed the track in over the north bank.)
+ */
 function seaward(board: WaterBoard, site: string): { x: number; z: number } {
   const at = world(site);
+  const reach = 6 * Math.sqrt(3);
   let x = 0;
   let z = 0;
-  for (const n of board.tiles.get(site)?.neighbours ?? []) {
-    if (WATER.has(board.tiles.get(n)!.terrainId)) continue;
-    const p = world(n);
-    x += at.x - p.x;
-    z += at.z - p.z;
+  for (const [key, tile] of board.tiles) {
+    if (!WATER.has(tile.terrainId)) continue;
+    const p = world(key);
+    const dx = p.x - at.x;
+    const dz = p.z - at.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance < 0.01 || distance > reach) continue;
+    x += dx / distance;
+    z += dz / distance;
   }
   const length = Math.hypot(x, z) || 1;
   return { x: x / length, z: z / length };

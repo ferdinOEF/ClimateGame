@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { SCENERY_GREY_FRAGMENT_DECL, SCENERY_GREY_GLSL, SCENERY_GREY_VERTEX, SCENERY_GREY_VERTEX_DECL } from "./sceneryGrey";
 
 /*
  * The OpenStreetMap street-map layer as a patch on MeshStandardMaterial,
@@ -52,7 +53,7 @@ export function patchForOverlay(
   material: THREE.MeshStandardMaterial,
   uniforms: OverlayUniforms,
   strength: number,
-  options: { fadeAttribute?: boolean } = {}
+  options: { fadeAttribute?: boolean; greyAttribute?: boolean } = {}
 ): void {
   // Per material, so each terrain type mixes the map in by its own amount.
   const uOsmStrength = { value: strength };
@@ -63,16 +64,18 @@ export function patchForOverlay(
    * reaches past the picture on the south and east.
    */
   const fade = options.fadeAttribute === true;
+  // `greyAttribute`: the mesh carries a per-instance `aGrey` (see render/sceneryGrey.ts).
+  const grey = options.greyAttribute === true;
   // Three caches compiled programs by `onBeforeCompile.toString()`, which is
   // the same text with or without the fade. Without its own key a skirt mesh
   // could be handed the terrain's program, which has no `aFade` at all.
-  material.customProgramCacheKey = () => (fade ? "osm-overlay-fade" : "osm-overlay");
+  material.customProgramCacheKey = () => `${fade ? "osm-overlay-fade" : "osm-overlay"}${grey ? "-grey" : ""}`;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms, { uOsmStrength });
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
-        `#include <common>\nvarying vec2 vOsmWorld;\nvarying float vOsmTop;\nvarying float vOsmFade;\n${fade ? "attribute float aFade;" : ""}`
+        `#include <common>\nvarying vec2 vOsmWorld;\nvarying float vOsmTop;\nvarying float vOsmFade;\n${fade ? "attribute float aFade;" : ""}\n${grey ? SCENERY_GREY_VERTEX_DECL : ""}`
       )
       .replace(
         "#include <project_vertex>",
@@ -84,12 +87,13 @@ export function patchForOverlay(
         osmWorld = modelMatrix * osmWorld;
         vOsmWorld = osmWorld.xz;
         vOsmTop = step( 0.5, normal.y );
-        vOsmFade = ${fade ? "aFade" : "0.0"};`
+        vOsmFade = ${fade ? "aFade" : "0.0"};
+        ${grey ? SCENERY_GREY_VERTEX : ""}`
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        `${fade ? "#define OSM_FADE\n" : ""}#include <common>\nuniform sampler2D uOsmMap;\nuniform vec4 uOsmRect;\nuniform float uOsmOpacity;\nuniform float uOsmStrength;\nvarying vec2 vOsmWorld;\nvarying float vOsmTop;\nvarying float vOsmFade;`
+        `${fade ? "#define OSM_FADE\n" : ""}#include <common>\nuniform sampler2D uOsmMap;\nuniform vec4 uOsmRect;\nuniform float uOsmOpacity;\nuniform float uOsmStrength;\nvarying vec2 vOsmWorld;\nvarying float vOsmTop;\nvarying float vOsmFade;\n${grey ? SCENERY_GREY_FRAGMENT_DECL : ""}`
       )
       .replace(
         "#include <color_fragment>",
@@ -116,7 +120,8 @@ export function patchForOverlay(
               diffuseColor.rgb = mix( diffuseColor.rgb, osm, clamp( uOsmOpacity * uOsmStrength, 0.0, 1.0 ) );
             }
           #endif
-        }`
+        }
+        ${grey ? SCENERY_GREY_GLSL : ""}`
       );
   };
 }

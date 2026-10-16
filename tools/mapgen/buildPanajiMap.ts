@@ -1671,7 +1671,9 @@ async function main(): Promise<void> {
       bounds: BOARD,
       metresPerUnit: METRES_PER_UNIT,
       // When the OpenStreetMap picture the board is read from was fetched.
-      accessed: (meta as BasemapMeta & { generatedAt?: string }).generatedAt?.slice(0, 10)
+      accessed: (meta as BasemapMeta & { generatedAt?: string }).generatedAt?.slice(0, 10),
+      // The owner's hand edits (tools/mapgen/panaji-hand-edits.json) are applied on top.
+      adjustedByHand: true
     },
     focus,
     /*
