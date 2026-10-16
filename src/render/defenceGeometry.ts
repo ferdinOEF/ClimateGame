@@ -132,7 +132,7 @@ function paintAll(g: THREE.BufferGeometry, color: string): THREE.BufferGeometry 
  */
 function ring(color: string): THREE.BufferGeometry {
   const outer = 0.9;
-  const inner = 0.83;
+  const inner = 0.865;
   // Above the sea's animated surface on a coast tile, so the ring shows round a seawall or breakwater too.
   const y = 0.07;
   const pos: number[] = [];
@@ -424,7 +424,8 @@ function duneGeometry(): THREE.BufferGeometry {
   const zs = (j: number) => -0.74 + (1.48 * j) / (nz - 1);
   const height = (x: number, z: number): number => {
     // Two humps along the ridge; across it, a long gentle windward slope (+x) and a short steep lee.
-    const humps = 0.3 * Math.exp(-((z - 0.34) ** 2) / 0.04) + 0.25 * Math.exp(-((z + 0.34) ** 2) / 0.045) + 0.05;
+    // Two crests with a clear saddle between them.
+    const humps = 0.38 * Math.exp(-((z - 0.36) ** 2) / 0.03) + 0.32 * Math.exp(-((z + 0.36) ** 2) / 0.034) + 0.02;
     const across = x >= 0 ? Math.max(0, 1 - x / 0.62) ** 1.4 : Math.max(0, 1 + x / 0.42) ** 0.8;
     const fade = Math.max(0, 1 - (Math.abs(z) / 0.78) ** 4);
     return humps * across * fade;

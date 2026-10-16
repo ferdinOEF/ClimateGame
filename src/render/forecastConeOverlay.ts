@@ -58,7 +58,7 @@ const BAND_FRAGMENT = /* glsl */ `
     // Dark, mid and light red: the three bands differ by lightness.
     // Section 14: lighter, so the terrain shows through.
     vec3 color = vBand > 2.5 ? vec3(0.58, 0.08, 0.12) : vBand > 1.5 ? vec3(0.90, 0.38, 0.30) : vec3(0.99, 0.76, 0.68);
-    float alpha = vBand > 2.5 ? 0.38 : vBand > 1.5 ? 0.32 : 0.26;
+    float alpha = vBand > 2.5 ? 0.3 : vBand > 1.5 ? 0.24 : 0.18;
     if (vMeet > 0.5) {
       // Where they meet: indigo, hatched against the board's diagonal.
       float stripe = step(0.5, fract((vWorld.x - vWorld.y) * 2.2));

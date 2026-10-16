@@ -713,8 +713,11 @@ export class ElementMeshManager {
     if (direction && (direction.x !== 0 || direction.y !== 0)) this.defenceUniforms.uWindDir.value.set(direction.x, direction.y).normalize();
   }
 
+  /** QA only: holds the defences' shader clock at a moment (seconds), or lets it run with null. */
+  frozenShaderSeconds: number | null = null;
+
   tick(nowMs: number): void {
-    this.defenceUniforms.uTime.value = shaderSeconds(nowMs);
+    this.defenceUniforms.uTime.value = this.frozenShaderSeconds ?? shaderSeconds(nowMs);
     this.animator.tick(nowMs);
     for (const ref of this.settling) {
       if (this.animator.isAnimating(ref.index, ref.mesh)) continue;

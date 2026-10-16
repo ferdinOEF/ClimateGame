@@ -117,8 +117,11 @@ export class BuildPuff {
   }
 
   /** Each frame: the clock, and the point size for the drawing buffer's height. */
+  /** QA only: holds the clock at a moment (seconds), or lets it run with null. */
+  frozenShaderSeconds: number | null = null;
+
   tick(nowMs: number, viewportHeight: number): void {
-    this.uniforms.uTime.value = shaderSeconds(nowMs);
+    this.uniforms.uTime.value = this.frozenShaderSeconds ?? shaderSeconds(nowMs);
     this.uniforms.uScale.value = viewportHeight;
   }
 

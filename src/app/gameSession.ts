@@ -2667,6 +2667,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // precisely-timed screenshots to catch it mid-sweep.
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
+    __tileHoverForTest: () => tileHover,
+    /** Holds the defences' and puffs' shader clock (seconds on their clock), or null to let it run: frames of a build at exact ages. */
+    __freezeShaderTimeForTest: (seconds: number | null): void => {
+      elements.frozenShaderSeconds = seconds;
+      if (buildPuff) buildPuff.frozenShaderSeconds = seconds;
+    },
     /** Section 14 shots: draws an element on a tile (no game state changes), popping in when `animate`. */
     __placeVisualForTest: (q: number, r: number, elementId: string, animate = false): void => {
       elements.place({ q, r }, elementId, terrain.heightAt({ q, r }), { animate });

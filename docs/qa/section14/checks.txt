@@ -1,0 +1,16 @@
+PASS  the hover outline shows on a free beach tile (1,13)
+PASS  no hover outline on a built tile (2,12)
+PASS  1920x1080: phase 1 result card says "Every home in the path survived" above "9 of 9 homes saved"
+PASS  1920x1080: phase 1 result card lists the landmarks in its area: Kala Academy Stood Campal Garden Stood
+PASS  axe-core, result card 1: no serious or critical violations
+PASS  1920x1080: phase 2 result card: "(some homes lost)" / "0 of 39 homes saved", places: Goa State Museum Damaged Campal Garden Stood
+PASS  1920x1080: phase 3 result card: "(some homes lost)" / "13 of 92 homes saved", places: Don Bosco High School Stood Sharada Mandir School Stood Kala Academy Stood Campal Garden Stood Caranzalem Stood Taleigao Stood
+PASS  1280x600: phase 1 result card says "Every home in the path survived" above "9 of 9 homes saved"
+PASS  1280x600: phase 1 result card lists the landmarks in its area: Kala Academy Stood Campal Garden Stood
+PASS  1280x600: phase 2 result card: "(some homes lost)" / "0 of 39 homes saved", places: Goa State Museum Damaged Campal Garden Stood
+PASS  1280x600: phase 3 result card: "(some homes lost)" / "13 of 92 homes saved", places: Don Bosco High School Stood Sharada Mandir School Stood Kala Academy Stood Campal Garden Stood Caranzalem Stood Taleigao Stood
+PASS  1366x768: phase 1 result card says "Every home in the path survived" above "9 of 9 homes saved"
+PASS  1366x768: phase 1 result card lists the landmarks in its area: Kala Academy Stood Campal Garden Stood
+PASS  2560x1440: phase 1 result card says "Every home in the path survived" above "9 of 9 homes saved"
+PASS  2560x1440: phase 1 result card lists the landmarks in its area: Kala Academy Stood Campal Garden Stood
+PASS  zero console errors
