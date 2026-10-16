@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import * as THREE from "three";
 import panajiFile from "../src/data/maps/panaji.json";
+import handEdits from "../tools/mapgen/panaji-hand-edits.json";
 import facts from "../src/data/facts.json";
 import { mapById } from "../src/levels/levelMap";
 import { townLayout } from "../src/levels/townLayout";
@@ -24,9 +25,16 @@ const locality = (name: string): string => {
 };
 
 describe("the board's tiles are what they were", () => {
-  it("every tile's position and terrain is byte-for-byte the board before Section 3", () => {
+  it("every tile's position and terrain is byte-for-byte the board before Section 3, but for the owner's hand edits", () => {
     // sha256 of [[q, r, terrainId], ...] from panaji.json at e728e90 (before elevation was added).
-    const tiles = (panajiFile as { tiles: { q: number; r: number; terrainId: string }[] }).tiles.map((t) => [t.q, t.r, t.terrainId]);
+    // Section 11: undo the hand edits (tools/mapgen/panaji-hand-edits.json) and the board must be exactly that one.
+    const undo = new Map(handEdits.tiles.map((entry) => {
+      const [q, r, change] = entry.split(",");
+      return [`${q},${r}`, change.split(">")[0]];
+    }));
+    const tiles = (panajiFile as { tiles: { q: number; r: number; terrainId: string }[] }).tiles
+      .filter((t) => undo.get(`${t.q},${t.r}`) !== "none")
+      .map((t) => [t.q, t.r, undo.get(`${t.q},${t.r}`) ?? t.terrainId]);
     expect(createHash("sha256").update(JSON.stringify(tiles)).digest("hex")).toBe("e98ea0f38cc5cad9252a83fb419880cf433ba90e43825b1832e4601db1b4e3db");
   });
 });

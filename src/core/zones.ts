@@ -215,9 +215,10 @@ export function resolveChallenge(
   const storm = { kind, strength, landfall: site };
   const options = { combos, landfallZoneTiles: landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined };
 
+  // A house on scenery (the north bank) is drawn, never counted.
   const isHouse = (key: string): boolean => {
     const inst = state.elements.get(key);
-    return !!inst && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
+    return !!inst && !state.isScenery(key) && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
   };
   // What the storm would do with no defences at all: the path, and the yardstick for protection.
   const bare = state.clone();
@@ -259,7 +260,8 @@ export function resolveChallenge(
   const overSet = new Set(field.overwhelmed);
   const outcomes: ZoneOutcome[] = [];
   for (const zoneId of order) {
-    const keys = zoneId === CITY_ZONE ? [...undefended.depth.keys()].filter((key) => !zones.zoneOf(key)) : zones.keys(zoneId);
+    // Never the north bank (scenery): its water is drawn, not reported.
+    const keys = (zoneId === CITY_ZONE ? [...undefended.depth.keys()].filter((key) => !zones.zoneOf(key)) : zones.keys(zoneId)).filter((key) => !state.isScenery(key));
     const inZone = standing.filter((key) => zoneOf(key) === zoneId);
     const zoneFailed = field.failed.filter((key) => zoneOf(key) === zoneId);
     const zoneOver = field.overwhelmed.filter((key) => zoneOf(key) === zoneId);

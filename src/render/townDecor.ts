@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { axialToWorld, type AxialCoord } from "@core/hex";
 import { gardenGeometry } from "./townGeometry";
 import type { TownLayout } from "@levels/townLayout";
+import { SCENERY_GREY_FRAGMENT_DECL, SCENERY_GREY_GLSL, SCENERY_GREY_VERTEX, SCENERY_GREY_VERTEX_DECL } from "./sceneryGrey";
 
 /**
  * What the town plan draws besides its buildings: the gardens on empty land.
@@ -29,7 +30,8 @@ export class TownDecor {
   /** Wind (0–1), its direction and the clock, for the gardens' trees to bend in a storm (vertex shader; no per-frame CPU work). */
   private readonly sway = { uWind: { value: 0 }, uTime: { value: 0 }, uWindDir: { value: new THREE.Vector2(1, 0.3).normalize() } };
 
-  constructor(town: TownLayout, heightAt: (coord: AxialCoord) => number) {
+  /** `greyAt`: a scenery tile's grey level (render/sceneryGrey.ts), so the gardens there are as quiet as the ground. */
+  constructor(town: TownLayout, heightAt: (coord: AxialCoord) => number, greyAt: (key: string) => number = () => 0) {
     const coordOf = (key: string): AxialCoord => {
       const [q, r] = key.split(",").map(Number);
       return { q, r };
@@ -40,11 +42,15 @@ export class TownDecor {
       const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.9, vertexColors: true });
       material.onBeforeCompile = (shader) => {
         Object.assign(shader.uniforms, this.sway);
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", `#include <common>\n${SCENERY_GREY_FRAGMENT_DECL}`)
+          .replace("#include <color_fragment>", `#include <color_fragment>\n${SCENERY_GREY_GLSL}`);
         shader.vertexShader = shader.vertexShader
-          .replace("#include <common>", "#include <common>\nuniform float uWind;\nuniform float uTime;\nuniform vec2 uWindDir;")
+          .replace("#include <common>", `#include <common>\nuniform float uWind;\nuniform float uTime;\nuniform vec2 uWindDir;\n${SCENERY_GREY_VERTEX_DECL}`)
           .replace(
             "#include <begin_vertex>",
             `#include <begin_vertex>
+            ${SCENERY_GREY_VERTEX}
             #ifdef USE_INSTANCING
               // Taller parts bend further, all the same way: the wind direction
               // turned into this instance's own frame, plus a gusting wobble.
@@ -56,7 +62,9 @@ export class TownDecor {
             #endif`
           );
       };
-      const gardens = new THREE.InstancedMesh(gardenGeometry(), material, town.gardens.size);
+      const geometry = gardenGeometry();
+      geometry.setAttribute("aGrey", new THREE.InstancedBufferAttribute(new Float32Array([...town.gardens].map((key) => greyAt(key))), 1));
+      const gardens = new THREE.InstancedMesh(geometry, material, town.gardens.size);
       gardens.name = "town-gardens";
       const matrix = new THREE.Matrix4();
       let i = 0;

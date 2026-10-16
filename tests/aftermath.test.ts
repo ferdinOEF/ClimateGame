@@ -20,10 +20,10 @@ function panaji(): { state: GameState; zones: ZoneIndex; landfallTiles: string[]
   return { state, zones, landfallTiles: zones.keys(LANDFALL_ZONE) };
 }
 
-/** Panaji with `elementId` built, mature, on every tile a strength-1.2 cyclone at site 10 wets. */
-function defended(elementId: string): { state: GameState; zones: ZoneIndex } {
+/** Panaji with `elementId` built, mature, on every tile a cyclone of `strength` at site 10 wets. */
+function defended(elementId: string, strength = 1.2): { state: GameState; zones: ZoneIndex } {
   const { state, zones, landfallTiles } = panaji();
-  const water = computeWater(state, { kind: "cyclone", strength: 1.2, landfall: 10 }, { landfallZoneTiles: landfallTiles });
+  const water = computeWater(state, { kind: "cyclone", strength, landfall: 10 }, { landfallZoneTiles: landfallTiles });
   for (const key of water.depth.keys()) {
     const [q, r] = key.split(",").map(Number);
     if (state.canBuild({ q, r }, elementId)) state.build({ q, r }, elementId, false);
@@ -32,7 +32,7 @@ function defended(elementId: string): { state: GameState; zones: ZoneIndex } {
   return { state, zones };
 }
 
-const storm = (state: GameState, zones: ZoneIndex) => resolveChallenge(state, zones, "cyclone", 24, 20, undefined, undefined, undefined, undefined, 10);
+const storm = (state: GameState, zones: ZoneIndex, intensity = 24) => resolveChallenge(state, zones, "cyclone", intensity, 20, undefined, undefined, undefined, undefined, 10);
 
 describe("aftermath line", () => {
   it("credits the defence that held, by place", () => {
@@ -43,11 +43,13 @@ describe("aftermath line", () => {
   });
 
   it("credits the main defence when it took some but not all of a storm", () => {
-    const { state, zones } = defended("mangrove");
-    const outcome = storm(state, zones);
+    // Section 11: since the owner's edits turned the Campal wetland into land, mangroves no longer meet
+    // this cyclone; dunes against a stronger one (2.0) take some but not all of it.
+    const { state, zones } = defended("dune", 2);
+    const outcome = storm(state, zones, 40);
     expect(outcome.housesDamaged).toBeGreaterThan(0);
     expect(outcome.housesSaved).toBeGreaterThan(0);
-    expect(aftermathLine("cyclone", outcome, state, zones, [])).toMatch(new RegExp(`^The mangroves at (Taleigao|the waterfront|the Ourem creek) took (it|most of it): ${outcome.housesSaved} houses stayed standing\\.$`));
+    expect(aftermathLine("cyclone", outcome, state, zones, [])).toBe(`The dunes at Miramar took most of it: ${outcome.housesSaved} houses stayed standing.`);
   });
 
   it("says plainly when the first zone was bare", () => {

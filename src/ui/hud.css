@@ -944,6 +944,14 @@ html, body {
   white-space: normal;
 }
 
+/* The whole popover on a tile that is not part of the game (Panaji's north bank): one line. */
+.built-info-note.popover-note {
+  padding: 8px 10px;
+  color: rgba(253, 246, 230, 0.86);
+  max-width: none;
+  white-space: nowrap;
+}
+
 /* STEP_PROMPT_manual_only_mode.md Part C: lower-stakes than the dev panel's board-wide Reset (only this one tile, no confirm needed), so a lighter tint of the same warning family rather than the full .hazard-test-reset treatment. */
 .built-info-remove {
   margin: 4px 10px 6px;

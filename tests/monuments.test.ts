@@ -121,13 +121,14 @@ describe("monuments", () => {
     expect(counts.get("beach") ?? 0).toBeGreaterThanOrEqual(15);
     const beachRows = new Set(panaji.tiles.filter((tile) => tile.terrainId === "beach").map((tile) => tile.coord.r));
     const rows = [...beachRows].sort((a, b) => a - b);
-    // From the Campal end to Caranzalem there is sand on every row.
+    // From the Campal end to Caranzalem there is sand on every row (rows 13-23 since the owner's
+    // Section 11 edits, which made 4,12 and -7,24 land).
     let longestRun = 1;
     let run = 1;
     for (let i = 1; i < rows.length; i++) {
       run = rows[i] === rows[i - 1] + 1 ? run + 1 : 1;
       longestRun = Math.max(longestRun, run);
     }
-    expect(longestRun).toBeGreaterThanOrEqual(12);
+    expect(longestRun).toBeGreaterThanOrEqual(11);
   });
 });

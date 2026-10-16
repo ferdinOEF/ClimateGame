@@ -31,7 +31,7 @@ function mapDataItems(): HTMLLIElement[] {
     items.push(item);
   };
   for (const map of REAL_PLACE_MAPS) {
-    if (map.source) add([`${map.name}: coastline, rivers, roads, landmarks and street map from OpenStreetMap.`, `${map.source.attribution}, under the Open Database Licence.${map.source.accessed ? ` Accessed ${map.source.accessed}.` : ""}`], map.source.href);
+    if (map.source) add([`${map.name}: coastline, rivers, roads, landmarks and street map ${map.source.adjustedByHand ? "drawn from OpenStreetMap and adjusted by hand" : "from OpenStreetMap"}.`, `${map.source.attribution}, under the Open Database Licence.${map.source.accessed ? ` Accessed ${map.source.accessed}.` : ""}`], map.source.href);
     const e = map.elevation;
     if (e) {
       const metresPerUnit = map.source?.metresPerUnit;

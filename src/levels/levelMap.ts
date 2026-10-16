@@ -53,6 +53,8 @@ export interface MapSource {
   metresPerUnit: number;
   /** When the map data was fetched (YYYY-MM-DD). */
   accessed?: string;
+  /** True when the board was adjusted by hand after being read (Panaji, Section 11). */
+  adjustedByHand?: boolean;
 }
 
 /**
@@ -152,6 +154,10 @@ export interface GameMap {
   bridges: [number, number][];
   /** Which neighbouring road tiles the road runs between: [q1, r1, q2, r2]. */
   roadLinks: [number, number, number, number][];
+  /** The board skirt: west of the board from this row south is open sea, whatever land touches it (Panaji). */
+  skirtOpenSeaWestFromRow?: number;
+  /** Tiles on the board as scenery only, not part of the game (Panaji's north bank). Their `PlacedTile.scenery` is set. Empty on maps without them. */
+  unplayable: [number, number][];
   tiles: PlacedTile[];
 }
 
@@ -173,11 +179,14 @@ interface MapFileShape {
   roads?: [number, number][];
   bridges?: [number, number][];
   roadLinks?: [number, number, number, number][];
+  unplayable?: [number, number][];
+  skirtOpenSeaWestFromRow?: number;
   tiles: { q: number; r: number; terrainId: string; elevationM?: number }[];
 }
 
 function fromFile(file: unknown): GameMap {
   const data = file as MapFileShape;
+  const scenery = new Set((data.unplayable ?? []).map(([q, r]) => `${q},${r}`));
   return {
     id: data.id,
     name: data.name,
@@ -195,11 +204,15 @@ function fromFile(file: unknown): GameMap {
     roads: data.roads ?? [],
     bridges: data.bridges ?? [],
     roadLinks: data.roadLinks ?? [],
-    tiles: data.tiles.map((tile) =>
-      tile.elevationM === undefined
+    unplayable: data.unplayable ?? [],
+    skirtOpenSeaWestFromRow: data.skirtOpenSeaWestFromRow,
+    tiles: data.tiles.map((tile) => {
+      const placed: PlacedTile = tile.elevationM === undefined
         ? { coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }
-        : { coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId, elevationM: tile.elevationM }
-    )
+        : { coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId, elevationM: tile.elevationM };
+      if (scenery.has(`${tile.q},${tile.r}`)) placed.scenery = true;
+      return placed;
+    })
   };
 }
 
@@ -236,6 +249,7 @@ const LEGACY_MAP: GameMap = (() => {
     roads: [],
     bridges: [],
     roadLinks: [],
+    unplayable: [],
     name: "The Goa Coast",
     region: "Generated coastline",
     blurb:

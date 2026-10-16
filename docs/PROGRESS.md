@@ -8374,3 +8374,52 @@ Every archetype uses every build of every year it plays.
 **The first objective:** its five builds (2 pandanus, 2 dunes, 1 breakwater) fully protect the first cyclone (`tests/section10.test.ts`). They already did before this section. One well-placed breakwater or seawall alone saves all 9 homes, so the first cyclone is easy.
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 10).
+
+## Section 11 — the owner's Panaji map edits; the north bank as scenery — DONE
+
+**The edits are a layer** (`tools/mapgen/panaji-hand-edits.json`). The generator (`npm run mapgen:panaji`) applies it after reading OpenStreetMap and before heights, roads and zones, so regenerating never loses it. The file holds:
+- the owner's 85 tile edits, each "q,r,from>to"; the build stops if OSM ever gives something else at a tile;
+- 2 monument moves: Sharada Mandir School -3,18 → -2,18 and Dhempe College -2,17 → -1,17;
+- 2 area names moved off the new creek to the land tile nearest each real position:
+  - **Campal** 6,11 → **6,10** (beside Kala Academy, on the seaward side of the creek);
+  - **Santa Inez** 3,14 → **4,14** (the east bank).
+- Atal Setu stays on the river.
+- the 148 north-bank tiles; the generator checks the list against its flood-fill rule.
+
+`tests/panajiHandEdits.test.ts` checks every edit is in `panaji.json`. `tests/cityHill.test.ts` checks the board is exactly the old one once the edits are undone.
+
+**The rest of the map follows from the edited terrain:**
+- **Heights:** the Copernicus DEM, by the same method, on every tile. The 8 added tiles were inside the DEM crop.
+- **Roads and bridges:** (6,11), (7,10), (14,8), (7,9) and (12,11) are now bridges. (15,21), (16,7), (-2,19), (15,7), (17,13) and (18,14) are now roads. Also:
+  - (4,12) became a road; the OSM picture has one there, now that it is land.
+  - (-1,17) lost its road: Dhempe College stands on it, and a monument's tile takes no road.
+- **Zones:** no edited tile changed zone. The north bank is now in no zone; z4 lost 7 north-bank tiles.
+- **Houses:** 449 → 466 on the board, of which 92 are on the north bank, so 374 count.
+
+  | Zone | Before | After |
+  |---|---|---|
+  | z1 | 36 | 44 |
+  | z2 | 84 | 89 |
+  | z3 | 10 | 8 |
+  | z4 | 6 | 6 (the one north-bank house left with its tiles) |
+  | Outside every zone | 313 | 319 (227 counted) |
+
+- **Credit:** the blurb and the Sources screen say "drawn from OpenStreetMap and adjusted by hand". The OSM attribution is unchanged.
+
+**North of the Mandovi is scenery** (`PlacedTile.scenery`):
+- **Building:** nothing can be built there. A click shows "North of the Mandovi: not part of this game".
+- **Counting:** its houses never count anywhere: the storms, stars, areas to protect, cones, heat, objectives, result cards, the bots, zones and the house economy.
+- **Storms:** they still draw their water over it.
+- **Look** (`render/sceneryGrey.ts`): 50% desaturated and 10% darker, with a 1-tile fade at the edge. This covers the tiles, the street-map layer (so its names are muted), the houses, the gardens and the skirt beyond.
+
+**The first cyclone** (owner's decision):
+- Landfall moved from -2,15 to **1,12**, and strength from 1.2 to **1.0**.
+- The owner's new land at 5,10 and 6,9 sits at 0 m on the DEM beside the new sea tiles at the river mouth, so it floods in almost any cyclone. The landfall alone could not keep the damage inside the stretch.
+- Undefended, the storm now takes 8 homes (9 before); 6,9 and 5,10 are outside the Kala Academy–Sharada Mandir stretch.
+- The objective stays 2 pandanus, 2 dunes and 1 breakwater. Built well, those save every home in the stretch, and 5,10 too; 6,9 needs a breakwater offshore of the stretch.
+
+**Other changes:**
+- The cyclone's track and sea wedge point at the open sea near the landfall. At the new site, the old rule ran the track over the north bank.
+- The board skirt west of the board is sea past the Dona Paula headland's tip (a Panaji map field).
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 11).

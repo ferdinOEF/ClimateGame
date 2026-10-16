@@ -53,6 +53,7 @@ import { panjimHelpHtml } from "@ui/panjim/panjimHelp";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
+import { greyColor, sceneryGreyLevels } from "@render/sceneryGrey";
 import startingStateData from "@data/startingState.json";
 
 interface StartingStateFile {
@@ -223,7 +224,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // Purely cosmetic and never fed into GameState: the ground past the edge of
   // play, so the board dissolves into sea and hills instead of ending in a
   // cut. Replaces the old four-column Ghats backdrop — see the manager.
-  const boardSkirt = new BoardSkirtManager(levelTiles, terrain.overlayUniforms);
+  const boardSkirt = new BoardSkirtManager(levelTiles, terrain.overlayUniforms, levelMap.skirtOpenSeaWestFromRow);
   // STEP_PROMPT_ghats_wave_demo.md Section 2/3: the wave-front spectacle —
   // layered on top of hazardOverlay's own per-tile reveals, not a
   // replacement for them (see WaveFrontManager's own comment).
@@ -381,21 +382,25 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (town) {
     const walls = WALL_COLOURS.map((hex) => new THREE.Color(hex));
     const roofs = ROOF_COLOURS.map((hex) => new THREE.Color(hex));
+    // North of the Mandovi (scenery): the same houses, quieter (render/sceneryGrey.ts).
+    const greyLevels = sceneryGreyLevels(levelTiles);
     elements.setStyleResolver((coord) => {
       const plot = town.buildings.get(`${coord.q},${coord.r}`);
+      const grey = greyLevels.get(`${coord.q},${coord.r}`) ?? 0;
+      const paint = (color: THREE.Color): THREE.Color => (grey > 0 ? greyColor(color.clone(), grey) : color);
       return plot
         ? {
             kind: plot.kind,
-            wall: walls[plot.wall],
-            roof: roofs[plot.roof],
+            wall: paint(walls[plot.wall]),
+            roof: paint(roofs[plot.roof]),
             scale: plot.scale,
             turns: plot.turns,
             rotY: plot.rotY,
-            fabric: plot.fabric.map((part) => ({ ...part, wall: walls[part.wall], roof: roofs[part.roof] }))
+            fabric: plot.fabric.map((part) => ({ ...part, wall: paint(walls[part.wall]), roof: paint(roofs[part.roof]) }))
           }
         : null;
     });
-    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord));
+    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord), (key) => greyLevels.get(key) ?? 0);
     scene.add(townDecor.group);
     ambientLife = new AmbientLife(town, levelTiles, (coord) => terrain.heightAt(coord), terrain.height("land"), prefersReducedMotionNow(), levelMap.focus);
     scene.add(ambientLife.group);
@@ -2084,6 +2089,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const worldTop = terrain.heightAt(coord);
     const { x: wx, z: wz } = axialToWorld(coord, 1.0);
     const screen = worldToScreen(wx, worldTop + 0.3, wz);
+
+    // North of the Mandovi is scenery (Section 11.4): no build menu, one line saying so.
+    if (state.isScenery(key)) {
+      buildPopover.showNote(screen.x, screen.y, "North of the Mandovi: not part of this game");
+      return;
+    }
 
     // A monument's tile offers no build menu — it says what the building is.
     // That is the whole interaction those sixteen tiles have, and it is also

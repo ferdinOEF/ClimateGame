@@ -2,7 +2,7 @@
   "id": "panaji",
   "name": "Panaji",
   "region": "Tiswadi, North Goa",
-  "blurb": "Panjim, drawn from OpenStreetMap: the city on the Mandovi, the creeks and fields of Taleigao, St Cruz and Merces to the east, and the beach from Miramar to Caranzalem facing the sea.",
+  "blurb": "Panjim, drawn from OpenStreetMap and adjusted by hand: the city on the Mandovi, the creeks and fields of Taleigao, St Cruz and Merces to the east, and the beach from Miramar to Caranzalem facing the sea.",
   "geo": {
     "originLat": 15.513,
     "originLon": 73.795,
@@ -20,7 +20,8 @@
       "east": 73.87
     },
     "metresPerUnit": 135,
-    "accessed": "2026-10-05"
+    "accessed": "2026-10-05",
+    "adjustedByHand": true
   },
   "focus": {
     "q": 9,
@@ -86,7 +87,7 @@
     },
     {
       "name": "Sharada Mandir School",
-      "q": -3,
+      "q": -2,
       "r": 18
     },
     {
@@ -111,7 +112,7 @@
     },
     {
       "name": "Dhempe College",
-      "q": -2,
+      "q": -1,
       "r": 17
     },
     {
@@ -220,7 +221,7 @@
       "name": "Sharada Mandir School",
       "category": "School, Miramar",
       "kind": "institution",
-      "q": -3,
+      "q": -2,
       "r": 18
     },
     {
@@ -260,7 +261,7 @@
       "name": "Dhempe College",
       "category": "College, Miramar",
       "kind": "institution",
-      "q": -2,
+      "q": -1,
       "r": 17
     },
     {
@@ -284,7 +285,7 @@
     {
       "name": "Campal",
       "q": 6,
-      "r": 11,
+      "r": 10,
       "rank": 1
     },
     {
@@ -343,7 +344,7 @@
     },
     {
       "name": "Santa Inez",
-      "q": 3,
+      "q": 4,
       "r": 14,
       "rank": 2
     },
@@ -2007,34 +2008,6 @@
           4
         ],
         [
-          11,
-          4
-        ],
-        [
-          12,
-          4
-        ],
-        [
-          13,
-          4
-        ],
-        [
-          14,
-          4
-        ],
-        [
-          15,
-          4
-        ],
-        [
-          16,
-          4
-        ],
-        [
-          17,
-          4
-        ],
-        [
           8,
           5
         ],
@@ -2205,6 +2178,601 @@
       ]
     }
   ],
+  "skirtOpenSeaWestFromRow": 10,
+  "unplayable": [
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      3,
+      0
+    ],
+    [
+      4,
+      0
+    ],
+    [
+      5,
+      0
+    ],
+    [
+      7,
+      0
+    ],
+    [
+      8,
+      0
+    ],
+    [
+      9,
+      0
+    ],
+    [
+      10,
+      0
+    ],
+    [
+      11,
+      0
+    ],
+    [
+      12,
+      0
+    ],
+    [
+      13,
+      0
+    ],
+    [
+      14,
+      0
+    ],
+    [
+      15,
+      0
+    ],
+    [
+      16,
+      0
+    ],
+    [
+      17,
+      0
+    ],
+    [
+      18,
+      0
+    ],
+    [
+      19,
+      0
+    ],
+    [
+      20,
+      0
+    ],
+    [
+      21,
+      0
+    ],
+    [
+      22,
+      0
+    ],
+    [
+      24,
+      0
+    ],
+    [
+      25,
+      0
+    ],
+    [
+      26,
+      0
+    ],
+    [
+      27,
+      0
+    ],
+    [
+      28,
+      0
+    ],
+    [
+      29,
+      0
+    ],
+    [
+      30,
+      0
+    ],
+    [
+      31,
+      0
+    ],
+    [
+      32,
+      0
+    ],
+    [
+      33,
+      0
+    ],
+    [
+      34,
+      0
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      2,
+      1
+    ],
+    [
+      3,
+      1
+    ],
+    [
+      4,
+      1
+    ],
+    [
+      5,
+      1
+    ],
+    [
+      6,
+      1
+    ],
+    [
+      7,
+      1
+    ],
+    [
+      8,
+      1
+    ],
+    [
+      9,
+      1
+    ],
+    [
+      11,
+      1
+    ],
+    [
+      12,
+      1
+    ],
+    [
+      13,
+      1
+    ],
+    [
+      14,
+      1
+    ],
+    [
+      15,
+      1
+    ],
+    [
+      16,
+      1
+    ],
+    [
+      17,
+      1
+    ],
+    [
+      18,
+      1
+    ],
+    [
+      19,
+      1
+    ],
+    [
+      20,
+      1
+    ],
+    [
+      21,
+      1
+    ],
+    [
+      22,
+      1
+    ],
+    [
+      24,
+      1
+    ],
+    [
+      30,
+      1
+    ],
+    [
+      -1,
+      2
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      3,
+      2
+    ],
+    [
+      4,
+      2
+    ],
+    [
+      5,
+      2
+    ],
+    [
+      6,
+      2
+    ],
+    [
+      7,
+      2
+    ],
+    [
+      10,
+      2
+    ],
+    [
+      11,
+      2
+    ],
+    [
+      12,
+      2
+    ],
+    [
+      13,
+      2
+    ],
+    [
+      14,
+      2
+    ],
+    [
+      15,
+      2
+    ],
+    [
+      16,
+      2
+    ],
+    [
+      17,
+      2
+    ],
+    [
+      18,
+      2
+    ],
+    [
+      19,
+      2
+    ],
+    [
+      20,
+      2
+    ],
+    [
+      21,
+      2
+    ],
+    [
+      22,
+      2
+    ],
+    [
+      -1,
+      3
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      1,
+      3
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      3,
+      3
+    ],
+    [
+      4,
+      3
+    ],
+    [
+      5,
+      3
+    ],
+    [
+      6,
+      3
+    ],
+    [
+      11,
+      3
+    ],
+    [
+      12,
+      3
+    ],
+    [
+      13,
+      3
+    ],
+    [
+      14,
+      3
+    ],
+    [
+      15,
+      3
+    ],
+    [
+      16,
+      3
+    ],
+    [
+      17,
+      3
+    ],
+    [
+      18,
+      3
+    ],
+    [
+      19,
+      3
+    ],
+    [
+      20,
+      3
+    ],
+    [
+      21,
+      3
+    ],
+    [
+      -2,
+      4
+    ],
+    [
+      -1,
+      4
+    ],
+    [
+      0,
+      4
+    ],
+    [
+      1,
+      4
+    ],
+    [
+      2,
+      4
+    ],
+    [
+      3,
+      4
+    ],
+    [
+      4,
+      4
+    ],
+    [
+      5,
+      4
+    ],
+    [
+      11,
+      4
+    ],
+    [
+      12,
+      4
+    ],
+    [
+      13,
+      4
+    ],
+    [
+      14,
+      4
+    ],
+    [
+      15,
+      4
+    ],
+    [
+      16,
+      4
+    ],
+    [
+      17,
+      4
+    ],
+    [
+      18,
+      4
+    ],
+    [
+      19,
+      4
+    ],
+    [
+      20,
+      4
+    ],
+    [
+      -2,
+      5
+    ],
+    [
+      -1,
+      5
+    ],
+    [
+      0,
+      5
+    ],
+    [
+      1,
+      5
+    ],
+    [
+      2,
+      5
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      4,
+      5
+    ],
+    [
+      -3,
+      6
+    ],
+    [
+      -2,
+      6
+    ],
+    [
+      -1,
+      6
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      1,
+      6
+    ],
+    [
+      2,
+      6
+    ],
+    [
+      3,
+      6
+    ],
+    [
+      4,
+      6
+    ],
+    [
+      -3,
+      7
+    ],
+    [
+      -2,
+      7
+    ],
+    [
+      -1,
+      7
+    ],
+    [
+      0,
+      7
+    ],
+    [
+      1,
+      7
+    ],
+    [
+      2,
+      7
+    ],
+    [
+      3,
+      7
+    ],
+    [
+      4,
+      7
+    ],
+    [
+      -3,
+      8
+    ],
+    [
+      -2,
+      8
+    ],
+    [
+      -1,
+      8
+    ],
+    [
+      0,
+      8
+    ],
+    [
+      1,
+      8
+    ],
+    [
+      2,
+      8
+    ],
+    [
+      3,
+      8
+    ],
+    [
+      -1,
+      9
+    ],
+    [
+      0,
+      9
+    ],
+    [
+      1,
+      9
+    ],
+    [
+      2,
+      9
+    ]
+  ],
   "roads": [
     [
       11,
@@ -2263,6 +2831,14 @@
       7
     ],
     [
+      15,
+      7
+    ],
+    [
+      16,
+      7
+    ],
+    [
       27,
       7
     ],
@@ -2287,10 +2863,6 @@
       8
     ],
     [
-      14,
-      8
-    ],
-    [
       15,
       8
     ],
@@ -2301,10 +2873,6 @@
     [
       28,
       8
-    ],
-    [
-      7,
-      9
     ],
     [
       14,
@@ -2323,16 +2891,8 @@
       10
     ],
     [
-      7,
-      10
-    ],
-    [
       15,
       10
-    ],
-    [
-      6,
-      11
     ],
     [
       7,
@@ -2343,8 +2903,8 @@
       11
     ],
     [
-      12,
-      11
+      4,
+      12
     ],
     [
       6,
@@ -2375,6 +2935,10 @@
       13
     ],
     [
+      17,
+      13
+    ],
+    [
       18,
       13
     ],
@@ -2392,6 +2956,10 @@
     ],
     [
       10,
+      14
+    ],
+    [
+      18,
       14
     ],
     [
@@ -2447,10 +3015,6 @@
       16
     ],
     [
-      -1,
-      17
-    ],
-    [
       4,
       17
     ],
@@ -2487,6 +3051,10 @@
       18
     ],
     [
+      -2,
+      19
+    ],
+    [
       3,
       19
     ],
@@ -2512,6 +3080,10 @@
     ],
     [
       -3,
+      21
+    ],
+    [
+      15,
       21
     ],
     [
@@ -2757,16 +3329,16 @@
       6
     ],
     [
-      15,
-      7
-    ],
-    [
-      16,
-      7
+      14,
+      8
     ],
     [
       16,
       8
+    ],
+    [
+      7,
+      9
     ],
     [
       16,
@@ -2775,6 +3347,18 @@
     [
       28,
       9
+    ],
+    [
+      7,
+      10
+    ],
+    [
+      6,
+      11
+    ],
+    [
+      12,
+      11
     ],
     [
       14,
@@ -2797,10 +3381,6 @@
       12
     ],
     [
-      17,
-      13
-    ],
-    [
       11,
       14
     ],
@@ -2810,10 +3390,6 @@
     ],
     [
       16,
-      14
-    ],
-    [
-      18,
       14
     ],
     [
@@ -2849,14 +3425,6 @@
       17
     ],
     [
-      -2,
-      19
-    ],
-    [
-      15,
-      21
-    ],
-    [
       5,
       31
     ],
@@ -2869,20 +3437,8 @@
     [
       -1,
       16,
-      -1,
-      17
-    ],
-    [
-      -1,
-      16,
       0,
       15
-    ],
-    [
-      -1,
-      17,
-      -1,
-      18
     ],
     [
       -1,
@@ -3921,7 +4477,7 @@
     {
       "q": 23,
       "r": 0,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
@@ -4923,19 +5479,19 @@
     {
       "q": 15,
       "r": 5,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 16,
       "r": 5,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 17,
       "r": 5,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
@@ -5091,43 +5647,43 @@
     {
       "q": 8,
       "r": 6,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 9,
       "r": 6,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 10,
       "r": 6,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 11,
       "r": 6,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 12,
       "r": 6,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 13,
       "r": 6,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 14,
       "r": 6,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
@@ -5187,7 +5743,7 @@
     {
       "q": 24,
       "r": 6,
-      "terrainId": "land",
+      "terrainId": "estuary",
       "elevationM": 0
     },
     {
@@ -5295,7 +5851,7 @@
     {
       "q": 7,
       "r": 7,
-      "terrainId": "estuary",
+      "terrainId": "coast",
       "elevationM": 0
     },
     {
@@ -5337,19 +5893,19 @@
     {
       "q": 14,
       "r": 7,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
       "q": 15,
       "r": 7,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
       "q": 16,
       "r": 7,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
@@ -5499,7 +6055,7 @@
     {
       "q": 6,
       "r": 8,
-      "terrainId": "estuary",
+      "terrainId": "coast",
       "elevationM": 0
     },
     {
@@ -5547,7 +6103,7 @@
     {
       "q": 14,
       "r": 8,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 2.5
     },
     {
@@ -5709,13 +6265,13 @@
     {
       "q": 6,
       "r": 9,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
       "q": 7,
       "r": 9,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 7.5
     },
     {
@@ -5751,7 +6307,7 @@
     {
       "q": 13,
       "r": 9,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 1.5
     },
     {
@@ -5913,7 +6469,7 @@
     {
       "q": 5,
       "r": 10,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
@@ -5925,7 +6481,7 @@
     {
       "q": 7,
       "r": 10,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 7.5
     },
     {
@@ -5955,7 +6511,7 @@
     {
       "q": 12,
       "r": 10,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
@@ -6117,7 +6673,7 @@
     {
       "q": 4,
       "r": 11,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
@@ -6129,7 +6685,7 @@
     {
       "q": 6,
       "r": 11,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 7
     },
     {
@@ -6165,7 +6721,7 @@
     {
       "q": 12,
       "r": 11,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 2.5
     },
     {
@@ -6219,7 +6775,7 @@
     {
       "q": 21,
       "r": 11,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 1.5
     },
     {
@@ -6321,19 +6877,19 @@
     {
       "q": 3,
       "r": 12,
-      "terrainId": "coast",
+      "terrainId": "land",
       "elevationM": 2.5
     },
     {
       "q": 4,
       "r": 12,
-      "terrainId": "beach",
+      "terrainId": "land",
       "elevationM": 5
     },
     {
       "q": 5,
       "r": 12,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 5
     },
     {
@@ -6375,7 +6931,7 @@
     {
       "q": 12,
       "r": 12,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 1.5
     },
     {
@@ -6387,7 +6943,7 @@
     {
       "q": 14,
       "r": 12,
-      "terrainId": "river",
+      "terrainId": "estuary",
       "elevationM": 1
     },
     {
@@ -6411,7 +6967,7 @@
     {
       "q": 18,
       "r": 12,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 1.5
     },
     {
@@ -6519,7 +7075,7 @@
     {
       "q": 1,
       "r": 13,
-      "terrainId": "coast",
+      "terrainId": "beach",
       "elevationM": 0
     },
     {
@@ -6537,7 +7093,7 @@
     {
       "q": 4,
       "r": 13,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 5
     },
     {
@@ -6615,7 +7171,7 @@
     {
       "q": 17,
       "r": 13,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 1.5
     },
     {
@@ -6627,7 +7183,7 @@
     {
       "q": 19,
       "r": 13,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 2
     },
     {
@@ -6741,7 +7297,7 @@
     {
       "q": 3,
       "r": 14,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 6
     },
     {
@@ -6801,19 +7357,19 @@
     {
       "q": 13,
       "r": 14,
-      "terrainId": "river",
+      "terrainId": "estuary",
       "elevationM": 0
     },
     {
       "q": 14,
       "r": 14,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
       "q": 15,
       "r": 14,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 2
     },
     {
@@ -6831,7 +7387,7 @@
     {
       "q": 18,
       "r": 14,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 2.5
     },
     {
@@ -6951,7 +7507,7 @@
     {
       "q": 3,
       "r": 15,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 5
     },
     {
@@ -7023,7 +7579,7 @@
     {
       "q": 15,
       "r": 15,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
@@ -7041,7 +7597,7 @@
     {
       "q": 18,
       "r": 15,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 3
     },
     {
@@ -7161,7 +7717,7 @@
     {
       "q": 3,
       "r": 16,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 4.5
     },
     {
@@ -7209,7 +7765,7 @@
     {
       "q": 11,
       "r": 16,
-      "terrainId": "river",
+      "terrainId": "estuary",
       "elevationM": 0
     },
     {
@@ -7233,7 +7789,7 @@
     {
       "q": 15,
       "r": 16,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
@@ -7365,7 +7921,7 @@
     {
       "q": 2,
       "r": 17,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 4.5
     },
     {
@@ -7407,7 +7963,7 @@
     {
       "q": 9,
       "r": 17,
-      "terrainId": "river",
+      "terrainId": "estuary",
       "elevationM": 0
     },
     {
@@ -7539,19 +8095,19 @@
     {
       "q": -4,
       "r": 18,
-      "terrainId": "coast",
+      "terrainId": "beach",
       "elevationM": 0
     },
     {
       "q": -3,
       "r": 18,
-      "terrainId": "beach",
+      "terrainId": "land",
       "elevationM": 3
     },
     {
       "q": -2,
       "r": 18,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 8.5
     },
     {
@@ -7563,19 +8119,19 @@
     {
       "q": 0,
       "r": 18,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 3
     },
     {
       "q": 1,
       "r": 18,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 3.5
     },
     {
       "q": 2,
       "r": 18,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 2
     },
     {
@@ -7623,7 +8179,7 @@
     {
       "q": 10,
       "r": 18,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0
     },
     {
@@ -7761,25 +8317,25 @@
     {
       "q": -2,
       "r": 19,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 2.5
     },
     {
       "q": -1,
       "r": 19,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 1.5
     },
     {
       "q": 0,
       "r": 19,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 2
     },
     {
       "q": 1,
       "r": 19,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 2
     },
     {
@@ -7953,7 +8509,7 @@
     {
       "q": -5,
       "r": 20,
-      "terrainId": "coast",
+      "terrainId": "beach",
       "elevationM": 0
     },
     {
@@ -7989,7 +8545,7 @@
     {
       "q": 1,
       "r": 20,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 3
     },
     {
@@ -8283,7 +8839,7 @@
     {
       "q": 15,
       "r": 21,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 2.5
     },
     {
@@ -8457,7 +9013,7 @@
     {
       "q": 9,
       "r": 22,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0.5
     },
     {
@@ -8493,7 +9049,7 @@
     {
       "q": 15,
       "r": 22,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 2.5
     },
     {
@@ -8571,13 +9127,13 @@
     {
       "q": -7,
       "r": 23,
-      "terrainId": "coast",
+      "terrainId": "beach",
       "elevationM": 0
     },
     {
       "q": -6,
       "r": 23,
-      "terrainId": "beach",
+      "terrainId": "land",
       "elevationM": 4
     },
     {
@@ -8661,7 +9217,7 @@
     {
       "q": 8,
       "r": 23,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 0.5
     },
     {
@@ -8781,7 +9337,7 @@
     {
       "q": -7,
       "r": 24,
-      "terrainId": "beach",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
@@ -9213,7 +9769,7 @@
     {
       "q": -5,
       "r": 26,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 3.5
     },
     {
@@ -9579,7 +10135,7 @@
     {
       "q": -14,
       "r": 28,
-      "terrainId": "coast",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
@@ -9591,7 +10147,7 @@
     {
       "q": -12,
       "r": 28,
-      "terrainId": "coast",
+      "terrainId": "beach",
       "elevationM": 0
     },
     {
@@ -9999,7 +10555,7 @@
     {
       "q": -14,
       "r": 30,
-      "terrainId": "estuary",
+      "terrainId": "land",
       "elevationM": 13
     },
     {
@@ -10203,7 +10759,7 @@
     {
       "q": -15,
       "r": 31,
-      "terrainId": "coast",
+      "terrainId": "beach",
       "elevationM": 0
     },
     {
@@ -10635,7 +11191,7 @@
     {
       "q": -13,
       "r": 33,
-      "terrainId": "coast",
+      "terrainId": "land",
       "elevationM": 0
     },
     {
@@ -11441,6 +11997,54 @@
       "r": 36,
       "terrainId": "coast",
       "elevationM": 0
+    },
+    {
+      "q": -17,
+      "r": 27,
+      "terrainId": "land",
+      "elevationM": 0
+    },
+    {
+      "q": -16,
+      "r": 27,
+      "terrainId": "land",
+      "elevationM": 35
+    },
+    {
+      "q": -15,
+      "r": 27,
+      "terrainId": "land",
+      "elevationM": 0
+    },
+    {
+      "q": -17,
+      "r": 28,
+      "terrainId": "land",
+      "elevationM": 0
+    },
+    {
+      "q": -16,
+      "r": 28,
+      "terrainId": "land",
+      "elevationM": 2
+    },
+    {
+      "q": -15,
+      "r": 28,
+      "terrainId": "land",
+      "elevationM": 28.5
+    },
+    {
+      "q": -16,
+      "r": 29,
+      "terrainId": "land",
+      "elevationM": 0
+    },
+    {
+      "q": -15,
+      "r": 29,
+      "terrainId": "land",
+      "elevationM": 22.5
     }
   ]
 }

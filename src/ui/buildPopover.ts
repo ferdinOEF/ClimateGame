@@ -174,6 +174,16 @@ export class BuildPopover {
     this.positionAndReveal(screenX, screenY);
   }
 
+  /** A one-line note in place of a build menu (a tile that is not part of the game). */
+  showNote(screenX: number, screenY: number, text: string): void {
+    this.el.innerHTML = "";
+    const note = document.createElement("div");
+    note.className = "built-info-note popover-note";
+    note.textContent = text;
+    this.el.appendChild(note);
+    this.positionAndReveal(screenX, screenY);
+  }
+
   /**
    * Info card for a tile that already has an element built on it (Section
    * 3's "one tile, one element" — the UI should never offer a second build

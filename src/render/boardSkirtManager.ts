@@ -89,6 +89,8 @@ interface SkirtTile {
   terrainId: string;
   /** Relief lift carried out from that board tile (0 on flat maps). */
   lift: number;
+  /** The grey of the scenery board tile it continues (render/sceneryGrey.ts); 0 off scenery. */
+  grey: number;
 }
 
 /**
@@ -97,20 +99,34 @@ interface SkirtTile {
  * Exported so the tests can check the rule that matters most: no skirt hex is
  * ever a board hex.
  */
-export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number }[], rings = RINGS): SkirtTile[] {
+export function skirtTiles(
+  board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[],
+  rings = RINGS,
+  /** The map's `skirtOpenSeaWestFromRow`: west of the board from this row south is open sea. */
+  openSeaWestFromRow?: number
+): SkirtTile[] {
   const terrainByKey = new Map(board.map((tile) => [axialKey(tile.coord), tile.terrainId]));
   const seen = new Set(terrainByKey.keys());
-  let frontier: { coord: AxialCoord; terrainId: string; lift: number }[] = board.map((tile) => ({ coord: tile.coord, terrainId: tile.terrainId, lift: tile.terrainId === "land" ? reliefLift(tile.elevationM) : 0 }));
+  // The skirt beyond a scenery bank stays as quiet as the bank (full grey, not the edge's fade).
+  const scenery = new Set(board.filter((tile) => tile.scenery).map((tile) => axialKey(tile.coord)));
+  let frontier: { coord: AxialCoord; terrainId: string; lift: number; grey: number }[] = board.map((tile) => ({ coord: tile.coord, terrainId: tile.terrainId, lift: tile.terrainId === "land" ? reliefLift(tile.elevationM) : 0, grey: scenery.has(axialKey(tile.coord)) ? 1 : 0 }));
   const out: SkirtTile[] = [];
 
   for (let ring = 1; ring <= rings; ring++) {
-    const next: { coord: AxialCoord; terrainId: string; lift: number }[] = [];
+    const next: { coord: AxialCoord; terrainId: string; lift: number; grey: number }[] = [];
     for (const from of frontier) {
       for (const coord of neighbors(from.coord)) {
         const key = axialKey(coord);
         if (seen.has(key)) continue;
         seen.add(key);
-        const tile = { coord, terrainId: from.terrainId, lift: from.lift };
+        // West of the board's edge and south of the Mandovi's mouth is the open
+        // Arabian Sea: land there (the Dona Paula headland the owner added in
+        // Section 11) goes one ring out, its tip, and then the skirt is sea.
+        // Its tip is drawn flat: the ring of sea beyond would leave a raised tip standing as a column.
+        const westSea = openSeaWestFromRow !== undefined && !WATER.has(from.terrainId) && coord.q + coord.r / 2 < 0 && coord.r >= openSeaWestFromRow;
+        const tile = westSea && ring >= 2
+          ? { coord, terrainId: "coast", lift: 0, grey: 0 }
+          : { coord, terrainId: from.terrainId, lift: westSea ? 0 : from.lift, grey: from.grey };
         next.push(tile);
         out.push({ ...tile, ring });
       }
@@ -123,14 +139,14 @@ export function skirtTiles(board: readonly { coord: AxialCoord; terrainId: strin
 export class BoardSkirtManager {
   readonly group = new THREE.Group();
 
-  constructor(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number }[], overlay: OverlayUniforms) {
+  constructor(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[], overlay: OverlayUniforms, openSeaWestFromRow?: number) {
     const sky = PALETTE.sky.clone();
     const hillStops = [paletteColor("landGreen"), paletteColor("ghatsNear"), paletteColor("ghatsMid"), paletteColor("ghatsFar"), paletteColor("ghatsDistant")];
 
-    const sea: { matrix: THREE.Matrix4; color: THREE.Color; fade: number }[] = [];
-    const land: { matrix: THREE.Matrix4; color: THREE.Color; fade: number }[] = [];
+    const sea: { matrix: THREE.Matrix4; color: THREE.Color; fade: number; grey: number }[] = [];
+    const land: { matrix: THREE.Matrix4; color: THREE.Color; fade: number; grey: number }[] = [];
 
-    for (const tile of skirtTiles(board)) {
+    for (const tile of skirtTiles(board, RINGS, openSeaWestFromRow)) {
       const t = tile.ring / (RINGS + 1);
       const { x, z } = axialToWorld(tile.coord, HEX_SIZE);
       const baseHeight = TERRAIN_BY_ID.get(tile.terrainId)?.height ?? 0.3;
@@ -146,7 +162,7 @@ export class BoardSkirtManager {
         const color = paletteColor(TERRAIN_BY_ID.get(tile.terrainId)?.colorKey ?? "seaTurquoise")
           .clone()
           .lerp(sky, Math.pow(t, 0.85));
-        sea.push({ matrix: new THREE.Matrix4().compose(new THREE.Vector3(x, -tile.ring * 0.02, z), new THREE.Quaternion(), new THREE.Vector3(1, height, 1)), color, fade: t });
+        sea.push({ matrix: new THREE.Matrix4().compose(new THREE.Vector3(x, -tile.ring * 0.02, z), new THREE.Quaternion(), new THREE.Vector3(1, height, 1)), color, fade: t, grey: tile.grey });
       } else {
         const rise = smoothstep(tile.ring / RINGS) * HILL_RISE;
         const jitter = (valueNoise(x, z, 2) - 0.5) * 2 * HILL_JITTER * smoothstep(tile.ring / RINGS);
@@ -159,7 +175,7 @@ export class BoardSkirtManager {
           .clone()
           .lerp(hillStops[Math.floor(stop) + 1], stop - Math.floor(stop))
           .lerp(sky, smoothstep((tile.ring - 3) / 3) * 0.5);
-        land.push({ matrix: new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion(), new THREE.Vector3(1, height, 1)), color, fade: t });
+        land.push({ matrix: new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion(), new THREE.Vector3(1, height, 1)), color, fade: t, grey: tile.grey });
       }
     }
 
@@ -169,7 +185,7 @@ export class BoardSkirtManager {
 
   private addMesh(
     name: string,
-    tiles: { matrix: THREE.Matrix4; color: THREE.Color; fade: number }[],
+    tiles: { matrix: THREE.Matrix4; color: THREE.Color; fade: number; grey: number }[],
     overlay: OverlayUniforms,
     strength: number
   ): void {
@@ -177,8 +193,9 @@ export class BoardSkirtManager {
     // Height 1, scaled per instance: one geometry serves every height.
     const geometry = createHexPrismGeometry(HEX_SIZE * 0.98, 1);
     geometry.setAttribute("aFade", new THREE.InstancedBufferAttribute(new Float32Array(tiles.map((tile) => tile.fade)), 1));
+    geometry.setAttribute("aGrey", new THREE.InstancedBufferAttribute(new Float32Array(tiles.map((tile) => tile.grey)), 1));
     const material = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95, metalness: 0 });
-    patchForOverlay(material, overlay, strength, { fadeAttribute: true });
+    patchForOverlay(material, overlay, strength, { fadeAttribute: true, greyAttribute: true });
     const mesh = new THREE.InstancedMesh(geometry, material, tiles.length);
     mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(tiles.length * 3), 3);
     tiles.forEach((tile, i) => {

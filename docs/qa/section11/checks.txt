@@ -1,0 +1,9 @@
+PASS  the 2026 cyclone's cone is on the map at the start
+PASS  axe-core, the opening view: no serious or critical violations
+PASS  a click on the north bank shows only the note: "North of the Mandovi: not part of this game"
+PASS  a click on the playable beach opens its menu: "Dune NBS Sandy Vegetation (Pandanus) NBS Beachside Resort BUILDING Seawall ENGIN"
+PASS  1920x1080: 2031 opens with the flood's cone on the map (year 2031)
+PASS  1366x768: 2031 opens with the flood's cone on the map (year 2031)
+PASS  2560x1440: 2031 opens with the flood's cone on the map (year 2031)
+PASS  1280x600: 2031 opens with the flood's cone on the map (year 2031)
+PASS  zero console errors

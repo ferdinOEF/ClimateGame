@@ -14,7 +14,10 @@ describe("the first objective", () => {
     expect(run.buildsUntil(run.schedule[0])).toBe(5);
   });
 
-  it("fully protects the first cyclone's area when built where the forecast shows", () => {
+  // Section 11: the owner's new land at the river mouth (5,10 and 6,9, 0 m on the DEM, beside the new sea
+  // tiles) is in the cyclone's area but outside the stretch; the owner accepted that. The five builds save
+  // every home in the stretch and 5,10; 6,9 needs a breakwater offshore of the stretch.
+  it("protects every home in the stretch when built where the forecast shows; only 6,9 at the river mouth still falls", () => {
     const run = newRun("s10", BOT_LEVEL);
     const cyclone = run.schedule[0];
     expect(run.forecastCone(cyclone)!.area.length).toBeGreaterThan(0);
@@ -36,6 +39,7 @@ describe("the first objective", () => {
       expect(run.build({ q, r }, id).ok, `${id} at ${best}`).toBe(true);
     }
     expect(run.landed.has(cyclone.id)).toBe(true);
-    expect(run.outcomes.get(cyclone.id)!.damagedHouses).toEqual([]);
+    expect(run.outcomes.get(cyclone.id)!.damagedHouses).toEqual(["6,9"]);
+    expect(run.openingTiles!.has("6,9")).toBe(false);
   });
 });
