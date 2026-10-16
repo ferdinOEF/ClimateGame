@@ -2558,3 +2558,73 @@
   color: #1f3a1c;
   background: #a6d88a;
 }
+
+/*
+ * Pins for the places an open objective names, and the "Area protected"
+ * note (Section 12). Small, under every card and HUD panel, above the board.
+ */
+.map-pins {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.map-pins[hidden] {
+  display: none;
+}
+
+.map-pin,
+.map-note {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.map-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: -60px;
+  width: 120px;
+  margin-top: -34px;
+}
+
+.map-pin-name {
+  order: 0;
+  max-width: 120px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font: 600 12px/1.3 "Inter", system-ui, sans-serif;
+  color: #2a1408;
+  background: rgba(255, 246, 224, 0.92);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-pin-dot {
+  order: 1;
+  width: 8px;
+  height: 8px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: #f2c35b;
+  border: 2px solid #2a1408;
+}
+
+.map-note {
+  margin-left: -70px;
+  width: 140px;
+  margin-top: -14px;
+  text-align: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 700 13px/1.3 "Inter", system-ui, sans-serif;
+  color: #1f3a1c;
+  background: rgba(166, 216, 138, 0.95);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}

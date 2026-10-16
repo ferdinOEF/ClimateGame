@@ -273,7 +273,14 @@ export class ActionRun {
         budget: Math.min(this.buildsUntil(next), next.turn - this.phaseStart(next) + 1),
         places: this.prepConfig.places,
         localities: this.landmarkList,
-        stretch: region && this.openingTiles ? { tiles: this.openingTiles, place: `between ${region.region.from} and ${region.region.to}`, title: region.title } : null
+        stretch: region && this.openingTiles
+          ? {
+              tiles: this.openingTiles,
+              place: `between ${region.region.from} and ${region.region.to}`,
+              title: region.title,
+              pins: [region.region.from, region.region.to].flatMap((name) => this.landmarkList.filter((l) => l.name === name).slice(0, 1))
+            }
+          : null
       });
       this.prep = this.objective.rows;
       return this.prep;
@@ -406,6 +413,27 @@ export class ActionRun {
    * `withoutDefences` gives the same storm against a board with every
    * defence against it removed, which is what the green shields compare to.
    */
+  /**
+   * The homes `elementId` built at `coord` now would save from `challenge`:
+   * the storm's homes at risk on the board as it stands, less those with the
+   * build (the same model the storm runs; 0 when it saves none, or cannot go
+   * there). What a build card says (Section 13) and the outside-the-area line.
+   */
+  protectsHere(challenge: ScheduledChallenge, coord: AxialCoord, elementId: string): number {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id) || !this.state.canBuild(coord, elementId)) return 0;
+    const before = this.exposureFor(challenge)?.housesAtRisk.length ?? 0;
+    const trial = this.state.clone();
+    trial.build(coord, elementId, false);
+    const site = this.landfallOf(challenge);
+    const after = computeExposure(trial, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, {
+      combos: computeCombos(trial).bonus,
+      houseStars: this.houseStars,
+      houseRule: this.houseRule,
+      landfallSites: site === null ? null : [site]
+    }).housesAtRisk.length;
+    return Math.max(0, before - after);
+  }
+
   exposureFor(challenge: ScheduledChallenge, withoutDefences = false): Exposure | null {
     if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
     const site = this.landfallOf(challenge);

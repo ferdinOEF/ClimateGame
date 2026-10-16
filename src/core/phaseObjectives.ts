@@ -36,7 +36,7 @@ export interface PhaseObjectiveInput {
   /** Locality names, for a row outside every zone ("near Campal"). */
   localities?: readonly { name: string; q: number; r: number }[];
   /** A named stretch whose tiles take its name instead ("between Kala Academy and Sharada Mandir"). */
-  stretch?: { tiles: ReadonlySet<string>; place: string; title: string } | null;
+  stretch?: { tiles: ReadonlySet<string>; place: string; title: string; pins: { name: string; q: number; r: number }[] } | null;
 }
 
 /** One pick: a defence on a tile, and the homes it saved on top of the picks before it. */
@@ -196,9 +196,28 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
       done: false,
       tiles,
       heading: allInStretch ? input.stretch!.title : undefined,
+      pins: pinsOf(input, group.place, tiles),
       homes: group.picks.reduce((s, p) => s + p.homes, 0)
     };
   });
+}
+
+/** The places a row names, to pin on the map: a stretch's two ends, a zone's name over its tiles, or the locality it is near. */
+function pinsOf(input: PhaseObjectiveInput, place: string, tiles: string[]): { name: string; q: number; r: number }[] {
+  if (input.stretch && place === input.stretch.place) return input.stretch.pins;
+  const near = /^near (.+)$/.exec(place);
+  if (near) {
+    const locality = input.localities?.find((l) => l.name === near[1]);
+    return locality ? [locality] : [];
+  }
+  const at = /^at (.+)$/.exec(place);
+  if (!at || tiles.length === 0) return [];
+  // The zone's name over the middle of the tiles that count.
+  const coords = tiles.map((key) => key.split(",").map(Number));
+  const cq = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+  const cr = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+  const [q, r] = [...coords].sort((a, b) => axialDistance({ q: a[0], r: a[1] }, { q: Math.round(cq), r: Math.round(cr) }) - axialDistance({ q: b[0], r: b[1] }, { q: Math.round(cq), r: Math.round(cr) }))[0];
+  return [{ name: at[1].replace(/^the /, "The "), q, r }];
 }
 
 /** The tile keys of a row's picks, for tests and the guidance. */

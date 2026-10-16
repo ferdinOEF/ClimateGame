@@ -20,6 +20,14 @@ export class GetReadyPanel {
   private readonly titleEl: HTMLElement;
   private readonly toggle: HTMLButtonElement;
   private readonly rows = new Map<string, HTMLElement>();
+  /** Each row's job now, for the hover (Section 12). */
+  private readonly jobs = new Map<string, PrepObjective>();
+  private hover: ((job: PrepObjective | null) => void) | null = null;
+
+  /** Called with a row's job while the pointer (or focus) is on it, and null when it leaves: the tiles that count light up. */
+  onRowHover(fn: (job: PrepObjective | null) => void): void {
+    this.hover = fn;
+  }
   private collapsed = false;
 
   /**
@@ -68,6 +76,14 @@ export class GetReadyPanel {
       if (!el) {
         el = document.createElement("li");
         el.className = "get-ready-row";
+        el.tabIndex = 0;
+        const id = row.job.id;
+        const enter = (): void => this.hover?.(this.jobs.get(id) ?? null);
+        const leave = (): void => this.hover?.(null);
+        el.addEventListener("mouseenter", enter);
+        el.addEventListener("mouseleave", leave);
+        el.addEventListener("focus", enter);
+        el.addEventListener("blur", leave);
         el.innerHTML = `<span class="get-ready-check" aria-hidden="true"></span><span class="get-ready-label"></span><span class="get-ready-progress"></span>${this.showRewards ? `<span class="get-ready-reward"></span>` : ""}`;
         (el.querySelector(".get-ready-label") as HTMLElement).textContent = row.job.label;
         const reward = el.querySelector<HTMLElement>(".get-ready-reward");
@@ -75,6 +91,7 @@ export class GetReadyPanel {
         this.list.appendChild(el);
         this.rows.set(row.job.id, el);
       }
+      this.jobs.set(row.job.id, row.job);
       el.classList.toggle("done", row.done);
       (el.querySelector(".get-ready-progress") as HTMLElement).textContent = `${Math.min(row.current, row.target)}/${row.target}`;
     }

@@ -53,6 +53,8 @@ import { panjimHelpHtml } from "@ui/panjim/panjimHelp";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
+import { MapPins } from "@ui/panjim/mapPins";
+import { AreaOutline } from "@render/areaOutline";
 import { LeaveConfirm } from "@ui/panjim/leaveConfirm";
 import { greyColor, sceneryGreyLevels } from "@render/sceneryGrey";
 import startingStateData from "@data/startingState.json";
@@ -272,6 +274,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const coneOverlay = new ForecastConeOverlay(levelTiles.length);
   coneOverlay.reducedMotion = prefersReducedMotionNow();
   scene.add(coneOverlay.group);
+  /** Panjim 2050: the phase's area to protect, kept faintly once the cone has gone (Section 12). */
+  const areaOutline = new AreaOutline();
+  areaOutline.reducedMotion = prefersReducedMotionNow();
+  scene.add(areaOutline.group);
+  /** Pins for the places open objectives name, and the "Area protected" note (Section 12). */
+  const mapPins = new MapPins(container, (x, y, z) => worldToScreen(x, y, z));
   /**
    * Panjim 2050's storms: the water (one instanced layer, drawn from the
    * storm's depth field) and the sky (the cyclone's spiral, the flood's rain
@@ -687,6 +695,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           showCone: (cone) => {
             if (cone) coneOverlay.show(cone, (coord) => terrain.heightAt(coord));
             else coneOverlay.hide();
+          },
+          showAreaOutline: (keys) => areaOutline.show(keys.map((key) => {
+            const [q, r] = key.split(",").map(Number);
+            return { q, r };
+          }), (coord) => terrain.heightAt(coord)),
+          areaProtected: () => {
+            const at = areaOutline.centre;
+            if (at) mapPins.say("Area protected", { name: "", x: at.x, y: 0.6, z: at.z });
+          },
+          showPins: (pins) => mapPins.setPins(pins.map((pin) => {
+            const { x, z } = axialToWorld({ q: pin.q, r: pin.r }, 1.0);
+            return { name: pin.name, x, y: (monuments.topAt({ q: pin.q, r: pin.r }) ?? terrain.heightAt({ q: pin.q, r: pin.r })) + 0.15, z };
+          })),
+          setGuidanceVisible: (visible) => {
+            areaOutline.group.visible = visible;
+            mapPins.setVisible(visible);
           },
           frameWorld: (box) => {
             // A gentle glide (cancelled by any drag) to frame the box, a little wider than it.
@@ -2358,6 +2382,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
     coneOverlay.tick(nowMs);
+    areaOutline.tick(nowMs);
+    mapPins.update(nowMs);
     if (ambientLife) {
       ambientLife.setWind(storm.windStrength);
       ambientLife.tick(nowMs);
@@ -2675,6 +2701,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     keydownAbort.abort();
     leaveConfirm?.dispose();
+    mapPins.dispose();
+    areaOutline.dispose();
     panjim?.dispose();
     stormReport.dispose();
     mapLabels.dispose();

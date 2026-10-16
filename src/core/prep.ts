@@ -76,6 +76,8 @@ export interface PrepObjective {
   heading?: string;
   /** A model-chosen row (core/phaseObjectives.ts): the homes its picks saved in the model when it was set. */
   homes?: number;
+  /** The places the row names, pinned on the map while it is open (Section 12). */
+  pins?: { name: string; q: number; r: number }[];
 }
 
 function standingIn(state: GameState, zones: ZoneIndex, elementId: string, zone: string, tiles?: ReadonlySet<string>): number {
