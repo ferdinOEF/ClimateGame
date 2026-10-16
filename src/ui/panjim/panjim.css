@@ -2875,3 +2875,11 @@
   text-transform: uppercase;
   color: #e6b268;
 }
+
+/* Result card 1 (Section 14): nothing in the path was lost. */
+.result-homes-all {
+  font-size: 15px;
+  font-weight: 700;
+  color: #9fdcae;
+  margin-bottom: 2px;
+}

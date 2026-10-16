@@ -38,7 +38,10 @@ function starsHtml(stars: number): string {
 /** "N of M homes saved" with a bar. */
 function homesHtml(saved: number, total: number): string {
   const pct = total > 0 ? Math.round((saved / total) * 100) : 100;
+  // Section 14: said in words when nothing in the path was lost.
+  const all = total > 0 && saved >= total ? `<div class="result-homes-all">Every home in the path survived</div>` : "";
   return `<div class="result-homes">
+    ${all}
     <div class="result-homes-text"><b>${saved}</b> of ${total} homes saved</div>
     <div class="result-bar" role="img" aria-label="${pct}% of homes saved"><span style="width:${pct}%"></span></div>
   </div>`;

@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { createDefenceGeometry, DEFENCE_IDS } from "./defenceGeometry";
+import { createDefenceMaterial, createDefenceUniforms, shaderSeconds } from "./defenceMaterial";
 import type { AxialCoord } from "@core/hex";
 import { axialToWorld } from "@core/hex";
 import { ELEMENT_DEFS, ELEMENT_BY_ID } from "@core/elements";
@@ -261,8 +263,38 @@ export class ElementMeshManager {
   private readonly scratchQuaternion = new THREE.Quaternion();
   private readonly scratchScale = new THREE.Vector3();
 
-  constructor() {
+  /**
+   * Section 14 (Panaji only): the redrawn defences, each with its ring, all
+   * their motion in one shader (`defenceMaterial.ts`) driven by these
+   * uniforms. The Tutorial keeps the earlier models.
+   */
+  readonly defenceUniforms = createDefenceUniforms();
+  private readonly redrawn = new Set<string>();
+  /** Which way a redrawn defence faces (its local +x seaward, or downstream): set by the session. */
+  private facingOf: ((coord: AxialCoord, elementId: string) => number) | null = null;
+  /** Motion allowed by the player (calm motion) and by the quality (Low): both feed the shader's uMotion. */
+  private motionByPlayer = true;
+  private motionByQuality = true;
+
+  constructor(options: { redrawnDefences?: boolean } = {}) {
     for (const element of ELEMENT_DEFS) {
+      const redrawn = options.redrawnDefences ? createDefenceGeometry(element.id) : null;
+      if (redrawn) {
+        const phase = new THREE.InstancedBufferAttribute(new Float32Array(MAX_ELEMENT_INSTANCES_PER_TYPE), 1);
+        const born = new THREE.InstancedBufferAttribute(new Float32Array(MAX_ELEMENT_INSTANCES_PER_TYPE).fill(-1000), 1);
+        redrawn.setAttribute("aPhase", phase);
+        redrawn.setAttribute("aBorn", born);
+        const mesh = new THREE.InstancedMesh(redrawn, createDefenceMaterial(this.defenceUniforms, element.id === "sandy_vegetation"), MAX_ELEMENT_INSTANCES_PER_TYPE);
+        mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_ELEMENT_INSTANCES_PER_TYPE * 3), 3);
+        mesh.count = 0;
+        mesh.name = `element-${element.id}`;
+        this.meshes.set(element.id, mesh);
+        this.nextIndex.set(element.id, 0);
+        this.freeIndices.set(element.id, []);
+        this.group.add(mesh);
+        this.redrawn.add(element.id);
+        continue;
+      }
       const geometry = createElementGeometry(element.id);
       // vertexColors: true — the element-icon redesign pass bakes real
       // per-part color into each geometry's `color` attribute (see
@@ -354,8 +386,22 @@ export class ElementMeshManager {
     const growth = options.growth ?? 1;
     const landScale = growthScale(growth);
     const styleScale = style?.scale ?? 1;
-    const rotY = style ? (style.rotY ?? (style.turns * Math.PI) / 2) : 0;
-    if (options.animate) {
+    const redrawn = this.redrawn.has(elementId);
+    const rotY = style ? (style.rotY ?? (style.turns * Math.PI) / 2) : redrawn && this.facingOf ? this.facingOf(coord, elementId) : 0;
+    if (redrawn) {
+      // Its own phase, and the moment it was built: the shader pops it up and draws its ring.
+      const phase = mesh.geometry.getAttribute("aPhase") as THREE.InstancedBufferAttribute;
+      const born = mesh.geometry.getAttribute("aBorn") as THREE.InstancedBufferAttribute;
+      phase.setX(index, ((coord.q * 12.9898 + coord.r * 78.233) % 6.283 + 6.283) % 6.283);
+      born.setX(index, options.animate ? shaderSeconds(performance.now()) : -1000);
+      phase.needsUpdate = true;
+      born.needsUpdate = true;
+      const matrix = new THREE.Matrix4().makeRotationY(rotY);
+      matrix.scale(new THREE.Vector3(landScale, landScale, landScale)).setPosition(x, terrainTopY, z);
+      mesh.setMatrixAt(index, matrix);
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.boundingSphere = null;
+    } else if (options.animate) {
       this.animator.begin(mesh, index, x, z, terrainTopY, performance.now(), landScale * styleScale);
     } else {
       const matrix = new THREE.Matrix4().makeRotationY(rotY);
@@ -368,7 +414,7 @@ export class ElementMeshManager {
     const seed = coord.q * 41 + coord.r * 19;
     const baseColor = style
       ? jitterColor(style.wall, seed)
-      : SELF_COLOURED.has(elementId)
+      : SELF_COLOURED.has(elementId) || redrawn
         ? jitterColor(NEUTRAL_TINT, seed)
         : jitterColor(paletteColor(def.colorKey), seed);
     mesh.setColorAt(index, growth < 1 ? baseColor.clone().lerp(YOUNG_TINT, (1 - growth) * 0.5) : baseColor);
@@ -389,7 +435,8 @@ export class ElementMeshManager {
       styleScale,
       rotY,
       roofTop: style ? ROOF_TOP[style.kind] * styleScale : undefined,
-      swayPhase: SWAY_BY_ELEMENT[elementId] ? (x + z) * SWAY_PHASE_PER_UNIT : undefined,
+      // The redrawn defences sway in their shader, not here.
+      swayPhase: SWAY_BY_ELEMENT[elementId] && !redrawn ? (x + z) * SWAY_PHASE_PER_UNIT : undefined,
       // A rebuild starts clean: `place()` is the only repair this game has.
       damage: 0,
       // Derived from the tile rather than rolled, so the same building leans
@@ -644,14 +691,30 @@ export class ElementMeshManager {
   /** Sway on or off (the in-game Calm motion switch, as well as the system setting). */
   setSwayEnabled(enabled: boolean): void {
     this.swayEnabled = enabled;
+    this.motionByPlayer = enabled;
+    this.defenceUniforms.uMotion.value = this.motionByPlayer && this.motionByQuality ? 1 : 0;
+  }
+
+  /** Low quality turns the redrawn defences' idle motion off and their pop into a fade, like calm motion. */
+  setQualityMotion(enabled: boolean): void {
+    this.motionByQuality = enabled;
+    this.defenceUniforms.uMotion.value = this.motionByPlayer && this.motionByQuality ? 1 : 0;
+  }
+
+  /** Which way each redrawn defence faces (radians about Y): its seaward side, or downstream. */
+  setFacingResolver(resolver: ((coord: AxialCoord, elementId: string) => number) | null): void {
+    this.facingOf = resolver;
   }
 
   /** Called once per frame from the session, before `tick`. */
-  setWind(wind: number): void {
+  setWind(wind: number, direction?: { x: number; y: number }): void {
     this.wind = Math.max(0, Math.min(1, wind));
+    this.defenceUniforms.uStorm.value = this.wind;
+    if (direction && (direction.x !== 0 || direction.y !== 0)) this.defenceUniforms.uWindDir.value.set(direction.x, direction.y).normalize();
   }
 
   tick(nowMs: number): void {
+    this.defenceUniforms.uTime.value = shaderSeconds(nowMs);
     this.animator.tick(nowMs);
     for (const ref of this.settling) {
       if (this.animator.isAnimating(ref.index, ref.mesh)) continue;

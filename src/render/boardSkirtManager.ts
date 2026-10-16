@@ -139,7 +139,17 @@ export function skirtTiles(
 export class BoardSkirtManager {
   readonly group = new THREE.Group();
 
-  constructor(board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[], overlay: OverlayUniforms, openSeaWestFromRow?: number) {
+  /**
+   * `clean` (Section 14, Panaji): the water past the edge stays sea, level and
+   * unbroken, instead of sinking in steps and fading into the sky through
+   * frayed grey "ghost" hexes; `colors` are the level's terrain colours.
+   */
+  constructor(
+    board: readonly { coord: AxialCoord; terrainId: string; elevationM?: number; scenery?: boolean }[],
+    overlay: OverlayUniforms,
+    openSeaWestFromRow?: number,
+    options: { clean?: boolean; colors?: ReadonlyMap<string, THREE.Color> } = {}
+  ) {
     const sky = PALETTE.sky.clone();
     const hillStops = [paletteColor("landGreen"), paletteColor("ghatsNear"), paletteColor("ghatsMid"), paletteColor("ghatsFar"), paletteColor("ghatsDistant")];
 
@@ -155,13 +165,19 @@ export class BoardSkirtManager {
       // noise at its position is below a bar that rises with distance, so the
       // edge is a ragged line of coves and spits.
       const fray = (tile.ring - 2) / (RINGS - 1);
-      if (tile.ring >= 3 && valueNoise(x, z, 1) < fray) continue;
+      const water = WATER.has(tile.terrainId);
+      if (tile.ring >= 3 && valueNoise(x, z, 1) < fray && !(options.clean && water)) continue;
 
-      if (WATER.has(tile.terrainId)) {
+      if (water) {
+        const own = options.colors?.get(tile.terrainId) ?? paletteColor(TERRAIN_BY_ID.get(tile.terrainId)?.colorKey ?? "seaTurquoise");
+        if (options.clean) {
+          // Level, and the sea's own colour a touch deeper with distance: no steps, no grey.
+          const color = own.clone().multiplyScalar(1 - 0.04 * tile.ring);
+          sea.push({ matrix: new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion(), new THREE.Vector3(1, Math.max(0.04, baseHeight), 1)), color, fade: 0, grey: tile.grey });
+          continue;
+        }
         const height = Math.max(0.04, baseHeight - tile.ring * SEA_SINK_PER_RING);
-        const color = paletteColor(TERRAIN_BY_ID.get(tile.terrainId)?.colorKey ?? "seaTurquoise")
-          .clone()
-          .lerp(sky, Math.pow(t, 0.85));
+        const color = own.clone().lerp(sky, Math.pow(t, 0.85));
         sea.push({ matrix: new THREE.Matrix4().compose(new THREE.Vector3(x, -tile.ring * 0.02, z), new THREE.Quaternion(), new THREE.Vector3(1, height, 1)), color, fade: t, grey: tile.grey });
       } else {
         const rise = smoothstep(tile.ring / RINGS) * HILL_RISE;
