@@ -75,23 +75,27 @@ describe("area protection (layered defence and its ceilings)", () => {
     const p = protection(state, board);
     const dune = defenceMetres(state, "3,0", "cyclone");
     expect(dune).toBeGreaterThan(1);
-    for (let d = 0; d < falloff.length; d++) expect(p.get(`${3 + d},0`) ?? 0).toBeCloseTo(dune * falloff[d]);
+    // Up to the ceiling: a grown dune now reaches it on its own tile.
+    for (let d = 0; d < falloff.length; d++) expect(p.get(`${3 + d},0`) ?? 0).toBeCloseTo(Math.min(maxProtectionM, dune * falloff[d]));
     expect(p.get(`${3 + falloff.length},0`) ?? 0).toBe(0);
   });
 
   it("counts several of one kind once, and different kinds together (up to stackCap x the strongest)", () => {
+    // Measured two tiles from the nearer dune, below the ceiling, so the stacking rule shows.
+    const at = "0,0";
     const one = row();
-    one.state.build({ q: 3, r: 0 }, "dune", false);
-    const single = protection(one.state, one.board).get("3,0")!;
+    one.state.build({ q: 2, r: 0 }, "dune", false);
+    const single = protection(one.state, one.board).get(at)!;
+    expect(single).toBeLessThan(maxProtectionM);
     const two = row();
-    two.state.build({ q: 3, r: 0 }, "dune", false);
     two.state.build({ q: 2, r: 0 }, "dune", false);
+    two.state.build({ q: 3, r: 0 }, "dune", false);
     // A second dune next door: the tile keeps the strongest dune's protection, not the sum.
-    expect(protection(two.state, two.board).get("3,0")!).toBeCloseTo(single);
+    expect(protection(two.state, two.board).get(at)!).toBeCloseTo(single);
     const mix = row();
-    mix.state.build({ q: 3, r: 0 }, "dune", false);
-    mix.state.build({ q: 2, r: 0 }, "sandy_vegetation", false);
-    const mixed = protection(mix.state, mix.board).get("3,0")!;
+    mix.state.build({ q: 2, r: 0 }, "dune", false);
+    mix.state.build({ q: 3, r: 0 }, "sandy_vegetation", false);
+    const mixed = protection(mix.state, mix.board).get(at)!;
     expect(mixed).toBeGreaterThan(single);
     expect(mixed).toBeLessThanOrEqual(single * stackCap + 1e-9);
   });
