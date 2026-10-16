@@ -17,6 +17,7 @@ import { MonumentMeshManager } from "@render/monumentMeshManager";
 import { BuildFlourish } from "@render/buildFlourish";
 import { BuildPuff } from "@render/buildPuff";
 import { TileHover } from "@render/tileHover";
+import { WildlifeDirector } from "@render/wildlife";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
@@ -270,6 +271,32 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(storm.group);
   scene.add(buildFlourish.group);
   if (buildPuff) scene.add(buildPuff.points);
+  /*
+   * Section 14 (Panaji): calm-year wildlife from the defences on screen — a
+   * kingfisher, an egret and an otter from the mangroves, fish and prawns from
+   * the khazans' ponds. One moment every 6–10 s at most; never over Maya, the
+   * HUD or an open card; flushed when a storm begins; off on Low quality and
+   * with calm motion. Ambience only.
+   */
+  const WILDLIFE_AVOID = [".maya-figure-wrap", ".maya-bubble:not([hidden])", ".hud-panel", ".panjim-clock", ".get-ready", ".map-corner", ".hud-chrome", ".build-popover", ".result-cards:not([hidden])", ".brief-card", ".help-card", ".field-guide-card", ".leave-confirm", ".empty-prompt"];
+  const wildlife = redrawnDefences
+    ? new WildlifeDirector({
+        scene,
+        camera,
+        viewport: () => ({ width: renderer.domElement.clientWidth, height: renderer.domElement.clientHeight }),
+        avoidRects: () => {
+          const origin = renderer.domElement.getBoundingClientRect();
+          const rects: { left: number; top: number; right: number; bottom: number }[] = [];
+          for (const el of Array.from(document.querySelectorAll<HTMLElement>(WILDLIFE_AVOID.join(",")))) {
+            const r = el.getBoundingClientRect();
+            if (r.width < 1 || r.height < 1) continue;
+            rects.push({ left: r.left - origin.left, top: r.top - origin.top, right: r.right - origin.left, bottom: r.bottom - origin.top });
+          }
+          return rects;
+        }
+      })
+    : null;
+  let wildlifeSourcesAt = -Infinity;
   const puffMotion = { reduced: false, low: false };
   scene.add(reactions.group);
   /** Panjim 2050: a storm's path while its warning is up — see ForecastOutline. Empty on every other level. */
@@ -467,7 +494,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       return { key: `${key}:garden`, elementId: "garden", x, y: terrain.heightAt({ q, r }), z };
     });
     reactions.setAmbientSource(function* () {
-      yield* elements.placedElements();
+      // Panaji (Section 14): the mangroves' and khazans' wildlife is the 3D director's (render/wildlife), one moment at a time.
+      for (const placed of elements.placedElements()) if (!redrawnDefences || (placed.elementId !== "mangrove" && placed.elementId !== "khazan")) yield placed;
       yield* gardenPoints;
     });
     reactions.setAmbientRateCap("garden", 1);
@@ -838,6 +866,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             elements.setQualityMotion(quality !== "low");
             puffMotion.low = quality === "low";
             if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
+            wildlife?.setEnabled(!puffMotion.reduced && !puffMotion.low);
           },
           setReducedMotion: (reduced) => {
             storm.setReducedMotion(reduced);
@@ -845,6 +874,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             elements.setSwayEnabled(!reduced);
             puffMotion.reduced = reduced;
             if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
+            wildlife?.setEnabled(!puffMotion.reduced && !puffMotion.low);
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
@@ -2456,6 +2486,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     waveFront.tick(nowMs);
     buildFlourish.tick(nowMs);
     buildPuff?.tick(nowMs, renderer.domElement.height);
+    if (wildlife) {
+      // Its sources follow the board, read once a second (they change only with a build or a storm).
+      if (nowMs - wildlifeSourcesAt > 1000) {
+        wildlifeSourcesAt = nowMs;
+        const mangroves: { x: number; y: number; z: number }[] = [];
+        const khazanPonds: { x: number; y: number; z: number; radius: number }[] = [];
+        for (const placed of elements.placedElements()) {
+          if (placed.elementId === "mangrove") mangroves.push({ x: placed.x, y: placed.y + 0.02, z: placed.z });
+          // The khazan's pond is its west half (render/defenceGeometry.ts; a khazan is never turned).
+          else if (placed.elementId === "khazan") khazanPonds.push({ x: placed.x - 0.3, y: placed.y + 0.035, z: placed.z, radius: 0.24 });
+        }
+        wildlife.setSources({ mangroves, khazanPonds });
+      }
+      wildlife.setCalm(!(panjim?.isBusy ?? false) && !stormDirector?.playing && !document.querySelector(".result-cards:not([hidden])"));
+      wildlife.tick(nowMs);
+    }
     panjim?.frame();
     stormDirector?.tick(nowMs);
     for (const word of stormWords) placeStormWord(word);
@@ -2668,6 +2714,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __waveFrontForTest: waveFront,
     __elementsForTest: elements,
     __tileHoverForTest: () => tileHover,
+    __wildlifeForTest: () => wildlife,
     /** Holds the defences' and puffs' shader clock (seconds on their clock), or null to let it run: frames of a build at exact ages. */
     __freezeShaderTimeForTest: (seconds: number | null): void => {
       elements.frozenShaderSeconds = seconds;
@@ -2820,6 +2867,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormSky.dispose();
     buildFlourish.dispose();
     buildPuff?.dispose();
+    wildlife?.dispose();
     tileHover?.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();
