@@ -1110,7 +1110,7 @@ The mix gets 74%, so no single kind comes near it.
 
 **The first objective's five builds** (2 pandanus, 2 dunes, 1 breakwater) fully protect the first cyclone (tested). That was already true before.
 
-**Independent review (Section 10): 0 BLOCKER, 2 MAJOR, 7 MINOR, 3 NIT.**
+**Independent review (Section 10): 0 BLOCKER, 2 MAJOR, 6 MINOR, 3 NIT.**
 
 **MAJOR 1, fixed.** "Later phases reward choosing the right tiles" was not shown: Smart was only 4 points ahead of Casual. Grown defences sat at the 3.2 m ceiling. Raising the ceilings to 5 m and 6 m gives a 9-point lead, Smart ahead on 19 of 20 seeds.
 
@@ -1120,7 +1120,7 @@ The mix gets 74%, so no single kind comes near it.
 - The test exempts these two from the 2-point floor, with a comment saying why.
 - Making them matter means a stronger first cyclone. That is the owner's call.
 
-**MINORs fixed:**
+**MINORs and NITs fixed:**
 - the Smart lead must be at least 5 points;
 - a 2-point margin floor for every other defence;
 - the finale mean floor is back to 35%;
