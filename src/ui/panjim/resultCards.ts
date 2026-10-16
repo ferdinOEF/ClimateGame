@@ -117,7 +117,7 @@ export class ResultCards {
     this.el = document.createElement("div");
     this.el.className = "result-cards";
     this.el.hidden = true;
-    this.el.innerHTML = `<div class="result-card" role="dialog" aria-modal="true" aria-live="polite"></div>`;
+    this.el.innerHTML = `<div class="result-card" role="dialog" aria-modal="true"></div>`;
     this.cardEl = this.el.querySelector(".result-card")!;
     container.appendChild(this.el);
   }
@@ -189,10 +189,17 @@ export class ResultCards {
           render();
         } else close("button");
       };
-      document.addEventListener(
+      // On window, in the capture phase: before any other handler (Maya's Esc, the level's Esc, the shortcuts).
+      window.addEventListener(
         "keydown",
         (event) => {
           if (!this.open) return;
+          // A held key does not rush through the cards.
+          if (event.repeat && (event.key === "Enter" || event.key === "Escape")) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+          }
           if (event.key === "Escape") {
             // Esc jumps to the last card.
             event.preventDefault();

@@ -62,6 +62,12 @@ describe("the result cards' numbers", () => {
         expect(again.housesDamaged, `${seed} ${challenge.id}`).toBe(real.housesDamaged);
         expect([...again.damagedHouses].sort(), `${seed} ${challenge.id}`).toEqual([...real.damagedHouses].sort());
         expect(again.stars).toBe(real.stars);
+        // Card 2's numbers: for every kind standing before the storm, a fresh re-run without it, exactly.
+        const record = run.stormRecords.get(challenge.id)!;
+        for (const [kind, homes] of record.withoutEach) {
+          expect(homes, `${seed} ${challenge.id} ${kind}`).toBe(Math.max(0, housesLostWithout(before, args, kind).housesDamaged - real.housesDamaged));
+        }
+        if (defend) expect(record.withoutEach.size, `${seed} ${challenge.id}`).toBeGreaterThan(0);
       }
     }
   });

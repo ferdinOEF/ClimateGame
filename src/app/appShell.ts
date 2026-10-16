@@ -448,6 +448,10 @@ export class AppShell {
 
     // A level whose own last card already showed the result (Panjim 2050)
     // goes where the player chose there; the run is recorded either way.
+    if (result.then) {
+      // No results screen to show the submission's outcome: it must still never reject unhandled.
+      submission.catch(() => undefined);
+    }
     if (result.then === "again") {
       this.requestLevel(level.id, "replace");
       return;

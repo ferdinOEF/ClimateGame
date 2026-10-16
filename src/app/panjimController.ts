@@ -39,7 +39,7 @@ import { HudPanels } from "@ui/panjim/hudPanels";
 import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { MAYA, mayaAftermath, stormWord } from "@core/mayaLines";
+import { MAYA, stormWord } from "@core/mayaLines";
 import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";

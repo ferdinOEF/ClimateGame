@@ -44,6 +44,13 @@ export interface StormRecord {
   landfallKey?: string | null;
   /** The water on every tile it reached, game metres, with the player's defences: the depth that decides which houses fall. */
   depth: Map<string, number>;
+  /**
+   * Every kind of defence standing when it came (whatever it defends
+   * against: a khazan can still matter in a cyclone through a combo), with
+   * the homes the same storm takes beyond those it took when that kind is
+   * removed and everything else is equal (`housesLostWithout`). Can be 0.
+   */
+  withoutEach: Map<string, number>;
 }
 
 export interface StormArgs {
@@ -154,10 +161,15 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
     if (houses > 0) savedBy.push({ elementId, count, houses });
   }
   savedBy.sort((a, b) => b.houses - a.houses || (a.elementId < b.elementId ? -1 : 1));
+  const withoutEach = new Map<string, number>();
+  for (const inst of before.elements.values()) {
+    if (withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
+    withoutEach.set(inst.elementId, Math.max(0, housesLostWithout(before, args, inst.elementId).housesDamaged - outcome.housesDamaged));
+  }
   const defences = new Map<string, string>();
   for (const [key, inst] of before.elements) if (defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
   const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
   const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);
-  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field }, savedBy, defences, landfallKey, depth };
+  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field }, savedBy, defences, landfallKey, depth, withoutEach };
 }
