@@ -1042,3 +1042,90 @@ MINORs left, with reasons:
 **New game rules on the Sources screen:**
 - "A named place counts as damaged when the water on its tile would have destroyed a house there."
 - "Each defence's number is the homes the same storm would have taken with that kind removed, all else equal."
+
+# Section 10 — balance for 25 builds
+
+Branch `section-10-balance`, off master `a357041` (Section 9's merge;
+tag `pre-section-10`, and `backup/pre-section-10` on GitHub). Headless
+Chromium with software GL. Evidence in `docs/qa/section10/`.
+
+**The change:** three game-rule numbers in `src/data/hazardModel.json`, which only Panaji's years model reads. The Tutorial resolves its storms in `core/hazard.ts`, which does not use these numbers.
+
+| Number | Was | Now |
+|---|---|---|
+| `defence.metresPerResilience` | 0.45 | 0.9 |
+| `defence.maxProtectionM` | 3.2 | 5 |
+| `defence.engineeredMaxProtectionM` | 4.5 | 6 |
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 456 pass, 6 skipped. See the tests list below. |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. |
+| `npm run test:labels` | 37 of 37 views. |
+| `npm run test:layout` | 105 of 105 layouts. |
+| `npm run test:maya` | Pass, zero console errors. |
+| `npm run verify:maya` | All checks pass, including the street map at 21%. |
+| Result-card browser checks (`tools/section9Checks.ts`, `docs/qa/section10/checks.txt`) | 85 of 85. |
+| Tutorial (`docs/qa/section10/tutorial/`, against master `a357041`) | Text identical, 0.000% of pixels differ, in all five states. |
+| axe-core | No serious or critical violations on any result card. |
+| Bots, 20 seeds (`docs/qa/section10/bots.md`) | See below. |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**Tests:**
+- New: `tests/section10.test.ts`.
+- Rewritten: `tests/panjimBots.test.ts`.
+- Changed: `tests/section4.test.ts` (10 finale builds, 35-45% on average) and `tests/zones.test.ts` (it measures stacking below the ceiling).
+
+**Screenshots:** result cards for all three storms and the final card, at 1366x768, 1920x1080 and 2560x1440, with -gray and -deut copies of card 1 and of the final card. I looked at them. These scripted runs build nothing, so every card shows 0 homes saved. They check layout; the bots check the numbers.
+
+**Archetypes, 20 seeds:**
+
+| Archetype | What it does | Won | Homes saved, mean (min–max) | Stars per storm |
+|---|---|---|---|---|
+| Casual | builds by eye next to the houses the forecast marks | 0/20 | 65% (58–71%) | 3.0 / 1.0 / 2.0 |
+| Smart | reads the cone and heat, weighs spots for each build | 0/20 | 74% (69–82%) | 3.0 / 1.6 / 2.0 |
+| Greedy | builds on 6 waterside streets, ignores the forecast | 0/20 | 24% (13–45%) | 1.2 / 1.0 / 1.0 |
+| Far | builds only where no storm's water reaches | 0/20 | 0% | 1.0 / 1.0 / 1.0 |
+
+- **Smart against Casual:** Smart is ahead on 19 of 20 seeds, and gets 2★ or more on every storm on 13 of 20.
+- **Greedy:** below Casual on every seed.
+- **Wins:** win is the owner's to define, so these rates are reported, not tuned. The spec's 25-35% for Casual and 70-85% for Smart are not met under the current three-star rule.
+- **Finale:** a plain 10-build plan gives 32%, 44% and 44% fewer homes lost at the three landfalls (before: 22%, 20% and 30%).
+
+**Each defence's margin and alone** (Smart's run replayed without it; Smart building only that kind):
+
+| Defence | Margin without it (points) | That kind alone |
+|---|---|---|
+| dune | 0.7 | 9% |
+| pandanus | 0.4 | 9% |
+| seawall | 6.0 | 32% |
+| breakwater | 4.5 | 35% |
+| mangrove | 29.6 | 58% |
+| khazan | 22.9 | 35% |
+| small dam | 6.0 | 14% |
+
+The mix gets 74%, so no single kind comes near it.
+
+**The first objective's five builds** (2 pandanus, 2 dunes, 1 breakwater) fully protect the first cyclone (tested). That was already true before.
+
+**Independent review (Section 10): 0 BLOCKER, 2 MAJOR, 7 MINOR, 3 NIT.**
+
+**MAJOR 1, fixed.** "Later phases reward choosing the right tiles" was not shown: Smart was only 4 points ahead of Casual. Grown defences sat at the 3.2 m ceiling. Raising the ceilings to 5 m and 6 m gives a 9-point lead, Smart ahead on 19 of 20 seeds.
+
+**MAJOR 2, reported, not fixed.**
+- Dune and pandanus add little (about 0.5 points each).
+- A sweep showed this does not depend on the ceiling. Beach plantings face only the first cyclone, and one well-placed breakwater or seawall clears it alone; the geography is fixed.
+- The test exempts these two from the 2-point floor, with a comment saying why.
+- Making them matter means a stronger first cyclone. That is the owner's call.
+
+**MINORs fixed:**
+- the Smart lead must be at least 5 points;
+- a 2-point margin floor for every other defence;
+- the finale mean floor is back to 35%;
+- far runs on all 20 seeds;
+- the bots table counts the builds made away from the storms;
+- the Section 10 PROGRESS entry is written.
+
+**MINOR left:** `tests/section10.test.ts` also passes on the old numbers. It pins the objective, not the re-tune; the bot bands and the finale test pin the re-tune.

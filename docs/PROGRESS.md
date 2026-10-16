@@ -8336,3 +8336,41 @@ Every archetype uses every build of every year it plays.
 - the results screen after Panaji. The shell skips it when the level's final card already showed the result (`SessionResult.then`), and still records the run.
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 9).
+
+## Section 10 — balance for 25 builds — DONE
+
+**Game rules changed** (all in `src/data/hazardModel.json`, Panaji's years model only; the Tutorial does not use it):
+
+| Number | Was | Now | Why |
+|---|---|---|---|
+| `defence.metresPerResilience` | 0.45 | 0.9 | With one build a year, 25 builds must matter: at 0.45 the finale's plain 10-build plan cut homes lost by only ~24%. |
+| `defence.maxProtectionM` | 3.2 | 5 | At 3.2 m a grown dune or mangrove already sat at the ceiling, so where you built hardly mattered: Smart was only 4 points ahead of Casual. |
+| `defence.engineeredMaxProtectionM` | 4.5 | 6 | Kept above the living ceiling, as before. |
+
+**The bots** (`tools/panjimBots/`):
+- each builds once a year, 25 builds, and no year is ever skipped;
+- the do-nothing control is replaced by **far**, which builds only where no storm's water reaches.
+
+**What each archetype does:**
+- **Casual** builds by eye next to the houses the forecast marks, and never simulates;
+- **Greedy** builds near houses on 6 waterside streets every year, and ignores the forecast;
+- **Smart** reads the forecast cone and the heat, and weighs a handful of spots for each build;
+- **Far** puts every build on the free tile farthest from every storm.
+
+**Results over 20 seeds** (`docs/qa/section10/bots.md`):
+
+| Archetype | Homes saved, mean (range) |
+|---|---|
+| Casual | 65% (58–71%) |
+| Smart | 74% (69–82%); ahead of Casual on 19 of 20 seeds |
+| Greedy | 24% (13–45%) |
+| Far | 0% |
+
+- **Wins:** none for any archetype. Win is still the owner's to define.
+- **The finale:** a plain 10-build plan cuts homes lost by 32%, 44% and 44% at its three landfalls, about 40% on average.
+- **No one defence wins:** the best single kind alone (mangrove) gets 58%, against Smart's 74%.
+- **Every defence counts**, but dune and pandanus only a little (about 0.5 points each). They are beach plantings that meet only the first cyclone, which several defences clear alone.
+
+**The first objective:** its five builds (2 pandanus, 2 dunes, 1 breakwater) fully protect the first cyclone (`tests/section10.test.ts`). They already did before this section. One well-placed breakwater or seawall alone saves all 9 homes, so the first cyclone is easy.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 10).

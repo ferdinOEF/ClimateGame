@@ -1,0 +1,85 @@
+PASS  1920x1080 phase 1: the result cards open after the storm
+PASS  phase 1 card 1 eyebrow: "2030 · Cyclone"
+PASS  phase 1 card 1 headline "Your city took a heavy hit." for 1 of 3 stars
+PASS  phase 1 card 1 says "N of M homes saved" with a bar
+PASS  phase 1 card 1 places, each Stood or Damaged, with no heading: (none in the area)
+PASS  phase 1 card 1 has no "Iconic places", overlap, model or wind wording
+PASS  phase 1 card 1 button "See what protected your city", no Back
+PASS  phase 1 card 1 fits without scrolling
+PASS  phase 1: Maya's bubble is not over the card
+PASS  axe-core, phase 1 card 1: no serious or critical violations
+PASS  phase 1 Enter goes on to card 2: "What protected your homes"
+PASS  phase 1 card 2 rows: Seawall 0
+PASS  phase 1 card 2 has no overlap, model or wind wording
+PASS  phase 1 card 2 button "Next: the flood in 2040" with Back
+PASS  axe-core, phase 1 card 2: no serious or critical violations
+PASS  phase 1 Back returns to card 1
+PASS  phase 1 Esc keeps the cards open and the level
+PASS  phase 1 Esc jumps to the last card, card 3: "Coming up" / "Monsoon flood in 2040"
+PASS  phase 1 card 3 line: "The flood comes in 10 years"
+PASS  phase 1 card 3 forecast map and legend: Most likely | Likely | Possible | Area to protect
+PASS  phase 1 card 3 has Maya's one line
+PASS  phase 1 card 3 button "On to 2031" with Back
+PASS  phase 1 focus stays in the cards (Tab and Shift+Tab)
+PASS  axe-core, phase 1 card 3: no serious or critical violations
+PASS  phase 2 starts in 2031 (turn 6), the cards closed
+PASS  phase 2 starts with its cone on the map
+PASS  1920x1080 phase 2: the result cards open after the storm
+PASS  phase 2 card 1 eyebrow: "2040 · Monsoon flood"
+PASS  phase 2 card 1 headline "Your city took a heavy hit." for 1 of 3 stars
+PASS  phase 2 card 1 says "N of M homes saved" with a bar
+PASS  phase 2 card 1 places, each Stood or Damaged, with no heading: Goa State Museum Damaged; Campal Garden Stood
+PASS  phase 2 card 1 has no "Iconic places", overlap, model or wind wording
+PASS  phase 2 card 1 button "See what protected your city", no Back
+PASS  phase 2 card 1 fits without scrolling
+PASS  phase 2: Maya's bubble is not over the card
+PASS  axe-core, phase 2 card 1: no serious or critical violations
+PASS  phase 2 Enter goes on to card 2: "What protected your homes"
+PASS  phase 2 card 2 rows: Seawall 0
+PASS  phase 2 card 2 has no overlap, model or wind wording
+PASS  phase 2 card 2 button "Next: cyclone and flood in 2050" with Back
+PASS  axe-core, phase 2 card 2: no serious or critical violations
+PASS  phase 2 Back returns to card 1
+PASS  phase 2 Esc keeps the cards open and the level
+PASS  phase 2 Esc jumps to the last card, card 3: "Coming up" / "Cyclone and flood in 2050"
+PASS  phase 2 card 3 line: "The cyclone and flood arrive together in 10 years"
+PASS  phase 2 card 3 forecast map and legend: Most likely | Likely | Possible | Area to protect | Where they meet
+PASS  phase 2 card 3 has Maya's one line
+PASS  phase 2 card 3 button "On to 2041" with Back
+PASS  phase 2 focus stays in the cards (Tab and Shift+Tab)
+PASS  axe-core, phase 2 card 3: no serious or critical violations
+PASS  phase 3 starts in 2041 (turn 16), the cards closed
+PASS  phase 3 starts with its cone on the map
+PASS  1920x1080 phase 3: the result cards open after the storm
+PASS  phase 3 card 1 eyebrow: "2050 · Cyclone and flood"
+PASS  phase 3 card 1 headline "Your city took a heavy hit." for 1 of 3 stars
+PASS  phase 3 card 1 says "N of M homes saved" with a bar
+PASS  phase 3 card 1 places, each Stood or Damaged, with no heading: Panjim Municipal Market Stood; Institute Menezes Braganza Damaged; Don Bosco High School Stood; Don Bosco College Stood; Kala Academy Damaged; Campal Garden Damaged; Caranzalem Stood; Taleigao Stood
+PASS  phase 3 card 1 has no "Iconic places", overlap, model or wind wording
+PASS  phase 3 card 1 button "See what protected your city", no Back
+PASS  phase 3 card 1 fits without scrolling
+PASS  phase 3: Maya's bubble is not over the card
+PASS  axe-core, phase 3 card 1: no serious or critical violations
+PASS  phase 3 Enter goes on to card 2: "What protected your homes"
+PASS  phase 3 card 2 rows: Seawall 0
+PASS  phase 3 card 2 has no overlap, model or wind wording
+PASS  phase 3 card 2 button "Panjim in 2050" with Back
+PASS  axe-core, phase 3 card 2: no serious or critical violations
+PASS  phase 3 Back returns to card 1
+PASS  phase 3 Esc keeps the cards open and the level
+PASS  phase 3 has no card 3: Esc stays on card 2, its button "Panjim in 2050"
+PASS  the final card: "Panjim, 2026 to 2050"
+PASS  the final card lists the three phases: 2030 · Cyclone 0 of 9 homes saved; 2040 · Monsoon flood 0 of 39 homes saved; 2050 · Cyclone and flood 0 of 95 homes saved
+PASS  the final card has the total and the stars (1 of 3 stars)
+PASS  the final card: "Play again" and the link "Back to the menu"
+PASS  the final card keeps focus
+PASS  axe-core, the final card: no serious or critical violations
+PASS  Play again starts a new run in 2026
+PASS  1366x768 phase 1: the result cards open after the storm
+PASS  1366x768 phase 2: the result cards open after the storm
+PASS  1366x768 phase 3: the result cards open after the storm
+PASS  2560x1440 phase 1: the result cards open after the storm
+PASS  2560x1440 phase 2: the result cards open after the storm
+PASS  2560x1440 phase 3: the result cards open after the storm
+PASS  reduced motion: the cards do not animate (none)
+PASS  zero console errors
