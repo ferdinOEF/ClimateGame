@@ -26,7 +26,8 @@ describe("Section 12 bugs", () => {
     expect(run.year).toBe(2031);
     expect(run.buildsUntil(flood)).toBe(10);
     const storm = { challenge: flood, yearsUntil: 11, past: false };
-    expect(describeStorm(storm)).toMatch(/11 years$/);
+    // Section 13: the countdown is the clock's alone ("Flood in 10 builds"); the Outlook never counts years.
+    expect(describeStorm(storm)).toBe("Monsoon flood · 2040 · strong");
     expect(describeStorm(storm, true)).toBe("Monsoon flood · 2040 · strong");
   });
 

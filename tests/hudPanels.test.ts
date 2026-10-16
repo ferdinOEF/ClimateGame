@@ -26,8 +26,10 @@ describe("the two HUD panels", () => {
   });
 
   it("moves the existing elements into the panels, never rebuilding them", () => {
-    // The first storm's objective (Section 6) joins the Status panel; the coin jar is there only with coins on (Section 5).
-    expect(controller).toMatch(/panels\.status\.adopt\(host\.container\.querySelector<HTMLElement>\("\.instrument-cluster"\), this\.statusObjective\.el, this\.jar\?\.el \?\? null, this\.fieldGuide\.buttonEl\)/);
+    // Section 13: the Status panel holds the Field Guide (and the coin jar, coins on only, Section 5). The meters
+    // and the copy of the objectives are taken out of the page on Panaji.
+    expect(controller).toMatch(/querySelector<HTMLElement>\("\.instrument-cluster"\)\?\.remove\(\)/);
+    expect(controller).toMatch(/panels\.status\.adopt\(this\.jar\?\.el \?\? null, this\.fieldGuide\.buttonEl\)/);
     expect(controller).toMatch(/panels\.settings\.adopt\(togglesRow\(host\.container\)\)/);
     expect(panels).toContain("this.body.appendChild(el)");
   });

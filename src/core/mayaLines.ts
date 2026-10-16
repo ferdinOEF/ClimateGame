@@ -25,6 +25,18 @@ const DISCOVERY_NOTES: [string, SavedNote][] = [...ELEMENT_BY_ID.keys()].flatMap
   discoveryFacts(element).map((fact): [string, SavedNote] => [fact.id, factNote(fact)])
 );
 
+/**
+ * Every note the Field Guide can hold (Section 13: one count everywhere):
+ * her hello, her first-job line, her tips and every discovery.
+ */
+export const NOTE_IDS: ReadonlySet<string> = new Set([MAYA.greeting.id, MAYA.opening.id, ...MAYA.tips.map((tip) => tip.id), ...DISCOVERY_NOTES.map(([id]) => id)]);
+
+/** "5 of 30": the Field Guide's one count, the notes held of every note there is (with `plus`, as if it were held too). */
+export function notesProgress(held: Iterable<string>, plus?: string): string {
+  const ids = new Set([...held, ...(plus ? [plus] : [])].filter((id) => NOTE_IDS.has(id)));
+  return `${ids.size} of ${NOTE_IDS.size}`;
+}
+
 /** A discovery as a Field Guide note: titled by the first element it belongs to, worded as she says it. */
 export function factNote(fact: Fact): SavedNote {
   return { id: fact.id, title: discoveryNoteTitle(fact), text: displayText(fact) };

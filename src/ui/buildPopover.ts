@@ -53,7 +53,28 @@ export interface PopoverMode {
   noticeAction?: { label: string; onClick: () => void };
 }
 
+/**
+ * One card in the build menu (Section 13, Panjim): an icon, the name, a
+ * plain line on what it does, and the model's exact number for this tile.
+ */
+export interface BuildCard {
+  id: string;
+  name: string;
+  /** One line, in game wording. */
+  line: string;
+  /** Inline SVG markup. */
+  icon: string;
+  /** "Protects 3 homes here"; null when there is no storm left to meet. */
+  pill: string | null;
+  /** How the pill reads: some homes saved, none, or homes put at risk. */
+  tone: "good" | "zero" | "bad";
+  /** Cannot go on this ground: greyed, "Not here". */
+  notHere?: boolean;
+}
+
 const VIEWPORT_MARGIN = 8;
+/** Gap between the tile and the cards beside it. */
+const CARD_GAP = 34;
 
 /**
  * The contextual build menu: a small popover anchored to the clicked tile's
@@ -125,6 +146,7 @@ export class BuildPopover {
     mode: PopoverMode = {}
   ): void {
     this.el.innerHTML = "";
+    this.el.classList.remove("as-cards");
     if (options.length === 0) {
       this.hide();
       return;
@@ -174,9 +196,91 @@ export class BuildPopover {
     this.positionAndReveal(screenX, screenY);
   }
 
+  /**
+   * The build menu as cards (Section 13, Panjim), beside the tile rather than
+   * over it. Cards that can be built come first; the defences that cannot go
+   * on this ground follow, greyed and small, each saying "Not here".
+   * `avoid` lists HUD elements the cards must never cover (the year chip).
+   */
+  showCards(screenX: number, screenY: number, cards: BuildCard[], onSelect: (id: string) => void, mode: { notice?: string; blocked?: boolean; avoid?: string[] } = {}): void {
+    this.el.innerHTML = "";
+    this.el.classList.add("as-cards");
+    if (mode.notice) {
+      const notice = document.createElement("div");
+      notice.className = "build-notice";
+      notice.setAttribute("role", "status");
+      notice.textContent = mode.notice;
+      this.el.appendChild(notice);
+    }
+    const open = cards.filter((card) => !card.notHere);
+    const elsewhere = cards.filter((card) => card.notHere);
+    for (const card of open) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "build-card" + (mode.blocked ? " disabled" : "");
+      btn.dataset.element = card.id;
+      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-name"></span><span class="build-card-line"></span>${card.pill ? `<span class="build-card-pill ${card.tone}"></span>` : ""}</span>`;
+      (btn.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
+      (btn.querySelector(".build-card-line") as HTMLElement).textContent = card.line;
+      if (card.pill) (btn.querySelector(".build-card-pill") as HTMLElement).textContent = card.pill;
+      if (mode.blocked) btn.setAttribute("aria-disabled", "true");
+      else
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onSelect(card.id);
+          this.hide();
+        });
+      this.el.appendChild(btn);
+    }
+    if (elsewhere.length > 0) {
+      const grid = document.createElement("div");
+      grid.className = "build-card-elsewhere";
+      for (const card of elsewhere) {
+        const item = document.createElement("div");
+        item.className = "build-card-not-here";
+        item.dataset.element = card.id;
+        item.setAttribute("aria-label", `${card.name}: not here`);
+        item.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-name"></span><span class="build-card-tag">Not here</span>`;
+        (item.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
+        grid.appendChild(item);
+      }
+      this.el.appendChild(grid);
+    }
+    this.placeBeside(screenX, screenY, mode.avoid ?? []);
+    (this.el.querySelector<HTMLElement>(".build-card:not(.disabled)") ?? null)?.focus({ preventScroll: true });
+  }
+
+  /** Beside the tile (right of it, or left if there is no room), clear of the viewport's edges and of `avoid`. */
+  private placeBeside(screenX: number, screenY: number, avoid: string[]): void {
+    this.el.style.left = "0px";
+    this.el.style.top = "0px";
+    this.backdrop.hidden = false;
+    const { width, height } = this.el.getBoundingClientRect();
+    const origin = (this.el.offsetParent as HTMLElement | null)?.getBoundingClientRect() ?? { left: 0, top: 0 };
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = screenX + CARD_GAP;
+    if (left + width > vw - VIEWPORT_MARGIN) left = screenX - CARD_GAP - width;
+    left = Math.max(VIEWPORT_MARGIN, Math.min(vw - VIEWPORT_MARGIN - width, left));
+    let top = Math.max(VIEWPORT_MARGIN, Math.min(vh - VIEWPORT_MARGIN - height, screenY - height / 2));
+    // Never over the year chip and the strip under it: below them if the columns meet.
+    for (const selector of avoid) {
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) continue;
+        const across = left < r.right && left + width > r.left;
+        if (across && top < r.bottom && top + height > r.top) top = r.bottom + VIEWPORT_MARGIN;
+      }
+    }
+    top = Math.min(top, vh - VIEWPORT_MARGIN - height);
+    this.el.style.left = `${Math.round(left - origin.left)}px`;
+    this.el.style.top = `${Math.round(top - origin.top)}px`;
+  }
+
   /** A one-line note in place of a build menu (a tile that is not part of the game). */
   showNote(screenX: number, screenY: number, text: string): void {
     this.el.innerHTML = "";
+    this.el.classList.remove("as-cards");
     const note = document.createElement("div");
     note.className = "built-info-note popover-note";
     note.textContent = text;
@@ -194,6 +298,7 @@ export class BuildPopover {
    */
   showInfo(screenX: number, screenY: number, info: BuiltElementInfo): void {
     this.el.innerHTML = "";
+    this.el.classList.remove("as-cards");
     const header = document.createElement("div");
     header.className = "build-option built-info-header";
     const label = info.kindLabel ? `${info.name} <em>${info.kindLabel}</em>` : info.name;

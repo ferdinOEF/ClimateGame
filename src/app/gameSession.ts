@@ -54,6 +54,7 @@ import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
 import { MapPins } from "@ui/panjim/mapPins";
+import { BuildFloat } from "@ui/panjim/buildFloat";
 import { AreaOutline } from "@render/areaOutline";
 import { LeaveConfirm } from "@ui/panjim/leaveConfirm";
 import { greyColor, sceneryGreyLevels } from "@render/sceneryGrey";
@@ -280,6 +281,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(areaOutline.group);
   /** Pins for the places open objectives name, and the "Area protected" note (Section 12). */
   const mapPins = new MapPins(container, (x, y, z) => worldToScreen(x, y, z));
+  const buildFloat = new BuildFloat(container, (x, y, z) => worldToScreen(x, y, z));
   /**
    * Panjim 2050's storms: the water (one instanced layer, drawn from the
    * storm's depth field) and the sky (the cyclone's spiral, the flood's rain
@@ -711,6 +713,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           setGuidanceVisible: (visible) => {
             areaOutline.group.visible = visible;
             mapPins.setVisible(visible);
+            // The bottom prompt too (Section 13.4): not during a storm or its result cards.
+            container.querySelector(".empty-prompt")?.classList.toggle("held", !visible);
+          },
+          floatAt: (coord, text, tone) => {
+            const { x, z } = axialToWorld(coord, 1.0);
+            buildFloat.show(text, tone, { x, y: terrain.heightAt(coord) + 0.5, z });
           },
           frameWorld: (box) => {
             // A gentle glide (cancelled by any drag) to frame the box, a little wider than it.
@@ -2150,7 +2158,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const economy = !panjim || panjim.run.economyEnabled;
       buildPopover.showInfo(screen.x, screen.y, {
         name: def.name,
-        kindLabel: kindLabel(def),
+        // No NBS / ENGINEERED / BUILDING tags on Panjim (Section 13).
+        kindLabel: panjim ? undefined : kindLabel(def),
         // With coins off, what a thing earns is not shown: no money anywhere.
         effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
         removeLabel: panjim ? "Demolish · uses this year's build" : undefined,
@@ -2193,16 +2202,26 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (popoverOptions.length === 0) return;
     const mode = panjim ? { hideCost } : undefined;
 
+    // Panjim (Section 13): cards beside the tile, each with the model's number.
+    // The controller draws the element and ends the year: one build is one
+    // year. Not when this build brought a storm: nothing of Maya's starts over it.
+    if (panjim) {
+      const controller = panjim;
+      buildPopover.showCards(
+        screen.x,
+        screen.y,
+        controller.buildCards(coord),
+        (id) => {
+          if (!controller.build(coord, id)) return;
+          if (!controller.stormComing) nuggetPopup?.show(id);
+          playSound("build");
+        },
+        { avoid: [".panjim-clock", ".outlook"] }
+      );
+      return;
+    }
+
     buildPopover.show(screen.x, screen.y, popoverOptions, state.coin, (id) => {
-      if (panjim) {
-        // The controller draws the element and ends the year: one build is
-        // one year. The run ends at 2050, never on an objective.
-        if (!panjim.build(coord, id)) return;
-        // Not when this build brought a storm: nothing of Maya's starts over it.
-        if (!panjim.stormComing) nuggetPopup?.show(id);
-        playSound("build");
-        return;
-      }
       if (!state.build(coord, id)) return;
       telemetry.action("build", 1);
       placeElement(coord, id, true);
@@ -2386,6 +2405,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     coneOverlay.tick(nowMs);
     areaOutline.tick(nowMs);
     mapPins.update(nowMs);
+    buildFloat.update(nowMs);
     if (ambientLife) {
       ambientLife.setWind(storm.windStrength);
       ambientLife.tick(nowMs);
@@ -2486,6 +2506,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __frameStatsForTest: frameStats,
     __coneForTest: coneOverlay,
     __areaOutlineForTest: areaOutline,
+    __buildFloatForTest: buildFloat,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
     __audioForTest: audioStateForTest,
@@ -2705,6 +2726,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     keydownAbort.abort();
     leaveConfirm?.dispose();
     mapPins.dispose();
+    buildFloat.dispose();
     areaOutline.dispose();
     panjim?.dispose();
     stormReport.dispose();

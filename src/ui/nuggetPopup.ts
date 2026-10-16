@@ -48,6 +48,9 @@ export class NuggetPopup {
   /** Fact ids Maya has said — a Set, so the same fact said again does not count twice. */
   private discovered = new Set<string>();
 
+  /** Where her count comes from (Section 13: the Field Guide's one count); null keeps the facts tally. */
+  progressText: ((factId: string) => string) | null = null;
+
   constructor(private readonly maya: Maya | null) {}
 
   /** "2 of 21": how many of the facts she can say have been said. */
@@ -99,7 +102,7 @@ export class NuggetPopup {
       state: CAUTION_IDS.has(elementId) ? "worried" : "tip",
       urgent: false,
       rule: fact.kind === "gameRule",
-      fact: { id: fact.id, credit: fact.citation ? shortCredit(fact.citation) : undefined, progress: () => this.progress },
+      fact: { id: fact.id, credit: fact.citation ? shortCredit(fact.citation) : undefined, progress: () => (this.progressText ? this.progressText(fact.id) : this.progress) },
       onShow: () => this.discovered.add(fact.id)
     };
   }

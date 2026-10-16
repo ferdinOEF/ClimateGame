@@ -2,8 +2,10 @@ import { strengthIcons, type ChallengeKind, type ScheduledChallenge } from "@cor
 
 /**
  * The Climate Outlook: the run's years as a timeline under the clock, with a
- * marker for each of the three storms at the end of its year, and one line
- * about the next one: "Next: Cyclone · 2030 · 5 years".
+ * marker for each of the three storms at the end of its year, one line
+ * about the next one ("Next: Cyclone · 2030 · mild") and the homes it would
+ * take now (Section 13: "Homes at risk 9"). The countdown is the clock's
+ * alone ("Cyclone in 5 builds").
  *
  * The calendar is fixed (Section 5), so every marker is a pin from the start,
  * with its 1–3 strength rating. Never a modal: the player reads it at a
@@ -23,7 +25,6 @@ export interface OutlookView {
   /** The current year. */
   year: number;
   storms: OutlookStorm[];
-  seaLevelCm: number;
   /** Stars earned by storms that have resolved, by id. */
   results: Map<string, number>;
 }
@@ -47,9 +48,8 @@ export class OutlookBar {
   private readonly fillEl: HTMLElement;
   private readonly markersEl: HTMLElement;
   private readonly lineEl: HTMLElement;
-  private readonly seaEl: HTMLElement;
-  /** Slot to the right of the line, for the readiness gauge (P3). */
-  readonly gaugeSlot: HTMLElement;
+  /** "Homes at risk N": the next storm's toll on the board as it stands, live (Section 13). */
+  readonly riskEl: HTMLElement;
   /** The next storm in words, for the line's tooltip (the line itself is cut short on a narrow screen). */
   nextText = "";
 
@@ -65,8 +65,7 @@ export class OutlookBar {
       </div>
       <div class="outlook-info">
         <span class="outlook-line"></span>
-        <span class="outlook-gauge"></span>
-        <span class="outlook-sea"></span>
+        <span class="outlook-risk" data-tip="homesAtRisk"></span>
       </div>
     `;
     parent.appendChild(this.el);
@@ -75,8 +74,7 @@ export class OutlookBar {
     this.fillEl = this.el.querySelector(".outlook-fill")!;
     this.markersEl = this.el.querySelector(".outlook-markers")!;
     this.lineEl = this.el.querySelector(".outlook-line")!;
-    this.seaEl = this.el.querySelector(".outlook-sea")!;
-    this.gaugeSlot = this.el.querySelector(".outlook-gauge")!;
+    this.riskEl = this.el.querySelector(".outlook-risk")!;
 
   }
 
@@ -138,33 +136,21 @@ export class OutlookBar {
     this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, this.hold)}` : `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.`;
     this.nextText = next ? describe(next, this.hold) : done;
     this.lineEl.classList.toggle("locked", next !== undefined && next.yearsUntil <= 2);
-    this.seaEl.textContent = `Sea +${view.seaLevelCm} cm`;
   }
 
   private ticksFor = "";
 
-  /**
-   * The readiness gauge for the next storm: predicted stars if it came on the
-   * board as it stands. Red, amber or green, with the stars as shapes so it
-   * reads in grayscale too. `growing` counts defences still growing (growth
-   * on only; 0 hides it).
-   */
-  renderGauge(gauge: { level: "red" | "amber" | "green"; stars: number; protection: number; growing: number } | null): void {
-    if (!gauge) {
-      this.gaugeSlot.hidden = true;
-      return;
-    }
-    this.gaugeSlot.hidden = false;
-    this.gaugeSlot.className = `outlook-gauge gauge-${gauge.level}`;
-    const pct = Math.round(gauge.protection * 100);
-    this.gaugeSlot.innerHTML = `<span class="gauge-label">Ready</span><span class="gauge-bar"><span style="width:${pct}%"></span></span><span class="gauge-stars">${"★".repeat(gauge.stars)}${"☆".repeat(3 - gauge.stars)}</span>${
-      gauge.growing > 0 ? `<span class="gauge-growing">${gauge.growing} growing</span>` : ""
-    }`;
+  /** Homes the next storm would take on the board as it stands; null hides it (no storm left). */
+  renderRisk(homes: number | null): void {
+    this.riskEl.hidden = homes === null;
+    if (homes === null) return;
+    this.riskEl.classList.toggle("none", homes === 0);
+    this.riskEl.innerHTML = `<span class="outlook-risk-label">Homes at risk</span> <b class="outlook-risk-count">${homes}</b>`;
   }
 
   /** The parts that carry tooltips. */
-  get parts(): { track: HTMLElement; line: HTMLElement; sea: HTMLElement } {
-    return { track: this.trackEl, line: this.lineEl, sea: this.seaEl };
+  get parts(): { track: HTMLElement; line: HTMLElement; risk: HTMLElement } {
+    return { track: this.trackEl, line: this.lineEl, risk: this.riskEl };
   }
 
   /** Pulses the track, when a storm's warning begins. */
@@ -175,12 +161,10 @@ export class OutlookBar {
   }
 }
 
-/** "Cyclone · 2030 · 5 years", "… · this year", or "Cyclone has passed"; with `hold`, no countdown ("Monsoon flood · 2040 · strong"). */
+/** "Cyclone · 2030 · mild", or "Cyclone has passed". The countdown is the clock's alone (Section 13); `hold` is kept for callers and changes nothing now. */
 export function describe(storm: OutlookStorm, hold = false): string {
+  void hold;
   const name = storm.challenge.name;
   if (storm.past) return `${name} has passed`;
-  if (hold) return `${name} · ${storm.challenge.year} · ${["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)]}`;
-  const when = storm.yearsUntil <= 1 ? "this year" : `${storm.yearsUntil} years`;
-  const words = ["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)];
-  return `${name} · ${storm.challenge.year} · ${words} · ${when}`;
+  return `${name} · ${storm.challenge.year} · ${["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)]}`;
 }

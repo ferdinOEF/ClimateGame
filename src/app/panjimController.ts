@@ -13,11 +13,10 @@ import { ClockHud, type ClockView } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
 import { CoinJar } from "@ui/panjim/coinJar";
 import { GetReadyPanel } from "@ui/panjim/getReady";
-import { StatusObjective } from "@ui/panjim/statusObjective";
 import { prepProgress } from "@core/prep";
 import { FieldGuide } from "@ui/panjim/fieldGuide";
 import { COMBO_INFO, type ComboId } from "@core/combos";
-import { seaLevelCm, strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
+import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
 import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, type CardSpec } from "@ui/panjim/resultCards";
@@ -44,6 +43,8 @@ import { isPhaseLine, MAYA, stormWord } from "@core/mayaLines";
 import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
+import type { BuildCard } from "@ui/buildPopover";
+import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER, cardPill } from "@ui/panjim/defenceCards";
 
 /**
  * The Panjim 2050 run inside a live session.
@@ -131,8 +132,10 @@ export interface PanjimHost {
   areaProtected: () => void;
   /** Pins the places open objectives name. */
   showPins: (pins: { name: string; q: number; r: number }[]) => void;
-  /** The outline and pins on or off (off while a storm or its result cards are on screen). */
+  /** The outline, pins and bottom prompt on or off (off while a storm or its result cards are on screen). */
   setGuidanceVisible: (visible: boolean) => void;
+  /** "+3 homes safe" rising from a tile just built (Section 13.2). */
+  floatAt: (coord: AxialCoord, text: string, tone: "good" | "zero" | "bad") => void;
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
   /** Whether any menu, card or modal is open (the risk sequence never starts under one). */
@@ -165,7 +168,6 @@ export class PanjimController {
   /** "Get ready": the jobs for the next storm. */
   private readonly getReady: GetReadyPanel;
   /** The first storm's objective, in the Status panel. */
-  private readonly statusObjective = new StatusObjective();
   readonly fieldGuide: FieldGuide;
   private busy = false;
   /** The first-warning risk sequence plays once a playthrough (core/riskIntro.ts). */
@@ -186,7 +188,6 @@ export class PanjimController {
   /** Real milliseconds played before this session, when resuming a save: the tempo badge counts the whole run. */
   playMsBefore = 0;
   /** The in-scene label over a storm's landfall or source while its warning is up: "Cyclone landfall ●○○". */
-  private readonly forecastLabel: HTMLElement;
   private forecastAnchor: AxialCoord | null = null;
   /** "Show risk": the warning heat on or off (R). On by default, remembered on this device. */
   readonly riskToggle: PrefToggle;
@@ -337,12 +338,17 @@ export class PanjimController {
     this.fieldGuide.onReplayNote = (note) => {
       if (!this.nuggets.replay(note.id)) this.mayaDirector.replay(note);
     };
-    this.fieldGuide.discoveries = () => this.nuggets.progress;
+    // Her count and the Field Guide's are one number (Section 13).
+    this.nuggets.progressText = (factId) => this.fieldGuide.notesProgress(factId);
     // The HUD kept almost out of the way (hudPanels.ts): the instrument cluster, coin jar and Field Guide
     // button go into one panel and the toggles into another, each shut to a small button. The elements
     // are moved, not rebuilt: their handlers, ids and shortcuts (R, M, S) are the ones they were.
     this.panels = new HudPanels(host.container);
-    this.panels.status.adopt(host.container.querySelector<HTMLElement>(".instrument-cluster"), this.statusObjective.el, this.jar?.el ?? null, this.fieldGuide.buttonEl);
+    // Section 13: on Panaji the Status panel holds the Field Guide (and the jar, coins on). The meters
+    // (Resilience, Biodiversity, Carbon, Food, Population) change nothing the player sees here, and the
+    // objectives are the Get ready card's alone: the cluster and the copy are taken out of the page.
+    host.container.querySelector<HTMLElement>(".instrument-cluster")?.remove();
+    this.panels.status.adopt(this.jar?.el ?? null, this.fieldGuide.buttonEl);
     this.panels.settings.adopt(togglesRow(host.container));
     this.panels.status.onOpen = () => {
       this.resilienceDropUnseen = false;
@@ -352,10 +358,6 @@ export class PanjimController {
     this.attachTooltips();
     this.addForecastToBrief();
     const saveOffered = this.offerSavedRun();
-    this.forecastLabel = document.createElement("div");
-    this.forecastLabel.className = "forecast-label";
-    this.forecastLabel.hidden = true;
-    host.container.appendChild(this.forecastLabel);
     this.clock.set(this.clockView());
     this.renderOutlook();
     this.syncControls();
@@ -465,7 +467,7 @@ export class PanjimController {
     };
   }
 
-  /** "N builds until the cyclone": the next storm and how many builds are left before it (it hits straight after the last). */
+  /** "Cyclone in N builds": the next storm and how many builds are left before it (it hits straight after the last). */
   private untilView(): { builds: number; storm: string } | null {
     const next = this.run.nextChallenge();
     if (!next || this.run.finished) return null;
@@ -485,21 +487,12 @@ export class PanjimController {
     const outlook = this.outlook.parts;
     tips.attach(outlook.track, "outlookTrack", () => ({ start: this.run.config.startYear, end: this.run.config.endYear }));
     tips.attach(outlook.line, "outlookNext", () => ({ next: this.outlook.nextText }));
-    tips.attach(outlook.sea, "sea", () => ({ cm: this.run.climate ? seaLevelCm(this.run.climate, this.host.state.turn) : 0, start: this.run.config.startYear }));
-    tips.attach(this.outlook.gaugeSlot, () => {
-      const r = this.lastReadiness;
-      if (!r) return tooltipText("readinessNone");
-      return tooltipText("readiness", {
-        pct: Math.round(r.outcome.protection * 100),
-        storm: stormWord(r.challenge.kind),
-        saved: r.outcome.housesSaved,
-        total: r.outcome.housesTotal,
-        stars: r.outcome.stars
-      });
+    tips.attach(outlook.risk, "homesAtRisk", () => {
+      const next = this.run.nextChallenge();
+      return { homes: next ? this.run.homesAtRisk(next) : 0, storm: next ? stormWord(next.kind) : "storm" };
     });
-    this.outlook.gaugeSlot.dataset.tip = "readiness";
 
-    tips.attach(this.fieldGuide.buttonEl, "fieldGuide", () => ({ found: this.fieldGuide.count, species: this.fieldGuide.speciesTotal, notes: this.fieldGuide.noteCount }));
+    tips.attach(this.fieldGuide.buttonEl, "fieldGuide", () => ({ notes: this.fieldGuide.notesProgress(), found: this.fieldGuide.count, species: this.fieldGuide.speciesTotal }));
     tips.attach(this.riskToggle.el, "riskToggle");
     tips.attach(this.getReady.el, "getReady");
     tips.attach(this.mayaToggle.el, "mayaToggle");
@@ -535,7 +528,6 @@ export class PanjimController {
     const zones = this.run.zones;
     const rows = zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : [];
     this.getReady.render(next ? next.name : null, rows);
-    this.statusObjective.render(rows);
     if (this.run.prep.length > 0) this.mayaDirector?.tip("get-ready");
   }
 
@@ -599,23 +591,14 @@ export class PanjimController {
         // A storm that has resolved is behind the player, even in its own year.
         past: this.run.landed.has(challenge.id)
       })),
-      seaLevelCm: seaLevelCm(climate, turn - 1),
       results: new Map([...this.run.outcomes].map(([id, outcome]) => [id, outcome.stars]))
     });
     const readiness = this.run.readiness();
     this.lastReadiness = readiness;
     if (readiness) this.readinessById.set(readiness.challenge.id, readiness.level);
-    this.outlook.renderGauge(
-      readiness
-        ? {
-            level: readiness.level,
-            stars: readiness.outcome.stars,
-            protection: readiness.outcome.protection,
-            // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
-            growing: this.host.state.growthEnabled ? this.growingIn(readiness.challenge) : 0
-          }
-        : null
-    );
+    // The next storm's toll on the board as it stands, from the same model as the storm (Section 13).
+    const next = this.run.nextChallenge();
+    this.outlook.renderRisk(next ? this.run.homesAtRisk(next) : null);
   }
 
   /** Defences against the challenge's hazards that have not reached full strength yet. */
@@ -964,20 +947,11 @@ export class PanjimController {
       tiles.push({ coord: { q, r }, weight: Math.max(0.35, value) });
     }
     this.host.showForecastZones(tiles);
-    const site = this.run.landfallOf(challenge);
-    const centre = site === null ? null : this.run.board().sites[site];
-    const hardest = [...(reach?.exposure ?? [])].filter(([, v]) => v >= 1).map(([key]) => key);
-    this.forecastAnchor = centre ? nearestTo([centre], this.host.focus) : nearestTo(hardest.length > 0 ? hardest : tiles.map((t) => `${t.coord.q},${t.coord.r}`), this.host.focus);
-    const icons = strengthIcons(challengeStrength(this.run.climate, challenge));
-    const what = challenge.kind === "cyclone" ? "Cyclone landfall" : challenge.kind === "flood" ? "Flood rises here" : "Surge and flood meet here";
-    this.forecastLabel.innerHTML = `<b>${what}</b> <span class="forecast-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span><span class="forecast-when">in ${challenge.year}</span>`;
-    this.forecastLabel.hidden = false;
+    // No "Cyclone landfall" tag over it (Section 13): Maya says the warning, once.
   }
 
   private clearForecast(): void {
     this.host.clearForecastZones();
-    this.forecastAnchor = null;
-    this.forecastLabel.hidden = true;
   }
 
   /** Called every rendered frame: Maya's moves and lines, and the in-scene Forecast label over its zone. */
@@ -1052,17 +1026,6 @@ export class PanjimController {
       this.nextPumpMs = now + 400;
       this.mayaDirector.pump();
     }
-    if (!this.forecastAnchor || this.forecastLabel.hidden) return;
-    const screen = this.host.project(this.forecastAnchor);
-    if (!screen) return;
-    // Kept inside the view (clear of the clock and the bottom bar), so a
-    // camera that has wandered off still sees where the storm is headed.
-    const rect = this.host.container.getBoundingClientRect();
-    const x = Math.min(rect.width - 140, Math.max(140, screen.x));
-    // Below the clock and the banner that sits under it (the label is drawn above its anchor).
-    const y = Math.min(rect.height - 70, Math.max(290, screen.y));
-    this.forecastLabel.classList.toggle("offscreen", x !== screen.x || y !== screen.y);
-    this.forecastLabel.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -120%)`;
   }
 
   /** Repair a worn defence or damaged house: the year's build, so it ends the year. */
@@ -1085,6 +1048,34 @@ export class PanjimController {
 
   /** The turn the last action ended, for telemetry. */
   private lastTurnEnded = 0;
+
+  /** How long the last build menu's numbers took, in milliseconds (the QA tools report it). */
+  lastCardsMs = 0;
+
+  /**
+   * The build menu for a free tile (Section 13): a card for everything that
+   * can be built here, each with the model's exact number for the storm
+   * coming, then every other defence greyed as "Not here".
+   */
+  buildCards(coord: AxialCoord): BuildCard[] {
+    const started = performance.now();
+    const next = this.run.nextChallenge();
+    const order = (id: string): number => {
+      const i = (DEFENCE_ORDER as readonly string[]).indexOf(id);
+      return i < 0 ? DEFENCE_ORDER.length : i;
+    };
+    const here = this.host.state.buildableAt(coord).map((def) => def).sort((a, b) => order(a.id) - order(b.id));
+    const cards: BuildCard[] = here.map((def) => {
+      const { pill, tone } = cardPill(next ? this.run.homesSavedBy(next, coord, def.id) : null);
+      return { id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "", pill, tone };
+    });
+    for (const id of DEFENCE_ORDER) {
+      if (here.some((def) => def.id === id)) continue;
+      cards.push({ id, name: CARD_NAME[id], line: CARD_LINE[id], icon: CARD_ICON[id], pill: null, tone: "zero", notHere: true });
+    }
+    this.lastCardsMs = performance.now() - started;
+    return cards;
+  }
 
   /** True while a storm that the last build brought is being staged: no fact or tip should start over it. */
   get stormComing(): boolean {
@@ -1110,10 +1101,15 @@ export class PanjimController {
     // A refused build changes nothing, the year included.
     const turn = this.run.turnNumber;
     // Worked out on the board before the build, said only once the build went through.
-    const outside = this.host.state.canBuild(coord, elementId) ? this.outsideNote(coord, elementId) : null;
+    const buildable = this.host.state.canBuild(coord, elementId);
+    const outside = buildable ? this.outsideNote(coord, elementId) : null;
+    const next = this.run.nextChallenge();
+    // The build menu's own number (the same cache), for the float over the tile.
+    const saved = buildable && next ? this.run.homesSavedBy(next, coord, elementId) : null;
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
     if (outside) this.host.showBanner(outside, 5200);
+    if (saved !== null) this.host.floatAt(coord, floatText(saved), saved > 0 ? "good" : saved < 0 ? "bad" : "zero");
     this.lastTurnEnded = turn;
     this.host.placeElement(coord, elementId);
     this.host.telemetry.action("build", 1);
@@ -1203,7 +1199,7 @@ export class PanjimController {
       case "warning": {
         playSound("hazard_telegraph");
         this.outlook.pulse();
-        this.host.showBanner(`${event.challenge.name} in ${event.challenge.year}. The red shows where it will hit.`, 4200);
+        // No banner: Maya says the warning (Section 13, one voice at a time).
         this.showForecast(event.challenge);
         break;
       }
@@ -1791,7 +1787,6 @@ export class PanjimController {
     this.jar?.dispose();
     this.fieldGuide.dispose();
     this.panels.dispose();
-    this.forecastLabel.remove();
     this.clock.dispose();
     this.host.container.classList.remove("has-panjim-clock");
   }
@@ -1827,6 +1822,12 @@ function wait(ms: number): Promise<void> {
 }
 
 /** What the clock names the next storm as: "3 builds until the cyclone". */
+/** "+3 homes safe", "+0 homes safe", "2 more homes at risk". */
+export function floatText(saved: number): string {
+  if (saved < 0) return `${-saved} more ${saved === -1 ? "home" : "homes"} at risk`;
+  return `+${saved} ${saved === 1 ? "home" : "homes"} safe`;
+}
+
 function untilWord(kind: ScheduledChallenge["kind"]): string {
-  return kind === "cyclone" ? "the cyclone" : kind === "flood" ? "the flood" : "the cyclone and flood";
+  return kind === "cyclone" ? "Cyclone" : kind === "flood" ? "Flood" : "Cyclone and flood";
 }

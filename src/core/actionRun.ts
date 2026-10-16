@@ -424,18 +424,50 @@ export class ActionRun {
    * there). What a build card says (Section 13) and the outside-the-area line.
    */
   protectsHere(challenge: ScheduledChallenge, coord: AxialCoord, elementId: string): number {
-    if (!this.climate || !this.zones || this.landed.has(challenge.id) || !this.state.canBuild(coord, elementId)) return 0;
-    const before = this.exposureFor(challenge)?.housesAtRisk.length ?? 0;
+    return Math.max(0, this.homesSavedBy(challenge, coord, elementId) ?? 0);
+  }
+
+  /**
+   * The build menu's number (Section 13): how many fewer homes `challenge`
+   * would take if `elementId` stood at `coord`, on the board as it is now, by
+   * the same model as the storm (negative: a build that puts homes at risk,
+   * such as sand mining). Null when it cannot be built there or there is no
+   * storm to meet. Cached until the board or the clock next changes (`moment`),
+   * so the menu opens without re-running the model for the board itself.
+   */
+  homesSavedBy(challenge: ScheduledChallenge, coord: AxialCoord, elementId: string): number | null {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id) || !this.state.canBuild(coord, elementId)) return null;
+    this.cardCache(challenge);
+    const cache = this.savedCache!;
+    const trialKey = `${coord.q},${coord.r}|${elementId}`;
+    const known = cache.trials.get(trialKey);
+    if (known !== undefined) return known;
     const trial = this.state.clone();
     trial.build(coord, elementId, false);
-    const site = this.landfallOf(challenge);
     const after = computeExposure(trial, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, {
       combos: computeCombos(trial).bonus,
       houseStars: this.houseStars,
       houseRule: this.houseRule,
-      landfallSites: site === null ? null : [site]
+      landfallSites: cache.site === null ? null : [cache.site]
     }).housesAtRisk.length;
-    return Math.max(0, before - after);
+    const saved = cache.before - after;
+    cache.trials.set(trialKey, saved);
+    return saved;
+  }
+
+  private savedCache: { key: string; before: number; site: number | null; trials: Map<string, number> } | null = null;
+
+  /** The homes `challenge` would take on the board as it stands (the HUD's "Homes at risk", Section 13). Cached with the build menu's numbers. */
+  homesAtRisk(challenge: ScheduledChallenge): number {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id)) return 0;
+    this.cardCache(challenge);
+    return this.savedCache!.before;
+  }
+
+  private cardCache(challenge: ScheduledChallenge): void {
+    const cacheKey = `${this.moment}|${challenge.id}`;
+    if (this.savedCache?.key === cacheKey) return;
+    this.savedCache = { key: cacheKey, before: this.exposureFor(challenge)?.housesAtRisk.length ?? 0, site: this.landfallOf(challenge), trials: new Map() };
   }
 
   exposureFor(challenge: ScheduledChallenge, withoutDefences = false): Exposure | null {
