@@ -1,0 +1,55 @@
+
+> riptide-rising@1.0.0 test:labels
+> tsx tools/labelOverlapTest.ts
+
+PASS  1280x600 zoom 1 (opening view): label layer 0.90 ms median, 2.50 ms max a frame; 5 drawn [Altinho, Fontainhas, Miramar, Taleigao, Merces]; dropped or out of view: 25
+PASS  1280x600 zoom 1, church name card: label layer 0.80 ms median, 4.20 ms max a frame; 5 drawn [Our Lady of the Immaculate ConceptionHeritage church, Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 25
+PASS  1280x600 the name card is drawn, ahead of the localities
+PASS  1280x600 zoom 2: label layer 0.90 ms median, 1.90 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  1280x600 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1280x600 zoom 2, temple hovered: label layer 0.80 ms median, 1.40 ms max a frame; 3 drawn [Mahalaxmi TempleTemple, Campal, Altinho]; dropped or out of view: 27
+PASS  1280x600 zoom 3 (close): label layer 1.00 ms median, 2.40 ms max a frame; 10 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Mahalaxmi TempleTemple, Jama MasjidMosque, Don Bosco High SchoolSchool, Kala AcademyArts centre, Goa State MuseumMuseum, Patto, Campal GardenRiverside garden, Campal, Fontainhas]; dropped or out of view: 20
+PASS  1280x600 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1280x600 zoom 3 after a pan: label layer 0.90 ms median, 1.70 ms max a frame; 11 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Institute Menezes BraganzaLibrary and gallery, Mahalaxmi TempleTemple, Jama MasjidMosque, Goa State MuseumMuseum, Patto, Campal GardenRiverside garden, Campal, Altinho, Fontainhas, Patto]; dropped or out of view: 19
+PASS  1280x600 zoom 2, Maya talking: label layer 0.80 ms median, 1.30 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  1280x600 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1280x600 warning showing: label layer 0.70 ms median, 1.30 ms max a frame; 3 drawn [Altinho, Taleigao, St Cruz]; dropped or out of view: 27
+PASS  1366x768 zoom 1 (opening view): label layer 0.90 ms median, 3.10 ms max a frame; 5 drawn [Campal, Altinho, Fontainhas, Miramar, Taleigao]; dropped or out of view: 25
+PASS  1366x768 zoom 1, church name card: label layer 1.00 ms median, 2.50 ms max a frame; 5 drawn [Our Lady of the Immaculate ConceptionHeritage church, Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 25
+PASS  1366x768 the name card is drawn, ahead of the localities
+PASS  1366x768 zoom 2: label layer 0.90 ms median, 2.70 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  1366x768 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1366x768 zoom 2, temple hovered: label layer 0.80 ms median, 1.30 ms max a frame; 4 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1366x768 zoom 3 (close): label layer 1.00 ms median, 2.00 ms max a frame; 2 drawn [Campal, Fontainhas]; dropped or out of view: 28
+PASS  1366x768 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1366x768 zoom 3 after a pan: label layer 0.90 ms median, 4.40 ms max a frame; 11 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Institute Menezes BraganzaLibrary and gallery, Mahalaxmi TempleTemple, Jama MasjidMosque, Don Bosco High SchoolSchool, Goa State MuseumMuseum, Patto, Altinho, Fontainhas, São Tomé, Patto]; dropped or out of view: 19
+PASS  1366x768 zoom 2, Maya talking: label layer 0.80 ms median, 1.40 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  1366x768 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1366x768 warning showing: label layer 0.80 ms median, 2.10 ms max a frame; 3 drawn [Altinho, Taleigao, St Cruz]; dropped or out of view: 27
+PASS  1920x1080 zoom 1 (opening view): label layer 0.90 ms median, 5.00 ms max a frame; 5 drawn [Campal, Altinho, Fontainhas, Miramar, Taleigao]; dropped or out of view: 25
+PASS  1920x1080 zoom 1, church name card: label layer 0.80 ms median, 2.70 ms max a frame; 4 drawn [Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 26
+PASS  1920x1080 the name card is drawn, ahead of the localities
+PASS  1920x1080 zoom 2: label layer 0.80 ms median, 1.30 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  1920x1080 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1920x1080 zoom 2, temple hovered: label layer 0.80 ms median, 1.50 ms max a frame; 4 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1920x1080 zoom 3 (close): label layer 1.00 ms median, 3.60 ms max a frame; 16 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Panjim Municipal MarketCity market, Institute Menezes BraganzaLibrary and gallery, Mahalaxmi TempleTemple, Jama MasjidMosque, Don Bosco High SchoolSchool, Don Bosco CollegeCollege, Kala AcademyArts centre, Goa State MuseumMuseum, Patto, Campal GardenRiverside garden, Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 14
+PASS  1920x1080 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1920x1080 zoom 3 after a pan: label layer 0.90 ms median, 1.60 ms max a frame; 14 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Panjim Municipal MarketCity market, Institute Menezes BraganzaLibrary and gallery, Mahalaxmi TempleTemple, Jama MasjidMosque, Don Bosco High SchoolSchool, Don Bosco CollegeCollege, Goa State MuseumMuseum, Patto, Altinho, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 16
+PASS  1920x1080 zoom 2, Maya talking: label layer 0.80 ms median, 1.80 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  1920x1080 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1920x1080 warning showing: label layer 0.80 ms median, 5.80 ms max a frame; 3 drawn [Altinho, St Cruz, Merces]; dropped or out of view: 27
+PASS  2560x1440 zoom 1 (opening view): label layer 1.00 ms median, 2.30 ms max a frame; 5 drawn [Campal, Altinho, Fontainhas, Miramar, Taleigao]; dropped or out of view: 25
+PASS  2560x1440 zoom 1, church name card: label layer 0.90 ms median, 2.80 ms max a frame; 5 drawn [Campal, Altinho, Fontainhas, Miramar, Merces]; dropped or out of view: 25
+PASS  2560x1440 the name card is drawn, ahead of the localities
+PASS  2560x1440 zoom 2: label layer 1.20 ms median, 6.60 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  2560x1440 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  2560x1440 zoom 2, temple hovered: label layer 1.10 ms median, 3.30 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  2560x1440 zoom 3 (close): label layer 1.00 ms median, 9.70 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 27
+PASS  2560x1440 during a drag-pan (frame by frame): no overlap in any frame
+PASS  2560x1440 zoom 3 after a pan: label layer 1.00 ms median, 5.60 ms max a frame; 14 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Panjim Municipal MarketCity market, Institute Menezes BraganzaLibrary and gallery, Mahalaxmi TempleTemple, Jama MasjidMosque, Don Bosco High SchoolSchool, Don Bosco CollegeCollege, Goa State MuseumMuseum, Patto, Altinho, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 16
+PASS  2560x1440 zoom 2, Maya talking: label layer 0.80 ms median, 1.80 ms max a frame; 11 drawn [Our Lady of the Immaculate ConceptionHeritage church, Adil Shah PalaceOld Secretariat, Panjim Municipal MarketCity market, Institute Menezes BraganzaLibrary and gallery, Mahalaxmi TempleTemple, Jama MasjidMosque, Don Bosco High SchoolSchool, Don Bosco CollegeCollege, Goa State MuseumMuseum, Patto, Altinho, Fontainhas]; dropped or out of view: 19
+PASS  2560x1440 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  2560x1440 warning showing: label layer 0.70 ms median, 1.80 ms max a frame; 3 drawn [Altinho, St Cruz, Merces]; dropped or out of view: 27
+PASS  Tutorial 1920x1080: label layer 0.20 ms median, 8.80 ms max a frame; 5 drawn [Open sea, Beach, Estuary, River, Land]; dropped or out of view: 0
+
+49 views checked, 0 failed; label layer at most 9.70 ms a frame

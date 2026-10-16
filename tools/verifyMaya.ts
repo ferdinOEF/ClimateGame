@@ -7,7 +7,7 @@
  *   - the Tutorial still completes, with its own objectives panel and no
  *     Maya, heat or Get ready;
  *   - every HUD control has a tooltip, and every tooltip shows real text;
- *   - Get ready shows 2-3 jobs on Panaji;
+ *   - Get ready shows the model's objective on Panaji (Section 12: one row or more);
  *   - the street map defaults to 21%;
  *   - roads render, with no building on any road tile;
  *   - Maya greets with "Hello" and the first objective, mutes with M, the heat toggles with R;
@@ -106,7 +106,7 @@ async function main(): Promise<void> {
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(3500);
     const jobs = await page.locator(".get-ready-row").count();
-    check(jobs >= 2 && jobs <= 3 && (await page.locator(".get-ready").isVisible()), `Panaji: Get ready shows ${jobs} jobs`);
+    check(jobs >= 1 && (await page.locator(".get-ready").isVisible()), `Panaji: Get ready shows ${jobs} rows`);
     const slider = await page.locator(".map-layer-opacity").inputValue();
     check(slider === "21" && (await page.locator(".map-layer-control input[type=checkbox]").isChecked()), `Panaji: street map on at ${slider}%`);
     const town = await evalJs<{ roads: number; buildingsOnRoads: number; decorMeshes: string[]; buildings: number }>(page, "window.__townForTest()");
