@@ -238,6 +238,7 @@ async function main(): Promise<void> {
         const panel = await text(page, ".field-guide-count");
         await page.keyboard.press("Escape");
         await page.waitForTimeout(300);
+        check((await text(page, ".field-guide-count")) === "" && !(await text(page, ".leave-confirm")), "Esc closes the Field Guide (and asks nothing else)");
         const n = /(\d+ of \d+)/.exec(button)?.[1] ?? "";
         check(n !== "" && panel === n && mayaCount === n, `13.3: one Field Guide count: button "${button}", panel "${panel}", Maya's fact line "${mayaCount}"`);
         await shot(page, "maya-count-1920x1080");

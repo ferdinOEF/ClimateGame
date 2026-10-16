@@ -3,26 +3,26 @@ PASS  1920x1080 beach: every pill is the model's number: dune "Protects 6 homes 
 PASS  1920x1080 beach: the other defences show greyed "Not here" (4)
 PASS  1920x1080 beach: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1920x1080 beach: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1920x1080 beach: the numbers took 16.7 ms (under 50)
+PASS  1920x1080 beach: the numbers took 9.9 ms (under 50)
 PASS  axe-core, the build menu: no serious or critical violations
 PASS  1920x1080 sea (2,12): the menu is cards (seawall, breakwater)
 PASS  1920x1080 sea: every pill is the model's number: seawall "Protects 8 homes here"; breakwater "Protects 8 homes here"
 PASS  1920x1080 sea: the other defences show greyed "Not here" (5)
 PASS  1920x1080 sea: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1920x1080 sea: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1920x1080 sea: the numbers took 8.2 ms (under 50)
+PASS  1920x1080 sea: the numbers took 8.6 ms (under 50)
 PASS  1920x1080 wetland (7,17): the menu is cards (mangrove, khazan)
 PASS  1920x1080 wetland: every pill is the model's number: mangrove "Protects 0 homes here"; khazan "Protects 0 homes here"
 PASS  1920x1080 wetland: the other defences show greyed "Not here" (5)
 PASS  1920x1080 wetland: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1920x1080 wetland: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1920x1080 wetland: the numbers took 10.0 ms (under 50)
+PASS  1920x1080 wetland: the numbers took 8.9 ms (under 50)
 PASS  1920x1080 river (8,6): the menu is cards (small_dam, sand_mining)
-PASS  1920x1080 river: every pill is the model's number: small_dam "Protects 0 homes here"; sand_mining "Protects 0 homes here"
+PASS  1920x1080 river: every pill is the model's number: small_dam "Protects 0 homes here"; sand_mining "Saves no homes here"
 PASS  1920x1080 river: the other defences show greyed "Not here" (6)
 PASS  1920x1080 river: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1920x1080 river: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1920x1080 river: the numbers took 6.9 ms (under 50)
+PASS  1920x1080 river: the numbers took 18.3 ms (under 50)
 PASS  13.3: the Ready gauge is not in the page (.outlook-gauge)
 PASS  13.3: Sea +cm is not in the page (.outlook-sea)
 PASS  13.3: the meters (Resilience, Biodiversity, Carbon, Food, Population) is not in the page (.instrument-cluster)
@@ -36,9 +36,10 @@ PASS  13.2: breakwater at 2,12: the float says "+8 homes safe" (+8 homes safe)
 PASS  13.2: Homes at risk 9 → 1 (the card said 8)
 PASS  13.2: breakwater at 6,8: the float says "+1 home safe" (+8 homes safe | +1 home safe)
 PASS  13.2: Homes at risk 1 → 0 (the card said 1)
-PASS  13.2: dune at 1,13: the float says "+0 homes safe" (+1 home safe | +0 homes safe)
+PASS  13.2: dune at 1,13: the float says "+0 homes safe" (+0 homes safe)
 PASS  13.2: Homes at risk 0 → 0 (the card said 0)
-PASS  13.3: one Field Guide count: button "Field Guide 3 of 25", panel "3 of 25", Maya's fact line "3 of 25"
+PASS  Esc closes the Field Guide (and asks nothing else)
+PASS  13.3: one Field Guide count: button "Field Guide 3 of 21", panel "3 of 21", Maya's fact line "3 of 21"
 PASS  13.4: the warning years began with no warning banner (banners seen: "This protects 1 home, but it's outside the area, so it doesn't count for the objective. | This protects no homes, and it's outside the area, so it doesn't count for the objective.")
 PASS  13.4: no landfall tag
 PASS  13.4: no bottom prompt while the storm plays
@@ -56,66 +57,66 @@ PASS  1280x600 sea: every pill is the model's number: seawall "Protects 8 homes 
 PASS  1280x600 sea: the other defences show greyed "Not here" (5)
 PASS  1280x600 sea: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1280x600 sea: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1280x600 sea: the numbers took 8.0 ms (under 50)
+PASS  1280x600 sea: the numbers took 6.7 ms (under 50)
 PASS  1280x600 wetland (7,17): the menu is cards (mangrove, khazan)
 PASS  1280x600 wetland: every pill is the model's number: mangrove "Protects 0 homes here"; khazan "Protects 0 homes here"
 PASS  1280x600 wetland: the other defences show greyed "Not here" (5)
 PASS  1280x600 wetland: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1280x600 wetland: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1280x600 wetland: the numbers took 5.7 ms (under 50)
+PASS  1280x600 wetland: the numbers took 8.7 ms (under 50)
 PASS  1280x600 river (8,6): the menu is cards (small_dam, sand_mining)
-PASS  1280x600 river: every pill is the model's number: small_dam "Protects 0 homes here"; sand_mining "Protects 0 homes here"
+PASS  1280x600 river: every pill is the model's number: small_dam "Protects 0 homes here"; sand_mining "Saves no homes here"
 PASS  1280x600 river: the other defences show greyed "Not here" (6)
 PASS  1280x600 river: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1280x600 river: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1280x600 river: the numbers took 7.1 ms (under 50)
+PASS  1280x600 river: the numbers took 4.9 ms (under 50)
 PASS  1366x768 beach (2,13): the menu is cards (dune, sandy_vegetation, seawall)
 PASS  1366x768 beach: every pill is the model's number: dune "Protects 6 homes here"; sandy_vegetation "Protects 5 homes here"; seawall "Protects 8 homes here"
 PASS  1366x768 beach: the other defences show greyed "Not here" (4)
 PASS  1366x768 beach: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1366x768 beach: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1366x768 beach: the numbers took 12.7 ms (under 50)
+PASS  1366x768 beach: the numbers took 15.7 ms (under 50)
 PASS  1366x768 sea (2,12): the menu is cards (seawall, breakwater)
 PASS  1366x768 sea: every pill is the model's number: seawall "Protects 8 homes here"; breakwater "Protects 8 homes here"
 PASS  1366x768 sea: the other defences show greyed "Not here" (5)
 PASS  1366x768 sea: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1366x768 sea: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1366x768 sea: the numbers took 7.4 ms (under 50)
+PASS  1366x768 sea: the numbers took 6.2 ms (under 50)
 PASS  1366x768 wetland (7,17): the menu is cards (mangrove, khazan)
 PASS  1366x768 wetland: every pill is the model's number: mangrove "Protects 0 homes here"; khazan "Protects 0 homes here"
 PASS  1366x768 wetland: the other defences show greyed "Not here" (5)
 PASS  1366x768 wetland: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1366x768 wetland: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1366x768 wetland: the numbers took 6.5 ms (under 50)
+PASS  1366x768 wetland: the numbers took 5.9 ms (under 50)
 PASS  1366x768 river (8,6): the menu is cards (small_dam, sand_mining)
-PASS  1366x768 river: every pill is the model's number: small_dam "Protects 0 homes here"; sand_mining "Protects 0 homes here"
+PASS  1366x768 river: every pill is the model's number: small_dam "Protects 0 homes here"; sand_mining "Saves no homes here"
 PASS  1366x768 river: the other defences show greyed "Not here" (6)
 PASS  1366x768 river: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  1366x768 river: the cards fit on screen, clear of the year chip and the Outlook
-PASS  1366x768 river: the numbers took 7.5 ms (under 50)
+PASS  1366x768 river: the numbers took 5.0 ms (under 50)
 PASS  2560x1440 beach (2,13): the menu is cards (dune, sandy_vegetation, seawall)
 PASS  2560x1440 beach: every pill is the model's number: dune "Protects 6 homes here"; sandy_vegetation "Protects 5 homes here"; seawall "Protects 8 homes here"
 PASS  2560x1440 beach: the other defences show greyed "Not here" (4)
 PASS  2560x1440 beach: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  2560x1440 beach: the cards fit on screen, clear of the year chip and the Outlook
-PASS  2560x1440 beach: the numbers took 11.7 ms (under 50)
+PASS  2560x1440 beach: the numbers took 9.2 ms (under 50)
 PASS  2560x1440 sea (2,12): the menu is cards (seawall, breakwater)
 PASS  2560x1440 sea: every pill is the model's number: seawall "Protects 8 homes here"; breakwater "Protects 8 homes here"
 PASS  2560x1440 sea: the other defences show greyed "Not here" (5)
 PASS  2560x1440 sea: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  2560x1440 sea: the cards fit on screen, clear of the year chip and the Outlook
-PASS  2560x1440 sea: the numbers took 9.4 ms (under 50)
+PASS  2560x1440 sea: the numbers took 5.1 ms (under 50)
 PASS  2560x1440 wetland (7,17): the menu is cards (mangrove, khazan)
 PASS  2560x1440 wetland: every pill is the model's number: mangrove "Protects 0 homes here"; khazan "Protects 0 homes here"
 PASS  2560x1440 wetland: the other defences show greyed "Not here" (5)
 PASS  2560x1440 wetland: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  2560x1440 wetland: the cards fit on screen, clear of the year chip and the Outlook
-PASS  2560x1440 wetland: the numbers took 6.2 ms (under 50)
+PASS  2560x1440 wetland: the numbers took 14.1 ms (under 50)
 PASS  2560x1440 river (8,6): the menu is cards (small_dam, sand_mining)
-PASS  2560x1440 river: every pill is the model's number: small_dam "Protects 0 homes here"; sand_mining "Protects 0 homes here"
+PASS  2560x1440 river: every pill is the model's number: small_dam "Protects 0 homes here"; sand_mining "Saves no homes here"
 PASS  2560x1440 river: the other defences show greyed "Not here" (6)
 PASS  2560x1440 river: no NBS / ENGINEERED / BUILDING / COSMETIC tag
 PASS  2560x1440 river: the cards fit on screen, clear of the year chip and the Outlook
-PASS  2560x1440 river: the numbers took 4.9 ms (under 50)
-TIMING  build-menu numbers: median 8.0 ms, max 16.7 ms over 16 menus (fresh board read each time)
+PASS  2560x1440 river: the numbers took 12.7 ms (under 50)
+TIMING  build-menu numbers: median 8.9 ms, max 18.3 ms over 16 menus (fresh board read each time)
 PASS  zero console errors

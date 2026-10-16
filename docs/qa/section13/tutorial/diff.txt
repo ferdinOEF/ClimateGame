@@ -1,0 +1,5 @@
+1-brief: text identical; 0.000% of pixels differ by more than 24/255
+2-coach-step1: text identical; 0.000% of pixels differ by more than 24/255
+3-coach-step2: text identical; 0.000% of pixels differ by more than 24/255
+4-tile-clicked: text identical; 0.000% of pixels differ by more than 24/255
+5-how-to-play: text identical; 0.000% of pixels differ by more than 24/255

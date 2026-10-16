@@ -92,6 +92,7 @@ export class FieldGuide {
     });
     this.backdrop.querySelector(".field-guide-close")!.addEventListener("click", () => this.close());
     container.appendChild(this.backdrop);
+    window.addEventListener("keydown", this.onKey, true);
     this.grid = this.backdrop.querySelector(".field-guide-grid")!;
 
     this.toast = document.createElement("div");
@@ -214,11 +215,20 @@ export class FieldGuide {
     this.backdrop.hidden = true;
   }
 
+  /** Esc closes the open guide (and only that: the level's own Esc does not see it). */
+  private readonly onKey = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape" || !this.isOpen) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.close();
+  };
+
   get isOpen(): boolean {
     return !this.backdrop.hidden;
   }
 
   dispose(): void {
+    window.removeEventListener("keydown", this.onKey, true);
     window.clearTimeout(this.toastTimer);
     this.button.remove();
     this.backdrop.remove();

@@ -1,0 +1,30 @@
+
+> riptide-rising@1.0.0 verify:maya
+> tsx tools/verifyMaya.ts
+
+PASS  Tutorial: no Maya
+PASS  Tutorial: no Get ready panel
+PASS  Tutorial: its own objectives checklist is shown
+PASS  Tutorial: no warning heat
+PASS  Tutorial: every HUD control has a tooltip
+PASS  Tutorial: all 13 tooltips show real text
+PASS  Tutorial: built a mangrove, a dune and a house ({"mangrove":true,"dune":true,"house":true})
+PASS  Tutorial: completes (results screen, cleared) after surviving its cyclone
+PASS  Panaji: Get ready shows 1 rows
+PASS  Panaji: street map on at 21%
+PASS  Panaji: roads come from the street map, not drawn strips (127 road tiles; meshes town-gardens)
+PASS  Panaji: no building on any road tile
+PASS  Panaji: Maya greets: "Hello! I am Maya. Before the cyclone, our first job is to protect Kala Academy to Sharada Mandir. The steps are in the Get ready card, bottom right."
+PASS  Panaji: every HUD control has a tooltip
+PASS  Panaji: all 19 tooltips show real text
+PASS  Panaji: M mutes Maya
+PASS  Panaji: M unmutes Maya
+PASS  Panaji: warning heat shows two years out (19 tiles)
+PASS  Panaji: R hides the heat
+PASS  Panaji: R shows it again
+PASS  Panaji: cyclone preview matches (9 previewed at risk, 9 lost)
+PASS  Panaji: flood preview matches (38 previewed at risk, 38 lost)
+frame cost so far: 4.40 ms update, 50 draw calls, 359520 triangles
+PASS  zero console errors
+
+ALL CHECKS PASSED
