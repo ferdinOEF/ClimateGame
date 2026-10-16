@@ -27,7 +27,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
     <div class="help-title">How to Play</div>
     <button type="button" class="help-close" aria-label="Close">&times;</button>
   </div>
-  <div class="help-body">
+  <div class="help-body panjim-help-body">
 
     <section class="help-section">
       <h3>Objective</h3>
@@ -77,12 +77,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
         <div class="help-roster-item"><span>Breakwater</span><span>Sits offshore and weakens a cyclone's waves before the beach.</span></div>
       </div>
 
-      <div class="help-roster-group">
-        <div class="help-roster-terrain">Beach, Wetland or River</div>
-        <div class="help-roster-item"><span>Beachside Resort</span><span>Weakens the shore against storms.</span></div>
-        <div class="help-roster-item"><span>Yacht</span><span>Purely for show.</span></div>
-      </div>
-    </section>
+</section>
 
     <section class="help-section">
       <h3>A Few Tips</h3>
@@ -90,6 +85,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
         <li>Defend where the red is, before the storm's year ends.</li>
         <li>Mix kinds of defence: in this game, different kinds together do more than many of one kind.</li>
         <li>Don't put all your defence on one stretch of coast.</li>
+        <li>In this game, a cyclone brings wind as well as water, and rows of pandanus and mangroves slow it on the tiles behind them.</li>
       </ul>
     </section>
 

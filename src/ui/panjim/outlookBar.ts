@@ -80,7 +80,20 @@ export class OutlookBar {
 
   }
 
+  /** The last view, so `setHold` can repaint the line. */
+  private lastView: OutlookView | null = null;
+  /** True while a storm or its result cards are on screen: no countdown on the line (Section 12). */
+  private hold = false;
+
+  /** Holds the countdown while a storm or its result cards play: the line names the next storm without "N years". */
+  setHold(hold: boolean): void {
+    if (this.hold === hold) return;
+    this.hold = hold;
+    if (this.lastView) this.render(this.lastView);
+  }
+
   render(view: OutlookView): void {
+    this.lastView = view;
     // The track runs from the first day of the start year to the last day of the end year.
     const span = view.endYear + 1 - view.startYear;
     const pct = (year: number): number => Math.max(0, Math.min(100, ((year - view.startYear) / span) * 100));
@@ -122,8 +135,8 @@ export class OutlookBar {
 
     const next = view.storms.find((storm) => !storm.past);
     const done = `Every storm is behind you. Finish the city by ${view.endYear}.`;
-    this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next)}` : `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.`;
-    this.nextText = next ? describe(next) : done;
+    this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, this.hold)}` : `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.`;
+    this.nextText = next ? describe(next, this.hold) : done;
     this.lineEl.classList.toggle("locked", next !== undefined && next.yearsUntil <= 2);
     this.seaEl.textContent = `Sea +${view.seaLevelCm} cm`;
   }
@@ -162,10 +175,11 @@ export class OutlookBar {
   }
 }
 
-/** "Cyclone · 2030 · 5 years", "… · this year", or "Cyclone has passed". */
-export function describe(storm: OutlookStorm): string {
+/** "Cyclone · 2030 · 5 years", "… · this year", or "Cyclone has passed"; with `hold`, no countdown ("Monsoon flood · 2040 · strong"). */
+export function describe(storm: OutlookStorm, hold = false): string {
   const name = storm.challenge.name;
   if (storm.past) return `${name} has passed`;
+  if (hold) return `${name} · ${storm.challenge.year} · ${["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)]}`;
   const when = storm.yearsUntil <= 1 ? "this year" : `${storm.yearsUntil} years`;
   const words = ["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)];
   return `${name} · ${storm.challenge.year} · ${words} · ${when}`;

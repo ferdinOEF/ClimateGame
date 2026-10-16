@@ -42,8 +42,10 @@ export interface StormRecord {
   defences: Map<string, string>;
   /** The sea tile a cyclone came ashore at (null for a flood): the animation stages landfall there. */
   landfallKey?: string | null;
-  /** The water on every tile it reached, game metres, with the player's defences: the depth that decides which houses fall. */
+  /** The water on every tile it reached, game metres, with the player's defences. */
   depth: Map<string, number>;
+  /** The cyclone's wind on every tile it reached, game metres of water-equivalent (empty for a flood). Water and wind together decide which houses fall (`damageAt`). */
+  wind: Map<string, number>;
   /**
    * Every kind of defence standing when it came (whatever it defends
    * against: a khazan can still matter in a cyclone through a combo), with
@@ -80,11 +82,11 @@ export function defendsAgainst(elementId: string, hazards: readonly HazardId[]):
 export const VISUAL_DEPTH_CAP = 2.5;
 
 /** Resolves a storm on `state` (mutating it) and returns the outcome with its depth field. */
-function resolveWithField(state: GameState, args: StormArgs): { outcome: ChallengeOutcome; field: DepthField; depth: Map<string, number> } {
+function resolveWithField(state: GameState, args: StormArgs): { outcome: ChallengeOutcome; field: DepthField; depth: Map<string, number>; wind: Map<string, number> } {
   const houses = new Set<string>();
   // Standing houses only: one an earlier storm took is already down and cannot fall again.
   for (const [key, inst] of state.elements) if (isBuilding(state, key) && inst.degradeAmount < 1) houses.add(key);
-  const samples = new Map<string, { cyclone?: number; flood?: number }>();
+  const samples = new Map<string, { cyclone?: number; flood?: number; wind?: number }>();
   const resilienceUnit = args.houseRule?.resilience ?? args.strengthUnit;
   // The sea's and the river's own levels, for the water drawn on them (the same model, before the board changes).
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
@@ -98,8 +100,13 @@ function resolveWithField(state: GameState, args: StormArgs): { outcome: Challen
     args.combos,
     args.houseStars,
     args.houseRule,
-    (key, value, hazard) => {
+    (key, value, hazard, damage) => {
       const sample = samples.get(key) ?? {};
+      // The wind, never drawn as water: the storm script adds it where a house is judged.
+      if (damage > value) sample.wind = damage - value;
+      samples.set(key, sample);
+      // Wind alone is not water: nothing is drawn where only the wind reached.
+      if (value <= 0) return;
       // Drawn no deeper than VISUAL_DEPTH_CAP house-loss depths: deep water reads as deep without towering.
       // A house is lost at 1, so the cap never changes what the animation shows falling.
       sample[hazard] = Math.max(sample[hazard] ?? 0, Math.min(value, VISUAL_DEPTH_CAP * resilienceUnit));
@@ -119,7 +126,7 @@ function resolveWithField(state: GameState, args: StormArgs): { outcome: Challen
     frontStrength,
     houses
   });
-  return { outcome, field, depth: levels.depth };
+  return { outcome, field, depth: levels.depth, wind: levels.wind };
 }
 
 /**
@@ -142,7 +149,7 @@ export function housesLostWithout(before: GameState, args: StormArgs, removed: s
  */
 export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   const before = state.clone();
-  const { outcome, field, depth } = resolveWithField(state, args);
+  const { outcome, field, depth, wind } = resolveWithField(state, args);
   const hazards = hazardsOf(args.kind);
   const without = (keep: (elementId: string) => boolean): GameState => {
     const copy = before.clone();
@@ -171,5 +178,5 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
   const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
   const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);
-  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field }, savedBy, defences, landfallKey, depth, withoutEach };
+  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field }, savedBy, defences, landfallKey, depth, wind, withoutEach };
 }

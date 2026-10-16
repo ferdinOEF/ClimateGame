@@ -96,6 +96,17 @@ const casual = results.get("casual")!;
 const greedyWins = results.get("greedy")!.filter((g, i) => savedShare(g) > savedShare(casual[i])).map((g) => g.seed);
 lines.push("", `Greedy beats Casual on ${greedyWins.length} of ${seeds.length} seeds${greedyWins.length ? ` (${greedyWins.join(", ")})` : ""}.`);
 
+lines.push("", "## How often the wind decides a home (Section 12)", "", "Homes lost whose water alone stayed under the house-loss line: the wind tipped them. Mean per run, and as a share of the homes lost in that storm.", "", "| Archetype | 2030 cyclone | 2040 flood | 2050 compound |", "|---|---|---|---|");
+for (const persona of PERSONAS) {
+  const rs = results.get(persona)!;
+  const cells = [0, 1, 2].map((i) => {
+    const decided = rs.reduce((s, r) => s + (r.windDecided[i] ?? 0), 0);
+    const lost = rs.reduce((s, r) => s + ((r.houses[i]?.total ?? 0) - (r.houses[i]?.saved ?? 0)), 0);
+    return `${(decided / rs.length).toFixed(1)} (${lost > 0 ? pct(decided / lost) : "0%"})`;
+  });
+  lines.push(`| ${persona} | ${cells.join(" | ")} |`);
+}
+
 lines.push("", "## Every run", "", "| Archetype | Seed | Storm 1 saved | Storm 2 saved | Storm 3 saved | All | Stars | Won | Builds | Resilience | Biodiversity | Population | Food |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|");
 for (const persona of PERSONAS) {
   for (const r of results.get(persona)!) {

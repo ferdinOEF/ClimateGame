@@ -1,5 +1,5 @@
 import MODEL_DATA from "@data/hazardModel.json";
-import { axialKey, neighbor } from "./hex";
+import { axialDistance, axialKey, axialToWorld, neighbor } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
@@ -67,6 +67,23 @@ export interface HazardModelConfig {
     overwhelmDepthPerUnit: number;
   };
   houseLossDepthM: number;
+  /** Cyclone wind (Section 12): see `windField`. Absent: no wind. */
+  wind?: {
+    /** Wind damage on the shore at landfall, game metres of water-equivalent per unit of storm strength. */
+    perStrengthM: number;
+    /** The share of the wind left after each hex inland from the open sea. */
+    inlandKeep: number;
+    /** The wind falls off evenly to nothing this many hexes from the landfall site. */
+    landfallReachHex: number;
+    /** How much of the wind each shelterbelt kind takes out on the tile just downwind of it. */
+    shelter: Record<string, number>;
+    /** That share, 1, 2 and 3 hexes downwind. */
+    shelterFalloff: number[];
+    /** Downwind means within this angle of the wind's direction. */
+    shelterHalfAngleDeg: number;
+    /** However many rows stand upwind, at least this share of the wind still gets through. */
+    minKeep: number;
+  };
 }
 
 export const HAZARD_MODEL: HazardModelConfig = MODEL_DATA as unknown as HazardModelConfig;
@@ -88,6 +105,8 @@ export interface WaterBoard {
   mouthIndex: number;
   /** Open-sea tiles on the shore where a cyclone can come ashore, in order along the coast. */
   sites: string[];
+  /** Hexes from the nearest open-sea tile (0 on the sea itself): how far inland the wind has come. */
+  seaDistance: Map<string, number>;
 }
 
 const CHANNEL = new Set(["river", "estuary"]);
@@ -148,7 +167,22 @@ export function waterBoard(state: GameState, landfallZoneTiles?: readonly string
     .filter((tile) => tile.terrainId === "coast" && tile.neighbours.some((n) => ["beach", "land"].includes(tiles.get(n)!.terrainId)))
     .filter((tile) => !onCoast || onCoast.has(tile.key) || tile.neighbours.some((n) => onCoast.has(n)))
     .map((tile) => tile.key);
-  const board: WaterBoard = { tiles, riverIndex, mouthIndex, sites: alongTheCoast(sites) };
+  // How far inland each tile is, in hexes from the open sea, for the wind.
+  const seaDistance = new Map<string, number>();
+  const seaQueue: string[] = [];
+  for (const tile of tiles.values()) {
+    if (tile.terrainId !== "coast") continue;
+    seaDistance.set(tile.key, 0);
+    seaQueue.push(tile.key);
+  }
+  for (let i = 0; i < seaQueue.length; i++) {
+    for (const n of tiles.get(seaQueue[i])!.neighbours) {
+      if (seaDistance.has(n)) continue;
+      seaDistance.set(n, seaDistance.get(seaQueue[i])! + 1);
+      seaQueue.push(n);
+    }
+  }
+  const board: WaterBoard = { tiles, riverIndex, mouthIndex, sites: alongTheCoast(sites), seaDistance };
   if (first) {
     const map = boards.get(first) ?? new Map<string, WaterBoard>();
     map.set(coastKey, board);
@@ -226,6 +260,8 @@ export interface WaterField {
   /** The surge's depth and the flood's depth separately (for the animation's two kinds of water). */
   surge: Map<string, number>;
   flood: Map<string, number>;
+  /** The cyclone's wind on every tile it reaches, game metres of water-equivalent damage (`windField`); empty for a flood. Never drawn as water. */
+  wind: Map<string, number>;
   /** Engineered structures that failed (coord keys). */
   failed: string[];
   /** Nature defences overwhelmed and worn (coord keys). */
@@ -485,7 +521,8 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
   const floodDepth = depthOf(board, flood);
   const depth = new Map<string, number>(surgeDepth);
   for (const [key, d] of floodDepth) depth.set(key, Math.max(depth.get(key) ?? 0, d));
-  return { depth, surge: surgeDepth, flood: floodDepth, surgeLevel, floodLevel };
+  const wind = windField(state, board, storm, weaken, config);
+  return { depth, surge: surgeDepth, flood: floodDepth, wind, surgeLevel, floodLevel };
 }
 
 /**
@@ -519,4 +556,110 @@ export function computeWater(state: GameState, storm: StormInput, options: { com
 /** True where the water is deep enough to take a house. */
 export function floodsHouse(depth: number, config: HazardModelConfig = HAZARD_MODEL): boolean {
   return depth >= config.houseLossDepthM;
+}
+
+const worldOf = (key: string): { x: number; z: number } => {
+  const [q, r] = key.split(",").map(Number);
+  return axialToWorld({ q, r }, 1);
+};
+
+/**
+ * The direction from a landfall site out to open sea: towards the mass of sea
+ * within six hexes of it. The forecast's track and the wind both use it.
+ */
+export function seawardOf(board: WaterBoard, site: string): { x: number; z: number } {
+  const at = worldOf(site);
+  const reach = 6 * Math.sqrt(3);
+  let x = 0;
+  let z = 0;
+  for (const [key, tile] of board.tiles) {
+    if (tile.terrainId !== "coast") continue;
+    const p = worldOf(key);
+    const dx = p.x - at.x;
+    const dz = p.z - at.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance < 0.01 || distance > reach) continue;
+    x += dx / distance;
+    z += dz / distance;
+  }
+  const length = Math.hypot(x, z) || 1;
+  return { x: x / length, z: z / length };
+}
+
+/**
+ * A cyclone's wind on every tile it reaches, in game metres of water-
+ * equivalent damage (Section 12; a game rule, tuned so the surge stays the
+ * main threat and the wind decides some homes at the margin):
+ *
+ *   - it comes in off the sea at the landfall: `perStrengthM` × strength on
+ *     the shore there, falling off evenly to nothing `landfallReachHex` hexes
+ *     away along the coast;
+ *   - it weakens with every hex inland from the open sea (`inlandKeep`);
+ *     higher ground does not block it;
+ *   - rows of pandanus and mangroves are shelterbelts: each takes out a share
+ *     of the wind on the tiles up to three hexes downwind of it (within
+ *     `shelterHalfAngleDeg` of the wind's direction), several rows multiply,
+ *     and at least `minKeep` always gets through. Nothing else slows it.
+ *
+ * A flood has no wind. Not water: never drawn as water, only added to it
+ * where a house's damage is judged.
+ */
+export function windField(
+  state: GameState,
+  board: WaterBoard,
+  storm: StormInput,
+  weaken: ReadonlyMap<string, number> = new Map(),
+  config: HazardModelConfig = HAZARD_MODEL
+): Map<string, number> {
+  const wind = new Map<string, number>();
+  const w = config.wind;
+  if (!w || storm.kind === "flood" || storm.landfall === null || board.sites.length === 0) return wind;
+  const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall))];
+  const [sq, sr] = site.split(",").map(Number);
+  // In the compound storm the wind comes with the surge, at the surge's share.
+  const shore = w.perStrengthM * storm.strength * (storm.kind === "compound" ? config.compound.surgeShare : 1);
+  for (const [key, tile] of board.tiles) {
+    if (tile.terrainId === "coast") continue;
+    const [q, r] = key.split(",").map(Number);
+    const along = 1 - axialDistance({ q, r }, { q: sq, r: sr }) / w.landfallReachHex;
+    if (along <= 0) continue;
+    const inland = Math.max(0, (board.seaDistance.get(key) ?? 99) - 1);
+    const v = shore * along * Math.pow(w.inlandKeep, inland);
+    if (v > 1e-3) wind.set(key, v);
+  }
+  // Shelterbelts, downwind: the wind blows from the sea at the landfall, inland.
+  const out = seawardOf(board, site);
+  const blow = { x: -out.x, z: -out.z };
+  const cos = Math.cos((w.shelterHalfAngleDeg * Math.PI) / 180);
+  const keep = new Map<string, number>();
+  for (const [key, inst] of state.elements) {
+    const share = w.shelter[inst.elementId];
+    if (!share) continue;
+    const def = ELEMENT_BY_ID.get(inst.elementId);
+    const scale = def ? state.maturityFraction(inst, def) * Math.max(0, 1 - inst.degradeAmount) * (weaken.get(key) ?? 1) : 1;
+    if (scale <= 0) continue;
+    const from = worldOf(key);
+    const [q0, r0] = key.split(",").map(Number);
+    const reach = w.shelterFalloff.length;
+    for (let dq = -reach; dq <= reach; dq++) {
+      for (let dr = Math.max(-reach, -dq - reach); dr <= Math.min(reach, -dq + reach); dr++) {
+        const d = (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+        if (d < 1 || d > reach) continue;
+        const target = `${q0 + dq},${r0 + dr}`;
+        if (!wind.has(target)) continue;
+        const p = worldOf(target);
+        const vx = p.x - from.x;
+        const vz = p.z - from.z;
+        if ((vx * blow.x + vz * blow.z) / Math.hypot(vx, vz) < cos) continue;
+        keep.set(target, (keep.get(target) ?? 1) * (1 - share * w.shelterFalloff[d - 1] * scale));
+      }
+    }
+  }
+  for (const [key, k] of keep) wind.set(key, wind.get(key)! * Math.max(w.minKeep, k));
+  return wind;
+}
+
+/** Water and wind together on a tile: what a house there has to stand against (game metres). */
+export function damageAt(field: { depth: ReadonlyMap<string, number>; wind?: ReadonlyMap<string, number> }, key: string): number {
+  return (field.depth.get(key) ?? 0) + (field.wind?.get(key) ?? 0);
 }

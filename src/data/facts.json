@@ -331,7 +331,7 @@
     {
       "id": "place-damaged",
       "kind": "gameRule",
-      "text": "A named place counts as damaged when the water on its tile would have destroyed a house there.",
+      "text": "A named place counts as damaged when the water and wind on its tile would have destroyed a house there.",
       "elements": []
     },
     {
@@ -339,6 +339,21 @@
       "kind": "gameRule",
       "text": "Each defence's number is the homes the same storm would have taken with that kind removed, all else equal.",
       "elements": []
+    },
+    {
+      "id": "cyclone-wind",
+      "kind": "gameRule",
+      "text": "A cyclone brings wind as well as surge, strongest where it lands. Water and wind together decide each house.",
+      "elements": []
+    },
+    {
+      "id": "wind-shelter",
+      "kind": "gameRule",
+      "text": "Rows of pandanus and mangroves slow the wind on the tiles behind them.",
+      "elements": [
+        "sandy_vegetation",
+        "mangrove"
+      ]
     }
   ]
 }

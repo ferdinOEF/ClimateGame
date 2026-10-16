@@ -3,7 +3,7 @@
  * viewport. This drives the real game in a browser through every layout
  * the brief lists and checks the rectangles:
  *
- *   resolutions 1366x768, 1920x1080, 2560x1440
+ *   resolutions 1280x600, 1366x768, 1920x1080, 2560x1440 (1280x600 from Section 12)
  *   x the Discovery card hidden and shown (its tallest card: the longest cited fact, dunes-barrier, with its Source row)
  *   x the Get ready panel open and collapsed
  *   x no tooltip and a tooltip open
@@ -18,6 +18,7 @@ import { startDevServer } from "./devServer";
 
 const PORT = 5197;
 const ALL_RESOLUTIONS = [
+  { w: 1280, h: 600 },
   { w: 1366, h: 768 },
   { w: 1920, h: 1080 },
   { w: 2560, h: 1440 }

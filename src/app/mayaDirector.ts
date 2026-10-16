@@ -47,6 +47,11 @@ const TIPS_FOR: Record<string, string[]> = {
   compound: ["mangroves", "khazans", "dunes"]
 };
 
+/** A tip about one kind of storm that does not answer the storm coming now (Section 12): withdrawn when a phase ends. */
+export function staleTip(id: string, nextKind: string): boolean {
+  return Object.values(TIPS_FOR).some((ids) => ids.includes(id)) && !(TIPS_FOR[nextKind] ?? []).includes(id);
+}
+
 function coordOf(key: string): AxialCoord {
   const [q, r] = key.split(",").map(Number);
   return { q, r };

@@ -30,12 +30,12 @@ export class StatusObjective {
     for (const row of rows) {
       const li = document.createElement("li");
       li.className = "status-objective-step";
-      li.classList.toggle("done", row.job.done);
+      li.classList.toggle("done", row.done);
       li.innerHTML = `<span class="status-objective-check" aria-hidden="true"></span><span class="status-objective-label"></span><span class="status-objective-progress"></span>`;
       (li.querySelector(".status-objective-label") as HTMLElement).textContent = row.job.label;
       const progress = li.querySelector(".status-objective-progress") as HTMLElement;
       progress.textContent = `${Math.min(row.current, row.target)}/${row.target}`;
-      if (row.job.done) li.setAttribute("aria-label", `${row.job.label}: done`);
+      if (row.done) li.setAttribute("aria-label", `${row.job.label}: done`);
       this.list.appendChild(li);
     }
   }

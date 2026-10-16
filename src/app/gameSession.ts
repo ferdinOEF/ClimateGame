@@ -53,6 +53,9 @@ import { panjimHelpHtml } from "@ui/panjim/panjimHelp";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
+import { MapPins } from "@ui/panjim/mapPins";
+import { AreaOutline } from "@render/areaOutline";
+import { LeaveConfirm } from "@ui/panjim/leaveConfirm";
 import { greyColor, sceneryGreyLevels } from "@render/sceneryGrey";
 import startingStateData from "@data/startingState.json";
 
@@ -271,6 +274,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const coneOverlay = new ForecastConeOverlay(levelTiles.length);
   coneOverlay.reducedMotion = prefersReducedMotionNow();
   scene.add(coneOverlay.group);
+  /** Panjim 2050: the phase's area to protect, kept faintly once the cone has gone (Section 12). */
+  const areaOutline = new AreaOutline();
+  areaOutline.reducedMotion = prefersReducedMotionNow();
+  scene.add(areaOutline.group);
+  /** Pins for the places open objectives name, and the "Area protected" note (Section 12). */
+  const mapPins = new MapPins(container, (x, y, z) => worldToScreen(x, y, z));
   /**
    * Panjim 2050's storms: the water (one instanced layer, drawn from the
    * storm's depth field) and the sky (the cyclone's spiral, the flood's rain
@@ -607,7 +616,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     objectivesPanel.briefOpen ||
     Boolean(
       document.querySelector(
-        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .result-cards:not([hidden]), .sources-backdrop"
+        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .result-cards:not([hidden]), .sources-backdrop, .leave-confirm-backdrop:not([hidden])"
       )
     );
   const riskIntro = new RiskIntroFx(container, {
@@ -686,6 +695,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           showCone: (cone) => {
             if (cone) coneOverlay.show(cone, (coord) => terrain.heightAt(coord));
             else coneOverlay.hide();
+          },
+          showAreaOutline: (keys) => areaOutline.show(keys.map((key) => {
+            const [q, r] = key.split(",").map(Number);
+            return { q, r };
+          }), (coord) => terrain.heightAt(coord)),
+          areaProtected: () => {
+            const at = areaOutline.centre;
+            if (at) mapPins.say("Area protected", { name: "", x: at.x, y: 0.6, z: at.z });
+          },
+          showPins: (pins) => mapPins.setPins(pins.map((pin) => {
+            const { x, z } = axialToWorld({ q: pin.q, r: pin.r }, 1.0);
+            return { name: pin.name, x, y: (monuments.topAt({ q: pin.q, r: pin.r }) ?? terrain.heightAt({ q: pin.q, r: pin.r })) + 0.15, z };
+          })),
+          setGuidanceVisible: (visible) => {
+            areaOutline.group.visible = visible;
+            mapPins.setVisible(visible);
           },
           frameWorld: (box) => {
             // A gentle glide (cancelled by any drag) to frame the box, a little wider than it.
@@ -2314,15 +2339,26 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     openTilePopover(coord);
   });
 
+  // "Leave Panjim?" on Esc (Section 12). Panjim only: the Tutorial keeps its behaviour.
+  const leaveConfirm = panjim ? new LeaveConfirm(container) : null;
   const keydownAbort = new AbortController();
   document.addEventListener(
     "keydown",
     (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      // Another panel (Sources) already answered this Esc.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       // Escape closes the popover if one is open; otherwise it is the
-      // "get me out of here" key, which the shell turns into a quit prompt.
+      // "get me out of here" key. On Panjim it asks first (Section 12): the
+      // other overlays answer their own Esc, and the confirm its own.
       if (buildPopover.isOpen) buildPopover.hide();
-      else if (!sessionFinished) options.onExit();
+      else if (sessionFinished) return;
+      else if (!leaveConfirm) options.onExit();
+      // Not while a storm plays: the year is saved only once it has settled.
+      else if (!leaveConfirm.isOpen && !panjim?.isBusy && (!overlayOpen() || objectivesPanel.briefOpen)) {
+        void leaveConfirm.ask(panjim?.hasSave ? "Your progress is saved." : "You haven't built anything yet.").then((leave) => {
+          if (leave) options.onExit();
+        });
+      }
     },
     { signal: keydownAbort.signal }
   );
@@ -2348,6 +2384,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
     coneOverlay.tick(nowMs);
+    areaOutline.tick(nowMs);
+    mapPins.update(nowMs);
     if (ambientLife) {
       ambientLife.setWind(storm.windStrength);
       ambientLife.tick(nowMs);
@@ -2447,6 +2485,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Frame cost counters for tools/phaseShots.ts (see scene.ts `frameStats`).
     __frameStatsForTest: frameStats,
     __coneForTest: coneOverlay,
+    __areaOutlineForTest: areaOutline,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
     __audioForTest: audioStateForTest,
@@ -2664,6 +2703,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     timers.clear();
 
     keydownAbort.abort();
+    leaveConfirm?.dispose();
+    mapPins.dispose();
+    areaOutline.dispose();
     panjim?.dispose();
     stormReport.dispose();
     mapLabels.dispose();

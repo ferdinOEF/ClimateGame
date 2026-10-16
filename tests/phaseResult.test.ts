@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { housesLostWithout } from "../src/core/stormRecord";
-import { floodsHouse } from "../src/core/hazardModel";
+import { damageAt, floodsHouse } from "../src/core/hazardModel";
 import { nextLabel, phaseResult, placesInArea, resultHeadline } from "../src/core/phaseResult";
 import { mapById } from "../src/levels/levelMap";
 import { passYear } from "./helpers/passYear";
@@ -72,19 +72,20 @@ describe("the result cards' numbers", () => {
     }
   });
 
-  it("decides a place's Damaged by the same depth line the houses fall at", () => {
+  it("decides a place's Damaged by the same line the houses fall at (water and wind together)", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const challenge = run.schedule[0];
     play(run, false);
     const record = run.stormRecords.get(challenge.id)!;
-    for (const key of record.outcome.damagedHouses) expect(floodsHouse(record.depth.get(key) ?? 0), key).toBe(true);
+    for (const key of record.outcome.damagedHouses) expect(floodsHouse(damageAt(record, key)), key).toBe(true);
   });
 
   it("lists the places in or next to the phase's area to protect, and only the kinds built that phase", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const challenge = run.schedule[0];
     const area = run.areas.get(challenge.id)!;
-    expect(area.length).toBe(8);
+    // Section 12: the wind tips 8,7 at the river mouth too.
+    expect(area.length).toBe(9);
     play(run, true);
     const result = phaseResult(challenge, run.stormRecords.get(challenge.id)!, area, PLACES, run.phaseBuilds.get(challenge.id) ?? []);
     expect(result.eyebrow).toBe("2030 · Cyclone");

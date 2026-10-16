@@ -217,3 +217,12 @@ export function mayaAftermath(
   const fixedLoss = lossText.replace(/lost 1 homes/, "lost 1 home");
   return { text: heroText ? `${heroText} ${fixedLoss}` : fixedLoss, mood: outcome.stars === 3 ? "celebrates" : "worried" };
 }
+
+/**
+ * Maya's lines that belong to one phase: its storm calls, the replay, the
+ * calm, the warnings and the opening objective. Withdrawn when the phase ends
+ * (Section 12), so none of them is said in the next one.
+ */
+export function isPhaseLine(id: string): boolean {
+  return /^(storm|replay|calm|warn|last|fixed|sample-warn):/.test(id) || id === MAYA.opening.id;
+}

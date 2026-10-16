@@ -1238,3 +1238,62 @@ NITs:
 **Could not be run or checked here:**
 - Firefox and WebKit, and frame rates on a real GPU.
 - Production after the merge, in a browser: this container's network refuses the site. The deploy is checked through Vercel's API instead.
+
+# Section 12 — bugs, guidance on the map, objectives from the model, cyclone wind
+
+Branch `section-12-guidance`, off master `9e5e3b0` (Section 11's merge;
+tag `pre-section-12`, and `backup/pre-section-12` on GitHub). Headless
+Chromium with software GL. Evidence in `docs/qa/section12/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 484 pass, 6 skipped. New: `section12`, `phaseObjectives`, `wind`. |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. |
+| `npm run test:labels` (now with 1280x600) | 49 of 49 views. |
+| `npm run test:layout` (now with 1280x600) | 140 of 140 layouts. |
+| `npm run test:maya` | Pass, zero console errors. |
+| `npm run verify:maya` | All checks pass (street map at 21%; the cyclone and flood previews equal what the storm takes: 9 and 38). One check changed: Get ready now shows the model's rows, one or more, not 2–3 templates. |
+| Preview equals resolution | `tests/preview.test.ts` and `tests/phaseObjectives.test.ts` (the storm takes exactly what the objective's model said, in all three phases). |
+| Section 12 browser checks (`tools/section12Checks.ts`, `checks.txt`) | 41 of 41, zero console errors. |
+| Tutorial (`tutorial/`, against master `9e5e3b0`) | Text identical, 0.000% of pixels differ, in all five states. |
+| axe-core | No serious or critical violations: start popup, the board with outline and pins, "Leave Panjim?". |
+| Bots, 20 seeds (`bots.md`) | See `docs/PROGRESS.md` (Section 12). |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**The browser checks prove:**
+- no Resort on the beach's menu and no Yacht on the sea's;
+- no build counter during the storm or the result cards, no "N years" on the Outlook during the cards, and "10 builds until the flood" at the start of 2031;
+- the first objective is the model's ("Build 2 breakwaters between Kala Academy and Sharada Mandir School"), with pins on both places;
+- a build outside the objective says so; the outline appears after the first build and shrinks 9 → 1 → 0 as the objective is followed, with "Area protected";
+- "Objective complete" on result card 1;
+- at the start of 2031, nothing Maya says or has queued is about the cyclone;
+- Esc asks "Leave Panjim?"; Esc again and Stay keep playing; Leave goes;
+- the level card says "In progress · 2031", and the Continue popup shows "If you continue: The flood comes in 10 years";
+- the start popup, Help and the coming-up card fit with no scrolling at 1280x600, 1366x768, 1920x1080 and 2560x1440.
+
+**Screenshots** at all four sizes: the start popup, Help, the board with the outline and pins, result card 1, the coming-up card. At 1920 also: Leave Panjim?, the level select and the Continue popup. Gray and deuteranopia copies of the popup, outline and result-card shots. I looked at them. Fixed from the first rounds: Help overflowed (now three columns), pins overlapped place labels (labels now give way), and pin names were cut short.
+
+**Independent review (Section 12): 0 BLOCKER, 2 MAJOR, 8 MINOR, 7 NIT.**
+
+MAJORs fixed:
+- **Maya kept a cyclone tip into the flood phase** ("Dunes and pandanus shield the beach…"), and the check could not catch it. Tips about a storm that is not coming next are now withdrawn at the phase's end. The check now looks at her line and her whole queue.
+- **Saves from before this section** kept template rows with no tiles, so every build said "outside the area". Loading one now chooses the objective afresh. The outside-the-area line now shows only once the build went through.
+
+MINORs fixed:
+- an Esc that closed Sources also opened the leave prompt;
+- the prompt opened mid-storm, before the year was saved (now it waits), and said "saved" before anything was (now "You haven't built anything yet.");
+- focus now returns where it was when the prompt closes;
+- the Continue popup's forecast is captioned "If you continue:";
+- a scratch script was removed;
+- Help's wind tip now starts "In this game, …";
+- `PROGRESS.md`'s claims about templates and bug 3 were corrected.
+
+Left as they are:
+- **Generating an objective takes 0.3–1.0 s.** It runs once a phase, at the storm's end, while the result cards are up.
+- **The nits:** the guidance layers also exist, empty, in the Tutorial; the hover tint is not cleared when a hovered row is removed; the level card reads its save twice.
+
+**Not met, and reported:**
+- **Casual wins 20%**, against a target of 25–35%. No tested setting put Casual and Smart both in range.
+- **The cited source for shelterbelts could not be verified**: this container's network blocks FAO, USDA and Wikipedia. So the wind ships as game rules only.

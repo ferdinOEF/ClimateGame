@@ -55,5 +55,15 @@
     "maxProtectionM": 5,
     "engineeredMaxProtectionM": 6
   },
-  "houseLossDepthM": 0.6
+  "houseLossDepthM": 0.6,
+  "wind": {
+    "_comment": "Cyclone wind (Section 12), a game rule, tuned so the surge stays the main threat and the wind decides some homes at the margin. In game metres of water-equivalent: a house falls when the water on its tile plus the wind there reaches houseLossDepthM. perStrengthM x strength on the shore at landfall (x compound.surgeShare in the compound storm), falling off evenly to nothing landfallReachHex hexes from the landfall site, and keeping inlandKeep of itself per hex inland from the open sea; higher ground does not block it. Rows of pandanus (sandy_vegetation) and mangroves are shelterbelts: each takes out shelter[kind] x shelterFalloff[distance-1] of the wind on tiles up to three hexes downwind (within shelterHalfAngleDeg of the wind's direction); rows multiply, and at least minKeep always gets through. Nothing else slows the wind. A flood has no wind.",
+    "perStrengthM": 0.2,
+    "inlandKeep": 0.75,
+    "landfallReachHex": 14,
+    "shelter": { "sandy_vegetation": 0.35, "mangrove": 0.4 },
+    "shelterFalloff": [1, 0.6, 0.3],
+    "shelterHalfAngleDeg": 60,
+    "minKeep": 0.4
+  }
 }

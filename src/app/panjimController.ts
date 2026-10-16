@@ -33,13 +33,14 @@ import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntr
 import { PrefToggle, isTyping, togglesRow } from "@ui/panjim/hudToggles";
 import { tooltipText } from "@ui/tooltip";
 import { Maya } from "@ui/panjim/maya";
-import { MayaDirector, GUIDE_NOTES } from "./mayaDirector";
+import { MayaDirector, GUIDE_NOTES, staleTip } from "./mayaDirector";
 import { factById } from "@core/facts";
 import { HudPanels } from "@ui/panjim/hudPanels";
 import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { MAYA, stormWord } from "@core/mayaLines";
+import { panjimSaveKey } from "@levels/savedRun";
+import { isPhaseLine, MAYA, stormWord } from "@core/mayaLines";
 import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
@@ -124,6 +125,14 @@ export interface PanjimHost {
   showCone: (cone: ConeShow | null) => void;
   /** Glides the camera to frame a box of the board, in world x/z. */
   frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }) => void;
+  /** The phase's area to protect, faintly, once the cone has gone (an empty list fades it out). */
+  showAreaOutline: (keys: string[]) => void;
+  /** "Area protected", where the outline was. */
+  areaProtected: () => void;
+  /** Pins the places open objectives name. */
+  showPins: (pins: { name: string; q: number; r: number }[]) => void;
+  /** The outline and pins on or off (off while a storm or its result cards are on screen). */
+  setGuidanceVisible: (visible: boolean) => void;
   /** Draws the warning heat (an empty list clears it). */
   showHeat: (tiles: HeatViewTile[]) => void;
   /** Whether any menu, card or modal is open (the risk sequence never starts under one). */
@@ -230,6 +239,8 @@ export class PanjimController {
     this.jar = this.run.economyEnabled ? new CoinJar(host.container, () => this.collectJar()) : null;
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
     this.getReady = new GetReadyPanel(this.run.economyEnabled);
+    // Hovering a row lights the tiles that count for it (Section 12).
+    this.getReady.onRowHover((job) => this.host.tintTiles(job ? (job.tiles ?? []).map((key) => ({ key, color: "#fff3c4", blend: 0.5 })) : null));
     host.mountPanel(this.getReady.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     this.resultCards = new ResultCards(host.container);
@@ -395,6 +406,25 @@ export class PanjimController {
     if (preview) this.host.addBriefFeature(preview);
   }
 
+  /**
+   * The start popup's forecast for a saved run: the next storm as the save
+   * stands ("The flood comes in 10 years"), in place of 2026's. Read on the
+   * live run, put back exactly as it was.
+   */
+  private showSavedForecastOnBrief(snapshot: RunSnapshot): void {
+    const fresh = this.run.snapshot();
+    this.run.restore(snapshot);
+    const next = this.run.nextChallenge();
+    const preview = next ? this.forecastPreview(next, next.id === this.run.schedule[0]?.id) : null;
+    this.run.restore(fresh);
+    if (!preview) return;
+    // Begin starts a new run with its own forecast: this one is about the save.
+    const line = preview.querySelector(".cone-preview-line");
+    if (line) line.textContent = `If you continue: ${line.textContent}`;
+    this.host.container.querySelector(".brief-feature")?.remove();
+    this.host.addBriefFeature(preview);
+  }
+
   /** The forecast's map for `challenge` as the board stands, with its line and legend (the start popup; the result cards). */
   forecastPreview(challenge: ScheduledChallenge, first: boolean): HTMLElement | null {
     const cone = this.run.forecastCone(challenge);
@@ -546,6 +576,7 @@ export class PanjimController {
   /** Repaints the Outlook, the heat and the panels from the current year. */
   renderOutlook(): void {
     this.renderHeat();
+    this.renderGuidance();
     this.mayaDirector?.consider();
     this.renderGetReady();
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -688,6 +719,10 @@ export class PanjimController {
 
     // The result cards (Section 9): what the storm did, what protected the homes, and what comes next.
     if (record) await this.showResults(challenge, record);
+    // The phase is over: nothing she queued about it may be said in the next one (Section 12).
+    this.maya.dismiss();
+    const nextKind = this.run.nextChallenge()?.kind;
+    this.maya.withdraw((line) => isPhaseLine(line.id) || (!!nextKind && staleTip(line.id, nextKind)));
     this.maya.setState("idle");
   }
 
@@ -702,7 +737,7 @@ export class PanjimController {
    * The next phase starts when they close, its cone on the map.
    */
   private async showResults(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
-    const result = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []);
+    const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
@@ -821,7 +856,16 @@ export class PanjimController {
   // ---- autosave -----------------------------------------------------------
 
   private saveKey(): string {
-    return `riptide-rising:panjim2050:v3:${this.host.level.id}`;
+    return panjimSaveKey(this.host.level.id);
+  }
+
+  /** Whether this run has been saved on this device (the leave prompt says so only when it has). */
+  get hasSave(): boolean {
+    try {
+      return localStorage.getItem(this.saveKey()) !== null;
+    } catch {
+      return false;
+    }
   }
 
   /** Writes the run to this device: the board, every replay snapshot (so Replay survives a reload), and real time played. */
@@ -875,6 +919,8 @@ export class PanjimController {
     if (!saved || saved.snapshot?.version !== 3 || saved.snapshot.turn >= this.run.totalYears) return false;
     const label = String(this.run.config.startYear + saved.snapshot.turn);
     const data = saved;
+    // The popup's forecast is the saved phase's, so it shows what "Continue" leads to (Section 12).
+    this.showSavedForecastOnBrief(data.snapshot);
     this.host.offerResume(`Continue from ${label}`, () => {
       this.run.restore(data.snapshot);
       for (const [id, lock] of data.locks) this.run.replaySnapshots.set(id, lock);
@@ -1063,8 +1109,11 @@ export class PanjimController {
     this.noteBoard();
     // A refused build changes nothing, the year included.
     const turn = this.run.turnNumber;
+    // Worked out on the board before the build, said only once the build went through.
+    const outside = this.host.state.canBuild(coord, elementId) ? this.outsideNote(coord, elementId) : null;
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
+    if (outside) this.host.showBanner(outside, 5200);
     this.lastTurnEnded = turn;
     this.host.placeElement(coord, elementId);
     this.host.telemetry.action("build", 1);
@@ -1123,14 +1172,18 @@ export class PanjimController {
       const pending = this.pendingChallenges;
       this.pendingChallenges = [];
       this.stagingYearEnd = pending.length > 0;
+      // No countdowns while the storm and its result cards are on screen: they would read the old year.
+      this.holdCountdowns(pending.length > 0);
       for (const staged of pending) await this.stageChallenge(staged.challenge, staged.outcome, staged.failedIds);
       this.stagingYearEnd = false;
+      this.holdCountdowns(false);
       for (const event of later) if (event.type !== "challenge") this.handleEvent(event);
       if (!this.run.finished) this.clock.tick(this.clockView());
       else this.clock.set(this.clockView());
       this.showConeIfPhaseStart();
     } finally {
       this.stagingYearEnd = false;
+      this.holdCountdowns(false);
       this.busy = false;
     }
     this.renderOutlook();
@@ -1201,6 +1254,61 @@ export class PanjimController {
         break;
     }
   }
+
+  /** Hides the build counter and the Outlook's "N years" while a storm or its result cards are on screen, and the guidance with them. */
+  private holdCountdowns(hold: boolean): void {
+    this.clock.setHold(hold);
+    this.outlook.setHold(hold);
+    this.host.setGuidanceVisible(!hold);
+  }
+
+  /** How many area tiles the outline showed last time: when it falls to none, the area is protected. */
+  private outlined = 0;
+
+  /**
+   * The target, visible for the whole phase (Section 12): once the cone has
+   * gone, a faint outline of the phase's area to protect, only where a home
+   * would still be lost (the same model as the heat, recomputed after every
+   * build); "Area protected" when none is left, and back if a tile is unsafe
+   * again. And pins on every place an open objective names.
+   */
+  private renderGuidance(): void {
+    const next = this.run.nextChallenge();
+    const zones = this.run.zones;
+    const open = next && zones ? this.run.prep.filter((job) => job.challengeId === next.id && !prepProgress(job, this.host.state, zones).done) : [];
+    const pins = new Map<string, { name: string; q: number; r: number }>();
+    for (const job of open) for (const pin of job.pins ?? []) pins.set(pin.name, pin);
+    this.host.showPins([...pins.values()]);
+    if (!next || this.coneShown || this.run.finished) {
+      this.host.showAreaOutline([]);
+      this.outlined = 0;
+      return;
+    }
+    const area = this.run.areas.get(next.id) ?? [];
+    const atRisk = new Set(this.run.exposureFor(next)?.housesAtRisk ?? []);
+    const keys = area.filter((key) => atRisk.has(key));
+    this.host.showAreaOutline(keys);
+    if (this.outlined > 0 && keys.length === 0 && area.length > 0) this.host.areaProtected();
+    this.outlined = keys.length;
+  }
+
+  /**
+   * A build that counts for no open objective row gets one line saying so,
+   * with what it does protect (Section 12).
+   */
+  private outsideNote(coord: AxialCoord, elementId: string): string | null {
+    const next = this.run.nextChallenge();
+    const zones = this.run.zones;
+    if (!next || !zones) return null;
+    const key = `${coord.q},${coord.r}`;
+    const open = this.run.prep.filter((job) => job.challengeId === next.id && !prepProgress(job, this.host.state, zones).done);
+    if (open.length === 0 || open.some((job) => job.elementId === elementId && (job.tiles ?? []).includes(key))) return null;
+    const homes = this.run.protectsHere(next, coord, elementId);
+    return homes === 0
+      ? "This protects no homes, and it's outside the area, so it doesn't count for the objective."
+      : `This protects ${homes} ${homes === 1 ? "home" : "homes"}, but it's outside the area, so it doesn't count for the objective.`;
+  }
+
 
   private syncControls(): void {
     this.clock.setControlsEnabled(!this.busy && !this.run.finished);

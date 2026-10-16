@@ -221,18 +221,7 @@ export class Maya {
       event.stopPropagation();
       this.setMinimised(false);
     });
-    // Esc dismisses her line before it reaches the level's own Esc (quit).
-    window.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.key === "Escape" && this.current) {
-          event.stopPropagation();
-          event.preventDefault();
-          this.dismiss();
-        }
-      },
-      { capture: true, signal: this.abort.signal }
-    );
+    // Esc is the level's own key now ("Leave Panjim?" asks first, Section 12): her line stays, "Got it" and × close it.
     // The page changed size: her box is worked out again (whole pixels), and her bubble is placed again.
     const resized = (): void => {
       this.applyFigureSize();

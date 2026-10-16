@@ -55,6 +55,8 @@ export interface PrepConfig {
   places: Record<string, string>;
   /** At most this many jobs per storm (default 3). */
   max?: number;
+  /** Each phase's objective is chosen by the hazard model (core/phaseObjectives.ts; Section 12) instead of the templates. */
+  model?: boolean;
 }
 
 export interface PrepObjective {
@@ -72,6 +74,10 @@ export interface PrepObjective {
   /** For an opening objective's step: the stretch's tiles it counts in (instead of `zone`), and the objective's title. */
   tiles?: string[];
   heading?: string;
+  /** A model-chosen row (core/phaseObjectives.ts): the homes its picks saved in the model when it was set. */
+  homes?: number;
+  /** The places the row names, pinned on the map while it is open (Section 12). */
+  pins?: { name: string; q: number; r: number }[];
 }
 
 function standingIn(state: GameState, zones: ZoneIndex, elementId: string, zone: string, tiles?: ReadonlySet<string>): number {
@@ -171,7 +177,13 @@ export function generatePrep(
 }
 
 /** How far along a job is: what has been built for it, out of `count`. */
-export function prepProgress(job: PrepObjective, state: GameState, zones: ZoneIndex): { current: number; target: number } {
-  const current = Math.max(0, standingIn(state, zones, job.elementId, job.zone, job.tiles ? new Set(job.tiles) : undefined) - job.baseline);
-  return { current: Math.min(current, job.count), target: job.count };
+/**
+ * A job's row as the player sees it: the count standing now, the target, and
+ * whether it is ticked. The tick and the counter come from the one count
+ * (Section 12): a row is never ticked below its target, even after a defence
+ * that once completed it is demolished or lost.
+ */
+export function prepProgress(job: PrepObjective, state: GameState, zones: ZoneIndex): { current: number; target: number; done: boolean } {
+  const current = Math.min(Math.max(0, standingIn(state, zones, job.elementId, job.zone, job.tiles ? new Set(job.tiles) : undefined) - job.baseline), job.count);
+  return { current, target: job.count, done: current >= job.count };
 }

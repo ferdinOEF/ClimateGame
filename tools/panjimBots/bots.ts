@@ -23,7 +23,7 @@ import { ELEMENT_BY_ID } from "../../src/core/elements";
 import { axialKey, neighbor, type AxialCoord } from "../../src/core/hex";
 import { resolveChallenge, ZoneIndex } from "../../src/core/zones";
 import { computeCombos } from "../../src/core/combos";
-import { computeWater, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE } from "../../src/core/hazardModel";
+import { computeWater, damageAt, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE } from "../../src/core/hazardModel";
 import { HEAT_LEAD_YEARS } from "../../src/core/exposure";
 import type { ChallengeKind, ScheduledChallenge } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
@@ -42,6 +42,8 @@ export interface BotResult {
   protection: number[];
   /** Houses in each storm's path: how many were saved, out of how many. */
   houses: { saved: number; total: number }[];
+  /** Per storm: homes lost that the wind decided (their water alone stayed under the line; Section 12). */
+  windDecided: number[];
   index: number;
   /** The index's five parts. */
   components: { resilience: number; biodiversity: number; livelihoods: number; population: number; food: number };
@@ -111,7 +113,9 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
     prep: level.prep,
     economy: level.economy,
     growth: level.growth,
-    landmarks: MAP.landmarks
+    landmarks: MAP.landmarks,
+    // Objectives never change an outcome; choosing them costs time the bots do not need.
+    generateObjectives: false
   });
 }
 
@@ -271,6 +275,10 @@ class Player {
       stars: outcomes.map((o) => o.stars),
       protection: outcomes.map((o) => Number(o.protection.toFixed(3))),
       houses: outcomes.map((o) => ({ saved: o.housesSaved, total: o.housesTotal })),
+      windDecided: this.run.schedule.map((c) => {
+        const record = this.run.stormRecords.get(c.id);
+        return record ? record.outcome.damagedHouses.filter((key) => !floodsHouse(record.depth.get(key) ?? 0)).length : 0;
+      }),
       index: index.index,
       components: {
         resilience: index.resilience,
@@ -377,7 +385,7 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
   let excess = 0;
   for (const [key, inst] of board.elements) {
     if (inst.elementId !== "house" || inst.degradeAmount >= 1 || board.isScenery(key)) continue;
-    const d = water.depth.get(key) ?? 0;
+    const d = damageAt(water, key);
     if (floodsHouse(d)) {
       lost++;
       excess += d - HAZARD_MODEL.houseLossDepthM;

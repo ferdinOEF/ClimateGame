@@ -556,6 +556,8 @@ export interface DepthTile {
   /** Channel tiles in a compound storm: the surge's backwater pushed up the river. */
   backwaterPeak: number;
   backwaterArrival: number;
+  /** The cyclone's wind here, damage units (Section 12): a steady gust through the storm, added to the water when a house is judged. Never drawn as water. */
+  windPeak: number;
   /** A house stood here when the storm came. */
   house: boolean;
   /** Sea within two tiles of land: the shallows that drain before a cyclone's hit. */
@@ -579,7 +581,7 @@ export interface DepthFieldInput {
   /** Every tile on the board. */
   tiles: { key: string; terrainId: string }[];
   /** The resolver's local intensity at each tile it reported, per hazard (`resolveChallenge`'s probe). */
-  samples: Map<string, { cyclone?: number; flood?: number }>;
+  samples: Map<string, { cyclone?: number; flood?: number; wind?: number }>;
   /** The house rule's resilience: the local intensity at which a house is lost. */
   resilience: number;
   /** The strength each front set out with (intensity × share): the swollen sea and river. */
@@ -748,7 +750,8 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
       backwaterPeak = seaSurge * STORM_TIMING.compound.backwaterScale * backwaterShare(riverIndex, mouthIndex);
       backwaterArrival = landfall + c.surgeLead + (mouthIndex - riverIndex) * STORM_TIMING.compound.backwaterPerIndex;
     }
-    const tile: DepthTile = { key, terrainId, surgePeak, floodPeak, surgeArrival, floodArrival, riverIndex, backwaterPeak, backwaterArrival, house: input.houses.has(key), shallows: isSea && (fromLand.get(key) ?? 99) <= 2 };
+    const windPeak = landfall !== null && !isSea ? toDepth(sample?.wind) : 0;
+    const tile: DepthTile = { key, terrainId, surgePeak, floodPeak, surgeArrival, floodArrival, riverIndex, backwaterPeak, backwaterArrival, windPeak, house: input.houses.has(key), shallows: isSea && (fromLand.get(key) ?? 99) <= 2 };
     tiles.set(key, tile);
     if (surgePeak > 0) duration = Math.max(duration, surgeArrival + c.rise + c.hold + c.drain);
     if (floodPeak > 0) duration = Math.max(duration, floodArrival + f.rise + f.hold + f.drain);
@@ -807,12 +810,25 @@ export function peakDepth(field: DepthField, key: string): number {
   return best;
 }
 
-/** Storm time the water on a house first passes `DAMAGE_DEPTH` (null: it never does, the house stands). */
+/** The most a house on this tile has to stand: the deepest water plus the wind (damage units). */
+export function peakDamage(field: DepthField, key: string): number {
+  return peakDepth(field, key) + (field.tiles.get(key)?.windPeak ?? 0);
+}
+
+/**
+ * Storm time a house falls: when the water on it, with the wind, first passes
+ * `DAMAGE_DEPTH` (null: it never does, the house stands). The wind is a
+ * steady gust through the storm, so a house the wind alone takes falls at
+ * landfall, and one the wind tips falls as its water passes the line less
+ * the wind.
+ */
 export function hitTime(field: DepthField, key: string): number | null {
   const tile = field.tiles.get(key);
-  if (!tile || peakDepth(field, key) <= DAMAGE_DEPTH) return null;
+  if (!tile || peakDamage(field, key) <= DAMAGE_DEPTH) return null;
+  if (tile.windPeak > DAMAGE_DEPTH) return field.landfall ?? 0;
+  const line = DAMAGE_DEPTH - tile.windPeak;
   const start = Math.min(tile.surgeArrival, tile.floodArrival, tile.backwaterArrival);
-  for (let t = start; t <= field.duration; t += 0.02) if (combinedDepth(field, key, t) > DAMAGE_DEPTH) return t;
+  for (let t = start; t <= field.duration; t += 0.02) if (combinedDepth(field, key, t) > line) return t;
   return null;
 }
 

@@ -8,6 +8,7 @@ import {
   combinedDepth,
   floodDepth,
   hitTime,
+  peakDamage,
   peakDepth,
   surgeDepth,
   waterEnvelope,
@@ -58,8 +59,8 @@ function checkRecord(record: StormRecord): void {
   expect(houses.length).toBeGreaterThan(0);
   for (const tile of houses) {
     const hit = damaged.has(tile.key);
-    // Houses hit are exactly those with depth above the damage line.
-    expect(peakDepth(field, tile.key) > DAMAGE_DEPTH, `${tile.key} peak ${peakDepth(field, tile.key)} hit ${hit}`).toBe(hit);
+    // Houses hit are exactly those whose water and wind together pass the damage line (Section 12).
+    expect(peakDamage(field, tile.key) > DAMAGE_DEPTH, `${tile.key} peak ${peakDamage(field, tile.key)} hit ${hit}`).toBe(hit);
     // What a renderer samples reaches the same peak (to sampling precision).
     expect(drawnPeak(field, tile.key)).toBeCloseTo(peakDepth(field, tile.key), 6);
     expect(hitTime(field, tile.key) !== null).toBe(hit);
@@ -74,7 +75,7 @@ function checkRecord(record: StormRecord): void {
   // The undefended comparison is a real resolution too, and its field agrees with it.
   const undefendedHit = new Set(record.undefended.outcome.damagedHouses);
   for (const tile of record.undefended.field.tiles.values()) {
-    if (tile.house) expect(peakDepth(record.undefended.field, tile.key) > DAMAGE_DEPTH).toBe(undefendedHit.has(tile.key));
+    if (tile.house) expect(peakDamage(record.undefended.field, tile.key) > DAMAGE_DEPTH).toBe(undefendedHit.has(tile.key));
   }
   for (const save of record.savedBy) expect(save.houses).toBeGreaterThan(0);
 }
