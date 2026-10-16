@@ -351,3 +351,19 @@ describe("wildlife director", () => {
     expect(scene.children).not.toContain(d.group);
   });
 });
+
+describe("wildlife director: avoid rects on the ground", () => {
+  it("a perched bird fades away if a card opens over it", () => {
+    let covered = false;
+    const { d } = makeDirector({ rects: () => (covered ? [{ left: 0, top: 0, right: W, bottom: H }] : []) });
+    d.setSources(SOURCES);
+    d.tick(0);
+    d.forceMoment("kingfisher", 1);
+    let t = run(d, 0, 1000);
+    const kf = (d as unknown as { kf: { stage: string } }).kf;
+    expect(kf.stage).toBe("perch");
+    covered = true;
+    t = run(d, t, t + 400);
+    expect(kf.stage).toBe("off");
+  });
+});

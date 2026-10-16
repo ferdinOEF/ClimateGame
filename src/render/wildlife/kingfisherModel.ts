@@ -103,7 +103,7 @@ function headGeometry(): THREE.BufferGeometry {
     const wp = Math.pow((p.z + 0.095) / 0.045, 2) + Math.pow((p.y + 0.05) / 0.04, 2);
     if (wp < 1 && ax > 0.05) paint(out, WHITE);
     // White chin and throat (front and underside of the head).
-    if (p.y < -0.055 && p.z > -0.05 && ax < 0.08 - Math.max(0, -p.y - 0.06) * 0) paint(out, WHITE);
+    if (p.y < -0.045 && p.z > -0.06 && ax < 0.085) paint(out, WHITE);
     else if (p.y < -0.095 && p.z <= -0.05) paint(out, ORANGE);
   });
 }
@@ -187,7 +187,7 @@ const WING_SPEC: WingSpec = {
     [0.21, 0.1]
   ],
   fanOpen: [-0.04, 0.06, 0.16, 0.27, 0.38, 0.5],
-  fanFold: [0.0, 0.08, 0.16, 0.24, 0.32, 0.4],
+  fanFold: [0.0, 0.05, 0.1, 0.15, 0.2, 0.25],
   foldEuler: [1.12, 1.5, -0.05],
   wristFold: 0.0,
   wristFoldZ: -0.22,
@@ -205,7 +205,7 @@ const WING_SPEC: WingSpec = {
       paint(out, WING);
       // Pale flecks on the coverts (front half of the inner wing).
       const front = p.z > -0.08;
-      if (front && hash3(Math.round(p.x * 60), Math.round(p.z * 60), 3) > 0.84) toward(out, FLECK, 0.45);
+      if (front && hash3(Math.round(p.x * 60), Math.round(p.z * 60), 3) > 0.88) toward(out, FLECK, 0.4);
       if (p.z < -0.14) toward(out, WING_DARK, 0.5);
     } else {
       mix(out, UNDERWING, 0x8d97a1, smoothstep(-0.1, -0.2, p.z));
@@ -214,7 +214,7 @@ const WING_SPEC: WingSpec = {
   handColor: (p, _v, u, out) => {
     if (u < 0.5) {
       paint(out, WING);
-      if (hash3(Math.round(p.x * 60), Math.round(p.z * 60), 7) > 0.84) toward(out, FLECK, 0.45);
+      if (hash3(Math.round(p.x * 60), Math.round(p.z * 60), 7) > 0.88) toward(out, FLECK, 0.4);
     } else paint(out, 0x8d97a1);
   },
   featherColor: (_p, v, u, out) => {

@@ -295,7 +295,7 @@ export class WildlifeDirector {
 
   /** True while any moment (or a flush) is still playing. */
   get busy(): boolean {
-    return this.active !== null || this.kf.stage !== "off" || this.eg.stage !== "off" || this.otterLive || this.jumpers.some((j) => j.live);
+    return this.active !== null || this.kf.stage !== "off" || this.eg.stage !== "off" || this.otterLive || this.anyJumper();
   }
 
   /** The moment playing now, if any. */
@@ -363,7 +363,12 @@ export class WildlifeDirector {
     if (kind === "kingfisher") return this.kf.stage !== "off";
     if (kind === "egret") return this.eg.stage !== "off";
     if (kind === "otter") return this.otterLive;
-    return this.jumpers.some((j) => j.live) || this.clock < this.pondEnd;
+    return this.anyJumper() || this.clock < this.pondEnd;
+  }
+
+  private anyJumper(): boolean {
+    for (let i = 0; i < this.jumpers.length; i++) if (this.jumpers[i].live) return true;
+    return false;
   }
 
   private schedule(): void {
@@ -943,8 +948,25 @@ export class WildlifeDirector {
           this.twigFadeAt = -1;
         }
       }
-    } else if (a.kind === "kingfisher") this.tickKingfisherGround(a, now, dt);
-    else this.tickEgretGround(a, now, dt);
+    } else {
+      if (a.kind === "kingfisher") this.tickKingfisherGround(a, now, dt);
+      else this.tickEgretGround(a, now, dt);
+      // On the perch or wading: if an avoid rect (a card, a HUD panel) comes
+      // over the bird, it fades away and the moment ends.
+      if ((a.stage as BirdStage) !== "under" && (a.stage as BirdStage) !== "off") {
+        if (!a.escaping && this.boundsHitAvoid(a, a.root.scale.x)) a.escaping = true;
+        if (a.escaping) {
+          a.escape = Math.max(0, a.escape - dt / 260);
+          a.opacity *= a.escape;
+          if (a.escape <= 0) {
+            a.stage = "off";
+            a.root.visible = false;
+            a.shadow.visible = false;
+            if (a.kind === "kingfisher" && this.twigFadeAt < 0 && this.kingfisher.perch.visible) this.twigFadeAt = now;
+          }
+        }
+      }
+    }
     if ((a.stage as BirdStage) === "off") return; // the stage may have ended above
 
     if (a.kind === "kingfisher") {
