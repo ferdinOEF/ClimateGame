@@ -1289,8 +1289,11 @@ export class PanjimController {
     const open = this.run.prep.filter((job) => job.challengeId === next.id && !prepProgress(job, this.host.state, zones).done);
     if (open.length === 0 || open.some((job) => job.elementId === elementId && (job.tiles ?? []).includes(key))) return;
     const homes = this.run.protectsHere(next, coord, elementId);
-    const what = homes === 0 ? "This protects no homes" : `This protects ${homes} ${homes === 1 ? "home" : "homes"}`;
-    this.host.showBanner(`${what}, but it's outside the area, so it doesn't count for the objective.`, 5200);
+    const text =
+      homes === 0
+        ? "This protects no homes, and it's outside the area, so it doesn't count for the objective."
+        : `This protects ${homes} ${homes === 1 ? "home" : "homes"}, but it's outside the area, so it doesn't count for the objective.`;
+    this.host.showBanner(text, 5200);
   }
 
   private syncControls(): void {

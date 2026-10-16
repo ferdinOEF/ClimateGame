@@ -4,7 +4,7 @@
  *
  * Usage:  npm run test:labels            (LABEL_SHOTS=1 also saves screenshots)
  *
- * On Panaji at 1366x768, 1920x1080 and 2560x1440, at three zoom levels
+ * On Panaji at 1280x600, 1366x768, 1920x1080 and 2560x1440, at three zoom levels
  * (the opening view, a wheel step in, two wheel steps in), after a drag-pan,
  * and with Maya talking, it reads back the box of every drawn label. During
  * the drag-pan and during a warning's camera glide it checks every frame.
@@ -26,6 +26,7 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const PORT = Number(process.env.LABELS_PORT ?? 5198);
 const SHOTS = path.join(ROOT, "docs", "qa", "labels");
 const SIZES = [
+  { w: 1280, h: 600 },
   { w: 1366, h: 768 },
   { w: 1920, h: 1080 },
   { w: 2560, h: 1440 }

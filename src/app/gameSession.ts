@@ -2483,6 +2483,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Frame cost counters for tools/phaseShots.ts (see scene.ts `frameStats`).
     __frameStatsForTest: frameStats,
     __coneForTest: coneOverlay,
+    __areaOutlineForTest: areaOutline,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
     __audioForTest: audioStateForTest,

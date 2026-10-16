@@ -2628,3 +2628,59 @@
   background: rgba(166, 216, 138, 0.95);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
+
+/*
+ * Panjim's How to Play (Section 12): wide and in columns, so the whole card
+ * fits on screen with no scrolling from 1280x600 up.
+ */
+.help-card:has(.panjim-help-body) {
+  width: min(1180px, 94vw);
+  max-height: 94vh;
+}
+
+.help-card:has(.panjim-help-body) .help-header {
+  padding: 12px 22px;
+}
+
+.panjim-help-body {
+  columns: 3 300px;
+  column-gap: 28px;
+  padding: 14px 22px 16px;
+}
+
+.panjim-help-body .help-section {
+  break-inside: avoid;
+  margin: 0 0 12px;
+}
+
+.panjim-help-body h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.panjim-help-body p,
+.panjim-help-body li,
+.panjim-help-body .help-roster-item {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* What You Can Build runs on into the next column, a ground at a time. */
+.panjim-help-body .help-section:has(.help-roster-group) {
+  break-inside: auto;
+}
+
+.panjim-help-body .help-roster-group {
+  margin: 0 0 6px;
+  break-inside: avoid;
+}
+
+.panjim-help-body .help-roster-item {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  padding: 3px 0;
+}
+
+.panjim-help-body .help-roster-item span:last-child {
+  text-align: left;
+}
