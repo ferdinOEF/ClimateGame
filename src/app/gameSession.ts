@@ -2345,15 +2345,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   document.addEventListener(
     "keydown",
     (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      // Another panel (Sources) already answered this Esc.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       // Escape closes the popover if one is open; otherwise it is the
       // "get me out of here" key. On Panjim it asks first (Section 12): the
       // other overlays answer their own Esc, and the confirm its own.
       if (buildPopover.isOpen) buildPopover.hide();
       else if (sessionFinished) return;
       else if (!leaveConfirm) options.onExit();
-      else if (!leaveConfirm.isOpen && (!overlayOpen() || objectivesPanel.briefOpen)) {
-        void leaveConfirm.ask().then((leave) => {
+      // Not while a storm plays: the year is saved only once it has settled.
+      else if (!leaveConfirm.isOpen && !panjim?.isBusy && (!overlayOpen() || objectivesPanel.briefOpen)) {
+        void leaveConfirm.ask(panjim?.hasSave ? "Your progress is saved." : "You haven't built anything yet.").then((leave) => {
           if (leave) options.onExit();
         });
       }

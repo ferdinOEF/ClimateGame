@@ -8423,3 +8423,75 @@ Every archetype uses every build of every year it plays.
 - The board skirt west of the board is sea past the Dona Paula headland's tip (a Panaji map field).
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 11).
+
+## Section 12 — bugs, guidance on the map, objectives from the model, cyclone wind — DONE
+
+**12.1, the eight bugs** (`tests/section12.test.ts` and the browser checks in `tools/section12Checks.ts`):
+1. **Resort and yacht are hidden** while the economy is off (`MONEY_ONLY` in `levels/balance.ts`).
+2. **Stale counters:**
+   - during the storm and the result cards the clock hides its build counter, and the Outlook drops its "N years";
+   - 2031 opens with "10 builds until the flood".
+3. **One value:** a Get ready row's tick and its counter both come from `prepProgress` (`done` is `current ≥ count`), so a row can no longer be ticked at 1/2.
+4. **Maya's lines:** when a phase's results show, her lines that belong to it (storm, replay, calm, warning, last call, fixed) are cleared, and so are her tips about a kind of storm that is not coming next (the dunes tip in the flood phase). Esc no longer dismisses her line, because Esc is the level's key now (see 6).
+5. **Continue from a save:** the popup shows the saved phase's forecast, captioned "If you continue: The flood comes in 10 years".
+6. **Esc asks "Leave Panjim? Your progress is saved."** with Stay and Leave. Esc again, or Stay, closes it, and focus goes back where it was. Before any build it says "You haven't built anything yet." instead. It does not open while a storm plays (the year is saved only once it settles).
+7. **The level card** reads "In progress · 2031" while a save exists, and the best stars once finished.
+8. **Fit at 1280x600:** the start popup, the coming-up card and Help fit without scrolling at 1280x600 and up. Help is now a wide three-column card. 1280x600 is added to the label and Maya layout tests.
+
+**12.2, guidance on the map:**
+- **The area outline:** after the first build of a phase (the cone has gone), a faint dashed line round the area to protect: the homes the storm would still take. It is recomputed after every build. When none is left, it fades with an "Area protected" note, and it returns if a tile becomes unsafe again (`render/areaOutline.ts`).
+- **Pins** (`ui/panjim/mapPins.ts`) name the places the open rows name. The place-name labels move out of their way.
+- **Hover:** hovering (or focusing) a Get ready row tints its tiles.
+- **Builds outside every row** get one line: "This protects 1 home, but it's outside the area, so it doesn't count for the objective." With nothing protected, it reads "This protects no homes, and it's outside the area…".
+
+**12.3, objectives from the model** (`core/phaseObjectives.ts`):
+- **How they are chosen:** at each phase's start, on the board as it stands, the hazard model makes a greedy choice. Each pick is the build that saves the most homes still to be lost, from the defences that answer the storm, within 2 hexes of the area.
+- **Budget:** up to the phase's builds (5, 10, 10).
+- **Rows:** picks are grouped by defence and place, and every row saves at least one home. Rows inside the first cyclone's stretch keep its heading and name ("between Kala Academy and Sharada Mandir School").
+- **The badge:** result card 1 shows "Objective complete" when every row was done when the storm came.
+- **The old templates** are no longer used: Panaji (`prep.model: true`) was the only level with them. The code stays for a level without `model`; the opening's title and the stretch's two ends are still read from it.
+- **Saves from before this section** hold template rows; loading one chooses the objective afresh from the saved board.
+- **The test:** `tests/phaseObjectives.test.ts` follows each phase's objective and checks the storm takes exactly what the model said.
+
+Generated on bot seed 1 with no builds:
+
+| Phase | Homes lost → after the objective | Rows |
+|---|---|---|
+| 2030 cyclone | 9 → 0 | Build 2 breakwaters between Kala Academy and Sharada Mandir School |
+| 2040 flood | 38 → 9 | Build 4 khazans at Taleigao (13); Build 1 small dam at the Ourem creek (5); Build 2 khazans near Merces; Plant 1 mangrove near Merces; Build 2 small dams at the Mandovi waterfront |
+| 2050 compound | 45 → 31 | Build 1 breakwater at Miramar beach (6); Build 3 khazans at Taleigao (4); Build 1 breakwater near Caranzalem (1); Build 1 seawall at Miramar beach (1); Build 1 small dam at the Mandovi waterfront (1); Build 1 small dam at the Ourem creek (1) |
+
+Phases 2 and 3 above assume nothing was built before them. In play they are chosen from the player's own board. Generating one takes 0.3–1.0 s, once per phase.
+
+**12.4, cyclone wind** (`core/hazardModel.ts`, a game rule):
+- **The model:** a cyclone now brings wind as well as surge. Wind is strongest at landfall and fades inland. Each house's damage is water depth plus wind, against the same 0.6 m line.
+- **Shelterbelts:** pandanus and mangroves cut the wind on the tiles downwind of them, in a 120° cone (60° each side) over 3 tiles.
+- **One model:** the storm, the heat, the cone, the objectives, the result cards and the bots all use it.
+- **Sources:** it is labelled a game rule on the Sources screen (`cyclone-wind`, `wind-shelter`).
+- **The cited fact could not be verified:** this container's network blocks FAO, USDA and Wikipedia. FAO's windbreak guide (ag127e, chapter 3) is the candidate source. Both lines are shown only as game rules (Help says "In this game, …"); no cited fact about wind was added.
+
+**Retune** (three stars at 79% of a storm's homes, two at 50%; wind 0.2 m per unit of strength, 75% kept per hex inland):
+
+| Archetype | Won (20 seeds) | Target |
+|---|---|---|
+| Casual | 4 (20%) | 25–35%: one seed short |
+| Smart | 17 (85%) | 70–85% |
+| Greedy | 0, saving 2–41% of homes | high variance |
+| Far | 0 | about 0 |
+
+- Every defence has a margin (dune 2.0 and pandanus 2.1 points; khazan 21.6).
+- The best single kind alone (seawall) saves 36% against Smart's 79%.
+- No setting tried hit Casual and Smart both inside their ranges. Raising Casual into range pushed Smart over 85%.
+
+**How often the wind decides a home** (homes lost whose water alone was under the line), mean per run:
+
+| Archetype | 2030 cyclone | 2040 flood | 2050 compound |
+|---|---|---|---|
+| Casual | 0.0 | 0 | 0.3 (1%) |
+| Greedy | 0.9 (11%) | 0 | 0.8 (1%) |
+| Smart | 0.0 | 0 | 0.0 |
+| Far | 1.0 (11%) | 0 | 0.0 |
+
+Undefended, the wind tips 1 of the first cyclone's 9 homes (8,7 at the river mouth).
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 12).

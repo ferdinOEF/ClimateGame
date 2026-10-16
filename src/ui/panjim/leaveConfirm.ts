@@ -8,7 +8,10 @@ export class LeaveConfirm {
   private readonly backdrop: HTMLElement;
   private readonly stayBtn: HTMLButtonElement;
   private readonly leaveBtn: HTMLButtonElement;
+  private readonly textEl: HTMLElement;
   private resolve: ((leave: boolean) => void) | null = null;
+  /** Where focus was before the prompt, given back when it closes. */
+  private returnFocus: HTMLElement | null = null;
   private readonly onKey = (event: KeyboardEvent): void => {
     if (!this.isOpen) return;
     if (event.key === "Escape") {
@@ -38,6 +41,7 @@ export class LeaveConfirm {
     container.appendChild(this.backdrop);
     this.stayBtn = this.backdrop.querySelector(".leave-confirm-stay")!;
     this.leaveBtn = this.backdrop.querySelector(".leave-confirm-leave")!;
+    this.textEl = this.backdrop.querySelector(".leave-confirm-text")!;
     this.stayBtn.addEventListener("click", () => this.close(false));
     this.leaveBtn.addEventListener("click", () => this.close(true));
     this.backdrop.addEventListener("click", (event) => {
@@ -51,9 +55,11 @@ export class LeaveConfirm {
     return !this.backdrop.hidden;
   }
 
-  /** Asks; resolves true for Leave, false for Stay (or Esc). */
-  ask(): Promise<boolean> {
+  /** Asks; resolves true for Leave, false for Stay (or Esc). `text` is the line under the title. */
+  ask(text = "Your progress is saved."): Promise<boolean> {
     if (this.isOpen) return Promise.resolve(false);
+    this.textEl.textContent = text;
+    this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.backdrop.hidden = false;
     this.stayBtn.focus();
     return new Promise((resolve) => {
@@ -66,6 +72,8 @@ export class LeaveConfirm {
     this.backdrop.hidden = true;
     const resolve = this.resolve;
     this.resolve = null;
+    if (!leave && this.returnFocus?.isConnected) this.returnFocus.focus();
+    this.returnFocus = null;
     resolve?.(leave);
   }
 

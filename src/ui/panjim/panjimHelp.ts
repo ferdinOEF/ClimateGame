@@ -85,7 +85,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
         <li>Defend where the red is, before the storm's year ends.</li>
         <li>Mix kinds of defence: in this game, different kinds together do more than many of one kind.</li>
         <li>Don't put all your defence on one stretch of coast.</li>
-        <li>A cyclone brings wind as well as water. In this game, rows of pandanus and mangroves slow it on the tiles behind them.</li>
+        <li>In this game, a cyclone brings wind as well as water, and rows of pandanus and mangroves slow it on the tiles behind them.</li>
       </ul>
     </section>
 

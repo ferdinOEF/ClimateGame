@@ -161,7 +161,7 @@ export class HudPanels {
     window.addEventListener(
       "keydown",
       (event) => {
-        // Maya's own Esc (dismissing a line) has priority: it marks the event handled.
+        // Another panel's Esc (the leave prompt, Sources) has priority: it marks the event handled.
         if (event.key !== "Escape" || event.defaultPrevented) return;
         const open = [this.status, this.settings].find((panel) => panel.isOpen);
         if (!open) return;

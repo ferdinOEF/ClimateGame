@@ -336,8 +336,12 @@ export class ActionRun {
     for (const [id, saved] of [...this.replaySnapshots]) if (saved.turn > copy.turn) this.replaySnapshots.delete(id);
     this.comboState = computeCombos(this.state);
     this.combos = this.comboState.bonus;
-    if (copy.prep) this.prep = copy.prep;
-    else this.refreshPrep();
+    // A save from before the model chose objectives (Section 12) holds template rows: choose afresh.
+    const savedRowsFit = !!copy.prep && (!this.prepConfig?.model || copy.prep.every((job) => job.templateId.startsWith("model:")));
+    if (savedRowsFit) {
+      this.prep = copy.prep!;
+      this.objective = null;
+    } else this.refreshPrep();
     this.areas.clear();
     for (const [id, area] of copy.areas ?? []) this.areas.set(id, area);
     this.phaseBuilds.clear();

@@ -211,8 +211,10 @@ async function main(): Promise<void> {
       if (full) {
         const until = await text(page, ".clock-until");
         check(until === "10 builds until the flood", `2: at the start of 2031: "${until}"`);
-        const mayaLine = (await page.evaluate("(function () { var m = window.__panjimForTest.maya; var c = m.currentLine; return c ? c.id : ''; })()")) as string;
-        check(!/^(storm|replay|calm|warn|last|fixed):c1-cyclone/.test(mayaLine), `4: Maya's line at the start of 2031 is not the cyclone phase's ("${mayaLine}")`);
+        // What she says now and everything she has queued: nothing about the cyclone that has passed.
+        const mayaLines = (await page.evaluate("(function () { var m = window.__panjimForTest.maya; return [m.currentLine].concat(m.queue || []).filter(Boolean).map(function (l) { return l.id; }); })()")) as string[];
+        const stale = mayaLines.filter((id) => /^(storm|replay|calm|warn|last|fixed|sample-warn):c1-cyclone/.test(id) || id === "dunes" || id === "first-job");
+        check(stale.length === 0, `4: at the start of 2031 Maya has no line about the cyclone (now and queued: ${mayaLines.join(", ") || "none"})`);
         // 6: Esc asks first.
         await page.keyboard.press("Escape");
         await page.waitForTimeout(400);
@@ -241,7 +243,7 @@ async function main(): Promise<void> {
         // 5: Continue's popup shows the flood's forecast.
         await open(page, server.url);
         const feature = await text(page, ".brief-feature");
-        check(/The flood comes in 10 years/.test(feature), `5: with a save, the popup shows the flood's forecast: "${feature.replace(/\s+/g, " ").slice(0, 80)}"`);
+        check(/If you continue: The flood comes in 10 years/.test(feature), `5: with a save, the popup shows the flood's forecast: "${feature.replace(/\s+/g, " ").slice(0, 80)}"`);
         await shot(page, `continue-popup-${tag}`);
       }
       await context.close();

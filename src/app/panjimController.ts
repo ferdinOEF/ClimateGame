@@ -33,7 +33,7 @@ import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntr
 import { PrefToggle, isTyping, togglesRow } from "@ui/panjim/hudToggles";
 import { tooltipText } from "@ui/tooltip";
 import { Maya } from "@ui/panjim/maya";
-import { MayaDirector, GUIDE_NOTES } from "./mayaDirector";
+import { MayaDirector, GUIDE_NOTES, staleTip } from "./mayaDirector";
 import { factById } from "@core/facts";
 import { HudPanels } from "@ui/panjim/hudPanels";
 import type { ConeShow } from "@render/forecastConeOverlay";
@@ -418,6 +418,9 @@ export class PanjimController {
     const preview = next ? this.forecastPreview(next, next.id === this.run.schedule[0]?.id) : null;
     this.run.restore(fresh);
     if (!preview) return;
+    // Begin starts a new run with its own forecast: this one is about the save.
+    const line = preview.querySelector(".cone-preview-line");
+    if (line) line.textContent = `If you continue: ${line.textContent}`;
     this.host.container.querySelector(".brief-feature")?.remove();
     this.host.addBriefFeature(preview);
   }
@@ -718,7 +721,8 @@ export class PanjimController {
     if (record) await this.showResults(challenge, record);
     // The phase is over: nothing she queued about it may be said in the next one (Section 12).
     this.maya.dismiss();
-    this.maya.withdraw((line) => isPhaseLine(line.id));
+    const nextKind = this.run.nextChallenge()?.kind;
+    this.maya.withdraw((line) => isPhaseLine(line.id) || (!!nextKind && staleTip(line.id, nextKind)));
     this.maya.setState("idle");
   }
 
@@ -853,6 +857,15 @@ export class PanjimController {
 
   private saveKey(): string {
     return panjimSaveKey(this.host.level.id);
+  }
+
+  /** Whether this run has been saved on this device (the leave prompt says so only when it has). */
+  get hasSave(): boolean {
+    try {
+      return localStorage.getItem(this.saveKey()) !== null;
+    } catch {
+      return false;
+    }
   }
 
   /** Writes the run to this device: the board, every replay snapshot (so Replay survives a reload), and real time played. */
@@ -1096,9 +1109,11 @@ export class PanjimController {
     this.noteBoard();
     // A refused build changes nothing, the year included.
     const turn = this.run.turnNumber;
-    if (this.host.state.canBuild(coord, elementId)) this.noteOutsideBuild(coord, elementId);
+    // Worked out on the board before the build, said only once the build went through.
+    const outside = this.host.state.canBuild(coord, elementId) ? this.outsideNote(coord, elementId) : null;
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
+    if (outside) this.host.showBanner(outside, 5200);
     this.lastTurnEnded = turn;
     this.host.placeElement(coord, elementId);
     this.host.telemetry.action("build", 1);
@@ -1281,20 +1296,19 @@ export class PanjimController {
    * A build that counts for no open objective row gets one line saying so,
    * with what it does protect (Section 12).
    */
-  private noteOutsideBuild(coord: AxialCoord, elementId: string): void {
+  private outsideNote(coord: AxialCoord, elementId: string): string | null {
     const next = this.run.nextChallenge();
     const zones = this.run.zones;
-    if (!next || !zones) return;
+    if (!next || !zones) return null;
     const key = `${coord.q},${coord.r}`;
     const open = this.run.prep.filter((job) => job.challengeId === next.id && !prepProgress(job, this.host.state, zones).done);
-    if (open.length === 0 || open.some((job) => job.elementId === elementId && (job.tiles ?? []).includes(key))) return;
+    if (open.length === 0 || open.some((job) => job.elementId === elementId && (job.tiles ?? []).includes(key))) return null;
     const homes = this.run.protectsHere(next, coord, elementId);
-    const text =
-      homes === 0
-        ? "This protects no homes, and it's outside the area, so it doesn't count for the objective."
-        : `This protects ${homes} ${homes === 1 ? "home" : "homes"}, but it's outside the area, so it doesn't count for the objective.`;
-    this.host.showBanner(text, 5200);
+    return homes === 0
+      ? "This protects no homes, and it's outside the area, so it doesn't count for the objective."
+      : `This protects ${homes} ${homes === 1 ? "home" : "homes"}, but it's outside the area, so it doesn't count for the objective.`;
   }
+
 
   private syncControls(): void {
     this.clock.setControlsEnabled(!this.busy && !this.run.finished);
