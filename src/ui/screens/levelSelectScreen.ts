@@ -1,17 +1,14 @@
 import { LEVELS } from "@levels/levels";
 import { isLevelUnlocked, recordFor, type PlayerProgress } from "@levels/progression";
-import { describeObjective } from "@core/objectives";
 import { el, formatScore, starRow } from "./screenHelpers";
 import { savedRunYear } from "@levels/savedRun";
+import { mapById } from "@levels/levelMap";
 
 /**
- * The campaign list.
- *
- * Every level shows its stars, its personal best and — crucially — its
- * objectives, even before it is unlocked. Showing a locked level's goals
- * is the point rather than a leak: knowing that level 5 is about Khazan
- * fields is exactly what makes finishing level 4 feel worth doing. A row
- * of anonymous padlocks motivates nobody.
+ * The campaign list (Section 15): a centred card per level, each with a
+ * small render of its own board, what a run is (builds and storms, from the
+ * level's own numbers), its best stars and how far a saved run has got
+ * ("In progress · 2031").
  */
 export interface LevelSelectActions {
   onPlay: (levelId: string) => void;
@@ -35,11 +32,17 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
           const record = recordFor(progress, level.id);
           const unlocked = isLevelUnlocked(progress, level.id);
 
+          const progressInfo = progressLine(level, record, unlocked);
           const card = el("button", {
             className: `level-card${unlocked ? "" : " locked"}${record.completed ? " cleared" : ""}`,
             attrs: unlocked ? {} : { disabled: "true", "aria-disabled": "true" },
             on: unlocked ? { click: () => actions.onPlay(level.id) } : {},
             children: [
+              el("div", {
+                className: "level-card-thumb",
+                attrs: { "aria-hidden": "true" },
+                children: [el("img", { attrs: { src: `${import.meta.env.BASE_URL}art/level-${level.mapId}.jpg`, alt: "", decoding: "async", loading: "lazy", draggable: "false" } })]
+              }),
               el("div", {
                 className: "level-card-top",
                 children: [
@@ -48,14 +51,10 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
                 ]
               }),
               el("div", { className: "level-card-name", text: level.name }),
-              el("div", { className: "level-card-sub", text: level.subtitle }),
-              el("ul", {
-                className: "level-card-goals",
-                children: level.objectives.map((objective) =>
-                  el("li", { text: describeObjective(objective) })
-                )
-              }),
-              el("div", { className: `level-card-best${progressLine(level, record, unlocked).muted ? " muted" : ""}`, text: progressLine(level, record, unlocked).text })
+              el("div", { className: "level-card-sub", text: runSummary(level) }),
+              el("div", { className: `level-card-best${progressInfo.muted ? " muted" : ""}`, text: progressInfo.text }),
+              // A board drawn from OpenStreetMap is credited wherever it is shown (src/ui/attribution.ts).
+              mapCredit(level.mapId)
             ]
           });
           return card;
@@ -65,6 +64,21 @@ export function renderLevelSelectScreen(root: HTMLElement, progress: PlayerProgr
   });
 
   root.appendChild(screen);
+}
+
+/** The map data credit under a thumbnail of a board drawn from OpenStreetMap; nothing for the made-up Tutorial coast. */
+function mapCredit(mapId: string): HTMLElement | null {
+  const attribution = mapById(mapId)?.source?.attribution;
+  return attribution ? el("div", { className: "level-card-credit", text: `Map data ${attribution}` }) : null;
+}
+
+/** What a run of the level is, from its own numbers: "3 builds · 1 cyclone" or "25 builds · 3 storms". */
+export function runSummary(level: (typeof LEVELS)[number]): string {
+  if (!level.timeline) return level.subtitle;
+  const builds = level.timeline.endYear - level.timeline.startYear + 1;
+  const storms = level.climate?.challenges ?? [];
+  const stormText = storms.length === 1 ? `1 ${storms[0].name.toLowerCase()}` : `${storms.length} storms`;
+  return `${builds} builds · ${stormText} · ${level.timeline.startYear} to ${level.timeline.endYear}`;
 }
 
 /**

@@ -9,7 +9,7 @@
  * loosen that script into something that passes without checking anything,
  * this one walks the actual route a player takes —
  *
- *   menu -> Play -> email -> tutorial board -> build on it
+ *   menu -> Play -> email -> the Tutorial, played to its end -> Panaji
  *
  * and then starts every campaign level in turn so each real-world map gets
  * rendered and photographed at least once. It fails on any console error on
@@ -23,6 +23,7 @@ import { chromium, type Page } from "playwright";
 import path from "node:path";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
+import { playTutorial } from "./tutorialPlay";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT_DIR = path.join(ROOT, "tools", "screenshots", "walkthrough");
@@ -160,75 +161,23 @@ async function main(): Promise<void> {
       console.log("Start went straight to the level — no email sheet");
     }
 
-    // ---- 3. the tutorial board --------------------------------------
+    // ---- 3. the Tutorial, played start to finish (Section 15) -------
+    // Three builds through the real build cards, the cyclone, its result
+    // card, and "Play Panaji" (tools/tutorialPlay.ts).
     stage = "tutorial";
     await page.waitForSelector("canvas", { timeout: 15000 });
-    await page.waitForSelector(".brief-card", { timeout: 10000 });
-    await shot(page, "tutorial-brief");
-    await clickByText(page, "Begin");
-    await page.waitForTimeout(900); // let the settle animations land
-    await page.waitForSelector(".tutorial-coach", { timeout: 5000 });
-    const coachTitle = await page.locator(".coach-title").textContent();
-    console.log(`tutorial coach: "${coachTitle?.trim()}"`);
-    await shot(page, "tutorial-coach");
-
-    // Walk the coach's first explanatory step.
-    await clickByText(page, "Got it");
-    await page.waitForTimeout(200);
-
-    // Step 2 waits for the player to open a tile's menu, and a click is the
-    // only thing that satisfies it. Worth driving for real rather than through
-    // a hook: opening a popover changes no game state, so it does not reach
-    // the HUD refresh the coach is normally driven from, and the step sat
-    // there repeating itself until the player happened to build something.
-    stage = "tutorial-tile-click";
-    const stepBeforeClick = (await page.locator(".coach-step").textContent())?.trim();
-    const canvasBox = await page.locator("canvas:not([class*=risk-intro])").boundingBox();
-    if (!canvasBox) problems.push("[tutorial-tile-click] no canvas to click");
-    else {
-      await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
-      await page.waitForTimeout(300);
-      await page.keyboard.press("Escape"); // close whatever popover opened
-      await page.waitForTimeout(200);
-    }
-    const stepAfterClick = (await page.locator(".coach-step").textContent())?.trim();
-    console.log(`coach: "${stepBeforeClick}" -> "${stepAfterClick}" after a tile click`);
-    if (stepBeforeClick === stepAfterClick) {
-      problems.push(`[tutorial-tile-click] the coach did not advance past "${stepBeforeClick}" when a tile was clicked`);
-    }
-    await shot(page, "tutorial-after-tile-click");
-
-    // Now build through the real build path: the test hook places the element
-    // and refreshes the HUD exactly as a click would, which is what makes the
-    // remaining build steps advance.
-
-    stage = "tutorial-build";
-    const built = await page.evaluate(() => {
-      const hooks = window as unknown as {
-        __buildForTest?: (q: number, r: number, elementId: string) => boolean;
-        __levelForTest?: () => { mapId: string };
-      };
-      if (!hooks.__buildForTest || !hooks.__levelForTest) return null;
-      // Tutorial Cove's landmark anchors, from src/data/maps/tutorial.json.
-      return {
-        mapId: hooks.__levelForTest().mapId,
-        dune: hooks.__buildForTest(-2, 0, "dune"),
-        mangrove: hooks.__buildForTest(0, 0, "mangrove"),
-        house: hooks.__buildForTest(2, -3, "house")
-      };
-    });
-    console.log(`tutorial builds: ${JSON.stringify(built)}`);
-    if (!built) problems.push("[tutorial-build] test hooks missing — the session did not expose them");
-    else {
-      if (built.mapId !== "tutorial") problems.push(`[tutorial-build] expected the tutorial map, got "${built.mapId}"`);
-      for (const [elementId, ok] of Object.entries(built)) {
-        if (elementId !== "mapId" && ok !== true) {
-          problems.push(`[tutorial-build] could not build ${elementId} on the tutorial map`);
-        }
+    await playTutorial(page, {
+      problems,
+      shot: (name) => shot(page, name),
+      log: (line) => {
+        stage = line.startsWith("tutorial build") ? "tutorial-build" : stage;
+        console.log(line);
       }
-    }
-    await page.waitForTimeout(900);
-    await shot(page, "tutorial-built");
+    });
+    stage = "tutorial-next";
+    // "Play Panaji" opened Panaji's own card: Begin, so the board's Back control is reachable.
+    if (await page.locator(".brief-cta:visible").count()) await page.locator(".brief-cta:visible").first().click();
+    await page.waitForTimeout(600);
 
     // ---- 3b. getting out of a level ---------------------------------
     // Two ways out, and they have to agree. Both were broken before this was

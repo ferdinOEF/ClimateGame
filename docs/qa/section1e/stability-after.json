@@ -3,7 +3,7 @@
  "live": [
   {
    "state": "idle",
-   "seconds": 10.5,
+   "seconds": 11.5,
    "frames": 4,
    "moved": false,
    "box": {
@@ -17,19 +17,73 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 2.75
+    "observerHits": 2.52
    },
    "framesChanged": 3,
-   "strongChanged": 1,
+   "strongChanged": 2,
    "changedList": [
-    340,
-    117,
-    444
+    408,
+    297,
+    408
    ]
   },
   {
    "state": "greeting",
-   "seconds": 11.2,
+   "seconds": 11.3,
+   "frames": 5,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.44,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.02
+   },
+   "framesChanged": 4,
+   "strongChanged": 1,
+   "changedList": [
+    1011,
+    425,
+    165,
+    418
+   ]
+  },
+  {
+   "state": "tip",
+   "seconds": 10.5,
+   "frames": 5,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.48,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.05
+   },
+   "framesChanged": 4,
+   "strongChanged": 0,
+   "changedList": [
+    432,
+    406,
+    104,
+    369
+   ]
+  },
+  {
+   "state": "explains",
+   "seconds": 11,
    "frames": 5,
    "moved": false,
    "box": {
@@ -43,301 +97,21 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 2.77
+    "observerHits": 3.09
    },
    "framesChanged": 4,
    "strongChanged": 3,
    "changedList": [
-    380,
-    395,
-    447,
-    447
-   ]
-  },
-  {
-   "state": "tip",
-   "seconds": 11.8,
-   "frames": 4,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.34,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 2.37
-   },
-   "framesChanged": 3,
-   "strongChanged": 2,
-   "changedList": [
-    458,
-    186,
-    452
-   ]
-  },
-  {
-   "state": "explains",
-   "seconds": 10,
-   "frames": 3,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.3,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 2.09
-   },
-   "framesChanged": 2,
-   "strongChanged": 1,
-   "changedList": [
-    466,
-    396
-   ]
-  },
-  {
-   "state": "warning",
-   "seconds": 10.2,
-   "frames": 4,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.39,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 2.66
-   },
-   "framesChanged": 3,
-   "strongChanged": 3,
-   "changedList": [
+    507,
+    493,
     407,
-    326,
-    372
-   ]
-  },
-  {
-   "state": "worried",
-   "seconds": 12.4,
-   "frames": 5,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.4,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 2.74
-   },
-   "framesChanged": 4,
-   "strongChanged": 1,
-   "changedList": [
-    306,
-    218,
-    320,
-    293
-   ]
-  },
-  {
-   "state": "celebrates",
-   "seconds": 10.3,
-   "frames": 4,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.39,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 2.71
-   },
-   "framesChanged": 3,
-   "strongChanged": 3,
-   "changedList": [
-    481,
-    509,
-    528
-   ]
-  }
- ],
- "calm": [
-  {
-   "state": "idle",
-   "seconds": 5.1,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 3.11
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0
-   ]
-  },
-  {
-   "state": "greeting",
-   "seconds": 7.5,
-   "frames": 4,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.53,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 3.32
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0,
-    0,
-    0
-   ]
-  },
-  {
-   "state": "tip",
-   "seconds": 5,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.4,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 3.18
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0
-   ]
-  },
-  {
-   "state": "explains",
-   "seconds": 5.7,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.53,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 3.36
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0
+    230
    ]
   },
   {
    "state": "warning",
-   "seconds": 7.4,
-   "frames": 3,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.54,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 3.36
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0,
-    0
-   ]
-  },
-  {
-   "state": "worried",
-   "seconds": 7.8,
-   "frames": 3,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.51,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 3.07
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0,
-    0
-   ]
-  },
-  {
-   "state": "celebrates",
-   "seconds": 6.5,
-   "frames": 3,
+   "seconds": 11,
+   "frames": 5,
    "moved": false,
    "box": {
     "x": 12,
@@ -350,12 +124,244 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 3.56
+    "observerHits": 3.1
+   },
+   "framesChanged": 4,
+   "strongChanged": 4,
+   "changedList": [
+    626,
+    475,
+    311,
+    418
+   ]
+  },
+  {
+   "state": "worried",
+   "seconds": 10.4,
+   "frames": 5,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.48,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.08
+   },
+   "framesChanged": 4,
+   "strongChanged": 2,
+   "changedList": [
+    279,
+    323,
+    320,
+    309
+   ]
+  },
+  {
+   "state": "celebrates",
+   "seconds": 10.9,
+   "frames": 5,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.46,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.03
+   },
+   "framesChanged": 4,
+   "strongChanged": 4,
+   "changedList": [
+    3684,
+    443,
+    517,
+    522
+   ]
+  }
+ ],
+ "calm": [
+  {
+   "state": "idle",
+   "seconds": 6.6,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.32
    },
    "framesChanged": 0,
    "strongChanged": 0,
    "changedList": [
     0,
+    0
+   ]
+  },
+  {
+   "state": "greeting",
+   "seconds": 7.2,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.42,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.2
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0,
+    0
+   ]
+  },
+  {
+   "state": "tip",
+   "seconds": 6.8,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.59,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.94
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0,
+    0
+   ]
+  },
+  {
+   "state": "explains",
+   "seconds": 7.5,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.4,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.19
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0,
+    0
+   ]
+  },
+  {
+   "state": "warning",
+   "seconds": 5.7,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.7,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.67
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0,
+    0
+   ]
+  },
+  {
+   "state": "worried",
+   "seconds": 6.4,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.47,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 3.43
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0,
+    0
+   ]
+  },
+  {
+   "state": "celebrates",
+   "seconds": 5.5,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.54,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.91
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
     0
    ]
   }

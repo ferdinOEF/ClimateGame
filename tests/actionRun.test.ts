@@ -90,15 +90,15 @@ describe("one build a year", () => {
     expect(run.turnNumber).toBe(1);
   });
 
-  it("is a per-level setting: Panaji runs on years, the tutorial keeps turns", () => {
+  it("is a per-level setting: Panaji runs on years, and so does the Tutorial (Section 15), on its own three", () => {
     const panaji = LEVEL_BY_ID.get("l01-first-rains")!;
     expect(panaji.timeModel).toBe("years");
     expect(panaji.timeline).toEqual({ startYear: 2026, endYear: 2050 });
     const tutorial = LEVEL_BY_ID.get("l00-tutorial")!;
-    expect(tutorial.timeModel ?? "turns").toBe("turns");
-    expect(tutorial.timeline).toBeUndefined();
-    expect(tutorial.economy).toBeUndefined();
-    expect(tutorial.growth).toBeUndefined();
+    expect(tutorial.timeModel).toBe("years");
+    expect(tutorial.timeline).toEqual({ startYear: 2026, endYear: 2028 });
+    expect(tutorial.economy?.enabled ?? false).toBe(false);
+    expect(tutorial.growth?.enabled ?? false).toBe(false);
   });
 });
 

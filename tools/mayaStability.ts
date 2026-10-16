@@ -248,7 +248,7 @@ async function main(): Promise<void> {
     await tut.waitForSelector(".brief-card", { timeout: 120000 });
     await tut.locator(".brief-cta").first().click();
     await tut.waitForTimeout(2500);
-    check((await tut.locator(".tutorial-coach").count()) === 1, "the Tutorial loads");
+    check((await tut.locator(".maya").count()) === 1 && (await tut.locator(".panjim-clock").count()) === 1, "the Tutorial loads (Section 15: the Panjim HUD, Maya coaching)");
     await tut.context().close();
   } finally {
     await browser.close();

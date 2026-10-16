@@ -56,7 +56,8 @@ describe("level definitions", () => {
       expect(level.subtitle, `${level.id} subtitle`).toBeTruthy();
       expect(level.brief.length, `${level.id} brief`).toBeGreaterThan(20);
       expect(level.objectives.length, `${level.id} objectives`).toBeGreaterThan(0);
-      expect(level.startingCoin, `${level.id} coin`).toBeGreaterThan(0);
+      // The Tutorial has no coins at all (Section 15); every other level starts with some.
+      if (!level.tutorial) expect(level.startingCoin, `${level.id} coin`).toBeGreaterThan(0);
       expect(level.parTurns, `${level.id} par`).toBeGreaterThan(0);
     }
   });
@@ -114,7 +115,8 @@ describe("level definitions", () => {
     // regression.
     const tutorial = LEVELS[0];
     expect(tutorial.tutorial, "the first level should be the guided tutorial").toBe(true);
-    expect(tilesForLevel(tutorial).length, "the tutorial board should read at a glance").toBeLessThan(80);
+    // Section 15: an 11 by 9 coast (99 tiles), still a fraction of Panaji's board.
+    expect(tilesForLevel(tutorial).length, "the tutorial board should read at a glance").toBeLessThan(120);
 
     for (const level of LEVELS.slice(1)) {
       expect(tilesForLevel(level).length, `${level.id} is barely larger than the tutorial`).toBeGreaterThan(150);
@@ -258,14 +260,12 @@ describe("level definitions", () => {
   });
 
   it("keeps the tutorial survivable", () => {
-    // A tutorial a player can lose is not a tutorial. The strongest storm it
-    // can roll must stay below the weakest defence's overwhelm threshold, so
-    // following the prompts cannot end in a failed run.
+    // A tutorial a player can lose by doing what it says is not a tutorial.
+    // Section 15: one cyclone and nothing else; tests/tutorialRun.test.ts plays
+    // its objective and checks that every home in the path is saved.
     const tutorial = LEVELS.find((level) => level.tutorial)!;
-    const worstSeverity = tutorial.hazards.severityBase + tutorial.hazards.severitySpread;
-    expect(worstSeverity, "the tutorial's worst storm should be mild").toBeLessThan(0.6);
-    expect(tutorial.hazards.floodEnabled, "the tutorial should teach one hazard, not two").toBe(false);
-    expect(tutorial.hazards.severityCreepPerHazard, "the tutorial should not escalate").toBe(0);
+    const storms = tutorial.climate?.challenges ?? [];
+    expect(storms.map((c) => c.kind), "the tutorial should teach one storm").toEqual(["cyclone"]);
   });
 
   it("describes every objective without leaking a raw id", () => {

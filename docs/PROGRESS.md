@@ -8620,3 +8620,40 @@ Panaji only. The Tutorial keeps its models: it is pixel-identical against master
 - **Estuary:** dark slate water (#2c5560), set apart from the sea's turquoise and from the fields.
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 14).
+
+## Section 15 — a new Tutorial, the menu, the level select and Help — DONE
+
+The Tutorial was rebuilt on purpose in this section, then locked again (`tests/tutorialLocked.test.ts`, new fingerprints). Panaji plays as before.
+
+**The Tutorial** (`l00-tutorial`, about 3 minutes) plays the Panaji game on a small made-up coast. Nothing in it is new: same HUD, cards, cone, heat and result cards.
+- **The coast** (`tools/mapgen/buildTutorialMap.ts`, 11 x 9, 99 tiles): open sea, a beach (the landfall zone), an estuary, a river and a village. It is labelled on the level as "A teaching map, not a real place".
+- **The run:** three builds, 2026 to 2028, one cyclone straight after the third. Coins and growth are off; no meters, eras or "Tiles claimed" anywhere.
+- **The objective** comes from the same model as Panaji's: "Build 1 seawall at the beach | Build 1 dune at the beach | Plant 1 mangrove at the estuary", 18 homes at risk to 0. Followed with the biggest number on each card, every home in the path is saved (3 stars); with nothing built, homes are lost (`tests/tutorialRun.test.ts`).
+- **Opening card:** "Each build is one year. A cyclone comes in 3 years.", with the forecast cone. No place blurb, no goals list. The cone is on the board at the start and goes with the first build.
+- **Maya coaches four moments** (lines in `src/data/maya.json` → `tutorial`). Her hello, tips, warnings and build facts are off in the Tutorial.
+  - At the start: click a beach tile.
+  - The first time the build cards open: each card's "Protects N homes here", which pulses (not with Calm motion or reduced motion).
+  - After the first build: the faint outline of the homes still at risk.
+  - In the cyclone's year: the red heat. In the Tutorial the heat and the storm path show in that last year only, with her line, and there is no risk wave.
+- **The end:** the cyclone, then one result card: the stars, "N of N homes saved", what protected them (with a line saying the defences share the work), then **Play Panaji** (or Back to the menu). The run is recorded first. No finale, no replay, no save: Esc says "The Tutorial is not saved: leaving starts it again."
+
+**Menu:**
+- The name stays Riptide Rising.
+- **Tagline:** "Twenty-five years of Panjim. Three storms. One build a year." It is built from Panaji's level data, so it follows the timeline.
+- **Header art:** a real render of the Panjim board (`public/art/menu-header.jpg`, made by `tools/shellArt.ts`), fading into the page, credited "map data © OpenStreetMap contributors".
+- Still only Tutorial and Choose a level. The logo strip is on screen without scrolling down to 1280x600.
+
+**Level select:** centred cards, each with a render of its own board, what a run is ("3 builds · 1 cyclone · 2026 to 2028"), the best stars and progress ("In progress · 2031", "Best ★★☆", "Not yet played"). Panaji's card credits OpenStreetMap.
+
+**Help** (the in-game "?"): a short page in the result cards' brown, five ideas, each with a small render of the game:
+- one build a year;
+- the storms and their result cards;
+- the cone;
+- the heat;
+- the numbers on the cards.
+
+Each is labelled "Game rule". It is built from the level's own numbers, so the Tutorial's Help says 3 builds, one cyclone, and the heat in the storm's own year.
+
+**Also:** the Get ready row that the last build finishes now reads full ("1/1"). It used to read "0/1" while ticked.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 15).

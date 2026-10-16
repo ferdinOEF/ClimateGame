@@ -19,7 +19,7 @@ import { COMBO_INFO, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
-import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, type CardSpec } from "@ui/panjim/resultCards";
+import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialResultCard, type CardSpec, type CardsChoice } from "@ui/panjim/resultCards";
 import { nextLabel, phaseResult, type Place } from "@core/phaseResult";
 import MAYA_DATA from "@data/maya.json";
 import { FinaleCard } from "@ui/panjim/finaleCard";
@@ -31,7 +31,7 @@ import { buildHeatView, hazardsOf, HEAT_LEAD_YEARS, type Exposure, type HeatView
 import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
 import { PrefToggle, isTyping, togglesRow } from "@ui/panjim/hudToggles";
 import { tooltipText } from "@ui/tooltip";
-import { Maya } from "@ui/panjim/maya";
+import { Maya, type MayaState } from "@ui/panjim/maya";
 import { MayaDirector, GUIDE_NOTES, staleTip } from "./mayaDirector";
 import { factById } from "@core/facts";
 import { HudPanels } from "@ui/panjim/hudPanels";
@@ -39,7 +39,9 @@ import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
 import { panjimSaveKey } from "@levels/savedRun";
-import { isPhaseLine, MAYA, noteIdsFor, stormWord } from "@core/mayaLines";
+import { isPhaseLine, MAYA, noteIdsFor, stormWord, TUTORIAL_LINES } from "@core/mayaLines";
+import type { RunThen } from "@core/levelScore";
+import { PANAJI_LEVEL_ID } from "@ui/screens/runWords";
 import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
@@ -84,8 +86,8 @@ export interface PanjimHost {
   /** Repaints the HUD after state changed. */
   refresh: () => void;
   /** The run reached 2050 and the finale has played. */
-  /** The run is over: record it, then the results screen, or (`then`) play again or the menu. */
-  onRunComplete: (result: PanjimIndex, then?: "again" | "menu") => void;
+  /** The run is over: record it, then the results screen, or (`then`) play again, the menu or another level. */
+  onRunComplete: (result: PanjimIndex, then?: RunThen) => void;
   /** The skyline reveal: the camera pulls back over the whole city. */
   revealSkyline: () => void;
   showBanner: (text: string, ms?: number) => void;
@@ -160,6 +162,21 @@ export interface PanjimHost {
 
 export class PanjimController {
   readonly run: ActionRun;
+  /**
+   * The Tutorial (Section 15): the same game on a small coast, three builds
+   * and one cyclone. Maya coaches it with four scripted lines instead of her
+   * tips and warnings; the storm's one result card leads on to Panaji; there
+   * is no finale and no save.
+   */
+  readonly tutorial: boolean;
+  /** Years before a storm that its red heat shows: the last one only in the Tutorial, where Maya explains it then (Section 15). */
+  get heatLeadYears(): number {
+    return this.tutorial ? 1 : HEAT_LEAD_YEARS;
+  }
+  /** Which of the Tutorial's coaching lines have been said. */
+  private readonly coached = new Set<string>();
+  /** What the Tutorial's result card was closed with. */
+  private tutorialChoice: CardsChoice = "button";
   private readonly clock: ClockHud;
   private readonly outlook: OutlookBar;
   // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -219,6 +236,9 @@ export class PanjimController {
 
   constructor(private readonly host: PanjimHost) {
     if (!host.level.timeline) throw new Error("PanjimController needs a level timeline");
+    this.tutorial = host.level.tutorial === true;
+    // No risk wave in the Tutorial: the heat comes with Maya's own line about it, and nothing competes with her.
+    if (this.tutorial) this.riskGate.markSpent();
     this.run = new ActionRun(host.state, host.level.timeline, {
       climate: host.level.climate,
       zones: host.zones,
@@ -323,8 +343,11 @@ export class PanjimController {
       blocked: () => this.busy || this.host.uiBlocked() || this.resultCards.isOpen || this.fieldGuide.isOpen || Boolean(this.host.container.querySelector(".finale-card")),
       project: (coord) => this.host.project(coord),
       focus: (coord) => this.host.focusCamera(coord),
-      landmarks: host.landmarks
+      landmarks: host.landmarks,
+      quiet: this.tutorial
     });
+    // The Tutorial's first line waits for the opening card to close, like her hello does.
+    if (this.tutorial) this.maya.say({ id: "tutorial:start", text: TUTORIAL_LINES.start, state: "greeting" });
     this.nuggets = new NuggetPopup(this.maya);
     this.maya.onSpoken = (line) => {
       const fact = line.fact ? factById(line.fact.id) : undefined;
@@ -535,7 +558,7 @@ export class PanjimController {
   renderHeat(): void {
     const next = this.run.nextChallenge();
     const yearsLeft = next ? this.run.yearsUntil(next) : 0;
-    this.exposure = next && yearsLeft >= 1 && yearsLeft <= HEAT_LEAD_YEARS ? this.run.exposureFor(next) : null;
+    this.exposure = next && yearsLeft >= 1 && yearsLeft <= this.heatLeadYears ? this.run.exposureFor(next) : null;
     if (!next || !this.exposure || !this.riskToggle.value) {
       this.host.showHeat([]);
       return;
@@ -676,7 +699,8 @@ export class PanjimController {
         this.maya.next();
         await this.host.calmEnding(4500);
       }
-      await this.replay(challenge, record);
+      // The Tutorial goes straight to its one result card.
+      if (!this.tutorial) await this.replay(challenge, record);
     }
     this.host.challengeFx.end();
     this.renderOutlook();
@@ -719,6 +743,12 @@ export class PanjimController {
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
+    if (this.tutorial) {
+      // One card: the stars, the homes saved and what protected them; then on to Panaji.
+      this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, tutorial: true });
+      this.tutorialChoice = await this.resultCards.show([{ body: tutorialResultCard(result), button: "Play Panaji", link: "Back to the menu" }]);
+      return;
+    }
     const cards: CardSpec[] = [
       { body: resultCard(result), button: "See what protected your city" },
       { body: defencesCard(result, top ? results.byDefence[top.elementId] ?? null : null), button: nextLabel(next) }
@@ -848,6 +878,8 @@ export class PanjimController {
 
   /** Writes the run to this device: the board, every replay snapshot (so Replay survives a reload), and real time played. */
   saveRun(): void {
+    // The Tutorial is three builds long: it is never saved, so its card never offers "Continue".
+    if (this.tutorial) return;
     try {
       localStorage.setItem(
         this.saveKey(),
@@ -877,6 +909,7 @@ export class PanjimController {
 
   /** On load: if this level has a save part-way through, the brief offers to continue it. True when it does. */
   private offerSavedRun(): boolean {
+    if (this.tutorial) return false;
     // Saves from the quarterly clock (v1, keyed by level and seed) and from several builds a year (v2) cannot be continued: they are cleared.
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -1181,8 +1214,10 @@ export class PanjimController {
     this.syncControls();
     if (this.run.finished) {
       this.clearSave();
-      await this.finale();
+      if (this.tutorial) this.host.onRunComplete(this.result(), this.tutorialChoice === "link" ? "menu" : { levelId: PANAJI_LEVEL_ID });
+      else await this.finale();
     } else {
+      this.coachYear();
       // Every new year is saved, so a reload continues from it.
       this.saveRun();
     }
@@ -1194,7 +1229,8 @@ export class PanjimController {
         playSound("hazard_telegraph");
         this.outlook.pulse();
         // No banner: Maya says the warning (Section 13, one voice at a time).
-        this.showForecast(event.challenge);
+        // In the Tutorial the storm's path waits for its last year, with the heat (Section 15).
+        if (!this.tutorial || this.run.yearsUntil(event.challenge) <= this.heatLeadYears) this.showForecast(event.challenge);
         break;
       }
       case "challenge": {
@@ -1299,6 +1335,39 @@ export class PanjimController {
       : `This protects ${homes} ${homes === 1 ? "home" : "homes"}, but it's outside the area, so it doesn't count for the objective.`;
   }
 
+
+  /** One of the Tutorial's coaching lines, at once and once (the build menu may be open: she stands clear of it). */
+  private coach(id: keyof typeof TUTORIAL_LINES, state: MayaState): void {
+    if (!this.tutorial || this.coached.has(id)) return;
+    this.coached.add(id);
+    // Only the line for now: one left waiting (Maya muted or shut) would be stale by the time she speaks.
+    this.maya.withdraw((line) => line.id.startsWith("tutorial:"));
+    this.maya.dismiss();
+    this.maya.say({ id: `tutorial:${id}`, text: TUTORIAL_LINES[id], state, urgent: true });
+    this.maya.next();
+  }
+
+  /**
+   * The build menu just opened. In the Tutorial, the first time: Maya points
+   * at the cards' "Protects N homes here", and the numbers pulse.
+   */
+  cardsOpened(): void {
+    if (!this.tutorial || this.run.turnNumber !== 1) return;
+    this.coach("cards", "explains");
+    for (const pill of this.host.container.querySelectorAll(".build-popover .build-card-pill")) pill.classList.add("coach-pulse");
+  }
+
+  /** A new Tutorial year: after the first build, the faint outline; in the cyclone's own year, the red heat. */
+  private coachYear(): void {
+    if (!this.tutorial) return;
+    const next = this.run.nextChallenge();
+    if (!next) return;
+    if (this.run.yearsUntil(next) <= 1) {
+      if (this.run.zones && this.run.climate) this.showForecast(next);
+      this.coach("heat", "warning");
+    }
+    else if (this.run.turnNumber === 2) this.coach("outline", "tip");
+  }
 
   private syncControls(): void {
     this.clock.setControlsEnabled(!this.busy && !this.run.finished);

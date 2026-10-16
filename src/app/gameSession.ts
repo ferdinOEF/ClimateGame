@@ -901,7 +901,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,
-      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule })
+      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule, heatLeadYears: panjim.heatLeadYears })
     );
   /**
    * The step-by-step coach, on the tutorial level only.
@@ -915,7 +915,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * tutorial's actual win conditions are ordinary objectives in levels.json,
    * so a fault in the coach cannot make the level unwinnable.
    */
-  const tutorialCoach = level.tutorial ? new TutorialCoach(container) : null;
+  // Section 15: the Tutorial plays the Panjim game (one build a year) and Maya coaches it; this older coach is for a turns-mode tutorial only.
+  const tutorialCoach = level.tutorial && !panjim ? new TutorialCoach(container) : null;
   /**
    * Place names over the board — "Miramar Beach", "Fort Aguada" — read from
    * the map's own landmark list.
@@ -1024,7 +1025,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * the `devAutoBuild`/`__buildForTest` dev-only paths deliberately don't
    * call `nuggetPopup.show()`.
    */
-  // Maya says the fact (nuggetPopup.ts). The Tutorial has no Maya: its coach is its one voice, so there is nothing to say a fact there.
+  // Maya says the fact (nuggetPopup.ts). Not in the Tutorial (Section 15): her coaching lines are its one voice.
   const nuggetPopup = panjim?.nuggets ?? null;
   /**
    * STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: the same category of tool
@@ -1221,7 +1222,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * both completes the level and starts the storm that kills the player
    * could report the run twice.
    */
-  function finishRun(completed: boolean, panjimResult?: import("@core/panjimIndex").PanjimIndex, then?: "again" | "menu"): void {
+  function finishRun(completed: boolean, panjimResult?: import("@core/panjimIndex").PanjimIndex, then?: import("@core/levelScore").RunThen): void {
     if (sessionFinished) return;
     sessionFinished = true;
 
@@ -2307,12 +2308,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         controller.buildCards(coord),
         (id) => {
           if (!controller.build(coord, id)) return;
-          if (!controller.stormComing) nuggetPopup?.show(id);
+          // The Tutorial's Maya has her own lines for each build (Section 15): no fact pops over them.
+          if (!controller.stormComing && !controller.tutorial) nuggetPopup?.show(id);
           playSound("build");
         },
         // The year chip first (never covered), then the rest of the HUD.
         { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"] }
       );
+      controller.cardsOpened();
       return;
     }
 
@@ -2478,7 +2481,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       else if (!leaveConfirm) options.onExit();
       // Not while a storm plays: the year is saved only once it has settled.
       else if (!leaveConfirm.isOpen && !panjim?.isBusy && (!overlayOpen() || objectivesPanel.briefOpen)) {
-        void leaveConfirm.ask(panjim?.hasSave ? "Your progress is saved." : "You haven't built anything yet.").then((leave) => {
+        const note = panjim?.tutorial ? "The Tutorial is not saved: leaving starts it again." : panjim?.hasSave ? "Your progress is saved." : "You haven't built anything yet.";
+        void leaveConfirm.ask(note).then((leave) => {
           if (leave) options.onExit();
         });
       }

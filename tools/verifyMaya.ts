@@ -4,8 +4,8 @@
  * Plays the Tutorial to completion and Panaji far enough to check every
  * claim in docs/PROGRESS.md that can only be checked in a browser:
  *   - zero console errors anywhere;
- *   - the Tutorial still completes, with its own objectives panel and no
- *     Maya, heat or Get ready;
+ *   - the Tutorial (Section 15: the Panjim game on a small coast, Maya
+ *     coaching) plays start to finish and leads on to Panaji;
  *   - every HUD control has a tooltip, and every tooltip shows real text;
  *   - Get ready shows the model's objective on Panaji (Section 12: one row or more);
  *   - the street map defaults to 21%;
@@ -21,6 +21,7 @@
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
+import { playTutorial } from "./tutorialPlay";
 
 const PORT = 5195;
 const failures: string[] = [];
@@ -75,30 +76,15 @@ async function main(): Promise<void> {
     await page.waitForSelector(".brief-card", { timeout: 60000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(1500);
-    check((await page.locator(".maya").count()) === 0, "Tutorial: no Maya");
-    check((await page.locator(".get-ready").count()) === 0, "Tutorial: no Get ready panel");
-    check(await page.locator(".objectives-list").isVisible(), "Tutorial: its own objectives checklist is shown");
-    check(await evalJs<boolean>(page, "window.__heatForTest.visibleCount === 0"), "Tutorial: no warning heat");
+    // Section 15: the Tutorial plays the Panjim game, with Maya coaching it and the same HUD.
+    check((await page.locator(".maya").count()) === 1, "Tutorial: Maya coaches it");
+    check(await page.locator(".get-ready").isVisible(), "Tutorial: the Get ready card shows its objective");
+    check(await evalJs<boolean>(page, "window.__heatForTest.visibleCount === 0"), "Tutorial: no warning heat in its first year");
     await tooltipCheck(page, "Tutorial");
-    const built = await evalJs<Record<string, boolean>>(
-      page,
-      `(() => {
-        const done = {};
-        for (const id of ["mangrove", "dune", "house"]) {
-          done[id] = false;
-          for (let q = -12; q <= 12 && !done[id]; q++) for (let r = -12; r <= 12 && !done[id]; r++) done[id] = window.__buildForTest(q, r, id, false);
-        }
-        return done;
-      })()`
-    );
-    check(built.mangrove && built.dune && built.house, `Tutorial: built a mangrove, a dune and a house (${JSON.stringify(built)})`);
-    await page.evaluate("window.__triggerHazardForTest.cyclone(0.25)");
-    let cleared = false;
-    for (let i = 0; i < 60 && !cleared; i++) {
-      await page.waitForTimeout(500);
-      cleared = (await page.locator(".results-screen.cleared").count()) > 0;
-    }
-    check(cleared, "Tutorial: completes (results screen, cleared) after surviving its cyclone");
+    const problems: string[] = [];
+    await page.goto(`http://localhost:${PORT}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    const played = await playTutorial(page, { problems, shot: async () => undefined, log: () => undefined });
+    check(played && problems.length === 0, `Tutorial: plays start to finish and leads on to Panaji${problems.length ? `: ${problems.join("; ")}` : ""}`);
 
     // ---- Panaji ---------------------------------------------------------
     await page.goto(`http://localhost:${PORT}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });

@@ -1,0 +1,72 @@
+PASS  1920x1080 menu: the logo strip is on screen without scrolling (984 to 1066 of 1080)
+PASS  1920x1080 menu: only Tutorial and Choose a level (Tutorial, Choose a level)
+PASS  1920x1080 menu: the name, the tagline, and the header render's OpenStreetMap credit
+PASS  1920x1080 menu: no coin, meter or era text
+PASS  axe-core, menu: no serious or critical violations
+PASS  1920x1080 level select: two cards, each with its board's picture
+PASS  1920x1080 level select: the cards are centred (60 px left, 60 px right)
+      cards: 01 ☆ ☆ ☆ Tutorial 3 builds · 1 cyclone · 2026 to 2028 Not yet played | 02 ☆ ☆ ☆ Panaji 25 builds · 3 storms · 2026 to 2050 Not yet played Map data © OpenStreetMap contributors
+PASS  1920x1080 level select: no coin, meter or era text
+PASS  axe-core, level select: no serious or critical violations
+PASS  1920x1080 Help: five sections, each with a game render and labelled a game rule
+PASS  1920x1080 Help: short (181 words) and no sideways scroll
+PASS  1920x1080 Help: no coin, meter or era text
+PASS  axe-core, Help: no serious or critical violations
+PASS  axe-core, Tutorial cards: no serious or critical violations
+      1920x1080 tutorial build 1: seawall at -3,1 (protects 13)
+      1920x1080 tutorial build 2: dune at -1,-1 (protects 3)
+      1920x1080 tutorial build 3: mangrove at -1,1 (protects 2)
+PASS  axe-core, Tutorial result: no serious or critical violations
+      1920x1080 tutorial result: Tutorial · 2028 · Cyclone Your city came through. ★★★ Every home in the path survived 18 of 18 homes saved What protected them Defences share the work: each num
+      1920x1080 tutorial: played start to finish, on to Panaji
+PASS  1920x1080 Tutorial: played start to finish
+PASS  axe ran on the Tutorial
+PASS  1280x600 menu: the logo strip is on screen without scrolling (522 to 586 of 600)
+PASS  1280x600 menu: only Tutorial and Choose a level (Tutorial, Choose a level)
+PASS  1280x600 menu: the name, the tagline, and the header render's OpenStreetMap credit
+PASS  1280x600 menu: no coin, meter or era text
+PASS  1280x600 level select: two cards, each with its board's picture
+PASS  1280x600 level select: the cards are centred (60 px left, 60 px right)
+PASS  1280x600 level select: no coin, meter or era text
+PASS  1280x600 Help: five sections, each with a game render and labelled a game rule
+PASS  1280x600 Help: short (181 words) and no sideways scroll
+PASS  1280x600 Help: no coin, meter or era text
+      1280x600 tutorial build 1: seawall at -3,1 (protects 13)
+      1280x600 tutorial build 2: dune at -1,-1 (protects 3)
+      1280x600 tutorial build 3: mangrove at -1,1 (protects 2)
+      1280x600 tutorial result: Tutorial · 2028 · Cyclone Your city came through. ★★★ Every home in the path survived 18 of 18 homes saved What protected them Defences share the work: each num
+      1280x600 tutorial: played start to finish, on to Panaji
+PASS  1280x600 Tutorial: played start to finish
+PASS  1366x768 menu: the logo strip is on screen without scrolling (672 to 754 of 768)
+PASS  1366x768 menu: only Tutorial and Choose a level (Tutorial, Choose a level)
+PASS  1366x768 menu: the name, the tagline, and the header render's OpenStreetMap credit
+PASS  1366x768 menu: no coin, meter or era text
+PASS  1366x768 level select: two cards, each with its board's picture
+PASS  1366x768 level select: the cards are centred (60 px left, 60 px right)
+PASS  1366x768 level select: no coin, meter or era text
+PASS  1366x768 Help: five sections, each with a game render and labelled a game rule
+PASS  1366x768 Help: short (181 words) and no sideways scroll
+PASS  1366x768 Help: no coin, meter or era text
+      1366x768 tutorial build 1: seawall at -3,1 (protects 13)
+      1366x768 tutorial build 2: dune at -1,-1 (protects 3)
+      1366x768 tutorial build 3: mangrove at -1,1 (protects 2)
+      1366x768 tutorial result: Tutorial · 2028 · Cyclone Your city came through. ★★★ Every home in the path survived 18 of 18 homes saved What protected them Defences share the work: each num
+      1366x768 tutorial: played start to finish, on to Panaji
+PASS  1366x768 Tutorial: played start to finish
+PASS  2560x1440 menu: the logo strip is on screen without scrolling (1344 to 1426 of 1440)
+PASS  2560x1440 menu: only Tutorial and Choose a level (Tutorial, Choose a level)
+PASS  2560x1440 menu: the name, the tagline, and the header render's OpenStreetMap credit
+PASS  2560x1440 menu: no coin, meter or era text
+PASS  2560x1440 level select: two cards, each with its board's picture
+PASS  2560x1440 level select: the cards are centred (60 px left, 60 px right)
+PASS  2560x1440 level select: no coin, meter or era text
+PASS  2560x1440 Help: five sections, each with a game render and labelled a game rule
+PASS  2560x1440 Help: short (181 words) and no sideways scroll
+PASS  2560x1440 Help: no coin, meter or era text
+      2560x1440 tutorial build 1: seawall at -3,1 (protects 13)
+      2560x1440 tutorial build 2: dune at -1,-1 (protects 3)
+      2560x1440 tutorial build 3: mangrove at -1,1 (protects 2)
+      2560x1440 tutorial result: Tutorial · 2028 · Cyclone Your city came through. ★★★ Every home in the path survived 18 of 18 homes saved What protected them Defences share the work: each num
+      2560x1440 tutorial: played start to finish, on to Panaji
+PASS  2560x1440 Tutorial: played start to finish
+PASS  zero console errors
