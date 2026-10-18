@@ -1546,3 +1546,55 @@ NITs:
 **Tagline alternatives offered to the owner:**
 - "Read the forecast. Build where it counts. Keep Panjim's homes dry."
 - "Panjim, 2026 to 2050: one build a year before the storms."
+
+# Section 16 — the owner's second map edits, the flood from the Mandovi, the first cyclone onto Sharada Mandir School, Play Panjim
+
+Branch `section-16-map-flow-hazards`, off master `63d5a58` (Section 15's merge; tag `pre-section-16`, and `backup/pre-section-16` on GitHub). Headless Chromium with software GL. Evidence in `docs/qa/section16/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | REVIEW_TESTS |
+| `npm run build` | Clean. |
+| `npm run mapgen:panaji` | Clean; without the new edits it reproduces master's `panaji.json` byte for byte. |
+| `npm run walkthrough` | Clean, no console errors. New step: the menu offers exactly Tutorial and Play Panjim, and Play Panjim opens `#/play/l01-first-rains` with Begin. The level loop reaches the level select by `#/levels`. |
+| `npm run test:labels` | 49 of 49 views. |
+| `npm run test:layout` | 140 of 140 layouts. |
+| `npm run test:maya` | Pass, zero console errors (`maya-stability.md`). |
+| `npm run verify:maya` | All checks pass: street map at 21%; Maya greets "…our first job is to protect Sharada Mandir School…"; previews equal what the storms take (cyclone 9 and 9, flood 65 and 65). |
+| Section 16 browser checks (`tools/section16Checks.ts`, `checks.txt`) | CHECKS16 |
+| Tutorial (`tutorial/`, against master `63d5a58`) | The walkthrough's Tutorial text identical (builds, numbers, result card); `tests/tutorialLocked.test.ts` passes. Pixels: 0.03–2.2% differ, all thin edges from the camera settling a frame apart (`tutorial/result-diff.png`); the board's content is the same. |
+| axe-core | No serious or critical violations: the landing page, the start popup, the board in 2031. |
+| Bots, 20 seeds (`bots.md`) | See below and `docs/PROGRESS.md`. Casual drifts. |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**Map** (`board-before-after.jpg`, the generator's class map, master against this branch):
+- 85 more owner edits, applied in order after Section 11's; 15,7 and 9,22 are edited in both rounds.
+- Moves: Miramar Beach -4,20 → -4,19; Sharada Mandir School -2,18 → -3,18; Dhempe College -1,17 → -2,17. Campal 6,10 and Santa Inez 4,14 unmoved. `unplayable` (148) and `skirtOpenSeaWestFromRow` (10) unchanged.
+- Heights: the DEM, by the method in `panaji.json`, on every tile (the crop is checked in; the network was not needed).
+- Bridges: +15,7, +7,23, +8,23; −31,4, −13,16, −7,17, −13,17, −5,31, −6,31 (now roads). Roads also +-1,17, +5,23, +6,23, +9,23.
+- Zones: no tile changed zone.
+- Houses, playable: 374 → 421 (z1 44 → 40, z2 89 → 129, z3 8, z4 6, outside 227 → 238).
+
+**Storms, undefended** (`storms.md`; a home's locality is its nearest locality label):
+
+| Storm | Before (master) | After |
+|---|---|---|
+| 2030 cyclone | 9 (landfall 1,12, strength 1.0): Campal 5, Santa Inez 4 | 9 (landfall -5,18, strength 1.2): -3,19 beside the school; 0,19, 0,20, 1,19, 2,18, 2,19 by the creek east of it; -5,22, -6,23, -7,24 at Caranzalem |
+| 2040 flood | 38: 25 (66%) in Taleigao, Merces and St Cruz | 65: Merces 22, Taleigao 13, St Cruz 11 (46, 71%); Ribandar 9, Altinho 5, Patto 3, São Tomé 1, Campal 1, Fontainhas 0 |
+| 2050 compound (landfall 2,12, unchanged) | 45 | 38 |
+
+**What could not be met, and why:**
+- **The cyclone's damage confined to the school's ground.** Tried every landfall site from -1,14 to -7,22 at strengths 0.6–1.8. The homes round the school stand on a ridge at 6.5–8.5 m; the low land the owner added either side (0–1.5 m) floods first at any strength that reaches them. Chosen: -5,18 at 1.2, which takes the home beside the school and keeps the count at 9. All the surge comes ashore there, so the objective's builds in front of the school save all 9 (`tests/section10.test.ts`).
+- **75% of the flood's losses in the three localities.** Every combination of strength (0.6–3.0) and river, wetland and land loss tops out near 71%; two extra rules ("open river", "drain to the sea") were tried and dropped. Ribandar's 9 homes stand at 0–1 m beside the new channel a few hexes from the source, and 5 homes on the creek's low west bank take Altinho's name; they flood before the three localities' higher ground.
+- **Casual's balance target** (25–35% wins): 0%. Casual builds by eye next to the marked homes and saves 4 of the first cyclone's 9 on every seed; only building in front of the school saves them. The surge numbers that could change that are shared with the Tutorial's cyclone, so they were not retuned.
+
+**Screenshots** at 1920x1080, 1366x768, 2560x1440 and 1280x600: the landing page; the first frame after Play Panjim; the opening view; the 2026 cone onto Sharada Mandir School; result card 1; the coming-up card with the flood's forecast; the 2031 flood cone, and framed on the Mandovi source and the three localities. Gray and deuteranopia copies at 1920 of the landing page, the first frame, the 2026 cone and the 2031 cone. At 1920 also: Play Panjim with a saved run (Begin, Continue from 2031). I looked at them. Fixed from the first round:
+- the regenerated menu header had the in-game banner ("This protects no homes…") baked in; `tools/shellArt.ts` now hides it;
+- the start popup's forecast put the school on its top edge with the track barely visible; Panaji's preview now frames the cyclone's way in (the Tutorial's is unchanged).
+
+REVIEW_SECTION
+
+**Could not be run or checked here:**
+- Firefox and WebKit, and frame rates on a real GPU.
+- Production after the merge, in a browser: see the merge note below.

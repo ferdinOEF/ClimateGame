@@ -8657,3 +8657,78 @@ Each is labelled "Game rule". It is built from the level's own numbers, so the T
 **Also:** the Get ready row that the last build finishes now reads full ("1/1"). It used to read "0/1" while ticked.
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 15).
+
+## Section 16 — the owner's second map edits, the flood from the Mandovi, the first cyclone onto Sharada Mandir School, Play Panjim — DONE
+
+Panaji, its map and the menu only. The Tutorial is unchanged (text identical, `tests/tutorialLocked.test.ts` passes).
+
+**16.1, the owner's second round of map edits** (owner decision):
+- **The layer:** 85 more tile edits appended to `tools/mapgen/panaji-hand-edits.json`, which the generator now applies in order, so a later edit may change a tile an earlier one changed (15,7 and 9,22 are edited in both rounds). `npm run mapgen:panaji` rebuilt `panaji.json`; with no edits it reproduces the old file byte for byte.
+- **What they do:** the Taleigao, St Cruz and Merces wetlands become mostly land (z2's wetland tiles 75 → 28) with one creek running south; a new river channel runs from the Mandovi at Ribandar (30,3 / 31,3 → 29,4 → 24–28,5 → 27,6 → 26,7–26,9 → 27,9) into the Merces creek; small fixes elsewhere.
+- **Places:** Miramar Beach -4,20 → -4,19; Sharada Mandir School back to -3,18 and Dhempe College back to -2,17 (chained moves in the same file). Campal (6,10) and Santa Inez (4,14) stay where Section 11 put them. `unplayable` (148 tiles) and `skirtOpenSeaWestFromRow` (10) are unchanged; the generator checks the former.
+- **Tests:** `tests/panajiHandEdits.test.ts` covers both rounds: each tile once per round, the chained tiles, every tile's last edit in the map, the moved places, Campal and Santa Inez unmoved.
+
+**16.2, the rest of the map:**
+- **Heights:** every tile, changed or not, has its Copernicus DEM height by the method in `panaji.json` (the DEM crop is in the repo; sampling does not depend on terrain, so no height changed).
+- **Roads and bridges:** new river tile 15,7 is now a bridge; 31,4, 13,16, 7,17, 13,17, 5,31 and 6,31 (bridges now on land) are roads. Also: -1,17 is a road again (Dhempe College left it); 5,23, 6,23 and 9,23 (new land) are roads, and the road there now crosses 7,23 (a wetland causeway) and 8,23 (a bridge).
+- **Zones:** zones are polygons; no tile changed zone.
+- **Houses** (playable only; the north bank not counted): 374 → 421.
+
+  | Zone | Before | After |
+  |---|---|---|
+  | z1 Miramar to Dona Paula beach | 44 | 40 |
+  | z2 Taleigao, St Cruz and Merces wetlands | 89 | 129 |
+  | z3 Ourem creek and Fontainhas | 8 | 8 |
+  | z4 Mandovi waterfront | 6 | 6 |
+  | Outside every zone | 227 | 238 |
+
+  The north bank holds 89 houses (92 before), never counted.
+- **Before and after:** `docs/qa/section16/board-before-after.jpg`.
+
+**16.3, Play Panjim** (owner decision):
+- The menu shows only **Tutorial** and **Play Panjim**. Play Panjim opens the Panaji game view directly (`#/play/l01-first-rains`), its "Panjim 2050" start popup open: Begin with no saved run; Continue from <year> and Begin with one, as before.
+- The level select is still at `#/levels`; no menu button leads there. The walkthrough reaches it by that address.
+- CLAUDE.md's rule, README, DEPLOY, `features.ts`, `tests/menu.test.ts`, the walkthrough, `qaFunctional` and `section15Checks` say Play Panjim. Help's pictures were re-rendered from the new board (`tools/shellArt.ts`, which now also hides the in-game banner); Help's text needed no change.
+
+**16.4, the first cyclone onto Sharada Mandir School** (owner decision):
+- **Landfall -5,18** (the open sea directly west of the school), **strength 1.2** (still "mild"; was 1,12 at 1.0). The cone's track comes from the open sea and ends on the school.
+- **Undefended it takes 9 homes:** -3,19 beside the school; 0,19, 0,20, 1,19, 2,18 and 2,19 on the low land by the creek just east of the school; -5,22, -6,23 and -7,24 on the Caranzalem shore to the south. Kala Academy is no longer in its area. The school's own tile floods (result card: Damaged unless defended).
+- **Not confined to the school's ground:** no landfall or strength does that. The homes round the school stand on a ridge at 6.5–8.5 m, while the owner-added land either side is at 0–1.5 m, so the surge reaches that first. Every landfall from -1,14 to -7,22 and strength from 0.6 to 1.8 was tried (`docs/QA_REPORT.md`). Since all the surge comes ashore in front of the school, building there saves every one of the 9.
+- **Objective** (`prep.opening`, a new "around" region: every tile within 3 hexes of the school): "Protect Sharada Mandir School". The model's rows come only from those tiles: **Build 2 seawalls in front of Sharada Mandir School** (9 → 0). The school is pinned while it is open.
+- **Start popup:** its forecast is labelled Sharada Mandir School and Miramar Beach and framed to show the cyclone's way in. Maya: "Before the cyclone, our first job is to protect Sharada Mandir School." Result card 1 lists Sharada Mandir School, Miramar Beach and Caranzalem.
+- **The 2050 compound cyclone** keeps its landfall (2,12); the new map does not force a change.
+
+**16.5, the flood from the Mandovi** (owner decision):
+- **The source** is stored in `levels.json` (`climate.floodSource`: 33,1, 33,2 and 32,3, the upstream Mandovi at the east edge) and marked on the map's tiles by `levels/levelMap.ts`. The hazard model, the cone, the storm animation's swell and its rain band start there; the automatic rule (the farthest stretch of river from the sea) remains for maps without one. The compound storm's flood uses the same source.
+- **The route:** the model's water runs from the source along the Mandovi, into the new channel at Ribandar, through the Merces wetlands and south through St Cruz into Taleigao. The cone's flood track now follows the water's own route (`floodRoutes`), ending at the home at risk in Taleigao, Merces and St Cruz that the water reaches last.
+- **Game rules changed** (`hazardModel.json`, flood only; the Tutorial has no flood): water loses 0.2 m a hex along a river (was 0.25) and 0.15 m a hex over wetland (was 0.2). The 2040 strength stays 1.8 ("strong").
+- **Undefended loss by locality** (nearest locality label): Merces 22, Taleigao 13, St Cruz 11, Ribandar 9, Altinho 5, Patto 3, São Tomé 1, Campal 1, Fontainhas 0: **65 homes, 46 (71%) in the three** (master: 38 homes, 66%). Fontainhas, Campal and the Mandovi waterfront take little (Campal 1; 2 in zone z4).
+- **75% was not reached.** No setting of strength, river, wetland or land loss (nor an "open river" or "drain to the sea" rule, both tried and dropped) passes about 71%: Ribandar's 9 homes stand at 0–1 m beside the new channel a few hexes from the source, and the 5 "Altinho" homes are on the creek's low west bank (their nearest label is Altinho). Both flood before the three localities' higher ground.
+- **Objective** (`prep.areas`, a new "localities" region: every tile whose nearest locality label is Taleigao, Merces or St Cruz): "Protect Taleigao, Merces and St Cruz", rows from the model inside that area, named by locality, all three pinned. On an undefended board: Build 2 small dams in Merces; Build 1 khazan in St Cruz; Plant 1 mangrove in St Cruz; Build 3 khazans in Merces; Plant 2 mangroves in Merces; Build 1 khazan in Taleigao (65 → 14; the 14 left are outside the area).
+- **Maya's coming-up line:** "The flood comes down the Mandovi, through the creek at Ribandar and into Merces, St Cruz and Taleigao. Look at where the map turns red."
+
+**16.6, the game re-checked:**
+- Preview equals resolution (`verify:maya`: 9 and 65), `tests/preview.test.ts` and `tests/phaseObjectives.test.ts` (each phase's objective, followed, gives exactly the model's number) pass.
+- **Bots, 20 seeds** (`docs/qa/section16/bots.md`):
+
+  | Archetype | Won | Homes saved, mean (min–max) | Stars per storm |
+  |---|---|---|---|
+  | Casual | 0 (target 25–35%; Section 12: 20%) | 71% (61–80%) | 1.0 / 3.0 / 2.0 |
+  | Smart | 17 (85%, target 70–85%) | 88% (80–92%) | 2.5 / 3.0 / 3.0 |
+  | Greedy | 0 | 24% (2–41%) | 1.1 / 1.3 / 1.0 |
+  | Far | 0 | 0% | 1.0 / 1.0 / 1.0 |
+
+  - **Drift: Casual.** Building by eye next to the marked homes saves 4 of the first cyclone's 9 (one star) on every seed, because those homes (by the creek, at Caranzalem) are saved only by building where the surge comes ashore, in front of the school, which the objective and the track point at. Not retuned: the only levers are the surge numbers, which the Tutorial's cyclone shares, and geography. The owner's call.
+  - Every defence counts (margins: small dam 25.5, mangrove 14.6, khazan 14.1, breakwater 12.0, seawall 11.6, dune 3.6, pandanus 1.9 points); the best single kind alone (mangrove) gets 50% against Smart's 88%.
+  - `tests/section4.test.ts`'s plain 10-build finale plan now cuts 14%, 14% and 23% at its three landfalls (more homes on the edited creeks); re-pinned at 10% each, 15% mean, with the reason.
+- **Builds needed** (`tools/buildsNeeded.ts`, best play: the model's own greedy picks on the board a best-play run has at each phase's start):
+
+  | Storm | Builds in its phase | Homes at risk | 60% saved | 90% saved | With 5 | With 10 | With 15 |
+  |---|---|---|---|---|---|---|---|
+  | 2030 cyclone | 5 | 9 | 1 | 2 | 9 (100%) | 9 (100%) | 9 (100%) |
+  | 2040 flood | 10 | 65 | 4 | 8 | 47 (72%) | 63 (97%) | 65 (100%) |
+  | 2050 compound | 10 | 67 | 2 | 5 | 64 (96%) | 67 (100%) | 67 (100%) |
+
+  On master the flood needed 7 builds for 60% and never reached 90% in 25. The owner decides whether phases 2 and 3 stay at 10 builds.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 16).
