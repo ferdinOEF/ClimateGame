@@ -48,9 +48,12 @@ export class MapPins {
     this.note?.el.remove();
     const el = document.createElement("div");
     el.className = beside ? "map-note beside" : "map-note";
-    // Read out once: it is the build's own feedback.
-    if (beside) el.setAttribute("role", "status");
-    el.textContent = text;
+    if (beside) {
+      // Read out once: it is the build's own feedback. A live region is announced when its text changes, so the
+      // text goes in after the (empty) element is on the page.
+      el.setAttribute("role", "status");
+      window.setTimeout(() => (el.textContent = text), 50);
+    } else el.textContent = text;
     this.layer.appendChild(el);
     this.note = { pin: at, el, until: performance.now() + ms };
   }
@@ -68,7 +71,18 @@ export class MapPins {
       if (nowMs > this.note.until) {
         this.note.el.remove();
         this.note = null;
-      } else place(this.note.el, this.project(this.note.pin.x, this.note.pin.y, this.note.pin.z));
+      } else {
+        const at = this.project(this.note.pin.x, this.note.pin.y, this.note.pin.z);
+        place(this.note.el, at);
+        // A note beside its tile stays on screen: to the tile's left near the right edge, clear of the top and bottom.
+        if (at && this.note.el.classList.contains("beside")) {
+          const { width, height } = this.layer.getBoundingClientRect();
+          const w = this.note.el.offsetWidth;
+          const flip = at.x + 34 + w > width - 8;
+          const y = Math.max(90, Math.min(height - this.note.el.offsetHeight - 40, at.y));
+          this.note.el.style.transform = `translate(${Math.round(flip ? at.x - 68 - w : at.x)}px, ${Math.round(y)}px)`;
+        }
+      }
     }
   }
 

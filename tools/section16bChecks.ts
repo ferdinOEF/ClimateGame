@@ -56,6 +56,16 @@ async function begin(page: Page): Promise<void> {
   await wait(3000);
 }
 
+/** axe-core: no serious or critical violations (only once per size, at 1366x768 and up: the page is the same). */
+async function axe(page: Page, label: string): Promise<void> {
+  await page.addScriptTag({ path: "node_modules/axe-core/axe.min.js" });
+  const found = (await page.evaluate(`(async () => {
+    const r = await axe.run(document, { resultTypes: ["violations"] });
+    return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id + " x" + v.nodes.length + " " + v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | "));
+  })()`)) as string[];
+  check(found.length === 0, `axe-core, ${label}: no serious or critical violations${found.length ? `: ${found.join("; ")}` : ""}`);
+}
+
 const scenario = (page: Page, name: string) => page.evaluate(`window.__panjimScenarioForTest(${JSON.stringify(name)})`, undefined);
 
 /**
@@ -71,7 +81,7 @@ async function hudGroups(page: Page): Promise<{ group: string; cls: string; box:
     const groups = [
       ["top bar", ".panjim-clock"],
       ["? and menu", ".hud-chrome, .hud-corner.top-right, .hud-panel-settings"],
-      ["Maya", ".maya, .maya-figure-wrap, .maya-bubble"],
+      ["Maya", ".maya, .maya-figure-wrap, .maya-bubble, .maya-full-figure"],
       ["objective", ".objectives-panel"],
       ["credit", ".map-corner"],
       ["hint", ".empty-prompt"]
@@ -141,13 +151,16 @@ if (flags.has("--zoom")) {
   await page.waitForFunction(`!document.getElementById("boot-splash")`, undefined, { timeout: 120000 }).catch(() => undefined);
   await wait(800);
   await shot(page, "01-landing");
+  if (W === 1366) await axe(page, "the landing page");
   const menuButtons = (await page.evaluate(`Array.from(document.querySelectorAll("button")).filter((b) => b.offsetParent).map((b) => b.textContent.trim())`)) as string[];
   check(menuButtons.includes("Tutorial") && menuButtons.includes("Play Panjim"), `the menu offers Tutorial and Play Panjim (${menuButtons.join(", ")})`);
   await page.getByText("Play Panjim", { exact: true }).click();
   await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForFunction(`!document.getElementById("boot-splash") && typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 180000 });
   await wait(1500);
   check(/#\/play\//.test(page.url()), `Play Panjim goes straight to the game view (${page.url().replace(server.url, "")})`);
   await shot(page, "02-start-popup");
+  if (W === 1366) await axe(page, "the start popup");
   const popup = (await page.evaluate(`(() => { const c = document.querySelector(".brief-card").getBoundingClientRect(); return { top: c.top, bottom: c.bottom, mayas: document.querySelectorAll(".brief-card .maya, .brief-card [class*=maya]").length, osm: /OpenStreetMap/.test(document.querySelector(".brief-card").innerText), goal: document.querySelector(".brief-goal-line")?.textContent ?? "" }; })()`)) as { top: number; bottom: number; mayas: number; osm: boolean; goal: string };
   check(popup.top >= 0 && popup.bottom <= H, `the start popup fits the window (${Math.round(popup.top)} to ${Math.round(popup.bottom)} of ${H})`);
   check(!popup.osm, "the start popup has no OpenStreetMap box");
@@ -170,8 +183,9 @@ if (flags.has("--zoom")) {
 
   // ---- ☰ and Help, and Esc --------------------------------------------------
   await page.locator(".hud-panel-settings .hud-panel-button").click();
-  await wait(500);
+  await wait(1200);
   await shot(page, "05-menu");
+  if (W === 1366) await axe(page, "the board with ☰ open");
   const menuText = (await page.evaluate(`document.querySelector(".hud-panel-settings .hud-panel-body").innerText`)) as string;
   for (const item of ["Field Guide", "Street map", "Show risk", "Sound", "Maya", "Calm motion", "Quality", "Start again", "Leave Panjim"]) check(menuText.includes(item), `☰ holds ${item}`);
   await page.keyboard.press("Escape");
@@ -180,6 +194,7 @@ if (flags.has("--zoom")) {
   await page.locator(".help-button").click();
   await wait(600);
   await shot(page, "06-help");
+  if (W === 1366) await axe(page, "How to play");
   await page.keyboard.press("Escape");
   await wait(300);
   let layers = await layersOpen(page);

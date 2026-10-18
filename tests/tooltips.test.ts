@@ -39,7 +39,8 @@ describe("tooltip copy", () => {
     const text = tooltipText("readiness", { pct: 72, storm: "flood", saved: 150, total: 181, stars: 2 });
     expect(text).toContain("Ready 72%");
     expect(text).toContain("150 of the 181 homes");
-    expect(tooltipText("buildsUntil", {})).toBe("One build is one year. The storm comes straight after your last build before it, in that same year.");
+    // Section 16 B2: the countdown's tooltip went with the line it was on (the countdown is on the storm's marker now).
+    expect(tooltipText("skipYear", {})).not.toMatch(/\{\w+\}/);
     expect(tooltipText("coin", {})).not.toMatch(/\{\w+\}/);
   });
 });

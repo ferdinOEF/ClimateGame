@@ -178,6 +178,13 @@ async function main(): Promise<void> {
     // "Play Panjim" opened Panaji's own card: Begin, so the board's ☰ menu is reachable.
     if (await page.locator(".brief-cta:visible").count()) await page.locator(".brief-cta:visible").first().click();
     await page.waitForTimeout(600);
+    // Section 16 review: no state from the Tutorial's run carries over (the game layer is shared), so Panjim's
+    // first-build hint is up before its first build.
+    await page.waitForTimeout(1500);
+    const hint = await page.evaluate(() => { const el = document.querySelector<HTMLElement>(".empty-prompt"); if (!el) return false; const st = getComputedStyle(el); return st.display !== "none" && st.visibility !== "hidden" && Number(st.opacity) > 0.05; });
+    const stale = await page.evaluate(() => ["has-built", "storm-hold", "storm-playing"].filter((c) => document.querySelector(`.${c}`)));
+    if (!hint || stale.length) problems.push(`[tutorial-next] after the Tutorial, Panjim's hint ${hint ? "shows" : "is hidden"}; stale classes: ${stale.join(", ") || "none"}`);
+    else console.log("after the Tutorial: Panjim's first-build hint shows, no stale state classes");
 
     // ---- 3b. getting out of a level ---------------------------------
     // Two ways out, and they have to agree. Both were broken before this was

@@ -50,6 +50,9 @@ import type { BuildCard } from "@ui/buildPopover";
 import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER, cardPill, sortCards } from "@ui/panjim/defenceCards";
 import { leaveText } from "@ui/panjim/modalStack";
 
+/** The state classes a Panjim session puts on the shared game layer (Section 16): cleared when one starts and ends. */
+const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards"];
+
 /**
  * The Panjim 2050 run inside a live session.
  *
@@ -171,8 +174,8 @@ export interface PanjimHost {
   requestLeave: () => void;
   /** ☰ → Start again (Section 16 B3): asks first; then the run starts afresh from its start popup. */
   requestRestart: () => void;
-  /** Help or the leave prompt is open (Section 16 B5): a storm and its cards wait for them. */
-  sessionLayerOpen: () => boolean;
+  /** A layer a storm waits for is open (Section 16 B5, `STORM_WAITS_FOR`): the storm and its cards wait. */
+  stormLayersOpen: () => boolean;
   /** The session's tooltip manager, for this run's own controls. */
   tooltips: Tooltips;
 }
@@ -269,6 +272,8 @@ export class PanjimController {
       landmarks: host.landmarks,
       localities: host.localities
     });
+    // The game layer is shared by every session (appShell): no state class from the last run may carry over.
+    host.container.classList.remove(...SESSION_CLASSES);
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, { onSkipYear: () => void this.skipYear() });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
@@ -483,9 +488,13 @@ export class PanjimController {
   }
 
   /** ☰'s last two items (Section 16 B3): Start again and Leave, each asking first. */
+  /** ☰'s Start again and Leave (disabled while a storm plays, `syncControls`). */
+  private menuActionsEl: HTMLElement | null = null;
+
   private menuActions(): HTMLElement {
     const box = document.createElement("div");
     box.className = "hud-menu-actions";
+    this.menuActionsEl = box;
     const place = this.tutorial ? "the Tutorial" : "Panjim";
     box.innerHTML = `<button type="button" class="hud-menu-action hud-menu-restart">Start again</button><button type="button" class="hud-menu-action hud-menu-leave">Leave ${place}</button>`;
     box.querySelector(".hud-menu-restart")!.addEventListener("click", () => {
@@ -704,8 +713,10 @@ export class PanjimController {
     this.maya.setState("worried");
     // The storm itself (Section 16 B4): the objective card, Maya's bubble and the hint fade; the top bar counts the homes lost.
     this.host.container.classList.add("storm-playing");
-    let lost = 0;
-    this.outlook.renderLost(0);
+    // Counted as the result card counts (Section 16 B4): every home in the storm's path not standing at the end,
+    // so the homes already gone before it start the count and it ends at the card's total less its saved.
+    let lost = outcome.housesTotal - outcome.housesSaved - outcome.housesDamaged;
+    this.outlook.renderLost(lost);
 
     let hurry = false;
     const abort = new AbortController();
@@ -751,7 +762,7 @@ export class PanjimController {
       abort.abort();
       this.host.container.classList.remove("slowmo", "storm-playing");
       // The storm's own count, exactly: the pill holds it through the result cards.
-      this.outlook.renderLost(outcome.housesDamaged);
+      this.outlook.renderLost(outcome.housesTotal - outcome.housesSaved);
     }
     await wait(hurry ? 100 : 500);
     if (record) {
@@ -791,7 +802,6 @@ export class PanjimController {
     this.maya.setState("idle");
   }
 
-  /** The named places the result cards can list: the map's landmarks and monuments. */
   /** The landmarks of a storm's area (Section 16 B6): on its tiles, or the places its forecast names. */
   private areaPlaceNames(challenge: ScheduledChallenge): string[] {
     const area = new Set(this.run.areas.get(challenge.id) ?? []);
@@ -800,6 +810,7 @@ export class PanjimController {
     return [...names];
   }
 
+  /** The named places the result cards can list: the map's landmarks and monuments. */
   private places(): Place[] {
     return [...this.host.landmarks, ...this.host.monuments];
   }
@@ -812,6 +823,7 @@ export class PanjimController {
   private async showResults(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
     // Help opened during the storm closes first: the cards never open under it (Section 16 B5).
     await this.untilLayersShut();
+    if (this.disposed) return;
     const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
@@ -1252,6 +1264,19 @@ export class PanjimController {
     await this.endTurn(outcome);
   }
 
+  /** Set by `dispose`: a wait that outlives the session ends, and nothing more is staged. */
+  private disposed = false;
+
+  /** True while a layer a storm waits for is open (Section 16 B5, `STORM_WAITS_FOR`: Help, ☰, the Field Guide, the leave prompt, Sources). */
+  get stormMustWait(): boolean {
+    return this.host.stormLayersOpen();
+  }
+
+  /** Resolves once every layer a storm waits for is shut, so a storm never plays under them (or the session is gone). */
+  private async untilLayersShut(): Promise<void> {
+    while (this.stormMustWait && !this.disposed) await new Promise((resolve) => window.setTimeout(resolve, 120));
+  }
+
   /**
    * After a build, repair or demolition, which is the year's one action: what
    * it did on the board (combos, Get ready jobs) at once; then the year ends.
@@ -1259,16 +1284,6 @@ export class PanjimController {
    * in full while the HUD still shows its year; then the new year ticks in.
    * On the last turn the run ends and the finale plays.
    */
-  /** True while a layer a storm waits for is open (Section 16 B5): Help, ☰, the Field Guide or the leave prompt. */
-  get stormMustWait(): boolean {
-    return this.panels.anyOpen || this.fieldGuide.isOpen || this.host.sessionLayerOpen();
-  }
-
-  /** Resolves once Help, ☰, the Field Guide and the leave prompt are all shut, so a storm never plays under them. */
-  private async untilLayersShut(): Promise<void> {
-    while (this.stormMustWait) await new Promise((resolve) => window.setTimeout(resolve, 120));
-  }
-
   private async endTurn(outcome: ActionOutcome): Promise<void> {
     this.host.cancelRiskIntro("time passing");
     // The bottom hint shows only until the run's first build (Section 16 B3).
@@ -1292,6 +1307,7 @@ export class PanjimController {
       this.holdCountdowns(pending.length > 0);
       for (const staged of pending) {
         await this.untilLayersShut();
+        if (this.disposed) return;
         await this.stageChallenge(staged.challenge, staged.outcome, staged.failedIds);
       }
       this.stagingYearEnd = false;
@@ -1479,6 +1495,11 @@ export class PanjimController {
 
   private syncControls(): void {
     this.clock.setControlsEnabled(!this.busy && !this.run.finished);
+    // ☰'s Start again and Leave wait while a storm plays: the year is saved only once it has settled.
+    for (const button of this.menuActionsEl?.querySelectorAll<HTMLButtonElement>("button") ?? []) {
+      button.disabled = this.busy;
+      button.title = this.busy ? "Once the storm has passed" : "";
+    }
   }
 
   /**
@@ -1861,7 +1882,8 @@ export class PanjimController {
 
   /** True while the final card (Panjim, 2026 to 2050) is up. */
   atFinalCard(): boolean {
-    return this.run.finished && this.resultCards.isOpen;
+    // The last storm's own cards are up with the run already finished: the final card is the one offering Play again.
+    return this.run.finished && this.resultCards.isOpen && this.host.container.querySelector(".result-cards .result-next")?.textContent === "Play again";
   }
 
   /** True once the next storm's gauge is green. */
@@ -1959,7 +1981,8 @@ export class PanjimController {
     this.fieldGuide.dispose();
     this.panels.dispose();
     this.clock.dispose();
-    this.host.container.classList.remove("has-panjim-clock");
+    this.disposed = true;
+    this.host.container.classList.remove("has-panjim-clock", ...SESSION_CLASSES);
   }
 }
 

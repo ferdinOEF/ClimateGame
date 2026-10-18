@@ -54,7 +54,7 @@ import { hashSeed, Rng } from "@core/rng";
 import { Telemetry } from "@core/telemetry";
 import { PanjimController } from "./panjimController";
 import { panjimHelpHtml } from "@ui/panjim/panjimHelp";
-import { ModalStack } from "@ui/panjim/modalStack";
+import { ModalStack, STORM_WAITS_FOR } from "@ui/panjim/modalStack";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
@@ -720,6 +720,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       return container.querySelector<HTMLElement>(".hud-panel-settings .hud-panel-button") ?? toggle;
     }
   });
+  // ☰'s Leave and Start again (Section 16 B3); bound once the confirm exists, further down.
+  let askLeave = (_fromMenu = false): void => options.onExit();
+  let askRestart = (_fromMenu = false): void => (options.onRestart ?? options.onExit)();
+  // The landmarks shown at the usual zoom (Section 16 B6), set by the controller before the label layer exists.
+  let placeHighlight: [readonly string[], readonly string[]] = [[], []];
+  let applyPlaceHighlight = (): void => {};
+  // A layer a storm waits for is open (set with the modal manager, below).
+  let stormLayersOpen = (): boolean => false;
   /**
    * The Panjim 2050 run, on a level whose time model is `"years"` (see
    * src/core/actionRun.ts). `null` on every other level, the tutorial
@@ -727,14 +735,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * below checks it, and it takes over pacing entirely when present: no
    * interval hazards, no objective-driven early finish.
    */
-  // ☰'s Leave and Start again (Section 16 B3); bound once the confirm exists, further down.
-  let askLeave = (_fromMenu = false): void => options.onExit();
-  let askRestart = (_fromMenu = false): void => (options.onRestart ?? options.onExit)();
-  // The landmarks shown at the usual zoom (Section 16 B6), set by the controller before the label layer exists.
-  let placeHighlight: [readonly string[], readonly string[]] = [[], []];
-  let applyPlaceHighlight = (): void => {};
-  // Help or the leave prompt is open (set with the modal manager, below): a storm waits for them.
-  let sessionLayerOpen = (): boolean => false;
   const panjim =
     level.timeModel === "years" && level.timeline
       ? new PanjimController({
@@ -838,7 +838,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           requestLeave: () => askLeave(true),
           requestRestart: () => askRestart(true),
-          sessionLayerOpen: () => sessionLayerOpen(),
+          stormLayersOpen: () => stormLayersOpen(),
           overlayOpen,
           riskAreaOnScreen: (keys) => {
             const rect = renderer.domElement.getBoundingClientRect();
@@ -2500,7 +2500,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const leaveConfirm = panjim ? new LeaveConfirm(container) : null;
   // The one modal manager (Section 16 B5): every layer over the board, topmost first. Esc and a press
   // outside close the topmost only; "Leave Panjim?" opens only with nothing open.
-  const shown = (selector: string) => (): boolean => Boolean(container.querySelector(selector) ?? document.querySelector(selector));
+  const shown = (selector: string) => (): boolean => document.querySelector(selector) !== null;
   const modals = new ModalStack([
     { name: "leave", isOpen: () => leaveConfirm?.isOpen ?? false },
     { name: "sources", isOpen: shown(".sources-backdrop") },
@@ -2521,7 +2521,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     { name: "brief", isOpen: () => objectivesPanel.briefOpen }
   ]);
   if (panjim) panjim.panels.isTopmost = () => modals.isTopmost("menu");
-  sessionLayerOpen = (): boolean => modals.someOpen(["help", "leave"]);
+  stormLayersOpen = (): boolean => modals.someOpen(STORM_WAITS_FOR);
   const keydownAbort = new AbortController();
   document.addEventListener(
     "keydown",

@@ -51,8 +51,6 @@ export class OutlookBar {
   private readonly lineEl: HTMLElement;
   /** "Homes at risk N": the next storm's toll on the board as it stands, live (Section 13). */
   readonly riskEl: HTMLElement;
-  /** The next storm in words, for the line's tooltip (the line itself is cut short on a narrow screen). */
-  nextText = "";
 
   constructor(parent: HTMLElement) {
     this.el = document.createElement("div");
@@ -147,9 +145,7 @@ export class OutlookBar {
     }
 
     const next = view.storms.find((storm) => !storm.past);
-    const done = `Every storm is behind you. Finish the city by ${view.endYear}.`;
     this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, this.hold)}` : `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.`;
-    this.nextText = next ? describe(next, this.hold) : done;
     this.lineEl.classList.toggle("locked", next !== undefined && next.yearsUntil <= 2);
   }
 

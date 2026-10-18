@@ -3,7 +3,7 @@
  * open over the board is listed here, topmost first, so there is one answer
  * to "what is on top": Esc and a press outside close that layer only, the
  * "Leave Panjim?" prompt opens only when nothing is open, and a storm waits
- * until Help and ☰ are shut.
+ * until Help and ☰ (and the Field Guide, a confirm, Sources) are shut.
  *
  * A layer that answers its own Esc (the confirm, the result cards, the Field
  * Guide, ☰) has no `close` here: its own handler runs first and marks the key
@@ -55,7 +55,7 @@ export class ModalStack {
 }
 
 /** The layers a storm waits for (Section 16 B5): it never starts, and its cards never open, under them. */
-export const STORM_WAITS_FOR = ["help", "menu", "field-guide", "leave"] as const;
+export const STORM_WAITS_FOR: readonly string[] = ["help", "menu", "field-guide", "leave", "sources"];
 
 /** The line under "Leave Panjim?" (Section 16 B5): what is true of the run right now. */
 export function leaveText(run: { tutorial: boolean; savedYear: number | null; finished: boolean; builds: number }): string {

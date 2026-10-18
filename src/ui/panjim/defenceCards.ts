@@ -55,7 +55,8 @@ export function cardPill(saved: number | null, defence = true): { pill: string |
 
 /**
  * The build menu's order (Section 16 B6): the most homes protected first (ties keep the defence order), and the first
- * marked "Best here" when it protects at least one home and more than any other card: a tie names no best. With no
+ * marked "Best here" when it protects at least one home and more than any other card: a tie names no best, and a
+ * lone card is not compared with anything, so it is not marked. With no
  * storm left to meet, the order is unchanged.
  */
 export function sortCards<T extends { protects?: number | null }>(cards: T[]): (T & { best: boolean })[] {

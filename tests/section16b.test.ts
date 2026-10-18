@@ -128,7 +128,7 @@ describe("the modal manager (Section 16 B5)", () => {
   });
 
   it("makes a storm wait for Help, ☰, the Field Guide and the leave prompt", () => {
-    expect([...STORM_WAITS_FOR]).toEqual(["help", "menu", "field-guide", "leave"]);
+    expect([...STORM_WAITS_FOR]).toEqual(["help", "menu", "field-guide", "leave", "sources"]);
     const stack = new ModalStack([layer("help", true), layer("build", false)]);
     expect(stack.someOpen(["help", "leave"])).toBe(true);
     expect(new ModalStack([layer("help", false)]).someOpen(["help"])).toBe(false);
@@ -142,8 +142,11 @@ describe("the modal manager (Section 16 B5)", () => {
     expect(session).toContain('panjim.panels.isTopmost = () => modals.isTopmost("menu")');
     // Help is a layer the manager closes on Esc (it had no Esc of its own).
     expect(session).toMatch(/name: "help",[\s\S]*?close: \(\) => \{\s*hud\.hideHelp\(\)/);
-    // The storm, and its cards, wait for Help and ☰.
-    expect(controller).toMatch(/await this\.untilLayersShut\(\);\s*await this\.stageChallenge/);
+    // The storm, and its cards, wait for exactly those layers, through the manager.
+    expect(session).toContain("stormLayersOpen = (): boolean => modals.someOpen(STORM_WAITS_FOR);");
+    expect(controller).toContain("return this.host.stormLayersOpen();");
+    for (const name of STORM_WAITS_FOR) expect(session, name).toContain(`name: "${name}"`);
+    expect(controller).toMatch(/await this\.untilLayersShut\(\);\s*if \(this\.disposed\) return;\s*await this\.stageChallenge/);
     expect(controller).toMatch(/showResults\([^)]*\): Promise<void> \{[^}]*await this\.untilLayersShut\(\);/);
   });
 });
@@ -184,5 +187,14 @@ describe("the build menu's order (Section 16 B6)", () => {
     const none = sortCards([{ id: "a", protects: null }, { id: "b", protects: null }]);
     expect(none.map((c) => c.id)).toEqual(["a", "b"]);
     expect(none.some((c) => c.best)).toBe(false);
+  });
+});
+
+describe("a session's state classes (Section 16 review)", () => {
+  it("are cleared when a Panjim session starts and when it ends: the game layer is shared by every run", () => {
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    expect(controller).toContain('const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards"];');
+    expect(controller).toContain("host.container.classList.remove(...SESSION_CLASSES);");
+    expect(controller).toContain('this.host.container.classList.remove("has-panjim-clock", ...SESSION_CLASSES);');
   });
 });
