@@ -54,6 +54,7 @@ import { hashSeed, Rng } from "@core/rng";
 import { Telemetry } from "@core/telemetry";
 import { PanjimController } from "./panjimController";
 import { panjimHelpHtml } from "@ui/panjim/panjimHelp";
+import { ModalStack, STORM_WAITS_FOR } from "@ui/panjim/modalStack";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
@@ -106,6 +107,8 @@ export interface GameSessionOptions {
   onFinished: (result: SessionResult) => void;
   /** The player chose to leave mid-run. No result — an abandoned run is not scored. */
   onExit: () => void;
+  /** ☰ → Start again (Section 16 B3): the same level afresh, from its start popup. Absent: leaves instead. */
+  onRestart?: () => void;
 }
 
 export interface GameSessionHandle {
@@ -717,6 +720,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       return container.querySelector<HTMLElement>(".hud-panel-settings .hud-panel-button") ?? toggle;
     }
   });
+  // ☰'s Leave and Start again (Section 16 B3); bound once the confirm exists, further down.
+  let askLeave = (_fromMenu = false): void => options.onExit();
+  let askRestart = (_fromMenu = false): void => (options.onRestart ?? options.onExit)();
+  // The landmarks shown at the usual zoom (Section 16 B6), set by the controller before the label layer exists.
+  let placeHighlight: [readonly string[], readonly string[]] = [[], []];
+  let applyPlaceHighlight = (): void => {};
+  // A layer a storm waits for is open (set with the modal manager, below).
+  let stormLayersOpen = (): boolean => false;
   /**
    * The Panjim 2050 run, on a level whose time model is `"years"` (see
    * src/core/actionRun.ts). `null` on every other level, the tutorial
@@ -793,6 +804,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             const at = areaOutline.centre;
             if (at) mapPins.say("Area protected", { name: "", x: at.x, y: 0.6, z: at.z });
           },
+          noteAt: (coord, text, ms) => {
+            const { x, z } = axialToWorld(coord, 1.0);
+            mapPins.say(text, { name: "", x, y: terrain.heightAt(coord) + 0.2, z }, ms, true);
+          },
+          highlightPlaces: (names, pinned) => {
+            // The label layer is made after the controller: kept until it exists.
+            placeHighlight = [names, pinned];
+            applyPlaceHighlight();
+          },
           showPins: (pins) => mapPins.setPins(pins.map((pin) => {
             const { x, z } = axialToWorld({ q: pin.q, r: pin.r }, 1.0);
             return { name: pin.name, x, y: (monuments.topAt({ q: pin.q, r: pin.r }) ?? terrain.heightAt({ q: pin.q, r: pin.r })) + 0.15, z };
@@ -816,6 +836,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           localities: levelMap.localities,
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
+          requestLeave: () => askLeave(true),
+          requestRestart: () => askRestart(true),
+          stormLayersOpen: () => stormLayersOpen(),
           overlayOpen,
           riskAreaOnScreen: (keys) => {
             const rect = renderer.domElement.getBoundingClientRect();
@@ -942,6 +965,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // today; this is guarding the feature, not a live fault.
     labelsForMap(levelMap).filter((label) => presentTileKeys.has(`${label.q},${label.r}`))
   );
+  applyPlaceHighlight = (): void => mapLabels.setHighlighted(...placeHighlight);
+  applyPlaceHighlight();
   /**
    * The OpenStreetMap credit, on any board whose geography was derived from
    * OpenStreetMap data.
@@ -992,6 +1017,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Prepended so the switch stacks above the credit.
     mapLayerControl = new MapLayerControl(mapCorner ?? container, applyLayer, true);
     applyLayer(mapLayerControl.current);
+    // Section 16 B3: on Panjim the street-map switch and its slider live in ☰; the credit stays in the corner.
+    panjim?.mountStreetMap(mapLayerControl.el);
     const layerToggle = container.querySelector<HTMLElement>(".map-layer-control input[type=checkbox]");
     const layerSlider = container.querySelector<HTMLElement>(".map-layer-control input[type=range]");
     if (layerToggle) tooltips.attach(layerToggle, "streetMap");
@@ -2401,6 +2428,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const coord = hit && hit.instanceId !== undefined && !name ? terrain.coordForHit(hit.object, hit.instanceId) : null;
       const buildable = coord && !panjim?.isBusy && !overlayOpen() && state.buildableAt(coord).length > 0;
       tileHover.show(buildable ? coord : null, coord ? terrain.heightAt(coord) : 0);
+      // Section 16 B6: a pointer over a tile that can be built on (never the north bank: it is scenery).
+      renderer.domElement.style.cursor = buildable ? "pointer" : "";
     }
   };
   renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
@@ -2412,6 +2441,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   renderer.domElement.addEventListener("pointerleave", () => {
     hoverAt = null;
     tileHover?.show(null);
+    renderer.domElement.style.cursor = "";
     hoveredMonument = null;
     mapLabels.setFocus(selectedMonument);
   });
@@ -2468,28 +2498,66 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   // "Leave Panjim?" on Esc (Section 12). Panjim only: the Tutorial keeps its behaviour.
   const leaveConfirm = panjim ? new LeaveConfirm(container) : null;
+  // The one modal manager (Section 16 B5): every layer over the board, topmost first. Esc and a press
+  // outside close the topmost only; "Leave Panjim?" opens only with nothing open.
+  const shown = (selector: string) => (): boolean => document.querySelector(selector) !== null;
+  const modals = new ModalStack([
+    { name: "leave", isOpen: () => leaveConfirm?.isOpen ?? false },
+    { name: "sources", isOpen: shown(".sources-backdrop") },
+    { name: "result-cards", isOpen: shown(".result-cards:not([hidden])") },
+    { name: "replay", isOpen: shown(".replay-card:not([hidden])") },
+    { name: "finale", isOpen: shown(".finale-card") },
+    { name: "field-guide", isOpen: () => panjim?.fieldGuide.isOpen ?? false },
+    {
+      name: "help",
+      isOpen: () => hud.helpOpen,
+      close: () => {
+        hud.hideHelp();
+        container.querySelector<HTMLElement>(".help-button")?.focus({ preventScroll: true });
+      }
+    },
+    { name: "menu", isOpen: () => panjim?.panels.anyOpen ?? false },
+    { name: "build", isOpen: () => buildPopover.isOpen, close: () => buildPopover.hide() },
+    { name: "brief", isOpen: () => objectivesPanel.briefOpen }
+  ]);
+  if (panjim) panjim.panels.isTopmost = () => modals.isTopmost("menu");
+  stormLayersOpen = (): boolean => modals.someOpen(STORM_WAITS_FOR);
   const keydownAbort = new AbortController();
   document.addEventListener(
     "keydown",
     (event: KeyboardEvent) => {
-      // Another panel (Sources) already answered this Esc.
+      // A layer that answers its own Esc (the confirm, the cards, the Field Guide, ☰, Sources) already has.
       if (event.key !== "Escape" || event.defaultPrevented) return;
-      // Escape closes the popover if one is open; otherwise it is the
-      // "get me out of here" key. On Panjim it asks first (Section 12): the
-      // other overlays answer their own Esc, and the confirm its own.
-      if (buildPopover.isOpen) buildPopover.hide();
-      else if (sessionFinished) return;
+      // Otherwise Esc closes the topmost layer and nothing else; a layer that holds it (the start popup) keeps it.
+      if (modals.escape() !== "none") return;
+      // With nothing open, Esc is the "get me out of here" key. On Panjim it asks first (Section 12).
+      if (sessionFinished) return;
       else if (!leaveConfirm) options.onExit();
       // Not while a storm plays: the year is saved only once it has settled.
-      else if (!leaveConfirm.isOpen && !panjim?.isBusy && (!overlayOpen() || objectivesPanel.briefOpen)) {
-        const note = panjim?.tutorial ? "The Tutorial is not saved: leaving starts it again." : panjim?.hasSave ? "Your progress is saved." : "You haven't built anything yet.";
-        void leaveConfirm.ask(note).then((leave) => {
-          if (leave) options.onExit();
-        });
-      }
+      else if (!panjim?.isBusy) askLeave();
     },
     { signal: keydownAbort.signal }
   );
+  if (leaveConfirm && panjim) {
+    /** ☰'s own Leave and Start again also work over the start popup (☰ sits above it): the one way out of it. */
+    const blocked = (fromMenu: boolean): boolean => panjim.isBusy || (fromMenu ? !(modals.topmost() === null || modals.isTopmost("brief")) : modals.anyOpen());
+    askLeave = (fromMenu = false): void => {
+      // Only with nothing else open (Section 16 B5); ☰'s own Leave closes the menu first.
+      if (blocked(fromMenu)) return;
+      void leaveConfirm.ask(panjim.leaveNote(), { title: panjim.tutorial ? "Leave the Tutorial?" : "Leave Panjim?" }).then((leave) => {
+        if (leave) options.onExit();
+      });
+    };
+    askRestart = (fromMenu = false): void => {
+      if (blocked(fromMenu)) return;
+      const text = panjim.tutorial ? "The Tutorial starts again from its first year." : "Your saved run is cleared and Panjim starts again from its first year.";
+      void leaveConfirm.ask(text, { title: "Start again?", confirm: "Start again" }).then((again) => {
+        if (!again) return;
+        panjim.clearSave();
+        (options.onRestart ?? options.onExit)();
+      });
+    };
+  }
 
   start((nowMs) => {
     // Before the element tick, so the sway this frame uses this frame's wind

@@ -246,6 +246,15 @@ export class Hud {
     this.incomeEl.classList.toggle("negative", roundedIncome < 0);
   }
 
+  /** How to Play is open (Section 16 B5: a layer of the modal manager). */
+  get helpOpen(): boolean {
+    return this.helpModal.isOpen;
+  }
+
+  hideHelp(): void {
+    this.helpModal.hide();
+  }
+
   /**
    * Panjim 2050: time is the clock at the top centre, in years, so the
    * "Turn N · Era 1" readout goes. With coins off (`economy` false) the Coin

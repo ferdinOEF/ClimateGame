@@ -117,7 +117,9 @@ export const HUD_OBSTACLES = [
   ".finale-card",
   ".result-cards",
   ".brief-card",
-  ".replay-card"
+  ".replay-card",
+  // Section 16 B6: the note beside a just-built tile (it was a banner, which is above).
+  ".map-note.beside"
 ];
 
 export class Maya {

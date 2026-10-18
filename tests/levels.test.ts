@@ -175,10 +175,12 @@ describe("level definitions", () => {
     // this is what stops a map being re-pointed or renamed without the level
     // that uses it following, which would have the board announce one place
     // while the HUD announces another.
+    // Section 16 B1: players see "Panjim", the city's everyday name; the map data and its credits keep "Panaji".
+    const SAID_AS: Record<string, string> = { Panaji: "Panjim" };
     for (const level of LEVELS) {
       if (level.tutorial) continue;
       const map = mapById(level.mapId)!;
-      expect(level.name, `${level.id} is named "${level.name}" but plays on "${map.name}"`).toBe(map.name);
+      expect(level.name, `${level.id} is named "${level.name}" but plays on "${map.name}"`).toBe(SAID_AS[map.name] ?? map.name);
     }
   });
 

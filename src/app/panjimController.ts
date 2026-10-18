@@ -3,6 +3,7 @@ import type { GameState } from "@core/gameState";
 import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
 import type { StormRecord } from "@core/stormRecord";
 import { drawStormCard, type StormCardInput } from "@ui/panjim/stormCard";
+import { forecastPlaceCandidates } from "@ui/panjim/forecastPlaces";
 import { replaySteps } from "@core/stormReplay";
 import { ReplayCard } from "@ui/panjim/replayCard";
 import { setSoundEnabled, setSoundVolume, soundVolume } from "@ui/audioHooks";
@@ -38,7 +39,7 @@ import { HudPanels } from "@ui/panjim/hudPanels";
 import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { boardFingerprint, panjimSaveKey, saveFits } from "@levels/savedRun";
+import { boardFingerprint, panjimSaveKey, saveFits, savedRunYear } from "@levels/savedRun";
 import { isPhaseLine, MAYA, noteIdsFor, stormWord, TUTORIAL_LINES } from "@core/mayaLines";
 import type { RunThen } from "@core/levelScore";
 import { PANAJI_LEVEL_ID } from "@ui/screens/runWords";
@@ -46,7 +47,11 @@ import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
 import type { BuildCard } from "@ui/buildPopover";
-import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER, cardPill } from "@ui/panjim/defenceCards";
+import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER, cardPill, sortCards } from "@ui/panjim/defenceCards";
+import { leaveText } from "@ui/panjim/modalStack";
+
+/** The state classes a Panjim session puts on the shared game layer (Section 16): cleared when one starts and ends. */
+const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards"];
 
 /**
  * The Panjim 2050 run inside a live session.
@@ -91,6 +96,13 @@ export interface PanjimHost {
   /** The skyline reveal: the camera pulls back over the whole city. */
   revealSkyline: () => void;
   showBanner: (text: string, ms?: number) => void;
+  /** A short note beside a tile for `ms` (Section 16 B6: the build that counts for no objective). */
+  noteAt: (coord: AxialCoord, text: string, ms: number) => void;
+  /**
+   * The landmarks whose labels show at the usual zoom (Section 16 B6): those in the current storm's area, and the
+   * ones its objective pins (`pinned`: the pin carries the name, so the label stands aside).
+   */
+  highlightPlaces: (names: readonly string[], pinned: readonly string[]) => void;
   /** Seed text for cosmetic variety and the share card: the level id, a daily id, or a `?seed=` replay. The calendar never reads it. */
   seed: string;
   /** The board effects of a challenge, staged zone by zone (see `stageChallenge`). */
@@ -158,6 +170,12 @@ export interface PanjimHost {
   monuments: readonly { name: string; q: number; r: number }[];
   /** True while the build menu or the opening brief is open: Maya stays quiet. */
   uiBlocked: () => boolean;
+  /** ☰ → Leave Panjim (Section 16 B3): asks first, as Esc does. */
+  requestLeave: () => void;
+  /** ☰ → Start again (Section 16 B3): asks first; then the run starts afresh from its start popup. */
+  requestRestart: () => void;
+  /** A layer a storm waits for is open (Section 16 B5, `STORM_WAITS_FOR`): the storm and its cards wait. */
+  stormLayersOpen: () => boolean;
   /** The session's tooltip manager, for this run's own controls. */
   tooltips: Tooltips;
 }
@@ -217,8 +235,10 @@ export class PanjimController {
   readonly mayaDirector: MayaDirector;
   /** Picks the fact Maya tells when an element is built (nuggetPopup.ts). */
   readonly nuggets: NuggetPopup;
-  /** The HUD's two panels, each shut to a small button (hudPanels.ts). */
+  /** The HUD's panels: ☰ (and Status, coins on only), each shut to a small button (hudPanels.ts). */
   readonly panels: HudPanels;
+  /** Where the street-map switch goes in ☰ (the session puts it there, on a map that has one). */
+  readonly menuStreetSlot: HTMLElement;
   private nextDangerMs = 0;
   /** Maya's voice on or off (M). The heat stays either way. */
   readonly mayaToggle: PrefToggle;
@@ -252,9 +272,14 @@ export class PanjimController {
       landmarks: host.landmarks,
       localities: host.localities
     });
+    // The game layer is shared by every session (appShell): no state class from the last run may carry over.
+    host.container.classList.remove(...SESSION_CLASSES);
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, { onSkipYear: () => void this.skipYear() });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
+    // One top bar (Section 16 B2): the pill at its right end, the countdown on the next storm's marker.
+    this.outlook.mountRisk(this.clock.riskSlot);
+    this.clock.onCountdown = (text) => this.outlook.setCountdown(text);
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
     this.jar = this.run.economyEnabled ? new CoinJar(host.container, () => this.collectJar()) : null;
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -367,14 +392,20 @@ export class PanjimController {
     // The HUD kept almost out of the way (hudPanels.ts): the instrument cluster, coin jar and Field Guide
     // button go into one panel and the toggles into another, each shut to a small button. The elements
     // are moved, not rebuilt: their handlers, ids and shortcuts (R, M, S) are the ones they were.
-    this.panels = new HudPanels(host.container);
-    // Section 13: on Panaji the Status panel holds the Field Guide (and the jar, coins on). The meters
-    // (Resilience, Biodiversity, Carbon, Food, Population) change nothing the player sees here, and the
-    // objectives are the Get ready card's alone: the cluster and the copy are taken out of the page.
+    // Section 16 B3: one ☰ menu, top right, beside "?". The Status panel exists only with coins on (the jar):
+    // its meters (Resilience, Biodiversity, Carbon, Food, Population) change nothing the player sees in this
+    // version, so the cluster is taken out of the page and the Field Guide moves into ☰.
+    this.panels = new HudPanels(host.container, { status: this.run.economyEnabled });
     host.container.querySelector<HTMLElement>(".instrument-cluster")?.remove();
-    this.panels.status.adopt(this.jar?.el ?? null, this.fieldGuide.buttonEl);
-    this.panels.settings.adopt(togglesRow(host.container));
-    if (this.jar) this.jar.onGain = (text) => this.panels.status.floatText(text);
+    if (this.panels.status) this.panels.status.adopt(this.jar?.el ?? null);
+    this.menuStreetSlot = document.createElement("div");
+    this.menuStreetSlot.className = "hud-menu-street";
+    this.menuStreetSlot.hidden = true;
+    this.panels.settings.adopt(this.fieldGuide.buttonEl, this.menuStreetSlot, togglesRow(host.container), this.menuActions());
+    if (this.jar && this.panels.status) {
+      const status = this.panels.status;
+      this.jar.onGain = (text) => status.floatText(text);
+    }
     this.attachTooltips();
     this.addForecastToBrief();
     const saveOffered = this.offerSavedRun();
@@ -447,6 +478,42 @@ export class PanjimController {
     this.host.addBriefFeature(preview);
   }
 
+  /**
+   * The line under "Leave Panjim?" (Section 16 B5): the year the saved run continues from when there is one;
+   * the Tutorial is never saved; a finished run is over (its result is recorded); else nothing was built yet.
+   */
+  leaveNote(): string {
+    const savedYear = this.tutorial ? null : savedRunYear(this.host.level.id, this.run.config.startYear, this.run.totalYears);
+    return leaveText({ tutorial: this.tutorial, savedYear, finished: this.run.finished, builds: this.run.turnNumber - 1 });
+  }
+
+  /** ☰'s last two items (Section 16 B3): Start again and Leave, each asking first. */
+  /** ☰'s Start again and Leave (disabled while a storm plays, `syncControls`). */
+  private menuActionsEl: HTMLElement | null = null;
+
+  private menuActions(): HTMLElement {
+    const box = document.createElement("div");
+    box.className = "hud-menu-actions";
+    this.menuActionsEl = box;
+    const place = this.tutorial ? "the Tutorial" : "Panjim";
+    box.innerHTML = `<button type="button" class="hud-menu-action hud-menu-restart">Start again</button><button type="button" class="hud-menu-action hud-menu-leave">Leave ${place}</button>`;
+    box.querySelector(".hud-menu-restart")!.addEventListener("click", () => {
+      this.panels.settings.close();
+      this.host.requestRestart();
+    });
+    box.querySelector(".hud-menu-leave")!.addEventListener("click", () => {
+      this.panels.settings.close();
+      this.host.requestLeave();
+    });
+    return box;
+  }
+
+  /** Puts the street-map switch into ☰ (Section 16 B3). */
+  mountStreetMap(el: HTMLElement): void {
+    this.menuStreetSlot.appendChild(el);
+    this.menuStreetSlot.hidden = false;
+  }
+
   /** A row of the first storm's own objective (a later storm's own area has a heading too, Section 16.5). */
   private isOpeningJob(job: PrepObjective): boolean {
     return Boolean(job.heading) && job.challengeId === this.host.level.prep?.opening?.challengeId;
@@ -463,17 +530,7 @@ export class PanjimController {
 
   /** The places a forecast's map names: a storm's own area's (its `labels`, else the places it is named after; Section 16), else the places in its area to protect. */
   private forecastPlaces(challenge: ScheduledChallenge): { name: string; q: number; r: number }[] {
-    const own = this.run.ownAreaFor(challenge.id);
-    if (own) {
-      const find = (name: string) => this.host.landmarks.find((l) => l.name === name) ?? this.host.localities.find((l) => l.name === name);
-      return (own.region.labels ?? regionPlaces(own.region)).map(find).filter((l): l is { name: string; q: number; r: number } => Boolean(l));
-    }
-    const zone = new Set(this.run.exposureFor(challenge)?.housesAtRisk ?? []);
-    const near = (l: { q: number; r: number }): boolean => [...zone].some((key) => {
-      const [q, r] = key.split(",").map(Number);
-      return (Math.abs(q - l.q) + Math.abs(r - l.r) + Math.abs(q + r - l.q - l.r)) / 2 <= 2;
-    });
-    return this.host.landmarks.filter(near).slice(0, 3);
+    return forecastPlaceCandidates(this.run, challenge, this.host.landmarks, this.host.localities);
   }
 
   private hideCone(): void {
@@ -509,11 +566,9 @@ export class PanjimController {
     const tips = this.host.tooltips;
     const clock = this.clock.parts;
     tips.attach(clock.face, "clock", () => ({ label: this.run.label, turn: Math.min(this.run.turnNumber, this.run.totalYears), total: this.run.totalYears }));
-    tips.attach(clock.until, "buildsUntil");
     tips.attach(clock.skip, "skipYear");
     const outlook = this.outlook.parts;
     tips.attach(outlook.track, "outlookTrack", () => ({ start: this.run.config.startYear, end: this.run.config.endYear }));
-    tips.attach(outlook.line, "outlookNext", () => ({ next: this.outlook.nextText }));
     tips.attach(outlook.risk, "homesAtRisk", () => {
       const next = this.run.nextChallenge();
       const homes = next ? this.run.homesAtRisk(next) : 0;
@@ -597,7 +652,8 @@ export class PanjimController {
   renderOutlook(): void {
     this.renderHeat();
     this.renderGuidance();
-    this.mayaDirector?.consider();
+    // Nothing about the next phase while the storm that passed is still on screen (Section 16 B4).
+    if (!this.holding) this.mayaDirector?.consider();
     this.renderGetReady();
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
     // A jar reads full at about two years of the current income, and never
@@ -655,6 +711,12 @@ export class PanjimController {
     this.host.challengeFx.begin(challenge);
     this.maya.dismiss();
     this.maya.setState("worried");
+    // The storm itself (Section 16 B4): the objective card, Maya's bubble and the hint fade; the top bar counts the homes lost.
+    this.host.container.classList.add("storm-playing");
+    // Counted as the result card counts (Section 16 B4): every home in the storm's path not standing at the end,
+    // so the homes already gone before it start the count and it ends at the card's total less its saved.
+    let lost = outcome.housesTotal - outcome.housesSaved - outcome.housesDamaged;
+    this.outlook.renderLost(lost);
 
     let hurry = false;
     const abort = new AbortController();
@@ -675,7 +737,7 @@ export class PanjimController {
         // The storm itself, from its depth field: the houses go when their
         // water passes the line, the defences answer when it reaches them.
         await this.host.challengeFx.play(record, this.preChallengeIds, {
-          onHouseLost: () => undefined,
+          onHouseLost: () => this.outlook.renderLost(++lost),
           hurry: () => hurry,
           // Maya calls the storm's phases as they come.
           onPhase: (phase, line) => {
@@ -698,7 +760,9 @@ export class PanjimController {
       }
     } finally {
       abort.abort();
-      this.host.container.classList.remove("slowmo");
+      this.host.container.classList.remove("slowmo", "storm-playing");
+      // The storm's own count, exactly: the pill holds it through the result cards.
+      this.outlook.renderLost(outcome.housesTotal - outcome.housesSaved);
     }
     await wait(hurry ? 100 : 500);
     if (record) {
@@ -738,6 +802,14 @@ export class PanjimController {
     this.maya.setState("idle");
   }
 
+  /** The landmarks of a storm's area (Section 16 B6): on its tiles, or the places its forecast names. */
+  private areaPlaceNames(challenge: ScheduledChallenge): string[] {
+    const area = new Set(this.run.areas.get(challenge.id) ?? []);
+    const names = new Set(this.forecastPlaces(challenge).map((place) => place.name));
+    for (const place of [...this.host.monuments, ...this.host.landmarks]) if (area.has(`${place.q},${place.r}`)) names.add(place.name);
+    return [...names];
+  }
+
   /** The named places the result cards can list: the map's landmarks and monuments. */
   private places(): Place[] {
     return [...this.host.landmarks, ...this.host.monuments];
@@ -749,6 +821,9 @@ export class PanjimController {
    * The next phase starts when they close, its cone on the map.
    */
   private async showResults(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
+    // Help opened during the storm closes first: the cards never open under it (Section 16 B5).
+    await this.untilLayersShut();
+    if (this.disposed) return;
     const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
@@ -756,7 +831,7 @@ export class PanjimController {
     if (this.tutorial) {
       // One card: the stars, the homes saved and what protected them; then on to Panaji.
       this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, tutorial: true });
-      this.tutorialChoice = await this.resultCards.show([{ body: tutorialResultCard(result), button: "Play Panaji", link: "Back to the menu" }]);
+      this.tutorialChoice = await this.resultCards.show([{ body: tutorialResultCard(result), button: "Play Panjim", link: "Back to the menu" }]);
       return;
     }
     const cards: CardSpec[] = [
@@ -765,7 +840,7 @@ export class PanjimController {
     ];
     if (next) {
       cards.push({
-        body: comingUpCard(`${next.name} in ${next.year}`, this.forecastPreview(next, false), results.comingUp[next.kind] ?? null),
+        body: comingUpCard(comingUpTitle(next.name, next.year, this.run.yearsUntil(next)), this.forecastPreview(next, false), results.comingUp[next.kind] ?? null),
         button: `On to ${this.run.year}`
       });
     }
@@ -946,6 +1021,8 @@ export class PanjimController {
     this.showSavedForecastOnBrief(data.snapshot);
     this.host.offerResume(`Continue from ${label}`, () => {
       this.run.restore(data.snapshot);
+      // A continued run has been built on: no first-build hint (Section 16 B3).
+      if (data.snapshot.turn > 0) this.host.container.classList.add("has-built");
       for (const [id, lock] of data.locks) this.run.replaySnapshots.set(id, lock);
       this.playMsBefore = data.playMs ?? 0;
       // Already seen in this playthrough (or a storm has passed): it does not play again.
@@ -1037,7 +1114,7 @@ export class PanjimController {
   private updateDanger(): void {
     // Section 13: no danger mark on Status. The panel holds no meters or warning now, and Maya says the
     // warning (one voice at a time); the mark would point at a panel with nothing about danger in it.
-    this.panels.status.setDanger(false);
+    this.panels.status?.setDanger(false);
   }
 
   frame(): void {
@@ -1104,10 +1181,13 @@ export class PanjimController {
       return i < 0 ? DEFENCE_ORDER.length : i;
     };
     const here = this.host.state.buildableAt(coord).map((def) => def).sort((a, b) => order(a.id) - order(b.id));
-    const cards: BuildCard[] = here.map((def) => {
-      const { pill, tone } = cardPill(next ? this.run.homesSavedBy(next, coord, def.id) : null, (DEFENCE_ORDER as readonly string[]).includes(def.id));
-      return { id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "", pill, tone };
-    });
+    const cards: BuildCard[] = sortCards(
+      here.map((def) => {
+        const saved = next ? this.run.homesSavedBy(next, coord, def.id) : null;
+        const { pill, tone } = cardPill(saved, (DEFENCE_ORDER as readonly string[]).includes(def.id));
+        return { id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "", pill, tone, protects: saved };
+      })
+    );
     for (const id of DEFENCE_ORDER) {
       if (here.some((def) => def.id === id)) continue;
       cards.push({ id, name: CARD_NAME[id], line: CARD_LINE[id], icon: CARD_ICON[id], pill: null, tone: "zero", notHere: true });
@@ -1147,7 +1227,8 @@ export class PanjimController {
     const saved = buildable && next ? this.run.homesSavedBy(next, coord, elementId) : null;
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
-    if (outside) this.host.showBanner(outside, 5200);
+    // Beside its tile for about three seconds (Section 16 B6), not in a banner across the screen.
+    if (outside) this.host.noteAt(coord, outside, 3000);
     if (saved !== null) this.host.floatAt(coord, floatText(saved), saved > 0 ? "good" : saved < 0 ? "bad" : "zero");
     this.lastTurnEnded = turn;
     this.host.placeElement(coord, elementId);
@@ -1183,6 +1264,19 @@ export class PanjimController {
     await this.endTurn(outcome);
   }
 
+  /** Set by `dispose`: a wait that outlives the session ends, and nothing more is staged. */
+  private disposed = false;
+
+  /** True while a layer a storm waits for is open (Section 16 B5, `STORM_WAITS_FOR`: Help, ☰, the Field Guide, the leave prompt, Sources). */
+  get stormMustWait(): boolean {
+    return this.host.stormLayersOpen();
+  }
+
+  /** Resolves once every layer a storm waits for is shut, so a storm never plays under them (or the session is gone). */
+  private async untilLayersShut(): Promise<void> {
+    while (this.stormMustWait && !this.disposed) await new Promise((resolve) => window.setTimeout(resolve, 120));
+  }
+
   /**
    * After a build, repair or demolition, which is the year's one action: what
    * it did on the board (combos, Get ready jobs) at once; then the year ends.
@@ -1192,6 +1286,8 @@ export class PanjimController {
    */
   private async endTurn(outcome: ActionOutcome): Promise<void> {
     this.host.cancelRiskIntro("time passing");
+    // The bottom hint shows only until the run's first build (Section 16 B3).
+    this.host.container.classList.add("has-built");
     // The cone goes for good with the first build of its phase.
     this.hideCone();
     const yearEnd = outcome.events.findIndex((event) => event.type === "challenge" || event.type === "year");
@@ -1209,7 +1305,11 @@ export class PanjimController {
       this.stagingYearEnd = pending.length > 0;
       // No countdowns while the storm and its result cards are on screen: they would read the old year.
       this.holdCountdowns(pending.length > 0);
-      for (const staged of pending) await this.stageChallenge(staged.challenge, staged.outcome, staged.failedIds);
+      for (const staged of pending) {
+        await this.untilLayersShut();
+        if (this.disposed) return;
+        await this.stageChallenge(staged.challenge, staged.outcome, staged.failedIds);
+      }
       this.stagingYearEnd = false;
       this.holdCountdowns(false);
       for (const event of later) if (event.type !== "challenge") this.handleEvent(event);
@@ -1293,11 +1393,22 @@ export class PanjimController {
     }
   }
 
-  /** Hides the build counter and the Outlook's "N years" while a storm or its result cards are on screen, and the guidance with them. */
+  /**
+   * While a storm and its result cards are on screen (Section 16 B4) the HUD stays on that storm: no
+   * countdown, the objective card and the hint hidden, the pill on "Homes lost N", nothing about the next
+   * phase until "On to 2031". The guidance goes with them.
+   */
   private holdCountdowns(hold: boolean): void {
     this.clock.setHold(hold);
     this.outlook.setHold(hold);
     this.host.setGuidanceVisible(!hold);
+    this.host.container.classList.toggle("storm-hold", hold);
+    if (!hold) this.outlook.renderLost(null);
+  }
+
+  /** True while a storm and its result cards are on screen (see `holdCountdowns`). */
+  private get holding(): boolean {
+    return this.host.container.classList.contains("storm-hold");
   }
 
   /** How many area tiles the outline showed last time: when it falls to none, the area is protected. */
@@ -1317,6 +1428,7 @@ export class PanjimController {
     const pins = new Map<string, { name: string; q: number; r: number }>();
     for (const job of open) for (const pin of job.pins ?? []) pins.set(pin.name, pin);
     this.host.showPins([...pins.values()]);
+    this.host.highlightPlaces(next && !this.run.finished ? this.areaPlaceNames(next) : [], [...pins.keys()]);
     if (!next || this.coneShown || this.run.finished) {
       this.host.showAreaOutline([]);
       this.outlined = 0;
@@ -1383,6 +1495,11 @@ export class PanjimController {
 
   private syncControls(): void {
     this.clock.setControlsEnabled(!this.busy && !this.run.finished);
+    // ☰'s Start again and Leave wait while a storm plays: the year is saved only once it has settled.
+    for (const button of this.menuActionsEl?.querySelectorAll<HTMLButtonElement>("button") ?? []) {
+      button.disabled = this.busy;
+      button.title = this.busy ? "Once the storm has passed" : "";
+    }
   }
 
   /**
@@ -1765,7 +1882,8 @@ export class PanjimController {
 
   /** True while the final card (Panjim, 2026 to 2050) is up. */
   atFinalCard(): boolean {
-    return this.run.finished && this.resultCards.isOpen;
+    // The last storm's own cards are up with the run already finished: the final card is the one offering Play again.
+    return this.run.finished && this.resultCards.isOpen && this.host.container.querySelector(".result-cards .result-next")?.textContent === "Play again";
   }
 
   /** True once the next storm's gauge is green. */
@@ -1863,7 +1981,8 @@ export class PanjimController {
     this.fieldGuide.dispose();
     this.panels.dispose();
     this.clock.dispose();
-    this.host.container.classList.remove("has-panjim-clock");
+    this.disposed = true;
+    this.host.container.classList.remove("has-panjim-clock", ...SESSION_CLASSES);
   }
 }
 
@@ -1906,3 +2025,9 @@ export function floatText(saved: number): string {
 function untilWord(kind: ScheduledChallenge["kind"]): string {
   return kind === "cyclone" ? "Cyclone" : kind === "flood" ? "Flood" : "Cyclone and flood";
 }
+
+/** The coming-up card's one heading (Section 16 B4): "Monsoon flood · 2040 · in 10 years". */
+export function comingUpTitle(name: string, year: number, years: number): string {
+  return `${name} · ${year} · in ${years} ${years === 1 ? "year" : "years"}`;
+}
+

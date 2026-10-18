@@ -1616,3 +1616,42 @@ NITs:
 **Could not be run or checked here:**
 - Firefox and WebKit, and frame rates on a real GPU.
 - Production after the merge: checked through Vercel's API (the deployed commit against the merge commit) and recorded on the pull request; this container's network has refused the site in a browser before (Section 11).
+
+# Section 16 part B — the HUD in five groups, the flow, the modal manager, the board
+
+Branch `section-16-map-hazards-ui`, off master `fcafc6c` (Section 16's merge; tag `pre-section-16-ui`, and `backup/pre-section-16-ui` on GitHub). Part A (the map and hazards) is the Section 16 already on master, kept as shipped. Headless Chromium with software GL. Evidence in `docs/qa/section16b/` (`NN-state-WxH.jpg`).
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 541 pass, 6 skipped. New: `section16b` (16: forecast-map labels never touch and at most 3, result card places, the countdown text, the modal manager and its wiring, the leave line, the build menu's order, session classes). Updated, each with its reason in the test: `hudPanels`, `levels`, `tooltips`. |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. The Tutorial plays start to finish; Panjim's first-build hint shows after it (no state carried over); ☰ → Leave Panjim → Leave returns to the menu (← Back is gone); Play Panjim opens the game view with Begin. |
+| `npm run test:labels` | 49 of 49 views. |
+| `npm run test:layout` | 140 of 140 layouts. |
+| `npm run test:maya` | Pass, zero console errors. |
+| `npm run verify:maya` | Pass (street map at 21%; previews equal what the storms take). |
+| Section 16b browser checks (`tools/section16bChecks.ts`) | All pass at 1280x600 (33), 1366x768 (37, with axe), 1920x1080 (33) and 2560x1440 (33), with the whole run to the final card and Play again; zero console errors. |
+| HUD groups | In play after the first build: top bar; ? and ☰; Maya; the objective card; and the credit. Nothing else (the check fails on any other top-level element). Before the first build, the hint as well. Before this section: 10 top-level elements (`before-1366x768-*`). |
+| Overlap at browser zoom | 1366x768 at 100%, 125% and 150%: no two HUD groups overlap (`zoom-*.jpg`). |
+| axe-core | No serious or critical violations: the landing page, the start popup, the board with ☰ open, How to play. |
+| Colour | Grayscale and deuteranopia (Machado 2009) copies of the 1920 first frame and coming-up card. The track, the outline, the countdown and the pills read by shape and text as well as colour. |
+| Bots | Not run: no mechanic or balance changed in this part. |
+| Independent review | 1 MAJOR, 7 MINOR, 6 NIT; see below. |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**Screenshots** (`docs/qa/section16b/`, each at 1280x600, 1366x768, 1920x1080 and 2560x1440): `01-landing`, `02-start-popup`, `03-first-frame` (the 2026 cone), `04-build-menu`, `05-menu` (☰), `06-help`, `07-heat-year`, `08-storm`, `09-result-1`, `10-result-2`, `11-coming-up`, `12-flood-cone` (2031), `13-final-card`, `14-after-play-again`. Before and after at 1366x768: `first-frame-before-after-1366x768.jpg`. The board before and after the map edits: `docs/qa/section16/board-before-after.jpg` (Part A).
+
+**Checked in the browser** (`section16bChecks.ts`):
+- The menu offers Tutorial and Play Panjim; Play Panjim goes straight to `#/play/l01-first-rains`; the start popup fits the window at every size, has no OpenStreetMap box and reads "Save as many homes as you can from three storms."
+- ☰ holds Field Guide, Street map, Show risk, Sound, Maya, Calm motion, Quality, Start again and Leave Panjim. Esc closes ☰; Esc closes Help and only Help; with nothing open Esc asks "Leave Panjim?". ☰ → Leave Panjim also works over the start popup (Esc there does nothing: it is the topmost layer).
+- The leave line: "You haven't built anything yet." before a build; "Your run is saved. You can continue from 2027." after one.
+- During the storm: no objective card, Maya bubble or hint; the top bar says "Homes lost N"; the HUD holds until On to 2031.
+- Result card 1 at most 4 places; the coming-up card's one heading "Monsoon flood · 2040 · in 10 years"; at most 3 names on its map.
+- The final card's quieter link "Back to the menu"; Play again lands on the game view with the start popup.
+
+**Independent review** (a separate agent on the diff and the screenshots):
+- **MAJOR, fixed.** State classes (`has-built`, `storm-hold`, `storm-playing`) stayed on the shared game layer between runs, so after the Tutorial, Start again or Play again the first-build hint never showed. Now cleared when a session starts and ends (`SESSION_CLASSES`); a test and a walkthrough step check it.
+- **MINOR, fixed:** the storm's wait for Help and ☰ ended on `dispose` (it could poll forever after browser Back); ☰'s Start again and Leave are disabled while a storm plays ("Once the storm has passed"); the storm waits for exactly `STORM_WAITS_FOR` through the manager, now including Sources, and the test checks the wiring; the note beside a tile stays on screen (flips left at the right edge) and is announced; "Homes lost" now counts as result card 1 does (every home in the storm's path not standing), so the two agree; the QA gate is completed (all sizes, colour copies, ☰ shot after its fade).
+- **NIT, fixed:** doc comments back on their members; the dead tooltip copy and `nextText`; `shown()` queries the document only; the lone-card rule for "Best here" is documented. The objective card is also hidden under the final card.
+- **NIT, not changed:** older section tools (`section8Checks`, `section1fChecks`) still click the Status panel, which exists only with coins on; they are historical and not part of the gate. The aftermath, storm report, era end and welcome overlays are left out of the modal list: they belong to the turns mode and never open on Panjim or the Tutorial (Panjim has no interval hazards; the last two are not built in the session).

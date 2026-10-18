@@ -1,9 +1,7 @@
 {
   "clock": "It is {label}, year {turn} of {total}. Each build you make is one year: time moves only when you build.",
-  "buildsUntil": "One build is one year. The storm comes straight after your last build before it, in that same year.",
   "skipYear": "Nothing can be built anywhere on the board, so this year passes without a build.",
   "outlookTrack": "The years from {start} to {end}. Each mark is a storm, at the end of its year: the dots show how strong.",
-  "outlookNext": "{next}",
   "readiness": "Ready {pct}%: your defences would stop {pct}% of the {storm}'s damage if it hit now, and {saved} of the {total} homes in its path would stand ({stars} stars). Build where the map turns red to raise it.",
   "readinessNone": "Every storm is behind you.",
   "homesAtRisk": "Homes at risk: if the {storm} came now, this game's model says it would take {homes}. Each build menu card says how many a defence would save.",

@@ -7,11 +7,11 @@
   "opening": {
     "id": "first-job",
     "title": "First job",
-    "text": "Hello! I am Maya. Before the {storm}, our first job is to {objective}. The steps are in the Get ready card, bottom right."
+    "text": "Hello! I am Maya. Before the {storm}, our first job is to {objective}. The steps are in the card, bottom right."
   },
   "tutorial": {
     "start": "A cyclone comes in 3 years, and each build is one year. Click a tile on the beach to see what you can build there.",
-    "cards": "Each card says how many homes it protects here from this cyclone. Pick the biggest number.",
+    "cards": "Each card says how many homes it protects here from this cyclone. The biggest number comes first.",
     "outline": "The faint outline shows the homes still at risk. Build inside it to bring them to safety.",
     "heat": "Red marks the homes this cyclone would flood. This is your last build before it lands."
   },
@@ -48,7 +48,7 @@
     {
       "id": "get-ready",
       "title": "Get ready",
-      "text": "I keep a short Get ready list for the next storm, bottom right. Every item is optional."
+      "text": "I keep a short list for the next storm in the card, bottom right. Every item is optional."
     }
   ],
   "warning": {

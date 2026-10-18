@@ -1,6 +1,7 @@
 import { describeObjective, type ObjectiveProgress } from "@core/objectives";
 import type { LevelDef } from "@levels/levels";
-import type { GameMap } from "@levels/levelMap";
+import { boardDescription, type GameMap } from "@levels/levelMap";
+import { numberWord } from "./screens/runWords";
 import { fullFigureUrl } from "./panjim/mayaArt";
 
 /**
@@ -82,12 +83,7 @@ export class ObjectivesPanel {
      */
     const place = card.querySelector(".brief-place") as HTMLElement;
     if (map.geo) {
-      const widthKm = (map.geo.cols * map.geo.metersPerHex) / 1000;
-      const heightKm = (map.geo.rows * 0.866 * map.geo.metersPerHex) / 1000;
-      place.textContent =
-        `${map.blurb} ` +
-        `This board is ${widthKm.toFixed(1)} by ${heightKm.toFixed(1)} km of Panjim's map, ` +
-        `about ${Math.round(map.geo.metersPerHex)} m to a tile.`;
+      place.textContent = boardDescription(map);
     } else {
       place.textContent = map.blurb;
       place.classList.add("synthetic");
@@ -108,6 +104,17 @@ export class ObjectivesPanel {
       place.hidden = true;
       (card.querySelector(".brief-goals-label") as HTMLElement).hidden = true;
       goals.hidden = true;
+    } else if (level.timeModel === "years") {
+      // Panjim's card (Section 16 B1): the board's description is in Facts and sources, and the goal is one line.
+      card.classList.add("brief-panjim");
+      place.hidden = true;
+      (card.querySelector(".brief-goals-label") as HTMLElement).hidden = true;
+      goals.hidden = true;
+      const storms = level.climate?.challenges.length ?? 0;
+      const goal = document.createElement("p");
+      goal.className = "brief-goal-line";
+      goal.textContent = `Save as many homes as you can from ${storms === 1 ? "one storm" : `${numberWord(storms)} storms`}.`;
+      goals.insertAdjacentElement("afterend", goal);
     }
 
     card.querySelector(".brief-cta")!.addEventListener("click", () => this.hideBrief());

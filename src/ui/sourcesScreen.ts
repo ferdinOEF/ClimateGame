@@ -1,6 +1,6 @@
 import { CITED_FACTS, SHOWN_FACTS, displayText, fullReference } from "@core/facts";
 import { RELIEF } from "@core/relief";
-import { REAL_PLACE_MAPS } from "@levels/levelMap";
+import { REAL_PLACE_MAPS, boardDescription } from "@levels/levelMap";
 
 /**
  * The map data each real-place board is built from: the street map and,
@@ -31,6 +31,8 @@ function mapDataItems(): HTMLLIElement[] {
     items.push(item);
   };
   for (const map of REAL_PLACE_MAPS) {
+    // The board itself, as the start popup used to describe it (Section 16 B1).
+    add([boardDescription(map)]);
     if (map.source) add([`${map.name}: coastline, rivers, roads, landmarks and street map ${map.source.adjustedByHand ? "drawn from OpenStreetMap and adjusted by hand" : "from OpenStreetMap"}.`, `${map.source.attribution}, under the Open Database Licence.${map.source.accessed ? ` Accessed ${map.source.accessed}.` : ""}`], map.source.href);
     const e = map.elevation;
     if (e) {

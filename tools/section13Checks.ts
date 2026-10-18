@@ -127,7 +127,8 @@ async function checkMenu(page: Page, tag: string, ground: string, key: string, f
   const ms = await menu(page, key);
   timings.push(ms);
   const cards = (await page.evaluate(`Array.from(document.querySelectorAll(".build-popover.as-cards .build-card")).map(function (b) { var p = b.querySelector(".build-card-pill"); return { id: b.dataset.element, pill: p ? p.textContent : "" }; })`)) as { id: string; pill: string }[];
-  const notHere = (await page.evaluate(`Array.from(document.querySelectorAll(".build-card-not-here")).map(function (b) { return b.dataset.element + ":" + b.textContent; })`)) as string[];
+  // Section 16 B6: the defences that cannot go here are one "Not here: ..." line.
+  const notHere = (await page.evaluate(`Array.from(document.querySelectorAll(".build-card-elsewhere")).map(function (b) { return b.dataset.elements + ":" + b.textContent; })`)) as string[];
   check(cards.length > 0, `${tag} ${ground} (${key}): the menu is cards (${cards.map((c) => c.id).join(", ")})`);
   const [q, r] = key.split(",").map(Number);
   let exact = true;
@@ -140,7 +141,7 @@ async function checkMenu(page: Page, tag: string, ground: string, key: string, f
     detail.push(`${card.id} "${card.pill}"`);
   }
   check(exact, `${tag} ${ground}: every pill is the model's number: ${detail.join("; ")}`);
-  check(notHere.length > 0 && notHere.every((n) => /Not here/.test(n)), `${tag} ${ground}: the other defences show greyed "Not here" (${notHere.length})`);
+  check(notHere.length > 0 && notHere.every((n) => /Not here/.test(n)), `${tag} ${ground}: the other defences show on one "Not here" line (${notHere.join(" | ")})`);
   const tags = await text(page, ".build-popover");
   check(!/\b(NBS|ENGINEERED|BUILDING|COSMETIC|nbs|engineered|hybrid|building|cosmetic)\b/.test(tags), `${tag} ${ground}: no NBS / ENGINEERED / BUILDING / COSMETIC tag`);
   const place = (await page.evaluate(`(function () {

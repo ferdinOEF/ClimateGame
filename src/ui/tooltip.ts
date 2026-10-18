@@ -217,7 +217,6 @@ export const HUD_SELECTORS = [
   ".panjim-clock .clock-face",
   ".panjim-clock button",
   ".panjim-clock .outlook-track",
-  ".panjim-clock .outlook-line",
   ".panjim-clock .outlook-risk:not([hidden])",
   ".coin-jar",
   ".field-guide-button",

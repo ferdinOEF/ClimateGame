@@ -55,12 +55,24 @@ function mayaHtml(line: CardLine): string {
   return `<p class="result-maya"><span class="result-maya-name">Maya</span>${line.rule ? `<span class="result-rule">Game rule</span>` : ""} ${esc(line.text)}</p>`;
 }
 
+/** At most this many places on card 1 (Section 16 B4); the rest are counted. */
+export const MAX_PLACES = 4;
+
+/** Card 1's places (Section 16 B4): the first four (damaged first, as `phaseResult` orders them) and a line for the rest. */
+export function cardPlaces(places: PhaseResult["places"]): { shown: PhaseResult["places"]; more: string | null } {
+  const rest = places.slice(MAX_PLACES);
+  const restDamaged = rest.filter((p) => !p.stood).length;
+  return { shown: places.slice(0, MAX_PLACES), more: rest.length === 0 ? null : `+${rest.length} more ${restDamaged === 0 ? "stood" : `(${restDamaged} damaged)`}` };
+}
+
 /** Card 1: the storm's result. */
 export function resultCard(result: PhaseResult): HTMLElement {
+  const { shown, more: moreText } = cardPlaces(result.places);
+  const more = moreText ? `<li class="result-places-more">${esc(moreText)}</li>` : "";
   const places = result.places.length
-    ? `<ul class="result-places">${result.places
+    ? `<ul class="result-places">${shown
         .map((p) => `<li><span class="result-place-name">${esc(p.name)}</span><span class="result-chip ${p.stood ? "stood" : "damaged"}">${p.stood ? "Stood" : "Damaged"}</span></li>`)
-        .join("")}</ul>`
+        .join("")}${more}</ul>`
     : "";
   return el(`<div class="result-card-body">
     <div class="result-eyebrow">${esc(result.eyebrow)}</div>
@@ -89,8 +101,10 @@ export function defencesCard(result: PhaseResult, mayaLine: CardLine): HTMLEleme
   </div>`);
 }
 
-/** Card 3: the next storm, with its forecast's map, line and legend. */
+/** Card 3: the next storm, with its forecast's map and legend, under one heading ("Monsoon flood · 2040 · in 10 years"). */
 export function comingUpCard(title: string, preview: HTMLElement | null, mayaLine: CardLine): HTMLElement {
+  // One heading (Section 16 B4): the preview's own line is not shown on this card.
+  preview?.querySelector(".cone-preview-line")?.remove();
   const body = el(`<div class="result-card-body">
     <div class="result-eyebrow">Coming up</div>
     <h2 class="result-title">${esc(title)}</h2>
@@ -117,7 +131,7 @@ export function tutorialResultCard(result: PhaseResult): HTMLElement {
     ${starsHtml(result.stars)}
     ${homesHtml(result.homesSaved, result.homesTotal)}
     ${rows}
-    <p class="result-sub">Panaji is the real city: ${esc(panajiRunPhrase())}.</p>
+    <p class="result-sub">Panjim is the real city: ${esc(panajiRunPhrase())}.</p>
   </div>`);
 }
 

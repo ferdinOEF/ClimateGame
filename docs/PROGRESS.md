@@ -8732,3 +8732,27 @@ Panaji, its map and the menu only. The Tutorial is unchanged (text identical, `t
   On master the flood needed 7 builds for 60% and never reached 90% in 25. The owner decides whether phases 2 and 3 stay at 10 builds.
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 16).
+
+## Section 16 part B — the HUD in five groups, the flow, the modal manager, the board — DONE
+
+The Panjim level, its map, the menu and the HUD only. Part A (map and hazards) is Section 16 above, kept as shipped. Phases 2 and 3 stay at 10 builds (owner decision). The Tutorial uses the same HUD and still plays start to finish; its level entry and map are unchanged (`tests/tutorialLocked.test.ts`).
+
+**B1, landing and start:** Play Panjim goes straight to the game view; the start popup opens as before. The level select only by its route (`#/levels`; CLAUDE.md). The popup: no OpenStreetMap box (its text, the board's scale and source, is in Facts & sources); "Save as many homes as you can from three storms."; a larger forecast map; one Maya; fits at 1280x600. Player-facing text says Panjim (the level is named Panjim; `tests/levels.test.ts` maps Panaji to it); Panaji stays in the map data and credits.
+
+**B2, one top bar** (`clockHud.ts`, `outlookBar.ts`): 58 px high, about 640 px wide at 1366, top centre. The year with "Year 1 of 25" under it; the track with the storm markers; the "Homes at risk N" pill. The next storm's marker carries the countdown ("Cyclone · 5 builds", then "Cyclone · next build", pulsing); later storms dim; past storms show their stars.
+
+**B3, corners:** top right only ? and ☰. ☰ holds Field Guide, Street map (switch and slider), Show risk (R), Sound (S) and volume, Maya (M), Calm motion, Quality, Start again (asks first) and Leave Panjim (asks first); the shortcuts work with it shut. ← Back is gone; the Status panel exists only with coins on. The objective card has no "Panaji / TISWADI" header, shrinks to "✓ Objective done", and hides in storms and under result cards. The hint shows only until the first build. The OpenStreetMap credit is always bottom right. Every icon button has an aria-label. `HUD_OBSTACLES` gains the note beside a tile.
+
+**B4, storms and results:** in a storm the objective card, Maya's bubble and the hint fade; the top bar shows a live "Homes lost N" (counted as result card 1 counts). The HUD holds on the storm until "On to 2031". Result card 1 lists only places in the area or damaged, at most 4, then "+N more stood". The coming-up card has one heading ("Monsoon flood · 2040 · in 10 years"); its map names at most 3 places that never touch. The final card's Play again goes straight back to the game view with the start popup; Back to the menu is the quieter link.
+
+**B5, one modal manager** (`src/ui/panjim/modalStack.ts`): every layer, topmost first. Esc and a press outside close the topmost layer only; "Leave Panjim?" opens only with nothing open (☰'s own Leave also over the start popup, its one way out); a storm and its cards wait until Help, ☰, the Field Guide, a confirm and Sources are shut. Fixed: Esc did not close Help; Esc opened Leave over other layers; Help stayed open under the result cards; the leave line said "You haven't built anything yet." after 25 builds (now "Your run is saved. You can continue from <year>." when true).
+
+**B6, the board:** district names always; landmark labels only in the current storm's area, pinned by an objective (the pin carries the name, never twice), hovered, or zoomed in close; one style (the pins' cream card, sentence case; no grey all-caps capsules). A pointer and an outline on a buildable tile; none on the north bank. The build menu beside the tile, sorted by "Protects N"; the first marked "Best here" when it protects strictly the most (a tie names no best); the defences that cannot go there on one "Not here: …" line. The "This protects no homes…" note beside its tile for 3 s. Maya's Tutorial line and Help now say the biggest number comes first.
+
+**Changes from the spec:**
+- Part A's deltas are not done: strength-only tuning to at least 75% of the flood in Taleigao, Merces and St Cruz is not reachable (master 71%; strength alone about 67%). Kept as shipped.
+- "Best here" is not shown on a tie, nor on a lone card: on the first beach tile Dune, Pandanus and Seawall all protect 3.
+- Esc on the start popup does nothing (it used to ask Leave, which the "only with nothing open" rule forbids; Begin would clear a saved run). ☰ stays reachable over it.
+- "Homes lost" counts every home in the storm's path not standing at the end (homes lost to earlier storms included), so it agrees with result card 1.
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 16 part B).

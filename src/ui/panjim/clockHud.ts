@@ -1,9 +1,11 @@
 import { playSound } from "@ui/audioHooks";
 
 /**
- * The Panjim 2050 clock, top centre (Section 8): the year and "Year N of 25",
- * the Outlook under it, then "N builds until the cyclone" (or the flood, or
- * the two together).
+ * The Panjim top bar (Section 16 B2), top centre, one row: the year big with
+ * "Year N of 25" under it, the Outlook's track with the three storms (the
+ * next one carries the countdown, "Cyclone · 5 builds"), and the Homes at
+ * risk pill. It replaces Section 8's clock, the Outlook panel under it, its
+ * "Next: ..." line and the floating "Cyclone in N builds" chip.
  *
  * One build is one year: time moves only when the player builds. Each new
  * year flips the face with a click, so the player always sees the year change
@@ -27,19 +29,30 @@ export interface ClockView {
   finished?: boolean;
 }
 
-/** "3 builds until the cyclone", "1 build until the flood". */
+/** "Cyclone in 3 builds", "Flood in 1 build": the countdown in a sentence (screen readers, tooltips). */
 export function untilText(until: { builds: number; storm: string }): string {
   return `${until.storm} in ${until.builds} ${until.builds === 1 ? "build" : "builds"}`;
+}
+
+/** "Cyclone · 5 builds", "Cyclone · next build": the countdown on the next storm's marker (Section 16 B2). */
+export function countdownText(until: { builds: number; storm: string }): string {
+  return `${until.storm} · ${until.builds <= 1 ? "next build" : `${until.builds} builds`}`;
 }
 
 export class ClockHud {
   readonly el: HTMLElement;
   private readonly yearEl: HTMLElement;
   private readonly turnEl: HTMLElement;
-  /** Where the Climate Outlook mounts, between the face and the line under it. */
+  /** Where the Climate Outlook's track mounts, beside the face. */
   readonly outlookSlot: HTMLElement;
+  /** Where the Homes at risk pill mounts, at the right end of the bar. */
+  readonly riskSlot: HTMLElement;
+  /** The countdown in words, for screen readers (the marker carries it on screen). */
   private readonly untilEl: HTMLElement;
   private readonly skipBtn: HTMLButtonElement;
+  /** Where the countdown goes on screen: the next storm's marker (the Outlook). */
+  onCountdown: ((text: string | null) => void) | null = null;
+  private lastCountdown: string | null = null;
 
   constructor(container: HTMLElement, actions: ClockHudActions) {
     this.el = document.createElement("div");
@@ -49,8 +62,9 @@ export class ClockHud {
         <span class="clock-year">2026</span><span class="clock-turn">Year 1 of 25</span>
       </div>
       <div class="clock-outlook"></div>
+      <div class="clock-risk"></div>
+      <span class="clock-until visually-hidden" aria-live="polite"></span>
       <div class="clock-buttons">
-        <span class="clock-until" aria-live="polite"></span>
         <button type="button" class="clock-ff clock-skip-year" hidden>Skip this year</button>
       </div>
     `;
@@ -58,6 +72,7 @@ export class ClockHud {
     this.yearEl = this.el.querySelector(".clock-year")!;
     this.turnEl = this.el.querySelector(".clock-turn")!;
     this.outlookSlot = this.el.querySelector(".clock-outlook")!;
+    this.riskSlot = this.el.querySelector(".clock-risk")!;
     this.untilEl = this.el.querySelector(".clock-until")!;
     this.skipBtn = this.el.querySelector(".clock-skip-year")!;
     this.skipBtn.addEventListener("click", () => actions.onSkipYear());
@@ -68,8 +83,10 @@ export class ClockHud {
     this.yearEl.textContent = String(view.year);
     this.turnEl.textContent = view.finished ? "" : `Year ${view.turn} of ${view.totalYears}`;
     this.turnEl.hidden = Boolean(view.finished);
-    this.untilEl.textContent = view.until ? untilText(view.until) : "";
-    this.untilEl.hidden = !view.until || Boolean(view.finished) || this.el.classList.contains("holding");
+    const show = Boolean(view.until) && !view.finished && !this.el.classList.contains("holding");
+    this.untilEl.textContent = show && view.until ? untilText(view.until) : "";
+    this.lastCountdown = view.until && !view.finished ? countdownText(view.until) : null;
+    this.onCountdown?.(show ? this.lastCountdown : null);
     this.skipBtn.hidden = !view.canSkip;
   }
 
@@ -85,7 +102,8 @@ export class ClockHud {
   /** Hides the build counter while a storm or its result cards are on screen (Section 12): it would be stale. */
   setHold(hold: boolean): void {
     this.el.classList.toggle("holding", hold);
-    if (hold) this.untilEl.hidden = true;
+    if (hold) this.untilEl.textContent = "";
+    this.onCountdown?.(hold ? null : this.lastCountdown);
   }
 
   /** Whether the fallback may be pressed (false while a storm plays, or at the end). */
