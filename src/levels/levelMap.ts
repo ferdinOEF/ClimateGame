@@ -1,6 +1,7 @@
 import legacyMapData from "@data/map.json";
 import tutorialMap from "@data/maps/tutorial.json";
 import panajiMap from "@data/maps/panaji.json";
+import levelData from "@data/levels.json";
 import { axialDistance, type AxialCoord } from "@core/hex";
 import type { PlacedTile } from "@core/gameState";
 import type { LevelDef } from "./levels";
@@ -276,6 +277,24 @@ const LEGACY_MAP: GameMap = (() => {
 export const GAME_MAPS: GameMap[] = [fromFile(tutorialMap), fromFile(panajiMap), LEGACY_MAP];
 
 const MAP_BY_ID = new Map(GAME_MAPS.map((map) => [map.id, map]));
+
+/**
+ * Where each level's flood comes from (`climate.floodSource` in levels.json,
+ * Section 16.5), marked on its map's tiles as `PlacedTile.floodSource`, so
+ * every board built from the map (the session, the bots, the tests) floods
+ * from the same place. A source must be a river tile of that map.
+ */
+for (const level of levelData as unknown as { id: string; mapId: string; climate?: { floodSource?: string[] } }[]) {
+  const sources = level.climate?.floodSource;
+  const map = sources ? MAP_BY_ID.get(level.mapId) : undefined;
+  if (!sources || !map) continue;
+  const byKey = new Map(map.tiles.map((tile) => [`${tile.coord.q},${tile.coord.r}`, tile]));
+  for (const key of sources) {
+    const tile = byKey.get(key);
+    if (!tile || tile.terrainId !== "river") throw new Error(`${level.id}: flood source ${key} is not a river tile of ${map.id}`);
+    tile.floodSource = true;
+  }
+}
 
 /** Every map that depicts a real place, in campaign order. Drives the "where you have played" list on the menu. */
 export const REAL_PLACE_MAPS: GameMap[] = GAME_MAPS.filter((map) => map.geo !== undefined);

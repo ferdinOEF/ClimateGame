@@ -1,5 +1,6 @@
 import { LEVELS, dailyChallengeLevel, type LevelDef } from "@levels/levels";
 import { currentLevelId, levelsCompleted, type PlayerProgress } from "@levels/progression";
+import { PANAJI_LEVEL_ID } from "./runWords";
 
 /**
  * What the main menu offers, decided without a DOM so the tests can check it
@@ -9,7 +10,7 @@ import { currentLevelId, levelsCompleted, type PlayerProgress } from "@levels/pr
 /** The menu's first button always starts this level, whatever the player's progress. */
 export const TUTORIAL_LEVEL_ID = "l00-tutorial";
 
-export type MenuButtonId = "tutorial" | "resume" | "levels" | "daily" | "leaderboard";
+export type MenuButtonId = "tutorial" | "resume" | "panjim" | "levels" | "daily" | "leaderboard";
 
 export interface MenuButtonSpec {
   id: MenuButtonId;
@@ -31,7 +32,10 @@ export interface MenuModel {
  * The buttons, in order.
  *
  * With the extras off (the default build) there are two: "Tutorial" and
- * "Choose a level". With them on, the old menu comes back around them: the
+ * "Play Panjim" (Section 16.3, owner decision), which starts the Panaji game
+ * straight away, its start popup open; the level select is still reachable
+ * at its own address (#/levels), but no button leads there. With the extras
+ * on, the old menu comes back around them: the
  * Play/Continue/Play again button, the Daily Challenge, the Leaderboard, and
  * the stats and footer. "Tutorial" stays first either way, so the first button
  * always means the same thing.
@@ -54,7 +58,7 @@ export function menuModel(progress: PlayerProgress, showExtras: boolean): MenuMo
     }
   }
 
-  buttons.push({ id: "levels", label: "Choose a level", primary: false });
+  buttons.push({ id: "panjim", label: "Play Panjim", primary: false, levelId: PANAJI_LEVEL_ID });
 
   if (showExtras) {
     const daily = dailyChallengeLevel();

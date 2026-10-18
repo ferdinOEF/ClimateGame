@@ -17,7 +17,7 @@ import { menuTagline } from "./runWords";
 /**
  * The title screen — the first thing a player sees.
  *
- * By default it offers two things, "Tutorial" and "Choose a level", under the
+ * By default it offers two things, "Tutorial" and "Play Panjim", under the
  * title. The rest of the old menu (Play/Continue, the Daily Challenge, the
  * Leaderboard, the stats tiles and the footer) is behind `SHOW_MENU_EXTRAS`;
  * which buttons appear is decided in `menuModel.ts`.
@@ -31,7 +31,7 @@ export interface MenuActions {
   onSignIn: () => void;
   /** Whether account features exist in this build (`REQUIRE_EMAIL`). Off, the sign-in link and "Signed in as" note are not drawn. */
   showAccount: boolean;
-  /** `SHOW_MENU_EXTRAS`. Off, only "Tutorial" and "Choose a level" are drawn. */
+  /** `SHOW_MENU_EXTRAS`. Off, only "Tutorial" and "Play Panjim" are drawn. */
   showExtras: boolean;
 }
 
@@ -142,6 +142,7 @@ function menuButton(spec: MenuButtonSpec, actions: MenuActions): HTMLElement {
     switch (spec.id) {
       case "tutorial":
       case "resume":
+      case "panjim":
         actions.onPlay(spec.levelId!);
         break;
       case "daily":

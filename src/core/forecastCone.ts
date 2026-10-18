@@ -2,7 +2,7 @@ import { axialToWorld } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
-import { computeWater, damageAt, seawardOf, type StormInput, type WaterBoard } from "./hazardModel";
+import { computeWater, damageAt, floodRoutes, floodSources, routeTo, seawardOf, type StormInput, type WaterBoard } from "./hazardModel";
 
 /**
  * The forecast cone at the start of a storm's phase (Section 6.1): where the
@@ -20,8 +20,9 @@ import { computeWater, damageAt, seawardOf, type StormInput, type WaterBoard } f
  *     the river water stand at about the same height, so each holds the
  *     other back: the river mouth and the Mandovi waterfront.
  *   - TRACKS: a cyclone's comes from the open sea onto its landfall; a
- *     flood's runs from the most upstream river tile down the channel to the
- *     wetland it floods deepest.
+ *     flood's runs from its source (the level's own, Section 16.5: Panaji's
+ *     upstream Mandovi; else the most upstream river tile) down the channels
+ *     to the wetland it floods deepest.
  *
  * Pure: no DOM, no renderer. Points are world coordinates (hex size 1).
  */
@@ -87,8 +88,8 @@ const world = (key: string): { x: number; z: number } => {
 /** The direction from a landfall site out to open sea (the hazard model's own, which the wind blows along). */
 const seaward = seawardOf;
 
-/** The cyclone's track: from open sea, through its landfall site, a little way inland. */
-function cycloneTrack(board: WaterBoard, site: string): ConeTrack {
+/** The cyclone's track: from open sea, through its landfall site, a little way inland (or on to `end`, the place it comes for). */
+function cycloneTrack(board: WaterBoard, site: string, end?: string): ConeTrack {
   const at = world(site);
   const out = seaward(board, site);
   const unit = Math.sqrt(3);
@@ -98,21 +99,31 @@ function cycloneTrack(board: WaterBoard, site: string): ConeTrack {
       { x: at.x + out.x * unit * 7, z: at.z + out.z * unit * 7 },
       { x: at.x + out.x * unit * 3, z: at.z + out.z * unit * 3 },
       { x: at.x, z: at.z },
-      { x: at.x - out.x * unit * 1.6, z: at.z - out.z * unit * 1.6 }
+      end ? world(end) : { x: at.x - out.x * unit * 1.6, z: at.z - out.z * unit * 1.6 }
     ]
   };
 }
 
-/** The flood's track: the shortest way along the channels from the most upstream river tile to `target`. */
+/** Every other tile of a path, the ends kept: a smooth line, not a staircase. */
+function trackOf(path: string[]): ConeTrack {
+  return { kind: "flood", points: path.filter((_, i) => i % 2 === 0 || i === path.length - 1).map(world) };
+}
+
+/** The flood's track: the shortest way along the channels from its source to `target`. */
 function floodTrack(board: WaterBoard, target: string): ConeTrack | null {
-  let start: string | null = null;
-  for (const [key, index] of board.riverIndex) {
-    if (board.tiles.get(key)!.terrainId !== "river") continue;
-    if (start === null || index < board.riverIndex.get(start)!) start = key;
+  // The level's source when it names one; else the most upstream river tile.
+  let starts: string[] = board.floodSource ? floodSources(board) : [];
+  if (starts.length === 0) {
+    let start: string | null = null;
+    for (const [key, index] of board.riverIndex) {
+      if (board.tiles.get(key)!.terrainId !== "river") continue;
+      if (start === null || index < board.riverIndex.get(start)!) start = key;
+    }
+    starts = start ? [start] : [];
   }
-  if (!start) return null;
-  const from = new Map<string, string | null>([[start, null]]);
-  const queue = [start];
+  if (starts.length === 0) return null;
+  const from = new Map<string, string | null>(starts.map((key) => [key, null]));
+  const queue = [...starts];
   for (let i = 0; i < queue.length && !from.has(target); i++) {
     for (const n of board.tiles.get(queue[i])!.neighbours) {
       if (from.has(n)) continue;
@@ -125,9 +136,7 @@ function floodTrack(board: WaterBoard, target: string): ConeTrack | null {
   if (!from.has(target)) return null;
   const path: string[] = [];
   for (let at: string | null = target; at; at = from.get(at) ?? null) path.unshift(at);
-  // Every other tile, the ends kept: a smooth line, not a staircase.
-  const points = path.filter((_, i) => i % 2 === 0 || i === path.length - 1).map(world);
-  return { kind: "flood", points };
+  return trackOf(path);
 }
 
 /**
@@ -141,7 +150,14 @@ export function forecastCone(
   board: WaterBoard,
   storm: StormInput,
   lost: readonly string[],
-  options: { combos?: ReadonlyMap<string, number>; landfallZoneTiles?: readonly string[] } = {}
+  options: {
+    combos?: ReadonlyMap<string, number>;
+    landfallZoneTiles?: readonly string[];
+    /** The storm's own area (Section 16.5): the flood's track runs into it, to the home at risk there the water reaches last. */
+    trackInto?: ReadonlySet<string>;
+    /** The place a cyclone comes for (Section 16.4: Sharada Mandir School): its track ends there. */
+    trackEnd?: string;
+  } = {}
 ): ForecastCone {
   const water = computeWater(bare(state), storm, { landfallZoneTiles: options.landfallZoneTiles });
   const site = storm.kind !== "flood" && storm.landfall !== null ? board.sites[storm.landfall] : null;
@@ -163,16 +179,28 @@ export function forecastCone(
   const reached = [...new Set([...water.depth.keys(), ...water.wind.keys()])].filter((key) => !state.isScenery(key) && (!WATER.has(board.tiles.get(key)!.terrainId) || inWedge(key)));
   const bands = coneBands(reached.map((key) => [key, damageAt(water, key)] as const));
   const tracks: ConeTrack[] = [];
-  if (site) tracks.push(cycloneTrack(board, site));
+  if (site) tracks.push(cycloneTrack(board, site, options.trackEnd));
   let meet: string[] = [];
   if (storm.kind !== "cyclone") {
-    // The flood's track ends in the wetland it floods deepest.
-    let target: string | null = null;
-    for (const [key, depth] of water.flood) {
-      if (board.tiles.get(key)!.terrainId !== "estuary") continue;
-      if (target === null || depth > water.flood.get(target)! || (depth === water.flood.get(target)! && key < target)) target = key;
+    // From the level's own source (Section 16.5): along the water's own route to the home at risk the
+    // flood reaches last, in the storm's own area when it has one.
+    let track: ConeTrack | null = null;
+    if (board.floodSource) {
+      const routes = floodRoutes(board, storm);
+      const into = (key: string): boolean => (options.trackInto ? options.trackInto.has(key) : water.flood.has(key));
+      const paths = lost.filter(into).map((key) => routeTo(routes, key)).filter((path) => path.length > 1);
+      paths.sort((a, b) => b.length - a.length || (a[a.length - 1] < b[b.length - 1] ? -1 : 1));
+      if (paths.length > 0) track = trackOf(paths[0]);
     }
-    const track = target ? floodTrack(board, target) : null;
+    if (!track) {
+      // Else the track ends in the wetland it floods deepest.
+      let target: string | null = null;
+      for (const [key, depth] of water.flood) {
+        if (board.tiles.get(key)!.terrainId !== "estuary") continue;
+        if (target === null || depth > water.flood.get(target)! || (depth === water.flood.get(target)! && key < target)) target = key;
+      }
+      track = target ? floodTrack(board, target) : null;
+    }
     if (track) tracks.push(track);
   }
   if (storm.kind === "compound") {

@@ -66,7 +66,8 @@ telegraphed storm lands when its countdown reaches zero regardless.
 ### The campaign
 
 A guided tutorial, then one level: **Panaji**, on the Mandovi estuary. The
-main menu offers just two things: **Tutorial** and **Choose a level**.
+main menu offers just two things: **Tutorial** and **Play Panjim**, which
+opens the Panaji game straight away (the level select stays at `#/levels`).
 
 The Panaji board is **743 hexes of real Panjim geography**. The coastline from
 Miramar down to Dona Paula, the Mandovi and its estuary fringe, the sand, and

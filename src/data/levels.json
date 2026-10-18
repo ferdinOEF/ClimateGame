@@ -121,14 +121,15 @@
     "climate": {
       "seaLevelCmPerYear": 0.4,
       "intensityPerStrength": 50,
+      "floodSource": ["33,1", "33,2", "32,3"],
       "challenges": [
         {
           "id": "c1-cyclone",
           "name": "Cyclone",
           "kind": "cyclone",
           "year": 2030,
-          "strength": 1,
-          "landfall": "1,12"
+          "strength": 1.2,
+          "landfall": "-5,18"
         },
         {
           "id": "c2-flood",
@@ -235,21 +236,30 @@
           "label": "Build {count} seawall at {place}"
         }
       ],
+      "areas": [
+        {
+          "challengeId": "c2-flood",
+          "title": "Protect Taleigao, Merces and St Cruz",
+          "region": {
+            "localities": ["Taleigao", "Merces", "St Cruz"]
+          }
+        }
+      ],
       "opening": {
         "challengeId": "c1-cyclone",
-        "title": "Protect Kala Academy to Sharada Mandir",
+        "title": "Protect Sharada Mandir School",
         "region": {
-          "from": "Kala Academy",
-          "to": "Sharada Mandir School",
-          "inland": 6,
-          "seaward": 4
+          "around": "Sharada Mandir School",
+          "radius": 3,
+          "place": "in front of Sharada Mandir School",
+          "labels": ["Sharada Mandir School", "Miramar Beach"]
         },
         "steps": [
           {
             "id": "pandanus",
             "elementId": "sandy_vegetation",
             "count": 2,
-            "label": "Plant 2 pandanus on that beach"
+            "label": "Plant 2 pandanus on the beach in front of it"
           },
           {
             "id": "dunes",

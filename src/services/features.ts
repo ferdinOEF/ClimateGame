@@ -28,7 +28,7 @@ export const REQUIRE_EMAIL = parseFlag(import.meta.env.VITE_REQUIRE_EMAIL);
  * (settings, sign-in link, where-progress-is-saved note).
  *
  * Off by default. With it off the menu offers two things, "Tutorial" and
- * "Choose a level", and the leaderboard, daily-challenge and settings screens
+ * "Play Panjim", and the leaderboard, daily-challenge and settings screens
  * cannot be reached at all: no button leads to them, and a pasted
  * `#/leaderboard`, `#/settings` or `#/play/daily-...` link lands on the menu.
  * Scores are still saved on the device (and still posted in the background

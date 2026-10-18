@@ -136,15 +136,32 @@ describe("the storm's script", () => {
     expect(surgeDepth(cyclone.field, sea.key, landfall + 2)).toBeGreaterThan(0);
   });
 
-  it("sends the flood's swell downriver, one channel tile at a time", () => {
-    const river = [...flood.field.tiles.values()].filter((t) => t.terrainId === "river" && t.riverIndex !== null).sort((a, b) => a.riverIndex! - b.riverIndex!);
+  it("sends the flood's swell down the channels from its source, one channel tile at a time", () => {
+    // Section 16.5: the swell starts at the level's own source (Panaji's upstream Mandovi at the east edge).
+    expect([...flood.field.floodStart].sort()).toEqual([...BOT_LEVEL.climate!.floodSource!].sort());
+    // Hexes from the source along the channels (river and wetland).
+    const channel = (key: string) => ["river", "estuary"].includes(flood.field.tiles.get(key)?.terrainId ?? "");
+    const fromSource = new Map(flood.field.floodStart.map((key) => [key, 0]));
+    const queue = [...flood.field.floodStart];
+    for (let i = 0; i < queue.length; i++) {
+      const [q, r] = queue[i].split(",").map(Number);
+      for (const n of neighbors({ q, r }).map(axialKey)) {
+        if (fromSource.has(n) || !channel(n)) continue;
+        fromSource.set(n, fromSource.get(queue[i])! + 1);
+        queue.push(n);
+      }
+    }
+    const river = [...flood.field.tiles.values()].filter((t) => t.terrainId === "river" && fromSource.has(t.key)).sort((a, b) => fromSource.get(a.key)! - fromSource.get(b.key)!);
     expect(river.length).toBeGreaterThan(10);
     expect(flood.field.mouthIndex).toBeGreaterThan(10);
     for (let i = 1; i < river.length; i++) expect(river[i].floodArrival).toBeGreaterThanOrEqual(river[i - 1].floodArrival);
     const first = river[0];
     const last = river[river.length - 1];
-    expect(last.floodArrival - first.floodArrival).toBeCloseTo((last.riverIndex! - first.riverIndex!) * flood.field.perRiverIndex, 6);
-    expect(flood.field.perRiverIndex).toBeLessThanOrEqual(STORM_TIMING.flood.perRiverIndex);
+    expect(fromSource.get(first.key)).toBe(0);
+    expect(first.floodArrival).toBeCloseTo(STORM_TIMING.flood.rainLead, 9);
+    // The whole trip down the channels fits the swell's travel time.
+    expect(last.floodArrival - first.floodArrival).toBeLessThanOrEqual(STORM_TIMING.flood.maxTravel + 1e-9);
+    expect(last.floodArrival - first.floodArrival).toBeGreaterThan(0);
     // The banks flood after the channel beside them.
     for (const tile of flood.field.tiles.values()) {
       if (tile.terrainId === "land" && tile.floodPeak > 0) expect(tile.floodArrival).toBeGreaterThan(STORM_TIMING.flood.rainLead);

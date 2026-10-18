@@ -33,6 +33,12 @@ export interface ClimateConfig {
   seaLevelCmPerYear: number;
   /** Zone-defence points one unit of challenge strength is worth (core/zones.ts). */
   intensityPerStrength: number;
+  /**
+   * Where the monsoon flood comes from, as "q,r" river tiles (Section 16.5:
+   * Panaji's upstream Mandovi at the east edge of the board). Absent: the
+   * hazard model's automatic rule, the farthest stretch of river from the sea.
+   */
+  floodSource?: string[];
 }
 
 export interface ScheduledChallenge extends ChallengeDef {

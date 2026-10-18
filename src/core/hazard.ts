@@ -574,6 +574,8 @@ export interface DepthField {
   landfall: number | null;
   /** Storm time by which all the water has drained. */
   duration: number;
+  /** The level's flood source tiles (Section 16.5), where the swell starts; empty on a level without one. */
+  floodStart: string[];
 }
 
 export interface DepthFieldInput {
@@ -588,6 +590,8 @@ export interface DepthFieldInput {
   frontStrength: { cyclone?: number; flood?: number };
   /** Coord keys of the houses standing when the storm came. */
   houses: ReadonlySet<string>;
+  /** The level's flood source tiles (Section 16.5): the swell starts there and passes each channel tile in order of its distance along the channels. Absent or empty: it starts at the farthest point upstream from the mouth. */
+  floodSource?: readonly string[];
 }
 
 const SEA = new Set(["coast"]);
@@ -655,6 +659,12 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
   let mouthIndex = 0;
   for (const d of fromMouth.values()) mouthIndex = Math.max(mouthIndex, d);
   const perRiverIndex = mouthIndex > 0 ? Math.min(f.perRiverIndex, f.maxTravel / mouthIndex) : f.perRiverIndex;
+  // With the level's own source, the swell's order down the channels is its distance from there.
+  const source = (input.floodSource ?? []).filter((key) => keys.has(key));
+  const fromSource = source.length > 0 ? hexRings(keys, source, (key) => CHANNEL.has(terrain.get(key)!)) : null;
+  let farthest = 0;
+  for (const d of fromSource?.values() ?? []) farthest = Math.max(farthest, d);
+  const perSourceHex = farthest > 0 ? Math.min(f.perRiverIndex, f.maxTravel / farthest) : f.perRiverIndex;
   const riverIndexOf = (key: string): number | null => {
     if (!CHANNEL.has(terrain.get(key)!)) return null;
     // A pocket of channel not joined to the sea counts as upstream.
@@ -672,6 +682,11 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
   // Flood timing: the swell passes each channel tile, then spreads out over the banks.
   const channelArrival = new Map<string, number>();
   for (const key of keys) {
+    if (fromSource) {
+      const d = fromSource.get(key);
+      if (d !== undefined) channelArrival.set(key, f.rainLead + d * perSourceHex);
+      continue;
+    }
     const index = riverIndexOf(key);
     if (index !== null) channelArrival.set(key, f.rainLead + index * perRiverIndex);
   }
@@ -736,7 +751,7 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
     let floodPeak = 0;
     let floodArrival = Infinity;
     if (hasFlood) {
-      if (riverIndex !== null && terrainId === "river") {
+      if (riverIndex !== null && terrainId === "river" && channelArrival.has(key)) {
         floodPeak = Math.max(riverFlood, toDepth(sample?.flood));
         floodArrival = channelArrival.get(key)!;
       } else if (sample?.flood !== undefined) {
@@ -758,7 +773,7 @@ export function buildDepthField(input: DepthFieldInput): DepthField {
     if (backwaterPeak > 0) duration = Math.max(duration, backwaterArrival + c.rise + c.hold + c.drain);
   }
   if (landfall !== null) duration = Math.max(duration, landfall + c.rise + c.hold + c.drain + 2);
-  return { kind, tiles, mouthIndex, perRiverIndex, landfall, duration: duration + 1 };
+  return { kind, tiles, mouthIndex, perRiverIndex, landfall, duration: duration + 1, floodStart: source };
 }
 
 /** The surge's water on a tile at storm time `t`, damage units. In the shallows it dips before landfall (the draw-back). */

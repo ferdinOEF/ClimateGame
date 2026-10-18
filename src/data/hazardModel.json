@@ -17,14 +17,14 @@
     }
   },
   "flood": {
-    "_comment": "Monsoon river flood. Sources are the upstream part of the river (riverIndex up to sourceShare of the mouth index). Level at a source = baseM + perStrengthM x strength. It loses channelM per hex down the river and creeks, wetlandM per hex into the wetland (khazan) fields, landM per hex up the banks.",
+    "_comment": "Monsoon river flood. Sources are the level's own (climate.floodSource in levels.json: Panaji's upstream Mandovi at the east edge of the board, Section 16.5); on a level without one, the upstream part of the river (riverIndex up to sourceShare of the mouth index). Level at a source = baseM + perStrengthM x strength. It loses channelM per hex down the river and creeks, wetlandM per hex into the wetland (khazan) fields, landM per hex up the banks.",
     "baseM": 5,
     "perStrengthM": 1.9,
     "sourceShare": 0.35,
     "lossPerHex": {
       "sea": 3,
-      "channel": 0.25,
-      "wetland": 0.2,
+      "channel": 0.2,
+      "wetland": 0.15,
       "beach": 1,
       "land": 0.35
     }

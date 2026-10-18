@@ -1,0 +1,73 @@
+PASS  1920x1080 landing page: only Tutorial and Play Panjim (Tutorial, Play Panjim)
+PASS  axe-core, the landing page: no serious or critical violations
+PASS  1920x1080 Play Panjim opens the Panaji game view, not the level select (#/play/l01-first-rains)
+PASS  1920x1080 the start popup is Panjim 2050 ("PANJIM 2050")
+PASS  1920x1080 with no saved run the popup offers Begin (Begin)
+PASS  1920x1080 its forecast: "The first cyclone lands in 5 years", labelled Sharada Mandir School, Miramar Beach
+PASS  axe-core, the start popup: no serious or critical violations
+PASS  1920x1080 Maya's first line: "MAYA
+
+Hello! I am Maya. Before the cyclone, our first job is to protect Sharada Mandir School. The steps are in the Get ready card, bottom right.
+
+Got it"
+PASS  1920x1080 objective 1: Protect Sharada Mandir School: Build 2 seawalls in front of Sharada Mandir School
+PASS  1920x1080 Sharada Mandir School is pinned (Sharada Mandir School)
+PASS  1920x1080 result card 1 lists Sharada Mandir School, Miramar Beach, Caranzalem (no Kala Academy)
+PASS  1920x1080 the coming-up card: Maya's flood line, the forecast labelled Sharada Mandir School, Miramar Beach, Taleigao, Merces, St Cruz
+PASS  1920x1080 2031 opens with the flood's cone on the map (year 2031)
+PASS  1920x1080 objective 2: Protect Taleigao, Merces and St Cruz: Build 2 small dams in Merces | Build 1 khazan in St Cruz | Plant 1 mangrove in St Cruz | Build 3 khazans in Merces | Plant 2 mangroves in Merces | Build 1 khazan in Taleigao
+PASS  1920x1080 the three are pinned (Taleigao, Merces, St Cruz)
+PASS  axe-core, the board in 2031: no serious or critical violations
+PASS  with a saved run Play Panjim offers (as before Section 16) Begin, Continue from 2031
+PASS  1366x768 landing page: only Tutorial and Play Panjim (Tutorial, Play Panjim)
+PASS  1366x768 Play Panjim opens the Panaji game view, not the level select (#/play/l01-first-rains)
+PASS  1366x768 the start popup is Panjim 2050 ("PANJIM 2050")
+PASS  1366x768 with no saved run the popup offers Begin (Begin)
+PASS  1366x768 its forecast: "The first cyclone lands in 5 years", labelled Sharada Mandir School, Miramar Beach
+PASS  1366x768 Maya's first line: "MAYA
+
+Hello! I am Maya. Before the cyclone, our first job is to protect Sharada Mandir School. The steps are in the Get ready card, bottom right.
+
+Got it"
+PASS  1366x768 objective 1: Protect Sharada Mandir School: Build 2 seawalls in front of Sharada Mandir School
+PASS  1366x768 Sharada Mandir School is pinned (Sharada Mandir School)
+PASS  1366x768 result card 1 lists Sharada Mandir School, Miramar Beach, Caranzalem (no Kala Academy)
+PASS  1366x768 the coming-up card: Maya's flood line, the forecast labelled Sharada Mandir School, Miramar Beach, Taleigao, Merces, St Cruz
+PASS  1366x768 2031 opens with the flood's cone on the map (year 2031)
+PASS  1366x768 objective 2: Protect Taleigao, Merces and St Cruz: Build 2 small dams in Merces | Build 1 khazan in St Cruz | Plant 1 mangrove in St Cruz | Build 3 khazans in Merces | Plant 2 mangroves in Merces | Build 1 khazan in Taleigao
+PASS  1366x768 the three are pinned (Taleigao, Merces, St Cruz)
+PASS  2560x1440 landing page: only Tutorial and Play Panjim (Tutorial, Play Panjim)
+PASS  2560x1440 Play Panjim opens the Panaji game view, not the level select (#/play/l01-first-rains)
+PASS  2560x1440 the start popup is Panjim 2050 ("PANJIM 2050")
+PASS  2560x1440 with no saved run the popup offers Begin (Begin)
+PASS  2560x1440 its forecast: "The first cyclone lands in 5 years", labelled Sharada Mandir School, Miramar Beach
+PASS  2560x1440 Maya's first line: "MAYA
+
+Hello! I am Maya. Before the cyclone, our first job is to protect Sharada Mandir School. The steps are in the Get ready card, bottom right.
+
+Got it"
+PASS  2560x1440 objective 1: Protect Sharada Mandir School: Build 2 seawalls in front of Sharada Mandir School
+PASS  2560x1440 Sharada Mandir School is pinned (Sharada Mandir School)
+PASS  2560x1440 result card 1 lists Sharada Mandir School, Miramar Beach, Caranzalem (no Kala Academy)
+PASS  2560x1440 the coming-up card: Maya's flood line, the forecast labelled Sharada Mandir School, Miramar Beach, Taleigao, Merces, St Cruz
+PASS  2560x1440 2031 opens with the flood's cone on the map (year 2031)
+PASS  2560x1440 objective 2: Protect Taleigao, Merces and St Cruz: Build 2 small dams in Merces | Build 1 khazan in St Cruz | Plant 1 mangrove in St Cruz | Build 3 khazans in Merces | Plant 2 mangroves in Merces | Build 1 khazan in Taleigao
+PASS  2560x1440 the three are pinned (Taleigao, Merces, St Cruz)
+PASS  1280x600 landing page: only Tutorial and Play Panjim (Tutorial, Play Panjim)
+PASS  1280x600 Play Panjim opens the Panaji game view, not the level select (#/play/l01-first-rains)
+PASS  1280x600 the start popup is Panjim 2050 ("PANJIM 2050")
+PASS  1280x600 with no saved run the popup offers Begin (Begin)
+PASS  1280x600 its forecast: "The first cyclone lands in 5 years", labelled Sharada Mandir School, Miramar Beach
+PASS  1280x600 Maya's first line: "MAYA
+
+Hello! I am Maya. Before the cyclone, our first job is to protect Sharada Mandir School. The steps are in the Get ready card, bottom right.
+
+Got it"
+PASS  1280x600 objective 1: Protect Sharada Mandir School: Build 2 seawalls in front of Sharada Mandir School
+PASS  1280x600 Sharada Mandir School is pinned (Sharada Mandir School)
+PASS  1280x600 result card 1 lists Sharada Mandir School, Miramar Beach, Caranzalem (no Kala Academy)
+PASS  1280x600 the coming-up card: Maya's flood line, the forecast labelled Sharada Mandir School, Miramar Beach, Taleigao, Merces, St Cruz
+PASS  1280x600 2031 opens with the flood's cone on the map (year 2031)
+PASS  1280x600 objective 2: Protect Taleigao, Merces and St Cruz: Build 2 small dams in Merces | Build 1 khazan in St Cruz | Plant 1 mangrove in St Cruz | Build 3 khazans in Merces | Plant 2 mangroves in Merces | Build 1 khazan in Taleigao
+PASS  1280x600 the three are pinned (Taleigao, Merces, St Cruz)
+PASS  zero console errors

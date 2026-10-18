@@ -1,0 +1,8 @@
+Tutorial, master 63d5a58 (Section 15) against this branch: npm run walkthrough's Tutorial screenshots, both builds, 1360x860.
+02-tutorial-1-brief.png: 0.416% of pixels differ by more than 24/255; max difference 44
+03-tutorial-2-start.png: 0.928% of pixels differ by more than 24/255; max difference 106
+04-tutorial-3-cards.png: 0.441% of pixels differ by more than 24/255; max difference 50
+05-tutorial-4-outline.png: 0.031% of pixels differ by more than 24/255; max difference 54
+06-tutorial-5-heat.png: 0.053% of pixels differ by more than 24/255; max difference 139
+07-tutorial-6-cyclone.png: 1.289% of pixels differ by more than 24/255; max difference 150
+08-tutorial-7-result.png: 2.169% of pixels differ by more than 24/255; max difference 71

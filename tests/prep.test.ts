@@ -88,12 +88,13 @@ describe("Get ready jobs", () => {
 });
 
 describe("the first storm's objective (Section 6.3)", () => {
-  it("is set at the start: Protect Kala Academy to Sharada Mandir, in three steps on that stretch, 5 builds in all", () => {
+  // Section 16.4: the first objective is the ground round Sharada Mandir School.
+  it("is set at the start: Protect Sharada Mandir School, in three steps round the school, 5 builds in all", () => {
     const run = newRun("panjim", BOT_LEVEL);
     expect(run.prep.map((job) => [job.heading, job.elementId, job.count])).toEqual([
-      ["Protect Kala Academy to Sharada Mandir", "sandy_vegetation", 2],
-      ["Protect Kala Academy to Sharada Mandir", "dune", 2],
-      ["Protect Kala Academy to Sharada Mandir", "breakwater", 1]
+      ["Protect Sharada Mandir School", "sandy_vegetation", 2],
+      ["Protect Sharada Mandir School", "dune", 2],
+      ["Protect Sharada Mandir School", "breakwater", 1]
     ]);
     for (const job of run.prep) expect(job.reward).toBe(0);
   });

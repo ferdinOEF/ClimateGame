@@ -12,6 +12,12 @@ export interface PlacedTile {
    * counted. Storms still draw over it.
    */
   scenery?: boolean;
+  /**
+   * Where the level's monsoon flood comes from (Section 16.5): river tiles the
+   * level names in `climate.floodSource` (levels.json). On a map without
+   * them the hazard model falls back to its automatic rule.
+   */
+  floodSource?: boolean;
 }
 
 export interface ElementInstance {

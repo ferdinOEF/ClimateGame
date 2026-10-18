@@ -813,6 +813,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             fitTo(Math.max(18, (box.maxX - box.minX) * 1.15), Math.max(12, (box.maxZ - box.minZ) * 1.2), false);
           },
           landmarks: levelMap.landmarks,
+          localities: levelMap.localities,
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           overlayOpen,

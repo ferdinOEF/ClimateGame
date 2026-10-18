@@ -87,7 +87,8 @@ on, apart from **Anonymous**, which the leaderboard always needs.
 ### The menu extras (`VITE_SHOW_MENU_EXTRAS`)
 
 By default the main menu offers two things under the title: **Tutorial**
-(always starts the tutorial, `l00-tutorial`) and **Choose a level**. The Play /
+(always starts the tutorial, `l00-tutorial`) and **Play Panjim** (starts
+Panaji, `l01-first-rains`; the level select stays at `#/levels`). The Play /
 Continue button, Daily Challenge, Leaderboard, the stats tiles and star row,
 the "Settings & profile" link and the footer note are hidden, the results
 screen has no Leaderboard button, and a pasted `#/leaderboard`, `#/settings`

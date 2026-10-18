@@ -67,7 +67,7 @@ export class MayaDirector {
   constructor(private readonly maya: Maya, private readonly ctx: DirectorContext) {
     if (ctx.quiet) return;
     // Her first line: the first storm's objective, when there is one (Section 6.3); else hello.
-    const job = ctx.run.prep.find((j) => j.heading);
+    const job = ctx.run.prep.find((j) => j.heading && j.challengeId === ctx.run.prepConfig?.opening?.challengeId);
     const next = ctx.run.nextChallenge();
     if (job && next && job.challengeId === next.id) {
       const text = openingLine(job.heading!, stormWord(next.kind));

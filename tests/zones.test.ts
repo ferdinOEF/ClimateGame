@@ -228,7 +228,9 @@ describe("Panaji zones", () => {
       }
     }
     expect(count("z1", "beach")).toBeGreaterThanOrEqual(15);
-    expect(count("z2", "estuary")).toBeGreaterThanOrEqual(40);
+    // Section 16.1 (owner decision): the Taleigao, St Cruz and Merces wetlands became mostly land (75 to 28 wetland tiles in z2).
+    expect(count("z2", "estuary")).toBeGreaterThanOrEqual(25);
+    expect(count("z2", "land")).toBeGreaterThan(count("z2", "estuary"));
     expect(count("z3", "river") + count("z4", "river")).toBeGreaterThanOrEqual(10);
   });
 

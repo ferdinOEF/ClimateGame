@@ -13,7 +13,7 @@ import { ClockHud, type ClockView } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
 import { CoinJar } from "@ui/panjim/coinJar";
 import { GetReadyPanel } from "@ui/panjim/getReady";
-import { prepProgress } from "@core/prep";
+import { prepProgress, regionPlaces, type PrepObjective } from "@core/prep";
 import { FieldGuide } from "@ui/panjim/fieldGuide";
 import { COMBO_INFO, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
@@ -152,6 +152,8 @@ export interface PanjimHost {
   focusCamera: (coord: AxialCoord, close?: boolean, zoom?: number) => void;
   /** The map's named places, for Maya to call a spot by name. */
   landmarks: readonly { name: string; q: number; r: number }[];
+  /** The map's locality labels, for an objective's area of named localities (Section 16.5). */
+  localities: readonly { name: string; q: number; r: number }[];
   /** The map's monuments (named buildings), for the result cards' places. */
   monuments: readonly { name: string; q: number; r: number }[];
   /** True while the build menu or the opening brief is open: Maya stays quiet. */
@@ -247,7 +249,8 @@ export class PanjimController {
       prep: host.level.prep,
       economy: host.level.economy,
       growth: host.level.growth,
-      landmarks: host.landmarks
+      landmarks: host.landmarks,
+      localities: host.localities
     });
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, { onSkipYear: () => void this.skipYear() });
@@ -359,7 +362,7 @@ export class PanjimController {
     };
     // Her count and the Field Guide's are one number (Section 13), out of the notes this level can give:
     // her first-job line or her hello (whichever she opened with), her tips, and the discoveries of what can be built.
-    this.fieldGuide.countable = noteIdsFor({ opening: this.run.prep.some((job) => job.heading), excluded: host.state.excludedElements });
+    this.fieldGuide.countable = noteIdsFor({ opening: this.run.prep.some((job) => this.isOpeningJob(job)), excluded: host.state.excludedElements });
     this.nuggets.progressText = (factId) => this.fieldGuide.notesProgress(factId);
     // The HUD kept almost out of the way (hudPanels.ts): the instrument cluster, coin jar and Field Guide
     // button go into one panel and the toggles into another, each shut to a small button. The elements
@@ -444,19 +447,26 @@ export class PanjimController {
     this.host.addBriefFeature(preview);
   }
 
+  /** A row of the first storm's own objective (a later storm's own area has a heading too, Section 16.5). */
+  private isOpeningJob(job: PrepObjective): boolean {
+    return Boolean(job.heading) && job.challengeId === this.host.level.prep?.opening?.challengeId;
+  }
+
   /** The forecast's map for `challenge` as the board stands, with its line and legend (the start popup; the result cards). */
   forecastPreview(challenge: ScheduledChallenge, first: boolean): HTMLElement | null {
     const cone = this.run.forecastCone(challenge);
     if (!cone) return null;
     const tiles = [...this.host.state.placed.values()].map((tile) => ({ key: `${tile.coord.q},${tile.coord.r}`, coord: tile.coord, terrainId: tile.terrainId }));
-    return renderConePreview({ tiles, cone, labels: this.forecastPlaces(challenge), line: forecastLine(challenge.kind, this.run.yearsUntil(challenge), first) });
+    // Panaji frames the cyclone's way in too (Section 16.4); the Tutorial's preview stays as it was.
+    return renderConePreview({ tiles, cone, labels: this.forecastPlaces(challenge), line: forecastLine(challenge.kind, this.run.yearsUntil(challenge), first), frameTrack: !this.tutorial });
   }
 
-  /** The places a forecast's map names: the first objective's two ends for the first cyclone, else the places in its area to protect. */
+  /** The places a forecast's map names: a storm's own area's (its `labels`, else the places it is named after; Section 16), else the places in its area to protect. */
   private forecastPlaces(challenge: ScheduledChallenge): { name: string; q: number; r: number }[] {
-    const opening = this.host.level.prep?.opening;
-    if (opening && opening.challengeId === challenge.id) {
-      return [opening.region.from, opening.region.to].map((name) => this.host.landmarks.find((l) => l.name === name)).filter((l): l is { name: string; q: number; r: number } => Boolean(l));
+    const own = this.run.ownAreaFor(challenge.id);
+    if (own) {
+      const find = (name: string) => this.host.landmarks.find((l) => l.name === name) ?? this.host.localities.find((l) => l.name === name);
+      return (own.region.labels ?? regionPlaces(own.region)).map(find).filter((l): l is { name: string; q: number; r: number } => Boolean(l));
     }
     const zone = new Set(this.run.exposureFor(challenge)?.housesAtRisk ?? []);
     const near = (l: { q: number; r: number }): boolean => [...zone].some((key) => {
@@ -946,7 +956,7 @@ export class PanjimController {
       this.host.container.querySelector(".brief-feature")?.remove();
       this.host.container.querySelector(".brief-card.with-feature")?.classList.remove("with-feature");
       // Her opening line is about the first objective: gone once that phase is behind the save.
-      if (!this.run.prep.some((job) => job.heading)) this.maya.withdraw((line) => line.id === MAYA.opening.id);
+      if (!this.run.prep.some((job) => this.isOpeningJob(job))) this.maya.withdraw((line) => line.id === MAYA.opening.id);
       this.host.redrawBoard();
       const next = this.run.nextChallenge();
       if (next && this.run.yearsUntil(next) <= HEAT_LEAD_YEARS) this.showForecast(next);

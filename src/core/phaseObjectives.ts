@@ -35,8 +35,12 @@ export interface PhaseObjectiveInput {
   places: Record<string, string>;
   /** Locality names, for a row outside every zone ("near Campal"). */
   localities?: readonly { name: string; q: number; r: number }[];
-  /** A named stretch whose tiles take its name instead ("between Kala Academy and Sharada Mandir"). */
-  stretch?: { tiles: ReadonlySet<string>; place: string; title: string; pins: { name: string; q: number; r: number }[] } | null;
+  /**
+   * A named stretch whose tiles take its name instead ("in front of Sharada
+   * Mandir School"). With `only`, the rows come from its tiles alone
+   * (Section 16.4: the first objective is the area round the school).
+   */
+  stretch?: { tiles: ReadonlySet<string>; place: string; placeOf?: (key: string) => string; title: string; pins: { name: string; q: number; r: number }[]; only?: boolean } | null;
 }
 
 /** One pick: a defence on a tile, and the homes it saved on top of the picks before it. */
@@ -105,6 +109,7 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
   const candidates: { key: string; elementId: string }[] = [];
   for (const key of [...state.placed.keys()].sort()) {
     if (!near(key)) continue;
+    if (input.stretch?.only && !input.stretch.tiles.has(key)) continue;
     const [q, r] = key.split(",").map(Number);
     for (const elementId of ids) if (state.canBuild({ q, r }, elementId)) candidates.push({ key, elementId });
   }
@@ -158,7 +163,7 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
 
 /** The place a tile's row is named for. */
 function placeOf(input: PhaseObjectiveInput, key: string): string {
-  if (input.stretch?.tiles.has(key)) return input.stretch.place;
+  if (input.stretch?.tiles.has(key)) return input.stretch.placeOf ? input.stretch.placeOf(key) : input.stretch.place;
   const zone = input.zones.zoneOf(key);
   if (zone && input.places[zone]) return `at ${input.places[zone]}`;
   const [q, r] = key.split(",").map(Number);
@@ -196,7 +201,7 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
       done: false,
       tiles,
       heading: allInStretch ? input.stretch!.title : undefined,
-      pins: pinsOf(input, group.place, tiles),
+      pins: group.picks.every((p) => input.stretch?.tiles.has(p.key)) ? input.stretch!.pins : pinsOf(input, group.place, tiles),
       homes: group.picks.reduce((s, p) => s + p.homes, 0)
     };
   });
@@ -204,7 +209,6 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
 
 /** The places a row names, to pin on the map: a stretch's two ends, a zone's name over its tiles, or the locality it is near. */
 function pinsOf(input: PhaseObjectiveInput, place: string, tiles: string[]): { name: string; q: number; r: number }[] {
-  if (input.stretch && place === input.stretch.place) return input.stretch.pins;
   const near = /^near (.+)$/.exec(place);
   if (near) {
     const locality = input.localities?.find((l) => l.name === near[1]);

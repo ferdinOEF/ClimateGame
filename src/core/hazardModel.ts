@@ -107,6 +107,13 @@ export interface WaterBoard {
   sites: string[];
   /** Hexes from the nearest open-sea tile (0 on the sea itself): how far inland the wind has come. */
   seaDistance: Map<string, number>;
+  /**
+   * Where the flood comes from when the level names it (`PlacedTile.floodSource`,
+   * Section 16.5), with each channel tile's distance from it along the
+   * channels; null on a map without one, where `floodSources` falls back to
+   * the farthest stretch of river from the sea.
+   */
+  floodSource: { keys: string[]; distance: Map<string, number> } | null;
 }
 
 const CHANNEL = new Set(["river", "estuary"]);
@@ -182,7 +189,22 @@ export function waterBoard(state: GameState, landfallZoneTiles?: readonly string
       seaQueue.push(n);
     }
   }
-  const board: WaterBoard = { tiles, riverIndex, mouthIndex, sites: alongTheCoast(sites), seaDistance };
+  // The flood's source, when the level names it: its river tiles, and hexes from them along the channels.
+  const sourceKeys = [...state.placed].filter(([key, tile]) => tile.floodSource && tiles.get(key)?.terrainId === "river").map(([key]) => key).sort();
+  let floodSource: WaterBoard["floodSource"] = null;
+  if (sourceKeys.length > 0) {
+    const distance = new Map(sourceKeys.map((key) => [key, 0]));
+    const channelQueue = [...sourceKeys];
+    for (let i = 0; i < channelQueue.length; i++) {
+      for (const n of tiles.get(channelQueue[i])!.neighbours) {
+        if (distance.has(n) || !CHANNEL.has(tiles.get(n)!.terrainId)) continue;
+        distance.set(n, distance.get(channelQueue[i])! + 1);
+        channelQueue.push(n);
+      }
+    }
+    floodSource = { keys: sourceKeys, distance };
+  }
+  const board: WaterBoard = { tiles, riverIndex, mouthIndex, sites: alongTheCoast(sites), seaDistance, floodSource };
   if (first) {
     const map = boards.get(first) ?? new Map<string, WaterBoard>();
     map.set(coastKey, board);
@@ -216,6 +238,64 @@ function alongTheCoast(keys: string[]): string[] {
     at = best >= 0 ? left.splice(best, 1)[0] : undefined;
   }
   return out;
+}
+
+/**
+ * The river tiles a monsoon flood starts from: the level's own source when it
+ * names one (Section 16.5), else the upstream part of the river (`riverIndex`
+ * up to `sourceShare` of the mouth index), the rule every other map uses.
+ */
+export function floodSources(board: WaterBoard, config: HazardModelConfig = HAZARD_MODEL): string[] {
+  if (board.floodSource) return board.floodSource.keys;
+  const upstream = config.flood.sourceShare * board.mouthIndex;
+  return [...board.riverIndex].filter(([key, index]) => board.tiles.get(key)!.terrainId === "river" && index <= upstream).map(([key]) => key);
+}
+
+/**
+ * The way the flood's water comes to each tile, with nothing built (Section
+ * 16.5): the same spread from the same sources as `computeWater`, keeping for
+ * each wet tile the tile its highest water came from. `routeTo` reads a path
+ * off it. For the forecast's track, so the line drawn is the water's own.
+ */
+export function floodRoutes(board: WaterBoard, storm: Pick<StormInput, "kind" | "strength">, config: HazardModelConfig = HAZARD_MODEL): Map<string, string | null> {
+  const loss = floodLoss(config);
+  const start = (config.flood.baseM + config.flood.perStrengthM * storm.strength) * (storm.kind === "compound" ? config.compound.floodShare : 1);
+  const from = new Map<string, string | null>();
+  const settled = new Set<string>();
+  const heap = new LevelHeap();
+  const via = new Map<string, string | null>();
+  for (const key of floodSources(board, config)) {
+    heap.push(start, key);
+    via.set(key, null);
+  }
+  const best = new Map<string, number>();
+  while (heap.size > 0) {
+    const { level: l, key } = heap.pop();
+    if (settled.has(key) || l < (best.get(key) ?? -Infinity)) continue;
+    const tile = board.tiles.get(key)!;
+    if (l <= tile.ground) continue;
+    settled.add(key);
+    from.set(key, via.get(key) ?? null);
+    for (const n of tile.neighbours) {
+      if (settled.has(n)) continue;
+      const next = board.tiles.get(n)!;
+      const nl = l - Math.max(0, loss(next));
+      if (nl > next.ground && nl > (best.get(n) ?? -Infinity)) {
+        best.set(n, nl);
+        via.set(n, key);
+        heap.push(nl, n);
+      }
+    }
+  }
+  return from;
+}
+
+/** The path from a flood source to `target` through `routes` (`floodRoutes`), source first; empty if the water never reaches it. */
+export function routeTo(routes: ReadonlyMap<string, string | null>, target: string): string[] {
+  if (!routes.has(target)) return [];
+  const path: string[] = [];
+  for (let at: string | null = target; at !== null; at = routes.get(at) ?? null) path.unshift(at);
+  return path;
 }
 
 /** The site index a forecast centre (0-1 along the coast) points at. */
@@ -499,9 +579,7 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
     floodLevel = (config.flood.baseM + config.flood.perStrengthM * storm.strength) * (storm.kind === "compound" ? c.floodShare : 1);
     const sources = new Map<string, number>();
     const upstream = config.flood.sourceShare * board.mouthIndex;
-    for (const [key, index] of board.riverIndex) {
-      if (board.tiles.get(key)!.terrainId === "river" && index <= upstream) sources.set(key, floodLevel);
-    }
+    for (const key of floodSources(board, config)) sources.set(key, floodLevel);
     if (storm.kind === "compound" && hasSurge) {
       // The surge holds the river back: the channel stands higher toward the mouth.
       const mouthSurge = Math.max(0, ...[...board.riverIndex].filter(([, i]) => i === board.mouthIndex).map(([key]) => surge.get(key) ?? 0));
@@ -510,7 +588,8 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
         const share = board.mouthIndex > 0 ? Math.pow(index / board.mouthIndex, c.backwaterExponent) : 1;
         const lift = c.backwaterShare * mouthSurge * share;
         // The flood reaching this point, plus the water backed up behind the surge.
-        const reach = floodLevel - config.flood.lossPerHex.channel * Math.max(0, index - upstream);
+        const travelled = board.floodSource ? (board.floodSource.distance.get(key) ?? board.mouthIndex) : Math.max(0, index - upstream);
+        const reach = floodLevel - config.flood.lossPerHex.channel * travelled;
         if (lift > 0) sources.set(key, Math.max(sources.get(key) ?? 0, reach + lift));
       }
     }

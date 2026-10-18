@@ -15,10 +15,12 @@ const START = level.timeline!.startYear;
 const END = level.timeline!.endYear;
 
 describe("the storm calendar", () => {
-  it("puts each storm at the end of its year: turns 5, 15 and 25, at 1.0, 1.8 and 2.6", () => {
+  // Section 16.4: the first cyclone is 1.2 (still "mild"), tuned so its surge, coming ashore in front of Sharada
+  // Mandir School, tops the ridge the homes beside the school stand on.
+  it("puts each storm at the end of its year: turns 5, 15 and 25, at 1.2, 1.8 and 2.6", () => {
     const schedule = buildSchedule(climate, START, END);
     expect(schedule.map((c) => [c.id, c.kind, c.year, c.turn, c.strength])).toEqual([
-      ["c1-cyclone", "cyclone", 2030, 5, 1],
+      ["c1-cyclone", "cyclone", 2030, 5, 1.2],
       ["c2-flood", "flood", 2040, 15, 1.8],
       ["c3-compound", "compound", 2050, 25, 2.6]
     ]);

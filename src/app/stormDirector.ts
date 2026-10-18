@@ -255,8 +255,10 @@ export class StormDirector {
     const channel = [...record.field.tiles.values()].filter((tile) => tile.terrainId === "river" && tile.riverIndex !== null);
     if (channel.length > 0) {
       const toCoord = (key: string): AxialCoord => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) });
+      // Where the flood starts (Section 16.5: the level's own source), else the channel's upstream end.
       const minIndex = Math.min(...channel.map((t) => t.riverIndex!));
-      this.upstream.copy(centroid(channel.filter((t) => t.riverIndex! <= minIndex + 2).map((t) => toCoord(t.key))));
+      const start = record.field.floodStart.length > 0 ? record.field.floodStart : channel.filter((t) => t.riverIndex! <= minIndex + 2).map((t) => t.key);
+      this.upstream.copy(centroid(start.map(toCoord)));
       this.channelMid.copy(centroid(channel.map((t) => toCoord(t.key))));
     }
   }

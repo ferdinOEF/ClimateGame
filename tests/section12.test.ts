@@ -34,14 +34,15 @@ describe("Section 12 bugs", () => {
   it("3: an objective row is ticked only at its target, from the same count as its counter (after a demolish too)", () => {
     const run = newRun("s12", BOT_LEVEL);
     const zones = run.zones!;
-    const job = { id: "t", challengeId: run.schedule[0].id, templateId: "t", elementId: "dune", zone: "z1", count: 2, baseline: 0, reward: 0, label: "Add 2 dunes", done: false, tiles: ["-4,18", "-4,19"] };
+    // Section 16: -4,19 is Miramar Beach's tile now (a monument), so the second dune goes on -3,17, the same beach.
+    const job = { id: "t", challengeId: run.schedule[0].id, templateId: "t", elementId: "dune", zone: "z1", count: 2, baseline: 0, reward: 0, label: "Add 2 dunes", done: false, tiles: ["-4,18", "-3,17"] };
     expect(prepProgress(job, run.state, zones)).toEqual({ current: 0, target: 2, done: false });
     run.state.build({ q: -4, r: 18 }, "dune", false);
-    run.state.build({ q: -4, r: 19 }, "dune", false);
+    run.state.build({ q: -3, r: 17 }, "dune", false);
     expect(prepProgress(job, run.state, zones)).toEqual({ current: 2, target: 2, done: true });
     // The flag a completed job once set does not tick the row once a dune is gone.
     job.done = true;
-    run.state.elements.delete("-4,19");
+    run.state.elements.delete("-3,17");
     expect(prepProgress(job, run.state, zones)).toEqual({ current: 1, target: 2, done: false });
   });
 
@@ -70,7 +71,8 @@ describe("protectsHere (the outside-the-area line, and Section 13's build cards)
   it("is the homes the storm takes now less those it takes with the build, by a real resolution", () => {
     const run = newRun("s12", BOT_LEVEL);
     const cyclone = run.schedule[0];
-    const coord = { q: 2, r: 12 };
+    // Section 16.4: the first cyclone comes ashore in front of Sharada Mandir School; a breakwater just off that beach.
+    const coord = { q: -4, r: 17 };
     const n = run.protectsHere(cyclone, coord, "breakwater");
     expect(n).toBeGreaterThan(0);
     const before = run.exposureFor(cyclone)!.housesAtRisk.length;

@@ -118,7 +118,11 @@ describe("the finale is survivable", () => {
   // Santa Inez creek, which joins neither the sea nor the Mandovi; so 9 of its 10 builds are dunes and the
   // dam does nothing to the flood. Players who read the forecast do better than in Section 10 (the bots save
   // 77-82% of the finale's homes), so the mechanics were not retuned for it. Pinned: 34%, 11%, 33%.
-  it("loses fewer houses when defended (at least 10% at each landfall, at least 25% on average)", () => {
+  // Section 16: on the owner's second round of edits the wetlands are land with homes on them along the creeks
+  // (113, 112 and 70 undefended at the three landfalls, from 94, 90 and 45), so this plain nearest-tile plan cuts
+  // less: 14%, 14% and 23%. Players who read the forecast do better than before (Smart saves 88% of the homes in
+  // the storms' paths, from 79%), so the mechanics were not retuned for it. Pinned: at least 10% each, 15% mean.
+  it("loses fewer houses when defended (at least 10% at each landfall, at least 15% on average)", () => {
     for (const row of rows) {
       expect(row.undefended, `${row.fraction}`).toBeGreaterThan(20);
       expect(row.builds).toBe(BUILDS);
@@ -127,7 +131,7 @@ describe("the finale is survivable", () => {
       expect(fewer, JSON.stringify(row)).toBeLessThanOrEqual(0.5);
     }
     const mean = rows.reduce((s, r) => s + (1 - r.defended / r.undefended), 0) / rows.length;
-    expect(mean).toBeGreaterThanOrEqual(0.25);
+    expect(mean).toBeGreaterThanOrEqual(0.15);
     expect(mean).toBeLessThanOrEqual(0.45);
   });
 });

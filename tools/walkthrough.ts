@@ -219,6 +219,23 @@ async function main(): Promise<void> {
     }
     await shot(page, "after-browser-back");
 
+    // ---- 3c. Play Panjim (Section 16.3) --------------------------------
+    // The menu offers exactly Tutorial and Play Panjim; Play Panjim opens the
+    // Panaji game view with its start popup, never the level select.
+    stage = "play-panjim";
+    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".menu-screen", { timeout: 15000 });
+    const menuButtons = (await page.locator(".menu-actions button").allTextContents()).map((t) => t.trim());
+    if (JSON.stringify(menuButtons) !== JSON.stringify(["Tutorial", "Play Panjim"])) problems.push(`[play-panjim] the menu offers ${JSON.stringify(menuButtons)}, not Tutorial and Play Panjim`);
+    await clickByText(page, "Play Panjim");
+    await page.waitForSelector(".brief-card", { timeout: 15000 });
+    if ((await page.locator(".level-grid").count()) > 0) problems.push("[play-panjim] Play Panjim showed the level select");
+    if (!page.url().endsWith("#/play/l01-first-rains")) problems.push(`[play-panjim] Play Panjim went to ${page.url()}`);
+    const briefCtas = (await page.locator(".brief-cta").allTextContents()).map((t) => t.trim());
+    if (!briefCtas.includes("Begin")) problems.push(`[play-panjim] the start popup offers ${JSON.stringify(briefCtas)}, not Begin`);
+    console.log(`Play Panjim: ${page.url()}, start popup offers ${briefCtas.join(" | ")}`);
+    await shot(page, "play-panjim");
+
     // ---- 4. every campaign map --------------------------------------
     // Unlock the whole campaign so the level list will start any of them,
     // then open each in turn. The point is to render every real-world map
@@ -242,10 +259,9 @@ async function main(): Promise<void> {
       // first failure would hide every problem after it — which is precisely
       // backwards for a script whose job is to survey all nine maps.
       try {
-        await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-        await page.waitForSelector(".menu-screen", { timeout: 15000 });
-        await clickByText(page, "Choose a level");
-        await page.waitForSelector(".level-grid", { timeout: 10000 });
+        // No menu button leads to the level select (Section 16.3): it is reached by its own address.
+        await page.goto(`${baseUrl.replace(/#.*$/, "")}#/levels`, { waitUntil: "domcontentloaded" });
+        await page.waitForSelector(".level-grid", { timeout: 15000 });
 
         // Nothing should be padlocked while the campaign is open for
         // playtesting (`ALL_LEVELS_UNLOCKED`). Checked on every pass rather

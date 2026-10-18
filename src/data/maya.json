@@ -110,7 +110,7 @@
     },
     "comingUp": {
       "flood": {
-        "text": "The flood comes down the Mandovi into the wetlands. Look at where the map turns red.",
+        "text": "The flood comes down the Mandovi, through the creek at Ribandar and into Merces, St Cruz and Taleigao. Look at where the map turns red.",
         "rule": false
       },
       "compound": {

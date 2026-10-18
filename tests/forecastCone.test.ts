@@ -2,7 +2,7 @@ import { passYear } from "./helpers/passYear";
 import { describe, expect, it } from "vitest";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { coneBands, forecastLine } from "../src/core/forecastCone";
-import { placeOnLine } from "../src/core/stretch";
+import { axialDistance, axialToWorld, worldToAxial } from "../src/core/hex";
 import { mapById } from "../src/levels/levelMap";
 
 /**
@@ -45,15 +45,22 @@ describe("the forecast cone", () => {
     }
   });
 
-  it("draws the cyclone's track from the sea onto the beach between Kala Academy and Sharada Mandir", () => {
+  // Section 16.4 (owner decision): the first cyclone comes in from the open sea to the west and makes landfall on
+  // Miramar beach directly in front of Sharada Mandir School; its track ends at the school.
+  it("draws the cyclone's track from the open sea to the west, ashore in front of Sharada Mandir School, ending at the school", () => {
     const run = newRun("cone", BOT_LEVEL);
     const cone = run.forecastCone(run.schedule[0])!;
     expect(cone.tracks.map((t) => t.kind)).toEqual(["cyclone"]);
     const site = run.board().sites[run.landfallOf(run.schedule[0])!];
-    const [q, r] = site.split(",").map(Number);
-    const at = placeOnLine({ q, r }, place("Kala Academy"), place("Sharada Mandir School"));
-    expect(at.along).toBeGreaterThan(0);
-    expect(at.along).toBeLessThan(1);
+    expect(site).toBe("-5,18");
+    const school = place("Sharada Mandir School");
+    expect([school.q, school.r]).toEqual([-3, 18]);
+    const points = cone.tracks[0].points;
+    const end = axialToWorld(school, 1);
+    expect(points[points.length - 1].x).toBeCloseTo(end.x, 6);
+    expect(points[points.length - 1].z).toBeCloseTo(end.z, 6);
+    // From the sea to the west: the track starts further west than the school, over open sea.
+    expect(points[0].x).toBeLessThan(end.x - 5);
     expect(cone.meet).toEqual([]);
   });
 
@@ -64,6 +71,15 @@ describe("the forecast cone", () => {
     expect(track.points.length).toBeGreaterThan(3);
     // Upstream is east: the track starts further east than it ends.
     expect(track.points[0].x).toBeGreaterThan(track.points[track.points.length - 1].x);
+    // Section 16.5: it starts at the level's source, the upstream Mandovi at the east edge, comes through the new
+    // channel by Ribandar (25,5 to 28,5) and ends in Taleigao, Merces or St Cruz, at a home at risk there.
+    const keys = track.points.map((p) => { const a = worldToAxial(p.x, p.z, 1); return `${a.q},${a.r}`; });
+    expect(BOT_LEVEL.climate!.floodSource).toContain(keys[0]);
+    expect(keys.some((key) => ["25,5", "26,5", "27,5", "28,5"].includes(key))).toBe(true);
+    const own = run.ownAreaFor(run.schedule[1].id)!;
+    expect(own.title).toBe("Protect Taleigao, Merces and St Cruz");
+    expect(own.tiles.has(keys[keys.length - 1])).toBe(true);
+    expect(flood.area).toContain(keys[keys.length - 1]);
     const compound = run.forecastCone(run.schedule[2])!;
     expect(compound.tracks.map((t) => t.kind).sort()).toEqual(["cyclone", "flood"]);
     expect(compound.meet.length).toBeGreaterThan(0);
@@ -73,25 +89,27 @@ describe("the forecast cone", () => {
     expect(onWaterfront / compound.meet.length).toBeGreaterThan(0.6);
   });
 
-  // Section 11 (owner decision): the new 0 m land at the river mouth just north of Kala Academy, 5,10 and
-  // 6,9, floods in any cyclone that reaches the mouth; it is the only damage outside the stretch.
-  // Section 12: the cyclone's wind tips 8,7, one more home on the same river-mouth shore.
-  const RIVER_MOUTH = ["5,10", "6,9", "8,7"];
-  it("keeps the first cyclone small: undefended, everything it takes is on the beach and land between Kala Academy and Sharada Mandir, but for the river mouth", () => {
+  // Section 16.4: undefended, the first cyclone takes the home beside Sharada Mandir School (-3,19) and the low
+  // land the owner added on either side of the school's beach: the creek behind it to the east and Caranzalem's
+  // shore to the south. Landfall and strength cannot keep it to the school's ground: the homes round the school
+  // stand on a ridge (6.5-8.5 m) and the added land is at 0-1.5 m (see docs/QA_REPORT.md, Section 16). Building
+  // in front of the school saves every one of them, since all the surge comes ashore there.
+  const FIRST_CYCLONE = ["-3,19", "-5,22", "-6,23", "-7,24", "0,19", "0,20", "1,19", "2,18", "2,19"];
+  it("keeps the first cyclone at the school: undefended, it takes the home beside it and the low land either side of its beach, and nothing at Kala Academy", () => {
     const run = newRun("cone", BOT_LEVEL);
     const cyclone = run.schedule[0];
     while (!run.landed.has(cyclone.id)) passYear(run);
     const lost = run.outcomes.get(cyclone.id)!.damagedHouses;
-    expect(lost.length).toBeGreaterThan(0);
-    expect(lost.filter((key) => RIVER_MOUTH.includes(key)).sort()).toEqual(RIVER_MOUTH);
-    for (const key of lost.filter((k) => !RIVER_MOUTH.includes(k))) {
+    expect([...lost].sort()).toEqual([...FIRST_CYCLONE].sort());
+    const school = place("Sharada Mandir School");
+    for (const key of lost) {
       const [q, r] = key.split(",").map(Number);
-      const terrain = run.state.placed.get(key)!.terrainId;
-      expect(["beach", "land"], key).toContain(terrain);
-      const at = placeOnLine({ q, r }, place("Kala Academy"), place("Sharada Mandir School"));
-      expect(at.along, key).toBeGreaterThanOrEqual(0);
-      expect(at.along, key).toBeLessThanOrEqual(1);
-      expect(run.openingTiles!.has(key), key).toBe(true);
+      expect(axialDistance({ q, r }, school), key).toBeLessThanOrEqual(6);
+    }
+    const kala = place("Kala Academy");
+    for (const key of lost) {
+      const [q, r] = key.split(",").map(Number);
+      expect(axialDistance({ q, r }, kala), key).toBeGreaterThan(4);
     }
   });
 });
