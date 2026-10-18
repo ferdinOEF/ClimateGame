@@ -1615,4 +1615,4 @@ NITs:
 
 **Could not be run or checked here:**
 - Firefox and WebKit, and frame rates on a real GPU.
-- Production after the merge, in a browser: see the merge note below.
+- Production after the merge: checked through Vercel's API (the deployed commit against the merge commit) and recorded on the pull request; this container's network has refused the site in a browser before (Section 11).
