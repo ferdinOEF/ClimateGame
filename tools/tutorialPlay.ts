@@ -2,7 +2,7 @@
  * Plays the Tutorial (Section 15) start to finish in a page, the way a player
  * would: reads the opening card, presses Begin, opens a tile's build cards
  * and picks the card with the biggest number, three times, watches the
- * cyclone, reads the result card and presses "Play Panaji".
+ * cyclone, reads the result card and presses "Play Panjim".
  *
  * Shared by the walkthrough (`npm run walkthrough`, which keeps it as a
  * permanent check) and the Section 15 screenshot tool. Every step is checked;
@@ -159,18 +159,18 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   }
   await page.waitForTimeout(600);
   const card = (await page.locator(".result-cards").textContent()) ?? "";
-  for (const want of ["homes saved", "What protected them", "Play Panaji"]) if (!card.includes(want)) problems.push(`[tutorial-result] the card does not say "${want}"`);
+  for (const want of ["homes saved", "What protected them", "Play Panjim"]) if (!card.includes(want)) problems.push(`[tutorial-result] the card does not say "${want}"`);
   if ((await page.locator(".result-cards .result-stars").count()) === 0) problems.push("[tutorial-result] no stars on the card");
   await checkWords(page, "tutorial-result", problems);
   await shot("tutorial-7-result");
   log(`tutorial result: ${card.replace(/\s+/g, " ").trim().slice(0, 160)}`);
 
-  // 4. Play Panaji: the Tutorial is recorded and Panaji's opening card shows.
+  // 4. Play Panjim: the Tutorial is recorded and Panaji's opening card shows.
   await page.locator(".result-cards .result-next").first().click();
   try {
-    await page.waitForFunction(() => location.hash.includes("l01-first-rains") && document.querySelector(".brief-title")?.textContent === "Panaji", undefined, { timeout: 30000 });
+    await page.waitForFunction(() => location.hash.includes("l01-first-rains") && document.querySelector(".brief-title")?.textContent === "Panjim", undefined, { timeout: 30000 });
   } catch {
-    problems.push(`[tutorial-next] "Play Panaji" did not open Panaji (at ${page.url()})`);
+    problems.push(`[tutorial-next] "Play Panjim" did not open Panaji (at ${page.url()})`);
     return false;
   }
   const recorded = await page.evaluate(() => {

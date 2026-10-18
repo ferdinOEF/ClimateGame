@@ -37,11 +37,11 @@ export class GetReadyPanel {
   constructor(private readonly showRewards = true) {
     this.el = document.createElement("section");
     this.el.className = "get-ready";
-    this.el.setAttribute("aria-label", "Get ready");
+    this.el.setAttribute("aria-label", "Objective");
     this.el.innerHTML = `
       <div class="get-ready-head">
         <span class="get-ready-title">Get ready</span>
-        <button type="button" class="get-ready-toggle" aria-expanded="true" aria-label="Collapse Get ready">–</button>
+        <button type="button" class="get-ready-toggle" aria-expanded="true" aria-label="Collapse the objective">–</button>
       </div>
       <ul class="get-ready-list"></ul>`;
     this.list = this.el.querySelector(".get-ready-list")!;
@@ -58,7 +58,7 @@ export class GetReadyPanel {
     this.el.classList.toggle("collapsed", collapsed);
     this.toggle.textContent = collapsed ? "+" : "–";
     this.toggle.setAttribute("aria-expanded", String(!collapsed));
-    this.toggle.setAttribute("aria-label", collapsed ? "Expand Get ready" : "Collapse Get ready");
+    this.toggle.setAttribute("aria-label", collapsed ? "Expand the objective" : "Collapse the objective");
   }
 
   /** Repaints the jobs. `storm` names the storm they are for ("Cyclone"); an opening objective's jobs carry its title instead. */
@@ -96,6 +96,10 @@ export class GetReadyPanel {
       (el.querySelector(".get-ready-progress") as HTMLElement).textContent = `${Math.min(row.current, row.target)}/${row.target}`;
     }
     this.el.hidden = rows.length === 0;
+    // Every row done: the card shrinks to one line (Section 16 B3).
+    const complete = rows.length > 0 && rows.every((row) => row.done);
+    this.el.classList.toggle("complete", complete);
+    if (complete) this.titleEl.textContent = "✓ Objective done";
   }
 
   /** A finished job: a tick on its row, and a coin pop with coins on. */

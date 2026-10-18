@@ -76,7 +76,7 @@ function saveMapLayerSettings(settings: MapLayerSettings): void {
 }
 
 export class MapLayerControl {
-  private readonly el: HTMLElement;
+  readonly el: HTMLElement;
   private settings: MapLayerSettings;
 
   constructor(container: HTMLElement, onChange: (settings: MapLayerSettings) => void, prepend = false) {

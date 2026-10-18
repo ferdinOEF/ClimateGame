@@ -344,3 +344,15 @@ export function terrainCounts(tiles: readonly PlacedTile[]): Map<string, number>
   for (const tile of tiles) counts.set(tile.terrainId, (counts.get(tile.terrainId) ?? 0) + 1);
   return counts;
 }
+
+/**
+ * The board's own description and scale: "Panjim, drawn from OpenStreetMap
+ * ... This board is 7.2 by 4.3 km of Panjim's map, about 135 m to a tile."
+ * Section 16 B1 moved it from the start popup to Facts and sources.
+ */
+export function boardDescription(map: Pick<GameMap, "blurb" | "geo">): string {
+  if (!map.geo) return map.blurb;
+  const widthKm = (map.geo.cols * map.geo.metersPerHex) / 1000;
+  const heightKm = (map.geo.rows * 0.866 * map.geo.metersPerHex) / 1000;
+  return `${map.blurb} This board is ${widthKm.toFixed(1)} by ${heightKm.toFixed(1)} km of Panjim's map, about ${Math.round(map.geo.metersPerHex)} m to a tile.`;
+}

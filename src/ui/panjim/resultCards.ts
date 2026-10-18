@@ -117,7 +117,7 @@ export function tutorialResultCard(result: PhaseResult): HTMLElement {
     ${starsHtml(result.stars)}
     ${homesHtml(result.homesSaved, result.homesTotal)}
     ${rows}
-    <p class="result-sub">Panaji is the real city: ${esc(panajiRunPhrase())}.</p>
+    <p class="result-sub">Panjim is the real city: ${esc(panajiRunPhrase())}.</p>
   </div>`);
 }
 

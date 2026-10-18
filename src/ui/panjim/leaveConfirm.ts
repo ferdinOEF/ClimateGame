@@ -9,6 +9,7 @@ export class LeaveConfirm {
   private readonly stayBtn: HTMLButtonElement;
   private readonly leaveBtn: HTMLButtonElement;
   private readonly textEl: HTMLElement;
+  private readonly titleEl: HTMLElement;
   private resolve: ((leave: boolean) => void) | null = null;
   /** Where focus was before the prompt, given back when it closes. */
   private returnFocus: HTMLElement | null = null;
@@ -42,6 +43,7 @@ export class LeaveConfirm {
     this.stayBtn = this.backdrop.querySelector(".leave-confirm-stay")!;
     this.leaveBtn = this.backdrop.querySelector(".leave-confirm-leave")!;
     this.textEl = this.backdrop.querySelector(".leave-confirm-text")!;
+    this.titleEl = this.backdrop.querySelector(".leave-confirm-title")!;
     this.stayBtn.addEventListener("click", () => this.close(false));
     this.leaveBtn.addEventListener("click", () => this.close(true));
     this.backdrop.addEventListener("click", (event) => {
@@ -55,10 +57,15 @@ export class LeaveConfirm {
     return !this.backdrop.hidden;
   }
 
-  /** Asks; resolves true for Leave, false for Stay (or Esc). `text` is the line under the title. */
-  ask(text = "Your progress is saved."): Promise<boolean> {
+  /**
+   * Asks; resolves true for Leave, false for Stay (or Esc). `text` is the line under the title. `options`
+   * changes the title and the confirming button (☰'s "Start again?", Section 16 B3).
+   */
+  ask(text = "Your progress is saved.", options: { title?: string; confirm?: string } = {}): Promise<boolean> {
     if (this.isOpen) return Promise.resolve(false);
     this.textEl.textContent = text;
+    this.titleEl.textContent = options.title ?? "Leave Panjim?";
+    this.leaveBtn.textContent = options.confirm ?? "Leave";
     this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.backdrop.hidden = false;
     this.stayBtn.focus();

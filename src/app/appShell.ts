@@ -393,7 +393,9 @@ export class AppShell {
       onFinished: (result) => this.finishRun(level, result),
       // The in-game Back control and Escape both land here, and both defer to
       // the browser so they cannot disagree with its own Back button.
-      onExit: () => this.goBack()
+      onExit: () => this.goBack(),
+      // ☰ → Start again (Section 16 B3): the same level afresh, in place of this run.
+      onRestart: () => this.requestLevel(level.id, "replace")
     });
   }
 

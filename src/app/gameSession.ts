@@ -106,6 +106,8 @@ export interface GameSessionOptions {
   onFinished: (result: SessionResult) => void;
   /** The player chose to leave mid-run. No result — an abandoned run is not scored. */
   onExit: () => void;
+  /** ☰ → Start again (Section 16 B3): the same level afresh, from its start popup. Absent: leaves instead. */
+  onRestart?: () => void;
 }
 
 export interface GameSessionHandle {
@@ -724,6 +726,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * below checks it, and it takes over pacing entirely when present: no
    * interval hazards, no objective-driven early finish.
    */
+  // ☰'s Leave and Start again (Section 16 B3); bound once the confirm exists, further down.
+  let askLeave = (): void => options.onExit();
+  let askRestart = (): void => (options.onRestart ?? options.onExit)();
   const panjim =
     level.timeModel === "years" && level.timeline
       ? new PanjimController({
@@ -816,6 +821,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           localities: levelMap.localities,
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
+          requestLeave: () => askLeave(),
+          requestRestart: () => askRestart(),
           overlayOpen,
           riskAreaOnScreen: (keys) => {
             const rect = renderer.domElement.getBoundingClientRect();
@@ -992,6 +999,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Prepended so the switch stacks above the credit.
     mapLayerControl = new MapLayerControl(mapCorner ?? container, applyLayer, true);
     applyLayer(mapLayerControl.current);
+    // Section 16 B3: on Panjim the street-map switch and its slider live in ☰; the credit stays in the corner.
+    panjim?.mountStreetMap(mapLayerControl.el);
     const layerToggle = container.querySelector<HTMLElement>(".map-layer-control input[type=checkbox]");
     const layerSlider = container.querySelector<HTMLElement>(".map-layer-control input[type=range]");
     if (layerToggle) tooltips.attach(layerToggle, "streetMap");
@@ -2481,15 +2490,27 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       else if (sessionFinished) return;
       else if (!leaveConfirm) options.onExit();
       // Not while a storm plays: the year is saved only once it has settled.
-      else if (!leaveConfirm.isOpen && !panjim?.isBusy && (!overlayOpen() || objectivesPanel.briefOpen)) {
-        const note = panjim?.tutorial ? "The Tutorial is not saved: leaving starts it again." : panjim?.hasSave ? "Your progress is saved." : "You haven't built anything yet.";
-        void leaveConfirm.ask(note).then((leave) => {
-          if (leave) options.onExit();
-        });
-      }
+      else if (!leaveConfirm.isOpen && !panjim?.isBusy && (!overlayOpen() || objectivesPanel.briefOpen)) askLeave();
     },
     { signal: keydownAbort.signal }
   );
+  if (leaveConfirm && panjim) {
+    askLeave = (): void => {
+      if (leaveConfirm.isOpen || panjim.isBusy) return;
+      void leaveConfirm.ask(panjim.leaveNote(), { title: panjim.tutorial ? "Leave the Tutorial?" : "Leave Panjim?" }).then((leave) => {
+        if (leave) options.onExit();
+      });
+    };
+    askRestart = (): void => {
+      if (leaveConfirm.isOpen || panjim.isBusy) return;
+      const text = panjim.tutorial ? "The Tutorial starts again from its first year." : "Your saved run is cleared and Panjim starts again from its first year.";
+      void leaveConfirm.ask(text, { title: "Start again?", confirm: "Start again" }).then((again) => {
+        if (!again) return;
+        panjim.clearSave();
+        (options.onRestart ?? options.onExit)();
+      });
+    };
+  }
 
   start((nowMs) => {
     // Before the element tick, so the sway this frame uses this frame's wind

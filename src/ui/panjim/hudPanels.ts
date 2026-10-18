@@ -27,7 +27,7 @@ const GLYPHS: Record<PanelId, string> = {
   settings: '<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false"><path d="M5 5.5h10M5 10h10M5 14.5h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
 };
 
-const LABELS: Record<PanelId, string> = { status: "Status", settings: "Settings" };
+const LABELS: Record<PanelId, string> = { status: "Status", settings: "Menu" };
 
 export class HudPanel {
   readonly el: HTMLElement;
@@ -140,21 +140,25 @@ export class HudPanel {
  * outside an open panel (the map, say) closes it.
  */
 export class HudPanels {
-  readonly status: HudPanel;
+  /** The Status panel: only with coins on (the jar). Section 16 B3: its meters do nothing in this version. */
+  readonly status: HudPanel | null;
+  /** The ☰ menu (Section 16 B3): Field Guide, Street map, the switches, Start again and Leave. */
   readonly settings: HudPanel;
   private readonly abort = new AbortController();
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, options: { status?: boolean } = {}) {
     const onToggle = (panel: HudPanel, open: boolean): void => {
-      if (open) for (const other of [this.status, this.settings]) if (other !== panel) other.close();
+      if (open) for (const other of this.all) if (other !== panel) other.close();
     };
-    this.status = new HudPanel(container, "status", onToggle);
+    this.status = options.status === false ? null : new HudPanel(container, "status", onToggle);
     this.settings = new HudPanel(container, "settings", onToggle);
     document.addEventListener(
       "pointerdown",
       (event) => {
         const target = event.target as Node | null;
-        for (const panel of [this.status, this.settings]) if (panel.isOpen && !(target && panel.el.contains(target))) panel.close();
+        // A press inside a dialog the menu opened (the confirm) does not close it underneath.
+        if (target instanceof Element && target.closest(".leave-confirm-backdrop")) return;
+        for (const panel of this.all) if (panel.isOpen && !(target && panel.el.contains(target))) panel.close();
       },
       { capture: true, signal: this.abort.signal }
     );
@@ -163,7 +167,7 @@ export class HudPanels {
       (event) => {
         // Another panel's Esc (the leave prompt, Sources) has priority: it marks the event handled.
         if (event.key !== "Escape" || event.defaultPrevented) return;
-        const open = [this.status, this.settings].find((panel) => panel.isOpen);
+        const open = this.all.find((panel) => panel.isOpen);
         if (!open) return;
         event.stopPropagation();
         event.preventDefault();
@@ -174,13 +178,16 @@ export class HudPanels {
     );
   }
 
+  private get all(): HudPanel[] {
+    return this.status ? [this.status, this.settings] : [this.settings];
+  }
+
   get anyOpen(): boolean {
-    return this.status.isOpen || this.settings.isOpen;
+    return this.all.some((panel) => panel.isOpen);
   }
 
   dispose(): void {
     this.abort.abort();
-    this.status.dispose();
-    this.settings.dispose();
+    for (const panel of this.all) panel.dispose();
   }
 }

@@ -1,11 +1,12 @@
 import { strengthIcons, type ChallengeKind, type ScheduledChallenge } from "@core/climate";
 
 /**
- * The Climate Outlook: the run's years as a timeline under the clock, with a
- * marker for each of the three storms at the end of its year, one line
- * about the next one ("Next: Cyclone · 2030 · mild") and the homes it would
- * take now (Section 13: "Homes at risk 9"). The countdown is the clock's
- * alone ("Cyclone in 5 builds").
+ * The Climate Outlook: the run's years as a track in the top bar (Section 16
+ * B2), with a marker for each of the three storms at the end of its year,
+ * and the homes the next one would take now ("Homes at risk 9"; during a
+ * storm, "Homes lost N"). The next storm's marker carries the countdown
+ * ("Cyclone · 5 builds", then "Cyclone · next build", pulsing gently);
+ * later storms are dim, and past ones show their stars.
  *
  * The calendar is fixed (Section 5), so every marker is a pin from the start,
  * with its 1–3 strength rating. Never a modal: the player reads it at a
@@ -63,10 +64,8 @@ export class OutlookBar {
         <div class="outlook-markers"></div>
         <div class="outlook-now"></div>
       </div>
-      <div class="outlook-info">
-        <span class="outlook-line"></span>
-        <span class="outlook-risk" data-tip="homesAtRisk"></span>
-      </div>
+      <span class="outlook-line visually-hidden"></span>
+      <span class="outlook-risk" data-tip="homesAtRisk"></span>
     `;
     parent.appendChild(this.el);
     this.trackEl = this.el.querySelector(".outlook-track")!;
@@ -80,6 +79,20 @@ export class OutlookBar {
 
   /** The last view, so `setHold` can repaint the line. */
   private lastView: OutlookView | null = null;
+  /** The countdown on the next storm's marker ("Cyclone · 5 builds"); null while a storm or its cards play. */
+  private countdown: string | null = null;
+
+  /** Sets the next storm's countdown (the clock's), and repaints. */
+  setCountdown(text: string | null): void {
+    if (this.countdown === text) return;
+    this.countdown = text;
+    if (this.lastView) this.render(this.lastView);
+  }
+
+  /** Moves the Homes at risk pill to `slot` (the top bar's right end). */
+  mountRisk(slot: HTMLElement): void {
+    slot.appendChild(this.riskEl);
+  }
   /** True while a storm or its result cards are on screen: no countdown on the line (Section 12). */
   private hold = false;
 
@@ -111,13 +124,15 @@ export class OutlookBar {
     this.nowEl.style.left = `${pct(view.year)}%`;
 
     this.markersEl.innerHTML = "";
+    const nextStorm = view.storms.find((st) => !st.past);
     for (const storm of view.storms) {
       const marker = document.createElement("div");
       const stars = view.results.get(storm.challenge.id);
       const icons = strengthIcons(storm.challenge.strength);
       // Past; the next storm inside its two-year warning (the one pin that pulses); or still to come.
-      const phase = storm.past ? "past" : storm === view.storms.find((st) => !st.past) && storm.yearsUntil <= 2 ? "soon" : "coming";
-      marker.className = `outlook-marker phase-${phase} kind-${storm.challenge.kind}`;
+      const phase = storm.past ? "past" : storm === nextStorm && storm.yearsUntil <= 2 ? "soon" : "coming";
+      const countdown = storm === nextStorm ? this.countdown : null;
+      marker.className = `outlook-marker phase-${phase} kind-${storm.challenge.kind}${storm === nextStorm ? " next" : storm.past ? "" : " later"}${countdown ? " counting" : ""}`;
       // A pin at the end of its year; the last one is held inside the track.
       const at = pct(storm.challenge.year + 1);
       marker.style.left = `${at}%`;
@@ -126,8 +141,8 @@ export class OutlookBar {
       marker.setAttribute("role", "img");
       marker.setAttribute("aria-label", describe(storm));
       marker.innerHTML = `<span class="outlook-icon">${ICON[storm.challenge.kind]}</span>${
-        storm.past ? "" : `<span class="outlook-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span>`
-      }${stars !== undefined ? `<span class="outlook-stars">${"★".repeat(stars)}</span>` : ""}`;
+        countdown ? `<span class="outlook-countdown">${countdown}</span>` : storm.past ? "" : `<span class="outlook-strength">${"●".repeat(icons)}${"○".repeat(3 - icons)}</span>`
+      }${stars !== undefined ? `<span class="outlook-stars">${"★".repeat(stars)}${"☆".repeat(Math.max(0, 3 - stars))}</span>` : ""}`;
       this.markersEl.appendChild(marker);
     }
 
@@ -140,12 +155,25 @@ export class OutlookBar {
 
   private ticksFor = "";
 
-  /** Homes the next storm would take on the board as it stands; null hides it (no storm left). */
+  /** Homes the next storm would take on the board as it stands; null hides it (no storm left). Ignored while a storm's count shows. */
   renderRisk(homes: number | null): void {
+    if (this.lost !== null) return;
     this.riskEl.hidden = homes === null;
+    this.riskEl.classList.remove("lost");
     if (homes === null) return;
     this.riskEl.classList.toggle("none", homes === 0);
     this.riskEl.innerHTML = `<span class="outlook-risk-label">Homes at risk</span> <b class="outlook-risk-count">${homes}</b>`;
+  }
+
+  /** During a storm and its result cards: "Homes lost N", live (Section 16 B4); null goes back to Homes at risk. */
+  private lost: number | null = null;
+  renderLost(homes: number | null): void {
+    this.lost = homes;
+    if (homes === null) return;
+    this.riskEl.hidden = false;
+    this.riskEl.classList.remove("none");
+    this.riskEl.classList.add("lost");
+    this.riskEl.innerHTML = `<span class="outlook-risk-label">Homes lost</span> <b class="outlook-risk-count">${homes}</b>`;
   }
 
   /** The parts that carry tooltips. */

@@ -163,7 +163,7 @@ async function main(): Promise<void> {
 
     // ---- 3. the Tutorial, played start to finish (Section 15) -------
     // Three builds through the real build cards, the cyclone, its result
-    // card, and "Play Panaji" (tools/tutorialPlay.ts).
+    // card, and "Play Panjim" (tools/tutorialPlay.ts).
     stage = "tutorial";
     await page.waitForSelector("canvas", { timeout: 15000 });
     await playTutorial(page, {
@@ -175,7 +175,7 @@ async function main(): Promise<void> {
       }
     });
     stage = "tutorial-next";
-    // "Play Panaji" opened Panaji's own card: Begin, so the board's Back control is reachable.
+    // "Play Panjim" opened Panaji's own card: Begin, so the board's Back control is reachable.
     if (await page.locator(".brief-cta:visible").count()) await page.locator(".brief-cta:visible").first().click();
     await page.waitForTimeout(600);
 
