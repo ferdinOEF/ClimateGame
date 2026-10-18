@@ -124,7 +124,9 @@ function resolveWithField(state: GameState, args: StormArgs): { outcome: Challen
     samples,
     resilience: args.houseRule?.resilience ?? args.strengthUnit,
     frontStrength,
-    houses
+    houses,
+    // The level's own flood source (Section 16.5): the swell starts there.
+    floodSource: [...state.placed.entries()].filter(([, tile]) => tile.floodSource && tile.terrainId === "river").map(([key]) => key)
   });
   return { outcome, field, depth: levels.depth, wind: levels.wind };
 }

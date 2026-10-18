@@ -28,10 +28,12 @@ describe("the board's tiles are what they were", () => {
   it("every tile's position and terrain is byte-for-byte the board before Section 3, but for the owner's hand edits", () => {
     // sha256 of [[q, r, terrainId], ...] from panaji.json at e728e90 (before elevation was added).
     // Section 11: undo the hand edits (tools/mapgen/panaji-hand-edits.json) and the board must be exactly that one.
-    const undo = new Map(handEdits.tiles.map((entry) => {
+    // Section 16: the edits are applied in order, so a tile goes back to what its first edit found there.
+    const undo = new Map<string, string>();
+    for (const entry of handEdits.tiles) {
       const [q, r, change] = entry.split(",");
-      return [`${q},${r}`, change.split(">")[0]];
-    }));
+      if (!undo.has(`${q},${r}`)) undo.set(`${q},${r}`, change.split(">")[0]);
+    }
     const tiles = (panajiFile as { tiles: { q: number; r: number; terrainId: string }[] }).tiles
       .filter((t) => undo.get(`${t.q},${t.r}`) !== "none")
       .map((t) => [t.q, t.r, undo.get(`${t.q},${t.r}`) ?? t.terrainId]);

@@ -31,7 +31,7 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
 
 ## Fixed rules
 
-- **Tutorial must never break.** The menu shows only Tutorial + Choose a level.
+- **Tutorial must never break.** The menu shows only Tutorial + Play Panjim.
   No email field (the account/email code stays behind `VITE_REQUIRE_EMAIL`, off
   by default; see `src/services/features.ts`). Run length is not hard-coded.
 - **Scientific honesty.** Only verified, cited real-world facts. Game mechanics

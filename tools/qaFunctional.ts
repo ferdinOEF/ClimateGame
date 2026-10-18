@@ -78,7 +78,7 @@ async function main(): Promise<void> {
       await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".menu-screen", { timeout: 30000 });
       const menuButtons = await page.locator(".menu-screen button, .menu-screen a").allInnerTexts();
-      check(menuButtons.some((t) => /tutorial/i.test(t)) && menuButtons.some((t) => /choose a level/i.test(t)), "menu offers Tutorial and Choose a level", menuButtons.map((t) => t.trim()).filter(Boolean).join(" | "));
+      check(menuButtons.some((t) => /tutorial/i.test(t)) && menuButtons.some((t) => /play panjim/i.test(t)), "menu offers Tutorial and Play Panjim", menuButtons.map((t) => t.trim()).filter(Boolean).join(" | "));
       check(!(await page.locator("input[type=email]").count()), "no email field on the menu (email requirement hidden)");
       await page.goto(`${BASE}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(4000);

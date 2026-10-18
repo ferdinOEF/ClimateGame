@@ -1,4 +1,4 @@
-import { axialKey, axialToWorld, type AxialCoord } from "./hex";
+import { axialDistance, axialKey, axialToWorld, type AxialCoord } from "./hex";
 
 /**
  * A stretch of coast between two places on the board, and the tiles that
@@ -53,6 +53,41 @@ export function stretchTiles(tiles: Iterable<StretchTile>, spec: StretchSpec): S
   for (const { tile, at } of list) {
     const across = at.across * side;
     if (at.along >= 0 && at.along <= 1 && across <= spec.inland && across >= -spec.seaward) out.add(axialKey(tile.coord));
+  }
+  return out;
+}
+
+/** The keys of every tile within `radius` hexes of `centre`: the ground round one place (Section 16.4's school). */
+export function discTiles(tiles: Iterable<StretchTile>, centre: AxialCoord, radius: number): Set<string> {
+  const out = new Set<string>();
+  for (const tile of tiles) if (axialDistance(tile.coord, centre) <= radius) out.add(axialKey(tile.coord));
+  return out;
+}
+
+/**
+ * The locality label nearest `coord` (hex distance; ties to the name first in
+ * the alphabet): which neighbourhood a tile belongs to.
+ */
+export function nearestLocality<T extends { name: string; q: number; r: number }>(coord: AxialCoord, localities: readonly T[]): T | undefined {
+  let best: T | undefined;
+  let bestDistance = Infinity;
+  for (const place of localities) {
+    const d = axialDistance(place, coord);
+    if (d < bestDistance || (d === bestDistance && best !== undefined && place.name < best.name)) {
+      best = place;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
+/** The keys of every tile whose nearest locality label is one of `names` (Section 16.5's Taleigao, Merces and St Cruz). */
+export function localityTiles(tiles: Iterable<StretchTile>, localities: readonly { name: string; q: number; r: number }[], names: readonly string[]): Set<string> {
+  const wanted = new Set(names);
+  const out = new Set<string>();
+  for (const tile of tiles) {
+    const nearest = nearestLocality(tile.coord, localities);
+    if (nearest && wanted.has(nearest.name)) out.add(axialKey(tile.coord));
   }
   return out;
 }

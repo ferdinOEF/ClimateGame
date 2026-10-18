@@ -139,7 +139,8 @@ async function main(): Promise<void> {
       check(popup.line === "The first cyclone lands in 5 years", `${w}x${h} popup line: "${popup.line}"`);
       check(popup.legend === "Most likely | Likely | Possible | Area to protect", `${w}x${h} popup legend: "${popup.legend}"`);
       check(popup.bands > 20 && popup.track >= 1 && popup.dashed >= 2, `${w}x${h} popup map: ${popup.bands} band tiles, ${popup.track} track with arrowhead, ${popup.dashed} dashed lines`);
-      check(/Kala Academy/.test(popup.places) && /Sharada Mandir/.test(popup.places), `${w}x${h} popup map names: ${popup.places}`);
+      check(/Sharada Mandir/.test(popup.places) && /Miramar Beach/.test(popup.places), // Section 16
+      `${w}x${h} popup map names: ${popup.places}`);
       check(!popup.scrolls && popup.fits, `${w}x${h} popup fits with no scrolling`);
       if (w === 1920) await axe(p, "the start popup");
       await shot(p, `popup-${w}x${h}`);
@@ -167,11 +168,12 @@ async function main(): Promise<void> {
     const first = (await page.evaluate(`(window.__panjimForTest.maya.currentLine || {}).id || ""`)) as string;
     check(first === "first-job", `Maya's first line is the objective (${first})`);
     const firstText = (await page.evaluate(`(document.querySelector(".maya-text, .maya-bubble") || {}).textContent || ""`)) as string;
-    check(/Kala Academy to Sharada Mandir/.test(firstText), `her first line names it: "${firstText.trim().slice(0, 120)}"`);
+    check(/protect Sharada Mandir School/.test(firstText), // Section 16
+     `her first line names it: "${firstText.trim().slice(0, 120)}"`);
     await page.locator(".hud-panel-status .hud-panel-button").click();
     await page.waitForTimeout(500);
     const objective = (await page.evaluate(`(document.querySelector(".status-objective") || {}).innerText || ""`)) as string;
-    check(/Protect Kala Academy to Sharada Mandir/.test(objective) && /2 pandanus/.test(objective) && /2 dunes/.test(objective) && /1 breakwater/.test(objective), `the objective is in the Status panel, 5 builds: "${objective.replace(/\s+/g, " ")}"`);
+    check(/Protect Sharada Mandir School/.test(objective), `the objective is in the Status panel (Section 16: the model's rows round the school): "${objective.replace(/\s+/g, " ")}"`);
     await shot(page, "objective-status-1920x1080");
     await page.locator(".hud-panel-status .hud-panel-button").click();
     await page.waitForTimeout(400);

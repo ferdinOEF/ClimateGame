@@ -19,6 +19,8 @@ export interface ConePreviewInput {
   labels: readonly { name: string; q: number; r: number }[];
   /** The line over the map: "The first cyclone lands in 5 years". */
   line: string;
+  /** Also frame a cyclone's track from just offshore to where it ends (Section 16.4: onto Sharada Mandir School). */
+  frameTrack?: boolean;
 }
 
 /** The board drawn quietly under the cone. */
@@ -77,6 +79,7 @@ export function renderConePreview(input: ConePreviewInput): HTMLElement {
     if (p) points.push(p);
   }
   if (area.length === 0) for (const track of cone.tracks) points.push(...track.points);
+  else if (input.frameTrack) for (const track of cone.tracks) if (track.kind === "cyclone") points.push(...track.points.slice(1));
   for (const label of input.labels) points.push(axialToWorld({ q: label.q, r: label.r }, 1));
   const pad = area.length > 0 ? 3.2 : 2.2;
   let minX = Math.min(...points.map((p) => p.x)) - pad;

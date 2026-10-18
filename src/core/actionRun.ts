@@ -6,9 +6,9 @@ import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, ty
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
 import { landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
-import { generatePrep, openingJobs, prepProgress, type PrepConfig, type PrepObjective } from "./prep";
+import { generatePrep, openingJobs, prepProgress, regionPlace, regionPlaces, type OpeningRegion, type PhaseArea, type PrepConfig, type PrepObjective } from "./prep";
 import { generatePhaseObjective, type PhaseObjective } from "./phaseObjectives";
-import { stretchTiles } from "./stretch";
+import { discTiles, localityTiles, nearestLocality, stretchTiles } from "./stretch";
 import { forecastCone, type ForecastCone } from "./forecastCone";
 import { resolveStorm, type StormRecord } from "./stormRecord";
 
@@ -87,6 +87,8 @@ export interface ActionRunOptions {
   growth?: { enabled: boolean };
   /** The map's named places, for an opening objective's stretch of coast. */
   landmarks?: readonly { name: string; q: number; r: number }[];
+  /** The map's locality labels, for an objective's area of named localities (Section 16.5). */
+  localities?: readonly { name: string; q: number; r: number }[];
   /** False skips choosing each phase's objective with the model (the bots: objectives never change an outcome). Default true. */
   generateObjectives?: boolean;
 }
@@ -138,6 +140,25 @@ export interface ActionOutcome {
 /** Why `skipYear` is refused: there is a build to make. */
 export const SKIP_REFUSED = "There is still somewhere to build: build to end the year.";
 
+type Place = { name: string; q: number; r: number };
+
+/** The tiles of a storm's own objective (core/prep.ts `OpeningRegion`), or null if its places are not on the map. */
+function regionTiles(state: GameState, region: OpeningRegion | undefined, landmarks: readonly Place[], localities: readonly Place[]): Set<string> | null {
+  if (!region) return null;
+  if ("localities" in region) {
+    if (!region.localities.every((name) => localities.some((l) => l.name === name))) return null;
+    return localityTiles(state.placed.values(), localities, region.localities);
+  }
+  const find = (name: string) => landmarks.find((l) => l.name === name);
+  if ("around" in region) {
+    const centre = find(region.around);
+    return centre ? discTiles(state.placed.values(), centre, region.radius) : null;
+  }
+  const from = find(region.from);
+  const to = find(region.to);
+  return from && to ? stretchTiles(state.placed.values(), { from, to, inland: region.inland, seaward: region.seaward }) : null;
+}
+
 export class ActionRun {
   /** Turns in the run: 25 for 2026 to 2050. */
   readonly totalYears: number;
@@ -170,6 +191,9 @@ export class ActionRun {
   private readonly landmarkList: readonly { name: string; q: number; r: number }[];
   /** The opening objective's stretch of coast (its tiles), when the level has one and its places are on the map. */
   readonly openingTiles: ReadonlySet<string> | null;
+  /** Each storm's own area (the opening's and `prep.areas`), by storm id: its tiles, title and region. */
+  private readonly ownAreas = new Map<string, { tiles: ReadonlySet<string>; title: string; region: OpeningRegion }>();
+  private readonly localityList: readonly Place[];
   /**
    * The run as it stood when each storm's warning began (two years out), by
    * storm id: what "Replay from 2029" rewinds to.
@@ -220,10 +244,14 @@ export class ActionRun {
     this.prepConfig = options.prep;
     this.generateObjectives = options.generateObjectives ?? true;
     this.landmarkList = options.landmarks ?? [];
-    const region = options.prep?.opening?.region;
-    const from = region && options.landmarks?.find((l) => l.name === region.from);
-    const to = region && options.landmarks?.find((l) => l.name === region.to);
-    this.openingTiles = region && from && to ? stretchTiles(state.placed.values(), { from, to, inland: region.inland, seaward: region.seaward }) : null;
+    this.localityList = options.localities ?? [];
+    this.openingTiles = regionTiles(state, options.prep?.opening?.region, this.landmarkList, this.localityList);
+    const opening = options.prep?.opening;
+    if (opening && this.openingTiles) this.ownAreas.set(opening.challengeId, { tiles: this.openingTiles, title: opening.title, region: opening.region });
+    for (const area of options.prep?.areas ?? ([] as PhaseArea[])) {
+      const tiles = regionTiles(state, area.region, this.landmarkList, this.localityList);
+      if (tiles) this.ownAreas.set(area.challengeId, { tiles, title: area.title, region: area.region });
+    }
     this.refreshPrep();
     this.notePhaseStart();
   }
@@ -260,7 +288,7 @@ export class ActionRun {
       this.objective = null;
       this.prep = [];
       if (!this.generateObjectives) return this.prep;
-      const region = this.prepConfig.opening?.challengeId === next.id ? this.prepConfig.opening : undefined;
+      const own = this.ownAreas.get(next.id);
       const landfallTiles = this.zones.keys(LANDFALL_ZONE);
       this.objective = generatePhaseObjective({
         state: this.state,
@@ -273,12 +301,16 @@ export class ActionRun {
         budget: Math.min(this.buildsUntil(next), next.turn - this.phaseStart(next) + 1),
         places: this.prepConfig.places,
         localities: this.landmarkList,
-        stretch: region && this.openingTiles
+        stretch: own
           ? {
-              tiles: this.openingTiles,
-              place: `between ${region.region.from} and ${region.region.to}`,
-              title: region.title,
-              pins: [region.region.from, region.region.to].flatMap((name) => this.landmarkList.filter((l) => l.name === name).slice(0, 1))
+              tiles: own.tiles,
+              place: regionPlace(own.region),
+              // A localities area names each row by its own locality ("in Merces").
+              placeOf: "localities" in own.region ? this.localityPlace(own.region.localities) : undefined,
+              title: own.title,
+              pins: this.regionPins(own.region),
+              // Its rows only from tiles inside it (Section 16.4 and 16.5).
+              only: true
             }
           : null
       });
@@ -294,6 +326,35 @@ export class ActionRun {
     const exposure = this.exposureFor(next);
     this.prep = exposure ? generatePrep(next, exposure, this.state, this.zones, this.prepConfig) : [];
     return this.prep;
+  }
+
+  /** Where a region's pins go: its places, as landmarks (or as locality labels for a localities area). */
+  private regionPins(region: OpeningRegion): Place[] {
+    const from = "localities" in region ? this.localityList : this.landmarkList;
+    return regionPlaces(region).flatMap((name) => from.filter((l) => l.name === name).slice(0, 1));
+  }
+
+  /** "in Merces": a tile's own locality among `names`, by the nearest locality label. */
+  private localityPlace(names: readonly string[]): (key: string) => string {
+    const wanted = this.localityList.filter((l) => names.includes(l.name));
+    return (key) => {
+      const [q, r] = key.split(",").map(Number);
+      const own = nearestLocality({ q, r }, this.localityList);
+      return `in ${own && names.includes(own.name) ? own.name : (nearestLocality({ q, r }, wanted)?.name ?? names[0])}`;
+    };
+  }
+
+  /** The place a storm's own area is round ("around": Sharada Mandir School), as a tile key: where its cyclone's track ends. */
+  private ownAreaEnd(challengeId: string): string | undefined {
+    const region = this.ownAreas.get(challengeId)?.region;
+    if (!region || !("around" in region)) return undefined;
+    const place = this.landmarkList.find((l) => l.name === region.around);
+    return place ? `${place.q},${place.r}` : undefined;
+  }
+
+  /** A storm's own area (the opening's, or one of `prep.areas`): its tiles and title. Null when it has none. */
+  ownAreaFor(challengeId: string): { tiles: ReadonlySet<string>; title: string; region: OpeningRegion } | null {
+    return this.ownAreas.get(challengeId) ?? null;
   }
 
   snapshot(): RunSnapshot {
@@ -513,7 +574,9 @@ export class ActionRun {
     const lost = this.exposureFor(challenge)?.housesAtRisk ?? [];
     const landfallTiles = this.zones.keys(LANDFALL_ZONE);
     return forecastCone(challenge.id, this.state, this.board(), { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge) }, lost, {
-      landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined
+      landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
+      trackInto: this.ownAreas.get(challenge.id)?.tiles,
+      trackEnd: this.ownAreaEnd(challenge.id)
     });
   }
 

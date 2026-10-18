@@ -42,15 +42,51 @@ export interface OpeningObjective {
   /** The storm it is for. */
   challengeId: string;
   title: string;
-  /** The stretch, by the names of two places on the map (core/stretch.ts). */
-  region: { from: string; to: string; inland: number; seaward: number };
+  /** The stretch, by the names of two places on the map (core/stretch.ts), or the tiles round one place (Section 16.4). */
+  region: OpeningRegion;
   steps: { id: string; elementId: string; count: number; label: string }[];
+}
+
+/**
+ * Where a storm's own objective is (Section 16): a stretch of coast between
+ * two named places; every tile within `radius` hexes of one ("Protect
+ * Sharada Mandir School"); or the ground of named localities, each tile
+ * belonging to the locality label nearest it ("Protect Taleigao, Merces and
+ * St Cruz"). `place` is how its rows name it ("in front of Sharada Mandir
+ * School"; a localities region names each row by its locality, "in
+ * Merces"); `labels` the places its forecast map names.
+ */
+export type OpeningRegion =
+  | { from: string; to: string; inland: number; seaward: number; place?: string; labels?: string[] }
+  | { around: string; radius: number; place?: string; labels?: string[] }
+  | { localities: string[]; labels?: string[] };
+
+/** The places a region is named after: its two ends, the one place it is round, or its localities. */
+export function regionPlaces(region: OpeningRegion): string[] {
+  if ("localities" in region) return region.localities;
+  return "around" in region ? [region.around] : [region.from, region.to];
+}
+
+/** How a region's rows name it: its own `place`, else "between X and Y" or "at X" ("in X" for each locality). */
+export function regionPlace(region: OpeningRegion): string {
+  if ("localities" in region) return `in ${region.localities.join(", ")}`;
+  if (region.place) return region.place;
+  return "around" in region ? `at ${region.around}` : `between ${region.from} and ${region.to}`;
+}
+
+/** A later storm's own objective (Section 16.5): its title and the area its rows come from. */
+export interface PhaseArea {
+  challengeId: string;
+  title: string;
+  region: OpeningRegion;
 }
 
 export interface PrepConfig {
   templates: PrepTemplate[];
   /** The first storm's own objective, in place of the generated jobs for it. */
   opening?: OpeningObjective;
+  /** Later storms' own areas (Section 16.5): with `model`, their rows come from these tiles only, under the title. */
+  areas?: PhaseArea[];
   /** What to call each zone in a label: "the Ourem creek". */
   places: Record<string, string>;
   /** At most this many jobs per storm (default 3). */

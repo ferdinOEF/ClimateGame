@@ -48,7 +48,9 @@ function stormToll(from: ActionRun, act: ((run: ActionRun) => void) | null): num
 
 describe("build cards: the number is the counterfactual", () => {
   const cases: [string, number, number][] = [
-    ["bot-seed-1", 2, 7],
+    // Section 16.4: phase 1's board before Smart's first build. After it (turn 2) only the creek homes behind the
+    // school are at risk, which only a build at the landfall saves, so random tiles near them all read 0.
+    ["bot-seed-1", 1, 7],
     ["bot-seed-2", 8, 7],
     ["bot-seed-3", 19, 6]
   ];

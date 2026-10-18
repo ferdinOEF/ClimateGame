@@ -103,14 +103,15 @@ try {
       };
     });
     check(menu.plateTop >= 0 && menu.plateBottom <= h + 0.5 && menu.scrollTop === 0, `${tag} menu: the logo strip is on screen without scrolling (${Math.round(menu.plateTop)} to ${Math.round(menu.plateBottom)} of ${h})`);
-    check(JSON.stringify(menu.buttons) === JSON.stringify(["Tutorial", "Choose a level"]), `${tag} menu: only Tutorial and Choose a level (${menu.buttons.join(", ")})`);
+    // Section 16.3: the menu's second button is Play Panjim; the level select keeps its own address.
+    check(JSON.stringify(menu.buttons) === JSON.stringify(["Tutorial", "Play Panjim"]), `${tag} menu: only Tutorial and Play Panjim (${menu.buttons.join(", ")})`);
     check(menu.title === "Riptide Rising" && menu.tagline === "Twenty-five years of Panjim. Three storms. One build a year." && menu.credit, `${tag} menu: the name, the tagline, and the header render's OpenStreetMap credit`);
     await noForbidden(page, `${tag} menu`);
     await shot(page, `menu-${tag}`, full);
     if (full) await axe(page, "menu");
 
     // --- the level select -------------------------------------------------
-    await page.locator(".menu-actions button", { hasText: "Choose a level" }).click();
+    await page.goto(`${server.url}/#/levels`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".level-grid", { timeout: 10000 });
     await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>(".level-card-thumb img")].every((img) => img.complete && img.naturalWidth > 0), undefined, { timeout: 15000 });
     const cards = await page.evaluate(() => {

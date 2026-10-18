@@ -31,7 +31,8 @@ function run(): ActionRun {
     prep: BOT_LEVEL.prep,
     economy: BOT_LEVEL.economy,
     growth: BOT_LEVEL.growth,
-    landmarks: MAP.landmarks
+    landmarks: MAP.landmarks,
+    localities: MAP.localities
   });
 }
 
@@ -97,9 +98,43 @@ describe("objectives chosen by the model", () => {
     for (const row of objective.rows) expect(without - lost).toBeGreaterThanOrEqual(row.homes!);
   }, 600_000);
 
-  it("words each row as a build and a place, with the first cyclone's between Kala Academy and Sharada Mandir", () => {
+  it("words each row as a build and a place, with the first cyclone's in front of Sharada Mandir School", () => {
     const r = run();
-    for (const row of r.prep) expect(row.label).toMatch(/^(Build|Plant) \d+ [a-z ]+ (between|at|near) /);
-    expect(r.prep.some((row) => row.label.includes("between Kala Academy and Sharada Mandir School"))).toBe(true);
+    for (const row of r.prep) expect(row.label).toMatch(/^(Build|Plant) \d+ [a-z ]+ (between|at|near|in front of|in) /);
+    expect(r.prep.length).toBeGreaterThan(0);
+    for (const row of r.prep) expect(row.label).toMatch(/ in front of Sharada Mandir School$/);
+  });
+
+  // Section 16.4 (owner decision): the first objective is "Protect Sharada Mandir School", its rows from the
+  // model on the tiles round the school only, with the school pinned.
+  it("phase 1: Protect Sharada Mandir School, every pick round the school, the school pinned, every home in the area saved", () => {
+    const r = run();
+    const school = MAP.landmarks.find((l) => l.name === "Sharada Mandir School")!;
+    expect(r.objective!.rows.every((row) => row.heading === "Protect Sharada Mandir School")).toBe(true);
+    for (const pick of r.objective!.picks) {
+      const [q, rr] = pick.key.split(",").map(Number);
+      expect(Math.max(Math.abs(q - school.q), Math.abs(rr - school.r), Math.abs(q + rr - school.q - school.r)), pick.key).toBeLessThanOrEqual(3);
+    }
+    for (const row of r.objective!.rows) expect(row.pins).toEqual([{ name: "Sharada Mandir School", q: school.q, r: school.r }]);
+    expect(r.objective!.lostBefore).toBe(9);
+    expect(r.objective!.lostAfter).toBe(0);
+  });
+
+  // Section 16.5 (owner decision): the second is "Protect Taleigao, Merces and St Cruz", its rows from the model
+  // inside those three localities (each tile belonging to its nearest locality label), the three names pinned.
+  it("phase 2: Protect Taleigao, Merces and St Cruz, every pick inside the three, the three pinned", () => {
+    const r = run();
+    const flood = r.schedule[1];
+    while (r.turnNumber < r.phaseStart(flood)) passYear(r);
+    const own = r.ownAreaFor(flood.id)!;
+    expect(own.title).toBe("Protect Taleigao, Merces and St Cruz");
+    expect(r.objective!.rows.length).toBeGreaterThan(0);
+    for (const row of r.objective!.rows) {
+      expect(row.heading).toBe("Protect Taleigao, Merces and St Cruz");
+      expect(row.label).toMatch(/ in (Taleigao|Merces|St Cruz)$/);
+      expect(row.pins!.map((p) => p.name)).toEqual(["Taleigao", "Merces", "St Cruz"]);
+    }
+    for (const pick of r.objective!.picks) expect(own.tiles.has(pick.key), pick.key).toBe(true);
+    expect(r.objective!.lostAfter).toBeLessThan(r.objective!.lostBefore);
   });
 });
