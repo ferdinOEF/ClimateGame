@@ -138,7 +138,7 @@ describe("the modal manager (Section 16 B5)", () => {
     const session = readFileSync("src/app/gameSession.ts", "utf8");
     const controller = readFileSync("src/app/panjimController.ts", "utf8");
     expect(session).toContain("if (modals.escape() !== \"none\") return;");
-    expect(session).toContain("if (modals.anyOpen() || panjim.isBusy) return;");
+    expect(session).toContain('(fromMenu ? !(modals.topmost() === null || modals.isTopmost("brief")) : modals.anyOpen())');
     expect(session).toContain('panjim.panels.isTopmost = () => modals.isTopmost("menu")');
     // Help is a layer the manager closes on Esc (it had no Esc of its own).
     expect(session).toMatch(/name: "help",[\s\S]*?close: \(\) => \{\s*hud\.hideHelp\(\)/);

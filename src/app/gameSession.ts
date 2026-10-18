@@ -728,8 +728,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * interval hazards, no objective-driven early finish.
    */
   // ☰'s Leave and Start again (Section 16 B3); bound once the confirm exists, further down.
-  let askLeave = (): void => options.onExit();
-  let askRestart = (): void => (options.onRestart ?? options.onExit)();
+  let askLeave = (_fromMenu = false): void => options.onExit();
+  let askRestart = (_fromMenu = false): void => (options.onRestart ?? options.onExit)();
   // The landmarks shown at the usual zoom (Section 16 B6), set by the controller before the label layer exists.
   let placeHighlight: [readonly string[], readonly string[]] = [[], []];
   let applyPlaceHighlight = (): void => {};
@@ -836,8 +836,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           localities: levelMap.localities,
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
-          requestLeave: () => askLeave(),
-          requestRestart: () => askRestart(),
+          requestLeave: () => askLeave(true),
+          requestRestart: () => askRestart(true),
           sessionLayerOpen: () => sessionLayerOpen(),
           overlayOpen,
           riskAreaOnScreen: (keys) => {
@@ -2539,15 +2539,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     { signal: keydownAbort.signal }
   );
   if (leaveConfirm && panjim) {
-    askLeave = (): void => {
+    /** ☰'s own Leave and Start again also work over the start popup (☰ sits above it): the one way out of it. */
+    const blocked = (fromMenu: boolean): boolean => panjim.isBusy || (fromMenu ? !(modals.topmost() === null || modals.isTopmost("brief")) : modals.anyOpen());
+    askLeave = (fromMenu = false): void => {
       // Only with nothing else open (Section 16 B5); ☰'s own Leave closes the menu first.
-      if (modals.anyOpen() || panjim.isBusy) return;
+      if (blocked(fromMenu)) return;
       void leaveConfirm.ask(panjim.leaveNote(), { title: panjim.tutorial ? "Leave the Tutorial?" : "Leave Panjim?" }).then((leave) => {
         if (leave) options.onExit();
       });
     };
-    askRestart = (): void => {
-      if (modals.anyOpen() || panjim.isBusy) return;
+    askRestart = (fromMenu = false): void => {
+      if (blocked(fromMenu)) return;
       const text = panjim.tutorial ? "The Tutorial starts again from its first year." : "Your saved run is cleared and Panjim starts again from its first year.";
       void leaveConfirm.ask(text, { title: "Start again?", confirm: "Start again" }).then((again) => {
         if (!again) return;

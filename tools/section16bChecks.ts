@@ -50,6 +50,7 @@ async function shot(page: Page, name: string): Promise<void> {
 async function begin(page: Page): Promise<void> {
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForFunction(`!document.getElementById("boot-splash")`, undefined, { timeout: 120000 }).catch(() => undefined);
+  await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 120000 });
   await wait(1200);
   await page.locator(".brief-cta").first().click();
   await wait(3000);

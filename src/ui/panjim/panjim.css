@@ -3195,3 +3195,11 @@
   background: rgba(255, 246, 224, 0.96);
   border-left: 4px solid #c8783a;
 }
+
+/*
+ * Section 16 B5: ☰ stays reachable over the start popup, so "Leave Panjim" is a way out of it (Esc there does
+ * nothing: the popup is the topmost layer). "?" stays under it: How to Play is the popup's own subject.
+ */
+.has-panjim-clock:has(.brief-backdrop:not([hidden])) .hud-panel-settings {
+  z-index: 56;
+}

@@ -311,6 +311,8 @@ export class MapLabelLayer {
       if (entry.w < 1) continue;
       const focused = label.kind === "landmark" && label.name === this.focusName;
       if (label.kind === "landmark" && fadeOf(label) < LANDMARK_MIN_FADE && !focused) continue;
+      // An objective pin already carries this name (a district too, Section 16 B6): never the same name twice.
+      if (this.pinned.has(label.name) && !focused) continue;
       if (label.rank === 2 && !this.minorOn) continue;
       const screen = project({ q: label.q, r: label.r });
       if (!screen) continue;
