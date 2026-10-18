@@ -29,8 +29,10 @@ describe("the two HUD panels", () => {
     // Section 13: the Status panel holds the Field Guide (and the coin jar, coins on only, Section 5). The meters
     // and the copy of the objectives are taken out of the page on Panaji.
     expect(controller).toMatch(/querySelector<HTMLElement>\("\.instrument-cluster"\)\?\.remove\(\)/);
-    expect(controller).toMatch(/panels\.status\.adopt\(this\.jar\?\.el \?\? null, this\.fieldGuide\.buttonEl\)/);
-    expect(controller).toMatch(/panels\.settings\.adopt\(togglesRow\(host\.container\)\)/);
+    // Section 16 B3: the Status panel exists only with coins on (the jar); the Field Guide, the street map, the
+    // switches and Start again / Leave are moved into the one ☰ menu.
+    expect(controller).toMatch(/if \(this\.panels\.status\) this\.panels\.status\.adopt\(this\.jar\?\.el \?\? null\)/);
+    expect(controller).toMatch(/panels\.settings\.adopt\(this\.fieldGuide\.buttonEl, this\.menuStreetSlot, togglesRow\(host\.container\), this\.menuActions\(\)\)/);
     expect(panels).toContain("this.body.appendChild(el)");
   });
 
@@ -40,7 +42,8 @@ describe("the two HUD panels", () => {
     const glyphs = panels.slice(panels.indexOf("const GLYPHS"), panels.indexOf("const LABELS"));
     expect(glyphs).not.toContain("<text");
     expect(panels).toContain("this.button.innerHTML = GLYPHS[id]");
-    expect(panels).toContain('status: "Status", settings: "Settings"');
+    // Section 16 B3: the settings panel is the ☰ menu, named for what it is.
+    expect(panels).toContain('status: "Status", settings: "Menu"');
   });
 
   it("has accessible names, aria-expanded, a tooltip on hover and focus only, and a focus ring", () => {
@@ -60,9 +63,10 @@ describe("the two HUD panels", () => {
   });
 
   it("closes with the button, Esc (Maya's own Esc first) or a press outside, one at a time, and remembers nothing", () => {
-    expect(panels).toContain('event.key !== "Escape" || event.defaultPrevented');
+    // Section 16 B5: only while the menu is the topmost layer (modalStack.ts); Help or a confirm over it takes the key.
+    expect(panels).toContain('event.key !== "Escape" || event.defaultPrevented || !this.isTopmost()');
     expect(panels).toContain('"pointerdown"');
-    expect(panels).toContain("if (open) for (const other of [this.status, this.settings]) if (other !== panel) other.close();");
+    expect(panels).toContain("if (open) for (const other of this.all) if (other !== panel) other.close();");
     expect(panels).not.toMatch(/localStorage|sessionStorage|writePref|readPref/);
     // Every load starts shut.
     expect(panels).toContain("this.body.hidden = true;");
@@ -74,11 +78,12 @@ describe("the two HUD panels", () => {
     expect(css).toMatch(/\.hud-panel\.danger \.hud-panel-button \{[^}]*border-width: 2px;/);
     // On the Status panel only. Section 13: never set on Panaji (Maya says the warning; Status holds no meters).
     expect(panels).toContain('if (id === "status")');
-    expect(controller).toContain("this.panels.status.setDanger(false)");
+    // Section 16 B3: the Status panel may not exist (coins off), hence the "?.".
+    expect(controller).toContain("this.panels.status?.setDanger(false)");
   });
 
   it("floats the coin jar's gain beside the Status button while it is shut", () => {
-    expect(controller).toContain("this.jar.onGain = (text) => this.panels.status.floatText(text)");
+    expect(controller).toContain("this.jar.onGain = (text) => status.floatText(text)");
     expect(panels).toContain("if (this.isOpen) return;");
     expect(css).toMatch(/\.hud-panel-pop \{[^}]*left: 46px;/);
   });

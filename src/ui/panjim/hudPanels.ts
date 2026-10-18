@@ -146,6 +146,12 @@ export class HudPanels {
   readonly settings: HudPanel;
   private readonly abort = new AbortController();
 
+  /**
+   * Whether ☰ is the topmost layer (Section 16 B5, modalStack.ts). Esc and a press outside close the topmost layer
+   * only, so with Help or a confirm over the menu they are theirs. Set by the session; true until then.
+   */
+  isTopmost: () => boolean = () => true;
+
   constructor(container: HTMLElement, options: { status?: boolean } = {}) {
     const onToggle = (panel: HudPanel, open: boolean): void => {
       if (open) for (const other of this.all) if (other !== panel) other.close();
@@ -156,8 +162,8 @@ export class HudPanels {
       "pointerdown",
       (event) => {
         const target = event.target as Node | null;
-        // A press inside a dialog the menu opened (the confirm) does not close it underneath.
-        if (target instanceof Element && target.closest(".leave-confirm-backdrop")) return;
+        // A press inside a layer over the menu (the confirm it opened, the Field Guide) is that layer's, not the menu's.
+        if (!this.isTopmost()) return;
         for (const panel of this.all) if (panel.isOpen && !(target && panel.el.contains(target))) panel.close();
       },
       { capture: true, signal: this.abort.signal }
@@ -166,7 +172,7 @@ export class HudPanels {
       "keydown",
       (event) => {
         // Another panel's Esc (the leave prompt, Sources) has priority: it marks the event handled.
-        if (event.key !== "Escape" || event.defaultPrevented) return;
+        if (event.key !== "Escape" || event.defaultPrevented || !this.isTopmost()) return;
         const open = this.all.find((panel) => panel.isOpen);
         if (!open) return;
         event.stopPropagation();

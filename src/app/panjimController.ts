@@ -3,6 +3,7 @@ import type { GameState } from "@core/gameState";
 import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
 import type { StormRecord } from "@core/stormRecord";
 import { drawStormCard, type StormCardInput } from "@ui/panjim/stormCard";
+import { forecastPlaceCandidates } from "@ui/panjim/forecastPlaces";
 import { replaySteps } from "@core/stormReplay";
 import { ReplayCard } from "@ui/panjim/replayCard";
 import { setSoundEnabled, setSoundVolume, soundVolume } from "@ui/audioHooks";
@@ -47,6 +48,7 @@ import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
 import type { BuildCard } from "@ui/buildPopover";
 import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER, cardPill } from "@ui/panjim/defenceCards";
+import { leaveText } from "@ui/panjim/modalStack";
 
 /**
  * The Panjim 2050 run inside a live session.
@@ -162,6 +164,8 @@ export interface PanjimHost {
   requestLeave: () => void;
   /** ☰ → Start again (Section 16 B3): asks first; then the run starts afresh from its start popup. */
   requestRestart: () => void;
+  /** Help or the leave prompt is open (Section 16 B5): a storm and its cards wait for them. */
+  sessionLayerOpen: () => boolean;
   /** The session's tooltip manager, for this run's own controls. */
   tooltips: Tooltips;
 }
@@ -467,11 +471,8 @@ export class PanjimController {
    * the Tutorial is never saved; a finished run is over (its result is recorded); else nothing was built yet.
    */
   leaveNote(): string {
-    if (this.tutorial) return "The Tutorial is not saved: leaving starts it again.";
-    const year = savedRunYear(this.host.level.id, this.run.config.startYear, this.run.totalYears);
-    if (year !== null) return `Your run is saved. You can continue from ${year}.`;
-    if (this.run.finished) return "This run is over, and its result is recorded.";
-    return "You haven't built anything yet.";
+    const savedYear = this.tutorial ? null : savedRunYear(this.host.level.id, this.run.config.startYear, this.run.totalYears);
+    return leaveText({ tutorial: this.tutorial, savedYear, finished: this.run.finished, builds: this.run.turnNumber - 1 });
   }
 
   /** ☰'s last two items (Section 16 B3): Start again and Leave, each asking first. */
@@ -513,17 +514,7 @@ export class PanjimController {
 
   /** The places a forecast's map names: a storm's own area's (its `labels`, else the places it is named after; Section 16), else the places in its area to protect. */
   private forecastPlaces(challenge: ScheduledChallenge): { name: string; q: number; r: number }[] {
-    const own = this.run.ownAreaFor(challenge.id);
-    if (own) {
-      const find = (name: string) => this.host.landmarks.find((l) => l.name === name) ?? this.host.localities.find((l) => l.name === name);
-      return (own.region.labels ?? regionPlaces(own.region)).map(find).filter((l): l is { name: string; q: number; r: number } => Boolean(l));
-    }
-    const zone = new Set(this.run.exposureFor(challenge)?.housesAtRisk ?? []);
-    const near = (l: { q: number; r: number }): boolean => [...zone].some((key) => {
-      const [q, r] = key.split(",").map(Number);
-      return (Math.abs(q - l.q) + Math.abs(r - l.r) + Math.abs(q + r - l.q - l.r)) / 2 <= 2;
-    });
-    return this.host.landmarks.filter(near).slice(0, 3);
+    return forecastPlaceCandidates(this.run, challenge, this.host.landmarks, this.host.localities);
   }
 
   private hideCone(): void {
@@ -804,6 +795,8 @@ export class PanjimController {
    * The next phase starts when they close, its cone on the map.
    */
   private async showResults(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
+    // Help opened during the storm closes first: the cards never open under it (Section 16 B5).
+    await this.untilLayersShut();
     const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
@@ -820,7 +813,7 @@ export class PanjimController {
     ];
     if (next) {
       cards.push({
-        body: comingUpCard(`${next.name} in ${next.year}`, this.forecastPreview(next, false), results.comingUp[next.kind] ?? null),
+        body: comingUpCard(comingUpTitle(next.name, next.year, this.run.yearsUntil(next)), this.forecastPreview(next, false), results.comingUp[next.kind] ?? null),
         button: `On to ${this.run.year}`
       });
     }
@@ -1247,6 +1240,16 @@ export class PanjimController {
    * in full while the HUD still shows its year; then the new year ticks in.
    * On the last turn the run ends and the finale plays.
    */
+  /** True while a layer a storm waits for is open (Section 16 B5): Help, ☰, the Field Guide or the leave prompt. */
+  get stormMustWait(): boolean {
+    return this.panels.anyOpen || this.fieldGuide.isOpen || this.host.sessionLayerOpen();
+  }
+
+  /** Resolves once Help, ☰, the Field Guide and the leave prompt are all shut, so a storm never plays under them. */
+  private async untilLayersShut(): Promise<void> {
+    while (this.stormMustWait) await new Promise((resolve) => window.setTimeout(resolve, 120));
+  }
+
   private async endTurn(outcome: ActionOutcome): Promise<void> {
     this.host.cancelRiskIntro("time passing");
     // The bottom hint shows only until the run's first build (Section 16 B3).
@@ -1268,7 +1271,10 @@ export class PanjimController {
       this.stagingYearEnd = pending.length > 0;
       // No countdowns while the storm and its result cards are on screen: they would read the old year.
       this.holdCountdowns(pending.length > 0);
-      for (const staged of pending) await this.stageChallenge(staged.challenge, staged.outcome, staged.failedIds);
+      for (const staged of pending) {
+        await this.untilLayersShut();
+        await this.stageChallenge(staged.challenge, staged.outcome, staged.failedIds);
+      }
       this.stagingYearEnd = false;
       this.holdCountdowns(false);
       for (const event of later) if (event.type !== "challenge") this.handleEvent(event);
@@ -1976,3 +1982,9 @@ export function floatText(saved: number): string {
 function untilWord(kind: ScheduledChallenge["kind"]): string {
   return kind === "cyclone" ? "Cyclone" : kind === "flood" ? "Flood" : "Cyclone and flood";
 }
+
+/** The coming-up card's one heading (Section 16 B4): "Monsoon flood · 2040 · in 10 years". */
+export function comingUpTitle(name: string, year: number, years: number): string {
+  return `${name} · ${year} · in ${years} ${years === 1 ? "year" : "years"}`;
+}
+

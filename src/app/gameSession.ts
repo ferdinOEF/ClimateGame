@@ -54,6 +54,7 @@ import { hashSeed, Rng } from "@core/rng";
 import { Telemetry } from "@core/telemetry";
 import { PanjimController } from "./panjimController";
 import { panjimHelpHtml } from "@ui/panjim/panjimHelp";
+import { ModalStack } from "@ui/panjim/modalStack";
 import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
@@ -729,6 +730,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // ☰'s Leave and Start again (Section 16 B3); bound once the confirm exists, further down.
   let askLeave = (): void => options.onExit();
   let askRestart = (): void => (options.onRestart ?? options.onExit)();
+  // Help or the leave prompt is open (set with the modal manager, below): a storm waits for them.
+  let sessionLayerOpen = (): boolean => false;
   const panjim =
     level.timeModel === "years" && level.timeline
       ? new PanjimController({
@@ -823,6 +826,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           requestLeave: () => askLeave(),
           requestRestart: () => askRestart(),
+          sessionLayerOpen: () => sessionLayerOpen(),
           overlayOpen,
           riskAreaOnScreen: (keys) => {
             const rect = renderer.domElement.getBoundingClientRect();
@@ -2477,32 +2481,56 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   // "Leave Panjim?" on Esc (Section 12). Panjim only: the Tutorial keeps its behaviour.
   const leaveConfirm = panjim ? new LeaveConfirm(container) : null;
+  // The one modal manager (Section 16 B5): every layer over the board, topmost first. Esc and a press
+  // outside close the topmost only; "Leave Panjim?" opens only with nothing open.
+  const shown = (selector: string) => (): boolean => Boolean(container.querySelector(selector) ?? document.querySelector(selector));
+  const modals = new ModalStack([
+    { name: "leave", isOpen: () => leaveConfirm?.isOpen ?? false },
+    { name: "sources", isOpen: shown(".sources-backdrop") },
+    { name: "result-cards", isOpen: shown(".result-cards:not([hidden])") },
+    { name: "replay", isOpen: shown(".replay-card:not([hidden])") },
+    { name: "finale", isOpen: shown(".finale-card") },
+    { name: "field-guide", isOpen: () => panjim?.fieldGuide.isOpen ?? false },
+    {
+      name: "help",
+      isOpen: () => hud.helpOpen,
+      close: () => {
+        hud.hideHelp();
+        container.querySelector<HTMLElement>(".help-button")?.focus({ preventScroll: true });
+      }
+    },
+    { name: "menu", isOpen: () => panjim?.panels.anyOpen ?? false },
+    { name: "build", isOpen: () => buildPopover.isOpen, close: () => buildPopover.hide() },
+    { name: "brief", isOpen: () => objectivesPanel.briefOpen }
+  ]);
+  if (panjim) panjim.panels.isTopmost = () => modals.isTopmost("menu");
+  sessionLayerOpen = (): boolean => modals.someOpen(["help", "leave"]);
   const keydownAbort = new AbortController();
   document.addEventListener(
     "keydown",
     (event: KeyboardEvent) => {
-      // Another panel (Sources) already answered this Esc.
+      // A layer that answers its own Esc (the confirm, the cards, the Field Guide, ☰, Sources) already has.
       if (event.key !== "Escape" || event.defaultPrevented) return;
-      // Escape closes the popover if one is open; otherwise it is the
-      // "get me out of here" key. On Panjim it asks first (Section 12): the
-      // other overlays answer their own Esc, and the confirm its own.
-      if (buildPopover.isOpen) buildPopover.hide();
-      else if (sessionFinished) return;
+      // Otherwise Esc closes the topmost layer and nothing else; a layer that holds it (the start popup) keeps it.
+      if (modals.escape() !== "none") return;
+      // With nothing open, Esc is the "get me out of here" key. On Panjim it asks first (Section 12).
+      if (sessionFinished) return;
       else if (!leaveConfirm) options.onExit();
       // Not while a storm plays: the year is saved only once it has settled.
-      else if (!leaveConfirm.isOpen && !panjim?.isBusy && (!overlayOpen() || objectivesPanel.briefOpen)) askLeave();
+      else if (!panjim?.isBusy) askLeave();
     },
     { signal: keydownAbort.signal }
   );
   if (leaveConfirm && panjim) {
     askLeave = (): void => {
-      if (leaveConfirm.isOpen || panjim.isBusy) return;
+      // Only with nothing else open (Section 16 B5); ☰'s own Leave closes the menu first.
+      if (modals.anyOpen() || panjim.isBusy) return;
       void leaveConfirm.ask(panjim.leaveNote(), { title: panjim.tutorial ? "Leave the Tutorial?" : "Leave Panjim?" }).then((leave) => {
         if (leave) options.onExit();
       });
     };
     askRestart = (): void => {
-      if (leaveConfirm.isOpen || panjim.isBusy) return;
+      if (modals.anyOpen() || panjim.isBusy) return;
       const text = panjim.tutorial ? "The Tutorial starts again from its first year." : "Your saved run is cleared and Panjim starts again from its first year.";
       void leaveConfirm.ask(text, { title: "Start again?", confirm: "Start again" }).then((again) => {
         if (!again) return;

@@ -3191,3 +3191,11 @@
 .has-panjim-clock:has(.brief-backdrop:not([hidden])) .maya {
   visibility: hidden;
 }
+
+/* Section 16 B4: card 1's "+N more stood". */
+.result-places .result-places-more {
+  justify-content: flex-start;
+  font-size: 12.5px;
+  color: rgba(253, 246, 230, 0.7);
+  font-style: italic;
+}

@@ -59,9 +59,36 @@ export function coneLegendHtml(meet: boolean): string {
   </ul>`;
 }
 
+/** At most this many places named on a forecast's map (Section 16 B4). */
+export const MAX_PREVIEW_LABELS = 3;
+
+/** A label's box on the preview's map, in world units: the dot, and the name to its right (font 1.05, about 0.62 em a letter). */
+export function previewLabelBox(label: { name: string; q: number; r: number }): { x0: number; z0: number; x1: number; z1: number } {
+  const { x, z } = axialToWorld({ q: label.q, r: label.r }, 1);
+  return { x0: x - 0.5, z0: z - 0.5, x1: x + 0.75 + label.name.length * 0.65, z1: z + 0.6 };
+}
+
+/**
+ * The places a forecast's map names (Section 16 B4): in the order given, each
+ * kept only if its box clears every one kept before it, at most three. So the
+ * names never sit on one another.
+ */
+export function previewLabels<T extends { name: string; q: number; r: number }>(labels: readonly T[], max = MAX_PREVIEW_LABELS): T[] {
+  const kept: { label: T; box: ReturnType<typeof previewLabelBox> }[] = [];
+  for (const label of labels) {
+    if (kept.length >= max) break;
+    const box = previewLabelBox(label);
+    const clear = kept.every(({ box: other }) => box.x1 + 0.2 <= other.x0 || other.x1 + 0.2 <= box.x0 || box.z1 + 0.1 <= other.z0 || other.z1 + 0.1 <= box.z0);
+    if (clear) kept.push({ label, box });
+  }
+  return kept.map((k) => k.label);
+}
+
 export function renderConePreview(input: ConePreviewInput): HTMLElement {
   const id = `cone-preview-${++previews}`;
   const { cone } = input;
+  // Never more than three names, and never one on another (Section 16 B4).
+  input = { ...input, labels: previewLabels(input.labels) };
   const byKey = new Map(input.tiles.map((t) => [t.key, t]));
   const world = (key: string): { x: number; z: number } | null => {
     const tile = byKey.get(key);
