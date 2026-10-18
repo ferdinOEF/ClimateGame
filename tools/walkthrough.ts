@@ -175,7 +175,7 @@ async function main(): Promise<void> {
       }
     });
     stage = "tutorial-next";
-    // "Play Panjim" opened Panaji's own card: Begin, so the board's Back control is reachable.
+    // "Play Panjim" opened Panaji's own card: Begin, so the board's ☰ menu is reachable.
     if (await page.locator(".brief-cta:visible").count()) await page.locator(".brief-cta:visible").first().click();
     await page.waitForTimeout(600);
 
@@ -183,20 +183,28 @@ async function main(): Promise<void> {
     // Two ways out, and they have to agree. Both were broken before this was
     // written: there was no visible exit control in a level at all, and the
     // browser's own Back button left the site entirely because the shell
-    // never wrote a history entry.
-    stage = "in-level-back-button";
-    const backButton = page.locator(".back-button");
-    if ((await backButton.count()) === 0) {
-      problems.push("[in-level-back-button] no Back control on the board");
+    // never wrote a history entry. Section 16 B3: the ← Back button is gone;
+    // the way out is ☰ → "Leave Panjim", which asks first.
+    stage = "in-level-leave";
+    const menuButton = page.locator(".hud-panel-settings .hud-panel-button");
+    if ((await page.locator(".back-button:visible").count()) > 0) problems.push("[in-level-leave] the ← Back button is still on the board");
+    if ((await menuButton.count()) === 0) {
+      problems.push("[in-level-leave] no ☰ menu on the board");
     } else {
-      await backButton.first().click();
+      await menuButton.first().click();
+      await page.waitForTimeout(400);
+      await page.locator(".hud-menu-leave").click();
+      await page.waitForTimeout(400);
+      const title = (await page.locator(".leave-confirm-title").textContent())?.trim();
+      if (title !== "Leave Panjim?") problems.push(`[in-level-leave] the confirm reads "${title}", not "Leave Panjim?"`);
+      await page.locator(".leave-confirm-leave").click();
       await page.waitForTimeout(600);
       if ((await page.locator(".menu-screen").count()) === 0) {
-        problems.push("[in-level-back-button] Back did not return to the menu");
+        problems.push("[in-level-leave] ☰ → Leave Panjim did not return to the menu");
       } else {
-        console.log("in-level Back button returns to the menu");
+        console.log("☰ → Leave Panjim → Leave returns to the menu");
       }
-      await shot(page, "after-back-button");
+      await shot(page, "after-leave");
     }
 
     stage = "browser-back";

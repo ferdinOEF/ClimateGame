@@ -85,7 +85,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       ${picture("help-cards.jpg", "The build cards for a beach tile, each with how many homes it protects")}
       <div>
         <h3>The numbers on the cards ${RULE}</h3>
-        <p>Each card says how many homes it protects here from the next storm, worked out the way the storm itself is. Pick the biggest.</p>
+        <p>Each card says how many homes it protects here from the next storm, worked out the way the storm itself is. The biggest comes first.</p>
       </div>
     </section>
 

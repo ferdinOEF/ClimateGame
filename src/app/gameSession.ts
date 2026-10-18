@@ -730,6 +730,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // ☰'s Leave and Start again (Section 16 B3); bound once the confirm exists, further down.
   let askLeave = (): void => options.onExit();
   let askRestart = (): void => (options.onRestart ?? options.onExit)();
+  // The landmarks shown at the usual zoom (Section 16 B6), set by the controller before the label layer exists.
+  let placeHighlight: [readonly string[], readonly string[]] = [[], []];
+  let applyPlaceHighlight = (): void => {};
   // Help or the leave prompt is open (set with the modal manager, below): a storm waits for them.
   let sessionLayerOpen = (): boolean => false;
   const panjim =
@@ -800,6 +803,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           areaProtected: () => {
             const at = areaOutline.centre;
             if (at) mapPins.say("Area protected", { name: "", x: at.x, y: 0.6, z: at.z });
+          },
+          noteAt: (coord, text, ms) => {
+            const { x, z } = axialToWorld(coord, 1.0);
+            mapPins.say(text, { name: "", x, y: terrain.heightAt(coord) + 0.2, z }, ms, true);
+          },
+          highlightPlaces: (names, pinned) => {
+            // The label layer is made after the controller: kept until it exists.
+            placeHighlight = [names, pinned];
+            applyPlaceHighlight();
           },
           showPins: (pins) => mapPins.setPins(pins.map((pin) => {
             const { x, z } = axialToWorld({ q: pin.q, r: pin.r }, 1.0);
@@ -953,6 +965,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // today; this is guarding the feature, not a live fault.
     labelsForMap(levelMap).filter((label) => presentTileKeys.has(`${label.q},${label.r}`))
   );
+  applyPlaceHighlight = (): void => mapLabels.setHighlighted(...placeHighlight);
+  applyPlaceHighlight();
   /**
    * The OpenStreetMap credit, on any board whose geography was derived from
    * OpenStreetMap data.
@@ -2414,6 +2428,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const coord = hit && hit.instanceId !== undefined && !name ? terrain.coordForHit(hit.object, hit.instanceId) : null;
       const buildable = coord && !panjim?.isBusy && !overlayOpen() && state.buildableAt(coord).length > 0;
       tileHover.show(buildable ? coord : null, coord ? terrain.heightAt(coord) : 0);
+      // Section 16 B6: a pointer over a tile that can be built on (never the north bank: it is scenery).
+      renderer.domElement.style.cursor = buildable ? "pointer" : "";
     }
   };
   renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
@@ -2425,6 +2441,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   renderer.domElement.addEventListener("pointerleave", () => {
     hoverAt = null;
     tileHover?.show(null);
+    renderer.domElement.style.cursor = "";
     hoveredMonument = null;
     mapLabels.setFocus(selectedMonument);
   });

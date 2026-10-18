@@ -2762,50 +2762,33 @@
   background: #f2c35b;
 }
 
+/* Section 16 B6: what cannot go on this ground, as one quiet line. */
 .build-card-elsewhere {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin-top: 2px;
+  margin: 2px 0 0;
   padding-top: 6px;
   border-top: 1px solid rgba(230, 178, 104, 0.2);
-}
-
-.build-card-not-here {
-  display: grid;
-  grid-template-columns: 20px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 6px;
-  align-items: center;
-  padding: 3px 4px;
-  border-radius: 6px;
-  color: #bfb3a3;
-}
-
-.build-card-not-here .build-card-icon {
-  filter: grayscale(1);
-  opacity: 0.6;
-}
-
-.build-card-not-here .build-card-icon {
-  grid-row: 1 / span 2;
-  width: 20px;
-  height: 20px;
-}
-
-.build-card-not-here .build-card-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.build-card-not-here .build-card-name {
   font-size: 11.5px;
-  font-weight: 600;
-  color: inherit;
+  line-height: 1.35;
+  color: #cfc3b1;
 }
 
-.build-card-tag {
+/* The card that protects the most homes here (Section 16 B6). */
+.build-card.best {
+  border-color: #f2c35b;
+  box-shadow: 0 0 0 1px #f2c35b inset;
+}
+
+.build-card-best {
+  justify-self: start;
+  align-self: start;
+  width: max-content;
+  padding: 1px 6px;
+  border-radius: 999px;
   font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #3a2600;
+  background: #f2c35b;
 }
 
 /* "+3 homes safe" over the tile just built (Section 13.2): rises and fades in 1.5 s; still with calm motion. */
@@ -3198,4 +3181,17 @@
   font-size: 12.5px;
   color: rgba(253, 246, 230, 0.7);
   font-style: italic;
+}
+
+/* Section 16 B6: the note beside a just-built tile ("This protects no homes, and it's outside the area..."), about 3 s. */
+.map-note.beside {
+  margin-left: 34px;
+  margin-top: -24px;
+  width: 250px;
+  text-align: left;
+  border-radius: 10px;
+  font: 600 13px/1.35 "Inter", system-ui, sans-serif;
+  color: #2a1408;
+  background: rgba(255, 246, 224, 0.96);
+  border-left: 4px solid #c8783a;
 }

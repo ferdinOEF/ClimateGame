@@ -163,3 +163,26 @@ describe("the leave prompt's line (Section 16 B5)", () => {
     expect(leaveText({ tutorial: true, savedYear: null, finished: false, builds: 2 })).toMatch(/Tutorial is not saved/);
   });
 });
+
+describe("the build menu's order (Section 16 B6)", () => {
+  it("puts the most homes protected first, marks it Best here, and keeps ties in the defence order", async () => {
+    const { sortCards } = await import("../src/ui/panjim/defenceCards");
+    const sorted = sortCards([
+      { id: "dune", protects: 2 },
+      { id: "seawall", protects: 5 },
+      { id: "veg", protects: 2 },
+      { id: "sand", protects: -1 }
+    ]);
+    expect(sorted.map((c) => c.id)).toEqual(["seawall", "dune", "veg", "sand"]);
+    expect(sorted.map((c) => c.best)).toEqual([true, false, false, false]);
+  });
+
+  it("marks nothing Best here on a tie, when nothing protects a home, or with no storm left", async () => {
+    const { sortCards } = await import("../src/ui/panjim/defenceCards");
+    expect(sortCards([{ id: "dune", protects: 3 }, { id: "seawall", protects: 3 }]).some((c) => c.best)).toBe(false);
+    expect(sortCards([{ id: "a", protects: 0 }, { id: "b", protects: 0 }]).some((c) => c.best)).toBe(false);
+    const none = sortCards([{ id: "a", protects: null }, { id: "b", protects: null }]);
+    expect(none.map((c) => c.id)).toEqual(["a", "b"]);
+    expect(none.some((c) => c.best)).toBe(false);
+  });
+});

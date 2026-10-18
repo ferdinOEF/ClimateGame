@@ -32,6 +32,9 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
 ## Fixed rules
 
 - **Tutorial must never break.** The menu shows only Tutorial + Play Panjim.
+  Play Panjim goes straight into the game view with its start popup; the level
+  select is reachable only by its route (`#/levels`), never from a button
+  (`tests/menu.test.ts`).
   No email field (the account/email code stays behind `VITE_REQUIRE_EMAIL`, off
   by default; see `src/services/features.ts`). Run length is not hard-coded.
 - **Scientific honesty.** Only verified, cited real-world facts. Game mechanics

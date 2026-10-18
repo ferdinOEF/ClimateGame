@@ -68,8 +68,12 @@ export interface BuildCard {
   pill: string | null;
   /** How the pill reads: some homes saved, none, or homes put at risk. */
   tone: "good" | "zero" | "bad";
-  /** Cannot go on this ground: greyed, "Not here". */
+  /** Cannot go on this ground: named on the one "Not here" line. */
   notHere?: boolean;
+  /** The homes it protects here from the next storm (the pill's number); null with no storm left. */
+  protects?: number | null;
+  /** The first card, when it protects the most homes here (Section 16 B6): marked "Best here". */
+  best?: boolean;
 }
 
 const VIEWPORT_MARGIN = 8;
@@ -224,7 +228,8 @@ export class BuildPopover {
       btn.type = "button";
       btn.className = "build-card" + (mode.blocked ? " disabled" : "");
       btn.dataset.element = card.id;
-      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-name"></span><span class="build-card-line"></span>${card.pill ? `<span class="build-card-pill ${card.tone}"></span>` : ""}</span>`;
+      if (card.best) btn.classList.add("best");
+      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text">${card.best ? `<span class="build-card-best">Best here</span>` : ""}<span class="build-card-name"></span><span class="build-card-line"></span>${card.pill ? `<span class="build-card-pill ${card.tone}"></span>` : ""}</span>`;
       (btn.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
       (btn.querySelector(".build-card-line") as HTMLElement).textContent = card.line;
       if (card.pill) (btn.querySelector(".build-card-pill") as HTMLElement).textContent = card.pill;
@@ -238,17 +243,12 @@ export class BuildPopover {
       this.el.appendChild(btn);
     }
     if (elsewhere.length > 0) {
-      const grid = document.createElement("div");
-      grid.className = "build-card-elsewhere";
-      for (const card of elsewhere) {
-        const item = document.createElement("div");
-        item.className = "build-card-not-here";
-        item.dataset.element = card.id;
-        item.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-name"></span><span class="build-card-tag">Not here</span>`;
-        (item.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
-        grid.appendChild(item);
-      }
-      this.el.appendChild(grid);
+      // Section 16 B6: one quiet line, not a greyed card each.
+      const line = document.createElement("p");
+      line.className = "build-card-elsewhere";
+      line.dataset.elements = elsewhere.map((card) => card.id).join(" ");
+      line.textContent = `Not here: ${elsewhere.map((card) => card.name).join(", ")}`;
+      this.el.appendChild(line);
     }
     this.placeBeside(screenX, screenY, mode.avoid ?? []);
     this.returnFocus = document.activeElement instanceof HTMLElement && !this.el.contains(document.activeElement) ? document.activeElement : null;

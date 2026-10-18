@@ -43,11 +43,13 @@ export class MapPins {
     });
   }
 
-  /** A short note at a spot for `ms` (the area protected). */
-  say(text: string, at: MapPin, ms = 3200): void {
+  /** A short note at a spot for `ms` (the area protected); `beside` sets a longer one to the right of its tile (Section 16 B6). */
+  say(text: string, at: MapPin, ms = 3200, beside = false): void {
     this.note?.el.remove();
     const el = document.createElement("div");
-    el.className = "map-note";
+    el.className = beside ? "map-note beside" : "map-note";
+    // Read out once: it is the build's own feedback.
+    if (beside) el.setAttribute("role", "status");
     el.textContent = text;
     this.layer.appendChild(el);
     this.note = { pin: at, el, until: performance.now() + ms };

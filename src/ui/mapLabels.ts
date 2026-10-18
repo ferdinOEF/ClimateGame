@@ -36,6 +36,11 @@ export interface MapLabel {
   rank: 0 | 1 | 2;
   /** A monument's category ("Temple", "Museum, Patto"): the second line of its name card. */
   sub?: string;
+  /**
+   * A monument on a map with localities (Section 16 B6): its label shows only when it is in the current storm's area
+   * (`setHighlighted`), hovered or selected, or with the camera close in. The district names always show.
+   */
+  monument?: boolean;
 }
 
 /** Where a label's anchor tile currently sits on screen, in CSS pixels relative to the canvas. */
@@ -47,6 +52,9 @@ const LABEL_FADE_FAR = 40;
 /** Minor localities appear when the camera comes closer than the first distance and go when it pulls back past the second (no blinking at the threshold). */
 const MINOR_LOCALITY_SHOW = 29.5;
 const MINOR_LOCALITY_HIDE = 30.5;
+/** Section 16 B6: a monument outside the current area shows only this close in (fully at the first distance, gone past the second). */
+const MONUMENT_CLOSE_NEAR = 12;
+const MONUMENT_CLOSE_FAR = 15;
 /** A monument card is a candidate only once it is at least half faded in, so a near-invisible card does not hold space a locality could use. */
 const LANDMARK_MIN_FADE = 0.5;
 
@@ -125,7 +133,7 @@ export function labelsForMap(map: {
 }): MapLabel[] {
   if (map.localities.length === 0) return map.landmarks.map((l) => ({ name: l.name, q: l.q, r: l.r, kind: "landmark", rank: 0 }));
   return [
-    ...map.monuments.map((m): MapLabel => ({ name: m.name, q: m.q, r: m.r, kind: "landmark", rank: 0, sub: m.category })),
+    ...map.monuments.map((m): MapLabel => ({ name: m.name, q: m.q, r: m.r, kind: "landmark", rank: 0, sub: m.category, monument: true })),
     ...map.localities.map((l): MapLabel => ({ name: l.name, q: l.q, r: l.r, kind: "locality", rank: l.rank }))
   ];
 }
@@ -211,6 +219,16 @@ export class MapLabelLayer {
     this.measured = false;
   }
 
+  /** Monuments named by the current storm's area (shown at any zoom), and those an objective pin already names (never doubled). */
+  private highlighted = new Set<string>();
+  private pinned = new Set<string>();
+
+  /** Section 16 B6: which monuments show at the usual zoom (in the current area), and which a map pin already names. */
+  setHighlighted(names: readonly string[], pinned: readonly string[] = []): void {
+    this.highlighted = new Set(names);
+    this.pinned = new Set(pinned);
+  }
+
   /** The monument whose card is up, for the tests. */
   get focus(): string | null {
     return this.focusName;
@@ -276,6 +294,13 @@ export class MapLabelLayer {
     // Landmark cards fade with distance: pinned on at every zoom they would
     // stack over the buildings they name, which are the better label up close.
     const landmarkFade = clamp((LABEL_FADE_FAR - cameraDistance) / (LABEL_FADE_FAR - LABEL_FADE_NEAR), 0, 1);
+    const closeFade = clamp((MONUMENT_CLOSE_FAR - cameraDistance) / (MONUMENT_CLOSE_FAR - MONUMENT_CLOSE_NEAR), 0, 1);
+    /** A label's opacity now: a monument in the area is fully on, one an objective pin names stands aside (the pin carries the name). */
+    const fadeOf = (label: MapLabel): number => {
+      if (!label.monument) return landmarkFade;
+      if (this.pinned.has(label.name)) return 0;
+      return this.highlighted.has(label.name) ? 1 : closeFade;
+    };
     if (cameraDistance < MINOR_LOCALITY_SHOW) this.minorOn = true;
     else if (cameraDistance > MINOR_LOCALITY_HIDE) this.minorOn = false;
 
@@ -285,7 +310,7 @@ export class MapLabelLayer {
       const { label } = entry;
       if (entry.w < 1) continue;
       const focused = label.kind === "landmark" && label.name === this.focusName;
-      if (label.kind === "landmark" && landmarkFade < LANDMARK_MIN_FADE && !focused) continue;
+      if (label.kind === "landmark" && fadeOf(label) < LANDMARK_MIN_FADE && !focused) continue;
       if (label.rank === 2 && !this.minorOn) continue;
       const screen = project({ q: label.q, r: label.r });
       if (!screen) continue;
@@ -311,7 +336,7 @@ export class MapLabelLayer {
       const entry = byId.get(p.id)!;
       entry.node.style.transform = `translate(${p.box.x.toFixed(1)}px, ${p.box.y.toFixed(1)}px)`;
       const focused = entry.label.kind === "landmark" && entry.label.name === this.focusName;
-      entry.node.style.opacity = entry.label.kind === "landmark" && !focused ? landmarkFade.toFixed(2) : "1";
+      entry.node.style.opacity = entry.label.kind === "landmark" && !focused ? fadeOf(entry.label).toFixed(2) : "1";
       entry.node.classList.add("shown");
     }
     for (const entry of this.entries) {

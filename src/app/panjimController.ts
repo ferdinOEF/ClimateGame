@@ -47,7 +47,7 @@ import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
 import type { BuildCard } from "@ui/buildPopover";
-import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER, cardPill } from "@ui/panjim/defenceCards";
+import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER, cardPill, sortCards } from "@ui/panjim/defenceCards";
 import { leaveText } from "@ui/panjim/modalStack";
 
 /**
@@ -93,6 +93,13 @@ export interface PanjimHost {
   /** The skyline reveal: the camera pulls back over the whole city. */
   revealSkyline: () => void;
   showBanner: (text: string, ms?: number) => void;
+  /** A short note beside a tile for `ms` (Section 16 B6: the build that counts for no objective). */
+  noteAt: (coord: AxialCoord, text: string, ms: number) => void;
+  /**
+   * The landmarks whose labels show at the usual zoom (Section 16 B6): those in the current storm's area, and the
+   * ones its objective pins (`pinned`: the pin carries the name, so the label stands aside).
+   */
+  highlightPlaces: (names: readonly string[], pinned: readonly string[]) => void;
   /** Seed text for cosmetic variety and the share card: the level id, a daily id, or a `?seed=` replay. The calendar never reads it. */
   seed: string;
   /** The board effects of a challenge, staged zone by zone (see `stageChallenge`). */
@@ -785,6 +792,14 @@ export class PanjimController {
   }
 
   /** The named places the result cards can list: the map's landmarks and monuments. */
+  /** The landmarks of a storm's area (Section 16 B6): on its tiles, or the places its forecast names. */
+  private areaPlaceNames(challenge: ScheduledChallenge): string[] {
+    const area = new Set(this.run.areas.get(challenge.id) ?? []);
+    const names = new Set(this.forecastPlaces(challenge).map((place) => place.name));
+    for (const place of [...this.host.monuments, ...this.host.landmarks]) if (area.has(`${place.q},${place.r}`)) names.add(place.name);
+    return [...names];
+  }
+
   private places(): Place[] {
     return [...this.host.landmarks, ...this.host.monuments];
   }
@@ -1154,10 +1169,13 @@ export class PanjimController {
       return i < 0 ? DEFENCE_ORDER.length : i;
     };
     const here = this.host.state.buildableAt(coord).map((def) => def).sort((a, b) => order(a.id) - order(b.id));
-    const cards: BuildCard[] = here.map((def) => {
-      const { pill, tone } = cardPill(next ? this.run.homesSavedBy(next, coord, def.id) : null, (DEFENCE_ORDER as readonly string[]).includes(def.id));
-      return { id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "", pill, tone };
-    });
+    const cards: BuildCard[] = sortCards(
+      here.map((def) => {
+        const saved = next ? this.run.homesSavedBy(next, coord, def.id) : null;
+        const { pill, tone } = cardPill(saved, (DEFENCE_ORDER as readonly string[]).includes(def.id));
+        return { id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "", pill, tone, protects: saved };
+      })
+    );
     for (const id of DEFENCE_ORDER) {
       if (here.some((def) => def.id === id)) continue;
       cards.push({ id, name: CARD_NAME[id], line: CARD_LINE[id], icon: CARD_ICON[id], pill: null, tone: "zero", notHere: true });
@@ -1197,7 +1215,8 @@ export class PanjimController {
     const saved = buildable && next ? this.run.homesSavedBy(next, coord, elementId) : null;
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
-    if (outside) this.host.showBanner(outside, 5200);
+    // Beside its tile for about three seconds (Section 16 B6), not in a banner across the screen.
+    if (outside) this.host.noteAt(coord, outside, 3000);
     if (saved !== null) this.host.floatAt(coord, floatText(saved), saved > 0 ? "good" : saved < 0 ? "bad" : "zero");
     this.lastTurnEnded = turn;
     this.host.placeElement(coord, elementId);
@@ -1393,6 +1412,7 @@ export class PanjimController {
     const pins = new Map<string, { name: string; q: number; r: number }>();
     for (const job of open) for (const pin of job.pins ?? []) pins.set(pin.name, pin);
     this.host.showPins([...pins.values()]);
+    this.host.highlightPlaces(next && !this.run.finished ? this.areaPlaceNames(next) : [], [...pins.keys()]);
     if (!next || this.coneShown || this.run.finished) {
       this.host.showAreaOutline([]);
       this.outlined = 0;
