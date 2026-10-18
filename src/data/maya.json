@@ -110,8 +110,8 @@
     },
     "comingUp": {
       "flood": {
-        "text": "The flood comes down the Mandovi, through the creek at Ribandar and into Merces, St Cruz and Taleigao. Look at where the map turns red.",
-        "rule": false
+        "text": "In this game, the flood comes down the Mandovi, through the channel at Ribandar, into Merces, St Cruz and Taleigao. Watch the red.",
+        "rule": true
       },
       "compound": {
         "text": "Next time the waves and the river come together. The beach and the wetlands both need you.",

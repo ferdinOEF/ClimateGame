@@ -217,6 +217,9 @@ async function main(): Promise<void> {
     } else if (!backAtMenu) {
       problems.push(`[browser-back] browser Back landed on ${page.url()} rather than the menu`);
     }
+    // The header picture decodes asynchronously: wait for it, so the shot shows the menu as a player sees it.
+    await page.waitForFunction(() => { const img = document.querySelector<HTMLImageElement>(".menu-art img"); return !img || (img.complete && img.naturalWidth > 0); }, undefined, { timeout: 10000 }).catch(() => problems.push("[browser-back] the menu's header picture did not load"));
+    await page.waitForTimeout(300);
     await shot(page, "after-browser-back");
 
     // ---- 3c. Play Panjim (Section 16.3) --------------------------------

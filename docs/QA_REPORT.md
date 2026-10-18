@@ -1554,7 +1554,7 @@ Branch `section-16-map-flow-hazards`, off master `63d5a58` (Section 15's merge; 
 | Gate | Result |
 |---|---|
 | `tsc --noEmit` | Clean. |
-| `npm run test` | REVIEW_TESTS |
+| `npm run test` | 525 pass, 6 skipped. New: `section16` (saves and the board, the flood source). Updated, each with its reason in the test: `panajiHandEdits`, `cityHill`, `climate`, `zones`, `forecastCone`, `hazardDepth`, `prep`, `phaseObjectives` (two new phase tests), `section10`, `section12`, `section4`, `buildCards`, `menu`. |
 | `npm run build` | Clean. |
 | `npm run mapgen:panaji` | Clean; without the new edits it reproduces master's `panaji.json` byte for byte. |
 | `npm run walkthrough` | Clean, no console errors. New step: the menu offers exactly Tutorial and Play Panjim, and Play Panjim opens `#/play/l01-first-rains` with Begin. The level loop reaches the level select by `#/levels`. |
@@ -1562,7 +1562,7 @@ Branch `section-16-map-flow-hazards`, off master `63d5a58` (Section 15's merge; 
 | `npm run test:layout` | 140 of 140 layouts. |
 | `npm run test:maya` | Pass, zero console errors (`maya-stability.md`). |
 | `npm run verify:maya` | All checks pass: street map at 21%; Maya greets "…our first job is to protect Sharada Mandir School…"; previews equal what the storms take (cyclone 9 and 9, flood 65 and 65). |
-| Section 16 browser checks (`tools/section16Checks.ts`, `checks.txt`) | CHECKS16 |
+| Section 16 browser checks (`tools/section16Checks.ts`, `checks.txt`) | 57 of 57 at 1920x1080, 1366x768, 2560x1440 and 1280x600, zero console errors. |
 | Tutorial (`tutorial/`, against master `63d5a58`) | The walkthrough's Tutorial text identical (builds, numbers, result card); `tests/tutorialLocked.test.ts` passes. Pixels: 0.03–2.2% differ, all thin edges from the camera settling a frame apart (`tutorial/result-diff.png`); the board's content is the same. |
 | axe-core | No serious or critical violations: the landing page, the start popup, the board in 2031. |
 | Bots, 20 seeds (`bots.md`) | See below and `docs/PROGRESS.md`. Casual drifts. |
@@ -1593,7 +1593,25 @@ Branch `section-16-map-flow-hazards`, off master `63d5a58` (Section 15's merge; 
 - the regenerated menu header had the in-game banner ("This protects no homes…") baked in; `tools/shellArt.ts` now hides it;
 - the start popup's forecast put the school on its top edge with the track barely visible; Panaji's preview now frames the cyclone's way in (the Tutorial's is unchanged).
 
-REVIEW_SECTION
+**Independent review (Section 16): 0 BLOCKER, 1 MAJOR, 5 MINOR, 5 NIT.**
+
+MAJOR fixed:
+- **Runs saved on the old board were offered and restored onto the new one.** They kept the old first objective ("Protect Kala Academy to Sharada Mandir") while Maya and the popup named the school, and their defences came back on tiles whose ground had changed. Saves now carry a fingerprint of the board (`levels/savedRun.ts` `boardFingerprint`: every tile's place and terrain, every monument's place). A save from another board, or from before boards were recorded, is not offered, and the level card does not say "In progress" for it. `tests/section16.test.ts`.
+
+MINORs fixed:
+- A flood source that is not a river tile threw at import and would have stopped every screen, the Tutorial included. It is now skipped with a warning (the level falls back to the automatic rule), and `tests/section16.test.ts` requires each source to be a river tile at the east edge.
+- Maya's coming-up line read as real geography. It now says "In this game, the flood comes down the Mandovi, through the channel at Ribandar, into Merces, St Cruz and Taleigao. Watch the red.", marked as a game rule.
+- The landing shots predated the cleaned header; re-shot.
+- The walkthrough's menu-after-Back shot had no header picture. A probe showed the picture loads and shows; the shot was taken before it decoded. The walkthrough now waits for it.
+- The flood track's end moved as the player built (it followed the homes still at risk). It now ends at the home the water reaches last of those the flood takes with nothing built, so it stays put through the phase.
+
+NITs:
+- Fixed: the stale Kala Academy assertions in `tools/section8Checks.ts` and `tools/section12Checks.ts`; the `mayaLines.ts` comment; the swell's timing test is exactly linear again (arrival = rain lead + hexes from the source × one constant).
+- Left as they are:
+  - Every phase 2 row pins all three localities, as the owner asked ("Pin the three names"); a pin can sit just above the map's own label of the same name.
+  - `ClimateConfig.floodSource` is typed for the level data; `levelMap` reads it from the JSON.
+  - At 1280x600 the start popup's "Sharada Mandir School" label runs close to the preview's right edge; it is readable.
+
 
 **Could not be run or checked here:**
 - Firefox and WebKit, and frame rates on a real GPU.

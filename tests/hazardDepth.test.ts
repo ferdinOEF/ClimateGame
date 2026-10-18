@@ -162,6 +162,10 @@ describe("the storm's script", () => {
     // The whole trip down the channels fits the swell's travel time.
     expect(last.floodArrival - first.floodArrival).toBeLessThanOrEqual(STORM_TIMING.flood.maxTravel + 1e-9);
     expect(last.floodArrival - first.floodArrival).toBeGreaterThan(0);
+    // Exactly linear: each hex along the channels from the source adds the same time.
+    const perHex = (last.floodArrival - first.floodArrival) / fromSource.get(last.key)!;
+    expect(perHex).toBeLessThanOrEqual(STORM_TIMING.flood.perRiverIndex);
+    for (const tile of river) expect(tile.floodArrival, tile.key).toBeCloseTo(STORM_TIMING.flood.rainLead + fromSource.get(tile.key)! * perHex, 6);
     // The banks flood after the channel beside them.
     for (const tile of flood.field.tiles.values()) {
       if (tile.terrainId === "land" && tile.floodPeak > 0) expect(tile.floodArrival).toBeGreaterThan(STORM_TIMING.flood.rainLead);

@@ -137,7 +137,7 @@ export function stormWord(kind: ChallengeKind): string {
   return (MAYA.stormNames as Record<string, string>)[kind] ?? "storm";
 }
 
-/** Her first line when the first storm has its own objective: "...our first job is to protect Kala Academy to Sharada Mandir." */
+/** Her first line when the first storm has its own objective: "...our first job is to protect Sharada Mandir School." */
 export function openingLine(objective: string, storm: string): string {
   return fill(MAYA.opening.text, { storm, objective: objective.charAt(0).toLowerCase() + objective.slice(1) });
 }

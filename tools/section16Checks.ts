@@ -163,7 +163,7 @@ async function main(): Promise<void> {
         await page.waitForTimeout(1500);
       }
       const coming = (await page.evaluate(`({ text: (document.querySelector(".result-cards, .result-card") || document.body).innerText, places: [...document.querySelectorAll(".cone-preview-place text")].map((t) => t.textContent.trim()) })`)) as { text: string; places: string[] };
-      check(/through the creek at Ribandar and into Merces, St Cruz and Taleigao/.test(coming.text) && ["Taleigao", "Merces", "St Cruz"].every((n) => coming.places.includes(n)), `${tag} the coming-up card: Maya's flood line, the forecast labelled ${coming.places.join(", ")}`);
+      check(/In this game, the flood comes down the Mandovi, through the channel at Ribandar, into Merces, St Cruz and Taleigao/.test(coming.text) && ["Taleigao", "Merces", "St Cruz"].every((n) => coming.places.includes(n)), `${tag} the coming-up card: Maya's flood line, the forecast labelled ${coming.places.join(", ")}`);
       await shot(page, `coming-up-flood-${tag}`);
       for (let k = 0; k < 3 && (await page.locator(".result-next").isVisible()); k++) {
         await page.locator(".result-next").click();

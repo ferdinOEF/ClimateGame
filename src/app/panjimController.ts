@@ -38,7 +38,7 @@ import { HudPanels } from "@ui/panjim/hudPanels";
 import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { panjimSaveKey } from "@levels/savedRun";
+import { boardFingerprint, panjimSaveKey, saveFits } from "@levels/savedRun";
 import { isPhaseLine, MAYA, noteIdsFor, stormWord, TUTORIAL_LINES } from "@core/mayaLines";
 import type { RunThen } from "@core/levelScore";
 import { PANAJI_LEVEL_ID } from "@ui/screens/runWords";
@@ -901,6 +901,8 @@ export class PanjimController {
           riskIntroSpent: this.riskGate.spent,
           // Each forecast cone shows once, never again after a reload.
           conesSeen: [...this.coneSeen],
+          // The board it was made on: a save from another board is not offered (Section 16).
+          board: boardFingerprint(this.host.level.id),
           savedAt: new Date().toISOString()
         })
       );
@@ -929,15 +931,15 @@ export class PanjimController {
     } catch {
       // Storage blocked: nothing to clear.
     }
-    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number; riskIntroSpent?: boolean; conesSeen?: string[] } | null = null;
+    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number; riskIntroSpent?: boolean; conesSeen?: string[]; board?: string } | null = null;
     try {
       const raw = localStorage.getItem(this.saveKey());
       saved = raw ? JSON.parse(raw) : null;
     } catch {
       saved = null;
     }
-    // A save from an older clock cannot be read by this one: it is not offered.
-    if (!saved || saved.snapshot?.version !== 3 || saved.snapshot.turn >= this.run.totalYears) return false;
+    // A save from an older clock, or made on another board (before the owner's map edits, Section 16), is not offered.
+    if (!saved || !saveFits(this.host.level.id, saved) || saved.snapshot.turn >= this.run.totalYears) return false;
     const label = String(this.run.config.startYear + saved.snapshot.turn);
     const data = saved;
     // The popup's forecast is the saved phase's, so it shows what "Continue" leads to (Section 12).

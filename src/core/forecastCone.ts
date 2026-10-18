@@ -2,7 +2,7 @@ import { axialToWorld } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
-import { computeWater, damageAt, floodRoutes, floodSources, routeTo, seawardOf, type StormInput, type WaterBoard } from "./hazardModel";
+import { computeWater, damageAt, floodRoutes, floodsHouse, floodSources, routeTo, seawardOf, type StormInput, type WaterBoard } from "./hazardModel";
 
 /**
  * The forecast cone at the start of a storm's phase (Section 6.1): where the
@@ -182,13 +182,17 @@ export function forecastCone(
   if (site) tracks.push(cycloneTrack(board, site, options.trackEnd));
   let meet: string[] = [];
   if (storm.kind !== "cyclone") {
-    // From the level's own source (Section 16.5): along the water's own route to the home at risk the
-    // flood reaches last, in the storm's own area when it has one.
+    // From the level's own source (Section 16.5): along the water's own route to the home the flood
+    // reaches last of those it would take with nothing built (so the line stays put as the player
+    // builds), in the storm's own area when it has one.
     let track: ConeTrack | null = null;
     if (board.floodSource) {
       const routes = floodRoutes(board, storm);
-      const into = (key: string): boolean => (options.trackInto ? options.trackInto.has(key) : water.flood.has(key));
-      const paths = lost.filter(into).map((key) => routeTo(routes, key)).filter((path) => path.length > 1);
+      const into = (key: string): boolean => (options.trackInto ? options.trackInto.has(key) : true);
+      const homes = [...state.elements]
+        .filter(([key, inst]) => ELEMENT_BY_ID.get(inst.elementId)?.kind === "building" && inst.degradeAmount < 1 && !state.isScenery(key) && water.flood.has(key) && floodsHouse(damageAt(water, key)))
+        .map(([key]) => key);
+      const paths = homes.filter(into).map((key) => routeTo(routes, key)).filter((path) => path.length > 1);
       paths.sort((a, b) => b.length - a.length || (a[a.length - 1] < b[b.length - 1] ? -1 : 1));
       if (paths.length > 0) track = trackOf(paths[0]);
     }

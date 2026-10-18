@@ -152,7 +152,8 @@ async function main(): Promise<void> {
       if (full) {
         check(picks.length > 0 && rows.length > 0, `the first objective is the model's: ${rows.join(" | ")}`);
         const pinNames = (await page.evaluate(`Array.from(document.querySelectorAll(".map-pin-name")).map(function (e) { return e.textContent; })`)) as string[];
-        check(pinNames.includes("Kala Academy") && pinNames.some((n) => /Sharada Mandir/.test(n)), `pins name the objective's places: ${pinNames.join(", ")}`);
+        // Section 16: the first objective is the ground round Sharada Mandir School, pinned alone.
+        check(pinNames.some((n) => /Sharada Mandir/.test(n)), `pins name the objective's places: ${pinNames.join(", ")}`);
         // A build that counts for no row says so.
         const before = await val<number>(page, "r.turnNumber");
         await page.evaluate("window.__panjimForTest.host && 0");
