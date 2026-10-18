@@ -3203,3 +3203,8 @@
 .has-panjim-clock:has(.brief-backdrop:not([hidden])) .hud-panel-settings {
   z-index: 56;
 }
+
+/* Section 16 B3: the objective card is hidden while any result card is up (the final card included), not only in a storm. */
+.has-panjim-clock.has-result-cards .objectives-panel {
+  visibility: hidden;
+}
