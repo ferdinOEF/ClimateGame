@@ -82,7 +82,8 @@ const before = await risk(page);
 check(before.year === 2027 && before.on && before.hot > 0 && before.hot === before.homes, `2027, R: the heat shows the homes at risk, as many as the top bar says (${JSON.stringify(before)})`);
 await focus(page, world(-3, 18), 5);
 await shot(page, "risk-2027-before");
-await page.evaluate(`window.__buildForTest(-4, 18, "dune", false)`);
+// Through the player's build path (the year's build): the heat and the top bar are worked out again at once.
+await page.evaluate(`window.__panjimForTest.buildNow({ q: -4, r: 18 }, "dune")`);
 await page.waitForTimeout(2500);
 const after = await risk(page);
 check(after.on && after.hot < before.hot && after.hot === after.homes, `after a dune in front of the school: fewer homes at risk, heat and top bar agree (${before.hot} → ${after.hot}, top bar ${after.homes})`);
