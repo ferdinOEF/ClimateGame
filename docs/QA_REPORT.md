@@ -1710,3 +1710,7 @@ Branch `section-17c-hide-maya`, off master `e1f7141` (tag `pre-section-17c`; `ba
 | `npm run walkthrough` | Clean, no console errors; the Tutorial plays start to finish (its checks now confirm Maya is not on screen). |
 | `tools/section17cShots.ts` at 1366x768 and 1920x1080 | All pass: no Maya figure, bubble, full figure or card line, and her name nowhere in the text, on the start popup, the first frame, after pressing M, result cards 1 and 2, the coming-up card, the Tutorial's start popup and its first build cards; ☰ has no Maya item. Shots in `docs/qa/section17c/` (first frame, result card, Tutorial step). |
 | Not run | `test:maya`, `test:layout`, `verify:maya` (they test Maya, who is now hidden), `test:labels`, bots, an independent review: not asked for this section. |
+
+## Section 17b, the browser gate finished (on master `bed425a`, after Section 17c)
+
+`tools/section17bChecks.ts` now passes at all four sizes: 1280x600, 1366x768 and 2560x1440 (this run) and 1920x1080 (the earlier run), with zero console errors. At each: the menu (axe: no serious or critical violations), the start popup, the top bar, a build menu, the objective card, Help, result cards 1 and 2, the coming-up card ("Monsoon flood in 2040, 10 years away"), the final card, and the Tutorial's start popup, cards and result card ("Tutorial, Cyclone in 2028"); every visible text, aria-label and title is free of dots and hyphens between words, and the reworded lines fit their boxes. Screenshots in `docs/qa/section17b/`.
