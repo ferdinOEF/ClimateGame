@@ -143,26 +143,42 @@ async function afterStorm(name: string, frame: { x: number; z: number }, steps: 
 }
 
 let ruins = await afterStorm("2030", world(-3, 19), 5, 0);
-await page.evaluate(`window.__panjimScenarioForTest("to-results")`).catch(() => undefined);
+// The 2040 flood, undefended, frame by frame on Merces and St Cruz: the homes drop into ruins as the water comes.
+await page.evaluate(`window.__panjimScenarioForTest("storm-2")`);
+await focus(page, world(15, 17), 4);
+const floodRuins: number[] = [];
+for (let t = 2; t <= 40; t += 2) {
+  await page.evaluate(`window.__panjimForTest.host.challengeFx.freeze(${t})`);
+  await page.waitForTimeout(600);
+  const n = (await page.evaluate("window.__ruinsForTest().ruined")) as number;
+  floodRuins.push(n - ruins);
+  await page.screenshot({ path: path.join(OUT, "frames", `flood-2040-t${String(t).padStart(2, "0")}-${W}x${H}.jpg`), type: "jpeg", quality: 78 });
+}
+check(floodRuins[0] === 0 && floodRuins[floodRuins.length - 1] > 10 && floodRuins.some((n) => n > 0 && n < floodRuins[floodRuins.length - 1]), `the flood's homes drop into ruins as the water spreads, not all at once (new ruins every 2 s of storm time: ${floodRuins.join(" ")})`);
+await page.evaluate(`window.__panjimForTest.host.challengeFx.freeze(null)`);
 ruins = await afterStorm("2040", world(14, 18), 3, ruins);
 await page.evaluate(`window.__panjimScenarioForTest("to-results")`).catch(() => undefined);
 ruins = await afterStorm("2050", world(4, 20), 3, ruins);
 
 const landmarks = (await page.evaluate("window.__ruinsForTest().landmarks")) as { id: string; name: string; kind: string; q: number; r: number; damage: number }[];
 check(landmarks.length > 0, `landmarks damaged over the run: ${landmarks.map((l) => `${l.name} (${l.damage === 2 ? "destroyed" : "damaged"})`).join(", ")}`);
-const building = landmarks.find((l) => !["park", "beach", "viewpoint"].includes(l.kind)) ?? landmarks[0];
-if (building) {
+// A damaged landmark and a destroyed one close up (the contact sheet's three quarter view), the cards and the HUD hidden.
+await page.addStyleTag({ content: "body * { visibility: hidden !important; } canvas { visibility: visible !important; }" });
+for (const level of [1, 2]) {
+  const l = landmarks.find((x) => x.damage === level && !["park", "beach", "viewpoint"].includes(x.kind)) ?? landmarks.find((x) => x.damage === level);
+  if (!l) continue;
   await page.evaluate(`(() => {
     const cam = window.__cameraForTest;
-    const x = ${world(building.q, building.r).x}, z = ${world(building.q, building.r).z};
-    const y = window.__tileHeightForTest(${building.q}, ${building.r}) + 0.3;
+    const x = ${world(l.q, l.r).x}, z = ${world(l.q, l.r).z};
+    const y = window.__tileHeightForTest(${l.q}, ${l.r}) + 0.3;
     window.__focusOnForTest(x, z, true);
-    cam.position.set(x - 1.4, y + 1.5, z + 2.2);
+    const el = 34 * Math.PI / 180, az = -32 * Math.PI / 180, d = 2.6;
+    cam.position.set(x + Math.sin(az) * Math.cos(el) * d, y + Math.sin(el) * d, z + Math.cos(az) * Math.cos(el) * d);
     cam.lookAt(x, y, z);
     cam.updateMatrixWorld();
   })()`);
   await page.waitForTimeout(1500);
-  await shot(page, `landmark-damaged-${building.id}`);
+  await shot(page, `landmark-${level === 2 ? "destroyed" : "damaged"}-${l.id}`);
 }
 
 check(errors.length === 0, `no console errors${errors.length ? `: ${errors.slice(0, 5).join(" | ")}` : ""}`);

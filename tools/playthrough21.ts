@@ -76,7 +76,8 @@ async function textAndLayout(page: Page, where: string): Promise<void> {
     for (const el of document.querySelectorAll("[aria-label],[title],[alt],[placeholder]")) if (visible(el)) for (const a of ["aria-label","title","alt","placeholder"]) { const v = el.getAttribute(a); if (v) texts.push(v); }
     const layout = [];
     for (const el of document.querySelectorAll("body *")) {
-      if (!visible(el) || el.closest("canvas, svg, .map-labels, .map-label, .map-pins")) continue;
+      // Screen reader only text (visually-hidden) is clipped on purpose.
+      if (!visible(el) || el.closest("canvas, svg, .map-labels, .map-label, .map-pins, .visually-hidden, .sr-only")) continue;
       const cs = getComputedStyle(el);
       const r = el.getBoundingClientRect();
       const name = el.className && typeof el.className === "string" ? el.className.split(" ")[0] : el.tagName.toLowerCase();
@@ -230,7 +231,7 @@ async function playStyle(style: string): Promise<void> {
   const { page, log, context } = await newPage();
   await page.goto(server.url, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(4000);
-  const menu = (await page.evaluate("[...document.querySelectorAll('.menu button, .menu a, nav button, .landing button')].filter((b) => b.getClientRects().length).map((b) => b.textContent.trim())")) as string[];
+  const menu = (await page.evaluate("[...document.querySelectorAll('.menu-actions button, .menu-actions a')].filter((b) => b.getClientRects().length).map((b) => b.textContent.trim())")) as string[];
   check(menu.some((t) => /Tutorial/.test(t)) && menu.some((t) => /Play Panjim/.test(t)) && !menu.some((t) => /level/i.test(t)), `the menu offers Tutorial and Play Panjim only (${menu.join(", ")})`);
   await shot(page, "landing");
   await textAndLayout(page, "landing");
