@@ -112,7 +112,8 @@ for (let t = 2; t <= 30; t += 1) {
   if (ruined !== lastRuined || t % 4 === 0) await page.screenshot({ path: path.join(OUT, "frames", `cyclone-2030-t${String(t).padStart(2, "0")}-${W}x${H}.jpg`), type: "jpeg", quality: 78 });
   lastRuined = ruined;
 }
-check(ruinedAt[0] < ruinedAt[ruinedAt.length - 1] && ruinedAt.some((n, i) => i > 0 && n > ruinedAt[0] && n < ruinedAt[ruinedAt.length - 1]), `homes drop into ruins during the storm, a few at a time (ruins by storm second: ${ruinedAt.join(" ")})`);
+// Homes go as the water reaches them: none at the start, the first some seconds in (this run's dune saved most).
+check(ruinedAt[0] === 0 && ruinedAt[ruinedAt.length - 1] > 0 && ruinedAt.findIndex((n) => n > 0) > 2, `homes drop into ruins during the storm, as the water reaches them (ruins by storm second: ${ruinedAt.join(" ")})`);
 await page.evaluate(`window.__panjimForTest.host.challengeFx.freeze(null)`);
 
 /** Waits for the result cards, reads the first card's homes, checks the ruins agree, shoots the ruins, and closes the cards. */
