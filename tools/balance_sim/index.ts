@@ -68,7 +68,8 @@ interface RunParams {
 const TERRAIN_PRIORITY: Record<string, string[]> = {
   beach: ["seawall", "dune", "sandy_vegetation"],
   estuary: ["mangrove", "khazan", "beachside_resort"],
-  river: ["small_dam", "sand_mining"],
+  // Section 17.3: sand mining is retired (never offered).
+  river: ["small_dam"],
   land: ["house"],
   // STEP_PROMPT_balance_tuning_findings.md Section 3: Coast now has a real
   // defense (Breakwater), not just the cosmetic Yacht — a defense-focused
@@ -76,11 +77,10 @@ const TERRAIN_PRIORITY: Record<string, string[]> = {
   coast: ["breakwater", "yacht"]
 };
 const ESTUARY_ECONOMY_FRACTION = 0.3;
-const RIVER_ECONOMY_FRACTION = 0.35;
 
 function pickElementForTerrain(terrainId: string, rng: () => number): string | null {
   if (terrainId === "estuary") return rng() < ESTUARY_ECONOMY_FRACTION ? "beachside_resort" : rng() < 0.5 ? "mangrove" : "khazan";
-  if (terrainId === "river") return rng() < RIVER_ECONOMY_FRACTION ? "sand_mining" : "small_dam";
+  if (terrainId === "river") return "small_dam";
   if (terrainId === "coast") return "yacht";
   const options = TERRAIN_PRIORITY[terrainId];
   return options ? options[0] : null;

@@ -95,7 +95,6 @@ const HELP_CONTENT = `
       <div class="help-roster-group">
         <div class="help-roster-terrain">River</div>
         <div class="help-roster-item"><span>Small Dam</span><span>Holds back a flood and earns Coin, until a flood is too big for it.</span></div>
-        <div class="help-roster-item"><span>Sand Mining</span><span>Fast Coin; lowers biodiversity and resilience.</span></div>
       </div>
 
       <div class="help-roster-group">

@@ -47,7 +47,7 @@ import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
 import type { BuildCard } from "@ui/buildPopover";
-import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER, cardPill, sortCards } from "@ui/panjim/defenceCards";
+import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER } from "@ui/panjim/defenceCards";
 import { leaveText } from "@ui/panjim/modalStack";
 
 /** The state classes a Panjim session puts on the shared game layer (Section 16): cleared when one starts and ends. */
@@ -1170,27 +1170,20 @@ export class PanjimController {
 
   /**
    * The build menu for a free tile (Section 13): a card for everything that
-   * can be built here, each with the model's exact number for the storm
-   * coming, then every other defence greyed as "Not here".
+   * can be built here, in the fixed order (Section 17.1: nature-based first,
+   * no home counts), then every other defence on the "Not here" line.
    */
   buildCards(coord: AxialCoord): BuildCard[] {
     const started = performance.now();
-    const next = this.run.nextChallenge();
     const order = (id: string): number => {
       const i = (DEFENCE_ORDER as readonly string[]).indexOf(id);
       return i < 0 ? DEFENCE_ORDER.length : i;
     };
     const here = this.host.state.buildableAt(coord).map((def) => def).sort((a, b) => order(a.id) - order(b.id));
-    const cards: BuildCard[] = sortCards(
-      here.map((def) => {
-        const saved = next ? this.run.homesSavedBy(next, coord, def.id) : null;
-        const { pill, tone } = cardPill(saved, (DEFENCE_ORDER as readonly string[]).includes(def.id));
-        return { id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "", pill, tone, protects: saved };
-      })
-    );
+    const cards: BuildCard[] = here.map((def) => ({ id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "" }));
     for (const id of DEFENCE_ORDER) {
       if (here.some((def) => def.id === id)) continue;
-      cards.push({ id, name: CARD_NAME[id], line: CARD_LINE[id], icon: CARD_ICON[id], pill: null, tone: "zero", notHere: true });
+      cards.push({ id, name: CARD_NAME[id], line: CARD_LINE[id], icon: CARD_ICON[id], notHere: true });
     }
     this.lastCardsMs = performance.now() - started;
     return cards;
@@ -1472,13 +1465,13 @@ export class PanjimController {
   }
 
   /**
-   * The build menu just opened. In the Tutorial, the first time: Maya points
-   * at the cards' "Protects N homes here", and the numbers pulse.
+   * The build menu just opened. In the Tutorial, the first time: Maya says what
+   * the cards are, and their lines pulse (Section 17.1: the cards carry no number).
    */
   cardsOpened(): void {
     if (!this.tutorial || this.run.turnNumber !== 1) return;
     this.coach("cards", "explains");
-    for (const pill of this.host.container.querySelectorAll(".build-popover .build-card-pill")) pill.classList.add("coach-pulse");
+    for (const line of this.host.container.querySelectorAll(".build-popover .build-card-line")) line.classList.add("coach-pulse");
   }
 
   /** A new Tutorial year: after the first build, the faint outline; in the cyclone's own year, the red heat. */

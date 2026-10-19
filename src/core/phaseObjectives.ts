@@ -1,5 +1,5 @@
 import { axialDistance } from "./hex";
-import { ELEMENT_BY_ID } from "./elements";
+import { ELEMENT_BY_ID, NATURE_BASED } from "./elements";
 import { computeCombos } from "./combos";
 import { computeWater, damageAt, floodsHouse, type StormInput } from "./hazardModel";
 import type { GameState } from "./gameState";
@@ -84,10 +84,14 @@ export function homesLost(state: GameState, storm: StormInput, landfallZoneTiles
   return lost;
 }
 
-/** The defences that answer a storm of `kind`: lower its water, or (in a cyclone) its wind. */
-function answers(kind: ChallengeKind): string[] {
+/**
+ * The defences an objective may suggest against a storm of `kind`: those that lower its water, or (in a cyclone) its
+ * wind, and only the nature-based ones (Section 17.2, owner decision: dune, pandanus, mangrove, khazan; never a
+ * seawall, breakwater or small dam, which stay buildable).
+ */
+export function answers(kind: ChallengeKind): string[] {
   const hazards = kind === "flood" ? ["flood"] : kind === "cyclone" ? ["cyclone"] : ["cyclone", "flood"];
-  return Object.keys(NOUN).filter((id) => {
+  return (NATURE_BASED as readonly string[]).filter((id) => {
     const def = ELEMENT_BY_ID.get(id);
     return !!def && (def.effects.resilience ?? 0) > 0 && !!def.targetsHazards?.some((h) => hazards.includes(h));
   });

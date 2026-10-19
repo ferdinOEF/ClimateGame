@@ -1,5 +1,5 @@
 import mayaData from "@data/maya.json";
-import { ELEMENT_BY_ID } from "./elements";
+import { ELEMENT_BY_ID, RETIRED_ELEMENTS } from "./elements";
 import { discoveryFacts, discoveryNoteTitle, displayText, type Fact } from "./facts";
 import type { GameState } from "./gameState";
 import { axialDistance as hexDistance, type AxialCoord } from "./hex";
@@ -13,7 +13,7 @@ import type { ChallengeOutcome, ZoneIndex } from "./zones";
  */
 export const MAYA = mayaData;
 
-/** The Tutorial's four coaching lines (Section 15): the start, the build cards' number, the faint outline, the red heat. */
+/** The Tutorial's four coaching lines (Section 15): the start, the build cards (Section 17.1: what they are, no number), the faint outline, the red heat. */
 export const TUTORIAL_LINES = mayaData.tutorial;
 
 /** A line kept in the Field Guide's "Maya's notes". */
@@ -37,7 +37,8 @@ const DISCOVERY_NOTES: [string, SavedNote][] = [...ELEMENT_BY_ID.keys()].flatMap
 export function noteIdsFor(level: { opening: boolean; excluded: ReadonlySet<string> }): ReadonlySet<string> {
   const ids = new Set<string>([level.opening ? MAYA.opening.id : MAYA.greeting.id, ...MAYA.tips.map((tip) => tip.id)]);
   for (const element of ELEMENT_BY_ID.keys()) {
-    if (level.excluded.has(element)) continue;
+    // Not on this level, or retired (Section 17.3: sand mining is never built, so its notes cannot be found).
+    if (level.excluded.has(element) || RETIRED_ELEMENTS.has(element)) continue;
     for (const fact of discoveryFacts(element)) ids.add(fact.id);
   }
   return ids;

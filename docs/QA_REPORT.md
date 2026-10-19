@@ -1655,3 +1655,36 @@ Branch `section-16-map-hazards-ui`, off master `fcafc6c` (Section 16's merge; ta
 - **MINOR, fixed:** the storm's wait for Help and ☰ ended on `dispose` (it could poll forever after browser Back); ☰'s Start again and Leave are disabled while a storm plays ("Once the storm has passed"); the storm waits for exactly `STORM_WAITS_FOR` through the manager, now including Sources, and the test checks the wiring; the note beside a tile stays on screen (flips left at the right edge) and is announced; "Homes lost" now counts as result card 1 does (every home in the storm's path not standing), so the two agree; the QA gate is completed (all sizes, colour copies, ☰ shot after its fade).
 - **NIT, fixed:** doc comments back on their members; the dead tooltip copy and `nextText`; `shown()` queries the document only; the lone-card rule for "Best here" is documented. The objective card is also hidden under the final card.
 - **NIT, not changed:** older section tools (`section8Checks`, `section1fChecks`) still click the Status panel, which exists only with coins on; they are historical and not part of the gate. The aftermath, storm report, era end and welcome overlays are left out of the modal list: they belong to the turns mode and never open on Panjim or the Tutorial (Panjim has no interval hazards; the last two are not built in the session).
+
+# Section 17 — build cards without numbers, nature-based objectives, sand mining retired
+
+Branch `section-17-nbs-cards`, off master `4bc6927` (Section 16 part B's merge; tag `pre-section-17`, and `backup/pre-section-17` on GitHub). Headless Chromium with software GL. Evidence in `docs/qa/section17/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 551 pass, 6 skipped. New: `section17` (11: the card order, no pill or Best here, Help and Maya's line, the objective candidates, every generated row nature-based for Panjim and the Tutorial, engineered defences still buildable, sand mining never offered, an old save with a sand mine loads and the mine can be demolished, the Field Guide count, an old save's engineered rows chosen afresh). Updated, each with its reason: `phaseObjectives` (phase 1 now 9 → 1), `buildings` (river: small dam only), `section13` (no card pill), `section16b` (the order by number replaced), `tutorialRun` (also plays to its end on the rows' worst tiles). |
+| `npm run build` | Clean. |
+| `npm run walkthrough` | Clean, no console errors. Tutorial builds: mangrove at -1,1, dune at -1,-1, dune at -2,1 (11 + 6 + 1 = 18 of 18). The first menu has no home count and its lines pulse. |
+| `npm run test:labels` | 49 of 49 views. |
+| `npm run test:layout` | 140 of 140 layouts. |
+| `npm run test:maya` | Pass. |
+| `npm run verify:maya` | All checks pass (street map at 21%; previews equal what the storms take). |
+| Section 17 browser checks (`tools/section17Shots.ts`) | All pass at 1366x768, 1920x1080 and 2560x1440, zero console errors: the build menu on a beach, a wetland and a river tile (no count, no Best here, nature-based first, no sand mining on a card or the Not here line); the objective card at each phase's start (2026, 2031, 2041), every row a dune, pandanus, mangrove or khazan; Help with no "biggest number" and no sand mining. |
+| Section 16b checks at 1366x768 (regression, with axe) | All pass. |
+| axe-core | No serious or critical violations: the landing page, the start popup, the board with ☰ open, How to play. |
+| Colour | Grayscale and deuteranopia copies of the 1920 beach build menu and the phase 2 objective card. |
+| Bots, 20 seeds (`bots.md`) | Identical to Section 16 (the bots play with objectives off, and never built sand mining). |
+| Builds needed (`builds-needed.md`), objective rows (`objective-rows.md`) | See `docs/PROGRESS.md`, Section 17. |
+| Preview equals resolution | `tests/preview.test.ts`, `tests/buildCards.test.ts`, `tests/phaseObjectives.test.ts` (followed objectives give exactly the model's number) pass. |
+| Independent review | 2 MAJOR, 4 MINOR, 2 NIT; see below. |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**Screenshots** (`docs/qa/section17/`, at 1366x768, 1920x1080 and 2560x1440): `build-menu-beach`, `build-menu-wetland`, `build-menu-river`, `objective-phase-1`, `objective-phase-2`, `objective-phase-3`, `help`; `tutorial-cards-1366x768.png` (the Tutorial's first menu, Maya's new line).
+
+**Independent review:**
+- **MAJOR, fixed.** A save made before this section kept its model rows on Continue, so it would show "Build 2 seawalls…" again. `ActionRun.restore` now chooses the rows afresh when any asks for a defence that is not nature-based; tested.
+- **MAJOR, reported to the owner, not changed.** Without the number, a Tutorial player following the rows on weaker tiles saves fewer homes (18 of 18 on the best tiles, 12 on the median, 5 on the worst). The Tutorial still plays to its end on any tiles (new test). Marking the suggested tiles on the map would close the gap; it is a new feature beyond this spec. Maya's card line now points at the objective card ("says what to build, and where").
+- **MINOR, fixed:** `tools/section13Checks.ts` checks for no count instead of the pill; Maya's Tutorial line no longer names mangroves on a beach menu; the Tutorial's cards shot is in the evidence; 2560x1440 shots and colour copies added; docs written.
+- **NIT, fixed:** stale comments about the card number; "Small dam" no longer breaks across lines on the Not here line.
+- **Fixed in the QA run:** the first suite run failed in `test:labels` and `test:maya` with "execution context destroyed": source files were edited while it ran and the dev server reloaded the page. Rerun with no edits: all pass.

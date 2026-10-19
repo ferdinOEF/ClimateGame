@@ -8756,3 +8756,38 @@ The Panjim level, its map, the menu and the HUD only. Part A (map and hazards) i
 - "Homes lost" counts every home in the storm's path not standing at the end (homes lost to earlier storms included), so it agrees with result card 1.
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 16 part B).
+
+## Section 17 — build cards without numbers, nature-based objectives, sand mining retired — DONE
+
+Owner decisions. Panjim and the Tutorial; the Tutorial's level entry and map are unchanged (`tests/tutorialLocked.test.ts`) and it plays start to finish.
+
+**17.1, build cards without home counts** (reverses Section 13's "always show the number"):
+- No "Protects N homes here" pill and no "Best here" on any card. Each card keeps its name, icon and line; the "Not here: …" line stays (names never break across lines).
+- A fixed order: nature-based first (dune, pandanus, mangrove, khazan), then engineered (seawall, breakwater, small dam) (`DEFENCE_ORDER`).
+- The model's numbers still work underneath: the float after a build ("+3 homes safe"), the outside-the-area note, the result cards, the objectives, the bots and the preview-equals-resolution test.
+- Help: "The numbers on the cards" is now "The cards" (a game rule): each card is a defence and what it does, nature-based first, and the objective card suggests nature-based ones. Its picture (`public/art/help-cards.jpg`) re-rendered without counts; no other picture changed.
+- Tutorial: Maya's cards line is now "Each card is a defence and what it does, nature's own first. The card bottom right says what to build, and where."; the cards' lines pulse instead of the number.
+
+**17.2, objectives suggest only nature-based defences:** `answers()` in `core/phaseObjectives.ts` draws from `NATURE_BASED` (dune, sandy_vegetation, mangrove, khazan) only; the rest of the generator is unchanged (rows from the hazard model, inside the phase's area). Engineered defences stay buildable. A save from before this section whose rows ask for an engineered defence gets its rows chosen afresh on Continue. Every phase had rows; none needed a fallback. The rows (`docs/qa/section17/objective-rows.md`, an undefended board):
+- 2030 cyclone, "Protect Sharada Mandir School": Build 2 dunes in front of Sharada Mandir School (9 → 1 homes lost; Section 16's 2 seawalls saved all 9).
+- 2040 flood, "Protect Taleigao, Merces and St Cruz": Build 1 khazan in St Cruz; Build 4 khazans in Merces; Plant 1 mangrove in St Cruz; Plant 3 mangroves in Merces; Build 1 khazan in Taleigao (65 → 15; Section 16: 65 → 14 with 2 small dams).
+- 2050 compound: Build 1 dune at Miramar beach; Build 3 khazans at Taleigao; Build 1 khazan at the Ourem creek (38 → 28). Following every objective from the start instead: Build 3 khazans at Taleigao; Plant 1 mangrove at Taleigao; Build 2 khazans at the Ourem creek; Build 2 dunes at Miramar beach; Build 1 khazan near Goa State Museum; Build 1 khazan near Atal Setu (65 → 33).
+- Tutorial: Plant 1 mangrove at the estuary; Build 2 dunes at the beach (18 → 0).
+- **A player who follows every objective:** 8 of 9 (3★), 50 of 65 (2★), 62 of 111 (2★). Section 16: 9 of 9 (3★), 51 of 65 (2★), 97 of 111 (3★). The 2050 storm loses most: its best answers were a seawall at Miramar (39 homes) and breakwaters, no longer suggested.
+
+**17.3, sand mining retired:** `RETIRED_ELEMENTS` in `core/elements.ts`; `GameState.buildableAt` never offers it, on any level, so the build menu, the bots (`tools/panjimBots`, `tools/balance_sim`) and the objective generator never pick it. Its data, geometry and reactions stay: an old save holding one loads, draws it and may demolish it. Gone from the card lists and the "Not here" line, Help's roster, the Field Guide's count and the biodiversity tooltip.
+
+**17.4, re-check:**
+- **Bots, 20 seeds** (`docs/qa/section17/bots.md`): identical to Section 16 (Casual 0% won, 71% saved; Smart 85%, 88%; Greedy 0%, 24%; Far 0%, 0%; the same margins). The bots play with objectives off and never built sand mining, so 17.2 does not reach them.
+- **Builds needed** (`builds-needed.md`, best play with nature-based builds only):
+
+  | Storm | Builds in phase | At risk | 60% | 90% | With 5 | With 10 | With 15 |
+  |---|---|---|---|---|---|---|---|
+  | 2030 cyclone | 5 | 9 | 1 | 2 | 9 (100%) | 9 (100%) | 9 (100%) |
+  | 2040 flood | 10 | 65 | 5 | not in 25 (best 56) | 41 (63%) | 54 (83%) | 56 (86%) |
+  | 2050 compound | 10 | 65 | not in 25 (best 34) | not in 25 (best 34) | 23 (35%) | 32 (49%) | 34 (52%) |
+
+  Section 16 (any defence): flood 4 and 8 builds, 47/63/65; compound 2 and 5 builds, 64/67/67. Nature-based builds alone never reach 90% of the flood or 60% of the compound storm.
+- **For the owner:** with no number on the cards, a Tutorial player who follows the rows on the weaker tiles saves fewer homes (the reviewer measured 18 of 18 on the best tiles, 12 on the median, 5 on the worst). The Tutorial still plays to its end on any tiles (`tests/tutorialRun.test.ts`). Marking the objective's suggested tiles on the map would close the gap; not done (beyond this spec).
+
+**Shipped.** QA in `docs/QA_REPORT.md` (Section 17).

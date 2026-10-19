@@ -64,16 +64,8 @@ export interface BuildCard {
   line: string;
   /** Inline SVG markup. */
   icon: string;
-  /** "Protects 3 homes here"; null when there is no storm left to meet. */
-  pill: string | null;
-  /** How the pill reads: some homes saved, none, or homes put at risk. */
-  tone: "good" | "zero" | "bad";
   /** Cannot go on this ground: named on the one "Not here" line. */
   notHere?: boolean;
-  /** The homes it protects here from the next storm (the pill's number); null with no storm left. */
-  protects?: number | null;
-  /** The first card, when it protects the most homes here (Section 16 B6): marked "Best here". */
-  best?: boolean;
 }
 
 const VIEWPORT_MARGIN = 8;
@@ -228,11 +220,10 @@ export class BuildPopover {
       btn.type = "button";
       btn.className = "build-card" + (mode.blocked ? " disabled" : "");
       btn.dataset.element = card.id;
-      if (card.best) btn.classList.add("best");
-      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text">${card.best ? `<span class="build-card-best">Best here</span>` : ""}<span class="build-card-name"></span><span class="build-card-line"></span>${card.pill ? `<span class="build-card-pill ${card.tone}"></span>` : ""}</span>`;
+      // Section 17.1: the name, the icon and the line; no home count.
+      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-name"></span><span class="build-card-line"></span></span>`;
       (btn.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
       (btn.querySelector(".build-card-line") as HTMLElement).textContent = card.line;
-      if (card.pill) (btn.querySelector(".build-card-pill") as HTMLElement).textContent = card.pill;
       if (mode.blocked) btn.setAttribute("aria-disabled", "true");
       else
         btn.addEventListener("click", (e) => {
@@ -247,7 +238,8 @@ export class BuildPopover {
       const line = document.createElement("p");
       line.className = "build-card-elsewhere";
       line.dataset.elements = elsewhere.map((card) => card.id).join(" ");
-      line.textContent = `Not here: ${elsewhere.map((card) => card.name).join(", ")}`;
+      // A name never breaks across lines ("Small / dam"): its own spaces are non-breaking.
+      line.textContent = `Not here: ${elsewhere.map((card) => card.name.replace(/ /g, "\u00a0")).join(", ")}`;
       this.el.appendChild(line);
     }
     this.placeBeside(screenX, screenY, mode.avoid ?? []);

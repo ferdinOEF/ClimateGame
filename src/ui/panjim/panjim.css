@@ -2737,31 +2737,6 @@
   color: rgba(251, 238, 217, 0.85);
 }
 
-.build-card-pill {
-  align-self: flex-start;
-  margin-top: 4px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.build-card-pill.good {
-  color: #10351c;
-  background: #9fdcae;
-}
-
-.build-card-pill.zero {
-  color: #fbeed9;
-  background: rgba(255, 255, 255, 0.14);
-}
-
-/* Homes put at risk: amber, never red (red is the houses' and the heat's). */
-.build-card-pill.bad {
-  color: #3a2600;
-  background: #f2c35b;
-}
-
 /* Section 16 B6: what cannot go on this ground, as one quiet line. */
 .build-card-elsewhere {
   margin: 2px 0 0;
@@ -2770,25 +2745,6 @@
   font-size: 11.5px;
   line-height: 1.35;
   color: #cfc3b1;
-}
-
-/* The card that protects the most homes here (Section 16 B6). */
-.build-card.best {
-  border-color: #f2c35b;
-  box-shadow: 0 0 0 1px #f2c35b inset;
-}
-
-.build-card-best {
-  justify-self: start;
-  align-self: start;
-  width: max-content;
-  padding: 1px 6px;
-  border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #3a2600;
-  background: #f2c35b;
 }
 
 /* "+3 homes safe" over the tile just built (Section 13.2): rises and fades in 1.5 s; still with calm motion. */
@@ -2869,8 +2825,8 @@
   margin-bottom: 2px;
 }
 
-/* Section 15: the Tutorial. Maya points at the build cards' number; it pulses until a card is picked. */
-.build-card-pill.coach-pulse {
+/* Section 15: the Tutorial. Maya points at the build cards' lines (Section 17.1: the cards carry no number); they pulse until a card is picked. */
+.build-card-line.coach-pulse {
   animation: coach-pulse 1.1s ease-in-out infinite;
   outline: 2px solid #f2c35b;
   outline-offset: 2px;
@@ -2880,7 +2836,7 @@
   50% { box-shadow: 0 0 0 5px rgba(242, 195, 91, 0.55); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .build-card-pill.coach-pulse { animation: none; }
+  .build-card-line.coach-pulse { animation: none; }
 }
 .result-subtitle {
   margin: 14px 0 4px;
@@ -2975,7 +2931,7 @@
 .brief-card.brief-tutorial.with-feature > .brief-body { grid-row: 4; font-size: 16px; }
 .brief-card.brief-tutorial.with-feature > .brief-cta { grid-row: 5; }
 .brief-card.brief-tutorial.with-feature > .brief-feature { grid-row: 1 / 7; }
-.calm-motion .build-card-pill.coach-pulse {
+.calm-motion .build-card-line.coach-pulse {
   animation: none;
 }
 .panjim-help-note a {

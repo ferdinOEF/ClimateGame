@@ -70,7 +70,8 @@ describe("the Tutorial", () => {
     expect(rows.reduce((n, job) => n + job.count, 0)).toBeLessThanOrEqual(3);
     for (const job of rows) {
       for (let i = 0; i < job.count; i++) {
-        // As a player reading the build cards would: the row's tile whose card shows the biggest number.
+        // The model's best tile in the row. Section 17.1 took the number off the cards, so a player no longer sees which
+        // tile that is: the row's other tiles save fewer (a player on the worst ones saves 5 of 18, the next test).
         let key: string | undefined;
         let best = -Infinity;
         for (const k of job.tiles ?? []) {
@@ -92,6 +93,33 @@ describe("the Tutorial", () => {
     expect(outcome.housesTotal).toBeGreaterThan(0);
     expect(outcome.housesSaved).toBe(outcome.housesTotal);
     expect(outcome.stars).toBe(3);
+  });
+
+  // Section 17 review: with no number on the cards a player may follow the rows on any of their tiles. The Tutorial
+  // still plays to its end and its result, however few homes stand (the owner's call: docs/PROGRESS.md, Section 17).
+  it("plays to its end when its rows are followed on their worst tiles", () => {
+    const run = newRun();
+    const cyclone = run.schedule[0];
+    for (const job of run.prep.filter((j) => j.challengeId === cyclone.id)) {
+      for (let i = 0; i < job.count; i++) {
+        let key: string | undefined;
+        let worst = Infinity;
+        for (const k of job.tiles ?? []) {
+          const [q, r] = k.split(",").map(Number);
+          if (!run.state.canBuild({ q, r }, job.elementId)) continue;
+          const homes = run.homesSavedBy(cyclone, { q, r }, job.elementId) ?? 0;
+          if (homes < worst) {
+            worst = homes;
+            key = k;
+          }
+        }
+        const [q, r] = key!.split(",").map(Number);
+        expect(run.build({ q, r }, job.elementId).ok).toBe(true);
+      }
+    }
+    finish(run);
+    expect(run.finished).toBe(true);
+    expect(run.outcomes.get(cyclone.id)!.stars).toBeGreaterThanOrEqual(1);
   });
 
   it("loses homes when nothing is built", () => {

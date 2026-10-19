@@ -107,7 +107,7 @@ describe("objectives chosen by the model", () => {
 
   // Section 16.4 (owner decision): the first objective is "Protect Sharada Mandir School", its rows from the
   // model on the tiles round the school only, with the school pinned.
-  it("phase 1: Protect Sharada Mandir School, every pick round the school, the school pinned, every home in the area saved", () => {
+  it("phase 1: Protect Sharada Mandir School, every pick round the school, the school pinned, 8 of the 9 homes saved", () => {
     const r = run();
     const school = MAP.landmarks.find((l) => l.name === "Sharada Mandir School")!;
     expect(r.objective!.rows.every((row) => row.heading === "Protect Sharada Mandir School")).toBe(true);
@@ -117,7 +117,10 @@ describe("objectives chosen by the model", () => {
     }
     for (const row of r.objective!.rows) expect(row.pins).toEqual([{ name: "Sharada Mandir School", q: school.q, r: school.r }]);
     expect(r.objective!.lostBefore).toBe(9);
-    expect(r.objective!.lostAfter).toBe(0);
+    // Section 17.2 (owner decision): the objective suggests nature-based defences only. Two dunes in front of the
+    // school save 8 of the 9; the ninth home was saved by Section 16's seawalls, which are no longer suggested.
+    expect(r.objective!.lostAfter).toBe(1);
+    expect(r.objective!.picks.every((pick) => pick.elementId === "dune" || pick.elementId === "sandy_vegetation")).toBe(true);
   });
 
   // Section 16.5 (owner decision): the second is "Protect Taleigao, Merces and St Cruz", its rows from the model
