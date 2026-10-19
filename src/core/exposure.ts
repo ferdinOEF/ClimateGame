@@ -134,6 +134,18 @@ export function heatRamp(yearsLeft: number): number {
   return HEAT_MIN + ((HEAT_LEAD_YEARS - yearsLeft) / (HEAT_LEAD_YEARS - 1)) * (HEAT_MAX - HEAT_MIN);
 }
 
+/**
+ * The live risk view's ramp (Section 21.4): Show risk works at any year. In the
+ * last two years before the storm it is the warning ramp; earlier, the first
+ * warning year's level, so a home at risk in 2027 reads like one two years out.
+ */
+export function liveRamp(yearsLeft: number): number {
+  return yearsLeft > HEAT_LEAD_YEARS ? HEAT_MIN : heatRamp(yearsLeft);
+}
+
+/** The least heat a home at risk shows, so every home the top bar counts is drawn. */
+export const HOME_HEAT_FLOOR = 0.12;
+
 /** Tiles above this heat get the diagonal hatch, the second cue that does not rely on colour. */
 export const HATCH_THRESHOLD = 0.3;
 
@@ -173,8 +185,9 @@ export interface HeatViewTile {
 
 /**
  * Everything the overlay draws for one storm, from its exposure:
- *   - heat on every land, beach and wetland tile it reaches (the water itself
- *     is where the storm comes from, so it is never tinted);
+ *   - heat on every home it would take on the board as it stands (Section
+ *     21.4; the top bar's Homes at risk, one for one), at least
+ *     `HOME_HEAT_FLOOR`, more where the water is deeper (`liveRamp`);
  *   - the hatch where the heat passes 30%;
  *   - a pulsing edge on the houses that will fall, hardest hit first, at
  *     most `PULSE_LIMIT` of them;
@@ -202,13 +215,15 @@ export function buildHeatView(
       .slice(0, PULSE_LIMIT)
   );
   const tiles: HeatViewTile[] = [];
-  // Every wet tile, and every shielded one: a defence that keeps its own tile dry still shows its shield.
-  const keys = new Set([...current.exposure.keys(), ...shielded]);
+  // Section 21.4: the heat is on the homes the storm would take on the board as it stands (exactly the top bar's
+  // Homes at risk), and the shields: a home a defence saved drops out of the heat, its tile keeps the shield.
+  const atRisk = new Set(current.housesAtRisk);
+  const keys = new Set([...atRisk, ...shielded]);
   for (const key of keys) {
     const exposure = current.exposure.get(key) ?? 0;
     const terrain = terrainOf(key);
     const dry = terrain === "land" || terrain === "beach" || terrain === "estuary";
-    const heat = dry ? tileHeat(yearsLeft, exposure) : 0;
+    const heat = dry && atRisk.has(key) ? Math.max(HOME_HEAT_FLOOR, liveRamp(yearsLeft) * exposure) : 0;
     const shield = shielded.has(key);
     if (heat <= 0 && !shield) continue;
     tiles.push({ key, heat, hatch: heat > HATCH_THRESHOLD, pulse: heat > 0 && pulse.has(key), shield });

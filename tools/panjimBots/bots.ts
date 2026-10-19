@@ -32,8 +32,18 @@ import { LEVEL_BY_ID, type LevelDef } from "../../src/levels/levels";
 import { boardSetup } from "../../src/levels/balance";
 import { mapById } from "../../src/levels/levelMap";
 
-export type Persona = "casual" | "greedy" | "smart" | "far";
+export type Persona = "casual" | "greedy" | "smart" | "far" | "random" | "nature" | "seawalls" | "best";
 export const PERSONAS: Persona[] = ["casual", "greedy", "smart", "far"];
+/**
+ * Section 21.2's play styles, for the tuning report (tools/panjimBots/tune21.ts):
+ *   far       building nothing that matters (every build away from every storm);
+ *   random    every build a defence on a random free tile anywhere;
+ *   nature    Smart, building only nature based defences (dune, pandanus, mangrove, khazan);
+ *   seawalls  Smart, building only seawalls and breakwaters;
+ *   smart     sensible play (Smart as it is);
+ *   best      greedy with the exact hazard model: every build weighs every candidate, never by eye.
+ */
+export const STYLES: Persona[] = ["far", "random", "nature", "seawalls", "smart", "best"];
 
 export interface BotResult {
   persona: Persona;
@@ -44,6 +54,8 @@ export interface BotResult {
   houses: { saved: number; total: number }[];
   /** Per storm: homes lost that the wind decided (their water alone stayed under the line; Section 12). */
   windDecided: number[];
+  /** Per storm: landmarks the water damaged (their tile at or over the house-loss line, as the result cards count them). */
+  landmarksLost: number[];
   index: number;
   /** The index's five parts. */
   components: { resilience: number; biodiversity: number; livelihoods: number; population: number; food: number };
@@ -280,6 +292,10 @@ class Player {
         const record = this.run.stormRecords.get(c.id);
         return record ? record.outcome.damagedHouses.filter((key) => !floodsHouse(record.depth.get(key) ?? 0)).length : 0;
       }),
+      landmarksLost: this.run.schedule.map((c) => {
+        const record = this.run.stormRecords.get(c.id);
+        return record ? MAP.monuments.filter((m) => floodsHouse(damageAt(record, `${m.q},${m.r}`))).length : 0;
+      }),
       index: index.index,
       components: {
         resilience: index.resilience,
@@ -402,8 +418,9 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
  * shortlist it weighs (a random handful; Infinity weighs them all). Null when
  * nothing saves a house or takes water off one.
  */
-function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infinity, skip: string | null = null, only: string | null = null): { coord: AxialCoord; elementId: string; saves: number } | null {
-  const seen = visibleRisk(p, challenge);
+function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infinity, skip: string | null = null, only: string | readonly string[] | null = null, perKindMax = 3, exact = false): { coord: AxialCoord; elementId: string; saves: number } | null {
+  const allowed = only === null ? null : typeof only === "string" ? [only] : only;
+  const seen = visibleRisk(p, challenge, exact);
   if (seen.risk.length === 0) return null;
   const near = around([...seen.risk, ...seen.tiles], 1);
   const candidates: { key: string; elementId: string; score: number }[] = [];
@@ -412,7 +429,7 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infin
   for (const key of near) {
     const coord = coordOf(key);
     for (const elementId of DEFENCES) {
-      if (elementId === skip || (only && elementId !== only) || !answers(elementId, challenge.kind)) continue;
+      if (elementId === skip || (allowed && !allowed.includes(elementId)) || !answers(elementId, challenge.kind)) continue;
       if (!p.state.canBuild(coord, elementId)) continue;
       let score = 0;
       for (const n of around([key], 2)) if (risk.has(n)) score++;
@@ -424,7 +441,7 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infin
   let shortlist: typeof candidates = [];
   const perKind = new Map<string, number>();
   for (const c of candidates) {
-    if ((perKind.get(c.elementId) ?? 0) >= 3) continue;
+    if ((perKind.get(c.elementId) ?? 0) >= perKindMax) continue;
     perKind.set(c.elementId, (perKind.get(c.elementId) ?? 0) + 1);
     shortlist.push(c);
   }
@@ -460,7 +477,12 @@ function playYears(p: Player, build: () => boolean): void {
  * once and not refreshed, so they remember it as it was). The houses marked
  * red, and the tiles the water reaches.
  */
-function visibleRisk(p: Player, next: ScheduledChallenge): { risk: string[]; tiles: string[] } {
+function visibleRisk(p: Player, next: ScheduledChallenge, exact = false): { risk: string[]; tiles: string[] } {
+  // Best play knows the storm as the model has it on the board now, every year.
+  if (exact) {
+    const now = p.run.exposureFor(next);
+    if (now && now.housesAtRisk.length > 0) return { risk: now.housesAtRisk, tiles: [...now.exposure.keys()] };
+  }
   if (!p.cones.has(next.id) && p.run.turnNumber >= p.run.phaseStart(next)) {
     const cone = p.run.forecastCone(next);
     if (cone) p.cones.set(next.id, { area: [...cone.area], tiles: [...cone.bands.keys()] });
@@ -479,7 +501,7 @@ function visibleRisk(p: Player, next: ScheduledChallenge): { risk: string[]; til
  * next to a red house, anywhere the forecast shows water, next to the most
  * houses. Never simulates.
  */
-function byEye(p: Player, next: ScheduledChallenge): { coord: AxialCoord; id: string } | null {
+function byEye(p: Player, next: ScheduledChallenge, allowed: readonly string[] = DEFENCES): { coord: AxialCoord; id: string } | null {
   const { risk, tiles } = visibleRisk(p, next);
   if (tiles.length === 0) return null;
   const red = new Set(risk);
@@ -493,7 +515,7 @@ function byEye(p: Player, next: ScheduledChallenge): { coord: AxialCoord; id: st
       if (red.has(n)) nearRed++;
       if (p.state.elements.get(n)?.elementId === "house" && !p.state.isScenery(n)) nearHomes++;
     }
-    for (const id of DEFENCES) {
+    for (const id of allowed) {
       if (!answers(id, next.kind) || !p.state.canBuild(coord, id)) continue;
       const jitter = 0.5 + p.rng.next();
       if (nearRed > 0 && (!best || nearRed * jitter > best.score)) best = { coord, id, score: nearRed * jitter };
@@ -595,11 +617,67 @@ function smartPlayer(skip: string | null, only: string | null = null): (p: Playe
   };
 }
 
+/** Every build a defence on a random free tile anywhere on the board, any kind that fits (Section 21.2). */
+function playRandom(p: Player): void {
+  const keys = [...p.state.placed.keys()].filter((key) => !p.state.isScenery(key));
+  playYears(p, () => {
+    for (let tries = 0; tries < 400; tries++) {
+      const coord = coordOf(keys[Math.floor(p.rng.next() * keys.length)]);
+      const ids = DEFENCES.filter((id) => p.state.canBuild(coord, id));
+      if (ids.length === 0) continue;
+      if (p.build(coord, ids[Math.floor(p.rng.next() * ids.length)])) return true;
+    }
+    return false;
+  });
+}
+
+const NATURE = ["dune", "sandy_vegetation", "mangrove", "khazan"];
+const HARD = ["seawall", "breakwater"];
+
+/**
+ * Smart limited to some kinds of defence (Section 21.2's "nature only" and "seawalls only"): its own attention
+ * and slips, its by-eye builds limited to the same kinds; when none of them answers, the year goes away.
+ */
+function limitedPlayer(allowed: readonly string[]): (p: Player) => void {
+  return (p) => {
+    const attention = SMART_ATTENTION.min + Math.floor(p.rng.next() * (SMART_ATTENTION.max - SMART_ATTENTION.min + 1));
+    const slip = SMART_SLIP * p.rng.next();
+    playYears(p, () => {
+      const next = p.run.nextChallenge();
+      if (!next) return false;
+      if (p.rng.next() < slip) {
+        const guess = byEye(p, next, allowed);
+        if (guess && p.build(guess.coord, guess.id)) return true;
+      }
+      const pick = bestDefence(p, next, attention, null, allowed);
+      if (pick && p.build(pick.coord, pick.elementId)) return true;
+      const guess = byEye(p, next, allowed);
+      return !!guess && p.build(guess.coord, guess.id);
+    });
+  };
+}
+
+/** Best play: every build the one the exact hazard model says saves the most, every candidate weighed, never by eye. */
+function playBest(p: Player): void {
+  playYears(p, () => {
+    const next = p.run.nextChallenge();
+    if (!next) return false;
+    const pick = bestDefence(p, next, Infinity, null, null, 8, true);
+    if (pick && p.build(pick.coord, pick.elementId)) return true;
+    const guess = byEye(p, next);
+    return !!guess && p.build(guess.coord, guess.id);
+  });
+}
+
 const PLAY: Record<Persona, (p: Player) => void> = {
   casual: playCasual,
   greedy: playGreedy,
   smart: smartPlayer(null),
-  far: playFar
+  far: playFar,
+  random: playRandom,
+  nature: limitedPlayer(NATURE),
+  seawalls: limitedPlayer(HARD),
+  best: playBest
 };
 
 /** Smart's run on `seed`: its result and every action it took, for replays. */
