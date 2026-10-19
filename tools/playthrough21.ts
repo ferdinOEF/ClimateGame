@@ -224,6 +224,8 @@ async function playStyle(style: string): Promise<void> {
       if (result.final) break;
     }
   }
+  // 2050: the skyline reveal and the title come before the final card.
+  for (let k = 0; k < 160 && !(await finalCard(page)); k++) await page.waitForTimeout(250);
   check(await finalCard(page), `${style}: the run reaches the final card (${builds} builds, year ${await year(page)})`);
   await shot(page, `${style}-final`);
   await textAndLayout(page, `${style} final card`);

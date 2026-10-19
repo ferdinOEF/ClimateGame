@@ -83,10 +83,11 @@ describe("the forecast cone", () => {
     const compound = run.forecastCone(run.schedule[2])!;
     expect(compound.tracks.map((t) => t.kind).sort()).toEqual(["cyclone", "flood"]);
     expect(compound.meet.length).toBeGreaterThan(0);
-    // Where they meet: the river mouth and the Mandovi waterfront, not the open beach.
+    // Where they meet: mostly the river mouth and the Mandovi waterfront, not the open beach. Section 21.2: the
+    // stronger 2050 storm (3.8) also meets the flood on more of the beach: 53% waterfront, from over 60%.
     const zones = run.zones!;
     const onWaterfront = compound.meet.filter((key) => zones.zoneOf(key) === "z4" || zones.zoneOf(key) === null).length;
-    expect(onWaterfront / compound.meet.length).toBeGreaterThan(0.6);
+    expect(onWaterfront / compound.meet.length).toBeGreaterThan(0.5);
   });
 
   // Section 16.4: undefended, the first cyclone takes the home beside Sharada Mandir School (-3,19) and the low

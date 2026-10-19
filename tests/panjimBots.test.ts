@@ -18,19 +18,22 @@ describe("Panjim bots, 25 builds", () => {
     for (const run of far) expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.02);
   });
 
-  // Section 19: with the east edge out of Panjim (owner decision) fewer homes are in the storms' paths, and one
-  // seed of Casual saves 81%: the band is 60-82%.
-  it("building by eye on what the forecast shows saves more than half the homes (Casual 60-82%)", () => {
+  // Section 19: with the east edge out of Panjim (owner decision) fewer homes are in the storms' paths.
+  // Section 21.2: the flood (2.35) and the 2050 storm (3.8) are stronger, so building by eye on the forecast saves
+  // 29-55% of the homes over a run (mean 41%): the band is 25-60%.
+  it("building by eye on what the forecast shows saves a share of the homes (Casual 25-60%)", () => {
     for (const run of casual) {
-      expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.6);
-      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.82);
+      expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.25);
+      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.6);
     }
   });
 
+  // Section 21.2: with the stronger flood and 2050 storm both save fewer homes; Casual's lead is 20 points (from
+  // more), so the bar is 15.
   it("ignoring the forecast is a gamble: Greedy swings at least 25 points and always does worse than Casual on average", () => {
     const shares = greedy.map(savedShare);
     expect(Math.max(...shares) - Math.min(...shares)).toBeGreaterThanOrEqual(0.25);
-    expect(mean(greedy)).toBeLessThan(mean(casual) - 0.2);
+    expect(mean(greedy)).toBeLessThan(mean(casual) - 0.15);
   });
 
   it("builds every year: no year is ever skipped, 25 builds a run", () => {
