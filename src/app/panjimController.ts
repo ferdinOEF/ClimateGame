@@ -48,6 +48,7 @@ import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
 import type { BuildCard } from "@ui/buildPopover";
 import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER } from "@ui/panjim/defenceCards";
+import { SHOW_MAYA } from "@services/features";
 import { leaveText } from "@ui/panjim/modalStack";
 
 /** The state classes a Panjim session puts on the shared game layer (Section 16): cleared when one starts and ends. */
@@ -288,6 +289,8 @@ export class PanjimController {
     this.getReady.onRowHover((job) => this.host.tintTiles(job ? (job.tiles ?? []).map((key) => ({ key, color: "#fff3c4", blend: 0.5 })) : null));
     host.mountPanel(this.getReady.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
+    // Section 17c: Maya's notes come from her; hidden, the guide is the species alone.
+    this.fieldGuide.showNotes(SHOW_MAYA);
     this.resultCards = new ResultCards(host.container);
     this.finaleCard = new FinaleCard(host.container);
     this.replayCard = new ReplayCard(host.container);
@@ -302,8 +305,10 @@ export class PanjimController {
     this.mayaToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:maya-voice:v1", label: "Maya", shortcut: "M", defaultOn: true, className: "maya-toggle" },
-      (on) => this.maya.setMuted(!on)
+      (on) => this.maya.setMuted(!SHOW_MAYA || !on)
     );
+    // Section 17c: with Maya hidden, her switch is not in ☰ (and M does nothing).
+    if (!SHOW_MAYA) this.mayaToggle.el.remove();
     this.soundToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:sound", label: "Sound", shortcut: "S", defaultOn: true, className: "sound-toggle" },
@@ -359,12 +364,14 @@ export class PanjimController {
       (event) => {
         if (event.ctrlKey || event.metaKey || event.altKey || isTyping(event)) return;
         if (event.key === "r" || event.key === "R") this.riskToggle.toggle();
-        if (event.key === "m" || event.key === "M") this.mayaToggle.toggle();
+        if (SHOW_MAYA && (event.key === "m" || event.key === "M")) this.mayaToggle.toggle();
         if (event.key === "s" || event.key === "S") this.soundToggle.toggle();
       },
       { signal: this.keyAbort.signal }
     );
-    this.maya = new Maya(host.container, { muted: !this.mayaToggle.value, reducedMotion: prefersReducedMotion() });
+    // Section 17c: hidden, she is muted for good and never drawn (`no-maya`, panjim.css).
+    this.maya = new Maya(host.container, { muted: !SHOW_MAYA || !this.mayaToggle.value, reducedMotion: prefersReducedMotion() });
+    host.container.classList.toggle("no-maya", !SHOW_MAYA);
     this.mayaDirector = new MayaDirector(this.maya, {
       run: this.run,
       exposure: () => this.exposure,
@@ -836,11 +843,12 @@ export class PanjimController {
     }
     const cards: CardSpec[] = [
       { body: resultCard(result), button: "See what protected your city" },
-      { body: defencesCard(result, top ? results.byDefence[top.elementId] ?? null : null), button: nextLabel(next) }
+      // Section 17c: with Maya hidden, the cards carry no line of hers.
+      { body: defencesCard(result, SHOW_MAYA && top ? results.byDefence[top.elementId] ?? null : null), button: nextLabel(next) }
     ];
     if (next) {
       cards.push({
-        body: comingUpCard(comingUpTitle(next.name, next.year, this.run.yearsUntil(next)), this.forecastPreview(next, false), results.comingUp[next.kind] ?? null),
+        body: comingUpCard(comingUpTitle(next.name, next.year, this.run.yearsUntil(next)), this.forecastPreview(next, false), SHOW_MAYA ? results.comingUp[next.kind] ?? null : null),
         button: `On to ${this.run.year}`
       });
     }

@@ -89,7 +89,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       </div>
     </section>
 
-    <p class="panjim-help-note">Everything on this page is a rule of this game. What Maya tells you about real dunes, mangroves and khazans comes with its source: see Facts &amp; sources on the menu. The pictures are the game's own board; its map data is © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.</p>
+    <p class="panjim-help-note">Everything on this page is a rule of this game. The facts about real dunes, mangroves and khazans come with their sources: see Facts &amp; sources on the menu. The pictures are the game's own board; its map data is © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.</p>
   </div>
   </div>
 `;

@@ -165,8 +165,17 @@ export class FieldGuide {
   /** The notes this level can give (set by the level; every note there is until then). */
   countable: ReadonlySet<string> = noteIdsFor({ opening: false, excluded: new Set() });
 
+  /** Whether Maya's notes (and their count on the button) are shown: not while she is hidden (Section 17c). */
+  private notesShown = true;
+
+  showNotes(on: boolean): void {
+    this.notesShown = on;
+    this.backdrop.classList.toggle("no-notes", !on);
+    this.renderButton();
+  }
+
   private renderButton(): void {
-    this.button.textContent = `Field Guide ${this.notesProgress()}`;
+    this.button.textContent = this.notesShown ? `Field Guide ${this.notesProgress()}` : "Field Guide";
   }
 
   private showToast(text: string): void {

@@ -43,6 +43,13 @@ async function mayaSays(page: Page): Promise<string> {
 }
 
 async function waitForMaya(page: Page, line: string, where: string, problems: string[]): Promise<void> {
+  // Section 17c: Maya is hidden (SHOW_MAYA off). Then the check is that neither she nor a bubble is on screen.
+  const hidden = await page.evaluate(() => Boolean(document.querySelector(".no-maya")));
+  if (hidden) {
+    const shown = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".maya, .maya-bubble, .maya-full-figure")].some((el) => el.getClientRects().length > 0 && getComputedStyle(el).display !== "none" && getComputedStyle(el).visibility !== "hidden"));
+    if (shown) problems.push(`[${where}] Maya is on screen, but she is hidden (Section 17c)`);
+    return;
+  }
   const start = Date.now();
   while (Date.now() - start < 8000) {
     if ((await mayaSays(page)).includes(line.slice(0, 40))) return;

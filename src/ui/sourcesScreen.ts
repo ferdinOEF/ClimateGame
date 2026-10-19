@@ -139,7 +139,7 @@ export function openSources(factId?: string): HTMLElement {
   const intro = document.createElement("p");
   intro.className = "sources-intro";
   intro.textContent =
-    "Every fact about the real world in this game, with where it comes from. Maya tags a rule of this game “Game rule”: those describe the game, not the world, and are listed at the end.";
+    "Every fact about the real world in this game, with where it comes from. A rule of this game is tagged “Game rule”: those describe the game, not the world, and are listed at the end.";
 
   const list = document.createElement("ol");
   list.className = "sources-list";
