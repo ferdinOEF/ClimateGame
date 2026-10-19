@@ -105,7 +105,7 @@ export class Hud {
       <div class="cluster-header">
         <div class="coin-row"><span>Coin</span><span class="coin-value">0</span></div>
         <div class="cluster-header-right">
-          <div class="turn-era-row">Turn <span class="turn-value">0</span> · Era <span class="era-value">1</span></div>
+          <div class="turn-era-row">Turn <span class="turn-value">0</span>, Era <span class="era-value">1</span></div>
           <button type="button" class="cluster-collapse-toggle" aria-label="Collapse HUD">
             <span class="chevron-glyph chevron-up"></span>
           </button>

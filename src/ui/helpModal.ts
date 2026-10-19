@@ -109,7 +109,7 @@ const HELP_CONTENT = `
 
       <div class="help-roster-group">
         <div class="help-roster-terrain">Beach, Estuary or River</div>
-        <div class="help-roster-item"><span>Beachside Resort</span><span>Strong income, weakest-defended tile you can build.</span></div>
+        <div class="help-roster-item"><span>Beachside Resort</span><span>Strong income, the most weakly defended tile you can build.</span></div>
         <div class="help-roster-item"><span>Yacht</span><span>The most expensive build in the game. Purely for show.</span></div>
       </div>
     </section>

@@ -75,7 +75,7 @@ const STEPS: TutorialStep[] = [
   {
     title: "This is a coast",
     body:
-      "Open sea on the left, then a bar of sand, then the olive-green shallows of the estuary, and the river behind. Drag to pan, scroll or pinch to zoom.",
+      "Open sea on the left, then a bar of sand, then the olive green shallows of the estuary, and the river behind. Drag to pan, scroll or pinch to zoom.",
     cta: "Got it"
   },
   {
@@ -92,13 +92,13 @@ const STEPS: TutorialStep[] = [
   {
     title: "Building is what moves the clock",
     body:
-      "Look at the turn counter — it went up. Nothing happens while you think, so the pace is entirely yours. But once a storm is counting down, it lands on time whatever you are doing.",
+      "Look at the turn counter: it went up. Nothing happens while you think, so the pace is entirely yours. But once a storm is counting down, it lands on time whatever you are doing.",
     cta: "Next"
   },
   {
     title: "Plant a mangrove",
     body:
-      "Click the olive-green shallows, the estuary, and build a Mangrove. In this game it is the strongest living defence, and it adds food and wildlife.",
+      "Click the olive green shallows, the estuary, and build a Mangrove. In this game it is the strongest living defence, and it adds food and wildlife.",
     done: (state) => standing(state, "mangrove") > 0
   },
   {
@@ -110,7 +110,7 @@ const STEPS: TutorialStep[] = [
   {
     title: "Put somebody on the land",
     body:
-      "Build a House on the green inland tiles. People are the reason any of this matters — and the thing a storm costs you if the coast does not hold.",
+      "Build a House on the green inland tiles. People are the reason any of this matters, and the thing a storm costs you if the coast does not hold.",
     done: (state) => standing(state, "house") > 0
   },
   {
@@ -121,7 +121,7 @@ const STEPS: TutorialStep[] = [
   },
   {
     title: "Hold the coast",
-    body: "Ride out one storm. Your defences will do the work — watch where the water gets through and where it does not.",
+    body: "Ride out one storm. Your defences will do the work. Watch where the water gets through and where it does not.",
     done: (state) => state.hazardsSurvived > 0
   },
   {
@@ -226,7 +226,7 @@ export class TutorialCoach {
     this.ctaEl.hidden = waitingOnPlayer;
     this.waitEl.hidden = !waitingOnPlayer;
     this.ctaEl.textContent = step.cta ?? "Next";
-    this.waitEl.textContent = "Your turn — complete the task above";
+    this.waitEl.textContent = "Your turn: complete the task above";
 
     // Restart the entrance animation on each step so a change is noticed even
     // when the player's attention is on the board rather than the panel.

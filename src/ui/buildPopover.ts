@@ -322,7 +322,7 @@ export class BuildPopover {
     if (effectEntries.length > 0) {
       const effectsRow = document.createElement("div");
       effectsRow.className = "built-info-effects";
-      effectsRow.textContent = effectEntries.map(([key, delta]) => `${key} ${delta > 0 ? "+" : ""}${delta}`).join("  ·  ");
+      effectsRow.textContent = effectEntries.map(([key, delta]) => `${key} ${delta > 0 ? "+" : ""}${delta}`).join(", ");
       this.el.appendChild(effectsRow);
     }
 

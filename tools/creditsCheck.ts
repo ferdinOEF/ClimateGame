@@ -55,9 +55,38 @@ async function menuChecks(page: Page, label: string): Promise<void> {
   check(result.linkCorner, `${label}: the link sits in the bottom corner`);
   check(result.overlaps === 0, `${label}: the link overlaps nothing on the menu`);
   check(result.linkSize >= 12, `${label}: the link is at least 12 px (${result.linkSize} px)`);
-  check(result.credit && result.creditText === "Board render · map data © OpenStreetMap contributors" && result.creditHref === "https://www.openstreetmap.org/copyright" && result.creditInView, `${label}: the board render's OpenStreetMap credit, unchanged`);
+  check(result.credit && result.creditText === "Board render, map data © OpenStreetMap contributors" && result.creditHref === "https://www.openstreetmap.org/copyright" && result.creditInView, `${label}: the board render's OpenStreetMap credit (Section 17b: a comma, not a dot)`);
   check(result.scrollW <= result.vw, `${label}: no horizontal scroll`);
 }
+
+/**
+ * With the plate switched back on (`VITE_SHOW_PARTNER_CREDITS=true` in the environment of this tool and of the dev
+ * server it starts), the plate's own checks: on screen, clear of the menu, both logos loaded, 56 to 64 px tall at
+ * their own proportions, not links, and the label's contrast at least 4.5:1.
+ */
+async function plateChecks(page: Page, label: string): Promise<void> {
+  const r = (await page.evaluate(`(() => {
+    const plate = document.querySelector(".menu-credits-plate");
+    if (!plate) return null;
+    const box = plate.getBoundingClientRect();
+    const others = [...document.querySelectorAll(".menu-screen .menu-hero > *, .menu-screen .menu-actions > *")].map((n) => n.getBoundingClientRect());
+    const overlaps = others.filter((o) => !(o.right <= box.left || o.left >= box.right || o.bottom <= box.top || o.top >= box.bottom)).length;
+    const logos = [...document.querySelectorAll(".menu-credit-logo")].map((img) => ({ alt: img.alt, h: img.getBoundingClientRect().height, w: img.getBoundingClientRect().width, nw: img.naturalWidth, nh: img.naturalHeight, inLink: Boolean(img.closest("a")) }));
+    const rgb = (s) => s.match(/[\\d.]+/g).slice(0, 3).map(Number);
+    const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const fg = lum(rgb(getComputedStyle(document.querySelector(".menu-credits-label")).color));
+    const bg = lum(rgb(getComputedStyle(plate).backgroundColor));
+    return { overlaps, logos, contrast: (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05), inView: box.top >= 0 && box.bottom <= innerHeight + 1 };
+  })()`)) as { overlaps: number; logos: { alt: string; h: number; w: number; nw: number; nh: number; inLink: boolean }[]; contrast: number; inView: boolean } | null;
+  check(r !== null, `${label}: the plate is drawn (switch on)`);
+  if (!r) return;
+  check(r.overlaps === 0 && r.inView, `${label}: the plate is on screen and overlaps nothing`);
+  check(r.contrast >= 4.5, `${label}: the plate's label contrast ${r.contrast.toFixed(1)}:1`);
+  check(r.logos.map((l) => l.alt).join("|") === "OneEarth Foundation logo|Gokhush Charitable Trust logo", `${label}: both logos`);
+  for (const logo of r.logos) check(logo.h >= 46 && logo.h <= 64 && Math.abs(logo.w / logo.h - logo.nw / logo.nh) < 0.03 && !logo.inLink, `${label}: ${logo.alt} ${logo.h.toFixed(0)} px, its own proportions, not a link`);
+}
+
+const PLATE_ON = process.env.VITE_SHOW_PARTNER_CREDITS === "true";
 
 async function main(): Promise<void> {
   fs.mkdirSync(OUT, { recursive: true });
@@ -74,6 +103,14 @@ async function main(): Promise<void> {
       page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") errors.push(`${label}: ${m.text()}`); });
       page.on("requestfailed", (r) => errors.push(`${label}: failed ${r.url()}`));
       await page.goto(server.url, { waitUntil: "networkidle" });
+      if (PLATE_ON) {
+        await page.waitForSelector(".menu-credits-plate img");
+        await page.waitForTimeout(500);
+        await plateChecks(page, label);
+        await page.screenshot({ path: path.join(OUT, `menu-plate-on-${label}.jpg`), quality: 85 });
+        await page.close();
+        continue;
+      }
       await page.waitForSelector(".menu-sources-link");
       await page.waitForFunction(() => { const img = document.querySelector<HTMLImageElement>(".menu-art img"); return !img || (img.complete && img.naturalWidth > 0); }, undefined, { timeout: 15000 }).catch(() => undefined);
       await page.waitForTimeout(500);

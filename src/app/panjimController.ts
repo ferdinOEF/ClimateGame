@@ -910,7 +910,7 @@ export class PanjimController {
     await this.finaleCard.title(this.run.totalYears, this.run.schedule.length);
     const phases = this.run.schedule.map((c) => {
       const outcome = this.run.outcomes.get(c.id);
-      return { label: `${c.year} · ${c.name}`, saved: outcome?.housesSaved ?? 0, total: outcome?.housesTotal ?? 0 };
+      return { label: `${c.name} in ${c.year}`, saved: outcome?.housesSaved ?? 0, total: outcome?.housesTotal ?? 0 };
     });
     this.host.telemetry.emit("checkpoint", { final: true, stars: result.levelStars, tempo: tempoBadge(this.playMs()).name });
     const choice = await this.resultCards.show([{ body: finalCard(phases, result.levelStars), button: "Play again", link: "Back to the menu" }]);
@@ -2021,6 +2021,6 @@ function untilWord(kind: ScheduledChallenge["kind"]): string {
 
 /** The coming-up card's one heading (Section 16 B4): "Monsoon flood · 2040 · in 10 years". */
 export function comingUpTitle(name: string, year: number, years: number): string {
-  return `${name} · ${year} · in ${years} ${years === 1 ? "year" : "years"}`;
+  return `${name} in ${year}, ${years} ${years === 1 ? "year" : "years"} away`;
 }
 

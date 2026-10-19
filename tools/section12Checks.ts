@@ -18,7 +18,7 @@
  *     card 1 its "Objective complete" badge;
  *   - a build outside every row says so in one line;
  *   - Esc asks "Leave Panjim?"; Esc again and Stay keep playing; Leave goes;
- *   - the level card then says "In progress · 2031", and Continue's popup
+ *   - the level card then says "Continue from 2031", and Continue's popup
  *     shows the flood's forecast ("The flood comes in 10 years");
  *   - Maya says none of the cyclone phase's lines once 2031 has begun.
  * axe-core on the popup, the board and the confirm; zero console errors.
@@ -239,7 +239,7 @@ async function main(): Promise<void> {
         await page.goto(`${server.url}/#/levels`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2500);
         const card = (await page.evaluate(`Array.from(document.querySelectorAll(".level-card")).map(function (e) { return e.innerText.replace(/\\s+/g, " "); }).join(" | ")`)) as string;
-        check(/In progress · 2031/.test(card), `7: the level card says "In progress · 2031": "${card.slice(0, 160)}"`);
+        check(/Continue from 2031/.test(card), `7: the level card says "Continue from 2031": "${card.slice(0, 160)}"`);
         await shot(page, `levels-${tag}`);
         // 5: Continue's popup shows the flood's forecast.
         await open(page, server.url);

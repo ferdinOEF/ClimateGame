@@ -88,7 +88,8 @@ describe("the result cards' numbers", () => {
     expect(area.length).toBe(9);
     play(run, true);
     const result = phaseResult(challenge, run.stormRecords.get(challenge.id)!, area, PLACES, run.phaseBuilds.get(challenge.id) ?? []);
-    expect(result.eyebrow).toBe("2030 · Cyclone");
+    // Section 17b (owner decision): no dots or hyphens between words in player-facing text.
+    expect(result.eyebrow).toBe("Cyclone in 2030");
     expect(result.places.map((p) => p.name)).toEqual(placesInArea(PLACES, area).map((p) => p.name));
     for (const row of result.defences) expect(run.phaseBuilds.get(challenge.id)).toContain(row.elementId);
     // The next phase's area is recorded at its start, 2031.

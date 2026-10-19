@@ -26,8 +26,9 @@ describe("the partner credits on the landing page", () => {
     for (const file of ["public/branding/oneearth-foundation-256.webp", "public/branding/gokhush-charitable-trust.svg"]) expect(() => readFileSync(file), file).not.toThrow();
   });
 
-  it("leave the board render's OpenStreetMap credit exactly as it was", () => {
-    expect(menu).toContain('text: "Board render · map data © OpenStreetMap contributors"');
+  // Part B's one change to it: the dot became a comma (no dots between words). Otherwise as it was.
+  it("leave the board render's OpenStreetMap credit visible, its dot now a comma", () => {
+    expect(menu).toContain('text: "Board render, map data © OpenStreetMap contributors"');
     expect(menu).toContain('href: "https://www.openstreetmap.org/copyright"');
     expect(menu).toMatch(/root\.appendChild\(menuArtCredit\(\)\);/);
   });

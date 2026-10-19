@@ -77,5 +77,5 @@ export function menuModel(progress: PlayerProgress, showExtras: boolean): MenuMo
 function primaryActionLabel(resumeLevel: LevelDef, completed: number, campaignDone: boolean): string {
   if (resumeLevel.tutorial) return resumeLevel.name;
   if (campaignDone) return "Play again";
-  return completed === 0 ? `Play — ${resumeLevel.name}` : `Continue — ${resumeLevel.name}`;
+  return completed === 0 ? `Play ${resumeLevel.name}` : `Continue ${resumeLevel.name}`;
 }

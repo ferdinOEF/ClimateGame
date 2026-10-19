@@ -100,9 +100,9 @@ export function firstAuthor(citation: Citation): string {
   return people > 1 ? `${first} et al.` : first;
 }
 
-/** "McIvor et al., 2012 · The Nature Conservancy ...": the Source tooltip. */
+/** "McIvor et al., 2012, The Nature Conservancy ...": the Source tooltip. */
 export function shortCredit(citation: Citation): string {
-  return `${firstAuthor(citation)}, ${citation.year} · ${citation.publisher}`;
+  return `${firstAuthor(citation)}, ${citation.year}, ${citation.publisher}`;
 }
 
 /** The text as the player sees it: a reported fact is attributed in the sentence itself. */

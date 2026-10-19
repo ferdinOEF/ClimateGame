@@ -36,7 +36,7 @@ export function untilText(until: { builds: number; storm: string }): string {
 
 /** "Cyclone · 5 builds", "Cyclone · next build": the countdown on the next storm's marker (Section 16 B2). */
 export function countdownText(until: { builds: number; storm: string }): string {
-  return `${until.storm} · ${until.builds <= 1 ? "next build" : `${until.builds} builds`}`;
+  return `${until.storm} in ${until.builds <= 1 ? "1 build" : `${until.builds} builds`}`;
 }
 
 export class ClockHud {

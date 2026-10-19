@@ -103,7 +103,7 @@ export function renderResultsScreen(root: HTMLElement, ctx: ResultsContext, acti
               cleared && follow
                 ? el("button", {
                     className: "btn btn-primary",
-                    text: `Next — ${follow.name}`,
+                    text: `Next: ${follow.name}`,
                     on: { click: () => actions.onNext(follow.id) }
                   })
                 : el("button", {

@@ -185,10 +185,10 @@ export class OutlookBar {
   }
 }
 
-/** "Cyclone · 2030 · mild", or "Cyclone has passed". The countdown is the clock's alone (Section 13); `hold` is kept for callers and changes nothing now. */
+/** "Cyclone in 2030, mild", or "Cyclone has passed". The countdown is the clock's alone (Section 13); `hold` is kept for callers and changes nothing now. */
 export function describe(storm: OutlookStorm, hold = false): string {
   void hold;
   const name = storm.challenge.name;
   if (storm.past) return `${name} has passed`;
-  return `${name} · ${storm.challenge.year} · ${["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)]}`;
+  return `${name} in ${storm.challenge.year}, ${["", "mild", "strong", "severe"][strengthIcons(storm.challenge.strength)]}`;
 }

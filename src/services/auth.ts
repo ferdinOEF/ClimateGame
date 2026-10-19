@@ -397,13 +397,13 @@ function describeAuthError(error: unknown): string {
   switch (code) {
     case "auth/popup-closed-by-user":
     case "auth/cancelled-popup-request":
-      return "Sign-in was cancelled.";
+      return "Signing in was cancelled.";
     case "auth/popup-blocked":
-      return "Your browser blocked the sign-in popup. Allow popups for this site and try again.";
+      return "Your browser blocked the sign in popup. Allow popups for this site and try again.";
     case "auth/network-request-failed":
       return "Couldn't reach the network. Your progress is still saved on this device.";
     case "auth/operation-not-allowed":
-      return "That sign-in method isn't enabled for this project yet. See docs/DEPLOY.md.";
+      return "That sign in method isn't enabled for this project yet. See docs/DEPLOY.md.";
     case "auth/email-already-in-use":
       return "There's already an account with that email. Try signing in instead.";
     case "auth/invalid-email":
@@ -424,8 +424,8 @@ function describeAuthError(error: unknown): string {
     case "auth/requires-recent-login":
       return "Please sign in again to make that change.";
     case "auth/unauthorized-domain":
-      return "This domain isn't authorised for sign-in.";
+      return "This domain isn't authorised for signing in.";
     default:
-      return "Sign-in didn't work. Your progress is still saved on this device.";
+      return "Signing in didn't work. Your progress is still saved on this device.";
   }
 }

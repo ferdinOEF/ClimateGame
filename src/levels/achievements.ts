@@ -62,7 +62,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "root-keeper",
     name: "Root Keeper",
-    description: "Clear a level with only nature-based defences standing.",
+    description: "Clear a level with only nature based defences standing.",
     icon: "🌿",
     test: (c) =>
       c.completed &&
@@ -116,7 +116,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   },
   {
     id: "three-star-scholar",
-    name: "Three-Star Scholar",
+    name: "Three Star Scholar",
     description: "Earn three stars on any level.",
     icon: "⭐",
     test: (c) => c.score.stars >= 3
@@ -131,7 +131,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "perfect-campaign",
     name: "Perfect Coast",
-    description: "Three-star every level in the campaign.",
+    description: "Get three stars on every level in the campaign.",
     icon: "👑",
     test: (c) => totalStars(c.progress) >= LEVELS.length * 3
   },

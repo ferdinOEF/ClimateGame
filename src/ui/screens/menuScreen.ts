@@ -75,11 +75,11 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
         el("span", {
           className: "menu-cloud-note",
           text: !isCloudConfigured()
-            ? "Running offline — progress is saved on this device only."
+            ? "Running offline. Progress is saved on this device only."
             : signedIn
-              ? `Signed in${account?.email ? ` as ${account.email}` : ""} — progress syncs across devices.`
+              ? `Signed in${account?.email ? ` as ${account.email}` : ""} . Progress syncs across devices.`
               : actions.showAccount
-                ? "Playing as a guest — progress is saved on this device."
+                ? "Playing as a guest. Progress is saved on this device."
                 : "Progress is saved on this device."
         })
       ]
@@ -141,7 +141,7 @@ function menuArt(): HTMLElement {
 function menuArtCredit(): HTMLElement {
   return el("a", {
     className: "menu-art-credit",
-    text: "Board render · map data © OpenStreetMap contributors",
+    text: "Board render, map data © OpenStreetMap contributors",
     attrs: { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener noreferrer" }
   });
 }

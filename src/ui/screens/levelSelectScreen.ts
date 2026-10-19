@@ -78,7 +78,7 @@ export function runSummary(level: (typeof LEVELS)[number]): string {
   const builds = level.timeline.endYear - level.timeline.startYear + 1;
   const storms = level.climate?.challenges ?? [];
   const stormText = storms.length === 1 ? `1 ${storms[0].name.toLowerCase()}` : `${storms.length} storms`;
-  return `${builds} builds · ${stormText} · ${level.timeline.startYear} to ${level.timeline.endYear}`;
+  return `${builds} builds, ${stormText}, ${level.timeline.startYear} to ${level.timeline.endYear}`;
 }
 
 /**
@@ -93,7 +93,7 @@ export function progressLine(
   savedYear: number | null = level.timeline ? savedRunYear(level.id, level.timeline.startYear, level.timeline.endYear - level.timeline.startYear + 1) : null
 ): { text: string; muted: boolean } {
   if (!unlocked) return { text: `Clear ${LEVELS[LEVELS.indexOf(level) - 1]?.name ?? "the previous level"} to unlock`, muted: true };
-  if (savedYear !== null) return { text: `In progress · ${savedYear}`, muted: false };
+  if (savedYear !== null) return { text: `Continue from ${savedYear}`, muted: false };
   if (record.stars > 0) return { text: `Best ${"★".repeat(record.stars)}${"☆".repeat(Math.max(0, 3 - record.stars))}`, muted: false };
   if (record.bestScore > 0) return { text: `Best ${formatScore(record.bestScore)}`, muted: false };
   return { text: "Not yet played", muted: true };

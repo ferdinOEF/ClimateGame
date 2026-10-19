@@ -98,7 +98,7 @@ export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, 
     .sort((a, b) => b.homes - a.homes || (a.name < b.name ? -1 : 1));
   return {
     challengeId: challenge.id,
-    eyebrow: `${challenge.year} · ${challenge.name}`,
+    eyebrow: `${challenge.name} in ${challenge.year}`,
     stars: outcome.stars,
     homesSaved: outcome.housesSaved,
     homesTotal: outcome.housesTotal,
