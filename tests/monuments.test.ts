@@ -20,7 +20,7 @@ import { axialKey } from "../src/core/hex";
  * fails here rather than at runtime.
  */
 
-/** Must stay in step with `BUILDERS` in src/render/monumentGeometry.ts. */
+/** Must stay in step with `MONUMENT_KINDS` in src/render/monumentGeometry.ts. */
 const KNOWN_KINDS = new Set([
   "church",
   "temple",

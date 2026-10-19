@@ -1,0 +1,13 @@
+| low | calm | 2.0 | 1.0 | 983.4 | 59 | 394572 |
+| low | cyclone | 2.0 | 1.8 | 550.1 | 48 | 392206 |
+| medium | calm | 1.9 | 1.4 | 716.6 | 60 | 397772 |
+| medium | cyclone | 1.9 | 1.7 | 600.0 | 48 | 416378 |
+| high | calm | 1.9 | 1.8 | 550.1 | 60 | 397772 |
+| high | cyclone | 1.9 | 0.9 | 1083.3 | 48 | 431842 |
+page.evaluate: Target page, context or browser has been closed
+    at scenario (/home/user/ClimateGame/tools/stormPerf.ts:33:22)
+    at main (/home/user/ClimateGame/tools/stormPerf.ts:101:39) {
+  log: []
+}
+
+(The leak check after this table did not finish inside the 40 minute limit on software GL: three storms played in full. Not a failure of the game; not measured this section.)

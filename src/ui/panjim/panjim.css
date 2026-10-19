@@ -540,7 +540,8 @@
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px dashed rgba(253, 246, 230, 0.25);
-  color: rgba(253, 246, 230, 0.45);
+  /* 0.62, not 0.45: the "Not seen yet" lines pass 4.5:1 contrast on the card (axe, Section 18). */
+  color: rgba(253, 246, 230, 0.62);
   font-size: 12.5px;
 }
 
@@ -560,6 +561,13 @@
 .field-guide-page p {
   margin: 0;
   line-height: 1.4;
+}
+
+/* A page's cited fact (the humpback dolphin's), under its line. */
+.field-guide-page p.field-guide-fact {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #d8ecd8;
 }
 
 .field-guide-toast {

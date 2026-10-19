@@ -1,15 +1,19 @@
 import guideData from "@data/fieldGuide.json";
 import { playSound } from "@ui/audioHooks";
 import { noteIdsFor, notesProgress, refreshSavedNotes } from "@core/mayaLines";
+import { factById } from "@core/facts";
 
 /**
- * The Field Guide: ten species of the Panjim coast, collected by tapping the
- * creatures that visit what the player builds.
+ * The Field Guide: eleven species of the Panjim coast, collected by tapping the
+ * creatures on the board: ten visit what the player builds, the dolphin swims
+ * in the open water whatever is built.
  *
- * Every page is wildlife that a nature defence brings: kingfishers to
+ * Every page but one is wildlife that a nature defence brings: kingfishers to
  * mangroves, prawns to a khazan sluice, ghost crabs to pandanus. A seawall's
  * pigeons and sand mining's shorebirds are not in it. Nobody is told that; a
  * player who wants a full guide simply finds themselves planting mangroves.
+ * The one other page (Section 18) is the humpback dolphin, which swims in the
+ * open water whatever is built; its page says so, with one cited fact.
  *
  * Collection is kept on this device across runs, because a guide that empties
  * every time is not a collection.
@@ -19,6 +23,8 @@ export interface Species {
   name: string;
   home: string;
   line: string;
+  /** A cited fact shown on the page once found (facts.json id), with its source. */
+  fact?: string;
 }
 
 export const SPECIES: Species[] = guideData as Species[];
@@ -82,7 +88,7 @@ export class FieldGuide {
     this.backdrop.innerHTML = `
       <div class="field-guide-card" role="dialog" aria-label="Field Guide">
         <div class="field-guide-head"><b>Field Guide</b><span class="field-guide-count"></span><button type="button" class="field-guide-close" aria-label="Close">×</button></div>
-        <p class="field-guide-hint">Tap the creatures that visit what you build. Free: no time passes. <span class="field-guide-creatures"></span></p>
+        <p class="field-guide-hint">Tap the creatures you see on the board. Free: no time passes. <span class="field-guide-creatures"></span></p>
         <div class="field-guide-grid"></div>
         <div class="field-guide-notes-head"><b>Maya's notes</b><span class="field-guide-notes-count"></span></div>
         <ul class="field-guide-notes"></ul>
@@ -195,10 +201,17 @@ export class FieldGuide {
       page.className = `field-guide-page${known ? " found" : ""}`;
       page.innerHTML = known
         ? `<b></b><p></p>`
-        : `<b>???</b><p>Not seen yet. Something visits a ${species.home.replace("_", " ")}.</p>`;
+        : `<b>???</b><p>${species.home === "water" ? "Not seen yet. Something swims in the open water." : `Not seen yet. Something visits a ${species.home.replace("_", " ")}.`}</p>`;
       if (known) {
         (page.querySelector("b") as HTMLElement).textContent = species.name;
         (page.querySelector("p") as HTMLElement).textContent = species.line;
+        const fact = species.fact ? factById(species.fact) : undefined;
+        if (fact?.citation) {
+          const line = document.createElement("p");
+          line.className = "field-guide-fact";
+          line.textContent = `${fact.text} Source: ${fact.citation.publisher}, ${fact.citation.year}.`;
+          page.appendChild(line);
+        }
       }
       this.grid.appendChild(page);
     }

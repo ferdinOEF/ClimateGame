@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { ALL_FACTS, CITED_FACTS, FEATURES_OFF, SHOWN_FACTS, discoveryFacts, discoveryTotal, displayText, firstAuthor, isShown } from "../src/core/facts";
 import nuggets from "../src/data/nuggets.json";
 import maya from "../src/data/maya.json";
+import fieldGuide from "../src/data/fieldGuide.json";
 
 /**
  * The game says only what a source says (docs/FACTS_AUDIT.md). These hold
@@ -101,9 +102,18 @@ describe("Discoveries (Maya says each one)", () => {
     for (const fact of ALL_FACTS.filter(isShown)) expect(fact.text, fact.id).not.toMatch(/\bcoin|cheap|expensive|price|cost|take[s]? (a few|\d+) years|to grow|grows? stronger|matur/i);
   });
 
-  it("every cited fact the game shows is reachable from a build", () => {
+  // Section 18: the humpback dolphins' facts are never said on a build (no defence brings dolphins); one is on the
+  // Field Guide's dolphin page, and both are on the Sources screen.
+  it("every cited fact the game shows is reachable from a build, or is the Field Guide's or the Sources screen's alone", () => {
     const onCards = new Set(Object.values(nuggets as Record<string, string[]>).flat());
-    for (const fact of CITED_FACTS) expect(onCards.has(fact.id), fact.id).toBe(true);
+    const inGuide = new Set((fieldGuide as { fact?: string }[]).map((s) => s.fact).filter(Boolean));
+    for (const fact of CITED_FACTS) expect(onCards.has(fact.id) || inGuide.has(fact.id) || fact.sourcesOnly === true, fact.id).toBe(true);
+    for (const id of inGuide) expect(CITED_FACTS.some((f) => f.id === id), `${id} is a shown cited fact`).toBe(true);
+    // And never on a build: those facts name no element.
+    for (const fact of CITED_FACTS.filter((f) => f.sourcesOnly || inGuide.has(f.id))) {
+      expect(fact.elements, fact.id).toEqual([]);
+      expect(onCards.has(fact.id), fact.id).toBe(false);
+    }
   });
 });
 

@@ -11,7 +11,8 @@ import { nearestHouse } from "../src/levels/townLayout";
 import { RELIEF, contoursBetween, reliefLift } from "../src/core/relief";
 import { buildingGeometry } from "../src/render/townGeometry";
 import { createMonumentGeometryFor, monumentGeometryKey, MONUMENT_BUILDING_KINDS } from "../src/render/monumentGeometry";
-import { monumentRatios, monumentScale } from "../src/render/monumentScale";
+import { HEIGHT_RATIO, MAX_STRETCH, MIN_STRETCH, monumentRatios, monumentScale, planReach } from "../src/render/monumentScale";
+import { LANDMARK_IDS } from "../src/render/landmarkModels";
 
 /**
  * Section 3: Panjim as a city, Altinho as a hill.
@@ -80,35 +81,40 @@ describe("monuments", () => {
     return { w: (b.max.x - b.min.x) * s, d: (b.max.z - b.min.z) * s, h: b.max.y * s };
   };
 
-  it("sizes each building against the largest House next to it: footprint 1.5-1.7x, height 1.3-1.8x", () => {
+  // Section 18: each landmark has its own model and fills its hex; its height aims at twice the tallest House
+  // beside it, capped so the model keeps its drawn proportions (see monumentScale.ts). The old rule (1.5-1.7x a
+  // House's footprint, 1.3-1.8x its height) sized the generic blocks it replaced.
+  it("fills each building's hex without leaving it, and stands up to about twice the tallest House beside it", () => {
     const rows: string[] = [];
     for (const m of panaji.monuments.filter((x) => MONUMENT_BUILDING_KINDS.includes(x.kind))) {
       let neighbour: { w: number; d: number; h: number } | null = null;
       for (const { plot } of nearestHouse(town, { q: m.q, r: m.r })) {
         const size = sizeOf(buildingGeometry(plot.kind), plot.scale);
-        if (!neighbour || size.w * size.d * size.h > neighbour.w * neighbour.d * neighbour.h) neighbour = size;
+        if (!neighbour || size.h > neighbour.h) neighbour = size;
       }
       expect(neighbour, `${m.name} has a House beside it`).not.toBeNull();
-      const size = sizeOf(createMonumentGeometryFor(m.id, m.kind));
+      const geometry = createMonumentGeometryFor(m.id, m.kind);
+      const size = { ...sizeOf(geometry), reach: planReach(geometry.getAttribute("position").array) };
       const scale = monumentScale(size, neighbour!);
       const ratios = monumentRatios(size, neighbour!, scale);
-      rows.push(`${m.name}: footprint ${ratios.footprint.toFixed(2)}x, height ${ratios.height.toFixed(2)}x`);
-      expect(ratios.footprint, m.name).toBeGreaterThanOrEqual(1.5);
-      expect(ratios.footprint, m.name).toBeLessThanOrEqual(1.7);
-      expect(ratios.height, m.name).toBeGreaterThanOrEqual(1.3);
-      expect(ratios.height, m.name).toBeLessThanOrEqual(1.8);
-      // And it stays inside its hex.
-      expect(Math.hypot(size.w, size.d) * scale.sx / 2).toBeLessThan(0.866);
+      rows.push(`${m.name}: height ${ratios.height.toFixed(2)}x, reach ${ratios.reach.toFixed(2)}`);
+      // Inside its hex (inner radius 0.866), whichever way it is turned, and filling most of it.
+      expect(ratios.reach, m.name).toBeLessThan(0.866);
+      expect(ratios.reach, m.name).toBeGreaterThan(0.75);
+      // Never taller than about twice the tallest House, and never stretched or squashed out of its drawing.
+      expect(ratios.height, m.name).toBeLessThanOrEqual(HEIGHT_RATIO + 0.05);
+      expect(scale.sy / scale.sx, m.name).toBeGreaterThanOrEqual(MIN_STRETCH - 1e-9);
+      expect(scale.sy / scale.sx, m.name).toBeLessThanOrEqual(MAX_STRETCH + 1e-9);
     }
     console.log(rows.join("\n"));
   });
 
-  it("gives every civic building its own geometry", () => {
-    const civic = panaji.monuments.filter((m) => m.kind === "institution");
-    const keys = new Set(civic.map((m) => monumentGeometryKey(m.id, m.kind)));
-    expect(keys.size).toBe(civic.length);
-    const shapes = new Set(civic.map((m) => createHash("sha256").update(Buffer.from((createMonumentGeometryFor(m.id, m.kind).getAttribute("position").array as Float32Array).buffer)).digest("hex")));
-    expect(shapes.size).toBe(civic.length);
+  it("gives every landmark its own model", () => {
+    const keys = new Set(panaji.monuments.map((m) => monumentGeometryKey(m.id, m.kind)));
+    expect(keys.size).toBe(panaji.monuments.length);
+    for (const m of panaji.monuments) expect(LANDMARK_IDS, m.name).toContain(m.id);
+    const shapes = new Set(panaji.monuments.map((m) => createHash("sha256").update(Buffer.from((createMonumentGeometryFor(m.id, m.kind).getAttribute("position").array as Float32Array).buffer)).digest("hex")));
+    expect(shapes.size).toBe(panaji.monuments.length);
   });
 
   it("shows no date that is not in a cited fact", () => {

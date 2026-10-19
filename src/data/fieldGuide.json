@@ -58,5 +58,12 @@
     "name": "Little Cormorant",
     "home": "breakwater",
     "line": "In this game, it turns up around your breakwaters."
+  },
+  {
+    "id": "humpback_dolphin",
+    "name": "Humpback Dolphin",
+    "home": "water",
+    "line": "In this game, it swims in the open water now and then, whatever you build.",
+    "fact": "dolphin-near-shore"
   }
 ]
