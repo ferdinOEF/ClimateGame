@@ -141,7 +141,13 @@ const PICK = `(style, seed) => {
 
 /** Plays a storm through as a player who clicks to hurry it, then reads and closes the result cards. Returns false at the final card. */
 async function weatherStorm(page: Page, style: string, ruinsBefore: number): Promise<{ ruins: number; final: boolean }> {
+  // A storm and its cards wait while Help, ☰ or the Field Guide is open (Section 16 B5): a player shuts them.
+  const layerOpen = (): Promise<boolean> => page.evaluate("[...document.querySelectorAll('.help-card, .hud-panel-settings .hud-panel-body, .field-guide')].some((el) => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' && !el.hidden && !el.closest('[hidden]'))") as Promise<boolean>;
   for (let k = 0; k < 800 && !(await cardsOpen(page)) && !(await finalCard(page)); k++) {
+    if (await layerOpen()) {
+      console.log(`INFO [${tag}] ${style}: a layer was open during the storm; Esc shuts it and the storm goes on`);
+      await page.keyboard.press("Escape");
+    }
     if (await storming(page)) await page.mouse.click(W * 0.5, H * 0.55);
     await page.waitForTimeout(250);
   }
