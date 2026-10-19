@@ -1714,3 +1714,51 @@ Branch `section-17c-hide-maya`, off master `e1f7141` (tag `pre-section-17c`; `ba
 ## Section 17b, the browser gate finished (on master `bed425a`, after Section 17c)
 
 `tools/section17bChecks.ts` now passes at all four sizes: 1280x600, 1366x768 and 2560x1440 (this run) and 1920x1080 (the earlier run), with zero console errors. At each: the menu (axe: no serious or critical violations), the start popup, the top bar, a build menu, the objective card, Help, result cards 1 and 2, the coming-up card ("Monsoon flood in 2040, 10 years away"), the final card, and the Tutorial's start popup, cards and result card ("Tutorial, Cyclone in 2028"); every visible text, aria-label and title is free of dots and hyphens between words, and the reworded lines fit their boxes. Screenshots in `docs/qa/section17b/`.
+
+# Section 18 — a model for each landmark, humpback dolphins
+
+Branch `section-18-landmarks-dolphins`, off master `0ec1c12` (tag `pre-section-18`; `backup/pre-section-18` on GitHub). Visuals only: no hazard, balance, map, scoring or flow change. Headless Chromium with software GL. Evidence in `docs/qa/section18/`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean; 570 tests pass, 6 skipped. New: four dolphin tests in `wildlife` (pods of 2 to 5 only on water, about one surfacing in six a leap; a narrow channel kept to, leaps included; none where there is no water; calm motion: only dolphins, two or three, no leaps; storms and Low). Updated with reasons: `cityHill` (the new scale rule: inside the hex, filling it, up to about twice the tallest House, never stretched; every landmark its own model), `facts` (the dolphin facts belong to the Field Guide and the Sources screen, never a build), `monuments` (comment). |
+| Section 18 checks (`tools/section18Shots.ts`) | All pass at 1366x768, 1920x1080 and 2560x1440, zero console errors: 16 landmarks on the board, each its own model; Maya hidden; hovering the church's model names it; the Field Guide's dolphin page carries its cited fact and never says a defence brings dolphins; axe on the start popup, the board and the Field Guide. |
+| Dolphins in the game (`tools/dolphinFrames.ts`) | All pass: a pod starts in the Mandovi off the old city; a roll and a leap filmed at default zoom and close up; every visible dolphin over 2,000 frames is on open water; no console errors. |
+| axe-core | No serious or critical violations on the start popup, the board, the Field Guide. The Field Guide's "Not seen yet" lines failed colour contrast (4.0:1, older than this section): raised to pass. |
+| Colour | Grayscale and deuteranopia copies of the 1920 board (`board-after-1920x1080-gray.jpg`, `-deut.jpg`). |
+| Bots | Not run: no mechanic or balance touched. |
+| Preview equals resolution | `tests/preview.test.ts` passes (in `npm run test`). |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**Triangles** (`landmark-triangles.txt`): 14,464 for the sixteen landmarks (the old models about 5,900), from 296 (the museum) to 1,548 (Campal Garden); seven name decals add 14. A dolphin is 584; at most five are out, only during their moment.
+
+**Frame time** (`perf-before.txt`, `perf-after.txt`; the full board at 1920x1080, each storm held at its peak; software GL, so absolute numbers mean little):
+
+| Quality, state | Draw calls before → after | Triangles before → after | p95 frame ms before → after |
+|---|---|---|---|
+| Low, calm | 52 → 59 | 386,790 → 394,572 | 883 → 983 |
+| Low, cyclone | 42 → 48 | 386,222 → 392,206 | 700 → 550 |
+| Medium, calm | 53 → 60 | 389,990 → 397,772 | 917 → 717 |
+| Medium, cyclone | 42 → 48 | 410,394 → 416,378 | 700 → 600 |
+| High, calm | 53 → 60 | 389,990 → 397,772 | 1,550 → 550 |
+| High, cyclone | 42 → 48 | 425,858 → 431,842 | 1,083 → 1,083 |
+
+Seven more draw calls (one per decal) and about 7,800 more triangles (2% of the frame); the software-GL frame times move within their noise. The before run's leak check was cut short by a source edit (noted in the file).
+
+**Screenshots** (`docs/qa/section18/`): the landmarks contact sheet (`landmarks-contact-sheet.jpg`: each drawing beside the model in a three quarter view at 1920x1080), each landmark also from the game's own camera (`landmark-NN-<id>.jpg`); the board at the default zoom before and after (`board-before-*`, `board-after-*`, 1366x768 and 1920x1080, and after at 2560x1440); the first frame, hovering the church, the Field Guide's dolphin page at all three sizes; dolphins (`dolphins/`): a roll, a leap and its splash, at default zoom and close.
+
+**Changes from the drawings, and why:**
+- The church faces west-south-west, not due west: turned 30 degrees back towards the camera so its twin towers read side by side (due west, they line up one behind the other from the game's camera). The owner's call.
+- The game's camera looks from the south at 58 degrees, the drawings from the south east at a lower angle: the sheet's renders are taken nearer the drawings' angle; the per-landmark game-angle shots show what a player sees.
+- Lettering is small: it reads close up (the contact sheet), not at the default zoom, where the board's labels carry the names.
+- The market, the Kala Academy and Sharada Mandir stay under twice the height of the houses beside them: they are low buildings, and drawing them taller would stretch them out of their drawings.
+
+**Independent review: 0 BLOCKER, 5 MAJOR, 7 MINOR, 4 NIT.** All MAJOR fixed:
+- windows and arches on faces of off-centre blocks faced into the walls (the Polytechnic, both Don Bosco schools, Dhempe, Sharada's arches, the market's back shed): `openings()` now takes the face's direction;
+- the church's nave roof was turned about the origin and stood beside the facade: now on the nave;
+- the mosque's top band covered the flat roof in green and flickered: now a green parapet round a white roof;
+- the museum's eave hid its name from the game's camera: the eave stops at the front wall;
+- Miramar's sea and sand (and Campal's path) passed the hex's edges: cut to the hexagon.
+MINOR fixed: Sharada's skylights sat inside the roof; `monumentGeometryKey` built every model just to test it; the dolphins' water tiles were rebuilt from strings every second (now worked out once); a leap could carry a dolphin past the checked water (now checked, with a narrow channel test); the dolphin fact said "stay" where the source says "prefer" (now "usually stay … in shallow water"); the dolphins were too pink (paler now, with a clearer beak); the mosque's three quarter shot was hidden by a hill and the cone's arrow crossed two close ups. NIT fixed: comments; the Field Guide's header no longer says creatures "visit what you build". Reported, not changed: the church's facing (above).
+
+**Sources not opened directly.** The two dolphin sources (Mongabay India, 22 January 2018; Down To Earth, undated) are blocked by this container's network; their claims were checked against their own text as quoted in search results. Open both before release.
