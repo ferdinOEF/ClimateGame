@@ -21,7 +21,7 @@
   "streetMap": "Shows or hides the real Panjim street map under the tiles.",
   "streetMapOpacity": "How strongly the street map shows through: {pct}%.",
   "resilience": "Resilience: how well the city is holding up overall. Storms that get through lower it.",
-  "biodiversity": "Biodiversity: in this game, mangroves, dunes and khazans raise it; concrete and sand mining lower it.",
+  "biodiversity": "Biodiversity: in this game, mangroves, dunes and khazans raise it; concrete lowers it.",
   "carbon": "Carbon: in this game, mangroves, pandanus and khazans store it (plus); concrete, resorts and homes emit it (minus).",
   "food": "Food: in this game, khazans and mangroves feed the city and homes eat. Below zero, the city buys its food in.",
   "population": "Population: the people living in the city's homes.",

@@ -64,3 +64,15 @@ export interface ElementDef {
 
 export const ELEMENT_DEFS: ElementDef[] = elementData as unknown as ElementDef[];
 export const ELEMENT_BY_ID = new Map(ELEMENT_DEFS.map((e) => [e.id, e]));
+
+/**
+ * The defences an objective may suggest (Section 17.2, owner decision): the nature-based ones only. The engineered
+ * ones (seawall, breakwater, small dam) stay buildable, and are never suggested.
+ */
+export const NATURE_BASED = ["dune", "sandy_vegetation", "mangrove", "khazan"] as const;
+
+/**
+ * Elements kept in the data but never offered (Section 17.3): sand mining. Like the coin mechanics, reserved, not
+ * deleted: an old save that holds one still loads and draws it, and it can be demolished; nothing can build one.
+ */
+export const RETIRED_ELEMENTS: ReadonlySet<string> = new Set(["sand_mining"]);

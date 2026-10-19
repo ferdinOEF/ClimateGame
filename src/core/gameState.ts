@@ -1,5 +1,5 @@
 import { type AxialCoord, axialKey } from "./hex";
-import { ELEMENT_BY_ID, type ElementDef } from "./elements";
+import { ELEMENT_BY_ID, RETIRED_ELEMENTS, type ElementDef } from "./elements";
 
 export interface PlacedTile {
   coord: AxialCoord;
@@ -283,7 +283,8 @@ export class GameState {
     if (!tile || tile.scenery || !this.claimed.has(key) || this.elements.has(key) || this.reserved.has(key) || this.unbuildable.has(key)) return [];
     const results: ElementDef[] = [];
     for (const def of ELEMENT_BY_ID.values()) {
-      if (def.validTerrainIds.includes(tile.terrainId) && !this.excludedElements.has(def.id)) results.push(def);
+      // Section 17.3: a retired element (sand mining) is never offered, on any level.
+      if (def.validTerrainIds.includes(tile.terrainId) && !this.excludedElements.has(def.id) && !RETIRED_ELEMENTS.has(def.id)) results.push(def);
     }
     return results;
   }

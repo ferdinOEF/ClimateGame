@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { untilText } from "../src/ui/panjim/clockHud";
 import { floatText } from "../src/app/panjimController";
-import { cardPill } from "../src/ui/panjim/defenceCards";
 import { MAYA, noteIdsFor, notesProgress, refreshSavedNotes } from "../src/core/mayaLines";
 import { discoveryFacts } from "../src/core/facts";
 import { MONEY_ONLY } from "../src/levels/balance";
@@ -13,16 +12,12 @@ describe("Section 13", () => {
     expect(untilText({ builds: 1, storm: "Flood" })).toBe("Flood in 1 build");
   });
 
-  it("the float and the card pill say the model's number plainly", () => {
+  // Section 17.1 (owner decision): the card pill is gone; the float after a build still says the model's number.
+  it("the float says the model's number plainly", () => {
     expect(floatText(3)).toBe("+3 homes safe");
     expect(floatText(1)).toBe("+1 home safe");
     expect(floatText(0)).toBe("+0 homes safe");
     expect(floatText(-2)).toBe("2 more homes at risk");
-    expect(cardPill(8).pill).toBe("Protects 8 homes here");
-    expect(cardPill(0).pill).toBe("Protects 0 homes here");
-    expect(cardPill(0, false).pill).toBe("Saves no homes here");
-    expect(cardPill(-1, false)).toEqual({ pill: "Puts 1 more home at risk", tone: "bad" });
-    expect(cardPill(null).pill).toBeNull();
   });
 
   it("the Field Guide's total counts only notes the level can give", () => {

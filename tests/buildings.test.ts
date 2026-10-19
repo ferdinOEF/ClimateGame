@@ -23,10 +23,11 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     expect(coastOptions).not.toContain("beachside_resort");
   });
 
-  it("river offers exactly Small Dam and Sand Mining, nothing else", () => {
+  // Section 17.3: sand mining is retired (kept in the data, never offered), so a river offers the small dam alone.
+  it("river offers exactly Small Dam, nothing else", () => {
     const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "river" }]);
     const options = state.buildableAt({ q: 0, r: 0 }).map((d) => d.id);
-    expect(options.sort()).toEqual(["sand_mining", "small_dam"]);
+    expect(options.sort()).toEqual(["small_dam"]);
   });
 
   it("house is only buildable on land", () => {

@@ -82,10 +82,10 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
     </section>
 
     <section class="panjim-help-item">
-      ${picture("help-cards.jpg", "The build cards for a beach tile, each with how many homes it protects")}
+      ${picture("help-cards.jpg", "The build cards for a beach tile: each defence's name and what it does")}
       <div>
-        <h3>The numbers on the cards ${RULE}</h3>
-        <p>Each card says how many homes it protects here from the next storm, worked out the way the storm itself is. The biggest comes first.</p>
+        <h3>The cards ${RULE}</h3>
+        <p>Each card is one defence and what it does. Nature-based ones come first (dunes, pandanus, mangroves, khazans), then engineered ones (seawalls, breakwaters, small dams). The objective card suggests nature-based ones.</p>
       </div>
     </section>
 

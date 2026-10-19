@@ -99,7 +99,7 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   await checkWords(page, "tutorial-start", problems);
   await shot("tutorial-2-start");
 
-  // 2. Three builds, each the biggest number on the cards for the open objective.
+  // 2. Three builds, each the model's best for the open objective (the cards show no number; the player reads the lines).
   for (let build = 1; build <= 3; build++) {
     const where = `tutorial-build-${build}`;
     const pick = await bestBuild(page);
@@ -115,7 +115,9 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
     await page.waitForTimeout(700);
     if (build === 1) {
       await waitForMaya(page, LINES.cards, where, problems);
-      if ((await page.locator(".build-popover .build-card-pill.coach-pulse").count()) === 0) problems.push(`[${where}] the cards' "Protects N homes here" is not pointed at`);
+      // Section 17.1: the cards carry no number; Maya points at what each card does.
+      if ((await page.locator(".build-popover .build-card-pill").count()) > 0) problems.push(`[${where}] a card still shows a home count`);
+      if ((await page.locator(".build-popover .build-card-line.coach-pulse").count()) === 0) problems.push(`[${where}] the cards' lines are not pointed at`);
       await checkWords(page, where, problems);
       await shot("tutorial-3-cards");
     }
