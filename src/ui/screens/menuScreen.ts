@@ -13,6 +13,7 @@ import { el, formatScore, starRow } from "./screenHelpers";
 import { menuModel, type MenuButtonSpec } from "./menuModel";
 import { openSources } from "@ui/sourcesScreen";
 import { menuTagline } from "./runWords";
+import { SHOW_PARTNER_CREDITS } from "@services/features";
 
 /**
  * The title screen — the first thing a player sees.
@@ -112,9 +113,18 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
   root.appendChild(menuArt());
   root.appendChild(menuArtCredit());
   root.appendChild(screen);
-  const credits = creditsStrip();
-  root.appendChild(credits);
-  keepCreditsClear(screen, credits);
+  // The partner credits are behind `SHOW_PARTNER_CREDITS` (Section 17b, off by default); without them the way to
+  // the Sources screen is a quiet text link in the bottom corner.
+  if (SHOW_PARTNER_CREDITS) {
+    const credits = creditsStrip();
+    root.appendChild(credits);
+    keepCreditsClear(screen, credits);
+  } else root.appendChild(sourcesLink());
+}
+
+/** "Facts & sources", a small text link in the menu's bottom corner (Section 17b): the Sources screen as before. */
+function sourcesLink(): HTMLElement {
+  return el("button", { className: "menu-sources-link", text: "Facts & sources", on: { click: () => openSources() } });
 }
 
 
@@ -177,7 +187,8 @@ function statTile(label: string, value: string): HTMLElement {
 
 /**
  * The cream strip at the foot of the landing page: who brings the game,
- * and the way to the Sources screen. The logos are the supplied files
+ * and the way to the Sources screen. Shown only with `SHOW_PARTNER_CREDITS`
+ * (Section 17b). The logos are the supplied files
  * (public/branding/), shown at their own proportions and never as links.
  * Only on this screen: never in a level.
  */

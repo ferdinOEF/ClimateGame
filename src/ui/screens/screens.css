@@ -1545,3 +1545,33 @@
   font-size: 10.5px;
   color: var(--rr-ink-dim);
 }
+
+/* --- Section 17b: "Facts & sources" without the partner plate -------- */
+/*
+  With SHOW_PARTNER_CREDITS off (the default) the plate is not drawn; the
+  way to the Sources screen is this small, quiet text link in the bottom
+  right corner. Clear of the centred menu at every desktop size.
+*/
+.menu-sources-link {
+  position: absolute;
+  right: 16px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 2;
+  font: inherit;
+  font-size: 12.5px;
+  color: rgba(251, 238, 217, 0.85);
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-shadow: 0 1px 4px rgba(20, 6, 2, 0.9);
+  cursor: pointer;
+}
+
+.menu-sources-link:hover,
+.menu-sources-link:focus-visible {
+  color: #fbeed9;
+  outline: 2px solid #f4d9a6;
+  outline-offset: 2px;
+}
