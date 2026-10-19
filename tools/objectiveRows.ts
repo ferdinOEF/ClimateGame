@@ -58,6 +58,8 @@ for (const id of process.argv.slice(2).length ? process.argv.slice(2) : ["l01-fi
         r.build({ q, r: rr }, pick.elementId);
       }
       while (!r.finished && !r.landed.has(storm.id)) endYear(r);
+      const outcome = r.outcomes.get(storm.id);
+      if (outcome) console.log(`  - the storm: ${outcome.housesSaved} of ${outcome.housesTotal} homes in its path saved, ${outcome.stars} stars`);
     }
   }
 }
