@@ -31,7 +31,33 @@ const check = (ok: boolean, what: string): void => {
   if (!ok) failures++;
   console.log(`${ok ? "PASS" : "FAIL"} ${what}`);
 };
-const shot = (page: Page, name: string) => page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 82 });
+const DEUTERANOPIA = "0.367322 0.860646 -0.227968 0 0  0.280085 0.672501 0.047413 0 0  -0.011820 0.042940 0.968881 0 0  0 0 0 1 0";
+/** A screenshot; with `copies`, a grayscale and a deuteranopia twin too (the QA gate's key shots). */
+async function shot(page: Page, name: string, copies = false): Promise<void> {
+  await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 82 });
+  if (!copies) return;
+  await page.addStyleTag({ content: "html { filter: grayscale(1) !important; }" });
+  await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}-gray.jpg`), type: "jpeg", quality: 75 });
+  await page.evaluate(`Array.from(document.querySelectorAll("style")).forEach(function (st) { if ((st.textContent || "").indexOf("grayscale(1) !important") >= 0) st.remove(); })`);
+  await page.evaluate(`(function () {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("style", "position:absolute;width:0;height:0"); svg.id = "qa-cvd-svg";
+    svg.innerHTML = '<filter id="qa-cvd"><feColorMatrix type="matrix" values="${DEUTERANOPIA}"/></filter>';
+    document.body.appendChild(svg); document.documentElement.style.filter = "url(#qa-cvd)";
+  })()`);
+  await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}-deut.jpg`), type: "jpeg", quality: 80 });
+  await page.evaluate(`(function () { document.documentElement.style.filter = ""; var s = document.getElementById("qa-cvd-svg"); if (s) s.remove(); })()`);
+}
+
+/** axe-core: no serious or critical violations on what is open now. */
+async function axe(page: Page, label: string): Promise<void> {
+  if (!(await page.evaluate("typeof window.axe !== 'undefined'"))) await page.addScriptTag({ path: path.resolve(ROOT, "node_modules/axe-core/axe.min.js") });
+  const found = (await page.evaluate(`(async () => {
+    const r = await axe.run(document, { resultTypes: ["violations"] });
+    return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id + " x" + v.nodes.length);
+  })()`)) as string[];
+  check(found.length === 0, `axe-core, ${label}: no serious or critical violations${found.length ? `: ${found.join(", ")}` : ""}`);
+}
 
 async function focus(page: Page, p: { x: number; z: number }, steps: number): Promise<void> {
   await page.evaluate(`window.__focusOnForTest(${p.x}, ${p.z}, false)`);
@@ -97,7 +123,8 @@ await page.waitForTimeout(3000);
 const heatYear = await risk(page);
 check(heatYear.on && heatYear.hot === heatYear.homes, `a heat year (${heatYear.year}): Show risk is on by itself, heat and top bar agree (${heatYear.hot}, ${heatYear.homes})`);
 await focus(page, world(-3, 18), 4);
-await shot(page, "risk-heat-year");
+await shot(page, "risk-heat-year", true);
+await axe(page, "the board in a heat year, Show risk on");
 
 // ---- 21.3: the 2030 cyclone, frame by frame -----------------------------------
 await page.evaluate(`window.__panjimScenarioForTest("storm-2")`);
@@ -130,6 +157,7 @@ async function afterStorm(name: string, frame: { x: number; z: number }, steps: 
   const id = (await page.evaluate("[...window.__panjimForTest.run.landed].pop()")) as string;
   const outcome = (await page.evaluate(`(() => { const o = window.__panjimForTest.run.outcomes.get(${JSON.stringify(id)}); return { damaged: o.housesDamaged, saved: o.housesSaved, total: o.housesTotal }; })()`)) as { damaged: number; saved: number; total: number };
   const ruined = (await page.evaluate("window.__ruinsForTest().ruined")) as number;
+  if (name === "2030") await axe(page, "the 2030 result card");
   check(!!card && card.total - card.saved === outcome.total - outcome.saved && ruined - ruinsBefore === outcome.damaged, `${name}: the card reads ${card?.saved} of ${card?.total} homes saved; ${ruined - ruinsBefore} new ruins on the board, the ${outcome.damaged} homes the storm destroyed (${ruined} in all)`);
   // The cards shut, the board behind them.
   for (let k = 0; k < 4 && (await page.locator(".result-next").isVisible().catch(() => false)); k++) {
@@ -138,7 +166,7 @@ async function afterStorm(name: string, frame: { x: number; z: number }, steps: 
   }
   await page.waitForTimeout(1500);
   await focus(page, frame, steps);
-  await shot(page, `ruins-${name}`);
+  await shot(page, `ruins-${name}`, name === "2050");
   return ruined;
 }
 
