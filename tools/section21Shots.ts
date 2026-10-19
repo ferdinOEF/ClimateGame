@@ -8,7 +8,7 @@
  *   - each storm: frames as its homes drop into ruins (2030 only, every
  *     second of storm time); after it, the ruins round its path, and the
  *     ruins on the board equal the homes lost on the result card;
- *   - after 2050: a damaged landmark close up.
+ *   - a damaged landmark close up (after 2030, 2040 or a partly defended 2050) and a destroyed one.
  * Usage: npx tsx tools/section21Shots.ts <width> <height> [outDir]. Exits 1 if a check fails.
  */
 import { chromium, type Page } from "playwright";
@@ -185,6 +185,9 @@ check(floodRuins[0] === 0 && floodRuins[floodRuins.length - 1] > 10 && floodRuin
 await page.evaluate(`window.__panjimForTest.host.challengeFx.freeze(null)`);
 ruins = await afterStorm("2040", world(14, 18), 3, ruins);
 await closeUp(1, await damagedNow());
+// 2050 partly defended (eight defences beside the homes at risk, as a player answering the warning): undefended,
+// every landmark ends destroyed; defended in part, some are only damaged (Section 21.3's two looks).
+await page.evaluate(`window.__panjimScenarioForTest("defend-risk")`).catch(() => undefined);
 await page.evaluate(`window.__panjimScenarioForTest("to-results")`).catch(() => undefined);
 ruins = await afterStorm("2050", world(4, 20), 3, ruins);
 const landmarks = await damagedNow();

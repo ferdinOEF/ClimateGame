@@ -25,6 +25,7 @@ import { resolveChallenge, ZoneIndex } from "../../src/core/zones";
 import { computeCombos } from "../../src/core/combos";
 import { computeWater, damageAt, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE } from "../../src/core/hazardModel";
 import { HEAT_LEAD_YEARS } from "../../src/core/exposure";
+import { landmarkDamageSoFar } from "../../src/core/landmarkDamage";
 import type { ChallengeKind, ScheduledChallenge } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
 import { hashSeed, Rng } from "../../src/core/rng";
@@ -757,6 +758,19 @@ export function runBot(persona: Persona, seed: string, level: LevelDef = BOT_LEV
   const player = new Player(persona, seed, level);
   PLAY[persona](player);
   return player.result();
+}
+
+/** Each landmark's damage after each storm (Section 21.3: 1 damaged, 2 destroyed, as the board draws them), for a play style's run. */
+export function landmarkLevels(persona: Persona, seed: string): { storm: string; damaged: string[]; destroyed: string[] }[] {
+  const player = new Player(persona, seed);
+  PLAY[persona](player);
+  const records: { depth: ReadonlyMap<string, number>; wind?: ReadonlyMap<string, number> }[] = [];
+  return player.run.schedule.map((c) => {
+    const record = player.run.stormRecords.get(c.id);
+    if (record) records.push(record);
+    const levels = MAP.monuments.map((m) => ({ name: m.name, level: landmarkDamageSoFar(records, `${m.q},${m.r}`) }));
+    return { storm: c.id, damaged: levels.filter((l) => l.level === 1).map((l) => l.name), destroyed: levels.filter((l) => l.level === 2).map((l) => l.name) };
+  });
 }
 
 export const SEEDS = Array.from({ length: 20 }, (_, i) => `bot-seed-${i + 1}`);
