@@ -1774,9 +1774,9 @@ Branch `section-19-map-east-edge`, off master `9758162` (Section 18's merge; tag
 |---|---|
 | `tsc --noEmit`, `npm run test`, `npm run build` | Clean; 573 tests pass, 6 skipped. New: three east edge tests in `scenery` (scenery on all its dry tiles and nowhere else east of the line, 121 on rows 5 to 36; Ribandar out, Merces and St Cruz and the flood's source in; the note). Updated, each with its reason in the test: `panajiHandEdits` (three rounds, 204 edits, 256 unplayable), `forecastCone` and `phaseResult` (the first cyclone takes 8, -7,24 is beach), `phaseObjectives` (the dunes save all 8), `section4` (the plain finale plan: 9% each, 12% mean, from 10% and 15%), `panjimBots` (Casual 60 to 82%, from 80%). The rules for scenery (no build, never counted in a storm, cone, heat, area or result; drawn wet) run over every stored tile, so they cover the east edge. |
 | `npm run mapgen:panaji` | Clean. Terrain equals the owner's file tile for tile; master and the branch differ by exactly the 34 edits; no place moved. |
-| Section 19 checks (`tools/section19Shots.ts`) | SHOTS_RESULT |
-| `npm run walkthrough`, `test:labels` | WALK_RESULT |
-| `test:layout`, `test:maya` (Maya switched on, `VITE_SHOW_MAYA=true`; she is hidden as shipped) | LAYOUT_RESULT |
+| Section 19 checks (`tools/section19Shots.ts`) | All pass at 1366x768 and 1920x1080, zero console errors: a click on the east edge shows only "Outside Panjim, not part of this game"; Merces stays playable; the north bank keeps its note; the 2026 and 2031 cones are on the map; axe on the opening board. |
+| `npm run walkthrough`, `test:labels` | Walkthrough clean, no console errors (the Tutorial start to finish, Play Panjim with 16 monuments). Labels: 49 of 49 views, at most 2.7 ms a frame. |
+| `test:layout`, `test:maya` (Maya switched on, `VITE_SHOW_MAYA=true`; she is hidden as shipped) | 140 of 140 layouts; `test:maya` passes, zero console errors. |
 | Preview equals resolution | `tests/exposure.test.ts`, `tests/preview.test.ts` pass. |
 | Bots, 20 seeds | See below (`bots-before.md`, `bots-after.md`). |
 | Cross-browser, real GPU | Not run: Chromium with software GL only. |
@@ -1814,7 +1814,14 @@ The first cyclone still comes ashore at Miramar and takes the home beside Sharad
 
 **Bots, 20 seeds:**
 
-BOTS_TABLE
+| Archetype | Won before → after | Houses saved before → after (min to max after) | Stars per storm, mean, after |
+|---|---|---|---|
+| Smart | 17/20 (85%) → 16/20 (80%) | 88% → 91% (69% to 97%) | 2.6 / 3.0 / 3.0 |
+| Casual | 0/20 → 0/20 | 71% → 70% (64% to 81%) | 1.0 / 3.0 / 2.0 |
+| Greedy | 0/20 → 0/20 | 24% → 25% (11% to 57%) | 1.1 / 1.1 / 1.1 |
+| Far | 0/20 → 0/20 | 0% → 0% | 1.0 / 1.0 / 1.0 |
+
+Greedy never beats Casual. Smart's lowest seed (seed 12) saves 3 of the first cyclone's 8.
 
 **Screenshots** (1366x768 and 1920x1080): the opening view; the east edge close up (gray and deuteranopia copies at 1920); Miramar beach with the 2026 cone; the 2031 flood cone, whole and framed on the Mandovi channel; the whole board before and after in the game (`board-whole-before-1920x1080.jpg`, `board-whole-after-1920x1080.jpg`) and in the generator's class map (`board-before-after.jpg`).
 
