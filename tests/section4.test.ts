@@ -122,16 +122,19 @@ describe("the finale is survivable", () => {
   // (113, 112 and 70 undefended at the three landfalls, from 94, 90 and 45), so this plain nearest-tile plan cuts
   // less: 14%, 14% and 23%. Players who read the forecast do better than before (Smart saves 88% of the homes in
   // the storms' paths, from 79%), so the mechanics were not retuned for it. Pinned: at least 10% each, 15% mean.
-  it("loses fewer houses when defended (at least 10% at each landfall, at least 15% on average)", () => {
+  // Section 19: the east edge is out of Panjim (owner decision) and its homes no longer count (108, 106 and 67
+  // undefended); the plain plan's 10 builds cut 9%, 10% and 19% (mean 13%). Smart still saves most homes in the
+  // storms' paths (docs/qa/section19/bots.md), so the mechanics were not retuned. Pinned: 9% each, 12% mean.
+  it("loses fewer houses when defended (at least 9% at each landfall, at least 12% on average)", () => {
     for (const row of rows) {
       expect(row.undefended, `${row.fraction}`).toBeGreaterThan(20);
       expect(row.builds).toBe(BUILDS);
       const fewer = 1 - row.defended / row.undefended;
-      expect(fewer, JSON.stringify(row)).toBeGreaterThanOrEqual(0.1);
+      expect(fewer, JSON.stringify(row)).toBeGreaterThanOrEqual(0.09);
       expect(fewer, JSON.stringify(row)).toBeLessThanOrEqual(0.5);
     }
     const mean = rows.reduce((s, r) => s + (1 - r.defended / r.undefended), 0) / rows.length;
-    expect(mean).toBeGreaterThanOrEqual(0.15);
+    expect(mean).toBeGreaterThanOrEqual(0.12);
     expect(mean).toBeLessThanOrEqual(0.45);
   });
 });

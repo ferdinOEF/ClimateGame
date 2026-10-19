@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { passYear } from "./helpers/passYear";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { mapById } from "../src/levels/levelMap";
@@ -65,5 +66,42 @@ describe("the north bank (scenery)", () => {
 
   it("is in no zone", () => {
     for (const zone of MAP.zones) for (const [q, r] of zone.tiles) expect(NORTH.has(`${q},${r}`), `${zone.id} ${q},${r}`).toBe(false);
+  });
+});
+
+/**
+ * Section 19.2 (owner decision): the east edge, east of world x = 52.3 (q + r/2 >= 30.2), is out of Panjim the
+ * same way. Its land, beach and estuary are scenery (the rules above run over every stored tile, so they cover it);
+ * its river and sea stay playable water. Merces and St Cruz stay in the game; Ribandar does not.
+ */
+describe("the east edge (scenery)", () => {
+  const EAST = MAP.tiles.filter((t) => t.coord.q + t.coord.r / 2 >= 30.2);
+  it("is scenery on all its land, beach and estuary, and nowhere else east of the line", () => {
+    for (const t of EAST) {
+      const dry = ["land", "beach", "estuary"].includes(t.terrainId);
+      expect(!!t.scenery, `${t.coord.q},${t.coord.r} ${t.terrainId}`).toBe(dry);
+    }
+    expect(EAST.filter((t) => t.scenery && t.coord.r >= 4)).toHaveLength(121);
+    expect(MAP.unplayableEastFrom).toBe(30.2);
+  });
+
+  it("takes Ribandar out and keeps Merces and St Cruz, their homes and the flood's source in the game", () => {
+    const place = (name: string) => MAP.localities.find((l) => l.name === name)!;
+    for (const [name, out] of [["Ribandar", true], ["Merces", false], ["St Cruz", false]] as const) {
+      const { q, r } = place(name);
+      expect(NORTH.has(`${q},${r}`), name).toBe(out);
+    }
+    const sources = (BOT_LEVEL.climate as { floodSource?: string[] }).floodSource ?? [];
+    expect(sources.length).toBeGreaterThan(0);
+    for (const key of sources) {
+      const tile = MAP.tiles.find((t) => `${t.coord.q},${t.coord.r}` === key)!;
+      expect(tile.terrainId, key).toBe("river");
+      expect(tile.scenery, key).toBeUndefined();
+    }
+  });
+
+  it("says so on a click, in words with no dots or hyphens between them", () => {
+    const source = readFileSync("src/app/gameSession.ts", "utf8");
+    expect(source).toContain('"Outside Panjim, not part of this game"');
   });
 });

@@ -18,10 +18,12 @@ describe("Panjim bots, 25 builds", () => {
     for (const run of far) expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.02);
   });
 
-  it("building by eye on what the forecast shows saves more than half the homes (Casual 60-80%)", () => {
+  // Section 19: with the east edge out of Panjim (owner decision) fewer homes are in the storms' paths, and one
+  // seed of Casual saves 81%: the band is 60-82%.
+  it("building by eye on what the forecast shows saves more than half the homes (Casual 60-82%)", () => {
     for (const run of casual) {
       expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.6);
-      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.8);
+      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.82);
     }
   });
 

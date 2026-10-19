@@ -1249,10 +1249,18 @@ function applyHandEdits(edits: HandEdits, meta: BasemapMeta, cells: Cell[], monu
 }
 
 /**
- * The north bank of the Mandovi (Section 11.4): every land, beach or estuary
- * tile reachable from the top two rows through land, beach and estuary. River
- * and sea stop it. The hand-edits file stores the result as data; this is the
- * rule it is checked against.
+ * The east edge (Section 19.2, owner decision): Ribandar and the land east of
+ * world x = 52.3, out of Panjim. In axial terms q + r/2 >= 30.2. Only its land,
+ * beach and estuary tiles; river and sea stay playable water.
+ */
+const EAST_EDGE_Q_PLUS_HALF_R = 30.2;
+
+/**
+ * The tiles kept as scenery: the north bank of the Mandovi (Section 11.4),
+ * every land, beach or estuary tile reachable from the top two rows through
+ * land, beach and estuary (river and sea stop it), and the east edge's land,
+ * beach and estuary (Section 19.2). The hand-edits file stores the result as
+ * data; this is the rule it is checked against.
  */
 function unplayableTiles(cells: Cell[]): Set<string> {
   const dry = new Set(["land", "beach", "estuary"]);
@@ -1270,6 +1278,7 @@ function unplayableTiles(cells: Cell[]): Set<string> {
       }
     }
   }
+  for (const cell of cells) if (dry.has(cell.terrainId) && cell.coord.q + cell.coord.r / 2 >= EAST_EDGE_Q_PLUS_HALF_R) seen.add(axialKey(cell.coord));
   return seen;
 }
 
@@ -1601,8 +1610,10 @@ async function main(): Promise<void> {
   const unplayable = unplayableTiles(cells);
   const stored = new Set(handEdits.unplayable.map(([q, r]) => `${q},${r}`));
   const unplayableDiff = [...unplayable].filter((key) => !stored.has(key)).concat([...stored].filter((key) => !unplayable.has(key)));
+  // MAPGEN_SHOW_UNPLAYABLE=1 prints what the rules give, to copy into the hand-edits file after a map edit.
+  if (unplayableDiff.length > 0 && process.env.MAPGEN_SHOW_UNPLAYABLE) console.log(`UNPLAYABLE_RULE ${JSON.stringify([...unplayable].map((key) => key.split(",").map(Number)))}`);
   if (unplayableDiff.length > 0) throw new Error(`the stored unplayable tiles differ from the rule at ${unplayableDiff.join(" ")}`);
-  console.log(`unplayable (north of the Mandovi): ${unplayable.size} tiles`);
+  console.log(`unplayable (north of the Mandovi and the east edge): ${unplayable.size} tiles`);
 
   const { demMeta, byIndex: elevation } = sampleElevation(cells);
   const landHeights = cells.flatMap((cell, i) => (cell.terrainId === "land" ? [elevation.get(i)!] : [])).sort((a, b) => a - b);
@@ -1745,8 +1756,10 @@ async function main(): Promise<void> {
     // The board skirt: west of the board from this row south is the open Arabian Sea (the
     // Dona Paula headland the owner added goes out only as far as its tip).
     skirtOpenSeaWestFromRow: 10,
-    // North of the Mandovi: on the board as scenery, not part of the game (Section 11.4).
+    // North of the Mandovi (Section 11.4) and the east edge (Section 19.2): on the board as scenery, not part of the game.
     unplayable: [...unplayable].map((key) => key.split(",").map(Number) as [number, number]).sort((a, b) => a[1] - b[1] || a[0] - b[0]),
+    // Where the east edge begins (q + r/2), so a click there can say so.
+    unplayableEastFrom: EAST_EDGE_Q_PLUS_HALF_R,
     // Major roads and bridges, read from the OSM picture (see findRoads).
     roads: roads.map((coord) => [coord.q, coord.r]),
     bridges: bridges.map((coord) => [coord.q, coord.r]),

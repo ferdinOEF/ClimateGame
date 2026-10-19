@@ -84,8 +84,8 @@ describe("the result cards' numbers", () => {
     const run = newRun("panjim", BOT_LEVEL);
     const challenge = run.schedule[0];
     const area = run.areas.get(challenge.id)!;
-    // Section 12: the wind tips 8,7 at the river mouth too.
-    expect(area.length).toBe(9);
+    // Section 12: the wind tips 8,7 at the river mouth too. Section 19: 8, the home at -7,24 is beach now.
+    expect(area.length).toBe(8);
     play(run, true);
     const result = phaseResult(challenge, run.stormRecords.get(challenge.id)!, area, PLACES, run.phaseBuilds.get(challenge.id) ?? []);
     // Section 17b (owner decision): no dots or hyphens between words in player-facing text.

@@ -3,20 +3,27 @@ import edits from "../tools/mapgen/panaji-hand-edits.json";
 import panaji from "../src/data/maps/panaji.json";
 
 /**
- * Section 11 and Section 16: the owner's hand edits to the Panaji board are a
+ * Section 11, 16 and 19: the owner's hand edits to the Panaji board are a
  * layer the generator applies after reading OpenStreetMap
  * (tools/mapgen/buildPanajiMap.ts), in order, so regenerating can never lose
- * them. Two rounds of 85: Section 11's, then Section 16's (which changes 15,7
- * and 9,22 again). Every edit must be in the shipped map: a tile's last edit.
+ * them. Two rounds of 85, Section 11's then Section 16's (which changes 15,7
+ * and 9,22 again), then Section 19's 34 (13 of them on tiles an earlier round
+ * changed). Every edit must be in the shipped map: a tile's last edit.
  */
 const tiles = new Map(panaji.tiles.map((t) => [`${t.q},${t.r}`, t]));
 const keyOf = (entry: string): string => entry.split(",").slice(0, 2).join(",");
 const ROUND_1 = edits.tiles.slice(0, 85);
-const ROUND_2 = edits.tiles.slice(85);
+const ROUND_2 = edits.tiles.slice(85, 170);
+const ROUND_3 = edits.tiles.slice(170);
 
 describe("the Panaji hand edits", () => {
-  it("holds the owner's two rounds of 85 tile edits, each tile once in each round", () => {
-    expect(edits.tiles).toHaveLength(170);
+  it("holds the owner's rounds of tile edits (85, 85 and 34), each tile once in each round", () => {
+    expect(edits.tiles).toHaveLength(204);
+    expect(ROUND_3).toHaveLength(34);
+    expect(new Set(ROUND_3.map(keyOf)).size).toBe(34);
+    // Section 19's round as the owner's map editor gave it (docs/reference/panaji_owner_edits.json).
+    expect(ROUND_3[0]).toBe("22,1,estuary>river");
+    expect(ROUND_3[33]).toBe("9,26,river>estuary");
     expect(new Set(ROUND_1.map(keyOf)).size).toBe(85);
     expect(new Set(ROUND_2.map(keyOf)).size).toBe(85);
     // The second round's first and last edits, as the owner gave them.
@@ -29,11 +36,16 @@ describe("the Panaji hand edits", () => {
     const again = ROUND_2.filter((entry) => after1.has(keyOf(entry)));
     expect(again.sort()).toEqual(["15,7,land>river", "9,22,river>estuary"]);
     for (const entry of again) expect(entry.split(",")[2].split(">")[0], entry).toBe(after1.get(keyOf(entry)));
+    // Round 3 starts from what the first two left.
+    const after2 = new Map([...ROUND_1, ...ROUND_2].map((entry) => [keyOf(entry), entry.split(",")[2].split(">")[1]]));
+    const again3 = ROUND_3.filter((entry) => after2.has(keyOf(entry)));
+    expect(again3).toHaveLength(13);
+    for (const entry of again3) expect(entry.split(",")[2].split(">")[0], entry).toBe(after2.get(keyOf(entry)));
   });
 
   it("every tile edit is in panaji.json (a tile's last edit)", () => {
     const last = new Map(edits.tiles.map((entry) => [keyOf(entry), entry.split(",")[2].split(">")[1]]));
-    expect(last.size).toBe(168);
+    expect(last.size).toBe(189);
     for (const [key, to] of last) expect(tiles.get(key)?.terrainId, key).toBe(to);
   });
 
@@ -68,10 +80,19 @@ describe("the Panaji hand edits", () => {
     }
   });
 
-  it("keeps the north bank as the stored unplayable tiles: 148, Ribandar not among them", () => {
+  // Section 19.2 (owner decision): the east edge, Ribandar with it, is out of Panjim too. The north bank lost 14
+  // tiles to the owner's new river and gained 23,1 (now estuary): 131; the east edge adds 121 more, rows 5 to 36
+  // (its 4 tiles on row 0 were north bank already). Merces and St Cruz stay in the game; river and sea stay water.
+  it("keeps the north bank and the east edge as the stored unplayable tiles: 256, Ribandar among them", () => {
     expect(panaji.unplayable).toEqual(edits.unplayable);
-    expect(edits.unplayable).toHaveLength(148);
-    expect(edits.unplayable.some(([q, r]) => q === 30 && r === 5)).toBe(false);
+    expect(edits.unplayable).toHaveLength(256);
+    const east = edits.unplayable.filter(([q, r]) => q + r / 2 >= 30.2);
+    expect(east).toHaveLength(125);
+    expect(east.filter(([, r]) => r >= 4)).toHaveLength(121);
+    expect(edits.unplayable.some(([q, r]) => q === 30 && r === 5)).toBe(true);
+    expect(edits.unplayable.some(([q, r]) => (q === 19 && r === 16) || (q === 13 && r === 22))).toBe(false);
+    for (const t of panaji.tiles) if (t.q + t.r / 2 >= 30.2 && ["land", "beach", "estuary"].includes(t.terrainId)) expect(edits.unplayable.some(([q, r]) => q === t.q && r === t.r), `${t.q},${t.r}`).toBe(true);
+    for (const [q, r] of [[30, 4], [31, 4], [32, 4]]) expect(tiles.get(`${q},${r}`)?.terrainId).toBe("river");
     for (const [q, r] of edits.unplayable) expect(["land", "beach", "estuary"]).toContain(tiles.get(`${q},${r}`)?.terrainId);
   });
 
