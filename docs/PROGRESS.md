@@ -8802,7 +8802,7 @@ Owner decisions. Merged on the owner's request before the full browser gate fini
 
 Owner decision. Maya and her bubbles do not appear in the Panjim game, the start popup, the Tutorial or the result cards; ☰ has no Maya item and M does nothing. Her code and art (`maya.ts`, `mayaArt.ts`) are untouched, behind `SHOW_MAYA` (`VITE_SHOW_MAYA`, off). Help, Sources and the Field Guide no longer name her (the Field Guide shows its species, without her notes). CLAUDE.md's Maya rule now says she is hidden.
 
-## Section 18 — a model for each landmark, humpback dolphins — DONE
+## Section 18 — a model for each landmark, humpback dolphins — DONE (QA in docs/QA_REPORT.md)
 
 Visuals only: no hazard, balance, map, scoring or flow change. Target look: the owner's approved sheet, `docs/reference/landmarks_approved.png`.
 

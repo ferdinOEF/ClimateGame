@@ -1728,7 +1728,7 @@ Branch `section-18-landmarks-dolphins`, off master `0ec1c12` (tag `pre-section-1
 | Colour | Grayscale and deuteranopia copies of the 1920 board (`board-after-1920x1080-gray.jpg`, `-deut.jpg`). |
 | `npm run walkthrough` | Clean, no console errors: menu, the Tutorial start to finish, Play Panjim with 16 monuments and 30 place labels. |
 | `npm run test:labels` | 49 of 49 views; label layer at most 3.8 ms a frame. |
-| `npm run test:layout`, `npm run test:maya` | As shipped (Maya hidden, Section 17c) every check fails on "Maya is not on screen", by design. Run with Maya switched on (`VITE_SHOW_MAYA=true`): LAYOUT_RESULT. |
+| `npm run test:layout`, `npm run test:maya` | As shipped (Maya hidden, Section 17c) every check fails on "Maya is not on screen", by design. Run with Maya switched on (`VITE_SHOW_MAYA=true`): 140 of 140 layouts, and `test:maya` passes with zero console errors: her code works unchanged beside the new landmarks. |
 | Bots | Not run: no mechanic or balance touched. |
 | Preview equals resolution | `tests/preview.test.ts` passes (in `npm run test`). |
 | Cross-browser, real GPU | Not run: Chromium with software GL only. |
