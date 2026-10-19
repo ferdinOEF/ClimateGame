@@ -2449,7 +2449,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const coord = hit && hit.instanceId !== undefined && !name ? terrain.coordForHit(hit.object, hit.instanceId) : null;
       const buildable = coord && !panjim?.isBusy && !overlayOpen() && state.buildableAt(coord).length > 0;
       tileHover.show(buildable ? coord : null, coord ? terrain.heightAt(coord) : 0);
-      // Section 16 B6: a pointer over a tile that can be built on (never the north bank: it is scenery).
+      // Section 16 B6: a pointer over a tile that can be built on (never the north bank or the east edge: they are scenery).
       renderer.domElement.style.cursor = buildable ? "pointer" : "";
     }
   };

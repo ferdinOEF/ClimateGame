@@ -202,7 +202,9 @@ function fromFile(file: unknown): GameMap {
     focus: { q: data.focus.q, r: data.focus.r },
     landmarks: data.landmarks ?? [],
     monuments: data.monuments ?? [],
-    localities: data.localities ?? [],
+    // A locality on scenery is out of the game (Section 19.2: Ribandar, east of the line): no label, and never the
+    // nearest place a home, an objective row or an area is named after.
+    localities: (data.localities ?? []).filter((l) => !scenery.has(`${l.q},${l.r}`)),
     elevation: data.elevation,
     zones: data.zones ?? [],
     roads: data.roads ?? [],

@@ -234,16 +234,8 @@
     }
   ],
   "localities": [
-    {
-      "name": "Campal",
-      "from": [6, 11],
-      "to": [6, 10]
-    },
-    {
-      "name": "Santa Inez",
-      "from": [3, 14],
-      "to": [4, 14]
-    }
+    {"name": "Campal", "from": [6, 11], "to": [6, 10]},
+    {"name": "Santa Inez", "from": [3, 14], "to": [4, 14]}
   ],
   "unplayable": [
     [0, 0],

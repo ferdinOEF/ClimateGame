@@ -174,7 +174,7 @@ export function forecastCone(
     if (distance > SEA_WEDGE.reachHex * Math.sqrt(3)) return false;
     return distance < 0.01 || (dx * out.x + dz * out.z) / distance >= cos;
   };
-  // Never the north bank: it is scenery, not part of the game.
+  // Never scenery (the north bank, the east edge): not part of the game.
   // Water and wind together (Section 12): every house the storm could take is inside the cone.
   const reached = [...new Set([...water.depth.keys(), ...water.wind.keys()])].filter((key) => !state.isScenery(key) && (!WATER.has(board.tiles.get(key)!.terrainId) || inWedge(key)));
   const bands = coneBands(reached.map((key) => [key, damageAt(water, key)] as const));

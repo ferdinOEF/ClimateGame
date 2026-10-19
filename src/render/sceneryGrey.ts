@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { axialKey, neighbors, type AxialCoord } from "@core/hex";
 
 /*
- * The look of scenery tiles (Panaji's north bank, Section 11.4): the same city,
+ * The look of scenery tiles (Panaji's north bank, Section 11.4, and east edge, 19.2): the same city,
  * just quieter. Half the colour taken out and a touch darker, no veil, no
  * hatching and no border; the tiles along the edge of the playable board take
  * part of it, so the change fades in over one tile rather than stopping on a

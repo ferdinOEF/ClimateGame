@@ -81,8 +81,8 @@ describe("the Panaji hand edits", () => {
   });
 
   // Section 19.2 (owner decision): the east edge, Ribandar with it, is out of Panjim too. The north bank lost 14
-  // tiles to the owner's new river and gained 23,1 (now estuary): 131; the east edge adds 121 more, rows 5 to 36
-  // (its 4 tiles on row 0 were north bank already). Merces and St Cruz stay in the game; river and sea stay water.
+  // tiles to the owner's new river and gained 23,1 (now estuary): 135, 4 of them on row 0 east of the line; the east
+  // edge adds 121 more on rows 5 to 36: 256. Merces and St Cruz stay in the game; river and sea stay water.
   it("keeps the north bank and the east edge as the stored unplayable tiles: 256, Ribandar among them", () => {
     expect(panaji.unplayable).toEqual(edits.unplayable);
     expect(edits.unplayable).toHaveLength(256);
