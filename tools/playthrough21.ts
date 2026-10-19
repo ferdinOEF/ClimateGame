@@ -304,7 +304,7 @@ async function playStyle(style: string): Promise<void> {
   await page.reload({ waitUntil: "domcontentloaded" });
   await ready(page);
   const ctas = (await page.evaluate("[...document.querySelectorAll('.brief-cta')].map((b) => b.textContent.trim())")) as string[];
-  check(ctas.some((c) => /Continue from 2027/.test(c)) && ctas.some((c) => /Begin again/.test(c)), `after a reload the start popup offers ${ctas.join(" and ")}`);
+  check(ctas.some((c) => /Continue from 2027/.test(c)) && ctas.some((c) => /^Begin/.test(c)), `after a reload the start popup offers ${ctas.join(" and ")}`);
   await shot(page, "continue");
   await begin(page, "Continue from 2027");
   check((await year(page)) === 2027, "Continue lands in 2027");
@@ -314,8 +314,9 @@ async function playStyle(style: string): Promise<void> {
   await ready(second.page);
   const ctas2 = (await second.page.evaluate("[...document.querySelectorAll('.brief-cta')].map((b) => b.textContent.trim())")) as string[];
   check(ctas2.some((c) => /Continue from 2027/.test(c)), `a second tab offers the same saved run (${ctas2.join(", ")})`);
-  await begin(second.page, "Begin again");
-  check((await year(second.page)) === 2026, "Begin again in the second tab starts at 2026");
+  // Starting afresh beside a saved run: the button reads "Begin" (accepted; see BUGS.md, owner decisions).
+  await begin(second.page, "Begin");
+  check((await year(second.page)) === 2026, "Begin in the second tab starts over at 2026");
   const t2 = (await second.page.evaluate("window.__panjimForTest.firstBuildable('dune')")) as { q: number; r: number };
   await second.page.evaluate(`window.__panjimForTest.buildNow({ q: ${t2.q}, r: ${t2.r} }, "dune")`);
   await second.page.waitForTimeout(2000);

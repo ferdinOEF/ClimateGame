@@ -669,6 +669,18 @@ function playBest(p: Player): void {
   });
 }
 
+/** Best play limited to one kind of defence (Section 21.2: three stars must not come from spamming one element). */
+export function runBestOnly(elementId: string, seed: string): BotResult {
+  const player = new Player("best", seed);
+  playYears(player, () => {
+    const next = player.run.nextChallenge();
+    if (!next) return false;
+    const pick = bestDefence(player, next, Infinity, null, elementId, 8, true);
+    return !!pick && player.build(pick.coord, pick.elementId);
+  });
+  return player.result();
+}
+
 const PLAY: Record<Persona, (p: Player) => void> = {
   casual: playCasual,
   greedy: playGreedy,

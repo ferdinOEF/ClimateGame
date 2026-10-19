@@ -10,7 +10,7 @@
  * Writes Markdown to stdout.
  */
 import { spawn } from "node:child_process";
-import { BOT_LEVEL, STYLES, runBot, percentile, type BotResult, type Persona } from "./bots";
+import { BOT_LEVEL, STYLES, runBestOnly, runBot, percentile, type BotResult, type Persona } from "./bots";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split("=") as [string, string]));
 const num = (key: string, fallback: number): number => (args.has(key) ? Number(args.get(key)) : fallback);
@@ -32,8 +32,9 @@ if (childJobs !== undefined) {
   const out: Slim[] = [];
   for (const item of childJobs.split(";").filter(Boolean)) {
     const [persona, seed] = item.split("|") as [Persona, string];
-    const r = runBot(persona, seed);
-    out.push({ persona: r.persona, seed: r.seed, stars: r.stars, houses: r.houses, landmarksLost: r.landmarksLost, built: r.built });
+    // "only:<element>": best play limited to that one kind of defence.
+    const r = persona.startsWith("only:") ? runBestOnly(persona.slice(5), seed) : runBot(persona, seed);
+    out.push({ persona, seed: r.seed, stars: r.stars, houses: r.houses, landmarksLost: r.landmarksLost, built: r.built });
   }
   console.log(JSON.stringify(out));
   process.exit(0);
