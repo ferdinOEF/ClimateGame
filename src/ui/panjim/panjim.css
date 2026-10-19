@@ -3164,3 +3164,16 @@
 .has-panjim-clock.has-result-cards .objectives-panel {
   visibility: hidden;
 }
+
+/*
+ * Section 17c (owner decision): Maya is hidden (SHOW_MAYA off). Her figure and bubble, and her full figure beside
+ * the start popup, are never drawn; the Field Guide shows its species without her notes.
+ */
+.no-maya .maya,
+.no-maya .maya-full-figure {
+  display: none !important;
+}
+.field-guide-backdrop.no-notes .field-guide-notes-head,
+.field-guide-backdrop.no-notes .field-guide-notes {
+  display: none;
+}

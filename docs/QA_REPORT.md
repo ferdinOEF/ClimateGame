@@ -1699,3 +1699,14 @@ Branch `section-17b-credits-punctuation`, off master `60b5c1b` (tag `pre-section
 | `tools/creditsCheck.ts` (menu at 1280x600, 1366x768, 1920x1080, 2560x1440, DPR 2, 760 px; axe on the menu and Sources) | All 56 checks pass (Part A, before the comma change). Screenshots `docs/qa/section17b/menu-*.jpg`, with grayscale and deuteranopia copies of the 1920 menu. |
 | `tools/section17bChecks.ts` at 1280x600 | All pass but one: the Tutorial's result card was not reached by the tool (a tool problem, fixed; not rerun). Other sizes were still running at the merge. |
 | Not run before the merge | `walkthrough`, `test:labels`, `test:layout`, `test:maya` for this branch; the independent review of part B. To be run on master. |
+
+# Section 17c — Maya hidden
+
+Branch `section-17c-hide-maya`, off master `e1f7141` (tag `pre-section-17c`; `backup/pre-section-17c` on GitHub).
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean; 565 tests pass, 6 skipped (new: `hideMaya`). |
+| `npm run walkthrough` | Clean, no console errors; the Tutorial plays start to finish (its checks now confirm Maya is not on screen). |
+| `tools/section17cShots.ts` at 1366x768 and 1920x1080 | All pass: no Maya figure, bubble, full figure or card line, and her name nowhere in the text, on the start popup, the first frame, after pressing M, result cards 1 and 2, the coming-up card, the Tutorial's start popup and its first build cards; ☰ has no Maya item. Shots in `docs/qa/section17c/` (first frame, result card, Tutorial step). |
+| Not run | `test:maya`, `test:layout`, `verify:maya` (they test Maya, who is now hidden), `test:labels`, bots, an independent review: not asked for this section. |

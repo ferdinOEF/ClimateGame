@@ -48,6 +48,15 @@ export const SHOW_MENU_EXTRAS = parseFlag(import.meta.env.VITE_SHOW_MENU_EXTRAS)
  */
 export const SHOW_PARTNER_CREDITS = parseFlag(import.meta.env.VITE_SHOW_PARTNER_CREDITS);
 
+/**
+ * Whether Maya, the guide, appears in the game (Section 17c, owner decision): her figure and speech bubbles in the
+ * Panjim game, the start popup, the Tutorial and the result cards, the "Maya" item in ☰ and the M shortcut.
+ *
+ * Off by default. With it off she is never drawn and never speaks, and nothing on screen names her. Her code and
+ * art (`src/ui/panjim/maya.ts`, `mayaArt.ts`) are untouched, and `VITE_SHOW_MAYA=true` at build time brings her back.
+ */
+export const SHOW_MAYA = parseFlag(import.meta.env.VITE_SHOW_MAYA);
+
 /** Only the exact string "true" turns a flag on, so a typo or an empty value can never enable it by accident. */
 export function parseFlag(value: unknown): boolean {
   return typeof value === "string" && value.trim() === "true";
