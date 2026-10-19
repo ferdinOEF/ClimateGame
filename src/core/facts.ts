@@ -37,6 +37,8 @@ export interface Fact {
   citation?: Citation;
   /** Shown as "As reported by <author> (<year>)": a single, non-peer-reviewed source. */
   reported?: boolean;
+  /** Shown only on the Sources screen (and the Field Guide), never said on a build: the dolphins come whatever is built. */
+  sourcesOnly?: boolean;
   /** No source yet: never shown. */
   needsSource?: boolean;
   /** A game rule about a feature this version has switched off (coins, growth): not shown until it returns. */

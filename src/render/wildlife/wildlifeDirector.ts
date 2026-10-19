@@ -3,6 +3,7 @@ import { beat, restPose, type BirdPose } from "./birdPose";
 import { EgretModel } from "./egretModel";
 import { KingfisherModel } from "./kingfisherModel";
 import { blobShadow, countTriangles, smoothstep } from "./kit";
+import { DolphinModel } from "./dolphinModel";
 import { OtterModel } from "./otterModel";
 import { Splashes, creatureMesh, fishGeometry, prawnGeometry } from "./pondLife";
 
@@ -17,7 +18,7 @@ import { Splashes, creatureMesh, fishGeometry, prawnGeometry } from "./pondLife"
  * never fast-forwards a moment.
  */
 
-export type WildlifeKind = "kingfisher" | "egret" | "otter" | "fish" | "prawn";
+export type WildlifeKind = "kingfisher" | "egret" | "otter" | "fish" | "prawn" | "dolphins";
 
 export interface WildlifePoint {
   x: number;
@@ -30,6 +31,8 @@ export interface WildlifeSources {
   mangroves: WildlifePoint[];
   /** Khazan ponds: the centre of the pond (blue) half, its water height, and its radius. */
   khazanPonds: (WildlifePoint & { radius: number })[];
+  /** Open water a dolphin pod may start from (the Mandovi, the bay, the sea): tile centres, y the water surface. */
+  waters?: WildlifePoint[];
 }
 
 export interface ScreenRect {
@@ -47,6 +50,8 @@ export interface WildlifeOptions {
   /** Screen rectangles (CSS px, canvas-relative) wildlife must never cross: Maya, the HUD, open cards. */
   avoidRects: () => ScreenRect[];
   random?: () => number;
+  /** Is (x, z) open water a dolphin may swim in (never land, wetland or a khazan)? Without it, any point is. */
+  isWater?: (x: number, z: number) => boolean;
 }
 
 /** Board-scale sizes (a hex tile has circumradius 1). */
@@ -58,6 +63,19 @@ const PRAWN_SCALE = 0.1;
 /** Bounding radius of each bird with wings spread, in world units at its base scale. */
 const KF_RADIUS = 0.13;
 const EGRET_RADIUS = 0.34;
+/** Humpback dolphins: an adult about a third of a tile long, a young one smaller. */
+const DOLPHIN_SCALE = 0.32;
+const DOLPHIN_YOUNG_SCALE = 0.22;
+const DOLPHIN_POOL = 5;
+/** A pod's swim: how long, how far (world units), and the time a surfacing roll and a leap take (ms). */
+const POD_DUR_MIN = 16000;
+const POD_DUR_SPAN = 6000;
+const POD_TRAVEL_MIN = 2.0;
+const POD_TRAVEL_SPAN = 1.2;
+const ROLL_MS = 1400;
+const LEAP_MS = 1100;
+/** About one surfacing in six is a leap (never in gentle mode). */
+const LEAP_CHANCE = 1 / 6;
 /** Gap between moments (ms). */
 const GAP_MIN = 6000;
 const GAP_SPAN = 4000;
@@ -173,6 +191,26 @@ interface BirdActor {
   seed: number;
 }
 
+/** One dolphin of the pod: where it swims in the pod, and its surfacing now (if any). */
+interface Swimmer {
+  model: DolphinModel;
+  scale: number;
+  /** Sideways offset from the pod's line, and how far it trails the pod's centre (world units). */
+  lateral: number;
+  lag: number;
+  /** In the pod this time. */
+  inPod: boolean;
+  /** Clock ms of its next surfacing. */
+  next: number;
+  live: boolean;
+  t0: number;
+  dur: number;
+  leap: boolean;
+  rippled: boolean;
+  splashedOut: boolean;
+  splashedIn: boolean;
+}
+
 interface Jumper {
   mesh: THREE.Mesh;
   live: boolean;
@@ -198,12 +236,15 @@ export class WildlifeDirector {
   private readonly otter: OtterModel;
   private readonly splashes = new Splashes();
   private readonly jumpers: Jumper[] = [];
+  private readonly swimmers: Swimmer[] = [];
   private readonly kf: BirdActor;
   private readonly eg: BirdActor;
 
   private sources: WildlifeSources = { mangroves: [], khazanPonds: [] };
   private enabled = true;
   private calm = true;
+  /** Calm motion: only the dolphins, in smaller pods, further apart, never leaping. */
+  private gentle = false;
   private clock = 0;
   private lastNow: number | null = null;
   private nextAt = GAP_MIN;
@@ -224,6 +265,16 @@ export class WildlifeDirector {
 
   // Pond state
   private pondEnd = 0;
+
+  // Dolphin pod state
+  private podLive = false;
+  private podT0 = 0;
+  private podDur = 0;
+  private readonly podFrom = new THREE.Vector3();
+  private readonly podDir = new THREE.Vector3();
+  private podLength = 0;
+  /** QA: the next surfacing is a leap (true) or a roll (false); null leaves it to chance. */
+  dolphinNext: boolean | null = null;
 
   constructor(opts: WildlifeOptions) {
     this.opts = opts;
@@ -249,6 +300,16 @@ export class WildlifeDirector {
       }
     }
 
+    for (let i = 0; i < DOLPHIN_POOL; i++) {
+      const young = i === DOLPHIN_POOL - 1;
+      const model = new DolphinModel(young);
+      const scale = young ? DOLPHIN_YOUNG_SCALE : DOLPHIN_SCALE;
+      model.root.scale.setScalar(scale);
+      model.root.visible = false;
+      this.group.add(model.root);
+      this.swimmers.push({ model, scale, lateral: 0, lag: 0, inPod: false, next: Infinity, live: false, t0: 0, dur: ROLL_MS, leap: false, rippled: false, splashedOut: false, splashedIn: false });
+    }
+
     const mkActor = (kind: "kingfisher" | "egret", root: THREE.Group, baseScale: number, radius: number, shadowSize: number): BirdActor => {
       const shadow = blobShadow(1, 0.34);
       shadow.visible = false;
@@ -269,7 +330,9 @@ export class WildlifeDirector {
       fish: countTriangles(this.jumpers[0].mesh),
       prawn: countTriangles(this.jumpers[1].mesh),
       kingfisherFish: countTriangles(this.kingfisher.fish),
-      perchTwig: countTriangles(this.kingfisher.perch)
+      perchTwig: countTriangles(this.kingfisher.perch),
+      dolphin: this.swimmers[0].model.triangles,
+      dolphinYoung: this.swimmers[DOLPHIN_POOL - 1].model.triangles
     };
     this.hideAll();
   }
@@ -293,9 +356,24 @@ export class WildlifeDirector {
     else this.nextAt = this.clock + GAP_MIN + this.random() * GAP_SPAN;
   }
 
+  /**
+   * Calm motion (Section 18): the birds, the otter and the pond life stay away; dolphins still come now and then,
+   * in pods of two or three, further apart, only rolling at the surface.
+   */
+  setGentle(gentle: boolean): void {
+    if (gentle === this.gentle) return;
+    this.gentle = gentle;
+    if (gentle && this.active !== null && this.active !== "dolphins") this.hideAll();
+    this.nextAt = this.clock + this.gap();
+  }
+
+  private gap(): number {
+    return (GAP_MIN + this.random() * GAP_SPAN) * (this.gentle ? 2 : 1);
+  }
+
   /** True while any moment (or a flush) is still playing. */
   get busy(): boolean {
-    return this.active !== null || this.kf.stage !== "off" || this.eg.stage !== "off" || this.otterLive || this.anyJumper();
+    return this.active !== null || this.kf.stage !== "off" || this.eg.stage !== "off" || this.otterLive || this.anyJumper() || this.podLive;
   }
 
   /** The moment playing now, if any. */
@@ -305,13 +383,18 @@ export class WildlifeDirector {
 
   forceMoment(kind: WildlifeKind, sourceIndex?: number): boolean {
     if (!this.enabled || !this.calm) return false;
-    const list = kind === "fish" || kind === "prawn" ? this.sources.khazanPonds : this.sources.mangroves;
+    if (this.gentle && kind !== "dolphins") return false;
+    const list = this.sourceList(kind);
     if (!list.length) return false;
     const idx = sourceIndex !== undefined ? sourceIndex : this.pickOnScreen(list);
     if (idx < 0 || idx >= list.length) return false;
     this.hideAll();
-    this.start(kind, idx);
-    return true;
+    return this.start(kind, idx);
+  }
+
+  private sourceList(kind: WildlifeKind): readonly WildlifePoint[] {
+    if (kind === "dolphins") return this.sources.waters ?? [];
+    return kind === "fish" || kind === "prawn" ? this.sources.khazanPonds : this.sources.mangroves;
   }
 
   tick(nowMs: number): void {
@@ -330,11 +413,12 @@ export class WildlifeDirector {
     this.tickBird(this.eg, now, dt);
     this.tickOtter(now);
     this.tickPond(now);
+    this.tickPod(now);
     this.splashes.tick(now);
 
     if (this.active !== null && !this.busyWith(this.active)) {
       this.active = null;
-      this.nextAt = now + GAP_MIN + this.random() * GAP_SPAN;
+      this.nextAt = now + this.gap();
     }
   }
 
@@ -343,6 +427,7 @@ export class WildlifeDirector {
     this.kingfisher.dispose();
     this.egret.dispose();
     this.otter.dispose();
+    for (const d of this.swimmers) d.model.dispose();
     this.splashes.dispose();
     const seen = new Set<THREE.BufferGeometry>();
     for (const j of this.jumpers) {
@@ -364,6 +449,7 @@ export class WildlifeDirector {
     if (kind === "kingfisher") return this.kf.stage !== "off";
     if (kind === "egret") return this.eg.stage !== "off";
     if (kind === "otter") return this.otterLive;
+    if (kind === "dolphins") return this.podLive;
     return this.anyJumper() || this.clock < this.pondEnd;
   }
 
@@ -373,18 +459,20 @@ export class WildlifeDirector {
   }
 
   private schedule(): void {
-    const mang = this.pickOnScreen(this.sources.mangroves);
-    const pond = this.pickOnScreen(this.sources.khazanPonds);
+    const mang = this.gentle ? -1 : this.pickOnScreen(this.sources.mangroves);
+    const pond = this.gentle ? -1 : this.pickOnScreen(this.sources.khazanPonds);
+    const water = this.pickOnScreen(this.sources.waters ?? []);
     const kinds: WildlifeKind[] = [];
     if (mang >= 0) kinds.push("kingfisher", "egret", "otter");
     if (pond >= 0) kinds.push("fish", "prawn");
+    if (water >= 0) kinds.push("dolphins");
     if (!kinds.length) {
       // Nothing on screen: look again in a second.
       this.nextAt = this.clock + 1000;
       return;
     }
     const kind = kinds[Math.min(kinds.length - 1, Math.floor(this.random() * kinds.length))];
-    this.start(kind, kind === "fish" || kind === "prawn" ? pond : mang);
+    if (!this.start(kind, kind === "dolphins" ? water : kind === "fish" || kind === "prawn" ? pond : mang)) this.nextAt = this.clock + 1000;
   }
 
   /** A random source whose point is on screen and clear of every avoid rect, or -1. */
@@ -411,7 +499,8 @@ export class WildlifeDirector {
     return !rectsHit(_rect, rects, 20);
   }
 
-  private start(kind: WildlifeKind, idx: number): void {
+  private start(kind: WildlifeKind, idx: number): boolean {
+    if (kind === "dolphins" && !this.startPod(this.sources.waters![idx])) return false;
     this.active = kind;
     this.activeStart = this.clock;
     this.momentLog.push({ kind, at: this.clock, source: idx });
@@ -419,7 +508,8 @@ export class WildlifeDirector {
     if (kind === "kingfisher") this.startKingfisher(this.sources.mangroves[idx]);
     else if (kind === "egret") this.startEgret(this.sources.mangroves[idx]);
     else if (kind === "otter") this.startOtter(this.sources.mangroves[idx]);
-    else this.startPond(kind === "prawn", this.sources.khazanPonds[idx], idx);
+    else if (kind === "fish" || kind === "prawn") this.startPond(kind === "prawn", this.sources.khazanPonds[idx], idx);
+    return true;
   }
 
   private hideAll(): void {
@@ -436,6 +526,12 @@ export class WildlifeDirector {
       j.mesh.visible = false;
     }
     this.pondEnd = 0;
+    for (const d of this.swimmers) {
+      d.live = false;
+      d.inPod = false;
+      d.model.root.visible = false;
+    }
+    this.podLive = false;
     this.splashes.clear();
     this.active = null;
   }
@@ -466,8 +562,10 @@ export class WildlifeDirector {
     }
     if (this.kingfisher.perch.visible && this.twigFadeAt < 0) this.twigFadeAt = now; // the twig goes too
     if (this.otterLive && now < this.otterDiveAt) this.otterDiveAt = now;
+    // The dolphins go down: a roll or a leap under way ends, no new one starts.
+    if (this.podLive) this.podDur = Math.min(this.podDur, now - this.podT0);
     // No bird out: a short burst from a mangrove on screen instead.
-    if (!flushed && this.enabled) {
+    if (!flushed && this.enabled && !this.gentle) {
       const idx = this.pickOnScreen(this.sources.mangroves);
       if (idx >= 0) {
         const m = this.sources.mangroves[idx];
@@ -1100,6 +1198,151 @@ export class WildlifeDirector {
       else m.rotation.set(-pitch, heading, 0.25 * Math.sin(k * Math.PI * 4), "YXZ");
       (m.material as THREE.Material).opacity = Math.min(1, k * 10, (1 - k) * 10);
     }
+  }
+
+  // --- Dolphins: a pod wandering slowly through open water -------------------------
+
+  /** Is the whole band the pod swims in, from a along the direction for a length, open water? */
+  /** The Field Guide species under a ray: a dolphin while it is at the surface, else null. */
+  speciesAt(raycaster: THREE.Raycaster): string | null {
+    for (const d of this.swimmers) {
+      if (!d.live || !d.model.root.visible) continue;
+      if (raycaster.intersectObject(d.model.root, true).length > 0) return "humpback_dolphin";
+    }
+    return null;
+  }
+
+  private clearWater(from: THREE.Vector3, dir: THREE.Vector3, length: number): boolean {
+    const isWater = this.opts.isWater;
+    if (!isWater) return true;
+    for (let d = 0; d <= length + 1e-6; d += 0.25) {
+      for (const side of [-0.32, 0, 0.32]) {
+        const x = from.x + dir.x * d + dir.z * side;
+        const z = from.z + dir.z * d - dir.x * side;
+        if (!isWater(x, z)) return false;
+      }
+    }
+    return true;
+  }
+
+  private startPod(p: WildlifePoint): boolean {
+    this.podFrom.set(p.x, p.y, p.z);
+    const length = POD_TRAVEL_MIN + this.random() * POD_TRAVEL_SPAN;
+    let found = false;
+    const turn0 = this.random() * Math.PI * 2;
+    // A heading whose whole swim stays in open water, the full distance or, failing that, a shorter one.
+    for (const scaleLen of [1, 0.6]) {
+      for (let k = 0; k < 12 && !found; k++) {
+        const a = turn0 + (k * Math.PI * 2) / 12;
+        this.podDir.set(Math.sin(a), 0, Math.cos(a));
+        if (this.clearWater(this.podFrom, this.podDir, length * scaleLen)) {
+          this.podLength = length * scaleLen;
+          found = true;
+        }
+      }
+      if (found) break;
+    }
+    if (!found) return false;
+    const size = this.gentle ? 2 + Math.floor(this.random() * 2) : 2 + Math.floor(this.random() * 4);
+    const young = this.random() < 0.5;
+    const now = this.clock;
+    this.podLive = true;
+    this.podT0 = now;
+    this.podDur = POD_DUR_MIN + this.random() * POD_DUR_SPAN;
+    // The adults in the pool first; the young one (the pool's last) swims tucked beside an adult.
+    let placed = 0;
+    for (let i = 0; i < this.swimmers.length; i++) {
+      const d = this.swimmers[i];
+      const isYoung = i === this.swimmers.length - 1;
+      d.inPod = isYoung ? young && size >= 2 : placed < size - (young ? 1 : 0);
+      if (!d.inPod) continue;
+      if (!isYoung) placed++;
+      d.lateral = isYoung ? 0.12 : (this.random() - 0.5) * 0.5;
+      d.lag = isYoung ? 0.06 : this.random() * 0.4;
+      d.live = false;
+      d.next = now + 300 + this.random() * 2600;
+      d.model.root.visible = false;
+    }
+    return true;
+  }
+
+  private tickPod(now: number): void {
+    if (!this.podLive) return;
+    const ending = now - this.podT0 >= this.podDur;
+    let anyLive = false;
+    for (const d of this.swimmers) {
+      if (!d.inPod) continue;
+      if (!d.live && !ending && now >= d.next) {
+        // Where it would come up: along the pod's line, behind the centre by its lag, beside it by its offset.
+        const s = Math.min(1, (now - this.podT0) / this.podDur) * this.podLength - d.lag;
+        const x = this.podFrom.x + this.podDir.x * s + this.podDir.z * d.lateral;
+        const z = this.podFrom.z + this.podDir.z * s - this.podDir.x * d.lateral;
+        if (s >= 0 && (!this.opts.isWater || this.opts.isWater(x, z))) {
+          d.live = true;
+          d.t0 = now;
+          d.leap = this.gentle ? false : this.dolphinNext ?? this.random() < LEAP_CHANCE;
+          this.dolphinNext = null;
+          d.dur = d.leap ? LEAP_MS : ROLL_MS;
+          d.rippled = d.splashedOut = d.splashedIn = false;
+        }
+        d.next = now + (this.gentle ? 4500 : 3000) + this.random() * 2000;
+      }
+      if (!d.live) continue;
+      const u = (now - d.t0) / d.dur;
+      if (u >= 1) {
+        d.live = false;
+        d.model.root.visible = false;
+        continue;
+      }
+      anyLive = true;
+      this.poseSwimmer(d, u, now);
+    }
+    if (ending && !anyLive) {
+      this.podLive = false;
+      for (const d of this.swimmers) d.inPod = false;
+    }
+  }
+
+  /** A surfacing at u (0..1): a slow roll, the back and fin arcing through the surface, or a leap clear of it. */
+  private poseSwimmer(d: Swimmer, u: number, now: number): void {
+    const sc = d.scale;
+    const waterY = this.podFrom.y;
+    const s = Math.min(1, (d.t0 - this.podT0) / this.podDur) * this.podLength - d.lag;
+    // It moves on through the surfacing, a little faster than the pod drifts.
+    const ahead = s + u * sc * (d.leap ? 1.6 : 0.7);
+    const x = this.podFrom.x + this.podDir.x * ahead + this.podDir.z * d.lateral;
+    const z = this.podFrom.z + this.podDir.z * ahead - this.podDir.x * d.lateral;
+    let y: number;
+    let pitch: number;
+    if (d.leap) {
+      const h = 0.62 * sc;
+      y = waterY - 0.16 * sc + (h + 0.16 * sc) * 4 * u * (1 - u);
+      pitch = Math.atan2((h + 0.16 * sc) * 4 * (1 - 2 * u), sc * 1.6);
+      if (!d.splashedOut && u > 0.14) {
+        d.splashedOut = true;
+        this.splashes.burst(now, x, waterY, z, 7, 0.5 * sc, 0.03, this.random);
+        this.splashes.ring(now, x, waterY, z, 0.22 * sc / DOLPHIN_SCALE, 900);
+      }
+      if (!d.splashedIn && u > 0.86) {
+        d.splashedIn = true;
+        this.splashes.burst(now, x, waterY, z, 9, 0.55 * sc, 0.035, this.random);
+        this.splashes.ring(now, x, waterY, z, 0.28 * sc / DOLPHIN_SCALE, 1100);
+      }
+    } else {
+      // The roll: the beak breaks first, the back with its hump and fin arcs over, the tail slips under.
+      y = waterY + sc * (-0.17 + 0.2 * Math.sin(Math.PI * u));
+      pitch = 0.42 * (1 - 2 * u);
+      if (!d.rippled && u > 0.2) {
+        d.rippled = true;
+        this.splashes.ring(now, x, waterY, z, 0.2 * sc / DOLPHIN_SCALE, 1300);
+      }
+    }
+    const root = d.model.root;
+    root.visible = true;
+    root.position.set(x, y, z);
+    root.rotation.set(0, Math.atan2(this.podDir.x, this.podDir.z), 0);
+    d.model.applyPose(pitch, d.leap ? 0 : 0.12 * Math.sin(Math.PI * u));
+    d.model.setOpacity(Math.min(1, u * 7, (1 - u) * 7));
   }
 }
 

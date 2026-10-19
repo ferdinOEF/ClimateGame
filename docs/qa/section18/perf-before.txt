@@ -1,0 +1,14 @@
+| low | calm | 2.0 | 1.1 | 883.2 | 52 | 386790 |
+| low | cyclone | 1.7 | 1.4 | 700.0 | 42 | 386222 |
+| medium | calm | 2.1 | 1.1 | 916.6 | 53 | 389990 |
+| medium | cyclone | 1.7 | 1.4 | 699.9 | 42 | 410394 |
+| high | calm | 1.8 | 0.6 | 1549.9 | 53 | 389990 |
+| high | cyclone | 1.8 | 0.9 | 1083.3 | 42 | 425858 |
+page.evaluate: Execution context was destroyed, most likely because of a navigation.
+    at scenario (/home/user/ClimateGame/tools/stormPerf.ts:33:22)
+    at main (/home/user/ClimateGame/tools/stormPerf.ts:101:39) {
+  log: [],
+  name: 'Error'
+}
+
+(The leak check after this table was cut off by a source edit; the frame-time table above is complete.)

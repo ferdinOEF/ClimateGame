@@ -2,7 +2,9 @@ import * as THREE from "three";
 import { axialToWorld, type AxialCoord } from "@core/hex";
 import { HEX_SIZE } from "./terrainMeshManager";
 import { createMonumentGeometryFor, monumentGeometryKey, MONUMENT_BUILDING_KINDS } from "./monumentGeometry";
-import { monumentScale, type Size } from "./monumentScale";
+import { monumentScale, planReach, type Size } from "./monumentScale";
+import { LANDMARK_FACING } from "./landmarkModels";
+import { landmarkDecals } from "./landmarkDecals";
 import { jitterColor } from "./palette";
 
 /**
@@ -17,7 +19,8 @@ import { jitterColor } from "./palette";
  * clicking the cathedral.
  *
  * What they share with elements is the instancing strategy: one `InstancedMesh`
- * per building type, so the seven civic blocks are a single draw call.
+ * per geometry. Since Section 18 every landmark has its own model, so that is
+ * one draw call each (sixteen), plus one for the plazas and one per painted name.
  *
  * COLOUR
  *
@@ -25,7 +28,7 @@ import { jitterColor } from "./palette";
  * documents at length: `instanceColor` is multiplied against every vertex
  * colour, so a palette hue would collapse a whitewashed church with a
  * terracotta roof and teal shutters into one flat colour. The slight jitter
- * that survives keeps seven identical civic blocks from looking stamped.
+ * that survives is kept from the days of seven identical civic blocks.
  */
 
 /** Monuments are placed once at boot and never again, so the pool only has to hold what a map declares. */
@@ -35,19 +38,12 @@ const MAX_INSTANCES_PER_KIND = 32;
 const NEUTRAL_TINT = new THREE.Color("#fdfbf6");
 
 /**
- * How much bigger a monument is drawn than it is modelled.
- *
- * Applied here rather than baked into each builder so one number governs all
- * nine, and so the geometries stay authored in the same units as the buildable
- * elements — which is what makes "a landmark should be clearly larger than a
- * house" a thing you can read off the code rather than infer from coordinates.
- *
- * 1.4 puts the largest footprint at about 0.55 either side of the tile centre,
- * comfortably inside the hex's 0.87 inradius, while making the buildings fill
- * enough of their tile to be recognisable at the zoom the board is usually
- * played at. The first render used 1.0 and they read as models on a plinth.
+ * How much bigger an open place (the garden, the beach, the headland) is drawn
+ * than it is modelled. Their models are authored as a hexagon of ground with
+ * corners 0.7 from the centre, so 1.2 lays it over most of the tile (corners at
+ * 0.84 of the tile's 1.0) and leaves the tile's own rim showing.
  */
-const MONUMENT_SCALE = 1.4;
+const OPEN_PLACE_SCALE = 1.2;
 
 export interface MonumentPlacement {
   id: string;
@@ -63,6 +59,16 @@ const PLAZA_RADIUS = 0.62;
 const PLAZA_HEIGHT = 0.025;
 const PLAZA_COLOUR = new THREE.Color("#c9bc9c");
 
+const turnAxis = new THREE.Vector3(0, 1, 0);
+const turnQuat = new THREE.Quaternion();
+const scaleVec = new THREE.Vector3();
+const posVec = new THREE.Vector3();
+
+/** A monument's instance matrix: scaled (y apart), turned about y, set on its tile. */
+function placement(matrix: THREE.Matrix4, x: number, y: number, z: number, sx: number, sy: number, turn: number): THREE.Matrix4 {
+  return matrix.compose(posVec.set(x, y, z), turnQuat.setFromAxisAngle(turnAxis, turn), scaleVec.set(sx, sy, sx));
+}
+
 export class MonumentMeshManager {
   readonly group = new THREE.Group();
   private readonly meshes = new Map<string, THREE.InstancedMesh>();
@@ -72,7 +78,7 @@ export class MonumentMeshManager {
   /** Each monument's drawn size and scale, for the tests and the QA report. */
   readonly sizes = new Map<string, { size: Size; neighbour: Size | null; sx: number; sy: number }>();
   /** Each placed monument's resting transform parts, for `setHeightGrowth`. */
-  private readonly placed: { monument: MonumentPlacement; mesh: THREE.InstancedMesh; index: number; x: number; y: number; z: number; sx: number; sy: number; h: number; growth: number }[] = [];
+  private readonly placed: { monument: MonumentPlacement; mesh: THREE.InstancedMesh; index: number; x: number; y: number; z: number; sx: number; sy: number; h: number; turn: number; growth: number; decals: THREE.Group | null }[] = [];
   /** Which monument each instance of each mesh is. */
   private readonly byInstance = new Map<THREE.Object3D, MonumentPlacement[]>();
   /** Coord key -> world Y of the top of the monument standing there. */
@@ -89,7 +95,7 @@ export class MonumentMeshManager {
    * `neighbourAt` gives the size of the largest House on the tiles round a
    * monument (null where there is none, e.g. the beach): buildings are sized
    * against it (see monumentScale.ts). Open places (the garden, the beach,
-   * the headland) keep the old flat scale.
+   * the headland) take `OPEN_PLACE_SCALE`.
    */
   constructor(
     monuments: readonly MonumentPlacement[],
@@ -143,10 +149,12 @@ export class MonumentMeshManager {
       const geometry = geometryFor.get(key)!;
       geometry.computeBoundingBox();
       const bounds = geometry.boundingBox!;
-      const size: Size = { w: bounds.max.x - bounds.min.x, d: bounds.max.z - bounds.min.z, h: bounds.max.y };
+      const size: Size = { w: bounds.max.x - bounds.min.x, d: bounds.max.z - bounds.min.z, h: bounds.max.y, reach: planReach(geometry.getAttribute("position").array) };
       const isBuilding = MONUMENT_BUILDING_KINDS.includes(monument.kind);
       const neighbour = isBuilding ? neighbourAt(monument.coord) : null;
-      const { sx, sy } = neighbour ? monumentScale(size, neighbour) : { sx: MONUMENT_SCALE, sy: MONUMENT_SCALE };
+      const { sx, sy } = neighbour ? monumentScale(size, neighbour) : { sx: OPEN_PLACE_SCALE, sy: OPEN_PLACE_SCALE };
+      // Its front to its real street or water where that is known, else to the default camera.
+      const turn = LANDMARK_FACING[monument.id] ?? 0;
       this.sizes.set(monument.id, { size, neighbour, sx, sy });
       let y = heightAt(monument.coord);
       if (plaza && isBuilding) {
@@ -154,8 +162,15 @@ export class MonumentMeshManager {
         plaza.count += 1;
         y += PLAZA_HEIGHT;
       }
-      mesh.setMatrixAt(index, matrix.makeScale(sx, sy, sx).setPosition(x, y, z));
-      this.placed.push({ monument, mesh, index, x, y, z, sx, sy, h: size.h, growth: 1 });
+      mesh.setMatrixAt(index, placement(matrix, x, y, z, sx, sy, turn));
+      const decals = landmarkDecals(monument.id);
+      if (decals) {
+        decals.position.set(x, y, z);
+        decals.rotation.y = turn;
+        decals.scale.set(sx, sy, sx);
+        this.group.add(decals);
+      }
+      this.placed.push({ monument, mesh, index, x, y, z, sx, sy, h: size.h, turn, growth: 1, decals });
       this.tops.set(`${monument.coord.q},${monument.coord.r}`, y + size.h * sy);
 
       // Seeded off the coordinate so a given building looks the same every
@@ -194,7 +209,8 @@ export class MonumentMeshManager {
       const growth = factorAt(p.monument.coord);
       if (Math.abs(growth - p.growth) < 1e-3) continue;
       p.growth = growth;
-      p.mesh.setMatrixAt(p.index, matrix.makeScale(p.sx, p.sy * growth, p.sx).setPosition(p.x, p.y, p.z));
+      p.mesh.setMatrixAt(p.index, placement(matrix, p.x, p.y, p.z, p.sx, p.sy * growth, p.turn));
+      p.decals?.scale.set(p.sx, p.sy * growth, p.sx);
       this.tops.set(`${p.monument.coord.q},${p.monument.coord.r}`, p.y + p.h * p.sy * growth);
       touched.add(p.mesh);
     }

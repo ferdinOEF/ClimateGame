@@ -1,0 +1,17 @@
+panjim_church                       916 tris w 1.11 d 1.08 h 1.04 minY -0.00 halfDiag 0.87
+idalcao_palace                      910 tris w 1.03 d 0.79 h 0.55 minY -0.00 halfDiag 0.71
+panjim_municipal_market             520 tris w 0.94 d 0.72 h 0.40 minY 0.00 halfDiag 0.59
+institute_menezes_braganza          806 tris w 0.95 d 0.73 h 0.45 minY -0.00 halfDiag 0.67
+mahalaxmi_temple                    988 tris w 1.03 d 0.80 h 0.61 minY -0.00 halfDiag 0.67
+jama_masjid_panaji                  944 tris w 0.80 d 0.69 h 0.75 minY -0.00 halfDiag 0.54
+don_bosco_high_school               884 tris w 0.94 d 0.90 h 0.66 minY -0.00 halfDiag 0.81
+don_bosco_college                   568 tris w 1.13 d 0.77 h 0.72 minY -0.00 halfDiag 0.75
+sharada_mandir_school              1396 tris w 1.04 d 0.95 h 0.32 minY -0.00 halfDiag 0.73
+government_polytechnic_panaji       960 tris w 0.89 d 0.70 h 0.45 minY -0.00 halfDiag 0.62
+kala_academy                       1056 tris w 1.10 d 0.88 h 0.29 minY -0.00 halfDiag 0.74
+goa_state_museum                    296 tris w 1.15 d 0.82 h 0.52 minY -0.00 halfDiag 0.74
+campal_garden                      1548 tris w 1.24 d 1.40 h 0.33 minY -0.00 halfDiag 0.94
+dhempe_college                      832 tris w 1.21 d 0.89 h 0.42 minY -0.00 halfDiag 0.82
+miramar_beach                       600 tris w 1.24 d 1.40 h 0.26 minY -0.00 halfDiag 0.94
+dona_paula_viewpoint               1196 tris w 1.24 d 1.40 h 0.43 minY -0.00 halfDiag 0.94
+total 14420

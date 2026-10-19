@@ -354,6 +354,35 @@
         "sandy_vegetation",
         "mangrove"
       ]
+    },
+    {
+      "id": "dolphin-near-shore",
+      "kind": "fact",
+      "elements": [],
+      "text": "Off Goa, Indian Ocean humpback dolphins stay within 500 metres of the coast, in water up to 50 feet deep.",
+      "citation": {
+        "title": "Ogling tourists disturb dolphin behaviour in Goa",
+        "authors": "Karthikeyan Hemalatha",
+        "publisher": "Mongabay India",
+        "year": "2018",
+        "url": "https://india.mongabay.com/2018/01/ogling-tourists-disturb-dolphin-behaviour-in-goa/",
+        "note": "The article (22 January 2018) reports that the Indian Ocean humpback dolphins seen off Goa do not venture more than 500 metres from the coast and prefer shallow waters up to 50 feet deep, and that motorboat tourism disturbs them."
+      }
+    },
+    {
+      "id": "dolphin-watching",
+      "kind": "fact",
+      "elements": [],
+      "sourcesOnly": true,
+      "text": "Boat trips to watch humpback dolphins are a major tourist attraction in Goa.",
+      "citation": {
+        "title": "Goa at sea",
+        "authors": "Rajeshwari Ganesan",
+        "publisher": "Down To Earth",
+        "year": "n.d.",
+        "url": "https://www.downtoearth.org.in/news/wildlife-biodiversity/goa-at-sea-54653",
+        "note": "The article describes the humpback dolphin as a major tourist attraction in Goa, with nearly 400 dolphin sighting trips a day. Its date could not be read from the page, so none is given."
+      }
     }
   ]
 }

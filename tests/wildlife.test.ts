@@ -30,7 +30,7 @@ function gameCamera(dist = 18): THREE.PerspectiveCamera {
   return cam;
 }
 
-function makeDirector(opts: { rects?: () => ScreenRect[]; seed?: number; camera?: THREE.PerspectiveCamera } = {}) {
+function makeDirector(opts: { rects?: () => ScreenRect[]; seed?: number; camera?: THREE.PerspectiveCamera; isWater?: (x: number, z: number) => boolean } = {}) {
   const scene = new THREE.Scene();
   const camera = opts.camera ?? gameCamera();
   const d = new WildlifeDirector({
@@ -38,7 +38,8 @@ function makeDirector(opts: { rects?: () => ScreenRect[]; seed?: number; camera?
     camera,
     viewport: () => ({ width: W, height: H }),
     avoidRects: opts.rects ?? (() => []),
-    random: seeded(opts.seed)
+    random: seeded(opts.seed),
+    isWater: opts.isWater
   });
   return { d, scene, camera };
 }
@@ -366,5 +367,92 @@ describe("wildlife director: avoid rects on the ground", () => {
     covered = true;
     t = run(d, t, t + 400);
     expect(kf.stage).toBe("off");
+  });
+});
+
+describe("humpback dolphins (Section 18)", () => {
+  /** A stretch of open water on screen; everything else is land. */
+  const isWater = (x: number, z: number): boolean => x > -6 && x < 4 && z > -3 && z < 2.5;
+  const WATERS: WildlifeSources = { mangroves: [], khazanPonds: [], waters: [{ x: -1, y: 0, z: 0 }] };
+  type Pod = { swimmers: { inPod: boolean; live: boolean; leap: boolean; t0: number; model: { root: THREE.Object3D } }[]; podLive: boolean };
+
+  /** Plays `ms` and reports every visible dolphin's place, the pod sizes and the surfacings. */
+  function watch(d: WildlifeDirector, ms: number) {
+    const pod = d as unknown as Pod;
+    const places: THREE.Vector3[] = [];
+    const sizes: number[] = [];
+    const surfacings = new Set<string>();
+    let leaps = 0;
+    let wasLive = false;
+    for (let t = 0; t < ms; t += 50) {
+      d.tick(t);
+      if (pod.podLive && !wasLive) sizes.push(pod.swimmers.filter((s) => s.inPod).length);
+      wasLive = pod.podLive;
+      pod.swimmers.forEach((s, i) => {
+        if (!s.live) return;
+        const key = `${i}:${s.t0}`;
+        if (!surfacings.has(key)) {
+          surfacings.add(key);
+          if (s.leap) leaps++;
+        }
+        if (s.model.root.visible) places.push(s.model.root.position.clone());
+      });
+    }
+    return { places, sizes, surfacings: surfacings.size, leaps };
+  }
+
+  it("come in pods of 2 to 5, only ever in open water, mostly rolling, leaping now and then", () => {
+    const { d } = makeDirector({ seed: 7, isWater });
+    d.setSources(WATERS);
+    const seen = watch(d, 900_000);
+    expect(d.momentLog.filter((m) => m.kind === "dolphins").length).toBeGreaterThan(10);
+    for (const n of seen.sizes) {
+      expect(n).toBeGreaterThanOrEqual(2);
+      expect(n).toBeLessThanOrEqual(5);
+    }
+    expect(seen.places.length).toBeGreaterThan(100);
+    for (const p of seen.places) expect(isWater(p.x, p.z), `a dolphin at ${p.x.toFixed(2)}, ${p.z.toFixed(2)}`).toBe(true);
+    // About one surfacing in six is a leap.
+    const share = seen.leaps / seen.surfacings;
+    expect(share).toBeGreaterThan(0.08);
+    expect(share).toBeLessThan(0.3);
+  });
+
+  it("never come where there is no open water", () => {
+    const { d } = makeDirector({ isWater: () => false });
+    d.setSources(WATERS);
+    run(d, 0, 120_000);
+    expect(d.momentLog.filter((m) => m.kind === "dolphins")).toHaveLength(0);
+    expect(d.forceMoment("dolphins", 0)).toBe(false);
+  });
+
+  it("with calm motion: only dolphins, two or three, never leaping", () => {
+    const { d } = makeDirector({ seed: 9, isWater });
+    d.setGentle(true);
+    d.setSources({ ...SOURCES, waters: WATERS.waters });
+    const seen = watch(d, 600_000);
+    const kinds = new Set(d.momentLog.map((m) => m.kind));
+    expect([...kinds]).toEqual(["dolphins"]);
+    for (const n of seen.sizes) expect(n).toBeLessThanOrEqual(3);
+    expect(seen.leaps).toBe(0);
+    expect(seen.surfacings).toBeGreaterThan(10);
+  });
+
+  it("go down when a storm comes, and stay away while disabled", () => {
+    const { d } = makeDirector({ isWater });
+    d.setSources(WATERS);
+    expect(d.forceMoment("dolphins", 0)).toBe(true);
+    run(d, 0, 4000);
+    d.setCalm(false);
+    run(d, 4000, 6000);
+    const pod = d as unknown as Pod;
+    expect(pod.podLive).toBe(false);
+    expect(pod.swimmers.every((s) => !s.model.root.visible)).toBe(true);
+
+    const b = makeDirector({ isWater }).d;
+    b.setSources(WATERS);
+    b.setEnabled(false);
+    run(b, 0, 60_000);
+    expect(b.momentLog).toHaveLength(0);
   });
 });

@@ -22,7 +22,7 @@ import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
-import { axialToWorld, neighbor, type AxialCoord } from "@core/hex";
+import { axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
 import { facingAngle } from "@render/defenceGeometry";
 import { buildingGeometry } from "@render/townGeometry";
 import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
@@ -278,9 +278,19 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * Section 14 (Panaji): calm-year wildlife from the defences on screen — a
    * kingfisher, an egret and an otter from the mangroves, fish and prawns from
    * the khazans' ponds. One moment every 6–10 s at most; never over Maya, the
-   * HUD or an open card; flushed when a storm begins; off on Low quality and
-   * with calm motion. Ambience only.
+   * HUD or an open card; flushed when a storm begins; off on Low quality.
+   * Section 18: Indian Ocean humpback dolphins in the open water (the Mandovi,
+   * the bay, the sea: river and coast tiles, never land, wetland or a khazan,
+   * nor a tile with something built on it). With calm motion only they come,
+   * fewer and gentler. Ambience only.
    */
+  const DOLPHIN_TERRAIN = new Set(["coast", "river"]);
+  const dolphinWaterKeys = new Set(levelTiles.filter((tile) => DOLPHIN_TERRAIN.has(tile.terrainId)).map((tile) => `${tile.coord.q},${tile.coord.r}`));
+  const isDolphinWater = (x: number, z: number): boolean => {
+    const { q, r } = worldToAxial(x, z, 1.0);
+    const key = `${q},${r}`;
+    return dolphinWaterKeys.has(key) && !state.elements.has(key);
+  };
   const WILDLIFE_AVOID = [".maya-figure-wrap", ".maya-bubble:not([hidden])", ".hud-panel", ".panjim-clock", ".get-ready", ".map-corner", ".hud-chrome", ".build-popover", ".result-cards:not([hidden])", ".brief-card", ".help-card", ".field-guide-card", ".leave-confirm", ".empty-prompt"];
   const WILDLIFE_AVOID_SELECTOR = WILDLIFE_AVOID.join(",");
   type Rect = { left: number; top: number; right: number; bottom: number };
@@ -290,6 +300,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         scene,
         camera,
         viewport: () => ({ width: renderer.domElement.clientWidth, height: renderer.domElement.clientHeight }),
+        isWater: isDolphinWater,
         // Read from the page at most every 250 ms, into the same objects: no layout or garbage every frame.
         avoidRects: () => {
           const now = performance.now();
@@ -440,7 +451,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * can see them (see `GameState.reserved`).
    */
   const town = level.houses?.fillLand ? townLayout(levelMap, level.id) : null;
-  /** The largest of the nearest Houses to a coord, as drawn (for sizing a monument against its street). */
+  /** The tallest of the nearest Houses to a coord, as drawn (for sizing a monument against its street). */
   const neighbourBuilding = (coord: AxialCoord): { w: number; d: number; h: number } | null => {
     if (!town) return null;
     let best: { w: number; d: number; h: number } | null = null;
@@ -449,7 +460,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       geometry.computeBoundingBox();
       const b = geometry.boundingBox!;
       const size = { w: (b.max.x - b.min.x) * plot.scale, d: (b.max.z - b.min.z) * plot.scale, h: b.max.y * plot.scale };
-      if (!best || size.w * size.d * size.h > best.w * best.d * best.h) best = size;
+      if (!best || size.h > best.h) best = size;
     }
     return best;
   };
@@ -906,7 +917,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             elements.setQualityMotion(quality !== "low");
             puffMotion.low = quality === "low";
             if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
-            wildlife?.setEnabled(!puffMotion.reduced && !puffMotion.low);
+            wildlife?.setEnabled(!puffMotion.low);
           },
           setReducedMotion: (reduced) => {
             storm.setReducedMotion(reduced);
@@ -914,7 +925,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             elements.setSwayEnabled(!reduced);
             puffMotion.reduced = reduced;
             if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
-            wildlife?.setEnabled(!puffMotion.reduced && !puffMotion.low);
+            wildlife?.setEnabled(!puffMotion.low);
+            wildlife?.setGentle(reduced);
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
@@ -2480,7 +2492,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Panjim 2050: a tap on a creature itself spots it for the Field Guide
     // and opens nothing else.
     if (panjim) {
-      const species = reactions.speciesAt(raycaster);
+      const species = reactions.speciesAt(raycaster) ?? wildlife?.speciesAt(raycaster) ?? null;
       if (species) {
         panjim.spotted([species]);
         return;
@@ -2586,7 +2598,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           // The khazan's pond is its west half (render/defenceGeometry.ts; a khazan is never turned).
           else if (placed.elementId === "khazan") khazanPonds.push({ x: placed.x - 0.3, y: placed.y + 0.035, z: placed.z, radius: 0.24 });
         }
-        wildlife.setSources({ mangroves, khazanPonds });
+        const waters: { x: number; y: number; z: number }[] = [];
+        for (const key of dolphinWaterKeys) {
+          if (state.elements.has(key)) continue;
+          const [q, r] = key.split(",").map(Number);
+          const { x, z } = axialToWorld({ q, r }, 1.0);
+          waters.push({ x, y: terrain.heightAt({ q, r }), z });
+        }
+        wildlife.setSources({ mangroves, khazanPonds, waters });
       }
       wildlife.setCalm(!(panjim?.isBusy ?? false) && !stormDirector?.playing && !document.querySelector(".result-cards:not([hidden])"));
       if (!wildlifeManual.on) wildlife.tick(nowMs);
@@ -2848,6 +2867,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __nuggetPopupForTest: nuggetPopup,
     __labelsForTest: mapLabels,
     /** A tile's top surface on screen, in client pixels (for tests that hover a tile). */
+    /** A tile's ground height, for the QA tools that frame a landmark close up. */
+    __tileHeightForTest: (q: number, r: number): number => terrain.heightAt({ q, r }),
     __projectTileForTest: (q: number, r: number): { x: number; y: number } => {
       const { x, z } = axialToWorld({ q, r }, 1.0);
       const screen = worldToScreen(x, terrain.heightAt({ q, r }), z);
@@ -2893,8 +2914,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const counts: Record<string, number> = {};
       for (const child of monuments.group.children) {
         const mesh = child as THREE.InstancedMesh;
-        // The plazas under the buildings are not monuments.
-        if (mesh.name === "monument-plazas") continue;
+        // The plazas under the buildings and the names painted on them are not monuments.
+        if (!mesh.isInstancedMesh || mesh.name === "monument-plazas") continue;
         counts[mesh.name.replace(/^monument-/, "")] = mesh.count;
       }
       return counts;
