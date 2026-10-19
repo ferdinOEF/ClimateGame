@@ -186,7 +186,7 @@ describe("a damaged landmark's model", () => {
     for (const level of [1, 2] as const) {
       const after = damagedLandmarkGeometry(base, level, 7).getAttribute("position");
       expect(after.count).toBe(before.count);
-      const line = 2.6 * (level === 2 ? 0.4 : 0.6);
+      const line = 2.6 * (level === 2 ? 0.4 : 0.55);
       let moved = 0;
       for (let t = 0; t < before.count / 3; t++) {
         const changed = [0, 1, 2].some((k) => Math.abs(after.getY(t * 3 + k) - before.getY(t * 3 + k)) > 1e-6);

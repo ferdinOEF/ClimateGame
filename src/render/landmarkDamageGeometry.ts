@@ -23,11 +23,11 @@ export function damagedLandmarkGeometry(base: THREE.BufferGeometry, level: 1 | 2
   // Where the roof gives way: a point near the top, off centre, fixed per landmark.
   const px = b.min.x + (b.max.x - b.min.x) * (0.3 + 0.4 * hash(1, seed));
   const pz = b.min.z + (b.max.z - b.min.z) * (0.3 + 0.4 * hash(2, seed));
-  const radius = Math.max(b.max.x - b.min.x, b.max.z - b.min.z) * (level === 2 ? 0.5 : 0.18);
-  const above = h * (level === 2 ? 0.4 : 0.6);
-  const streaks = level === 2 ? 0.34 : 0.13;
-  // Destroyed: the whole building scorched and stained, so it reads as broken from the board's own distance.
-  const overall = level === 2 ? 0.78 : 1;
+  const radius = Math.max(b.max.x - b.min.x, b.max.z - b.min.z) * (level === 2 ? 0.5 : 0.3);
+  const above = h * (level === 2 ? 0.4 : 0.55);
+  const streaks = level === 2 ? 0.34 : 0.22;
+  // Stained by the water, so the damage reads from the board's own distance: lightly when damaged, scorched when destroyed.
+  const overall = level === 2 ? 0.78 : 0.9;
   const c = new THREE.Vector3();
   for (let t = 0; t < pos.count / 3; t++) {
     c.set(0, 0, 0);
