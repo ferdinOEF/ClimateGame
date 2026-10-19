@@ -157,7 +157,7 @@ async function closeUp(level: 1 | 2, landmarks: Landmark[]): Promise<void> {
     const x = ${world(l.q, l.r).x}, z = ${world(l.q, l.r).z};
     const y = window.__tileHeightForTest(${l.q}, ${l.r}) + 0.3;
     window.__focusOnForTest(x, z, true);
-    const el = 34 * Math.PI / 180, az = -32 * Math.PI / 180, d = 2.6;
+    const el = 34 * Math.PI / 180, az = -32 * Math.PI / 180, d = 3.4;
     cam.position.set(x + Math.sin(az) * Math.cos(el) * d, y + Math.sin(el) * d, z + Math.cos(az) * Math.cos(el) * d);
     cam.lookAt(x, y, z);
     cam.updateMatrixWorld();

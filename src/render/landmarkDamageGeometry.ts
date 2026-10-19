@@ -23,15 +23,17 @@ export function damagedLandmarkGeometry(base: THREE.BufferGeometry, level: 1 | 2
   // Where the roof gives way: a point near the top, off centre, fixed per landmark.
   const px = b.min.x + (b.max.x - b.min.x) * (0.3 + 0.4 * hash(1, seed));
   const pz = b.min.z + (b.max.z - b.min.z) * (0.3 + 0.4 * hash(2, seed));
-  const radius = Math.max(b.max.x - b.min.x, b.max.z - b.min.z) * (level === 2 ? 0.34 : 0.18);
-  const above = h * (level === 2 ? 0.45 : 0.6);
-  const streaks = level === 2 ? 0.26 : 0.13;
+  const radius = Math.max(b.max.x - b.min.x, b.max.z - b.min.z) * (level === 2 ? 0.5 : 0.18);
+  const above = h * (level === 2 ? 0.4 : 0.6);
+  const streaks = level === 2 ? 0.34 : 0.13;
+  // Destroyed: the whole building scorched and stained, so it reads as broken from the board's own distance.
+  const overall = level === 2 ? 0.78 : 1;
   const c = new THREE.Vector3();
   for (let t = 0; t < pos.count / 3; t++) {
     c.set(0, 0, 0);
     for (let k = 0; k < 3; k++) c.add(new THREE.Vector3(pos.getX(t * 3 + k), pos.getY(t * 3 + k), pos.getZ(t * 3 + k)));
     c.multiplyScalar(1 / 3);
-    let shade = 1;
+    let shade = overall;
     // The roof section caves in: dropped towards the floor below it, charred.
     if (c.y > above && Math.hypot(c.x - px, c.z - pz) < radius) {
       for (let k = 0; k < 3; k++) {
@@ -40,7 +42,7 @@ export function damagedLandmarkGeometry(base: THREE.BufferGeometry, level: 1 | 2
         pos.setY(i, above * 0.55 + (y - above) * 0.25);
       }
       shade = 0.35;
-    } else if (c.y > 0.02 && hash(t, seed) < streaks) shade = 0.5; // soot and cracks
+    } else if (c.y > 0.02 && hash(t, seed) < streaks) shade = overall * 0.5; // soot and cracks
     if (col && shade < 1) for (let k = 0; k < 3; k++) col.setXYZ(t * 3 + k, col.getX(t * 3 + k) * shade, col.getY(t * 3 + k) * shade, col.getZ(t * 3 + k) * shade);
   }
   pos.needsUpdate = true;
