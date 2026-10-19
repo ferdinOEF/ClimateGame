@@ -2882,6 +2882,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     __labelsForTest: mapLabels,
+    /** Section 21.3: the homes drawn as ruins, and the landmarks' damage (1 damaged, 2 destroyed), for the QA tools. */
+    __ruinsForTest: () => ({
+      ruined: elements.ruinedCount,
+      landmarks: levelMap.monuments.map((m) => ({ id: m.id, name: m.name, kind: m.kind, q: m.q, r: m.r, damage: monuments.damageOf({ q: m.q, r: m.r }) })).filter((m) => m.damage > 0)
+    }),
     /** A tile's ground height, for the QA tools that frame a landmark close up. */
     __tileHeightForTest: (q: number, r: number): number => terrain.heightAt({ q, r }),
     /** A tile's top surface on screen, in client pixels (for tests that hover a tile). */

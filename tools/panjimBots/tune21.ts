@@ -6,7 +6,7 @@
  * across seeds), the stars (share of seeds on 1, 2 and 3), landmarks lost,
  * and the share of seeds that clear the level (at least 5 stars of 9).
  *
- * Usage: npx tsx tools/panjimBots/tune21.ts [s1=1.2] [s2=1.8] [s3=2.6] [three=0.79] [two=0.5] [seeds=200] [jobs=4] [styles=far,random,...]
+ * Usage: npx tsx tools/panjimBots/tune21.ts [s1=1.2] [s2=1.8] [s3=2.6] [three=0.79] [two=0.5] [seeds=200] [jobs=4] [styles=far,random,...] [raw=file.json]
  * Writes Markdown to stdout.
  */
 import { spawn } from "node:child_process";
@@ -43,7 +43,7 @@ const items: string[] = [];
 for (const style of styles) for (let i = 1; i <= seedCount; i++) items.push(`${style}|tune-seed-${i}`);
 const chunks: string[][] = Array.from({ length: jobs }, () => []);
 items.forEach((item, i) => chunks[i % jobs].push(item));
-const passOn = [...args].filter(([k]) => k !== "child" && k !== "jobs" && k !== "seeds" && k !== "styles").map(([k, v]) => `${k}=${v}`);
+const passOn = [...args].filter(([k]) => k !== "child" && k !== "jobs" && k !== "seeds" && k !== "styles" && k !== "raw").map(([k, v]) => `${k}=${v}`);
 const results: Slim[] = (
   await Promise.all(
     chunks.map(
@@ -58,6 +58,8 @@ const results: Slim[] = (
   )
 ).flat();
 
+// raw=<file>: every run's results as JSON too, for trying thresholds without rerunning (the bots never read the stars).
+if (args.has("raw")) (await import("node:fs")).writeFileSync(args.get("raw")!, JSON.stringify({ strengths, results }));
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 const share = (h: { saved: number; total: number }): number => (h.total > 0 ? h.saved / h.total : 1);
 console.log(`Strengths ${strengths.join(" / ")}; stars at ${stars.three} (three) and ${stars.two} (two); ${seedCount} seeds a style.\n`);

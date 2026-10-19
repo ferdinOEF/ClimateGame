@@ -154,6 +154,7 @@ export class HeatOverlay {
       this.flags.setXYZ(i, tile.hatch ? 1 : 0, tile.pulse ? 1 : 0, tile.shield ? 1 : 0);
     });
     this.mesh.count = count;
+    this.hot = tiles.slice(0, count).filter((tile) => tile.heat > 0).length;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.heat.needsUpdate = true;
     this.flags.needsUpdate = true;
@@ -161,7 +162,11 @@ export class HeatOverlay {
 
   clear(): void {
     this.mesh.count = 0;
+    this.hot = 0;
   }
+
+  /** Tiles drawn with heat (the homes at risk; shields aside), for the tests. */
+  hot = 0;
 
   get visibleCount(): number {
     return this.mesh.count;
