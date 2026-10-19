@@ -238,7 +238,8 @@ export class BuildPopover {
       const line = document.createElement("p");
       line.className = "build-card-elsewhere";
       line.dataset.elements = elsewhere.map((card) => card.id).join(" ");
-      line.textContent = `Not here: ${elsewhere.map((card) => card.name).join(", ")}`;
+      // A name never breaks across lines ("Small / dam"): its own spaces are non-breaking.
+      line.textContent = `Not here: ${elsewhere.map((card) => card.name.replace(/ /g, "\u00a0")).join(", ")}`;
       this.el.appendChild(line);
     }
     this.placeBeside(screenX, screenY, mode.avoid ?? []);

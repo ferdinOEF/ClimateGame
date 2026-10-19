@@ -130,17 +130,8 @@ async function checkMenu(page: Page, tag: string, ground: string, key: string, f
   // Section 16 B6: the defences that cannot go here are one "Not here: ..." line.
   const notHere = (await page.evaluate(`Array.from(document.querySelectorAll(".build-card-elsewhere")).map(function (b) { return b.dataset.elements + ":" + b.textContent; })`)) as string[];
   check(cards.length > 0, `${tag} ${ground} (${key}): the menu is cards (${cards.map((c) => c.id).join(", ")})`);
-  const [q, r] = key.split(",").map(Number);
-  let exact = true;
-  const detail: string[] = [];
-  for (const card of cards) {
-    const model = await val<number | null>(page, `r.homesSavedBy(r.nextChallenge(), { q: ${q}, r: ${r} }, ${JSON.stringify(card.id)})`);
-    const defence = card.id !== "sand_mining";
-    const expected = model === null ? "" : model > 0 ? `Protects ${model} ${model === 1 ? "home" : "homes"} here` : model < 0 ? `Puts ${-model} more ${model === -1 ? "home" : "homes"} at risk` : defence ? "Protects 0 homes here" : "Saves no homes here";
-    if (card.pill !== expected) exact = false;
-    detail.push(`${card.id} "${card.pill}"`);
-  }
-  check(exact, `${tag} ${ground}: every pill is the model's number: ${detail.join("; ")}`);
+  // Section 17.1 (owner decision): the cards carry no home count (the model's number is used underneath only).
+  check(cards.every((c) => c.pill === ""), `${tag} ${ground}: no card shows a home count`);
   check(notHere.length > 0 && notHere.every((n) => /Not here/.test(n)), `${tag} ${ground}: the other defences show on one "Not here" line (${notHere.join(" | ")})`);
   const tags = await text(page, ".build-popover");
   check(!/\b(NBS|ENGINEERED|BUILDING|COSMETIC|nbs|engineered|hybrid|building|cosmetic)\b/.test(tags), `${tag} ${ground}: no NBS / ENGINEERED / BUILDING / COSMETIC tag`);

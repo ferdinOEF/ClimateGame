@@ -1,7 +1,7 @@
 /**
  * Plays the Tutorial (Section 15) start to finish in a page, the way a player
  * would: reads the opening card, presses Begin, opens a tile's build cards
- * and picks the card with the biggest number, three times, watches the
+ * and picks the open row's card on the model's best tile (Section 17.1: the cards show no number), three times, watches the
  * cyclone, reads the result card and presses "Play Panjim".
  *
  * Shared by the walkthrough (`npm run walkthrough`, which keeps it as a

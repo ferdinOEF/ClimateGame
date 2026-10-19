@@ -5,7 +5,8 @@ import type { ActionRun } from "../src/core/actionRun";
 import { BOT_LEVEL, newRun, smartRun } from "../tools/panjimBots/bots";
 
 /**
- * Section 13.1: the build menu's "Protects N homes here" is exact. For 20
+ * Section 13.1: the model's number for a build (once the build menu's "Protects N homes here"; Section 17.1 took it
+ * off the card, and the float after a build and the objectives still use it) is exact. For 20
  * tiles across 3 boards (a Smart bot's run, stopped in each of the three
  * phases), the number on the card equals what the storm then does: the homes
  * it takes if nothing is built there, minus the homes it takes with that

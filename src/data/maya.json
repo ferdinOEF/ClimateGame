@@ -11,7 +11,7 @@
   },
   "tutorial": {
     "start": "A cyclone comes in 3 years, and each build is one year. Click a tile on the beach to see what you can build there.",
-    "cards": "Each card is a defence and what it does. Nature's own come first: dunes, pandanus and mangroves. Build where the cyclone comes ashore.",
+    "cards": "Each card is a defence and what it does, nature's own first. The card bottom right says what to build, and where.",
     "outline": "The faint outline shows the homes still at risk. Build inside it to bring them to safety.",
     "heat": "Red marks the homes this cyclone would flood. This is your last build before it lands."
   },

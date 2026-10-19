@@ -1,5 +1,5 @@
 import { axialKey, type AxialCoord } from "./hex";
-import { ELEMENT_BY_ID } from "./elements";
+import { ELEMENT_BY_ID, NATURE_BASED } from "./elements";
 import type { ElementInstance, GameState } from "./gameState";
 import { buildSchedule, challengeStrength, yearsUntil, type ClimateConfig, type ScheduledChallenge } from "./climate";
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
@@ -397,8 +397,11 @@ export class ActionRun {
     for (const [id, saved] of [...this.replaySnapshots]) if (saved.turn > copy.turn) this.replaySnapshots.delete(id);
     this.comboState = computeCombos(this.state);
     this.combos = this.comboState.bonus;
-    // A save from before the model chose objectives (Section 12) holds template rows: choose afresh.
-    const savedRowsFit = !!copy.prep && (!this.prepConfig?.model || copy.prep.every((job) => job.templateId.startsWith("model:")));
+    // A save from before the model chose objectives (Section 12) holds template rows, and one from before Section 17.2
+    // may ask for an engineered defence (a seawall, a small dam): choose afresh, so every row is nature-based.
+    const savedRowsFit =
+      !!copy.prep &&
+      (!this.prepConfig?.model || copy.prep.every((job) => job.templateId.startsWith("model:") && (NATURE_BASED as readonly string[]).includes(job.elementId)));
     if (savedRowsFit) {
       this.prep = copy.prep!;
       this.objective = null;
@@ -489,10 +492,10 @@ export class ActionRun {
   }
 
   /**
-   * The build menu's number (Section 13): how many fewer homes `challenge`
+   * The model's number for a build (Section 13; no longer on the build cards, Section 17.1): how many fewer homes `challenge`
    * would take if `elementId` stood at `coord`, on the board as it is now, by
    * the same model as the storm (negative: a build that puts homes at risk,
-   * such as sand mining). Null when it cannot be built there or there is no
+   * such as a resort). Null when it cannot be built there or there is no
    * storm to meet. Cached until the board or the clock next changes (`moment`),
    * so the menu opens without re-running the model for the board itself.
    */

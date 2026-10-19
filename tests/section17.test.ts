@@ -101,3 +101,23 @@ describe("17.3 sand mining is retired", () => {
     expect(panjimHelpHtml({ startYear: 2026, endYear: 2050, storms: [] })).not.toMatch(/sand mining/i);
   });
 });
+
+describe("17.2 an old save's rows (Section 17 review)", () => {
+  it("a save made before Section 17 that asks for seawalls gets nature-based rows on Continue", () => {
+    const r = sessionRun(BOT_LEVEL);
+    const snapshot = r.snapshot();
+    const first = r.schedule[0];
+    snapshot.prep = [{ id: "old", challengeId: first.id, templateId: "model:seawall", elementId: "seawall", zone: "z1", count: 2, baseline: 0, reward: 0, label: "Build 2 seawalls in front of Sharada Mandir School", done: false }];
+    r.restore(snapshot);
+    const rows = r.prep.filter((job) => job.challengeId === first.id);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(NATURE_BASED as readonly string[], row.label).toContain(row.elementId);
+  });
+
+  it("a save whose rows are already nature-based keeps them as they were", () => {
+    const r = sessionRun(BOT_LEVEL);
+    const before = r.prep.map((job) => job.label);
+    r.restore(r.snapshot());
+    expect(r.prep.map((job) => job.label)).toEqual(before);
+  });
+});
