@@ -84,7 +84,6 @@ await focus(page, world(-3, 18), 5);
 await shot(page, "risk-2027-before");
 await page.evaluate(`window.__buildForTest(-4, 18, "dune", false)`);
 await page.waitForTimeout(2500);
-await page.keyboard.press("Escape").catch(() => undefined);
 const after = await risk(page);
 check(after.on && after.hot < before.hot && after.hot === after.homes, `after a dune in front of the school: fewer homes at risk, heat and top bar agree (${before.hot} → ${after.hot}, top bar ${after.homes})`);
 await shot(page, "risk-2027-after");
