@@ -194,8 +194,23 @@ const scenario = (page: Page, name: string) => page.evaluate(`window.__panjimSce
   await scan(page, "Tutorial cards and Maya's line");
   await page.keyboard.press("Escape");
   await wait(400);
-  await scenario(page, "to-results");
-  await wait(2000);
+  // The Tutorial's three builds as a player makes them (its objective rows), then the cyclone, hurried, to its card.
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(`(() => {
+      const p = window.__panjimForTest;
+      for (const job of p.run.prep) for (const key of job.tiles ?? []) {
+        const [q, r] = key.split(",").map(Number);
+        if (p.run.state.canBuild({ q, r }, job.elementId)) return p.build({ q, r }, job.elementId);
+      }
+      return false;
+    })()`);
+    await wait(2500);
+  }
+  for (let i = 0; i < 200 && !(await page.evaluate(`!!document.querySelector(".result-cards:not([hidden])")`)); i++) {
+    await page.evaluate(`document.dispatchEvent(new PointerEvent("pointerdown"))`);
+    await wait(300);
+  }
+  await wait(1500);
   await shot(page, "tutorial-result");
   await scan(page, "Tutorial result card");
   const eyebrow = (await page.evaluate(`document.querySelector(".result-eyebrow")?.textContent ?? ""`)) as string;
