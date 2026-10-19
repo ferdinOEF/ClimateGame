@@ -150,7 +150,7 @@ export function dailyChallengeLevel(dateId: string = dailyChallengeId()): LevelD
     name: "Daily Challenge",
     subtitle: dateId,
     brief:
-      "One coast, one day, one shot at the board. Every player in the world gets this exact coast and this exact storm sequence — the seed is the date itself. Come back tomorrow for a new one.",
+      "One coast, one day, one shot at the board. Every player in the world gets this exact coast and this exact storm sequence. The seed is the date itself. Come back tomorrow for a new one.",
     mapId: DAILY_MAP_ID,
     // A daily is never the guided tutorial, whichever template it copied.
     tutorial: false,

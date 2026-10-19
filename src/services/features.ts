@@ -37,6 +37,17 @@ export const REQUIRE_EMAIL = parseFlag(import.meta.env.VITE_REQUIRE_EMAIL);
  */
 export const SHOW_MENU_EXTRAS = parseFlag(import.meta.env.VITE_SHOW_MENU_EXTRAS);
 
+/**
+ * Whether the landing page shows the partner credits: the cream "Brought to you by" plate with the OneEarth
+ * Foundation and Gokhush Charitable Trust logos (Section 17b, owner decision).
+ *
+ * Off by default. With it off the menu shows a small "Facts & sources" text link in its bottom corner instead,
+ * and the board render's OpenStreetMap credit as always. The plate's code (`creditsStrip` in
+ * `src/ui/screens/menuScreen.ts`), its styles and the logo files in `public/branding/` all stay, and
+ * `VITE_SHOW_PARTNER_CREDITS=true` at build time brings the plate back.
+ */
+export const SHOW_PARTNER_CREDITS = parseFlag(import.meta.env.VITE_SHOW_PARTNER_CREDITS);
+
 /** Only the exact string "true" turns a flag on, so a typo or an empty value can never enable it by accident. */
 export function parseFlag(value: unknown): boolean {
   return typeof value === "string" && value.trim() === "true";

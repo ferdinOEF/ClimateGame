@@ -91,7 +91,7 @@ await wait(1500);
 await shot(page, "help");
 const help = (await page.evaluate(`document.querySelector(".help-card").innerText`)) as string;
 check(!/biggest|numbers? on the cards|Protects \d|sand mining/i.test(help), "Help never tells the player to pick the biggest number, and never names sand mining");
-check(/The cards/.test(help) && /Nature-based ones come first/.test(help), "Help's cards section says nature-based ones come first");
+check(/The cards/.test(help) && /Nature based ones come first/.test(help), "Help's cards section says nature-based ones come first");
 
 check(errors.length === 0, `no console errors${errors.length ? `: ${errors.slice(0, 5).join(" | ")}` : ""}`);
 console.log(`${failures === 0 ? "ALL PASS" : `${failures} FAILED`} (${W}x${H})`);

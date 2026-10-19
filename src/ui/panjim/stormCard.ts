@@ -124,7 +124,7 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
 
   ctx.fillStyle = "#e8a64a";
   ctx.font = "600 16px system-ui, sans-serif";
-  ctx.fillText("RIPTIDE RISING · PANJIM 2050", 28, 40);
+  ctx.fillText("RIPTIDE RISING, PANJIM 2050", 28, 40);
   ctx.fillStyle = "#f4efe2";
   ctx.font = "700 30px system-ui, sans-serif";
   ctx.fillText(input.title, 28, 72);

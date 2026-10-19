@@ -2,7 +2,7 @@ import { LEVEL_BY_ID } from "@levels/levels";
 
 /**
  * Panaji's run in words, from its own level data (CLAUDE.md: run length is
- * never hard-coded): "Twenty-five years of Panjim. Three storms. One build a
+ * never hard-coded): "Twenty five years of Panjim. Three storms. One build a
  * year." for the menu, and the Tutorial's last card.
  */
 const ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
@@ -11,7 +11,8 @@ const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", 
 export function numberWord(n: number): string {
   if (!Number.isInteger(n) || n < 0 || n > 99) return String(n);
   if (n < 20) return ONES[n];
-  return TENS[Math.floor(n / 10)] + (n % 10 ? `-${ONES[n % 10]}` : "");
+  // Section 17b: no hyphen between words ("twenty five").
+  return TENS[Math.floor(n / 10)] + (n % 10 ? ` ${ONES[n % 10]}` : "");
 }
 
 const capital = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
@@ -31,7 +32,7 @@ export function menuTagline(): string {
   return `${capital(numberWord(years))} years of Panjim. ${capital(numberWord(storms))} ${storms === 1 ? "storm" : "storms"}. One build a year.`;
 }
 
-/** "twenty-five builds and three storms". */
+/** "twenty five builds and three storms". */
 export function panajiRunPhrase(): string {
   const { years, storms } = panajiRun();
   return `${numberWord(years)} builds and ${numberWord(storms)} ${storms === 1 ? "storm" : "storms"}`;

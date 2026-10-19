@@ -6,8 +6,9 @@
  *
  * Usage:  npx tsx tools/section15Checks.ts [outDir]   (outDir defaults to docs/qa/section15)
  *
- * Checks, at every size: the menu's logo strip on screen without scrolling;
- * the menu shows only Tutorial and Choose a level, with the tagline; the
+ * Checks, at every size: no partner plate on the menu and its "Facts &
+ * sources" link on screen without scrolling (Section 17b); the menu shows only
+ * Tutorial and Play Panjim, with the tagline; the
  * level cards each have their board's picture, centred; Help has its five
  * pictures, loaded, and labels each section a game rule; the Tutorial plays
  * start to finish (tools/tutorialPlay.ts); no coin, meter or era text on any
@@ -90,22 +91,25 @@ try {
     }, undefined, { timeout: 15000 });
     await page.waitForTimeout(600);
     const menu = await page.evaluate(() => {
-      const plate = document.querySelector(".menu-credits-plate")!.getBoundingClientRect();
+      // Section 17b: the partner plate is hidden (SHOW_PARTNER_CREDITS, off); "Facts & sources" is a corner link.
+      const link = document.querySelector(".menu-sources-link")?.getBoundingClientRect() ?? null;
       const layer = document.querySelector(".menu-screen")!.parentElement!;
       return {
         buttons: [...document.querySelectorAll(".menu-actions button")].map((b) => b.textContent?.trim()),
         tagline: document.querySelector(".menu-tagline")?.textContent ?? "",
-        plateBottom: plate.bottom,
-        plateTop: plate.top,
+        plates: document.querySelectorAll(".menu-credits, .menu-credits-plate, .menu-credit-logo").length,
+        linkTop: link ? link.top : -1,
+        linkBottom: link ? link.bottom : Infinity,
         scrollTop: layer.scrollTop,
         title: document.querySelector(".menu-title")?.textContent,
         credit: (document.querySelector(".menu-art-credit")?.textContent ?? "").includes("OpenStreetMap")
       };
     });
-    check(menu.plateTop >= 0 && menu.plateBottom <= h + 0.5 && menu.scrollTop === 0, `${tag} menu: the logo strip is on screen without scrolling (${Math.round(menu.plateTop)} to ${Math.round(menu.plateBottom)} of ${h})`);
+    check(menu.plates === 0, `${tag} menu: no "Brought to you by" plate or partner logo`);
+    check(menu.linkTop >= 0 && menu.linkBottom <= h + 0.5 && menu.scrollTop === 0, `${tag} menu: the "Facts & sources" link is on screen without scrolling (${Math.round(menu.linkTop)} to ${Math.round(menu.linkBottom)} of ${h})`);
     // Section 16.3: the menu's second button is Play Panjim; the level select keeps its own address.
     check(JSON.stringify(menu.buttons) === JSON.stringify(["Tutorial", "Play Panjim"]), `${tag} menu: only Tutorial and Play Panjim (${menu.buttons.join(", ")})`);
-    check(menu.title === "Riptide Rising" && menu.tagline === "Twenty-five years of Panjim. Three storms. One build a year." && menu.credit, `${tag} menu: the name, the tagline, and the header render's OpenStreetMap credit`);
+    check(menu.title === "Riptide Rising" && menu.tagline === "Twenty five years of Panjim. Three storms. One build a year." && menu.credit, `${tag} menu: the name, the tagline, and the header render's OpenStreetMap credit`);
     await noForbidden(page, `${tag} menu`);
     await shot(page, `menu-${tag}`, full);
     if (full) await axe(page, "menu");

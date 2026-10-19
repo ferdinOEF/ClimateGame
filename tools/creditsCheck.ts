@@ -1,16 +1,18 @@
 /**
- * The landing page's credits strip, the Sources screen and the Discovery
- * card's Source control, checked in a real browser.
+ * The landing page's credits, the Sources screen and the Discovery card's
+ * Source control, checked in a real browser.
  *
- * Usage:  npx tsx tools/creditsCheck.ts
+ * Usage:  npx tsx tools/creditsCheck.ts [outDir]
  *
- * At 1366x768, 1920x1080 and 2560x1440 (and 1920x1080 at DPR 2, and a
- * narrow 760 px window) it checks that the strip does not overlap anything
- * on the menu, that both logos are 56-64 px tall with their own proportions
- * and are not links, that the label's contrast is at least 4.5:1, and that
- * the strip is absent from a level. It opens the Sources screen from the
- * strip and from a Discovery card and checks it lists every cited fact.
- * Screenshots go to docs/qa/credits/. Exits non-zero on any failure.
+ * Section 17b (owner decision): the "Brought to you by" plate and its logos
+ * are hidden (`SHOW_PARTNER_CREDITS`, off by default). At 1280x600, 1366x768,
+ * 1920x1080 and 2560x1440 (and 1920x1080 at DPR 2, and a narrow 760 px
+ * window) it checks that no plate or logo is drawn, that the "Facts &
+ * sources" link is on screen in the bottom corner, clear of the menu and
+ * readable, and that the board render's OpenStreetMap credit is there,
+ * unchanged. It opens the Sources screen from the link and from a Discovery
+ * card and checks it lists every cited fact, and runs axe-core on the menu.
+ * Screenshots go to docs/qa/credits/ (or outDir). Exits non-zero on any failure.
  */
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
@@ -19,7 +21,7 @@ import { startDevServer } from "./devServer";
 import { CITED_FACTS } from "../src/core/facts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const OUT = path.join(ROOT, "docs", "qa", "credits");
+const OUT = path.resolve(ROOT, process.argv[2] ?? path.join("docs", "qa", "credits"));
 const PORT = Number(process.env.SHOTS_PORT ?? 5196);
 const failures: string[] = [];
 const check = (ok: boolean, what: string): void => {
@@ -29,35 +31,62 @@ const check = (ok: boolean, what: string): void => {
 
 async function menuChecks(page: Page, label: string): Promise<void> {
   const result = (await page.evaluate(`(() => {
-    const plate = document.querySelector(".menu-credits-plate").getBoundingClientRect();
+    const shown = (el) => { if (!el) return false; const st = getComputedStyle(el); const r = el.getBoundingClientRect(); return st.display !== "none" && st.visibility !== "hidden" && r.width > 0 && r.height > 0; };
+    const link = document.querySelector(".menu-sources-link");
+    const box = link ? link.getBoundingClientRect() : null;
     const others = [...document.querySelectorAll(".menu-screen .menu-hero > *, .menu-screen .menu-actions > *, .menu-screen > .menu-stats, .menu-screen > .menu-stars, .menu-screen > .menu-footer")].map((n) => n.getBoundingClientRect());
-    const gap = Math.min(...others.map((r) => plate.top - r.bottom));
-    const overlaps = others.filter((r) => !(r.right <= plate.left || r.left >= plate.right || r.bottom <= plate.top || r.top >= plate.bottom)).length;
-    const logos = [...document.querySelectorAll(".menu-credit-logo")].map((img) => ({
-      alt: img.alt, h: img.getBoundingClientRect().height, w: img.getBoundingClientRect().width,
-      nw: img.naturalWidth, nh: img.naturalHeight, complete: img.complete && img.naturalWidth > 0, inLink: Boolean(img.closest("a"))
-    }));
+    const overlaps = box ? others.filter((r) => !(r.right <= box.left || r.left >= box.right || r.bottom <= box.top || r.top >= box.bottom)).length : -1;
+    const credit = document.querySelector(".menu-art-credit");
+    const cbox = credit ? credit.getBoundingClientRect() : null;
+    return {
+      plate: document.querySelectorAll(".menu-credits, .menu-credits-plate").length,
+      logos: [...document.querySelectorAll(".menu-credit-logo")].filter(shown).length,
+      brought: /Brought to you by/.test(document.body.innerText),
+      link: shown(link), linkText: link ? link.textContent : "", linkInView: !!box && box.top >= 0 && box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth,
+      linkCorner: !!box && box.right >= innerWidth - 40 && box.bottom >= innerHeight - 40, overlaps,
+      linkSize: link ? parseFloat(getComputedStyle(link).fontSize) : 0,
+      credit: shown(credit), creditText: credit ? credit.textContent : "", creditHref: credit ? credit.getAttribute("href") : "",
+      creditInView: !!cbox && cbox.top >= 0 && cbox.right <= innerWidth,
+      scrollW: document.documentElement.scrollWidth, vw: innerWidth
+    };
+  })()`)) as { plate: number; logos: number; brought: boolean; link: boolean; linkText: string; linkInView: boolean; linkCorner: boolean; overlaps: number; linkSize: number; credit: boolean; creditText: string; creditHref: string; creditInView: boolean; scrollW: number; vw: number };
+  check(result.plate === 0 && result.logos === 0 && !result.brought, `${label}: no "Brought to you by" plate and no partner logo`);
+  check(result.link && result.linkText === "Facts & sources" && result.linkInView, `${label}: the "Facts & sources" link is on screen`);
+  check(result.linkCorner, `${label}: the link sits in the bottom corner`);
+  check(result.overlaps === 0, `${label}: the link overlaps nothing on the menu`);
+  check(result.linkSize >= 12, `${label}: the link is at least 12 px (${result.linkSize} px)`);
+  check(result.credit && result.creditText === "Board render, map data © OpenStreetMap contributors" && result.creditHref === "https://www.openstreetmap.org/copyright" && result.creditInView, `${label}: the board render's OpenStreetMap credit (Section 17b: a comma, not a dot)`);
+  check(result.scrollW <= result.vw, `${label}: no horizontal scroll`);
+}
+
+/**
+ * With the plate switched back on (`VITE_SHOW_PARTNER_CREDITS=true` in the environment of this tool and of the dev
+ * server it starts), the plate's own checks: on screen, clear of the menu, both logos loaded, 56 to 64 px tall at
+ * their own proportions, not links, and the label's contrast at least 4.5:1.
+ */
+async function plateChecks(page: Page, label: string): Promise<void> {
+  const r = (await page.evaluate(`(() => {
+    const plate = document.querySelector(".menu-credits-plate");
+    if (!plate) return null;
+    const box = plate.getBoundingClientRect();
+    const others = [...document.querySelectorAll(".menu-screen .menu-hero > *, .menu-screen .menu-actions > *")].map((n) => n.getBoundingClientRect());
+    const overlaps = others.filter((o) => !(o.right <= box.left || o.left >= box.right || o.bottom <= box.top || o.top >= box.bottom)).length;
+    const logos = [...document.querySelectorAll(".menu-credit-logo")].map((img) => ({ alt: img.alt, h: img.getBoundingClientRect().height, w: img.getBoundingClientRect().width, nw: img.naturalWidth, nh: img.naturalHeight, inLink: Boolean(img.closest("a")) }));
     const rgb = (s) => s.match(/[\\d.]+/g).slice(0, 3).map(Number);
     const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
-    const label = document.querySelector(".menu-credits-label");
-    const fg = lum(rgb(getComputedStyle(label).color));
-    const bg = lum(rgb(getComputedStyle(document.querySelector(".menu-credits-plate")).backgroundColor));
-    const contrast = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
-    return { gap, overlaps, logos, contrast, text: label.textContent, inView: plate.bottom <= innerHeight + 1 && plate.top >= 0, scrollW: document.documentElement.scrollWidth, vw: innerWidth };
-  })()`)) as { gap: number; overlaps: number; logos: { alt: string; h: number; w: number; nw: number; nh: number; complete: boolean; inLink: boolean }[]; contrast: number; text: string; inView: boolean; scrollW: number; vw: number };
-  check(result.overlaps === 0, `${label}: strip overlaps nothing on the menu (gap ${Math.round(result.gap)} px)`);
-  check(result.text === "Brought to you by", `${label}: label reads "Brought to you by"`);
-  check(result.contrast >= 4.5, `${label}: label contrast ${result.contrast.toFixed(1)}:1`);
-  check(result.scrollW <= result.vw, `${label}: no horizontal scroll`);
-  const alts = result.logos.map((l) => l.alt);
-  check(alts.join("|") === "OneEarth Foundation logo|Gokhush Charitable Trust logo", `${label}: logos and alt text (${alts.join(", ")})`);
-  for (const logo of result.logos) {
-    check(logo.complete, `${label}: ${logo.alt} loaded`);
-    check(logo.h >= 56 && logo.h <= 64, `${label}: ${logo.alt} is ${logo.h.toFixed(0)} px tall`);
-    check(Math.abs(logo.w / logo.h - logo.nw / logo.nh) < 0.03, `${label}: ${logo.alt} keeps its proportions`);
-    check(!logo.inLink, `${label}: ${logo.alt} is not a link`);
-  }
+    const fg = lum(rgb(getComputedStyle(document.querySelector(".menu-credits-label")).color));
+    const bg = lum(rgb(getComputedStyle(plate).backgroundColor));
+    return { overlaps, logos, contrast: (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05), inView: box.top >= 0 && box.bottom <= innerHeight + 1 };
+  })()`)) as { overlaps: number; logos: { alt: string; h: number; w: number; nw: number; nh: number; inLink: boolean }[]; contrast: number; inView: boolean } | null;
+  check(r !== null, `${label}: the plate is drawn (switch on)`);
+  if (!r) return;
+  check(r.overlaps === 0 && r.inView, `${label}: the plate is on screen and overlaps nothing`);
+  check(r.contrast >= 4.5, `${label}: the plate's label contrast ${r.contrast.toFixed(1)}:1`);
+  check(r.logos.map((l) => l.alt).join("|") === "OneEarth Foundation logo|Gokhush Charitable Trust logo", `${label}: both logos`);
+  for (const logo of r.logos) check(logo.h >= 46 && logo.h <= 64 && Math.abs(logo.w / logo.h - logo.nw / logo.nh) < 0.03 && !logo.inLink, `${label}: ${logo.alt} ${logo.h.toFixed(0)} px, its own proportions, not a link`);
 }
+
+const PLATE_ON = process.env.VITE_SHOW_PARTNER_CREDITS === "true";
 
 async function main(): Promise<void> {
   fs.mkdirSync(OUT, { recursive: true });
@@ -68,35 +97,49 @@ async function main(): Promise<void> {
   });
   const errors: string[] = [];
   try {
-    for (const [w, h, dpr] of [[1366, 768, 1], [1920, 1080, 1], [2560, 1440, 1], [1920, 1080, 2], [760, 900, 1]] as const) {
+    for (const [w, h, dpr] of [[1280, 600, 1], [1366, 768, 1], [1920, 1080, 1], [2560, 1440, 1], [1920, 1080, 2], [760, 900, 1]] as const) {
       const label = `${w}x${h}${dpr > 1 ? "@2x" : ""}`;
       const page = await (await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: dpr })).newPage();
       page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") errors.push(`${label}: ${m.text()}`); });
       page.on("requestfailed", (r) => errors.push(`${label}: failed ${r.url()}`));
       await page.goto(server.url, { waitUntil: "networkidle" });
-      await page.waitForSelector(".menu-credits-plate img");
+      if (PLATE_ON) {
+        await page.waitForSelector(".menu-credits-plate img");
+        await page.waitForTimeout(500);
+        await plateChecks(page, label);
+        await page.screenshot({ path: path.join(OUT, `menu-plate-on-${label}.jpg`), quality: 85 });
+        await page.close();
+        continue;
+      }
+      await page.waitForSelector(".menu-sources-link");
+      await page.waitForFunction(() => { const img = document.querySelector<HTMLImageElement>(".menu-art img"); return !img || (img.complete && img.naturalWidth > 0); }, undefined, { timeout: 15000 }).catch(() => undefined);
       await page.waitForTimeout(500);
       await menuChecks(page, label);
       await page.screenshot({ path: path.join(OUT, `menu-${label}.jpg`), quality: 85 });
-      if (dpr > 1) await page.locator(".menu-credits-plate").screenshot({ path: path.join(OUT, `strip-${label}.png`) });
       if (w === 1920 && dpr === 1) {
-        await page.locator(".menu-credits-sources").click();
+        // axe-core on the menu itself, before the Sources screen opens.
+        await page.addScriptTag({ path: path.resolve(ROOT, "node_modules/axe-core/axe.min.js") });
+        const menuAxe = await page.evaluate<string[]>(`(async () => {
+          const r = await axe.run(document, { resultTypes: ["violations"] });
+          return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id + " x" + v.nodes.length);
+        })()`);
+        check(menuAxe.length === 0, `axe-core: the menu, no serious or critical violations${menuAxe.length ? ": " + menuAxe.join(", ") : ""}`);
+        await page.locator(".menu-sources-link").click();
         await page.waitForSelector(".sources-panel");
         const listed = await page.locator(".sources-list:not(.sources-map-data) .sources-item").evaluateAll((items) => items.map((i) => (i as HTMLElement).dataset.factId));
         check(JSON.stringify(listed) === JSON.stringify(CITED_FACTS.map((f) => f.id)), `Sources screen lists every cited fact (${listed.length})`);
         const links = await page.locator(".sources-list:not(.sources-map-data) .sources-link").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
         check(links.every((u) => u.startsWith("https://")), "Sources links are https");
         await page.screenshot({ path: path.join(OUT, `sources-${label}.jpg`), quality: 85 });
-        // axe-core on the menu with the strip and on the open Sources screen.
-        await page.addScriptTag({ path: path.resolve(ROOT, "node_modules/axe-core/axe.min.js") });
+        // axe-core with the Sources screen open over the menu.
         const axeResult = await page.evaluate<string[]>(`(async () => {
           const r = await axe.run(document, { resultTypes: ["violations"] });
           return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id + " x" + v.nodes.length);
         })()`);
-        check(axeResult.length === 0, `axe-core: menu + Sources screen, no serious or critical violations${axeResult.length ? ": " + axeResult.join(", ") : ""}`);
+        check(axeResult.length === 0, `axe-core: the Sources screen over the menu, no serious or critical violations${axeResult.length ? ": " + axeResult.join(", ") : ""}`);
         await page.keyboard.press("Escape");
         check((await page.locator(".sources-panel").count()) === 0, "Esc closes the Sources screen");
-        // Into a level: no strip.
+        // Into a level: no credits strip (the switch off or on).
         await page.goto(`${server.url}#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-card", { timeout: 60000 });
         await page.locator(".brief-cta").first().click();

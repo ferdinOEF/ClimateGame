@@ -36,7 +36,7 @@ export class FinaleCard {
   async title(years: number, storms: number): Promise<void> {
     const title = document.createElement("div");
     title.className = "finale-title";
-    title.innerHTML = `<div class="finale-title-eyebrow">${years} years · ${storms} storms</div><div class="finale-title-main">Panjim, 2050</div>`;
+    title.innerHTML = `<div class="finale-title-eyebrow">${years} years, ${storms} storms</div><div class="finale-title-main">Panjim, 2050</div>`;
     this.container.appendChild(title);
     playSound("combo");
     await wait(3200);
@@ -68,7 +68,7 @@ export class FinaleCard {
               `<div class="finale-storm"><span>${name}</span><span class="finale-storm-stars">${"★".repeat(index.challengeStars[i] ?? 0)}${"☆".repeat(3 - (index.challengeStars[i] ?? 0))}</span></div>`
           )
           .join("")}</div>
-        <div class="finale-tempo" title="Real time played. It is not part of the score.">Tempo: <b>${view.tempo.name}</b> · ${view.tempo.minutes} min</div>
+        <div class="finale-tempo" title="Real time played. It is not part of the score.">Tempo: <b>${view.tempo.name}</b>, ${view.tempo.minutes} min</div>
         <div class="finale-actions">
           <button type="button" class="finale-share">Share card</button>
           ${view.stormCard ? `<button type="button" class="finale-storm-card">Storm card</button>` : ""}
@@ -171,7 +171,7 @@ export function drawShareCard(view: FinaleView): HTMLCanvasElement {
   });
   ctx.fillStyle = "#9fd8c6";
   ctx.font = "500 28px Inter, system-ui, sans-serif";
-  ctx.fillText(`Tempo: ${view.tempo.name} · ${view.tempo.minutes} min`, 640, 480);
+  ctx.fillText(`Tempo: ${view.tempo.name}, ${view.tempo.minutes} min`, 640, 480);
   return canvas;
 }
 

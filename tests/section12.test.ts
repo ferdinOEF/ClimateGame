@@ -27,8 +27,9 @@ describe("Section 12 bugs", () => {
     expect(run.buildsUntil(flood)).toBe(10);
     const storm = { challenge: flood, yearsUntil: 11, past: false };
     // Section 13: the countdown is the clock's alone ("Flood in 10 builds"); the Outlook never counts years.
-    expect(describeStorm(storm)).toBe("Monsoon flood · 2040 · strong");
-    expect(describeStorm(storm, true)).toBe("Monsoon flood · 2040 · strong");
+    // Section 17b (owner decision): no dots or hyphens between words in player-facing text.
+    expect(describeStorm(storm)).toBe("Monsoon flood in 2040, strong");
+    expect(describeStorm(storm, true)).toBe("Monsoon flood in 2040, strong");
   });
 
   it("3: an objective row is ticked only at its target, from the same count as its counter (after a demolish too)", () => {
@@ -51,14 +52,15 @@ describe("Section 12 bugs", () => {
     for (const id of [MAYA.greeting.id, "get-ready", "fact:mangroves"]) expect(isPhaseLine(id), id).toBe(false);
   });
 
-  it("7: the level card says 'In progress · 2031' while a run is saved, best stars once one has finished", () => {
+  it("7: the level card says 'Continue from 2031' while a run is saved, best stars once one has finished", () => {
     const store = new Map<string, string>();
     const storage = { getItem: (key: string) => store.get(key) ?? null };
     expect(savedRunYear("l01-first-rains", 2026, 25, storage)).toBeNull();
     store.set(panjimSaveKey("l01-first-rains"), JSON.stringify({ snapshot: { version: 3, turn: 5 }, board: boardFingerprint("l01-first-rains") }));
     expect(savedRunYear("l01-first-rains", 2026, 25, storage)).toBe(2031);
     const record = { stars: 0, bestScore: 0, completed: false };
-    expect(progressLine(BOT_LEVEL, record, true, 2031)).toEqual({ text: "In progress · 2031", muted: false });
+    // Section 17b (owner decision): no dots or hyphens between words in player-facing text.
+    expect(progressLine(BOT_LEVEL, record, true, 2031)).toEqual({ text: "Continue from 2031", muted: false });
     expect(progressLine(BOT_LEVEL, record, true, null).text).toBe("Not yet played");
     expect(progressLine(BOT_LEVEL, { stars: 2, bestScore: 0, completed: true }, true, null).text).toBe("Best ★★☆");
     // A finished run's save is not "in progress".

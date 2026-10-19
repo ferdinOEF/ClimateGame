@@ -86,7 +86,7 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
       headline: "Nothing stood between the sea and those homes",
       body:
         "Every bit of this wave arrived with its full strength. In this game, mangroves on the estuary weaken a surge " +
-        "before it reaches the shore — plant a belt and watch this number fall."
+        "before it reaches the shore. Plant a belt and watch this number fall."
     };
   }
 
@@ -167,7 +167,7 @@ export class StormReport {
     this.card.innerHTML = "";
 
     this.card.appendChild(
-      element("div", "storm-report-eyebrow", `${data.kind} — what happened`)
+      element("div", "storm-report-eyebrow", `${data.kind}: what happened`)
     );
 
     // The headline figure. Framed as what got through rather than what was
@@ -213,7 +213,7 @@ export class StormReport {
     if (data.defencesOverwhelmed > 0) {
       costs.push(`${data.defencesOverwhelmed} overwhelmed but still standing`);
     }
-    if (costs.length > 0) this.card.appendChild(element("div", "storm-report-costs", costs.join(" · ")));
+    if (costs.length > 0) this.card.appendChild(element("div", "storm-report-costs", costs.join(", ")));
 
     const lessonBlock = element("div", "storm-report-lesson");
     lessonBlock.appendChild(element("div", "storm-report-lesson-title", lesson.headline));

@@ -1447,7 +1447,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (result.overwhelmedDefenses.length > 0) {
       parts.push(`${result.overwhelmedDefenses.length} overwhelmed`);
     }
-    return parts.join(" · ");
+    return parts.join(", ");
   }
 
   /**
@@ -2285,12 +2285,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         kindLabel: panjim ? undefined : kindLabel(def),
         // With coins off, what a thing earns is not shown: no money anywhere.
         effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
-        removeLabel: panjim ? "Demolish · uses this year's build" : undefined,
+        removeLabel: panjim ? "Demolish (uses this year's build)" : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
             ? [
                 {
-                  label: economy ? `Repair · uses this year's build · ${panjim.run.repairCoin(coord)}c` : "Repair · uses this year's build",
+                  label: economy ? `Repair (uses this year's build, ${panjim.run.repairCoin(coord)}c)` : "Repair (uses this year's build)",
                   disabled: economy && state.coin < panjim.run.repairCoin(coord),
                   onClick: () => {
                     panjim.repair(coord);

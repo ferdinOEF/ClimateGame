@@ -126,7 +126,7 @@ export function tutorialResultCard(result: PhaseResult): HTMLElement {
          .join("")}</ul>`
     : `<p class="result-sub">Nothing stood in the cyclone's way this time.</p>`;
   return el(`<div class="result-card-body tutorial-result">
-    <div class="result-eyebrow">Tutorial · ${esc(result.eyebrow)}</div>
+    <div class="result-eyebrow">Tutorial, ${esc(result.eyebrow)}</div>
     <h2 class="result-title">${esc(resultHeadline(result.stars))}</h2>
     ${starsHtml(result.stars)}
     ${homesHtml(result.homesSaved, result.homesTotal)}

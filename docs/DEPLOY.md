@@ -106,6 +106,21 @@ Like `VITE_REQUIRE_EMAIL`, it is read at build time (set it in `.env.local` or
 in the Vercel project's environment variables, then rebuild), and only the
 exact value `true` turns it on. The two flags are independent.
 
+### The partner credits (`VITE_SHOW_PARTNER_CREDITS`)
+
+By default (Section 17b, owner decision) the landing page does not show the
+cream "Brought to you by" plate with the OneEarth Foundation and Gokhush
+Charitable Trust logos. "Facts & sources" is a small text link in the menu's
+bottom-right corner instead, and the board render's OpenStreetMap credit stays
+on the header art. The plate's code and the logo files in `public/branding/`
+are kept; to bring the plate back, build with:
+
+```
+VITE_SHOW_PARTNER_CREDITS=true
+```
+
+Read at build time, like the flags above; only the exact value `true` turns it on.
+
 ## 4. Turn on Authentication
 
 Console → **Build → Authentication → Get started**, then under

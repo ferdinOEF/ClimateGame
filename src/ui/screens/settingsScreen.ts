@@ -150,7 +150,7 @@ export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress
               isCloudConfigured() && user && !user.hasProvider
                 ? el("button", {
                     className: "btn",
-                    text: "Quick sign-in with Google",
+                    text: "Quick sign in with Google",
                     on: {
                       click: async (event) => {
                         const button = event.currentTarget as HTMLButtonElement;
@@ -194,7 +194,7 @@ export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress
       el("section", {
         className: "settings-block",
         children: [
-          el("label", { className: "field-label", text: `Badges — ${unlocked.size} of ${ACHIEVEMENTS.length}` }),
+          el("label", { className: "field-label", text: `Badges, ${unlocked.size} of ${ACHIEVEMENTS.length}` }),
           el("div", {
             className: "badge-grid",
             children: ACHIEVEMENTS.map((achievement) =>
@@ -278,9 +278,9 @@ function cloudStatusBlock(registration: ReturnType<typeof getRegistration>, show
   function describe(): string {
     if (!config) return "No Firebase project is configured for this build, so nothing is sent anywhere. Everything is saved on this device. See docs/DEPLOY.md to connect one.";
     const account = getCurrentUser();
-    if (!showAccount) return `Project ${config.projectId} — ${account ? "connected" : "connecting…"}.`;
+    if (!showAccount) return `Project ${config.projectId}, ${account ? "connected" : "connecting…"}.`;
     const session = account ? `signed in (${account.isAnonymous ? "guest session" : "account"})` : "not signed in yet";
-    return `Project ${config.projectId} — ${session}.`;
+    return `Project ${config.projectId}, ${session}.`;
   }
 
   status.textContent = describe();
@@ -310,9 +310,9 @@ function cloudStatusBlock(registration: ReturnType<typeof getRegistration>, show
           outcome.status === "written"
             ? `Wrote to playtesters/ in ${config?.projectId ?? "the project"}. It should be visible in the Firebase console now.`
             : outcome.status === "offline"
-              ? "Could not get a session. Check that Anonymous sign-in is enabled under Authentication in the Firebase console."
+              ? "Could not get a session. Check that Anonymous sign in is enabled under Authentication in the Firebase console."
               : outcome.rateLimited
-                ? "Rejected because the last write was under five seconds ago — the rules rate-limit rewrites. Wait a moment and try again."
+                ? "Rejected because the last write was under five seconds ago, and the rules limit how often it can be rewritten. Wait a moment and try again."
                 : `The write was rejected: ${outcome.reason}`;
       }
     }

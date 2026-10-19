@@ -84,9 +84,10 @@ describe("result card 1's places (Section 16 B4)", () => {
 });
 
 describe("the top bar's countdown (Section 16 B2)", () => {
-  it("is on the next storm's marker: 'Cyclone · 5 builds', then 'Cyclone · next build'", () => {
-    expect(countdownText({ builds: 5, storm: "Cyclone" })).toBe("Cyclone · 5 builds");
-    expect(countdownText({ builds: 1, storm: "Cyclone" })).toBe("Cyclone · next build");
+  it("is on the next storm's marker: 'Cyclone in 5 builds', then 'Cyclone in 1 build'", () => {
+    // Section 17b (owner decision): no dots or hyphens between words in player-facing text.
+    expect(countdownText({ builds: 5, storm: "Cyclone" })).toBe("Cyclone in 5 builds");
+    expect(countdownText({ builds: 1, storm: "Cyclone" })).toBe("Cyclone in 1 build");
   });
 });
 

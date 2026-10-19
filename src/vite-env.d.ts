@@ -21,6 +21,8 @@ interface ImportMetaEnv {
   readonly VITE_REQUIRE_EMAIL?: string;
   /** "true" brings back the full main menu (daily, leaderboard, stats, settings). See src/services/features.ts. */
   readonly VITE_SHOW_MENU_EXTRAS?: string;
+  /** "true" brings back the landing page's "Brought to you by" plate and logos (Section 17b). See src/services/features.ts. */
+  readonly VITE_SHOW_PARTNER_CREDITS?: string;
 }
 
 interface ImportMeta {

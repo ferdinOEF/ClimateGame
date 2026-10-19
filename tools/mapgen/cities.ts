@@ -458,7 +458,7 @@ const BETUL: CityDef = {
   name: "Cavelossim & Betul",
   region: "Salcete, South Goa",
   blurb:
-    "The Sal runs south behind a kilometre-wide sand spit before letting itself out at Betul. The fields either side are khazan: saline land reclaimed with earth bunds and tidal sluice gates, farmed this way since long before anyone here poured concrete.",
+    "The Sal runs south behind a sand spit a kilometre wide before letting itself out at Betul. The fields either side are khazan: saline land reclaimed with earth bunds and tidal sluice gates, farmed this way since long before anyone here poured concrete.",
   origin: { lat: 15.17, lon: 73.96 },
   metersPerHex: 450,
   cols: 19,
@@ -557,7 +557,7 @@ const VASCO: CityDef = {
   name: "Vasco & Mormugão",
   region: "Mormugão, South Goa",
   blurb:
-    "Goa's port and its densest industry, on a headland wrapped around the three-kilometre mouth of the Zuari. Everyone here wants to build, and the khazans on the far bank are the cheapest land to build on.",
+    "Goa's port and its densest industry, on a headland wrapped around the mouth of the Zuari, three kilometres across. Everyone here wants to build, and the khazans on the far bank are the cheapest land to build on.",
   origin: { lat: 15.4165, lon: 73.8265 },
   metersPerHex: 490,
   cols: 17,
@@ -650,7 +650,7 @@ const PALOLEM: CityDef = {
   name: "Palolem & Patnem",
   region: "Canacona, South Goa",
   blurb:
-    "Goa's southern corner: a run of small headland-held bays, and the Talpona river letting itself out between two sand spits. The rock here does half the work a seawall would, and the sand does the other half.",
+    "Goa's southern corner: a run of small bays held between headlands, and the Talpona river letting itself out between two sand spits. The rock here does half the work a seawall would, and the sand does the other half.",
   origin: { lat: 14.996, lon: 74.038 },
   metersPerHex: 430,
   cols: 17,
