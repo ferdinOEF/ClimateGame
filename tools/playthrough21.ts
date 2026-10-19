@@ -115,8 +115,15 @@ const PICK = `(style, seed) => {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   const ALL = ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"];
   const allowed = { random: ALL, nature: ["dune", "sandy_vegetation", "mangrove", "khazan"], seawalls: ["seawall", "breakwater"], well: ALL }[style];
-  if (!allowed) return null;
   const at = (k) => { const [q, r] = k.split(",").map(Number); return { q, r }; };
+  if (!allowed) {
+    // "none": the year's build goes where no storm reaches, as passYear does, but by the player's own build (the
+    // pass-year scenario hurries the storm and clicks through the result cards itself).
+    const reach = new Set(); for (const c of run.schedule) if (!run.landed.has(c.id)) for (const k of run.exposureFor(c, true)?.exposure.keys() ?? []) reach.add(k);
+    const reached = [...reach].map(at); let far = null;
+    for (const k of state.placed.keys()) { if (reach.has(k)) continue; const opts = state.buildableAt(at(k)); if (!opts.length) continue; const A = at(k); let d = Infinity; for (const B of reached) d = Math.min(d, (Math.abs(A.q - B.q) + Math.abs(A.r - B.r) + Math.abs(A.q + A.r - B.q - B.r)) / 2); if (!far || d > far.d) far = { key: k, id: opts[0].id, d }; }
+    return far ? { key: far.key, id: far.id } : null;
+  }
   const can = (k, id) => state.canBuild(at(k), id);
   const hex = (a, b) => { const A = at(a), B = at(b); return (Math.abs(A.q - B.q) + Math.abs(A.r - B.r) + Math.abs(A.q + A.r - B.q - B.r)) / 2; };
   if (style === "well" || style === "nature") for (const pk of run.objective?.picks ?? []) if (allowed.includes(pk.elementId) && can(pk.key, pk.elementId)) return { key: pk.key, id: pk.elementId };
@@ -182,7 +189,7 @@ async function playStyle(style: string): Promise<void> {
   while (builds < 40) {
     if (await finalCard(page)) break;
     if ((await page.evaluate("window.__panjimForTest.run.finished")) as boolean) break;
-    const pick = (await page.evaluate(`(${PICK})(${JSON.stringify(style)}, ${seed++})`)) as { key: string; id: string } | null;
+    const pick = ((await page.evaluate(`(${PICK})(${JSON.stringify(style)}, ${seed++})`)) ?? (await page.evaluate(`(${PICK})("none", 0)`))) as { key: string; id: string } | null;
     const before = await year(page);
     if (pick) {
       const [q, r] = pick.key.split(",").map(Number);
@@ -261,6 +268,8 @@ async function playStyle(style: string): Promise<void> {
     await page.locator(button).first().click().catch(() => undefined);
     await page.waitForTimeout(700);
     const label = button.includes("help") ? "Help" : "the ☰ menu";
+    // Help's pictures decode before the shot (software GL keeps the page busy).
+    await page.waitForFunction("[...document.querySelectorAll('.panjim-help-pic')].every((i) => i.complete && i.naturalWidth > 0)", undefined, { timeout: 30000 }).catch(() => undefined);
     await shot(page, `open-${button.includes("help") ? "help" : "menu"}`);
     await textAndLayout(page, label);
     await page.keyboard.press("Escape");
@@ -334,8 +343,13 @@ async function playStyle(style: string): Promise<void> {
   await page.waitForTimeout(800);
   await shot(page, "resized-mid-storm");
   await page.setViewportSize({ width: W, height: H });
-  await page.waitForTimeout(800);
-  const canvas = (await page.evaluate("(() => { const c = document.querySelector('canvas'); const r = c.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; })()")) as { w: number; h: number };
+  // Software GL draws a frame in about a second, so the resize event may wait that long: poll for up to 6 s.
+  const canvasSize = (): Promise<{ w: number; h: number }> => page.evaluate("(() => { const c = document.querySelector('canvas'); const r = c.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; })()") as Promise<{ w: number; h: number }>;
+  let canvas = await canvasSize();
+  for (let k = 0; k < 30 && (Math.abs(canvas.w - W) > 2 || Math.abs(canvas.h - H) > 2); k++) {
+    await page.waitForTimeout(200);
+    canvas = await canvasSize();
+  }
   check(Math.abs(canvas.w - W) <= 2 && Math.abs(canvas.h - H) <= 2, `after a resize mid storm the board fills the window again (${canvas.w}x${canvas.h})`);
   await page.reload({ waitUntil: "domcontentloaded" });
   await ready(page);

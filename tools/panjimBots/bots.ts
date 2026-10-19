@@ -32,7 +32,7 @@ import { LEVEL_BY_ID, type LevelDef } from "../../src/levels/levels";
 import { boardSetup } from "../../src/levels/balance";
 import { mapById } from "../../src/levels/levelMap";
 
-export type Persona = "casual" | "greedy" | "smart" | "far" | "random" | "nature" | "seawalls" | "best";
+export type Persona = "casual" | "greedy" | "smart" | "far" | "random" | "nature" | "seawalls" | "best" | "guided";
 export const PERSONAS: Persona[] = ["casual", "greedy", "smart", "far"];
 /**
  * Section 21.2's play styles, for the tuning report (tools/panjimBots/tune21.ts):
@@ -41,7 +41,9 @@ export const PERSONAS: Persona[] = ["casual", "greedy", "smart", "far"];
  *   nature    Smart, building only nature based defences (dune, pandanus, mangrove, khazan);
  *   seawalls  Smart, building only seawalls and breakwaters;
  *   smart     sensible play (Smart as it is);
- *   best      greedy with the exact hazard model: every build weighs every candidate, never by eye.
+ *   best      greedy with the exact hazard model: every build weighs every candidate, never by eye;
+ *   guided    Smart that first builds what the phase's objective card asks for (its picks), as a player reading it
+ *             would; reported beside the six, not one of them.
  */
 export const STYLES: Persona[] = ["far", "random", "nature", "seawalls", "smart", "best"];
 
@@ -108,7 +110,7 @@ function coordOf(key: string): AxialCoord {
 }
 
 /** The same board the session builds: monuments reserved, the level's houses, exclusions and sea limit applied. */
-export function newRun(seed: string, level: LevelDef): ActionRun {
+export function newRun(seed: string, level: LevelDef, objectives = false): ActionRun {
   const setup = boardSetup(level, MAP);
   const state = new GameState(MAP.tiles, setup.startingElements, level.startingCoin);
   for (const [id, scale] of setup.effectScale) state.effectScale.set(id, scale);
@@ -127,8 +129,8 @@ export function newRun(seed: string, level: LevelDef): ActionRun {
     growth: level.growth,
     landmarks: MAP.landmarks,
     localities: MAP.localities,
-    // Objectives never change an outcome; choosing them costs time the bots do not need.
-    generateObjectives: false
+    // Objectives never change an outcome; choosing them costs time the bots do not need (but the guided player reads them).
+    generateObjectives: objectives
   });
 }
 
@@ -154,7 +156,7 @@ class Player {
   firstActionMs = -1;
   firstRewardMs = -1;
   constructor(readonly persona: Persona, readonly seed: string, readonly level: LevelDef = BOT_LEVEL) {
-    this.run = newRun(seed, level);
+    this.run = newRun(seed, level, persona === "guided");
     this.rng = new Rng(hashSeed(`${persona}:${seed}`));
   }
 
@@ -587,13 +589,14 @@ export const SMART_SLIP = Number(process.env.SMART_SLIP ?? 0.4);
 export const SMART_ATTENTION = { min: Number(process.env.SMART_MIN ?? 4), max: Number(process.env.SMART_MAX ?? 12) };
 
 /** Smart, with an optional element left out (the per-element margin test) or the only one it builds. */
-function smartPlayer(skip: string | null, only: string | null = null): (p: Player) => void {
+function smartPlayer(skip: string | null, only: string | null = null, first?: (p: Player) => boolean): (p: Player) => void {
   return (p) => {
     const attention = SMART_ATTENTION.min + Math.floor(p.rng.next() * (SMART_ATTENTION.max - SMART_ATTENTION.min + 1));
     const slip = SMART_SLIP * p.rng.next();
     playYears(p, () => {
       const next = p.run.nextChallenge();
       if (!next) return false;
+      if (first?.(p)) return true;
       // Now and then it goes by eye, like anyone.
       if (!only && !skip && p.rng.next() < slip) {
         const guess = byEye(p, next);
@@ -615,6 +618,15 @@ function smartPlayer(skip: string | null, only: string | null = null): (p: Playe
       return false;
     });
   };
+}
+
+/** Smart that builds the objective card's picks first, while any is still to build (Section 21.2's "guided"). */
+function objectiveFirst(p: Player): boolean {
+  for (const pick of p.run.objective?.picks ?? []) {
+    const coord = coordOf(pick.key);
+    if (p.state.canBuild(coord, pick.elementId) && p.build(coord, pick.elementId)) return true;
+  }
+  return false;
 }
 
 /** Every build a defence on a random free tile anywhere on the board, any kind that fits (Section 21.2). */
@@ -689,7 +701,8 @@ const PLAY: Record<Persona, (p: Player) => void> = {
   random: playRandom,
   nature: limitedPlayer(NATURE),
   seawalls: limitedPlayer(HARD),
-  best: playBest
+  best: playBest,
+  guided: smartPlayer(null, null, objectiveFirst)
 };
 
 /** Smart's run on `seed`: its result and every action it took, for replays. */

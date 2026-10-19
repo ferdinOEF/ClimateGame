@@ -2919,6 +2919,49 @@
   line-height: 1.45;
   color: rgba(251, 238, 217, 0.75);
 }
+/* Section 21: short desktop windows (1366x768) fit How to play without scrolling: a wider card, smaller pictures. */
+@media (max-height: 900px) and (min-width: 800px) {
+  .help-card:has(.panjim-help) {
+    width: min(780px, 94vw);
+  }
+  .panjim-help-body {
+    gap: 10px;
+    padding-top: 12px;
+  }
+  .panjim-help-item {
+    grid-template-columns: 132px 1fr;
+    gap: 14px;
+  }
+  .panjim-help-pic {
+    width: 132px;
+    height: 84px;
+  }
+}
+@media (max-height: 680px) and (min-width: 800px) {
+  .help-card:has(.panjim-help) {
+    width: min(880px, 94vw);
+  }
+  .panjim-help .help-header {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .panjim-help-body {
+    gap: 6px;
+    padding-top: 8px;
+  }
+  .panjim-help-item {
+    grid-template-columns: 108px 1fr;
+  }
+  .panjim-help-pic {
+    width: 108px;
+    height: 68px;
+  }
+  .panjim-help-item p,
+  .panjim-help-item ul {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}
 @media (max-width: 560px) {
   .panjim-help-item {
     grid-template-columns: 1fr;
