@@ -122,11 +122,13 @@ function casuarina(x: number, z: number, height: number): Parts {
 
 /**
  * A row of window or arch openings on one face: flat panes (two triangles), an arch a six-triangle half disc.
- * `axis` "x": the face is normal to z at `face` (openings spread along x); "z": normal to x.
+ * `axis` "x": the face is normal to z at `face` (openings spread along x); "z": normal to x. `dir` is the way the
+ * face looks (+1 or -1 along its normal); pass it for any face of a block that is not centred on the origin.
  */
-function openings(opts: { axis: "x" | "z"; from: number; to: number; count: number; face: number; y: number; w: number; h: number; hex: string; arch?: boolean; out?: number }): Parts {
+function openings(opts: { axis: "x" | "z"; from: number; to: number; count: number; face: number; y: number; w: number; h: number; hex: string; arch?: boolean; out?: number; dir?: 1 | -1 }): Parts {
   const parts: Parts = [];
-  const sign = Math.sign(opts.face) || 1;
+  // Which way the face looks: given, or else taken from the face's side of the origin (right for a centred block only).
+  const sign = opts.dir ?? (Math.sign(opts.face) || 1);
   const off = opts.face + sign * (opts.out ?? 0.004);
   // Facing outward: +z (or -z) for "x", +x (or -x) for "z".
   const turn = opts.axis === "x" ? (sign > 0 ? 0 : Math.PI) : sign > 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -164,9 +166,8 @@ function church(): Parts {
   p.push(box(0.62, top, 0.5, "#e6dcc2", 0));
   move(p[0], 0, 0, -0.16);
   // The nave under a red gable.
-  p.push(move(box(0.34, 0.34, 0.42, WHITE, top), 0, 0, -0.22), move(gableRoof(0.42, 0.38, 0.12, TERRACOTTA, top + 0.34), 0, 0, -0.22));
-  rotate(p[p.length - 1], 0, Math.PI / 2, 0);
-  move(p[p.length - 1], 0, 0, 0);
+  // The ridge runs back from the facade (along z): the roof is turned about its own centre, then set over the nave.
+  p.push(move(box(0.34, 0.34, 0.42, WHITE, top), 0, 0, -0.22), move(rotate(gableRoof(0.42, 0.38, 0.12, TERRACOTTA, top + 0.34), 0, Math.PI / 2, 0), 0, 0, -0.22));
   // The facade.
   const fz = 0.0;
   p.push(move(box(0.44, 0.42, 0.06, WHITE, top), 0, 0, fz));
@@ -174,7 +175,7 @@ function church(): Parts {
     p.push(move(box(0.11, 0.56, 0.11, WHITE, top), x, 0, fz));
     p.push(move(box(0.12, 0.03, 0.12, WHITE_SHADE, top + 0.56), x, 0, fz));
     p.push(move(coneFrustum(0.01, 0.08, 0.08, 4, WHITE_SHADE, top + 0.59), x, 0, fz));
-    p.push(...openings({ axis: "x", from: x, to: x, count: 1, face: fz + 0.055, y: top + 0.38, w: 0.04, h: 0.06, hex: DARK, arch: true }));
+    p.push(...openings({ axis: "x", from: x, to: x, count: 1, face: fz + 0.055, dir: 1, y: top + 0.38, w: 0.04, h: 0.06, hex: DARK, arch: true }));
   }
   // The central bell gable, with its open arch, the gold bell and the cross.
   p.push(move(box(0.2, 0.26, 0.06, WHITE, top + 0.42), 0, 0, fz));
@@ -184,7 +185,7 @@ function church(): Parts {
   p.push(move(box(0.014, 0.1, 0.014, WHITE, top + 0.76), 0, 0, fz), move(box(0.06, 0.014, 0.014, WHITE, top + 0.82), 0, 0, fz));
   // Door, windows and the small blue balcony.
   p.push(move(box(0.07, 0.12, 0.012, DARK, top), 0, 0, fz + 0.034));
-  p.push(...openings({ axis: "x", from: -0.08, to: 0.08, count: 2, face: fz + 0.03, y: top + 0.18, w: 0.035, h: 0.06, hex: DARK, arch: true }));
+  p.push(...openings({ axis: "x", from: -0.08, to: 0.08, count: 2, face: fz + 0.03, dir: 1, y: top + 0.18, w: 0.035, h: 0.06, hex: DARK, arch: true }));
   p.push(move(box(0.12, 0.016, 0.04, BLUE, top + 0.3), 0, 0, fz + 0.05), move(box(0.12, 0.03, 0.006, BLUE, top + 0.316), 0, 0, fz + 0.07));
   // The zigzag stair: three flights down the hill, white balustrades edged in blue.
   const flights: [number, number, number, number][] = [
@@ -250,7 +251,7 @@ function market(): Parts {
   p.push(box(0.92, 0.04, 0.7, PAVE, 0));
   for (const z of [-0.15, 0.15]) {
     p.push(move(box(0.76, 0.2, 0.24, CREAM, 0.04), 0, 0, z));
-    p.push(...openings({ axis: "x", from: -0.32, to: 0.32, count: 7, face: z + 0.12, y: 0.1, w: 0.04, h: 0.06, hex: "#7a6648" }));
+    p.push(...openings({ axis: "x", from: -0.32, to: 0.32, count: 7, face: z + 0.12, dir: 1, y: 0.1, w: 0.04, h: 0.06, hex: "#7a6648" }));
     p.push(move(gableRoof(0.8, 0.28, 0.16, "#d9d4c4", 0.24), 0, 0, z));
   }
   // The stalls round the edge, each a coloured awning on a low stall.
@@ -326,7 +327,9 @@ function mosque(): Parts {
   const p: Parts = [];
   p.push(box(0.8, 0.03, 0.66, PAVE, 0));
   p.push(move(box(0.5, 0.28, 0.4, WHITE, 0.03), 0, 0, -0.02));
-  p.push(band(0.5, 0.4, 0.29, 0.02, "#2f8a4a", 0, -0.02), band(0.5, 0.4, 0.04, 0.015, "#2f8a4a", 0, -0.02));
+  // Green trim: a parapet round the white flat roof (edges only, so the roof stays white), and a band at the foot.
+  for (const [w, d, x, z] of [[0.514, 0.014, 0, 0.18], [0.514, 0.014, 0, -0.22], [0.014, 0.4, 0.25, -0.02], [0.014, 0.4, -0.25, -0.02]] as [number, number, number, number][]) p.push(move(box(w, 0.035, d, "#2f8a4a", 0.29), x, 0, z));
+  p.push(band(0.5, 0.4, 0.04, 0.015, "#2f8a4a", 0, -0.02));
   p.push(...openings({ axis: "x", from: -0.18, to: 0.18, count: 4, face: 0.18, y: 0.1, w: 0.05, h: 0.1, hex: "#2f8a4a", arch: true }));
   p.push(...openings({ axis: "z", from: -0.14, to: 0.1, count: 3, face: 0.25, y: 0.1, w: 0.05, h: 0.1, hex: "#2f8a4a", arch: true }));
   p.push(move(box(0.07, 0.14, 0.012, "#2f8a4a", 0.03), 0, 0, 0.19), move(dome(0.035, 0.035, 0.006, "#2f8a4a", 0.17), 0, 0, 0.19));
@@ -356,8 +359,8 @@ function block(opts: { w: number; d: number; storeys: number; storey: number; wa
     p.push(band(w, d, s * storey, 0.014, opts.band, x, z));
     const y = s * storey + storey * 0.32;
     const nx = Math.max(2, Math.round(w / 0.06)), nz = Math.max(2, Math.round(d / 0.06));
-    for (const face of [d / 2, -d / 2]) p.push(...openings({ axis: "x", from: x - w / 2 + 0.04, to: x + w / 2 - 0.04, count: nx, face: z + face, y, w: 0.03, h: storey * 0.42, hex: opts.window }));
-    for (const face of [w / 2, -w / 2]) p.push(...openings({ axis: "z", from: z - d / 2 + 0.04, to: z + d / 2 - 0.04, count: nz, face: x + face, y, w: 0.03, h: storey * 0.42, hex: opts.window }));
+    for (const face of [d / 2, -d / 2]) p.push(...openings({ axis: "x", from: x - w / 2 + 0.04, to: x + w / 2 - 0.04, count: nx, face: z + face, dir: face > 0 ? 1 : -1, y, w: 0.03, h: storey * 0.42, hex: opts.window }));
+    for (const face of [w / 2, -w / 2]) p.push(...openings({ axis: "z", from: z - d / 2 + 0.04, to: z + d / 2 - 0.04, count: nz, face: x + face, dir: face > 0 ? 1 : -1, y, w: 0.03, h: storey * 0.42, hex: opts.window }));
   }
   p.push(band(w, d, H - 0.01, 0.02, opts.band, x, z));
   if (opts.roof) p.push(move(box(w - 0.02, 0.012, d - 0.02, opts.roof, H), x, 0, z));
@@ -398,11 +401,10 @@ function sharadaMandir(): Parts {
   p.push(...tree(-0.36, -0.42, 0.26), ...tree(-0.1, -0.44, 0.22), ...tree(0.2, -0.43, 0.26), ...tree(0.42, -0.4, 0.22));
   // The buildings along the back.
   p.push(move(box(0.24, 0.14, 0.18, "#e8e2d4", 0), -0.3, 0, -0.18), move(hipRoof(0.28, 0.22, 0.08, "#7f8288", 0.14), -0.3, 0, -0.18));
-  for (const dx of [-0.06, 0.06]) p.push(move(painted(new THREE.CircleGeometry(0.018, 10), "#cfe6ef"), -0.3 + dx, 0.2, -0.16));
-  const sky = p.splice(p.length - 2, 2).map((g) => rotate(g, -0.6, 0, 0));
-  p.push(...sky);
+  // Round skylights on the roof's front slope: each disc tilted to the slope first, then set on it.
+  for (const dx of [-0.06, 0.06]) p.push(move(rotate(painted(new THREE.CircleGeometry(0.018, 10), "#cfe6ef"), -Math.PI / 2 + 0.62, 0, 0), -0.3 + dx, 0.19, -0.132));
   p.push(move(box(0.2, 0.16, 0.16, WHITE, 0), -0.06, 0, -0.2), move(hipRoof(0.24, 0.2, 0.08, TERRACOTTA, 0.16), -0.06, 0, -0.2));
-  p.push(...openings({ axis: "x", from: -0.12, to: 0.0, count: 3, face: -0.12, y: 0.03, w: 0.03, h: 0.07, hex: DARK, arch: true }));
+  p.push(...openings({ axis: "x", from: -0.12, to: 0.0, count: 3, face: -0.12, dir: 1, y: 0.03, w: 0.03, h: 0.07, hex: DARK, arch: true }));
   // The big hall under a light-blue gable; its name is a decal on the side.
   p.push(move(box(0.3, 0.2, 0.22, "#d8d4c8", 0), 0.26, 0, -0.17), move(gableRoof(0.34, 0.26, 0.12, "#8fc3e8", 0.2), 0.26, 0, -0.17));
   // The pitch: striped turf, every marking, goals with nets, a ball.
@@ -476,9 +478,10 @@ function stateMuseum(): Parts {
   p.push(move(box(0.64, 0.3, 0.4, "#f2f2ee", 0), 0, 0, -0.06), band(0.64, 0.4, 0.0, 0.04, "#c8ccd0", 0, -0.06));
   for (const y of [0.05, 0.17]) p.push(...openings({ axis: "x", from: -0.27, to: 0.27, count: 8, face: 0.14, y, w: 0.05, h: 0.08, hex: GLASS }));
   p.push(...openings({ axis: "z", from: -0.2, to: 0.08, count: 4, face: 0.32, y: 0.11, w: 0.05, h: 0.1, hex: GLASS }));
-  // The white band (the name is a decal) and the big red pitched roof with a wide overhang.
+  // The white band (the name is a decal) and the big red pitched roof, overhanging at the gable ends; its eave
+  // stops at the front wall so the name under it reads from the game's camera.
   p.push(move(box(0.66, 0.05, 0.012, WHITE, 0.25), 0, 0, 0.146));
-  p.push(move(gableRoof(0.78, 0.54, 0.22, "#c8423a", 0.3), 0, 0, -0.06));
+  p.push(move(gableRoof(0.78, 0.44, 0.22, "#c8423a", 0.3), 0, 0, -0.06));
   // The porch with its own red roof.
   p.push(move(box(0.16, 0.12, 0.1, "#f2f2ee", 0), -0.18, 0, 0.19), move(gableRoof(0.2, 0.14, 0.06, "#c8423a", 0.12), -0.18, 0, 0.19));
   p.push(...palm(0.4, 0.28, 0.34), ...palm(-0.44, -0.2, 0.3));
@@ -489,16 +492,16 @@ function stateMuseum(): Parts {
 function campalGarden(): Parts {
   const p: Parts = [];
   p.push(ground([[-0.62, -0.36], [0, -0.7], [0.62, -0.36], [0.62, 0.36], [0, 0.7], [-0.62, 0.36]], 0.02, GRASS, 0));
-  p.push(move(ground([[-0.6, 0.18], [0.6, 0.44], [0.6, 0.52], [-0.6, 0.26]], 0.006, "#d8c49a", 0.02), 0, 0, 0));
+  p.push(move(ground([[-0.6, 0.12], [0.45, 0.36], [0.45, 0.44], [-0.6, 0.2]], 0.006, "#d8c49a", 0.02), 0, 0, 0));
   // The pond and its boats.
   p.push(move(painted(new THREE.CylinderGeometry(0.2, 0.2, 0.01, 14), "#4f9ac0"), -0.04, 0.02, -0.1));
   for (const [x, z, hex] of [[-0.12, -0.14, "#e0c040"], [0.02, -0.04, "#c84a3a"], [0.06, -0.18, "#3a6fc8"]] as [number, number, string][]) {
     p.push(move(box(0.05, 0.02, 0.03, hex, 0.03), x, 0, z), move(box(0.02, 0.02, 0.02, WHITE, 0.05), x, 0, z));
   }
   // The green arch gate on the path.
-  for (const dx of [-0.07, 0.07]) p.push(move(box(0.02, 0.14, 0.02, "#2f8a4a", 0.02), 0.06 + dx, 0, 0.36));
+  for (const dx of [-0.07, 0.07]) p.push(move(box(0.02, 0.14, 0.02, "#2f8a4a", 0.02), 0.06 + dx, 0, 0.31));
   const arch = new THREE.TorusGeometry(0.07, 0.012, 4, 10, Math.PI);
-  p.push(move(painted(arch, "#2f8a4a"), 0.06, 0.16, 0.36));
+  p.push(move(painted(arch, "#2f8a4a"), 0.06, 0.16, 0.31));
   // The red slide.
   p.push(move(box(0.03, 0.12, 0.03, "#d84a3a", 0.02), 0.34, 0, 0.0), move(rotate(box(0.04, 0.012, 0.18, "#d84a3a", 0), 0.6, 0, 0), 0.34, 0.07, 0.06));
   p.push(...tree(-0.44, -0.2, 0.3), ...tree(-0.4, 0.12, 0.26), ...tree(0.36, -0.3, 0.3), ...tree(0.46, 0.18, 0.24), ...tree(0.12, -0.46, 0.26), ...tree(-0.2, 0.46, 0.22), ...tree(0.2, 0.2, 0.22));
@@ -522,13 +525,15 @@ function dhempeCollege(): Parts {
 /** 15. Miramar Beach: the sea on the west with surf, a wide sand strip with umbrellas, casuarinas, the Miramar circle. */
 function miramarBeach(): Parts {
   const p: Parts = [];
-  p.push(ground([[-0.62, -0.7], [-0.2, -0.7], [-0.2, 0.7], [-0.62, 0.7]], 0.02, "#3f8fb0", 0));
-  for (const x of [-0.28, -0.36, -0.46]) p.push(move(box(0.012, 0.006, 1.1, "#f2f6f8", 0.02), x, 0, 0));
-  p.push(ground([[-0.2, -0.7], [0.18, -0.7], [0.18, 0.7], [-0.2, 0.7]], 0.02, "#ecd29a", 0));
+  // Three strips across the hexagon of ground (corners (0, +-0.7) and (+-0.62, +-0.36)), each cut to its edges.
+  const edge = (x: number): number => 0.36 + (0.62 - Math.abs(x)) * (0.34 / 0.62);
+  p.push(ground([[-0.62, -0.36], [-0.2, -edge(-0.2)], [-0.2, edge(-0.2)], [-0.62, 0.36]], 0.02, "#3f8fb0", 0));
+  for (const x of [-0.28, -0.36, -0.46]) p.push(move(box(0.012, 0.006, 2 * edge(x) - 0.08, "#f2f6f8", 0.02), x, 0, 0));
+  p.push(ground([[-0.2, -edge(-0.2)], [0, -0.7], [0.18, -edge(0.18)], [0.18, edge(0.18)], [0, 0.7], [-0.2, edge(-0.2)]], 0.02, "#ecd29a", 0));
   for (const [z, hex] of [[-0.4, "#c8423a"], [-0.05, "#3a6fc8"], [0.3, "#e0c040"]] as [number, string][]) {
     p.push(move(coneFrustum(0.004, 0.006, 0.08, 4, "#8d6b45", 0.02), -0.06, 0, z), move(coneFrustum(0.002, 0.06, 0.03, 8, hex, 0.1), -0.06, 0, z));
   }
-  p.push(ground([[0.18, -0.7], [0.62, -0.36], [0.62, 0.36], [0.18, 0.7]], 0.02, GRASS, 0));
+  p.push(ground([[0.18, -edge(0.18)], [0.62, -0.36], [0.62, 0.36], [0.18, edge(0.18)]], 0.02, GRASS, 0));
   for (let i = 0; i < 6; i++) p.push(...casuarina(0.24 + (i % 2) * 0.08, -0.5 + i * 0.18, 0.26));
   // The Miramar circle with its fountain, on the town side.
   p.push(move(painted(new THREE.CylinderGeometry(0.11, 0.11, 0.02, 16), "#d8ccae"), 0.44, 0.02, 0.14));

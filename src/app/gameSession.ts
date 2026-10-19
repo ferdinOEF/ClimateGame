@@ -286,6 +286,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   const DOLPHIN_TERRAIN = new Set(["coast", "river"]);
   const dolphinWaterKeys = new Set(levelTiles.filter((tile) => DOLPHIN_TERRAIN.has(tile.terrainId)).map((tile) => `${tile.coord.q},${tile.coord.r}`));
+  /** Each open water tile's key and its centre on the water's surface, worked out once. */
+  let dolphinWaterTilesCache: { key: string; point: { x: number; y: number; z: number } }[] | null = null;
+  const dolphinWaterTilesOnce = (): { key: string; point: { x: number; y: number; z: number } }[] =>
+    (dolphinWaterTilesCache ??= [...dolphinWaterKeys].map((key) => {
+      const [q, r] = key.split(",").map(Number);
+      const { x, z } = axialToWorld({ q, r }, 1.0);
+      return { key, point: { x, y: terrain.heightAt({ q, r }), z } };
+    }));
   const isDolphinWater = (x: number, z: number): boolean => {
     const { q, r } = worldToAxial(x, z, 1.0);
     const key = `${q},${r}`;
@@ -2599,12 +2607,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           else if (placed.elementId === "khazan") khazanPonds.push({ x: placed.x - 0.3, y: placed.y + 0.035, z: placed.z, radius: 0.24 });
         }
         const waters: { x: number; y: number; z: number }[] = [];
-        for (const key of dolphinWaterKeys) {
-          if (state.elements.has(key)) continue;
-          const [q, r] = key.split(",").map(Number);
-          const { x, z } = axialToWorld({ q, r }, 1.0);
-          waters.push({ x, y: terrain.heightAt({ q, r }), z });
-        }
+        for (const tile of dolphinWaterTilesOnce()) if (!state.elements.has(tile.key)) waters.push(tile.point);
         wildlife.setSources({ mangroves, khazanPonds, waters });
       }
       wildlife.setCalm(!(panjim?.isBusy ?? false) && !stormDirector?.playing && !document.querySelector(".result-cards:not([hidden])"));
@@ -2866,9 +2869,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     __labelsForTest: mapLabels,
-    /** A tile's top surface on screen, in client pixels (for tests that hover a tile). */
     /** A tile's ground height, for the QA tools that frame a landmark close up. */
     __tileHeightForTest: (q: number, r: number): number => terrain.heightAt({ q, r }),
+    /** A tile's top surface on screen, in client pixels (for tests that hover a tile). */
     __projectTileForTest: (q: number, r: number): { x: number; y: number } => {
       const { x, z } = axialToWorld({ q, r }, 1.0);
       const screen = worldToScreen(x, terrain.heightAt({ q, r }), z);

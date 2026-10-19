@@ -1202,7 +1202,6 @@ export class WildlifeDirector {
 
   // --- Dolphins: a pod wandering slowly through open water -------------------------
 
-  /** Is the whole band the pod swims in, from a along the direction for a length, open water? */
   /** The Field Guide species under a ray: a dolphin while it is at the surface, else null. */
   speciesAt(raycaster: THREE.Raycaster): string | null {
     for (const d of this.swimmers) {
@@ -1212,6 +1211,7 @@ export class WildlifeDirector {
     return null;
   }
 
+  /** Is the whole band the pod swims in, from a along the direction for a length, open water? */
   private clearWater(from: THREE.Vector3, dir: THREE.Vector3, length: number): boolean {
     const isWater = this.opts.isWater;
     if (!isWater) return true;
@@ -1235,7 +1235,8 @@ export class WildlifeDirector {
       for (let k = 0; k < 12 && !found; k++) {
         const a = turn0 + (k * Math.PI * 2) / 12;
         this.podDir.set(Math.sin(a), 0, Math.cos(a));
-        if (this.clearWater(this.podFrom, this.podDir, length * scaleLen)) {
+        // A surfacing carries a dolphin on up to 1.6 times its length past the pod's end: that stretch is checked too.
+        if (this.clearWater(this.podFrom, this.podDir, length * scaleLen + 1.6 * DOLPHIN_SCALE)) {
           this.podLength = length * scaleLen;
           found = true;
         }

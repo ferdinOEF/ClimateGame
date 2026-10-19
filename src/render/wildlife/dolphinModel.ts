@@ -18,9 +18,10 @@ const YOUNG_BELLY = 0x8e949a;
 
 function bodyGeometry(young: boolean): THREE.BufferGeometry {
   // v 0 = tail stock, 1 = beak tip. The hump: the back rises at mid-body, where the fin sits.
-  const w = curve([0.03, 0.06, 0.09, 0.11, 0.115, 0.11, 0.1, 0.085, 0.06, 0.03, 0.016]);
-  const top = curve([0.03, 0.055, 0.085, 0.12, 0.13, 0.11, 0.095, 0.08, 0.05, 0.022, 0.012]);
-  const bot = curve([0.03, 0.06, 0.09, 0.105, 0.11, 0.105, 0.095, 0.08, 0.05, 0.02, 0.01]);
+  // The rounded melon at v 0.8, then the long slender beak.
+  const w = curve([0.03, 0.06, 0.09, 0.11, 0.115, 0.11, 0.1, 0.088, 0.072, 0.022, 0.013]);
+  const top = curve([0.03, 0.055, 0.085, 0.12, 0.13, 0.11, 0.095, 0.082, 0.066, 0.018, 0.01]);
+  const bot = curve([0.03, 0.06, 0.09, 0.105, 0.11, 0.105, 0.095, 0.08, 0.06, 0.016, 0.009]);
   return sweep(16, 14, ellipseSection({ z: (v) => -0.5 + v, w, top, bot, cy: (v) => -0.06 + 0.02 * Math.sin(v * Math.PI) }), (p, v, _u, out) => {
     const base = young ? YOUNG : ADULT;
     const belly = young ? YOUNG_BELLY : ADULT_BELLY;
@@ -29,8 +30,8 @@ function bodyGeometry(young: boolean): THREE.BufferGeometry {
     if (!young) {
       const n = hash3(Math.round(p.x * 40), Math.round(p.y * 40), Math.round(p.z * 26));
       const flank = smoothstep(0.02, 0.09, Math.abs(p.x));
-      if (n > 0.58 - 0.18 * flank) toward(out, PINK, 0.7);
-      if (v > 0.86) toward(out, PINK, 0.45);
+      if (n > 0.74 - 0.14 * flank) toward(out, PINK, 0.5);
+      if (v > 0.88) toward(out, PINK, 0.25);
     }
   });
 }

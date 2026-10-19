@@ -42,6 +42,8 @@ await page.locator(".brief-cta").first().click();
 await page.waitForTimeout(2500);
 await page.evaluate(`window.__panjimScenarioForTest("quality-high")`);
 await page.waitForTimeout(1500);
+// The forecast cone's dashed arrow off, so it does not cross the close ups.
+await page.evaluate("(function () { var p = window.__panjimForTest; if (p && p.hideCone) p.hideCone(); })()");
 // Only the board: every page element hidden but the canvas.
 await page.addStyleTag({ content: "body * { visibility: hidden !important; } canvas { visibility: visible !important; }" });
 
@@ -62,13 +64,15 @@ for (const [i, id] of ORDER.entries()) {
   for (const view of VIEWS) {
     const distance = open ? view.far : view.near;
     const azimuth = view.azimuth !== 0 && FROM_SOUTH_EAST.has(id) ? -view.azimuth : view.azimuth;
-    const flat = Math.cos(view.elevation) * distance;
+    // The mosque stands below the hill on its south: its three quarter view looks down more steeply.
+    const elevation = view.azimuth !== 0 && id === "jama_masjid_panaji" ? (52 * Math.PI) / 180 : view.elevation;
+    const flat = Math.cos(elevation) * distance;
     await page.evaluate(`(() => {
       window.__focusOnForTest(${x}, ${z}, true);
       const y = window.__tileHeightForTest(${m.q}, ${m.r});
       const cam = window.__cameraForTest;
       const lookY = y + ${open ? 0.1 : 0.32};
-      cam.position.set(${x} + Math.sin(${azimuth}) * ${flat}, lookY + Math.sin(${view.elevation}) * ${distance}, ${z} + Math.cos(${azimuth}) * ${flat});
+      cam.position.set(${x} + Math.sin(${azimuth}) * ${flat}, lookY + Math.sin(${elevation}) * ${distance}, ${z} + Math.cos(${azimuth}) * ${flat});
       cam.lookAt(${x}, lookY, ${z});
       cam.updateMatrixWorld();
     })()`);

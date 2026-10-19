@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { box, taperedSlab } from "./primitives3d";
-import { landmarkGeometry } from "./landmarkModels";
+import { LANDMARK_IDS, landmarkGeometry } from "./landmarkModels";
 
 /**
  * The sixteen real Panjim landmarks, as buildings and places on the board.
@@ -26,7 +26,7 @@ export function createMonumentGeometryFor(id: string, kind: string): THREE.Buffe
 
 /** Which geometry a monument uses: its own per id, or one plain block per kind for a monument with no model. */
 export function monumentGeometryKey(id: string, kind: string): string {
-  return landmarkGeometry(id) ? `landmark:${id}` : kind;
+  return LANDMARK_IDS.includes(id) ? `landmark:${id}` : kind;
 }
 
 /** Kinds that are buildings (sized against their neighbours, on a plaza), as opposed to open places. */

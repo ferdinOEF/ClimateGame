@@ -418,6 +418,16 @@ describe("humpback dolphins (Section 18)", () => {
     expect(share).toBeLessThan(0.3);
   });
 
+  it("stay in a narrow channel, leaps and rolls included", () => {
+    // A river a little over half a tile wide, running east to west: the pod must swim along it, never onto its banks.
+    const channel = (x: number, z: number): boolean => Math.abs(z) < 0.36 && x > -9 && x < 9;
+    const { d } = makeDirector({ seed: 13, isWater: channel });
+    d.setSources(WATERS);
+    const seen = watch(d, 900_000);
+    expect(seen.surfacings).toBeGreaterThan(20);
+    for (const p of seen.places) expect(channel(p.x, p.z), `a dolphin at ${p.x.toFixed(2)}, ${p.z.toFixed(2)}`).toBe(true);
+  });
+
   it("never come where there is no open water", () => {
     const { d } = makeDirector({ isWater: () => false });
     d.setSources(WATERS);

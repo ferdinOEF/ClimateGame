@@ -4,8 +4,9 @@ import { noteIdsFor, notesProgress, refreshSavedNotes } from "@core/mayaLines";
 import { factById } from "@core/facts";
 
 /**
- * The Field Guide: ten species of the Panjim coast, collected by tapping the
- * creatures that visit what the player builds.
+ * The Field Guide: eleven species of the Panjim coast, collected by tapping the
+ * creatures on the board: ten visit what the player builds, the dolphin swims
+ * in the open water whatever is built.
  *
  * Every page but one is wildlife that a nature defence brings: kingfishers to
  * mangroves, prawns to a khazan sluice, ghost crabs to pandanus. A seawall's
@@ -87,7 +88,7 @@ export class FieldGuide {
     this.backdrop.innerHTML = `
       <div class="field-guide-card" role="dialog" aria-label="Field Guide">
         <div class="field-guide-head"><b>Field Guide</b><span class="field-guide-count"></span><button type="button" class="field-guide-close" aria-label="Close">×</button></div>
-        <p class="field-guide-hint">Tap the creatures that visit what you build. Free: no time passes. <span class="field-guide-creatures"></span></p>
+        <p class="field-guide-hint">Tap the creatures you see on the board. Free: no time passes. <span class="field-guide-creatures"></span></p>
         <div class="field-guide-grid"></div>
         <div class="field-guide-notes-head"><b>Maya's notes</b><span class="field-guide-notes-count"></span></div>
         <ul class="field-guide-notes"></ul>
