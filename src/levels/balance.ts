@@ -52,7 +52,7 @@ export function boardSetup(level: LevelDef, map: GameMap): BoardSetup {
       if (town.buildings.has(axialKey(tile.coord))) setup.startingElements.push({ coord: tile.coord, elementId: "house" });
     }
   }
-  // Only the houses that are part of the game share the town's economy (the north bank is scenery).
+  // Only the houses that are part of the game share the town's economy (the north bank and the east edge are scenery).
   const scenery = new Set(map.unplayable.map(([q, r]) => `${q},${r}`));
   const counted = setup.startingElements.filter((seed) => !scenery.has(axialKey(seed.coord))).length;
   setup.effectScale.set("house", fill.houseEconomyHouses / Math.max(1, counted));

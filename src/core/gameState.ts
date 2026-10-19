@@ -7,8 +7,8 @@ export interface PlacedTile {
   /** Ground height in metres, on maps built from a DEM (land tiles only). */
   elevationM?: number;
   /**
-   * On the board as scenery only, not part of the game (Panaji's north bank,
-   * Section 11.4): nothing can be built on it, and its houses are never
+   * On the board as scenery only, not part of the game (Panaji's north bank and east edge,
+   * Sections 11.4 and 19.2): nothing can be built on it, and its houses are never
    * counted. Storms still draw over it.
    */
   scenery?: boolean;

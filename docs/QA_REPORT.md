@@ -1765,3 +1765,69 @@ Seven more draw calls (one per decal) and about 7,800 more triangles (2% of the 
 MINOR fixed: Sharada's skylights sat inside the roof; `monumentGeometryKey` built every model just to test it; the dolphins' water tiles were rebuilt from strings every second (now worked out once); a leap could carry a dolphin past the checked water (now checked, with a narrow channel test); the dolphin fact said "stay" where the source says "prefer" (now "usually stay … in shallow water"); the dolphins were too pink (paler now, with a clearer beak); the mosque's three quarter shot was hidden by a hill and the cone's arrow crossed two close ups. NIT fixed: comments; the Field Guide's header no longer says creatures "visit what you build". Reported, not changed: the church's facing (above).
 
 **Sources not opened directly.** The two dolphin sources (Mongabay India, 22 January 2018; Down To Earth, undated) are blocked by this container's network; their claims were checked against their own text as quoted in search results. Open both before release.
+
+# Section 19 — the owner's third map round; the east edge out of Panjim
+
+Branch `section-19-map-east-edge`, off master `9758162` (Section 18's merge; tag `pre-section-19`, and `backup/pre-section-19` on GitHub). Headless Chromium with software GL. Evidence in `docs/qa/section19/`. The owner's files: `docs/reference/panaji_owner_edits.json`, `docs/reference/east_cut.png`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean; 573 tests pass, 6 skipped. New: three east edge tests in `scenery` (scenery on all its dry tiles and nowhere else east of the line, 121 on rows 5 to 36; Ribandar out, Merces and St Cruz and the flood's source in; the note). Updated, each with its reason in the test: `panajiHandEdits` (three rounds, 204 edits, 256 unplayable), `forecastCone` and `phaseResult` (the first cyclone takes 8, -7,24 is beach), `phaseObjectives` (the dunes save all 8), `section4` (the plain finale plan: 9% each, 12% mean, from 10% and 15%), `panjimBots` (Casual 60 to 82%, from 80%). The rules for scenery (no build, never counted in a storm, cone, heat, area or result; drawn wet) run over every stored tile, so they cover the east edge. |
+| `npm run mapgen:panaji` | Clean. Terrain equals the owner's file tile for tile; master and the branch differ by exactly the 34 edits; no place moved. |
+| Section 19 checks (`tools/section19Shots.ts`) | All pass at 1366x768 and 1920x1080, zero console errors: a click on the east edge shows only "Outside Panjim, not part of this game"; Merces stays playable; the north bank keeps its note; the 2026 and 2031 cones are on the map; axe on the opening board. |
+| `npm run walkthrough`, `test:labels` | Walkthrough clean, no console errors (the Tutorial start to finish, Play Panjim with 16 monuments). Labels: 49 of 49 views, at most 2.7 ms a frame. |
+| `test:layout`, `test:maya` (Maya switched on, `VITE_SHOW_MAYA=true`; she is hidden as shipped) | 140 of 140 layouts; `test:maya` passes, zero console errors. |
+| Preview equals resolution | `tests/exposure.test.ts`, `tests/preview.test.ts` pass. |
+| Bots, 20 seeds | See below (`bots-before.md`, `bots-after.md`). |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**19.1 The owner's edits** (`tools/mapgen/panaji-hand-edits.json`, the third round, the last 34 entries):
+- The diff of the owner's file against master's map is exactly the 34 listed edits, and no place moves.
+- Heights: the Copernicus DEM, by the method in `panaji.json`, from the crop checked in (the network was not needed). Changed tiles keep their DEM height; the new tile 33,3 is 0 m. Some new water keeps a high DEM height (the creek head 8,26 at 25.5 m): the water model reads it as ground, so no water goes there; as on master (7,9).
+- Bridges: +17,4, +30,4, +31,4 (now river), +9,23 (now estuary). No bridge is left on land. Road: +-4,20 (now land).
+- Zones: z4 (Mandovi waterfront) gains the new river 11,4 to 15,4 and 17,4; z2 (the wetlands) loses its five tiles east of the line (22,17 23,15 23,16 24,14 24,15). No zone holds a scenery tile.
+- Houses, playable: 421 → 347 (scenery houses 89 → 158).
+- Miramar: Miramar Beach (-4,19) is still beach, with the new land at -4,20 behind it. The 2026 cone covers the beach strip and both; the objective's two dunes stand on the beach either side, at -4,18 and -5,20 (`miramar-cone-2026-*`).
+
+**19.2 The east edge** (`east-edge-*`):
+- Unplayable: 148 → 256. The north bank is 135 (it lost 14 tiles to the owner's new river and gained 23,1, now estuary; 4 of them, on row 0, lie east of the line too). The east edge adds 121, rows 5 to 36, 3 or 4 a row. The owner asked about 124: the band holds 125 dry tiles, 4 of them north bank already, and row 4 has none, since 30 to 32,4 are river now.
+- Ribandar (30,5) is out; Merces (19,16) and St Cruz (13,22) are in. River and sea stay playable: the channel at 30 to 32,4 and the flood's source 33,1, 33,2 and 32,3 are river.
+- A click there: "Outside Panjim, not part of this game" (the north bank keeps "North of the Mandovi: not part of this game"). Grey with the soft edge, no build menu, houses never counted, hazards draw but never count, cones, areas and heat never include them, bots never build there: the same rules as the north bank.
+- Ribandar's label stood on scenery: a locality on scenery is now out of the game (no label, never the place a home, row or area is named after; `levelMap.ts`). The 12 playable tiles west of the line it named now belong to Merces.
+
+**19.3 The storms, undefended** (`storms-before.md`, `storms-after.md`; a home takes its nearest locality's name):
+
+| Storm | Before (master) | After |
+|---|---|---|
+| 2030 cyclone (landfall -5,18, strength 1.2) | 9: Caranzalem 3, Taleigao 3, Miramar 2, Santa Inez 1 | 8: Taleigao 3, Caranzalem 2, Miramar 2, Santa Inez 1 (-7,24 is beach now) |
+| 2040 flood (from the Mandovi, 33,1 33,2 32,3) | 65: Merces 22, Taleigao 13, St Cruz 11 (46, 71%); Ribandar 9, Altinho 5, Patto 3, Campal 1, São Tomé 1 | 62: Merces 28, Taleigao 14, St Cruz 9 (51, 82%); Altinho 5, Patto 3, Atal Setu 1, Campal 1, São Tomé 1 |
+| 2050 compound (landfall 2,12, strength 2.6) | 38 | 37 |
+
+The first cyclone still comes ashore at Miramar and takes the home beside Sharada Mandir School; the flood still comes down the Mandovi through the Ribandar channel, its main impact on Taleigao, Merces and St Cruz; the 2050 storm plays as before.
+
+**Objective rows** (`objective-rows-before.md`, `objective-rows-after.md`, and the tiles behind them). Rows that pointed at a tile that changed or left the game:
+- 2030: a dune at -4,20 (now land): replaced by a dune at -5,20. Two dunes in front of the school now save all 8 (were 8 of 9).
+- 2040: a mangrove at 25,11 and a khazan at 25,12 (now east of the line): not replaced; the model finds no build there worth one, so the objective is 8 builds (1 khazan in Taleigao, 3 khazans and 2 mangroves in Merces, 2 khazans in St Cruz), homes lost 62 → 18 with every row built (65 → 15 before).
+- 2050 (following the earlier objectives): a khazan at 13,14 (now river): replaced by a mangrove at 13,15 and others; homes lost 61 → 29 (65 → 33).
+
+**Builds needed** (`builds-needed-before.md`, `-after.md`): the cyclone 1 build for 60%, 2 for 90% (unchanged); the flood 5 for 60% (unchanged), 90% not reached in 25 (best 49 of 62, was 56 of 65); the compound neither (best 33 of 61, was 34 of 65).
+
+**Bots, 20 seeds:**
+
+| Archetype | Won before → after | Houses saved before → after (min to max after) | Stars per storm, mean, after |
+|---|---|---|---|
+| Smart | 17/20 (85%) → 16/20 (80%) | 88% → 91% (69% to 97%) | 2.6 / 3.0 / 3.0 |
+| Casual | 0/20 → 0/20 | 71% → 70% (64% to 81%) | 1.0 / 3.0 / 2.0 |
+| Greedy | 0/20 → 0/20 | 24% → 25% (11% to 57%) | 1.1 / 1.1 / 1.1 |
+| Far | 0/20 → 0/20 | 0% → 0% | 1.0 / 1.0 / 1.0 |
+
+Greedy never beats Casual. Smart's lowest seed (seed 12) saves 3 of the first cyclone's 8.
+
+**Screenshots** (1366x768 and 1920x1080): the opening view; the east edge close up (gray and deuteranopia copies at 1920); Miramar beach with the 2026 cone; the 2031 flood cone, whole and framed on the Mandovi channel; the whole board before and after in the game (`board-whole-before-1920x1080.jpg`, `board-whole-after-1920x1080.jpg`) and in the generator's class map (`board-before-after.jpg`).
+
+**Independent review: 0 BLOCKER, 2 MAJOR, 3 MINOR, 7 NIT.**
+- MAJOR, fixed: this report and PROGRESS were not yet written.
+- MAJOR, fixed: Ribandar's label stood on the grey band and 12 playable tiles still took its name (rows could say "near Ribandar"). A locality on scenery is now out of the game; tested.
+- MINOR, not changed (owner's call): the Ribandar island is at most three tiles wide and touches the river, so most of it takes the lighter edge grey and reads nearly in colour. The rule is the north bank's (it fades against any playable tile, water too); changing it would change the north bank's accepted look.
+- MINOR, fixed: the `section4` comment gave the wrong cause (the owner's tile edits took the plan's build sites; the east edge took one home); the `panajiHandEdits` comment's count (135, not 131).
+- NIT, fixed: a missing file named in a comment; comments that said scenery meant only the north bank; `NORTH` renamed `SCENERY` in the test; the hand-edits file's place moves back in their one-line form. Noted: the east line (30.2) is a constant in the generator, which checks the stored list against it; new water keeps its DEM height (above); Maya's hidden flood line still names the Ribandar channel, which is where the channel is.

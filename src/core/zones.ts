@@ -221,7 +221,7 @@ export function resolveChallenge(
   const storm = { kind, strength, landfall: site };
   const options = { combos, landfallZoneTiles: landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined };
 
-  // A house on scenery (the north bank) is drawn, never counted.
+  // A house on scenery (the north bank, the east edge) is drawn, never counted.
   const isHouse = (key: string): boolean => {
     const inst = state.elements.get(key);
     return !!inst && !state.isScenery(key) && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
@@ -270,7 +270,7 @@ export function resolveChallenge(
   const overSet = new Set(field.overwhelmed);
   const outcomes: ZoneOutcome[] = [];
   for (const zoneId of order) {
-    // Never the north bank (scenery): its water is drawn, not reported.
+    // Never scenery (the north bank, the east edge): its water is drawn, not reported.
     const keys = (zoneId === CITY_ZONE ? [...undefended.depth.keys()].filter((key) => !zones.zoneOf(key)) : zones.keys(zoneId)).filter((key) => !state.isScenery(key));
     const inZone = standing.filter((key) => zoneOf(key) === zoneId);
     const zoneFailed = field.failed.filter((key) => zoneOf(key) === zoneId);

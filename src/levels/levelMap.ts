@@ -157,8 +157,10 @@ export interface GameMap {
   roadLinks: [number, number, number, number][];
   /** The board skirt: west of the board from this row south is open sea, whatever land touches it (Panaji). */
   skirtOpenSeaWestFromRow?: number;
-  /** Tiles on the board as scenery only, not part of the game (Panaji's north bank). Their `PlacedTile.scenery` is set. Empty on maps without them. */
+  /** Tiles on the board as scenery only, not part of the game (Panaji's north bank and east edge). Their `PlacedTile.scenery` is set. Empty on maps without them. */
   unplayable: [number, number][];
+  /** Where the east edge's scenery begins (q + r/2 at least this; Panaji, Section 19.2), for its note; absent elsewhere. */
+  unplayableEastFrom?: number;
   tiles: PlacedTile[];
 }
 
@@ -181,6 +183,7 @@ interface MapFileShape {
   bridges?: [number, number][];
   roadLinks?: [number, number, number, number][];
   unplayable?: [number, number][];
+  unplayableEastFrom?: number;
   skirtOpenSeaWestFromRow?: number;
   tiles: { q: number; r: number; terrainId: string; elevationM?: number }[];
 }
@@ -199,13 +202,16 @@ function fromFile(file: unknown): GameMap {
     focus: { q: data.focus.q, r: data.focus.r },
     landmarks: data.landmarks ?? [],
     monuments: data.monuments ?? [],
-    localities: data.localities ?? [],
+    // A locality on scenery is out of the game (Section 19.2: Ribandar, east of the line): no label, and never the
+    // nearest place a home, an objective row or an area is named after.
+    localities: (data.localities ?? []).filter((l) => !scenery.has(`${l.q},${l.r}`)),
     elevation: data.elevation,
     zones: data.zones ?? [],
     roads: data.roads ?? [],
     bridges: data.bridges ?? [],
     roadLinks: data.roadLinks ?? [],
     unplayable: data.unplayable ?? [],
+    unplayableEastFrom: data.unplayableEastFrom,
     skirtOpenSeaWestFromRow: data.skirtOpenSeaWestFromRow,
     tiles: data.tiles.map((tile) => {
       const placed: PlacedTile = tile.elevationM === undefined

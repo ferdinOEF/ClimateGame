@@ -2266,9 +2266,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const { x: wx, z: wz } = axialToWorld(coord, 1.0);
     const screen = worldToScreen(wx, worldTop + 0.3, wz);
 
-    // North of the Mandovi is scenery (Section 11.4): no build menu, one line saying so.
+    // North of the Mandovi (Section 11.4) and the east edge (Section 19.2) are scenery: no build menu, one line saying so.
     if (state.isScenery(key)) {
-      buildPopover.showNote(screen.x, screen.y, "North of the Mandovi: not part of this game");
+      const east = levelMap.unplayableEastFrom !== undefined && coord.q + coord.r / 2 >= levelMap.unplayableEastFrom;
+      buildPopover.showNote(screen.x, screen.y, east ? "Outside Panjim, not part of this game" : "North of the Mandovi: not part of this game");
       return;
     }
 
@@ -2448,7 +2449,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const coord = hit && hit.instanceId !== undefined && !name ? terrain.coordForHit(hit.object, hit.instanceId) : null;
       const buildable = coord && !panjim?.isBusy && !overlayOpen() && state.buildableAt(coord).length > 0;
       tileHover.show(buildable ? coord : null, coord ? terrain.heightAt(coord) : 0);
-      // Section 16 B6: a pointer over a tile that can be built on (never the north bank: it is scenery).
+      // Section 16 B6: a pointer over a tile that can be built on (never the north bank or the east edge: they are scenery).
       renderer.domElement.style.cursor = buildable ? "pointer" : "";
     }
   };

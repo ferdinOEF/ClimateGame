@@ -107,7 +107,7 @@ describe("objectives chosen by the model", () => {
 
   // Section 16.4 (owner decision): the first objective is "Protect Sharada Mandir School", its rows from the
   // model on the tiles round the school only, with the school pinned.
-  it("phase 1: Protect Sharada Mandir School, every pick round the school, the school pinned, 8 of the 9 homes saved", () => {
+  it("phase 1: Protect Sharada Mandir School, every pick round the school, the school pinned, all 8 homes saved", () => {
     const r = run();
     const school = MAP.landmarks.find((l) => l.name === "Sharada Mandir School")!;
     expect(r.objective!.rows.every((row) => row.heading === "Protect Sharada Mandir School")).toBe(true);
@@ -116,10 +116,11 @@ describe("objectives chosen by the model", () => {
       expect(Math.max(Math.abs(q - school.q), Math.abs(rr - school.r), Math.abs(q + rr - school.q - school.r)), pick.key).toBeLessThanOrEqual(3);
     }
     for (const row of r.objective!.rows) expect(row.pins).toEqual([{ name: "Sharada Mandir School", q: school.q, r: school.r }]);
-    expect(r.objective!.lostBefore).toBe(9);
-    // Section 17.2 (owner decision): the objective suggests nature-based defences only. Two dunes in front of the
-    // school save 8 of the 9; the ninth home was saved by Section 16's seawalls, which are no longer suggested.
-    expect(r.objective!.lostAfter).toBe(1);
+    // Section 19: 8, not 9: the Caranzalem home at -7,24 went with the owner's edit to beach.
+    expect(r.objective!.lostBefore).toBe(8);
+    // Section 17.2 (owner decision): the objective suggests nature-based defences only. Section 19: with the home
+    // at -7,24 gone (beach now), the dunes in front of the school save all 8.
+    expect(r.objective!.lostAfter).toBe(0);
     expect(r.objective!.picks.every((pick) => pick.elementId === "dune" || pick.elementId === "sandy_vegetation")).toBe(true);
   });
 
