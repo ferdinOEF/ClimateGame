@@ -1688,3 +1688,14 @@ Branch `section-17-nbs-cards`, off master `4bc6927` (Section 16 part B's merge; 
 - **MINOR, fixed:** `tools/section13Checks.ts` checks for no count instead of the pill; Maya's Tutorial line no longer names mangroves on a beach menu; the Tutorial's cards shot is in the evidence; 2560x1440 shots and colour copies added; docs written.
 - **NIT, fixed:** stale comments about the card number; "Small dam" no longer breaks across lines on the Not here line.
 - **Fixed in the QA run:** the first suite run failed in `test:labels` and `test:maya` with "execution context destroyed": source files were edited while it ran and the dev server reloaded the page. Rerun with no edits: all pass.
+
+# Section 17b — partner banner hidden; no dots or hyphens between words (merged before the full gate)
+
+Branch `section-17b-credits-punctuation`, off master `60b5c1b` (tag `pre-section-17b`; `backup/pre-section-17b` on GitHub). Merged on the owner's request while the browser gate was still running.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean; 560 tests pass, 6 skipped (new: `punctuation`, `partnerCredits`). |
+| `tools/creditsCheck.ts` (menu at 1280x600, 1366x768, 1920x1080, 2560x1440, DPR 2, 760 px; axe on the menu and Sources) | All 56 checks pass (Part A, before the comma change). Screenshots `docs/qa/section17b/menu-*.jpg`, with grayscale and deuteranopia copies of the 1920 menu. |
+| `tools/section17bChecks.ts` at 1280x600 | All pass but one: the Tutorial's result card was not reached by the tool (a tool problem, fixed; not rerun). Other sizes were still running at the merge. |
+| Not run before the merge | `walkthrough`, `test:labels`, `test:layout`, `test:maya` for this branch; the independent review of part B. To be run on master. |

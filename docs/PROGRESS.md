@@ -8791,3 +8791,9 @@ Owner decisions. Panjim and the Tutorial; the Tutorial's level entry and map are
 - **For the owner:** with no number on the cards, a Tutorial player who follows the rows on the weaker tiles saves fewer homes (the reviewer measured 18 of 18 on the best tiles, 12 on the median, 5 on the worst). The Tutorial still plays to its end on any tiles (`tests/tutorialRun.test.ts`). Marking the objective's suggested tiles on the map would close the gap; not done (beyond this spec).
 
 **Shipped.** QA in `docs/QA_REPORT.md` (Section 17).
+
+## Section 17b — partner banner hidden; no dots or hyphens between words — MERGED (QA partly run)
+
+Owner decisions. Merged on the owner's request before the full browser gate finished.
+- **A:** the "Brought to you by" plate and logos are behind `SHOW_PARTNER_CREDITS` (`VITE_SHOW_PARTNER_CREDITS`, off by default; code and `public/branding/` kept). "Facts & sources" is a small text link in the menu's bottom-right corner. The menu art credit reads "Board render, map data © OpenStreetMap contributors".
+- **B:** 60 player-facing strings reworded (for example "Monsoon flood in 2040, 10 years away", "Cyclone in 5 builds", "Cyclone in 2030", "Get ready for the cyclone", "Twenty five years of Panjim", "Continue from 2031", "Demolish (uses this year's build)"); the city boards' blurbs fixed in the generator. `tests/punctuation.test.ts` scans every UI string (data, map text, index.html, every source literal via the TypeScript parser) for "·", inline "•", spaced dashes, dashes between words, dashed number ranges and word-joining hyphens. Allow-list: "White-throated Kingfisher" (the bird's real name) and the Tutorial map's blurb (never shown; the file is hash-locked).
