@@ -96,10 +96,9 @@ export function buildStormScript(record: StormRecord, defences: ReadonlyMap<stri
     const t = hitTime(field, key) ?? arrivalTime(field, key);
     if (t !== null) events.push({ t, type: "landmark", key, level });
   }
-  for (const key of outcome.damagedHouses) {
-    const t = hitTime(field, key);
-    if (t !== null) events.push({ t, type: "house", key });
-  }
+  // Every home the resolver lost goes during the storm: when its water passes the line, else when water first
+  // reaches it, else half way through (a depth only just over the line can fall between the search's steps).
+  for (const key of outcome.damagedHouses) events.push({ t: hitTime(field, key) ?? arrivalTime(field, key) ?? field.duration / 2, type: "house", key });
   const contacts: { t: number; key: string; elementId: string }[] = [];
   for (const [key, elementId] of testedDefences(record, defences, zoneOf)) {
     const t = contactTime(field, key);

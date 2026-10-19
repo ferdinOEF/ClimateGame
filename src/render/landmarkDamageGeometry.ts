@@ -34,8 +34,10 @@ export function damagedLandmarkGeometry(base: THREE.BufferGeometry, level: 1 | 2
     for (let k = 0; k < 3; k++) c.add(new THREE.Vector3(pos.getX(t * 3 + k), pos.getY(t * 3 + k), pos.getZ(t * 3 + k)));
     c.multiplyScalar(1 / 3);
     let shade = overall;
-    // The roof section caves in: dropped towards the floor below it, charred.
-    if (c.y > above && Math.hypot(c.x - px, c.z - pz) < radius) {
+    // The roof section caves in: dropped towards the floor below it, charred. Only a triangle wholly above the line
+    // moves, so a wall that reaches the ground is never stretched into a sliver.
+    const wholly = pos.getY(t * 3) > above && pos.getY(t * 3 + 1) > above && pos.getY(t * 3 + 2) > above;
+    if (wholly && Math.hypot(c.x - px, c.z - pz) < radius) {
       for (let k = 0; k < 3; k++) {
         const i = t * 3 + k;
         const y = pos.getY(i);

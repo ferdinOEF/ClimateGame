@@ -760,6 +760,13 @@ export function runBot(persona: Persona, seed: string, level: LevelDef = BOT_LEV
   return player.result();
 }
 
+/** A play style's whole run on `seed`, for tests that read its storm records. */
+export function playedRun(persona: Persona, seed: string): ActionRun {
+  const player = new Player(persona, seed);
+  PLAY[persona](player);
+  return player.run;
+}
+
 /** Each landmark's damage after each storm (Section 21.3: 1 damaged, 2 destroyed, as the board draws them), for a play style's run. */
 export function landmarkLevels(persona: Persona, seed: string): { storm: string; damaged: string[]; destroyed: string[] }[] {
   const player = new Player(persona, seed);

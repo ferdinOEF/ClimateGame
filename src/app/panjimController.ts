@@ -302,6 +302,8 @@ export class PanjimController {
       host.container,
       { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: false, className: "risk-toggle", persist: false },
       (on) => {
+        // Set by riskDefaults inside renderHeat, which goes on with the new state: nothing to redo.
+        if (this.riskDefaulting) return;
         if (!on) this.host.cancelRiskIntro("risk hidden");
         this.renderHeat();
       }
@@ -666,6 +668,8 @@ export class PanjimController {
   /** The storm whose phase Show risk's defaults were last set for, and whether its warning years have switched it on. */
   private riskPhase: string | null = null;
   private riskWarned = false;
+  /** True while riskDefaults sets the switch (its onChange then skips the repaint renderHeat is already making). */
+  private riskDefaulting = false;
 
   /**
    * Show risk's defaults (Section 21.4): off when a storm's phase begins (a new run, a resume, the storm before
@@ -673,14 +677,19 @@ export class PanjimController {
    */
   private riskDefaults(next: ScheduledChallenge | null, warning: boolean): void {
     const id = next?.id ?? null;
-    if (id !== this.riskPhase) {
-      this.riskPhase = id;
-      this.riskWarned = false;
-      this.riskToggle.set(false);
-    }
-    if (warning && !this.riskWarned) {
-      this.riskWarned = true;
-      this.riskToggle.set(true);
+    this.riskDefaulting = true;
+    try {
+      if (id !== this.riskPhase) {
+        this.riskPhase = id;
+        this.riskWarned = false;
+        this.riskToggle.set(false);
+      }
+      if (warning && !this.riskWarned) {
+        this.riskWarned = true;
+        this.riskToggle.set(true);
+      }
+    } finally {
+      this.riskDefaulting = false;
     }
   }
 

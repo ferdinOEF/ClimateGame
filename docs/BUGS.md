@@ -63,3 +63,12 @@ These would change accepted behaviour or a design decision, so they are not chan
      play would clear 92%. Nature only never clears at these stars: the cyclone is all or nothing (every home or about
      a third), seawalls stop it and the nature bot does not; a player who follows the objective card (dunes in front
      of Sharada Mandir School, nature based) does.
+5. **One kind of defence can clear the level.** Clear is 5 stars of 9 and a storm gives at least 1, so three stars in
+   the 2030 cyclone alone clears it. Best play limited to one kind (`docs/qa/section21/tuning-after-only.md`): dunes
+   only, pandanus only, seawalls only and breakwaters only each clear 100% of seeds while saving 5 to 30% of the homes
+   over the run; no single kind reaches three stars in every storm. A rule the owner could add: a level is clear
+   only with at least two stars in two storms, or with half the homes saved over the run.
+6. **The tuning changes what a player sees.** Building by eye on the forecast (the Casual bot) saved 60 to 82% of the
+   homes over a run before Section 21 and saves 25 to 60% now (mean 41%); `tests/panjimBots.test.ts` was changed to
+   match, and Casual's lead over Greedy from 20 points to 15. Two stars now need 70% of the homes in the path saved
+   (50% before); three stars 80% (79%).

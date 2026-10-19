@@ -4,7 +4,10 @@ import { ElementMeshManager, type BuildingStyle } from "../src/render/elementMes
 import { MonumentMeshManager } from "../src/render/monumentMeshManager";
 import { buildStormScript } from "../src/core/stormScript";
 import { landmarkDamage, landmarkDamageSoFar } from "../src/core/landmarkDamage";
-import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, newRun, playedRun } from "../tools/panjimBots/bots";
+import { damagedLandmarkGeometry } from "../src/render/landmarkDamageGeometry";
+import { box } from "../src/render/primitives3d";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { passYear } from "./helpers/passYear";
 import { mapById } from "../src/levels/levelMap";
 import { computeWater, damageAt, floodsHouse, LANDFALL_ZONE } from "../src/core/hazardModel";
@@ -152,5 +155,46 @@ describe("damaged landmarks", () => {
     const mesh = monuments.group.children.find((c) => c.name === `monument-landmark:${hit.id}`) as THREE.InstancedMesh;
     expect(mesh).toBeTruthy();
     expect(monuments.group.children.some((c) => c.name === "monument-rubble")).toBe(true);
+  });
+});
+
+// Section 21 review: a home the resolver lost must ruin during the storm, even when its depth only just crosses the
+// line (the hit search steps in 0.02 s and can miss it); before, such a home was a ruin only after a reload.
+describe("the storm script", () => {
+  it("ruins every home each storm lost, in every play style's run", () => {
+    let checked = 0;
+    for (const [persona, seed] of [["far", "s1"], ["smart", "s2"], ["smart", "s3"], ["nature", "s4"], ["random", "s5"], ["best", "s6"]] as const) {
+      const run = playedRun(persona, seed);
+      for (const challenge of run.schedule) {
+        const record = run.stormRecords.get(challenge.id)!;
+        const script = buildStormScript(record, record.defences, (key) => run.zones!.zoneOf(key));
+        const ruined = new Set(script.events.filter((e) => e.type === "house").map((e) => (e as { key: string }).key));
+        expect([...ruined].sort(), `${persona} ${challenge.id}`).toEqual([...record.outcome.damagedHouses].sort());
+        checked += ruined.size;
+      }
+    }
+    expect(checked).toBeGreaterThan(100);
+  }, 600_000);
+});
+
+// Section 21 review: the cave-in moves only triangles wholly above its line, so a tall wall reaching the ground is
+// never stretched into a sliver or torn from its partner triangle.
+describe("a damaged landmark's model", () => {
+  it("moves only whole triangles above the cave-in line, for both looks", () => {
+    const base = mergeGeometries([box(1, 2, 1, "#c8b89a"), box(0.6, 0.6, 0.6, "#a0522d", 2)].map((g) => g.toNonIndexed()))!;
+    const before = base.getAttribute("position");
+    for (const level of [1, 2] as const) {
+      const after = damagedLandmarkGeometry(base, level, 7).getAttribute("position");
+      expect(after.count).toBe(before.count);
+      const line = 2.6 * (level === 2 ? 0.4 : 0.6);
+      let moved = 0;
+      for (let t = 0; t < before.count / 3; t++) {
+        const changed = [0, 1, 2].some((k) => Math.abs(after.getY(t * 3 + k) - before.getY(t * 3 + k)) > 1e-6);
+        if (!changed) continue;
+        moved++;
+        for (let k = 0; k < 3; k++) expect(before.getY(t * 3 + k)).toBeGreaterThan(line);
+      }
+      expect(moved, `level ${level}`).toBeGreaterThan(0);
+    }
   });
 });

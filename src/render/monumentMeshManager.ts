@@ -219,7 +219,7 @@ export class MonumentMeshManager {
       p.growth = growth;
       if (p.damage > 0) this.writeMatrix(p);
       else p.mesh.setMatrixAt(p.index, placement(matrix, p.x, p.y, p.z, p.sx, p.sy * growth, p.turn));
-      p.decals?.scale.set(p.sx, p.sy * growth, p.sx);
+      if (p.damage === 0) p.decals?.scale.set(p.sx, p.sy * growth, p.sx);
       this.tops.set(`${p.monument.coord.q},${p.monument.coord.r}`, p.y + p.h * p.sy * growth);
       touched.add(p.mesh);
     }
@@ -292,6 +292,12 @@ export class MonumentMeshManager {
     p.mesh.setMatrixAt(p.index, matrix);
     p.mesh.instanceMatrix.needsUpdate = true;
     p.mesh.boundingSphere = null;
+    // Its signs and windows go with it.
+    if (p.decals) {
+      p.decals.rotation.order = "YXZ";
+      p.decals.rotation.set(p.damage === 2 ? 0.06 : 0, p.turn, 0);
+      p.decals.scale.set(p.sx, p.sy * p.growth * (p.damage === 2 ? 0.88 : 1), p.sx);
+    }
   }
 
   /** The monument a raycast hit on one of its meshes belongs to, if any. */
