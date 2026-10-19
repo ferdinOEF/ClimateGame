@@ -1743,7 +1743,7 @@ Branch `section-18-landmarks-dolphins`, off master `0ec1c12` (tag `pre-section-1
 | High, calm | 53 → 60 | 389,990 → 397,772 | 1,550 → 550 |
 | High, cyclone | 42 → 48 | 425,858 → 431,842 | 1,083 → 1,083 |
 
-Seven more draw calls (one per decal) and about 7,800 more triangles (2% of the frame); the software-GL frame times move within their noise. The before run's leak check was cut short by a source edit (noted in the file).
+Seven more draw calls (one per decal) and about 7,800 more triangles (2% of the frame); the software-GL frame times move within their noise. The leak check was not completed in either run (cut short by a source edit before, the 40 minute limit after; noted in the files).
 
 **Screenshots** (`docs/qa/section18/`): the landmarks contact sheet (`landmarks-contact-sheet.jpg`: each drawing beside the model in a three quarter view at 1920x1080), each landmark also from the game's own camera (`landmark-NN-<id>.jpg`); the board at the default zoom before and after (`board-before-*`, `board-after-*`, 1366x768 and 1920x1080, and after at 2560x1440); the first frame, hovering the church, the Field Guide's dolphin page at all three sizes; dolphins (`dolphins/`): a roll, a leap and its splash, at default zoom and close.
 
