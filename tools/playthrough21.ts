@@ -192,8 +192,11 @@ async function playStyle(style: string): Promise<void> {
     const pick = ((await page.evaluate(`(${PICK})(${JSON.stringify(style)}, ${seed++})`)) ?? (await page.evaluate(`(${PICK})("none", 0)`))) as { key: string; id: string } | null;
     const before = await year(page);
     if (pick) {
+      // As a player builds: open the tile, click the card (buildNow refuses the build that brings a storm).
       const [q, r] = pick.key.split(",").map(Number);
-      void page.evaluate(`window.__panjimForTest.buildNow({ q: ${q}, r: ${r} }, ${JSON.stringify(pick.id)})`);
+      await page.evaluate(`window.__openTileForTest(${q}, ${r})`);
+      const card = page.locator(`.build-card[data-element="${pick.id}"]:not(.disabled)`).first();
+      await card.click({ timeout: 4000 }).catch(() => page.evaluate(`document.querySelector('.build-card[data-element="${pick.id}"]')?.click()`));
     } else void page.evaluate(`window.__panjimScenarioForTest("pass-year")`);
     builds++;
     // The year ends; a storm may come.
@@ -234,7 +237,8 @@ async function playStyle(style: string): Promise<void> {
 }
 
 // ---- landing, continue, begin again, input, edges ----------------------------------------
-{
+// landing=0 skips this part (to rerun only the play styles).
+if (named.get("landing") !== "0") {
   const { page, log, context } = await newPage();
   await page.goto(server.url, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(4000);
