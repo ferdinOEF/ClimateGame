@@ -27,6 +27,13 @@ Problems the pass reported that came from the test tools, not the game; each too
   builds away from the storms through the player's own build path.
 - **"After a resize mid storm the board stays at 1025x576".** The canvas follows the window on the browser's resize
   event; with software GL a frame takes about a second, so 0.8 s was too short a wait. The tool now waits up to 6 s.
+- **Every play style stalled in 2030.** The tool built with the `buildNow` test hook, which on purpose refuses the
+  build that brings a storm. The tool now builds as a player does: it opens the tile and clicks the card.
+- **"The run reaches the final card" failed at 2050.** The skyline reveal and the title come before the final card;
+  the tool checked too soon. It now waits up to 40 s; the card offers Play again and Back to the menu.
+- **The well style's first card never opened.** The tool pressed ? and clicked Help during the storm and left Help
+  open; a storm and its cards wait while Help, ☰ or the Field Guide is open (Section 16 B5, accepted). The tool now
+  shuts such a layer, as a player would, and logs it.
 - **Blank pictures in Help.** In the first screenshots two of Help's pictures were empty teal panels: the images had
   not decoded yet in a browser busy with software GL. The files are fine; the tools now wait for them.
 
@@ -45,3 +52,14 @@ These would change accepted behaviour or a design decision, so they are not chan
    path, including homes an earlier storm already ruined, so 2050 on an undefended run reads "0 of 106 homes saved"
    while that storm itself took 43. The ruins on the board match the card (the ruins in the path are M minus N), but
    a player may read it as 106 homes lost in 2050.
+4. **The storms' strengths (Section 21.2).** Tuned inside what earlier sections accepted: the cyclone stays 1.2
+   (above 1.3 the undefended cyclone reaches the homes by Kala Academy, against Section 16.4's "nothing at Kala
+   Academy"), the flood is 2.35 (at 2.4 its icon and word turn "severe", like 2050's; at 2.6 its track leaves the
+   Ribandar channel, Section 19), the 2050 storm 3.8; stars at 0.80 and 0.70. Two trade-offs for the owner:
+   - **1.5 / 2.6 / 3.6 meets more targets** (sensible clears 74%, random 3%, nature beats seawalls on stars too), but
+     changes those two accepted behaviours. Tables: `docs/qa/section21/tuning-option-1.5-2.6-3.6.md`.
+   - **Nature only against the sensible clear rate.** The 2050 storm at 3.8 brings sensible play down to 79% clears,
+     but nature only saves 36% of the homes over a run (61% before Section 21). At 3.0 it would save 50%, and sensible
+     play would clear 92%. Nature only never clears at these stars: the cyclone is all or nothing (every home or about
+     a third), seawalls stop it and the nature bot does not; a player who follows the objective card (dunes in front
+     of Sharada Mandir School, nature based) does.
