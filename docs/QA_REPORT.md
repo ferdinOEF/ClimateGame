@@ -1726,6 +1726,9 @@ Branch `section-18-landmarks-dolphins`, off master `0ec1c12` (tag `pre-section-1
 | Dolphins in the game (`tools/dolphinFrames.ts`) | All pass: a pod starts in the Mandovi off the old city; a roll and a leap filmed at default zoom and close up; every visible dolphin over 2,000 frames is on open water; no console errors. |
 | axe-core | No serious or critical violations on the start popup, the board, the Field Guide. The Field Guide's "Not seen yet" lines failed colour contrast (4.0:1, older than this section): raised to pass. |
 | Colour | Grayscale and deuteranopia copies of the 1920 board (`board-after-1920x1080-gray.jpg`, `-deut.jpg`). |
+| `npm run walkthrough` | Clean, no console errors: menu, the Tutorial start to finish, Play Panjim with 16 monuments and 30 place labels. |
+| `npm run test:labels` | 49 of 49 views; label layer at most 3.8 ms a frame. |
+| `npm run test:layout`, `npm run test:maya` | As shipped (Maya hidden, Section 17c) every check fails on "Maya is not on screen", by design. Run with Maya switched on (`VITE_SHOW_MAYA=true`): LAYOUT_RESULT. |
 | Bots | Not run: no mechanic or balance touched. |
 | Preview equals resolution | `tests/preview.test.ts` passes (in `npm run test`). |
 | Cross-browser, real GPU | Not run: Chromium with software GL only. |
