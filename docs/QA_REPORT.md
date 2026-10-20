@@ -2032,3 +2032,17 @@ Branch `section-23b-no-walking-on-water`, from master `8194e4c` (Section 23). Sa
 | Independent reviewer | No BLOCKER. MAJOR: the rule kept 11,2 and 28,9, banks at a bend round dry land, so the deck only clipped a water tile's corner (fixed: no dry ground may neighbour both banks; one rule shared by the map builder and the game). MINOR: the rule in two places (shared now); the walker test could not catch a regression in the link filter (a made-up town now does); the deck check measured to a line, not the deck (fixed); the deck coplanar with the bank (lifted 0.004); docs (written). NIT: the House move acceptable; parapets crossed at the bend (they stop 0.12 short of the centre); decks ignore the scenery grey (left: the one bridge is in Panjim, not on scenery). |
 | Interpretation | "Road tile that touches water" read as a road tile on water or a link with a water end. Land road tiles beside the water (the waterfront roads) stay: a walker there stands on land. |
 | Not run (the full browser check, only on the owner's request) | walkthrough, test:labels, test:layout, test:maya, the other two sizes, the full playthroughs, axe, colour-blind copies. Real GPU and Firefox/WebKit: not available here. |
+
+# Section 24 — the best plan for Play Panjim
+
+Branch `section-24-best-plan`, from master `9159700` (Section 23b). Safety copy: the tag `pre-section-24` (local; the git proxy refuses tag pushes) and the branch `backup/pre-section-24` on GitHub. No game change: a tool, a test and docs.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: tsc no errors; vitest 81 files, 609 passed, 6 skipped; build clean. |
+| Preview equals resolution | `tests/exposure.test.ts` and `tests/liveRisk.test.ts` pass (the solver relies on it: a candidate's exact preview is what the storm does). |
+| Bots | Not run: mechanics unchanged (the brief). |
+| The search (`npm run bestplan`, beam 16, 4 child processes) | 697 s (11.6 min). 9 of 9 stars; 2 homes lost (2040 flood). Log: `docs/qa/section24/bestplan-run.log`. A quick beam-2 run found 9 of 9 with 4 lost. |
+| Headless replay (`tests/bestPlan.test.ts`) | Passes: the plan's 25 actions give the same stars and homes in every storm. |
+| Browser replay, 1366x768 (`tools/section24Replay.ts`) | All pass, 0 console errors, 7 min 51 s: result cards 3 stars 8 of 8 (2030), 3 stars 63 of 65 (2040), 3 stars 69 of 69 (2050); final card 9 of 9 stars, 140 of 142 homes saved, "Panjim cleared". Shots: `docs/qa/section24/result-card-{1,2,3}-1366x768.jpg`, `final-card-1366x768.jpg`. |
+| Not run (the full browser check, only on the owner's request) | walkthrough, test:labels, test:layout, test:maya, other sizes, playthroughs, axe, colour-blind copies. The browser replay at 1920x1080 (the brief asks for 1366x768 only). |
