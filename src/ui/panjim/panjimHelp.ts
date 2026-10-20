@@ -1,5 +1,6 @@
 import type { ScheduledChallenge } from "@core/climate";
 import { HEAT_LEAD_YEARS } from "@core/exposure";
+import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
 
 /**
  * How to Play for the Panjim game (Section 15): a short page in the result
@@ -19,8 +20,9 @@ export interface PanjimHelpInput {
   heatLeadYears?: number;
 }
 
-const WORDS = ["no", "one", "two", "three", "four", "five", "six"];
-const countWord = (n: number): string => WORDS[n] ?? String(n);
+const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+/** A small count in words ("five"), else in figures. */
+export const countWord = (n: number): string => WORDS[n] ?? String(n);
 const ordinal = (n: number): string => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 
 const esc = (text: string): string => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -61,7 +63,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>${stormsTitle} ${RULE}</h3>
         <ul>${stormList}</ul>
-        <p>After each, a result card: the stars, the homes saved, and what protected them.</p>
+        <p>After each, a result card: the stars, the homes saved, and what protected them.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}</p>
       </div>
     </section>
 

@@ -89,6 +89,11 @@ export class ForecastConeOverlay {
   private lastMs: number | null = null;
   /** With reduced motion the cone appears and goes at once: a static fade. */
   reducedMotion = false;
+  /**
+   * Each track's arrowhead in world space, its tip and the middle of its back edge (Section 22.2: the place pins
+   * keep clear of it). Empty while the cone is hidden.
+   */
+  private heads: { tip: { x: number; y: number; z: number }; back: { x: number; y: number; z: number } }[] = [];
 
   constructor(capacity: number) {
     const geometry = new THREE.CircleGeometry(0.98, 6);
@@ -143,10 +148,12 @@ export class ForecastConeOverlay {
 
     // The tracks, each a dashed line with an arrowhead.
     const nearestHeight = (x: number, z: number): number => heightAt(nearestCoord(x, z));
+    this.heads = [];
     for (const track of cone.tracks) {
       const shapes = trackShapes(track, nearestHeight);
       this.addLine(shapes.halo, this.lightLine, 7);
       this.addLine(shapes.dash, this.darkLine, 8);
+      if (shapes.head) this.heads.push(shapes.head);
     }
     this.group.visible = true;
     this.fadeTarget = 1;
@@ -167,6 +174,11 @@ export class ForecastConeOverlay {
 
   get isShown(): boolean {
     return this.group.visible && this.fadeTarget > 0;
+  }
+
+  /** The arrowheads drawn now (none while the cone is hidden or fading out). */
+  get arrowHeads(): readonly { tip: { x: number; y: number; z: number }; back: { x: number; y: number; z: number } }[] {
+    return this.isShown ? this.heads : [];
   }
 
   /** How many tiles carry a band or the meeting hatch (0 when hidden). */
@@ -284,7 +296,7 @@ function dashedOutline(tiles: AxialCoord[], heightAt: (coord: AxialCoord) => num
 }
 
 /** A track: a light halo, a dark dashed line on it, and an arrowhead at the end. */
-function trackShapes(track: ConeTrack, heightAt: (x: number, z: number) => number): { halo: number[]; dash: number[] } {
+function trackShapes(track: ConeTrack, heightAt: (x: number, z: number) => number): { halo: number[]; dash: number[]; head: { tip: { x: number; y: number; z: number }; back: { x: number; y: number; z: number } } | null } {
   const halo: number[] = [];
   const dash: number[] = [];
   const points = track.points;
@@ -314,5 +326,5 @@ function trackShapes(track: ConeTrack, heightAt: (x: number, z: number) => numbe
   const inner = [{ x: tip.x - ux * 0.18, z: tip.z - uz * 0.18 }, wing(1, 0.52), wing(-1, 0.52)];
   for (const p of outer) halo.push(p.x, y, p.z);
   for (const p of inner) dash.push(p.x, y + 0.01, p.z);
-  return { halo, dash };
+  return { halo, dash, head: { tip: { x: tip.x, y, z: tip.z }, back: { x: back.x, y, z: back.z } } };
 }

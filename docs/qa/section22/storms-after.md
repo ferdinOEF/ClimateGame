@@ -1,0 +1,13 @@
+Playable houses at the start: 344 (scenery houses, never counted: 157).
+
+| Storm | Strength | Landfall | Homes lost | By locality |
+|---|---|---|---|---|
+| 2030 Cyclone | 1.2 | -5,18 | 8 | Taleigao 3, Caranzalem 2, Miramar 2, Santa Inez 1 |
+| 2040 Monsoon flood | 2.35 | - | 65 | Merces 28, Taleigao 15, St Cruz 10, Altinho 7, Patto 3, Campal 1, Fontainhas 1 |
+| 2050 Cyclone and flood | 3 | 2,12 | 43 | Taleigao 12, Caranzalem 7, Santa Inez 7, Campal 6, Miramar 4, St Cruz 3, Altinho 1, Dona Paula 1, Fontainhas 1, Merces 1 |
+
+**2030 Cyclone:** -3,19(Miramar) -5,22(Caranzalem) -6,23(Caranzalem) 0,19(Miramar) 0,20(Taleigao) 1,19(Taleigao) 2,18(Santa Inez) 2,19(Taleigao)
+
+**2040 Monsoon flood:** 0,26(Taleigao) 1,26(Taleigao) 10,12(Altinho) 11,11(Fontainhas) 11,18(St Cruz) 11,19(St Cruz) 11,22(St Cruz) 12,17(St Cruz) 12,18(St Cruz) 12,19(St Cruz) 13,10(Patto) 14,10(Patto) 14,15(Patto) 14,16(Merces) 14,17(Merces) 15,17(Merces) 15,22(St Cruz) 16,20(St Cruz) 16,21(St Cruz) 17,14(Merces) 17,15(Merces) 17,16(Merces) 17,17(Merces) 18,12(Merces) 19,13(Merces) 2,25(Taleigao) 20,11(Merces) 21,10(Merces) 21,11(Merces) 21,13(Merces) 22,10(Merces) 22,11(Merces) 22,9(Merces) 23,10(Merces) 23,12(Merces) 23,8(Merces) 24,10(Merces) 24,11(Merces) 24,12(Merces) 24,8(Merces) 24,9(Merces) 25,10(Merces) 25,7(Merces) 25,8(Merces) 25,9(Merces) 3,25(Taleigao) 4,23(Taleigao) 4,24(Taleigao) 4,25(Taleigao) 5,18(Altinho) 5,20(Taleigao) 5,22(Taleigao) 5,24(Taleigao) 5,25(Taleigao) 6,18(Altinho) 6,19(Altinho) 6,20(Taleigao) 6,21(Taleigao) 6,22(Taleigao) 6,24(Taleigao) 6,25(St Cruz) 7,18(Altinho) 7,19(Altinho) 7,20(Altinho) 8,7(Campal)
+
+**2050 Cyclone and flood:** -1,20(Miramar) -1,21(Taleigao) -1,22(Taleigao) -1,23(Taleigao) -14,28(Dona Paula) -2,22(Taleigao) -2,23(Taleigao) -2,24(Taleigao) -3,23(Caranzalem) -3,24(Caranzalem) -3,25(Caranzalem) -4,25(Caranzalem) -5,24(Caranzalem) -5,26(Caranzalem) -6,25(Caranzalem) 0,16(Miramar) 0,21(Taleigao) 0,22(Taleigao) 0,23(Taleigao) 0,27(Taleigao) 1,15(Miramar) 1,16(Miramar) 1,21(Taleigao) 10,13(Altinho) 12,21(St Cruz) 12,9(Fontainhas) 14,18(St Cruz) 16,22(St Cruz) 2,14(Santa Inez) 2,15(Santa Inez) 2,16(Santa Inez) 22,13(Merces) 3,12(Campal) 3,13(Santa Inez) 3,17(Santa Inez) 4,11(Campal) 4,15(Santa Inez) 4,16(Santa Inez) 5,10(Campal) 5,19(Taleigao) 6,9(Campal) 8,8(Campal) 9,8(Campal)

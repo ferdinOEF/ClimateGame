@@ -17,13 +17,13 @@ const END = level.timeline!.endYear;
 describe("the storm calendar", () => {
   // Section 16.4: the first cyclone is 1.2 (still "mild"), tuned so its surge, coming ashore in front of Sharada
   // Mandir School, tops the ridge the homes beside the school stand on.
-  // Section 21.2: the flood 2.35 (still "strong": two marks, under 2.4) and the 2050 storm 3.8 (tuned on 200 seeds a play style; docs/QA_REPORT.md).
-  it("puts each storm at the end of its year: turns 5, 15 and 25, at 1.2, 2.35 and 3.8", () => {
+  // Section 21.2: the flood 2.35 (still "strong": two marks, under 2.4); Section 22.4 (owner decision): the 2050 storm 3.0, from 3.8, so nature based defences hold as well as seawalls over the run (tuned on 200 seeds a play style; docs/QA_REPORT.md).
+  it("puts each storm at the end of its year: turns 5, 15 and 25, at 1.2, 2.35 and 3.0", () => {
     const schedule = buildSchedule(climate, START, END);
     expect(schedule.map((c) => [c.id, c.kind, c.year, c.turn, c.strength])).toEqual([
       ["c1-cyclone", "cyclone", 2030, 5, 1.2],
       ["c2-flood", "flood", 2040, 15, 2.35],
-      ["c3-compound", "compound", 2050, 25, 3.8]
+      ["c3-compound", "compound", 2050, 25, 3.0]
     ]);
     for (const c of schedule) expect(challengeStrength(climate, c)).toBe(c.strength);
     expect(schedule.map((c) => strengthIcons(c.strength))).toEqual([1, 2, 3]);

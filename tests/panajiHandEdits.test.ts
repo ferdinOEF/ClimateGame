@@ -8,17 +8,21 @@ import panaji from "../src/data/maps/panaji.json";
  * (tools/mapgen/buildPanajiMap.ts), in order, so regenerating can never lose
  * them. Two rounds of 85, Section 11's then Section 16's (which changes 15,7
  * and 9,22 again), then Section 19's 34 (13 of them on tiles an earlier round
- * changed). Every edit must be in the shipped map: a tile's last edit.
+ * changed), then Section 22's 7 (3 of them on tiles an earlier round changed).
+ * Every edit must be in the shipped map: a tile's last edit.
  */
 const tiles = new Map(panaji.tiles.map((t) => [`${t.q},${t.r}`, t]));
 const keyOf = (entry: string): string => entry.split(",").slice(0, 2).join(",");
 const ROUND_1 = edits.tiles.slice(0, 85);
 const ROUND_2 = edits.tiles.slice(85, 170);
-const ROUND_3 = edits.tiles.slice(170);
+const ROUND_3 = edits.tiles.slice(170, 204);
+const ROUND_4 = edits.tiles.slice(204);
 
 describe("the Panaji hand edits", () => {
-  it("holds the owner's rounds of tile edits (85, 85 and 34), each tile once in each round", () => {
-    expect(edits.tiles).toHaveLength(204);
+  it("holds the owner's rounds of tile edits (85, 85, 34 and 7), each tile once in each round", () => {
+    expect(edits.tiles).toHaveLength(211);
+    // Section 22.1: the owner's fourth round, exactly these seven.
+    expect(ROUND_4).toEqual(["16,4,land>river", "25,6,land>estuary", "26,6,land>estuary", "14,7,land>estuary", "16,7,land>estuary", "15,8,land>estuary", "21,8,estuary>river"]);
     expect(ROUND_3).toHaveLength(34);
     expect(new Set(ROUND_3.map(keyOf)).size).toBe(34);
     // Section 19's round as the owner's map editor gave it (docs/reference/panaji_owner_edits.json).
@@ -41,11 +45,16 @@ describe("the Panaji hand edits", () => {
     const again3 = ROUND_3.filter((entry) => after2.has(keyOf(entry)));
     expect(again3).toHaveLength(13);
     for (const entry of again3) expect(entry.split(",")[2].split(">")[0], entry).toBe(after2.get(keyOf(entry)));
+    // Round 4 starts from what the first three left.
+    const after3 = new Map([...ROUND_1, ...ROUND_2, ...ROUND_3].map((entry) => [keyOf(entry), entry.split(",")[2].split(">")[1]]));
+    const again4 = ROUND_4.filter((entry) => after3.has(keyOf(entry)));
+    expect(again4.sort()).toEqual(["14,7,land>estuary", "16,7,land>estuary", "25,6,land>estuary"]);
+    for (const entry of again4) expect(entry.split(",")[2].split(">")[0], entry).toBe(after3.get(keyOf(entry)));
   });
 
   it("every tile edit is in panaji.json (a tile's last edit)", () => {
     const last = new Map(edits.tiles.map((entry) => [keyOf(entry), entry.split(",")[2].split(">")[1]]));
-    expect(last.size).toBe(189);
+    expect(last.size).toBe(193);
     for (const [key, to] of last) expect(tiles.get(key)?.terrainId, key).toBe(to);
   });
 
@@ -83,9 +92,11 @@ describe("the Panaji hand edits", () => {
   // Section 19.2 (owner decision): the east edge, Ribandar with it, is out of Panjim too. The north bank lost 14
   // tiles to the owner's new river and gained 23,1 (now estuary): 135, 4 of them on row 0 east of the line; the east
   // edge adds 121 more on rows 5 to 36: 256. Merces and St Cruz stay in the game; river and sea stay water.
-  it("keeps the north bank and the east edge as the stored unplayable tiles: 256, Ribandar among them", () => {
+  // Section 22.1: 16,4 is river now (the owner's fourth round), and water stays playable: 255.
+  it("keeps the north bank and the east edge as the stored unplayable tiles: 255, Ribandar among them", () => {
     expect(panaji.unplayable).toEqual(edits.unplayable);
-    expect(edits.unplayable).toHaveLength(256);
+    expect(edits.unplayable).toHaveLength(255);
+    expect(edits.unplayable.some(([q, r]) => q === 16 && r === 4)).toBe(false);
     const east = edits.unplayable.filter(([q, r]) => q + r / 2 >= 30.2);
     expect(east).toHaveLength(125);
     expect(east.filter(([, r]) => r >= 4)).toHaveLength(121);

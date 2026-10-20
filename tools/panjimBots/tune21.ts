@@ -11,15 +11,18 @@
  */
 import { spawn } from "node:child_process";
 import { BOT_LEVEL, STYLES, runBestOnly, runBot, percentile, type BotResult, type Persona } from "./bots";
+import { clearsLevel } from "../../src/core/panjimIndex";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split("=") as [string, string]));
 const num = (key: string, fallback: number): number => (args.has(key) ? Number(args.get(key)) : fallback);
 const challenges = BOT_LEVEL.climate!.challenges;
 const strengths = [num("s1", challenges[0].strength), num("s2", challenges[1].strength), num("s3", challenges[2].strength)];
-const stars = { three: num("three", BOT_LEVEL.houseStars!.three), two: num("two", BOT_LEVEL.houseStars!.two) };
+const stars = { three: num("three", BOT_LEVEL.houseStars!.three), two: num("two", BOT_LEVEL.houseStars!.two), one: num("one", BOT_LEVEL.houseStars!.one ?? 0) };
 strengths.forEach((s, i) => (challenges[i].strength = s));
 BOT_LEVEL.houseStars!.three = stars.three;
 BOT_LEVEL.houseStars!.two = stars.two;
+// Section 22.4: the one-star line (0 turns it off: a storm always gives at least one star).
+BOT_LEVEL.houseStars!.one = stars.one > 0 ? stars.one : undefined;
 const styles = (args.get("styles")?.split(",") ?? STYLES) as Persona[];
 const seedCount = num("seeds", 200);
 const jobs = num("jobs", 4);
@@ -36,8 +39,9 @@ if (childJobs !== undefined) {
     const r = persona.startsWith("only:") ? runBestOnly(persona.slice(5), seed) : runBot(persona, seed);
     out.push({ persona, seed: r.seed, stars: r.stars, houses: r.houses, landmarksLost: r.landmarksLost, built: r.built });
   }
-  console.log(JSON.stringify(out));
-  process.exit(0);
+  // Exit only once the output is written: a large result piped to the parent is otherwise cut short.
+  process.stdout.write(`${JSON.stringify(out)}\n`, () => process.exit(0));
+  await new Promise(() => undefined);
 }
 
 const items: string[] = [];
@@ -63,8 +67,8 @@ const results: Slim[] = (
 if (args.has("raw")) (await import("node:fs")).writeFileSync(args.get("raw")!, JSON.stringify({ strengths, results }));
 const pct = (x: number): string => `${Math.round(x * 100)}%`;
 const share = (h: { saved: number; total: number }): number => (h.total > 0 ? h.saved / h.total : 1);
-console.log(`Strengths ${strengths.join(" / ")}; stars at ${stars.three} (three) and ${stars.two} (two); ${seedCount} seeds a style.\n`);
-console.log("| Style | Storm | Homes saved, mean (p10 to p90) | Stars 1 / 2 / 3 | Landmarks lost, mean (max) |\n|---|---|---|---|---|");
+console.log(`Strengths ${strengths.join(" / ")}; stars at ${stars.three} (three), ${stars.two} (two) and ${stars.one} (one); ${seedCount} seeds a style. Homes saved: of the homes still standing when each storm hit (Section 22.4). Clear: at least one star in every storm and five of nine in all.\n`);
+console.log("| Style | Storm | Homes saved, mean (p10 to p90) | Stars 0 / 1 / 2 / 3 | Landmarks lost, mean (max) |\n|---|---|---|---|---|");
 const summary: string[] = [];
 for (const style of styles) {
   const runs = results.filter((r) => r.persona === style);
@@ -72,14 +76,14 @@ for (const style of styles) {
     const whole = s === challenges.length;
     const shares = runs.map((r) => (whole ? share({ saved: r.houses.reduce((a, h) => a + h.saved, 0), total: r.houses.reduce((a, h) => a + h.total, 0) }) : share(r.houses[s])));
     const mean = shares.reduce((a, b) => a + b, 0) / shares.length;
-    const starCounts = whole ? null : [1, 2, 3].map((k) => runs.filter((r) => r.stars[s] === k).length / runs.length);
+    const starCounts = whole ? null : [0, 1, 2, 3].map((k) => runs.filter((r) => r.stars[s] === k).length / runs.length);
     const lost = runs.map((r) => (whole ? r.landmarksLost.reduce((a, b) => a + b, 0) : r.landmarksLost[s]));
     const label = whole ? "whole run" : `${challenges[s].year} ${challenges[s].name.toLowerCase()}`;
     const starText = starCounts ? starCounts.map(pct).join(" / ") : `total ${(runs.reduce((a, r) => a + r.stars.reduce((x, y) => x + y, 0), 0) / runs.length).toFixed(1)} of 9`;
     console.log(`| ${style} | ${label} | ${pct(mean)} (${pct(percentile(shares, 10))} to ${pct(percentile(shares, 90))}) | ${starText} | ${(lost.reduce((a, b) => a + b, 0) / lost.length).toFixed(1)} (${Math.max(...lost)}) |`);
   }
-  const cleared = runs.filter((r) => r.stars.reduce((a, b) => a + b, 0) >= 5).length / runs.length;
+  const cleared = runs.filter((r) => clearsLevel(r.stars)).length / runs.length;
   const nine = runs.filter((r) => r.stars.every((x) => x === 3)).length / runs.length;
   summary.push(`| ${style} | ${pct(cleared)} | ${pct(nine)} |`);
 }
-console.log(`\n| Style | Clears the level (at least 5 stars of 9) | 3 stars in every storm |\n|---|---|---|\n${summary.join("\n")}`);
+console.log(`\n| Style | Clears the level (a star in every storm, 5 of 9 in all) | 3 stars in every storm |\n|---|---|---|\n${summary.join("\n")}`);

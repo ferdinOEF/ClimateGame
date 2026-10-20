@@ -193,7 +193,7 @@ async function main(): Promise<void> {
         await page.waitForSelector(".brief-card", { timeout: 120000 });
         await page.waitForTimeout(1500);
         const ctas = (await page.locator(".brief-cta").allTextContents()).map((t) => t.trim());
-        check(ctas.includes("Continue from 2031") && ctas.includes("Begin"), `with a saved run Play Panjim offers (as before Section 16) ${ctas.join(", ")}`);
+        check(ctas.includes("Continue from 2031") && ctas.includes("Begin again"), `with a saved run Play Panjim offers (Section 22.4: Begin again) ${ctas.join(", ")}`);
         await shot(page, `play-panjim-saved-${tag}`);
       }
       await page.close();

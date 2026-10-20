@@ -19,12 +19,13 @@ describe("Panjim bots, 25 builds", () => {
   });
 
   // Section 19: with the east edge out of Panjim (owner decision) fewer homes are in the storms' paths.
-  // Section 21.2: the flood (2.35) and the 2050 storm (3.8) are stronger, so building by eye on the forecast saves
-  // 29-55% of the homes over a run (mean 41%): the band is 25-60%.
-  it("building by eye on what the forecast shows saves a share of the homes (Casual 25-60%)", () => {
+  // Section 21.2: the flood (2.35) and the 2050 storm (3.8) are stronger, so building by eye on the forecast saved
+  // 29-55% of the homes over a run (mean 41%). Section 22.4 (owner decisions): a storm counts against the homes still
+  // standing when it hit, and the 2050 storm is 3.0: Casual saves 54-76% (mean 62%): the band is 50-80%.
+  it("building by eye on what the forecast shows saves more than half the homes (Casual 50-80%)", () => {
     for (const run of casual) {
-      expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.25);
-      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.6);
+      expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.5);
+      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.8);
     }
   });
 

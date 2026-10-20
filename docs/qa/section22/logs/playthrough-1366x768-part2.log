@@ -1,0 +1,44 @@
+PASS [1366x768] seawalls c1-cyclone: the card reads 3 of 8 homes saved, as the storm resolved
+PASS [1366x768] seawalls c1-cyclone: 5 new ruins, the 5 homes it destroyed
+PASS [1366x768] seawalls c1-cyclone result card: no dots or hyphens between words
+PASS [1366x768] seawalls c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1366x768] seawalls c1-cyclone: Esc does not drop the result cards
+PASS [1366x768] seawalls c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [1366x768] seawalls c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [1366x768] seawalls c2-flood result card: no dots or hyphens between words
+PASS [1366x768] seawalls c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1366x768] seawalls c2-flood: Esc does not drop the result cards
+PASS [1366x768] seawalls c3-compound: the card reads 44 of 46 homes saved, as the storm resolved
+PASS [1366x768] seawalls c3-compound: 2 new ruins, the 2 homes it destroyed
+PASS [1366x768] seawalls c3-compound result card: no dots or hyphens between words
+PASS [1366x768] seawalls c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1366x768] seawalls c3-compound: Esc does not drop the result cards
+PASS [1366x768] seawalls: the run reaches the final card (25 builds, year 2050)
+PASS [1366x768] seawalls final card: no dots or hyphens between words
+PASS [1366x768] seawalls final card: nothing cut off, scrolling or off screen
+INFO [1366x768] seawalls: stars 1 / 0 / 3, ruins 72
+PASS [1366x768] seawalls: the final card offers Play again (Play again, Back to the menu)
+PASS [1366x768] seawalls: no console errors or warnings
+PASS [1366x768] well c1-cyclone: the card reads 8 of 8 homes saved, as the storm resolved
+PASS [1366x768] well c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [1366x768] well c1-cyclone result card: no dots or hyphens between words
+PASS [1366x768] well c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1366x768] well c1-cyclone: Esc does not drop the result cards
+PASS [1366x768] well c2-flood: the card reads 52 of 65 homes saved, as the storm resolved
+PASS [1366x768] well c2-flood: 13 new ruins, the 13 homes it destroyed
+PASS [1366x768] well c2-flood result card: no dots or hyphens between words
+PASS [1366x768] well c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1366x768] well c2-flood: Esc does not drop the result cards
+PASS [1366x768] well c3-compound: the card reads 58 of 103 homes saved, as the storm resolved
+PASS [1366x768] well c3-compound: 45 new ruins, the 45 homes it destroyed
+PASS [1366x768] well c3-compound result card: no dots or hyphens between words
+PASS [1366x768] well c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1366x768] well c3-compound: Esc does not drop the result cards
+PASS [1366x768] well: the run reaches the final card (25 builds, year 2050)
+PASS [1366x768] well final card: no dots or hyphens between words
+PASS [1366x768] well final card: nothing cut off, scrolling or off screen
+INFO [1366x768] well: stars 3 / 2 / 2, ruins 58
+PASS [1366x768] well: the final card offers Play again (Play again, Back to the menu)
+PASS [1366x768] well: no console errors or warnings
+ALL PASS (1366x768)
+exit 0

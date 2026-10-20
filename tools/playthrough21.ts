@@ -139,6 +139,14 @@ const PICK = `(style, seed) => {
   return null;
 }`;
 
+/** Waits for a result card's fade in to finish, so its screenshot shows the card and not the dimmed board behind it. */
+async function cardSettled(page: Page): Promise<void> {
+  await page
+    .waitForFunction("(() => { const c = document.querySelector('.result-cards:not([hidden]) .result-card'); return !!c && getComputedStyle(c).opacity === '1' && c.getAnimations({ subtree: true }).every((a) => a.playState !== 'running'); })()", undefined, { timeout: 15000 })
+    .catch(() => undefined);
+  await page.waitForTimeout(400);
+}
+
 /** Plays a storm through as a player who clicks to hurry it, then reads and closes the result cards. Returns false at the final card. */
 async function weatherStorm(page: Page, style: string, ruinsBefore: number): Promise<{ ruins: number; final: boolean }> {
   // A storm and its cards wait while Help, ☰ or the Field Guide is open (Section 16 B5): a player shuts them.
@@ -157,6 +165,7 @@ async function weatherStorm(page: Page, style: string, ruinsBefore: number): Pro
   const ruins = (await page.evaluate("window.__ruinsForTest().ruined")) as number;
   check(!!outcome && !!card && card.saved === outcome.saved && card.total === outcome.total, `${style} ${id}: the card reads ${card?.saved} of ${card?.total} homes saved, as the storm resolved`);
   check(!!outcome && ruins - ruinsBefore === outcome.damaged, `${style} ${id}: ${ruins - ruinsBefore} new ruins, the ${outcome?.damaged} homes it destroyed`);
+  await cardSettled(page);
   await shot(page, `${style}-${id}-card1`);
   await textAndLayout(page, `${style} ${id} result card`);
   // Input over a result card: Help and ☰ open and close; Esc.
@@ -233,6 +242,7 @@ async function playStyle(style: string): Promise<void> {
   // 2050: the skyline reveal and the title come before the final card.
   for (let k = 0; k < 160 && !(await finalCard(page)); k++) await page.waitForTimeout(250);
   check(await finalCard(page), `${style}: the run reaches the final card (${builds} builds, year ${await year(page)})`);
+  await cardSettled(page);
   await shot(page, `${style}-final`);
   await textAndLayout(page, `${style} final card`);
   const stars = (await page.evaluate("window.__panjimForTest.run.schedule.map((c) => window.__panjimForTest.run.outcomes.get(c.id)?.stars ?? 0)")) as number[];
@@ -335,9 +345,21 @@ if (named.get("landing") !== "0") {
   await ready(second.page);
   const ctas2 = (await second.page.evaluate("[...document.querySelectorAll('.brief-cta')].map((b) => b.textContent.trim())")) as string[];
   check(ctas2.some((c) => /Continue from 2027/.test(c)), `a second tab offers the same saved run (${ctas2.join(", ")})`);
-  // Starting afresh beside a saved run: the button reads "Begin" (accepted; see BUGS.md, owner decisions).
-  await begin(second.page, "Begin");
-  check((await year(second.page)) === 2026, "Begin in the second tab starts over at 2026");
+  // Starting afresh beside a saved run (Section 22.4, owner decision): "Begin again", and it asks first.
+  const confirmText = async (p: Page): Promise<string> => (await p.evaluate("(() => { const b = document.querySelector('.leave-confirm-backdrop:not([hidden])'); return b ? b.textContent.replace(/\\s+/g, ' ').trim() : ''; })()")) as string;
+  await second.page.locator(".brief-cta", { hasText: "Begin again" }).first().click();
+  await second.page.waitForTimeout(600);
+  const asked = await confirmText(second.page);
+  await shot(second.page, "begin-again-confirm");
+  check(/Start a new run\? Your run from 2027 will be lost\./.test(asked) && /Cancel/.test(asked) && /Begin again/.test(asked), `Begin again asks first: "${asked}"`);
+  await second.page.locator(".leave-confirm-backdrop:not([hidden]) .leave-confirm-stay").click();
+  await second.page.waitForTimeout(500);
+  check((await confirmText(second.page)) === "" && (await second.page.locator(".brief-resume").isVisible()), "Cancel keeps the start popup and the saved run");
+  await second.page.locator(".brief-cta", { hasText: "Begin again" }).first().click();
+  await second.page.waitForTimeout(600);
+  await second.page.locator(".leave-confirm-backdrop:not([hidden]) .leave-confirm-leave").click();
+  await second.page.waitForTimeout(2500);
+  check((await year(second.page)) === 2026, "Begin again in the second tab starts over at 2026");
   const t2 = (await second.page.evaluate("window.__panjimForTest.firstBuildable('dune')")) as { q: number; r: number };
   await second.page.evaluate(`window.__panjimForTest.buildNow({ q: ${t2.q}, r: ${t2.r} }, "dune")`);
   await second.page.waitForTimeout(2000);

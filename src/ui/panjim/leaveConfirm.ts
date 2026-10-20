@@ -61,11 +61,12 @@ export class LeaveConfirm {
    * Asks; resolves true for Leave, false for Stay (or Esc). `text` is the line under the title. `options`
    * changes the title and the confirming button (☰'s "Start again?", Section 16 B3).
    */
-  ask(text = "Your progress is saved.", options: { title?: string; confirm?: string } = {}): Promise<boolean> {
+  ask(text = "Your progress is saved.", options: { title?: string; confirm?: string; cancel?: string } = {}): Promise<boolean> {
     if (this.isOpen) return Promise.resolve(false);
     this.textEl.textContent = text;
     this.titleEl.textContent = options.title ?? "Leave Panjim?";
     this.leaveBtn.textContent = options.confirm ?? "Leave";
+    this.stayBtn.textContent = options.cancel ?? "Stay";
     this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.backdrop.hidden = false;
     this.stayBtn.focus();

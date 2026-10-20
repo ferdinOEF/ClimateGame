@@ -121,7 +121,7 @@ export interface PanjimHost {
   /** A panel beside the opening brief's text (the first storm's forecast map). */
   addBriefFeature: (el: HTMLElement) => void;
   /** Adds a second button to the level brief ("Continue from 2032"). `onBegin` runs instead when the player starts afresh. */
-  offerResume: (label: string, onResume: () => void, onBegin: () => void) => void;
+  offerResume: (label: string, onResume: () => void, onBegin: () => void, savedYear: string) => void;
   /** The map's challenge zones. */
   zones: readonly ZoneDef[];
   /** Shows a storm's path as a translucent in-scene overlay: each tile with a 0–1 weight. */
@@ -758,8 +758,8 @@ export class PanjimController {
     this.maya.setState("worried");
     // The storm itself (Section 16 B4): the objective card, Maya's bubble and the hint fade; the top bar counts the homes lost.
     this.host.container.classList.add("storm-playing");
-    // Counted as the result card counts (Section 16 B4): every home in the storm's path not standing at the end,
-    // so the homes already gone before it start the count and it ends at the card's total less its saved.
+    // Counted as the result card counts (Section 16 B4; Section 22.4: against the homes still standing when it hit),
+    // so the count starts at 0 and ends at the card's homes not saved, the ones this storm destroyed.
     let lost = outcome.housesTotal - outcome.housesSaved - outcome.housesDamaged;
     this.outlook.renderLost(lost);
 
@@ -959,7 +959,7 @@ export class PanjimController {
       return { label: `${c.name} in ${c.year}`, saved: outcome?.housesSaved ?? 0, total: outcome?.housesTotal ?? 0 };
     });
     this.host.telemetry.emit("checkpoint", { final: true, stars: result.levelStars, tempo: tempoBadge(this.playMs()).name });
-    const choice = await this.resultCards.show([{ body: finalCard(phases, result.levelStars), button: "Play again", link: "Back to the menu" }]);
+    const choice = await this.resultCards.show([{ body: finalCard(phases, result), button: "Play again", link: "Back to the menu" }]);
     this.host.onRunComplete(result, choice === "link" ? "menu" : "again");
   }
 
@@ -1089,7 +1089,7 @@ export class PanjimController {
       this.renderOutlook();
       this.host.refresh();
       this.syncControls();
-    }, () => this.showConeIfPhaseStart());
+    }, () => this.showConeIfPhaseStart(), label);
     return true;
   }
 

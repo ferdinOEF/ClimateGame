@@ -1,5 +1,5 @@
 {
-  "_comment": "The owner's hand edits to the Panaji board, applied by tools/mapgen/buildPanajiMap.ts AFTER the board is read from OpenStreetMap, so regenerating never loses them. tiles: 'q,r,from>to' in order, so a later edit may change a tile an earlier one already changed (the owner's first round, Section 11, is the first 85; the second, Section 16, the next 85; the third, Section 19, the last 34) (terrain ids coast, beach, land, river, estuary; none = no tile); the generator stops if a tile's 'from' no longer matches what OSM gave. monuments and localities: moved from one tile to another, in order (each 'from' is checked). unplayable: kept as scenery: the north bank of the Mandovi (Section 11.4), every land, beach or estuary tile reachable from rows 0 and 1 through land, beach and estuary; and the east edge (Section 19.2, owner decision), every land, beach or estuary tile with q + r/2 >= 30.2 (world x >= 52.3); the generator checks the list against those rules.",
+  "_comment": "The owner's hand edits to the Panaji board, applied by tools/mapgen/buildPanajiMap.ts AFTER the board is read from OpenStreetMap, so regenerating never loses them. tiles: 'q,r,from>to' in order, so a later edit may change a tile an earlier one already changed (the owner's first round, Section 11, is the first 85; the second, Section 16, the next 85; the third, Section 19, the next 34; the fourth, Section 22, the last 7) (terrain ids coast, beach, land, river, estuary; none = no tile); the generator stops if a tile's 'from' no longer matches what OSM gave. monuments and localities: moved from one tile to another, in order (each 'from' is checked). unplayable: kept as scenery: the north bank of the Mandovi (Section 11.4), every land, beach or estuary tile reachable from rows 0 and 1 through land, beach and estuary; and the east edge (Section 19.2, owner decision), every land, beach or estuary tile with q + r/2 >= 30.2 (world x >= 52.3); the generator checks the list against those rules.",
   "tiles": [
     "23,0,estuary>river",
     "15,5,estuary>river",
@@ -204,7 +204,14 @@
     "8,25,land>river",
     "9,25,river>estuary",
     "8,26,land>river",
-    "9,26,river>estuary"
+    "9,26,river>estuary",
+    "16,4,land>river",
+    "25,6,land>estuary",
+    "26,6,land>estuary",
+    "14,7,land>estuary",
+    "16,7,land>estuary",
+    "15,8,land>estuary",
+    "21,8,estuary>river"
   ],
   "monuments": [
     {
@@ -338,7 +345,6 @@
     [3, 4],
     [4, 4],
     [5, 4],
-    [16, 4],
     [-2, 5],
     [-1, 5],
     [0, 5],

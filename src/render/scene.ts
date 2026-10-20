@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { wheelNotches, zoomedDistance, zoomTowardTarget } from "./zoomMath";
 import { PALETTE } from "./palette";
 
 export interface KhazanScene {
@@ -41,6 +42,16 @@ export interface KhazanScene {
   focusPoint: () => { x: number; z: number };
   /** How far back the camera is sitting, in world units. Lets view-dependent UI — the place labels — know how zoomed in the player is. */
   cameraDistance: () => number;
+  /** Section 22.3: zooms by notches (about 15% each, positive away), toward the ground under a client point if given. */
+  zoomBy: (notches: number, clientX?: number, clientY?: number) => void;
+  /** What Home (or 0) does: the session returns the camera to the opening view. */
+  setHome: (fn: (() => void) | null) => void;
+  /** True while the zoom keys should do nothing (a card or menu is open over the board). */
+  setZoomKeysBlocked: (fn: (() => boolean) | null) => void;
+  /** The camera's nearest and furthest distances. */
+  zoomLimits: { min: number; max: number };
+  /** Where a zoom in progress is gliding to (the distance once it settles). */
+  zoomTargetDistance: () => number;
   /** True if the pointer moved more than a few px between its last down/up — a pan, not a click. Callers should skip click actions when this is true. */
   wasDrag: () => boolean;
   /** Per-frame cost counters, read by the performance reports (see `start`). */
@@ -84,12 +95,11 @@ const CAM_DISTANCE_MAX = 90;
 const CAM_DISTANCE_OPENING_MAX = 44;
 const CAM_ELEVATION_DEG = 58; // slight top-down, not hard isometric
 const DRAG_THRESHOLD_PX = 5;
-const ZOOM_SPEED = 0.02;
 // STEP_PROMPT_mobile_responsive.md Section 2: converts a frame-to-frame
-// two-finger distance delta (in CSS px) into the same `distance` units
-// ZOOM_SPEED already governs for the wheel path — a different constant
-// because a pinch's pixel-delta scale has nothing to do with a wheel
-// event's deltaY scale, not because pinch has its own separate zoom
+// two-finger touch distance delta (in CSS px) into `distance` units. The
+// wheel (and a trackpad pinch, sent as a ctrl wheel) zooms by ratio instead
+// (Section 22.3, zoomMath.ts); this touch path keeps its own scale, not
+// because touch pinch has its own separate zoom
 // range (it reuses CAM_DISTANCE_MIN/MAX below, unchanged). PLACEHOLDER,
 // same "flag it, tune by feel" convention as every other pacing number
 // in this codebase.
@@ -388,19 +398,98 @@ export function createScene(container: HTMLElement): KhazanScene {
     pointerDown = null;
   }, { signal });
 
+  /**
+   * The ground point under a screen pixel (client coordinates), seen from the
+   * camera as it is drawn now; null when the ray misses the ground.
+   */
+  const groundRay = new THREE.Raycaster();
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  function groundAt(clientX: number, clientY: number): { x: number; z: number } | null {
+    const rect = renderer.domElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -(((clientY - rect.top) / rect.height) * 2 - 1));
+    groundRay.setFromCamera(ndc, camera);
+    const hit = new THREE.Vector3();
+    return groundRay.ray.intersectPlane(groundPlane, hit) ? { x: hit.x, z: hit.z } : null;
+  }
+
+  /**
+   * Section 22.3: zooms by `notches` (about 15% of the distance each; positive
+   * is away), toward the ground under the pointer when one is given, stopping
+   * at the limits. Glides like any camera move (`settleCamera`).
+   */
+  function zoomBy(notches: number, clientX?: number, clientY?: number): void {
+    const next = zoomedDistance(desiredDistance, notches, CAM_DISTANCE_MIN, CAM_DISTANCE_MAX);
+    if (next === desiredDistance) return;
+    if (clientX !== undefined && clientY !== undefined) {
+      const pointer = groundAt(clientX, clientY);
+      // From the camera as drawn: the pointer's ground point stays under the pointer once the glide settles.
+      // A pan still gliding (or Home's glide) carries on: only the zoom's own shift is added to where it was going.
+      if (pointer) {
+        const anchored = zoomTowardTarget(target, pointer, distance, next);
+        desiredTarget = { x: desiredTarget.x + (anchored.x - target.x), z: desiredTarget.z + (anchored.z - target.z) };
+      }
+    }
+    desiredDistance = next;
+    userAdjustedZoom = true;
+  }
+
+  // The wheel, and a trackpad pinch (the browser sends it as a wheel event with ctrlKey): by ratio, toward the pointer.
   renderer.domElement.addEventListener(
     "wheel",
     (e: WheelEvent) => {
       e.preventDefault();
-      desiredDistance = THREE.MathUtils.clamp(
-        desiredDistance + e.deltaY * ZOOM_SPEED,
-        CAM_DISTANCE_MIN,
-        CAM_DISTANCE_MAX
-      );
-      userAdjustedZoom = true;
+      zoomBy(wheelNotches(e.deltaY, e.deltaMode), e.clientX, e.clientY);
     },
     { passive: false, signal }
   );
+
+  // Section 22.3: + or = nearer, - further, a notch a press; held, a smooth zoom; Home or 0 the opening view.
+  let keyZoom = 0;
+  let keyZoomSince = 0;
+  const isTypingTarget = (target: EventTarget | null): boolean => target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+  window.addEventListener(
+    "keydown",
+    (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || isTypingTarget(e.target)) return;
+      // Not while a card or menu is open over the board (the session says which): Home scrolls a card there.
+      if (keysBlocked?.()) return;
+      const dir = e.key === "+" || e.key === "=" ? -1 : e.key === "-" || e.key === "_" ? 1 : 0;
+      if (dir !== 0) {
+        e.preventDefault();
+        // The press is one notch; holding it (the key's repeats) zooms on smoothly from the render loop.
+        if (!e.repeat || keyZoom !== dir) {
+          zoomBy(dir);
+          keyZoom = dir;
+          keyZoomSince = performance.now();
+        }
+        return;
+      }
+      if ((e.key === "Home" || e.key === "0") && onHome) {
+        e.preventDefault();
+        // The opening view again, and a resize reframes it as it did before the player zoomed.
+        userAdjustedZoom = false;
+        keyZoom = 0;
+        onHome();
+      }
+    },
+    { signal }
+  );
+  window.addEventListener(
+    "keyup",
+    (e: KeyboardEvent) => {
+      if (["+", "=", "-", "_"].includes(e.key)) keyZoom = 0;
+    },
+    { signal }
+  );
+  window.addEventListener("blur", () => (keyZoom = 0), { signal });
+  /** Held + or -: after the first notch, about two notches a second more, frame by frame. */
+  function holdZoom(deltaMs: number): void {
+    if (keyZoom === 0 || performance.now() - keyZoomSince < 260) return;
+    zoomBy(keyZoom * (deltaMs / 450));
+  }
+  let onHome: (() => void) | null = null;
+  let keysBlocked: (() => boolean) | null = null;
 
   function wasDrag(): boolean {
     return didDrag;
@@ -439,6 +528,7 @@ export function createScene(container: HTMLElement): KhazanScene {
       // camera in over a few frames instead of teleporting it.
       const deltaMs = lastFrameMs === null ? 16.667 : Math.min(100, nowMs - lastFrameMs);
       lastFrameMs = nowMs;
+      holdZoom(deltaMs);
       settleCamera(deltaMs);
       const cpuStart = performance.now();
       onFrame?.(nowMs);
@@ -498,6 +588,15 @@ export function createScene(container: HTMLElement): KhazanScene {
     setShake,
     focusPoint,
     cameraDistance,
+    zoomBy,
+    setHome: (fn: (() => void) | null) => {
+      onHome = fn;
+    },
+    setZoomKeysBlocked: (fn: (() => boolean) | null) => {
+      keysBlocked = fn;
+    },
+    zoomLimits: { min: CAM_DISTANCE_MIN, max: CAM_DISTANCE_MAX },
+    zoomTargetDistance: () => desiredDistance,
     wasDrag,
     dispose
   };

@@ -39,7 +39,10 @@ export interface PhaseResult {
   eyebrow: string;
   stars: number;
   homesSaved: number;
+  /** The homes in its path still standing when it hit (Section 22.4). */
   homesTotal: number;
+  /** Homes in its path an earlier storm had already ruined: their own line on the card. */
+  homesLostBefore: number;
   places: PlaceResult[];
   defences: DefenceResult[];
   /** Every row of the phase's objective was done when the storm came (Section 12): a badge, never stars. */
@@ -102,6 +105,8 @@ export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, 
     stars: outcome.stars,
     homesSaved: outcome.housesSaved,
     homesTotal: outcome.housesTotal,
+    // A run saved before Section 22 has no count of its own: none shown.
+    homesLostBefore: outcome.housesLostBefore ?? 0,
     places: placeResults,
     defences
   };

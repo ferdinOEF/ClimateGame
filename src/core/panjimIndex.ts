@@ -35,11 +35,24 @@ export interface PanjimIndex {
   totalStars: number;
   /** 1–3 for the level: the average challenge result, never below 1. */
   levelStars: number;
+  /**
+   * Section 22.4 (owner decision), a game rule: the level is cleared with at least one star in every storm and at
+   * least `CLEAR_TOTAL_STARS` of the stars in all, so one storm's three stars cannot clear it alone.
+   */
+  cleared: boolean;
   /** Index × 10 plus 100 per star: the number the leaderboard compares. */
   score: number;
 }
 
 const clamp100 = (value: number): number => Math.max(0, Math.min(100, Math.round(value)));
+
+/** Stars needed in all to clear the level (with at least one in every storm): five of Panjim's nine. */
+export const CLEAR_TOTAL_STARS = 5;
+
+/** The clear rule on its own: at least one star in every storm and `CLEAR_TOTAL_STARS` in all. */
+export function clearsLevel(stars: readonly number[]): boolean {
+  return stars.length > 0 && stars.every((s) => s >= 1) && stars.reduce((a, b) => a + b, 0) >= CLEAR_TOTAL_STARS;
+}
 
 export function computePanjimIndex(input: IndexInput): PanjimIndex {
   const { state, outcomes } = input;
@@ -50,10 +63,10 @@ export function computePanjimIndex(input: IndexInput): PanjimIndex {
   const population = clamp100(((state.population - 50) / 150) * 100);
   const food = clamp100(50 + state.food * 3);
   const index = clamp100((resilience + biodiversity + livelihoods + population + food) / 5);
-  const challengeStars = outcomes.map((o) => o.stars);
+  const challengeStars: number[] = outcomes.map((o) => o.stars);
   const totalStars = challengeStars.reduce((sum, s) => sum + s, 0);
   const levelStars = Math.max(1, Math.min(3, Math.round(totalStars / Math.max(1, outcomes.length))));
-  return { resilience, biodiversity, livelihoods, population, food, index, challengeStars, totalStars, levelStars, score: index * 10 + totalStars * 100 };
+  return { resilience, biodiversity, livelihoods, population, food, index, challengeStars, totalStars, levelStars, cleared: clearsLevel(challengeStars), score: index * 10 + totalStars * 100 };
 }
 
 /**

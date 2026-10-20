@@ -1886,3 +1886,89 @@ Targets not met, plainly:
 - MINOR, fixed: Show risk's defaults repainted inside a repaint; a destroyed landmark's signs did not settle and lean with it; a home lost by a depth just over the line could miss its ruin in the storm (a fallback, and a test over six runs).
 - MINOR, not changed: with Maya hidden, live risk's exposure would feed her warning line early if she came back (latent); every landmark has its own model, so swapping a damaged model's geometry cannot touch another (latent); the cone test's new bound leaves 3 points.
 - NIT: the drawn overlay's heat count is checked in the browser, not in Node.
+
+# Section 22 — the owner's fourth map round, smaller labels, faster zoom, the owner's decisions
+
+Branch `section-22-map-labels-decisions`, off master `c4930f0` (Section 21's merge; tag `pre-section-22`, and `backup/pre-section-22` on GitHub). Headless Chromium with software GL (SwiftShader). Evidence in `docs/qa/section22/`; the owner's answers and what was done in `docs/BUGS.md`.
+
+**The attachment.** The owner's `panaji.json` arrived late in the session and is saved as `docs/reference/panaji_edit4.json` (not used as the map). Checked against it: its terrain differs from the pre-Section-22 map by exactly the seven listed edits (16,4 land>river; 25,6, 26,6, 14,7, 16,7, 15,8 land>estuary; 21,8 estuary>river) and nothing else, and the shipped board's terrain equals it tile for tile (0 differences out of 1286). The owner's file still lists 16,4 as unplayable (256); the shipped board drops it as asked (255). Its zones, roads and bridges are the pre-Section-22 ones; the shipped board's are regenerated for the new water, as the brief asks. Elevation, landmarks, monuments, localities, road links, focus and overlay are equal.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | RESULT_TESTS |
+| Playthrough (`npm run playthrough`) on the final code | RESULT_PLAY |
+| Section 21 checks (live risk, ruins, landmarks, axe, gray and deuteranopia copies) | RESULT_SHOTS21 |
+| Section 22 checks (`tools/section22Shots.ts`: label sizes, zoom counted in the browser, the cards after earlier losses) | RESULT_SHOTS22 |
+| How to play fits (`npm run test:help`) | Fits at 1280x600, 1366x768, 1920x1080 and 2560x1440 (the clear rule's sentence added). |
+| `npm run walkthrough`, `test:labels`, `test:layout`, `test:maya` | RESULT_STANDING |
+| Preview equals resolution | `tests/exposure.test.ts`, `tests/preview.test.ts` pass. |
+| Bots | 200 seeds a style at the final tuning (below; `tuning-after.md`, `tuning-after-only.md`). |
+| Cross-browser, real GPU | Not run: Chromium with software GL only. |
+
+**22.1 The map** (`storms-before.md`, `storms-after.md`, `flood-path-before.md`, `flood-path-after.md`, `board-whole-before-*`, `board-whole-after-*`).
+- The seven edits, as the fourth round in `tools/mapgen/panaji-hand-edits.json` (211 edits in all); `npm run mapgen:panaji`. Tiles 1286 (unchanged); land 749 → 744, river 164 → 166, estuary 105 → 108.
+- Unplayable 256 → 255: 16,4 is river now, and water stays playable.
+- Heights: each changed tile keeps its DEM height (15,8 is estuary at 5.5 m, as on master; the water model reads such a tile as ground). Roads on 15,8 and 16,7 become bridges. Zone z4 (the Mandovi waterfront) gains 16,4.
+- Houses, playable 347 → 344 (scenery 158 → 157): 14,7 and 26,6 are water now; 18,15 (Merces) turns garden, as the town keeps its share of empty land (`townLayout.ts`); the north bank's house on 16,4 was scenery.
+- The flood: its source is unchanged (33,1 33,2 32,3) and it still comes from the east through the Ribandar channel (32,3 30,3 28,5). Its track then moves one tile onto the new estuary: 26,5 → 26,6 in 2040; in 2050 it now takes the channel too (28,5 26,6, from 28,3 26,4), and its last stretch moves a tile (4,24 2,25, from 4,23 2,24). Undefended, the flood takes 65 homes (67 before), the 2050 storm 43 at 3.0 (64 at 3.8 before; the strength changed, 22.4).
+
+**22.2 Labels** (`labels-before-*.json`, `labels-zoom-cards-after-1366x768.json`, `opening-*`, `miramar-before-*`, `miramar-after-*`).
+
+| | Before | After |
+|---|---|---|
+| Cream pin and place labels: text | 12 px | 11 px (the 11 px floor at 1366x768 keeps the text at about 8% smaller, not 30%) |
+| Padding | 2 x 8 px | 1.5 x 5.5 px (30% less); 1 x 4 px zoomed out past the opening view |
+| Pin dot | 8 px, 2 px ring | 5.5 px, 1.5 px ring; 4.5 px zoomed out |
+| Shadow | 0 1px 3px, 35% black | 0 1px 2px, 22% black |
+| District names | 14 px (13 minor) | 12 px (11 minor), about 15% smaller |
+| Screen area at 1920x1080, opening view | pin 2951 px², place 2030, districts 7918 | pin 2325 (−21%), place 1579 (−22%), districts 6145 (−22%) |
+
+A pin's name and a landmark's label (Sharada Mandir School, Miramar Beach) never cover the tile they mark or a storm arrow's head: they sit beside the tile (right, else left, else above or below), clear of the arrow (`mapPins.ts`, `labelPlacement.ts` `keepClear`; tested in `tests/zoom.test.ts`). Before, the school's pin sat on the arrow's tip (`miramar-before-1920x1080.jpg`).
+
+**22.3 Zoom** (`tests/zoom.test.ts`; counted in the browser, `labels-zoom-cards-after-1366x768.json`).
+
+| Far to near | Before | After |
+|---|---|---|
+| Wheel notches, furthest (90) to nearest (8) | 41 (Chrome, 2 units a notch); about 1367 in Firefox (3 lines a notch, read as 3 px) | 18, the same in every browser (`deltaMode` read) |
+| Wheel notches, the opening view (44) to nearest | 18 | 13 (12 full, the last short) |
+| Key presses, furthest to nearest | none: there was no keyboard zoom | 18 (+ or =, −) |
+
+About 15% of the distance a notch, toward the ground under the pointer (it drifts 0.005 units a notch in the browser); a trackpad pinch (ctrl wheel) the same; at most 3 notches a wheel event; the glide kept; a held key zooms on smoothly; Home or 0 glides back to the opening view (distance 44). The keys do nothing while a card, the start popup or a menu is open. Touch pinch is unchanged.
+
+**22.4 The owner's decisions** (details and tests in `docs/BUGS.md`):
+1. Begin again, with "Start a new run? Your run from <year> will be lost." (`playthrough/begin-again-confirm-*`).
+2. Repair is for defences only; a ruined home stays ruined and says so.
+3. A storm counts against the homes still standing when it hit, with "Lost in earlier storms: N" (`card-2050-*`: "0 of 43 homes saved", "Lost in earlier storms: 73"). The 2040 card has no such line on an undefended run: the cyclone's 8 lost homes are not in the flood's path. The storm's "Homes lost" count now starts at 0. If every home in a storm's path was already ruined, the card says "No home in its path was still standing" and the storm gives full stars (nothing was left to lose; it does not happen on Panaji's three storms).
+4. The cyclone and the flood keep their strengths (1.2 and 2.35) and paths; only the 2050 strength and the stars changed.
+5. Nature only: the cause was the protection ceiling (5 m round a tile for nature defences, 6 m with an engineered one; a mangrove 4.5 m, a seawall 14.4 m), not overwhelm (1 to 3 of 25 defences). The 2050 storm 3.8 → 3.0.
+6. Clear: a star in every storm and five of the nine in all; the final card says "N of 9 stars" and "Panjim cleared" or "Not cleared yet", with the rule as a game rule (`card-final-*`); How to play says it. A run that is not cleared is still recorded as played to 2050, with its stars.
+7. Stars: none below 30% of the homes standing saved, one from 30%, two from 50%, three from 85% (from the owner's start, 30 / 55 / 80).
+
+**Tuning, 200 seeds a style** (`tuning-after.md`; Section 21's in `docs/qa/section21/tuning-after.md`). Section 21 counted every home in a storm's path, earlier ruins too, and gave a storm at least one star; Section 22 counts the homes standing when it hit and can give none, so the two are not one measure.
+
+| Style | Clears, Section 21 → 22 | Stars of 9, 21 → 22 | Homes saved over the run, 21 → 22 | Stars per storm, Section 22 (share on 0 / 1 / 2 / 3) |
+|---|---|---|---|---|
+| none (far) | 0% → 0% | 3.0 → 0.0 | 0% → 0% | all 0 |
+| random | 4% → 0% | 3.1 → 1.0 | 14% → 25% | 2030 91/6/0/4; 2040 79/19/3/0; 2050 49/43/8/1 |
+| nature only | 0% → 89% | 3.3 → 4.9 | 36% → 60% | 2030 0/100/0/0; 2040 0/0/100/0; 2050 0/12/89/0 |
+| seawalls only | 98% → 0% | 5.0 → 6.0 | 32% → 47% | 2030 0/3/0/98; 2040 100/0/0/0; 2050 0/0/0/100 |
+| sensible (smart) | 79% → 100% | 5.6 → 7.5 | 67% → 88% | 2030 0/24/0/76; 2040 0/0/100/0; 2050 0/0/7/93 |
+| best | 100% → 100% (3 stars every storm 96% → 100%) | 9.0 → 9.0 | 91% → 97% | all 3 |
+| guided (follows the objective card) | 100% → 100% | 7.0 → 7.1 | 48% → 67% | 2030 0/0/0/100; 2040 0/0/100/0; 2050 0/0/90/11 |
+
+No single kind of defence clears the level now (`tuning-after-only.md`: dunes only, seawalls only and the rest all 0%; Section 21: four kinds cleared 100% on the cyclone's three stars).
+
+Targets met: none 0% clears; random under 10% (0%); best 100% and three stars possible in every storm (100%), never by one kind; nature only does better than seawalls only over the run (60% of homes against 47%, and it clears 89% against 0%) and far better in the flood (72% against 0%).
+
+Targets not met, plainly:
+- **Sensible clears 100%, not 60 to 80%.** Its only weak storm is the all or nothing cyclone (three stars, or one at 38% saved); a line that failed it there would fail nature only too, which saves the same 38%. A stronger 2050 storm would bring sensible play down, but it took nature only back under seawalls only (at 3.4: 50% against 49% of homes; at 3.8: 36% against 32%, and on stars 3.3 against 5.0), which 22.4.5 rules out.
+- **Sensible play mostly gets three stars, not two** (two in the flood every time; three in the cyclone 76%, in 2050 93%). A three-star line high enough to make 2050 two stars (over 96%) would take best play's three stars in the flood (91%).
+- **2050 is not the hardest storm.** Counted against the homes still standing, the flood has already ruined what it could not hold, and the homes left in 2050's path are the ones a style protects: seawalls only save all of them (100%), sensible play 96%.
+- **Nature only earns fewer stars than seawalls only** (4.9 against 6.0 of 9) though it saves more homes and clears far more often: seawalls only take three stars in 2030 and 2050 and none in the flood.
+- The flood's forecast track moved a tile (22.1, above).
+
+**Independent review: 0 BLOCKER, 4 MAJOR, 9 MINOR, 4 NIT.**
+- MAJOR, fixed: this report, PROGRESS and the 2560x1440, gray and deuteranopia shots were missing; `storms-after.md` was at the 2050 strength before the retune; the card screenshots caught the dimmed board before the card faded in (the tools wait for the card now, and `section22Shots` photographs the 2040, 2050 and final cards); the unmet targets and the flood track's move are stated plainly above.
+- MINOR, fixed: Miramar Beach (a landmark label, not a pin) covered its own tile, and now keeps clear like the pins; a pin read its size every frame (a reflow), and could leave the window at the right edge; zoom keys worked under cards and menus (Home now scrolls a card); a wheel event could zoom 10 notches (3 at most now); a zoom dropped a pan still gliding; after Home a resize no longer reframed; the storm's "Homes lost" comment.
+- MINOR, noted, not changed: telemetry's `houses_total` and the bots' totals mean the homes standing now (earlier figures are not comparable); a saved run from before Section 22 is not offered at all: a save carries the board's fingerprint (every tile's terrain, `boardFingerprint`), which the fourth map round changed, so no old outcome is ever restored; repair is off for any worn building, but only a home can be worn, and only to ruined; "clear" decides the final card, not whether the run is recorded.
+- NIT: a 0-star card has the 1-star headline ("Your city took a heavy hit."). Begin again's confirm cannot fire twice, and the Tutorial (no one-star line) never gives 0 stars; both checked.

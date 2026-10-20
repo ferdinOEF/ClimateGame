@@ -285,11 +285,12 @@ export class MapLabelLayer {
    * `project` returns null for a tile behind the camera, which cannot happen
    * with this camera rig but is cheap to handle.
    */
-  update(project: ProjectToScreen, viewportWidth: number, viewportHeight: number, cameraDistance: number): void {
+  update(project: ProjectToScreen, viewportWidth: number, viewportHeight: number, cameraDistance: number, extraObstacles: readonly Box[] = []): void {
     if (!this.visible) return;
     const started = performance.now();
     if (!this.measured) this.measure();
-    this.obstacles = this.readObstacles(started);
+    // Section 22.2: the storm arrows' heads are obstacles too (passed in by the session, on screen).
+    this.obstacles = [...this.readObstacles(started), ...extraObstacles];
 
     // Landmark cards fade with distance: pinned on at every zoom they would
     // stack over the buildings they name, which are the better label up close.
@@ -316,6 +317,18 @@ export class MapLabelLayer {
       if (label.rank === 2 && !this.minorOn) continue;
       const screen = project({ q: label.q, r: label.r });
       if (!screen) continue;
+      // Section 22.2 (owner decision): a landmark's name never covers the tile it names. The tile's box on screen,
+      // from the centres of the tiles beside it (a hex's half width and height, a little generous).
+      let keepClear: Box | undefined;
+      if (label.kind === "landmark") {
+        const east = project({ q: label.q + 1, r: label.r });
+        const south = project({ q: label.q, r: label.r + 1 });
+        if (east && south) {
+          const hw = Math.abs(east.x - screen.x) * 0.55;
+          const hh = Math.max(Math.abs(south.y - screen.y) * 0.75, hw * 0.5);
+          keepClear = { x: screen.x - hw, y: screen.y - hh, w: hw * 2, h: hh * 2 };
+        }
+      }
       candidates.push({
         id: entry.id,
         // The name card outranks everything, localities and other monuments alike.
@@ -326,7 +339,8 @@ export class MapLabelLayer {
         h: entry.h,
         // A locality sits on its point, over the raster's own faint copy of the name.
         centred: label.kind === "locality",
-        yieldsTo: entry.yieldsTo
+        yieldsTo: entry.yieldsTo,
+        keepClear
       });
       byId.set(entry.id, entry);
     }

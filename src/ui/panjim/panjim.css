@@ -2308,6 +2308,47 @@
   color: #9fe3c4;
 }
 
+/* Section 22.4: the homes an earlier storm ruined, a small line of their own under the bar. */
+.result-homes-before {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: rgba(251, 238, 217, 0.75);
+}
+
+/* Section 22.4: the final card's stars of the stars there were, and the clear rule. */
+.result-stars-total {
+  font-size: 15px;
+  margin: 4px 0 6px;
+}
+.result-stars-total b {
+  font-size: 22px;
+  color: #f4d9a6;
+}
+.result-clear {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.result-clear.cleared {
+  background: rgba(159, 227, 196, 0.22);
+  color: #9fe3c4;
+}
+.result-clear.not-cleared {
+  background: rgba(240, 160, 120, 0.2);
+  color: #f6b89a;
+}
+.result-clear-rule {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(251, 238, 217, 0.8);
+}
+.result-clear-rule .result-rule {
+  margin-right: 6px;
+}
+
 .result-bar {
   height: 10px;
   border-radius: 6px;
@@ -2571,24 +2612,29 @@
   will-change: transform;
 }
 
+/*
+ * Section 22.2 (owner decision): 30% smaller than before (padding 2px 8px, an 8 px dot with a 2 px ring, a
+ * 3 px shadow), the text at 11 px, the floor for reading at 1366x768 (12 px before). The dot's centre sits on
+ * the spot; the name above it, or beside the tile when it would cover the tile or a storm arrow (mapPins.ts).
+ */
 .map-pin {
   display: flex;
   flex-direction: column;
   align-items: center;
   margin-left: -110px;
   width: 220px;
-  margin-top: -34px;
+  margin-top: -23px;
 }
 
 .map-pin-name {
   order: 0;
   max-width: 220px;
-  padding: 2px 8px;
+  padding: 1.5px 5.5px;
   border-radius: 999px;
-  font: 600 12px/1.3 "Inter", system-ui, sans-serif;
+  font: 600 11px/1.3 "Inter", system-ui, sans-serif;
   color: #2a1408;
   background: rgba(255, 246, 224, 0.92);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2596,12 +2642,21 @@
 
 .map-pin-dot {
   order: 1;
-  width: 8px;
-  height: 8px;
-  margin-top: 3px;
+  width: 5.5px;
+  height: 5.5px;
+  margin-top: 2px;
   border-radius: 50%;
   background: #f2c35b;
-  border: 2px solid #2a1408;
+  border: 1.5px solid #2a1408;
+}
+
+/* Zoomed out, a little smaller again: tighter padding and dot (the text stays at its 11 px floor). */
+.labels-far .map-pin-name {
+  padding: 1px 4px;
+}
+.labels-far .map-pin-dot {
+  width: 4.5px;
+  height: 4.5px;
 }
 
 .map-note {

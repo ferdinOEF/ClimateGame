@@ -40,6 +40,11 @@ export interface LabelCandidate {
   centred?: boolean;
   /** Not drawn when this other label is (a locality named like a monument whose card is showing). */
   yieldsTo?: string;
+  /**
+   * Section 22.2 (owner decision): the box of the tile this label names, on screen. The label never covers it: it
+   * goes beside the tile (right, then left), else above or below it.
+   */
+  keepClear?: Box;
 }
 
 export interface Placement {
@@ -59,6 +64,15 @@ export const SHOWN_SLACK = 2;
 /** The home box (centred above the anchor) and the fallbacks, in order. */
 export function candidateBoxes(c: LabelCandidate): Box[] {
   const { anchorX: x, anchorY: y, w, h } = c;
+  const t = c.keepClear;
+  if (t) {
+    return [
+      { x: t.x + t.w + 4, y: y - h / 2, w, h }, // right of its tile
+      { x: t.x - w - 4, y: y - h / 2, w, h }, // left of its tile
+      { x: x - w / 2, y: t.y - h - 3, w, h }, // above its tile
+      { x: x - w / 2, y: t.y + t.h + 3, w, h } // below its tile
+    ];
+  }
   return [
     { x: x - w / 2, y: c.centred ? y - h / 2 : y - h, w, h }, // home: centred above its point (or on it)
     { x: x - w / 2, y: y + 6, w, h }, // below
@@ -108,6 +122,7 @@ export function placeLabels(
       const box = boxes[offset];
       if (!inside(box, viewport.width, viewport.height, margin)) continue;
       if (obstacles.some((o) => overlaps(box, o, gap))) continue;
+      if (c.keepClear && overlaps(box, c.keepClear)) continue;
       if (placed.some((p) => overlaps(box, p.box, gap))) continue;
       placed.push({ id: c.id, box, offset });
       break;

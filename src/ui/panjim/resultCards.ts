@@ -1,6 +1,8 @@
 import type { PhaseResult } from "@core/phaseResult";
 import { resultHeadline } from "@core/phaseResult";
 import { panajiRunPhrase } from "@ui/screens/runWords";
+import { countWord } from "@ui/panjim/panjimHelp";
+import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
 
 /**
  * The end-of-phase result cards (Section 9): after each storm, a short
@@ -36,15 +38,21 @@ function starsHtml(stars: number): string {
   return `<div class="result-stars" role="img" aria-label="${n} of 3 stars">${"★".repeat(n)}<span class="result-stars-empty">${"★".repeat(3 - n)}</span></div>`;
 }
 
-/** "N of M homes saved" with a bar. */
-function homesHtml(saved: number, total: number): string {
+/**
+ * "N of M homes saved" with a bar. Section 22.4 (owner decision): M is the homes still standing when the storm hit;
+ * the ones an earlier storm ruined are their own small line, so a card never reads "0 of M" for earlier losses.
+ */
+export function homesHtml(saved: number, total: number, lostBefore = 0): string {
   const pct = total > 0 ? Math.round((saved / total) * 100) : 100;
   // Section 14: said in words when nothing in the path was lost.
   const all = total > 0 && saved >= total ? `<div class="result-homes-all">Every home in the path survived</div>` : "";
+  const before = lostBefore > 0 ? `<div class="result-homes-before">Lost in earlier storms: ${lostBefore}</div>` : "";
+  const text = total === 0 && lostBefore > 0 ? "No home in its path was still standing" : `<b>${saved}</b> of ${total} homes saved`;
   return `<div class="result-homes">
     ${all}
-    <div class="result-homes-text"><b>${saved}</b> of ${total} homes saved</div>
+    <div class="result-homes-text">${text}</div>
     <div class="result-bar" role="img" aria-label="${pct}% of homes saved"><span style="width:${pct}%"></span></div>
+    ${before}
   </div>`;
 }
 
@@ -79,7 +87,7 @@ export function resultCard(result: PhaseResult): HTMLElement {
     <h2 class="result-title">${esc(resultHeadline(result.stars))}</h2>
     ${starsHtml(result.stars)}
     ${result.objectiveComplete ? `<div class="result-badge" role="note">Objective complete</div>` : ""}
-    ${homesHtml(result.homesSaved, result.homesTotal)}
+    ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}
     ${places}
   </div>`);
 }
@@ -135,15 +143,21 @@ export function tutorialResultCard(result: PhaseResult): HTMLElement {
   </div>`);
 }
 
-/** The final card: the three phases, the total and the overall stars. */
-export function finalCard(phases: { label: string; saved: number; total: number }[], stars: number): HTMLElement {
+/**
+ * The final card: the three phases, the total, the stars won of the stars there were, and whether Panjim is
+ * cleared (Section 22.4, a game rule: at least one star in every storm and `CLEAR_TOTAL_STARS` in all).
+ */
+export function finalCard(phases: { label: string; saved: number; total: number }[], result: { totalStars: number; cleared: boolean }): HTMLElement {
   const saved = phases.reduce((s, p) => s + p.saved, 0);
   const total = phases.reduce((s, p) => s + p.total, 0);
+  const most = phases.length * 3;
   return el(`<div class="result-card-body">
     <h2 class="result-title">Panjim, 2026 to 2050</h2>
     <ul class="result-phases">${phases.map((p) => `<li><span>${esc(p.label)}</span><span><b>${p.saved}</b> of ${p.total} homes saved</span></li>`).join("")}</ul>
     ${homesHtml(saved, total)}
-    ${starsHtml(stars)}
+    <div class="result-stars-total" role="img" aria-label="${result.totalStars} of ${most} stars"><b>${result.totalStars}</b> of ${most} stars</div>
+    <div class="result-clear ${result.cleared ? "cleared" : "not-cleared"}">${result.cleared ? "Panjim cleared" : "Not cleared yet"}</div>
+    <p class="result-clear-rule"><span class="result-rule">Game rule</span> In this game you clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(most)} stars in all.</p>
   </div>`);
 }
 

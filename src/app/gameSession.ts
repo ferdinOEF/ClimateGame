@@ -141,6 +141,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     cameraDistance,
     wasDrag,
     frameStats,
+    zoomBy,
+    setHome,
+    setZoomKeysBlocked,
+    zoomLimits,
+    zoomTargetDistance,
     dispose: disposeScene
   } = createScene(container);
 
@@ -357,7 +362,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   areaOutline.reducedMotion = prefersReducedMotionNow();
   scene.add(areaOutline.group);
   /** Pins for the places open objectives name, and the "Area protected" note (Section 12). */
-  const mapPins = new MapPins(container, (x, y, z) => worldToScreen(x, y, z));
+  const mapPins = new MapPins(container, (x, y, z) => worldToScreen(x, y, z), () => coneOverlay.arrowHeads);
+  /** Section 22.2: the storm arrows' heads on screen, as boxes a little wider than drawn, for the place labels to keep clear of. */
+  function arrowHeadBoxes(): { x: number; y: number; w: number; h: number }[] {
+    return coneOverlay.arrowHeads.flatMap(({ tip, back }) => {
+      const a = worldToScreen(tip.x, tip.y, tip.z);
+      const b = worldToScreen(back.x, back.y, back.z);
+      if (!a || !b) return [];
+      const r = Math.max(10, Math.hypot(a.x - b.x, a.y - b.y) * 0.8);
+      const x = Math.min(a.x, b.x) - r;
+      const y = Math.min(a.y, b.y) - r;
+      return [{ x, y, w: Math.max(a.x, b.x) + r - x, h: Math.max(a.y, b.y) + r - y }];
+    });
+  }
+  /** Section 22.2: past this camera distance (the furthest opening view is 44) the labels tighten a little. */
+  const LABELS_FAR_DISTANCE = 46;
+  let labelsFar = false;
   const buildFloat = new BuildFloat(container, (x, y, z) => worldToScreen(x, y, z));
   /**
    * Panjim 2050's storms: the water (one instanced layer, drawn from the
@@ -601,6 +621,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     focusOn(focus.x, focus.z, true);
     openingFit = { width: maxX - minX + Math.sqrt(3), depth: maxZ - minZ + 2 };
     fitTo(openingFit.width, openingFit.depth, true);
+    // Section 22.3: Home (or 0) glides back to this opening view.
+    setHome(() => {
+      focusOn(focus.x, focus.z, false);
+      fitTo(openingFit.width, openingFit.depth, false);
+    });
   }
 
   const hud = new Hud(container, {
@@ -755,6 +780,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * below checks it, and it takes over pacing entirely when present: no
    * interval hazards, no objective-driven early finish.
    */
+  /** "Start a new run?" before Begin again drops a saved run (Section 22.4); made the first time it is needed. */
+  let beginConfirm: LeaveConfirm | null = null;
   const panjim =
     level.timeModel === "years" && level.timeline
       ? new PanjimController({
@@ -940,7 +967,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
-          offerResume: (label, onResume, onBegin) => objectivesPanel.addBriefAction(label, onResume, onBegin),
+          // Section 22.4 (owner decision): Begin beside a saved run reads "Begin again" and asks before it drops the save.
+          offerResume: (label, onResume, onBegin, savedYear) =>
+            objectivesPanel.addBriefAction(label, onResume, onBegin, () =>
+              (beginConfirm ??= new LeaveConfirm(container)).ask(`Your run from ${savedYear} will be lost.`, { title: "Start a new run?", confirm: "Begin again", cancel: "Cancel" })
+            ),
           addBriefFeature: (el) => objectivesPanel.addBriefFeature(el)
         })
       : null;
@@ -2319,6 +2350,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         // With coins off, what a thing earns is not shown: no money anywhere.
         effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
         removeLabel: panjim ? "Demolish (uses this year's build)" : undefined,
+        // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
+        note: panjim && def.kind === "building" && built.degradeAmount >= 1 ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only." : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
             ? [
@@ -2555,6 +2588,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   ]);
   if (panjim) panjim.panels.isTopmost = () => modals.isTopmost("menu");
   stormLayersOpen = (): boolean => modals.someOpen(STORM_WAITS_FOR);
+  // Section 22.3: the zoom keys only zoom the board, never while a card, the start popup or a menu is over it (the
+  // build menu aside: it follows its tile).
+  setZoomKeysBlocked(() => {
+    const top = modals.topmost();
+    return (top !== null && top.name !== "build") || (beginConfirm?.isOpen ?? false);
+  });
   const keydownAbort = new AbortController();
   document.addEventListener(
     "keydown",
@@ -2633,6 +2672,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     heatOverlay.tick(nowMs);
     coneOverlay.tick(nowMs);
     areaOutline.tick(nowMs);
+    // Section 22.2: zoomed out (the camera past the opening view's distance), the labels a little smaller again.
+    const far = cameraDistance() > LABELS_FAR_DISTANCE;
+    if (far !== labelsFar) {
+      labelsFar = far;
+      container.classList.toggle("labels-far", far);
+      mapPins.remeasure();
+    }
     mapPins.update(nowMs);
     buildFloat.update(nowMs);
     if (ambientLife) {
@@ -2663,7 +2709,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       },
       rect.width,
       rect.height,
-      cameraDistance()
+      cameraDistance(),
+      arrowHeadBoxes()
     );
   });
 
@@ -2827,6 +2874,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Exposes the real THREE.Camera so a verification script can read back
     // its actual position after a simulated pinch/pan/wheel gesture.
     __cameraForTest: camera,
+    // Section 22.3: the camera's distance (displayed and still settling) and its limits, for the zoom checks.
+    __zoomForTest: { distance: cameraDistance, target: zoomTargetDistance, limits: zoomLimits, zoomBy },
     // Forces the cloud layer visible without waiting for a real telegraph
     // window (turns only advance via build()).
     __cloudLayerForTest: cloudLayer,
@@ -2988,6 +3037,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     keydownAbort.abort();
     leaveConfirm?.dispose();
+    beginConfirm?.dispose();
     mapPins.dispose();
     buildFloat.dispose();
     areaOutline.dispose();

@@ -61,7 +61,7 @@ export interface StormArgs {
   intensity: number;
   strengthUnit: number;
   combos?: ComboBonus;
-  houseStars?: { three: number; two: number };
+  houseStars?: { three: number; two: number; one?: number };
   houseRule?: HouseRule;
   /** Where a cyclone comes ashore (index into the board's landfall sites). */
   landfall?: number | null;

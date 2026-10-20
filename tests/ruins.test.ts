@@ -7,6 +7,7 @@ import { landmarkDamage, landmarkDamageSoFar } from "../src/core/landmarkDamage"
 import { BOT_LEVEL, newRun, playedRun } from "../tools/panjimBots/bots";
 import { damagedLandmarkGeometry } from "../src/render/landmarkDamageGeometry";
 import { box } from "../src/render/primitives3d";
+import { homesHtml } from "../src/ui/panjim/resultCards";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { passYear } from "./helpers/passYear";
 import { mapById } from "../src/levels/levelMap";
@@ -15,9 +16,10 @@ import { ELEMENT_BY_ID } from "../src/core/elements";
 
 /**
  * Section 21.3 (owner request): after every storm each home it destroyed is drawn as a ruin, and the ruins on the
- * board equal the homes lost on the result card, storm by storm: the card reads "N of M homes saved", M every home
- * in the storm's path, so the ruins in its path are M minus N (a home an earlier storm ruined is in the path and
- * not saved), and the storm itself adds exactly the homes it destroyed. Ruins stay for the run; a landmark the water
+ * board equal the homes lost on the result card, storm by storm: the card reads "N of M homes saved", M the homes in
+ * the storm's path still standing when it hit (Section 22.4), with "Lost in earlier storms: K" for the ones an
+ * earlier storm ruined, so the ruins in its path are M minus N plus K, and the storm itself adds exactly the homes
+ * it destroyed. Ruins stay for the run; a landmark the water
  * damaged shows it, worse when destroyed, and damage never mends.
  */
 const MAP = mapById("panaji")!;
@@ -32,7 +34,7 @@ function playStorms(defend: boolean) {
     elements.place({ q, r }, inst.elementId, 0);
   }
   const landmarks = MAP.monuments.map((m) => `${m.q},${m.r}`);
-  const rows: { lostOnCard: number; destroyed: number; ruinsInPath: number; ruinedNow: number; ruinedBefore: number; landmarkEvents: { key: string; level: number }[]; recordLevels: Map<string, number> }[] = [];
+  const rows: { lostOnCard: number; lostBefore: number; saved: number; total: number; destroyed: number; ruinsInPath: number; ruinedNow: number; ruinedBefore: number; landmarkEvents: { key: string; level: number }[]; recordLevels: Map<string, number> }[] = [];
   let built = 0;
   for (const challenge of run.schedule) {
     while (!run.landed.has(challenge.id)) {
@@ -68,6 +70,9 @@ function playStorms(defend: boolean) {
     const path = [...run.state.elements].filter(([key, inst]) => inst.elementId === "house" && !run.state.isScenery(key) && floodsHouse(damageAt(bare, key))).map(([key]) => key);
     rows.push({
       lostOnCard: outcome.housesTotal - outcome.housesSaved,
+      lostBefore: outcome.housesLostBefore,
+      saved: outcome.housesSaved,
+      total: outcome.housesTotal,
       destroyed: outcome.housesDamaged,
       ruinsInPath: path.filter((key) => {
         const [q, r] = key.split(",").map(Number);
@@ -82,6 +87,26 @@ function playStorms(defend: boolean) {
   return { run, elements, rows };
 }
 
+// Section 22.4 (owner decision): a storm's card counts it against the homes still standing when it hit, the ones an
+// earlier storm ruined on a line of their own; it never reads "0 of N saved" because of earlier losses.
+describe("the result card's homes", () => {
+  it("counts each storm against the homes still standing, with a line for those lost in earlier storms", () => {
+    const { rows } = playStorms(true);
+    const later = rows.slice(1).filter((row) => row.lostBefore > 0);
+    expect(later.length).toBeGreaterThan(0);
+    for (const row of later) {
+      const html = homesHtml(row.saved, row.total, row.lostBefore);
+      expect(html).toContain(`<b>${row.saved}</b> of ${row.total} homes saved`);
+      expect(html).toContain(`Lost in earlier storms: ${row.lostBefore}`);
+    }
+    // Nothing standing in the path, everything lost before: said in words, never "0 of 0".
+    expect(homesHtml(0, 0, 12)).toContain("No home in its path was still standing");
+    expect(homesHtml(0, 0, 12)).not.toContain("0 of 0");
+    // The first storm has nothing before it: no such line.
+    expect(homesHtml(rows[0].saved, rows[0].total, rows[0].lostBefore)).not.toContain("earlier storms");
+  });
+});
+
 describe("ruined homes", () => {
   for (const defend of [false, true]) {
     it(`equal the homes lost on each result card, storm by storm, and stay for the run (${defend ? "some defences" : "nothing built"})`, () => {
@@ -90,7 +115,9 @@ describe("ruined homes", () => {
       let total = 0;
       for (const row of rows) {
         expect(row.ruinedNow - row.ruinedBefore).toBe(row.destroyed);
-        expect(row.ruinsInPath).toBe(row.lostOnCard);
+        expect(row.ruinsInPath).toBe(row.lostOnCard + row.lostBefore);
+        // Section 22.4: every home this card counts as not saved is one this storm destroyed.
+        expect(row.lostOnCard).toBe(row.destroyed);
         total += row.destroyed;
         expect(row.ruinedNow).toBe(total);
       }
