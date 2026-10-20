@@ -60,7 +60,6 @@ import type { LevelDef } from "@levels/levels";
 import { mapForLevel, tilesForLevel } from "@levels/levelMap";
 import { boardSetup } from "@levels/balance";
 import { MapPins } from "@ui/panjim/mapPins";
-import { BuildFloat } from "@ui/panjim/buildFloat";
 import { AreaOutline } from "@render/areaOutline";
 import { LeaveConfirm } from "@ui/panjim/leaveConfirm";
 import { greyColor, sceneryGreyLevels } from "@render/sceneryGrey";
@@ -378,7 +377,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   /** Section 22.2: past this camera distance (the furthest opening view is 44) the labels tighten a little. */
   const LABELS_FAR_DISTANCE = 46;
   let labelsFar = false;
-  const buildFloat = new BuildFloat(container, (x, y, z) => worldToScreen(x, y, z));
   /**
    * Panjim 2050's storms: the water (one instanced layer, drawn from the
    * storm's depth field) and the sky (the cyclone's spiral, the flood's rain
@@ -870,10 +868,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             mapPins.setVisible(visible);
             // The bottom prompt too (Section 13.4): not during a storm or its result cards.
             container.querySelector(".empty-prompt")?.classList.toggle("held", !visible);
-          },
-          floatAt: (coord, text, tone) => {
-            const { x, z } = axialToWorld(coord, 1.0);
-            buildFloat.show(text, tone, { x, y: terrain.heightAt(coord) + 0.5, z });
           },
           frameWorld: (box) => {
             // A gentle glide (cancelled by any drag) to frame the box, a little wider than it.
@@ -2680,7 +2674,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       mapPins.remeasure();
     }
     mapPins.update(nowMs);
-    buildFloat.update(nowMs);
     if (ambientLife) {
       ambientLife.setWind(storm.windStrength);
       ambientLife.tick(nowMs);
@@ -2785,7 +2778,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __frameStatsForTest: frameStats,
     __coneForTest: coneOverlay,
     __areaOutlineForTest: areaOutline,
-    __buildFloatForTest: buildFloat,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
     __audioForTest: audioStateForTest,
@@ -3039,7 +3031,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     leaveConfirm?.dispose();
     beginConfirm?.dispose();
     mapPins.dispose();
-    buildFloat.dispose();
     areaOutline.dispose();
     panjim?.dispose();
     stormReport.dispose();

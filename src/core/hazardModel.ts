@@ -332,6 +332,12 @@ export interface StormInput {
   strength: number;
   /** Index into `board.sites`. Required for a cyclone or compound storm. */
   landfall: number | null;
+  /**
+   * Tiles this storm never reaches (Section 23.1, a game rule: the sheltered
+   * middle of Taleigao in the 2050 storm). No water or wind on them; the water
+   * elsewhere is worked out as if they were not sheltered.
+   */
+  sheltered?: ReadonlySet<string>;
 }
 
 export interface WaterField {
@@ -601,6 +607,14 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
   const depth = new Map<string, number>(surgeDepth);
   for (const [key, d] of floodDepth) depth.set(key, Math.max(depth.get(key) ?? 0, d));
   const wind = windField(state, board, storm, weaken, config);
+  if (storm.sheltered) {
+    for (const key of storm.sheltered) {
+      depth.delete(key);
+      surgeDepth.delete(key);
+      floodDepth.delete(key);
+      wind.delete(key);
+    }
+  }
   return { depth, surge: surgeDepth, flood: floodDepth, wind, surgeLevel, floodLevel };
 }
 

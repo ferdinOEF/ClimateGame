@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { shelterOf } from "../src/core/climate";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { housesLostWithout } from "../src/core/stormRecord";
 import { damageAt, floodsHouse } from "../src/core/hazardModel";
@@ -55,7 +56,7 @@ describe("the result cards' numbers", () => {
           if (!built) passYear(run);
         }
         const before = run.state.clone();
-        const args = { zones: run.zones!, kind: challenge.kind, intensity: run.intensityOf(challenge), strengthUnit: run.climate!.intensityPerStrength, combos: run.combos, houseStars: run.houseStars, houseRule: run.houseRule, landfall: run.landfallOf(challenge) };
+        const args = { zones: run.zones!, kind: challenge.kind, intensity: run.intensityOf(challenge), strengthUnit: run.climate!.intensityPerStrength, combos: run.combos, houseStars: run.houseStars, houseRule: run.houseRule, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge) };
         passYear(run);
         const real = run.outcomes.get(challenge.id)!;
         const again = housesLostWithout(before, args, null);

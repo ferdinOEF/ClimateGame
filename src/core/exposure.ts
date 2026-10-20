@@ -51,6 +51,8 @@ export interface ExposureOptions {
    * outcome the middle site's; one site is an exact preview.
    */
   landfallSites?: number[] | null;
+  /** Tiles the storm never reaches (Section 23.1, `shelterOf`). */
+  sheltered?: ReadonlySet<string>;
 }
 
 /** The hazards a challenge kind brings. */
@@ -101,7 +103,8 @@ export function computeExposure(
       (key, _water, _hazard, damage) => {
         if (!copy.isScenery(key)) tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, damage));
       },
-      site
+      site,
+      options.sheltered
     );
     for (const key of result.damagedHouses) atRisk.add(key);
     if (site === middle) outcome = result;

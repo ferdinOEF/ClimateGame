@@ -41,6 +41,11 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
   const stormList = input.storms
     .map((storm) => `<li><strong>${esc(storm.name)}</strong>, ${storm.year}: straight after your ${ordinal(storm.turn)} build</li>`)
     .join("");
+  // A storm that leaves some tiles alone says so, as a game rule (Section 23.1).
+  const shelters = input.storms
+    .filter((storm) => storm.shelteredPlace && storm.shelteredTiles && storm.shelteredTiles.length > 0)
+    .map((storm) => `<p>In this game, the ${storm.year} storm does not reach ${esc(storm.shelteredPlace!)}.</p>`)
+    .join("");
   const stormsTitle = count === 1 ? "The storm" : `${countWord(count).replace(/^./, (c) => c.toUpperCase())} storms`;
   return `
   <div class="panjim-help">
@@ -64,6 +69,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
         <h3>${stormsTitle} ${RULE}</h3>
         <ul>${stormList}</ul>
         <p>After each, a result card: the stars, the homes saved, and what protected them.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}</p>
+        ${shelters}
       </div>
     </section>
 

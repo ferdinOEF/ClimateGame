@@ -217,13 +217,15 @@ export function resolveChallenge(
   /** Reports the water at every wet tile, per hazard, scaled so `resilience` is the depth that takes a house. Never changes the outcome. */
   probe?: TileProbe,
   /** Where a cyclone comes ashore (index into the board's landfall sites). Defaults to the middle of the coast. */
-  landfall?: number | null
+  landfall?: number | null,
+  /** Tiles the storm never reaches (Section 23.1, `shelterOf`). */
+  sheltered?: ReadonlySet<string>
 ): ChallengeOutcome {
   const strength = intensity / strengthUnit;
   const landfallZoneTiles = zones.keys(LANDFALL_ZONE);
   const board = waterBoard(state, landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined);
   const site = kind === "flood" ? null : (landfall ?? siteAt(board, 0.5));
-  const storm = { kind, strength, landfall: site };
+  const storm = { kind, strength, landfall: site, sheltered };
   const options = { combos, landfallZoneTiles: landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined };
 
   // A house on scenery (the north bank, the east edge) is drawn, never counted.

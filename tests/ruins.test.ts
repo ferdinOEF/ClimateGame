@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { shelterOf } from "../src/core/climate";
 import * as THREE from "three";
 import { ElementMeshManager, type BuildingStyle } from "../src/render/elementMeshManager";
 import { MonumentMeshManager } from "../src/render/monumentMeshManager";
@@ -66,7 +67,7 @@ function playStorms(defend: boolean) {
     const board = run.state.clone();
     for (const [key, inst] of [...board.elements]) if ((ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) > 0) board.elements.delete(key);
     const lz = run.zones!.keys(LANDFALL_ZONE);
-    const bare = computeWater(board, { kind: challenge.kind, strength: challenge.strength, landfall: run.landfallOf(challenge) }, { landfallZoneTiles: lz.length ? lz : undefined });
+    const bare = computeWater(board, { kind: challenge.kind, strength: challenge.strength, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge) }, { landfallZoneTiles: lz.length ? lz : undefined });
     const path = [...run.state.elements].filter(([key, inst]) => inst.elementId === "house" && !run.state.isScenery(key) && floodsHouse(damageAt(bare, key))).map(([key]) => key);
     rows.push({
       lostOnCard: outcome.housesTotal - outcome.housesSaved,
