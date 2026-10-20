@@ -47,6 +47,57 @@ export interface PhaseResult {
   defences: DefenceResult[];
   /** Every row of the phase's objective was done when the storm came (Section 12): a badge, never stars. */
   objectiveComplete?: boolean;
+  /** Section 25.2: the biodiversity line, where the level's stars count it. */
+  nature?: NatureLine;
+}
+
+/** Section 25.2: the card's second line: the board's biodiversity change since the run began, and why. */
+export interface NatureLine {
+  change: number;
+  /** The rise three stars need (the level's houseStars.bioThree). */
+  target: number;
+  /** A few words on why (`natureReason`). */
+  reason: string;
+  /** The year it is compared with: the run's first. */
+  since: number;
+}
+
+/** How the cards name each defence in the plural. */
+export const PLURAL: Record<string, string> = {
+  dune: "Dunes",
+  sandy_vegetation: "Pandanus",
+  mangrove: "Mangroves",
+  khazan: "Khazans",
+  seawall: "Seawalls",
+  breakwater: "Breakwaters",
+  small_dam: "Small dams"
+};
+
+/**
+ * Why the biodiversity moved, in a few words, from what each kind on the board adds or takes (`byKind`, each kind's
+ * total `effects.biodiversity`): below the start, the kind that costs the most ("Seawalls cost nature"); short of
+ * the three star rise, how far; at or over it, the kind that brings the most.
+ */
+export function natureReason(change: number, target: number, byKind: ReadonlyMap<string, number>): string {
+  const kinds = [...byKind].filter(([id]) => PLURAL[id]);
+  if (change < 0) {
+    const worst = kinds.filter(([, v]) => v < 0).sort((a, b) => a[1] - b[1])[0];
+    return worst ? `${PLURAL[worst[0]]} cost nature` : "Nature is down";
+  }
+  if (change < target) return kinds.some(([, v]) => v > 0) ? `Short of the +${target} three stars need` : "No nature based defences yet";
+  const best = kinds.filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])[0];
+  return best ? `${PLURAL[best[0]]} bring nature back` : "Nature is up";
+}
+
+/** Each kind's total biodiversity on a board (defences only), for `natureReason`. */
+export function biodiversityByKind(elements: Iterable<{ elementId: string }>): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const inst of elements) {
+    const def = ELEMENT_BY_ID.get(inst.elementId);
+    const v = def?.kind === "defense" ? (def.effects.biodiversity ?? 0) : 0;
+    if (v !== 0) out.set(inst.elementId, (out.get(inst.elementId) ?? 0) + v);
+  }
+  return out;
 }
 
 export interface Place {
@@ -77,7 +128,7 @@ export function placesInArea(places: readonly Place[], area: readonly string[]):
 }
 
 /** The result of one storm, for its cards. `area` is its area to protect at the start of its phase; `builtKinds` the defences the player built in the phase. */
-export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, area: readonly string[], places: readonly Place[], builtKinds: readonly string[]): PhaseResult {
+export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, area: readonly string[], places: readonly Place[], builtKinds: readonly string[], nature?: { target: number; since: number; byKind: ReadonlyMap<string, number> }): PhaseResult {
   const outcome = record.outcome;
   // Section 16 B4: the places in (or next to) the storm's area, and any other place it damaged (not the
   // labels that stand on the river or the sea); the damaged ones first.
@@ -108,7 +159,10 @@ export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, 
     // A run saved before Section 22 has no count of its own: none shown.
     homesLostBefore: outcome.housesLostBefore ?? 0,
     places: placeResults,
-    defences
+    defences,
+    ...(nature && outcome.biodiversityChange !== undefined
+      ? { nature: { change: outcome.biodiversityChange, target: nature.target, since: nature.since, reason: natureReason(outcome.biodiversityChange, nature.target, nature.byKind) } }
+      : {})
   };
 }
 

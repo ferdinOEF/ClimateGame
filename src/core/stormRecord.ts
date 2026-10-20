@@ -6,6 +6,7 @@ import { buildDepthField, type DepthField } from "./hazard";
 import { computeWater, LANDFALL_ZONE, waterBoard, siteAt } from "./hazardModel";
 import { hazardsOf } from "./exposure";
 import { computeCombos } from "./combos";
+import type { HouseStars } from "./zones";
 
 /**
  * A storm, resolved and recorded for showing: the real outcome, the water
@@ -61,7 +62,7 @@ export interface StormArgs {
   intensity: number;
   strengthUnit: number;
   combos?: ComboBonus;
-  houseStars?: { three: number; two: number; one?: number };
+  houseStars?: HouseStars;
   houseRule?: HouseRule;
   /** Where a cyclone comes ashore (index into the board's landfall sites). */
   landfall?: number | null;

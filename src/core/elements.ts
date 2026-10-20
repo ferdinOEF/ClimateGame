@@ -60,6 +60,23 @@ export interface ElementDef {
   effects: Record<string, number>;
   /** Defense-kind only: human-readable note on how it behaves when overwhelmed/destroyed. */
   failureMode?: string;
+  /**
+   * Section 25.1 (owner decision, a game rule): how many storms of the kind it answers it comes through. The next
+   * one that reaches it breaks it, and it gives no protection in that storm. Replaces the depth failure rule
+   * (`failureThreshold`) in the Panjim hazard model. Seawall and small dam: 1.
+   */
+  survivesStorms?: number;
+  /**
+   * Section 25.1, a game rule: two of these side by side protect as much as one of `pairsLike` on one of their tiles.
+   * On a tile the two strongest of this kind add up (any other kind counts its strongest only).
+   */
+  pairsLike?: string;
+  /** Section 25.1, a game rule: extra surge, game metres, on the land beside each end of a wall of these (seawall). */
+  endPushM?: number;
+  /** Section 25.1, a game rule: never worn by a storm, so it never needs a repair (khazan). */
+  neverWears?: boolean;
+  /** Section 25.1, a game rule: on a river tile only at the river's edge, beside dry ground or a wetland (mangrove). */
+  riverEdgeOnly?: boolean;
 }
 
 export const ELEMENT_DEFS: ElementDef[] = elementData as unknown as ElementDef[];

@@ -22,7 +22,7 @@
  * The work is split over child processes like the bots (one plan each at a
  * time). Progress is printed every year.
  *
- * Usage: npm run bestplan -- [beam=16] [keep=16] [jobs=4] [out=docs/qa/section24]
+ * Usage: npm run bestplan -- [beam=16] [keep=16] [jobs=4] [out=docs/qa/section25]
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -64,7 +64,7 @@ if (childJob !== undefined) {
 const beamWidth = num("beam", 16);
 const keep = num("keep", 16);
 const jobs = num("jobs", Math.max(1, Math.min(4, os.cpus().length)));
-const outDir = path.resolve(args.get("out") ?? "docs/qa/section24");
+const outDir = path.resolve(args.get("out") ?? "docs/qa/section25");
 const started = Date.now();
 const opening = newRun("best-plan", BOT_LEVEL);
 const totalYears = opening.totalYears;
@@ -131,7 +131,7 @@ const searchSeconds = (Date.now() - started) / 1000;
 
 interface Played {
   actions: PlanAction[];
-  storms: { id: string; year: number; name: string; stars: number; saved: number; total: number; lost: number }[];
+  storms: { id: string; year: number; name: string; stars: number; saved: number; total: number; lost: number; biodiversityChange?: number }[];
   stars: number;
   lost: number;
 }
@@ -139,7 +139,7 @@ function play(actions: PlanAction[]): Played {
   const run = replay(actions);
   const storms = run.schedule.map((c) => {
     const o = run.outcomes.get(c.id)!;
-    return { id: c.id, year: startYear + c.turn - 1, name: c.name ?? c.id, stars: o.stars, saved: o.housesSaved, total: o.housesTotal, lost: o.housesTotal - o.housesSaved };
+    return { id: c.id, year: startYear + c.turn - 1, name: c.name ?? c.id, stars: o.stars, saved: o.housesSaved, total: o.housesTotal, lost: o.housesTotal - o.housesSaved, biodiversityChange: o.biodiversityChange };
   });
   return { actions, storms, stars: storms.reduce((s, x) => s + x.stars, 0), lost: storms.reduce((s, x) => s + x.lost, 0) };
 }
@@ -240,12 +240,25 @@ const table = (p: Played): string[] => [
   "|---|---|---|---|---|---|",
   ...rows(p).map((r, i) => `| ${i + 1} | ${r.year} | ${nameOf(r.elementId)} | ${r.q},${r.r} | ${r.place} | ${r.spare ? "no" : "yes"} |`)
 ];
+const bioCell = (v: number | undefined): string => (v === undefined ? "" : `${v > 0 ? "+" : ""}${v}`);
 const stormTable = (p: Played): string[] => [
-  "| Storm | Year | Stars | Homes saved (of homes standing in its path) | Homes lost |",
-  "|---|---|---|---|---|",
-  ...p.storms.map((s) => `| ${s.name} | ${s.year} | ${s.stars} | ${s.saved} of ${s.total} | ${s.lost} |`),
-  `| **Whole run** | | **${p.stars} of 9** | | **${p.lost}** |`
+  "| Storm | Year | Stars | Homes saved (of homes standing in its path) | Homes lost | Biodiversity since the start |",
+  "|---|---|---|---|---|---|",
+  ...p.storms.map((s) => `| ${s.name} | ${s.year} | ${s.stars} | ${s.saved} of ${s.total} | ${s.lost} | ${bioCell(s.biodiversityChange)} |`),
+  `| **Whole run** | | **${p.stars} of 9** | | **${p.lost}** | |`
 ];
+/** For each storm short of three stars, which line it missed: the homes or the biodiversity (the level's own lines). */
+const starLines = (p: Played): string[] => {
+  const hs = opening.houseStars!;
+  return p.storms
+    .filter((s) => s.stars < 3)
+    .map((s) => {
+      const share = s.total > 0 ? s.saved / s.total : 1;
+      const homes = share >= hs.three ? "homes enough" : `homes ${Math.round(share * 100)}% (three stars need ${Math.round(hs.three * 100)}%)`;
+      const bio = hs.bioThree === undefined || (s.biodiversityChange ?? 0) >= hs.bioThree ? "biodiversity enough" : `biodiversity ${bioCell(s.biodiversityChange) || "0"} (three stars need +${hs.bioThree})`;
+      return `- ${s.name} ${s.year}: ${s.stars} stars; ${homes}; ${bio}.`;
+    });
+};
 const whyLines = (w: typeof why1): string[] =>
   w.map((b) => {
     const named = b.homes.map((key) => `${key} (${placeName({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) })})`).join(", ");
@@ -256,7 +269,7 @@ const whyLines = (w: typeof why1): string[] =>
     return `- ${b.id}: ${b.lost} lost: ${named}. ${limit}`;
   });
 const md = [
-  "# Section 24: the best plan found for Play Panjim",
+  "# The best plan found for Play Panjim",
   "",
   `Found by \`npm run bestplan\` (tools/bestPlan): a beam search over the game's own run code and hazard model, ${beamWidth} plans kept a year, every build and repair the game allows weighed by running the game's own resolver for every storm to come; ${Math.round(searchSeconds)} s with ${jobs} child processes. In this game the storms are fixed, so the run is deterministic. A beam search is not proof of the optimum: the plan below is the best it found.`,
   "",
@@ -266,7 +279,7 @@ const md = [
   "",
   ...stormTable(byGoal1),
   "",
-  ...(byGoal1.stars === 9 ? [] : ["What blocks 9 of 9:", "", ...whyLines(why1), ""]),
+  ...(byGoal1.stars === 9 ? [] : ["What blocks 9 of 9:", "", ...starLines(byGoal1), ...whyLines(why1), ""]),
   `## Goal 2: the most homes saved — ${byGoal2.lost === 0 ? "every home saved" : `${byGoal2.lost} homes lost over the run, so saving every home is not reached`}`,
   "",
   ...(same ? ["The same plan as goal 1.", ""] : [...table(byGoal2), ""]),

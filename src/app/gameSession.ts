@@ -686,6 +686,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
       if (growsOnClock(def)) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
       else if (def.kind === "building") elements.setHeightScale({ q, r }, skylineScale(q, r, age));
+      // Section 25.1: one the storm broke without its water reaching it (the storm count) is drawn broken too.
+      if (inst.broken) elements.setBrokenVisual({ q, r });
     }
     // A monument rises with the street round it, so it keeps its standing over its neighbours.
     if (town) {
@@ -976,7 +978,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,
-      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule, heatLeadYears: panjim.heatLeadYears })
+      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule, heatLeadYears: panjim.heatLeadYears, houseStars: panjim.run.houseStars })
     );
   /**
    * The step-by-step coach, on the tutorial level only.
@@ -2074,7 +2076,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       landmarks: levelMap.monuments.map((m) => `${m.q},${m.r}`),
       landmarkDamaged: (coord, level) => monuments.setDamage(coord, level),
       defenceFailed: (coord) => {
-        elements.destroy(coord);
+        // Section 25.1: a broken seawall or dam stays on the board, drawn broken.
+        if (state.elements.get(`${coord.q},${coord.r}`)?.broken) elements.setBrokenVisual(coord);
+        else elements.destroy(coord);
         playSound("hazard_breach");
       },
       defenceWorn: (coord, degrade) => elements.setDegradeVisual(coord, degrade),
@@ -2172,7 +2176,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     });
     for (const key of zone.failed) {
       const [q, r] = key.split(",").map(Number);
-      elements.destroy({ q, r });
+      // Section 25.1: a broken seawall or dam stays on the board, drawn broken.
+      if (state.elements.get(key)?.broken) elements.setBrokenVisual({ q, r });
+      else elements.destroy({ q, r });
       playSound("hazard_breach");
     }
     // The houses lost here go one at a time, most exposed first (the order
@@ -2222,6 +2228,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       elements.place(coord, inst.elementId, terrain.heightAt(coord), { animate: false, growth });
       // A home a storm took is a ruin for the rest of the run (Section 21.3), after a rewind or a resume too.
       if (def.kind === "building" && inst.degradeAmount >= 1) elements.setBuildingRuinedVisual(coord);
+      else if (inst.broken) elements.setBrokenVisual(coord);
       else if (inst.degradeAmount > 0) elements.setDegradeVisual(coord, inst.degradeAmount);
     }
     // The landmarks as the storms so far left them (Section 21.3).
@@ -2333,7 +2340,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
 
     const built = state.elements.get(key);
-    if (built) {
+    // Section 25.1: a broken seawall or dam opens the build menu: a new build replaces it.
+    if (built && !built.broken) {
       const def = ELEMENT_BY_ID.get(built.elementId);
       if (!def) return;
       const spawned = reactions.trigger(built.elementId, wx, worldTop, wz);

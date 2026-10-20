@@ -44,9 +44,10 @@ describe("aftermath line", () => {
 
   it("credits the main defence when it took some but not all of a storm", () => {
     // Section 11: since the owner's edits turned the Campal wetland into land, mangroves no longer meet
-    // this cyclone; dunes against a stronger one (2.0) take some but not all of it.
-    const { state, zones } = defended("dune", 2);
-    const outcome = storm(state, zones, 40);
+    // this cyclone; dunes against a stronger one take some but not all of it (Section 25.1: dunes side by
+    // side pair up, so it takes a storm of strength 3 to get past them).
+    const { state, zones } = defended("dune", 3);
+    const outcome = storm(state, zones, 60);
     expect(outcome.housesDamaged).toBeGreaterThan(0);
     expect(outcome.housesSaved).toBeGreaterThan(0);
     expect(aftermathLine("cyclone", outcome, state, zones, [])).toBe(`The dunes at Miramar took most of it: ${outcome.housesSaved} houses stayed standing.`);
@@ -59,13 +60,14 @@ describe("aftermath line", () => {
   });
 
   it("names a failed dam first", () => {
-    // A storm far beyond the game's overtops a dam on the deep reach of the river.
+    // Section 25.1: a dam breaks in the second flood it faces (this one has come through one).
     let line: string | null = null;
     for (const key of panaji().zones.keys("z3").concat(panaji().zones.keys("z4"))) {
       const { state, zones } = panaji();
       const [q, r] = key.split(",").map(Number);
       if (!state.canBuild({ q, r }, "small_dam")) continue;
       state.build({ q, r }, "small_dam", false);
+      state.elements.get(key)!.stormsSurvived = 1;
       const before = new Map([...state.elements].map(([k, v]) => [k, v.elementId]));
       const outcome = resolveChallenge(state, zones, "compound", 120, 20, undefined, undefined, undefined, undefined, 10);
       const failedIds = outcome.zones.flatMap((z) => z.failed).map((k) => before.get(k)!);

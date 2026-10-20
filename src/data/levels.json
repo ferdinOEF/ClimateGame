@@ -294,8 +294,10 @@
     },
     "houseStars": {
       "three": 0.85,
-      "two": 0.5,
-      "one": 0.3
+      "two": 0.55,
+      "one": 0.3,
+      "bioTwo": 0,
+      "bioThree": 6
     }
   }
 ]

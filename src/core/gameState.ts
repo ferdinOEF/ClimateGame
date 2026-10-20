@@ -1,4 +1,4 @@
-import { type AxialCoord, axialKey } from "./hex";
+import { type AxialCoord, axialKey, neighbor } from "./hex";
 import { ELEMENT_BY_ID, RETIRED_ELEMENTS, type ElementDef } from "./elements";
 
 export interface PlacedTile {
@@ -32,6 +32,10 @@ export interface ElementInstance {
    * (default 0) rather than optional, so callers never need an undefined check.
    */
   floodBufferFilled: number;
+  /** Section 25.1: a seawall or dam a storm broke. It protects nothing and is drawn broken; a new build replaces it. */
+  broken?: boolean;
+  /** Section 25.1: storms of the kind it answers that reached it and it came through (`ElementDef.survivesStorms`). */
+  stormsSurvived?: number;
 }
 
 /** A world-init element the player owns from turn one — pre-built, not purchased (Section 4/8's "small coastal claim + 10 pre-built Houses" starting state). */
@@ -280,11 +284,16 @@ export class GameState {
   buildableAt(coord: AxialCoord): ElementDef[] {
     const key = axialKey(coord);
     const tile = this.placed.get(key);
-    if (!tile || tile.scenery || !this.claimed.has(key) || this.elements.has(key) || this.reserved.has(key) || this.unbuildable.has(key)) return [];
+    // Section 25.1: a broken seawall or dam leaves its tile free for a new build, which replaces it.
+    const there = this.elements.get(key);
+    if (!tile || tile.scenery || !this.claimed.has(key) || (there && !there.broken) || this.reserved.has(key) || this.unbuildable.has(key)) return [];
     const results: ElementDef[] = [];
     for (const def of ELEMENT_BY_ID.values()) {
       // Section 17.3: a retired element (sand mining) is never offered, on any level.
-      if (def.validTerrainIds.includes(tile.terrainId) && !this.excludedElements.has(def.id) && !RETIRED_ELEMENTS.has(def.id)) results.push(def);
+      if (!def.validTerrainIds.includes(tile.terrainId) || this.excludedElements.has(def.id) || RETIRED_ELEMENTS.has(def.id)) continue;
+      // Section 25.1: on a river, only at its edge (beside land, a beach or a wetland).
+      if (def.riverEdgeOnly && tile.terrainId === "river" && !this.atRiverEdge(coord)) continue;
+      results.push(def);
     }
     return results;
   }
@@ -316,6 +325,15 @@ export class GameState {
     this.elements.set(axialKey(coord), { elementId, builtOnTurn: this.turn, degradeAmount: 0, floodBufferFilled: 0 });
     if (advance) this.advanceTurn();
     return true;
+  }
+
+  /** A river tile beside dry ground or a wetland: the river's edge (Section 25.1). */
+  atRiverEdge(coord: AxialCoord): boolean {
+    for (let dir = 0; dir < 6; dir++) {
+      const n = this.placed.get(axialKey(neighbor(coord, dir)));
+      if (n && n.terrainId !== "river" && n.terrainId !== "coast") return true;
+    }
+    return false;
   }
 
   /** True on a tile that is scenery only (see `PlacedTile.scenery`). */

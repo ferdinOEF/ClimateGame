@@ -21,7 +21,8 @@ import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
 import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialResultCard, type CardSpec, type CardsChoice } from "@ui/panjim/resultCards";
-import { nextLabel, phaseResult, type Place } from "@core/phaseResult";
+import { biodiversityByKind, natureReason, nextLabel, phaseResult, type Place } from "@core/phaseResult";
+import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
 import { FinaleCard } from "@ui/panjim/finaleCard";
 import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIndex";
@@ -867,7 +868,10 @@ export class PanjimController {
     // Help opened during the storm closes first: the cards never open under it (Section 16 B5).
     await this.untilLayersShut();
     if (this.disposed) return;
-    const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? []), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
+    // Section 25.2: the biodiversity line, where the level's stars count it (every defence on the board, broken ones too).
+    const bioThree = this.run.houseStars?.bioThree;
+    const nature = bioThree !== undefined ? { target: bioThree, since: this.run.config.startYear, byKind: biodiversityByKind(this.host.state.elements.values()) } : undefined;
+    const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
@@ -957,7 +961,17 @@ export class PanjimController {
       return { label: `${c.name} in ${c.year}`, saved: outcome?.housesSaved ?? 0, total: outcome?.housesTotal ?? 0 };
     });
     this.host.telemetry.emit("checkpoint", { final: true, stars: result.levelStars, tempo: tempoBadge(this.playMs()).name });
-    const choice = await this.resultCards.show([{ body: finalCard(phases, result), button: "Play again", link: "Back to the menu" }]);
+    // Section 25.2: the biodiversity line as the last storm came, and the star lines in words.
+    const last = this.run.outcomes.get(this.run.schedule[this.run.schedule.length - 1]?.id ?? "");
+    const stars = this.run.houseStars;
+    const nature =
+      stars?.bioThree !== undefined && last?.biodiversityChange !== undefined
+        ? {
+            line: { change: last.biodiversityChange, target: stars.bioThree, since: this.run.config.startYear, reason: natureReason(last.biodiversityChange, stars.bioThree, biodiversityByKind(this.host.state.elements.values())) },
+            rule: starRule(stars)
+          }
+        : undefined;
+    const choice = await this.resultCards.show([{ body: finalCard(phases, result, nature), button: "Play again", link: "Back to the menu" }]);
     this.host.onRunComplete(result, choice === "link" ? "menu" : "again");
   }
 

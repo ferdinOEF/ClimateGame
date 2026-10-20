@@ -2,6 +2,7 @@ import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
 import { resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId, type HouseRule, type ZoneIndex } from "./zones";
+import type { HouseStars } from "./zones";
 
 /**
  * Exposure: what a storm will do to each tile, read from the resolver itself.
@@ -42,7 +43,7 @@ export interface Exposure {
 export interface ExposureOptions {
   combos?: ComboBonus;
   houseRule?: HouseRule;
-  houseStars?: { three: number; two: number; one?: number };
+  houseStars?: HouseStars;
   /** Resolve as if every defence against this storm were gone: the "before you built anything" picture the shields compare to. */
   withoutDefences?: boolean;
   /**

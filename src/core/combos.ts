@@ -9,19 +9,18 @@ import type { GameState } from "./gameState";
  *                  single trees let through.
  *   Living Bund    a khazan next to a mangrove: the bund and the roots hold
  *                  the creek bank together.
- *   Beach Shield   a dune next to sandy vegetation: the pandanus roots pin the
- *                  sand the dune is made of.
+ * Section 25.1 (owner decision): pandanus gives the dune no bonus, so the
+ * Beach Shield (a dune next to pandanus) is gone.
  *
  * The bonus is per tile, added to that tile's zone defence against the
  * hazards the element answers (see core/zones.ts). Data here, not in the
  * resolver, so the resolver still knows nothing about any element by name.
  */
-export type ComboId = "mangrove_belt" | "living_bund" | "beach_shield";
+export type ComboId = "mangrove_belt" | "living_bund";
 
 export const COMBO_INFO: Record<ComboId, { name: string; bonus: number; line: string }> = {
   mangrove_belt: { name: "Mangrove Belt", bonus: 2, line: "Three or more mangroves together slow the water far more than scattered trees." },
-  living_bund: { name: "Living Bund", bonus: 2, line: "Khazan beside mangroves: the bund and the roots hold the bank together." },
-  beach_shield: { name: "Beach Shield", bonus: 1.5, line: "Pandanus beside a dune pins the sand in place." }
+  living_bund: { name: "Living Bund", bonus: 2, line: "Khazan beside mangroves: the bund and the roots hold the bank together." }
 };
 
 export interface ComboState {
@@ -43,8 +42,7 @@ function neighbourKeys(key: string): string[] {
 export function computeCombos(state: GameState): ComboState {
   const members = new Map<ComboId, Set<string>>([
     ["mangrove_belt", new Set()],
-    ["living_bund", new Set()],
-    ["beach_shield", new Set()]
+    ["living_bund", new Set()]
   ]);
 
   // Mangrove Belt: connected groups of three or more.
@@ -66,11 +64,8 @@ export function computeCombos(state: GameState): ComboState {
     if (group.length >= 3) for (const member of group) members.get("mangrove_belt")!.add(member);
   }
 
-  // Pairs: Living Bund (khazan + mangrove), Beach Shield (dune + sandy vegetation).
-  const pairs: [ComboId, string, string][] = [
-    ["living_bund", "khazan", "mangrove"],
-    ["beach_shield", "dune", "sandy_vegetation"]
-  ];
+  // Pairs: Living Bund (khazan + mangrove).
+  const pairs: [ComboId, string, string][] = [["living_bund", "khazan", "mangrove"]];
   for (const [comboId, a, b] of pairs) {
     for (const [key, inst] of state.elements) {
       if (inst.elementId !== a) continue;

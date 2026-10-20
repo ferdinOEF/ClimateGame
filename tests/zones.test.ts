@@ -42,13 +42,16 @@ describe("a defence's own strength (defenceMetres)", () => {
     expect(defenceMetres(state, "0,0", "flood")).toBe(0);
   });
 
-  it("grows a nature defence linearly with maturity", () => {
+  it("grows a nature defence that has a grow time linearly with maturity (the dune; mangrove and pandanus have none, Section 25.1)", () => {
     const { state } = fixture();
-    state.build({ q: 0, r: 1 }, "mangrove", false); // 20 quarters to mature
-    expect(defenceMetres(state, "0,1", "flood")).toBe(0);
-    state.turn = 10;
-    expect(defenceMetres(state, "0,1", "flood")).toBeCloseTo(2.5 * m);
-    state.turn = 40;
+    state.build({ q: 0, r: 0 }, "dune", false); // 8 quarters to mature
+    expect(defenceMetres(state, "0,0", "cyclone")).toBe(0);
+    state.turn = 4;
+    expect(defenceMetres(state, "0,0", "cyclone")).toBeCloseTo(2 * m);
+    state.turn = 16;
+    expect(defenceMetres(state, "0,0", "cyclone")).toBeCloseTo(4 * m);
+    // A mangrove is at full strength from the year it is built.
+    state.build({ q: 0, r: 1 }, "mangrove", false);
     expect(defenceMetres(state, "0,1", "flood")).toBeCloseTo(5 * m);
   });
 });
@@ -80,24 +83,32 @@ describe("area protection (layered defence and its ceilings)", () => {
     expect(p.get(`${3 + falloff.length},0`) ?? 0).toBe(0);
   });
 
-  it("counts several of one kind once, and different kinds together (up to stackCap x the strongest)", () => {
-    // Measured two tiles from the nearer dune, below the ceiling, so the stacking rule shows.
+  it("counts several of one kind once (a pairing kind its two strongest), and different kinds together (up to stackCap x the strongest)", () => {
+    // Measured two tiles from the nearer defence, below the ceiling, so the stacking rule shows.
     const at = "0,0";
     const one = row();
-    one.state.build({ q: 2, r: 0 }, "dune", false);
-    const single = protection(one.state, one.board).get(at)!;
-    expect(single).toBeLessThan(maxProtectionM);
+    one.state.build({ q: 6, r: 0 }, "mangrove", false);
+    const single = protection(one.state, one.board).get("4,0")!;
     const two = row();
-    two.state.build({ q: 2, r: 0 }, "dune", false);
-    two.state.build({ q: 3, r: 0 }, "dune", false);
-    // A second dune next door: the tile keeps the strongest dune's protection, not the sum.
-    expect(protection(two.state, two.board).get(at)!).toBeCloseTo(single);
+    two.state.build({ q: 6, r: 0 }, "mangrove", false);
+    two.state.build({ q: 7, r: 0 }, "mangrove", false);
+    // A second mangrove next door: the tile keeps the strongest one's protection, not the sum.
+    expect(protection(two.state, two.board).get("4,0")!).toBeCloseTo(single);
+    // Section 25.1: dunes pair, so the second dune adds its protection there.
+    const dune = row();
+    dune.state.build({ q: 2, r: 0 }, "dune", false);
+    const oneDune = protection(dune.state, dune.board).get(at)!;
+    expect(oneDune).toBeLessThan(maxProtectionM);
+    const pair = row();
+    pair.state.build({ q: 2, r: 0 }, "dune", false);
+    pair.state.build({ q: 3, r: 0 }, "dune", false);
+    expect(protection(pair.state, pair.board).get(at)!).toBeGreaterThan(oneDune * 1.5);
     const mix = row();
     mix.state.build({ q: 2, r: 0 }, "dune", false);
     mix.state.build({ q: 3, r: 0 }, "sandy_vegetation", false);
     const mixed = protection(mix.state, mix.board).get(at)!;
-    expect(mixed).toBeGreaterThan(single);
-    expect(mixed).toBeLessThanOrEqual(single * stackCap + 1e-9);
+    expect(mixed).toBeGreaterThan(oneDune);
+    expect(mixed).toBeLessThanOrEqual(oneDune * stackCap + 1e-9);
   });
 
   it("never protects a tile by more than the ceiling: 5 m for living defences, 6 m with an engineered wall", () => {
@@ -163,28 +174,30 @@ describe("tile-by-tile resolution (Section 4)", () => {
     expect(after.protection).toBeGreaterThan(0.2);
   });
 
-  it("makes the Small Dam hold in the game's floods and fail only when the water overtops it", () => {
-    // Every river tile a dam can stand on. In the level's monsoon (strength
-    // 1.8) and its compound finale (2.6) the dam holds; a storm far beyond the
-    // game's (strength 6) overtops it on the deep reaches and it fails.
+  it("makes the Small Dam come through its first flood and break in its second, whatever the water (Section 25.1)", () => {
     const probe = panaji();
     const board = waterBoard(probe.state);
-    const sites = [...board.riverIndex.keys()].filter((key) => {
-      const [q, r] = key.split(",").map(Number);
+    const key = [...board.riverIndex.keys()].find((k) => {
+      const [q, r] = k.split(",").map(Number);
       return probe.state.canBuild({ q, r }, "small_dam");
-    });
-    expect(sites.length).toBeGreaterThan(5);
-    const failsAt = (key: string, kind: "flood" | "compound", strength: number): boolean => {
-      const [q, r] = key.split(",").map(Number);
-      const { state, zones } = panaji();
-      state.build({ q, r }, "small_dam", false);
-      return resolveChallenge(state, zones, kind, strength * UNIT, UNIT, undefined, undefined, undefined, undefined, kind === "flood" ? undefined : 10).zones.flatMap((z) => z.failed).includes(key);
-    };
-    for (const key of sites) {
-      expect(failsAt(key, "flood", 1.8), `dam at ${key} in the monsoon`).toBe(false);
-      expect(failsAt(key, "compound", 2.6), `dam at ${key} in the finale`).toBe(false);
-    }
-    expect(sites.some((key) => failsAt(key, "compound", 6))).toBe(true);
+    })!;
+    const [q, r] = key.split(",").map(Number);
+    const { state, zones } = panaji();
+    state.build({ q, r }, "small_dam", false);
+    const storm = (kind: "flood" | "compound" | "cyclone", strength: number) =>
+      resolveChallenge(state, zones, kind, strength * UNIT, UNIT, undefined, undefined, undefined, undefined, kind === "flood" ? undefined : 10).zones.flatMap((z) => z.failed);
+    // A cyclone brings no flood: it does not count.
+    expect(storm("cyclone", 1.2)).not.toContain(key);
+    expect(state.elements.get(key)!.stormsSurvived ?? 0).toBe(0);
+    // A strong flood, far beyond the game's: it comes through.
+    expect(storm("flood", 6)).not.toContain(key);
+    expect(state.elements.get(key)!.stormsSurvived).toBe(1);
+    expect(state.elements.get(key)!.broken ?? false).toBe(false);
+    // The compound storm brings a flood: its second, so it breaks (and stays on the board, broken, its tile free).
+    expect(storm("compound", 1)).toContain(key);
+    expect(state.elements.get(key)!.broken).toBe(true);
+    expect(defenceMetres(state, key, "flood")).toBe(0);
+    expect(state.canBuild({ q, r }, "small_dam")).toBe(true);
   });
 
   it("floods a low khazan field and never Altinho, at the same strength (elevation)", () => {

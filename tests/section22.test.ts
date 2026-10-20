@@ -41,7 +41,10 @@ describe("Section 22.4, the owner's decisions", () => {
     const stars = BOT_LEVEL.houseStars!;
     expect(stars.one).toBeDefined();
     expect(starsForHouses(0, 10, stars)).toBe(0);
-    expect(starsForHouses(10, 10, stars)).toBe(3);
+    // Section 25.2: three stars also need biodiversity up by the level's target; two, at or above the start.
+    expect(starsForHouses(10, 10, stars, stars.bioThree)).toBe(3);
+    expect(starsForHouses(10, 10, stars, 0)).toBe(2);
+    expect(starsForHouses(10, 10, stars, -1)).toBe(1);
     expect(starsForHouses(0, 10, { three: 0.79, two: 0.5 })).toBe(1);
   });
 
