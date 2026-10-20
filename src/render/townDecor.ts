@@ -1,11 +1,15 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { axialToWorld, type AxialCoord } from "@core/hex";
 import { gardenGeometry } from "./townGeometry";
-import type { TownLayout } from "@levels/townLayout";
+import { box, move } from "./primitives3d";
+import { bridgeSpans, type TownLayout } from "@levels/townLayout";
 import { SCENERY_GREY_FRAGMENT_DECL, SCENERY_GREY_GLSL, SCENERY_GREY_VERTEX, SCENERY_GREY_VERTEX_DECL } from "./sceneryGrey";
 
 /**
- * What the town plan draws besides its buildings: the gardens on empty land.
+ * What the town plan draws besides its buildings: the gardens on empty land,
+ * and a deck on each bridge (Section 23b) so the walkers who cross it are
+ * seen on a bridge, not on the water.
  *
  * Roads are not drawn here. They show through the street-map layer, in OSM's
  * own colours and widths, so they fade with its opacity slider and can never
@@ -13,10 +17,15 @@ import { SCENERY_GREY_FRAGMENT_DECL, SCENERY_GREY_GLSL, SCENERY_GREY_VERTEX, SCE
  * data is unchanged: road tiles still refuse buildings, and the walkers still
  * follow `roadPoints`.
  *
- * One instanced mesh (gardens). Built once: the town plan never changes
- * during a run.
+ * One instanced mesh (gardens) and one merged mesh (the few bridge decks).
+ * Built once: the town plan never changes during a run.
  */
 const ROAD_LIFT = 0.006;
+/** A deck's width: the walkers keep 0.06 to one side and are about 0.06 wide. */
+const DECK_WIDTH = 0.28;
+const DECK_THICKNESS = 0.03;
+/** How far a deck runs onto its bank past the shared edge, so it meets the road. */
+const DECK_OVERLAP = 0.08;
 
 function seeded(key: string): number {
   let h = 2166136261;
@@ -27,11 +36,22 @@ function seeded(key: string): number {
 export class TownDecor {
   readonly group = new THREE.Group();
   private readonly meshes: THREE.InstancedMesh[] = [];
+  /** The bridge decks, if any are drawn. */
+  private decks: THREE.Mesh | null = null;
   /** Wind (0–1), its direction and the clock, for the gardens' trees to bend in a storm (vertex shader; no per-frame CPU work). */
   private readonly sway = { uWind: { value: 0 }, uTime: { value: 0 }, uWindDir: { value: new THREE.Vector2(1, 0.3).normalize() } };
 
   /** `greyAt`: a scenery tile's grey level (render/sceneryGrey.ts), so the gardens there are as quiet as the ground. */
-  constructor(town: TownLayout, heightAt: (coord: AxialCoord) => number, greyAt: (key: string) => number = () => 0) {
+  /**
+   * `bridges`: each tile's terrain and the deck's height (the walkers walk a
+   * bridge at the land's height, `AmbientLife`). Without it no deck is drawn.
+   */
+  constructor(
+    town: TownLayout,
+    heightAt: (coord: AxialCoord) => number,
+    greyAt: (key: string) => number = () => 0,
+    bridges?: { terrainOf: (key: string) => string | undefined; deckY: number }
+  ) {
     const coordOf = (key: string): AxialCoord => {
       const [q, r] = key.split(",").map(Number);
       return { q, r };
@@ -79,6 +99,34 @@ export class TownDecor {
       gardens.instanceMatrix.needsUpdate = true;
       this.add(gardens);
     }
+
+    // Bridge decks: from each bank's edge across the bridge tile to its
+    // centre, with a low parapet each side and a pier under the middle.
+    const spans = bridges ? bridgeSpans(town, bridges.terrainOf) : new Map<string, string[]>();
+    if (bridges && spans.size > 0) {
+      const parts: THREE.BufferGeometry[] = [];
+      const top = bridges.deckY;
+      for (const [key, banks] of spans) {
+        const centre = axialToWorld(coordOf(key), 1);
+        for (const bank of banks) {
+          const end = axialToWorld(coordOf(bank), 1);
+          const angle = Math.atan2(end.x - centre.x, end.z - centre.z);
+          // Centre to the shared edge is half the distance between centres.
+          const length = Math.hypot(end.x - centre.x, end.z - centre.z) / 2 + DECK_OVERLAP;
+          const half = [
+            box(DECK_WIDTH, DECK_THICKNESS, length, "#b8ad99", top - DECK_THICKNESS),
+            move(box(0.025, 0.035, length, "#e8e1d0", top), DECK_WIDTH / 2 - 0.0125, 0, 0),
+            move(box(0.025, 0.035, length, "#e8e1d0", top), -DECK_WIDTH / 2 + 0.0125, 0, 0)
+          ].map((g) => g.translate(0, 0, length / 2).rotateY(angle).translate(centre.x, 0, centre.z));
+          parts.push(...half);
+        }
+        parts.push(move(box(0.12, top - DECK_THICKNESS, 0.12, "#8f8676", 0), centre.x, 0, centre.z));
+      }
+      const deck = new THREE.Mesh(mergeGeometries(parts), new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.85, vertexColors: true }));
+      deck.name = "town-bridges";
+      this.decks = deck;
+      this.group.add(deck);
+    }
   }
 
   /** The storm's wind (0–1) and where it blows from the sea toward, for the garden trees. */
@@ -107,7 +155,7 @@ export class TownDecor {
   }
 
   dispose(): void {
-    for (const mesh of this.meshes) {
+    for (const mesh of [...this.meshes, ...(this.decks ? [this.decks] : [])]) {
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
     }

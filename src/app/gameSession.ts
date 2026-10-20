@@ -538,7 +538,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           }
         : null;
     });
-    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord), (key) => greyLevels.get(key) ?? 0);
+    const tileTerrain = new Map(levelTiles.map((tile) => [`${tile.coord.q},${tile.coord.r}`, tile.terrainId]));
+    townDecor = new TownDecor(town, (coord) => terrain.heightAt(coord), (key) => greyLevels.get(key) ?? 0, {
+      terrainOf: (key) => tileTerrain.get(key),
+      deckY: terrain.height("land")
+    });
     scene.add(townDecor.group);
     ambientLife = new AmbientLife(town, levelTiles, (coord) => terrain.heightAt(coord), terrain.height("land"), prefersReducedMotionNow(), levelMap.focus);
     scene.add(ambientLife.group);

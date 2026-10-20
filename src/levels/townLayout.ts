@@ -257,6 +257,40 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
   return { buildings, gardens, roads, bridges, links };
 }
 
+/** Ground a walker may stand on; anywhere else only on a drawn bridge. */
+export const WALKABLE_TERRAIN: readonly string[] = ["land", "beach"];
+
+function adjacentKeys(a: string, b: string): boolean {
+  const [q, r] = a.split(",").map(Number);
+  return neighbors({ q, r }).some((n) => axialKey(n) === b);
+}
+
+/**
+ * The bridges that are drawn, each with its banks: a bridge tile linked to
+ * road on dry ground at two ends that are not beside each other (the same
+ * rule the map builder keeps a bridge by, `crossWater` in
+ * tools/mapgen/buildPanajiMap.ts). The deck runs from each bank across the tile.
+ */
+export function bridgeSpans(town: TownLayout, terrainOf: (key: string) => string | undefined): Map<string, string[]> {
+  const dry = (key: string): boolean => WALKABLE_TERRAIN.includes(terrainOf(key) ?? "");
+  const spans = new Map<string, string[]>();
+  for (const key of town.bridges) {
+    const banks = town.links.flatMap(([a, b]) => (a === key && dry(b) ? [b] : b === key && dry(a) ? [a] : []));
+    if (banks.some((a, i) => banks.slice(i + 1).some((b) => !adjacentKeys(a, b)))) spans.set(key, banks);
+  }
+  return spans;
+}
+
+/**
+ * The road links a walker may follow: both ends on dry ground, or a drawn
+ * bridge and one of its banks. Anything else would put a walker on water.
+ */
+export function walkerLinks(town: TownLayout, terrainOf: (key: string) => string | undefined): [string, string][] {
+  const dry = (key: string): boolean => WALKABLE_TERRAIN.includes(terrainOf(key) ?? "");
+  const spans = bridgeSpans(town, terrainOf);
+  return town.links.filter(([a, b]) => (dry(a) && dry(b)) || spans.get(a)?.includes(b) || spans.get(b)?.includes(a));
+}
+
 /** The angle (for `makeRotationY`) that turns a building's front (+z) toward `to` from `from`. */
 function facing(from: AxialCoord, to: AxialCoord): number {
   const a = axialToWorld(from, 1);
