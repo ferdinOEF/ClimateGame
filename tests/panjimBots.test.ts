@@ -22,10 +22,12 @@ describe("Panjim bots, 25 builds", () => {
   // Section 21.2: the flood (2.35) and the 2050 storm (3.8) are stronger, so building by eye on the forecast saved
   // 29-55% of the homes over a run (mean 41%). Section 22.4 (owner decisions): a storm counts against the homes still
   // standing when it hit, and the 2050 storm is 3.0: Casual saves 54-76% (mean 62%): the band is 50-80%.
-  it("building by eye on what the forecast shows saves more than half the homes (Casual 50-80%)", () => {
+  // Section 25.1: dunes and khazans pair up (two side by side hold like a seawall or a small dam), so a player building
+  // by eye beside the red homes saves a little more: one seed of twenty reaches 81%. The ceiling is 85%.
+  it("building by eye on what the forecast shows saves more than half the homes (Casual 50-85%)", () => {
     for (const run of casual) {
       expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.5);
-      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.8);
+      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.85);
     }
   });
 
