@@ -77,7 +77,7 @@ async function hudGroups(page: Page): Promise<{ group: string; cls: string; box:
     const out = [];
     const seen = new Set();
     const canvas = document.querySelector("canvas");
-    const board = ".map-labels, .map-label, .map-pins, .map-pin, .map-note, .build-floats, .build-float, .cone-label, .forecast-label, .hud-tooltip";
+    const board = ".map-labels, .map-label, .map-pins, .map-pin, .map-note, .cone-label, .forecast-label, .hud-tooltip";
     const groups = [
       ["top bar", ".panjim-clock"],
       ["? and menu", ".hud-chrome, .hud-corner.top-right, .hud-panel-settings"],

@@ -8,6 +8,7 @@
  *
  * Usage: npx tsx tools/stormSplit.ts   (Markdown to stdout)
  */
+import { shelterOf } from "../src/core/climate";
 import { ActionRun } from "../src/core/actionRun";
 import { GameState } from "../src/core/gameState";
 import { homesLost } from "../src/core/phaseObjectives";
@@ -51,7 +52,7 @@ const lz = run.zones!.keys(LANDFALL_ZONE);
 for (const challenge of run.schedule) {
   while (!run.finished && run.turnNumber < run.phaseStart(challenge)) endYear(run);
   const landfall = run.landfallOf(challenge);
-  const lost = [...homesLost(run.state, { kind: challenge.kind, strength: challenge.strength, landfall }, lz)].sort();
+  const lost = [...homesLost(run.state, { kind: challenge.kind, strength: challenge.strength, landfall, sheltered: shelterOf(challenge) }, lz)].sort();
   const split: Record<string, number> = {};
   for (const key of lost) split[locality(key)] = (split[locality(key)] ?? 0) + 1;
   const ordered = Object.entries(split).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([n, c]) => `${n} ${c}`).join(", ");

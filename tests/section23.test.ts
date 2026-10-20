@@ -73,6 +73,24 @@ describe("Section 23.1, the sheltered centre in the 2050 storm", () => {
     }
   });
 
+  it("chooses the 2050 objective afresh when a save from before Section 23 names a sheltered tile", () => {
+    const old = newRun("s23-restore", BOT_LEVEL, true);
+    while (!old.landed.has(c2.id)) passYear(old);
+    const snapshot = old.snapshot();
+    const inside = [...shelter][0];
+    const stale = { ...snapshot.prep![0], challengeId: c3.id, templateId: "model:stale", elementId: "mangrove", tiles: [inside] };
+    const restored = newRun("s23-restore", BOT_LEVEL, true);
+    restored.restore({ ...snapshot, prep: [stale], areas: [[c3.id, [inside, ...(snapshot.areas?.find(([id]) => id === c3.id)?.[1] ?? [])]]] });
+    for (const job of restored.prep) for (const key of job.tiles ?? []) expect(shelter.has(key), key).toBe(false);
+    expect(restored.prep.some((job) => job.templateId === "model:stale")).toBe(false);
+  });
+
+  it("never has sheltered tiles without the place Help names them by", () => {
+    for (const level of [BOT_LEVEL]) for (const challenge of level.climate?.challenges ?? []) {
+      if (challenge.shelteredTiles?.length) expect(challenge.shelteredPlace, challenge.id).toBeTruthy();
+    }
+  });
+
   it("is said in How to play as a game rule", () => {
     const html = panjimHelpHtml({ startYear: 2026, endYear: 2050, storms: run.schedule });
     expect(html).toContain("In this game, the 2050 storm does not reach the sheltered middle of Taleigao.");

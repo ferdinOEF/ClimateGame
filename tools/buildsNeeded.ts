@@ -9,6 +9,7 @@
  *
  * `npx tsx tools/buildsNeeded.ts`. Writes Markdown to stdout.
  */
+import { shelterOf } from "../src/core/climate";
 import { ActionRun } from "../src/core/actionRun";
 import { GameState } from "../src/core/gameState";
 import { generatePhaseObjective, homesLost } from "../src/core/phaseObjectives";
@@ -39,7 +40,7 @@ const lz = run.zones!.keys(LANDFALL_ZONE);
 const rows: string[] = [];
 for (const challenge of [...run.schedule]) {
   while (run.turnNumber < run.phaseStart(challenge)) passYear(run);
-  const storm = { kind: challenge.kind, strength: challenge.strength, landfall: run.landfallOf(challenge) };
+  const storm = { kind: challenge.kind, strength: challenge.strength, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge) };
   const area = [...homesLost(run.state, storm, lz)];
   const best = generatePhaseObjective({ state: run.state, zones: run.zones!, challenge, storm, landfallZoneTiles: lz, area, budget: DEPTH, places: BOT_LEVEL.prep!.places, localities: MAP.landmarks });
   const curve: number[] = [];

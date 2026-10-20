@@ -8513,7 +8513,7 @@ Undefended, the wind tips 1 of the first cyclone's 9 homes (8,7 at the river mou
 - **Exactness:** `tests/buildCards.test.ts` checks 20 random tiles on 3 boards (a Smart bot's run stopped in each phase). The card's number equals the storm's real toll without the build minus its toll with it.
 
 **13.2, feedback after a build:**
-- **The float:** "+N homes safe" rises from the tile just built for 1.5 s (`ui/panjim/buildFloat.ts`), with the card's number. "+0 homes safe" when it saved none. It stays still with calm motion or the system's reduce-motion setting.
+- **The float:** "+N homes safe" rises from the tile just built for 1.5 s (`ui/panjim/buildFloat.ts`), with the card's number. "+0 homes safe" when it saved none. It stays still with calm motion or the system's reduce-motion setting. *(Removed in Section 23.2, owner decision: a build just goes down.)*
 - **"Homes at risk N"** in the Outlook: the storm coming's toll on the board as it stands, live, from the same cache. It drops by the card's number after each build (browser checks: 9 → 1 → 0).
 
 **13.3, one slim HUD:**
@@ -8764,7 +8764,7 @@ Owner decisions. Panjim and the Tutorial; the Tutorial's level entry and map are
 **17.1, build cards without home counts** (reverses Section 13's "always show the number"):
 - No "Protects N homes here" pill and no "Best here" on any card. Each card keeps its name, icon and line; the "Not here: …" line stays (names never break across lines).
 - A fixed order: nature-based first (dune, pandanus, mangrove, khazan), then engineered (seawall, breakwater, small dam) (`DEFENCE_ORDER`).
-- The model's numbers still work underneath: the float after a build ("+3 homes safe"), the outside-the-area note, the result cards, the objectives, the bots and the preview-equals-resolution test.
+- The model's numbers still work underneath: the float after a build ("+3 homes safe"), the outside-the-area note, the result cards, the objectives, the bots and the preview-equals-resolution test. *(Section 23.2: the float is gone and the outside-the-area note gives no count; the numbers stay internal.)*
 - Help: "The numbers on the cards" is now "The cards" (a game rule): each card is a defence and what it does, nature-based first, and the objective card suggests nature-based ones. Its picture (`public/art/help-cards.jpg`) re-rendered without counts; no other picture changed.
 - Tutorial: Maya's cards line is now "Each card is a defence and what it does, nature's own first. The card bottom right says what to build, and where."; the cards' lines pulse instead of the number.
 
@@ -8830,3 +8830,11 @@ Owner decisions.
 - **22.2 Labels.** The cream pins and place labels at 11 px (the floor at 1366x768; 12 before), 30% less padding, a smaller dot and a lighter shadow, tighter again zoomed out; districts 12 px (14). A pin's name and a landmark's label keep clear of the tile they mark and of the storm arrows.
 - **22.3 Zoom.** By ratio, about 15% a notch toward the pointer, the same in every browser (`deltaMode`), a trackpad pinch the same, at most 3 notches an event: 18 notches furthest to nearest (41 before; about 1367 in Firefox). Keyboard zoom, new: + or = and −, held for a smooth zoom; Home or 0 the opening view. `src/render/zoomMath.ts`.
 - **22.4 Decisions.** Begin again asks first; repair is for defences only, a ruined home stays ruined; a storm counts against the homes still standing when it hit, with "Lost in earlier storms"; clear = a star in every storm and five of nine (final card, How to play); stars: none below 30%, one from 30%, two from 50%, three from 85%; the 2050 storm 3.8 → 3.0 so nature only does better than seawalls only over the run (the ceiling on nature defences' protection was why). Sensible play clears 100% and 2050 is not the hardest storm: listed as unmet in the QA report.
+
+## Section 23 — the sheltered centre in the 2050 storm, no pop-up after a build, a lighter QA gate — DONE (QA in docs/QA_REPORT.md)
+
+- **23.1 The sheltered centre** (owner decision; picture `docs/reference/sheltered.png`). In this game the 2050 storm (`c3-compound`) does not reach the sheltered middle of Taleigao: 134 land tiles, rows 16 to 28, stored as `shelteredTiles` (with `shelteredPlace`) on that challenge in `levels.json`. The hazard model (`StormInput.sheltered`, `core/hazardModel.ts`) leaves no water or wind on them at the end of each pass; the water elsewhere is worked out as before. `shelterOf()` (`core/climate.ts`) is passed by every caller: the resolver, the heat and Homes at risk (`computeExposure`), the storm record and its drawn water, the forecast cone, the objective (no row on a sheltered tile) and the bots. A save from before this section with a 2050 row on a sheltered tile chooses that objective afresh. The first two storms are unchanged. Help says it as a game rule: "In this game, the 2050 storm does not reach the sheltered middle of Taleigao."
+- **2050 numbers** on the opening board (nothing built): homes at risk 116 → 71 (the 45 in the shelter; nothing else moved); heat and cone tiles on the shelter 96 → 0. Bots, 200 seeds a style: no Section 22 target drifts, so the 2050 strength and the thresholds stay (tables in `docs/qa/section23/`).
+- **23.2 No pop-up after a build** (owner decision). The "+N homes safe" / "N more homes at risk" float is removed (`ui/panjim/buildFloat.ts`, its CSS and the controller call). The note beside a build outside the area no longer gives a count: "This is outside the area, so it doesn't count for the objective." The counts stay internal (result cards, objectives, bots, tests). No Help or Tutorial line mentioned the float.
+- **23.3 A lighter QA gate** (owner decision), in `CLAUDE.md`: the default gate every section, the full browser check only when the owner asks.
+

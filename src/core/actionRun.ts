@@ -399,15 +399,24 @@ export class ActionRun {
     this.combos = this.comboState.bonus;
     // A save from before the model chose objectives (Section 12) holds template rows, and one from before Section 17.2
     // may ask for an engineered defence (a seawall, a small dam): choose afresh, so every row is nature-based.
+    // And one from before Section 23.1 may name a tile the storm no longer reaches.
+    const shelterOfJob = (job: { challengeId: string }): ReadonlySet<string> | undefined => {
+      const challenge = this.schedule.find((c) => c.id === job.challengeId);
+      return challenge ? shelterOf(challenge) : undefined;
+    };
     const savedRowsFit =
       !!copy.prep &&
-      (!this.prepConfig?.model || copy.prep.every((job) => job.templateId.startsWith("model:") && (NATURE_BASED as readonly string[]).includes(job.elementId)));
+      (!this.prepConfig?.model || copy.prep.every((job) => job.templateId.startsWith("model:") && (NATURE_BASED as readonly string[]).includes(job.elementId))) &&
+      copy.prep.every((job) => !(job.tiles ?? []).some((key) => shelterOfJob(job)?.has(key)));
     if (savedRowsFit) {
       this.prep = copy.prep!;
       this.objective = null;
     } else this.refreshPrep();
     this.areas.clear();
-    for (const [id, area] of copy.areas ?? []) this.areas.set(id, area);
+    for (const [id, area] of copy.areas ?? []) {
+      const shelter = shelterOfJob({ challengeId: id });
+      this.areas.set(id, shelter ? area.filter((key) => !shelter.has(key)) : area);
+    }
     this.phaseBuilds.clear();
     for (const [id, builds] of copy.phaseBuilds ?? []) this.phaseBuilds.set(id, builds);
     this.objectivesComplete.clear();

@@ -1477,8 +1477,8 @@ export class PanjimController {
   }
 
   /**
-   * A build that counts for no open objective row gets one line saying so,
-   * with what it does protect (Section 12).
+   * A build that counts for no open objective row gets one line saying so
+   * (Section 12). No count of homes: never shown on a build (Section 23.2).
    */
   private outsideNote(coord: AxialCoord, elementId: string): string | null {
     const next = this.run.nextChallenge();
@@ -1487,10 +1487,7 @@ export class PanjimController {
     const key = `${coord.q},${coord.r}`;
     const open = this.run.prep.filter((job) => job.challengeId === next.id && !prepProgress(job, this.host.state, zones).done);
     if (open.length === 0 || open.some((job) => job.elementId === elementId && (job.tiles ?? []).includes(key))) return null;
-    const homes = this.run.protectsHere(next, coord, elementId);
-    return homes === 0
-      ? "This protects no homes, and it's outside the area, so it doesn't count for the objective."
-      : `This protects ${homes} ${homes === 1 ? "home" : "homes"}, but it's outside the area, so it doesn't count for the objective.`;
+    return "This is outside the area, so it doesn't count for the objective.";
   }
 
 

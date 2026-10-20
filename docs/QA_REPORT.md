@@ -1973,3 +1973,45 @@ Targets not met, plainly:
 - MINOR, fixed: Miramar Beach (a landmark label, not a pin) covered its own tile, and now keeps clear like the pins; a pin read its size every frame (a reflow), and could leave the window at the right edge; zoom keys worked under cards and menus (Home now scrolls a card); a wheel event could zoom 10 notches (3 at most now); a zoom dropped a pan still gliding; after Home a resize no longer reframed; the storm's "Homes lost" comment.
 - MINOR, noted, not changed: telemetry's `houses_total` and the bots' totals mean the homes standing now (earlier figures are not comparable); a saved run from before Section 22 is not offered at all: a save carries the board's fingerprint (every tile's terrain, `boardFingerprint`), which the fourth map round changed, so no old outcome is ever restored; repair is off for any worn building, but only a home can be worn, and only to ruined; "clear" decides the final card, not whether the run is recorded.
 - NIT: a 0-star card has the 1-star headline ("Your city took a heavy hit."). Begin again's confirm cannot fire twice, and the Tutorial (no one-star line) never gives 0 stars; both checked.
+
+# Section 23 — the sheltered centre in the 2050 storm, no pop-up after a build, a lighter QA gate
+
+Branch `section-23-sheltered-centre`, off master `6af6ffb` (Section 22's merge; tag `pre-section-23`, and `backup/pre-section-23` on GitHub). The new default gate (Section 23.3). Headless Chromium with software GL (SwiftShader). Evidence in `docs/qa/section23/`.
+
+**Merged early, at the owner's request,** as `c1a9a4d` (before the review and the second round of shots); the review's fixes follow in a second merge. Vercel refused both: "Deployment rate limited — retry in 24 hours". Production was not loaded (the network here refuses `climate-game-psi.vercel.app`, proxy 403).
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: tsc no errors; vitest 599 passed, 6 skipped (79 files) after the review's fixes; build clean. |
+| Preview equals resolution | `tests/exposure.test.ts` ("the heat equals the loss") and `tests/liveRisk.test.ts` pass with the shelter; `tests/section23.test.ts` checks heat, Homes at risk, cone (bands, area, meeting point), objective picks, the resolution, the drawn water and an old save, all clear of the 134 tiles in 2050. |
+| Bots, 200 seeds a style (mechanics touched) | Before and after in `docs/qa/section23/tuning-before.md` and `tuning-after.md`; no Section 22 target drifts, so nothing re-tuned (below). |
+| Targeted shots, 1366x768 and 1920x1080 (`tools/section23Shots.ts`) | RESULT_SHOTS23 |
+| Independent reviewer | No BLOCKER. MAJOR: the note beside a build outside the area still said "This protects N homes" (fixed: no count); docs not yet written (done). MINOR: a pre-Section-23 save in 2041–2049 could restore a 2050 row on a sheltered tile (fixed, with a test); two analysis tools built the 2050 storm without the shelter (fixed; `tools/panjimBots/sweep7.ts` left as it is: a Section 7 sweep of a 2.6 finale, not today's storm). NITs: dead `.build-float` selectors in two old tools (removed); a test that sheltered tiles always come with the place Help names (added). |
+| Not run (the full browser check, only on the owner's request) | walkthrough, test:labels, test:layout, test:maya, the other two sizes, the full playthroughs, axe, colour-blind copies. Real-GPU frame rates and Firefox/WebKit: not available here. |
+
+**The 2050 numbers** on the opening board, nothing built (`c3-compound`):
+
+| | Before | After |
+|---|---|---|
+| Homes at risk | 116 | 71 |
+| of them in the shelter | 45 | 0 |
+| Heat tiles / on the shelter | 636 / 96 | 540 / 0 |
+| Cone tiles / on the shelter | 532 / 96 | 436 / 0 |
+| Area to protect on the shelter | 45 | 0 |
+| Meeting point (surge and river) on the shelter | 17 | 0 |
+
+The 2030 and 2040 storms are identical before and after (8 and 65 homes at risk). The shelter is 134 land tiles holding 99 of the playable homes.
+
+**Bots, 200 seeds a style** (strengths 1.2 / 2.35 / 3.0, stars at 0.3 / 0.5 / 0.85):
+
+| Style | Clears, before → after | 2050 homes saved | Whole run homes saved | Stars of 9 |
+|---|---|---|---|---|
+| far (none) | 0% → 0% | 0% → 0% | 0% → 0% | 0.0 → 0.0 |
+| random | 0% → 0% | 32% → 39% | 25% → 25% | 1.0 → 1.3 |
+| nature only | 89% → 100% | 53% → 66% | 60% → 67% | 4.9 → 5.0 |
+| seawalls only | 0% → 0% | 100% → 100% | 47% → 31% | 6.0 → 6.0 |
+| smart (sensible) | 100% → 100% | 96% → 99% | 88% → 87% | 7.5 → 7.5 |
+| best | 100% → 100% | 100% → 100% | 97% → 96% | 9.0 → 9.0 |
+| guided | 100% → 100% | 64% → 88% | 67% → 78% | 7.1 → 7.8 |
+
+Section 22's targets: none 0% (met), random under 10% (met), best 100% (met), nature-only at least as good as seawalls-only over the run (homes saved 67% against 31%, met; stars 5.0 against 6.0, still not) and better in the flood (72% against 0%, met). Still unmet, as in Section 22: sensible play clears 100%, not 60–80%, and mostly takes 3 stars in 2050. Seawalls-only's whole-run share falls because the 45 sheltered homes no longer count in its perfect 2050.
