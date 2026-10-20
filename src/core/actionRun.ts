@@ -1,7 +1,7 @@
 import { axialKey, type AxialCoord } from "./hex";
 import { ELEMENT_BY_ID, NATURE_BASED } from "./elements";
 import type { ElementInstance, GameState } from "./gameState";
-import { buildSchedule, challengeStrength, yearsUntil, type ClimateConfig, type ScheduledChallenge } from "./climate";
+import { buildSchedule, challengeStrength, shelterOf, yearsUntil, type ClimateConfig, type ScheduledChallenge } from "./climate";
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
@@ -294,7 +294,7 @@ export class ActionRun {
         state: this.state,
         zones: this.zones,
         challenge: next,
-        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next) },
+        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next), sheltered: shelterOf(next) },
         landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
         area: this.exposureFor(next)?.housesAtRisk ?? [],
         // The phase's own builds (5, 10, 10): set as its storm lands, the clock still reads the year before.
@@ -470,7 +470,8 @@ export class ActionRun {
       this.houseStars,
       this.houseRule,
       undefined,
-      this.landfallOf(challenge)
+      this.landfallOf(challenge),
+      shelterOf(challenge)
     );
     return { challenge, strength: challenge.strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
   }
@@ -512,7 +513,8 @@ export class ActionRun {
       combos: computeCombos(trial).bonus,
       houseStars: this.houseStars,
       houseRule: this.houseRule,
-      landfallSites: cache.site === null ? null : [cache.site]
+      landfallSites: cache.site === null ? null : [cache.site],
+      sheltered: shelterOf(challenge)
     }).housesAtRisk.length;
     const saved = cache.before - after;
     cache.trials.set(trialKey, saved);
@@ -542,7 +544,8 @@ export class ActionRun {
       houseRule: this.houseRule,
       houseStars: this.houseStars,
       withoutDefences,
-      landfallSites: site === null ? null : [site]
+      landfallSites: site === null ? null : [site],
+      sheltered: shelterOf(challenge)
     });
   }
 
@@ -576,7 +579,7 @@ export class ActionRun {
     if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
     const lost = this.exposureFor(challenge)?.housesAtRisk ?? [];
     const landfallTiles = this.zones.keys(LANDFALL_ZONE);
-    return forecastCone(challenge.id, this.state, this.board(), { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge) }, lost, {
+    return forecastCone(challenge.id, this.state, this.board(), { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge), sheltered: shelterOf(challenge) }, lost, {
       landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
       trackInto: this.ownAreas.get(challenge.id)?.tiles,
       trackEnd: this.ownAreaEnd(challenge.id)
@@ -760,7 +763,8 @@ export class ActionRun {
         combos: this.combos,
         houseStars: this.houseStars,
         houseRule: this.houseRule,
-        landfall: this.landfallOf(challenge)
+        landfall: this.landfallOf(challenge),
+        sheltered: shelterOf(challenge)
       });
       this.outcomes.set(challenge.id, record.outcome);
       this.stormRecords.set(challenge.id, record);

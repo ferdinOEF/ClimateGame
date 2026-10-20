@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { shelterOf } from "../src/core/climate";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { buildHeatView, hazardsOf } from "../src/core/exposure";
 import { homesLost } from "../src/core/phaseObjectives";
@@ -37,7 +38,7 @@ describe("Show risk, live", () => {
       expect(hot.length, `${run.year}`).toBe(run.homesAtRisk(next));
       for (const key of hot) expect(run.state.isScenery(key), key).toBe(false);
       // The same homes the storm would take if it came on this board now.
-      const lost = homesLost(run.state, { kind: next.kind, strength: next.strength, landfall: run.landfallOf(next) }, zoneTiles.length ? zoneTiles : undefined);
+      const lost = homesLost(run.state, { kind: next.kind, strength: next.strength, landfall: run.landfallOf(next), sheltered: shelterOf(next) }, zoneTiles.length ? zoneTiles : undefined);
       expect(hot, `${run.year}`).toEqual([...lost].sort());
       expect(new Set(now.housesAtRisk)).toEqual(lost);
       // One year on, with a build on the storm's path where one fits.

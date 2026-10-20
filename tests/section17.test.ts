@@ -23,8 +23,8 @@ describe("17.1 the build cards", () => {
     const controller = readFileSync("src/app/panjimController.ts", "utf8");
     for (const gone of ["build-card-pill", "build-card-best", "Best here"]) expect(popover, gone).not.toContain(gone);
     expect(controller).not.toMatch(/cardPill|sortCards|protects: saved/);
-    // The model's number still works underneath: the float after a build and the bots use it.
-    expect(controller).toContain("this.run.homesSavedBy(next, coord, elementId)");
+    // The model's number still works underneath (Section 23.2: never shown on a build): the bots use it.
+    expect(readFileSync("src/core/actionRun.ts", "utf8")).toContain("homesSavedBy(challenge: ScheduledChallenge, coord: AxialCoord, elementId: string)");
   });
 
   it("are not described as numbers to pick the biggest of, in Help or by Maya", () => {

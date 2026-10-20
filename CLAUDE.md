@@ -59,19 +59,24 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
 
 Record the evidence in `docs/QA_REPORT.md` and update `docs/PROGRESS.md`.
 
-- `tsc --noEmit`, `npm run test`, `npm run build` clean; zero console errors.
-- `npm run walkthrough`, `test:labels`, `test:layout`, `test:maya` pass.
-- Screenshots at 1366x768, 1920x1080 and 2560x1440. Look at them and fix what is
-  wrong. Make grayscale and deuteranopia copies of the key shot.
-- Bots over 20 seeds if mechanics or balance are touched; the
-  preview-equals-resolution test passes.
-- axe: no new serious or critical issues.
-- An independent reviewer subagent checks the diff and screenshots; fix every
-  BLOCKER and MAJOR.
-- Say plainly what could not be run (e.g. real-GPU frame rates, Firefox/WebKit:
-  past runs were Chromium with software GL only).
-- After the merge: load production, check the console, and confirm the deployed
-  commit matches the merge commit. If the network does not allow it, say so.
+**The default gate, every section** (Section 23.3, owner decision):
+
+- `tsc --noEmit`, `npm run test` and `npm run build` clean.
+- The preview-equals-resolution test passes.
+- Bots over 20 seeds if mechanics or balance are touched.
+- A few targeted screenshots of what changed, at 1366x768 and 1920x1080. Look at
+  them and fix what is wrong.
+- Zero console errors in those runs.
+- An independent reviewer subagent checks the diff; fix every BLOCKER and MAJOR.
+- Say plainly what could not be run.
+- After the merge: confirm Vercel deployed the merge commit, and load production if
+  the network allows it (say so if not).
+
+**The full browser check** runs ONLY when the owner explicitly asks for it ("full QA"
+or "full browser check"): `npm run walkthrough`, `test:labels`, `test:layout`,
+`test:maya`, screenshots at all four sizes (1280x600, 1366x768, 1920x1080,
+2560x1440), the full playthroughs, axe (no new serious or critical issues) and the
+grayscale and deuteranopia copies of the key shot.
 
 ## Conventions
 

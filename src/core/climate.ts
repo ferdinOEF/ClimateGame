@@ -25,6 +25,20 @@ export interface ChallengeDef {
   strength: number;
   /** Cyclone and compound: the open-sea tile it comes ashore at, "q,r" (core/hazardModel.ts). */
   landfall?: string;
+  /**
+   * Land tiles this storm never reaches, as [q, r] (Section 23.1, a game
+   * rule): the sheltered middle of Taleigao in the 2050 storm. No water or
+   * wind there, so no home there is lost, at risk or in its objective.
+   */
+  shelteredTiles?: [number, number][];
+  /** What the player is told the sheltered tiles are, after "does not reach": "the sheltered middle of Taleigao". */
+  shelteredPlace?: string;
+}
+
+/** A storm's sheltered tiles as "q,r" keys, or undefined when it has none. */
+export function shelterOf(challenge: Pick<ChallengeDef, "shelteredTiles">): ReadonlySet<string> | undefined {
+  const tiles = challenge.shelteredTiles;
+  return tiles && tiles.length > 0 ? new Set(tiles.map(([q, r]) => `${q},${r}`)) : undefined;
 }
 
 export interface ClimateConfig {

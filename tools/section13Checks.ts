@@ -12,8 +12,8 @@
  *     year chip and the Outlook; how long the numbers took (under ~50 ms);
  *   - screenshots of each menu.
  * At 1920x1080 also:
- *   - three builds: each brings a "+N homes safe" float with the card's N,
- *     and "Homes at risk" drops by N;
+ *   - three builds: none brings a pop-up (Section 23.2), and "Homes at risk"
+ *     drops by the model's N;
  *   - none of the removed HUD items is in the page (Ready gauge, Sea +cm, the
  *     meters, the Status copy of the objectives, the landfall tag, the
  *     Field Guide's second tally); the clock says "Cyclone in N builds" and
@@ -211,12 +211,11 @@ async function main(): Promise<void> {
           const n = await val<number>(page, `r.homesSavedBy(r.nextChallenge(), { q: ${q}, r: ${r} }, ${JSON.stringify(elementId)})`);
           await page.evaluate(`window.__panjimForTest.build({ q: ${q}, r: ${r} }, ${JSON.stringify(elementId)})`);
           await page.waitForTimeout(250);
-          const floats = (await page.evaluate("window.__buildFloatForTest.texts")) as string[];
-          const want = `+${n} ${n === 1 ? "home" : "homes"} safe`;
-          if (floats.length > 0 && !fs.existsSync(path.join(OUT, "float-1920x1080.jpg"))) await page.screenshot({ path: path.join(OUT, "float-1920x1080.jpg"), type: "jpeg", quality: 82 });
+          // Section 23.2: no "+N homes safe" rises from the tile any more.
+          const floats = (await page.evaluate("document.querySelectorAll('.build-float').length")) as number;
           await page.waitForTimeout(900);
           const after = await risk(page);
-          check(floats.includes(want), `13.2: ${elementId} at ${key}: the float says "${want}" (${floats.join(" | ") || "none"})`);
+          check(floats === 0, `23.2: ${elementId} at ${key}: no pop-up over the tile after the build`);
           check(after === before - n, `13.2: Homes at risk ${before} → ${after} (the card said ${n})`);
         }
 

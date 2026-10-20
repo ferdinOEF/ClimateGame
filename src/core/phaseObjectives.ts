@@ -114,6 +114,8 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
   for (const key of [...state.placed.keys()].sort()) {
     if (!near(key)) continue;
     if (input.stretch?.only && !input.stretch.tiles.has(key)) continue;
+    // Never a row on a tile the storm does not reach (Section 23.1).
+    if (storm.sheltered?.has(key)) continue;
     const [q, r] = key.split(",").map(Number);
     for (const elementId of ids) if (state.canBuild({ q, r }, elementId)) candidates.push({ key, elementId });
   }

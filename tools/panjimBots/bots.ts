@@ -27,6 +27,7 @@ import { computeWater, damageAt, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE } from
 import { HEAT_LEAD_YEARS } from "../../src/core/exposure";
 import { landmarkDamageSoFar } from "../../src/core/landmarkDamage";
 import type { ChallengeKind, ScheduledChallenge } from "../../src/core/climate";
+import { shelterOf } from "../../src/core/climate";
 import { computePanjimIndex } from "../../src/core/panjimIndex";
 import { hashSeed, Rng } from "../../src/core/rng";
 import { LEVEL_BY_ID, type LevelDef } from "../../src/levels/levels";
@@ -400,7 +401,7 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
   const board = run.state.clone();
   if (extra) board.elements.set(extra.key, { elementId: extra.elementId, builtOnTurn: run.state.turn, degradeAmount: 0, floodBufferFilled: 0 });
   const site = run.landfallOf(challenge);
-  const water = computeWater(board, { kind: challenge.kind, strength: challenge.strength, landfall: site }, { combos: computeCombos(board).bonus, landfallZoneTiles: ZONES.keys(LANDFALL_ZONE) });
+  const water = computeWater(board, { kind: challenge.kind, strength: challenge.strength, landfall: site, sheltered: shelterOf(challenge) }, { combos: computeCombos(board).bonus, landfallZoneTiles: ZONES.keys(LANDFALL_ZONE) });
   let lost = 0;
   let excess = 0;
   for (const [key, inst] of board.elements) {

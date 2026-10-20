@@ -149,8 +149,6 @@ export interface PanjimHost {
   showPins: (pins: { name: string; q: number; r: number }[]) => void;
   /** The outline, pins and bottom prompt on or off (off while a storm or its result cards are on screen). */
   setGuidanceVisible: (visible: boolean) => void;
-  /** "+3 homes safe" rising from a tile just built (Section 13.2). */
-  floatAt: (coord: AxialCoord, text: string, tone: "good" | "zero" | "bad") => void;
   /** Draws the warning heat (an empty list clears it). */
   /** The risk heat; `warning`: in the warning years before the storm (the heat then takes over from the area's outline). */
   showHeat: (tiles: HeatViewTile[], warning: boolean) => void;
@@ -1261,14 +1259,11 @@ export class PanjimController {
     // Worked out on the board before the build, said only once the build went through.
     const buildable = this.host.state.canBuild(coord, elementId);
     const outside = buildable ? this.outsideNote(coord, elementId) : null;
-    const next = this.run.nextChallenge();
-    // The build menu's own number (the same cache), for the float over the tile.
-    const saved = buildable && next ? this.run.homesSavedBy(next, coord, elementId) : null;
+    // No pop-up over the tile after a build (Section 23.2, owner decision): it just goes down.
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
     // Beside its tile for about three seconds (Section 16 B6), not in a banner across the screen.
     if (outside) this.host.noteAt(coord, outside, 3000);
-    if (saved !== null) this.host.floatAt(coord, floatText(saved), saved > 0 ? "good" : saved < 0 ? "bad" : "zero");
     this.lastTurnEnded = turn;
     this.host.placeElement(coord, elementId);
     this.host.telemetry.action("build", 1);
@@ -2052,12 +2047,6 @@ function prefersReducedMotion(): boolean {
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-/** "+3 homes safe", "+0 homes safe", "2 more homes at risk". */
-export function floatText(saved: number): string {
-  if (saved < 0) return `${-saved} more ${saved === -1 ? "home" : "homes"} at risk`;
-  return `+${saved} ${saved === 1 ? "home" : "homes"} safe`;
 }
 
 /** What the clock names the next storm as: "Cyclone in 3 builds". */

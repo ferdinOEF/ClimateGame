@@ -65,6 +65,8 @@ export interface StormArgs {
   houseRule?: HouseRule;
   /** Where a cyclone comes ashore (index into the board's landfall sites). */
   landfall?: number | null;
+  /** Tiles the storm never reaches (Section 23.1, `shelterOf`). */
+  sheltered?: ReadonlySet<string>;
 }
 
 function isBuilding(state: GameState, key: string): boolean {
@@ -90,7 +92,7 @@ function resolveWithField(state: GameState, args: StormArgs): { outcome: Challen
   const resilienceUnit = args.houseRule?.resilience ?? args.strengthUnit;
   // The sea's and the river's own levels, for the water drawn on them (the same model, before the board changes).
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
-  const levels = computeWater(state, { kind: args.kind, strength: args.intensity / args.strengthUnit, landfall: args.kind === "flood" ? null : (args.landfall ?? null) }, { combos: args.combos, landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined });
+  const levels = computeWater(state, { kind: args.kind, strength: args.intensity / args.strengthUnit, landfall: args.kind === "flood" ? null : (args.landfall ?? null), sheltered: args.sheltered }, { combos: args.combos, landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined });
   const outcome = resolveChallenge(
     state,
     args.zones,
@@ -112,7 +114,8 @@ function resolveWithField(state: GameState, args: StormArgs): { outcome: Challen
       sample[hazard] = Math.max(sample[hazard] ?? 0, Math.min(value, VISUAL_DEPTH_CAP * resilienceUnit));
       samples.set(key, sample);
     },
-    args.landfall
+    args.landfall,
+    args.sheltered
   );
   const frontStrength: { cyclone?: number; flood?: number } = {};
   // The swollen sea and river, in house-loss depths, capped like the tiles.
@@ -142,7 +145,7 @@ export function housesLostWithout(before: GameState, args: StormArgs, removed: s
   if (removed) for (const [key, inst] of [...copy.elements]) if (inst.elementId === removed) copy.elements.delete(key);
   // A copy's combo bonuses are its own: removing one kind breaks the combos it was part of.
   const combos = args.combos ? computeCombos(copy).bonus : undefined;
-  return resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, combos, args.houseStars, args.houseRule, undefined, args.landfall);
+  return resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, combos, args.houseStars, args.houseRule, undefined, args.landfall, args.sheltered);
 }
 
 /**
