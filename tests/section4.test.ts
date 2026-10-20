@@ -127,12 +127,15 @@ describe("the finale is survivable", () => {
   // 32,4 river; 26,15 east of the line, now scenery): 108, 106 and 67 undefended, cut 9%, 10% and 19% (mean 13%).
   // Smart still saves most homes in the storms' paths (docs/qa/section19/bots-after.md), so the mechanics were not
   // retuned. Pinned: 9% each, 12% mean.
-  it("loses fewer houses when defended (at least 9% at each landfall, at least 12% on average)", () => {
+  // Section 22.1: the owner's fourth round turned land by the Mandovi to water (14,7 and 26,6 lose their homes; 15,8
+  // and 16,7 are estuary, no longer build sites): 104, 103 and 64 undefended, cut 8.7%, 10.7% and 17.2% (mean 12%).
+  // Pinned: 8% each, 12% mean.
+  it("loses fewer houses when defended (at least 8% at each landfall, at least 12% on average)", () => {
     for (const row of rows) {
       expect(row.undefended, `${row.fraction}`).toBeGreaterThan(20);
       expect(row.builds).toBe(BUILDS);
       const fewer = 1 - row.defended / row.undefended;
-      expect(fewer, JSON.stringify(row)).toBeGreaterThanOrEqual(0.09);
+      expect(fewer, JSON.stringify(row)).toBeGreaterThanOrEqual(0.08);
       expect(fewer, JSON.stringify(row)).toBeLessThanOrEqual(0.5);
     }
     const mean = rows.reduce((s, r) => s + (1 - r.defended / r.undefended), 0) / rows.length;

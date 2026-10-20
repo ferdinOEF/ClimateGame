@@ -39,8 +39,9 @@ if (childJobs !== undefined) {
     const r = persona.startsWith("only:") ? runBestOnly(persona.slice(5), seed) : runBot(persona, seed);
     out.push({ persona, seed: r.seed, stars: r.stars, houses: r.houses, landmarksLost: r.landmarksLost, built: r.built });
   }
-  console.log(JSON.stringify(out));
-  process.exit(0);
+  // Exit only once the output is written: a large result piped to the parent is otherwise cut short.
+  process.stdout.write(`${JSON.stringify(out)}\n`, () => process.exit(0));
+  await new Promise(() => undefined);
 }
 
 const items: string[] = [];

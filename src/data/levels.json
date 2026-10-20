@@ -143,7 +143,7 @@
           "name": "Cyclone and flood",
           "kind": "compound",
           "year": 2050,
-          "strength": 3.8,
+          "strength": 3.0,
           "landfall": "2,12"
         }
       ]
@@ -277,8 +277,8 @@
       }
     },
     "houseStars": {
-      "three": 0.8,
-      "two": 0.55,
+      "three": 0.85,
+      "two": 0.5,
       "one": 0.3
     }
   }
