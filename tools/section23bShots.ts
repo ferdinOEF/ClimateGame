@@ -122,11 +122,14 @@ for (const place of PLACES) {
       const centre = c as { q: number; r: number };
       const life = (window as unknown as { __ambientLifeForTest: () => { graph: Map<string, string[]>; walkers: { from: { q: number; r: number }; to: { q: number; r: number }; t: number; active: boolean; shown: number }[] } }).__ambientLifeForTest();
       const keys = [...life.graph.keys()].filter((k) => (life.graph.get(k) ?? []).length > 0);
-      const dist = (k: string): number => {
-        const [q, r] = k.split(",").map(Number);
-        return (Math.abs(q - centre.q) + Math.abs(r - centre.r) + Math.abs(q + r - centre.q - centre.r)) / 2;
-      };
-      keys.sort((a, b) => dist(a) - dist(b));
+      // Hex distance to the place (written inline: a named helper here would not survive the page boundary).
+      const far = new Map(
+        keys.map((k) => {
+          const [q, r] = k.split(",").map(Number);
+          return [k, (Math.abs(q - centre.q) + Math.abs(r - centre.r) + Math.abs(q + r - centre.q - centre.r)) / 2];
+        })
+      );
+      keys.sort((a, b) => far.get(a)! - far.get(b)!);
       const used: string[] = [];
       for (let i = 0; i < 4 && i < life.walkers.length; i++) {
         const start = keys[i % Math.min(3, keys.length)];
