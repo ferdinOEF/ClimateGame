@@ -26,6 +26,7 @@
     "mapgen:geocode": "tsx tools/mapgen/geocodePanaji.ts",
     "mapgen:basemap": "tsx tools/mapgen/fetchPanajiBasemap.ts",
     "bots": "tsx tools/panjimBots/index.ts",
+    "bestplan": "tsx tools/bestPlan/index.ts",
     "verify:maya": "tsx tools/verifyMaya.ts",
     "test:layout": "tsx tools/mayaLayoutTest.ts",
     "test:labels": "tsx tools/labelOverlapTest.ts",
