@@ -23,7 +23,7 @@ fs.mkdirSync(OUT, { recursive: true });
 /** Everything that is not the board: hidden for the board-only pictures. */
 const HIDE_HUD = `
   .hud-chrome, .panjim-clock, .hud-panel, .hud-panels, .objectives-panel, .get-ready, .map-corner, .maya, .maya-figure-wrap, .maya-bubble,
-  .panjim-toggles, .empty-prompt, .guidance-line, .map-labels, .map-label, .map-pin, .map-pins, .build-float, .hud-tooltip, .tutorial-hint,
+  .panjim-toggles, .empty-prompt, .guidance-line, .map-labels, .map-label, .map-pin, .map-pins, .hud-tooltip, .tutorial-hint,
   .area-protected, .banner, .era-banner, .toast, [class*="field-guide"], .back-button, .help-button { visibility: hidden !important; }
 `;
 

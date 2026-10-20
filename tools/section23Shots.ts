@@ -48,6 +48,12 @@ const closeCards = async (): Promise<void> => {
     await page.waitForTimeout(900);
   }
 };
+/** Frames the sheltered middle of Taleigao (rows 16 to 28), wide enough for all of it and the coast beside it. */
+const frameShelter = async (): Promise<void> => {
+  await page.evaluate(`window.__panjimForTest.host.focusCamera({ q: -1, r: 22 }, true, 1.6)`);
+  await page.waitForTimeout(4000);
+  await page.mouse.move(2, H - 2);
+};
 /** What the 2050 storm shows on the sheltered tiles: heat, cone bands, area and homes at risk. */
 const onShelter = (): Promise<Record<string, number>> =>
   page.evaluate(`(() => {
@@ -90,6 +96,8 @@ if (spot) {
     if (k === 1) await shot("build-no-popup");
   }
   const text = (await page.evaluate("document.body.innerText")) as string;
+  results.note = (await page.evaluate("(() => { const n = document.querySelector('.map-note'); return n ? n.textContent : null; })()")) as string | null;
+  check(!/\d+ homes?|no homes/.test(String(results.note ?? "")), `23.2: the note beside the build gives no count of homes (${JSON.stringify(results.note)})`);
   results.build = { at: spot, floats, homesSafeText: /homes? safe|more homes? at risk/.test(text) };
   check(floats === 0 && !/homes? safe/.test(text), "23.2: no pop-up and no '+N homes safe' after the build");
 }
@@ -100,9 +108,7 @@ await closeCards();
 await scenario("past-storm");
 await closeCards();
 await page.waitForTimeout(1500);
-await page.keyboard.press("Home");
-await page.waitForTimeout(3500);
-await page.mouse.move(2, H - 2);
+await frameShelter();
 const cone = await onShelter();
 results.cone = cone;
 await shot("cone-2050");
@@ -111,9 +117,7 @@ check(cone.next === ("c3-compound" as never) && cone.coneBands === 0 && cone.con
 // ---- 23.1 the 2050 heat: the last two years before it ------------------------------------------------------------
 await scenario("heat-2");
 await page.waitForTimeout(1500);
-await page.keyboard.press("Home");
-await page.waitForTimeout(3500);
-await page.mouse.move(2, H - 2);
+await frameShelter();
 const heat = await onShelter();
 results.heat = heat;
 const heatTiles = (await page.evaluate("window.__panjimForTest.run.homesAtRisk(window.__panjimForTest.run.nextChallenge())")) as number;
@@ -123,8 +127,7 @@ check(heat.heat === 0 && heat.homesAtRisk === 0, `23.1: the 2050 heat and Homes 
 
 // ---- 23.1 the 2050 storm's water, held mid-storm -----------------------------------------------------------------
 await scenario("storm-16");
-await page.keyboard.press("Home");
-await page.waitForTimeout(4000);
+await frameShelter();
 await shot("storm-2050");
 const drawn = (await page.evaluate(`(() => {
   const run = window.__panjimForTest.run;

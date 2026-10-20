@@ -163,6 +163,15 @@ A Panjim 2050 storm is decided once, when it lands, and then shown.
 **Checks:** `tests/hazardDepth.test.ts`, plus the browser comparison in
 `tools/qaFunctional.ts`.
 
+**Sheltered tiles** (Section 23.1, a game rule): a challenge may list
+`shelteredTiles` in `levels.json` (the 2050 storm: the sheltered middle of
+Taleigao). `shelterOf()` (`core/climate.ts`) turns them into
+`StormInput.sheltered`; `core/hazardModel.ts` leaves no water or wind on
+them. Every caller that resolves, previews or draws a storm passes it (the
+resolver, `computeExposure`, `resolveStorm`, `forecastCone`, the objective,
+the bots), so the preview still equals the resolution
+(`tests/section23.test.ts`).
+
 ## Navigation and history
 
 `AppShell` keeps the current screen in a field, and for a long time that was
