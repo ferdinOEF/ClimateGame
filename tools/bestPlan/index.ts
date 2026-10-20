@@ -7,11 +7,11 @@
  * the 2040 flood and 10 before the 2050 storm.
  *
  * BEAM SEARCH over whole phases. Each step is one year. For every plan in
- * the beam, every legal action (each defence on each free tile it fits, and
- * each repair) is weighed exactly: the board with it is scored against every
- * storm still to come (`assess`): the next storm exactly, the later ones on
- * the same board. So a build before 2030 is worth what it saves in 2030,
- * 2040 and 2050 together. The best children by each goal stay in the beam
+ * the beam, every build and repair the game allows (each defence on each
+ * free tile it fits, and each worn defence) is weighed exactly: the board
+ * with it goes through the game's own resolver for every storm still to
+ * come, one after the other (`assess`), as if nothing more were built. So a
+ * build before 2030 is worth what it saves in 2030, 2040 and 2050 together. The best children by each goal stay in the beam
  * (duplicates, the same builds in another order within a phase, merged).
  * When a phase's last build goes down its storm resolves through the real
  * run, and from then on that storm counts as it went.
@@ -29,13 +29,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { BOT_LEVEL, newRun } from "../panjimBots/bots";
-import { computeWater, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE } from "../../src/core/hazardModel";
-import { computeCombos } from "../../src/core/combos";
-import { shelterOf } from "../../src/core/climate";
 import { ELEMENT_BY_ID } from "../../src/core/elements";
 import { clearsLevel } from "../../src/core/panjimIndex";
-import { ZoneIndex } from "../../src/core/zones";
-import { actionKey, assess, canonical, goal1, goal2, legalActions, MAP, placeName, replay, trialBoard, type Assessment, type PlanAction } from "./plan";
+import { actionKey, assess, canonical, goal1, goal2, legalActions, placeName, previewLost, replay, trialBoard, type Assessment, type PlanAction } from "./plan";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split("=") as [string, string]));
 const num = (key: string, fallback: number): number => (args.has(key) ? Number(args.get(key)) : fallback);
@@ -112,21 +108,24 @@ function select(children: Scored[]): Scored[] {
   return [...chosen.values()];
 }
 
-const fmt = (s: Assessment): string => `${s.stars}/9 stars, ${s.lost} homes lost [${s.storms.map((x) => `${x.stars}★ ${x.saved}/${x.total}${x.exact ? "" : "~"}`).join(", ")}]`;
+const fmt = (s: Assessment): string => `${s.stars}/9 stars, ${s.lost} homes lost [${s.storms.map((x) => `${x.stars}★ ${x.saved}/${x.total}`).join(", ")}]`;
 const elapsed = (): string => `${((Date.now() - started) / 1000).toFixed(0)} s`;
 
 console.log(`Best plan for Play Panjim: beam ${beamWidth}, ${keep} children kept a plan by each goal, ${jobs} child processes. Storms after builds ${phaseEnds.join(", ")}.`);
 let beam: Scored[] = [{ actions: [], score: assess(opening, opening.state) }];
 console.log(`opening board: ${fmt(beam[0].score)}`);
-for (let step = 1; step <= totalYears; step++) {
-  beam = select(await expand(beam.map((b) => b.actions)));
-  const b1 = [...beam].sort((a, b) => goal1(a.score, b.score))[0];
-  const b2 = [...beam].sort((a, b) => goal2(a.score, b.score))[0];
-  const storm = phaseEnds.includes(step) ? ` (storm ${phaseEnds.indexOf(step) + 1} resolves)` : "";
-  console.log(`year ${step}/${totalYears} (${startYear + step - 1})${storm}, ${elapsed()}: goal 1 best ${fmt(b1.score)}; goal 2 best ${fmt(b2.score)}`);
+try {
+  for (let step = 1; step <= totalYears; step++) {
+    beam = select(await expand(beam.map((b) => b.actions)));
+    const b1 = [...beam].sort((a, b) => goal1(a.score, b.score))[0];
+    const b2 = [...beam].sort((a, b) => goal2(a.score, b.score))[0];
+    const storm = phaseEnds.includes(step) ? ` (storm ${phaseEnds.indexOf(step) + 1} resolves)` : "";
+    console.log(`year ${step}/${totalYears} (${startYear + step - 1})${storm}, ${elapsed()}: goal 1 best ${fmt(b1.score)}; goal 2 best ${fmt(b2.score)}`);
+  }
+} finally {
+  fs.rmSync(tmp, { recursive: true, force: true });
 }
 const searchSeconds = (Date.now() - started) / 1000;
-fs.rmSync(tmp, { recursive: true, force: true });
 
 // ---- the result: every finished plan replayed through the real run -------------------------------------------------
 
@@ -148,26 +147,41 @@ const finals = beam.map((b) => play(b.actions));
 const byGoal1 = [...finals].sort((a, b) => b.stars - a.stars || a.lost - b.lost)[0];
 const byGoal2 = [...finals].sort((a, b) => a.lost - b.lost || b.stars - a.stars)[0];
 
-/** Why the homes the plan loses were lost: past the defences' ceiling, or within reach but out of builds. */
-function blockers(p: Played): { id: string; lost: number; pastCeiling: number; withinReach: number }[] {
-  const zones = new ZoneIndex(MAP.zones);
-  const landfallTiles = zones.keys(LANDFALL_ZONE);
-  const ceiling = HAZARD_MODEL.defence.engineeredMaxProtectionM ?? HAZARD_MODEL.defence.maxProtectionM;
-  return p.storms.map((s, i) => {
-    // The homes standing before the storm are those after the phase's last-but-one build (a build adds none).
+/**
+ * What stops the plan saving the homes it loses, tested with the game's own
+ * preview: on the board just before each storm that took homes, up to
+ * EXTRA_BUILDS more builds are added, each the one (of every build the game
+ * allows there) that saves the most. If they save every home, the limit is
+ * the number of builds before that storm; if not, those homes are lost even
+ * with that many more.
+ */
+const EXTRA_BUILDS = 3;
+function blockers(p: Played): { id: string; lost: number; homes: string[]; extraBuildsToSaveAll: number | null; savedWithExtra: number }[] {
+  return p.storms.flatMap((s, i) => {
+    if (s.lost === 0) return [];
     const run = replay(p.actions.slice(0, phaseEnds[i] - 1));
     const challenge = run.schedule[i];
-    // On the bare board (every defence gone) each home the plan loses: is its water deeper than any defence can take off?
-    const bare = run.state.clone();
-    for (const [key, inst] of [...bare.elements]) if ((ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) > 0) bare.elements.delete(key);
-    const water = computeWater(bare, { kind: challenge.kind, strength: challenge.strength, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge) }, { combos: computeCombos(bare).bonus, landfallZoneTiles: landfallTiles });
-    const after = replay(p.actions.slice(0, phaseEnds[i]));
-    const lostKeys = after.outcomes.get(challenge.id)!.damagedHouses;
-    // Past any defence: still lost with the water lowered by the full ceiling and the wind cut to what always gets through.
-    const minKeep = HAZARD_MODEL.wind?.minKeep ?? 1;
-    let pastCeiling = 0;
-    for (const key of lostKeys) if (floodsHouse(Math.max(0, (water.depth.get(key) ?? 0) - ceiling) + (water.wind?.get(key) ?? 0) * minKeep)) pastCeiling++;
-    return { id: s.id, lost: lostKeys.length, pastCeiling, withinReach: lostKeys.length - pastCeiling };
+    const last = p.actions[phaseEnds[i] - 1];
+    let board = trialBoard(run, last);
+    const homes = previewLost(run, board, challenge);
+    let lostNow = homes.length;
+    let needed: number | null = null;
+    for (let extra = 1; extra <= EXTRA_BUILDS && lostNow > 0; extra++) {
+      let best: { board: typeof board; lost: number } | null = null;
+      for (const tile of board.placed.values()) {
+        for (const def of board.buildableAt(tile.coord)) {
+          const trial = board.clone();
+          trial.build(tile.coord, def.id, false);
+          const l = previewLost(run, trial, challenge).length;
+          if (!best || l < best.lost) best = { board: trial, lost: l };
+        }
+      }
+      if (!best || best.lost >= lostNow) break;
+      board = best.board;
+      lostNow = best.lost;
+      if (lostNow === 0) needed = extra;
+    }
+    return [{ id: s.id, lost: s.lost, homes, extraBuildsToSaveAll: needed, savedWithExtra: homes.length - lostNow }];
   });
 }
 
@@ -176,12 +190,14 @@ const why2 = blockers(byGoal2);
 fs.mkdirSync(outDir, { recursive: true });
 
 /**
- * Which actions change nothing any storm does: the whole run scores the same
- * (stars, homes lost and the water over the loss line) with and without it.
- * One build a year is the rule, so a plan with nothing left to save still builds.
+ * Which actions change neither stars nor homes lost (nor the water over the
+ * loss line on the homes lost): the whole run scores the same with and
+ * without it. One build a year is the rule, so a plan still builds when it
+ * has nothing left to gain.
  */
 function spareActions(p: Played): boolean[] {
-  let before = assess(replay([]), replay([]).state);
+  const start = replay([]);
+  let before = assess(start, start.state);
   return p.actions.map((_, i) => {
     const run = replay(p.actions.slice(0, i + 1));
     const now = assess(run, run.state);
@@ -191,7 +207,12 @@ function spareActions(p: Played): boolean[] {
   });
 }
 
-function rows(p: Played): { year: number; action: string; elementId: string; q: number; r: number; place: string; spare: boolean }[] {
+const rowCache = new Map<Played, ReturnType<typeof rowsOf>>();
+function rows(p: Played): ReturnType<typeof rowsOf> {
+  if (!rowCache.has(p)) rowCache.set(p, rowsOf(p));
+  return rowCache.get(p)!;
+}
+function rowsOf(p: Played): { year: number; action: string; elementId: string; q: number; r: number; place: string; spare: boolean }[] {
   const spare = spareActions(p);
   return p.actions.map((a, i) => ({
     year: startYear + i,
@@ -215,9 +236,9 @@ const json = {
 fs.writeFileSync(path.join(outDir, "best_plan.json"), `${JSON.stringify(json, null, 2)}\n`);
 
 const table = (p: Played): string[] => [
-  "| # | Year | Defence | Tile (q,r) | Place | Changes a storm |",
+  "| # | Year | Defence | Tile (q,r) | Place | Changes stars or homes lost |",
   "|---|---|---|---|---|---|",
-  ...rows(p).map((r, i) => `| ${i + 1} | ${r.year} | ${nameOf(r.elementId)} | ${r.q},${r.r} | ${r.place} | ${r.spare ? "no (spare: nothing left to save)" : "yes"} |`)
+  ...rows(p).map((r, i) => `| ${i + 1} | ${r.year} | ${nameOf(r.elementId)} | ${r.q},${r.r} | ${r.place} | ${r.spare ? "no" : "yes"} |`)
 ];
 const stormTable = (p: Played): string[] => [
   "| Storm | Year | Stars | Homes saved (of homes standing in its path) | Homes lost |",
@@ -225,11 +246,19 @@ const stormTable = (p: Played): string[] => [
   ...p.storms.map((s) => `| ${s.name} | ${s.year} | ${s.stars} | ${s.saved} of ${s.total} | ${s.lost} |`),
   `| **Whole run** | | **${p.stars} of 9** | | **${p.lost}** |`
 ];
-const whyLines = (w: typeof why1): string[] => w.filter((b) => b.lost > 0).map((b) => `- ${b.id}: ${b.lost} lost. ${b.pastCeiling} past the maximum protection: in this game defences hold back at most ${HAZARD_MODEL.defence.engineeredMaxProtectionM} m of water (an engineered structure; ${HAZARD_MODEL.defence.maxProtectionM} m without one) and the wind never drops below ${Math.round((HAZARD_MODEL.wind?.minKeep ?? 1) * 100)}%, and even then the water and wind there take the home. ${b.withinReach} lie within what defences can hold back, but no plan the search found saved them with the builds before that storm.`);
+const whyLines = (w: typeof why1): string[] =>
+  w.map((b) => {
+    const named = b.homes.map((key) => `${key} (${placeName({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) })})`).join(", ");
+    const limit =
+      b.extraBuildsToSaveAll !== null
+        ? `With ${b.extraBuildsToSaveAll} more build${b.extraBuildsToSaveAll > 1 ? "s" : ""} before that storm (the best the game allows, each tried) every one would stand: what limits it is the number of builds, one a year.`
+        : `Even ${EXTRA_BUILDS} more builds before that storm (the best the game allows, each tried) save ${b.savedWithExtra} of them.`;
+    return `- ${b.id}: ${b.lost} lost: ${named}. ${limit}`;
+  });
 const md = [
   "# Section 24: the best plan found for Play Panjim",
   "",
-  `Found by \`npm run bestplan\` (tools/bestPlan): a beam search over the game's own run code and hazard model, ${beamWidth} plans kept a year, every legal action weighed exactly against every storm to come; ${Math.round(searchSeconds)} s with ${jobs} child processes. In this game the storms are fixed, so the run is deterministic. A beam search is not proof of the optimum: the plan below is the best it found.`,
+  `Found by \`npm run bestplan\` (tools/bestPlan): a beam search over the game's own run code and hazard model, ${beamWidth} plans kept a year, every build and repair the game allows weighed by running the game's own resolver for every storm to come; ${Math.round(searchSeconds)} s with ${jobs} child processes. In this game the storms are fixed, so the run is deterministic. A beam search is not proof of the optimum: the plan below is the best it found.`,
   "",
   `## Goal 1: 9 of 9 stars — ${byGoal1.stars === 9 ? "reached" : `not reached (best ${byGoal1.stars} of 9)`}`,
   "",

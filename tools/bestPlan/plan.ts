@@ -6,20 +6,19 @@
  *
  * Nothing here is a copy of a rule: a plan is played by `ActionRun.build` /
  * `repair` exactly as the browser game plays it, a storm resolves through
- * `ActionRun`'s own `land`, and a candidate build is weighed with
- * `computeExposure` on a copy of the board, the same preview the game's
- * Homes at risk and build numbers use (preview equals resolution,
- * tests/exposure.test.ts).
+ * `ActionRun`'s own `land`, and a candidate is weighed by running the game's
+ * resolver for every storm to come on a copy of the board.
  */
 import { BOT_LEVEL, newRun } from "../panjimBots/bots";
 import { computeExposure } from "../../src/core/exposure";
 import { computeCombos } from "../../src/core/combos";
 import { shelterOf } from "../../src/core/climate";
-import { starsForHouses } from "../../src/core/zones";
+import { resolveChallenge } from "../../src/core/zones";
 import { axialDistance, type AxialCoord } from "../../src/core/hex";
 import { mapById } from "../../src/levels/levelMap";
 import type { ActionRun } from "../../src/core/actionRun";
 import type { GameState } from "../../src/core/gameState";
+import type { ScheduledChallenge } from "../../src/core/climate";
 
 export const MAP = mapById("panaji")!;
 
@@ -41,24 +40,25 @@ export function replay(actions: readonly PlanAction[]): ActionRun {
   return run;
 }
 
-/** What a board is worth for the run: stars and homes lost, the storms already past as they went, the rest as they would come on it. */
+/** What a board is worth for the run: stars and homes lost, the storms already past as they went, the rest as they would go if nothing more were built. */
 export interface Assessment {
-  /** Stars over the three storms (past: as resolved; to come: the exact preview, later storms leaving out homes an earlier one takes). */
+  /** Stars over the three storms. */
   stars: number;
   /** Homes lost over the run, counted once each. */
   lost: number;
-  /** Water over the house-loss line on the homes lost, in loss depths: how close the next builds are to saving more. */
+  /** Water and wind over the house-loss line on the homes lost, in loss depths: how close more builds are to saving more. */
   excess: number;
   /** Per storm, in calendar order. */
-  storms: { id: string; stars: number; saved: number; total: number; lost: number; exact: boolean }[];
+  storms: { id: string; stars: number; saved: number; total: number; lost: number }[];
 }
 
 /**
- * Scores `state` (the run's board, or a copy with one more build) for the
- * whole run. The storms already past come from `run.outcomes`. The next storm
- * is exact: its preview on this board is what it will do if nothing else is
- * built. A later storm is worked out on the same board, without the homes an
- * earlier storm to come would already have taken (they are ruins by then).
+ * Scores `state` (the run's board, or a copy with one more action) for the
+ * whole run. The storms already past come from `run.outcomes`. The storms to
+ * come are resolved one after the other on one copy of the board by the
+ * game's own resolver (`resolveChallenge`, with the arguments `ActionRun.land`
+ * passes), so each sees what the one before it left: homes ruined, defences
+ * worn or failed. Exact for "nothing more is built", by the game's own rules.
  */
 export function assess(run: ActionRun, state: GameState): Assessment {
   const storms: Assessment["storms"] = [];
@@ -69,40 +69,55 @@ export function assess(run: ActionRun, state: GameState): Assessment {
     const outcome = run.outcomes.get(challenge.id);
     if (!outcome) continue;
     const l = outcome.housesTotal - outcome.housesSaved;
-    storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l, exact: true });
+    storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l });
     stars += outcome.stars;
     lost += l;
   }
-  const combos = computeCombos(state).bonus;
   const climate = run.climate!;
   const scale = run.houseRule?.resilience ?? climate.intensityPerStrength;
-  const taken = new Set<string>();
-  let first = true;
+  const board = state.clone();
   for (const challenge of run.schedule) {
     if (run.landed.has(challenge.id)) continue;
-    const site = run.landfallOf(challenge);
-    const ex = computeExposure(state, run.zones!, challenge.kind, run.intensityOf(challenge), climate.intensityPerStrength, {
-      combos,
-      houseStars: run.houseStars,
-      houseRule: run.houseRule,
-      landfallSites: site === null ? null : [site],
-      sheltered: shelterOf(challenge)
-    });
-    const lostHere = ex.housesAtRisk.filter((key) => !taken.has(key));
-    const gone = [...taken].filter((key) => ex.intensity.has(key)).length;
-    const total = Math.max(0, ex.outcome.housesTotal - gone);
-    const s = first ? ex.outcome.stars : starsForHouses(total - lostHere.length, total, run.houseStars!);
-    storms.push({ id: challenge.id, stars: s, saved: total - lostHere.length, total, lost: lostHere.length, exact: first });
-    stars += s;
-    lost += lostHere.length;
-    for (const key of ex.housesAtRisk) excess += Math.max(0, (ex.intensity.get(key) ?? 0) / scale - 1);
-    for (const key of lostHere) taken.add(key);
-    first = false;
+    const damage = new Map<string, number>();
+    const outcome = resolveChallenge(
+      board,
+      run.zones!,
+      challenge.kind,
+      run.intensityOf(challenge),
+      climate.intensityPerStrength,
+      computeCombos(board).bonus,
+      run.houseStars,
+      run.houseRule,
+      (key, _water, _hazard, d) => damage.set(key, Math.max(damage.get(key) ?? 0, d)),
+      run.landfallOf(challenge),
+      shelterOf(challenge)
+    );
+    const l = outcome.housesTotal - outcome.housesSaved;
+    storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l });
+    stars += outcome.stars;
+    lost += l;
+    for (const key of outcome.damagedHouses) excess += Math.max(0, (damage.get(key) ?? 0) / scale - 1);
   }
   return { stars, lost, excess, storms };
 }
 
-/** Every action the game allows this year: each defence on each free tile it fits, and each repair. */
+/** Homes `challenge` (the next storm) would take on `state`, by the game's own preview. */
+export function previewLost(run: ActionRun, state: GameState, challenge: ScheduledChallenge): string[] {
+  const site = run.landfallOf(challenge);
+  return computeExposure(state, run.zones!, challenge.kind, run.intensityOf(challenge), run.climate!.intensityPerStrength, {
+    combos: computeCombos(state).bonus,
+    houseStars: run.houseStars,
+    houseRule: run.houseRule,
+    landfallSites: site === null ? null : [site],
+    sheltered: shelterOf(challenge)
+  }).housesAtRisk;
+}
+
+/**
+ * Every build and repair the game allows this year: each defence on each free
+ * tile it fits, and each defence a storm wore down. (Demolishing, also a
+ * year's action, is not searched: on Panaji it can only remove a defence.)
+ */
 export function legalActions(run: ActionRun): PlanAction[] {
   const out: PlanAction[] = [];
   for (const tile of run.state.placed.values()) {
