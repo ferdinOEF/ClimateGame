@@ -394,9 +394,9 @@ export function ownMetres(state: GameState, hazard: WaterHazard, skip: ReadonlyS
  */
 function pathDrag(board: WaterBoard, own: Map<string, number>, config: HazardModelConfig, kindOf: (key: string) => string): Map<string, number> {
   const byKind = new Map<string, Map<string, KindStack>>();
-  const add = (tile: string, kind: string, m: number): void => {
+  const add = (tile: string, kind: string, m: number, from: string): void => {
     const kinds = byKind.get(tile) ?? new Map<string, KindStack>();
-    kinds.set(kind, stackInto(kinds.get(kind), m));
+    kinds.set(kind, stackInto(kinds.get(kind), m, from));
     byKind.set(tile, kinds);
   };
   // Negative ones (sand mining, a resort) let water through more easily, and each adds its harm.
@@ -409,40 +409,47 @@ function pathDrag(board: WaterBoard, own: Map<string, number>, config: HazardMod
       continue;
     }
     const kind = kindOf(key);
-    add(key, kind, drag);
-    for (const n of board.tiles.get(key)?.neighbours ?? []) add(n, kind, drag * config.defence.neighbourShare);
+    add(key, kind, drag, key);
+    for (const n of board.tiles.get(key)?.neighbours ?? []) add(n, kind, drag * config.defence.neighbourShare, key);
   }
   const out = new Map<string, number>(harm);
-  for (const [tile, kinds] of byKind) out.set(tile, (out.get(tile) ?? 0) + [...kinds].reduce((a, [kind, stack]) => a + kindValue(kind, stack), 0));
+  const adjacent = neighboursOn(board);
+  for (const [tile, kinds] of byKind) out.set(tile, (out.get(tile) ?? 0) + [...kinds].reduce((a, [kind, stack]) => a + kindValue(kind, stack, adjacent).value, 0));
   return out;
 }
 
-/** A kind's two strongest contributions on one tile. */
-interface KindStack {
-  top: number;
-  second: number;
-}
+/** A kind's contributions on one tile: how much each of its defences gives there, and where that defence stands. */
+type KindStack = { m: number; from: string }[];
 
-function stackInto(stack: KindStack | undefined, m: number): KindStack {
-  if (!stack) return { top: m, second: 0 };
-  if (m > stack.top) return { top: m, second: stack.top };
-  return { top: stack.top, second: Math.max(stack.second, m) };
+function stackInto(stack: KindStack | undefined, m: number, from: string): KindStack {
+  const out = stack ?? [];
+  out.push({ m, from });
+  return out;
 }
 
 /**
  * What a kind holds back on a tile: its strongest defence there, and for a kind that pairs (Section 25.1, a game rule:
- * two dunes side by side protect as much as one seawall, two khazans as much as one small dam) its two strongest
- * added up.
+ * two dunes side by side protect as much as one seawall, two khazans as much as one small dam) the best two of it that
+ * stand side by side, added up, where that is more. `paired` says whether a pair gave it.
  */
-function kindValue(kind: string, stack: KindStack): number {
-  return ELEMENT_BY_ID.get(kind)?.pairsLike ? stack.top + stack.second : stack.top;
+function kindValue(kind: string, stack: KindStack, adjacent: (a: string, b: string) => boolean): { value: number; paired: boolean } {
+  const single = Math.max(...stack.map((e) => e.m));
+  if (!ELEMENT_BY_ID.get(kind)?.pairsLike || stack.length < 2) return { value: single, paired: false };
+  let pair = 0;
+  for (let i = 0; i < stack.length; i++) for (let j = i + 1; j < stack.length; j++) if (adjacent(stack[i].from, stack[j].from)) pair = Math.max(pair, stack[i].m + stack[j].m);
+  return pair > single ? { value: pair, paired: true } : { value: single, paired: false };
 }
 
 /** Whether a kind's value on a tile counts as an engineered structure's for the ceiling: an engineered one, or a pair standing in for one. */
-function engineeredLike(kind: string, stack: KindStack): boolean {
+function engineeredLike(kind: string, paired: boolean): boolean {
   const def = ELEMENT_BY_ID.get(kind);
   if (def?.category === "engineered") return true;
-  return !!def?.pairsLike && stack.second > 0 && ELEMENT_BY_ID.get(def.pairsLike)?.category === "engineered";
+  return paired && !!def?.pairsLike && ELEMENT_BY_ID.get(def.pairsLike)?.category === "engineered";
+}
+
+/** Whether two tiles are neighbours on the board. */
+function neighboursOn(board: WaterBoard): (a: string, b: string) => boolean {
+  return (a, b) => board.tiles.get(a)?.neighbours.includes(b) ?? false;
 }
 
 /**
@@ -470,7 +477,7 @@ export function areaProtection(board: WaterBoard, own: Map<string, number>, conf
       for (const t of frontier) {
         if (m > 0) {
           const kinds = best.get(t) ?? new Map<string, KindStack>();
-          kinds.set(kind, stackInto(kinds.get(kind), m * f));
+          kinds.set(kind, stackInto(kinds.get(kind), m * f, key));
           best.set(t, kinds);
         } else harm.set(t, (harm.get(t) ?? 0) + m * f);
         if (d === radiusHex) continue;
@@ -484,13 +491,15 @@ export function areaProtection(board: WaterBoard, own: Map<string, number>, conf
     }
   }
   const out = new Map<string, number>();
+  const adjacent = neighboursOn(board);
   for (const [key, kinds] of best) {
-    const values = [...kinds].map(([kind, stack]) => kindValue(kind, stack));
+    const judged = [...kinds].map(([kind, stack]) => ({ kind, ...kindValue(kind, stack, adjacent) }));
+    const values = judged.map((j) => j.value);
     const sum = values.reduce((a, b) => a + b, 0);
     // An engineered wall's own protection may rise above the ceiling, to engineeredMaxProtectionM: hard structures hold back more than any living defence.
     // So may a pair that stands in for one (Section 25.1).
     let hard = 0;
-    for (const [kind, stack] of kinds) if (engineeredLike(kind, stack)) hard = Math.max(hard, kindValue(kind, stack));
+    for (const j of judged) if (engineeredLike(j.kind, j.paired)) hard = Math.max(hard, j.value);
     const ceiling = Math.min(config.defence.engineeredMaxProtectionM ?? config.defence.maxProtectionM, Math.max(config.defence.maxProtectionM, hard));
     out.set(key, Math.min(sum, Math.max(...values) * stackCap, ceiling));
   }

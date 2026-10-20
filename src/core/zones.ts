@@ -353,7 +353,9 @@ export function resolveChallenge(
     protection,
     // Section 22.4 (owner decision): a storm is counted against the homes still standing when it hit; the ones an
     // earlier storm ruined are a line of their own, never "not saved" by this one.
-    stars: houseStars && standing.length > 0 ? starsForHouses(standing.length - lost.length, standing.length, houseStars, biodiversityChange ?? 0) : starsFor(protection),
+    // With no home standing in its path a storm's stars come from its protection, or, where they count biodiversity
+    // (Section 25.2), from the biodiversity lines alone (every home there was saved).
+    stars: houseStars && (standing.length > 0 || biodiversityChange !== undefined) ? starsForHouses(standing.length - lost.length, standing.length, houseStars, biodiversityChange ?? 0) : starsFor(protection),
     housesSaved: standing.length - lost.length,
     housesTotal: standing.length,
     housesLostBefore: pathHouses.size - standing.length,

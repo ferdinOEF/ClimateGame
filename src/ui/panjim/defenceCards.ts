@@ -31,7 +31,7 @@ export const CARD_LINE: Record<string, string> = {
   breakwater: "Breaks cyclone waves out at sea",
   mangrove: "Helps in both storms; good for nature",
   khazan: "Two hold like a small dam; no repairs",
-  small_dam: "Strong in floods; breaks in its second"
+  small_dam: "Strong in floods; breaks in its second flood"
 };
 
 const bio = (id: string): number => ELEMENT_BY_ID.get(id)?.effects.biodiversity ?? 0;
@@ -52,9 +52,9 @@ export function defenceRules(): { id: string; name: string; text: string }[] {
     sandy_vegetation: `In this game pandanus is at full strength from the year it is planted and ${nature("sandy_vegetation")}, but on its own it holds back little water and gives a dune no bonus. It is the only defence that lowers a cyclone's wind: homes within ${reach} tiles of it take ${windShare}% less wind damage.`,
     mangrove: `In this game a mangrove has one strength from the year it is planted, ${nature("mangrove")} and helps in both kinds of storm. It grows only on wetland and at a river's edge.`,
     khazan: `In this game two khazans side by side protect as much as one small dam. A khazan is never worn, so it never needs a repair, and it ${nature("khazan")}; it does little against a cyclone's surge.`,
-    seawall: `In this game a seawall is the strongest defence from the year it is built, but it ${nature("seawall")}. It comes through the first cyclone it faces and breaks in the second (the 2030 cyclone and the 2050 storm both count), and it pushes extra water onto the land at each end of the wall.`,
+    seawall: `In this game a seawall is the strongest defence from the year it is built, but it ${nature("seawall")}. It comes through the first cyclone it faces and breaks in the second (every storm that brings a cyclone counts, the storm that brings both included), and it pushes extra water onto the land at each end of the wall.`,
     breakwater: `In this game a breakwater breaks a cyclone's waves out at sea but is almost no help in a river flood, and it ${nature("breakwater")}.`,
-    small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone. It comes through the first flood it faces and breaks in the second (the 2040 flood and the 2050 storm both count), and it ${nature("small_dam")}.`
+    small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone. It comes through the first flood it faces and breaks in the second (every storm that brings a river flood counts, the storm that brings both included), and it ${nature("small_dam")}.`
   };
   return DEFENCE_ORDER.map((id) => ({ id, name: CARD_NAME[id], text: rules[id] }));
 }

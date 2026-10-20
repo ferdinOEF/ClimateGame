@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
-import { computeWater, defenceMetres, windField, waterBoard } from "../src/core/hazardModel";
+import { areaProtection, computeWater, defenceMetres, HAZARD_MODEL, ownMetres, windField, waterBoard } from "../src/core/hazardModel";
 import { computeCombos } from "../src/core/combos";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { axialKey, neighbors } from "../src/core/hex";
@@ -32,6 +32,33 @@ describe("two of a kind side by side", () => {
       expect(ratios.length, storm.id).toBeGreaterThanOrEqual(5);
       for (const r of ratios) expect(Math.abs(r - 1), `${storm.id}: ${r.toFixed(3)}`).toBeLessThanOrEqual(0.1);
     }
+  });
+
+  it("pairs only side by side: two dunes three tiles apart add nothing over the stronger one", () => {
+    const bare = depths(run.state, cyclone);
+    const beaches = [...run.state.placed.values()].filter((t) => t.terrainId === "beach" && bare.has(axialKey(t.coord)) && !run.state.elements.has(axialKey(t.coord))).map((t) => axialKey(t.coord));
+    const dist = (a: string, b: string) => {
+      const [aq, ar] = a.split(",").map(Number);
+      const [bq, br] = b.split(",").map(Number);
+      return (Math.abs(aq - bq) + Math.abs(ar - br) + Math.abs(aq + ar - bq - br)) / 2;
+    };
+    const a = beaches[0];
+    const b = beaches.find((k) => dist(a, k) === 3)!;
+    expect(b).toBeDefined();
+    const both = run.state.clone();
+    place(both, a, "dune");
+    place(both, b, "dune");
+    // On a tile between them, within reach of both: the stronger dune's protection, not the two added.
+    const own = ownMetres(both, "cyclone", new Set(), new Map(), undefined, HAZARD_MODEL);
+    const board = waterBoard(both);
+    const p = areaProtection(board, own, HAZARD_MODEL, (key) => both.elements.get(key)?.elementId ?? key);
+    const onlyA = run.state.clone();
+    place(onlyA, a, "dune");
+    const pa = areaProtection(board, ownMetres(onlyA, "cyclone", new Set(), new Map(), undefined, HAZARD_MODEL), HAZARD_MODEL, (key) => onlyA.elements.get(key)?.elementId ?? key);
+    const onlyB = run.state.clone();
+    place(onlyB, b, "dune");
+    const pb = areaProtection(board, ownMetres(onlyB, "cyclone", new Set(), new Map(), undefined, HAZARD_MODEL), HAZARD_MODEL, (key) => onlyB.elements.get(key)?.elementId ?? key);
+    for (const [key, v] of p) expect(v, key).toBeCloseTo(Math.max(pa.get(key) ?? 0, pb.get(key) ?? 0), 9);
   });
 
   it("keeps the seawall's strength as it was", () => {

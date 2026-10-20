@@ -386,6 +386,17 @@ export class ActionRun {
     const copy = JSON.parse(JSON.stringify(snapshot)) as RunSnapshot;
     this.state.elements.clear();
     for (const [key, inst] of copy.elements) this.state.elements.set(key, inst);
+    // A save from before Section 25.1 has no storm count on its seawalls and dams: count the storms of their kind
+    // that came while they stood, so none gets a free extra storm.
+    for (const inst of this.state.elements.values()) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (def?.survivesStorms === undefined || inst.stormsSurvived !== undefined || inst.broken) continue;
+      const faced = this.schedule.filter(
+        (c) => copy.landed.includes(c.id) && c.turn - 1 >= inst.builtOnTurn && def.targetsHazards?.some((h) => (c.kind === "compound" ? ["cyclone", "flood"] : [c.kind]).includes(h))
+      ).length;
+      if (faced > def.survivesStorms) inst.broken = true;
+      else if (faced > 0) inst.stormsSurvived = faced;
+    }
     this.state.turn = copy.turn;
     this.state.coin = copy.coin;
     this.state.trust = copy.trust;

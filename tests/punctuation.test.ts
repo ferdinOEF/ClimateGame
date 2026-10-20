@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isProse, punctuationProblems, uiStrings } from "./helpers/uiStrings";
+import { BROKEN_RULE, CARD_LINE, defenceRules } from "../src/ui/panjim/defenceCards";
+import { natureReason } from "../src/core/phaseResult";
 import { numberWord, menuTagline, panajiRunPhrase } from "../src/ui/screens/runWords";
 import { countdownText } from "../src/ui/panjim/clockHud";
 import { comingUpTitle } from "../src/app/panjimController";
@@ -73,9 +75,17 @@ describe("no dots or hyphens between words (Section 17b)", () => {
     expect(shortCredit({ authors: "McIvor, A.", year: 2012, publisher: "The Nature Conservancy" } as never)).not.toMatch(/·/);
     for (const level of [BOT_LEVEL, LEVEL_BY_ID.get("l00-tutorial")!]) {
       const run = newRun("punctuation", level);
-      const help = panjimHelpHtml({ startYear: run.config.startYear, endYear: run.config.endYear, storms: run.schedule });
+      const help = panjimHelpHtml({ startYear: run.config.startYear, endYear: run.config.endYear, storms: run.schedule, houseStars: run.houseStars });
       const prose = help.replace(/<[^>]*>/g, "\n").split("\n").filter((t) => t.trim());
       for (const line of prose) expect(punctuationProblems(line), `${level.id}: ${line}`).toEqual([]);
     }
+  });
+
+  it("keeps Section 25's words clean: the defence rules, the broken rule, the card lines and every reason on a result card", () => {
+    const lines = [...defenceRules().map((r) => r.text), BROKEN_RULE, ...Object.values(CARD_LINE)];
+    for (const change of [-12, 0, 3, 9]) {
+      for (const kinds of [new Map([["seawall", -10]]), new Map([["mangrove", 6]]), new Map<string, number>()]) lines.push(natureReason(change, 6, kinds));
+    }
+    for (const line of lines) expect(punctuationProblems(line), line).toEqual([]);
   });
 });

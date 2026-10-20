@@ -91,7 +91,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>${stormsTitle} ${RULE}</h3>
         <ul>${stormList}</ul>
-        <p>After each, a result card: the stars, the homes saved, the biodiversity, and what protected them.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}</p>
+        <p>After each, a result card: the stars, the homes saved,${countsNature ? " the biodiversity," : ""} and what protected them.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}</p>
         ${starsLine}
         ${shelters}
       </div>
