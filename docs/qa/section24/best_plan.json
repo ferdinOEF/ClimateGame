@@ -1,0 +1,559 @@
+{
+  "level": "l01-first-rains",
+  "generatedBy": "npm run bestplan (tools/bestPlan)",
+  "search": {
+    "beam": 16,
+    "keep": 16,
+    "jobs": 4,
+    "seconds": 677
+  },
+  "goal1": {
+    "stars": 9,
+    "of": 9,
+    "nineOfNine": true,
+    "clears": true,
+    "lost": 2,
+    "storms": [
+      {
+        "id": "c1-cyclone",
+        "year": 2030,
+        "name": "Cyclone",
+        "stars": 3,
+        "saved": 8,
+        "total": 8,
+        "lost": 0
+      },
+      {
+        "id": "c2-flood",
+        "year": 2040,
+        "name": "Monsoon flood",
+        "stars": 3,
+        "saved": 63,
+        "total": 65,
+        "lost": 2
+      },
+      {
+        "id": "c3-compound",
+        "year": 2050,
+        "name": "Cyclone and flood",
+        "stars": 3,
+        "saved": 69,
+        "total": 69,
+        "lost": 0
+      }
+    ],
+    "blockers": [
+      {
+        "id": "c2-flood",
+        "lost": 2,
+        "homes": [
+          "23,10",
+          "8,7"
+        ],
+        "extraBuildsToSaveAll": 2,
+        "savedWithExtra": 2
+      }
+    ],
+    "actions": [
+      {
+        "year": 2026,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 2,
+        "r": 12,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2027,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 15,
+        "r": 16,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2028,
+        "action": "build",
+        "elementId": "seawall",
+        "q": -5,
+        "r": 18,
+        "place": "near Miramar",
+        "spare": false
+      },
+      {
+        "year": 2029,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 9,
+        "r": 18,
+        "place": "near Altinho",
+        "spare": false
+      },
+      {
+        "year": 2030,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 8,
+        "r": 3,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2031,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 7,
+        "r": 23,
+        "place": "near Taleigao",
+        "spare": false
+      },
+      {
+        "year": 2032,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 21,
+        "r": 8,
+        "place": "near Patto",
+        "spare": false
+      },
+      {
+        "year": 2033,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 26,
+        "r": 7,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2034,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 20,
+        "r": 12,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2035,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 17,
+        "r": 10,
+        "place": "near Patto",
+        "spare": false
+      },
+      {
+        "year": 2036,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 26,
+        "r": 9,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2037,
+        "action": "build",
+        "elementId": "breakwater",
+        "q": 4,
+        "r": 10,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2038,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 12,
+        "r": 13,
+        "place": "near Patto",
+        "spare": false
+      },
+      {
+        "year": 2039,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 15,
+        "r": 13,
+        "place": "near Patto",
+        "spare": false
+      },
+      {
+        "year": 2040,
+        "action": "build",
+        "elementId": "khazan",
+        "q": 20,
+        "r": 10,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2041,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 28,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2042,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 1,
+        "r": 0,
+        "place": "near Campal",
+        "spare": true
+      },
+      {
+        "year": 2043,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 6,
+        "r": 0,
+        "place": "near Campal",
+        "spare": true
+      },
+      {
+        "year": 2044,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 23,
+        "r": 0,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2045,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 0,
+        "r": 1,
+        "place": "near Campal",
+        "spare": true
+      },
+      {
+        "year": 2046,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 10,
+        "r": 1,
+        "place": "near Campal",
+        "spare": true
+      },
+      {
+        "year": 2047,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 22,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2048,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 25,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2049,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 26,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2050,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 27,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      }
+    ]
+  },
+  "goal2": {
+    "sameAsGoal1": true,
+    "stars": 9,
+    "lost": 2,
+    "everyHomeSaved": false,
+    "storms": [
+      {
+        "id": "c1-cyclone",
+        "year": 2030,
+        "name": "Cyclone",
+        "stars": 3,
+        "saved": 8,
+        "total": 8,
+        "lost": 0
+      },
+      {
+        "id": "c2-flood",
+        "year": 2040,
+        "name": "Monsoon flood",
+        "stars": 3,
+        "saved": 63,
+        "total": 65,
+        "lost": 2
+      },
+      {
+        "id": "c3-compound",
+        "year": 2050,
+        "name": "Cyclone and flood",
+        "stars": 3,
+        "saved": 69,
+        "total": 69,
+        "lost": 0
+      }
+    ],
+    "blockers": [
+      {
+        "id": "c2-flood",
+        "lost": 2,
+        "homes": [
+          "23,10",
+          "8,7"
+        ],
+        "extraBuildsToSaveAll": 2,
+        "savedWithExtra": 2
+      }
+    ],
+    "actions": [
+      {
+        "year": 2026,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 2,
+        "r": 12,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2027,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 15,
+        "r": 16,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2028,
+        "action": "build",
+        "elementId": "seawall",
+        "q": -5,
+        "r": 18,
+        "place": "near Miramar",
+        "spare": false
+      },
+      {
+        "year": 2029,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 9,
+        "r": 18,
+        "place": "near Altinho",
+        "spare": false
+      },
+      {
+        "year": 2030,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 8,
+        "r": 3,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2031,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 7,
+        "r": 23,
+        "place": "near Taleigao",
+        "spare": false
+      },
+      {
+        "year": 2032,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 21,
+        "r": 8,
+        "place": "near Patto",
+        "spare": false
+      },
+      {
+        "year": 2033,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 26,
+        "r": 7,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2034,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 20,
+        "r": 12,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2035,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 17,
+        "r": 10,
+        "place": "near Patto",
+        "spare": false
+      },
+      {
+        "year": 2036,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 26,
+        "r": 9,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2037,
+        "action": "build",
+        "elementId": "breakwater",
+        "q": 4,
+        "r": 10,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2038,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 12,
+        "r": 13,
+        "place": "near Patto",
+        "spare": false
+      },
+      {
+        "year": 2039,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 15,
+        "r": 13,
+        "place": "near Patto",
+        "spare": false
+      },
+      {
+        "year": 2040,
+        "action": "build",
+        "elementId": "khazan",
+        "q": 20,
+        "r": 10,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2041,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 28,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2042,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 1,
+        "r": 0,
+        "place": "near Campal",
+        "spare": true
+      },
+      {
+        "year": 2043,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 6,
+        "r": 0,
+        "place": "near Campal",
+        "spare": true
+      },
+      {
+        "year": 2044,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 23,
+        "r": 0,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2045,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 0,
+        "r": 1,
+        "place": "near Campal",
+        "spare": true
+      },
+      {
+        "year": 2046,
+        "action": "build",
+        "elementId": "seawall",
+        "q": 10,
+        "r": 1,
+        "place": "near Campal",
+        "spare": true
+      },
+      {
+        "year": 2047,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 22,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2048,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 25,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2049,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 26,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      },
+      {
+        "year": 2050,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 27,
+        "r": 1,
+        "place": "near Atal Setu",
+        "spare": true
+      }
+    ]
+  }
+}
