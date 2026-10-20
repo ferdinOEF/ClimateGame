@@ -48,6 +48,18 @@ const closeCards = async (): Promise<void> => {
     await page.waitForTimeout(900);
   }
 };
+/** Frames the sheltered middle of Taleigao (rows 16 to 28), wide enough for all of it and the coast beside it. */
+const frameShelter = async (): Promise<void> => {
+  await page.evaluate(`window.__panjimForTest.host.focusCamera({ q: -1, r: 22 }, true, 1.6)`);
+  await page.waitForTimeout(4000);
+  await page.mouse.move(2, H - 2);
+};
+/** The same shot again with the sheltered tiles outlined (the area outline, for the reviewer only: never in the game). */
+const outlined = async (name: string): Promise<void> => {
+  await page.evaluate(`(() => { const c3 = window.__panjimForTest.run.schedule.find((c) => c.id === "c3-compound"); window.__panjimForTest.host.showAreaOutline(c3.shelteredTiles.map(([q, r]) => q + "," + r)); })()`);
+  await page.waitForTimeout(1500);
+  await shot(`${name}-shelter-outlined`);
+};
 /** What the 2050 storm shows on the sheltered tiles: heat, cone bands, area and homes at risk. */
 const onShelter = (): Promise<Record<string, number>> =>
   page.evaluate(`(() => {
@@ -100,31 +112,30 @@ await closeCards();
 await scenario("past-storm");
 await closeCards();
 await page.waitForTimeout(1500);
-await page.keyboard.press("Home");
-await page.waitForTimeout(3500);
-await page.mouse.move(2, H - 2);
+await frameShelter();
 const cone = await onShelter();
 results.cone = cone;
 await shot("cone-2050");
+await outlined("cone-2050");
 check(cone.next === ("c3-compound" as never) && cone.coneBands === 0 && cone.coneArea === 0 && cone.coneMeet === 0, `23.1: the 2050 cone leaves the shelter clear (${JSON.stringify(cone)})`);
 
 // ---- 23.1 the 2050 heat: the last two years before it ------------------------------------------------------------
 await scenario("heat-2");
 await page.waitForTimeout(1500);
-await page.keyboard.press("Home");
-await page.waitForTimeout(3500);
-await page.mouse.move(2, H - 2);
+await frameShelter();
 const heat = await onShelter();
 results.heat = heat;
 const heatTiles = (await page.evaluate("window.__panjimForTest.run.homesAtRisk(window.__panjimForTest.run.nextChallenge())")) as number;
 results.homesAtRisk2050 = heatTiles;
 await shot("heat-2050");
+await outlined("heat-2050");
 check(heat.heat === 0 && heat.homesAtRisk === 0, `23.1: the 2050 heat and Homes at risk leave the shelter clear (${JSON.stringify(heat)}, Homes at risk ${heatTiles})`);
 
 // ---- 23.1 the 2050 storm's water, held mid-storm -----------------------------------------------------------------
+// The outline is cleared first: the storm's own shot shows only the storm.
+await page.evaluate("window.__panjimForTest.host.showAreaOutline([])");
 await scenario("storm-16");
-await page.keyboard.press("Home");
-await page.waitForTimeout(4000);
+await frameShelter();
 await shot("storm-2050");
 const drawn = (await page.evaluate(`(() => {
   const run = window.__panjimForTest.run;
