@@ -5,7 +5,7 @@
     "beam": 16,
     "keep": 16,
     "jobs": 4,
-    "seconds": 697
+    "seconds": 677
   },
   "goal1": {
     "stars": 9,
@@ -44,22 +44,14 @@
     ],
     "blockers": [
       {
-        "id": "c1-cyclone",
-        "lost": 0,
-        "pastCeiling": 0,
-        "withinReach": 0
-      },
-      {
         "id": "c2-flood",
         "lost": 2,
-        "pastCeiling": 0,
-        "withinReach": 2
-      },
-      {
-        "id": "c3-compound",
-        "lost": 0,
-        "pastCeiling": 0,
-        "withinReach": 0
+        "homes": [
+          "23,10",
+          "8,7"
+        ],
+        "extraBuildsToSaveAll": 2,
+        "savedWithExtra": 2
       }
     ],
     "actions": [
@@ -104,7 +96,7 @@
         "action": "build",
         "elementId": "seawall",
         "q": 8,
-        "r": 4,
+        "r": 3,
         "place": "near Campal",
         "spare": false
       },
@@ -326,22 +318,14 @@
     ],
     "blockers": [
       {
-        "id": "c1-cyclone",
-        "lost": 0,
-        "pastCeiling": 0,
-        "withinReach": 0
-      },
-      {
         "id": "c2-flood",
         "lost": 2,
-        "pastCeiling": 0,
-        "withinReach": 2
-      },
-      {
-        "id": "c3-compound",
-        "lost": 0,
-        "pastCeiling": 0,
-        "withinReach": 0
+        "homes": [
+          "23,10",
+          "8,7"
+        ],
+        "extraBuildsToSaveAll": 2,
+        "savedWithExtra": 2
       }
     ],
     "actions": [
@@ -386,7 +370,7 @@
         "action": "build",
         "elementId": "seawall",
         "q": 8,
-        "r": 4,
+        "r": 3,
         "place": "near Campal",
         "spare": false
       },

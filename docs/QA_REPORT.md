@@ -2039,10 +2039,11 @@ Branch `section-24-best-plan`, from master `9159700` (Section 23b). Safety copy:
 
 | Gate | Result |
 |---|---|
-| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: tsc no errors; vitest 81 files, 609 passed, 6 skipped; build clean. |
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: tsc no errors; vitest 81 files, 611 passed, 6 skipped; build clean. |
 | Preview equals resolution | `tests/exposure.test.ts` and `tests/liveRisk.test.ts` pass (the solver relies on it: a candidate's exact preview is what the storm does). |
 | Bots | Not run: mechanics unchanged (the brief). |
-| The search (`npm run bestplan`, beam 16, 4 child processes) | 697 s (11.6 min). 9 of 9 stars; 2 homes lost (2040 flood). Log: `docs/qa/section24/bestplan-run.log`. A quick beam-2 run found 9 of 9 with 4 lost. |
-| Headless replay (`tests/bestPlan.test.ts`) | Passes: the plan's 25 actions give the same stars and homes in every storm. |
-| Browser replay, 1366x768 (`tools/section24Replay.ts`) | All pass, 0 console errors, 7 min 51 s: result cards 3 stars 8 of 8 (2030), 3 stars 63 of 65 (2040), 3 stars 69 of 69 (2050); final card 9 of 9 stars, 140 of 142 homes saved, "Panjim cleared". Shots: `docs/qa/section24/result-card-{1,2,3}-1366x768.jpg`, `final-card-1366x768.jpg`. |
+| The search (`npm run bestplan`, beam 16, 4 child processes) | 677 s (11.3 min) after the review's fixes (697 s before; same result, one build moved a tile). 9 of 9 stars; 2 homes lost (2040 flood, 23,10 and 8,7); 2 more builds before 2040 would save both. Log: `docs/qa/section24/bestplan-run.log`. A quick beam-2 run found 9 of 9 with 4 lost. |
+| Headless replay (`tests/bestPlan.test.ts`) | Passes (4 tests): the plan's 25 actions give the same stars, homes and homes lost in every storm; the solver's score before the last build equals the real run. |
+| Browser replay, 1366x768 (`tools/section24Replay.ts`) | All pass on the final plan, 0 console errors: result cards 3 stars 8 of 8 (2030), 3 stars 63 of 65 (2040), 3 stars 69 of 69 (2050); final card 9 of 9 stars, 140 of 142 homes saved, "Panjim cleared". Shots: `docs/qa/section24/result-card-{1,2,3}-1366x768.jpg`, `final-card-1366x768.jpg`. |
+| Independent reviewer | No BLOCKER. MAJOR: later storms were estimated by a hand copy of the standing-homes rule that ignored defences a storm wears or breaks (fixed: every storm to come goes through the game's own resolver, one after the other on a copy); the blocker note stated a 6 m ceiling as the rule, though drag lowers water further (fixed: it now adds the best builds the game allows and says how many would save every home). MINOR: the note's wording when a count was 0, the spare column overclaimed, "exactly" overclaimed, demolish not searched (all fixed or worded). NIT: excess double count (gone with the fix), duplicate replays (cached), temp files on failure (cleaned), the test now checks homes lost and the goal flags. |
 | Not run (the full browser check, only on the owner's request) | walkthrough, test:labels, test:layout, test:maya, other sizes, playthroughs, axe, colour-blind copies. The browser replay at 1920x1080 (the brief asks for 1366x768 only). |
