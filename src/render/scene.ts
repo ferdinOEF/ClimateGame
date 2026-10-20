@@ -46,6 +46,8 @@ export interface KhazanScene {
   zoomBy: (notches: number, clientX?: number, clientY?: number) => void;
   /** What Home (or 0) does: the session returns the camera to the opening view. */
   setHome: (fn: (() => void) | null) => void;
+  /** True while the zoom keys should do nothing (a card or menu is open over the board). */
+  setZoomKeysBlocked: (fn: (() => boolean) | null) => void;
   /** The camera's nearest and furthest distances. */
   zoomLimits: { min: number; max: number };
   /** Where a zoom in progress is gliding to (the distance once it settles). */
@@ -422,7 +424,11 @@ export function createScene(container: HTMLElement): KhazanScene {
     if (clientX !== undefined && clientY !== undefined) {
       const pointer = groundAt(clientX, clientY);
       // From the camera as drawn: the pointer's ground point stays under the pointer once the glide settles.
-      if (pointer) desiredTarget = zoomTowardTarget(target, pointer, distance, next);
+      // A pan still gliding (or Home's glide) carries on: only the zoom's own shift is added to where it was going.
+      if (pointer) {
+        const anchored = zoomTowardTarget(target, pointer, distance, next);
+        desiredTarget = { x: desiredTarget.x + (anchored.x - target.x), z: desiredTarget.z + (anchored.z - target.z) };
+      }
     }
     desiredDistance = next;
     userAdjustedZoom = true;
@@ -446,6 +452,8 @@ export function createScene(container: HTMLElement): KhazanScene {
     "keydown",
     (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || isTypingTarget(e.target)) return;
+      // Not while a card or menu is open over the board (the session says which): Home scrolls a card there.
+      if (keysBlocked?.()) return;
       const dir = e.key === "+" || e.key === "=" ? -1 : e.key === "-" || e.key === "_" ? 1 : 0;
       if (dir !== 0) {
         e.preventDefault();
@@ -459,6 +467,9 @@ export function createScene(container: HTMLElement): KhazanScene {
       }
       if ((e.key === "Home" || e.key === "0") && onHome) {
         e.preventDefault();
+        // The opening view again, and a resize reframes it as it did before the player zoomed.
+        userAdjustedZoom = false;
+        keyZoom = 0;
         onHome();
       }
     },
@@ -478,6 +489,7 @@ export function createScene(container: HTMLElement): KhazanScene {
     zoomBy(keyZoom * (deltaMs / 450));
   }
   let onHome: (() => void) | null = null;
+  let keysBlocked: (() => boolean) | null = null;
 
   function wasDrag(): boolean {
     return didDrag;
@@ -579,6 +591,9 @@ export function createScene(container: HTMLElement): KhazanScene {
     zoomBy,
     setHome: (fn: (() => void) | null) => {
       onHome = fn;
+    },
+    setZoomKeysBlocked: (fn: (() => boolean) | null) => {
+      keysBlocked = fn;
     },
     zoomLimits: { min: CAM_DISTANCE_MIN, max: CAM_DISTANCE_MAX },
     zoomTargetDistance: () => desiredDistance,

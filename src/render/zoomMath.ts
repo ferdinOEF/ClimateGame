@@ -17,10 +17,13 @@ const PX_PER_NOTCH = 100;
  * Positive is away (zoom out).
  */
 export function wheelNotches(deltaY: number, deltaMode: number): number {
-  if (deltaMode === 1) return deltaY / 3;
-  if (deltaMode === 2) return deltaY;
-  return deltaY / PX_PER_NOTCH;
+  const notches = deltaMode === 1 ? deltaY / 3 : deltaMode === 2 ? deltaY : deltaY / PX_PER_NOTCH;
+  // At most this many an event: a free spinning wheel or a large pixel delta glides, never jumps.
+  return Math.max(-MAX_WHEEL_NOTCHES, Math.min(MAX_WHEEL_NOTCHES, notches));
 }
+
+/** The most one wheel event may zoom, in notches. */
+export const MAX_WHEEL_NOTCHES = 3;
 
 /** The camera's distance after `notches` notches (positive: further), held inside [min, max]. */
 export function zoomedDistance(distance: number, notches: number, min: number, max: number): number {

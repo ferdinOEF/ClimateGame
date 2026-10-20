@@ -143,6 +143,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     frameStats,
     zoomBy,
     setHome,
+    setZoomKeysBlocked,
     zoomLimits,
     zoomTargetDistance,
     dispose: disposeScene
@@ -362,6 +363,18 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   scene.add(areaOutline.group);
   /** Pins for the places open objectives name, and the "Area protected" note (Section 12). */
   const mapPins = new MapPins(container, (x, y, z) => worldToScreen(x, y, z), () => coneOverlay.arrowHeads);
+  /** Section 22.2: the storm arrows' heads on screen, as boxes a little wider than drawn, for the place labels to keep clear of. */
+  function arrowHeadBoxes(): { x: number; y: number; w: number; h: number }[] {
+    return coneOverlay.arrowHeads.flatMap(({ tip, back }) => {
+      const a = worldToScreen(tip.x, tip.y, tip.z);
+      const b = worldToScreen(back.x, back.y, back.z);
+      if (!a || !b) return [];
+      const r = Math.max(10, Math.hypot(a.x - b.x, a.y - b.y) * 0.8);
+      const x = Math.min(a.x, b.x) - r;
+      const y = Math.min(a.y, b.y) - r;
+      return [{ x, y, w: Math.max(a.x, b.x) + r - x, h: Math.max(a.y, b.y) + r - y }];
+    });
+  }
   /** Section 22.2: past this camera distance (the furthest opening view is 44) the labels tighten a little. */
   const LABELS_FAR_DISTANCE = 46;
   let labelsFar = false;
@@ -2575,6 +2588,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   ]);
   if (panjim) panjim.panels.isTopmost = () => modals.isTopmost("menu");
   stormLayersOpen = (): boolean => modals.someOpen(STORM_WAITS_FOR);
+  // Section 22.3: the zoom keys only zoom the board, never while a card, the start popup or a menu is over it (the
+  // build menu aside: it follows its tile).
+  setZoomKeysBlocked(() => {
+    const top = modals.topmost();
+    return (top !== null && top.name !== "build") || (beginConfirm?.isOpen ?? false);
+  });
   const keydownAbort = new AbortController();
   document.addEventListener(
     "keydown",
@@ -2658,6 +2677,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (far !== labelsFar) {
       labelsFar = far;
       container.classList.toggle("labels-far", far);
+      mapPins.remeasure();
     }
     mapPins.update(nowMs);
     buildFloat.update(nowMs);
@@ -2689,7 +2709,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       },
       rect.width,
       rect.height,
-      cameraDistance()
+      cameraDistance(),
+      arrowHeadBoxes()
     );
   });
 

@@ -23,7 +23,7 @@ const overlaps = (a: Rect, b: Rect): boolean => a.x0 < b.x1 && b.x0 < a.x1 && a.
 
 export class MapPins {
   private readonly layer: HTMLElement;
-  private pins: { pin: MapPin; el: HTMLElement }[] = [];
+  private pins: { pin: MapPin; el: HTMLElement; size?: { w: number; h: number; d: number } }[] = [];
   private note: { pin: MapPin; el: HTMLElement; until: number } | null = null;
 
   constructor(container: HTMLElement, private readonly project: Project, private readonly avoid: Avoid = () => []) {
@@ -63,6 +63,11 @@ export class MapPins {
     this.note = { pin: at, el, until: performance.now() + ms };
   }
 
+  /** The pins' sizes are read again on the next frame (their padding changed: zoomed out or back in). */
+  remeasure(): void {
+    for (const entry of this.pins) entry.size = undefined;
+  }
+
   /** Shown at all (hidden during storms and result cards). */
   setVisible(visible: boolean): void {
     this.layer.hidden = !visible;
@@ -78,10 +83,18 @@ export class MapPins {
       const r = Math.max(10, Math.hypot(tip.x - back.x, tip.y - back.y) * 0.8);
       return [{ x0: Math.min(tip.x, back.x) - r, y0: Math.min(tip.y, back.y) - r, x1: Math.max(tip.x, back.x) + r, y1: Math.max(tip.y, back.y) + r }];
     });
-    for (const { pin, el } of this.pins) {
-      const at = this.project(pin.x, pin.y, pin.z);
-      place(el, at);
-      if (at) this.nudge(el, pin, at, headBoxes);
+    // Sizes are read once a pin is laid out (its text never changes), so a frame writes transforms only, no reflow.
+    for (const entry of this.pins) {
+      if (entry.size) continue;
+      const name = entry.el.querySelector<HTMLElement>(".map-pin-name");
+      const dot = entry.el.querySelector<HTMLElement>(".map-pin-dot");
+      if (name && dot && name.offsetWidth > 0) entry.size = { w: name.offsetWidth, h: name.offsetHeight, d: dot.offsetHeight };
+    }
+    const width = this.layer.clientWidth;
+    for (const entry of this.pins) {
+      const at = this.project(entry.pin.x, entry.pin.y, entry.pin.z);
+      place(entry.el, at);
+      if (at && entry.size) this.nudge(entry.el, entry.pin, entry.size, at, headBoxes, width);
     }
     if (this.note) {
       if (nowMs > this.note.until) {
@@ -106,14 +119,11 @@ export class MapPins {
    * Section 22.2 (owner decision): a pin's name never covers the tile its pin marks or a storm arrow's tip. Above
    * the dot by default; when that would cover either, beside the tile (right, else left), level with the dot.
    */
-  private nudge(el: HTMLElement, pin: MapPin, at: { x: number; y: number }, heads: readonly Rect[]): void {
+  private nudge(el: HTMLElement, pin: MapPin, size: { w: number; h: number; d: number }, at: { x: number; y: number }, heads: readonly Rect[], viewportWidth: number): void {
     const name = el.querySelector<HTMLElement>(".map-pin-name");
-    const dot = el.querySelector<HTMLElement>(".map-pin-dot");
-    if (!name || !dot) return;
-    const w = name.offsetWidth;
-    const h = name.offsetHeight;
+    if (!name) return;
+    const { w, h, d } = size;
     const gap = 2;
-    const d = dot.offsetHeight;
     // Its tile on screen: the box round the hex's six corners (radius 1, the board's hex size).
     let tile: Rect = { x0: at.x, y0: at.y, x1: at.x, y1: at.y };
     for (let k = 0; k < 6; k++) {
@@ -129,7 +139,10 @@ export class MapPins {
       const level = h / 2 + gap + d / 2;
       const right: Rect = { x0: tile.x1 + 4, y0: at.y - h / 2, x1: tile.x1 + 4 + w, y1: at.y + h / 2 };
       const left: Rect = { x0: tile.x0 - 4 - w, y0: at.y - h / 2, x1: tile.x0 - 4, y1: at.y + h / 2 };
-      const side = heads.some((b) => overlaps(right, b)) && !heads.some((b) => overlaps(left, b)) ? left : right;
+      // Right unless that covers an arrow or leaves the window while the left side is clear of both.
+      const rightBad = heads.some((b) => overlaps(right, b)) || right.x1 > viewportWidth - 4;
+      const leftBad = heads.some((b) => overlaps(left, b)) || left.x0 < 4;
+      const side = rightBad && !leftBad ? left : right;
       dx = side.x0 - above.x0;
       dy = level;
     }

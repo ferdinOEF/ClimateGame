@@ -758,8 +758,8 @@ export class PanjimController {
     this.maya.setState("worried");
     // The storm itself (Section 16 B4): the objective card, Maya's bubble and the hint fade; the top bar counts the homes lost.
     this.host.container.classList.add("storm-playing");
-    // Counted as the result card counts (Section 16 B4): every home in the storm's path not standing at the end,
-    // so the homes already gone before it start the count and it ends at the card's total less its saved.
+    // Counted as the result card counts (Section 16 B4; Section 22.4: against the homes still standing when it hit),
+    // so the count starts at 0 and ends at the card's homes not saved, the ones this storm destroyed.
     let lost = outcome.housesTotal - outcome.housesSaved - outcome.housesDamaged;
     this.outlook.renderLost(lost);
 

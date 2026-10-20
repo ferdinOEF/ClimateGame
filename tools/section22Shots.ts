@@ -131,7 +131,40 @@ if ((await dist()) > 0) {
   const home = await settle();
   zoom = { available: true, limits, far, near, notchesFarToNear: notches, keyFar, keyPressesFarToNear: presses, held: { from: beforeHold, to: afterHold }, pointerGroundDrift: drift, home, opening: openingDistance };
 }
-console.log(JSON.stringify({ size: `${W}x${H}`, tag, opening, miramar, zoom, errors }));
+// ---- 22.4 the result cards after an earlier storm's losses, and the final card ----------------------------------
+const cards: Record<string, string> = {};
+if (tag === "after") {
+  const settled = async (): Promise<void> => {
+    await page
+      .waitForFunction("(() => { const c = document.querySelector('.result-cards:not([hidden]) .result-card'); return !!c && getComputedStyle(c).opacity === '1' && c.getAnimations({ subtree: true }).every((a) => a.playState !== 'running'); })()", undefined, { timeout: 20000 })
+      .catch(() => undefined);
+    await page.waitForTimeout(1500);
+  };
+  const cardText = (): Promise<string> => page.evaluate("(() => { const c = document.querySelector('.result-cards:not([hidden]) .result-card'); return c ? c.textContent.replace(/\\s+/g, ' ').trim() : ''; })()") as Promise<string>;
+  const closeCards = async (): Promise<void> => {
+    for (let k = 0; k < 10; k++) {
+      const next = page.locator(".result-cards:not([hidden]) .result-next");
+      if (!(await next.isVisible().catch(() => false))) return;
+      if (/Play again/.test((await next.textContent()) ?? "")) return;
+      await next.click();
+      await page.waitForTimeout(900);
+    }
+  };
+  await page.keyboard.press("Home");
+  for (const name of ["2030", "2040", "2050"]) {
+    await page.evaluate(`window.__panjimScenarioForTest("to-results")`).catch(() => undefined);
+    await settled();
+    cards[name] = await cardText();
+    if (name !== "2030") await page.screenshot({ path: path.join(OUT, `card-${name}-${W}x${H}.jpg`), type: "jpeg", quality: 82 });
+    await closeCards();
+  }
+  // The final card comes after 2050's cards and the skyline.
+  await page.waitForFunction("[...document.querySelectorAll('.result-cards:not([hidden]) button')].some((b) => /Play again/.test(b.textContent))", undefined, { timeout: 60000 }).catch(() => undefined);
+  await settled();
+  cards.final = await cardText();
+  await page.screenshot({ path: path.join(OUT, `card-final-${W}x${H}.jpg`), type: "jpeg", quality: 82 });
+}
+console.log(JSON.stringify({ size: `${W}x${H}`, tag, opening, miramar, zoom, cards, errors }));
 await browser.close();
 server.stop();
 process.exit(0);

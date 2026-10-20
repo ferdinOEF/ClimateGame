@@ -139,6 +139,14 @@ const PICK = `(style, seed) => {
   return null;
 }`;
 
+/** Waits for a result card's fade in to finish, so its screenshot shows the card and not the dimmed board behind it. */
+async function cardSettled(page: Page): Promise<void> {
+  await page
+    .waitForFunction("(() => { const c = document.querySelector('.result-cards:not([hidden]) .result-card'); return !!c && getComputedStyle(c).opacity === '1' && c.getAnimations({ subtree: true }).every((a) => a.playState !== 'running'); })()", undefined, { timeout: 15000 })
+    .catch(() => undefined);
+  await page.waitForTimeout(400);
+}
+
 /** Plays a storm through as a player who clicks to hurry it, then reads and closes the result cards. Returns false at the final card. */
 async function weatherStorm(page: Page, style: string, ruinsBefore: number): Promise<{ ruins: number; final: boolean }> {
   // A storm and its cards wait while Help, ☰ or the Field Guide is open (Section 16 B5): a player shuts them.
@@ -157,6 +165,7 @@ async function weatherStorm(page: Page, style: string, ruinsBefore: number): Pro
   const ruins = (await page.evaluate("window.__ruinsForTest().ruined")) as number;
   check(!!outcome && !!card && card.saved === outcome.saved && card.total === outcome.total, `${style} ${id}: the card reads ${card?.saved} of ${card?.total} homes saved, as the storm resolved`);
   check(!!outcome && ruins - ruinsBefore === outcome.damaged, `${style} ${id}: ${ruins - ruinsBefore} new ruins, the ${outcome?.damaged} homes it destroyed`);
+  await cardSettled(page);
   await shot(page, `${style}-${id}-card1`);
   await textAndLayout(page, `${style} ${id} result card`);
   // Input over a result card: Help and ☰ open and close; Esc.
@@ -233,6 +242,7 @@ async function playStyle(style: string): Promise<void> {
   // 2050: the skyline reveal and the title come before the final card.
   for (let k = 0; k < 160 && !(await finalCard(page)); k++) await page.waitForTimeout(250);
   check(await finalCard(page), `${style}: the run reaches the final card (${builds} builds, year ${await year(page)})`);
+  await cardSettled(page);
   await shot(page, `${style}-final`);
   await textAndLayout(page, `${style} final card`);
   const stars = (await page.evaluate("window.__panjimForTest.run.schedule.map((c) => window.__panjimForTest.run.outcomes.get(c.id)?.stars ?? 0)")) as number[];
