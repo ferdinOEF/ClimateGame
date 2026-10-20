@@ -62,12 +62,76 @@ await page.waitForTimeout(4000);
 await page.mouse.move(2, H - 2);
 await page.screenshot({ path: path.join(OUT, `opening-${tag}-${W}x${H}.jpg`), type: "jpeg", quality: 82 });
 const opening = await measure(page);
+const openingDistance = (await page.evaluate("window.__zoomForTest ? window.__zoomForTest.distance() : -1")) as number;
 // Miramar close up: the camera's own close framing on Miramar Beach, the same in before and after.
 await page.evaluate(`window.__panjimForTest.host.focusCamera({ q: -4, r: 19 }, true, 1)`);
 await page.waitForTimeout(3500);
 await page.screenshot({ path: path.join(OUT, `miramar-${tag}-${W}x${H}.jpg`), type: "jpeg", quality: 82 });
 const miramar = await measure(page);
-console.log(JSON.stringify({ size: `${W}x${H}`, tag, opening, miramar, errors }));
+// ---- 22.3 zoom: notches and key presses, furthest to nearest; the pointer's ground; Home -----------------------
+// The distance the camera is gliding to: what a notch or a press changes at once (software GL draws a frame a second).
+const dist = (): Promise<number> => page.evaluate("window.__zoomForTest ? window.__zoomForTest.target() : -1") as Promise<number>;
+const settle = async (): Promise<number> => {
+  let last = -2;
+  for (let k = 0; k < 40; k++) {
+    await page.waitForTimeout(250);
+    const d = await dist();
+    if (Math.abs(d - last) < 0.01) return d;
+    last = d;
+  }
+  return last;
+};
+let zoom: Record<string, unknown> = { available: false };
+if ((await dist()) > 0) {
+  const limits = (await page.evaluate("window.__zoomForTest.limits")) as { min: number; max: number };
+  await page.mouse.move(W / 2, H / 2);
+  // Out to the limit first.
+  for (let k = 0; k < 40 && (await dist()) < limits.max - 0.01; k++) {
+    await page.mouse.wheel(0, 100);
+    await page.waitForTimeout(120);
+  }
+  const far = await settle();
+  let notches = 0;
+  for (; notches < 200; notches++) {
+    if ((await dist()) <= limits.min + 0.01) break;
+    await page.mouse.wheel(0, -100);
+    await page.waitForTimeout(150);
+    await settle();
+  }
+  const near = await dist();
+  // Keys: back out, then + presses to the limit.
+  for (let k = 0; k < 40; k++) await page.keyboard.press("-");
+  const keyFar = await settle();
+  let presses = 0;
+  for (; presses < 200; presses++) {
+    if ((await dist()) <= limits.min + 0.01) break;
+    await page.keyboard.press("+");
+    await settle();
+  }
+  // Held: - held for a second and a half zooms on smoothly (more than one notch).
+  const beforeHold = await dist();
+  await page.keyboard.down("-");
+  await page.waitForTimeout(1500);
+  await page.keyboard.up("-");
+  const afterHold = await settle();
+  // The pointer's ground stays under it: the world point under a corner of the screen before and after a notch.
+  const probe = (x: number, y: number): Promise<{ x: number; z: number } | null> =>
+    page.evaluate(`(() => { const cam = window.__cameraForTest; const ndc = { x: (${x} / innerWidth) * 2 - 1, y: -(${y} / innerHeight) * 2 + 1 }; const o = cam.position.clone(); const v = cam.position.clone().set(ndc.x, ndc.y, 0.5).unproject(cam).sub(o).normalize(); if (v.y >= 0) return null; const t = -o.y / v.y; return { x: o.x + v.x * t, z: o.z + v.z * t }; })()`) as Promise<{ x: number; z: number } | null>;
+  const px = Math.round(W * 0.72), py = Math.round(H * 0.62);
+  await page.mouse.move(px, py);
+  const g0 = await probe(px, py);
+  await page.mouse.wheel(0, -100);
+  // The drawn camera reaches the glide's end before the ground is read again.
+  await page.waitForFunction("Math.abs(window.__zoomForTest.distance() - window.__zoomForTest.target()) < 0.01", undefined, { timeout: 60000 }).catch(() => undefined);
+  await page.waitForTimeout(1500);
+  const g1 = await probe(px, py);
+  const drift = g0 && g1 ? Math.hypot(g0.x - g1.x, g0.z - g1.z) : null;
+  // Home: the opening view's distance again.
+  await page.keyboard.press("Home");
+  const home = await settle();
+  zoom = { available: true, limits, far, near, notchesFarToNear: notches, keyFar, keyPressesFarToNear: presses, held: { from: beforeHold, to: afterHold }, pointerGroundDrift: drift, home, opening: openingDistance };
+}
+console.log(JSON.stringify({ size: `${W}x${H}`, tag, opening, miramar, zoom, errors }));
 await browser.close();
 server.stop();
 process.exit(0);

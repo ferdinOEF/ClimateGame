@@ -144,6 +144,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     zoomBy,
     setHome,
     zoomLimits,
+    zoomTargetDistance,
     dispose: disposeScene
   } = createScene(container);
 
@@ -360,7 +361,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   areaOutline.reducedMotion = prefersReducedMotionNow();
   scene.add(areaOutline.group);
   /** Pins for the places open objectives name, and the "Area protected" note (Section 12). */
-  const mapPins = new MapPins(container, (x, y, z) => worldToScreen(x, y, z));
+  const mapPins = new MapPins(container, (x, y, z) => worldToScreen(x, y, z), () => coneOverlay.arrowHeads);
+  /** Section 22.2: past this camera distance (the furthest opening view is 44) the labels tighten a little. */
+  const LABELS_FAR_DISTANCE = 46;
+  let labelsFar = false;
   const buildFloat = new BuildFloat(container, (x, y, z) => worldToScreen(x, y, z));
   /**
    * Panjim 2050's storms: the water (one instanced layer, drawn from the
@@ -2649,6 +2653,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     heatOverlay.tick(nowMs);
     coneOverlay.tick(nowMs);
     areaOutline.tick(nowMs);
+    // Section 22.2: zoomed out (the camera past the opening view's distance), the labels a little smaller again.
+    const far = cameraDistance() > LABELS_FAR_DISTANCE;
+    if (far !== labelsFar) {
+      labelsFar = far;
+      container.classList.toggle("labels-far", far);
+    }
     mapPins.update(nowMs);
     buildFloat.update(nowMs);
     if (ambientLife) {
@@ -2844,7 +2854,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // its actual position after a simulated pinch/pan/wheel gesture.
     __cameraForTest: camera,
     // Section 22.3: the camera's distance (displayed and still settling) and its limits, for the zoom checks.
-    __zoomForTest: { distance: cameraDistance, limits: zoomLimits, zoomBy },
+    __zoomForTest: { distance: cameraDistance, target: zoomTargetDistance, limits: zoomLimits, zoomBy },
     // Forces the cloud layer visible without waiting for a real telegraph
     // window (turns only advance via build()).
     __cloudLayerForTest: cloudLayer,

@@ -48,6 +48,8 @@ export interface KhazanScene {
   setHome: (fn: (() => void) | null) => void;
   /** The camera's nearest and furthest distances. */
   zoomLimits: { min: number; max: number };
+  /** Where a zoom in progress is gliding to (the distance once it settles). */
+  zoomTargetDistance: () => number;
   /** True if the pointer moved more than a few px between its last down/up — a pan, not a click. Callers should skip click actions when this is true. */
   wasDrag: () => boolean;
   /** Per-frame cost counters, read by the performance reports (see `start`). */
@@ -579,6 +581,7 @@ export function createScene(container: HTMLElement): KhazanScene {
       onHome = fn;
     },
     zoomLimits: { min: CAM_DISTANCE_MIN, max: CAM_DISTANCE_MAX },
+    zoomTargetDistance: () => desiredDistance,
     wasDrag,
     dispose
   };

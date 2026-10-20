@@ -1669,13 +1669,14 @@ html, body {
     the same cream card as the objective pins (panjim.css .map-pin-name), in
     sentence case. The old grey all-caps capsule is gone.
   */
-  padding: 2px 8px;
+  /* Section 22.2 (owner decision): 30% smaller padding and a lighter shadow; 11 px text, the floor at 1366x768. */
+  padding: 1.5px 5.5px;
   white-space: nowrap;
-  font: 600 12px/1.3 "Inter", system-ui, sans-serif;
+  font: 600 11px/1.3 "Inter", system-ui, sans-serif;
   color: #2a1408;
   background: rgba(255, 246, 224, 0.92);
   border-radius: 999px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
   /*
     Only opacity transitions. The transform is rewritten every frame to track
     the camera, so transitioning it would make every label lag the board by
@@ -1704,7 +1705,8 @@ html, body {
   padding: 1px 3px;
   font-family: inherit;
   line-height: normal;
-  font-size: 14px;
+  /* Section 22.2 (owner decision): about 15% smaller (14 px before). */
+  font-size: 12px;
   font-weight: 700;
   font-variant: small-caps;
   text-transform: none;
@@ -1722,6 +1724,11 @@ html, body {
     1px -1px 0 #fbf4e4,
     -1px -1px 0 #fbf4e4,
     0 0 6px rgba(251, 244, 228, 0.9);
+}
+
+/* Section 22.2: zoomed out, the place pills a little tighter again (the text stays at its 11 px floor). */
+.labels-far .map-label:not(.locality):not(.card) {
+  padding: 1px 4px;
 }
 
 /* A monument's category line: only on its name card. */
@@ -1751,7 +1758,7 @@ html, body {
 }
 
 .map-label.locality.rank-2 {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
 }

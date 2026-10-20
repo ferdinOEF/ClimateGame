@@ -15,13 +15,18 @@ export interface MapPin {
 }
 
 type Project = (x: number, y: number, z: number) => { x: number; y: number } | null;
+type WorldPoint = { x: number; y: number; z: number };
+/** What a pin's name keeps clear of besides its own tile: the storm arrows' heads (tip and back edge), in world space. */
+type Avoid = () => readonly { tip: WorldPoint; back: WorldPoint }[];
+type Rect = { x0: number; y0: number; x1: number; y1: number };
+const overlaps = (a: Rect, b: Rect): boolean => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 
 export class MapPins {
   private readonly layer: HTMLElement;
   private pins: { pin: MapPin; el: HTMLElement }[] = [];
   private note: { pin: MapPin; el: HTMLElement; until: number } | null = null;
 
-  constructor(container: HTMLElement, private readonly project: Project) {
+  constructor(container: HTMLElement, private readonly project: Project, private readonly avoid: Avoid = () => []) {
     this.layer = document.createElement("div");
     this.layer.className = "map-pins";
     this.layer.setAttribute("aria-hidden", "true");
@@ -66,7 +71,18 @@ export class MapPins {
   /** Re-projects every pin; call each frame. */
   update(nowMs: number): void {
     if (this.layer.hidden) return;
-    for (const { pin, el } of this.pins) place(el, this.project(pin.x, pin.y, pin.z));
+    const heads = this.pins.length ? this.avoid().map((h) => ({ tip: this.project(h.tip.x, h.tip.y, h.tip.z), back: this.project(h.back.x, h.back.y, h.back.z) })) : [];
+    // Each arrowhead as a box round its tip and back edge, a little wider than drawn.
+    const headBoxes: Rect[] = heads.flatMap(({ tip, back }) => {
+      if (!tip || !back) return [];
+      const r = Math.max(10, Math.hypot(tip.x - back.x, tip.y - back.y) * 0.8);
+      return [{ x0: Math.min(tip.x, back.x) - r, y0: Math.min(tip.y, back.y) - r, x1: Math.max(tip.x, back.x) + r, y1: Math.max(tip.y, back.y) + r }];
+    });
+    for (const { pin, el } of this.pins) {
+      const at = this.project(pin.x, pin.y, pin.z);
+      place(el, at);
+      if (at) this.nudge(el, pin, at, headBoxes);
+    }
     if (this.note) {
       if (nowMs > this.note.until) {
         this.note.el.remove();
@@ -84,6 +100,40 @@ export class MapPins {
         }
       }
     }
+  }
+
+  /**
+   * Section 22.2 (owner decision): a pin's name never covers the tile its pin marks or a storm arrow's tip. Above
+   * the dot by default; when that would cover either, beside the tile (right, else left), level with the dot.
+   */
+  private nudge(el: HTMLElement, pin: MapPin, at: { x: number; y: number }, heads: readonly Rect[]): void {
+    const name = el.querySelector<HTMLElement>(".map-pin-name");
+    const dot = el.querySelector<HTMLElement>(".map-pin-dot");
+    if (!name || !dot) return;
+    const w = name.offsetWidth;
+    const h = name.offsetHeight;
+    const gap = 2;
+    const d = dot.offsetHeight;
+    // Its tile on screen: the box round the hex's six corners (radius 1, the board's hex size).
+    let tile: Rect = { x0: at.x, y0: at.y, x1: at.x, y1: at.y };
+    for (let k = 0; k < 6; k++) {
+      const angle = (Math.PI / 3) * k + Math.PI / 6;
+      const c = this.project(pin.x + Math.cos(angle) * 0.92, pin.y, pin.z + Math.sin(angle) * 0.92);
+      if (c) tile = { x0: Math.min(tile.x0, c.x), y0: Math.min(tile.y0, c.y), x1: Math.max(tile.x1, c.x), y1: Math.max(tile.y1, c.y) };
+    }
+    const above: Rect = { x0: at.x - w / 2, y0: at.y - d / 2 - gap - h, x1: at.x + w / 2, y1: at.y - d / 2 - gap };
+    const clear = (r: Rect): boolean => !overlaps(r, tile) && heads.every((b) => !overlaps(r, b));
+    let dx = 0;
+    let dy = 0;
+    if (!clear(above)) {
+      const level = h / 2 + gap + d / 2;
+      const right: Rect = { x0: tile.x1 + 4, y0: at.y - h / 2, x1: tile.x1 + 4 + w, y1: at.y + h / 2 };
+      const left: Rect = { x0: tile.x0 - 4 - w, y0: at.y - h / 2, x1: tile.x0 - 4, y1: at.y + h / 2 };
+      const side = heads.some((b) => overlaps(right, b)) && !heads.some((b) => overlaps(left, b)) ? left : right;
+      dx = side.x0 - above.x0;
+      dy = level;
+    }
+    name.style.transform = dx === 0 && dy === 0 ? "" : `translate(${Math.round(dx)}px, ${Math.round(dy)}px)`;
   }
 
   dispose(): void {
