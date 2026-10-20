@@ -12,7 +12,9 @@
  * with it goes through the game's own resolver for every storm still to
  * come, one after the other (`assess`), as if nothing more were built. So a
  * build before 2030 is worth what it saves in 2030, 2040 and 2050 together. The best children by each goal stay in the beam
- * (duplicates, the same builds in another order within a phase, merged).
+ * (duplicates, the same builds in another order within a phase, merged), and so
+ * do the best by a greener order (stars, then the biodiversity still short of
+ * three stars, Section 25.2), which keeps plans that build nature first alive.
  * When a phase's last build goes down its storm resolves through the real
  * run, and from then on that storm counts as it went.
  *
@@ -31,7 +33,7 @@ import path from "node:path";
 import { BOT_LEVEL, newRun } from "../panjimBots/bots";
 import { ELEMENT_BY_ID } from "../../src/core/elements";
 import { clearsLevel } from "../../src/core/panjimIndex";
-import { actionKey, assess, canonical, goal1, goal2, legalActions, placeName, previewLost, replay, trialBoard, type Assessment, type PlanAction } from "./plan";
+import { actionKey, assess, canonical, goal1, goal2, greener, legalActions, placeName, previewLost, replay, trialBoard, type Assessment, type PlanAction } from "./plan";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split("=") as [string, string]));
 const num = (key: string, fallback: number): number => (args.has(key) ? Number(args.get(key)) : fallback);
@@ -52,7 +54,7 @@ if (childJob !== undefined) {
     const children: Scored[] = legalActions(run).map((action) => ({ actions: [...actions, action], score: assess(run, trialBoard(run, action)) }));
     // The best by each goal; the parent merges and dedupes.
     const best = new Map<string, Scored>();
-    for (const order of [goal1, goal2]) for (const c of [...children].sort((a, b) => order(a.score, b.score)).slice(0, job.keep)) best.set(actionKey(c.actions[c.actions.length - 1]), c);
+    for (const order of [goal1, greener, goal2]) for (const c of [...children].sort((a, b) => order(a.score, b.score)).slice(0, job.keep)) best.set(actionKey(c.actions[c.actions.length - 1]), c);
     out.push([...best.values()]);
   }
   process.stdout.write(`${JSON.stringify(out)}\n`, () => process.exit(0));
@@ -103,7 +105,9 @@ function select(children: Scored[]): Scored[] {
       chosen.set(canonical(c.actions, phaseEnds), c);
     }
   };
-  take(goal1, Math.ceil(beamWidth / 2));
+  // A third each: goal 1, the greener order (Section 25.2), goal 2.
+  take(goal1, Math.ceil(beamWidth / 3));
+  take(greener, Math.ceil((2 * beamWidth) / 3));
   take(goal2, beamWidth);
   return [...chosen.values()];
 }
