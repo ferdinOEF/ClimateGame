@@ -72,3 +72,29 @@ These would change accepted behaviour or a design decision, so they are not chan
    homes over a run before Section 21 and saves 25 to 60% now (mean 41%); `tests/panjimBots.test.ts` was changed to
    match, and Casual's lead over Greedy from 20 points to 15. Two stars now need 70% of the homes in the path saved
    (50% before); three stars 80% (79%).
+
+# Section 22: the owner's answers (22.4) and what was done
+
+1. **Begin again.** Beside a saved run the start popup now reads "Begin again"; it asks "Start a new run? Your run
+   from <year> will be lost." with Cancel and Begin again before the save is dropped. Checked in the playthrough
+   (`tools/playthrough21.ts`: the wording, Cancel keeps the popup and the save, Begin again starts at 2026;
+   screenshot `docs/qa/section22/playthrough/begin-again-confirm-*`). `tools/section16Checks.ts` expects the new label.
+2. **Ruined homes stay ruined.** Repair is for defences only: `ActionRun.needsRepair` is false and `repair` refused
+   for a home; a ruined home's popover says "Ruined in a storm. In this game a ruined home stays ruined for the rest of
+   the run: repair works on defences only." Test: `tests/section22.test.ts`.
+3. **A storm counts against the homes still standing.** The card reads "N of M homes saved" with M the homes in its
+   path still standing when it hit, and "Lost in earlier storms: K" under the bar; stars come from the same count.
+   Tests: `tests/ruins.test.ts` (the card's homes, and ruins equal M − N + K storm by storm).
+4. **The stronger setting is not used.** The cyclone stays 1.2 (Sharada Mandir and Miramar, nothing at Kala
+   Academy) and the flood 2.35 (through the Ribandar channel); only the 2050 strength and the stars were tuned.
+5. **Nature only against seawalls only.** Cause: a nature defence holds back at most 5 m of water round its tile (6 m
+   with an engineered one among the defences; `maxProtectionM` in `src/data/hazardModel.json`), a mangrove's own
+   strength is 4.5 m against a seawall's 14.4 m, and the stronger 2050 storm's water passes the ceiling, so nature
+   defences fall short first (few are overwhelmed: 1 to 3 of 25). Fixed by lowering the 2050 storm, 3.8 to 3.0, rather
+   than changing the hazard rules: nature only then saves more homes than seawalls only over the run and far more in
+   the flood (tables in `docs/QA_REPORT.md`).
+6. **Clear.** At least one star in every storm and five of the nine in all (`clearsLevel`, `CLEAR_TOTAL_STARS`); the
+   final card shows "N of 9 stars" and "Panjim cleared" or "Not cleared yet" with the rule as a game rule; How to play
+   says it. Test: `tests/section22.test.ts`.
+7. **Stars.** A one-star line: below 30% saved, no star. Two at 50%, three at 85% (from the owner's starting point
+   30 / 55 / 80, tuned on the bots). Targets this leaves unmet are listed in `docs/QA_REPORT.md`.
