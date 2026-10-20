@@ -152,7 +152,8 @@ export interface PanjimHost {
   /** "+3 homes safe" rising from a tile just built (Section 13.2). */
   floatAt: (coord: AxialCoord, text: string, tone: "good" | "zero" | "bad") => void;
   /** Draws the warning heat (an empty list clears it). */
-  showHeat: (tiles: HeatViewTile[]) => void;
+  /** The risk heat; `warning`: in the warning years before the storm (the heat then takes over from the area's outline). */
+  showHeat: (tiles: HeatViewTile[], warning: boolean) => void;
   /** Whether any menu, card or modal is open (the risk sequence never starts under one). */
   overlayOpen: () => boolean;
   /** Whether any of these tiles is on screen now. */
@@ -226,7 +227,10 @@ export class PanjimController {
   /** Real milliseconds played before this session, when resuming a save: the tempo badge counts the whole run. */
   playMsBefore = 0;
   /** The in-scene label over a storm's landfall or source while its warning is up: "Cyclone landfall ●○○". */
-  /** "Show risk": the warning heat on or off (R). On by default, remembered on this device. */
+  /**
+   * "Show risk" (R): the live risk heat on or off (Section 21.4). Off when a storm's phase begins, on by itself
+   * in the last years before it (the warning years), and the player's to switch at any time; not remembered.
+   */
   readonly riskToggle: PrefToggle;
   /** The latest exposure preview of the next storm, while it is inside the warning window. Read by Maya and the Get ready panel. */
   exposure: Exposure | null = null;
@@ -296,8 +300,10 @@ export class PanjimController {
     this.replayCard = new ReplayCard(host.container);
     this.riskToggle = new PrefToggle(
       host.container,
-      { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: true, className: "risk-toggle" },
+      { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: false, className: "risk-toggle", persist: false },
       (on) => {
+        // Set by riskDefaults inside renderHeat, which goes on with the new state: nothing to redo.
+        if (this.riskDefaulting) return;
         if (!on) this.host.cancelRiskIntro("risk hidden");
         this.renderHeat();
       }
@@ -630,9 +636,12 @@ export class PanjimController {
   renderHeat(): void {
     const next = this.run.nextChallenge();
     const yearsLeft = next ? this.run.yearsUntil(next) : 0;
-    this.exposure = next && yearsLeft >= 1 && yearsLeft <= this.heatLeadYears ? this.run.exposureFor(next) : null;
+    const warning = !!next && yearsLeft >= 1 && yearsLeft <= this.heatLeadYears;
+    this.riskDefaults(next, warning);
+    // Section 21.4: whenever Show risk is on, the next storm's risk on the board as it stands, at any year.
+    this.exposure = next && (warning || this.riskToggle.value) ? this.run.exposureFor(next) : null;
     if (!next || !this.exposure || !this.riskToggle.value) {
-      this.host.showHeat([]);
+      this.host.showHeat([], warning);
       return;
     }
     const hazards = hazardsOf(next.kind);
@@ -644,14 +653,43 @@ export class PanjimController {
     const undefended = this.run.exposureFor(next, true);
     const terrain = (key: string): string | undefined => this.host.state.placed.get(key)?.terrainId;
     const view = buildHeatView(this.exposure, undefended, yearsLeft, defences, terrain);
-    this.host.showHeat(view);
+    this.host.showHeat(view, warning);
     // The first warning of the playthrough gets the risk sequence, once, if
     // nothing else is going on (it never waits for, or blocks, the player).
-    const hot = view.filter((tile) => tile.heat > 0).map((tile) => tile.key);
+    // The risk sequence belongs to the warning years, as before.
+    const hot = warning ? view.filter((tile) => tile.heat > 0).map((tile) => tile.key) : [];
     if (hot.length > 0) this.riskGate.see(next.id);
     if (hot.length > 0 && !this.riskGate.spent && !this.busy && !this.host.overlayOpen() && this.host.riskAreaOnScreen(hot) && this.riskGate.offer(next.id)) {
       this.riskIntroModeStarted = this.currentRiskIntroMode();
       this.host.startRiskIntro(this.riskIntroModeStarted, hot);
+    }
+  }
+
+  /** The storm whose phase Show risk's defaults were last set for, and whether its warning years have switched it on. */
+  private riskPhase: string | null = null;
+  private riskWarned = false;
+  /** True while riskDefaults sets the switch (its onChange then skips the repaint renderHeat is already making). */
+  private riskDefaulting = false;
+
+  /**
+   * Show risk's defaults (Section 21.4): off when a storm's phase begins (a new run, a resume, the storm before
+   * it past), on once when its warning years begin; between those, whatever the player chose.
+   */
+  private riskDefaults(next: ScheduledChallenge | null, warning: boolean): void {
+    const id = next?.id ?? null;
+    this.riskDefaulting = true;
+    try {
+      if (id !== this.riskPhase) {
+        this.riskPhase = id;
+        this.riskWarned = false;
+        this.riskToggle.set(false);
+      }
+      if (warning && !this.riskWarned) {
+        this.riskWarned = true;
+        this.riskToggle.set(true);
+      }
+    } finally {
+      this.riskDefaulting = false;
     }
   }
 

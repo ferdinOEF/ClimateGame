@@ -5,6 +5,7 @@ import { createMonumentGeometryFor, monumentGeometryKey, MONUMENT_BUILDING_KINDS
 import { monumentScale, planReach, type Size } from "./monumentScale";
 import { LANDMARK_FACING } from "./landmarkModels";
 import { landmarkDecals } from "./landmarkDecals";
+import { damagedLandmarkGeometry, landmarkRubble } from "./landmarkDamageGeometry";
 import { jitterColor } from "./palette";
 
 /**
@@ -69,6 +70,10 @@ function placement(matrix: THREE.Matrix4, x: number, y: number, z: number, sx: n
   return matrix.compose(posVec.set(x, y, z), turnQuat.setFromAxisAngle(turnAxis, turn), scaleVec.set(sx, sy, sx));
 }
 
+/** What a storm leaves on a landmark: soot and wet stone. */
+const DAMAGE_TINT = new THREE.Color("#5a5048");
+const RUBBLE_MATERIAL = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95, vertexColors: true });
+
 export class MonumentMeshManager {
   readonly group = new THREE.Group();
   private readonly meshes = new Map<string, THREE.InstancedMesh>();
@@ -78,7 +83,9 @@ export class MonumentMeshManager {
   /** Each monument's drawn size and scale, for the tests and the QA report. */
   readonly sizes = new Map<string, { size: Size; neighbour: Size | null; sx: number; sy: number }>();
   /** Each placed monument's resting transform parts, for `setHeightGrowth`. */
-  private readonly placed: { monument: MonumentPlacement; mesh: THREE.InstancedMesh; index: number; x: number; y: number; z: number; sx: number; sy: number; h: number; turn: number; growth: number; decals: THREE.Group | null }[] = [];
+  private readonly placed: { monument: MonumentPlacement; mesh: THREE.InstancedMesh; index: number; x: number; y: number; z: number; sx: number; sy: number; h: number; turn: number; growth: number; decals: THREE.Group | null; damage: 0 | 1 | 2; rubble: THREE.Mesh | null }[] = [];
+  /** Each geometry as first built, so a damaged one is always made from the whole model. */
+  private readonly baseGeometry = new Map<THREE.InstancedMesh, THREE.BufferGeometry>();
   /** Which monument each instance of each mesh is. */
   private readonly byInstance = new Map<THREE.Object3D, MonumentPlacement[]>();
   /** Coord key -> world Y of the top of the monument standing there. */
@@ -170,7 +177,8 @@ export class MonumentMeshManager {
         decals.scale.set(sx, sy, sx);
         this.group.add(decals);
       }
-      this.placed.push({ monument, mesh, index, x, y, z, sx, sy, h: size.h, turn, growth: 1, decals });
+      this.placed.push({ monument, mesh, index, x, y, z, sx, sy, h: size.h, turn, growth: 1, decals, damage: 0, rubble: null });
+      if (!this.baseGeometry.has(mesh)) this.baseGeometry.set(mesh, geometry);
       this.tops.set(`${monument.coord.q},${monument.coord.r}`, y + size.h * sy);
 
       // Seeded off the coordinate so a given building looks the same every
@@ -209,14 +217,86 @@ export class MonumentMeshManager {
       const growth = factorAt(p.monument.coord);
       if (Math.abs(growth - p.growth) < 1e-3) continue;
       p.growth = growth;
-      p.mesh.setMatrixAt(p.index, placement(matrix, p.x, p.y, p.z, p.sx, p.sy * growth, p.turn));
-      p.decals?.scale.set(p.sx, p.sy * growth, p.sx);
+      if (p.damage > 0) this.writeMatrix(p);
+      else p.mesh.setMatrixAt(p.index, placement(matrix, p.x, p.y, p.z, p.sx, p.sy * growth, p.turn));
+      if (p.damage === 0) p.decals?.scale.set(p.sx, p.sy * growth, p.sx);
       this.tops.set(`${p.monument.coord.q},${p.monument.coord.r}`, p.y + p.h * p.sy * growth);
       touched.add(p.mesh);
     }
     for (const mesh of touched) {
       mesh.instanceMatrix.needsUpdate = true;
       mesh.boundingSphere = null;
+    }
+  }
+
+  /**
+   * Section 21.3: a landmark the storm damaged (1) or destroyed (2) shows it for the rest of the run: its own model
+   * with soot and crack streaks and a caved-in section of roof (wider when destroyed), darker, rubble at its foot; a
+   * destroyed one also settles and leans a little. Damage only ever gets worse. Open places (the garden, the beach,
+   * the headland) only take the rubble and the darkening. `exact` sets the level as given (a rewind or a resume),
+   * else it only ever rises.
+   */
+  setDamage(coord: AxialCoord, level: 0 | 1 | 2, exact = false): void {
+    const p = this.placed.find((x) => x.monument.coord.q === coord.q && x.monument.coord.r === coord.r);
+    if (!p || level === p.damage || (!exact && level < p.damage)) return;
+    p.damage = level;
+    if (level === 0) {
+      // A rewind to before the storm: the landmark whole again.
+      const base = this.baseGeometry.get(p.mesh);
+      if (base && p.mesh.geometry !== base) {
+        p.mesh.geometry.dispose();
+        p.mesh.geometry = base;
+      }
+      p.mesh.setColorAt(p.index, jitterColor(NEUTRAL_TINT, coord.q * 53 + coord.r * 29));
+      if (p.mesh.instanceColor) p.mesh.instanceColor.needsUpdate = true;
+      this.writeMatrix(p);
+      if (p.rubble) {
+        this.group.remove(p.rubble);
+        p.rubble.geometry.dispose();
+        p.rubble = null;
+      }
+      return;
+    }
+    const seed = coord.q * 31 + coord.r * 17;
+    const isBuilding = MONUMENT_BUILDING_KINDS.includes(p.monument.kind);
+    const base = this.baseGeometry.get(p.mesh);
+    if (isBuilding && base && level > 0) {
+      const old = p.mesh.geometry;
+      p.mesh.geometry = damagedLandmarkGeometry(base, level as 1 | 2, seed);
+      if (old !== base) old.dispose();
+    }
+    p.mesh.setColorAt(p.index, jitterColor(NEUTRAL_TINT, coord.q * 53 + coord.r * 29).lerp(DAMAGE_TINT, level === 2 ? 0.45 : 0.25));
+    if (p.mesh.instanceColor) p.mesh.instanceColor.needsUpdate = true;
+    this.writeMatrix(p);
+    if (p.rubble) {
+      this.group.remove(p.rubble);
+      p.rubble.geometry.dispose();
+    }
+    p.rubble = new THREE.Mesh(landmarkRubble(level as 1 | 2, seed), RUBBLE_MATERIAL);
+    p.rubble.name = "monument-rubble";
+    p.rubble.position.set(p.x, p.y, p.z);
+    p.rubble.scale.setScalar(p.sx);
+    p.rubble.raycast = () => undefined;
+    this.group.add(p.rubble);
+  }
+
+  /** Each landmark's damage now (0 standing, 1 damaged, 2 destroyed), for the tests and the QA report. */
+  damageOf(coord: AxialCoord): 0 | 1 | 2 {
+    return this.placed.find((x) => x.monument.coord.q === coord.q && x.monument.coord.r === coord.r)?.damage ?? 0;
+  }
+
+  /** A landmark's instance matrix as it stands: its scale, growth and turn, and a destroyed one's settle and lean. */
+  private writeMatrix(p: (typeof this.placed)[number]): void {
+    const matrix = placement(new THREE.Matrix4(), p.x, p.y, p.z, p.sx, p.sy * p.growth * (p.damage === 2 ? 0.88 : 1), p.turn);
+    if (p.damage === 2) matrix.multiply(new THREE.Matrix4().makeRotationX(0.06));
+    p.mesh.setMatrixAt(p.index, matrix);
+    p.mesh.instanceMatrix.needsUpdate = true;
+    p.mesh.boundingSphere = null;
+    // Its signs and windows go with it.
+    if (p.decals) {
+      p.decals.rotation.order = "YXZ";
+      p.decals.rotation.set(p.damage === 2 ? 0.06 : 0, p.turn, 0);
+      p.decals.scale.set(p.sx, p.sy * p.growth * (p.damage === 2 ? 0.88 : 1), p.sx);
     }
   }
 

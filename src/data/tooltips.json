@@ -8,7 +8,7 @@
   "sea": "Sea level in this game: {cm} cm above {start}. It rises a little every year.",
   "coin": "Your Coin: {coin}. Spend it on defences. Your city earns {income} Coin a season, collecting in the jar below.",
   "fieldGuide": "Maya's notes in your Field Guide: {notes}. Her tips show the same count. Inside, you have spotted {found} of {species} creatures.",
-  "riskToggle": "Show risk (R): tints red the tiles the next storm will hit hardest, in the two years before it comes. Turn it off to see the map plain.",
+  "riskToggle": "Show risk (R): tints red the homes the next storm would hit today, counting the defences you have built. On by itself in the two years before a storm; turn it on or off at any time.",
   "mayaToggle": "Maya (M): turns her tips on or off. The red warning stays either way.",
   "soundToggle": "Sound (S): the storm's wind, waves, rain and thunder, and the game's chimes. Nothing plays until you first click.",
   "soundVolume": "Sound volume: {pct}%.",

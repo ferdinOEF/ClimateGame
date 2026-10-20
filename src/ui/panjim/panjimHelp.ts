@@ -78,6 +78,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>The heat ${RULE}</h3>
         <p>${heatLead(input.heatLeadYears ?? HEAT_LEAD_YEARS)}, red marks the homes it would flood.</p>
+        <p>Show risk (R): the homes the next storm would hit today, counting the defences you have built.</p>
       </div>
     </section>
 

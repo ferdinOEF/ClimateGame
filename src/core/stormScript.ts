@@ -2,6 +2,7 @@ import { axialKey, neighbor } from "./hex";
 import { arrivalTime, hitTime, type DepthField } from "./hazard";
 import type { ChallengeOutcome } from "./zones";
 import { defendsAgainst, type StormRecord } from "./stormRecord";
+import { landmarkDamage } from "./landmarkDamage";
 
 /**
  * The storm's script: every moment the visuals mark, in storm time, taken
@@ -13,6 +14,8 @@ import { defendsAgainst, type StormRecord } from "./stormRecord";
  *     it, and how it answers (held, overwhelmed, failed) is what the resolver
  *     recorded for it;
  *   - the first defence the water reaches gets the slow-motion beat;
+ *   - a landmark breaks when the water on it reaches the line, damaged or
+ *     destroyed as `landmarkDamage` says (Section 21.3);
  *   - lightning strikes sparsely around landfall (cyclones and the finale).
  *
  * Pure: no DOM, no renderer.
@@ -21,6 +24,8 @@ export type DefenceResult = "held" | "overwhelmed" | "failed";
 
 export type StormEvent =
   | { t: number; type: "house"; key: string }
+  /** A landmark the water damages (1) or destroys (2), when the water on its tile reaches the line (Section 21.3). */
+  | { t: number; type: "landmark"; key: string; level: 1 | 2 }
   | { t: number; type: "defence"; key: string; elementId: string; result: DefenceResult; first: boolean }
   | { t: number; type: "landfall" }
   | { t: number; type: "lightning"; seed: number };
@@ -82,13 +87,18 @@ function contactTime(field: DepthField, key: string): number | null {
  * when it came (key → element id): a failed structure is gone from the board
  * after resolution, so it has to be named from before.
  */
-export function buildStormScript(record: StormRecord, defences: ReadonlyMap<string, string>, zoneOf: (key: string) => string | null): StormScript {
+export function buildStormScript(record: StormRecord, defences: ReadonlyMap<string, string>, zoneOf: (key: string) => string | null, landmarks: readonly string[] = []): StormScript {
   const { field, outcome } = record;
   const events: StormEvent[] = [];
-  for (const key of outcome.damagedHouses) {
-    const t = hitTime(field, key);
-    if (t !== null) events.push({ t, type: "house", key });
+  for (const key of landmarks) {
+    const level = landmarkDamage(record, key);
+    if (level === 0) continue;
+    const t = hitTime(field, key) ?? arrivalTime(field, key);
+    if (t !== null) events.push({ t, type: "landmark", key, level });
   }
+  // Every home the resolver lost goes during the storm: when its water passes the line, else when water first
+  // reaches it, else half way through (a depth only just over the line can fall between the search's steps).
+  for (const key of outcome.damagedHouses) events.push({ t: hitTime(field, key) ?? arrivalTime(field, key) ?? field.duration / 2, type: "house", key });
   const contacts: { t: number; key: string; elementId: string }[] = [];
   for (const [key, elementId] of testedDefences(record, defences, zoneOf)) {
     const t = contactTime(field, key);

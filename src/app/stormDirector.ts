@@ -34,6 +34,9 @@ export interface StormDirectorDeps {
   fitTo: (width: number, depth: number) => void;
   setTint: (coord: AxialCoord, tint: THREE.Color | null, blend?: number) => void;
   houseLost: (coord: AxialCoord) => void;
+  /** The landmarks' tiles ("q,r"), and a landmark breaking: 1 damaged, 2 destroyed (Section 21.3). */
+  landmarks?: readonly string[];
+  landmarkDamaged?: (coord: AxialCoord, level: 1 | 2) => void;
   defenceFailed: (coord: AxialCoord) => void;
   defenceWorn: (coord: AxialCoord, degrade: number) => void;
   /** The ring and the creatures: a defence answering. */
@@ -147,7 +150,7 @@ export class StormDirector {
     const zoneOf = (key: string): string | null => this.deps.zones.zoneOf(key);
     // Only the defences on the storm's path, answering its hazard, take part.
     const tested = testedDefences(record, defences, zoneOf);
-    this.script = buildStormScript(record, defences, zoneOf);
+    this.script = buildStormScript(record, defences, zoneOf, this.deps.landmarks ?? []);
     this.hooks = hooks;
     this.t = 0;
     this.nextEvent = 0;
@@ -405,6 +408,10 @@ export class StormDirector {
         this.deps.sound?.("house");
         break;
       }
+      case "landmark": {
+        this.deps.landmarkDamaged?.(toCoord(event.key), event.level);
+        break;
+      }
       case "defence": {
         const coord = toCoord(event.key);
         this.pulses.set(event.key, 1);
@@ -476,7 +483,7 @@ export class StormDirector {
     // Anything the script had not reached yet still happens (a hurried storm).
     if (this.script) while (this.nextEvent < this.script.events.length) {
       const event = this.script.events[this.nextEvent++];
-      if (event.type === "house" || (event.type === "defence" && event.result !== "held")) this.fire(event, 0, true);
+      if (event.type === "house" || event.type === "landmark" || (event.type === "defence" && event.result !== "held")) this.fire(event, 0, true);
     }
     for (const coord of this.shoreSea) this.deps.setTint(coord, null);
     this.deps.water.end();

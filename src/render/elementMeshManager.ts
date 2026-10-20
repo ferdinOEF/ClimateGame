@@ -11,6 +11,7 @@ import { SettleAnimator } from "./settleAnimation";
 import { MAX_ELEMENT_INSTANCES_PER_TYPE } from "./instanceLimits";
 import { buildingGeometry, ROOF_TOP } from "./townGeometry";
 import type { BuildingKind, FabricKind } from "@levels/townLayout";
+import { RUIN_TINT, ruinGeometry } from "./ruinGeometry";
 
 /**
  * How a House on a town-plan tile is drawn (levels/townLayout.ts): which of
@@ -210,6 +211,11 @@ interface ElementInstanceRef {
   heightScale: number;
   /** The rest of the tile's city fabric, if any (see `BuildingStyle.fabric`). */
   companions: Companion[];
+  /**
+   * Section 21.3: a home the storm destroyed is drawn as its ruin, in the ruin pools (`ruin:<kind>`): one for the
+   * House, one for each structure of its fabric, each on that structure's own spot. Absent while it stands.
+   */
+  ruins?: { mesh: THREE.InstancedMesh; meshKey: string; index: number; dx: number; dz: number; rotY: number; scale: number }[];
 }
 
 /** A just-planted defence is drawn at this fraction of its full size, growing to 1 at maturity. */
@@ -319,6 +325,76 @@ export class ElementMeshManager {
    * turn, its skyline height) is written back here, and its fabric appears.
    */
   private settling = new Set<ElementInstanceRef>();
+
+  /** How many homes are drawn as ruins (Section 21.3), for the tests and the QA report. */
+  get ruinedCount(): number {
+    let count = 0;
+    for (const ref of this.byCoord.values()) if (ref.ruins) count++;
+    return count;
+  }
+
+  /** Whether the home on a tile is drawn as a ruin. */
+  isRuined(coord: AxialCoord): boolean {
+    return !!this.byCoord.get(`${coord.q},${coord.r}`)?.ruins;
+  }
+
+  /** The ruin pool for a building kind, made on first use. */
+  private ruinMesh(kind: BuildingKind): THREE.InstancedMesh {
+    const key = `ruin:${kind}`;
+    let mesh = this.meshes.get(key);
+    if (mesh) return mesh;
+    mesh = new THREE.InstancedMesh(ruinGeometry(kind), new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95, vertexColors: true }), MAX_ELEMENT_INSTANCES_PER_TYPE);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_ELEMENT_INSTANCES_PER_TYPE * 3), 3);
+    mesh.count = 0;
+    mesh.name = `element-${key}`;
+    this.meshes.set(key, mesh);
+    this.nextIndex.set(key, 0);
+    this.freeIndices.set(key, []);
+    this.group.add(mesh);
+    return mesh;
+  }
+
+  /**
+   * Section 21.3: a home the storm destroyed drops into its ruin, the House and its fabric together: the roof gone,
+   * the walls broken off low, rubble round them, darker than the house. It stays a ruin for the rest of the run (a
+   * Repair, where the game offers one, is the only way back). Anything that is not a town building takes the old
+   * damage look instead.
+   */
+  setBuildingRuinedVisual(coord: AxialCoord): void {
+    const ref = this.byCoord.get(`${coord.q},${coord.r}`);
+    if (!ref || ref.ruins) return;
+    if (!ref.meshKey.startsWith("house:")) {
+      this.setBuildingDamagedVisual(coord);
+      return;
+    }
+    const kind = ref.meshKey.slice("house:".length) as BuildingKind;
+    const parts = [{ kind, dx: 0, dz: 0, rotY: ref.rotY, scale: ref.styleScale, color: ref.baseColor }, ...ref.companions.map((part) => ({ kind: part.meshKey.slice("fabric:".length) as BuildingKind, dx: part.dx, dz: part.dz, rotY: part.rotY, scale: part.scale, color: part.baseColor }))];
+    ref.ruins = parts.map((part) => {
+      const mesh = this.ruinMesh(part.kind);
+      const meshKey = `ruin:${part.kind}`;
+      const index = this.allocate(meshKey);
+      mesh.setColorAt(index, part.color.clone().lerp(RUIN_TINT, 0.65));
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.count = Math.max(mesh.count, index + 1);
+      return { mesh, meshKey, index, dx: part.dx, dz: part.dz, rotY: part.rotY, scale: part.scale };
+    });
+    this.settling.delete(ref);
+    this.writeTransform(ref);
+    ref.mesh.instanceMatrix.needsUpdate = true;
+    ref.mesh.boundingSphere = null;
+  }
+
+  /** Takes a ruin off the board and gives its slots back (a repair, a demolition). */
+  private clearRuins(ref: ElementInstanceRef): void {
+    if (!ref.ruins) return;
+    this.scratchMatrix.makeScale(0, 0, 0);
+    for (const ruin of ref.ruins) {
+      ruin.mesh.setMatrixAt(ruin.index, this.scratchMatrix);
+      ruin.mesh.instanceMatrix.needsUpdate = true;
+      this.freeIndices.get(ruin.meshKey)!.push(ruin.index);
+    }
+    ref.ruins = undefined;
+  }
 
   /** How many fabric structures are standing, for the QA report. */
   get fabricCount(): number {
@@ -596,6 +672,7 @@ export class ElementMeshManager {
     // shrink, which would first snap each structure out of its own turn and size.
     this.hideCompanions(ref);
     for (const part of ref.companions) this.freeIndices.get(part.meshKey)!.push(part.index);
+    this.clearRuins(ref);
     this.settling.delete(ref);
     this.byCoord.delete(key);
     this.freeIndices.get(ref.meshKey)!.push(ref.index);
@@ -643,6 +720,7 @@ export class ElementMeshManager {
     if (!ref) return;
     ref.damage = 0;
     ref.degrade = 0;
+    this.clearRuins(ref);
     this.paint(ref);
     this.writeTransform(ref);
     ref.mesh.instanceMatrix.needsUpdate = true;
@@ -660,6 +738,21 @@ export class ElementMeshManager {
    * both leaning and settling at once, which is what erosion looks like.
    */
   private writeTransform(ref: ElementInstanceRef, swayAngle = 0, swayRoll = 0): void {
+    if (ref.ruins) {
+      // A ruin: the House and its fabric hidden, each ruin on its structure's spot, its size and turn, never raised.
+      this.scratchMatrix.makeScale(0, 0, 0);
+      ref.mesh.setMatrixAt(ref.index, this.scratchMatrix);
+      this.hideCompanions(ref);
+      for (const ruin of ref.ruins) {
+        this.scratchMatrix.makeRotationY(ruin.rotY);
+        this.scratchMatrix.scale(this.scratchScale.set(ruin.scale, ruin.scale, ruin.scale));
+        this.scratchMatrix.setPosition(ref.x + ruin.dx, ref.y, ref.z + ruin.dz);
+        ruin.mesh.setMatrixAt(ruin.index, this.scratchMatrix);
+        ruin.mesh.instanceMatrix.needsUpdate = true;
+        ruin.mesh.boundingSphere = null;
+      }
+      return;
+    }
     /*
      * The visual response is front-loaded: `damage ^ 0.55` rather than
      * `damage` itself.

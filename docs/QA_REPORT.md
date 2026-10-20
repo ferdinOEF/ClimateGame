@@ -1831,3 +1831,58 @@ Greedy never beats Casual. Smart's lowest seed (seed 12) saves 3 of the first cy
 - MINOR, not changed (owner's call): the Ribandar island is at most three tiles wide and touches the river, so most of it takes the lighter edge grey and reads nearly in colour. The rule is the north bank's (it fades against any playable tile, water too); changing it would change the north bank's accepted look.
 - MINOR, fixed: the `section4` comment gave the wrong cause (the owner's tile edits took the plan's build sites; the east edge took one home); the `panajiHandEdits` comment's count (135, not 131).
 - NIT, fixed: a missing file named in a comment; comments that said scenery meant only the north bank; `NORTH` renamed `SCENERY` in the test; the hand-edits file's place moves back in their one-line form. Noted: the east line (30.2) is a constant in the generator, which checks the stored list against it; new water keeps its DEM height (above); Maya's hidden flood line still names the Ribandar channel, which is where the channel is.
+
+# Section 21 — thorough testing, tuning, ruins and live risk
+
+Branch `section-21-test-tune`, off master `afb643b` (Section 19's merge; tag `pre-section-21`, and `backup/pre-section-21` on GitHub). Section 20 was skipped (a numbering mistake). Headless Chromium with software GL (SwiftShader). Evidence in `docs/qa/section21/`; bugs and owner decisions in `docs/BUGS.md`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean; 581 tests pass, 6 skipped. New: `liveRisk` (heat equals the top bar's Homes at risk every year; a dune in 2027 drops homes from the heat), `ruins` (ruins equal each card's homes lost, storm by storm, defended and not; the ruin pool, repair and the skyline; landmark damage matches the script and never mends; every home a storm lost ruins during it, over six play styles' runs; a damaged model moves only whole triangles). Updated, each with its reason in the test: `exposure` (heat on homes at risk only), `climate` (1.2 / 2.35 / 3.8), `forecastCone` (where 2050's tracks meet: 53% waterfront, bound 0.5 from 0.6), `panjimBots` (Casual 25 to 60%, from 60 to 82%; its lead over Greedy 15 points, from 20). |
+| Playthrough (`npm run playthrough`, `tools/playthrough21.ts`) | All pass at 1280x600, 1366x768, 1920x1080 and 2560x1440, zero console errors and warnings. (1280x600, 1366x768 and 1920x1080 ran on the tuned build before the review fixes, 2560x1440 after; the review fixes are covered by the Section 21 checks and the tests.) |
+| Section 21 checks (`tools/section21Shots.ts`) | All pass at 1366x768, 1920x1080 and 2560x1440 (after the review fixes): live risk, ruins during and after each storm, ruins equal each card, damaged and destroyed landmarks, axe, zero console errors. |
+| How to play fits (`npm run test:help`) | Fits at 1280x600, 1366x768, 1920x1080 and 2560x1440 (it scrolled at 1366x768 and 1280x600 before). |
+| `npm run walkthrough`, `test:labels`, `test:layout`, `test:maya` (Maya switched on, `VITE_SHOW_MAYA=true`, for layout and maya; she is hidden as shipped) | Walkthrough clean, 12 screenshots, no console errors (the Tutorial start to finish, 18 of 18 saved; Play Panjim with 16 monuments). Labels 49 of 49 views (the label layer at most 28.8 ms a frame, measured with a browser playthrough running beside it; 2.7 ms in Section 19 on a quiet machine). Layout 140 of 140. `test:maya` passes, zero console errors. |
+| axe-core | No serious or critical violations: the board in a heat year with Show risk on, a result card. |
+| Preview equals resolution | `tests/exposure.test.ts`, `tests/preview.test.ts` pass. |
+| Bots | 200 seeds a style, before and after (below). |
+| Cross-browser, real GPU | Not run: Chromium with software GL only (frame rates below are SwiftShader's, not a GPU's). |
+
+**21.1 Bugs.** One game bug, fixed: How to play scrolled at 1366x768 and below (`help-*.jpg`; `npm run test:help`). The other problems the pass reported were the test tools' own (a test hook that clicks through the result cards, one that refuses the storm's build, waits too short for software GL, a layer left open that a storm rightly waits for), each fixed in the tool and listed in `docs/BUGS.md`. Owner decisions: see `docs/BUGS.md` (six).
+
+**21.2 Tuning** (`tuning-before.md`, `tuning-after.md`, `tuning-after-only.md`; `tools/panjimBots/tune21.ts`). Strengths 1.2 / 1.8 / 2.6 → 1.2 / 2.35 / 3.8; stars three 0.79 → 0.80, two 0.50 → 0.70. Only the strengths and the stars changed. The cyclone stays 1.2 (above 1.3 the undefended cyclone reaches Kala Academy, against Section 16.4's accepted ground); the flood stays under 2.4 (its icon and word turn "severe" at 2.4, and at 2.6 its track leaves Section 19's Ribandar channel).
+
+| Style (200 seeds) | Clears before → after | 3 stars every storm, after | Homes saved over the run, before → after | Stars per storm, after (share of seeds on 1 / 2 / 3) |
+|---|---|---|---|---|
+| none (far) | 0% → 0% | 0% | 0% → 0% | all 1 |
+| random | 4% → 4% | 0% | 21% → 14% | 2030 96/0/4; 2040 100/0/0; 2050 100/0/0 |
+| nature only | 96% → 0% | 0% | 61% → 36% | 2030 100/0/0; 2040 69/32/0; 2050 100/0/0 |
+| seawalls only | 98% → 98% | 0% | 29% → 32% | 2030 3/0/98; 2040 100/0/0; 2050 100/0/0 |
+| sensible (smart) | 100% → 79% | 0% | 92% → 67% | 2030 24/0/76; 2040 13/81/6; 2050 85/16/0 |
+| best | 100% → 100% | 96% | 99% → 91% | 2030 0/0/100; 2040 0/0/100; 2050 0/4/96 |
+| guided (follows the objective card; not a target) | — → 100% | 0% | — → 48% | 2030 0/0/100; 2040 0/5/96; 2050 100/0/0 |
+
+Targets met: none 0 to 1 star; random mostly 1; best can reach 3 in every storm (96%), and no single kind of defence does (`tuning-after-only.md`); nature saves more homes than seawalls over the run (36% vs 32%) and far more in the flood (68% vs 0%); clear rates none 0%, random 4% (under 10%), sensible 79% (60 to 80%), best 100%.
+
+Targets not met, plainly:
+- **Sensible "mostly 2, sometimes 3":** 3 stars in the cyclone (76%), 2 in the flood (81%), 1 in 2050 (85%). The cyclone is all or nothing (every home, or about a third), so no thresholds give it two stars.
+- **Nature ≥ seawalls over the run** holds on homes saved but not on stars (3.3 vs 5.0) or clears (0% vs 98%): seawalls stop the cyclone and the nature bot does not (best play with dunes alone does, as does a player following the objective card).
+- **2050 hardest for every style:** it is for sensible, nature only, random and guided play; for seawalls only the flood is (0% saved), for best the flood (88% vs 92%).
+- **Clear by one kind of defence:** dunes only, pandanus only, seawalls only and breakwaters only each clear 100%, from the cyclone's three stars (owner decision 5).
+- The 1.5 / 2.6 / 3.6 option meets more of these (`tuning-option-1.5-2.6-3.6.md`) but changes accepted behaviour (owner decision 4).
+
+**21.3 Ruins and damaged landmarks.** Today's behaviour before this section: a destroyed home leaned, sank and browned with its roof kept (the damaged look); landmarks took no damage. Now:
+- A home a storm destroys becomes a ruin as the water reaches it during the storm (`frames/cyclone-2030-*`, `frames/flood-2040-*`: in the undefended flood the ruins come in over 8 s of storm time, 7, 22, 37, 62, 66, 67), for the rest of the run: a floor, broken walls, two caved roof slabs, rubble, darker and lower; nothing can be built on it and it is never at risk again. Ruins equal each result card's homes lost (tested; checked in the browser at each storm: 2030 1 ruin, 7 of 8 saved; 2040 67, 0 of 67; 2050 partly defended 59, 12 of 139).
+- A landmark the water reaches is damaged (a roof section caved in and charred, soot streaks: `landmark-damaged-*`); at twice the home-loss line destroyed (a wide collapse, scorched, settled and leaning, rubble round it, still recognisable: `landmark-destroyed-*`). In this game a landmark's damage is a game rule; nothing is claimed about the real buildings.
+- Ruins and damage come back after a reload. Instanced: one InstancedMesh per ruin kind (house and fabric), so every ruin on the board costs a few draw calls in all (`ruin-perf.md`, 1920x1080, software GL: before any storm 59 draw calls and 372,080 triangles at low quality, 60 and 375,280 at high; after the three storms undefended, 139 ruins and 12 of the 16 landmarks damaged, 71 and 547,264 at low, 73 and 550,660 at high; frames 2.0 to 1.6 fps at low, 2.3 to 1.6 at high on SwiftShader, which is no guide to a real GPU).
+- Should ruins rebuild? Not added. The game already offers Repair on a ruined home, which rebuilds it (owner decision 2).
+
+**21.4 Live risk.** R (or ☰ → Show risk) shows the homes the next storm would hit today, counting the defences built, at any year: worked out once a build (and on a phase or warning change), never a frame. Heat only on homes at risk, in the existing colours; never on scenery. Off at a phase's start, on by itself in the two years before a storm. The top bar's Homes at risk equals the heated homes (tested, and in the browser: 2027 8 and 8; after a dune 1 and 1; the heat year 1 and 1). Help: "Show risk (R): the homes the next storm would hit today, counting the defences you have built." Screenshots: `risk-2027-before-*`, `risk-2027-after-*`, `risk-heat-year-*` (with gray and deuteranopia copies at 1920).
+
+**Independent review: 1 BLOCKER, 4 MAJOR, 6 MINOR, 2 NIT.** After it, the damaged look was made clearer (a wider cave-in, stained), checked in the close ups at all three sizes.
+- BLOCKER, fixed: this report was not yet written.
+- MAJOR, fixed: a damaged landmark's cave-in moved triangles that reached the ground, tearing them into slivers; only whole triangles above the line move now (tested).
+- MAJOR, fixed (documented): one kind of defence can clear the level; the unmet targets now listed plainly above; the Casual band and the two-star threshold as owner decision 6.
+- MINOR, fixed: Show risk's defaults repainted inside a repaint; a destroyed landmark's signs did not settle and lean with it; a home lost by a depth just over the line could miss its ruin in the storm (a fallback, and a test over six runs).
+- MINOR, not changed: with Maya hidden, live risk's exposure would feed her warning line early if she came back (latent); every landmark has its own model, so swapping a damaged model's geometry cannot touch another (latent); the cone test's new bound leaves 3 points.
+- NIT: the drawn overlay's heat count is checked in the browser, not in Node.

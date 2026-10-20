@@ -149,7 +149,7 @@ describe("computeExposure", () => {
 });
 
 describe("buildHeatView", () => {
-  it("heats only dry tiles, hatches above 30%, pulses at most 24 falling houses, and shields defences", () => {
+  it("heats only the homes at risk, hatches above 30%, pulses at most 24 falling houses, and shields defences", () => {
     const run = newRun("s7", BOT_LEVEL);
     approach(run, 3);
     const next = run.nextChallenge()!;
@@ -177,8 +177,11 @@ describe("buildHeatView", () => {
     const atRisk = new Set(now.housesAtRisk);
     for (const tile of view.filter((t) => t.pulse)) expect(atRisk.has(tile.key)).toBe(true);
     for (const key of defences) expect(view.find((t) => t.key === key)?.shield).toBe(true);
-    // Outside the two-year window there is no heat at all, only shields.
-    expect(buildHeatView(now, bare, 3, defences, (key) => terrain.get(key)).every((t) => t.heat === 0)).toBe(true);
+    // Section 21.4: the heat is on the homes at risk, one for one, and still there outside the two-year window
+    // (Show risk works at any year), at the first warning year's level.
+    expect(view.filter((t) => t.heat > 0).map((t) => t.key).sort()).toEqual([...now.housesAtRisk].sort());
+    const early = buildHeatView(now, bare, 3, defences, (key) => terrain.get(key));
+    expect(early.filter((t) => t.heat > 0).map((t) => t.key).sort()).toEqual([...now.housesAtRisk].sort());
   });
 });
 

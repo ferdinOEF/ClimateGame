@@ -14,6 +14,7 @@ import { StormDirector } from "./stormDirector";
 import { StormSound } from "@ui/stormSound";
 import { combinedDepth as combinedDepthAt } from "@core/hazard";
 import { MonumentMeshManager } from "@render/monumentMeshManager";
+import { landmarkDamageSoFar } from "@core/landmarkDamage";
 import { BuildFlourish } from "@render/buildFlourish";
 import { BuildPuff } from "@render/buildPuff";
 import { TileHover } from "@render/tileHover";
@@ -799,7 +800,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           repairVisual: (coord) => elements.repairVisual(coord),
           focus: levelMap.focus,
           mountPanel: (el) => objectivesPanel.mountBody(el),
-          showHeat: (tiles) => {
+          showHeat: (tiles, warning) => {
             heatOverlay.show(
               tiles.map((tile) => {
                 const [q, r] = tile.key.split(",").map(Number);
@@ -807,9 +808,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
               }),
               (coord) => terrain.heightAt(coord)
             );
-            // The heat takes over from the Forecast's zone outline: one
-            // statement about where the storm goes, not two on top of each other.
-            forecastOutline.group.visible = !tiles.some((tile) => tile.heat > 0);
+            // In the warning years the heat takes over from the Forecast's zone outline: one statement about where
+            // the storm goes, not two on top of each other. Earlier (Show risk turned on by hand, Section 21.4) the
+            // outline stays, as the cone and the area to protect behave as before.
+            forecastOutline.group.visible = !(warning && tiles.some((tile) => tile.heat > 0));
           },
           showCone: (cone) => {
             if (cone) coneOverlay.show(cone, (coord) => terrain.heightAt(coord));
@@ -2037,7 +2039,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       focusOn: (x, z) => focusOn(x, z, false),
       fitTo: (w, d) => fitTo(w, d, false),
       setTint: (coord, tint, blend) => terrain.setTint(coord, tint, blend),
-      houseLost: (coord) => elements.setBuildingDamagedVisual(coord),
+      // Section 21.3: a home the storm takes drops into its ruin as the water or the wind reaches it; a landmark
+      // the water reaches past the line shows its damage then.
+      houseLost: (coord) => elements.setBuildingRuinedVisual(coord),
+      landmarks: levelMap.monuments.map((m) => `${m.q},${m.r}`),
+      landmarkDamaged: (coord, level) => monuments.setDamage(coord, level),
       defenceFailed: (coord) => {
         elements.destroy(coord);
         playSound("hazard_breach");
@@ -2185,8 +2191,14 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
       const growth = growsOnClock(def) ? state.maturityFraction(inst, def) : undefined;
       elements.place(coord, inst.elementId, terrain.heightAt(coord), { animate: false, growth });
-      if (def.kind === "building" && inst.degradeAmount >= 1) elements.setBuildingDamagedVisual(coord);
+      // A home a storm took is a ruin for the rest of the run (Section 21.3), after a rewind or a resume too.
+      if (def.kind === "building" && inst.degradeAmount >= 1) elements.setBuildingRuinedVisual(coord);
       else if (inst.degradeAmount > 0) elements.setDegradeVisual(coord, inst.degradeAmount);
+    }
+    // The landmarks as the storms so far left them (Section 21.3).
+    if (panjim) {
+      const records = [...panjim.run.stormRecords.values()];
+      for (const m of levelMap.monuments) monuments.setDamage({ q: m.q, r: m.r }, landmarkDamageSoFar(records, `${m.q},${m.r}`), true);
     }
     syncPanjimVisuals();
     refreshPreview();
@@ -2870,6 +2882,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __reactionsForTest: reactions,
     __nuggetPopupForTest: nuggetPopup,
     __labelsForTest: mapLabels,
+    /** Section 21.3: the homes drawn as ruins, and the landmarks' damage (1 damaged, 2 destroyed), for the QA tools. */
+    __ruinsForTest: () => ({
+      ruined: elements.ruinedCount,
+      landmarks: levelMap.monuments.map((m) => ({ id: m.id, name: m.name, kind: m.kind, q: m.q, r: m.r, damage: monuments.damageOf({ q: m.q, r: m.r }) })).filter((m) => m.damage > 0)
+    }),
     /** A tile's ground height, for the QA tools that frame a landmark close up. */
     __tileHeightForTest: (q: number, r: number): number => terrain.heightAt({ q, r }),
     /** A tile's top surface on screen, in client pixels (for tests that hover a tile). */

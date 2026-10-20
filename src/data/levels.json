@@ -136,14 +136,14 @@
           "name": "Monsoon flood",
           "kind": "flood",
           "year": 2040,
-          "strength": 1.8
+          "strength": 2.35
         },
         {
           "id": "c3-compound",
           "name": "Cyclone and flood",
           "kind": "compound",
           "year": 2050,
-          "strength": 2.6,
+          "strength": 3.8,
           "landfall": "2,12"
         }
       ]
@@ -277,8 +277,8 @@
       }
     },
     "houseStars": {
-      "three": 0.79,
-      "two": 0.5
+      "three": 0.8,
+      "two": 0.7
     }
   }
 ]

@@ -14,6 +14,8 @@ export interface PrefToggleOptions {
   defaultOn: boolean;
   /** Extra class on the button. */
   className: string;
+  /** False: not remembered on this device (it starts at `defaultOn` every session). */
+  persist?: boolean;
 }
 
 export function readPref(key: string, fallback: boolean): boolean {
@@ -49,7 +51,7 @@ export class PrefToggle {
   private on: boolean;
 
   constructor(container: HTMLElement, private readonly options: PrefToggleOptions, private readonly onChange: (on: boolean) => void) {
-    this.on = readPref(options.storageKey, options.defaultOn);
+    this.on = options.persist === false ? options.defaultOn : readPref(options.storageKey, options.defaultOn);
     this.el = document.createElement("button");
     this.el.type = "button";
     this.el.className = `panjim-toggle ${options.className}`;
@@ -77,7 +79,7 @@ export class PrefToggle {
   set(on: boolean): void {
     if (on === this.on) return;
     this.on = on;
-    writePref(this.options.storageKey, on);
+    if (this.options.persist !== false) writePref(this.options.storageKey, on);
     this.paint();
     this.onChange(on);
   }
