@@ -1895,12 +1895,13 @@ Branch `section-22-map-labels-decisions`, off master `c4930f0` (Section 21's mer
 
 | Gate | Result |
 |---|---|
-| `tsc --noEmit`, `npm run test`, `npm run build` | RESULT_TESTS |
-| Playthrough (`npm run playthrough`) on the final code | RESULT_PLAY |
-| Section 21 checks (live risk, ruins, landmarks, axe, gray and deuteranopia copies) | RESULT_SHOTS21 |
-| Section 22 checks (`tools/section22Shots.ts`: label sizes, zoom counted in the browser, the cards after earlier losses) | RESULT_SHOTS22 |
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: tsc no errors; vitest 594 passed, 6 skipped; build clean (also re-run on the merge commit `6af6ffb` before the push). |
+| Playthrough (`npm run playthrough`) on the final code | All pass, no console errors: 1366x768 150 checks, 1920x1080 150, 1280x600 200 (in two parts: 70, then 130 after a container restart, resumed at the styles not yet run). Stars per storm the same at all three sizes: none 0/0/0, random 0/0/0, nature 3/2/2, seawalls 1/0/3, well played 3/2/2. |
+| Section 21 checks (live risk, ruins, landmarks, axe, gray and deuteranopia copies) | All pass, 15 of 15 at 1366x768 and at 1920x1080: live risk, ruins, landmarks, axe (no serious or critical issues on the board in a heat year or on the 2030 card), no console errors. |
+| Section 22 checks (`tools/section22Shots.ts`: label sizes, zoom counted in the browser, the cards after earlier losses) | 1366x768 complete (`labels-zoom-cards-after-1366x768.json`). 1920x1080 and 2560x1440: the opening and Miramar shots were taken; the run was then paused at the owner's request before its zoom and card steps, and not resumed. |
 | How to play fits (`npm run test:help`) | Fits at 1280x600, 1366x768, 1920x1080 and 2560x1440 (the clear rule's sentence added). |
-| `npm run walkthrough`, `test:labels`, `test:layout`, `test:maya` | RESULT_STANDING |
+| `npm run walkthrough`, `test:labels`, `test:layout`, `test:maya` | Not run: paused at the owner's request after the merge. From Section 23 these run only when the owner asks for the full browser check. |
+| Merge and production | Merged to master as `6af6ffb` at the owner's request, before the browser runs above finished (`git revert -m 1 6af6ffb` undoes it; tag `pre-section-22`). Vercel refused the deployment: "Deployment rate limited — retry in 24 hours" (the day's builds used up by branch pushes). Production was not loaded: the network here refuses `climate-game-psi.vercel.app` (proxy 403). |
 | Preview equals resolution | `tests/exposure.test.ts`, `tests/preview.test.ts` pass. |
 | Bots | 200 seeds a style at the final tuning (below; `tuning-after.md`, `tuning-after-only.md`). |
 | Cross-browser, real GPU | Not run: Chromium with software GL only. |
