@@ -143,9 +143,28 @@ export class ObjectivesPanel {
    * Adds a second button to the opening brief, under Begin. Closes the brief
    * and runs `onClick`. `onBegin`, when given, runs if Begin is pressed instead.
    */
-  addBriefAction(label: string, onClick: () => void, onBegin?: () => void): void {
-    const cta = this.briefBackdrop.querySelector(".brief-cta");
+  addBriefAction(label: string, onClick: () => void, onBegin?: () => void, beginAgain?: () => Promise<boolean>): void {
+    const cta = this.briefBackdrop.querySelector<HTMLButtonElement>(".brief-cta");
     if (!cta) return;
+    if (beginAgain) {
+      // Section 22.4 (owner decision): beside a saved run, "Begin again", and it asks before the save is dropped.
+      cta.textContent = "Begin again";
+      let confirmed = false;
+      cta.addEventListener(
+        "click",
+        (event) => {
+          if (confirmed) return;
+          event.stopImmediatePropagation();
+          event.preventDefault();
+          void beginAgain().then((yes) => {
+            if (!yes) return;
+            confirmed = true;
+            cta.click();
+          });
+        },
+        { capture: true }
+      );
+    }
     if (onBegin) cta.addEventListener("click", onBegin);
     const button = document.createElement("button");
     button.type = "button";

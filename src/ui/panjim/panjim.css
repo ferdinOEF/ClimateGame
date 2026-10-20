@@ -2308,6 +2308,47 @@
   color: #9fe3c4;
 }
 
+/* Section 22.4: the homes an earlier storm ruined, a small line of their own under the bar. */
+.result-homes-before {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: rgba(251, 238, 217, 0.75);
+}
+
+/* Section 22.4: the final card's stars of the stars there were, and the clear rule. */
+.result-stars-total {
+  font-size: 15px;
+  margin: 4px 0 6px;
+}
+.result-stars-total b {
+  font-size: 22px;
+  color: #f4d9a6;
+}
+.result-clear {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.result-clear.cleared {
+  background: rgba(159, 227, 196, 0.22);
+  color: #9fe3c4;
+}
+.result-clear.not-cleared {
+  background: rgba(240, 160, 120, 0.2);
+  color: #f6b89a;
+}
+.result-clear-rule {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(251, 238, 217, 0.8);
+}
+.result-clear-rule .result-rule {
+  margin-right: 6px;
+}
+
 .result-bar {
   height: 10px;
   border-radius: 6px;

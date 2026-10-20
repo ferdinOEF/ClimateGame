@@ -92,7 +92,7 @@ export interface LevelDef {
   /** "Get ready": optional jobs for each coming storm (core/prep.ts). */
   prep?: PrepConfig;
   /** Stars per storm by the share of houses in its path that were saved. */
-  houseStars?: { three: number; two: number };
+  houseStars?: { three: number; two: number; one?: number };
   /** Houses pre-built on the land, and how they count (levels/balance.ts). */
   houses?: HouseFill;
   objectives: Objective[];

@@ -76,7 +76,7 @@ export interface ActionRunOptions {
   /** The map's challenge zones. Without them a challenge is reported but not resolved. */
   zones?: readonly ZoneDef[];
   /** Stars per storm by the share of houses saved (the level's houseStars). Without it, by protection. */
-  houseStars?: { three: number; two: number };
+  houseStars?: { three: number; two: number; one?: number };
   /** How houses stand up to a storm, house by house (the level's `houses` block). */
   houseRule?: HouseRule;
   /** "Get ready" jobs for each coming storm (core/prep.ts). */
@@ -180,7 +180,7 @@ export class ActionRun {
   combos: ComboBonus = new Map();
   /** The board's perfect-fit combos, recomputed after every action and storm. */
   comboState: ComboState;
-  readonly houseStars?: { three: number; two: number };
+  readonly houseStars?: { three: number; two: number; one?: number };
   readonly houseRule?: HouseRule;
   readonly prepConfig?: PrepConfig;
   /** The Get ready jobs for the next storm, done or not. */
@@ -681,16 +681,22 @@ export class ActionRun {
     return def ? Math.ceil(def.buildCost * REPAIR_SHARE) : 0;
   }
 
-  /** Whether the element at `coord` is worn or knocked out, and so can be repaired. */
+  /**
+   * Whether the element at `coord` is a worn defence, and so can be repaired. Section 22.4 (owner decision): a home
+   * a storm ruined stays ruined for the rest of the run; repair is for defences only.
+   */
   needsRepair(coord: AxialCoord): boolean {
-    return (this.state.elements.get(axialKey(coord))?.degradeAmount ?? 0) > 0;
+    const inst = this.state.elements.get(axialKey(coord));
+    if (!inst || inst.degradeAmount <= 0) return false;
+    return ELEMENT_BY_ID.get(inst.elementId)?.kind !== "building";
   }
 
-  /** Restores a worn defence or a damaged house to full. It is the year's build, and ends the year. */
+  /** Restores a worn defence to full. It is the year's build, and ends the year. Never a ruined home. */
   repair(coord: AxialCoord): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
     const inst = this.state.elements.get(axialKey(coord));
     if (!inst || inst.degradeAmount <= 0) return refuse("Nothing to repair.");
+    if (ELEMENT_BY_ID.get(inst.elementId)?.kind === "building") return refuse("A ruined home stays ruined for the rest of the run.");
     const coin = this.repairCoin(coord);
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
     if (this.economyEnabled && this.state.coin < coin) return refuse("Not enough Coin.");

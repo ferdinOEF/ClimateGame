@@ -76,10 +76,13 @@ export interface ChallengeOutcome {
   zones: ZoneOutcome[];
   /** 0–1: how much of the damage an undefended city would have taken was prevented. */
   protection: number;
-  stars: 1 | 2 | 3;
+  /** 0 only where the level sets a one-star line (houseStars.one) and the storm saved less than it. */
+  stars: 0 | 1 | 2 | 3;
   housesSaved: number;
-  /** Every house in the storm's path, including any already lost to an earlier storm. */
+  /** Section 22.4 (owner decision): the homes in the storm's path still standing when it hit (homes an earlier storm ruined are not counted against it). */
   housesTotal: number;
+  /** Homes in the storm's path an earlier storm had already ruined ("Lost in earlier storms"). */
+  housesLostBefore: number;
   housesDamaged: number;
   /** Coord keys of every house damaged. */
   damagedHouses: string[];
@@ -169,10 +172,12 @@ export type TileProbe = (key: string, intensity: number, hazard: HazardId, damag
 export type ComboBonus = Map<string, number>;
 
 /** Stars from the share of houses in the storm's path that were saved. A city that stands always earns at least one. */
-export function starsForHouses(saved: number, total: number, thresholds: { three: number; two: number }): 1 | 2 | 3 {
+export function starsForHouses(saved: number, total: number, thresholds: { three: number; two: number; one?: number }): 0 | 1 | 2 | 3 {
   const share = total > 0 ? saved / total : 1;
   if (share >= thresholds.three) return 3;
   if (share >= thresholds.two) return 2;
+  // Section 22.4 (owner decision): below the level's one-star line, no star (a level without one never gives 0).
+  if (thresholds.one !== undefined && share < thresholds.one) return 0;
   return 1;
 }
 
@@ -206,7 +211,7 @@ export function resolveChallenge(
   strengthUnit: number,
   combos?: ComboBonus,
   /** When set, stars come from the share of houses saved rather than from protection (the Houses-saved KPI). */
-  houseStars?: { three: number; two: number },
+  houseStars?: { three: number; two: number; one?: number },
   /** Sets the scale the probe reports in (its `resilience` is one house-loss depth). */
   houseRule?: HouseRule,
   /** Reports the water at every wet tile, per hazard, scaled so `resilience` is the depth that takes a house. Never changes the outcome. */
@@ -310,9 +315,12 @@ export function resolveChallenge(
     intensity,
     zones: outcomes,
     protection,
-    stars: houseStars && pathHouses.size > 0 ? starsForHouses(standing.length - lost.length, pathHouses.size, houseStars) : starsFor(protection),
+    // Section 22.4 (owner decision): a storm is counted against the homes still standing when it hit; the ones an
+    // earlier storm ruined are a line of their own, never "not saved" by this one.
+    stars: houseStars && standing.length > 0 ? starsForHouses(standing.length - lost.length, standing.length, houseStars) : starsFor(protection),
     housesSaved: standing.length - lost.length,
-    housesTotal: pathHouses.size,
+    housesTotal: standing.length,
+    housesLostBefore: pathHouses.size - standing.length,
     housesDamaged: lost.length,
     damagedHouses: lost
   };

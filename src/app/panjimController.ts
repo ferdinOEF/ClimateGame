@@ -121,7 +121,7 @@ export interface PanjimHost {
   /** A panel beside the opening brief's text (the first storm's forecast map). */
   addBriefFeature: (el: HTMLElement) => void;
   /** Adds a second button to the level brief ("Continue from 2032"). `onBegin` runs instead when the player starts afresh. */
-  offerResume: (label: string, onResume: () => void, onBegin: () => void) => void;
+  offerResume: (label: string, onResume: () => void, onBegin: () => void, savedYear: string) => void;
   /** The map's challenge zones. */
   zones: readonly ZoneDef[];
   /** Shows a storm's path as a translucent in-scene overlay: each tile with a 0–1 weight. */
@@ -959,7 +959,7 @@ export class PanjimController {
       return { label: `${c.name} in ${c.year}`, saved: outcome?.housesSaved ?? 0, total: outcome?.housesTotal ?? 0 };
     });
     this.host.telemetry.emit("checkpoint", { final: true, stars: result.levelStars, tempo: tempoBadge(this.playMs()).name });
-    const choice = await this.resultCards.show([{ body: finalCard(phases, result.levelStars), button: "Play again", link: "Back to the menu" }]);
+    const choice = await this.resultCards.show([{ body: finalCard(phases, result), button: "Play again", link: "Back to the menu" }]);
     this.host.onRunComplete(result, choice === "link" ? "menu" : "again");
   }
 
@@ -1089,7 +1089,7 @@ export class PanjimController {
       this.renderOutlook();
       this.host.refresh();
       this.syncControls();
-    }, () => this.showConeIfPhaseStart());
+    }, () => this.showConeIfPhaseStart(), label);
     return true;
   }
 

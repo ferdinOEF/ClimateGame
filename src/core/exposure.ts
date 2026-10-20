@@ -42,7 +42,7 @@ export interface Exposure {
 export interface ExposureOptions {
   combos?: ComboBonus;
   houseRule?: HouseRule;
-  houseStars?: { three: number; two: number };
+  houseStars?: { three: number; two: number; one?: number };
   /** Resolve as if every defence against this storm were gone: the "before you built anything" picture the shields compare to. */
   withoutDefences?: boolean;
   /**

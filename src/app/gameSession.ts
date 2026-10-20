@@ -141,6 +141,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     cameraDistance,
     wasDrag,
     frameStats,
+    zoomBy,
+    setHome,
+    zoomLimits,
     dispose: disposeScene
   } = createScene(container);
 
@@ -601,6 +604,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     focusOn(focus.x, focus.z, true);
     openingFit = { width: maxX - minX + Math.sqrt(3), depth: maxZ - minZ + 2 };
     fitTo(openingFit.width, openingFit.depth, true);
+    // Section 22.3: Home (or 0) glides back to this opening view.
+    setHome(() => {
+      focusOn(focus.x, focus.z, false);
+      fitTo(openingFit.width, openingFit.depth, false);
+    });
   }
 
   const hud = new Hud(container, {
@@ -755,6 +763,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * below checks it, and it takes over pacing entirely when present: no
    * interval hazards, no objective-driven early finish.
    */
+  /** "Start a new run?" before Begin again drops a saved run (Section 22.4); made the first time it is needed. */
+  let beginConfirm: LeaveConfirm | null = null;
   const panjim =
     level.timeModel === "years" && level.timeline
       ? new PanjimController({
@@ -940,7 +950,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
-          offerResume: (label, onResume, onBegin) => objectivesPanel.addBriefAction(label, onResume, onBegin),
+          // Section 22.4 (owner decision): Begin beside a saved run reads "Begin again" and asks before it drops the save.
+          offerResume: (label, onResume, onBegin, savedYear) =>
+            objectivesPanel.addBriefAction(label, onResume, onBegin, () =>
+              (beginConfirm ??= new LeaveConfirm(container)).ask(`Your run from ${savedYear} will be lost.`, { title: "Start a new run?", confirm: "Begin again", cancel: "Cancel" })
+            ),
           addBriefFeature: (el) => objectivesPanel.addBriefFeature(el)
         })
       : null;
@@ -2319,6 +2333,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         // With coins off, what a thing earns is not shown: no money anywhere.
         effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
         removeLabel: panjim ? "Demolish (uses this year's build)" : undefined,
+        // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
+        note: panjim && def.kind === "building" && built.degradeAmount >= 1 ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only." : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
             ? [
@@ -2827,6 +2843,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Exposes the real THREE.Camera so a verification script can read back
     // its actual position after a simulated pinch/pan/wheel gesture.
     __cameraForTest: camera,
+    // Section 22.3: the camera's distance (displayed and still settling) and its limits, for the zoom checks.
+    __zoomForTest: { distance: cameraDistance, limits: zoomLimits, zoomBy },
     // Forces the cloud layer visible without waiting for a real telegraph
     // window (turns only advance via build()).
     __cloudLayerForTest: cloudLayer,
@@ -2988,6 +3006,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     keydownAbort.abort();
     leaveConfirm?.dispose();
+    beginConfirm?.dispose();
     mapPins.dispose();
     buildFloat.dispose();
     areaOutline.dispose();
