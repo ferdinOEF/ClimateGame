@@ -26,6 +26,10 @@ const DECK_WIDTH = 0.28;
 const DECK_THICKNESS = 0.03;
 /** How far a deck runs onto its bank past the shared edge, so it meets the road. */
 const DECK_OVERLAP = 0.08;
+/** The deck's top stands this far above the land, so where it runs onto the bank it does not flicker against it. */
+const DECK_LIFT = 0.004;
+/** The parapets stop this short of the bridge's centre, so at a bend the two halves' parapets do not cross the walkway. */
+const PARAPET_GAP = 0.12;
 
 function seeded(key: string): number {
   let h = 2166136261;
@@ -105,7 +109,7 @@ export class TownDecor {
     const spans = bridges ? bridgeSpans(town, bridges.terrainOf) : new Map<string, string[]>();
     if (bridges && spans.size > 0) {
       const parts: THREE.BufferGeometry[] = [];
-      const top = bridges.deckY;
+      const top = bridges.deckY + DECK_LIFT;
       for (const [key, banks] of spans) {
         const centre = axialToWorld(coordOf(key), 1);
         for (const bank of banks) {
@@ -113,11 +117,12 @@ export class TownDecor {
           const angle = Math.atan2(end.x - centre.x, end.z - centre.z);
           // Centre to the shared edge is half the distance between centres.
           const length = Math.hypot(end.x - centre.x, end.z - centre.z) / 2 + DECK_OVERLAP;
+          const rail = length - PARAPET_GAP;
           const half = [
-            box(DECK_WIDTH, DECK_THICKNESS, length, "#b8ad99", top - DECK_THICKNESS),
-            move(box(0.025, 0.035, length, "#e8e1d0", top), DECK_WIDTH / 2 - 0.0125, 0, 0),
-            move(box(0.025, 0.035, length, "#e8e1d0", top), -DECK_WIDTH / 2 + 0.0125, 0, 0)
-          ].map((g) => g.translate(0, 0, length / 2).rotateY(angle).translate(centre.x, 0, centre.z));
+            box(DECK_WIDTH, DECK_THICKNESS, length, "#b8ad99", top - DECK_THICKNESS).translate(0, 0, length / 2),
+            move(box(0.025, 0.035, rail, "#e8e1d0", top), DECK_WIDTH / 2 - 0.0125, 0, PARAPET_GAP + rail / 2),
+            move(box(0.025, 0.035, rail, "#e8e1d0", top), -DECK_WIDTH / 2 + 0.0125, 0, PARAPET_GAP + rail / 2)
+          ].map((g) => g.rotateY(angle).translate(centre.x, 0, centre.z));
           parts.push(...half);
         }
         parts.push(move(box(0.12, top - DECK_THICKNESS, 0.12, "#8f8676", 0), centre.x, 0, centre.z));

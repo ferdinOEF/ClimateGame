@@ -52,6 +52,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 import { axialKey, axialToWorld, neighbor, neighbors, worldToAxial, type AxialCoord } from "../../src/core/hex";
+import { crossesWater, WALKABLE_TERRAIN } from "../../src/levels/townLayout";
 
 const ROOT = path.resolve(process.cwd());
 const BASEMAP_META = path.join(ROOT, "tools/mapgen/panajiBasemap.json");
@@ -868,12 +869,12 @@ function linkRoads(tiles: AxialCoord[], cells: Cell[], pairs: Pair[], coverage: 
 
 /**
  * Where the roads meet water (Section 23b). A road tile on a river, estuary
- * or sea tile stays only as a bridge: one water tile with the road on land
- * at both ends, two linked land road tiles that are not beside each other
- * (so the bridge crosses something rather than cutting a corner). Every other
- * water road tile goes, with its links, and so does every link from a bridge
- * to another water tile: a crossing is one tile long. The walkers follow the
- * links, so after this none can step onto water except across a bridge.
+ * or sea tile stays only as a bridge: one water tile making a real crossing
+ * between road on land at two ends (`crossesWater`, the same rule the game
+ * draws its decks and routes its walkers by). Every other water road tile
+ * goes, with its links, and so does every link from a bridge to another
+ * water tile: a crossing is one tile long. The walkers follow the links, so
+ * after this none can step onto water except across a bridge.
  */
 function crossWater(
   roads: AxialCoord[],
@@ -884,12 +885,8 @@ function crossWater(
   const terrain = new Map(cells.map((cell) => [axialKey(cell.coord), cell.terrainId]));
   const land = new Set(roads.map((coord) => axialKey(coord)));
   const onLand = (key: string): boolean => land.has(key) && terrain.get(key) === "land";
+  const dry = (key: string): boolean => WALKABLE_TERRAIN.includes(terrain.get(key) ?? "");
   const ends = (link: [number, number, number, number]): [string, string] => [`${link[0]},${link[1]}`, `${link[2]},${link[3]}`];
-  const adjacent = (a: string, b: string): boolean => {
-    const [aq, ar] = a.split(",").map(Number);
-    const [bq, br] = b.split(",").map(Number);
-    return neighbors({ q: aq, r: ar }).some((n) => axialKey(n) === `${bq},${br}`);
-  };
   const report: string[] = [];
   const kept: AxialCoord[] = [];
   for (const coord of bridges) {
@@ -898,9 +895,10 @@ function crossWater(
       const [a, b] = ends(link);
       return a === key && onLand(b) ? [b] : b === key && onLand(a) ? [a] : [];
     });
-    const crosses = banks.some((a, i) => banks.slice(i + 1).some((b) => !adjacent(a, b)));
+    const crosses = crossesWater(key, banks, dry);
     if (crosses) kept.push(coord);
-    report.push(`${key} (${terrain.get(key)}): ${crosses ? `bridge, ${banks.join(" to ")}` : `removed, ${banks.length === 0 ? "no land at either end" : `land only at ${banks.join(" and ")}`}`}`);
+    const why = banks.length === 0 ? "no land at either end" : banks.length === 1 ? `land only at ${banks[0]}` : `${banks.join(" and ")} meet round dry ground, no crossing`;
+    report.push(`${key} (${terrain.get(key)}): ${crosses ? `bridge, ${banks.join(" to ")}` : `removed, ${why}`}`);
   }
   const bridgeKeys = new Set(kept.map((coord) => axialKey(coord)));
   const keptLinks = links.filter((link) => {

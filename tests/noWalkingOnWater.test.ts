@@ -57,6 +57,35 @@ describe("roads meet water only as bridges (the map)", () => {
   });
 });
 
+describe("the walkers' links (a made-up town)", () => {
+  // Land at rows 0 and 2, a river along row 1 (and at 3,0). Four bridge tiles: 0,1 a real crossing,
+  // 1,1 between two banks beside each other, 2,1 with land at one end only, 3,0 with none.
+  const ground = new Map<string, string>();
+  for (let q = -3; q <= 4; q++) for (let r = -1; r <= 3; r++) ground.set(`${q},${r}`, r === 1 ? "river" : "land");
+  ground.set("3,0", "river");
+  const made = {
+    buildings: new Map(),
+    gardens: new Set<string>(),
+    roads: new Set(["0,0", "-1,2", "-2,0", "-1,0", "1,0", "2,0"]),
+    bridges: new Set(["0,1", "1,1", "2,1", "3,0"]),
+    links: [
+      ["0,0", "0,1"], ["0,1", "-1,2"], // a crossing: 0,0 and -1,2 share only 0,1 and the water at -1,1
+      ["2,0", "1,1"], ["1,1", "1,0"], // 2,0 and 1,0 are beside each other: no crossing
+      ["2,0", "2,1"], ["2,1", "3,0"], // bridge to bridge
+      ["-2,0", "-1,0"] // land to land
+    ] as [string, string][]
+  };
+  it("keeps land links and real crossings, and drops a corner, a dead end and a water-to-water link", () => {
+    const of = (key: string): string | undefined => ground.get(key);
+    expect([...bridgeSpans(made, of).keys()]).toEqual(["0,1"]);
+    const kept = walkerLinks(made, of).map(([a, b]) => `${a}|${b}`);
+    expect(kept.sort()).toEqual(["-2,0|-1,0", "0,0|0,1", "0,1|-1,2"].sort());
+    const life = new AmbientLife(made, [...ground].map(([key, terrainId]) => ({ coord: { q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, terrainId })), () => 0.55, 0.55, false, { q: 0, r: 0 });
+    const graph = (life as unknown as { graph: Map<string, string[]> }).graph;
+    expect([...graph.keys()].sort()).toEqual(["-1,0", "-1,2", "-2,0", "0,0", "0,1"].sort());
+  });
+});
+
 function heightAt(coord: { q: number; r: number }): number {
   return TERRAIN_BY_ID.get(terrain.get(axialKey(coord)) ?? "")?.height ?? 0;
 }
@@ -96,15 +125,17 @@ describe("walkers stay on land and bridges", () => {
           continue;
         }
         const c = axialToWorld(worldToAxial(at.x, at.z, 1), 1);
-        const lateral = Math.min(
+        // Distance to the nearest half-deck: the segment from the bridge's centre to the shared edge with a bank.
+        const offDeck = Math.min(
           ...banks.map((bank) => {
             const [q, r] = bank.split(",").map(Number);
             const e = axialToWorld({ q, r }, 1);
             const len = Math.hypot(e.x - c.x, e.z - c.z);
-            return Math.abs(((at.x - c.x) * (e.z - c.z) - (at.z - c.z) * (e.x - c.x)) / len);
+            const along = Math.min(len / 2, Math.max(0, ((at.x - c.x) * (e.x - c.x) + (at.z - c.z) * (e.z - c.z)) / len));
+            return Math.hypot(at.x - (c.x + ((e.x - c.x) / len) * along), at.z - (c.z + ((e.z - c.z) / len) * along));
           })
         );
-        if (lateral > 0.14) wet.push(`walker ${i} off the deck at ${key}`);
+        if (offDeck > 0.14) wet.push(`walker ${i} off the deck at ${key}`);
         onBridge++;
       }
     });
