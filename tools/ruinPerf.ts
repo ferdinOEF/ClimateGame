@@ -57,7 +57,18 @@ try {
       console.error(rows[rows.length - 1]);
     };
     await row("2026, before any storm");
-    for (let i = 0; i < 3; i++) await page.evaluate(`window.__panjimScenarioForTest("past-storm")`);
+    // Each storm as the shots play them: brought on, hurried, its result cards read through and shut.
+    for (let i = 0; i < 3; i++) {
+      await page.evaluate(`window.__panjimScenarioForTest("to-results")`);
+      for (let k = 0; k < 40; k++) {
+        const next = page.locator(".result-cards:not([hidden]) .result-next");
+        if (!(await next.isVisible().catch(() => false))) break;
+        if (/Play again/.test((await next.textContent()) ?? "")) break;
+        await next.click();
+        await page.waitForTimeout(800);
+      }
+      await page.waitForTimeout(1500);
+    }
     await row("after the three storms, undefended");
     await context.close();
   }
