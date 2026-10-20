@@ -1891,7 +1891,7 @@ Targets not met, plainly:
 
 Branch `section-22-map-labels-decisions`, off master `c4930f0` (Section 21's merge; tag `pre-section-22`, and `backup/pre-section-22` on GitHub). Headless Chromium with software GL (SwiftShader). Evidence in `docs/qa/section22/`; the owner's answers and what was done in `docs/BUGS.md`.
 
-**Not done: the attachment.** The owner's `panaji.json` did not reach this session (the upload folders were empty), so `docs/reference/panaji_edit4.json` is not saved and the diff against the owner's file was not checked. The seven edits were applied from the list in the brief; the regenerated map differs from master by exactly those seven tiles and nothing else.
+**The attachment.** The owner's `panaji.json` arrived late in the session and is saved as `docs/reference/panaji_edit4.json` (not used as the map). Checked against it: its terrain differs from the pre-Section-22 map by exactly the seven listed edits (16,4 land>river; 25,6, 26,6, 14,7, 16,7, 15,8 land>estuary; 21,8 estuary>river) and nothing else, and the shipped board's terrain equals it tile for tile (0 differences out of 1286). The owner's file still lists 16,4 as unplayable (256); the shipped board drops it as asked (255). Its zones, roads and bridges are the pre-Section-22 ones; the shipped board's are regenerated for the new water, as the brief asks. Elevation, landmarks, monuments, localities, road links, focus and overlay are equal.
 
 | Gate | Result |
 |---|---|
