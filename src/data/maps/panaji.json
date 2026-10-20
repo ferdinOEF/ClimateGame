@@ -2008,6 +2008,10 @@
           4
         ],
         [
+          16,
+          4
+        ],
+        [
           17,
           4
         ],
@@ -2582,10 +2586,6 @@
     ],
     [
       5,
-      4
-    ],
-    [
-      16,
       4
     ],
     [
@@ -3260,10 +3260,6 @@
       7
     ],
     [
-      16,
-      7
-    ],
-    [
       27,
       7
     ],
@@ -3285,10 +3281,6 @@
     ],
     [
       13,
-      8
-    ],
-    [
-      15,
       8
     ],
     [
@@ -3802,7 +3794,15 @@
       7
     ],
     [
+      16,
+      7
+    ],
+    [
       14,
+      8
+    ],
+    [
+      15,
       8
     ],
     [
@@ -5782,7 +5782,7 @@
     {
       "q": 16,
       "r": 4,
-      "terrainId": "land",
+      "terrainId": "river",
       "elevationM": 3
     },
     {
@@ -6256,13 +6256,13 @@
     {
       "q": 25,
       "r": 6,
-      "terrainId": "land",
+      "terrainId": "estuary",
       "elevationM": 0
     },
     {
       "q": 26,
       "r": 6,
-      "terrainId": "land",
+      "terrainId": "estuary",
       "elevationM": 1
     },
     {
@@ -6400,7 +6400,7 @@
     {
       "q": 14,
       "r": 7,
-      "terrainId": "land",
+      "terrainId": "estuary",
       "elevationM": 0
     },
     {
@@ -6412,7 +6412,7 @@
     {
       "q": 16,
       "r": 7,
-      "terrainId": "land",
+      "terrainId": "estuary",
       "elevationM": 0
     },
     {
@@ -6616,7 +6616,7 @@
     {
       "q": 15,
       "r": 8,
-      "terrainId": "land",
+      "terrainId": "estuary",
       "elevationM": 5.5
     },
     {
@@ -6652,7 +6652,7 @@
     {
       "q": 21,
       "r": 8,
-      "terrainId": "estuary",
+      "terrainId": "river",
       "elevationM": 1.5
     },
     {
