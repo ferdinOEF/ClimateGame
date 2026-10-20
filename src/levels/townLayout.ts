@@ -257,6 +257,59 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
   return { buildings, gardens, roads, bridges, links };
 }
 
+/** Ground a walker may stand on; anywhere else only on a drawn bridge. */
+export const WALKABLE_TERRAIN: readonly string[] = ["land", "beach"];
+
+function coordOfKey(key: string): AxialCoord {
+  const [q, r] = key.split(",").map(Number);
+  return { q, r };
+}
+
+/**
+ * Whether a road over the water tile `bridge` between two of `banks` (road
+ * tiles on dry ground it is linked to) makes a real crossing: two banks that
+ * are not beside each other and whose only shared dry neighbour is none, so
+ * the water tile is what lies between them. Banks at a bend with dry ground
+ * in its corner would only clip the water tile, not cross it. The one rule
+ * for both the map builder (`crossWater` in tools/mapgen/buildPanajiMap.ts)
+ * and the drawn decks and walkers here.
+ */
+export function crossesWater(bridge: string, banks: readonly string[], isDry: (key: string) => boolean): boolean {
+  const around = (key: string): string[] => neighbors(coordOfKey(key)).map((n) => axialKey(n));
+  return banks.some((a, i) =>
+    banks.slice(i + 1).some((b) => {
+      const nearA = around(a);
+      if (nearA.includes(b)) return false;
+      return around(b).every((n) => n === bridge || !nearA.includes(n) || !isDry(n));
+    })
+  );
+}
+
+/**
+ * The bridges that are drawn, each with its banks: a bridge tile linked to
+ * road on dry ground where it makes a real crossing (`crossesWater`). The
+ * deck runs from each bank across the tile.
+ */
+export function bridgeSpans(town: TownLayout, terrainOf: (key: string) => string | undefined): Map<string, string[]> {
+  const dry = (key: string): boolean => WALKABLE_TERRAIN.includes(terrainOf(key) ?? "");
+  const spans = new Map<string, string[]>();
+  for (const key of town.bridges) {
+    const banks = town.links.flatMap(([a, b]) => (a === key && dry(b) ? [b] : b === key && dry(a) ? [a] : []));
+    if (crossesWater(key, banks, dry)) spans.set(key, banks);
+  }
+  return spans;
+}
+
+/**
+ * The road links a walker may follow: both ends on dry ground, or a drawn
+ * bridge and one of its banks. Anything else would put a walker on water.
+ */
+export function walkerLinks(town: TownLayout, terrainOf: (key: string) => string | undefined): [string, string][] {
+  const dry = (key: string): boolean => WALKABLE_TERRAIN.includes(terrainOf(key) ?? "");
+  const spans = bridgeSpans(town, terrainOf);
+  return town.links.filter(([a, b]) => (dry(a) && dry(b)) || spans.get(a)?.includes(b) || spans.get(b)?.includes(a));
+}
+
 /** The angle (for `makeRotationY`) that turns a building's front (+z) toward `to` from `from`. */
 function facing(from: AxialCoord, to: AxialCoord): number {
   const a = axialToWorld(from, 1);

@@ -2015,3 +2015,20 @@ The 2030 and 2040 storms are identical before and after (8 and 65 homes at risk)
 | guided | 100% → 100% | 64% → 88% | 67% → 78% | 7.1 → 7.8 |
 
 Section 22's targets: none 0% (met), random under 10% (met), best 100% (met), nature-only at least as good as seawalls-only over the run (homes saved 67% against 31%, met; stars 5.0 against 6.0, still not) and better in the flood (72% against 0%, met). Still unmet, as in Section 22: sensible play clears 100%, not 60–80%, and mostly takes 3 stars in 2050. Seawalls-only's whole-run share falls because the 45 sheltered homes no longer count in its perfect 2050.
+
+# Section 23b — no walking on water
+
+Branch `section-23b-no-walking-on-water`, from master `8194e4c` (Section 23). Safety copy: the tag `pre-section-23b` (local; the git proxy here refuses tag pushes, HTTP 403) and the branch `backup/pre-section-23b` on GitHub.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: tsc no errors; vitest 80 files, 607 passed, 6 skipped; build clean. |
+| Preview equals resolution | `tests/exposure.test.ts` ("the heat equals the loss") and `tests/liveRisk.test.ts` pass. |
+| Bots (mechanics touched: one House moves) | `npm run bots`, 20 seeds: Smart clears 16/20 before and after; homes saved Casual 73% → 69%, Greedy 32% → 31%, Smart 87% → 87% (the moved House sends each bot's random choices down a different path). 200 seeds a style (`tools/panjimBots/tune21.ts`, as Section 23): clears and stars unchanged for every style; homes saved within 1 point (nature 67% → 66%, smart 87% → 86% over the run; guided identical). Files: `docs/qa/section23b/bots-20-seeds-{before,after}.md`, `tuning-after.md`, `tuning-after-guided.md` (before: `docs/qa/section23/tuning-after.md`). |
+| Opening board | Homes at risk 8 / 65 / 71 before and after; only 17,16 → 18,15 changes in the 501 Houses. |
+| Walkers, long run (`tests/noWalkingOnWater.test.ts`) | Three simulated hours, storms included: 0 walker frames on water off a bridge deck. The same run on the old map and code: 1,087,287 walker frames on 36 water tiles. |
+| Boats, long run | Three simulated hours on Panjim and the Tutorial: no hull corner over land or a bridge. Before this section boats already stayed on water (circle ≤ 1.21 from a tile centre, nearest land 2). |
+| Targeted shots, 1366x768 and 1920x1080 (`tools/section23bShots.ts`) | All pass at both sizes, 0 console errors. Four walkers set on the walker graph's tiles nearest each place, then left to walk 12 s, watched every 0.5 s: the Santa Inez creek at Campal (walkers on the bridge deck at 6,11 and the banks), the Taleigao wetland (the road ends at 6,23 on land), the Ourem creek by Patto (walkers on the road at 15,9 to 15,10, the bank; a boat on open water). 0 walkers on water off the bridge in any frame. Shots: `docs/qa/section23b/walkers-*`. |
+| Independent reviewer | No BLOCKER. MAJOR: the rule kept 11,2 and 28,9, banks at a bend round dry land, so the deck only clipped a water tile's corner (fixed: no dry ground may neighbour both banks; one rule shared by the map builder and the game). MINOR: the rule in two places (shared now); the walker test could not catch a regression in the link filter (a made-up town now does); the deck check measured to a line, not the deck (fixed); the deck coplanar with the bank (lifted 0.004); docs (written). NIT: the House move acceptable; parapets crossed at the bend (they stop 0.12 short of the centre); decks ignore the scenery grey (left: the one bridge is in Panjim, not on scenery). |
+| Interpretation | "Road tile that touches water" read as a road tile on water or a link with a water end. Land road tiles beside the water (the waterfront roads) stay: a walker there stands on land. |
+| Not run (the full browser check, only on the owner's request) | walkthrough, test:labels, test:layout, test:maya, the other two sizes, the full playthroughs, axe, colour-blind copies. Real GPU and Firefox/WebKit: not available here. |

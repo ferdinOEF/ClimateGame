@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { axialToWorld, axialKey, neighbors, type AxialCoord } from "@core/hex";
 import { box, coneFrustum, dome, plan, move } from "./primitives3d";
-import type { TownLayout } from "@levels/townLayout";
+import { walkerLinks, type TownLayout } from "@levels/townLayout";
 
 /**
  * The town's always-on life: people strolling the roads and the waterfront,
@@ -20,6 +20,12 @@ import type { TownLayout } from "@levels/townLayout";
  */
 const MAX_WALKERS = 28;
 const BOAT_COUNT = 5;
+/**
+ * A boat's circle round its tile's centre, world units (hex size 1). With
+ * the hull's half length (0.31) the boat stays within 1.21 of the centre,
+ * well inside the ring of six water tiles round it (nearest land: 2).
+ */
+const BOAT_CIRCLE: [number, number] = [0.5, 0.9];
 /** Saturated, mid-dark clothes: a pale shirt disappears against the pale road. */
 const SHIRTS = ["#c0392b", "#d35400", "#1f6fb2", "#8e44ad", "#16a085", "#b03a6a", "#2c3e50", "#c88a12"];
 const HULLS = ["#2f5f8f", "#b5452f", "#3f8f6f", "#e8e2d0", "#c98b3d"];
@@ -110,8 +116,11 @@ export class AmbientLife {
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
       return seed / 0x7fffffff;
     };
-    // The road graph, from the plan's links; bridges are at deck height.
-    for (const [a, b] of town.links) {
+    // The road graph, from the plan's links: only those on dry ground or
+    // across a drawn bridge (`walkerLinks`), so no walker ever stands on
+    // water. Bridges are at deck height.
+    const terrain = new Map(tiles.map((t) => [axialKey(t.coord), t.terrainId]));
+    for (const [a, b] of walkerLinks(town, (key) => terrain.get(key))) {
       if (!this.graph.has(a)) this.graph.set(a, []);
       if (!this.graph.has(b)) this.graph.set(b, []);
       this.graph.get(a)!.push(b);
@@ -141,11 +150,11 @@ export class AmbientLife {
     if (this.people.instanceColor) this.people.instanceColor.needsUpdate = true;
     this.group.add(this.people);
 
-    // Boats: on water tiles with water all round them (so a drifting boat
-    // never crosses land), spread out, nearest the city first.
-    const terrain = new Map(tiles.map((t) => [axialKey(t.coord), t.terrainId]));
-    const wet = (key: string): boolean => terrain.get(key) === "river" || terrain.get(key) === "coast";
-    const open = tiles.filter((t) => wet(axialKey(t.coord)) && neighbors(t.coord).every((n) => wet(axialKey(n))) && !town.bridges.has(axialKey(t.coord)));
+    // Boats: on water tiles with open water all round them (no land, no
+    // bridge), spread out, nearest the city first. A boat circles inside
+    // that ring of water (BOAT_CIRCLE), so it never crosses land.
+    const wet = (key: string): boolean => (terrain.get(key) === "river" || terrain.get(key) === "coast") && !town.bridges.has(key);
+    const open = tiles.filter((t) => wet(axialKey(t.coord)) && neighbors(t.coord).every((n) => wet(axialKey(n))));
     const centre = { x: 0, z: 0 };
     const towns = [...town.buildings.keys()].map((key) => axialToWorld(coordOf(key), 1));
     for (const p of towns) {
@@ -163,7 +172,7 @@ export class AmbientLife {
     this.boats.name = "ambient-boats";
     chosen.forEach((coord, i) => {
       const { x, z } = axialToWorld(coord, 1);
-      this.boatList.push({ cx: x, cz: z, radius: 0.5 + this.rng() * 0.4, phase: this.rng() * Math.PI * 2, speed: (0.05 + this.rng() * 0.05) * (this.rng() < 0.5 ? -1 : 1), y: heightAt(coord) + 0.01 });
+      this.boatList.push({ cx: x, cz: z, radius: BOAT_CIRCLE[0] + this.rng() * (BOAT_CIRCLE[1] - BOAT_CIRCLE[0]), phase: this.rng() * Math.PI * 2, speed: (0.05 + this.rng() * 0.05) * (this.rng() < 0.5 ? -1 : 1), y: heightAt(coord) + 0.01 });
       this.boats.setColorAt(i, new THREE.Color(HULLS[i % HULLS.length]));
     });
     this.boats.count = this.boatList.length;
