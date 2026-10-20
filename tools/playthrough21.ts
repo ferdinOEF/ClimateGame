@@ -342,12 +342,12 @@ if (named.get("landing") !== "0") {
   const asked = await confirmText(second.page);
   await shot(second.page, "begin-again-confirm");
   check(/Start a new run\? Your run from 2027 will be lost\./.test(asked) && /Cancel/.test(asked) && /Begin again/.test(asked), `Begin again asks first: "${asked}"`);
-  await second.page.locator(".leave-confirm-stay").click();
+  await second.page.locator(".leave-confirm-backdrop:not([hidden]) .leave-confirm-stay").click();
   await second.page.waitForTimeout(500);
   check((await confirmText(second.page)) === "" && (await second.page.locator(".brief-resume").isVisible()), "Cancel keeps the start popup and the saved run");
   await second.page.locator(".brief-cta", { hasText: "Begin again" }).first().click();
   await second.page.waitForTimeout(600);
-  await second.page.locator(".leave-confirm-leave").click();
+  await second.page.locator(".leave-confirm-backdrop:not([hidden]) .leave-confirm-leave").click();
   await second.page.waitForTimeout(2500);
   check((await year(second.page)) === 2026, "Begin again in the second tab starts over at 2026");
   const t2 = (await second.page.evaluate("window.__panjimForTest.firstBuildable('dune')")) as { q: number; r: number };
