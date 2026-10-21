@@ -5,7 +5,7 @@
     "beam": 20,
     "keep": 16,
     "jobs": 4,
-    "seconds": 1149
+    "seconds": 1944
   },
   "goal1": {
     "stars": 9,
@@ -19,20 +19,20 @@
         "year": 2030,
         "name": "Cyclone",
         "stars": 3,
-        "saved": 9,
+        "saved": 8,
         "total": 9,
-        "lost": 0,
-        "biodiversityChange": 14
+        "lost": 1,
+        "biodiversityChange": 15
       },
       {
         "id": "c2-flood",
         "year": 2040,
         "name": "Monsoon flood",
         "stars": 3,
-        "saved": 56,
+        "saved": 58,
         "total": 65,
-        "lost": 9,
-        "biodiversityChange": 32
+        "lost": 7,
+        "biodiversityChange": 39
       },
       {
         "id": "c3-compound",
@@ -40,32 +40,39 @@
         "name": "Cyclone and flood",
         "stars": 3,
         "saved": 55,
-        "total": 63,
-        "lost": 8,
-        "biodiversityChange": 40
+        "total": 64,
+        "lost": 9,
+        "biodiversityChange": 45
       }
     ],
     "blockers": [
       {
-        "id": "c2-flood",
-        "lost": 9,
+        "id": "c1-cyclone",
+        "lost": 1,
         "homes": [
-          "25,10",
-          "24,10",
+          "-2,18"
+        ],
+        "extraBuildsToSaveAll": 1,
+        "savedWithExtra": 1
+      },
+      {
+        "id": "c2-flood",
+        "lost": 7,
+        "homes": [
+          "25,7",
+          "24,8",
+          "23,8",
           "23,10",
           "24,12",
           "24,11",
-          "23,12",
-          "11,22",
-          "8,7",
-          "3,25"
+          "23,12"
         ],
-        "extraBuildsToSaveAll": null,
-        "savedWithExtra": 8
+        "extraBuildsToSaveAll": 3,
+        "savedWithExtra": 7
       },
       {
         "id": "c3-compound",
-        "lost": 8,
+        "lost": 9,
         "homes": [
           "3,12",
           "4,11",
@@ -73,6 +80,7 @@
           "2,14",
           "5,10",
           "6,9",
+          "8,7",
           "8,8",
           "9,8"
         ],
@@ -84,15 +92,6 @@
       {
         "year": 2026,
         "action": "build",
-        "elementId": "dune",
-        "q": -4,
-        "r": 18,
-        "place": "near Miramar",
-        "spare": false
-      },
-      {
-        "year": 2027,
-        "action": "build",
         "elementId": "sandy_vegetation",
         "q": -5,
         "r": 21,
@@ -100,115 +99,34 @@
         "spare": false
       },
       {
+        "year": 2027,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 2,
+        "r": 17,
+        "place": "near Santa Inez",
+        "spare": false
+      },
+      {
         "year": 2028,
         "action": "build",
-        "elementId": "sandy_vegetation",
-        "q": -2,
-        "r": 16,
-        "place": "near Miramar",
+        "elementId": "mangrove",
+        "q": 16,
+        "r": 18,
+        "place": "near Merces",
         "spare": false
       },
       {
         "year": 2029,
         "action": "build",
         "elementId": "mangrove",
-        "q": 8,
-        "r": 18,
-        "place": "near Altinho",
-        "spare": false
-      },
-      {
-        "year": 2030,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 10,
-        "r": 19,
-        "place": "near St Cruz",
-        "spare": false
-      },
-      {
-        "year": 2031,
-        "action": "build",
-        "elementId": "khazan",
         "q": 7,
-        "r": 23,
+        "r": 21,
         "place": "near Taleigao",
         "spare": false
       },
       {
-        "year": 2032,
-        "action": "build",
-        "elementId": "breakwater",
-        "q": 6,
-        "r": 8,
-        "place": "near Campal",
-        "spare": false
-      },
-      {
-        "year": 2033,
-        "action": "build",
-        "elementId": "khazan",
-        "q": 16,
-        "r": 16,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2034,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 20,
-        "r": 12,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2035,
-        "action": "build",
-        "elementId": "khazan",
-        "q": 21,
-        "r": 9,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2036,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 12,
-        "r": 16,
-        "place": "near Patto",
-        "spare": false
-      },
-      {
-        "year": 2037,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 13,
-        "r": 9,
-        "place": "near Fontainhas",
-        "spare": false
-      },
-      {
-        "year": 2038,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 22,
-        "r": 8,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2039,
-        "action": "build",
-        "elementId": "small_dam",
-        "q": 26,
-        "r": 7,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2040,
+        "year": 2030,
         "action": "build",
         "elementId": "mangrove",
         "q": 10,
@@ -217,25 +135,70 @@
         "spare": false
       },
       {
-        "year": 2041,
+        "year": 2031,
         "action": "build",
-        "elementId": "seawall",
-        "q": 2,
+        "elementId": "mangrove",
+        "q": 11,
+        "r": 17,
+        "place": "near Altinho",
+        "spare": false
+      },
+      {
+        "year": 2032,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 8,
+        "r": 23,
+        "place": "near St Cruz",
+        "spare": false
+      },
+      {
+        "year": 2033,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 8,
+        "r": 18,
+        "place": "near Altinho",
+        "spare": false
+      },
+      {
+        "year": 2034,
+        "action": "build",
+        "elementId": "khazan",
+        "q": 16,
+        "r": 14,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2035,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 20,
         "r": 12,
-        "place": "near Campal",
+        "place": "near Merces",
         "spare": false
       },
       {
-        "year": 2042,
+        "year": 2036,
         "action": "build",
-        "elementId": "breakwater",
-        "q": 2,
-        "r": 11,
-        "place": "near Campal",
+        "elementId": "khazan",
+        "q": 21,
+        "r": 9,
+        "place": "near Merces",
         "spare": false
       },
       {
-        "year": 2043,
+        "year": 2037,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 12,
+        "r": 11,
+        "place": "near Fontainhas",
+        "spare": false
+      },
+      {
+        "year": 2038,
         "action": "build",
         "elementId": "small_dam",
         "q": 26,
@@ -244,16 +207,7 @@
         "spare": false
       },
       {
-        "year": 2044,
-        "action": "build",
-        "elementId": "sandy_vegetation",
-        "q": 2,
-        "r": 13,
-        "place": "near Santa Inez",
-        "spare": false
-      },
-      {
-        "year": 2045,
+        "year": 2039,
         "action": "build",
         "elementId": "mangrove",
         "q": 8,
@@ -262,16 +216,79 @@
         "spare": false
       },
       {
+        "year": 2040,
+        "action": "build",
+        "elementId": "sandy_vegetation",
+        "q": 2,
+        "r": 13,
+        "place": "near Santa Inez",
+        "spare": false
+      },
+      {
+        "year": 2041,
+        "action": "build",
+        "elementId": "breakwater",
+        "q": 2,
+        "r": 12,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2042,
+        "action": "build",
+        "elementId": "sandy_vegetation",
+        "q": -12,
+        "r": 28,
+        "place": "near Dona Paula",
+        "spare": false
+      },
+      {
+        "year": 2043,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 26,
+        "r": 7,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2044,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 26,
+        "r": 9,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2045,
+        "action": "build",
+        "elementId": "breakwater",
+        "q": 3,
+        "r": 11,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
         "year": 2046,
         "action": "build",
         "elementId": "mangrove",
-        "q": 23,
-        "r": 0,
-        "place": "near Atal Setu",
+        "q": 10,
+        "r": 2,
+        "place": "near Campal",
         "spare": false
       },
       {
         "year": 2047,
+        "action": "build",
+        "elementId": "breakwater",
+        "q": 5,
+        "r": 9,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2048,
         "action": "build",
         "elementId": "mangrove",
         "q": 22,
@@ -280,20 +297,11 @@
         "spare": false
       },
       {
-        "year": 2048,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 25,
-        "r": 1,
-        "place": "near Atal Setu",
-        "spare": false
-      },
-      {
         "year": 2049,
         "action": "build",
         "elementId": "mangrove",
-        "q": 26,
-        "r": 1,
+        "q": 23,
+        "r": 0,
         "place": "near Atal Setu",
         "spare": false
       },
@@ -301,8 +309,8 @@
         "year": 2050,
         "action": "build",
         "elementId": "breakwater",
-        "q": 4,
-        "r": 10,
+        "q": 1,
+        "r": 0,
         "place": "near Campal",
         "spare": false
       }
@@ -319,20 +327,20 @@
         "year": 2030,
         "name": "Cyclone",
         "stars": 3,
-        "saved": 9,
+        "saved": 8,
         "total": 9,
-        "lost": 0,
-        "biodiversityChange": 14
+        "lost": 1,
+        "biodiversityChange": 15
       },
       {
         "id": "c2-flood",
         "year": 2040,
         "name": "Monsoon flood",
         "stars": 3,
-        "saved": 56,
+        "saved": 58,
         "total": 65,
-        "lost": 9,
-        "biodiversityChange": 32
+        "lost": 7,
+        "biodiversityChange": 39
       },
       {
         "id": "c3-compound",
@@ -340,32 +348,39 @@
         "name": "Cyclone and flood",
         "stars": 3,
         "saved": 55,
-        "total": 63,
-        "lost": 8,
-        "biodiversityChange": 40
+        "total": 64,
+        "lost": 9,
+        "biodiversityChange": 45
       }
     ],
     "blockers": [
       {
-        "id": "c2-flood",
-        "lost": 9,
+        "id": "c1-cyclone",
+        "lost": 1,
         "homes": [
-          "25,10",
-          "24,10",
+          "-2,18"
+        ],
+        "extraBuildsToSaveAll": 1,
+        "savedWithExtra": 1
+      },
+      {
+        "id": "c2-flood",
+        "lost": 7,
+        "homes": [
+          "25,7",
+          "24,8",
+          "23,8",
           "23,10",
           "24,12",
           "24,11",
-          "23,12",
-          "11,22",
-          "8,7",
-          "3,25"
+          "23,12"
         ],
-        "extraBuildsToSaveAll": null,
-        "savedWithExtra": 8
+        "extraBuildsToSaveAll": 3,
+        "savedWithExtra": 7
       },
       {
         "id": "c3-compound",
-        "lost": 8,
+        "lost": 9,
         "homes": [
           "3,12",
           "4,11",
@@ -373,6 +388,7 @@
           "2,14",
           "5,10",
           "6,9",
+          "8,7",
           "8,8",
           "9,8"
         ],
@@ -384,15 +400,6 @@
       {
         "year": 2026,
         "action": "build",
-        "elementId": "dune",
-        "q": -4,
-        "r": 18,
-        "place": "near Miramar",
-        "spare": false
-      },
-      {
-        "year": 2027,
-        "action": "build",
         "elementId": "sandy_vegetation",
         "q": -5,
         "r": 21,
@@ -400,115 +407,34 @@
         "spare": false
       },
       {
+        "year": 2027,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 2,
+        "r": 17,
+        "place": "near Santa Inez",
+        "spare": false
+      },
+      {
         "year": 2028,
         "action": "build",
-        "elementId": "sandy_vegetation",
-        "q": -2,
-        "r": 16,
-        "place": "near Miramar",
+        "elementId": "mangrove",
+        "q": 16,
+        "r": 18,
+        "place": "near Merces",
         "spare": false
       },
       {
         "year": 2029,
         "action": "build",
         "elementId": "mangrove",
-        "q": 8,
-        "r": 18,
-        "place": "near Altinho",
-        "spare": false
-      },
-      {
-        "year": 2030,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 10,
-        "r": 19,
-        "place": "near St Cruz",
-        "spare": false
-      },
-      {
-        "year": 2031,
-        "action": "build",
-        "elementId": "khazan",
         "q": 7,
-        "r": 23,
+        "r": 21,
         "place": "near Taleigao",
         "spare": false
       },
       {
-        "year": 2032,
-        "action": "build",
-        "elementId": "breakwater",
-        "q": 6,
-        "r": 8,
-        "place": "near Campal",
-        "spare": false
-      },
-      {
-        "year": 2033,
-        "action": "build",
-        "elementId": "khazan",
-        "q": 16,
-        "r": 16,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2034,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 20,
-        "r": 12,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2035,
-        "action": "build",
-        "elementId": "khazan",
-        "q": 21,
-        "r": 9,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2036,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 12,
-        "r": 16,
-        "place": "near Patto",
-        "spare": false
-      },
-      {
-        "year": 2037,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 13,
-        "r": 9,
-        "place": "near Fontainhas",
-        "spare": false
-      },
-      {
-        "year": 2038,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 22,
-        "r": 8,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2039,
-        "action": "build",
-        "elementId": "small_dam",
-        "q": 26,
-        "r": 7,
-        "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2040,
+        "year": 2030,
         "action": "build",
         "elementId": "mangrove",
         "q": 10,
@@ -517,25 +443,70 @@
         "spare": false
       },
       {
-        "year": 2041,
+        "year": 2031,
         "action": "build",
-        "elementId": "seawall",
-        "q": 2,
+        "elementId": "mangrove",
+        "q": 11,
+        "r": 17,
+        "place": "near Altinho",
+        "spare": false
+      },
+      {
+        "year": 2032,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 8,
+        "r": 23,
+        "place": "near St Cruz",
+        "spare": false
+      },
+      {
+        "year": 2033,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 8,
+        "r": 18,
+        "place": "near Altinho",
+        "spare": false
+      },
+      {
+        "year": 2034,
+        "action": "build",
+        "elementId": "khazan",
+        "q": 16,
+        "r": 14,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2035,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 20,
         "r": 12,
-        "place": "near Campal",
+        "place": "near Merces",
         "spare": false
       },
       {
-        "year": 2042,
+        "year": 2036,
         "action": "build",
-        "elementId": "breakwater",
-        "q": 2,
-        "r": 11,
-        "place": "near Campal",
+        "elementId": "khazan",
+        "q": 21,
+        "r": 9,
+        "place": "near Merces",
         "spare": false
       },
       {
-        "year": 2043,
+        "year": 2037,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 12,
+        "r": 11,
+        "place": "near Fontainhas",
+        "spare": false
+      },
+      {
+        "year": 2038,
         "action": "build",
         "elementId": "small_dam",
         "q": 26,
@@ -544,16 +515,7 @@
         "spare": false
       },
       {
-        "year": 2044,
-        "action": "build",
-        "elementId": "sandy_vegetation",
-        "q": 2,
-        "r": 13,
-        "place": "near Santa Inez",
-        "spare": false
-      },
-      {
-        "year": 2045,
+        "year": 2039,
         "action": "build",
         "elementId": "mangrove",
         "q": 8,
@@ -562,16 +524,79 @@
         "spare": false
       },
       {
+        "year": 2040,
+        "action": "build",
+        "elementId": "sandy_vegetation",
+        "q": 2,
+        "r": 13,
+        "place": "near Santa Inez",
+        "spare": false
+      },
+      {
+        "year": 2041,
+        "action": "build",
+        "elementId": "breakwater",
+        "q": 2,
+        "r": 12,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2042,
+        "action": "build",
+        "elementId": "sandy_vegetation",
+        "q": -12,
+        "r": 28,
+        "place": "near Dona Paula",
+        "spare": false
+      },
+      {
+        "year": 2043,
+        "action": "build",
+        "elementId": "mangrove",
+        "q": 26,
+        "r": 7,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2044,
+        "action": "build",
+        "elementId": "small_dam",
+        "q": 26,
+        "r": 9,
+        "place": "near Merces",
+        "spare": false
+      },
+      {
+        "year": 2045,
+        "action": "build",
+        "elementId": "breakwater",
+        "q": 3,
+        "r": 11,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
         "year": 2046,
         "action": "build",
         "elementId": "mangrove",
-        "q": 23,
-        "r": 0,
-        "place": "near Atal Setu",
+        "q": 10,
+        "r": 2,
+        "place": "near Campal",
         "spare": false
       },
       {
         "year": 2047,
+        "action": "build",
+        "elementId": "breakwater",
+        "q": 5,
+        "r": 9,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2048,
         "action": "build",
         "elementId": "mangrove",
         "q": 22,
@@ -580,20 +605,11 @@
         "spare": false
       },
       {
-        "year": 2048,
-        "action": "build",
-        "elementId": "mangrove",
-        "q": 25,
-        "r": 1,
-        "place": "near Atal Setu",
-        "spare": false
-      },
-      {
         "year": 2049,
         "action": "build",
         "elementId": "mangrove",
-        "q": 26,
-        "r": 1,
+        "q": 23,
+        "r": 0,
         "place": "near Atal Setu",
         "spare": false
       },
@@ -601,8 +617,8 @@
         "year": 2050,
         "action": "build",
         "elementId": "breakwater",
-        "q": 4,
-        "r": 10,
+        "q": 1,
+        "r": 0,
         "place": "near Campal",
         "spare": false
       }

@@ -161,8 +161,10 @@ function play(actions: PlanAction[]): Played {
   return { actions, storms, stars: storms.reduce((s, x) => s + x.stars, 0), lost: storms.reduce((s, x) => s + x.lost, 0) };
 }
 const finals = beam.map((b) => play(b.actions));
-const byGoal1 = [...finals].sort((a, b) => b.stars - a.stars || a.lost - b.lost)[0];
-const byGoal2 = [...finals].sort((a, b) => a.lost - b.lost || b.stars - a.stars)[0];
+// Ties go to the plan with the most biodiversity at the end of 2050 (Section 26.2).
+const endBioOf = (p: Played): number => p.storms[p.storms.length - 1].biodiversityChange ?? 0;
+const byGoal1 = [...finals].sort((a, b) => b.stars - a.stars || a.lost - b.lost || endBioOf(b) - endBioOf(a))[0];
+const byGoal2 = [...finals].sort((a, b) => a.lost - b.lost || b.stars - a.stars || endBioOf(b) - endBioOf(a))[0];
 
 /**
  * What stops the plan saving the homes it loses, tested with the game's own

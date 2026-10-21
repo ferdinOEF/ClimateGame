@@ -2,7 +2,7 @@
  * Section 26's targeted shots (the default QA gate), at one size:
  *   - a cracked seawall with its tooltip: a seawall built in 2027 is 10 years old in 2037 and cracked;
  *   - a broken breakwater: one built in 2026 breaks with age in 2036 and stays on the board, drawn broken;
- *   - the 2030 result card with the homes the wind alone took (no pandanus on the board);
+ *   - the 2030 result card with the homes the wind alone took (a dune in front of the school, no pandanus);
  *   - the final card with the end-of-2050 biodiversity.
  * The run is planned headless on the game's own rules (every build legal), then played in the browser through the
  * player's own build path (`window.__panjimForTest.build`). Checks the cards against the headless run, the cracked
@@ -42,12 +42,18 @@ const bw = far("breakwater");
 build(bw.coord.q, bw.coord.r, "breakwater");
 const sw = far("seawall");
 build(sw.coord.q, sw.coord.r, "seawall");
+// A dune in front of Sharada Mandir School holds the 2030 water, so the card shows the homes the wind alone takes.
+build(-4, 18, "dune");
 const breakwater = axialKey(bw.coord);
 const seawall = axialKey(sw.coord);
 // Builds far from every storm (never pandanus), so the wind meets the 2030 homes on its own.
+// The broken breakwater's tile stays as it is for the shot.
+near.add(breakwater);
+near.add(seawall);
+const kinds = (c: { q: number; r: number }) => plan.state.buildableAt(c).filter((d) => d.id !== "sandy_vegetation").sort((a, b) => (b.effects.biodiversity ?? 0) - (a.effects.biodiversity ?? 0));
 const spare = (): void => {
-  const tile = [...plan.state.placed.values()].find((t) => !near.has(axialKey(t.coord)) && plan.state.buildableAt(t.coord).some((d) => d.id !== "sandy_vegetation"))!;
-  build(tile.coord.q, tile.coord.r, plan.state.buildableAt(tile.coord).find((d) => d.id !== "sandy_vegetation")!.id);
+  const tile = [...plan.state.placed.values()].find((t) => !near.has(axialKey(t.coord)) && kinds(t.coord).length > 0)!;
+  build(tile.coord.q, tile.coord.r, kinds(tile.coord)[0].id);
 };
 // The shot of the aged defences comes after build PAUSE (the year is then 2026 + PAUSE).
 const PAUSE = 12;

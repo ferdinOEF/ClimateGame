@@ -129,7 +129,7 @@
     {
       "id": "seawall-fails",
       "kind": "gameRule",
-      "text": "A seawall comes through its first cyclone, breaks in its second, and pushes water round its ends.",
+      "text": "A seawall breaks in its second cyclone, or its next once 10 years old, and pushes water round its ends.",
       "elements": [
         "seawall"
       ]
@@ -145,7 +145,7 @@
     {
       "id": "breakwater-offshore",
       "kind": "gameRule",
-      "text": "A breakwater sits out at sea and takes the force out of a cyclone's waves before they reach the beach.",
+      "text": "A breakwater at sea takes the force out of a cyclone's waves. It breaks at 10 years old.",
       "elements": [
         "breakwater"
       ]
@@ -153,7 +153,7 @@
     {
       "id": "dam-fails",
       "kind": "gameRule",
-      "text": "A small dam holds the river back through the first flood it faces and breaks in the second.",
+      "text": "A small dam holds back floods; it breaks in its second flood, or its next once 10 years old.",
       "elements": [
         "small_dam"
       ]
