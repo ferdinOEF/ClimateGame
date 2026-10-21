@@ -50,8 +50,12 @@ export interface Assessment {
   excess: number;
   /** Section 25.2: how far each storm's biodiversity falls short of the three star rise, added up (0 where it is reached). */
   bioShort: number;
+  /** The storm still to come next: its stars and homes lost (all three storms past: the last's). */
+  next: { stars: number; lost: number; excess: number };
+  /** Section 26.2: the last storm's biodiversity change (measured at the end of 2050). */
+  endBio: number;
   /** Per storm, in calendar order. */
-  storms: { id: string; stars: number; saved: number; total: number; lost: number }[];
+  storms: { id: string; stars: number; saved: number; total: number; lost: number; bio: number; excess?: number }[];
 }
 
 /**
@@ -68,14 +72,17 @@ export function assess(run: ActionRun, state: GameState): Assessment {
   let lost = 0;
   let excess = 0;
   let bioShort = 0;
-  const target = run.houseStars?.bioThree;
-  const short = (change: number | undefined): number => (target === undefined || change === undefined ? 0 : Math.max(0, target - change));
+  // Each storm's own three star rise (Section 26.2: the 2050 storm's is higher).
+  const short = (challenge: (typeof run.schedule)[number], change: number | undefined): number => {
+    const target = run.houseStarsFor(challenge)?.bioThree;
+    return target === undefined || change === undefined ? 0 : Math.max(0, target - change);
+  };
   for (const challenge of run.schedule) {
     const outcome = run.outcomes.get(challenge.id);
     if (!outcome) continue;
-    bioShort += short(outcome.biodiversityChange);
+    bioShort += short(challenge, outcome.biodiversityChange);
     const l = outcome.housesTotal - outcome.housesSaved;
-    storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l });
+    storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l, bio: outcome.biodiversityChange ?? 0 });
     stars += outcome.stars;
     lost += l;
   }
@@ -84,6 +91,8 @@ export function assess(run: ActionRun, state: GameState): Assessment {
   const board = state.clone();
   for (const challenge of run.schedule) {
     if (run.landed.has(challenge.id)) continue;
+    // Section 26.1: each storm as it lands, every defence as old as it will be then.
+    board.turn = challenge.turn - 1;
     const damage = new Map<string, number>();
     const outcome = resolveChallenge(
       board,
@@ -92,20 +101,25 @@ export function assess(run: ActionRun, state: GameState): Assessment {
       run.intensityOf(challenge),
       climate.intensityPerStrength,
       computeCombos(board).bonus,
-      run.houseStars,
+      run.houseStarsFor(challenge),
       run.houseRule,
       (key, _water, _hazard, d) => damage.set(key, Math.max(damage.get(key) ?? 0, d)),
       run.landfallOf(challenge),
-      shelterOf(challenge)
+      shelterOf(challenge),
+      challenge.wind
     );
     const l = outcome.housesTotal - outcome.housesSaved;
-    storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l });
+    storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l, bio: outcome.biodiversityChange ?? 0 });
     stars += outcome.stars;
     lost += l;
-    bioShort += short(outcome.biodiversityChange);
-    for (const key of outcome.damagedHouses) excess += Math.max(0, (damage.get(key) ?? 0) / scale - 1);
+    bioShort += short(challenge, outcome.biodiversityChange);
+    let stormExcess = 0;
+    for (const key of outcome.damagedHouses) stormExcess += Math.max(0, (damage.get(key) ?? 0) / scale - 1);
+    storms[storms.length - 1].excess = stormExcess;
+    excess += stormExcess;
   }
-  return { stars, lost, excess, bioShort, storms };
+  const nextStorm = storms[Math.min(run.landed.size, storms.length - 1)];
+  return { stars, lost, excess, bioShort, storms, next: { stars: nextStorm?.stars ?? 0, lost: nextStorm?.lost ?? 0, excess: nextStorm?.excess ?? 0 }, endBio: storms[storms.length - 1]?.bio ?? 0 };
 }
 
 /** Homes `challenge` (the next storm) would take on `state`, by the game's own preview. */
@@ -113,10 +127,12 @@ export function previewLost(run: ActionRun, state: GameState, challenge: Schedul
   const site = run.landfallOf(challenge);
   return computeExposure(state, run.zones!, challenge.kind, run.intensityOf(challenge), run.climate!.intensityPerStrength, {
     combos: computeCombos(state).bonus,
-    houseStars: run.houseStars,
+    houseStars: run.houseStarsFor(challenge),
     houseRule: run.houseRule,
     landfallSites: site === null ? null : [site],
-    sheltered: shelterOf(challenge)
+    sheltered: shelterOf(challenge),
+    wind: challenge.wind,
+    turn: challenge.turn - 1
   }).housesAtRisk;
 }
 
@@ -159,6 +175,15 @@ export function goal2(a: Assessment, b: Assessment): number {
  * Section 25.2: stars, then the biodiversity still short of three stars, then homes. Not a goal of its own: it keeps
  * plans that build nature first in the beam, whose stars come a few builds later than a seawall's homes.
  */
+/**
+ * The phase's own storm first (Section 24: "score each phase by the stars and homes saved at its storm"): its stars
+ * and homes, then the whole run. Not a goal of its own: it keeps plans that hold the next storm, when whole-run
+ * orders would spend the early builds on a later, bigger storm.
+ */
+export function nextFirst(a: Assessment, b: Assessment): number {
+  return b.next.stars - a.next.stars || a.next.lost - b.next.lost || a.next.excess - b.next.excess || b.stars - a.stars || a.lost - b.lost || a.excess - b.excess;
+}
+
 export function greener(a: Assessment, b: Assessment): number {
   return b.stars - a.stars || a.bioShort - b.bioShort || a.lost - b.lost || a.excess - b.excess;
 }

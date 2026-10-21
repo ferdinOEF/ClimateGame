@@ -129,7 +129,8 @@
           "kind": "cyclone",
           "year": 2030,
           "strength": 1.2,
-          "landfall": "-5,18"
+          "landfall": "-5,18",
+          "wind": { "perStrengthM": 1.0, "inlandKeep": 0.8 }
         },
         {
           "id": "c2-flood",
@@ -145,6 +146,9 @@
           "year": 2050,
           "strength": 3.0,
           "landfall": "2,12",
+          "wind": { "perStrengthM": 0.6, "inlandKeep": 0.8, "compoundShare": 1.1 },
+          "bioThree": 40,
+          "biodiversityAtEnd": true,
           "shelteredPlace": "the sheltered middle of Taleigao",
           "shelteredTiles": [
             [0, 16], [1, 16], [2, 16], [4, 16], [5, 16], [6, 16], [7, 16],

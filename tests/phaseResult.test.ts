@@ -56,7 +56,7 @@ describe("the result cards' numbers", () => {
           if (!built) passYear(run);
         }
         const before = run.state.clone();
-        const args = { zones: run.zones!, kind: challenge.kind, intensity: run.intensityOf(challenge), strengthUnit: run.climate!.intensityPerStrength, combos: run.combos, houseStars: run.houseStars, houseRule: run.houseRule, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge) };
+        const args = { zones: run.zones!, kind: challenge.kind, intensity: run.intensityOf(challenge), strengthUnit: run.climate!.intensityPerStrength, combos: run.combos, houseStars: run.houseStarsFor(challenge), houseRule: run.houseRule, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge), wind: challenge.wind };
         passYear(run);
         const real = run.outcomes.get(challenge.id)!;
         const again = housesLostWithout(before, args, null);
@@ -86,7 +86,8 @@ describe("the result cards' numbers", () => {
     const challenge = run.schedule[0];
     const area = run.areas.get(challenge.id)!;
     // Section 12: the wind tips 8,7 at the river mouth too. Section 19: 8, the home at -7,24 is beach now.
-    expect(area.length).toBe(8);
+    // Section 26.3: 9, the stronger wind takes -2,18 beside the school.
+    expect(area.length).toBe(9);
     play(run, true);
     const result = phaseResult(challenge, run.stormRecords.get(challenge.id)!, area, PLACES, run.phaseBuilds.get(challenge.id) ?? []);
     // Section 17b (owner decision): no dots or hyphens between words in player-facing text.
@@ -110,7 +111,7 @@ describe("the result cards' numbers", () => {
 });
 
 describe("the result cards' words", () => {
-  it("say wave or water, never wind; Maya's card lines are short, and each is a game rule or practical guidance", async () => {
+  it("say wave or water, and wind only in the wind line (Section 26.3); Maya's card lines are short, and each is a game rule or practical guidance", async () => {
     const maya = (await import("../src/data/maya.json")).default as unknown as { results: { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> } };
     const lines = [...Object.values(maya.results.byDefence), ...Object.values(maya.results.comingUp)];
     for (const line of lines) {
@@ -121,7 +122,11 @@ describe("the result cards' words", () => {
     }
     for (const id of ["dune", "sandy_vegetation", "seawall", "breakwater", "mangrove", "khazan", "small_dam"]) expect(maya.results.byDefence[id], id).toBeDefined();
     const source = (await import("node:fs")).readFileSync("src/ui/panjim/resultCards.ts", "utf8");
-    expect(source).not.toMatch(/\bwind\b|Iconic places|overlap/i);
+    expect(source).not.toMatch(/Iconic places|overlap/i);
+    // Section 26.3 (owner decision): the one wind line, the homes the wind alone took, and pandanus as a game rule.
+    const windLines = source.split("\n").filter((l) => /\bwind\b/i.test(l) && !/^\s*(\/\/|\*|\/\*\*)/.test(l));
+    expect(windLines.length).toBeGreaterThan(0);
+    for (const l of windLines) expect(l, l).toMatch(/windHtml|The wind alone took|In this game pandanus/);
   });
 
   it("puts both game rules on the Sources screen", async () => {

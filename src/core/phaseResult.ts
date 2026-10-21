@@ -49,6 +49,8 @@ export interface PhaseResult {
   objectiveComplete?: boolean;
   /** Section 25.2: the biodiversity line, where the level's stars count it. */
   nature?: NatureLine;
+  /** Section 26.3: homes lost that the water alone would have left standing: the wind took them. */
+  windLost: number;
 }
 
 /** Section 25.2: the card's second line: the board's biodiversity change since the run began, and why. */
@@ -60,6 +62,8 @@ export interface NatureLine {
   reason: string;
   /** The year it is compared with: the run's first. */
   since: number;
+  /** Section 26.2: when it was measured, where not as the storm came ("at the end of 2050"). */
+  at?: string;
 }
 
 /** How the cards name each defence in the plural. */
@@ -128,7 +132,7 @@ export function placesInArea(places: readonly Place[], area: readonly string[]):
 }
 
 /** The result of one storm, for its cards. `area` is its area to protect at the start of its phase; `builtKinds` the defences the player built in the phase. */
-export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, area: readonly string[], places: readonly Place[], builtKinds: readonly string[], nature?: { target: number; since: number; byKind: ReadonlyMap<string, number> }): PhaseResult {
+export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, area: readonly string[], places: readonly Place[], builtKinds: readonly string[], nature?: { target: number; since: number; at?: string; byKind: ReadonlyMap<string, number> }): PhaseResult {
   const outcome = record.outcome;
   // Section 16 B4: the places in (or next to) the storm's area, and any other place it damaged (not the
   // labels that stand on the river or the sea); the damaged ones first.
@@ -160,8 +164,9 @@ export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, 
     homesLostBefore: outcome.housesLostBefore ?? 0,
     places: placeResults,
     defences,
+    windLost: outcome.damagedHouses.filter((key) => !floodsHouse(record.depth.get(key) ?? 0)).length,
     ...(nature && outcome.biodiversityChange !== undefined
-      ? { nature: { change: outcome.biodiversityChange, target: nature.target, since: nature.since, reason: natureReason(outcome.biodiversityChange, nature.target, nature.byKind) } }
+      ? { nature: { change: outcome.biodiversityChange, target: nature.target, since: nature.since, ...(nature.at ? { at: nature.at } : {}), reason: natureReason(outcome.biodiversityChange, nature.target, nature.byKind) } }
       : {})
   };
 }

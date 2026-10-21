@@ -33,6 +33,22 @@ export interface ChallengeDef {
   shelteredTiles?: [number, number][];
   /** What the player is told the sheltered tiles are, after "does not reach": "the sheltered middle of Taleigao". */
   shelteredPlace?: string;
+  /**
+   * Section 26.2 (owner decision, a game rule): this storm's own three star biodiversity rise, in place of the
+   * level's (`houseStars.bioThree`). The 2050 storm's is higher, so the builds after 2040 still matter.
+   */
+  bioThree?: number;
+  /** Section 26.2: this storm's biodiversity is measured after it, at the end of its year (the 2050 storm, the run's last). */
+  biodiversityAtEnd?: boolean;
+  /** Section 26.3 (owner decision, a game rule): this storm's own wind, in place of the hazard model's (hazardModel.json `wind`). */
+  wind?: WindOverride;
+}
+
+/** Section 26.3: a storm's own wind numbers, any of the hazard model's (the rest are the model's). */
+export interface WindOverride {
+  perStrengthM?: number;
+  inlandKeep?: number;
+  compoundShare?: number;
 }
 
 /** A storm's sheltered tiles as "q,r" keys, or undefined when it has none. */

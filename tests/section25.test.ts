@@ -279,7 +279,7 @@ describe("stars from homes saved and biodiversity (Section 25.2)", () => {
 
   it("says the star lines in How to play as a game rule, from the level's numbers; the Tutorial says Panjim counts nature", () => {
     const html = panjimHelpHtml({ startYear: 2026, endYear: 2050, storms: run.schedule, houseStars: stars });
-    expect(html).toContain(`In this game ${starRule(stars).replace(/^A/, "a")}`);
+    expect(html).toContain(`In this game ${starRule(stars, run.schedule).replace(/^A/, "a")}`);
     expect(starRule(stars)).toContain("55%");
     expect(starRule(stars)).toContain(`biodiversity up ${stars.bioThree}.`);
     expect(html).toMatch(/In this game each has a pro and a con/);

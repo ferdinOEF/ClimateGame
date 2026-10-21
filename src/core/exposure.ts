@@ -1,4 +1,5 @@
 import { ELEMENT_BY_ID } from "./elements";
+import type { WindOverride } from "./climate";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
 import { resolveChallenge, type ChallengeOutcome, type ComboBonus, type HazardId, type HouseRule, type ZoneIndex } from "./zones";
@@ -54,6 +55,10 @@ export interface ExposureOptions {
   landfallSites?: number[] | null;
   /** Tiles the storm never reaches (Section 23.1, `shelterOf`). */
   sheltered?: ReadonlySet<string>;
+  /** Section 26.1: the turn the storm lands on, so defences are as old as they will be then. Defaults to the board's. */
+  turn?: number;
+  /** Section 26.3: the storm's own wind numbers. */
+  wind?: WindOverride;
 }
 
 /** The hazards a challenge kind brings. */
@@ -75,6 +80,7 @@ export function computeExposure(
   options: ExposureOptions = {}
 ): Exposure {
   const copy = state.clone();
+  if (options.turn !== undefined) copy.turn = options.turn;
   if (options.withoutDefences) {
     const hazards = hazardsOf(kind);
     for (const [key, inst] of [...copy.elements]) {
@@ -105,7 +111,8 @@ export function computeExposure(
         if (!copy.isScenery(key)) tileIntensity.set(key, Math.max(tileIntensity.get(key) ?? 0, damage));
       },
       site,
-      options.sheltered
+      options.sheltered,
+      options.wind
     );
     for (const key of result.damagedHouses) atRisk.add(key);
     if (site === middle) outcome = result;

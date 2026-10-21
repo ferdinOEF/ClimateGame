@@ -28,7 +28,8 @@ function defended(elementId: string, strength = 1.2): { state: GameState; zones:
     const [q, r] = key.split(",").map(Number);
     if (state.canBuild({ q, r }, elementId)) state.build({ q, r }, elementId, false);
   }
-  state.turn = 40;
+  // Grown (a dune takes 8 quarters) but under 10 years old, so no seawall is cracked yet (Section 26.1).
+  state.turn = 9;
   return { state, zones };
 }
 

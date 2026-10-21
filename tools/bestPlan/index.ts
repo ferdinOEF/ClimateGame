@@ -24,7 +24,12 @@
  * The work is split over child processes like the bots (one plan each at a
  * time). Progress is printed every year.
  *
- * Usage: npm run bestplan -- [beam=16] [keep=16] [jobs=4] [out=docs/qa/section25]
+ * SEEDS (Section 26): `seed=<file>` names a JSON list of whole plans (each a
+ * list of { elementId, q, r }), say a plan found by hand. Each year the seed's
+ * first builds join the beam beside the search's own plans, scored the same
+ * way, so the search ends no worse than the seed and can still beat it.
+ *
+ * Usage: npm run bestplan -- [beam=16] [keep=16] [jobs=4] [out=docs/qa/section26] [seed=file.json]
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -33,7 +38,7 @@ import path from "node:path";
 import { BOT_LEVEL, newRun } from "../panjimBots/bots";
 import { ELEMENT_BY_ID } from "../../src/core/elements";
 import { clearsLevel } from "../../src/core/panjimIndex";
-import { actionKey, assess, canonical, goal1, goal2, greener, legalActions, placeName, previewLost, replay, trialBoard, type Assessment, type PlanAction } from "./plan";
+import { actionKey, assess, canonical, goal1, goal2, greener, legalActions, nextFirst, placeName, previewLost, replay, trialBoard, type Assessment, type PlanAction } from "./plan";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split("=") as [string, string]));
 const num = (key: string, fallback: number): number => (args.has(key) ? Number(args.get(key)) : fallback);
@@ -54,7 +59,7 @@ if (childJob !== undefined) {
     const children: Scored[] = legalActions(run).map((action) => ({ actions: [...actions, action], score: assess(run, trialBoard(run, action)) }));
     // The best by each goal; the parent merges and dedupes.
     const best = new Map<string, Scored>();
-    for (const order of [goal1, greener, goal2]) for (const c of [...children].sort((a, b) => order(a.score, b.score)).slice(0, job.keep)) best.set(actionKey(c.actions[c.actions.length - 1]), c);
+    for (const order of [goal1, nextFirst, greener, goal2]) for (const c of [...children].sort((a, b) => order(a.score, b.score)).slice(0, job.keep)) best.set(actionKey(c.actions[c.actions.length - 1]), c);
     out.push([...best.values()]);
   }
   process.stdout.write(`${JSON.stringify(out)}\n`, () => process.exit(0));
@@ -66,7 +71,8 @@ if (childJob !== undefined) {
 const beamWidth = num("beam", 16);
 const keep = num("keep", 16);
 const jobs = num("jobs", Math.max(1, Math.min(4, os.cpus().length)));
-const outDir = path.resolve(args.get("out") ?? "docs/qa/section25");
+const outDir = path.resolve(args.get("out") ?? "docs/qa/section26");
+const seeds = args.has("seed") ? (JSON.parse(fs.readFileSync(args.get("seed")!, "utf8")) as PlanAction[][]) : [];
 const started = Date.now();
 const opening = newRun("best-plan", BOT_LEVEL);
 const totalYears = opening.totalYears;
@@ -105,9 +111,10 @@ function select(children: Scored[]): Scored[] {
       chosen.set(canonical(c.actions, phaseEnds), c);
     }
   };
-  // A third each: goal 1, the greener order (Section 25.2), goal 2.
-  take(goal1, Math.ceil(beamWidth / 3));
-  take(greener, Math.ceil((2 * beamWidth) / 3));
+  // A quarter each: goal 1, the phase's own storm first, the greener order (Section 25.2), goal 2.
+  take(goal1, Math.ceil(beamWidth / 4));
+  take(nextFirst, Math.ceil(beamWidth / 2));
+  take(greener, Math.ceil((3 * beamWidth) / 4));
   take(goal2, beamWidth);
   return [...chosen.values()];
 }
@@ -121,6 +128,12 @@ console.log(`opening board: ${fmt(beam[0].score)}`);
 try {
   for (let step = 1; step <= totalYears; step++) {
     beam = select(await expand(beam.map((b) => b.actions)));
+    for (const seed of seeds) {
+      const prefix = seed.slice(0, step);
+      if (beam.some((b) => canonical(b.actions, phaseEnds) === canonical(prefix, phaseEnds))) continue;
+      const run = replay(prefix);
+      beam.push({ actions: prefix, score: assess(run, run.state) });
+    }
     const b1 = [...beam].sort((a, b) => goal1(a.score, b.score))[0];
     const b2 = [...beam].sort((a, b) => goal2(a.score, b.score))[0];
     const storm = phaseEnds.includes(step) ? ` (storm ${phaseEnds.indexOf(step) + 1} resolves)` : "";
@@ -148,8 +161,10 @@ function play(actions: PlanAction[]): Played {
   return { actions, storms, stars: storms.reduce((s, x) => s + x.stars, 0), lost: storms.reduce((s, x) => s + x.lost, 0) };
 }
 const finals = beam.map((b) => play(b.actions));
-const byGoal1 = [...finals].sort((a, b) => b.stars - a.stars || a.lost - b.lost)[0];
-const byGoal2 = [...finals].sort((a, b) => a.lost - b.lost || b.stars - a.stars)[0];
+// Ties go to the plan with the most biodiversity at the end of 2050 (Section 26.2).
+const endBioOf = (p: Played): number => p.storms[p.storms.length - 1].biodiversityChange ?? 0;
+const byGoal1 = [...finals].sort((a, b) => b.stars - a.stars || a.lost - b.lost || endBioOf(b) - endBioOf(a))[0];
+const byGoal2 = [...finals].sort((a, b) => a.lost - b.lost || b.stars - a.stars || endBioOf(b) - endBioOf(a))[0];
 
 /**
  * What stops the plan saving the homes it loses, tested with the game's own
@@ -205,7 +220,8 @@ function spareActions(p: Played): boolean[] {
   return p.actions.map((_, i) => {
     const run = replay(p.actions.slice(0, i + 1));
     const now = assess(run, run.state);
-    const spare = now.stars === before.stars && now.lost === before.lost && Math.abs(now.excess - before.excess) < 1e-9;
+    // Section 26.5: the end of 2050's biodiversity counts too.
+    const spare = now.stars === before.stars && now.lost === before.lost && now.endBio === before.endBio && Math.abs(now.excess - before.excess) < 1e-9;
     before = now;
     return spare;
   });
@@ -240,7 +256,7 @@ const json = {
 fs.writeFileSync(path.join(outDir, "best_plan.json"), `${JSON.stringify(json, null, 2)}\n`);
 
 const table = (p: Played): string[] => [
-  "| # | Year | Defence | Tile (q,r) | Place | Changes stars or homes lost |",
+  "| # | Year | Defence | Tile (q,r) | Place | Changes stars, homes or end biodiversity |",
   "|---|---|---|---|---|---|",
   ...rows(p).map((r, i) => `| ${i + 1} | ${r.year} | ${nameOf(r.elementId)} | ${r.q},${r.r} | ${r.place} | ${r.spare ? "no" : "yes"} |`)
 ];

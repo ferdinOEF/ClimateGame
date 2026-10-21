@@ -105,7 +105,7 @@ async function settle(): Promise<void> {
         seen.push({ stars: card.stars, text: card.text });
         if (seen.length === 1) {
           await page.waitForTimeout(800);
-          await page.screenshot({ path: path.join(OUT, `result-card-nature-${W}x${H}.jpg`), type: "jpeg", quality: 85 });
+          await page.screenshot({ path: path.join(OUT, `result-card-seawall-run-${W}x${H}.jpg`), type: "jpeg", quality: 85 });
         }
       }
       await page.locator(".result-cards:not([hidden]) .result-next").click();

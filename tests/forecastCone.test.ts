@@ -96,7 +96,8 @@ describe("the forecast cone", () => {
   // stand on a ridge (6.5-8.5 m) and the added land is at 0-1.5 m (see docs/QA_REPORT.md, Section 16). Building
   // in front of the school saves every one of them, since all the surge comes ashore there.
   // Section 19: -7,24 is beach now (owner edit), so it has no home to lose: 8.
-  const FIRST_CYCLONE = ["-3,19", "-5,22", "-6,23", "0,19", "0,20", "1,19", "2,18", "2,19"];
+  // Section 26.3: the stronger wind also takes -2,18, beside the school.
+const FIRST_CYCLONE = ["-2,18", "-3,19", "-5,22", "-6,23", "0,19", "0,20", "1,19", "2,18", "2,19"];
   it("keeps the first cyclone at the school: undefended, it takes the home beside it and the low land either side of its beach, and nothing at Kala Academy", () => {
     const run = newRun("cone", BOT_LEVEL);
     const cyclone = run.schedule[0];

@@ -122,3 +122,50 @@ left a choice, this is what was chosen, for the owner to confirm or change:
 6. **The best plan for the most homes.** The final search keeps a third of its plans by each of goal 1, goal 2 and a
    greener order; its best loses 10 homes (9 of 9 stars). An earlier run that kept half for goal 2 found a plan
    losing 9 homes at 8 of 9 stars (the 2030 cyclone held with breakwaters, biodiversity 0, two stars).
+
+# Section 26: the owner's decisions, and the choices made carrying them out
+
+Done as asked (engineered defences age, biodiversity at the end of 2050 counts, a stronger wind); see
+`docs/PROGRESS.md`. Where the brief left a choice, this is what was chosen, for the owner to confirm or change:
+
+1. **Age.** A defence's age is the years since it was built (built in 2027, 10 years old in 2037). A breakwater breaks
+   as the year it turns 10 begins (the year turn after the 2036 build, so one built in 2027 is broken from 2037),
+   storm or not, with a note on the board ("Broken with age"). A seawall or small dam 10 years old or more is
+   cracked: it breaks in the next storm of its kind, even its first (so one built in 2036 is cracked in 2046 and breaks
+   in the 2050 storm; one built in 2040 is 10 in 2050 and breaks then too). The Section 25 second-storm rule is kept.
+   A breakwater no longer fails by depth or storm count. Previews (the forecast, the live risk, "homes this saves")
+   judge each defence at the age it will be when the storm comes.
+2. **Broken defences** (breakwater, seawall, dam) stay on the board, drawn broken, protect nothing, keep their
+   biodiversity cost, and the tile takes a new build.
+3. **The 2050 storm's three star biodiversity: +40, measured at the end of 2050** (after the last build and the
+   storm; the storm itself wears no biodiversity, so this is the board's biodiversity after the 2050 build). 2030
+   and 2040 keep +6. Set with the solver: the best plan (9 of 9) has +39 when the 2040 flood comes and ends 2050 at
+   +45, so it reaches the target only through its builds after 2040 (`tests/bestPlan.test.ts` checks both). The
+   margin is small: the breakwater and dam it needs after 2040 for homes cost biodiversity, and its mangroves and
+   pandanus after 2040 make that up. At +40 a plan that stops building nature by 2040 needs +40 by then.
+4. **The stronger wind is the two cyclones' own** (`levels.json`, `wind` on the 2030 and 2050 storms); the Tutorial and
+   the model's default (0.2 m a strength) are unchanged. 2030: 1.0 m a strength, keeping 0.8 of itself a hex
+   inland. 2050: 0.6 m a strength, 0.8 a hex, 1.1 of it in the compound storm. Pandanus share kept at 0.5.
+5. **Where the wind targets were measured.** On the opening board the water takes every home near the beach first, so
+   the wind is never the deciding loss there. The targets were measured on defended boards (the Section 25 best plan,
+   its breakwaters rebuilt, and the new best plan with and without its pandanus): 2030, the wind alone takes 1 to 3
+   of the 9 homes in its path, and pandanus within 2 tiles stops them. 2050, the wind alone takes 10% to 14% (6 of 60
+   to 9 of 64, by board): "about 10%", at the high side on the best plan's board.
+6. **Unmet: pandanus cannot stop most of the 2050 wind.** The 2050 storm lands at Campal, and the homes its wind takes
+   are on the Mandovi waterfront, 5 to 8 tiles from any beach: pandanus grows only on beach tiles and shields within 2
+   tiles, so it reaches few of them (the best plan's 3 pandanus save 3 of 12 such homes). Within reach, pandanus halves
+   the wind as before. Options for the owner: let pandanus grow on more ground (a game rule), move the 2050 landfall,
+   or accept it.
+7. **The best plan's search is seeded** (`seed=` in `npm run bestplan`, `tools/bestPlan/seed26.json`): the beam alone
+   kept missing the 2030 trio (a dune and two pandanus in front of the school) because each one alone saves little.
+   The seed is a hand plan (that trio, the Section 25 plan's middle builds, then greedy builds after 2040: 9 of 9, 17
+   homes lost, +45); the search scores it with its own plans every year and ends no worse. With the seed in its beam
+   the search found its own plan, as good (9 of 9, 17 homes lost, +45), which is the one reported. Ties in the final
+   pick now go to the most biodiversity at the end of 2050.
+8. **The Section 25 shot renamed.** `docs/qa/section25/result-card-nature-*.jpg` showed the seawall run's 2030 card,
+   so it is now `result-card-seawall-run-*.jpg` (QA report and `tools/section25Shots.ts` updated).
+9. **An old test changed:** the result cards' words never said "wind" (Section 17). The 2030 card now says how many
+   of the homes lost the wind alone took ("The wind alone took 3 of the homes lost": homes whose water stayed under
+   the loss line), as the brief asks; the test allows that line only.
+10. **Build cards:** seawall "Strongest; breaks in its 2nd cyclone, cracks at 10"; small dam "Strong in floods; breaks
+   in its 2nd flood, cracks at 10"; breakwater "Breaks waves at sea; lasts 10 years".

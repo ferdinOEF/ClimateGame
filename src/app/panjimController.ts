@@ -869,8 +869,12 @@ export class PanjimController {
     await this.untilLayersShut();
     if (this.disposed) return;
     // Section 25.2: the biodiversity line, where the level's stars count it (every defence on the board, broken ones too).
-    const bioThree = this.run.houseStars?.bioThree;
-    const nature = bioThree !== undefined ? { target: bioThree, since: this.run.config.startYear, byKind: biodiversityByKind(this.host.state.elements.values()) } : undefined;
+    const stormStars = this.run.houseStarsFor(challenge);
+    const bioThree = stormStars?.bioThree;
+    const nature =
+      bioThree !== undefined
+        ? { target: bioThree, since: this.run.config.startYear, at: stormStars?.bioAtEnd ? `at the end of ${challenge.year}` : undefined, byKind: biodiversityByKind(this.host.state.elements.values()) }
+        : undefined;
     const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
@@ -962,13 +966,21 @@ export class PanjimController {
     });
     this.host.telemetry.emit("checkpoint", { final: true, stars: result.levelStars, tempo: tempoBadge(this.playMs()).name });
     // Section 25.2: the biodiversity line as the last storm came, and the star lines in words.
-    const last = this.run.outcomes.get(this.run.schedule[this.run.schedule.length - 1]?.id ?? "");
-    const stars = this.run.houseStars;
+    // Section 26.2: the last storm's biodiversity, measured at the end of its year, against its own target.
+    const lastStorm = this.run.schedule[this.run.schedule.length - 1];
+    const last = lastStorm ? this.run.outcomes.get(lastStorm.id) : undefined;
+    const stars = lastStorm ? this.run.houseStarsFor(lastStorm) : undefined;
     const nature =
       stars?.bioThree !== undefined && last?.biodiversityChange !== undefined
         ? {
-            line: { change: last.biodiversityChange, target: stars.bioThree, since: this.run.config.startYear, reason: natureReason(last.biodiversityChange, stars.bioThree, biodiversityByKind(this.host.state.elements.values())) },
-            rule: starRule(stars)
+            line: {
+              change: last.biodiversityChange,
+              target: stars.bioThree,
+              since: this.run.config.startYear,
+              at: stars.bioAtEnd ? `at the end of ${lastStorm!.year}` : undefined,
+              reason: natureReason(last.biodiversityChange, stars.bioThree, biodiversityByKind(this.host.state.elements.values()))
+            },
+            rule: starRule(this.run.houseStars!, this.run.schedule)
           }
         : undefined;
     const choice = await this.resultCards.show([{ body: finalCard(phases, result, nature), button: "Play again", link: "Back to the menu" }]);
@@ -1438,6 +1450,12 @@ export class PanjimController {
         break;
       case "year":
         break;
+      case "aged": {
+        // Section 26.1: a breakwater broke as it turned 10. Drawn broken (the refresh), and said beside it.
+        const [q, r] = event.key.split(",").map(Number);
+        this.host.noteAt({ q, r }, "Broken with age: in this game a breakwater lasts 10 years. Build again here.", 4000);
+        break;
+      }
     }
   }
 

@@ -75,6 +75,10 @@ export interface ElementDef {
   endPushM?: number;
   /** Section 25.1, a game rule: never worn by a storm, so it never needs a repair (khazan). */
   neverWears?: boolean;
+  /** Section 26.1, a game rule: breaks at this age in years, storm or none (breakwater: 10). Replaces any other failure rule. */
+  breaksAtAge?: number;
+  /** Section 26.1, a game rule: cracked at this age in years, and then breaks in the next storm of its kind (seawall, small dam: 10). */
+  cracksAtAge?: number;
   /** Section 25.1, a game rule: on a river tile only at the river's edge, beside dry ground or a wetland (mangrove). */
   riverEdgeOnly?: boolean;
 }

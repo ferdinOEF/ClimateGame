@@ -657,3 +657,41 @@ export function facingAngle(dx: number, dz: number): number {
 }
 
 export const DEFENCE_HALF_WIDTH = SQRT3_2;
+
+// ---------------------------------------------------------------------------
+// Section 26.1: the cracks on a seawall or small dam 10 years old (it breaks in
+// the next storm of its kind). Dark zigzag cracks across the top and down the
+// face, in the defence's own frame, drawn over it as their own instanced layer.
+// ---------------------------------------------------------------------------
+function zigzag(points: [number, number, number][], width: number, color: string): THREE.BufferGeometry[] {
+  const out: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [x0, y0, z0] = points[i];
+    const [x1, y1, z1] = points[i + 1];
+    const a = new THREE.Vector3(x0, y0, z0);
+    const b = new THREE.Vector3(x1, y1, z1);
+    const len = a.distanceTo(b);
+    const g = new THREE.BoxGeometry(width, width, len + width);
+    g.lookAt(b.clone().sub(a));
+    g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    out.push(paintAll(g, color));
+  }
+  return out;
+}
+
+export function crackGeometry(id: "seawall" | "small_dam"): THREE.BufferGeometry {
+  const dark = "#1f1b18";
+  const parts: THREE.BufferGeometry[] = [];
+  if (id === "seawall") {
+    // Across the cap, and down the sea face in two places.
+    const top = 0.512;
+    parts.push(...zigzag([[0.36, top, -0.62], [0.47, top, -0.38], [0.39, top, -0.12], [0.5, top, 0.1], [0.4, top, 0.34], [0.48, top, 0.6]], 0.022, dark));
+    for (const z of [-0.3, 0.32]) parts.push(...zigzag([[0.548, 0.46, z], [0.548, 0.34, z + 0.06], [0.548, 0.22, z - 0.04], [0.548, 0.08, z + 0.05]], 0.02, dark));
+  } else {
+    // Along the crest either side of the notch, and down the face.
+    const top = 0.268;
+    for (const side of [-1, 1]) parts.push(...zigzag([[-0.06, top, side * 0.18], [0.05, top, side * 0.33], [-0.05, top, side * 0.48], [0.04, top, side * 0.62]], 0.02, dark));
+    parts.push(...zigzag([[0.085, 0.24, -0.4], [0.085, 0.15, -0.34], [0.085, 0.05, -0.42]], 0.018, dark));
+  }
+  return mergeGeometries(parts);
+}

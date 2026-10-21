@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { createDefenceGeometry, DEFENCE_IDS } from "./defenceGeometry";
+import { crackGeometry, createDefenceGeometry, DEFENCE_IDS } from "./defenceGeometry";
 import { createDefenceMaterial, createDefenceUniforms, shaderSeconds } from "./defenceMaterial";
 import type { AxialCoord } from "@core/hex";
 import { axialToWorld } from "@core/hex";
@@ -664,6 +664,7 @@ export class ElementMeshManager {
     const key = `${coord.q},${coord.r}`;
     const ref = this.byCoord.get(key);
     if (!ref) return;
+    this.setCrackedVisual(coord, false);
     if (atOnce || this.redrawn.has(ref.elementId)) {
       // A redrawn defence is turned to face the sea; the upright collapse animation would snap it round. It goes at once.
       this.scratchMatrix.makeScale(0, 0, 0);
@@ -680,6 +681,57 @@ export class ElementMeshManager {
     this.freeIndices.get(ref.meshKey)!.push(ref.index);
   }
 
+  /** Section 26.1: the crack layers (seawall, small dam) and which tile holds which crack instance. */
+  private readonly crackMeshes = new Map<string, THREE.InstancedMesh>();
+  private readonly cracks = new Map<string, { mesh: THREE.InstancedMesh; index: number }>();
+  private readonly freeCracks = new Map<string, number[]>();
+
+  /**
+   * Section 26.1: a seawall or dam 10 years old is cracked (it breaks in the next storm of its kind): dark zigzag
+   * cracks over it and a weathered tint. `on` false takes them away (broken, replaced or repaired).
+   */
+  setCrackedVisual(coord: AxialCoord, on: boolean): void {
+    const key = `${coord.q},${coord.r}`;
+    const ref = this.byCoord.get(key);
+    const held = this.cracks.get(key);
+    if (!on || !ref || (ref.elementId !== "seawall" && ref.elementId !== "small_dam")) {
+      if (held) {
+        this.scratchMatrix.makeScale(0, 0, 0);
+        held.mesh.setMatrixAt(held.index, this.scratchMatrix);
+        held.mesh.instanceMatrix.needsUpdate = true;
+        this.freeCracks.get(held.mesh.name)!.push(held.index);
+        this.cracks.delete(key);
+      }
+      return;
+    }
+    if (!held) {
+      const id = ref.elementId as "seawall" | "small_dam";
+      let mesh = this.crackMeshes.get(id);
+      if (!mesh) {
+        mesh = new THREE.InstancedMesh(crackGeometry(id), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }), MAX_ELEMENT_INSTANCES_PER_TYPE);
+        mesh.name = `cracks:${id}`;
+        mesh.count = MAX_ELEMENT_INSTANCES_PER_TYPE;
+        this.scratchMatrix.makeScale(0, 0, 0);
+        for (let i = 0; i < MAX_ELEMENT_INSTANCES_PER_TYPE; i++) mesh.setMatrixAt(i, this.scratchMatrix);
+        mesh.frustumCulled = false;
+        this.crackMeshes.set(id, mesh);
+        this.freeCracks.set(mesh.name, Array.from({ length: MAX_ELEMENT_INSTANCES_PER_TYPE }, (_, i) => MAX_ELEMENT_INSTANCES_PER_TYPE - 1 - i));
+        this.group.add(mesh);
+      }
+      const index = this.freeCracks.get(mesh.name)!.pop();
+      if (index === undefined) return;
+      this.cracks.set(key, { mesh, index });
+    }
+    const crack = this.cracks.get(key)!;
+    this.scratchMatrix.makeRotationY(ref.rotY);
+    this.scratchMatrix.scale(this.scratchScale.set(ref.styleScale, ref.styleScale, ref.styleScale));
+    this.scratchMatrix.setPosition(ref.x, ref.y, ref.z);
+    crack.mesh.setMatrixAt(crack.index, this.scratchMatrix);
+    crack.mesh.instanceMatrix.needsUpdate = true;
+    ref.degrade = Math.max(ref.degrade, 0.3);
+    this.paint(ref);
+  }
+
   /**
    * Section 25.1: a seawall or dam a storm broke. It stays on its tile, knocked over, sunk and darkened (the full
    * damage a building can show), until a new build replaces it.
@@ -687,6 +739,7 @@ export class ElementMeshManager {
   setBrokenVisual(coord: AxialCoord): void {
     const ref = this.byCoord.get(`${coord.q},${coord.r}`);
     if (!ref) return;
+    this.setCrackedVisual(coord, false);
     ref.damage = 1;
     ref.degrade = 0.5;
     this.paint(ref);
@@ -922,6 +975,11 @@ export class ElementMeshManager {
   /** Clears every placed element (a new era starting a fresh map). */
   reset(): void {
     this.byCoord.clear();
+    // Section 26.1: no crack outlives the board it was drawn on.
+    for (const key of [...this.cracks.keys()]) {
+      const [q, r] = key.split(",").map(Number);
+      this.setCrackedVisual({ q, r }, false);
+    }
     this.settling.clear();
     for (const key of this.nextIndex.keys()) {
       this.nextIndex.set(key, 0);
