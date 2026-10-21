@@ -51,11 +51,11 @@ export interface Assessment {
   /** Section 25.2: how far each storm's biodiversity falls short of the three star rise, added up (0 where it is reached). */
   bioShort: number;
   /** The storm still to come next: its stars and homes lost (all three storms past: the last's). */
-  next: { stars: number; lost: number };
+  next: { stars: number; lost: number; excess: number };
   /** Section 26.2: the last storm's biodiversity change (measured at the end of 2050). */
   endBio: number;
   /** Per storm, in calendar order. */
-  storms: { id: string; stars: number; saved: number; total: number; lost: number; bio: number }[];
+  storms: { id: string; stars: number; saved: number; total: number; lost: number; bio: number; excess?: number }[];
 }
 
 /**
@@ -113,10 +113,13 @@ export function assess(run: ActionRun, state: GameState): Assessment {
     stars += outcome.stars;
     lost += l;
     bioShort += short(challenge, outcome.biodiversityChange);
-    for (const key of outcome.damagedHouses) excess += Math.max(0, (damage.get(key) ?? 0) / scale - 1);
+    let stormExcess = 0;
+    for (const key of outcome.damagedHouses) stormExcess += Math.max(0, (damage.get(key) ?? 0) / scale - 1);
+    storms[storms.length - 1].excess = stormExcess;
+    excess += stormExcess;
   }
   const nextStorm = storms[Math.min(run.landed.size, storms.length - 1)];
-  return { stars, lost, excess, bioShort, storms, next: { stars: nextStorm?.stars ?? 0, lost: nextStorm?.lost ?? 0 }, endBio: storms[storms.length - 1]?.bio ?? 0 };
+  return { stars, lost, excess, bioShort, storms, next: { stars: nextStorm?.stars ?? 0, lost: nextStorm?.lost ?? 0, excess: nextStorm?.excess ?? 0 }, endBio: storms[storms.length - 1]?.bio ?? 0 };
 }
 
 /** Homes `challenge` (the next storm) would take on `state`, by the game's own preview. */
@@ -178,7 +181,7 @@ export function goal2(a: Assessment, b: Assessment): number {
  * orders would spend the early builds on a later, bigger storm.
  */
 export function nextFirst(a: Assessment, b: Assessment): number {
-  return b.next.stars - a.next.stars || a.next.lost - b.next.lost || b.stars - a.stars || a.lost - b.lost || a.excess - b.excess;
+  return b.next.stars - a.next.stars || a.next.lost - b.next.lost || a.next.excess - b.next.excess || b.stars - a.stars || a.lost - b.lost || a.excess - b.excess;
 }
 
 export function greener(a: Assessment, b: Assessment): number {
