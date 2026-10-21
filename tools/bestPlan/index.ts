@@ -33,7 +33,7 @@ import path from "node:path";
 import { BOT_LEVEL, newRun } from "../panjimBots/bots";
 import { ELEMENT_BY_ID } from "../../src/core/elements";
 import { clearsLevel } from "../../src/core/panjimIndex";
-import { actionKey, assess, canonical, goal1, goal2, greener, legalActions, placeName, previewLost, replay, trialBoard, type Assessment, type PlanAction } from "./plan";
+import { actionKey, assess, canonical, goal1, goal2, greener, legalActions, nextFirst, placeName, previewLost, replay, trialBoard, type Assessment, type PlanAction } from "./plan";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split("=") as [string, string]));
 const num = (key: string, fallback: number): number => (args.has(key) ? Number(args.get(key)) : fallback);
@@ -54,7 +54,7 @@ if (childJob !== undefined) {
     const children: Scored[] = legalActions(run).map((action) => ({ actions: [...actions, action], score: assess(run, trialBoard(run, action)) }));
     // The best by each goal; the parent merges and dedupes.
     const best = new Map<string, Scored>();
-    for (const order of [goal1, greener, goal2]) for (const c of [...children].sort((a, b) => order(a.score, b.score)).slice(0, job.keep)) best.set(actionKey(c.actions[c.actions.length - 1]), c);
+    for (const order of [goal1, nextFirst, greener, goal2]) for (const c of [...children].sort((a, b) => order(a.score, b.score)).slice(0, job.keep)) best.set(actionKey(c.actions[c.actions.length - 1]), c);
     out.push([...best.values()]);
   }
   process.stdout.write(`${JSON.stringify(out)}\n`, () => process.exit(0));
@@ -105,9 +105,10 @@ function select(children: Scored[]): Scored[] {
       chosen.set(canonical(c.actions, phaseEnds), c);
     }
   };
-  // A third each: goal 1, the greener order (Section 25.2), goal 2.
-  take(goal1, Math.ceil(beamWidth / 3));
-  take(greener, Math.ceil((2 * beamWidth) / 3));
+  // A quarter each: goal 1, the phase's own storm first, the greener order (Section 25.2), goal 2.
+  take(goal1, Math.ceil(beamWidth / 4));
+  take(nextFirst, Math.ceil(beamWidth / 2));
+  take(greener, Math.ceil((3 * beamWidth) / 4));
   take(goal2, beamWidth);
   return [...chosen.values()];
 }
@@ -205,7 +206,8 @@ function spareActions(p: Played): boolean[] {
   return p.actions.map((_, i) => {
     const run = replay(p.actions.slice(0, i + 1));
     const now = assess(run, run.state);
-    const spare = now.stars === before.stars && now.lost === before.lost && Math.abs(now.excess - before.excess) < 1e-9;
+    // Section 26.5: the end of 2050's biodiversity counts too.
+    const spare = now.stars === before.stars && now.lost === before.lost && now.endBio === before.endBio && Math.abs(now.excess - before.excess) < 1e-9;
     before = now;
     return spare;
   });
@@ -240,7 +242,7 @@ const json = {
 fs.writeFileSync(path.join(outDir, "best_plan.json"), `${JSON.stringify(json, null, 2)}\n`);
 
 const table = (p: Played): string[] => [
-  "| # | Year | Defence | Tile (q,r) | Place | Changes stars or homes lost |",
+  "| # | Year | Defence | Tile (q,r) | Place | Changes stars, homes or end biodiversity |",
   "|---|---|---|---|---|---|",
   ...rows(p).map((r, i) => `| ${i + 1} | ${r.year} | ${nameOf(r.elementId)} | ${r.q},${r.r} | ${r.place} | ${r.spare ? "no" : "yes"} |`)
 ];
