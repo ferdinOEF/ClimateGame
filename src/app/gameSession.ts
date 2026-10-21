@@ -23,6 +23,7 @@ import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
+import { crackedNote, isCracked } from "@core/hazardModel";
 import { axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
 import { facingAngle } from "@render/defenceGeometry";
 import { buildingGeometry } from "@render/townGeometry";
@@ -686,8 +687,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
       if (growsOnClock(def)) elements.setGrowth({ q, r }, state.maturityFraction(inst, def));
       else if (def.kind === "building") elements.setHeightScale({ q, r }, skylineScale(q, r, age));
-      // Section 25.1: one the storm broke without its water reaching it (the storm count) is drawn broken too.
+      // Section 25.1: one the storm broke without its water reaching it (the storm count) is drawn broken too,
+      // and Section 26.1: a breakwater broken by age; a seawall or dam 10 years old is drawn cracked.
       if (inst.broken) elements.setBrokenVisual({ q, r });
+      else elements.setCrackedVisual({ q, r }, isCracked(def, inst, state.turn));
     }
     // A monument rises with the street round it, so it keeps its standing over its neighbours.
     if (town) {
@@ -2357,7 +2360,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
         removeLabel: panjim ? "Demolish (uses this year's build)" : undefined,
         // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
-        note: panjim && def.kind === "building" && built.degradeAmount >= 1 ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only." : undefined,
+        note:
+          panjim && def.kind === "building" && built.degradeAmount >= 1
+            ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only."
+            : panjim && isCracked(def, built, state.turn)
+              ? `${crackedNote(def)}. In this game a seawall or small dam cracks at 10 years old.`
+              : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
             ? [

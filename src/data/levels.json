@@ -145,6 +145,8 @@
           "year": 2050,
           "strength": 3.0,
           "landfall": "2,12",
+          "bioThree": 20,
+          "biodiversityAtEnd": true,
           "shelteredPlace": "the sheltered middle of Taleigao",
           "shelteredTiles": [
             [0, 16], [1, 16], [2, 16], [4, 16], [5, 16], [6, 16], [7, 16],

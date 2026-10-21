@@ -54,6 +54,8 @@ export interface ExposureOptions {
   landfallSites?: number[] | null;
   /** Tiles the storm never reaches (Section 23.1, `shelterOf`). */
   sheltered?: ReadonlySet<string>;
+  /** Section 26.1: the turn the storm lands on, so defences are as old as they will be then. Defaults to the board's. */
+  turn?: number;
 }
 
 /** The hazards a challenge kind brings. */
@@ -75,6 +77,7 @@ export function computeExposure(
   options: ExposureOptions = {}
 ): Exposure {
   const copy = state.clone();
+  if (options.turn !== undefined) copy.turn = options.turn;
   if (options.withoutDefences) {
     const hazards = hazardsOf(kind);
     for (const [key, inst] of [...copy.elements]) {

@@ -94,10 +94,10 @@ export function resultCard(result: PhaseResult): HTMLElement {
 }
 
 /** Section 25.2: the card's second line: the biodiversity change since the run began, and a few words on why. */
-export function natureHtml(nature: { change: number; target: number; reason: string; since: number }): string {
+export function natureHtml(nature: { change: number; target: number; reason: string; since: number; at?: string }): string {
   const sign = nature.change > 0 ? "+" : nature.change < 0 ? "\u2212" : "";
   const tone = nature.change < 0 ? "down" : nature.change >= nature.target ? "up" : "level";
-  return `<div class="result-nature ${tone}" role="note"><span><b>${sign}${Math.abs(Math.round(nature.change))}</b> biodiversity since ${nature.since}</span><span class="result-nature-why">${esc(nature.reason)}</span></div>`;
+  return `<div class="result-nature ${tone}" role="note"><span><b>${sign}${Math.abs(Math.round(nature.change))}</b> biodiversity ${nature.at ? `${esc(nature.at)}, against ${nature.since}` : `since ${nature.since}`}</span><span class="result-nature-why">${esc(nature.reason)}</span></div>`;
 }
 
 /** Card 2: what protected the homes, one row per kind of defence built in the phase. */
@@ -159,7 +159,7 @@ export function finalCard(
   phases: { label: string; saved: number; total: number }[],
   result: { totalStars: number; cleared: boolean },
   /** Section 25.2: the biodiversity line as the last storm came, and the star lines it is judged by. */
-  nature?: { line: { change: number; target: number; reason: string; since: number }; rule: string }
+  nature?: { line: { change: number; target: number; reason: string; since: number; at?: string }; rule: string }
 ): HTMLElement {
   const saved = phases.reduce((s, p) => s + p.saved, 0);
   const total = phases.reduce((s, p) => s + p.total, 0);

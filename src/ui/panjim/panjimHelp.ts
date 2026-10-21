@@ -1,4 +1,4 @@
-import type { ScheduledChallenge } from "@core/climate";
+import type { ChallengeDef, ScheduledChallenge } from "@core/climate";
 import { HEAT_LEAD_YEARS } from "@core/exposure";
 import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
 import type { HouseStars } from "@core/zones";
@@ -40,10 +40,16 @@ const pct = (share: number): string => `${Math.round(share * 100)}%`;
  * Section 25.2 (owner decision): the star lines in words, from the level's own numbers, for Help and the final card.
  * Begins "A storm gives"; the caller labels it a game rule.
  */
-export function starRule(stars: HouseStars): string {
+export function starRule(stars: HouseStars, storms: readonly ChallengeDef[] = []): string {
   const bio = stars.bioTwo !== undefined || stars.bioThree !== undefined;
   if (!bio) return `A storm gives ${stars.one !== undefined ? `one star for saving ${pct(stars.one)} of the homes in its path, ` : "one star, "}two for ${pct(stars.two)} and three for ${pct(stars.three)}.`;
-  return `A storm gives one star for ${pct(stars.one ?? 0)} of the homes in its path saved, two for ${pct(stars.two)} and no loss of biodiversity, three for ${pct(stars.three)} and biodiversity up ${stars.bioThree ?? 0}.`;
+  return `A storm gives one star for ${pct(stars.one ?? 0)} of the homes in its path saved, two for ${pct(stars.two)} and no loss of biodiversity, three for ${pct(stars.three)} and biodiversity up ${stars.bioThree ?? 0}${ownTargets(storms)}.`;
+}
+
+/** Section 26.2: a storm with its own three star rise, said after the level's: " (up 20 by the end of 2050)". */
+function ownTargets(storms: readonly ChallengeDef[]): string {
+  const own = storms.filter((s) => s.bioThree !== undefined);
+  return own.length === 0 ? "" : ` (${own.map((s) => `up ${s.bioThree} ${s.biodiversityAtEnd ? "by the end of" : "in"} ${s.year}`).join(", ")})`;
 }
 
 const heatLead = (years: number): string => (years === 1 ? "In a storm's own year" : `In the ${countWord(years)} years before a storm`);
@@ -66,7 +72,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
   // alone, and says that Panjim's count nature too.
   const countsNature = input.houseStars && (input.houseStars.bioTwo !== undefined || input.houseStars.bioThree !== undefined);
   const starsLine = countsNature
-    ? ` In this game ${starRule(input.houseStars!).replace(/^A/, "a")}`
+    ? ` In this game ${starRule(input.houseStars!, input.storms).replace(/^A/, "a")}`
     : count === 1
       ? " In this game the stars here count the homes saved. In Play Panjim they count biodiversity too."
       : "";
@@ -117,7 +123,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       ${picture("help-cards.jpg", "The build cards for a beach tile: each defence's name and what it does")}
       <div>
         <h3>The cards ${RULE}</h3>
-        <p>Each card is one defence. Nature based ones come first. In this game each has a pro and a con: the Field Guide gives them.</p>
+        <p>Each card is one defence. Nature based ones come first. In this game each has a pro and a con, and engineered ones age: the Field Guide gives them.</p>
       </div>
     </section>
 

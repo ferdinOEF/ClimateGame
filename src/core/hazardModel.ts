@@ -336,6 +336,11 @@ export interface StormInput {
    * elsewhere is worked out as if they were not sheltered.
    */
   sheltered?: ReadonlySet<string>;
+  /**
+   * Section 26.1: the turn the storm lands on (the board's `turn` when it resolves). Defences' ages are counted to
+   * it, so a preview made years before sees them as old as they will be. Defaults to the board's own turn.
+   */
+  turn?: number;
 }
 
 export interface WaterField {
@@ -352,6 +357,8 @@ export interface WaterField {
   overwhelmed: string[];
   /** Section 25.1: defences with a storm count (seawall, small dam) that came through this storm, to be counted. */
   survived?: string[];
+  /** Section 26.1: defences broken by age by the storm's turn (breakwaters 10 years old): no protection, marked broken. */
+  aged?: string[];
   /** The surge's level where it came ashore, and the flood's level at its source, game metres. */
   surgeLevel: number;
   floodLevel: number;
@@ -705,26 +712,37 @@ export function computeWater(state: GameState, storm: StormInput, options: { com
   // Section 25.1, a game rule: a seawall comes through the first cyclone it faces and breaks in the second (a small dam
   // the same with floods). Every storm that brings the hazard it answers counts; it breaks as that storm comes, so
   // it gives no protection in it. Ones that come through are counted by the resolver (`survived`).
+  // Section 26.1, game rules: ages count to the turn the storm lands on. A breakwater 10 years old is broken (it
+  // broke as it turned 10, storm or none, `ageBroken`); a seawall or dam 10 years old is cracked and breaks in the
+  // next storm of its kind, even its first.
   const brings = storm.kind === "compound" ? ["cyclone", "flood"] : [storm.kind];
+  const at = storm.turn ?? state.turn;
   const breaking = new Set<string>();
+  const aged = new Set<string>();
   const survived: string[] = [];
   for (const [key, inst] of state.elements) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (!def || def.survivesStorms === undefined || inst.broken || !def.targetsHazards?.some((h) => brings.includes(h))) continue;
-    if ((inst.stormsSurvived ?? 0) >= def.survivesStorms) breaking.add(key);
+    if (!def || inst.broken) continue;
+    if (ageBroken(def, inst, at)) {
+      aged.add(key);
+      continue;
+    }
+    if (def.survivesStorms === undefined || !def.targetsHazards?.some((h) => brings.includes(h))) continue;
+    if ((inst.stormsSurvived ?? 0) >= def.survivesStorms || isCracked(def, inst, at)) breaking.add(key);
     else survived.push(key);
   }
-  const first = pass(state, board, storm, options.combos, breaking, new Map(), config);
+  const out = new Set([...breaking, ...aged]);
+  const first = pass(state, board, storm, options.combos, out, new Map(), config);
   const failed: string[] = [...breaking];
   const overwhelmed: string[] = [];
   const weaken = new Map<string, number>();
   for (const [key, inst] of state.elements) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (!def || (def.effects.resilience ?? 0) <= 0 || inst.broken || breaking.has(key)) continue;
+    if (!def || (def.effects.resilience ?? 0) <= 0 || inst.broken || out.has(key)) continue;
     const d = first.depth.get(key) ?? 0;
     if (d <= 0) continue;
-    // The depth rule stays for engineered structures without a storm count (the breakwater).
-    if (def.category === "engineered" && def.survivesStorms === undefined && def.failureThreshold !== undefined && d > def.failureThreshold * config.defence.failDepthPerUnit) failed.push(key);
+    // The depth rule stays only for an engineered structure with neither a storm count nor an age (none on Panjim since Section 26).
+    if (def.category === "engineered" && def.survivesStorms === undefined && def.breaksAtAge === undefined && def.failureThreshold !== undefined && d > def.failureThreshold * config.defence.failDepthPerUnit) failed.push(key);
     // Section 25.1: a khazan is never worn.
     else if (def.neverWears) continue;
     else if (def.overwhelmSeverity !== undefined && d > def.overwhelmSeverity * config.defence.overwhelmDepthPerUnit) {
@@ -732,8 +750,28 @@ export function computeWater(state: GameState, storm: StormInput, options: { com
       weaken.set(key, def.overwhelmedAbsorptionMultiplier ?? 0.5);
     }
   }
-  const result = failed.length > breaking.size || overwhelmed.length > 0 ? pass(state, board, storm, options.combos, new Set(failed), weaken, config) : first;
-  return { ...result, failed, overwhelmed, survived: survived.filter((key) => !failed.includes(key)) };
+  const result = failed.length > breaking.size || overwhelmed.length > 0 ? pass(state, board, storm, options.combos, new Set([...failed, ...aged]), weaken, config) : first;
+  return { ...result, failed, overwhelmed, aged: [...aged], survived: survived.filter((key) => !failed.includes(key)) };
+}
+
+/** Section 26.1: a defence's age in years (one turn a year) on turn `at`. */
+export function ageOf(inst: { builtOnTurn: number }, at: number): number {
+  return at - inst.builtOnTurn;
+}
+
+/** Section 26.1, a game rule: whether a defence that breaks with age (the breakwater, at 10) has broken by turn `at`. */
+export function ageBroken(def: { breaksAtAge?: number }, inst: { builtOnTurn: number }, at: number): boolean {
+  return def.breaksAtAge !== undefined && ageOf(inst, at) >= def.breaksAtAge;
+}
+
+/** Section 26.1, a game rule: whether a seawall or dam is cracked on turn `at` (10 years old): it breaks in the next storm of its kind. */
+export function isCracked(def: { cracksAtAge?: number }, inst: { builtOnTurn: number; broken?: boolean }, at: number): boolean {
+  return !inst.broken && def.cracksAtAge !== undefined && ageOf(inst, at) >= def.cracksAtAge;
+}
+
+/** Section 26.1: what a cracked seawall or dam's card says (a game rule, in the game's words). */
+export function crackedNote(def: { targetsHazards?: string[] }): string {
+  return `Cracked: breaks in the next ${def.targetsHazards?.includes("cyclone") ? "cyclone" : "flood"}`;
 }
 
 /** True where the water is deep enough to take a house. */

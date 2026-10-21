@@ -28,7 +28,7 @@ export const CARD_LINE: Record<string, string> = {
   dune: "Two side by side hold like a seawall",
   sandy_vegetation: "Shields nearby homes from the wind",
   seawall: "Strongest; breaks in its second cyclone",
-  breakwater: "Breaks cyclone waves out at sea",
+  breakwater: "Breaks waves at sea; lasts 10 years",
   mangrove: "Helps in both storms; good for nature",
   khazan: "Two hold like a small dam; no repairs",
   small_dam: "Strong in floods; breaks in its second flood"
@@ -52,15 +52,15 @@ export function defenceRules(): { id: string; name: string; text: string }[] {
     sandy_vegetation: `In this game pandanus is at full strength from the year it is planted and ${nature("sandy_vegetation")}, but on its own it holds back little water and gives a dune no bonus. It is the only defence that lowers a cyclone's wind: homes within ${reach} tiles of it take ${windShare}% less wind damage.`,
     mangrove: `In this game a mangrove has one strength from the year it is planted, ${nature("mangrove")} and helps in both kinds of storm. It grows only on wetland and at a river's edge.`,
     khazan: `In this game two khazans side by side protect as much as one small dam. A khazan is never worn, so it never needs a repair, and it ${nature("khazan")}; it does little against a cyclone's surge.`,
-    seawall: `In this game a seawall is the strongest defence from the year it is built, but it ${nature("seawall")}. It comes through the first cyclone it faces and breaks in the second (every storm that brings a cyclone counts, the storm that brings both included), and it pushes extra water onto the land at each end of the wall.`,
-    breakwater: `In this game a breakwater breaks a cyclone's waves out at sea but is almost no help in a river flood, and it ${nature("breakwater")}.`,
-    small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone. It comes through the first flood it faces and breaks in the second (every storm that brings a river flood counts, the storm that brings both included), and it ${nature("small_dam")}.`
+    seawall: `In this game a seawall is the strongest defence from the year it is built, but it ${nature("seawall")}. It comes through the first cyclone it faces and breaks in the second (every storm that brings a cyclone counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("seawall")?.cracksAtAge} years old it is cracked and breaks in the next cyclone, even its first. It pushes extra water onto the land at each end of the wall.`,
+    breakwater: `In this game a breakwater breaks a cyclone's waves out at sea but is almost no help in a river flood, and it ${nature("breakwater")}. It breaks when it is ${ELEMENT_BY_ID.get("breakwater")?.breaksAtAge} years old, storm or none, and must be built again.`,
+    small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone. It comes through the first flood it faces and breaks in the second (every storm that brings a river flood counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("small_dam")?.cracksAtAge} years old it is cracked and breaks in the next flood, even its first. It ${nature("small_dam")}.`
   };
   return DEFENCE_ORDER.map((id) => ({ id, name: CARD_NAME[id], text: rules[id] }));
 }
 
 /** Section 25.1: what happens to a broken seawall or dam, a game rule. */
-export const BROKEN_RULE = "In this game a broken seawall or small dam stops protecting and is drawn broken; you can build again on its tile.";
+export const BROKEN_RULE = "In this game a broken breakwater, seawall or small dam stops protecting, keeps its cost to biodiversity and is drawn broken; you can build again on its tile.";
 
 const svg = (body: string): string => `<svg viewBox="0 0 32 32" width="30" height="30" focusable="false">${body}</svg>`;
 

@@ -1,11 +1,11 @@
 import { axialKey, type AxialCoord } from "./hex";
 import { ELEMENT_BY_ID, NATURE_BASED } from "./elements";
 import type { ElementInstance, GameState } from "./gameState";
-import { buildSchedule, challengeStrength, shelterOf, yearsUntil, type ClimateConfig, type ScheduledChallenge } from "./climate";
+import { buildSchedule, challengeStrength, shelterOf, yearsUntil, type ChallengeDef, type ClimateConfig, type ScheduledChallenge } from "./climate";
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
-import { landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
+import { ageBroken, landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
 import { generatePrep, openingJobs, prepProgress, regionPlace, regionPlaces, type OpeningRegion, type PhaseArea, type PrepConfig, type PrepObjective } from "./prep";
 import { generatePhaseObjective, type PhaseObjective } from "./phaseObjectives";
 import { discTiles, localityTiles, nearestLocality, stretchTiles } from "./stretch";
@@ -69,7 +69,9 @@ export type RunEvent =
   /** A Get ready job was finished (`reward` is 0 while coins are off). */
   | { type: "prep_complete"; objective: PrepObjective; reward: number }
   /** The Get ready jobs for the next storm were set. */
-  | { type: "prep_new"; objectives: PrepObjective[] };
+  | { type: "prep_new"; objectives: PrepObjective[] }
+  /** Section 26.1: a defence broke with age (a breakwater at 10 years), storm or none. */
+  | { type: "aged"; key: string; elementId: string };
 
 export interface ActionRunOptions {
   /** The level's climate: the three storms on their fixed calendar. */
@@ -296,7 +298,7 @@ export class ActionRun {
         state: this.state,
         zones: this.zones,
         challenge: next,
-        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next), sheltered: shelterOf(next) },
+        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next), sheltered: shelterOf(next), turn: next.turn - 1 },
         landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
         area: this.exposureFor(next)?.housesAtRisk ?? [],
         // The phase's own builds (5, 10, 10): set as its storm lands, the clock still reads the year before.
@@ -468,6 +470,15 @@ export class ActionRun {
     return events;
   }
 
+  /**
+   * The star lines a storm is judged by: the level's, with the storm's own three star biodiversity rise where it has
+   * one, and measured at the end of its year where it says so (Section 26.2).
+   */
+  houseStarsFor(challenge: ChallengeDef): HouseStars | undefined {
+    if (!this.houseStars) return undefined;
+    return { ...this.houseStars, bioThree: challenge.bioThree ?? this.houseStars.bioThree, bioAtEnd: challenge.biodiversityAtEnd ?? false };
+  }
+
   /** The intensity a storm lands at: its fixed strength in zone-defence points. */
   intensityOf(challenge: ScheduledChallenge): number {
     return this.climate ? challengeStrength(this.climate, challenge) * this.climate.intensityPerStrength : 0;
@@ -489,7 +500,7 @@ export class ActionRun {
       this.intensityOf(challenge),
       this.climate.intensityPerStrength,
       this.combos,
-      this.houseStars,
+      this.houseStarsFor(challenge),
       this.houseRule,
       undefined,
       this.landfallOf(challenge),
@@ -531,12 +542,15 @@ export class ActionRun {
     if (known !== undefined) return known;
     const trial = this.state.clone();
     trial.build(coord, elementId, false);
+    // Section 26.1: judged as the storm lands, with every defence as old as it will be then.
+    trial.turn = challenge.turn - 1;
     const after = computeExposure(trial, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, {
       combos: computeCombos(trial).bonus,
-      houseStars: this.houseStars,
+      houseStars: this.houseStarsFor(challenge),
       houseRule: this.houseRule,
       landfallSites: cache.site === null ? null : [cache.site],
-      sheltered: shelterOf(challenge)
+      sheltered: shelterOf(challenge),
+      turn: challenge.turn - 1
     }).housesAtRisk.length;
     const saved = cache.before - after;
     cache.trials.set(trialKey, saved);
@@ -564,10 +578,12 @@ export class ActionRun {
     return computeExposure(this.state, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, {
       combos: this.combos,
       houseRule: this.houseRule,
-      houseStars: this.houseStars,
+      houseStars: this.houseStarsFor(challenge),
       withoutDefences,
       landfallSites: site === null ? null : [site],
-      sheltered: shelterOf(challenge)
+      sheltered: shelterOf(challenge),
+      // Section 26.1: the storm as it will land, every defence as old as it will be then (if nothing more is built).
+      turn: challenge.turn - 1
     });
   }
 
@@ -601,7 +617,7 @@ export class ActionRun {
     if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
     const lost = this.exposureFor(challenge)?.housesAtRisk ?? [];
     const landfallTiles = this.zones.keys(LANDFALL_ZONE);
-    return forecastCone(challenge.id, this.state, this.board(), { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge), sheltered: shelterOf(challenge) }, lost, {
+    return forecastCone(challenge.id, this.state, this.board(), { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge), sheltered: shelterOf(challenge), turn: challenge.turn - 1 }, lost, {
       landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
       trackInto: this.ownAreas.get(challenge.id)?.tiles,
       trackEnd: this.ownAreaEnd(challenge.id)
@@ -757,6 +773,13 @@ export class ActionRun {
     if (this.economyEnabled) this.jar += this.income;
     this.state.advanceTurn();
     this.moment++;
+    // Section 26.1, a game rule: a breakwater breaks as it turns 10, storm or none, and is drawn broken; its tile takes a new build.
+    for (const [key, inst] of this.state.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def || inst.broken || !ageBroken(def, inst, this.state.turn)) continue;
+      inst.broken = true;
+      events.push({ type: "aged", key, elementId: inst.elementId });
+    }
     if (!this.finished) events.push({ type: "year", turn: this.turnNumber });
     this.notePhaseStart();
     // Two years out, a storm's warning begins: the moment "Replay" rewinds to.
@@ -783,7 +806,7 @@ export class ActionRun {
         intensity: this.intensityOf(challenge),
         strengthUnit: this.climate.intensityPerStrength,
         combos: this.combos,
-        houseStars: this.houseStars,
+        houseStars: this.houseStarsFor(challenge),
         houseRule: this.houseRule,
         landfall: this.landfallOf(challenge),
         sheltered: shelterOf(challenge)

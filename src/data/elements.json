@@ -116,9 +116,10 @@
       "carbon": -1,
       "resilience": 16
     },
-    "failureMode": "Section 25.1 (owner decision), a game rule: comes through the first cyclone it faces and breaks in the second (the 2030 cyclone and the 2050 storm both count), giving no protection in that one; a broken wall is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts). Pushes endPushM more surge onto the land beside each end of a wall.",
+    "failureMode": "Section 25.1 (owner decision), a game rule: comes through the first cyclone it faces and breaks in the second (the 2030 cyclone and the 2050 storm both count), giving no protection in that one; a broken wall is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts). Pushes endPushM more surge onto the land beside each end of a wall. Section 26.1: once it is 10 years old it is cracked, and it breaks in the next cyclone, even its first.",
     "survivesStorms": 1,
-    "endPushM": 0.3
+    "endPushM": 0.3,
+    "cracksAtAge": 10
   },
   {
     "id": "mangrove",
@@ -215,9 +216,10 @@
       "resilience": 10,
       "carbon": -1
     },
-    "failureMode": "Section 25.1 (owner decision), a game rule: comes through the first flood it faces and breaks in the second (the 2040 flood and the 2050 storm both count), giving no protection in that one; a broken dam is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts).",
+    "failureMode": "Section 25.1 (owner decision), a game rule: comes through the first flood it faces and breaks in the second (the 2040 flood and the 2050 storm both count), giving no protection in that one; a broken dam is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts). Section 26.1: once it is 10 years old it is cracked, and it breaks in the next flood, even its first.",
     "note": "PLACEHOLDER money/resilience magnitudes (STEP_PROMPT_visuals_map_river.md item 3 / PROGRESS.md). resilience is POSITIVE as of this pass — earlier revisions had it negative; re-framed as a flood-control structure, not a flood-defense-trading one. floodBufferCapacityM3 (800) is a separate PLACEHOLDER (STEP_PROMPT_small_dam_reservoir.md): deliberately smaller than Khazan's 1500 — a small engineered check-dam on a River tile is a much smaller structure than a hectare-scale wetland/paddy system. absorptionAtMaturity/failureThreshold are unchanged numbers but now exercised against post-buffer overflow rather than raw severity, so failureThreshold's effective trigger rate has shifted — both, plus the new capacity, need a fresh look in STEP_PROMPT_balance_tuning.md's harness once it's re-run against this roster. effects.resilience is forward-compatible data for the not-yet-built zone-based resolution model (GAUNTLET_PROMPT.md v3.0 Section 2/11).",
-    "survivesStorms": 1
+    "survivesStorms": 1,
+    "cracksAtAge": 10
   },
   {
     "id": "sand_mining",
@@ -285,7 +287,8 @@
       "carbon": -1,
       "resilience": 12
     },
-    "failureMode": "Breaches above failureThreshold: destroyed, redirects unabsorbed surge onward at failureRedirectMultiplier — same engineered-structure failure model as Seawall.",
-    "note": "STEP_PROMPT_balance_tuning_findings.md Section 3 (decision point, Option B): before this, Coast was permanently undefendable — 18 of 52 Storm-Surge-exposed tiles with zero valid defense, only the purely cosmetic Yacht. A detached/rubble-mound breakwater is a real, established coastal-engineering structure for exactly this exposure (open sea frontage, not a beach/estuary mouth), so this closes a content gap rather than inventing a mechanic. PLACEHOLDER numbers, same convention as every other estimated element on this roster: costed and mainained like Seawall (a comparable engineered marine structure) but with somewhat lower absorptionAtMaturity (0.7 vs 0.9) since a detached breakwater dissipates wave energy rather than fully blocking it, and a proportionally higher failureThreshold (1.25 vs 1.2) reflecting a massive rubble-mound structure's real robustness. Not simulation-tuned — feed into a future balance_sim.ts sweep once Coast coverage is worth testing."
+    "failureMode": "Section 26.1 (owner decision), a game rule: breaks when it is 10 years old (built 2027, broken in 2037), storm or none, and must be rebuilt; no other failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts). A broken breakwater is drawn broken, protects nothing, keeps its biodiversity cost, and its tile takes a new build.",
+    "note": "STEP_PROMPT_balance_tuning_findings.md Section 3 (decision point, Option B): before this, Coast was permanently undefendable — 18 of 52 Storm-Surge-exposed tiles with zero valid defense, only the purely cosmetic Yacht. A detached/rubble-mound breakwater is a real, established coastal-engineering structure for exactly this exposure (open sea frontage, not a beach/estuary mouth), so this closes a content gap rather than inventing a mechanic. PLACEHOLDER numbers, same convention as every other estimated element on this roster: costed and mainained like Seawall (a comparable engineered marine structure) but with somewhat lower absorptionAtMaturity (0.7 vs 0.9) since a detached breakwater dissipates wave energy rather than fully blocking it, and a proportionally higher failureThreshold (1.25 vs 1.2) reflecting a massive rubble-mound structure's real robustness. Not simulation-tuned — feed into a future balance_sim.ts sweep once Coast coverage is worth testing.",
+    "breaksAtAge": 10
   }
 ]

@@ -107,6 +107,8 @@ export interface HouseStars {
   bioThree?: number;
   /** The board's biodiversity at the start of the run (set by the run, not the level data). */
   bioStart?: number;
+  /** Section 26.2: measure the biodiversity after the storm, at the end of its year, not as it comes. */
+  bioAtEnd?: boolean;
 }
 
 export class ZoneIndex {
@@ -282,13 +284,15 @@ export function resolveChallenge(
   const lost = standing.filter((key) => floodsHouse(damageAt(field, key)));
   const undefendedLost = standing.length;
 
-  // Section 25.2: the biodiversity as the storm comes, against the start of the run.
+  // Section 25.2: the biodiversity as the storm comes, against the start of the run (Section 26.2: or after it,
+  // at the end of its year, for the run's last storm; measured again below once the storm is applied).
   const counted = houseStars && (houseStars.bioTwo !== undefined || houseStars.bioThree !== undefined);
-  const biodiversityChange = counted ? state.biodiversity - (houseStars.bioStart ?? 0) : undefined;
+  let biodiversityChange = counted ? state.biodiversity - (houseStars.bioStart ?? 0) : undefined;
 
   // Apply: engineered failures broken (Section 25.1: drawn broken, protecting nothing, the tile free for a new
   // build), the ones with a storm count that came through counted, nature defences worn, houses lost.
-  for (const key of field.failed) {
+  // Section 26.1: a breakwater that reached its age by this storm is broken too (on the live board it already was).
+  for (const key of [...field.failed, ...(field.aged ?? [])]) {
     const inst = state.elements.get(key);
     if (inst) inst.broken = true;
   }
@@ -302,6 +306,7 @@ export function resolveChallenge(
     if (inst && def) inst.degradeAmount = Math.min(0.9, inst.degradeAmount + (def.gracefulDegradeStep ?? 0.15));
   }
   for (const key of lost) state.elements.get(key)!.degradeAmount = 1;
+  if (counted && houseStars.bioAtEnd) biodiversityChange = state.biodiversity - (houseStars.bioStart ?? 0);
 
   // Per zone, for the staging and the Aftermath, in the order the storm meets them.
   const zoneOf = (key: string): string => zones.zoneOf(key) ?? CITY_ZONE;
