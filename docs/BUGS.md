@@ -98,3 +98,27 @@ These would change accepted behaviour or a design decision, so they are not chan
    says it. Test: `tests/section22.test.ts`.
 7. **Stars.** A one-star line: below 30% saved, no star. Two at 50%, three at 85% (from the owner's starting point
    30 / 55 / 80, tuned on the bots). Targets this leaves unmet are listed in `docs/QA_REPORT.md`.
+
+# Section 25: the owner's decisions, and the choices made carrying them out
+
+Done as asked (each defence's pro and con, stars from homes and biodiversity); see `docs/PROGRESS.md`. Where the brief
+left a choice, this is what was chosen, for the owner to confirm or change:
+
+1. **"The first cyclone it faces".** A seawall counts every storm that brings a cyclone while it stands (a small dam,
+   every storm that brings a river flood), whether or not that storm's water reaches its tile; it breaks as the second
+   comes, so it gives no protection in that storm. A wall built after 2030 meets only the 2050 storm and comes
+   through it.
+2. **A broken seawall or dam keeps its biodiversity cost** (it stands on the board, broken) until a new build replaces
+   it. The breakwater keeps its depth rule and, when it fails, is also drawn broken.
+3. **The wall's ends.** A wall is a line of seawalls; an end has at most one seawall beside it. Where the surge stands
+   against an end, the land beside it that lies lower than that water keeps at least 0.3 m of water, whatever the
+   protection round it. 0.3 m is under the 0.6 m that takes a home, so the push alone takes none; with the wind near
+   the landfall it can.
+4. **Two of a kind side by side.** Two dunes (or khazans) count together only when they stand next to each other. On
+   the land within two tiles of the pair they protect within 10% of one seawall (one small dam); further out, where a
+   seawall still holds back its full 6 m, a pair gives less.
+5. **The Tutorial's stars** still count the homes saved only (its one storm, three builds); its Help line says Play
+   Panjim counts biodiversity too. Changing the Tutorial's own rule would change its balance.
+6. **The best plan for the most homes.** The final search keeps a third of its plans by each of goal 1, goal 2 and a
+   greener order; its best loses 10 homes (9 of 9 stars). An earlier run that kept half for goal 2 found a plan
+   losing 9 homes at 8 of 9 stars (the 2030 cyclone held with breakwaters, biodiversity 0, two stars).
