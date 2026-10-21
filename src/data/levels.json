@@ -146,8 +146,8 @@
           "year": 2050,
           "strength": 3.0,
           "landfall": "2,12",
-          "wind": { "perStrengthM": 1.0, "inlandKeep": 0.8, "compoundShare": 1.1 },
-          "bioThree": 20,
+          "wind": { "perStrengthM": 0.6, "inlandKeep": 0.8, "compoundShare": 1.1 },
+          "bioThree": 40,
           "biodiversityAtEnd": true,
           "shelteredPlace": "the sheltered middle of Taleigao",
           "shelteredTiles": [

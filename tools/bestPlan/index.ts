@@ -24,7 +24,12 @@
  * The work is split over child processes like the bots (one plan each at a
  * time). Progress is printed every year.
  *
- * Usage: npm run bestplan -- [beam=16] [keep=16] [jobs=4] [out=docs/qa/section25]
+ * SEEDS (Section 26): `seed=<file>` names a JSON list of whole plans (each a
+ * list of { elementId, q, r }), say a plan found by hand. Each year the seed's
+ * first builds join the beam beside the search's own plans, scored the same
+ * way, so the search ends no worse than the seed and can still beat it.
+ *
+ * Usage: npm run bestplan -- [beam=16] [keep=16] [jobs=4] [out=docs/qa/section26] [seed=file.json]
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -66,7 +71,8 @@ if (childJob !== undefined) {
 const beamWidth = num("beam", 16);
 const keep = num("keep", 16);
 const jobs = num("jobs", Math.max(1, Math.min(4, os.cpus().length)));
-const outDir = path.resolve(args.get("out") ?? "docs/qa/section25");
+const outDir = path.resolve(args.get("out") ?? "docs/qa/section26");
+const seeds = args.has("seed") ? (JSON.parse(fs.readFileSync(args.get("seed")!, "utf8")) as PlanAction[][]) : [];
 const started = Date.now();
 const opening = newRun("best-plan", BOT_LEVEL);
 const totalYears = opening.totalYears;
@@ -122,6 +128,12 @@ console.log(`opening board: ${fmt(beam[0].score)}`);
 try {
   for (let step = 1; step <= totalYears; step++) {
     beam = select(await expand(beam.map((b) => b.actions)));
+    for (const seed of seeds) {
+      const prefix = seed.slice(0, step);
+      if (beam.some((b) => canonical(b.actions, phaseEnds) === canonical(prefix, phaseEnds))) continue;
+      const run = replay(prefix);
+      beam.push({ actions: prefix, score: assess(run, run.state) });
+    }
     const b1 = [...beam].sort((a, b) => goal1(a.score, b.score))[0];
     const b2 = [...beam].sort((a, b) => goal2(a.score, b.score))[0];
     const storm = phaseEnds.includes(step) ? ` (storm ${phaseEnds.indexOf(step) + 1} resolves)` : "";
