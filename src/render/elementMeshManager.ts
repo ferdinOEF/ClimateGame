@@ -975,6 +975,11 @@ export class ElementMeshManager {
   /** Clears every placed element (a new era starting a fresh map). */
   reset(): void {
     this.byCoord.clear();
+    // Section 26.1: no crack outlives the board it was drawn on.
+    for (const key of [...this.cracks.keys()]) {
+      const [q, r] = key.split(",").map(Number);
+      this.setCrackedVisual({ q, r }, false);
+    }
     this.settling.clear();
     for (const key of this.nextIndex.keys()) {
       this.nextIndex.set(key, 0);

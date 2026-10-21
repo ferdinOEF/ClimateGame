@@ -164,7 +164,7 @@ expected.forEach((o, i) => {
   const got = seen[i];
   check(!!got && got.stars === o.stars && got.text.includes(`${o.housesSaved} of ${o.housesTotal} homes saved`), `storm ${i + 1}: card ${got ? `${got.stars} stars, "${got.text.slice(0, 160)}"` : "missing"}; run ${o.stars} stars, ${o.housesSaved} of ${o.housesTotal}`);
 });
-check(!!seen[0] && /The wind alone took (one|\d+) of them/.test(seen[0].text), `the 2030 card names the homes the wind alone took: "${seen[0]?.text.match(/The wind alone took[^.]*\./)?.[0] ?? "missing"}"`);
+check(!!seen[0] && /The wind alone took (one|\d+) of the homes lost/.test(seen[0].text), `the 2030 card names the homes the wind alone took: "${seen[0]?.text.match(/The wind alone took[^.]*\./)?.[0] ?? "missing"}"`);
 const last = expected[expected.length - 1].biodiversityChange ?? 0;
 const bioText = `${last > 0 ? "+" : last < 0 ? "−" : ""}${Math.abs(last)} biodiversity at the end of 2050`;
 check(finalText.includes(bioText), `the final card: "${bioText}" (${finalText.slice(0, 200)})`);

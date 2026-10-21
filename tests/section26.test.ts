@@ -138,6 +138,62 @@ describe("engineered defences age (Section 26.1)", () => {
     expect(outcome.zones.flatMap((z) => z.failed)).toContain(key);
   });
 
+  it("previews the 2050 storm with a cracked seawall and an aged breakwater exactly as it resolves", () => {
+    const run = newRun("s26-preview", BOT_LEVEL);
+    const reach = new Set(probe.exposureFor(compound, true)!.exposure.keys());
+    until(run, 2036);
+    const wall = first("seawall", (k) => reach.has(k));
+    expect(run.build(wall, "seawall").ok).toBe(true);
+    until(run, 2040);
+    const bw = [...run.state.placed.values()].find((t) => reach.has(axialKey(t.coord)) && run.state.canBuild(t.coord, "breakwater"))!.coord;
+    expect(run.build(bw, "breakwater").ok).toBe(true);
+    until(run, 2050);
+    // The 2050 build is the last: the preview (homes at risk, readiness) sees the wall cracked and the breakwater
+    // 10 years old when the storm comes, as the resolver does.
+    expect(isCracked(ELEMENT_BY_ID.get("seawall")!, run.state.elements.get(axialKey(wall))!, compound.turn - 1)).toBe(true);
+    const atRisk = run.homesAtRisk(compound);
+    const ready = run.readinessFor(compound)!.outcome;
+    spend(run);
+    const o = run.outcomes.get(compound.id)!;
+    expect(atRisk).toBe(o.housesTotal - o.housesSaved);
+    expect(ready.housesSaved).toBe(o.housesSaved);
+    expect(run.state.elements.get(axialKey(wall))!.broken).toBe(true);
+    expect(run.state.elements.get(axialKey(bw))!.broken).toBe(true);
+  });
+
+  it("does not break a breakwater with age after the run is over", () => {
+    const run = newRun("s26-after", BOT_LEVEL);
+    until(run, 2041);
+    const coord = first("breakwater", (k) => near.has(k));
+    expect(run.build(coord, "breakwater").ok).toBe(true);
+    const events: string[] = [];
+    while (!run.finished) {
+      const tile = firstFree(run);
+      events.push(...run.build(tile, run.state.buildableAt(tile)[0].id).events.map((e) => e.type));
+    }
+    expect(events).not.toContain("aged");
+    expect(run.state.elements.get(axialKey(coord))!.broken ?? false).toBe(false);
+  });
+
+  it("breaks an over-age breakwater from a save made before Section 26 when it is restored", () => {
+    const run = newRun("s26-restore", BOT_LEVEL);
+    until(run, 2027);
+    const coord = first("breakwater", (k) => near.has(k));
+    expect(run.build(coord, "breakwater").ok).toBe(true);
+    until(run, 2040);
+    const snap = run.snapshot();
+    // The old rules left it standing.
+    const entry = snap.elements.find(([k]) => k === axialKey(coord))!;
+    delete entry[1].broken;
+    run.restore(snap);
+    expect(run.state.elements.get(axialKey(coord))!.broken).toBe(true);
+  });
+
+  it("puts the cracked note on the tile's card, as a game rule", async () => {
+    const source = (await import("node:fs")).readFileSync("src/app/gameSession.ts", "utf8");
+    expect(source).toContain("`${crackedNote(def)}. In this game a seawall or small dam cracks at 10 years old.`");
+  });
+
   it("says the cracked note in the game's words", () => {
     expect(crackedNote(ELEMENT_BY_ID.get("seawall")!)).toBe("Cracked: breaks in the next cyclone");
     expect(crackedNote(ELEMENT_BY_ID.get("small_dam")!)).toBe("Cracked: breaks in the next flood");
@@ -211,8 +267,8 @@ describe("a stronger wind, so pandanus matters (Section 26.3)", () => {
   it("says on the result card what the wind took, with the pandanus rule", async () => {
     const { windHtml } = await import("../src/ui/panjim/resultCards");
     expect(windHtml(0)).toBe("");
-    expect(windHtml(3)).toContain("The wind alone took 3 of them.");
-    expect(windHtml(1)).toContain("The wind alone took one of them.");
+    expect(windHtml(3)).toContain("The wind alone took 3 of the homes lost.");
+    expect(windHtml(1)).toContain("The wind alone took one of the homes lost.");
     expect(windHtml(2)).toContain("In this game pandanus shields the homes within 2 tiles of it.");
   });
 });

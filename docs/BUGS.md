@@ -164,5 +164,8 @@ Done as asked (engineered defences age, biodiversity at the end of 2050 counts, 
    pick now go to the most biodiversity at the end of 2050.
 8. **The Section 25 shot renamed.** `docs/qa/section25/result-card-nature-*.jpg` showed the seawall run's 2030 card,
    so it is now `result-card-seawall-run-*.jpg` (QA report and `tools/section25Shots.ts` updated).
-9. **An old test changed:** the result cards' words never said "wind" (Section 17). The 2030 card now names the homes
-   the wind alone took, as the brief asks; the test allows that line only.
+9. **An old test changed:** the result cards' words never said "wind" (Section 17). The 2030 card now says how many
+   of the homes lost the wind alone took ("The wind alone took 3 of the homes lost": homes whose water stayed under
+   the loss line), as the brief asks; the test allows that line only.
+10. **Build cards:** seawall "Strongest; breaks in its 2nd cyclone, cracks at 10"; small dam "Strong in floods; breaks
+   in its 2nd flood, cracks at 10"; breakwater "Breaks waves at sea; lasts 10 years".

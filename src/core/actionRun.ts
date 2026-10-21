@@ -383,6 +383,18 @@ export class ActionRun {
     ) as RunSnapshot;
   }
 
+  /** Section 26.1: marks every breakwater 10 years old or more broken; the events say which. */
+  private breakAged(): RunEvent[] {
+    const events: RunEvent[] = [];
+    for (const [key, inst] of this.state.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def || inst.broken || !ageBroken(def, inst, this.state.turn)) continue;
+      inst.broken = true;
+      events.push({ type: "aged", key, elementId: inst.elementId });
+    }
+    return events;
+  }
+
   /** Puts the run back to `snapshot`. Replay snapshots taken after it are dropped; those before it stay. */
   restore(snapshot: RunSnapshot): void {
     const copy = JSON.parse(JSON.stringify(snapshot)) as RunSnapshot;
@@ -400,6 +412,8 @@ export class ActionRun {
       else if (faced > 0) inst.stormsSurvived = faced;
     }
     this.state.turn = copy.turn;
+    // A save from before Section 26.1 can hold a breakwater past 10 years: it is broken now, as it would have been.
+    if (copy.turn < this.totalYears) this.breakAged();
     this.state.coin = copy.coin;
     this.state.trust = copy.trust;
     this.state.resilience = copy.resilience;
@@ -493,8 +507,11 @@ export class ActionRun {
   /** The same prediction for any storm still to come. */
   readinessFor(challenge: ScheduledChallenge): Readiness | null {
     if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
+    // Section 26.1: every defence as old as it will be when the storm comes.
+    const board = this.state.clone();
+    board.turn = challenge.turn - 1;
     const outcome = resolveChallenge(
-      this.state.clone(),
+      board,
       this.zones,
       challenge.kind,
       this.intensityOf(challenge),
@@ -776,13 +793,9 @@ export class ActionRun {
     if (this.economyEnabled) this.jar += this.income;
     this.state.advanceTurn();
     this.moment++;
-    // Section 26.1, a game rule: a breakwater breaks as it turns 10, storm or none, and is drawn broken; its tile takes a new build.
-    for (const [key, inst] of this.state.elements) {
-      const def = ELEMENT_BY_ID.get(inst.elementId);
-      if (!def || inst.broken || !ageBroken(def, inst, this.state.turn)) continue;
-      inst.broken = true;
-      events.push({ type: "aged", key, elementId: inst.elementId });
-    }
+    // Section 26.1, a game rule: a breakwater breaks as it turns 10, storm or none, and is drawn broken; its tile
+    // takes a new build. Not once the run is over: there is no year left to build in.
+    if (!this.finished) events.push(...this.breakAged());
     if (!this.finished) events.push({ type: "year", turn: this.turnNumber });
     this.notePhaseStart();
     // Two years out, a storm's warning begins: the moment "Replay" rewinds to.

@@ -46,7 +46,7 @@ export function starRule(stars: HouseStars, storms: readonly ChallengeDef[] = []
   return `A storm gives one star for ${pct(stars.one ?? 0)} of the homes in its path saved, two for ${pct(stars.two)} and no loss of biodiversity, three for ${pct(stars.three)} and biodiversity up ${stars.bioThree ?? 0}${ownTargets(storms)}.`;
 }
 
-/** Section 26.2: a storm with its own three star rise, said after the level's: " (up 20 by the end of 2050)". */
+/** Section 26.2: a storm with its own three star rise, said after the level's: " (up 40 by the end of 2050)". */
 function ownTargets(storms: readonly ChallengeDef[]): string {
   const own = storms.filter((s) => s.bioThree !== undefined);
   return own.length === 0 ? "" : ` (${own.map((s) => `up ${s.bioThree} ${s.biodiversityAtEnd ? "by the end of" : "in"} ${s.year}`).join(", ")})`;

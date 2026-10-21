@@ -27,11 +27,11 @@ export const CARD_NAME: Record<string, string> = {
 export const CARD_LINE: Record<string, string> = {
   dune: "Two side by side hold like a seawall",
   sandy_vegetation: "Shields nearby homes from the wind",
-  seawall: "Strongest; breaks in its second cyclone",
+  seawall: "Strongest; breaks in its 2nd cyclone, cracks at 10",
   breakwater: "Breaks waves at sea; lasts 10 years",
   mangrove: "Helps in both storms; good for nature",
   khazan: "Two hold like a small dam; no repairs",
-  small_dam: "Strong in floods; breaks in its second flood"
+  small_dam: "Strong in floods; breaks in its 2nd flood, cracks at 10"
 };
 
 const bio = (id: string): number => ELEMENT_BY_ID.get(id)?.effects.biodiversity ?? 0;
