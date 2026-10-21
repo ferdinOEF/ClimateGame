@@ -19,14 +19,15 @@
     "overwhelmedAbsorptionMultiplier": 0.4,
     "colorKey": "defenseDune",
     "effects": {
-      "biodiversity": 1,
+      "biodiversity": 2,
       "resilience": 4
     },
-    "failureMode": "No destruction. Above overwhelmSeverity, absorption is cut to overwhelmedAbsorptionMultiplier for that hazard, but the dune survives to the next one."
+    "failureMode": "No destruction. Above overwhelmSeverity, absorption is cut to overwhelmedAbsorptionMultiplier for that hazard, but the dune survives to the next one.",
+    "pairsLike": "seawall"
   },
   {
     "id": "sandy_vegetation",
-    "matureQuarters": 8,
+    "matureQuarters": 0,
     "name": "Sandy Vegetation (Pandanus)",
     "kind": "defense",
     "category": "nbs",
@@ -38,18 +39,18 @@
     ],
     "buildCost": 10,
     "maintenanceCostPerTurn": 0,
-    "matureTurns": 3,
+    "matureTurns": 0,
     "absorptionAtMaturity": 0.2,
     "overwhelmSeverity": 1.1,
     "overwhelmedAbsorptionMultiplier": 0.3,
     "colorKey": "defenseSandyVegetation",
     "effects": {
-      "biodiversity": 2,
+      "biodiversity": 3,
       "carbon": 1,
       "resilience": 3
     },
     "failureMode": "No destruction. Weaker physical protection than a Dune, but the cheapest defense on the roster and the best biodiversity return per Coin.",
-    "note": "absorptionAtMaturity (0.2) is REASONED EXTRAPOLATION, not directly cited (STEP_PROMPT_hazard_science.md Section 1) \u2014 Pandanus wasn't in McIvor et al. (2012)'s studied species (that citation is Mangrove's, a different tangled-stilt canopy structure). Kept meaningfully below Mangrove's ceiling (0.55) deliberately; don't raise it toward Mangrove's number without real species-specific wave-attenuation data."
+    "note": "absorptionAtMaturity (0.2) is REASONED EXTRAPOLATION, not directly cited (STEP_PROMPT_hazard_science.md Section 1) — Pandanus wasn't in McIvor et al. (2012)'s studied species (that citation is Mangrove's, a different tangled-stilt canopy structure). Kept meaningfully below Mangrove's ceiling (0.55) deliberately; don't raise it toward Mangrove's number without real species-specific wave-attenuation data."
   },
   {
     "id": "beachside_resort",
@@ -111,15 +112,17 @@
     "failureRedirectMultiplier": 1.4,
     "colorKey": "defenseEngineered",
     "effects": {
-      "biodiversity": -2,
+      "biodiversity": -5,
       "carbon": -1,
       "resilience": 16
     },
-    "failureMode": "Breaches above failureThreshold: destroyed, redirects unabsorbed surge onward at failureRedirectMultiplier."
+    "failureMode": "Section 25.1 (owner decision), a game rule: comes through the first cyclone it faces and breaks in the second (the 2030 cyclone and the 2050 storm both count), giving no protection in that one; a broken wall is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts). Pushes endPushM more surge onto the land beside each end of a wall.",
+    "survivesStorms": 1,
+    "endPushM": 0.3
   },
   {
     "id": "mangrove",
-    "matureQuarters": 20,
+    "matureQuarters": 0,
     "name": "Mangrove",
     "kind": "defense",
     "category": "nbs",
@@ -128,11 +131,12 @@
       "cyclone"
     ],
     "validTerrainIds": [
-      "estuary"
+      "estuary",
+      "river"
     ],
     "buildCost": 30,
     "maintenanceCostPerTurn": 0,
-    "matureTurns": 4,
+    "matureTurns": 0,
     "absorptionAtMaturity": 0.55,
     "overwhelmSeverity": 1.4,
     "overwhelmedAbsorptionMultiplier": 0.4,
@@ -145,7 +149,8 @@
       "resilience": 5
     },
     "failureMode": "No destruction. Above overwhelmSeverity, absorption is cut to overwhelmedAbsorptionMultiplier for that hazard, but the buffer survives to the next one.",
-    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) \u2014 deliberately the smallest of the four money-generating elements (Sand Mining 14 > Beachside Resort 5 > Khazan 2 > Mangrove 1): Mangrove's value proposition is Biodiversity/Food, income is a bonus, not its purpose. Feed into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster."
+    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) — deliberately the smallest of the four money-generating elements (Sand Mining 14 > Beachside Resort 5 > Khazan 2 > Mangrove 1): Mangrove's value proposition is Biodiversity/Food, income is a bonus, not its purpose. Feed into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster.",
+    "riverEdgeOnly": true
   },
   {
     "id": "khazan",
@@ -175,10 +180,12 @@
       "money": 2,
       "food": 1,
       "carbon": 1,
-      "resilience": 5
+      "resilience": 4.5
     },
-    "failureMode": "No catastrophic breach. A reservoir, not a wave-attenuator (STEP_PROMPT_hazard_science.md Section 4) \u2014 floodBufferCapacityM3 draws down first each Flood event; only once that buffer is exhausted does the old percentage-absorption/graceful-degrade math take over for the overflow. Recovers gradually across subsequent turns, not instantly, so back-to-back floods before it's recovered are meaningfully more dangerous.",
-    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) \u2014 nudged 1->2, modest but clearly ahead of Mangrove's 1 without approaching Beachside Resort's 5, reflecting Khazan's already-well-rounded hybrid profile (Biodiversity +2, Food +1). floodBufferCapacityM3 (1500) is a separate PLACEHOLDER (STEP_PROMPT_hazard_science.md Section 4): dimensionally grounded (1 hex = 100m x 100m = 1 hectare; paddy/wetland flood-storage literature \u2014 Japan's NARO \"paddy-field-dam\" studies \u2014 puts realistic headroom at ~1,000-2,000 m3/hectare), not a literal measured figure. No longer targets cyclone (Section 2: a reservoir doesn't attenuate wave energy the way vegetation does \u2014 Storm Surge Wave defense is Dune/Seawall/Sandy Vegetation/Mangrove only). Feed both numbers into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster."
+    "failureMode": "No catastrophic breach. A reservoir, not a wave-attenuator (STEP_PROMPT_hazard_science.md Section 4) — floodBufferCapacityM3 draws down first each Flood event; only once that buffer is exhausted does the old percentage-absorption/graceful-degrade math take over for the overflow. Recovers gradually across subsequent turns, not instantly, so back-to-back floods before it's recovered are meaningfully more dangerous.",
+    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) — nudged 1->2, modest but clearly ahead of Mangrove's 1 without approaching Beachside Resort's 5, reflecting Khazan's already-well-rounded hybrid profile (Biodiversity +2, Food +1). floodBufferCapacityM3 (1500) is a separate PLACEHOLDER (STEP_PROMPT_hazard_science.md Section 4): dimensionally grounded (1 hex = 100m x 100m = 1 hectare; paddy/wetland flood-storage literature — Japan's NARO \"paddy-field-dam\" studies — puts realistic headroom at ~1,000-2,000 m3/hectare), not a literal measured figure. No longer targets cyclone (Section 2: a reservoir doesn't attenuate wave energy the way vegetation does — Storm Surge Wave defense is Dune/Seawall/Sandy Vegetation/Mangrove only). Feed both numbers into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster.",
+    "pairsLike": "small_dam",
+    "neverWears": true
   },
   {
     "id": "small_dam",
@@ -208,8 +215,9 @@
       "resilience": 10,
       "carbon": -1
     },
-    "failureMode": "STEP_PROMPT_small_dam_reservoir.md: a storage-and-release structure, not a wave-attenuator \u2014 floodBufferCapacityM3 draws down first each Flood event, same reservoir mechanic Khazan uses, before absorptionAtMaturity/failureThreshold ever see the input. Breaches above failureThreshold are now tested against the post-buffer overflow severity, not the raw incoming severity: a genuine overtopping destroys the dam and redirects the overflow onward at failureRedirectMultiplier \u2014 a dam breach releases what overtopped it, not the raw incoming pulse.",
-    "note": "PLACEHOLDER money/resilience magnitudes (STEP_PROMPT_visuals_map_river.md item 3 / PROGRESS.md). resilience is POSITIVE as of this pass \u2014 earlier revisions had it negative; re-framed as a flood-control structure, not a flood-defense-trading one. floodBufferCapacityM3 (800) is a separate PLACEHOLDER (STEP_PROMPT_small_dam_reservoir.md): deliberately smaller than Khazan's 1500 \u2014 a small engineered check-dam on a River tile is a much smaller structure than a hectare-scale wetland/paddy system. absorptionAtMaturity/failureThreshold are unchanged numbers but now exercised against post-buffer overflow rather than raw severity, so failureThreshold's effective trigger rate has shifted \u2014 both, plus the new capacity, need a fresh look in STEP_PROMPT_balance_tuning.md's harness once it's re-run against this roster. effects.resilience is forward-compatible data for the not-yet-built zone-based resolution model (GAUNTLET_PROMPT.md v3.0 Section 2/11)."
+    "failureMode": "Section 25.1 (owner decision), a game rule: comes through the first flood it faces and breaks in the second (the 2040 flood and the 2050 storm both count), giving no protection in that one; a broken dam is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts).",
+    "note": "PLACEHOLDER money/resilience magnitudes (STEP_PROMPT_visuals_map_river.md item 3 / PROGRESS.md). resilience is POSITIVE as of this pass — earlier revisions had it negative; re-framed as a flood-control structure, not a flood-defense-trading one. floodBufferCapacityM3 (800) is a separate PLACEHOLDER (STEP_PROMPT_small_dam_reservoir.md): deliberately smaller than Khazan's 1500 — a small engineered check-dam on a River tile is a much smaller structure than a hectare-scale wetland/paddy system. absorptionAtMaturity/failureThreshold are unchanged numbers but now exercised against post-buffer overflow rather than raw severity, so failureThreshold's effective trigger rate has shifted — both, plus the new capacity, need a fresh look in STEP_PROMPT_balance_tuning.md's harness once it's re-run against this roster. effects.resilience is forward-compatible data for the not-yet-built zone-based resolution model (GAUNTLET_PROMPT.md v3.0 Section 2/11).",
+    "survivesStorms": 1
   },
   {
     "id": "sand_mining",
@@ -234,8 +242,8 @@
       "resilience": -4,
       "carbon": -2
     },
-    "failureMode": "No catastrophic breach \u2014 it simply offers almost no flood protection (absorptionAtMaturity 0.1, far below Small Dam's 0.75). An untouched river tile is the flood's own source and is skipped entirely (zero damage); building anything on it \u2014 Sand Mining included \u2014 makes it start taking damage instead, and Sand Mining's near-absent absorption means that damage is close to the full undefended amount.",
-    "note": "PLACEHOLDER NUMBERS (STEP_PROMPT_visuals_map_river.md item 3): only the direction of each effect is specified (money up, biodiversity down, resilience down). Tuned here \u2014 cheaper to build than Small Dam, no maintenance cost, meaningfully higher Money return \u2014 so it isn't simply worse than Small Dam in every respect, per that file's explicit balance flag; not a settled/tested number."
+    "failureMode": "No catastrophic breach — it simply offers almost no flood protection (absorptionAtMaturity 0.1, far below Small Dam's 0.75). An untouched river tile is the flood's own source and is skipped entirely (zero damage); building anything on it — Sand Mining included — makes it start taking damage instead, and Sand Mining's near-absent absorption means that damage is close to the full undefended amount.",
+    "note": "PLACEHOLDER NUMBERS (STEP_PROMPT_visuals_map_river.md item 3): only the direction of each effect is specified (money up, biodiversity down, resilience down). Tuned here — cheaper to build than Small Dam, no maintenance cost, meaningfully higher Money return — so it isn't simply worse than Small Dam in every respect, per that file's explicit balance flag; not a settled/tested number."
   },
   {
     "id": "yacht",
@@ -250,7 +258,7 @@
     "matureTurns": 0,
     "colorKey": "yachtHull",
     "effects": {},
-    "note": "PLACEHOLDER buildCost (STEP_PROMPT_economy_food_yacht.md item 4). Purely cosmetic \u2014 zero effects, by design (confirm via meterTotal(): every key should read the same with or without a placed Yacht). Should read as a genuine long-run savings target reachable only through several turns of well-managed income, not something a player stumbles into early. Tune alongside the rest of the economy pass in STEP_PROMPT_balance_tuning.md."
+    "note": "PLACEHOLDER buildCost (STEP_PROMPT_economy_food_yacht.md item 4). Purely cosmetic — zero effects, by design (confirm via meterTotal(): every key should read the same with or without a placed Yacht). Should read as a genuine long-run savings target reachable only through several turns of well-managed income, not something a player stumbles into early. Tune alongside the rest of the economy pass in STEP_PROMPT_balance_tuning.md."
   },
   {
     "id": "breakwater",
@@ -277,7 +285,7 @@
       "carbon": -1,
       "resilience": 12
     },
-    "failureMode": "Breaches above failureThreshold: destroyed, redirects unabsorbed surge onward at failureRedirectMultiplier \u2014 same engineered-structure failure model as Seawall.",
-    "note": "STEP_PROMPT_balance_tuning_findings.md Section 3 (decision point, Option B): before this, Coast was permanently undefendable \u2014 18 of 52 Storm-Surge-exposed tiles with zero valid defense, only the purely cosmetic Yacht. A detached/rubble-mound breakwater is a real, established coastal-engineering structure for exactly this exposure (open sea frontage, not a beach/estuary mouth), so this closes a content gap rather than inventing a mechanic. PLACEHOLDER numbers, same convention as every other estimated element on this roster: costed and mainained like Seawall (a comparable engineered marine structure) but with somewhat lower absorptionAtMaturity (0.7 vs 0.9) since a detached breakwater dissipates wave energy rather than fully blocking it, and a proportionally higher failureThreshold (1.25 vs 1.2) reflecting a massive rubble-mound structure's real robustness. Not simulation-tuned \u2014 feed into a future balance_sim.ts sweep once Coast coverage is worth testing."
+    "failureMode": "Breaches above failureThreshold: destroyed, redirects unabsorbed surge onward at failureRedirectMultiplier — same engineered-structure failure model as Seawall.",
+    "note": "STEP_PROMPT_balance_tuning_findings.md Section 3 (decision point, Option B): before this, Coast was permanently undefendable — 18 of 52 Storm-Surge-exposed tiles with zero valid defense, only the purely cosmetic Yacht. A detached/rubble-mound breakwater is a real, established coastal-engineering structure for exactly this exposure (open sea frontage, not a beach/estuary mouth), so this closes a content gap rather than inventing a mechanic. PLACEHOLDER numbers, same convention as every other estimated element on this roster: costed and mainained like Seawall (a comparable engineered marine structure) but with somewhat lower absorptionAtMaturity (0.7 vs 0.9) since a detached breakwater dissipates wave energy rather than fully blocking it, and a proportionally higher failureThreshold (1.25 vs 1.2) reflecting a massive rubble-mound structure's real robustness. Not simulation-tuned — feed into a future balance_sim.ts sweep once Coast coverage is worth testing."
   }
 ]

@@ -6,8 +6,9 @@ import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 /**
  * Section 12: the cyclone's wind. A game rule (hazardModel.json `wind`), in
  * the same deterministic model as the water: in off the sea at the landfall,
- * weaker each hex inland, not blocked by high ground; rows of pandanus and
- * mangroves slow it downwind, with diminishing returns; nothing else does.
+ * weaker each hex inland, not blocked by high ground. Section 25.1 (owner
+ * decision): pandanus is the only defence that lowers it, on every tile within
+ * two hexes, by one fixed share; nothing else does.
  */
 
 /** A small coast: open sea in columns 0-1, sand in 2-3, then land (an estuary tile at 6,3 for the mangrove). */
@@ -59,44 +60,40 @@ describe("the cyclone's wind", () => {
     expect([...b.entries()].sort()).toEqual([...a.entries()].sort());
   });
 
-  it("drops behind a row of pandanus for a few tiles downwind, and nowhere else", () => {
+  it("drops by the pandanus share on every tile within two hexes of a pandanus, and nowhere else", () => {
     const bare = coast();
     const sheltered = coast();
     sheltered.build({ q: 3, r: 3 }, "sandy_vegetation", false);
     const a = windField(bare, storm(bare).board, storm(bare).storm);
     const b = windField(sheltered, storm(sheltered).board, storm(sheltered).storm);
-    for (const q of [4, 5]) expect(b.get(`${q},3`)!).toBeLessThan(a.get(`${q},3`)!);
-    // Upwind and far downwind: untouched.
-    expect(b.get("2,3")).toBeCloseTo(a.get("2,3")!, 9);
-    expect(b.get("9,3")).toBeCloseTo(a.get("9,3")!, 9);
+    const share = HAZARD_MODEL.wind!.shelter.sandy_vegetation;
+    expect(HAZARD_MODEL.wind!.shelterReachHex).toBe(2);
+    // Two hexes in every direction, upwind too.
+    for (const key of ["2,3", "4,3", "5,3", "3,1", "3,5", "5,1"]) expect(b.get(key)!, key).toBeCloseTo(a.get(key)! * (1 - share), 9);
+    // Three hexes away: untouched.
+    for (const key of ["6,3", "3,0", "6,0"]) expect(b.get(key), key).toBeCloseTo(a.get(key)!, 9);
   });
 
-  it("drops behind mangroves too, but not behind dunes or seawalls", () => {
+  it("is lowered by pandanus only: not by mangroves, dunes, seawalls, khazans or breakwaters (Section 25.1)", () => {
     const bare = coast();
     const a = windField(bare, storm(bare).board, storm(bare).storm);
-    const mangrove = coast();
-    mangrove.build({ q: 6, r: 3 }, "mangrove", false);
-    expect(windField(mangrove, storm(mangrove).board, storm(mangrove).storm).get("7,3")!).toBeLessThan(a.get("7,3")!);
-    for (const id of ["dune", "seawall"]) {
+    for (const [id, q, r] of [["mangrove", 6, 3], ["dune", 3, 3], ["seawall", 3, 3], ["breakwater", 1, 3]] as const) {
       const other = coast();
-      expect(other.build({ q: 3, r: 3 }, id, false)).toBe(true);
-      expect(windField(other, storm(other).board, storm(other).storm).get("4,3")).toBeCloseTo(a.get("4,3")!, 9);
+      expect(other.build({ q, r }, id, false), id).toBe(true);
+      const b = windField(other, storm(other).board, storm(other).storm);
+      for (const [key, v] of a) expect(b.get(key), `${id} at ${key}`).toBeCloseTo(v, 9);
     }
   });
 
-  it("stacks rows with diminishing returns, and always lets some through", () => {
-    const bare = coast();
+  it("is lowered once however many pandanus stand round a tile, and some always gets through", () => {
     const one = coast();
     one.build({ q: 3, r: 3 }, "sandy_vegetation", false);
     const two = coast();
     two.build({ q: 3, r: 3 }, "sandy_vegetation", false);
     two.build({ q: 2, r: 3 }, "sandy_vegetation", false);
     const at = (s: GameState) => windField(s, storm(s).board, storm(s).storm).get("4,3")!;
-    const first = at(bare) - at(one);
-    const second = at(one) - at(two);
-    expect(second).toBeGreaterThan(0);
-    expect(second).toBeLessThan(first);
-    expect(at(two)).toBeGreaterThanOrEqual(at(bare) * HAZARD_MODEL.wind!.minKeep - 1e-9);
+    expect(at(two)).toBeCloseTo(at(one), 9);
+    expect(1 - HAZARD_MODEL.wind!.shelter.sandy_vegetation).toBeGreaterThanOrEqual(HAZARD_MODEL.wind!.minKeep);
   });
 
   it("is in every computeWater result the resolver judges houses by", () => {

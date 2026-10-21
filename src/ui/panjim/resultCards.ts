@@ -88,8 +88,16 @@ export function resultCard(result: PhaseResult): HTMLElement {
     ${starsHtml(result.stars)}
     ${result.objectiveComplete ? `<div class="result-badge" role="note">Objective complete</div>` : ""}
     ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}
+    ${result.nature ? natureHtml(result.nature) : ""}
     ${places}
   </div>`);
+}
+
+/** Section 25.2: the card's second line: the biodiversity change since the run began, and a few words on why. */
+export function natureHtml(nature: { change: number; target: number; reason: string; since: number }): string {
+  const sign = nature.change > 0 ? "+" : nature.change < 0 ? "\u2212" : "";
+  const tone = nature.change < 0 ? "down" : nature.change >= nature.target ? "up" : "level";
+  return `<div class="result-nature ${tone}" role="note"><span><b>${sign}${Math.abs(Math.round(nature.change))}</b> biodiversity since ${nature.since}</span><span class="result-nature-why">${esc(nature.reason)}</span></div>`;
 }
 
 /** Card 2: what protected the homes, one row per kind of defence built in the phase. */
@@ -147,7 +155,12 @@ export function tutorialResultCard(result: PhaseResult): HTMLElement {
  * The final card: the three phases, the total, the stars won of the stars there were, and whether Panjim is
  * cleared (Section 22.4, a game rule: at least one star in every storm and `CLEAR_TOTAL_STARS` in all).
  */
-export function finalCard(phases: { label: string; saved: number; total: number }[], result: { totalStars: number; cleared: boolean }): HTMLElement {
+export function finalCard(
+  phases: { label: string; saved: number; total: number }[],
+  result: { totalStars: number; cleared: boolean },
+  /** Section 25.2: the biodiversity line as the last storm came, and the star lines it is judged by. */
+  nature?: { line: { change: number; target: number; reason: string; since: number }; rule: string }
+): HTMLElement {
   const saved = phases.reduce((s, p) => s + p.saved, 0);
   const total = phases.reduce((s, p) => s + p.total, 0);
   const most = phases.length * 3;
@@ -155,9 +168,10 @@ export function finalCard(phases: { label: string; saved: number; total: number 
     <h2 class="result-title">Panjim, 2026 to 2050</h2>
     <ul class="result-phases">${phases.map((p) => `<li><span>${esc(p.label)}</span><span><b>${p.saved}</b> of ${p.total} homes saved</span></li>`).join("")}</ul>
     ${homesHtml(saved, total)}
+    ${nature ? natureHtml(nature.line) : ""}
     <div class="result-stars-total" role="img" aria-label="${result.totalStars} of ${most} stars"><b>${result.totalStars}</b> of ${most} stars</div>
     <div class="result-clear ${result.cleared ? "cleared" : "not-cleared"}">${result.cleared ? "Panjim cleared" : "Not cleared yet"}</div>
-    <p class="result-clear-rule"><span class="result-rule">Game rule</span> In this game you clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(most)} stars in all.</p>
+    <p class="result-clear-rule"><span class="result-rule">Game rule</span> In this game you clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(most)} stars in all.${nature ? ` ${esc(nature.rule)}` : ""}</p>
   </div>`);
 }
 

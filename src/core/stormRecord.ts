@@ -6,6 +6,7 @@ import { buildDepthField, type DepthField } from "./hazard";
 import { computeWater, LANDFALL_ZONE, waterBoard, siteAt } from "./hazardModel";
 import { hazardsOf } from "./exposure";
 import { computeCombos } from "./combos";
+import type { HouseStars } from "./zones";
 
 /**
  * A storm, resolved and recorded for showing: the real outcome, the water
@@ -61,7 +62,7 @@ export interface StormArgs {
   intensity: number;
   strengthUnit: number;
   combos?: ComboBonus;
-  houseStars?: { three: number; two: number; one?: number };
+  houseStars?: HouseStars;
   houseRule?: HouseRule;
   /** Where a cyclone comes ashore (index into the board's landfall sites). */
   landfall?: number | null;
@@ -165,8 +166,9 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   const argsFor = (copy: GameState): StormArgs => ({ ...args, combos: args.combos ? computeCombos(copy).bonus : undefined });
   const bare = without((id) => !defendsAgainst(id, hazards));
   const undefended = resolveWithField(bare, argsFor(bare));
+  // Section 25.1: a broken seawall or dam stands on the board but protects nothing: never counted, never "held".
   const counts = new Map<string, number>();
-  for (const inst of before.elements.values()) if (defendsAgainst(inst.elementId, hazards)) counts.set(inst.elementId, (counts.get(inst.elementId) ?? 0) + 1);
+  for (const inst of before.elements.values()) if (!inst.broken && defendsAgainst(inst.elementId, hazards)) counts.set(inst.elementId, (counts.get(inst.elementId) ?? 0) + 1);
   const savedBy: DefenceSave[] = [];
   for (const [elementId, count] of counts) {
     const houses = housesLostWithout(before, args, elementId).housesDamaged - outcome.housesDamaged;
@@ -175,11 +177,11 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   savedBy.sort((a, b) => b.houses - a.houses || (a.elementId < b.elementId ? -1 : 1));
   const withoutEach = new Map<string, number>();
   for (const inst of before.elements.values()) {
-    if (withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
+    if (inst.broken || withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
     withoutEach.set(inst.elementId, Math.max(0, housesLostWithout(before, args, inst.elementId).housesDamaged - outcome.housesDamaged));
   }
   const defences = new Map<string, string>();
-  for (const [key, inst] of before.elements) if (defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
+  for (const [key, inst] of before.elements) if (!inst.broken && defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
   const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
   const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);

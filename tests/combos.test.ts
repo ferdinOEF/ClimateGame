@@ -21,18 +21,15 @@ describe("perfect-fit combos", () => {
     expect(newComboMembers(before, after)).toEqual([{ combo: "mangrove_belt", tiles: ["0,0", "1,0", "2,0"], all: ["0,0", "1,0", "2,0"] }]);
   });
 
-  it("forms a Living Bund and a Beach Shield from adjacent pairs", () => {
+  it("forms a Living Bund from an adjacent pair; a dune and pandanus make no combo (Section 25.1)", () => {
     const wet = strip("estuary", 2);
     wet.build({ q: 0, r: 0 }, "khazan", false);
     wet.build({ q: 1, r: 0 }, "mangrove", false);
     expect([...computeCombos(wet).members.get("living_bund")!].sort()).toEqual(["0,0", "1,0"]);
-    const sand = strip("beach", 3);
+    const sand = strip("beach", 2);
     sand.build({ q: 0, r: 0 }, "dune", false);
-    sand.build({ q: 2, r: 0 }, "sandy_vegetation", false);
-    expect(computeCombos(sand).members.get("beach_shield")!.size).toBe(0); // not touching
     sand.build({ q: 1, r: 0 }, "sandy_vegetation", false);
-    // The dune and the pandanus touching it; the far pandanus touches no dune.
-    expect([...computeCombos(sand).members.get("beach_shield")!].sort()).toEqual(["0,0", "1,0"]);
+    expect(computeCombos(sand).bonus.size).toBe(0);
   });
 
   it("adds a real defence bonus to each member", () => {

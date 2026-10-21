@@ -129,7 +129,7 @@
     {
       "id": "seawall-fails",
       "kind": "gameRule",
-      "text": "A seawall pushed past its limit fails all at once, and the surge goes on past it.",
+      "text": "A seawall comes through its first cyclone, breaks in its second, and pushes water round its ends.",
       "elements": [
         "seawall"
       ]
@@ -153,7 +153,7 @@
     {
       "id": "dam-fails",
       "kind": "gameRule",
-      "text": "A small dam holds the river back until a flood is too big, then fails all at once.",
+      "text": "A small dam holds the river back through the first flood it faces and breaks in the second.",
       "elements": [
         "small_dam"
       ]
@@ -349,7 +349,7 @@
     {
       "id": "wind-shelter",
       "kind": "gameRule",
-      "text": "Rows of pandanus and mangroves slow the wind on the tiles behind them.",
+      "text": "Pandanus is the only defence that lowers the wind: homes within two tiles of it take half the wind damage.",
       "elements": [
         "sandy_vegetation",
         "mangrove"

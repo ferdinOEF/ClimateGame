@@ -11,6 +11,7 @@ import { generatePhaseObjective, type PhaseObjective } from "./phaseObjectives";
 import { discTiles, localityTiles, nearestLocality, stretchTiles } from "./stretch";
 import { forecastCone, type ForecastCone } from "./forecastCone";
 import { resolveStorm, type StormRecord } from "./stormRecord";
+import type { HouseStars } from "./zones";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim, one build a year (Section 8).
@@ -76,7 +77,7 @@ export interface ActionRunOptions {
   /** The map's challenge zones. Without them a challenge is reported but not resolved. */
   zones?: readonly ZoneDef[];
   /** Stars per storm by the share of houses saved (the level's houseStars). Without it, by protection. */
-  houseStars?: { three: number; two: number; one?: number };
+  houseStars?: HouseStars;
   /** How houses stand up to a storm, house by house (the level's `houses` block). */
   houseRule?: HouseRule;
   /** "Get ready" jobs for each coming storm (core/prep.ts). */
@@ -180,7 +181,7 @@ export class ActionRun {
   combos: ComboBonus = new Map();
   /** The board's perfect-fit combos, recomputed after every action and storm. */
   comboState: ComboState;
-  readonly houseStars?: { three: number; two: number; one?: number };
+  readonly houseStars?: HouseStars;
   readonly houseRule?: HouseRule;
   readonly prepConfig?: PrepConfig;
   /** The Get ready jobs for the next storm, done or not. */
@@ -239,7 +240,8 @@ export class ActionRun {
     this.zones = options.zones && options.zones.length > 0 ? new ZoneIndex(options.zones) : null;
     this.comboState = computeCombos(state);
     this.combos = this.comboState.bonus;
-    this.houseStars = options.houseStars;
+    // Section 25.2: stars compare the biodiversity as each storm comes with the board's at the start of the run.
+    this.houseStars = options.houseStars ? { ...options.houseStars, bioStart: state.biodiversity } : undefined;
     this.houseRule = options.houseRule;
     this.prepConfig = options.prep;
     this.generateObjectives = options.generateObjectives ?? true;
@@ -384,6 +386,17 @@ export class ActionRun {
     const copy = JSON.parse(JSON.stringify(snapshot)) as RunSnapshot;
     this.state.elements.clear();
     for (const [key, inst] of copy.elements) this.state.elements.set(key, inst);
+    // A save from before Section 25.1 has no storm count on its seawalls and dams: count the storms of their kind
+    // that came while they stood, so none gets a free extra storm.
+    for (const inst of this.state.elements.values()) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (def?.survivesStorms === undefined || inst.stormsSurvived !== undefined || inst.broken) continue;
+      const faced = this.schedule.filter(
+        (c) => copy.landed.includes(c.id) && c.turn - 1 >= inst.builtOnTurn && def.targetsHazards?.some((h) => (c.kind === "compound" ? ["cyclone", "flood"] : [c.kind]).includes(h))
+      ).length;
+      if (faced > def.survivesStorms) inst.broken = true;
+      else if (faced > 0) inst.stormsSurvived = faced;
+    }
     this.state.turn = copy.turn;
     this.state.coin = copy.coin;
     this.state.trust = copy.trust;

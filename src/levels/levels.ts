@@ -5,6 +5,7 @@ import type { EconomyConfig, TimelineConfig } from "@core/actionRun";
 import type { ClimateConfig } from "@core/climate";
 import type { PrepConfig } from "@core/prep";
 import type { HouseFill } from "./balance";
+import type { HouseStars } from "@core/zones";
 
 /**
  * Level definitions — the campaign, loaded from data, never hardcoded.
@@ -92,7 +93,7 @@ export interface LevelDef {
   /** "Get ready": optional jobs for each coming storm (core/prep.ts). */
   prep?: PrepConfig;
   /** Stars per storm by the share of houses in its path that were saved. */
-  houseStars?: { three: number; two: number; one?: number };
+  houseStars?: HouseStars;
   /** Houses pre-built on the land, and how they count (levels/balance.ts). */
   houses?: HouseFill;
   objectives: Objective[];

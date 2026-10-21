@@ -452,6 +452,8 @@ export class ElementMeshManager {
   place(coord: AxialCoord, elementId: string, terrainTopY: number, options: { animate?: boolean; growth?: number } = {}): void {
     const def = ELEMENT_BY_ID.get(elementId);
     if (!def) throw new Error(`Unknown element id: ${elementId}`);
+    // A new build on a broken defence's tile (Section 25.1) replaces it: the old one goes first.
+    this.destroy(coord, true);
     const style = elementId === "house" && this.styleOf ? this.styleOf(coord) : null;
     const meshKey = style ? `house:${style.kind}` : elementId;
     const mesh = style ? this.buildingMesh(style.kind) : this.meshes.get(elementId)!;
@@ -658,11 +660,11 @@ export class ElementMeshManager {
   }
 
   /** Catastrophic engineered failure: collapses and permanently hides the instance, freeing its slot for reuse. */
-  destroy(coord: AxialCoord): void {
+  destroy(coord: AxialCoord, atOnce = false): void {
     const key = `${coord.q},${coord.r}`;
     const ref = this.byCoord.get(key);
     if (!ref) return;
-    if (this.redrawn.has(ref.elementId)) {
+    if (atOnce || this.redrawn.has(ref.elementId)) {
       // A redrawn defence is turned to face the sea; the upright collapse animation would snap it round. It goes at once.
       this.scratchMatrix.makeScale(0, 0, 0);
       ref.mesh.setMatrixAt(ref.index, this.scratchMatrix);
@@ -676,6 +678,21 @@ export class ElementMeshManager {
     this.settling.delete(ref);
     this.byCoord.delete(key);
     this.freeIndices.get(ref.meshKey)!.push(ref.index);
+  }
+
+  /**
+   * Section 25.1: a seawall or dam a storm broke. It stays on its tile, knocked over, sunk and darkened (the full
+   * damage a building can show), until a new build replaces it.
+   */
+  setBrokenVisual(coord: AxialCoord): void {
+    const ref = this.byCoord.get(`${coord.q},${coord.r}`);
+    if (!ref) return;
+    ref.damage = 1;
+    ref.degrade = 0.5;
+    this.paint(ref);
+    this.writeTransform(ref);
+    ref.mesh.instanceMatrix.needsUpdate = true;
+    ref.mesh.boundingSphere = null;
   }
 
   /** Khazan graceful degrade: tints the structure toward a patchy, weathered brown as degradeAmount grows. */

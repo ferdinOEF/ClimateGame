@@ -75,13 +75,11 @@ export interface HazardModelConfig {
     inlandKeep: number;
     /** The wind falls off evenly to nothing this many hexes from the landfall site. */
     landfallReachHex: number;
-    /** How much of the wind each shelterbelt kind takes out on the tile just downwind of it. */
+    /** Section 25.1: the share of the wind each kind takes out on every tile within `shelterReachHex` of it (pandanus only). */
     shelter: Record<string, number>;
-    /** That share, 1, 2 and 3 hexes downwind. */
-    shelterFalloff: number[];
-    /** Downwind means within this angle of the wind's direction. */
-    shelterHalfAngleDeg: number;
-    /** However many rows stand upwind, at least this share of the wind still gets through. */
+    /** How far that shelter reaches, hexes, in every direction. */
+    shelterReachHex: number;
+    /** However much shelter stands round a tile, at least this share of the wind still gets through. */
     minKeep: number;
   };
 }
@@ -352,6 +350,8 @@ export interface WaterField {
   failed: string[];
   /** Nature defences overwhelmed and worn (coord keys). */
   overwhelmed: string[];
+  /** Section 25.1: defences with a storm count (seawall, small dam) that came through this storm, to be counted. */
+  survived?: string[];
   /** The surge's level where it came ashore, and the flood's level at its source, game metres. */
   surgeLevel: number;
   floodLevel: number;
@@ -360,7 +360,8 @@ export interface WaterField {
 /** A defence's protection now, in game metres, against `hazard`: resilience × metres-per-point × maturity × wear. Negative for things that weaken the shore. */
 export function defenceMetres(state: GameState, key: string, hazard: WaterHazard, config: HazardModelConfig = HAZARD_MODEL): number {
   const inst = state.elements.get(key);
-  if (!inst) return 0;
+  // Section 25.1: a broken seawall or dam protects nothing.
+  if (!inst || inst.broken) return 0;
   const def = ELEMENT_BY_ID.get(inst.elementId);
   if (!def) return 0;
   const value = def.effects.resilience ?? 0;
@@ -392,10 +393,10 @@ export function ownMetres(state: GameState, hazard: WaterHazard, skip: ReadonlyS
  * defences, not one, hold back a long run of surge.
  */
 function pathDrag(board: WaterBoard, own: Map<string, number>, config: HazardModelConfig, kindOf: (key: string) => string): Map<string, number> {
-  const byKind = new Map<string, Map<string, number>>();
-  const add = (tile: string, kind: string, m: number): void => {
-    const kinds = byKind.get(tile) ?? new Map<string, number>();
-    kinds.set(kind, Math.max(kinds.get(kind) ?? 0, m));
+  const byKind = new Map<string, Map<string, KindStack>>();
+  const add = (tile: string, kind: string, m: number, from: string): void => {
+    const kinds = byKind.get(tile) ?? new Map<string, KindStack>();
+    kinds.set(kind, stackInto(kinds.get(kind), m, from));
     byKind.set(tile, kinds);
   };
   // Negative ones (sand mining, a resort) let water through more easily, and each adds its harm.
@@ -408,12 +409,47 @@ function pathDrag(board: WaterBoard, own: Map<string, number>, config: HazardMod
       continue;
     }
     const kind = kindOf(key);
-    add(key, kind, drag);
-    for (const n of board.tiles.get(key)?.neighbours ?? []) add(n, kind, drag * config.defence.neighbourShare);
+    add(key, kind, drag, key);
+    for (const n of board.tiles.get(key)?.neighbours ?? []) add(n, kind, drag * config.defence.neighbourShare, key);
   }
   const out = new Map<string, number>(harm);
-  for (const [tile, kinds] of byKind) out.set(tile, (out.get(tile) ?? 0) + [...kinds.values()].reduce((a, b) => a + b, 0));
+  const adjacent = neighboursOn(board);
+  for (const [tile, kinds] of byKind) out.set(tile, (out.get(tile) ?? 0) + [...kinds].reduce((a, [kind, stack]) => a + kindValue(kind, stack, adjacent).value, 0));
   return out;
+}
+
+/** A kind's contributions on one tile: how much each of its defences gives there, and where that defence stands. */
+type KindStack = { m: number; from: string }[];
+
+function stackInto(stack: KindStack | undefined, m: number, from: string): KindStack {
+  const out = stack ?? [];
+  out.push({ m, from });
+  return out;
+}
+
+/**
+ * What a kind holds back on a tile: its strongest defence there, and for a kind that pairs (Section 25.1, a game rule:
+ * two dunes side by side protect as much as one seawall, two khazans as much as one small dam) the best two of it that
+ * stand side by side, added up, where that is more. `paired` says whether a pair gave it.
+ */
+function kindValue(kind: string, stack: KindStack, adjacent: (a: string, b: string) => boolean): { value: number; paired: boolean } {
+  const single = Math.max(...stack.map((e) => e.m));
+  if (!ELEMENT_BY_ID.get(kind)?.pairsLike || stack.length < 2) return { value: single, paired: false };
+  let pair = 0;
+  for (let i = 0; i < stack.length; i++) for (let j = i + 1; j < stack.length; j++) if (adjacent(stack[i].from, stack[j].from)) pair = Math.max(pair, stack[i].m + stack[j].m);
+  return pair > single ? { value: pair, paired: true } : { value: single, paired: false };
+}
+
+/** Whether a kind's value on a tile counts as an engineered structure's for the ceiling: an engineered one, or a pair standing in for one. */
+function engineeredLike(kind: string, paired: boolean): boolean {
+  const def = ELEMENT_BY_ID.get(kind);
+  if (def?.category === "engineered") return true;
+  return paired && !!def?.pairsLike && ELEMENT_BY_ID.get(def.pairsLike)?.category === "engineered";
+}
+
+/** Whether two tiles are neighbours on the board. */
+function neighboursOn(board: WaterBoard): (a: string, b: string) => boolean {
+  return (a, b) => board.tiles.get(a)?.neighbours.includes(b) ?? false;
 }
 
 /**
@@ -427,7 +463,7 @@ function pathDrag(board: WaterBoard, own: Map<string, number>, config: HazardMod
  * every defence is its own kind.
  */
 export function areaProtection(board: WaterBoard, own: Map<string, number>, config: HazardModelConfig = HAZARD_MODEL, kindOf: (key: string) => string = (key) => key): Map<string, number> {
-  const best = new Map<string, Map<string, number>>();
+  const best = new Map<string, Map<string, KindStack>>();
   const harm = new Map<string, number>();
   const { radiusHex, falloff, stackCap } = config.defence;
   for (const [key, m] of own) {
@@ -440,8 +476,8 @@ export function areaProtection(board: WaterBoard, own: Map<string, number>, conf
       const next: string[] = [];
       for (const t of frontier) {
         if (m > 0) {
-          const kinds = best.get(t) ?? new Map<string, number>();
-          kinds.set(kind, Math.max(kinds.get(kind) ?? 0, m * f));
+          const kinds = best.get(t) ?? new Map<string, KindStack>();
+          kinds.set(kind, stackInto(kinds.get(kind), m * f, key));
           best.set(t, kinds);
         } else harm.set(t, (harm.get(t) ?? 0) + m * f);
         if (d === radiusHex) continue;
@@ -455,12 +491,15 @@ export function areaProtection(board: WaterBoard, own: Map<string, number>, conf
     }
   }
   const out = new Map<string, number>();
+  const adjacent = neighboursOn(board);
   for (const [key, kinds] of best) {
-    const values = [...kinds.values()];
+    const judged = [...kinds].map(([kind, stack]) => ({ kind, ...kindValue(kind, stack, adjacent) }));
+    const values = judged.map((j) => j.value);
     const sum = values.reduce((a, b) => a + b, 0);
     // An engineered wall's own protection may rise above the ceiling, to engineeredMaxProtectionM: hard structures hold back more than any living defence.
+    // So may a pair that stands in for one (Section 25.1).
     let hard = 0;
-    for (const [kind, m] of kinds) if (ELEMENT_BY_ID.get(kind)?.category === "engineered") hard = Math.max(hard, m);
+    for (const j of judged) if (engineeredLike(j.kind, j.paired)) hard = Math.max(hard, j.value);
     const ceiling = Math.min(config.defence.engineeredMaxProtectionM ?? config.defence.maxProtectionM, Math.max(config.defence.maxProtectionM, hard));
     out.set(key, Math.min(sum, Math.max(...values) * stackCap, ceiling));
   }
@@ -533,6 +572,40 @@ function spread(board: WaterBoard, sources: Map<string, number>, loss: (tile: Bo
   return level;
 }
 
+/**
+ * Section 25.1, a game rule: a seawall pushes extra water onto the land at each end of the wall. A wall is a line of
+ * standing seawalls; its ends are the ones with at most one seawall beside them. Where the surge stands against an end,
+ * each land tile beside it (not itself a wall) lower than that water keeps at least `endPushM` of water above its
+ * ground, whatever the protection round it: the water the wall turns aside comes round its ends.
+ */
+function pushAtWallEnds(state: GameState, board: WaterBoard, reached: ReadonlyMap<string, number>, level: Map<string, number>, own: ReadonlyMap<string, number>): void {
+  const walls = [...own.keys()].filter((key) => (ELEMENT_BY_ID.get(state.elements.get(key)?.elementId ?? "")?.endPushM ?? 0) > 0);
+  if (walls.length === 0) return;
+  const wallSet = new Set(walls);
+  const push = new Map<string, number>();
+  for (const key of walls) {
+    const around = board.tiles.get(key)?.neighbours ?? [];
+    if (around.filter((n) => wallSet.has(n)).length > 1) continue;
+    // The water standing against the wall: on its tile or any beside it (the sea side included).
+    let against = -Infinity;
+    for (const k of [key, ...around]) {
+      const l = reached.get(k);
+      if (l !== undefined && l > board.tiles.get(k)!.ground) against = Math.max(against, l);
+    }
+    if (against === -Infinity) continue;
+    const m = ELEMENT_BY_ID.get(state.elements.get(key)!.elementId)!.endPushM!;
+    // Only onto land lower than that water: it does not climb a hill.
+    for (const n of around) {
+      const tile = board.tiles.get(n);
+      if (!wallSet.has(n) && tile?.terrainId === "land" && tile.ground < against) push.set(n, Math.max(push.get(n) ?? 0, m));
+    }
+  }
+  for (const [key, m] of push) {
+    const ground = board.tiles.get(key)!.ground;
+    level.set(key, Math.max(level.get(key) ?? ground, ground + m));
+  }
+}
+
 /** Lowers the water on each tile by the protection there. */
 function protect(level: Map<string, number>, protection: Map<string, number>): Map<string, number> {
   const out = new Map<string, number>();
@@ -577,7 +650,9 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
     surgeLevel = (config.surge.baseM + config.surge.perStrengthM * storm.strength) * (storm.kind === "compound" ? c.surgeShare : 1);
     const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall!))];
     const own = ownMetres(state, "cyclone", skip, weaken, combos, config);
-    surge = protect(spread(board, new Map([[site, surgeLevel]]), surgeLoss(config, storm.strength), pathDrag(board, own, config, kindOf)), areaProtection(board, own, config, kindOf));
+    const reached = spread(board, new Map([[site, surgeLevel]]), surgeLoss(config, storm.strength), pathDrag(board, own, config, kindOf));
+    surge = protect(reached, areaProtection(board, own, config, kindOf));
+    pushAtWallEnds(state, board, reached, surge, own);
   }
   let floodLevel = 0;
   let flood = new Map<string, number>();
@@ -627,23 +702,38 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
 export function computeWater(state: GameState, storm: StormInput, options: { combos?: ReadonlyMap<string, number>; landfallZoneTiles?: readonly string[]; config?: HazardModelConfig } = {}): WaterField {
   const config = options.config ?? HAZARD_MODEL;
   const board = waterBoard(state, options.landfallZoneTiles);
-  const first = pass(state, board, storm, options.combos, new Set(), new Map(), config);
-  const failed: string[] = [];
+  // Section 25.1, a game rule: a seawall comes through the first cyclone it faces and breaks in the second (a small dam
+  // the same with floods). Every storm that brings the hazard it answers counts; it breaks as that storm comes, so
+  // it gives no protection in it. Ones that come through are counted by the resolver (`survived`).
+  const brings = storm.kind === "compound" ? ["cyclone", "flood"] : [storm.kind];
+  const breaking = new Set<string>();
+  const survived: string[] = [];
+  for (const [key, inst] of state.elements) {
+    const def = ELEMENT_BY_ID.get(inst.elementId);
+    if (!def || def.survivesStorms === undefined || inst.broken || !def.targetsHazards?.some((h) => brings.includes(h))) continue;
+    if ((inst.stormsSurvived ?? 0) >= def.survivesStorms) breaking.add(key);
+    else survived.push(key);
+  }
+  const first = pass(state, board, storm, options.combos, breaking, new Map(), config);
+  const failed: string[] = [...breaking];
   const overwhelmed: string[] = [];
   const weaken = new Map<string, number>();
   for (const [key, inst] of state.elements) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (!def || (def.effects.resilience ?? 0) <= 0) continue;
+    if (!def || (def.effects.resilience ?? 0) <= 0 || inst.broken || breaking.has(key)) continue;
     const d = first.depth.get(key) ?? 0;
     if (d <= 0) continue;
-    if (def.category === "engineered" && def.failureThreshold !== undefined && d > def.failureThreshold * config.defence.failDepthPerUnit) failed.push(key);
+    // The depth rule stays for engineered structures without a storm count (the breakwater).
+    if (def.category === "engineered" && def.survivesStorms === undefined && def.failureThreshold !== undefined && d > def.failureThreshold * config.defence.failDepthPerUnit) failed.push(key);
+    // Section 25.1: a khazan is never worn.
+    else if (def.neverWears) continue;
     else if (def.overwhelmSeverity !== undefined && d > def.overwhelmSeverity * config.defence.overwhelmDepthPerUnit) {
       overwhelmed.push(key);
       weaken.set(key, def.overwhelmedAbsorptionMultiplier ?? 0.5);
     }
   }
-  const result = failed.length + overwhelmed.length > 0 ? pass(state, board, storm, options.combos, new Set(failed), weaken, config) : first;
-  return { ...result, failed, overwhelmed };
+  const result = failed.length > breaking.size || overwhelmed.length > 0 ? pass(state, board, storm, options.combos, new Set(failed), weaken, config) : first;
+  return { ...result, failed, overwhelmed, survived: survived.filter((key) => !failed.includes(key)) };
 }
 
 /** True where the water is deep enough to take a house. */
@@ -701,7 +791,8 @@ export function windField(
   state: GameState,
   board: WaterBoard,
   storm: StormInput,
-  weaken: ReadonlyMap<string, number> = new Map(),
+  /** Defences weakened this storm (kept for callers; pandanus shelter is the same however worn, Section 25.1). */
+  _weaken: ReadonlyMap<string, number> = new Map(),
   config: HazardModelConfig = HAZARD_MODEL
 ): Map<string, number> {
   const wind = new Map<string, number>();
@@ -720,31 +811,19 @@ export function windField(
     const v = shore * along * Math.pow(w.inlandKeep, inland);
     if (v > 1e-3) wind.set(key, v);
   }
-  // Shelterbelts, downwind: the wind blows from the sea at the landfall, inland.
-  const out = seawardOf(board, site);
-  const blow = { x: -out.x, z: -out.z };
-  const cos = Math.cos((w.shelterHalfAngleDeg * Math.PI) / 180);
+  // Section 25.1, a game rule: pandanus is the one defence that lowers the wind. Every tile within shelterReachHex of
+  // a standing pandanus keeps 1 - shelter of the wind (in any direction; more pandanus round a tile add nothing).
   const keep = new Map<string, number>();
+  const reach = w.shelterReachHex;
   for (const [key, inst] of state.elements) {
     const share = w.shelter[inst.elementId];
-    if (!share) continue;
-    const def = ELEMENT_BY_ID.get(inst.elementId);
-    const scale = def ? state.maturityFraction(inst, def) * Math.max(0, 1 - inst.degradeAmount) * (weaken.get(key) ?? 1) : 1;
-    if (scale <= 0) continue;
-    const from = worldOf(key);
+    if (!share || inst.broken) continue;
     const [q0, r0] = key.split(",").map(Number);
-    const reach = w.shelterFalloff.length;
     for (let dq = -reach; dq <= reach; dq++) {
       for (let dr = Math.max(-reach, -dq - reach); dr <= Math.min(reach, -dq + reach); dr++) {
-        const d = (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
-        if (d < 1 || d > reach) continue;
         const target = `${q0 + dq},${r0 + dr}`;
         if (!wind.has(target)) continue;
-        const p = worldOf(target);
-        const vx = p.x - from.x;
-        const vz = p.z - from.z;
-        if ((vx * blow.x + vz * blow.z) / Math.hypot(vx, vz) < cos) continue;
-        keep.set(target, (keep.get(target) ?? 1) * (1 - share * w.shelterFalloff[d - 1] * scale));
+        keep.set(target, Math.min(keep.get(target) ?? 1, 1 - share));
       }
     }
   }

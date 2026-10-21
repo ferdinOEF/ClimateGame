@@ -1,6 +1,7 @@
 import type { ScheduledChallenge } from "@core/climate";
 import { HEAT_LEAD_YEARS } from "@core/exposure";
 import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
+import type { HouseStars } from "@core/zones";
 
 /**
  * How to Play for the Panjim game (Section 15): a short page in the result
@@ -18,6 +19,8 @@ export interface PanjimHelpInput {
   storms: readonly ScheduledChallenge[];
   /** Years before a storm that its heat shows (one in the Tutorial). */
   heatLeadYears?: number;
+  /** The level's star lines (Section 25.2): said in words when they count biodiversity. */
+  houseStars?: HouseStars;
 }
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
@@ -29,6 +32,18 @@ const esc = (text: string): string => text.replace(/[&<>"]/g, (c) => ({ "&": "&a
 
 function picture(name: string, alt: string): string {
   return `<img class="panjim-help-pic" src="${import.meta.env.BASE_URL}art/${name}" alt="${esc(alt)}" loading="lazy" decoding="async" draggable="false">`;
+}
+
+const pct = (share: number): string => `${Math.round(share * 100)}%`;
+
+/**
+ * Section 25.2 (owner decision): the star lines in words, from the level's own numbers, for Help and the final card.
+ * Begins "A storm gives"; the caller labels it a game rule.
+ */
+export function starRule(stars: HouseStars): string {
+  const bio = stars.bioTwo !== undefined || stars.bioThree !== undefined;
+  if (!bio) return `A storm gives ${stars.one !== undefined ? `one star for saving ${pct(stars.one)} of the homes in its path, ` : "one star, "}two for ${pct(stars.two)} and three for ${pct(stars.three)}.`;
+  return `A storm gives one star for ${pct(stars.one ?? 0)} of the homes in its path saved, two for ${pct(stars.two)} and no loss of biodiversity, three for ${pct(stars.three)} and biodiversity up ${stars.bioThree ?? 0}.`;
 }
 
 const heatLead = (years: number): string => (years === 1 ? "In a storm's own year" : `In the ${countWord(years)} years before a storm`);
@@ -47,6 +62,14 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
     .map((storm) => `<p>In this game, the ${storm.year} storm does not reach ${esc(storm.shelteredPlace!)}.</p>`)
     .join("");
   const stormsTitle = count === 1 ? "The storm" : `${countWord(count).replace(/^./, (c) => c.toUpperCase())} storms`;
+  // Section 25.2: the star lines, in words, where they count biodiversity; the Tutorial's one storm counts the homes
+  // alone, and says that Panjim's count nature too.
+  const countsNature = input.houseStars && (input.houseStars.bioTwo !== undefined || input.houseStars.bioThree !== undefined);
+  const starsLine = countsNature
+    ? ` In this game ${starRule(input.houseStars!).replace(/^A/, "a")}`
+    : count === 1
+      ? " In this game the stars here count the homes saved. In Play Panjim they count biodiversity too."
+      : "";
   return `
   <div class="panjim-help">
   <div class="help-header">
@@ -68,7 +91,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>${stormsTitle} ${RULE}</h3>
         <ul>${stormList}</ul>
-        <p>After each, a result card: the stars, the homes saved, and what protected them.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}</p>
+        <p>After each, a result card: ${countsNature ? "stars, homes saved, biodiversity and what protected them" : "the stars, the homes saved, and what protected them"}.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}${starsLine}</p>
         ${shelters}
       </div>
     </section>
@@ -94,7 +117,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       ${picture("help-cards.jpg", "The build cards for a beach tile: each defence's name and what it does")}
       <div>
         <h3>The cards ${RULE}</h3>
-        <p>Each card is one defence and what it does. Nature based ones come first (dunes, pandanus, mangroves, khazans), then engineered ones (seawalls, breakwaters, small dams). The objective card suggests nature based ones.</p>
+        <p>Each card is one defence. Nature based ones come first. In this game each has a pro and a con: the Field Guide gives them.</p>
       </div>
     </section>
 

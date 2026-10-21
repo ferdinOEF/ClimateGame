@@ -86,6 +86,27 @@ export interface ChallengeOutcome {
   housesDamaged: number;
   /** Coord keys of every house damaged. */
   damagedHouses: string[];
+  /**
+   * Section 25.2 (owner decision): the board's biodiversity (`GameState.biodiversity`) as the storm came, less the
+   * start of the run's (`houseStars.bioStart`). Present where the level's stars count biodiversity.
+   */
+  biodiversityChange?: number;
+}
+
+/**
+ * The level's star lines (Section 22.4 and 25.2, owner decisions; game rules). By the share of the homes standing in
+ * the storm's path that it saved: one star from `one`; two from `two` with biodiversity at or above the start of
+ * the run (`bioTwo`, a change of 0); three from `three` with biodiversity raised by at least `bioThree`. Without
+ * `bioTwo`/`bioThree` the biodiversity is not asked.
+ */
+export interface HouseStars {
+  three: number;
+  two: number;
+  one?: number;
+  bioTwo?: number;
+  bioThree?: number;
+  /** The board's biodiversity at the start of the run (set by the run, not the level data). */
+  bioStart?: number;
 }
 
 export class ZoneIndex {
@@ -172,10 +193,11 @@ export type TileProbe = (key: string, intensity: number, hazard: HazardId, damag
 export type ComboBonus = Map<string, number>;
 
 /** Stars from the share of houses in the storm's path that were saved. A city that stands always earns at least one. */
-export function starsForHouses(saved: number, total: number, thresholds: { three: number; two: number; one?: number }): 0 | 1 | 2 | 3 {
+export function starsForHouses(saved: number, total: number, thresholds: HouseStars, biodiversityChange = 0): 0 | 1 | 2 | 3 {
   const share = total > 0 ? saved / total : 1;
-  if (share >= thresholds.three) return 3;
-  if (share >= thresholds.two) return 2;
+  const bioOk = (line: number | undefined): boolean => line === undefined || biodiversityChange >= line;
+  if (share >= thresholds.three && bioOk(thresholds.bioThree) && bioOk(thresholds.bioTwo)) return 3;
+  if (share >= thresholds.two && bioOk(thresholds.bioTwo)) return 2;
   // Section 22.4 (owner decision): below the level's one-star line, no star (a level without one never gives 0).
   if (thresholds.one !== undefined && share < thresholds.one) return 0;
   return 1;
@@ -211,7 +233,7 @@ export function resolveChallenge(
   strengthUnit: number,
   combos?: ComboBonus,
   /** When set, stars come from the share of houses saved rather than from protection (the Houses-saved KPI). */
-  houseStars?: { three: number; two: number; one?: number },
+  houseStars?: HouseStars,
   /** Sets the scale the probe reports in (its `resilience` is one house-loss depth). */
   houseRule?: HouseRule,
   /** Reports the water at every wet tile, per hazard, scaled so `resilience` is the depth that takes a house. Never changes the outcome. */
@@ -260,8 +282,20 @@ export function resolveChallenge(
   const lost = standing.filter((key) => floodsHouse(damageAt(field, key)));
   const undefendedLost = standing.length;
 
-  // Apply: engineered failures removed, nature defences worn, houses lost.
-  for (const key of field.failed) state.elements.delete(key);
+  // Section 25.2: the biodiversity as the storm comes, against the start of the run.
+  const counted = houseStars && (houseStars.bioTwo !== undefined || houseStars.bioThree !== undefined);
+  const biodiversityChange = counted ? state.biodiversity - (houseStars.bioStart ?? 0) : undefined;
+
+  // Apply: engineered failures broken (Section 25.1: drawn broken, protecting nothing, the tile free for a new
+  // build), the ones with a storm count that came through counted, nature defences worn, houses lost.
+  for (const key of field.failed) {
+    const inst = state.elements.get(key);
+    if (inst) inst.broken = true;
+  }
+  for (const key of field.survived ?? []) {
+    const inst = state.elements.get(key);
+    if (inst) inst.stormsSurvived = (inst.stormsSurvived ?? 0) + 1;
+  }
   for (const key of field.overwhelmed) {
     const inst = state.elements.get(key);
     const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
@@ -319,11 +353,14 @@ export function resolveChallenge(
     protection,
     // Section 22.4 (owner decision): a storm is counted against the homes still standing when it hit; the ones an
     // earlier storm ruined are a line of their own, never "not saved" by this one.
-    stars: houseStars && standing.length > 0 ? starsForHouses(standing.length - lost.length, standing.length, houseStars) : starsFor(protection),
+    // With no home standing in its path a storm's stars come from its protection, or, where they count biodiversity
+    // (Section 25.2), from the biodiversity lines alone (every home there was saved).
+    stars: houseStars && (standing.length > 0 || biodiversityChange !== undefined) ? starsForHouses(standing.length - lost.length, standing.length, houseStars, biodiversityChange ?? 0) : starsFor(protection),
     housesSaved: standing.length - lost.length,
     housesTotal: standing.length,
     housesLostBefore: pathHouses.size - standing.length,
     housesDamaged: lost.length,
-    damagedHouses: lost
+    damagedHouses: lost,
+    ...(biodiversityChange === undefined ? {} : { biodiversityChange })
   };
 }

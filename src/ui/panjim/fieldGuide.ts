@@ -2,6 +2,7 @@ import guideData from "@data/fieldGuide.json";
 import { playSound } from "@ui/audioHooks";
 import { noteIdsFor, notesProgress, refreshSavedNotes } from "@core/mayaLines";
 import { factById } from "@core/facts";
+import { BROKEN_RULE, defenceRules } from "@ui/panjim/defenceCards";
 
 /**
  * The Field Guide: eleven species of the Panjim coast, collected by tapping the
@@ -17,6 +18,9 @@ import { factById } from "@core/facts";
  *
  * Collection is kept on this device across runs, because a guide that empties
  * every time is not a collection.
+ *
+ * Section 25.1: after the creatures, each defence's pro and con, labelled as
+ * game rules ("In this game…"), built from the game's own numbers.
  */
 export interface Species {
   id: string;
@@ -90,6 +94,8 @@ export class FieldGuide {
         <div class="field-guide-head"><b>Field Guide</b><span class="field-guide-count"></span><button type="button" class="field-guide-close" aria-label="Close">×</button></div>
         <p class="field-guide-hint">Tap the creatures you see on the board. Free: no time passes. <span class="field-guide-creatures"></span></p>
         <div class="field-guide-grid"></div>
+        <div class="field-guide-defences-head"><b>Defences</b><span class="result-rule">Game rules</span></div>
+        <ul class="field-guide-defences"></ul>
         <div class="field-guide-notes-head"><b>Maya's notes</b><span class="field-guide-notes-count"></span></div>
         <ul class="field-guide-notes"></ul>
       </div>`;
@@ -214,6 +220,18 @@ export class FieldGuide {
         }
       }
       this.grid.appendChild(page);
+    }
+    // Section 25.1: each defence's pro and con, as game rules, from the game's own data.
+    const defences = this.backdrop.querySelector(".field-guide-defences") as HTMLElement;
+    defences.innerHTML = "";
+    for (const rule of [...defenceRules(), { id: "broken", name: "Broken defences", text: BROKEN_RULE }]) {
+      const item = document.createElement("li");
+      item.className = "field-guide-defence";
+      item.dataset.defence = rule.id;
+      item.innerHTML = `<b></b><p></p>`;
+      (item.querySelector("b") as HTMLElement).textContent = rule.name;
+      (item.querySelector("p") as HTMLElement).textContent = rule.text;
+      defences.appendChild(item);
     }
     const list = this.backdrop.querySelector(".field-guide-notes") as HTMLElement;
     (this.backdrop.querySelector(".field-guide-notes-count") as HTMLElement).textContent = this.notes.length === 0 ? "None yet: Maya's tips land here." : "";

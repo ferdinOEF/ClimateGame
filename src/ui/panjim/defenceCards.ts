@@ -1,3 +1,5 @@
+import { ELEMENT_BY_ID } from "@core/elements";
+import { HAZARD_MODEL } from "@core/hazardModel";
 /**
  * What the build menu's cards say and show (Section 13, Panjim): a short
  * name, one plain line in game wording, and a small flat icon. Section 17.1
@@ -23,14 +25,42 @@ export const CARD_NAME: Record<string, string> = {
 };
 
 export const CARD_LINE: Record<string, string> = {
-  dune: "Soaks up waves on the beach",
-  sandy_vegetation: "Softens waves a little and slows the wind",
-  seawall: "Strong; can break in big storms",
-  breakwater: "Stops waves out at sea, before the beach",
-  mangrove: "Slows the surge and the wind at the water's edge",
-  khazan: "Holds floodwater in the fields",
-  small_dam: "Holds back river floods"
+  dune: "Two side by side hold like a seawall",
+  sandy_vegetation: "Shields nearby homes from the wind",
+  seawall: "Strongest; breaks in its second cyclone",
+  breakwater: "Breaks cyclone waves out at sea",
+  mangrove: "Helps in both storms; good for nature",
+  khazan: "Two hold like a small dam; no repairs",
+  small_dam: "Strong in floods; breaks in its second flood"
 };
+
+const bio = (id: string): number => ELEMENT_BY_ID.get(id)?.effects.biodiversity ?? 0;
+const nature = (id: string): string => {
+  const v = bio(id);
+  return v > 0 ? `adds ${v} to biodiversity` : v < 0 ? `costs ${-v} biodiversity` : "leaves biodiversity as it is";
+};
+
+/**
+ * Section 25.1 (owner decisions): each defence's pro and con, as game rules, for the Field Guide (and in short in
+ * Help). Built from the game's own data, so the words never disagree with the numbers.
+ */
+export function defenceRules(): { id: string; name: string; text: string }[] {
+  const windShare = Math.round((HAZARD_MODEL.wind?.shelter.sandy_vegetation ?? 0) * 100);
+  const reach = HAZARD_MODEL.wind?.shelterReachHex ?? 2;
+  const rules: Record<string, string> = {
+    dune: `In this game a dune ${nature("dune")}. Two dunes side by side protect the tiles behind them as much as one seawall.`,
+    sandy_vegetation: `In this game pandanus is at full strength from the year it is planted and ${nature("sandy_vegetation")}, but on its own it holds back little water and gives a dune no bonus. It is the only defence that lowers a cyclone's wind: homes within ${reach} tiles of it take ${windShare}% less wind damage.`,
+    mangrove: `In this game a mangrove has one strength from the year it is planted, ${nature("mangrove")} and helps in both kinds of storm. It grows only on wetland and at a river's edge.`,
+    khazan: `In this game two khazans side by side protect as much as one small dam. A khazan is never worn, so it never needs a repair, and it ${nature("khazan")}; it does little against a cyclone's surge.`,
+    seawall: `In this game a seawall is the strongest defence from the year it is built, but it ${nature("seawall")}. It comes through the first cyclone it faces and breaks in the second (every storm that brings a cyclone counts, the storm that brings both included), and it pushes extra water onto the land at each end of the wall.`,
+    breakwater: `In this game a breakwater breaks a cyclone's waves out at sea but is almost no help in a river flood, and it ${nature("breakwater")}.`,
+    small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone. It comes through the first flood it faces and breaks in the second (every storm that brings a river flood counts, the storm that brings both included), and it ${nature("small_dam")}.`
+  };
+  return DEFENCE_ORDER.map((id) => ({ id, name: CARD_NAME[id], text: rules[id] }));
+}
+
+/** Section 25.1: what happens to a broken seawall or dam, a game rule. */
+export const BROKEN_RULE = "In this game a broken seawall or small dam stops protecting and is drawn broken; you can build again on its tile.";
 
 const svg = (body: string): string => `<svg viewBox="0 0 32 32" width="30" height="30" focusable="false">${body}</svg>`;
 

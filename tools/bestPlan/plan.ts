@@ -48,6 +48,8 @@ export interface Assessment {
   lost: number;
   /** Water and wind over the house-loss line on the homes lost, in loss depths: how close more builds are to saving more. */
   excess: number;
+  /** Section 25.2: how far each storm's biodiversity falls short of the three star rise, added up (0 where it is reached). */
+  bioShort: number;
   /** Per storm, in calendar order. */
   storms: { id: string; stars: number; saved: number; total: number; lost: number }[];
 }
@@ -65,9 +67,13 @@ export function assess(run: ActionRun, state: GameState): Assessment {
   let stars = 0;
   let lost = 0;
   let excess = 0;
+  let bioShort = 0;
+  const target = run.houseStars?.bioThree;
+  const short = (change: number | undefined): number => (target === undefined || change === undefined ? 0 : Math.max(0, target - change));
   for (const challenge of run.schedule) {
     const outcome = run.outcomes.get(challenge.id);
     if (!outcome) continue;
+    bioShort += short(outcome.biodiversityChange);
     const l = outcome.housesTotal - outcome.housesSaved;
     storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l });
     stars += outcome.stars;
@@ -96,9 +102,10 @@ export function assess(run: ActionRun, state: GameState): Assessment {
     storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l });
     stars += outcome.stars;
     lost += l;
+    bioShort += short(outcome.biodiversityChange);
     for (const key of outcome.damagedHouses) excess += Math.max(0, (damage.get(key) ?? 0) / scale - 1);
   }
-  return { stars, lost, excess, storms };
+  return { stars, lost, excess, bioShort, storms };
 }
 
 /** Homes `challenge` (the next storm) would take on `state`, by the game's own preview. */
@@ -147,6 +154,13 @@ export function goal1(a: Assessment, b: Assessment): number {
 }
 export function goal2(a: Assessment, b: Assessment): number {
   return a.lost - b.lost || b.stars - a.stars || a.excess - b.excess;
+}
+/**
+ * Section 25.2: stars, then the biodiversity still short of three stars, then homes. Not a goal of its own: it keeps
+ * plans that build nature first in the beam, whose stars come a few builds later than a seawall's homes.
+ */
+export function greener(a: Assessment, b: Assessment): number {
+  return b.stars - a.stars || a.bioShort - b.bioShort || a.lost - b.lost || a.excess - b.excess;
 }
 
 /** The nearest named place (the map's own locality names) to a tile. */
