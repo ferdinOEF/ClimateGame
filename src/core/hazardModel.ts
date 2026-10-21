@@ -2,7 +2,7 @@ import MODEL_DATA from "@data/hazardModel.json";
 import { axialDistance, axialKey, axialToWorld, neighbor } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
-import type { ChallengeKind } from "./climate";
+import type { ChallengeKind, WindOverride } from "./climate";
 
 /**
  * The hazard model: where the water goes, tile by tile. Section 4.
@@ -81,6 +81,8 @@ export interface HazardModelConfig {
     shelterReachHex: number;
     /** However much shelter stands round a tile, at least this share of the wind still gets through. */
     minKeep: number;
+    /** Section 26.3: the compound storm's wind, as a share of a cyclone's at the same strength (absent: compound.surgeShare). */
+    compoundShare?: number;
   };
 }
 
@@ -336,6 +338,8 @@ export interface StormInput {
    * elsewhere is worked out as if they were not sheltered.
    */
   sheltered?: ReadonlySet<string>;
+  /** Section 26.3: the storm's own wind numbers (the 2030 and 2050 storms), over the model's. */
+  wind?: WindOverride;
   /**
    * Section 26.1: the turn the storm lands on (the board's `turn` when it resolves). Defences' ages are counted to
    * it, so a preview made years before sees them as old as they will be. Defaults to the board's own turn.
@@ -834,12 +838,13 @@ export function windField(
   config: HazardModelConfig = HAZARD_MODEL
 ): Map<string, number> {
   const wind = new Map<string, number>();
-  const w = config.wind;
+  // Section 26.3: the storm's own wind numbers, where it has them, over the model's.
+  const w = config.wind && storm.wind ? { ...config.wind, ...storm.wind } : config.wind;
   if (!w || storm.kind === "flood" || storm.landfall === null || board.sites.length === 0) return wind;
   const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall))];
   const [sq, sr] = site.split(",").map(Number);
-  // In the compound storm the wind comes with the surge, at the surge's share.
-  const shore = w.perStrengthM * storm.strength * (storm.kind === "compound" ? config.compound.surgeShare : 1);
+  // In the compound storm the wind comes with the surge, at its own share (Section 26.3; the surge's before).
+  const shore = w.perStrengthM * storm.strength * (storm.kind === "compound" ? (w.compoundShare ?? config.compound.surgeShare) : 1);
   for (const [key, tile] of board.tiles) {
     if (tile.terrainId === "coast") continue;
     const [q, r] = key.split(",").map(Number);

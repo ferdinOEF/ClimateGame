@@ -1,7 +1,7 @@
 import { axialKey, neighbor } from "./hex";
 import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
-import type { ChallengeKind } from "./climate";
+import type { ChallengeKind, WindOverride } from "./climate";
 import { computeWater, damageAt, defenceMetres, floodsHouse, HAZARD_MODEL, LANDFALL_ZONE, siteAt, waterBoard } from "./hazardModel";
 
 /**
@@ -243,13 +243,15 @@ export function resolveChallenge(
   /** Where a cyclone comes ashore (index into the board's landfall sites). Defaults to the middle of the coast. */
   landfall?: number | null,
   /** Tiles the storm never reaches (Section 23.1, `shelterOf`). */
-  sheltered?: ReadonlySet<string>
+  sheltered?: ReadonlySet<string>,
+  /** Section 26.3: the storm's own wind numbers. */
+  wind?: WindOverride
 ): ChallengeOutcome {
   const strength = intensity / strengthUnit;
   const landfallZoneTiles = zones.keys(LANDFALL_ZONE);
   const board = waterBoard(state, landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined);
   const site = kind === "flood" ? null : (landfall ?? siteAt(board, 0.5));
-  const storm = { kind, strength, landfall: site, sheltered };
+  const storm = { kind, strength, landfall: site, sheltered, wind };
   const options = { combos, landfallZoneTiles: landfallZoneTiles.length > 0 ? landfallZoneTiles : undefined };
 
   // A house on scenery (the north bank, the east edge) is drawn, never counted.

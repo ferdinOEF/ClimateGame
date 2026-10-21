@@ -56,7 +56,7 @@ describe("the result cards' numbers", () => {
           if (!built) passYear(run);
         }
         const before = run.state.clone();
-        const args = { zones: run.zones!, kind: challenge.kind, intensity: run.intensityOf(challenge), strengthUnit: run.climate!.intensityPerStrength, combos: run.combos, houseStars: run.houseStars, houseRule: run.houseRule, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge) };
+        const args = { zones: run.zones!, kind: challenge.kind, intensity: run.intensityOf(challenge), strengthUnit: run.climate!.intensityPerStrength, combos: run.combos, houseStars: run.houseStarsFor(challenge), houseRule: run.houseRule, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge), wind: challenge.wind };
         passYear(run);
         const real = run.outcomes.get(challenge.id)!;
         const again = housesLostWithout(before, args, null);
@@ -86,7 +86,8 @@ describe("the result cards' numbers", () => {
     const challenge = run.schedule[0];
     const area = run.areas.get(challenge.id)!;
     // Section 12: the wind tips 8,7 at the river mouth too. Section 19: 8, the home at -7,24 is beach now.
-    expect(area.length).toBe(8);
+    // Section 26.3: 9, the stronger wind takes -2,18 beside the school.
+    expect(area.length).toBe(9);
     play(run, true);
     const result = phaseResult(challenge, run.stormRecords.get(challenge.id)!, area, PLACES, run.phaseBuilds.get(challenge.id) ?? []);
     // Section 17b (owner decision): no dots or hyphens between words in player-facing text.

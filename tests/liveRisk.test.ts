@@ -38,7 +38,7 @@ describe("Show risk, live", () => {
       expect(hot.length, `${run.year}`).toBe(run.homesAtRisk(next));
       for (const key of hot) expect(run.state.isScenery(key), key).toBe(false);
       // The same homes the storm would take if it came on this board now.
-      const lost = homesLost(run.state, { kind: next.kind, strength: next.strength, landfall: run.landfallOf(next), sheltered: shelterOf(next) }, zoneTiles.length ? zoneTiles : undefined);
+      const lost = homesLost(run.state, { kind: next.kind, strength: next.strength, landfall: run.landfallOf(next), sheltered: shelterOf(next), wind: next.wind, turn: next.turn - 1 }, zoneTiles.length ? zoneTiles : undefined);
       expect(hot, `${run.year}`).toEqual([...lost].sort());
       expect(new Set(now.housesAtRisk)).toEqual(lost);
       // One year on, with a build on the storm's path where one fits.

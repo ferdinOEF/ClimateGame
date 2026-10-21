@@ -49,6 +49,8 @@ export interface PhaseResult {
   objectiveComplete?: boolean;
   /** Section 25.2: the biodiversity line, where the level's stars count it. */
   nature?: NatureLine;
+  /** Section 26.3: homes lost that the water alone would have left standing: the wind took them. */
+  windLost: number;
 }
 
 /** Section 25.2: the card's second line: the board's biodiversity change since the run began, and why. */
@@ -162,6 +164,7 @@ export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, 
     homesLostBefore: outcome.housesLostBefore ?? 0,
     places: placeResults,
     defences,
+    windLost: outcome.damagedHouses.filter((key) => !floodsHouse(record.depth.get(key) ?? 0)).length,
     ...(nature && outcome.biodiversityChange !== undefined
       ? { nature: { change: outcome.biodiversityChange, target: nature.target, since: nature.since, ...(nature.at ? { at: nature.at } : {}), reason: natureReason(outcome.biodiversityChange, nature.target, nature.byKind) } }
       : {})

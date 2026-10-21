@@ -88,9 +88,16 @@ export function resultCard(result: PhaseResult): HTMLElement {
     ${starsHtml(result.stars)}
     ${result.objectiveComplete ? `<div class="result-badge" role="note">Objective complete</div>` : ""}
     ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}
+    ${windHtml(result.windLost)}
     ${result.nature ? natureHtml(result.nature) : ""}
     ${places}
   </div>`);
+}
+
+/** Section 26.3: the homes the wind alone took, and what shields them (a game rule). Nothing when it took none. */
+export function windHtml(windLost: number): string {
+  if (windLost <= 0) return "";
+  return `<div class="result-wind" role="note">The wind alone took ${windLost === 1 ? "one of them" : `${windLost} of them`}. <span class="result-wind-why">In this game pandanus shields the homes within 2 tiles of it.</span></div>`;
 }
 
 /** Section 25.2: the card's second line: the biodiversity change since the run began, and a few words on why. */

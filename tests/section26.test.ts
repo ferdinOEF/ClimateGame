@@ -177,3 +177,42 @@ describe("biodiversity at the end of 2050 (Section 26.2)", () => {
     expect(panjimHelpHtml({ startYear: 2026, endYear: 2050, storms: probe.schedule, houseStars: probe.houseStars })).toContain(rule.replace(/^A/, "a"));
   });
 });
+
+describe("a stronger wind, so pandanus matters (Section 26.3)", () => {
+  it("raises the wind of the 2030 cyclone and the 2050 storm only (the Tutorial's cyclone keeps the model's)", async () => {
+    const { LEVEL_BY_ID } = await import("../src/levels/levels");
+    const { HAZARD_MODEL } = await import("../src/core/hazardModel");
+    expect(cyclone.wind!.perStrengthM!).toBeGreaterThan(HAZARD_MODEL.wind!.perStrengthM);
+    expect(compound.wind!.perStrengthM!).toBeGreaterThan(HAZARD_MODEL.wind!.perStrengthM);
+    expect(flood.wind).toBeUndefined();
+    const tutorial = LEVEL_BY_ID.get("l00-tutorial")!;
+    for (const c of tutorial.climate!.challenges) expect(c.wind, c.id).toBeUndefined();
+  });
+
+  it("takes a home by the wind alone in the 2030 cyclone on the opening board, and pandanus within 2 tiles saves it", async () => {
+    const { damageAt, floodsHouse, LANDFALL_ZONE } = await import("../src/core/hazardModel");
+    const { shelterOf } = await import("../src/core/climate");
+    const lz = probe.zones!.keys(LANDFALL_ZONE);
+    const storm = { kind: cyclone.kind, strength: cyclone.strength, landfall: probe.landfallOf(cyclone), sheltered: shelterOf(cyclone), wind: cyclone.wind, turn: cyclone.turn - 1 };
+    const windTaken = (s: typeof probe.state) => {
+      const f = computeWater(s, storm, { landfallZoneTiles: lz });
+      return [...s.elements].filter(([k, i]) => i.elementId === "house" && !s.isScenery(k) && floodsHouse(damageAt(f, k)) && !floodsHouse(f.depth.get(k) ?? 0)).map(([k]) => k);
+    };
+    const taken = windTaken(probe.state);
+    expect(taken.length).toBeGreaterThanOrEqual(1);
+    const s = probe.state.clone();
+    for (const key of taken) {
+      const [q, r] = key.split(",").map(Number);
+      for (const n of neighbors({ q, r })) for (const m of [n, ...neighbors(n)]) if (s.canBuild(m, "sandy_vegetation")) s.build(m, "sandy_vegetation", false);
+    }
+    expect(windTaken(s)).toEqual([]);
+  });
+
+  it("says on the result card what the wind took, with the pandanus rule", async () => {
+    const { windHtml } = await import("../src/ui/panjim/resultCards");
+    expect(windHtml(0)).toBe("");
+    expect(windHtml(3)).toContain("The wind alone took 3 of them.");
+    expect(windHtml(1)).toContain("The wind alone took one of them.");
+    expect(windHtml(2)).toContain("In this game pandanus shields the homes within 2 tiles of it.");
+  });
+});

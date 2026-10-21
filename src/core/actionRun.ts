@@ -298,7 +298,7 @@ export class ActionRun {
         state: this.state,
         zones: this.zones,
         challenge: next,
-        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next), sheltered: shelterOf(next), turn: next.turn - 1 },
+        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next), sheltered: shelterOf(next), wind: next.wind, turn: next.turn - 1 },
         landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
         area: this.exposureFor(next)?.housesAtRisk ?? [],
         // The phase's own builds (5, 10, 10): set as its storm lands, the clock still reads the year before.
@@ -504,7 +504,8 @@ export class ActionRun {
       this.houseRule,
       undefined,
       this.landfallOf(challenge),
-      shelterOf(challenge)
+      shelterOf(challenge),
+      challenge.wind
     );
     return { challenge, strength: challenge.strength, outcome, level: outcome.stars === 3 ? "green" : outcome.stars === 2 ? "amber" : "red" };
   }
@@ -550,6 +551,7 @@ export class ActionRun {
       houseRule: this.houseRule,
       landfallSites: cache.site === null ? null : [cache.site],
       sheltered: shelterOf(challenge),
+      wind: challenge.wind,
       turn: challenge.turn - 1
     }).housesAtRisk.length;
     const saved = cache.before - after;
@@ -582,6 +584,7 @@ export class ActionRun {
       withoutDefences,
       landfallSites: site === null ? null : [site],
       sheltered: shelterOf(challenge),
+      wind: challenge.wind,
       // Section 26.1: the storm as it will land, every defence as old as it will be then (if nothing more is built).
       turn: challenge.turn - 1
     });
@@ -617,7 +620,7 @@ export class ActionRun {
     if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;
     const lost = this.exposureFor(challenge)?.housesAtRisk ?? [];
     const landfallTiles = this.zones.keys(LANDFALL_ZONE);
-    return forecastCone(challenge.id, this.state, this.board(), { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge), sheltered: shelterOf(challenge), turn: challenge.turn - 1 }, lost, {
+    return forecastCone(challenge.id, this.state, this.board(), { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge), sheltered: shelterOf(challenge), wind: challenge.wind, turn: challenge.turn - 1 }, lost, {
       landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
       trackInto: this.ownAreas.get(challenge.id)?.tiles,
       trackEnd: this.ownAreaEnd(challenge.id)
@@ -809,7 +812,8 @@ export class ActionRun {
         houseStars: this.houseStarsFor(challenge),
         houseRule: this.houseRule,
         landfall: this.landfallOf(challenge),
-        sheltered: shelterOf(challenge)
+        sheltered: shelterOf(challenge),
+        wind: challenge.wind
       });
       this.outcomes.set(challenge.id, record.outcome);
       this.stormRecords.set(challenge.id, record);

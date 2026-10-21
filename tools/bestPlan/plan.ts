@@ -68,12 +68,15 @@ export function assess(run: ActionRun, state: GameState): Assessment {
   let lost = 0;
   let excess = 0;
   let bioShort = 0;
-  const target = run.houseStars?.bioThree;
-  const short = (change: number | undefined): number => (target === undefined || change === undefined ? 0 : Math.max(0, target - change));
+  // Each storm's own three star rise (Section 26.2: the 2050 storm's is higher).
+  const short = (challenge: (typeof run.schedule)[number], change: number | undefined): number => {
+    const target = run.houseStarsFor(challenge)?.bioThree;
+    return target === undefined || change === undefined ? 0 : Math.max(0, target - change);
+  };
   for (const challenge of run.schedule) {
     const outcome = run.outcomes.get(challenge.id);
     if (!outcome) continue;
-    bioShort += short(outcome.biodiversityChange);
+    bioShort += short(challenge, outcome.biodiversityChange);
     const l = outcome.housesTotal - outcome.housesSaved;
     storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l });
     stars += outcome.stars;
@@ -84,6 +87,8 @@ export function assess(run: ActionRun, state: GameState): Assessment {
   const board = state.clone();
   for (const challenge of run.schedule) {
     if (run.landed.has(challenge.id)) continue;
+    // Section 26.1: each storm as it lands, every defence as old as it will be then.
+    board.turn = challenge.turn - 1;
     const damage = new Map<string, number>();
     const outcome = resolveChallenge(
       board,
@@ -92,17 +97,18 @@ export function assess(run: ActionRun, state: GameState): Assessment {
       run.intensityOf(challenge),
       climate.intensityPerStrength,
       computeCombos(board).bonus,
-      run.houseStars,
+      run.houseStarsFor(challenge),
       run.houseRule,
       (key, _water, _hazard, d) => damage.set(key, Math.max(damage.get(key) ?? 0, d)),
       run.landfallOf(challenge),
-      shelterOf(challenge)
+      shelterOf(challenge),
+      challenge.wind
     );
     const l = outcome.housesTotal - outcome.housesSaved;
     storms.push({ id: challenge.id, stars: outcome.stars, saved: outcome.housesSaved, total: outcome.housesTotal, lost: l });
     stars += outcome.stars;
     lost += l;
-    bioShort += short(outcome.biodiversityChange);
+    bioShort += short(challenge, outcome.biodiversityChange);
     for (const key of outcome.damagedHouses) excess += Math.max(0, (damage.get(key) ?? 0) / scale - 1);
   }
   return { stars, lost, excess, bioShort, storms };
@@ -113,10 +119,12 @@ export function previewLost(run: ActionRun, state: GameState, challenge: Schedul
   const site = run.landfallOf(challenge);
   return computeExposure(state, run.zones!, challenge.kind, run.intensityOf(challenge), run.climate!.intensityPerStrength, {
     combos: computeCombos(state).bonus,
-    houseStars: run.houseStars,
+    houseStars: run.houseStarsFor(challenge),
     houseRule: run.houseRule,
     landfallSites: site === null ? null : [site],
-    sheltered: shelterOf(challenge)
+    sheltered: shelterOf(challenge),
+    wind: challenge.wind,
+    turn: challenge.turn - 1
   }).housesAtRisk;
 }
 
