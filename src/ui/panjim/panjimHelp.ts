@@ -43,7 +43,7 @@ const pct = (share: number): string => `${Math.round(share * 100)}%`;
 export function starRule(stars: HouseStars): string {
   const bio = stars.bioTwo !== undefined || stars.bioThree !== undefined;
   if (!bio) return `A storm gives ${stars.one !== undefined ? `one star for saving ${pct(stars.one)} of the homes in its path, ` : "one star, "}two for ${pct(stars.two)} and three for ${pct(stars.three)}.`;
-  return `A storm gives one star for saving ${pct(stars.one ?? 0)} of the homes in its path, two for ${pct(stars.two)} with biodiversity at or above where it started, and three for ${pct(stars.three)} with biodiversity up by ${stars.bioThree ?? 0} or more.`;
+  return `A storm gives one star for ${pct(stars.one ?? 0)} of the homes in its path saved, two for ${pct(stars.two)} and no loss of biodiversity, three for ${pct(stars.three)} and biodiversity up ${stars.bioThree ?? 0}.`;
 }
 
 const heatLead = (years: number): string => (years === 1 ? "In a storm's own year" : `In the ${countWord(years)} years before a storm`);
@@ -66,9 +66,9 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
   // alone, and says that Panjim's count nature too.
   const countsNature = input.houseStars && (input.houseStars.bioTwo !== undefined || input.houseStars.bioThree !== undefined);
   const starsLine = countsNature
-    ? `<p>In this game ${starRule(input.houseStars!).replace(/^A/, "a")} Biodiversity rises with dunes, pandanus, mangroves and khazans, and falls with seawalls, breakwaters and small dams.</p>`
+    ? ` In this game ${starRule(input.houseStars!).replace(/^A/, "a")}`
     : count === 1
-      ? `<p>In this game the stars here count the homes saved. In Play Panjim they count biodiversity too.</p>`
+      ? " In this game the stars here count the homes saved. In Play Panjim they count biodiversity too."
       : "";
   return `
   <div class="panjim-help">
@@ -91,8 +91,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>${stormsTitle} ${RULE}</h3>
         <ul>${stormList}</ul>
-        <p>After each, a result card: the stars, the homes saved,${countsNature ? " the biodiversity," : ""} and what protected them.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}</p>
-        ${starsLine}
+        <p>After each, a result card: ${countsNature ? "stars, homes saved, biodiversity and what protected them" : "the stars, the homes saved, and what protected them"}.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}${starsLine}</p>
         ${shelters}
       </div>
     </section>
@@ -118,8 +117,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       ${picture("help-cards.jpg", "The build cards for a beach tile: each defence's name and what it does")}
       <div>
         <h3>The cards ${RULE}</h3>
-        <p>Each card is one defence and what it does. Nature based ones come first (dunes, pandanus, mangroves, khazans), then engineered ones (seawalls, breakwaters, small dams). The objective card suggests nature based ones.</p>
-        <p>In this game each has a pro and a con: seawalls and small dams are strongest but break in their second storm, and seawalls cost nature; two dunes hold like a seawall and two khazans like a small dam; only pandanus lowers the wind. The Field Guide gives each defence's rules.</p>
+        <p>Each card is one defence. Nature based ones come first. In this game each has a pro and a con: the Field Guide gives them.</p>
       </div>
     </section>
 

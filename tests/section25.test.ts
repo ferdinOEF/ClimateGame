@@ -281,8 +281,9 @@ describe("stars from homes saved and biodiversity (Section 25.2)", () => {
     const html = panjimHelpHtml({ startYear: 2026, endYear: 2050, storms: run.schedule, houseStars: stars });
     expect(html).toContain(`In this game ${starRule(stars).replace(/^A/, "a")}`);
     expect(starRule(stars)).toContain("55%");
-    expect(starRule(stars)).toContain(`up by ${stars.bioThree} or more`);
+    expect(starRule(stars)).toContain(`biodiversity up ${stars.bioThree}.`);
     expect(html).toMatch(/In this game each has a pro and a con/);
+    expect(html).toContain("the Field Guide gives them.");
     const tutorial = panjimHelpHtml({ startYear: 2026, endYear: 2028, storms: run.schedule.slice(0, 1), houseStars: { three: 0.79, two: 0.5 } });
     expect(tutorial).toContain("In Play Panjim they count biodiversity too.");
   });

@@ -3001,8 +3001,9 @@
   }
 }
 @media (max-height: 680px) and (min-width: 800px) {
+  /* Section 25: wider still, for the star lines and the defences' pro and con. */
   .help-card:has(.panjim-help) {
-    width: min(880px, 94vw);
+    width: min(980px, 96vw);
   }
   .panjim-help .help-header {
     padding-top: 10px;
@@ -3022,7 +3023,20 @@
   .panjim-help-item p,
   .panjim-help-item ul {
     font-size: 13px;
-    line-height: 1.4;
+    line-height: 1.35;
+    margin-top: 2px;
+    margin-bottom: 2px;
+  }
+  .panjim-help-item h3 {
+    margin-bottom: 2px;
+  }
+  /* Section 25: the storm list on one line, so the star lines fit without a scroll. */
+  .panjim-help-item ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 16px;
+    padding-left: 0;
+    list-style: none;
   }
 }
 @media (max-width: 560px) {
