@@ -1,3 +1,6 @@
+// Section 26.5: what each build from 2041 to 2050 changes in a plan (stars, homes lost, end-of-2050 biodiversity),
+// each scored "as if nothing more were built" by the solver's own assessment.
+// Usage: npx tsx tools/section26LateBuilds.ts docs/qa/section26/best_plan.json
 import fs from "node:fs";
 import { assess, replay } from "./bestPlan/plan";
 const raw = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));

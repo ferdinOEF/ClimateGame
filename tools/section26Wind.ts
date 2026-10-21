@@ -1,5 +1,6 @@
-// Wind losses in a plan: per wind storm, the homes the wind alone takes on the board as that storm comes, with the
-// plan's pandanus and with them taken off; `before` drops the storms' own wind (Section 25's).
+// Section 26.3: wind losses in a plan. Per wind storm, the homes the wind alone takes on the board as that storm
+// comes, with the plan's pandanus and with them taken off; `before` drops the storms' own wind (Section 25's).
+// Usage: npx tsx tools/section26Wind.ts docs/qa/section26/best_plan.json [before]
 import fs from "node:fs";
 import { replay, trialBoard } from "./bestPlan/plan";
 import { computeWater, damageAt, floodsHouse, LANDFALL_ZONE } from "../src/core/hazardModel";
