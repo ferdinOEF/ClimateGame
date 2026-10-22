@@ -1,0 +1,692 @@
+=== s28-1920x1080 (15:04:07)
+planned: 0 stars 0/9, 0 stars 1/65, 1 stars 6/19
+PASS [1920x1080] the old saved run, stars and Field Guide are cleared on load (left: none)
+PASS [1920x1080] the start popup offers Begin only (Begin)
+PASS [1920x1080] axe-core, the start popup: no serious or critical violations
+PASS [1920x1080] 2030: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [1920x1080] 2040: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [1920x1080] axe-core, a result card with Try this storm again: no serious or critical violations
+PASS [1920x1080] after "Try this storm again" on the 2040 flood: 2031, the run equals the phase's start snapshot ({"year":2031,"landed":["c1-cyclone"],"equal":true,"turn":5,"outcomes":1,"clock":"\n      \n        2031Year 6 of 25\n      \n      \n      \n        \n        20302035204020452050\n        ☆☆☆Flood in 10 builds●●●\n        \n      \n      Next: Monsoon flood in 2040, strong\n      \n    \n      Homes at risk 64\n      Flood in 10 builds\n      \n        Skip this year\n      \n    "})
+PASS [1920x1080] axe-core, the board after a retry: no serious or critical violations
+PASS [1920x1080] 2050: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [1920x1080] a card 1 with the retry button for every storm (2030, 2040, 2050)
+PASS [1920x1080] the final card is shown
+PASS [1920x1080] the final card: Play again, Back to the menu
+PASS [1920x1080] the replayed flood goes as planned: 0/9, 1/65, 6/19
+PASS [1920x1080] axe-core, the final card: no serious or critical violations
+PASS [1920x1080] Play again starts a new run in 2026
+PASS [1920x1080] three builds in: 2029
+PASS [1920x1080] after a reload the start popup offers Begin only (Begin)
+PASS [1920x1080] after a reload Play Panjim is at 2026, the first build
+PASS [1920x1080] after a reload the menu: Tutorial | Play Panjim
+PASS [1920x1080] axe-core, the menu: no serious or critical violations
+PASS [1920x1080] Play Panjim from the menu starts at 2026, the first build
+PASS [1920x1080] the Tutorial's card: Try again | Play Panjim | Back to the menu
+PASS [1920x1080] axe-core, the Tutorial's result card: no serious or critical violations
+PASS [1920x1080] Try again starts the Tutorial over: its start popup, the first build, no storm landed
+PASS [1920x1080] the Tutorial plays again from 2026
+localStorage at the end: (none)
+PASS [1920x1080] no key about progress was written
+PASS [1920x1080] console errors: 0
+=== exit 0 (15:42:24)
+=== s28-1366x768 (15:42:24)
+planned: 0 stars 0/9, 0 stars 1/65, 1 stars 6/19
+PASS [1366x768] the old saved run, stars and Field Guide are cleared on load (left: none)
+PASS [1366x768] the start popup offers Begin only (Begin)
+PASS [1366x768] axe-core, the start popup: no serious or critical violations
+PASS [1366x768] 2030: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [1366x768] 2040: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [1366x768] axe-core, a result card with Try this storm again: no serious or critical violations
+PASS [1366x768] after "Try this storm again" on the 2040 flood: 2031, the run equals the phase's start snapshot ({"year":2031,"landed":["c1-cyclone"],"equal":true,"turn":5,"outcomes":1,"clock":"\n      \n        2031Year 6 of 25\n      \n      \n      \n        \n        20302035204020452050\n        ☆☆☆Flood in 10 builds●●●\n        \n      \n      Next: Monsoon flood in 2040, strong\n      \n    \n      Homes at risk 64\n      Flood in 10 builds\n      \n        Skip this year\n      \n    "})
+PASS [1366x768] axe-core, the board after a retry: no serious or critical violations
+PASS [1366x768] 2050: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [1366x768] a card 1 with the retry button for every storm (2030, 2040, 2050)
+PASS [1366x768] the final card is shown
+PASS [1366x768] the final card: Play again, Back to the menu
+PASS [1366x768] the replayed flood goes as planned: 0/9, 1/65, 6/19
+PASS [1366x768] axe-core, the final card: no serious or critical violations
+PASS [1366x768] Play again starts a new run in 2026
+PASS [1366x768] three builds in: 2029
+PASS [1366x768] after a reload the start popup offers Begin only (Begin)
+PASS [1366x768] after a reload Play Panjim is at 2026, the first build
+PASS [1366x768] after a reload the menu: Tutorial | Play Panjim
+PASS [1366x768] axe-core, the menu: no serious or critical violations
+PASS [1366x768] Play Panjim from the menu starts at 2026, the first build
+PASS [1366x768] the Tutorial's card: Try again | Play Panjim | Back to the menu
+PASS [1366x768] axe-core, the Tutorial's result card: no serious or critical violations
+PASS [1366x768] Try again starts the Tutorial over: its start popup, the first build, no storm landed
+PASS [1366x768] the Tutorial plays again from 2026
+localStorage at the end: (none)
+PASS [1366x768] no key about progress was written
+PASS [1366x768] console errors: 0
+=== exit 0 (16:11:32)
+=== play-1920x1080 (16:11:32)
+PASS [1920x1080] the menu offers Tutorial and Play Panjim only (Tutorial, Play Panjim)
+PASS [1920x1080] landing: no dots or hyphens between words
+PASS [1920x1080] landing: nothing cut off, scrolling or off screen
+PASS [1920x1080] start popup: no dots or hyphens between words
+PASS [1920x1080] start popup: nothing cut off, scrolling or off screen
+PASS [1920x1080] the board in 2026: no dots or hyphens between words
+PASS [1920x1080] the board in 2026: nothing cut off, scrolling or off screen
+PASS [1920x1080] Esc with nothing open asks to leave Panjim
+PASS [1920x1080] the ☰ menu: no dots or hyphens between words
+PASS [1920x1080] the ☰ menu: nothing cut off, scrolling or off screen
+PASS [1920x1080] Esc closes the ☰ menu
+PASS [1920x1080] Help: no dots or hyphens between words
+PASS [1920x1080] Help: nothing cut off, scrolling or off screen
+PASS [1920x1080] Esc closes Help
+PASS [1920x1080] Field Guide: no dots or hyphens between words
+PASS [1920x1080] Field Guide: nothing cut off, scrolling or off screen
+PASS [1920x1080] build menu on beach: no dots or hyphens between words
+PASS [1920x1080] build menu on beach: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on beach
+PASS [1920x1080] build menu on wetland: no dots or hyphens between words
+PASS [1920x1080] build menu on wetland: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on wetland
+PASS [1920x1080] build menu on river: no dots or hyphens between words
+PASS [1920x1080] build menu on river: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on river
+PASS [1920x1080] build menu on coast: no dots or hyphens between words
+PASS [1920x1080] build menu on coast: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on coast
+PASS [1920x1080] build menu on land: no dots or hyphens between words
+PASS [1920x1080] build menu on land: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on land
+PASS [1920x1080] the north bank: its note only ("North of the Mandovi: not part of this game")
+PASS [1920x1080] the east edge: its note only ("Outside Panjim, not part of this game")
+PASS [1920x1080] a landmark: its note only ("Our Lady of the Immaculate Conception LANDMARK A Panjim land")
+PASS [1920x1080] a build ends the year: 2027
+PASS [1920x1080] after a reload the start popup offers Begin only (Begin)
+PASS [1920x1080] after a reload the run starts at 2026
+PASS [1920x1080] two tabs each play on (first 2027, second 2027)
+PASS [1920x1080] the second tab: no console errors or warnings
+PASS [1920x1080] a storm is playing
+PASS [1920x1080] after a resize mid storm the board fills the window again (1920x1080)
+PASS [1920x1080] reloading mid storm starts fresh: Begin only (Begin)
+PASS [1920x1080] reload mid storm: a fresh run at 2026
+PASS [1920x1080] a result card is open
+PASS [1920x1080] Help over a result card closes back to the card
+PASS [1920x1080] reloading over a result card starts fresh: Begin only (Begin)
+PASS [1920x1080] landing, input and edges: no console errors or warnings
+PASS [1920x1080] none c1-cyclone: the card reads 0 of 9 homes saved, as the storm resolved
+PASS [1920x1080] none c1-cyclone: 9 new ruins, the 9 homes it destroyed
+PASS [1920x1080] none c1-cyclone result card: no dots or hyphens between words
+PASS [1920x1080] none c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] none c1-cyclone: Esc does not drop the result cards
+PASS [1920x1080] none c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [1920x1080] none c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [1920x1080] none c2-flood result card: no dots or hyphens between words
+PASS [1920x1080] none c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] none c2-flood: Esc does not drop the result cards
+PASS [1920x1080] none c3-compound: the card reads 0 of 18 homes saved, as the storm resolved
+PASS [1920x1080] none c3-compound: 18 new ruins, the 18 homes it destroyed
+PASS [1920x1080] none c3-compound result card: no dots or hyphens between words
+PASS [1920x1080] none c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] none c3-compound: Esc does not drop the result cards
+PASS [1920x1080] none: the run reaches the final card (25 builds, year 2050)
+PASS [1920x1080] none final card: no dots or hyphens between words
+PASS [1920x1080] none final card: nothing cut off, scrolling or off screen
+INFO [1920x1080] none: stars 0 / 0 / 0, ruins 92
+PASS [1920x1080] none: the final card offers Play again (Play again, Back to the menu)
+PASS [1920x1080] none: no console errors or warnings
+PASS [1920x1080] random c1-cyclone: the card reads 0 of 9 homes saved, as the storm resolved
+PASS [1920x1080] random c1-cyclone: 9 new ruins, the 9 homes it destroyed
+PASS [1920x1080] random c1-cyclone result card: no dots or hyphens between words
+PASS [1920x1080] random c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] random c1-cyclone: Esc does not drop the result cards
+PASS [1920x1080] random c2-flood: the card reads 4 of 65 homes saved, as the storm resolved
+PASS [1920x1080] random c2-flood: 61 new ruins, the 61 homes it destroyed
+PASS [1920x1080] random c2-flood result card: no dots or hyphens between words
+PASS [1920x1080] random c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] random c2-flood: Esc does not drop the result cards
+PASS [1920x1080] random c3-compound: the card reads 4 of 21 homes saved, as the storm resolved
+PASS [1920x1080] random c3-compound: 17 new ruins, the 17 homes it destroyed
+PASS [1920x1080] random c3-compound result card: no dots or hyphens between words
+PASS [1920x1080] random c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] random c3-compound: Esc does not drop the result cards
+PASS [1920x1080] random: the run reaches the final card (25 builds, year 2050)
+PASS [1920x1080] random final card: no dots or hyphens between words
+PASS [1920x1080] random final card: nothing cut off, scrolling or off screen
+INFO [1920x1080] random: stars 0 / 0 / 0, ruins 87
+PASS [1920x1080] random: the final card offers Play again (Play again, Back to the menu)
+PASS [1920x1080] random: no console errors or warnings
+PASS [1920x1080] nature c1-cyclone: the card reads 9 of 9 homes saved, as the storm resolved
+PASS [1920x1080] nature c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [1920x1080] nature c1-cyclone result card: no dots or hyphens between words
+PASS [1920x1080] nature c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] nature c1-cyclone: Esc does not drop the result cards
+PASS [1920x1080] nature c2-flood: the card reads 43 of 65 homes saved, as the storm resolved
+PASS [1920x1080] nature c2-flood: 22 new ruins, the 22 homes it destroyed
+PASS [1920x1080] nature c2-flood result card: no dots or hyphens between words
+PASS [1920x1080] nature c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] nature c2-flood: Esc does not drop the result cards
+PASS [1920x1080] nature c3-compound: the card reads 43 of 53 homes saved, as the storm resolved
+PASS [1920x1080] nature c3-compound: 10 new ruins, the 10 homes it destroyed
+PASS [1920x1080] nature c3-compound result card: no dots or hyphens between words
+PASS [1920x1080] nature c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] nature c3-compound: Esc does not drop the result cards
+PASS [1920x1080] nature: the run reaches the final card (25 builds, year 2050)
+PASS [1920x1080] nature final card: no dots or hyphens between words
+PASS [1920x1080] nature final card: nothing cut off, scrolling or off screen
+INFO [1920x1080] nature: stars 1 / 2 / 2, ruins 32
+PASS [1920x1080] nature: the final card offers Play again (Play again, Back to the menu)
+PASS [1920x1080] nature: no console errors or warnings
+INFO [1920x1080] seawalls: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1920x1080] seawalls c1-cyclone: the card reads 5 of 9 homes saved, as the storm resolved
+PASS [1920x1080] seawalls c1-cyclone: 4 new ruins, the 4 homes it destroyed
+PASS [1920x1080] seawalls c1-cyclone result card: no dots or hyphens between words
+PASS [1920x1080] seawalls c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] seawalls c1-cyclone: Esc does not drop the result cards
+PASS [1920x1080] seawalls c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [1920x1080] seawalls c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [1920x1080] seawalls c2-flood result card: no dots or hyphens between words
+PASS [1920x1080] seawalls c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] seawalls c2-flood: Esc does not drop the result cards
+PASS [1920x1080] seawalls c3-compound: the card reads 6 of 18 homes saved, as the storm resolved
+PASS [1920x1080] seawalls c3-compound: 12 new ruins, the 12 homes it destroyed
+PASS [1920x1080] seawalls c3-compound result card: no dots or hyphens between words
+PASS [1920x1080] seawalls c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] seawalls c3-compound: Esc does not drop the result cards
+PASS [1920x1080] seawalls: the run reaches the final card (25 builds, year 2050)
+PASS [1920x1080] seawalls final card: no dots or hyphens between words
+PASS [1920x1080] seawalls final card: nothing cut off, scrolling or off screen
+INFO [1920x1080] seawalls: stars 1 / 0 / 1, ruins 81
+PASS [1920x1080] seawalls: the final card offers Play again (Play again, Back to the menu)
+PASS [1920x1080] seawalls: no console errors or warnings
+INFO [1920x1080] well: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1920x1080] well c1-cyclone: the card reads 9 of 9 homes saved, as the storm resolved
+PASS [1920x1080] well c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [1920x1080] well c1-cyclone result card: no dots or hyphens between words
+PASS [1920x1080] well c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] well c1-cyclone: Esc does not drop the result cards
+PASS [1920x1080] well c2-flood: the card reads 45 of 65 homes saved, as the storm resolved
+PASS [1920x1080] well c2-flood: 20 new ruins, the 20 homes it destroyed
+PASS [1920x1080] well c2-flood result card: no dots or hyphens between words
+PASS [1920x1080] well c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] well c2-flood: Esc does not drop the result cards
+PASS [1920x1080] well c3-compound: the card reads 45 of 55 homes saved, as the storm resolved
+PASS [1920x1080] well c3-compound: 10 new ruins, the 10 homes it destroyed
+PASS [1920x1080] well c3-compound result card: no dots or hyphens between words
+PASS [1920x1080] well c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1920x1080] well c3-compound: Esc does not drop the result cards
+PASS [1920x1080] well: the run reaches the final card (25 builds, year 2050)
+PASS [1920x1080] well final card: no dots or hyphens between words
+PASS [1920x1080] well final card: nothing cut off, scrolling or off screen
+INFO [1920x1080] well: stars 3 / 2 / 2, ruins 30
+PASS [1920x1080] well: the final card offers Play again (Play again, Back to the menu)
+PASS [1920x1080] well: no console errors or warnings
+ALL PASS (1920x1080)
+=== exit 0 (16:45:06)
+=== play-1366x768 (16:45:06)
+PASS [1366x768] the menu offers Tutorial and Play Panjim only (Tutorial, Play Panjim)
+PASS [1366x768] landing: no dots or hyphens between words
+PASS [1366x768] landing: nothing cut off, scrolling or off screen
+PASS [1366x768] start popup: no dots or hyphens between words
+PASS [1366x768] start popup: nothing cut off, scrolling or off screen
+PASS [1366x768] the board in 2026: no dots or hyphens between words
+PASS [1366x768] the board in 2026: nothing cut off, scrolling or off screen
+PASS [1366x768] Esc with nothing open asks to leave Panjim
+PASS [1366x768] the ☰ menu: no dots or hyphens between words
+PASS [1366x768] the ☰ menu: nothing cut off, scrolling or off screen
+PASS [1366x768] Esc closes the ☰ menu
+PASS [1366x768] Help: no dots or hyphens between words
+PASS [1366x768] Help: nothing cut off, scrolling or off screen
+PASS [1366x768] Esc closes Help
+PASS [1366x768] Field Guide: no dots or hyphens between words
+PASS [1366x768] Field Guide: nothing cut off, scrolling or off screen
+PASS [1366x768] build menu on beach: no dots or hyphens between words
+PASS [1366x768] build menu on beach: nothing cut off, scrolling or off screen
+PASS [1366x768] a build menu opens on beach
+PASS [1366x768] build menu on wetland: no dots or hyphens between words
+PASS [1366x768] build menu on wetland: nothing cut off, scrolling or off screen
+PASS [1366x768] a build menu opens on wetland
+PASS [1366x768] build menu on river: no dots or hyphens between words
+PASS [1366x768] build menu on river: nothing cut off, scrolling or off screen
+PASS [1366x768] a build menu opens on river
+PASS [1366x768] build menu on coast: no dots or hyphens between words
+PASS [1366x768] build menu on coast: nothing cut off, scrolling or off screen
+PASS [1366x768] a build menu opens on coast
+PASS [1366x768] build menu on land: no dots or hyphens between words
+PASS [1366x768] build menu on land: nothing cut off, scrolling or off screen
+PASS [1366x768] a build menu opens on land
+PASS [1366x768] the north bank: its note only ("North of the Mandovi: not part of this game")
+PASS [1366x768] the east edge: its note only ("Outside Panjim, not part of this game")
+PASS [1366x768] a landmark: its note only ("Our Lady of the Immaculate Conception LANDMARK A Panjim land")
+PASS [1366x768] a build ends the year: 2027
+PASS [1366x768] after a reload the start popup offers Begin only (Begin)
+PASS [1366x768] after a reload the run starts at 2026
+PASS [1366x768] two tabs each play on (first 2027, second 2027)
+PASS [1366x768] the second tab: no console errors or warnings
+PASS [1366x768] a storm is playing
+PASS [1366x768] after a resize mid storm the board fills the window again (1366x768)
+PASS [1366x768] reloading mid storm starts fresh: Begin only (Begin)
+PASS [1366x768] reload mid storm: a fresh run at 2026
+PASS [1366x768] a result card is open
+PASS [1366x768] Help over a result card closes back to the card
+PASS [1366x768] reloading over a result card starts fresh: Begin only (Begin)
+PASS [1366x768] landing, input and edges: no console errors or warnings
+INFO [1366x768] none: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1366x768] none c1-cyclone: the card reads 0 of 9 homes saved, as the storm resolved
+PASS [1366x768] none c1-cyclone: 9 new ruins, the 9 homes it destroyed
+PASS [1366x768] none c1-cyclone result card: no dots or hyphens between words
+PASS [1366x768] none c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1366x768] none c1-cyclone: Esc does not drop the result cards
+PASS [1366x768] none c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [1366x768] none c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [1366x768] none c2-flood result card: no dots or hyphens between words
+PASS [1366x768] none c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1366x768] none c2-flood: Esc does not drop the result cards
+PASS [1366x768] none c3-compound: the card reads 0 of 18 homes saved, as the storm resolved
+PASS [1366x768] none c3-compound: 18 new ruins, the 18 homes it destroyed
+PASS [1366x768] none c3-compound result card: no dots or hyphens between words
+PASS [1366x768] none c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1366x768] none c3-compound: Esc does not drop the result cards
+PASS [1366x768] none: the run reaches the final card (25 builds, year 2050)
+PASS [1366x768] none final card: no dots or hyphens between words
+PASS [1366x768] none final card: nothing cut off, scrolling or off screen
+INFO [1366x768] none: stars 0 / 0 / 0, ruins 92
+PASS [1366x768] none: the final card offers Play again (Play again, Back to the menu)
+PASS [1366x768] none: no console errors or warnings
+PASS [1366x768] random c1-cyclone: the card reads 0 of 9 homes saved, as the storm resolved
+PASS [1366x768] random c1-cyclone: 9 new ruins, the 9 homes it destroyed
+PASS [1366x768] random c1-cyclone result card: no dots or hyphens between words
+PASS [1366x768] random c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1366x768] random c1-cyclone: Esc does not drop the result cards
+PASS [1366x768] random c2-flood: the card reads 4 of 65 homes saved, as the storm resolved
+PASS [1366x768] random c2-flood: 61 new ruins, the 61 homes it destroyed
+PASS [1366x768] random c2-flood result card: no dots or hyphens between words
+PASS [1366x768] random c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1366x768] random c2-flood: Esc does not drop the result cards
+PASS [1366x768] random c3-compound: the card reads 4 of 21 homes saved, as the storm resolved
+PASS [1366x768] random c3-compound: 17 new ruins, the 17 homes it destroyed
+PASS [1366x768] random c3-compound result card: no dots or hyphens between words
+PASS [1366x768] random c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1366x768] random c3-compound: Esc does not drop the result cards
+PASS [1366x768] random: the run reaches the final card (25 builds, year 2050)
+PASS [1366x768] random final card: no dots or hyphens between words
+PASS [1366x768] random final card: nothing cut off, scrolling or off screen
+INFO [1366x768] random: stars 0 / 0 / 0, ruins 87
+PASS [1366x768] random: the final card offers Play again (Play again, Back to the menu)
+PASS [1366x768] random: no console errors or warnings
+INFO [1366x768] nature: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1366x768] nature c1-cyclone: the card reads 9 of 9 homes saved, as the storm resolved
+PASS [1366x768] nature c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [1366x768] nature c1-cyclone result card: no dots or hyphens between words
+PASS [1366x768] nature c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1366x768] nature c1-cyclone: Esc does not drop the result cards
+PASS [1366x768] nature c2-flood: the card reads 43 of 65 homes saved, as the storm resolved
+PASS [1366x768] nature c2-flood: 22 new ruins, the 22 homes it destroyed
+PASS [1366x768] nature c2-flood result card: no dots or hyphens between words
+PASS [1366x768] nature c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1366x768] nature c2-flood: Esc does not drop the result cards
+PASS [1366x768] nature c3-compound: the card reads 43 of 53 homes saved, as the storm resolved
+PASS [1366x768] nature c3-compound: 10 new ruins, the 10 homes it destroyed
+PASS [1366x768] nature c3-compound result card: no dots or hyphens between words
+PASS [1366x768] nature c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1366x768] nature c3-compound: Esc does not drop the result cards
+PASS [1366x768] nature: the run reaches the final card (25 builds, year 2050)
+PASS [1366x768] nature final card: no dots or hyphens between words
+PASS [1366x768] nature final card: nothing cut off, scrolling or off screen
+INFO [1366x768] nature: stars 1 / 2 / 2, ruins 32
+PASS [1366x768] nature: the final card offers Play again (Play again, Back to the menu)
+PASS [1366x768] nature: no console errors or warnings
+INFO [1366x768] seawalls: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1366x768] seawalls c1-cyclone: the card reads 5 of 9 homes saved, as the storm resolved
+PASS [1366x768] seawalls c1-cyclone: 4 new ruins, the 4 homes it destroyed
+PASS [1366x768] seawalls c1-cyclone result card: no dots or hyphens between words
+PASS [1366x768] seawalls c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1366x768] seawalls c1-cyclone: Esc does not drop the result cards
+PASS [1366x768] seawalls c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [1366x768] seawalls c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [1366x768] seawalls c2-flood result card: no dots or hyphens between words
+PASS [1366x768] seawalls c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1366x768] seawalls c2-flood: Esc does not drop the result cards
+PASS [1366x768] seawalls c3-compound: the card reads 6 of 18 homes saved, as the storm resolved
+PASS [1366x768] seawalls c3-compound: 12 new ruins, the 12 homes it destroyed
+PASS [1366x768] seawalls c3-compound result card: no dots or hyphens between words
+PASS [1366x768] seawalls c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1366x768] seawalls c3-compound: Esc does not drop the result cards
+PASS [1366x768] seawalls: the run reaches the final card (25 builds, year 2050)
+PASS [1366x768] seawalls final card: no dots or hyphens between words
+PASS [1366x768] seawalls final card: nothing cut off, scrolling or off screen
+INFO [1366x768] seawalls: stars 1 / 0 / 1, ruins 81
+PASS [1366x768] seawalls: the final card offers Play again (Play again, Back to the menu)
+PASS [1366x768] seawalls: no console errors or warnings
+INFO [1366x768] well: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1366x768] well c1-cyclone: the card reads 9 of 9 homes saved, as the storm resolved
+PASS [1366x768] well c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [1366x768] well c1-cyclone result card: no dots or hyphens between words
+PASS [1366x768] well c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1366x768] well c1-cyclone: Esc does not drop the result cards
+PASS [1366x768] well c2-flood: the card reads 45 of 65 homes saved, as the storm resolved
+PASS [1366x768] well c2-flood: 20 new ruins, the 20 homes it destroyed
+PASS [1366x768] well c2-flood result card: no dots or hyphens between words
+PASS [1366x768] well c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1366x768] well c2-flood: Esc does not drop the result cards
+PASS [1366x768] well c3-compound: the card reads 45 of 55 homes saved, as the storm resolved
+PASS [1366x768] well c3-compound: 10 new ruins, the 10 homes it destroyed
+PASS [1366x768] well c3-compound result card: no dots or hyphens between words
+PASS [1366x768] well c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1366x768] well c3-compound: Esc does not drop the result cards
+PASS [1366x768] well: the run reaches the final card (25 builds, year 2050)
+PASS [1366x768] well final card: no dots or hyphens between words
+PASS [1366x768] well final card: nothing cut off, scrolling or off screen
+INFO [1366x768] well: stars 3 / 2 / 2, ruins 30
+PASS [1366x768] well: the final card offers Play again (Play again, Back to the menu)
+PASS [1366x768] well: no console errors or warnings
+ALL PASS (1366x768)
+=== exit 0 (17:05:51)
+=== play-1280x600 (17:05:51)
+PASS [1280x600] the menu offers Tutorial and Play Panjim only (Tutorial, Play Panjim)
+PASS [1280x600] landing: no dots or hyphens between words
+PASS [1280x600] landing: nothing cut off, scrolling or off screen
+PASS [1280x600] start popup: no dots or hyphens between words
+PASS [1280x600] start popup: nothing cut off, scrolling or off screen
+PASS [1280x600] the board in 2026: no dots or hyphens between words
+PASS [1280x600] the board in 2026: nothing cut off, scrolling or off screen
+PASS [1280x600] Esc with nothing open asks to leave Panjim
+PASS [1280x600] the ☰ menu: no dots or hyphens between words
+PASS [1280x600] the ☰ menu: nothing cut off, scrolling or off screen
+PASS [1280x600] Esc closes the ☰ menu
+PASS [1280x600] Help: no dots or hyphens between words
+PASS [1280x600] Help: nothing cut off, scrolling or off screen
+PASS [1280x600] Esc closes Help
+PASS [1280x600] Field Guide: no dots or hyphens between words
+PASS [1280x600] Field Guide: nothing cut off, scrolling or off screen
+PASS [1280x600] build menu on beach: no dots or hyphens between words
+PASS [1280x600] build menu on beach: nothing cut off, scrolling or off screen
+PASS [1280x600] a build menu opens on beach
+PASS [1280x600] build menu on wetland: no dots or hyphens between words
+PASS [1280x600] build menu on wetland: nothing cut off, scrolling or off screen
+PASS [1280x600] a build menu opens on wetland
+PASS [1280x600] build menu on river: no dots or hyphens between words
+PASS [1280x600] build menu on river: nothing cut off, scrolling or off screen
+PASS [1280x600] a build menu opens on river
+PASS [1280x600] build menu on coast: no dots or hyphens between words
+PASS [1280x600] build menu on coast: nothing cut off, scrolling or off screen
+PASS [1280x600] a build menu opens on coast
+PASS [1280x600] build menu on land: no dots or hyphens between words
+PASS [1280x600] build menu on land: nothing cut off, scrolling or off screen
+PASS [1280x600] a build menu opens on land
+PASS [1280x600] the north bank: its note only ("North of the Mandovi: not part of this game")
+PASS [1280x600] the east edge: its note only ("Outside Panjim, not part of this game")
+PASS [1280x600] a landmark: its note only ("Our Lady of the Immaculate Conception LANDMARK A Panjim land")
+PASS [1280x600] a build ends the year: 2027
+PASS [1280x600] after a reload the start popup offers Begin only (Begin)
+PASS [1280x600] after a reload the run starts at 2026
+PASS [1280x600] two tabs each play on (first 2027, second 2027)
+PASS [1280x600] the second tab: no console errors or warnings
+PASS [1280x600] a storm is playing
+PASS [1280x600] after a resize mid storm the board fills the window again (1280x600)
+PASS [1280x600] reloading mid storm starts fresh: Begin only (Begin)
+PASS [1280x600] reload mid storm: a fresh run at 2026
+PASS [1280x600] a result card is open
+PASS [1280x600] Help over a result card closes back to the card
+PASS [1280x600] reloading over a result card starts fresh: Begin only (Begin)
+PASS [1280x600] landing, input and edges: no console errors or warnings
+INFO [1280x600] none: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1280x600] none c1-cyclone: the card reads 0 of 9 homes saved, as the storm resolved
+PASS [1280x600] none c1-cyclone: 9 new ruins, the 9 homes it destroyed
+PASS [1280x600] none c1-cyclone result card: no dots or hyphens between words
+PASS [1280x600] none c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1280x600] none c1-cyclone: Esc does not drop the result cards
+PASS [1280x600] none c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [1280x600] none c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [1280x600] none c2-flood result card: no dots or hyphens between words
+PASS [1280x600] none c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1280x600] none c2-flood: Esc does not drop the result cards
+PASS [1280x600] none c3-compound: the card reads 0 of 18 homes saved, as the storm resolved
+PASS [1280x600] none c3-compound: 18 new ruins, the 18 homes it destroyed
+PASS [1280x600] none c3-compound result card: no dots or hyphens between words
+PASS [1280x600] none c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1280x600] none c3-compound: Esc does not drop the result cards
+PASS [1280x600] none: the run reaches the final card (25 builds, year 2050)
+PASS [1280x600] none final card: no dots or hyphens between words
+PASS [1280x600] none final card: nothing cut off, scrolling or off screen
+INFO [1280x600] none: stars 0 / 0 / 0, ruins 92
+PASS [1280x600] none: the final card offers Play again (Play again, Back to the menu)
+PASS [1280x600] none: no console errors or warnings
+INFO [1280x600] random: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1280x600] random c1-cyclone: the card reads 0 of 9 homes saved, as the storm resolved
+PASS [1280x600] random c1-cyclone: 9 new ruins, the 9 homes it destroyed
+PASS [1280x600] random c1-cyclone result card: no dots or hyphens between words
+PASS [1280x600] random c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1280x600] random c1-cyclone: Esc does not drop the result cards
+PASS [1280x600] random c2-flood: the card reads 4 of 65 homes saved, as the storm resolved
+PASS [1280x600] random c2-flood: 61 new ruins, the 61 homes it destroyed
+PASS [1280x600] random c2-flood result card: no dots or hyphens between words
+PASS [1280x600] random c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1280x600] random c2-flood: Esc does not drop the result cards
+PASS [1280x600] random c3-compound: the card reads 4 of 21 homes saved, as the storm resolved
+PASS [1280x600] random c3-compound: 17 new ruins, the 17 homes it destroyed
+PASS [1280x600] random c3-compound result card: no dots or hyphens between words
+PASS [1280x600] random c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1280x600] random c3-compound: Esc does not drop the result cards
+PASS [1280x600] random: the run reaches the final card (25 builds, year 2050)
+PASS [1280x600] random final card: no dots or hyphens between words
+PASS [1280x600] random final card: nothing cut off, scrolling or off screen
+INFO [1280x600] random: stars 0 / 0 / 0, ruins 87
+PASS [1280x600] random: the final card offers Play again (Play again, Back to the menu)
+PASS [1280x600] random: no console errors or warnings
+INFO [1280x600] nature: a layer was open during the storm; Esc shuts it and the storm goes on
+PASS [1280x600] nature c1-cyclone: the card reads 9 of 9 homes saved, as the storm resolved
+PASS [1280x600] nature c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [1280x600] nature c1-cyclone result card: no dots or hyphens between words
+PASS [1280x600] nature c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1280x600] nature c1-cyclone: Esc does not drop the result cards
+PASS [1280x600] nature c2-flood: the card reads 43 of 65 homes saved, as the storm resolved
+PASS [1280x600] nature c2-flood: 22 new ruins, the 22 homes it destroyed
+PASS [1280x600] nature c2-flood result card: no dots or hyphens between words
+PASS [1280x600] nature c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1280x600] nature c2-flood: Esc does not drop the result cards
+PASS [1280x600] nature c3-compound: the card reads 43 of 53 homes saved, as the storm resolved
+PASS [1280x600] nature c3-compound: 10 new ruins, the 10 homes it destroyed
+PASS [1280x600] nature c3-compound result card: no dots or hyphens between words
+PASS [1280x600] nature c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1280x600] nature c3-compound: Esc does not drop the result cards
+PASS [1280x600] nature: the run reaches the final card (25 builds, year 2050)
+PASS [1280x600] nature final card: no dots or hyphens between words
+PASS [1280x600] nature final card: nothing cut off, scrolling or off screen
+INFO [1280x600] nature: stars 1 / 2 / 2, ruins 32
+PASS [1280x600] nature: the final card offers Play again (Play again, Back to the menu)
+PASS [1280x600] nature: no console errors or warnings
+PASS [1280x600] seawalls c1-cyclone: the card reads 5 of 9 homes saved, as the storm resolved
+PASS [1280x600] seawalls c1-cyclone: 4 new ruins, the 4 homes it destroyed
+PASS [1280x600] seawalls c1-cyclone result card: no dots or hyphens between words
+PASS [1280x600] seawalls c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1280x600] seawalls c1-cyclone: Esc does not drop the result cards
+PASS [1280x600] seawalls c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [1280x600] seawalls c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [1280x600] seawalls c2-flood result card: no dots or hyphens between words
+PASS [1280x600] seawalls c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1280x600] seawalls c2-flood: Esc does not drop the result cards
+PASS [1280x600] seawalls c3-compound: the card reads 6 of 18 homes saved, as the storm resolved
+PASS [1280x600] seawalls c3-compound: 12 new ruins, the 12 homes it destroyed
+PASS [1280x600] seawalls c3-compound result card: no dots or hyphens between words
+PASS [1280x600] seawalls c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1280x600] seawalls c3-compound: Esc does not drop the result cards
+PASS [1280x600] seawalls: the run reaches the final card (25 builds, year 2050)
+PASS [1280x600] seawalls final card: no dots or hyphens between words
+PASS [1280x600] seawalls final card: nothing cut off, scrolling or off screen
+INFO [1280x600] seawalls: stars 1 / 0 / 1, ruins 81
+PASS [1280x600] seawalls: the final card offers Play again (Play again, Back to the menu)
+PASS [1280x600] seawalls: no console errors or warnings
+PASS [1280x600] well c1-cyclone: the card reads 9 of 9 homes saved, as the storm resolved
+PASS [1280x600] well c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [1280x600] well c1-cyclone result card: no dots or hyphens between words
+PASS [1280x600] well c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [1280x600] well c1-cyclone: Esc does not drop the result cards
+PASS [1280x600] well c2-flood: the card reads 45 of 65 homes saved, as the storm resolved
+PASS [1280x600] well c2-flood: 20 new ruins, the 20 homes it destroyed
+PASS [1280x600] well c2-flood result card: no dots or hyphens between words
+PASS [1280x600] well c2-flood result card: nothing cut off, scrolling or off screen
+PASS [1280x600] well c2-flood: Esc does not drop the result cards
+PASS [1280x600] well c3-compound: the card reads 45 of 55 homes saved, as the storm resolved
+PASS [1280x600] well c3-compound: 10 new ruins, the 10 homes it destroyed
+PASS [1280x600] well c3-compound result card: no dots or hyphens between words
+PASS [1280x600] well c3-compound result card: nothing cut off, scrolling or off screen
+PASS [1280x600] well c3-compound: Esc does not drop the result cards
+PASS [1280x600] well: the run reaches the final card (25 builds, year 2050)
+PASS [1280x600] well final card: no dots or hyphens between words
+PASS [1280x600] well final card: nothing cut off, scrolling or off screen
+INFO [1280x600] well: stars 3 / 2 / 2, ruins 30
+PASS [1280x600] well: the final card offers Play again (Play again, Back to the menu)
+PASS [1280x600] well: no console errors or warnings
+ALL PASS (1280x600)
+=== exit 0 (17:25:37)
+=== play-2560x1440 (17:25:37)
+PASS [2560x1440] the menu offers Tutorial and Play Panjim only (Tutorial, Play Panjim)
+PASS [2560x1440] landing: no dots or hyphens between words
+PASS [2560x1440] landing: nothing cut off, scrolling or off screen
+PASS [2560x1440] start popup: no dots or hyphens between words
+PASS [2560x1440] start popup: nothing cut off, scrolling or off screen
+PASS [2560x1440] the board in 2026: no dots or hyphens between words
+PASS [2560x1440] the board in 2026: nothing cut off, scrolling or off screen
+PASS [2560x1440] Esc with nothing open asks to leave Panjim
+PASS [2560x1440] the ☰ menu: no dots or hyphens between words
+PASS [2560x1440] the ☰ menu: nothing cut off, scrolling or off screen
+PASS [2560x1440] Esc closes the ☰ menu
+PASS [2560x1440] Help: no dots or hyphens between words
+PASS [2560x1440] Help: nothing cut off, scrolling or off screen
+PASS [2560x1440] Esc closes Help
+PASS [2560x1440] Field Guide: no dots or hyphens between words
+PASS [2560x1440] Field Guide: nothing cut off, scrolling or off screen
+PASS [2560x1440] build menu on beach: no dots or hyphens between words
+PASS [2560x1440] build menu on beach: nothing cut off, scrolling or off screen
+PASS [2560x1440] a build menu opens on beach
+PASS [2560x1440] build menu on wetland: no dots or hyphens between words
+PASS [2560x1440] build menu on wetland: nothing cut off, scrolling or off screen
+PASS [2560x1440] a build menu opens on wetland
+PASS [2560x1440] build menu on river: no dots or hyphens between words
+PASS [2560x1440] build menu on river: nothing cut off, scrolling or off screen
+PASS [2560x1440] a build menu opens on river
+PASS [2560x1440] build menu on coast: no dots or hyphens between words
+PASS [2560x1440] build menu on coast: nothing cut off, scrolling or off screen
+PASS [2560x1440] a build menu opens on coast
+PASS [2560x1440] build menu on land: no dots or hyphens between words
+PASS [2560x1440] build menu on land: nothing cut off, scrolling or off screen
+PASS [2560x1440] a build menu opens on land
+PASS [2560x1440] the north bank: its note only ("North of the Mandovi: not part of this game")
+PASS [2560x1440] the east edge: its note only ("Outside Panjim, not part of this game")
+PASS [2560x1440] a landmark: its note only ("Our Lady of the Immaculate Conception LANDMARK A Panjim land")
+PASS [2560x1440] a build ends the year: 2027
+PASS [2560x1440] after a reload the start popup offers Begin only (Begin)
+PASS [2560x1440] after a reload the run starts at 2026
+PASS [2560x1440] two tabs each play on (first 2027, second 2027)
+PASS [2560x1440] the second tab: no console errors or warnings
+PASS [2560x1440] a storm is playing
+PASS [2560x1440] after a resize mid storm the board fills the window again (2560x1440)
+PASS [2560x1440] reloading mid storm starts fresh: Begin only (Begin)
+PASS [2560x1440] reload mid storm: a fresh run at 2026
+PASS [2560x1440] a result card is open
+PASS [2560x1440] Help over a result card closes back to the card
+PASS [2560x1440] reloading over a result card starts fresh: Begin only (Begin)
+PASS [2560x1440] landing, input and edges: no console errors or warnings
+PASS [2560x1440] none c1-cyclone: the card reads 0 of 9 homes saved, as the storm resolved
+PASS [2560x1440] none c1-cyclone: 9 new ruins, the 9 homes it destroyed
+PASS [2560x1440] none c1-cyclone result card: no dots or hyphens between words
+PASS [2560x1440] none c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] none c1-cyclone: Esc does not drop the result cards
+PASS [2560x1440] none c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [2560x1440] none c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [2560x1440] none c2-flood result card: no dots or hyphens between words
+PASS [2560x1440] none c2-flood result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] none c2-flood: Esc does not drop the result cards
+PASS [2560x1440] none c3-compound: the card reads 0 of 18 homes saved, as the storm resolved
+PASS [2560x1440] none c3-compound: 18 new ruins, the 18 homes it destroyed
+PASS [2560x1440] none c3-compound result card: no dots or hyphens between words
+PASS [2560x1440] none c3-compound result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] none c3-compound: Esc does not drop the result cards
+PASS [2560x1440] none: the run reaches the final card (25 builds, year 2050)
+PASS [2560x1440] none final card: no dots or hyphens between words
+PASS [2560x1440] none final card: nothing cut off, scrolling or off screen
+INFO [2560x1440] none: stars 0 / 0 / 0, ruins 92
+PASS [2560x1440] none: the final card offers Play again (Play again, Back to the menu)
+PASS [2560x1440] none: no console errors or warnings
+PASS [2560x1440] random c1-cyclone: the card reads 0 of 9 homes saved, as the storm resolved
+PASS [2560x1440] random c1-cyclone: 9 new ruins, the 9 homes it destroyed
+PASS [2560x1440] random c1-cyclone result card: no dots or hyphens between words
+PASS [2560x1440] random c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] random c1-cyclone: Esc does not drop the result cards
+PASS [2560x1440] random c2-flood: the card reads 4 of 65 homes saved, as the storm resolved
+PASS [2560x1440] random c2-flood: 61 new ruins, the 61 homes it destroyed
+PASS [2560x1440] random c2-flood result card: no dots or hyphens between words
+PASS [2560x1440] random c2-flood result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] random c2-flood: Esc does not drop the result cards
+PASS [2560x1440] random c3-compound: the card reads 4 of 21 homes saved, as the storm resolved
+PASS [2560x1440] random c3-compound: 17 new ruins, the 17 homes it destroyed
+PASS [2560x1440] random c3-compound result card: no dots or hyphens between words
+PASS [2560x1440] random c3-compound result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] random c3-compound: Esc does not drop the result cards
+PASS [2560x1440] random: the run reaches the final card (25 builds, year 2050)
+PASS [2560x1440] random final card: no dots or hyphens between words
+PASS [2560x1440] random final card: nothing cut off, scrolling or off screen
+INFO [2560x1440] random: stars 0 / 0 / 0, ruins 87
+PASS [2560x1440] random: the final card offers Play again (Play again, Back to the menu)
+PASS [2560x1440] random: no console errors or warnings
+PASS [2560x1440] nature c1-cyclone: the card reads 9 of 9 homes saved, as the storm resolved
+PASS [2560x1440] nature c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [2560x1440] nature c1-cyclone result card: no dots or hyphens between words
+PASS [2560x1440] nature c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] nature c1-cyclone: Esc does not drop the result cards
+PASS [2560x1440] nature c2-flood: the card reads 43 of 65 homes saved, as the storm resolved
+PASS [2560x1440] nature c2-flood: 22 new ruins, the 22 homes it destroyed
+PASS [2560x1440] nature c2-flood result card: no dots or hyphens between words
+PASS [2560x1440] nature c2-flood result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] nature c2-flood: Esc does not drop the result cards
+PASS [2560x1440] nature c3-compound: the card reads 43 of 53 homes saved, as the storm resolved
+PASS [2560x1440] nature c3-compound: 10 new ruins, the 10 homes it destroyed
+PASS [2560x1440] nature c3-compound result card: no dots or hyphens between words
+PASS [2560x1440] nature c3-compound result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] nature c3-compound: Esc does not drop the result cards
+PASS [2560x1440] nature: the run reaches the final card (25 builds, year 2050)
+PASS [2560x1440] nature final card: no dots or hyphens between words
+PASS [2560x1440] nature final card: nothing cut off, scrolling or off screen
+INFO [2560x1440] nature: stars 1 / 2 / 2, ruins 32
+PASS [2560x1440] nature: the final card offers Play again (Play again, Back to the menu)
+PASS [2560x1440] nature: no console errors or warnings
+PASS [2560x1440] seawalls c1-cyclone: the card reads 5 of 9 homes saved, as the storm resolved
+PASS [2560x1440] seawalls c1-cyclone: 4 new ruins, the 4 homes it destroyed
+PASS [2560x1440] seawalls c1-cyclone result card: no dots or hyphens between words
+PASS [2560x1440] seawalls c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] seawalls c1-cyclone: Esc does not drop the result cards
+PASS [2560x1440] seawalls c2-flood: the card reads 0 of 65 homes saved, as the storm resolved
+PASS [2560x1440] seawalls c2-flood: 65 new ruins, the 65 homes it destroyed
+PASS [2560x1440] seawalls c2-flood result card: no dots or hyphens between words
+PASS [2560x1440] seawalls c2-flood result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] seawalls c2-flood: Esc does not drop the result cards
+PASS [2560x1440] seawalls c3-compound: the card reads 6 of 18 homes saved, as the storm resolved
+PASS [2560x1440] seawalls c3-compound: 12 new ruins, the 12 homes it destroyed
+PASS [2560x1440] seawalls c3-compound result card: no dots or hyphens between words
+PASS [2560x1440] seawalls c3-compound result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] seawalls c3-compound: Esc does not drop the result cards
+PASS [2560x1440] seawalls: the run reaches the final card (25 builds, year 2050)
+PASS [2560x1440] seawalls final card: no dots or hyphens between words
+PASS [2560x1440] seawalls final card: nothing cut off, scrolling or off screen
+INFO [2560x1440] seawalls: stars 1 / 0 / 1, ruins 81
+PASS [2560x1440] seawalls: the final card offers Play again (Play again, Back to the menu)
+PASS [2560x1440] seawalls: no console errors or warnings
+PASS [2560x1440] well c1-cyclone: the card reads 9 of 9 homes saved, as the storm resolved
+PASS [2560x1440] well c1-cyclone: 0 new ruins, the 0 homes it destroyed
+PASS [2560x1440] well c1-cyclone result card: no dots or hyphens between words
+PASS [2560x1440] well c1-cyclone result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] well c1-cyclone: Esc does not drop the result cards
+PASS [2560x1440] well c2-flood: the card reads 45 of 65 homes saved, as the storm resolved
+PASS [2560x1440] well c2-flood: 20 new ruins, the 20 homes it destroyed
+PASS [2560x1440] well c2-flood result card: no dots or hyphens between words
+PASS [2560x1440] well c2-flood result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] well c2-flood: Esc does not drop the result cards
+PASS [2560x1440] well c3-compound: the card reads 45 of 55 homes saved, as the storm resolved
+PASS [2560x1440] well c3-compound: 10 new ruins, the 10 homes it destroyed
+PASS [2560x1440] well c3-compound result card: no dots or hyphens between words
+PASS [2560x1440] well c3-compound result card: nothing cut off, scrolling or off screen
+PASS [2560x1440] well c3-compound: Esc does not drop the result cards
+PASS [2560x1440] well: the run reaches the final card (25 builds, year 2050)
+PASS [2560x1440] well final card: no dots or hyphens between words
+PASS [2560x1440] well final card: nothing cut off, scrolling or off screen
+INFO [2560x1440] well: stars 3 / 2 / 2, ruins 30
+PASS [2560x1440] well: the final card offers Play again (Play again, Back to the menu)
+PASS [2560x1440] well: no console errors or warnings
+ALL PASS (2560x1440)
+=== exit 0 (17:58:43)
+ALLDONE
