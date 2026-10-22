@@ -8,7 +8,11 @@
  *   - the Tutorial's result card ("Try again"), which starts the Tutorial over.
  * Every localStorage key the page holds at the end is printed. Console errors must be 0.
  *
- * Usage: npx tsx tools/section28Shots.ts <width> <height> [outDir=docs/qa/section28]
+ * With FULL=1 (the full browser check): axe-core (no serious or critical violations) on the menu, the start popup,
+ * a result card with the retry button, the board after a retry, the final card and the Tutorial's card; and
+ * grayscale and deuteranopia copies of the 2040 result card (the key shot).
+ *
+ * Usage: [FULL=1] npx tsx tools/section28Shots.ts <width> <height> [outDir=docs/qa/section28]
  */
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
@@ -65,6 +69,32 @@ await page.addInitScript(() => {
   }
 });
 const shot = (name: string) => page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 85 });
+const FULL = process.env.FULL === "1";
+async function axe(label: string): Promise<void> {
+  if (!FULL) return;
+  await page.addScriptTag({ path: path.join(ROOT, "node_modules/axe-core/axe.min.js") });
+  const found = (await page.evaluate(`(async () => {
+    const r = await axe.run(document, { resultTypes: ["violations"] });
+    return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id + " x" + v.nodes.length + " " + v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(", "));
+  })()`)) as string[];
+  check(found.length === 0, `axe-core, ${label}: no serious or critical violations${found.length ? `: ${found.join("; ")}` : ""}`);
+}
+const DEUTERANOPIA = "0.367322 0.860646 -0.227968 0 0  0.280085 0.672501 0.047413 0 0  -0.011820 0.042940 0.968881 0 0  0 0 0 1 0";
+/** Grayscale and deuteranopia (Machado 2009) copies of what is on screen. */
+async function copies(name: string): Promise<void> {
+  if (!FULL) return;
+  await page.addStyleTag({ content: "html { filter: grayscale(1) !important; }" });
+  await page.screenshot({ path: path.join(OUT, `${name}-gray-${W}x${H}.jpg`), type: "jpeg", quality: 80 });
+  await page.evaluate(`Array.from(document.querySelectorAll("style")).forEach(function (st) { if ((st.textContent || "").indexOf("grayscale(1) !important") >= 0) st.remove(); })`);
+  await page.evaluate(`(function () {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("style", "position:absolute;width:0;height:0"); svg.id = "qa-cvd-svg";
+    svg.innerHTML = '<filter id="qa-cvd"><feColorMatrix type="matrix" values="${DEUTERANOPIA}"/></filter>';
+    document.body.appendChild(svg); document.documentElement.style.filter = "url(#qa-cvd)";
+  })()`);
+  await page.screenshot({ path: path.join(OUT, `${name}-deut-${W}x${H}.jpg`), type: "jpeg", quality: 80 });
+  await page.evaluate(`(function () { document.documentElement.style.filter = ""; var s = document.getElementById("qa-cvd-svg"); if (s) s.remove(); })()`);
+}
 const T = "window.__panjimForTest";
 
 async function openLevel(id: string): Promise<void> {
@@ -115,6 +145,7 @@ const keysAtStart = (await page.evaluate("Object.keys(localStorage)")) as string
 check(!keysAtStart.some((k) => /panjim2050|progress:v1|field-guide|maya-notes/.test(k)), `the old saved run, stars and Field Guide are cleared on load (left: ${keysAtStart.join(", ") || "none"})`);
 const ctas = (await page.evaluate(`[...document.querySelectorAll(".brief-cta")].map((b) => b.textContent.trim())`)) as string[];
 check(ctas.length === 1 && ctas[0] === "Begin", `the start popup offers Begin only (${ctas.join(", ")})`);
+await axe("the start popup");
 await begin();
 
 const cardsSeen: string[] = [];
@@ -128,6 +159,10 @@ const onCard = async (text: string): Promise<"retry" | "next"> => {
       check(text.startsWith("Try this storm again|See what protected your city"), `${stormYear}: card 1 has "Try this storm again" beside "See what protected your city"`);
       await page.waitForTimeout(600);
       await shot(`result-card-${stormYear}`);
+      if (stormYear === "2040") {
+        await axe("a result card with Try this storm again");
+        await copies("result-card-2040");
+      }
     }
     if (stormYear === "2040" && !retried) {
       retried = true;
@@ -150,6 +185,7 @@ while (i < actions.length) {
     await page.mouse.move(2, H - 2);
     await page.waitForTimeout(2500);
     await shot("board-after-retry-2040");
+    await axe("the board after a retry");
     i = 5; // the flood's build years again: builds 6 to 15
     continue;
   }
@@ -171,6 +207,7 @@ const outcomes = (await page.evaluate(`${T}.run.schedule.map((c) => { const o = 
 check(outcomes.join(",") === expected.map((o) => `${o.housesSaved}/${o.housesTotal}`).join(","), `the replayed flood goes as planned: ${outcomes.join(", ")}`);
 await page.waitForTimeout(800);
 await shot("final-card");
+await axe("the final card");
 // "Play again": a new run from 2026.
 await page.locator(".result-cards:not([hidden]) .result-next").click();
 await page.waitForSelector(".brief-card", { timeout: 120000 });
@@ -199,6 +236,7 @@ await page.goto(`${server.url}/#/`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".menu-actions", { timeout: 60000 });
 const menu = (await page.evaluate(`[...document.querySelectorAll(".menu-actions button")].map((b) => b.textContent.trim())`)) as string[];
 check(menu.length === 2 && /Tutorial/.test(menu[0]) && /Play Panjim/.test(menu[1]), `after a reload the menu: ${menu.join(" | ")}`);
+await axe("the menu");
 await page.locator(".menu-actions button", { hasText: "Play Panjim" }).click();
 await page.waitForSelector(".brief-card", { timeout: 120000 });
 await page.waitForFunction(`!!${T}`, undefined, { timeout: 180000 });
@@ -219,6 +257,7 @@ tutorialCard = (await page.evaluate(`[...document.querySelectorAll(".result-card
 check(/Try again/.test(tutorialCard) && /Play Panjim/.test(tutorialCard), `the Tutorial's card: ${tutorialCard}`);
 await page.waitForTimeout(600);
 await shot("tutorial-card");
+await axe("the Tutorial's result card");
 await page.locator(".result-cards:not([hidden]) .result-retry").click();
 await page.waitForSelector(".brief-card", { timeout: 120000 });
 await page.waitForFunction(`!!${T} && ${T}.tutorial && ${T}.run.turnNumber === 1 && ${T}.run.landed.size === 0`, undefined, { timeout: 180000 });
