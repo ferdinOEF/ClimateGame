@@ -8916,7 +8916,7 @@ The game will be shown at the Emergence festival in Panjim: many people sit, pla
 - Browser QA tools updated for the new rules (`playthrough21`, `riskIntroCheck`, `section12Checks`, `section16Checks`); new `tools/section28Shots.ts`.
 - **Section 28b, the full browser check** (owner's request; `docs/QA_REPORT.md`): walkthrough clean; labels 49 of 49; Maya layout 140 of 140 and `test:maya` 38 (Maya switched on); playthroughs 148 of 148 at each of the four sizes; text and fit 30 of 30 at each size; the Section 28 checks 27 of 27 at each size with axe clean and gray and deuteranopia copies. Tool fixes only (the walkthrough's progress check, a hang in the playthrough tool); no game change.
 
-## Section 29 — Maya visible again, her skin 50% fairer (owner decision) — MERGED (QA in docs/QA_REPORT.md)
+## Section 29 — Maya visible again, her skin 50% fairer (owner decision) — DONE (QA in docs/QA_REPORT.md: the full Maya test passes)
 
 - **Visible:** `SHOW_MAYA` is on by default (`flagOr(VITE_SHOW_MAYA, true)`, `src/services/features.ts`): her figure and bubbles in the Panjim game, the start popup, the Tutorial and the result cards, ☰'s Maya item and M. Section 17c's gates stay, so `VITE_SHOW_MAYA=false` hides her everywhere again.
 - **Skin 50% fairer:** `MAYA_PALETTE` only (she is not redrawn): the base skin halfway to white in CIELAB lightness (L* 64 to 82), the shadow, deep and hand tones moved by the same step so her shading keeps its depth, each a little less saturated. Before: #c98f68, #ab7551, #92603f, #dda882; after: #f5c2a1, #d7a688, #bd9074, #fdcfb0. The cheek colour is unchanged (it reads a little stronger on the lighter skin). Sheets: `docs/qa/section29/before/`, `after/`.
