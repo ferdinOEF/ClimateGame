@@ -1,0 +1,33 @@
+planned: 0 stars 0/9, 0 stars 1/65, 1 stars 6/19
+PASS [2560x1440] the old saved run, stars and Field Guide are cleared on load (left: none)
+PASS [2560x1440] the start popup offers Begin only (Begin)
+PASS [2560x1440] axe-core, the start popup: no serious or critical violations
+PASS [2560x1440] 2030: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [2560x1440] 2040: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [2560x1440] axe-core, a result card with Try this storm again: no serious or critical violations
+PASS [2560x1440] after "Try this storm again" on the 2040 flood: 2031, the run equals the phase's start snapshot ({"year":2031,"landed":["c1-cyclone"],"equal":true,"turn":5,"outcomes":1,"clock":"\n      \n        2031Year 6 of 25\n      \n      \n      \n        \n        20302035204020452050\n        ☆☆☆Flood in 10 builds●●●\n        \n      \n      Next: Monsoon flood in 2040, strong\n      \n    \n      Homes at risk 64\n      Flood in 10 builds\n      \n        Skip this year\n      \n    "})
+PASS [2560x1440] axe-core, the board after a retry: no serious or critical violations
+PASS [2560x1440] 2050: card 1 has "Try this storm again" beside "See what protected your city"
+PASS [2560x1440] a card 1 with the retry button for every storm (2030, 2040, 2050)
+PASS [2560x1440] the final card is shown
+PASS [2560x1440] the final card: Play again, Back to the menu
+PASS [2560x1440] the replayed flood goes as planned: 0/9, 1/65, 6/19
+PASS [2560x1440] axe-core, the final card: no serious or critical violations
+PASS [2560x1440] Play again starts a new run in 2026
+PASS [2560x1440] three builds in: 2029
+PASS [2560x1440] after a reload the start popup offers Begin only (Begin)
+PASS [2560x1440] after a reload Play Panjim is at 2026, the first build
+PASS [2560x1440] after a reload the menu: Tutorial | Play Panjim
+PASS [2560x1440] axe-core, the menu: no serious or critical violations
+PASS [2560x1440] Play Panjim from the menu starts at 2026, the first build
+PASS [2560x1440] the Tutorial's card: Try again | Play Panjim | Back to the menu
+PASS [2560x1440] axe-core, the Tutorial's result card: no serious or critical violations
+PASS [2560x1440] Try again starts the Tutorial over: its start popup, the first build, no storm landed
+PASS [2560x1440] the Tutorial plays again from 2026
+localStorage at the end: (none)
+PASS [2560x1440] no key about progress was written
+PASS [2560x1440] console errors: 0
+
+real	30m8.917s
+user	0m28.775s
+sys	0m8.223s

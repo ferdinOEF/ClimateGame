@@ -182,16 +182,9 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
     problems.push(`[tutorial-next] "Play Panjim" did not open Panaji (at ${page.url()})`);
     return false;
   }
-  const recorded = await page.evaluate(() => {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)!;
-      if (!key.includes("progress")) continue;
-      const value = JSON.parse(localStorage.getItem(key) ?? "{}");
-      if (value.levels?.["l00-tutorial"]?.completed) return true;
-    }
-    return false;
-  });
-  if (!recorded) problems.push("[tutorial-next] the Tutorial was not recorded as completed");
+  // Section 28.2 (owner decision): nothing about progress is saved on the machine, the Tutorial's "done" included.
+  const saved = await page.evaluate(() => Object.keys(localStorage).filter((key) => /progress|panjim2050|field-guide|maya-notes/.test(key)));
+  if (saved.length > 0) problems.push(`[tutorial-next] progress was saved on the machine: ${saved.join(", ")}`);
   log("tutorial: played start to finish, on to Panaji");
   return true;
 }

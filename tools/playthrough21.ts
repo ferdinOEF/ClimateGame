@@ -381,7 +381,6 @@ if (named.get("landing") !== "0") {
   }
   const resumed = await year(page);
   check(resumed === 2026, `reload mid storm: a fresh run at ${resumed}`);
-  await page.evaluate(`window.__panjimScenarioForTest("storm-6")`).catch(() => undefined);
   await page.evaluate(`window.__panjimScenarioForTest("to-results")`).catch(() => undefined);
   for (let k = 0; k < 400 && !(await cardsOpen(page)); k++) await page.waitForTimeout(250);
   check(await cardsOpen(page), "a result card is open");

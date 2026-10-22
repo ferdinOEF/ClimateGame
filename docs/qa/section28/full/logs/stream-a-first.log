@@ -1,0 +1,272 @@
+=== walkthrough (08:34:16)
+
+> riptide-rising@1.0.0 walkthrough
+> tsx tools/walkthrough.ts
+
+Target: http://localhost:5184 (local dev server)
+
+menu
+  shot: tools/screenshots/walkthrough/01-menu.png
+Start went straight to the level — no email sheet
+  shot: tools/screenshots/walkthrough/02-tutorial-1-brief.png
+  shot: tools/screenshots/walkthrough/03-tutorial-2-start.png
+  shot: tools/screenshots/walkthrough/04-tutorial-3-cards.png
+tutorial build 1: mangrove at -1,1 (protects 11)
+  shot: tools/screenshots/walkthrough/05-tutorial-4-outline.png
+tutorial build 2: dune at -1,-1 (protects 6)
+  shot: tools/screenshots/walkthrough/06-tutorial-5-heat.png
+tutorial build 3: dune at -2,1 (protects 1)
+  shot: tools/screenshots/walkthrough/07-tutorial-6-cyclone.png
+  shot: tools/screenshots/walkthrough/08-tutorial-7-result.png
+tutorial result: Tutorial, Cyclone in 2028 Your city came through. ★★★ Every home in the path survived 18 of 18 homes saved What protected them Defences share the work: each num
+tutorial: played start to finish, on to Panaji
+after the Tutorial: Panjim's first-build hint shows, no stale state classes
+☰ → Leave Panjim → Leave returns to the menu
+  shot: tools/screenshots/walkthrough/09-after-leave.png
+browser Back: http://localhost:5184/#/play/l00-tutorial -> http://localhost:5184/ (menu: true)
+  shot: tools/screenshots/walkthrough/10-after-browser-back.png
+Play Panjim: http://localhost:5184/#/play/l01-first-rains, start popup offers Begin
+  shot: tools/screenshots/walkthrough/11-play-panjim.png
+l01-first-rains: "Panjim" on map "panaji", 29 place labels, 16 monuments
+  shot: tools/screenshots/walkthrough/12-level-l01-first-rains.png
+
+1 problem(s):
+ - [tutorial-next] the Tutorial was not recorded as completed
+=== exit 1 (08:35:59)
+=== labels (08:35:59)
+
+> riptide-rising@1.0.0 test:labels
+> tsx tools/labelOverlapTest.ts
+
+PASS  1280x600 zoom 1 (opening view): label layer 0.80 ms median, 5.70 ms max a frame; 6 drawn [Miramar BeachBeach at the river mouth, Campal, Altinho, Fontainhas, Miramar, Taleigao]; dropped or out of view: 23
+PASS  1280x600 zoom 1, church name card: label layer 0.60 ms median, 3.00 ms max a frame; 5 drawn [Our Lady of the Immaculate ConceptionHeritage church, Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 24
+PASS  1280x600 the name card is drawn, ahead of the localities
+PASS  1280x600 zoom 2: label layer 0.70 ms median, 3.20 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1280x600 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1280x600 zoom 2, temple hovered: label layer 0.60 ms median, 1.00 ms max a frame; 8 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 21
+PASS  1280x600 zoom 3 (close): label layer 0.60 ms median, 39.10 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1280x600 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1280x600 zoom 3 after a pan: label layer 0.60 ms median, 1.90 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  1280x600 zoom 2, Maya talking: label layer 0.60 ms median, 4.00 ms max a frame; 5 drawn [Altinho, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1280x600 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1280x600 warning showing: label layer 0.60 ms median, 2.70 ms max a frame; 6 drawn [Campal, Altinho, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 23
+PASS  1366x768 zoom 1 (opening view): label layer 0.70 ms median, 5.00 ms max a frame; 6 drawn [Miramar BeachBeach at the river mouth, Campal, Altinho, Fontainhas, Miramar, Taleigao]; dropped or out of view: 23
+PASS  1366x768 zoom 1, church name card: label layer 0.60 ms median, 12.80 ms max a frame; 5 drawn [Our Lady of the Immaculate ConceptionHeritage church, Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 24
+PASS  1366x768 the name card is drawn, ahead of the localities
+PASS  1366x768 zoom 2: label layer 0.70 ms median, 4.60 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1366x768 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1366x768 zoom 2, temple hovered: label layer 0.80 ms median, 19.50 ms max a frame; 8 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 21
+PASS  1366x768 zoom 3 (close): label layer 0.60 ms median, 4.90 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1366x768 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1366x768 zoom 3 after a pan: label layer 0.60 ms median, 2.50 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  1366x768 zoom 2, Maya talking: label layer 0.70 ms median, 4.10 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  1366x768 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1366x768 warning showing: label layer 0.50 ms median, 5.10 ms max a frame; 6 drawn [Campal, Altinho, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 23
+PASS  1920x1080 zoom 1 (opening view): label layer 0.70 ms median, 4.40 ms max a frame; 3 drawn [Campal, Fontainhas, Taleigao]; dropped or out of view: 26
+PASS  1920x1080 zoom 1, church name card: label layer 0.60 ms median, 4.70 ms max a frame; 4 drawn [Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 25
+PASS  1920x1080 the name card is drawn, ahead of the localities
+PASS  1920x1080 zoom 2: label layer 0.70 ms median, 61.00 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1920x1080 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1920x1080 zoom 2, temple hovered: label layer 0.70 ms median, 2.10 ms max a frame; 7 drawn [Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 22
+PASS  1920x1080 zoom 3 (close): label layer 0.60 ms median, 3.00 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1920x1080 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1920x1080 zoom 3 after a pan: label layer 0.80 ms median, 4.90 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  1920x1080 zoom 2, Maya talking: label layer 0.60 ms median, 16.30 ms max a frame; 5 drawn [Altinho, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1920x1080 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1920x1080 warning showing: label layer 0.80 ms median, 2.50 ms max a frame; 6 drawn [Campal, Altinho, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 23
+PASS  2560x1440 zoom 1 (opening view): label layer 0.60 ms median, 5.70 ms max a frame; 4 drawn [Campal, Altinho, Fontainhas, Taleigao]; dropped or out of view: 25
+PASS  2560x1440 zoom 1, church name card: label layer 0.70 ms median, 2.80 ms max a frame; 5 drawn [Campal, Altinho, Fontainhas, Miramar, Merces]; dropped or out of view: 24
+PASS  2560x1440 the name card is drawn, ahead of the localities
+PASS  2560x1440 zoom 2: label layer 0.60 ms median, 2.90 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  2560x1440 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  2560x1440 zoom 2, temple hovered: label layer 0.70 ms median, 33.70 ms max a frame; 7 drawn [Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 22
+PASS  2560x1440 zoom 3 (close): label layer 0.60 ms median, 7.20 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  2560x1440 during a drag-pan (frame by frame): no overlap in any frame
+PASS  2560x1440 zoom 3 after a pan: label layer 0.70 ms median, 3.90 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  2560x1440 zoom 2, Maya talking: label layer 0.70 ms median, 4.70 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  2560x1440 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  2560x1440 warning showing: label layer 0.80 ms median, 5.90 ms max a frame; 7 drawn [Campal, Altinho, Fontainhas, Merces, São Tomé, Patto, Atal Setu]; dropped or out of view: 22
+PASS  Tutorial 1920x1080: label layer 0.60 ms median, 3.30 ms max a frame; 2 drawn [The river, The village]; dropped or out of view: 3
+
+49 views checked, 0 failed; label layer at most 61.00 ms a frame
+=== exit 0 (09:03:03)
+=== layout (09:03:03)
+
+> riptide-rising@1.0.0 test:layout
+> tsx tools/mayaLayoutTest.ts
+
+FAIL  1280x600 discovery=no getReady=open tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":3,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=open tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":4,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=open tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":5,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=open tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":6,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=open tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":7,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=open tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":8,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=open tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":9,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=open tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":10,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=collapsed tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":11,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=collapsed tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":12,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=collapsed tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":13,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=collapsed tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":14,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=collapsed tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":15,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=collapsed tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":16,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=collapsed tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":17,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=no getReady=collapsed tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":18,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=open tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":20,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=open tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":21,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=open tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":22,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=open tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":23,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=open tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":24,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=open tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":25,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=open tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":26,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=open tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":27,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=collapsed tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":28,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=collapsed tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":29,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=collapsed tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":30,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=collapsed tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":31,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=collapsed tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":32,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=collapsed tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":33,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=collapsed tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":34,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 discovery=said getReady=collapsed tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":35,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 build menu open  Maya is not on screen; her bubble is not showing {"current":null,"pending":36,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1280,600]}
+FAIL  1280x600 minimised  Maya is not on screen
+FAIL  1280x600 resized to 80%  Maya is not on screen; her bubble is not showing {"current":null,"pending":37,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1024,480]}
+FAIL  1366x768 discovery=no getReady=open tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":3,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=open tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":4,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=open tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":5,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=open tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":6,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=open tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":7,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=open tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":8,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=open tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":9,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=open tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":10,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=collapsed tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":11,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=collapsed tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":12,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=collapsed tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":13,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=collapsed tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":14,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=collapsed tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":15,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=collapsed tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":16,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=collapsed tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":17,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=no getReady=collapsed tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":18,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=open tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":20,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=open tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":21,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=open tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":22,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=open tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":23,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=open tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":24,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=open tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":25,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=open tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":26,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=open tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":27,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=collapsed tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":28,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=collapsed tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":29,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=collapsed tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":30,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=collapsed tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":31,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=collapsed tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":32,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=collapsed tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":33,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=collapsed tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":34,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 discovery=said getReady=collapsed tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":35,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 build menu open  Maya is not on screen; her bubble is not showing {"current":null,"pending":36,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1366,768]}
+FAIL  1366x768 minimised  Maya is not on screen
+FAIL  1366x768 resized to 80%  Maya is not on screen; her bubble is not showing {"current":null,"pending":37,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1093,614]}
+FAIL  1920x1080 discovery=no getReady=open tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":3,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=open tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":4,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=open tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":5,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=open tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":6,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=open tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":7,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=open tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":8,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=open tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":9,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=open tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":10,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=collapsed tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":11,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=collapsed tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":12,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=collapsed tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":13,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=collapsed tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":14,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=collapsed tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":15,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=collapsed tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":16,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=collapsed tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":17,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=no getReady=collapsed tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":18,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=open tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":20,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=open tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":21,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=open tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":22,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=open tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":23,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=open tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":24,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=open tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":25,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=open tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":26,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=open tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":27,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=collapsed tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":28,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=collapsed tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":29,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=collapsed tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":30,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=collapsed tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":31,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=collapsed tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":32,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=collapsed tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":33,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=collapsed tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":34,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 discovery=said getReady=collapsed tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":35,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 build menu open  Maya is not on screen; her bubble is not showing {"current":null,"pending":36,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1920,1080]}
+FAIL  1920x1080 minimised  Maya is not on screen
+FAIL  1920x1080 resized to 80%  Maya is not on screen; her bubble is not showing {"current":null,"pending":37,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[1536,864]}
+FAIL  2560x1440 discovery=no getReady=open tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":3,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=open tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":4,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=open tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":5,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=open tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":6,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=open tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":7,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=open tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":8,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=open tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":9,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=open tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":10,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=collapsed tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":11,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=collapsed tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":12,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=collapsed tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":13,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=collapsed tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":14,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=collapsed tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":15,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=collapsed tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":16,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=collapsed tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":17,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=no getReady=collapsed tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":18,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=open tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":20,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=open tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":21,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=open tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":22,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=open tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":23,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=open tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":24,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=open tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":25,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=open tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":26,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=open tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":27,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=collapsed tooltip=none tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":28,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=collapsed tooltip=none warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":29,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=collapsed tooltip=none warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":30,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=collapsed tooltip=none warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":31,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=collapsed tooltip=open tip  Maya is not on screen; her bubble is not showing {"current":null,"pending":32,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=collapsed tooltip=open warning=st-cruz  Maya is not on screen; her bubble is not showing {"current":null,"pending":33,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=collapsed tooltip=open warning=merces  Maya is not on screen; her bubble is not showing {"current":null,"pending":34,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 discovery=said getReady=collapsed tooltip=open warning=miramar  Maya is not on screen; her bubble is not showing {"current":null,"pending":35,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 build menu open  Maya is not on screen; her bubble is not showing {"current":null,"pending":36,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2560,1440]}
+FAIL  2560x1440 minimised  Maya is not on screen
+FAIL  2560x1440 resized to 80%  Maya is not on screen; her bubble is not showing {"current":null,"pending":37,"heldBack":false,"minimised":false,"muted":true,"bubbleHidden":true,"view":[2048,1152]}
+
+140 layouts checked, 140 failed
+=== exit 1 (09:14:19)
+=== maya (09:14:19)
+
+> riptide-rising@1.0.0 test:maya
+> tsx tools/mayaStability.ts
+
+PASS  idle: her figure's box never moved in 2 frames over 11.7s (0,0 0x0)
+FAIL  idle: she stands at her home (12px from the left, 12px from the bottom)
+PASS  idle: her box is on whole pixels
+      per second: layouts 0, figure style writes 0, class writes 0, hop restarts 0, observer hits 1.37; frames that changed 0 of 1 (0 strongly)
+PASS  greeting: her figure's box never moved in 2 frames over 12.8s (0,0 0x0)
+FAIL  greeting: she stands at her home (12px from the left, 12px from the bottom)
+PASS  greeting: her box is on whole pixels
+      per second: layouts 0, figure style writes 0, class writes 0, hop restarts 0, observer hits 1.33; frames that changed 0 of 1 (0 strongly)
+PASS  tip: her figure's box never moved in 2 frames over 13s (0,0 0x0)
+FAIL  tip: she stands at her home (12px from the left, 12px from the bottom)
+PASS  tip: her box is on whole pixels
+      per second: layouts 0, figure style writes 0, class writes 0, hop restarts 0, observer hits 1.3; frames that changed 0 of 1 (0 strongly)
+PASS  explains: her figure's box never moved in 3 frames over 15.4s (0,0 0x0)
+FAIL  explains: she stands at her home (12px from the left, 12px from the bottom)
+PASS  explains: her box is on whole pixels
+      per second: layouts 0, figure style writes 0, class writes 0, hop restarts 0, observer hits 1.49; frames that changed 0 of 2 (0 strongly)
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+page.waitForTimeout: Target page, context or browser has been closed
+    at measureState (/home/user/ClimateGame/tools/mayaStability.ts:152:14)
+    at async main (/home/user/ClimateGame/tools/mayaStability.ts:212:17) {
+  log: []
+}
+
+Node.js v22.22.0
