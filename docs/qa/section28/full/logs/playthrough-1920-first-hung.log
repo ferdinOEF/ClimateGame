@@ -1,0 +1,55 @@
+=== play-1920x1080 (08:34:16)
+PASS [1920x1080] the menu offers Tutorial and Play Panjim only (Tutorial, Play Panjim)
+PASS [1920x1080] landing: no dots or hyphens between words
+PASS [1920x1080] landing: nothing cut off, scrolling or off screen
+PASS [1920x1080] start popup: no dots or hyphens between words
+PASS [1920x1080] start popup: nothing cut off, scrolling or off screen
+PASS [1920x1080] the board in 2026: no dots or hyphens between words
+PASS [1920x1080] the board in 2026: nothing cut off, scrolling or off screen
+PASS [1920x1080] Esc with nothing open asks to leave Panjim
+PASS [1920x1080] the ☰ menu: no dots or hyphens between words
+PASS [1920x1080] the ☰ menu: nothing cut off, scrolling or off screen
+PASS [1920x1080] Esc closes the ☰ menu
+PASS [1920x1080] Help: no dots or hyphens between words
+PASS [1920x1080] Help: nothing cut off, scrolling or off screen
+PASS [1920x1080] Esc closes Help
+PASS [1920x1080] Field Guide: no dots or hyphens between words
+PASS [1920x1080] Field Guide: nothing cut off, scrolling or off screen
+PASS [1920x1080] build menu on beach: no dots or hyphens between words
+PASS [1920x1080] build menu on beach: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on beach
+PASS [1920x1080] build menu on wetland: no dots or hyphens between words
+PASS [1920x1080] build menu on wetland: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on wetland
+PASS [1920x1080] build menu on river: no dots or hyphens between words
+PASS [1920x1080] build menu on river: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on river
+PASS [1920x1080] build menu on coast: no dots or hyphens between words
+PASS [1920x1080] build menu on coast: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on coast
+PASS [1920x1080] build menu on land: no dots or hyphens between words
+PASS [1920x1080] build menu on land: nothing cut off, scrolling or off screen
+PASS [1920x1080] a build menu opens on land
+PASS [1920x1080] the north bank: its note only ("North of the Mandovi: not part of this game")
+PASS [1920x1080] the east edge: its note only ("Outside Panjim, not part of this game")
+PASS [1920x1080] a landmark: its note only ("Our Lady of the Immaculate Conception LANDMARK A Panjim land")
+PASS [1920x1080] a build ends the year: 2027
+PASS [1920x1080] after a reload the start popup offers Begin only (Begin)
+PASS [1920x1080] after a reload the run starts at 2026
+PASS [1920x1080] two tabs each play on (first 2027, second 2027)
+PASS [1920x1080] the second tab: no console errors or warnings
+PASS [1920x1080] a storm is playing
+PASS [1920x1080] after a resize mid storm the board fills the window again (1920x1080)
+PASS [1920x1080] reloading mid storm starts fresh: Begin only (Begin)
+PASS [1920x1080] reload mid storm: a fresh run at 2026
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+page.evaluate: Target page, context or browser has been closed
+    at cardsOpen (/home/user/ClimateGame/tools/playthrough21.ts:108:58)
+    at <anonymous> (/home/user/ClimateGame/tools/playthrough21.ts:386:38) {
+  log: []
+}
+
+Node.js v22.22.0
