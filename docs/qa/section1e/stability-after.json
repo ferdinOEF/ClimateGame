@@ -3,8 +3,8 @@
  "live": [
   {
    "state": "idle",
-   "seconds": 12.4,
-   "frames": 2,
+   "seconds": 14.5,
+   "frames": 3,
    "moved": false,
    "box": {
     "x": 12,
@@ -17,18 +17,92 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 1.13
+    "observerHits": 1.45
    },
-   "framesChanged": 1,
-   "strongChanged": 1,
+   "framesChanged": 2,
+   "strongChanged": 2,
    "changedList": [
-    4279
+    1564,
+    526
    ]
   },
   {
    "state": "greeting",
-   "seconds": 10.3,
+   "seconds": 12.8,
    "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.16,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 1.25
+   },
+   "framesChanged": 1,
+   "strongChanged": 1,
+   "changedList": [
+    441
+   ]
+  },
+  {
+   "state": "tip",
+   "seconds": 11.4,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.18,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 1.4
+   },
+   "framesChanged": 1,
+   "strongChanged": 1,
+   "changedList": [
+    381
+   ]
+  },
+  {
+   "state": "explains",
+   "seconds": 13.7,
+   "frames": 3,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.22,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 1.61
+   },
+   "framesChanged": 2,
+   "strongChanged": 2,
+   "changedList": [
+    484,
+    459
+   ]
+  },
+  {
+   "state": "warning",
+   "seconds": 15.5,
+   "frames": 3,
    "moved": false,
    "box": {
     "x": 12,
@@ -41,17 +115,18 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 1.55
+    "observerHits": 1.42
    },
-   "framesChanged": 1,
-   "strongChanged": 1,
+   "framesChanged": 2,
+   "strongChanged": 2,
    "changedList": [
-    596
+    1152,
+    353
    ]
   },
   {
-   "state": "tip",
-   "seconds": 11.9,
+   "state": "worried",
+   "seconds": 12.1,
    "frames": 2,
    "moved": false,
    "box": {
@@ -65,16 +140,16 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 1.35
+    "observerHits": 1.32
    },
    "framesChanged": 1,
    "strongChanged": 0,
    "changedList": [
-    289
+    254
    ]
   },
   {
-   "state": "explains",
+   "state": "celebrates",
    "seconds": 11.7,
    "frames": 2,
    "moved": false,
@@ -89,92 +164,19 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 1.36
+    "observerHits": 1.37
    },
    "framesChanged": 1,
    "strongChanged": 1,
    "changedList": [
-    432
-   ]
-  },
-  {
-   "state": "warning",
-   "seconds": 14.1,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.14,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 1.35
-   },
-   "framesChanged": 1,
-   "strongChanged": 1,
-   "changedList": [
-    568
-   ]
-  },
-  {
-   "state": "worried",
-   "seconds": 13.9,
-   "frames": 3,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.22,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 1.52
-   },
-   "framesChanged": 2,
-   "strongChanged": 2,
-   "changedList": [
-    315,
-    243
-   ]
-  },
-  {
-   "state": "celebrates",
-   "seconds": 11.3,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.18,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 1.5
-   },
-   "framesChanged": 1,
-   "strongChanged": 1,
-   "changedList": [
-    500
+    489
    ]
   }
  ],
  "calm": [
   {
    "state": "idle",
-   "seconds": 6.4,
+   "seconds": 6.8,
    "frames": 1,
    "moved": false,
    "box": {
@@ -188,7 +190,7 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 1.72
+    "observerHits": 1.32
    },
    "framesChanged": 0,
    "strongChanged": 0,
@@ -196,128 +198,8 @@
   },
   {
    "state": "greeting",
-   "seconds": 12.6,
+   "seconds": 10.8,
    "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.24,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 1.82
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0
-   ]
-  },
-  {
-   "state": "tip",
-   "seconds": 11.5,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.26,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 1.65
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0
-   ]
-  },
-  {
-   "state": "explains",
-   "seconds": 9.9,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.3,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 1.92
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0
-   ]
-  },
-  {
-   "state": "warning",
-   "seconds": 7.8,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.26,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 2.05
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0
-   ]
-  },
-  {
-   "state": "worried",
-   "seconds": 14,
-   "frames": 2,
-   "moved": false,
-   "box": {
-    "x": 12,
-    "y": 926,
-    "w": 54,
-    "h": 142
-   },
-   "perSecond": {
-    "layouts": 0.14,
-    "figureWrites": 0,
-    "classWrites": 0,
-    "hops": 0,
-    "observerHits": 1.49
-   },
-   "framesChanged": 0,
-   "strongChanged": 0,
-   "changedList": [
-    0
-   ]
-  },
-  {
-   "state": "celebrates",
-   "seconds": 5.3,
-   "frames": 1,
    "moved": false,
    "box": {
     "x": 12,
@@ -330,11 +212,133 @@
     "figureWrites": 0,
     "classWrites": 0,
     "hops": 0,
-    "observerHits": 2.06
+    "observerHits": 1.49
    },
    "framesChanged": 0,
    "strongChanged": 0,
-   "changedList": []
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "tip",
+   "seconds": 11.9,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.25,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 1.52
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "explains",
+   "seconds": 8.6,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.23,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 1.87
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "warning",
+   "seconds": 5.5,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.72,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 2.71
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "worried",
+   "seconds": 11.9,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.25,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 1.51
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
+  },
+  {
+   "state": "celebrates",
+   "seconds": 10.9,
+   "frames": 2,
+   "moved": false,
+   "box": {
+    "x": 12,
+    "y": 926,
+    "w": 54,
+    "h": 142
+   },
+   "perSecond": {
+    "layouts": 0.28,
+    "figureWrites": 0,
+    "classWrites": 0,
+    "hops": 0,
+    "observerHits": 1.75
+   },
+   "framesChanged": 0,
+   "strongChanged": 0,
+   "changedList": [
+    0
+   ]
   }
  ],
  "idleStill": {

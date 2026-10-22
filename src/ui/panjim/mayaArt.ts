@@ -22,10 +22,13 @@
 
 /** Maya's colours, by name. The teal shirt is deliberate: no hue like it appears on the Panjim map. */
 export const MAYA_PALETTE = {
-  skin: "#c98f68",
-  "skin-shadow": "#ab7551",
-  "skin-deep": "#92603f",
-  hands: "#dda882",
+  // Section 29 (owner decision): her skin 50% fairer. The base skin moved halfway to white in perceptual lightness
+  // (CIELAB L* 64 to 82); the shadow, deep and hand tones moved by the same step so her shading keeps its depth,
+  // each a little less saturated. Before: skin #c98f68, skin-shadow #ab7551, skin-deep #92603f, hands #dda882.
+  skin: "#f5c2a1",
+  "skin-shadow": "#d7a688",
+  "skin-deep": "#bd9074",
+  hands: "#fdcfb0",
   "hair-base": "#33200f",
   "hair-mid": "#6b4324",
   "hair-light": "#a1703f",

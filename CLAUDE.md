@@ -41,14 +41,13 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
   are labelled as game rules ("In this game, …"), never as science. No invented
   people, no unsourced statistics. `tests/facts.test.ts` and
   `tests/noInventedPeople.test.ts` enforce this.
-- **Maya is hidden** (Section 17c, owner decision): she and her speech bubbles do not
-  appear anywhere (the Panjim game, the start popup, the Tutorial, the result cards),
-  ☰ has no Maya item and M does nothing. Her code and art stay in the repo, untouched,
-  behind `SHOW_MAYA` (`VITE_SHOW_MAYA`, off by default; `src/services/features.ts`).
-  If she comes back, the old rule holds: do not redraw her; edit only
-  `src/ui/panjim/mayaArt.ts`, `maya.ts` and `panjim.css`; she is locked in place
-  (`tests/mayaLocked.test.ts`); her colours come from `MAYA_PALETTE`; whenever a HUD
-  element moves, update `HUD_OBSTACLES` (in `maya.ts`) and her layout rules.
+- **Maya is visible** (Section 29, owner decision; Section 17c had hidden her): she and her speech bubbles appear
+  in the Panjim game, the start popup, the Tutorial and the result cards; ☰ has her item and M mutes her. The switch
+  stays: `VITE_SHOW_MAYA=false` hides her everywhere (`SHOW_MAYA`, `src/services/features.ts`). Her skin is 50%
+  fairer (Section 29, a `MAYA_PALETTE` change). The old rule holds: do not redraw her; edit only
+  `src/ui/panjim/mayaArt.ts`, `maya.ts` and `panjim.css`; she is locked in place (`tests/mayaLocked.test.ts`); her
+  colours come from `MAYA_PALETTE`; whenever a HUD element moves, update `HUD_OBSTACLES` (in `maya.ts`) and her
+  layout rules.
 - **Desktop browsers first** (Chrome, Edge, Firefox, Safari; mouse, wheel,
   keyboard; 1080p to 4K; test at 1920x1080 at least). Never make desktop worse
   to help phones.

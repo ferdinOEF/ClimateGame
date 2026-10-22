@@ -28,7 +28,7 @@ export const KEYS_STILL_USED: Readonly<Record<string, string>> = {
   "riptide-rising:volume": "The volume slider, a preference.",
   "riptide-rising:quality": "Graphics quality (Auto, High, Low), a preference.",
   "riptide-rising:calm-motion": "Calm motion on or off, a preference (defaults to the system's reduced motion).",
-  "riptide-rising:maya-voice:v1": "Maya's voice on or off (M); Maya is hidden (SHOW_MAYA off), so it is not written.",
+  "riptide-rising:maya-voice:v1": "Maya's voice on or off (M), a preference.",
   "riptide-rising:map-layer:v4": "The street map's opacity, a preference (v2 and v3 read once to carry an old choice over).",
   "root-and-ruin:display-name": "The name shown on the leaderboard; written from Settings (which no button reaches) or an account sign up (only with VITE_REQUIRE_EMAIL).",
   "root-and-ruin:player:v1": "The sign up sheet (name, age, email); used only with VITE_REQUIRE_EMAIL, off by default."

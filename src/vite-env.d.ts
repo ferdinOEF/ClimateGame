@@ -23,7 +23,7 @@ interface ImportMetaEnv {
   readonly VITE_SHOW_MENU_EXTRAS?: string;
   /** "true" brings back the landing page's "Brought to you by" plate and logos (Section 17b). See src/services/features.ts. */
   readonly VITE_SHOW_PARTNER_CREDITS?: string;
-  /** "true" brings Maya, the guide, back into the game (Section 17c). See src/services/features.ts. */
+  /** "false" hides Maya, the guide (Section 17c); she shows by default (Section 29). See src/services/features.ts. */
   readonly VITE_SHOW_MAYA?: string;
 }
 

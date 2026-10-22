@@ -2114,3 +2114,17 @@ Branch `section-28b-full-check`, from master `37aba21` (Section 28). Tools and d
 | Grayscale and deuteranopia (Machado 2009) | `result-card-2040-gray-*` and `result-card-2040-deut-*` at each size: the two buttons differ by fill and outline, not hue; every line stays legible. |
 | Screenshots looked at | All four sizes. One finding, not a bug: `final-card-1280x600.jpg` caught the card mid fade in (software GL is slow); the same card in `text/final-card-1280x600.jpg` is whole. |
 | Not available here | A real GPU, Firefox and WebKit (Chromium with SwiftShader only). |
+
+# Section 29 — Maya visible again, her skin 50% fairer
+
+Branch `section-29-maya-back`, from master `95e4e40`. Safety copy: the tag `pre-section-29` (local) and the branch `backup/pre-section-29`. Merged at the owner's request ("push the maya to vercel as well") while the full Maya test was still running; its results are added below when it finishes.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: vitest 84 files, 659 passed (6 skipped); build clean. |
+| Preview equals resolution | Passes (no model change). |
+| Maya's art | Before and after sheets (`docs/qa/section29/before/`, `after/`, with gray copies): the skin lighter, the shading kept, nothing redrawn (`tests/mayaLocked.test.ts`, `tests/mayaArt.test.ts` pass). |
+| `npm run walkthrough` | Clean, 12 screenshots, no console errors, Maya coaching the Tutorial (her lines checked as said). |
+| `npm run verify:maya` | All checks pass: she greets with the first objective, M mutes and unmutes her, every HUD control has a tooltip (17, all with real text), the heat and R, the previews match the storms, zero console errors. |
+| Still running at the merge | `test:layout`, `test:maya`, `test:labels`, her states at four sizes, the text checks at four sizes, the Section 28 checks (axe, colour copies) at 1920 and 1366, the playthroughs at four sizes. |
+| Independent reviewer | Not run before the merge (the owner asked for it live now; the change is the flag default and four palette colours). |
