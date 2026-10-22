@@ -312,7 +312,9 @@ describe("Maya's palette", () => {
   });
 
   it("carries the brief's colours, read by the live figure as CSS custom properties", () => {
-    expect(MAYA_PALETTE.skin).toBe("#c98f68");
+    // Section 29 (owner decision): her skin 50% fairer (was #c98f68).
+    expect(MAYA_PALETTE.skin).toBe("#f5c2a1");
+    expect(paletteStyle()).toContain("--maya-skin:#f5c2a1");
     expect(MAYA_PALETTE.shirt).toBe("#2f7d6e");
     expect(MAYA_PALETTE["hair-base"]).toBe("#33200f");
     expect(MAYA_PALETTE["lens-rim"]).toBe("#d8b45c");

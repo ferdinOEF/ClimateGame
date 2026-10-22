@@ -49,15 +49,23 @@ export const SHOW_MENU_EXTRAS = parseFlag(import.meta.env.VITE_SHOW_MENU_EXTRAS)
 export const SHOW_PARTNER_CREDITS = parseFlag(import.meta.env.VITE_SHOW_PARTNER_CREDITS);
 
 /**
- * Whether Maya, the guide, appears in the game (Section 17c, owner decision): her figure and speech bubbles in the
- * Panjim game, the start popup, the Tutorial and the result cards, the "Maya" item in ☰ and the M shortcut.
+ * Whether Maya, the guide, appears in the game: her figure and speech bubbles in the Panjim game, the start popup,
+ * the Tutorial and the result cards, the "Maya" item in ☰ and the M shortcut.
  *
- * Off by default. With it off she is never drawn and never speaks, and nothing on screen names her. Her code and
- * art (`src/ui/panjim/maya.ts`, `mayaArt.ts`) are untouched, and `VITE_SHOW_MAYA=true` at build time brings her back.
+ * Section 29 (owner decision): ON by default; she is visible again. Section 17c had hidden her. With
+ * `VITE_SHOW_MAYA=false` at build time she is hidden as before: never drawn, never speaking, and nothing on screen
+ * names her.
  */
-export const SHOW_MAYA = parseFlag(import.meta.env.VITE_SHOW_MAYA);
+export const SHOW_MAYA = flagOr(import.meta.env.VITE_SHOW_MAYA, true);
 
 /** Only the exact string "true" turns a flag on, so a typo or an empty value can never enable it by accident. */
 export function parseFlag(value: unknown): boolean {
   return typeof value === "string" && value.trim() === "true";
+}
+
+/** A flag with a default: "true" or "false" (any case, trimmed) when set, else `fallback`. */
+export function flagOr(value: unknown, fallback: boolean): boolean {
+  if (typeof value !== "string" || value.trim() === "") return fallback;
+  const v = value.trim().toLowerCase();
+  return v === "true" ? true : v === "false" ? false : fallback;
 }
