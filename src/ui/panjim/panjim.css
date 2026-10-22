@@ -2555,10 +2555,17 @@
   border: 2px solid #f4d9a6;
 }
 
-.result-back {
+.result-back,
+.result-retry {
   background: transparent;
   color: #fbeed9;
   border: 2px solid rgba(251, 238, 217, 0.5);
+}
+
+/* Section 28.1: "Try this storm again" takes its own width, so the main button keeps one line. */
+.result-actions .result-retry {
+  flex: 0 1 auto;
+  padding: 0 18px;
 }
 
 .result-actions button:focus-visible,

@@ -18,7 +18,7 @@
  *     card 1 its "Objective complete" badge;
  *   - a build outside every row says so in one line;
  *   - Esc asks "Leave Panjim?"; Esc again and Stay keep playing; Leave goes;
- *   - the level card then says "Continue from 2031", and Continue's popup
+ *   - the level card then never says "Continue from" (Section 28.2: nothing is saved), and the popup
  *     shows the flood's forecast ("The flood comes in 10 years");
  *   - Maya says none of the cyclone phase's lines once 2031 has begun.
  * axe-core on the popup, the board and the confirm; zero console errors.
@@ -239,13 +239,13 @@ async function main(): Promise<void> {
         await page.goto(`${server.url}/#/levels`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2500);
         const card = (await page.evaluate(`Array.from(document.querySelectorAll(".level-card")).map(function (e) { return e.innerText.replace(/\\s+/g, " "); }).join(" | ")`)) as string;
-        check(/Continue from 2031/.test(card), `7: the level card says "Continue from 2031": "${card.slice(0, 160)}"`);
+        check(!/Continue from/.test(card), `7 (Section 28.2): the level card never says "Continue from": "${card.slice(0, 160)}"`);
         await shot(page, `levels-${tag}`);
-        // 5: Continue's popup shows the flood's forecast.
+        // 5 (Section 28.2): nothing is saved, so the popup shows 2026's forecast, the first cyclone's.
         await open(page, server.url);
         const feature = await text(page, ".brief-feature");
-        check(/If you continue: The flood comes in 10 years/.test(feature), `5: with a save, the popup shows the flood's forecast: "${feature.replace(/\s+/g, " ").slice(0, 80)}"`);
-        await shot(page, `continue-popup-${tag}`);
+        check(!/If you continue/.test(feature), `5: the popup shows the new run's forecast: "${feature.replace(/\s+/g, " ").slice(0, 80)}"`);
+        await shot(page, `fresh-popup-${tag}`);
       }
       await context.close();
     }

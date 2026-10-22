@@ -20,6 +20,12 @@ import { REQUIRE_EMAIL } from "./features";
  * The single source of truth for player progress, in front of two very
  * different backends.
  *
+ * Section 28.2 (owner decision, for the Emergence festival: many people play one after another on one machine):
+ * nothing about progress is saved on the machine any more. Progress lives in memory for this visit only; a reload
+ * starts fresh. The old local key is cleared on load (`services/storagePolicy.ts`), and the cloud pull no longer
+ * runs at boot, so it cannot bring an earlier visit's progress back. The notes below describe the design before
+ * that change.
+ *
  * localStorage is the PRIMARY store, always written, always read first.
  * Firestore is a mirror layered on top. That ordering is deliberate and it
  * is what makes the offline path real rather than theoretical: the game is
@@ -32,7 +38,6 @@ import { REQUIRE_EMAIL } from "./features";
  * upload happening (or silently failing on a train) never blocks the UI.
  */
 
-const STORAGE_KEY = "root-and-ruin:progress:v1";
 
 let progress: PlayerProgress = emptyProgress(storedDisplayName());
 let loaded = false;
@@ -58,46 +63,14 @@ export function getProgress(): PlayerProgress {
 
 // ---- local persistence ------------------------------------------------
 
-/**
- * Reads the local save, tolerating anything. A corrupted or hand-edited
- * blob resets to a fresh profile rather than throwing during boot — losing
- * local progress is bad, but a save file that can brick the game on load
- * is worse, and this is the only place that can happen.
- */
+/** Section 28.2: a fresh profile for this visit; nothing is read from the machine. */
 function loadLocal(): void {
   loaded = true;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      progress = emptyProgress(storedDisplayName());
-      return;
-    }
-    const parsed = JSON.parse(raw) as Partial<PlayerProgress>;
-    progress = {
-      displayName: typeof parsed.displayName === "string" ? parsed.displayName : storedDisplayName(),
-      levels: parsed.levels && typeof parsed.levels === "object" ? parsed.levels : {},
-      achievements: Array.isArray(parsed.achievements) ? parsed.achievements.filter((id) => typeof id === "string") : [],
-      schemaVersion: PROGRESS_SCHEMA_VERSION
-    };
-  } catch (error) {
-    console.warn("[progress] local save unreadable; starting fresh", error);
-    progress = emptyProgress(storedDisplayName());
-  }
-}
-
-function saveLocal(): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  } catch (error) {
-    // Quota exhausted, or storage disabled entirely. The session keeps
-    // working from memory; only persistence across a reload is lost.
-    console.warn("[progress] could not write local save", error);
-  }
+  progress = emptyProgress(storedDisplayName());
 }
 
 function setProgress(next: PlayerProgress): void {
   progress = next;
-  saveLocal();
   emit();
 }
 
@@ -343,7 +316,7 @@ export function recordRunResult(outcome: RunOutcome, newAchievements: readonly s
  */
 export function startProfileSync(): void {
   if (!loaded) loadLocal();
-  void syncWithCloud();
+  // Section 28.2: no cloud pull at boot, so a reload never brings an earlier visit's progress back.
 
   onAuthChanged((user) => {
     if (user && cloudSyncedUid !== null && user.uid !== cloudSyncedUid) void syncWithCloud();
@@ -393,13 +366,8 @@ export function unlockAchievements(ids: readonly string[]): void {
   })();
 }
 
-/** Wipes local progress. Used by the "reset progress" control in settings. Does not touch cloud data — that is a separate, explicit action. */
+/** Wipes this visit's progress. Used by the "reset progress" control in settings. Does not touch cloud data — that is a separate, explicit action. */
 export function resetLocalProgress(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
   progress = emptyProgress(storedDisplayName());
   loaded = true;
   emit();

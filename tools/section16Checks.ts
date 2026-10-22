@@ -13,7 +13,7 @@
  *   - the 2031 flood cone from the Mandovi, and the same framed on Merces, St Cruz and Taleigao.
  * Gray and deuteranopia copies of the 1920 start popup and 2026 cone. Checks:
  * the menu's two buttons; Play Panjim opens the game view with Begin (and,
- * with a saved run, Continue from <year> and Begin again); the objectives'
+ * after a run, Begin only: Section 28.2, nothing is saved); the objectives'
  * titles, rows and pins; the result card's places; Maya's lines; axe-core;
  * zero console errors. Exits 1 if any check fails.
  */
@@ -185,7 +185,7 @@ async function main(): Promise<void> {
       await focus(page, world(18, 12), 2, w, h);
       await shot(page, `cone-2031-mandovi-${tag}`, full);
 
-      // --- a saved run: Continue from 2031 and Begin again -----------------
+      // --- Section 28.2: nothing is saved, so Play Panjim offers Begin only --------
       if (full) {
         await page.goto(server.url, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".menu-screen", { timeout: 120000 });
@@ -193,7 +193,7 @@ async function main(): Promise<void> {
         await page.waitForSelector(".brief-card", { timeout: 120000 });
         await page.waitForTimeout(1500);
         const ctas = (await page.locator(".brief-cta").allTextContents()).map((t) => t.trim());
-        check(ctas.includes("Continue from 2031") && ctas.includes("Begin again"), `with a saved run Play Panjim offers (Section 22.4: Begin again) ${ctas.join(", ")}`);
+        check(JSON.stringify(ctas) === JSON.stringify(["Begin"]), `after a run Play Panjim offers Begin only (Section 28.2) ${ctas.join(", ")}`);
         await shot(page, `play-panjim-saved-${tag}`);
       }
       await page.close();

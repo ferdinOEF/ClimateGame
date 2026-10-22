@@ -153,18 +153,18 @@ describe("the modal manager (Section 16 B5)", () => {
 });
 
 describe("the leave prompt's line (Section 16 B5)", () => {
-  it("says the run is saved, and from which year, when it is", () => {
-    expect(leaveText({ tutorial: false, savedYear: 2051, finished: false, builds: 25 })).toBe("Your run is saved. You can continue from 2051.");
-    expect(leaveText({ tutorial: false, savedYear: 2031, finished: false, builds: 5 })).toBe("Your run is saved. You can continue from 2031.");
+  it("says nothing is saved (Section 28.2): leaving ends the run", () => {
+    expect(leaveText({ tutorial: false, finished: false, builds: 5 })).toBe("Nothing is saved: leaving ends this run.");
+    expect(leaveText({ tutorial: false, finished: false, builds: 5 })).not.toMatch(/continue/i);
   });
 
   it("never says nothing was built after a build", () => {
     for (const builds of [1, 10, 25]) {
-      for (const finished of [false, true]) expect(leaveText({ tutorial: false, savedYear: null, finished, builds })).not.toMatch(/haven't built/);
+      for (const finished of [false, true]) expect(leaveText({ tutorial: false, finished, builds })).not.toMatch(/haven't built/);
     }
-    expect(leaveText({ tutorial: false, savedYear: null, finished: false, builds: 0 })).toBe("You haven't built anything yet.");
-    expect(leaveText({ tutorial: false, savedYear: null, finished: true, builds: 25 })).toBe("This run is over, and its result is recorded.");
-    expect(leaveText({ tutorial: true, savedYear: null, finished: false, builds: 2 })).toMatch(/Tutorial is not saved/);
+    expect(leaveText({ tutorial: false, finished: false, builds: 0 })).toBe("You haven't built anything yet.");
+    expect(leaveText({ tutorial: false, finished: true, builds: 25 })).toBe("This run is over.");
+    expect(leaveText({ tutorial: true, finished: false, builds: 2 })).toMatch(/Tutorial is not saved/);
   });
 });
 

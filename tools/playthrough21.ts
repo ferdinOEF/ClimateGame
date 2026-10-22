@@ -4,7 +4,7 @@
  * "FAIL <what>" with a screenshot name, for docs/BUGS.md.
  *
  *   - Landing: only Tutorial and Play Panjim; Play Panjim, Begin; a build, a
- *     reload, "Continue from 2027"; a reload, "Begin again" (back to 2026).
+ *     reload, Begin only, back at 2026 (Section 28.2: nothing is saved).
  *   - A full run 2026 to 2050 for each play style (STYLES, or the ones given):
  *     none (every build away from the storms), random, nature (nature based
  *     only), seawalls (seawalls and breakwaters only), well (the objective's
@@ -327,7 +327,7 @@ if (named.get("landing") !== "0") {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(400);
   }
-  // A build, then a reload: Continue from 2027; then Begin again.
+  // A build, then a reload (Section 28.2, owner decision: nothing is saved): Begin only, back at 2026.
   const t = (await page.evaluate("window.__panjimForTest.firstBuildable('dune')")) as { q: number; r: number };
   await page.evaluate(`window.__panjimForTest.buildNow({ q: ${t.q}, r: ${t.r} }, "dune")`);
   await page.waitForTimeout(2500);
@@ -335,38 +335,22 @@ if (named.get("landing") !== "0") {
   await page.reload({ waitUntil: "domcontentloaded" });
   await ready(page);
   const ctas = (await page.evaluate("[...document.querySelectorAll('.brief-cta')].map((b) => b.textContent.trim())")) as string[];
-  check(ctas.some((c) => /Continue from 2027/.test(c)) && ctas.some((c) => /^Begin/.test(c)), `after a reload the start popup offers ${ctas.join(" and ")}`);
-  await shot(page, "continue");
-  await begin(page, "Continue from 2027");
-  check((await year(page)) === 2027, "Continue lands in 2027");
-  // Two tabs on the same run.
+  check(ctas.length === 1 && /^Begin$/.test(ctas[0]), `after a reload the start popup offers Begin only (${ctas.join(", ")})`);
+  await shot(page, "reload-begin-only");
+  await begin(page, "Begin");
+  check((await year(page)) === 2026, "after a reload the run starts at 2026");
+  // Two tabs: each its own run.
   const second = await newPage(context);
   await second.page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await ready(second.page);
-  const ctas2 = (await second.page.evaluate("[...document.querySelectorAll('.brief-cta')].map((b) => b.textContent.trim())")) as string[];
-  check(ctas2.some((c) => /Continue from 2027/.test(c)), `a second tab offers the same saved run (${ctas2.join(", ")})`);
-  // Starting afresh beside a saved run (Section 22.4, owner decision): "Begin again", and it asks first.
-  const confirmText = async (p: Page): Promise<string> => (await p.evaluate("(() => { const b = document.querySelector('.leave-confirm-backdrop:not([hidden])'); return b ? b.textContent.replace(/\\s+/g, ' ').trim() : ''; })()")) as string;
-  await second.page.locator(".brief-cta", { hasText: "Begin again" }).first().click();
-  await second.page.waitForTimeout(600);
-  const asked = await confirmText(second.page);
-  await shot(second.page, "begin-again-confirm");
-  check(/Start a new run\? Your run from 2027 will be lost\./.test(asked) && /Cancel/.test(asked) && /Begin again/.test(asked), `Begin again asks first: "${asked}"`);
-  await second.page.locator(".leave-confirm-backdrop:not([hidden]) .leave-confirm-stay").click();
-  await second.page.waitForTimeout(500);
-  check((await confirmText(second.page)) === "" && (await second.page.locator(".brief-resume").isVisible()), "Cancel keeps the start popup and the saved run");
-  await second.page.locator(".brief-cta", { hasText: "Begin again" }).first().click();
-  await second.page.waitForTimeout(600);
-  await second.page.locator(".leave-confirm-backdrop:not([hidden]) .leave-confirm-leave").click();
-  await second.page.waitForTimeout(2500);
-  check((await year(second.page)) === 2026, "Begin again in the second tab starts over at 2026");
+  await begin(second.page, "Begin");
   const t2 = (await second.page.evaluate("window.__panjimForTest.firstBuildable('dune')")) as { q: number; r: number };
   await second.page.evaluate(`window.__panjimForTest.buildNow({ q: ${t2.q}, r: ${t2.r} }, "dune")`);
   await second.page.waitForTimeout(2000);
   const t1 = (await page.evaluate("window.__panjimForTest.firstBuildable('mangrove')")) as { q: number; r: number };
   await page.evaluate(`window.__panjimForTest.buildNow({ q: ${t1.q}, r: ${t1.r} }, "mangrove")`);
   await page.waitForTimeout(2000);
-  check((await year(page)) === 2028 && (await year(second.page)) === 2027, `two tabs each play on (first ${await year(page)}, second ${await year(second.page)})`);
+  check((await year(page)) === 2027 && (await year(second.page)) === 2027, `two tabs each play on (first ${await year(page)}, second ${await year(second.page)})`);
   check(second.log.filter((l) => !/GPU stall|WebGL/.test(l)).length === 0, `the second tab: no console errors or warnings${second.log.length ? `: ${second.log.slice(0, 3).join(" | ")}` : ""}`);
   await second.page.close();
   // Reload mid storm and over a result card.
@@ -389,14 +373,15 @@ if (named.get("landing") !== "0") {
   await ready(page);
   const afterStorm = (await page.evaluate("[...document.querySelectorAll('.brief-cta')].map((b) => b.textContent.trim())")) as string[];
   await shot(page, "reload-mid-storm");
-  check(afterStorm.some((c) => /Continue from/.test(c)), `reloading mid storm offers to continue (${afterStorm.join(", ")})`);
-  await begin(page, afterStorm.find((c) => /Continue from/.test(c)) ?? "Begin");
+  check(afterStorm.length === 1 && afterStorm[0] === "Begin", `reloading mid storm starts fresh: Begin only (${afterStorm.join(", ")})`);
+  await begin(page, "Begin");
   for (let k = 0; k < 300 && (await storming(page)); k++) {
     await page.mouse.click(W * 0.5, H * 0.55);
     await page.waitForTimeout(250);
   }
   const resumed = await year(page);
-  console.log(`INFO [${tag}] reload mid storm: continued at ${resumed}, landed ${await page.evaluate("[...window.__panjimForTest.run.landed].join(',')")}`);
+  check(resumed === 2026, `reload mid storm: a fresh run at ${resumed}`);
+  await page.evaluate(`window.__panjimScenarioForTest("storm-6")`).catch(() => undefined);
   await page.evaluate(`window.__panjimScenarioForTest("to-results")`).catch(() => undefined);
   for (let k = 0; k < 400 && !(await cardsOpen(page)); k++) await page.waitForTimeout(250);
   check(await cardsOpen(page), "a result card is open");
@@ -410,7 +395,7 @@ if (named.get("landing") !== "0") {
   await ready(page);
   const afterCard = (await page.evaluate("[...document.querySelectorAll('.brief-cta')].map((b) => b.textContent.trim())")) as string[];
   await shot(page, "reload-over-result-card");
-  check(afterCard.some((c) => /Continue from/.test(c)), `reloading over a result card offers to continue (${afterCard.join(", ")})`);
+  check(afterCard.length === 1 && afterCard[0] === "Begin", `reloading over a result card starts fresh: Begin only (${afterCard.join(", ")})`);
   const errs = log.filter((l) => !/GPU stall|WebGL/.test(l));
   check(errs.length === 0, `landing, input and edges: no console errors or warnings${errs.length ? `: ${errs.slice(0, 4).join(" | ")}` : ""}`);
   await context.close();

@@ -787,8 +787,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * below checks it, and it takes over pacing entirely when present: no
    * interval hazards, no objective-driven early finish.
    */
-  /** "Start a new run?" before Begin again drops a saved run (Section 22.4); made the first time it is needed. */
-  let beginConfirm: LeaveConfirm | null = null;
   const panjim =
     level.timeModel === "years" && level.timeline
       ? new PanjimController({
@@ -970,11 +968,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
           },
-          // Section 22.4 (owner decision): Begin beside a saved run reads "Begin again" and asks before it drops the save.
-          offerResume: (label, onResume, onBegin, savedYear) =>
-            objectivesPanel.addBriefAction(label, onResume, onBegin, () =>
-              (beginConfirm ??= new LeaveConfirm(container)).ask(`Your run from ${savedYear} will be lost.`, { title: "Start a new run?", confirm: "Begin again", cancel: "Cancel" })
-            ),
           addBriefFeature: (el) => objectivesPanel.addBriefFeature(el)
         })
       : null;
@@ -2606,7 +2599,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // build menu aside: it follows its tile).
   setZoomKeysBlocked(() => {
     const top = modals.topmost();
-    return (top !== null && top.name !== "build") || (beginConfirm?.isOpen ?? false);
+    return top !== null && top.name !== "build";
   });
   const keydownAbort = new AbortController();
   document.addEventListener(
@@ -2636,10 +2629,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     };
     askRestart = (fromMenu = false): void => {
       if (blocked(fromMenu)) return;
-      const text = panjim.tutorial ? "The Tutorial starts again from its first year." : "Your saved run is cleared and Panjim starts again from its first year.";
+      const text = panjim.tutorial ? "The Tutorial starts again from its first year." : "Panjim starts again from its first year.";
       void leaveConfirm.ask(text, { title: "Start again?", confirm: "Start again" }).then((again) => {
         if (!again) return;
-        panjim.clearSave();
         (options.onRestart ?? options.onExit)();
       });
     };
@@ -3049,7 +3041,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
     keydownAbort.abort();
     leaveConfirm?.dispose();
-    beginConfirm?.dispose();
     mapPins.dispose();
     areaOutline.dispose();
     panjim?.dispose();

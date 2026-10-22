@@ -203,6 +203,12 @@ export class ActionRun {
    */
   readonly replaySnapshots = new Map<string, RunSnapshot>();
   /**
+   * Section 28.1: the run as it stood when each storm's phase began (2026 for the first storm, the year after the
+   * storm before it for the others), by storm id, with the phase's objective: what "Try this storm again" goes back
+   * to. In memory only.
+   */
+  readonly phaseSnapshots = new Map<string, { snapshot: RunSnapshot; objective: PhaseObjective | null }>();
+  /**
    * Each storm's area to protect as its forecast drew it at the start of its
    * phase (the houses it would take then): the result cards' places. By id.
    */
@@ -258,6 +264,34 @@ export class ActionRun {
     }
     this.refreshPrep();
     this.notePhaseStart();
+    this.notePhaseSnapshot();
+  }
+
+  /** Section 28.1: at the start of a storm's phase, the run as it stands, for "Try this storm again". */
+  private notePhaseSnapshot(): void {
+    const next = this.nextChallenge();
+    if (!next || this.phaseSnapshots.has(next.id) || this.turnNumber !== this.phaseStart(next)) return;
+    this.phaseSnapshots.set(next.id, { snapshot: this.snapshot(), objective: this.objective ? (JSON.parse(JSON.stringify(this.objective)) as PhaseObjective) : null });
+  }
+
+  /**
+   * Section 28.1 (owner decision): "Try this storm again". The run goes back to the start of `challengeId`'s phase,
+   * exactly as it was then: the board, the builds, ruins, biodiversity, defence ages, cracks and broken defences,
+   * homes lost and the earlier storms' results. Only that phase's builds (and anything after) are undone. False
+   * when there is no such phase start (a storm not reached yet, or a level without storms).
+   */
+  retry(challengeId: string): boolean {
+    const saved = this.phaseSnapshots.get(challengeId);
+    if (!saved) return false;
+    const at = saved.snapshot.turn;
+    this.restore(saved.snapshot);
+    this.objective = saved.objective ? (JSON.parse(JSON.stringify(saved.objective)) as PhaseObjective) : null;
+    if (this.objective) this.prep = this.objective.rows;
+    else if (saved.snapshot.prep) this.prep = JSON.parse(JSON.stringify(saved.snapshot.prep)) as PrepObjective[];
+    for (const [id, later] of [...this.phaseSnapshots]) if (later.snapshot.turn > at) this.phaseSnapshots.delete(id);
+    for (const id of [...this.stormRecords.keys()]) if (!this.landed.has(id)) this.stormRecords.delete(id);
+    this.moment++;
+    return true;
   }
 
   /** At the start of a storm's phase: its area to protect, as the forecast draws it now. */
@@ -798,6 +832,7 @@ export class ActionRun {
     if (!this.finished) events.push(...this.breakAged());
     if (!this.finished) events.push({ type: "year", turn: this.turnNumber });
     this.notePhaseStart();
+    this.notePhaseSnapshot();
     // Two years out, a storm's warning begins: the moment "Replay" rewinds to.
     for (const challenge of this.schedule) {
       if (this.landed.has(challenge.id) || this.finished || this.yearsUntil(challenge) !== HEAT_LEAD_YEARS || this.replaySnapshots.has(challenge.id)) continue;

@@ -57,12 +57,10 @@ export class ModalStack {
 /** The layers a storm waits for (Section 16 B5): it never starts, and its cards never open, under them. */
 export const STORM_WAITS_FOR: readonly string[] = ["help", "menu", "field-guide", "leave", "sources"];
 
-/** The line under "Leave Panjim?" (Section 16 B5): what is true of the run right now. */
-export function leaveText(run: { tutorial: boolean; savedYear: number | null; finished: boolean; builds: number }): string {
+/** The line under "Leave Panjim?" (Section 16 B5): what is true of the run right now. Section 28.2: nothing is saved. */
+export function leaveText(run: { tutorial: boolean; finished: boolean; builds: number }): string {
   if (run.tutorial) return "The Tutorial is not saved: leaving starts it again.";
-  if (run.savedYear !== null) return `Your run is saved. You can continue from ${run.savedYear}.`;
-  if (run.finished) return "This run is over, and its result is recorded.";
-  // Built, yet nothing saved: this browser keeps no storage for the game.
-  if (run.builds > 0) return "This browser could not save your run, so leaving ends it.";
+  if (run.finished) return "This run is over.";
+  if (run.builds > 0) return "Nothing is saved: leaving ends this run.";
   return "You haven't built anything yet.";
 }
