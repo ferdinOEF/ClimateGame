@@ -224,7 +224,7 @@ export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress
         className: "settings-block danger",
         children: [
           el("label", { className: "field-label", text: "Danger zone" }),
-          el("p", { className: "settings-note", text: "Clears every level record, star and badge stored on this device." }),
+          el("p", { className: "settings-note", text: "Clears every level record, star and badge from this visit (Section 28.2: nothing is stored on this device)." }),
           el("button", {
             className: "btn btn-danger",
             text: "Reset local progress",

@@ -111,7 +111,7 @@ export async function submitScore(submission: ScoreSubmission): Promise<SubmitRe
     if (code === "permission-denied") return { status: "not-a-personal-best" };
     if (code === "unavailable") return { status: "offline" };
     console.warn("[leaderboard] score submission failed", error);
-    return { status: "error", message: "Couldn't reach the leaderboard. Your score is saved on this device." };
+    return { status: "error", message: "Couldn't reach the leaderboard. Your score is kept for this visit only." };
   }
 }
 

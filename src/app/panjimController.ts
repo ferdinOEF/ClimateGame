@@ -890,6 +890,8 @@ export class PanjimController {
     this.coneSeen.delete(challengeId);
     this.readinessById.delete(challengeId);
     this.host.redrawBoard();
+    // Back at 2026 the first-build hint shows again, as on a new run.
+    if (this.run.turnNumber === 1) this.host.container.classList.remove("has-built");
     this.busy = false;
     this.clock.set(this.clockView());
     this.renderOutlook();

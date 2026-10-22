@@ -123,8 +123,8 @@ export function renderAuthScreen(root: HTMLElement, actions: AuthActions, initia
     title.textContent = mode === "signup" ? "Create an account" : "Sign in";
     blurb.textContent =
       mode === "signup"
-        ? "Your progress on this device carries over, and from then on it follows you to any browser you sign in from."
-        : "Welcome back. Anything you've played on this device will be merged into your account.";
+        ? "Your best scores go to the leaderboard under your account. Progress lasts for this visit only."
+        : "Welcome back. Progress lasts for this visit only.";
     toggleButton.textContent =
       mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account";
     nameField.hidden = mode !== "signup";
@@ -234,7 +234,7 @@ export function renderAuthScreen(root: HTMLElement, actions: AuthActions, initia
               el("div", { className: "board-empty-title", text: "Accounts aren't set up for this build" }),
               el("p", {
                 className: "board-empty-body",
-                text: "There's no Firebase project connected, so there's nothing to sign in to. Your progress is still saved on this device. See docs/DEPLOY.md to connect one."
+                text: "There's no Firebase project connected, so there's nothing to sign in to. Progress lasts for this visit only. See docs/DEPLOY.md to connect one."
               }),
               el("button", { className: "btn btn-primary", text: "Keep playing", on: { click: () => actions.onGuest() } })
             ]

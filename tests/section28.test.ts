@@ -95,6 +95,24 @@ describe("try this storm again (Section 28.1)", () => {
     expect(run.outcomes.has(c3.id)).toBe(true);
   });
 
+  it("wires the buttons: card 1 of every storm, the Tutorial's Try again, and no new year or finale after a retry", async () => {
+    const fs = await import("node:fs");
+    const controller = fs.readFileSync("src/app/panjimController.ts", "utf8");
+    expect(controller).toMatch(/\{ body: resultCard\(result\), button: "See what protected your city", alt: "Try this storm again" \}/);
+    expect(controller).toMatch(/\(await this\.resultCards\.show\(cards\)\) === "alt"\) this\.retryRequested = challenge\.id/);
+    expect(controller).toMatch(/button: "Play Panjim", alt: "Try again", link: "Back to the menu"/);
+    expect(controller).toMatch(/this\.tutorialChoice === "alt" \? "again"/);
+    // The retry branch returns before the year's events, the clock tick and the finale.
+    const endTurn = controller.slice(controller.indexOf("private async endTurn("));
+    const retryAt = endTurn.indexOf("if (this.retryRequested) {");
+    expect(retryAt).toBeGreaterThan(0);
+    expect(endTurn.slice(retryAt, retryAt + 400)).toMatch(/this\.applyRetry\(id\);\s*return;/);
+    expect(retryAt).toBeLessThan(endTurn.indexOf("await this.finale()"));
+    expect(retryAt).toBeLessThan(endTurn.indexOf("for (const event of later) if (event.type !== \"challenge\")"));
+    // The final card offers Play again, never a retry.
+    expect(controller).toMatch(/finalCard\(phases, result, nature\), button: "Play again", link: "Back to the menu" \}/);
+  });
+
   it("has nothing to retry for a storm not reached yet", () => {
     const run = newRun("s28-none", BOT_LEVEL);
     expect(run.retry(run.schedule[1].id)).toBe(false);

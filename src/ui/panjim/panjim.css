@@ -657,10 +657,6 @@
   from { opacity: 0; transform: translateY(20px) scale(0.94); }
 }
 
-.brief-resume {
-  margin-top: 8px;
-}
-
 /* ---- Finale -------------------------------------------------------------- */
 
 .finale-title {
@@ -3260,7 +3256,6 @@
 .brief-card.brief-panjim.with-feature > .brief-body { grid-row: 4; }
 .brief-card.brief-panjim.with-feature > .brief-goal-line { grid-row: 5; }
 .brief-card.brief-panjim.with-feature > .brief-cta { grid-row: 6; }
-.brief-card.brief-panjim.with-feature > .brief-resume { grid-row: 7; }
 .brief-card.brief-panjim.with-feature > .brief-feature { grid-row: 1 / 9; }
 
 .brief-card.brief-panjim .cone-preview-map {

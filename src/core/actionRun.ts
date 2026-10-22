@@ -832,7 +832,6 @@ export class ActionRun {
     if (!this.finished) events.push(...this.breakAged());
     if (!this.finished) events.push({ type: "year", turn: this.turnNumber });
     this.notePhaseStart();
-    this.notePhaseSnapshot();
     // Two years out, a storm's warning begins: the moment "Replay" rewinds to.
     for (const challenge of this.schedule) {
       if (this.landed.has(challenge.id) || this.finished || this.yearsUntil(challenge) !== HEAT_LEAD_YEARS || this.replaySnapshots.has(challenge.id)) continue;
@@ -840,6 +839,8 @@ export class ActionRun {
       events.push({ type: "warning", challenge });
     }
     events.push(...this.settle());
+    // After settle: a Get ready row already done as the phase begins is saved done (it is not celebrated again on a retry).
+    this.notePhaseSnapshot();
     return events;
   }
 

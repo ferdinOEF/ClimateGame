@@ -5,7 +5,9 @@
  *
  * On load, the keys an older version wrote about progress are cleared once (`clearOldProgress`), so a machine that
  * played an older version starts clean. What the game still keeps on the machine is listed in `KEYS_STILL_USED`:
- * display preferences only, none about progress. Nothing is kept in sessionStorage.
+ * display preferences only, none about progress. Nothing is kept in sessionStorage. With a Firebase project
+ * configured (none is in production), the Firebase SDK keeps its own signed in user in IndexedDB; that is an
+ * identity for the leaderboard, not progress, and it brings no progress back (the cloud pull is off).
  */
 
 /** Progress an older version saved: removed on every load (removing an absent key costs nothing). */
@@ -28,7 +30,7 @@ export const KEYS_STILL_USED: Readonly<Record<string, string>> = {
   "riptide-rising:calm-motion": "Calm motion on or off, a preference (defaults to the system's reduced motion).",
   "riptide-rising:maya-voice:v1": "Maya's voice on or off (M); Maya is hidden (SHOW_MAYA off), so it is not written.",
   "riptide-rising:map-layer:v4": "The street map's opacity, a preference (v2 and v3 read once to carry an old choice over).",
-  "root-and-ruin:display-name": "The name shown on the leaderboard; written only from Settings, which no button reaches.",
+  "root-and-ruin:display-name": "The name shown on the leaderboard; written from Settings (which no button reaches) or an account sign up (only with VITE_REQUIRE_EMAIL).",
   "root-and-ruin:player:v1": "The sign up sheet (name, age, email); used only with VITE_REQUIRE_EMAIL, off by default."
 };
 
