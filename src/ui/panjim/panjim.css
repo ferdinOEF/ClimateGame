@@ -657,10 +657,6 @@
   from { opacity: 0; transform: translateY(20px) scale(0.94); }
 }
 
-.brief-resume {
-  margin-top: 8px;
-}
-
 /* ---- Finale -------------------------------------------------------------- */
 
 .finale-title {
@@ -2555,10 +2551,17 @@
   border: 2px solid #f4d9a6;
 }
 
-.result-back {
+.result-back,
+.result-retry {
   background: transparent;
   color: #fbeed9;
   border: 2px solid rgba(251, 238, 217, 0.5);
+}
+
+/* Section 28.1: "Try this storm again" takes its own width, so the main button keeps one line. */
+.result-actions .result-retry {
+  flex: 0 1 auto;
+  padding: 0 18px;
 }
 
 .result-actions button:focus-visible,
@@ -3253,7 +3256,6 @@
 .brief-card.brief-panjim.with-feature > .brief-body { grid-row: 4; }
 .brief-card.brief-panjim.with-feature > .brief-goal-line { grid-row: 5; }
 .brief-card.brief-panjim.with-feature > .brief-cta { grid-row: 6; }
-.brief-card.brief-panjim.with-feature > .brief-resume { grid-row: 7; }
 .brief-card.brief-panjim.with-feature > .brief-feature { grid-row: 1 / 9; }
 
 .brief-card.brief-panjim .cone-preview-map {

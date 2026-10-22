@@ -401,7 +401,7 @@ function describeAuthError(error: unknown): string {
     case "auth/popup-blocked":
       return "Your browser blocked the sign in popup. Allow popups for this site and try again.";
     case "auth/network-request-failed":
-      return "Couldn't reach the network. Your progress is still saved on this device.";
+      return "Couldn't reach the network. Your progress is kept for this visit only.";
     case "auth/operation-not-allowed":
       return "That sign in method isn't enabled for this project yet. See docs/DEPLOY.md.";
     case "auth/email-already-in-use":
@@ -426,6 +426,6 @@ function describeAuthError(error: unknown): string {
     case "auth/unauthorized-domain":
       return "This domain isn't authorised for signing in.";
     default:
-      return "Signing in didn't work. Your progress is still saved on this device.";
+      return "Signing in didn't work. Your progress is kept for this visit only.";
   }
 }

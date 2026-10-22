@@ -4,7 +4,6 @@ import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
 import { describe as describeStorm } from "../src/ui/panjim/outlookBar";
 import { isPhaseLine, MAYA } from "../src/core/mayaLines";
 import { prepProgress } from "../src/core/prep";
-import { boardFingerprint, savedRunYear, panjimSaveKey } from "../src/levels/savedRun";
 import { progressLine } from "../src/ui/screens/levelSelectScreen";
 import { MONEY_ONLY } from "../src/levels/balance";
 
@@ -52,20 +51,10 @@ describe("Section 12 bugs", () => {
     for (const id of [MAYA.greeting.id, "get-ready", "fact:mangroves"]) expect(isPhaseLine(id), id).toBe(false);
   });
 
-  it("7: the level card says 'Continue from 2031' while a run is saved, best stars once one has finished", () => {
-    const store = new Map<string, string>();
-    const storage = { getItem: (key: string) => store.get(key) ?? null };
-    expect(savedRunYear("l01-first-rains", 2026, 25, storage)).toBeNull();
-    store.set(panjimSaveKey("l01-first-rains"), JSON.stringify({ snapshot: { version: 3, turn: 5 }, board: boardFingerprint("l01-first-rains") }));
-    expect(savedRunYear("l01-first-rains", 2026, 25, storage)).toBe(2031);
+  it("7: the level card shows the best stars once a run has finished (Section 28.2: never 'Continue from')", () => {
     const record = { stars: 0, bestScore: 0, completed: false };
-    // Section 17b (owner decision): no dots or hyphens between words in player-facing text.
-    expect(progressLine(BOT_LEVEL, record, true, 2031)).toEqual({ text: "Continue from 2031", muted: false });
-    expect(progressLine(BOT_LEVEL, record, true, null).text).toBe("Not yet played");
-    expect(progressLine(BOT_LEVEL, { stars: 2, bestScore: 0, completed: true }, true, null).text).toBe("Best ★★☆");
-    // A finished run's save is not "in progress".
-    store.set(panjimSaveKey("l01-first-rains"), JSON.stringify({ snapshot: { version: 3, turn: 25 }, board: boardFingerprint("l01-first-rains") }));
-    expect(savedRunYear("l01-first-rains", 2026, 25, storage)).toBeNull();
+    expect(progressLine(BOT_LEVEL, record, true).text).toBe("Not yet played");
+    expect(progressLine(BOT_LEVEL, { stars: 2, bestScore: 0, completed: true }, true).text).toBe("Best ★★☆");
   });
 });
 

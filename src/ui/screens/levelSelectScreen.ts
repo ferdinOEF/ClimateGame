@@ -1,7 +1,6 @@
 import { LEVELS } from "@levels/levels";
 import { isLevelUnlocked, recordFor, type PlayerProgress } from "@levels/progression";
 import { el, formatScore, starRow } from "./screenHelpers";
-import { savedRunYear } from "@levels/savedRun";
 import { mapById } from "@levels/levelMap";
 
 /**
@@ -82,18 +81,15 @@ export function runSummary(level: (typeof LEVELS)[number]): string {
 }
 
 /**
- * The card's last line (Section 12): "In progress · 2031" while a saved run
- * waits, the best stars once a run has finished, else "Not yet played" (or
- * how to unlock it).
+ * The card's last line (Section 12): the best stars once a run has finished in this visit (Section 28.2: nothing
+ * is saved, so a reload starts at "Not yet played"), else "Not yet played" (or how to unlock it).
  */
 export function progressLine(
   level: (typeof LEVELS)[number],
   record: { stars: number; bestScore: number; completed: boolean },
-  unlocked: boolean,
-  savedYear: number | null = level.timeline ? savedRunYear(level.id, level.timeline.startYear, level.timeline.endYear - level.timeline.startYear + 1) : null
+  unlocked: boolean
 ): { text: string; muted: boolean } {
   if (!unlocked) return { text: `Clear ${LEVELS[LEVELS.indexOf(level) - 1]?.name ?? "the previous level"} to unlock`, muted: true };
-  if (savedYear !== null) return { text: `Continue from ${savedYear}`, muted: false };
   if (record.stars > 0) return { text: `Best ${"★".repeat(record.stars)}${"☆".repeat(Math.max(0, 3 - record.stars))}`, muted: false };
   if (record.bestScore > 0) return { text: `Best ${formatScore(record.bestScore)}`, muted: false };
   return { text: "Not yet played", muted: true };

@@ -199,12 +199,13 @@ function describeSubmission(outcome: SubmitResult, cleared: boolean, showAccount
   switch (outcome.status) {
     case "submitted":
       // With no leaderboard on screen, naming one would point at nothing.
-      return showLeaderboard ? "Score posted to the leaderboard." : "New best score saved.";
+      return showLeaderboard ? "Score posted to the leaderboard." : "New best score for this visit.";
     case "not-a-personal-best":
       return "Your best score for this level still stands.";
     case "offline":
-      return showAccount && showLeaderboard ? "Saved on this device. Sign in to post to the leaderboard." : "Saved on this device.";
+      // Section 28.2: nothing is saved on the machine.
+      return showAccount && showLeaderboard ? "Kept for this visit only. Sign in to post to the leaderboard." : "Kept for this visit only.";
     case "error":
-      return showLeaderboard ? outcome.message : "Saved on this device.";
+      return showLeaderboard ? outcome.message : "Kept for this visit only.";
   }
 }

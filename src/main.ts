@@ -2,6 +2,7 @@ import "@ui/hud.css";
 import "@ui/screens/screens.css";
 import "@ui/panjim/panjim.css";
 import { AppShell } from "@app/appShell";
+import { clearOldProgress } from "@services/storagePolicy";
 
 /**
  * Application entry point.
@@ -27,6 +28,8 @@ if (!root) {
   throw new Error("Riptide Rising: #app mount point not found in index.html");
 }
 
+// Section 28.2: nothing about progress is saved; what an older version saved is cleared before anything reads it.
+clearOldProgress();
 new AppShell(root);
 
 // The boot splash in index.html covers the gap between first paint and the

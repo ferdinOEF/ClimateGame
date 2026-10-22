@@ -19,10 +19,12 @@ export interface CardSpec {
   button: string;
   /** A quieter link under the button (the final card's way back to the menu). */
   link?: string;
+  /** Section 28.1: a second button beside the main one ("Try this storm again"); it closes the cards. */
+  alt?: string;
 }
 
-/** What closed the cards: the last card's button, or its link. */
-export type CardsChoice = "button" | "link";
+/** What closed the cards: the last card's button, its link, or a card's second button (Section 28.1). */
+export type CardsChoice = "button" | "link" | "alt";
 
 const esc = (text: string): string => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
@@ -236,6 +238,14 @@ export class ResultCards {
             render();
           });
           actions.appendChild(back);
+        }
+        if (spec.alt) {
+          const alt = document.createElement("button");
+          alt.type = "button";
+          alt.className = "result-retry";
+          alt.textContent = spec.alt;
+          alt.addEventListener("click", () => close("alt"));
+          actions.appendChild(alt);
         }
         const go = document.createElement("button");
         go.type = "button";

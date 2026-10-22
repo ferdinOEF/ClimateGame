@@ -54,19 +54,20 @@ export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress
 
   function progressSummary(): string {
     return isCloudConfigured()
-      ? "Saved on this device. Your best scores are posted to the leaderboard under your leaderboard name."
-      : "This build runs offline. Progress is saved on this device only.";
+      ? "Progress lasts for this visit only. Your best scores are posted to the leaderboard under your leaderboard name."
+      : "This build runs offline. Progress lasts for this visit only: nothing is saved.";
   }
 
   function accountSummary(): string {
-    if (!isCloudConfigured()) return "This build runs offline. Progress is saved on this device only.";
+    // Section 28.2 (owner decision): nothing about progress is saved, and none is brought back from the cloud.
+    if (!isCloudConfigured()) return "This build runs offline. Progress lasts for this visit only: nothing is saved.";
     if (!user) return "Connecting…";
     if (user.hasProvider) {
       return user.email
-        ? `Signed in as ${user.email}. Your progress syncs across devices.`
-        : "Signed in. Your progress syncs across devices.";
+        ? `Signed in as ${user.email}. Progress lasts for this visit only.`
+        : "Signed in. Progress lasts for this visit only.";
     }
-    return "Playing as a guest. Your progress is saved here and posted to the leaderboard, but it won't follow you to another device.";
+    return "Playing as a guest. Progress lasts for this visit only; best scores are posted to the leaderboard.";
   }
 
   const screen = el("div", {
@@ -223,7 +224,7 @@ export function renderSettingsScreen(root: HTMLElement, progress: PlayerProgress
         className: "settings-block danger",
         children: [
           el("label", { className: "field-label", text: "Danger zone" }),
-          el("p", { className: "settings-note", text: "Clears every level record, star and badge stored on this device." }),
+          el("p", { className: "settings-note", text: "Clears every level record, star and badge from this visit (Section 28.2: nothing is stored on this device)." }),
           el("button", {
             className: "btn btn-danger",
             text: "Reset local progress",
@@ -276,7 +277,7 @@ function cloudStatusBlock(registration: ReturnType<typeof getRegistration>, show
   const status = el("p", { className: "settings-note", attrs: { role: "status" } });
 
   function describe(): string {
-    if (!config) return "No Firebase project is configured for this build, so nothing is sent anywhere. Everything is saved on this device. See docs/DEPLOY.md to connect one.";
+    if (!config) return "No Firebase project is configured for this build, so nothing is sent anywhere. Progress lasts for this visit only. See docs/DEPLOY.md to connect one.";
     const account = getCurrentUser();
     if (!showAccount) return `Project ${config.projectId}, ${account ? "connected" : "connecting…"}.`;
     const session = account ? `signed in (${account.isAnonymous ? "guest session" : "account"})` : "not signed in yet";

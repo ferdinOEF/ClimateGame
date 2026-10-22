@@ -1,6 +1,6 @@
 import guideData from "@data/fieldGuide.json";
 import { playSound } from "@ui/audioHooks";
-import { noteIdsFor, notesProgress, refreshSavedNotes } from "@core/mayaLines";
+import { noteIdsFor, notesProgress } from "@core/mayaLines";
 import { factById } from "@core/facts";
 import { BROKEN_RULE, defenceRules } from "@ui/panjim/defenceCards";
 
@@ -32,9 +32,8 @@ export interface Species {
 }
 
 export const SPECIES: Species[] = guideData as Species[];
-const STORAGE_KEY = "riptide-rising:field-guide:v1";
-/** Maya's tips, kept as pages so they can be reread. */
-const NOTES_KEY = "riptide-rising:maya-notes:v1";
+// Section 28.2 (owner decision): the creatures found and Maya's notes last for this visit only; nothing is saved
+// on the machine (the old keys are cleared on load, services/storagePolicy.ts).
 
 /** A page in the guide written by Maya: one tip she gave. */
 export interface GuideNote {
@@ -43,31 +42,9 @@ export interface GuideNote {
   text: string;
 }
 
-function loadNotes(): GuideNote[] {
-  try {
-    const raw = localStorage.getItem(NOTES_KEY);
-    const parsed = raw ? (JSON.parse(raw) as GuideNote[]) : [];
-    if (!Array.isArray(parsed)) return [];
-    // Saved notes carry the words they were saved with: bring them up to
-    // date, and drop lines that no longer exist (core/mayaLines.ts).
-    return refreshSavedNotes(parsed.filter((note) => typeof note?.id === "string" && typeof note.text === "string"));
-  } catch {
-    return [];
-  }
-}
-
-function load(): Set<string> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
-
 export class FieldGuide {
-  private readonly found = load();
-  private readonly notes = loadNotes();
+  private readonly found = new Set<string>();
+  private readonly notes: GuideNote[] = [];
   /** Asks Maya to say a note again (the "Hear it again" button on its page). */
   onReplayNote: ((note: GuideNote) => void) | null = null;
   private readonly button: HTMLButtonElement;
@@ -118,11 +95,6 @@ export class FieldGuide {
   addNote(note: GuideNote): boolean {
     if (this.notes.some((existing) => existing.id === note.id)) return false;
     this.notes.push({ id: note.id, title: note.title, text: note.text });
-    try {
-      localStorage.setItem(NOTES_KEY, JSON.stringify(this.notes));
-    } catch {
-      // Private mode: the notes last for this run.
-    }
     this.renderButton();
     return true;
   }
@@ -154,11 +126,6 @@ export class FieldGuide {
       fresh.push(species);
     }
     if (fresh.length === 0) return fresh;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...this.found]));
-    } catch {
-      // Private mode: the guide lasts for this run.
-    }
     playSound("chime");
     this.renderButton();
     this.button.classList.remove("bump");

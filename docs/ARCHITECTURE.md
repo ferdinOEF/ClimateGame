@@ -234,7 +234,16 @@ The split between the first two is deliberate: `GameState` is a snapshot
 did), and objectives need history. Bolting an event log onto the board
 model would have muddied both.
 
-`services/profileStore.ts` fronts persistence with **localStorage as the
+**Section 28.2 (owner decision): nothing about progress is saved on the
+machine.** Runs, stars, the Tutorial's "done", achievements and the Field
+Guide live in memory for one visit; a reload starts fresh at the menu and
+Play Panjim always starts at 2026. `services/storagePolicy.ts` clears the
+keys older versions wrote, once on load, and lists the keys still used
+(display preferences only). "Try this storm again" (Section 28.1) works
+from in-memory snapshots, `ActionRun.phaseSnapshots`, taken at the start of
+each storm's phase. The paragraphs below describe the design before that.
+
+`services/profileStore.ts` fronted persistence with **localStorage as the
 primary store** and Firestore as a mirror. The game is fully playable —
 campaign, unlocks, stars, badges — with no network and no Firebase project
 at all. Cloud sync adds cross-device continuity and the shared board; it is

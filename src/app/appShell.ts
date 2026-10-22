@@ -1,7 +1,6 @@
 import { startGameSession, type GameSessionHandle, type SessionResult } from "./gameSession";
 import { resolveLevel, type LevelDef } from "@levels/levels";
 import { newlyUnlocked } from "@levels/achievements";
-import { syncWithCloud } from "@services/profileStore";
 import {
   getProgress,
   onProgressChanged,
@@ -300,16 +299,9 @@ export class AppShell {
         renderAuthScreen(
           this.screenLayer,
           {
-            // A successful sign-in changes uid, so pull the account's save
-            // and merge this device's play into it before showing anything.
-            // syncWithCloud is best-of per level, so neither side is lost.
             onAuthenticated: () => {
-              // Two independent pulls, because they answer different
-              // questions: `syncWithCloud` merges stars and scores, while
-              // `restoreFromCloud` recovers the name/age/email sheet so an
-              // account used on a second browser is not asked to fill it in
-              // again. Neither blocks the navigation below.
-              void syncWithCloud().then(() => this.paint());
+              // `restoreFromCloud` recovers the name/age/email sheet so an account used on a second browser is not
+              // asked to fill it in again. Section 28.2: progress is never pulled back from the cloud.
               void restoreFromCloud().then(() => this.paint());
               this.go({ name: "menu" });
             },

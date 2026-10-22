@@ -40,7 +40,6 @@ import { HudPanels } from "@ui/panjim/hudPanels";
 import type { ConeShow } from "@render/forecastConeOverlay";
 import { factNote } from "@core/mayaLines";
 import { NuggetPopup } from "@ui/nuggetPopup";
-import { boardFingerprint, panjimSaveKey, saveFits, savedRunYear } from "@levels/savedRun";
 import { isPhaseLine, MAYA, noteIdsFor, stormWord, TUTORIAL_LINES } from "@core/mayaLines";
 import type { RunThen } from "@core/levelScore";
 import { PANAJI_LEVEL_ID } from "@ui/screens/runWords";
@@ -121,8 +120,6 @@ export interface PanjimHost {
   redrawBoard: () => void;
   /** A panel beside the opening brief's text (the first storm's forecast map). */
   addBriefFeature: (el: HTMLElement) => void;
-  /** Adds a second button to the level brief ("Continue from 2032"). `onBegin` runs instead when the player starts afresh. */
-  offerResume: (label: string, onResume: () => void, onBegin: () => void, savedYear: string) => void;
   /** The map's challenge zones. */
   zones: readonly ZoneDef[];
   /** Shows a storm's path as a translucent in-scene overlay: each tile with a 0–1 weight. */
@@ -420,12 +417,10 @@ export class PanjimController {
     }
     this.attachTooltips();
     this.addForecastToBrief();
-    const saveOffered = this.offerSavedRun();
     this.clock.set(this.clockView());
     this.renderOutlook();
     this.syncControls();
-    // With a save on offer, the first cone waits for Begin: a player who continues never sees it.
-    if (!saveOffered) this.showConeIfPhaseStart();
+    this.showConeIfPhaseStart();
   }
 
   /**
@@ -472,31 +467,11 @@ export class PanjimController {
   }
 
   /**
-   * The start popup's forecast for a saved run: the next storm as the save
-   * stands ("The flood comes in 10 years"), in place of 2026's. Read on the
-   * live run, put back exactly as it was.
-   */
-  private showSavedForecastOnBrief(snapshot: RunSnapshot): void {
-    const fresh = this.run.snapshot();
-    this.run.restore(snapshot);
-    const next = this.run.nextChallenge();
-    const preview = next ? this.forecastPreview(next, next.id === this.run.schedule[0]?.id) : null;
-    this.run.restore(fresh);
-    if (!preview) return;
-    // Begin starts a new run with its own forecast: this one is about the save.
-    const line = preview.querySelector(".cone-preview-line");
-    if (line) line.textContent = `If you continue: ${line.textContent}`;
-    this.host.container.querySelector(".brief-feature")?.remove();
-    this.host.addBriefFeature(preview);
-  }
-
-  /**
-   * The line under "Leave Panjim?" (Section 16 B5): the year the saved run continues from when there is one;
-   * the Tutorial is never saved; a finished run is over (its result is recorded); else nothing was built yet.
+   * The line under "Leave Panjim?" (Section 16 B5; Section 28.2: nothing is saved): a finished run is over (its
+   * result is recorded); else leaving ends it, or nothing was built yet.
    */
   leaveNote(): string {
-    const savedYear = this.tutorial ? null : savedRunYear(this.host.level.id, this.run.config.startYear, this.run.totalYears);
-    return leaveText({ tutorial: this.tutorial, savedYear, finished: this.run.finished, builds: this.run.turnNumber - 1 });
+    return leaveText({ tutorial: this.tutorial, finished: this.run.finished, builds: this.run.turnNumber - 1 });
   }
 
   /** ☰'s last two items (Section 16 B3): Start again and Leave, each asking first. */
@@ -824,10 +799,7 @@ export class PanjimController {
     this.renderOutlook();
     this.host.refresh();
 
-    // Autosave after every challenge.
-    const saveStart = performance.now();
-    this.saveRun();
-    telemetry.emit("checkpoint", { id: challenge.id, ms: Math.round(telemetry.elapsed()), saveMs: Math.round(performance.now() - saveStart) });
+    telemetry.emit("checkpoint", { id: challenge.id, ms: Math.round(telemetry.elapsed()) });
     telemetry.emit("challenge_end", {
       id: challenge.id,
       stars: outcome.stars,
@@ -882,11 +854,13 @@ export class PanjimController {
     if (this.tutorial) {
       // One card: the stars, the homes saved and what protected them; then on to Panaji.
       this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, tutorial: true });
-      this.tutorialChoice = await this.resultCards.show([{ body: tutorialResultCard(result), button: "Play Panjim", link: "Back to the menu" }]);
+      // Section 28.1: "Try again" starts the Tutorial's storm over (the Tutorial from its first build).
+      this.tutorialChoice = await this.resultCards.show([{ body: tutorialResultCard(result), button: "Play Panjim", alt: "Try again", link: "Back to the menu" }]);
       return;
     }
     const cards: CardSpec[] = [
-      { body: resultCard(result), button: "See what protected your city" },
+      // Section 28.1 (owner decision): back to the start of this storm's build years, no confirm.
+      { body: resultCard(result), button: "See what protected your city", alt: "Try this storm again" },
       // Section 17c: with Maya hidden, the cards carry no line of hers.
       { body: defencesCard(result, SHOW_MAYA && top ? results.byDefence[top.elementId] ?? null : null), button: nextLabel(next) }
     ];
@@ -897,7 +871,33 @@ export class PanjimController {
       });
     }
     this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });
-    await this.resultCards.show(cards);
+    if ((await this.resultCards.show(cards)) === "alt") this.retryRequested = challenge.id;
+  }
+
+  /** Section 28.1: the storm whose result card asked to try it again, until `endTurn` takes the run back. */
+  private retryRequested: string | null = null;
+
+  /**
+   * Section 28.1: the run back at the start of `challengeId`'s build years, exactly as it was then (`ActionRun.retry`),
+   * and everything on screen redrawn from it: the board (ruins, cracks, broken defences, landmarks), the clock, the
+   * Outlook, the objective, and the storm's forecast cone, which shows again as at any phase start.
+   */
+  private applyRetry(challengeId: string): void {
+    if (!this.run.retry(challengeId)) return;
+    this.host.telemetry.emit("checkpoint", { retry: challengeId, year: this.run.year });
+    this.host.tintTiles(null);
+    this.hideCone();
+    this.coneSeen.delete(challengeId);
+    this.readinessById.delete(challengeId);
+    this.host.redrawBoard();
+    // Back at 2026 the first-build hint shows again, as on a new run.
+    if (this.run.turnNumber === 1) this.host.container.classList.remove("has-built");
+    this.busy = false;
+    this.clock.set(this.clockView());
+    this.renderOutlook();
+    this.host.refresh();
+    this.syncControls();
+    this.showConeIfPhaseStart();
   }
 
 
@@ -1014,107 +1014,6 @@ export class PanjimController {
       // The defences that faced that storm, not the ones standing now.
       defences: [...best.record.defences.keys()]
     };
-  }
-
-  // ---- autosave -----------------------------------------------------------
-
-  private saveKey(): string {
-    return panjimSaveKey(this.host.level.id);
-  }
-
-  /** Whether this run has been saved on this device (the leave prompt says so only when it has). */
-  get hasSave(): boolean {
-    try {
-      return localStorage.getItem(this.saveKey()) !== null;
-    } catch {
-      return false;
-    }
-  }
-
-  /** Writes the run to this device: the board, every replay snapshot (so Replay survives a reload), and real time played. */
-  saveRun(): void {
-    // The Tutorial is three builds long: it is never saved, so its card never offers "Continue".
-    if (this.tutorial) return;
-    try {
-      localStorage.setItem(
-        this.saveKey(),
-        JSON.stringify({
-          snapshot: this.run.snapshot(),
-          locks: [...this.run.replaySnapshots],
-          playMs: this.playMsBefore + this.host.telemetry.elapsed(),
-          // The first-warning risk sequence plays once a playthrough, reloads included.
-          riskIntroSpent: this.riskGate.spent,
-          // Each forecast cone shows once, never again after a reload.
-          conesSeen: [...this.coneSeen],
-          // The board it was made on: a save from another board is not offered (Section 16).
-          board: boardFingerprint(this.host.level.id),
-          savedAt: new Date().toISOString()
-        })
-      );
-    } catch {
-      // Storage full or blocked: the run carries on unsaved.
-    }
-  }
-
-  clearSave(): void {
-    try {
-      localStorage.removeItem(this.saveKey());
-    } catch {
-      // Nothing to clear.
-    }
-  }
-
-  /** On load: if this level has a save part-way through, the brief offers to continue it. True when it does. */
-  private offerSavedRun(): boolean {
-    if (this.tutorial) return false;
-    // Saves from the quarterly clock (v1, keyed by level and seed) and from several builds a year (v2) cannot be continued: they are cleared.
-    try {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key?.startsWith(`riptide-rising:panjim2050:v1:${this.host.level.id}`) || key === `riptide-rising:panjim2050:v2:${this.host.level.id}`) localStorage.removeItem(key);
-      }
-    } catch {
-      // Storage blocked: nothing to clear.
-    }
-    let saved: { snapshot: RunSnapshot; locks: [string, RunSnapshot][]; playMs: number; riskIntroSpent?: boolean; conesSeen?: string[]; board?: string } | null = null;
-    try {
-      const raw = localStorage.getItem(this.saveKey());
-      saved = raw ? JSON.parse(raw) : null;
-    } catch {
-      saved = null;
-    }
-    // A save from an older clock, or made on another board (before the owner's map edits, Section 16), is not offered.
-    if (!saved || !saveFits(this.host.level.id, saved) || saved.snapshot.turn >= this.run.totalYears) return false;
-    const label = String(this.run.config.startYear + saved.snapshot.turn);
-    const data = saved;
-    // The popup's forecast is the saved phase's, so it shows what "Continue" leads to (Section 12).
-    this.showSavedForecastOnBrief(data.snapshot);
-    this.host.offerResume(`Continue from ${label}`, () => {
-      this.run.restore(data.snapshot);
-      // A continued run has been built on: no first-build hint (Section 16 B3).
-      if (data.snapshot.turn > 0) this.host.container.classList.add("has-built");
-      for (const [id, lock] of data.locks) this.run.replaySnapshots.set(id, lock);
-      this.playMsBefore = data.playMs ?? 0;
-      // Already seen in this playthrough (or a storm has passed): it does not play again.
-      if (data.riskIntroSpent || this.run.landed.size > 0) this.riskGate.markSpent();
-      // A reload never shows a cone again: those seen, and any whose phase began before the save.
-      for (const id of data.conesSeen ?? []) this.coneSeen.add(id);
-      for (const challenge of this.run.schedule) if (this.run.phaseStart(challenge) <= this.run.turnNumber) this.coneSeen.add(challenge.id);
-      this.hideCone();
-      // The start popup's forecast is about 2026: gone when continuing a later year.
-      this.host.container.querySelector(".brief-feature")?.remove();
-      this.host.container.querySelector(".brief-card.with-feature")?.classList.remove("with-feature");
-      // Her opening line is about the first objective: gone once that phase is behind the save.
-      if (!this.run.prep.some((job) => this.isOpeningJob(job))) this.maya.withdraw((line) => line.id === MAYA.opening.id);
-      this.host.redrawBoard();
-      const next = this.run.nextChallenge();
-      if (next && this.run.yearsUntil(next) <= HEAT_LEAD_YEARS) this.showForecast(next);
-      this.clock.set(this.clockView());
-      this.renderOutlook();
-      this.host.refresh();
-      this.syncControls();
-    }, () => this.showConeIfPhaseStart(), label);
-    return true;
   }
 
   /**
@@ -1369,6 +1268,16 @@ export class PanjimController {
         await this.untilLayersShut();
         if (this.disposed) return;
         await this.stageChallenge(staged.challenge, staged.outcome, staged.failedIds);
+        if (this.retryRequested) break;
+      }
+      // Section 28.1: "Try this storm again" on its result card: the new year (and the finale) never come.
+      if (this.retryRequested) {
+        const id = this.retryRequested;
+        this.retryRequested = null;
+        this.stagingYearEnd = false;
+        this.holdCountdowns(false);
+        this.applyRetry(id);
+        return;
       }
       this.stagingYearEnd = false;
       this.holdCountdowns(false);
@@ -1385,13 +1294,10 @@ export class PanjimController {
     this.host.refresh();
     this.syncControls();
     if (this.run.finished) {
-      this.clearSave();
-      if (this.tutorial) this.host.onRunComplete(this.result(), this.tutorialChoice === "link" ? "menu" : { levelId: PANAJI_LEVEL_ID });
+      if (this.tutorial) this.host.onRunComplete(this.result(), this.tutorialChoice === "link" ? "menu" : this.tutorialChoice === "alt" ? "again" : { levelId: PANAJI_LEVEL_ID });
       else await this.finale();
     } else {
       this.coachYear();
-      // Every new year is saved, so a reload continues from it.
-      this.saveRun();
     }
   }
 

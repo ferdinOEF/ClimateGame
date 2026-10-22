@@ -61,10 +61,7 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
     el("div", {
       className: "menu-footer",
       children: [
-        // Offered, never demanded — the guest session already saves and
-        // already reaches the leaderboard. What an account buys is the
-        // save following you to another device, so that is what the
-        // button says.
+        // Offered, never demanded (only with VITE_REQUIRE_EMAIL); the guest session already reaches the leaderboard.
         actions.showAccount && isCloudConfigured() && !signedIn
           ? el("button", { className: "link-button", text: "Sign in or create an account", on: { click: () => actions.onSignIn() } })
           : null,
@@ -74,13 +71,8 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
         // assuming the leaderboard is broken.
         el("span", {
           className: "menu-cloud-note",
-          text: !isCloudConfigured()
-            ? "Running offline. Progress is saved on this device only."
-            : signedIn
-              ? `Signed in${account?.email ? ` as ${account.email}` : ""} . Progress syncs across devices.`
-              : actions.showAccount
-                ? "Playing as a guest. Progress is saved on this device."
-                : "Progress is saved on this device."
+          // Section 28.2 (owner decision): nothing about progress is saved, on this machine or brought back from the cloud.
+          text: `${signedIn ? `Signed in${account?.email ? ` as ${account.email}` : ""}. ` : ""}Progress lasts for this visit only: nothing is saved.`
         })
       ]
     });

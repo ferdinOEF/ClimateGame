@@ -175,7 +175,7 @@ async function main(): Promise<void> {
       }
       await page.close();
     }
-    // ---- A reload does not play it again ------------------------------------
+    // ---- A reload starts a fresh run (Section 28.2: nothing is saved), so its first warning plays again ----------
     {
       const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
       const page = await ctx.newPage();
@@ -184,14 +184,14 @@ async function main(): Promise<void> {
       await scenario(page, "heat-4");
       await page.waitForTimeout(300);
       check((await fx(page, "fx.plays")) === 1, "reload: plays on the first warning");
-      await page.evaluate("window.__panjimForTest.saveRun()");
       await page.reload({ waitUntil: "domcontentloaded" });
-      await page.waitForSelector(".brief-resume", { timeout: 90000 });
-      await page.locator(".brief-resume").first().click();
+      await page.waitForSelector(".brief-cta", { timeout: 90000 });
+      check((await page.locator(".brief-resume").count()) === 0, "reload: no Continue on the start popup");
+      await page.locator(".brief-cta").first().click();
       await page.waitForTimeout(1500);
       await scenario(page, "heat-4");
       await page.waitForTimeout(400);
-      check((await fx(page, "fx.plays")) === 0, "reload: the continued run does NOT play it again");
+      check((await fx(page, "fx.plays")) === 1, "reload: the fresh run plays it on its own first warning");
       await ctx.close();
     }
     // ---- Reduced motion -----------------------------------------------------

@@ -33,7 +33,7 @@ export class LeaveConfirm {
     this.backdrop.innerHTML = `
       <div class="leave-confirm" role="alertdialog" aria-modal="true" aria-labelledby="leave-confirm-title" aria-describedby="leave-confirm-text">
         <div class="leave-confirm-title" id="leave-confirm-title">Leave Panjim?</div>
-        <p class="leave-confirm-text" id="leave-confirm-text">Your progress is saved.</p>
+        <p class="leave-confirm-text" id="leave-confirm-text">Nothing is saved.</p>
         <div class="leave-confirm-buttons">
           <button type="button" class="leave-confirm-stay">Stay</button>
           <button type="button" class="leave-confirm-leave">Leave</button>
@@ -61,7 +61,7 @@ export class LeaveConfirm {
    * Asks; resolves true for Leave, false for Stay (or Esc). `text` is the line under the title. `options`
    * changes the title and the confirming button (☰'s "Start again?", Section 16 B3).
    */
-  ask(text = "Your progress is saved.", options: { title?: string; confirm?: string; cancel?: string } = {}): Promise<boolean> {
+  ask(text = "Nothing is saved.", options: { title?: string; confirm?: string; cancel?: string } = {}): Promise<boolean> {
     if (this.isOpen) return Promise.resolve(false);
     this.textEl.textContent = text;
     this.titleEl.textContent = options.title ?? "Leave Panjim?";
