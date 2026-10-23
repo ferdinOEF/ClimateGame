@@ -93,17 +93,17 @@ describe("the Panaji hand edits", () => {
   // tiles to the owner's new river and gained 23,1 (now estuary): 135, 4 of them on row 0 east of the line; the east
   // edge adds 121 more on rows 5 to 36: 256. Merces and St Cruz stay in the game; river and sea stay water.
   // Section 22.1: 16,4 is river now (the owner's fourth round), and water stays playable: 255.
-  // Section 30.1 (owner decision): the creek corner east of Merces (33 tiles) leaves the game: 20 of them were
-  // playable (17 land, wetland and creek tiles, and 3 river tiles), so 275; all 33 are dry for the storms.
-  it("keeps the north bank, the east edge and the dropped corner as the stored unplayable tiles: 275, Ribandar among them", () => {
+  // Section 30.1 (owner decision): the creek east of Merces, its wetland and its bank (28 tiles) leave the game: 15 of
+  // them were playable (12 land, wetland and creek tiles, and 3 river tiles), so 270; all 28 are dry for the storms.
+  it("keeps the north bank, the east edge and the dropped corner as the stored unplayable tiles: 270, Ribandar among them", () => {
     const dropped = new Set((edits.dropped ?? []).map(([q, r]: number[]) => `${q},${r}`));
-    expect(dropped.size).toBe(33);
+    expect(dropped.size).toBe(28);
     expect(panaji.unplayable).toEqual(edits.unplayable);
-    expect(edits.unplayable).toHaveLength(275);
+    expect(edits.unplayable).toHaveLength(270);
     for (const key of dropped) expect(edits.unplayable.some(([q, r]: number[]) => `${q},${r}` === key), key).toBe(true);
     expect((panaji.dry ?? []).map(([q, r]: number[]) => `${q},${r}`).sort()).toEqual([...dropped].sort());
     const kept = edits.unplayable.filter(([q, r]: number[]) => !dropped.has(`${q},${r}`));
-    // 13 of the 33 were already scenery (the corner's wetland east of the line): 255 - 13 = 242 outside the corner.
+    // 13 of the 28 were already scenery (the corner's wetland east of the line): 255 - 13 = 242 outside the corner.
     expect(kept).toHaveLength(242);
     expect(edits.unplayable.some(([q, r]) => q === 16 && r === 4)).toBe(false);
     const east = kept.filter(([q, r]: number[]) => q + r / 2 >= 30.2);

@@ -4,11 +4,12 @@ import { computeWater, LANDFALL_ZONE } from "../src/core/hazardModel";
 import { shelterOf } from "../src/core/climate";
 
 /** Section 30 (owner decisions, game rules): festival clarity. */
-const DROPPED = ["24,6","25,6","26,6","24,7","25,7","26,7","24,8","25,8","26,8","24,9","25,9","26,9","27,9","24,10","25,10","24,11","24,12","28,9","26,10","27,10","28,10","29,10","25,11","26,11","27,11","28,11","25,12","26,12","27,12","28,12","25,13","26,13","27,13"];
+const DROPPED = ["26,7","24,8","25,8","26,8","24,9","25,9","26,9","27,9","24,10","25,10","24,11","24,12","28,9","26,10","27,10","28,10","29,10","25,11","26,11","27,11","28,11","25,12","26,12","27,12","28,12","25,13","26,13","27,13"];
 
 describe("30.1 the creek corner east of Merces leaves the game", () => {
   const run = newRun("s30-1", BOT_LEVEL);
-  it("makes all 33 tiles scenery and dry, with nothing to build", () => {
+  it("makes all 28 tiles scenery and dry, with nothing to build", () => {
+    expect(DROPPED).toHaveLength(28);
     for (const key of DROPPED) {
       const t = run.state.placed.get(key)!;
       expect(t, key).toBeDefined();
@@ -37,6 +38,28 @@ describe("30.1 the creek corner east of Merces leaves the game", () => {
       const e = run.exposureFor(c, true)!;
       for (const key of e.housesAtRisk) expect(DROPPED.includes(key), `${c.id} ${key}`).toBe(false);
     }
+  });
+
+  it("keeps the estuary at 24,6 25,6 26,6 and the homes behind it in play, and its defences still protect them", () => {
+    for (const key of ["24,6", "25,6", "26,6", "24,7", "25,7"]) {
+      const t = run.state.placed.get(key)!;
+      expect(!t.scenery && !t.dry, key).toBe(true);
+    }
+    for (const key of ["24,6", "25,6", "26,6"]) {
+      const [q, r] = key.split(",").map(Number);
+      expect(run.state.buildableAt({ q, r }).map((d) => d.id), key).toEqual(["mangrove", "khazan"]);
+    }
+    // 25,7 is the home (24,7 is land with none): the floods take it on the bare board, and the defences in front of
+    // it keep it: two in 2040, three in 2050 (the compound storm comes in deeper).
+    const flood = run.schedule[1];
+    const storm = run.schedule[2];
+    expect(run.exposureFor(flood)!.housesAtRisk).toContain("25,7");
+    expect(run.exposureFor(storm)!.housesAtRisk).toContain("25,7");
+    const guarded = newRun("s30-1-guard", BOT_LEVEL);
+    for (const [q, r, id] of [[25, 6, "khazan"], [26, 6, "khazan"]] as const) expect(guarded.build({ q, r }, id).ok).toBe(true);
+    expect(guarded.exposureFor(flood)!.housesAtRisk).not.toContain("25,7");
+    expect(guarded.build({ q: 24, r: 6 }, "mangrove").ok).toBe(true);
+    expect(guarded.exposureFor(storm)!.housesAtRisk).not.toContain("25,7");
   });
 
   it("keeps the flood's source and its reach into Taleigao, Merces and St Cruz", () => {

@@ -235,8 +235,11 @@ shown, "Adil Shah Palace" left off (it sat on the first).
   (taken away together with that other, the storm takes more homes than without the other alone).
 
 **Owner decisions carried out, and where the brief and the board differ:**
-- 30.1: three of the 16 tiles listed as "already unplayable" (27,10, 27,11 and 26,12) were playable river tiles;
-  all 33 are now dry and grey. 13 of the 33 were already grey scenery.
+- 30.1 (the revised brief: 28 tiles; the estuary 24,6 25,6 26,6 and the homes on 24,7 and 25,7 stay in play):
+  three of the 16 tiles listed as "already unplayable" (27,10, 27,11 and 26,12) were playable river tiles; all 28
+  are now dry and grey (13 of them were already grey scenery). 24,7 is land with no home on it; the home is 25,7.
+  Defences on the estuary still protect it: khazans (or mangroves) on 25,6 and 26,6 keep it dry in the 2040 flood,
+  and with a mangrove on 24,6 as well it stands in the 2050 storm (`tests/section30.test.ts`).
 - 30.3: the mangrove's "best for biodiversity" reads "great for biodiversity": in this game pandanus ties it (+3
   each). The dune's second line stays a game line ("Good for nature: it adds to biodiversity."): no one source was
   found that says "home to beach plants and ghost crabs", and no page could be opened from here to check one (leads
