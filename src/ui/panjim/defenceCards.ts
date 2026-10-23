@@ -27,19 +27,19 @@ export const CARD_NAME: Record<string, string> = {
 /**
  * Section 30.3 (owner decision): each card says what the defence is for, in two short lines: its main job in this
  * game, then one other thing it does. The owner asked for a real world fact with a source as each second line (the
- * seawall's a game rule). Only the khazan's could be sourced here (an existing citation, `khazan-what`); no web page
- * could be opened to check the others, so they are plain game lines (true in this game) until their sources are
- * checked. The owner's wordings and the leads found are kept in facts.json as hidden `card-*` entries
- * (`needsSource`). No pairing lines on the cards (the rule stays in the game).
+ * seawall's a game rule). Sourced (`CARD_FACT`, facts.json, the Sources screen): pandanus, mangrove, khazan,
+ * breakwater, small dam. The dune's found no one source that says it, so it is a plain game line; the owner's
+ * wording and its leads stay in facts.json as the hidden `card-dune`. The mangrove's "best for biodiversity" reads
+ * "great": in this game pandanus ties it (+3 each). No pairing lines on the cards (the rule stays in the game).
  */
 export const CARD_LINES: Record<string, readonly [string, string]> = {
   dune: ["Shields homes from cyclone waves and surge.", "Good for nature: it adds to biodiversity."],
-  sandy_vegetation: ["Shields homes from cyclone waves and wind.", "The only shelter from a cyclone's wind."],
-  mangrove: ["Protects against waves and surge in both storms.", "Grows on wetland; good for nature."],
+  sandy_vegetation: ["Shields homes from cyclone waves and wind.", "Binds the sand; its leaves are woven into mats."],
+  mangrove: ["Protects against waves and surge in both storms.", "A nursery for fish and crabs; great for biodiversity."],
   khazan: ["Holds back river floods.", "Farmers and fishers share it."],
   seawall: ["The strongest wall against cyclone surge.", "Costs nature, and cracks with age."],
-  breakwater: ["Breaks cyclone waves out at sea.", "Costs nature, and breaks with age."],
-  small_dam: ["Holds back river floods.", "Costs nature, and cracks with age."]
+  breakwater: ["Breaks cyclone waves out at sea.", "Calm water behind it for boats."],
+  small_dam: ["Holds back river floods.", "Stores water for the dry season."]
 };
 
 /**
@@ -49,19 +49,17 @@ export const TUTORIAL_CARD_LINES: Record<string, readonly [string, string]> = {
   ...CARD_LINES,
   mangrove: ["Protects against waves and surge.", CARD_LINES.mangrove[1]],
   seawall: [CARD_LINES.seawall[0], "Costs nature."],
-  breakwater: [CARD_LINES.breakwater[0], "Costs nature."],
-  small_dam: [CARD_LINES.small_dam[0], "Costs nature."]
 };
 
 /** Section 30.3: the facts.json entry that sources a card's second line, where it is a real world fact. */
 export const CARD_FACT: Record<string, string | null> = {
   dune: null,
-  sandy_vegetation: null,
-  mangrove: null,
+  sandy_vegetation: "card-pandanus",
+  mangrove: "card-mangrove",
   khazan: "khazan-what",
   seawall: null,
-  breakwater: null,
-  small_dam: null
+  breakwater: "card-breakwater",
+  small_dam: "card-small-dam"
 };
 
 /** Section 30.4: a build's change to biodiversity, for the card's leaf chip. */

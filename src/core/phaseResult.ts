@@ -186,7 +186,8 @@ export function shortOfThree(stars: number, saved: number, total: number, thresh
   const lost = total - saved;
   const allowed = Math.max(0, total - Math.ceil(thresholds.three * total - 1e-9));
   const homesShort = total > 0 && saved / total < thresholds.three;
-  const bioShort = thresholds.bioThree !== undefined && biodiversityChange !== undefined && biodiversityChange < thresholds.bioThree;
+  // Compared as shown (whole numbers), so the line never reads "+3; three stars need +3".
+  const bioShort = thresholds.bioThree !== undefined && biodiversityChange !== undefined && Math.round(biodiversityChange) < thresholds.bioThree;
   const homes = `${lost} ${lost === 1 ? "home was" : "homes were"} lost; three stars allow ${allowed === 0 ? "none" : `${allowed} at most`}`;
   const sign = (n: number): string => (n > 0 ? `+${n}` : n < 0 ? `\u2212${Math.abs(n)}` : "0");
   const bio = bioShort ? `biodiversity was ${sign(Math.round(biodiversityChange!))}; three stars need ${sign(thresholds.bioThree!)}` : "";

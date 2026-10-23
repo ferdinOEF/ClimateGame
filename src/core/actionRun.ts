@@ -292,6 +292,7 @@ export class ActionRun {
     else if (saved.snapshot.prep) this.prep = JSON.parse(JSON.stringify(saved.snapshot.prep)) as PrepObjective[];
     for (const [id, later] of [...this.phaseSnapshots]) if (later.snapshot.turn > at) this.phaseSnapshots.delete(id);
     for (const id of [...this.stormRecords.keys()]) if (!this.landed.has(id)) this.stormRecords.delete(id);
+    this.aheadCache = null;
     this.moment++;
     return true;
   }
@@ -355,8 +356,9 @@ export class ActionRun {
 
   /**
    * Section 30.9: once this phase's objective is done, the storm after it ("Get ahead"): its objective chosen by
-   * the model on the board as it stands, with the builds left before the next storm as its budget. Null when there
-   * is no later storm or the level has no model objectives. Cached until the board changes.
+   * the model on the board as it stood when it was first asked for, with the builds left before the next storm as
+   * its budget. Chosen once per storm (its baseline fixed, so the player's builds count on it); a rewind or a
+   * restore chooses afresh. Null when there is no later storm or the level has no model objectives.
    */
   aheadObjective(): { challenge: ScheduledChallenge; objective: PhaseObjective } | null {
     const next = this.nextChallenge();
@@ -364,7 +366,7 @@ export class ActionRun {
     const i = this.schedule.indexOf(next);
     const later = i >= 0 ? this.schedule[i + 1] : undefined;
     if (!later || this.landed.has(later.id)) return null;
-    const key = `${this.moment}|${later.id}`;
+    const key = `${next.id}|${later.id}`;
     if (this.aheadCache?.key !== key) {
       const budget = Math.max(0, this.buildsUntil(next) - 1);
       this.aheadCache = { key, objective: budget > 0 ? this.objectiveFor(later, budget) : null };
@@ -470,6 +472,7 @@ export class ActionRun {
 
   /** Puts the run back to `snapshot`. Replay snapshots taken after it are dropped; those before it stay. */
   restore(snapshot: RunSnapshot): void {
+    this.aheadCache = null;
     const copy = JSON.parse(JSON.stringify(snapshot)) as RunSnapshot;
     this.state.elements.clear();
     for (const [key, inst] of copy.elements) this.state.elements.set(key, inst);
@@ -687,6 +690,13 @@ export class ActionRun {
     if (!this.climate || !this.zones || this.landed.has(challenge.id)) return 0;
     this.cardCache(challenge);
     return this.savedCache!.before;
+  }
+
+  /** The keys of the homes `challenge` would take on the board as it stands (cached like `homesAtRisk`). */
+  homesAtRiskKeys(challenge: ScheduledChallenge): readonly string[] {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id)) return [];
+    this.cardCache(challenge);
+    return this.savedCache!.beforeKeys;
   }
 
   private cardCache(challenge: ScheduledChallenge): void {

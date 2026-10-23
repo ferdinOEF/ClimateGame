@@ -176,8 +176,13 @@ function joinPlaces(places: string[]): string {
   const sameWord = words.every((m) => m && m[1] === words[0]![1]) && words[0]![1] !== "between";
   const parts = sameWord ? words.map((m) => m![2]) : places;
   const list = parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-  return sameWord ? `${words[0]![1]} ${list}` : list;
+  const joined = sameWord ? `${words[0]![1]} ${list}` : list;
+  // A row stays one short line in the panel: many places are counted, and their tiles pulse on the map.
+  return joined.length <= MAX_PLACE_CHARS ? joined : `at ${places.length} places, shown on the map`;
 }
+
+/** Section 30.9: the longest place text a merged row keeps; longer, it counts its places instead. */
+const MAX_PLACE_CHARS = 40;
 
 /** The place a tile's row is named for. */
 function placeOf(input: PhaseObjectiveInput, key: string): string {

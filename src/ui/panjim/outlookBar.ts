@@ -113,6 +113,7 @@ export class OutlookBar {
     this.bioEl.classList.toggle("reached", reached);
     this.bioEl.classList.toggle("below", change < 0);
     this.bioEl.innerHTML = `<span class="outlook-bio-label">Biodiversity</span> <b class="outlook-bio-count">${sign}${Math.abs(change)}</b><span class="outlook-bio-bar" aria-hidden="true"><span class="outlook-bio-fill" style="width:${pct(change)}%"></span>${target !== null ? `<span class="outlook-bio-target" style="left:${pct(target)}%"></span>` : ""}</span>`;
+    this.bioEl.setAttribute("role", "img");
     this.bioEl.setAttribute("aria-label", `Biodiversity ${sign}${Math.abs(change)} since the start${target !== null ? `; three stars need ${target > 0 ? "+" : ""}${target}` : ""}`);
   }
   /** True while a storm or its result cards are on screen: no countdown on the line (Section 12). */

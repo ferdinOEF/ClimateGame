@@ -297,7 +297,6 @@ export class GameState {
     for (const def of ELEMENT_BY_ID.values()) {
       // Section 17.3: a retired element (sand mining) is never offered, on any level.
       if (!def.validTerrainIds.includes(tile.terrainId) || this.excludedElements.has(def.id) || RETIRED_ELEMENTS.has(def.id)) continue;
-      // Section 25.1: on a river, only at its edge (beside land, a beach or a wetland).
       results.push(def);
     }
     return results;

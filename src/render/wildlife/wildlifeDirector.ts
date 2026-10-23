@@ -287,6 +287,8 @@ export class WildlifeDirector {
   readonly flyIns: { kind: "kingfisher" | "egret"; at: number; trigger: "build" | "timer"; maxPx: number; seenMs: number }[] = [];
   /** When each mangrove (by its tile centre) next sends a bird up. */
   private readonly birdDue = new Map<string, number>();
+  /** Each mangrove's key in `birdDue`, in the order of `sources.mangroves` (worked out once, in setSources). */
+  private mangroveKeys: string[] = [];
   private birdRestUntil = 0;
   private lastBird: "kingfisher" | "egret" = "egret";
   /** A planted mangrove's bird, waiting for the board to be calm. */
@@ -382,8 +384,8 @@ export class WildlifeDirector {
     this.sources = s;
     // A mangrove seen for the first time sends its first bird up 20-30 s from now (a planted one sooner: birdFrom).
     const keep = new Set<string>();
-    for (const m of s.mangroves) {
-      const key = birdKey(m);
+    this.mangroveKeys = s.mangroves.map(birdKey);
+    for (const key of this.mangroveKeys) {
       keep.add(key);
       if (!this.birdDue.has(key)) this.birdDue.set(key, this.clock + this.birdGap());
     }
@@ -524,7 +526,7 @@ export class WildlifeDirector {
     let bestDue = Infinity;
     const list = this.sources.mangroves;
     for (let i = 0; i < list.length; i++) {
-      const due = this.birdDue.get(birdKey(list[i])) ?? Infinity;
+      const due = this.birdDue.get(this.mangroveKeys[i]) ?? Infinity;
       if (due > now || due >= bestDue) continue;
       if (!this.sourceVisible(list[i], rects)) continue;
       best = i;
@@ -784,6 +786,10 @@ export class WildlifeDirector {
     path.dur = a.kind === "kingfisher" ? 1100 : 1500;
     a.stage = "flush";
     a.stageAt = now;
+    // A fly-in caught by a storm goes as any bird does: its own size, no floor.
+    if (a.flyIn >= 0) this.birdRestUntil = this.clock + BIRD_REST;
+    a.flyIn = -1;
+    a.boost = 1;
     a.escaping = false;
     a.escape = 1;
     if (fromCover) a.opacity = 0;

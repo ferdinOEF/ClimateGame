@@ -108,7 +108,11 @@ export class KhazanPeople {
   private readonly planters: THREE.InstancedMesh[];
   private readonly fisher: THREE.InstancedMesh;
   private readonly net: THREE.InstancedMesh;
+  /** Every mesh, in a fixed list (no array built per frame). */
+  private readonly meshes: THREE.InstancedMesh[];
   private spots: KhazanSpot[] = [];
+  /** With Calm motion nothing moves: the matrices are written once, until the khazans change. */
+  private stillDrawn = false;
   private hidden = false;
   private still = false;
 
@@ -121,7 +125,8 @@ export class KhazanPeople {
     this.planters = [new THREE.InstancedMesh(covered, body, CAPACITY), new THREE.InstancedMesh(bare, body, CAPACITY * 2)];
     this.fisher = new THREE.InstancedMesh(fisherGeometry(), body, CAPACITY);
     this.net = new THREE.InstancedMesh(netGeometry(), new THREE.MeshBasicMaterial({ color: "#e8e2cf", transparent: true, opacity: 0.6, side: THREE.DoubleSide, wireframe: true, depthWrite: false }), CAPACITY);
-    for (const mesh of [...this.planters, this.fisher, this.net]) {
+    this.meshes = [...this.planters, this.fisher, this.net];
+    for (const mesh of this.meshes) {
       mesh.count = 0;
       mesh.frustumCulled = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -133,6 +138,7 @@ export class KhazanPeople {
   /** The khazans on the board: each one's tile centre, y its tile top. */
   setKhazans(spots: KhazanSpot[]): void {
     this.spots = spots.slice(0, CAPACITY);
+    this.stillDrawn = false;
   }
 
   /** Storms hide everyone (Section 30.6). */
@@ -143,6 +149,7 @@ export class KhazanPeople {
 
   /** Calm motion: everyone holds still and the net stays in hand. */
   setStill(still: boolean): void {
+    if (still !== this.still) this.stillDrawn = false;
     this.still = still;
   }
 
@@ -152,7 +159,8 @@ export class KhazanPeople {
   }
 
   tick(nowMs: number): void {
-    if (this.hidden) return;
+    if (this.hidden || (this.still && this.stillDrawn)) return;
+    this.stillDrawn = this.still;
     const n = this.spots.length;
     let covered = 0;
     let bare = 0;
@@ -218,12 +226,12 @@ export class KhazanPeople {
     this.planters[1].count = bare;
     this.fisher.count = n;
     this.net.count = nets;
-    for (const mesh of [...this.planters, this.fisher, this.net]) if (mesh.count) mesh.instanceMatrix.needsUpdate = true;
+    for (const mesh of this.meshes) if (mesh.count) mesh.instanceMatrix.needsUpdate = true;
   }
 
   dispose(): void {
     this.group.parent?.remove(this.group);
-    for (const mesh of [...this.planters, this.fisher, this.net]) {
+    for (const mesh of this.meshes) {
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
     }

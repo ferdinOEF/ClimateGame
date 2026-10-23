@@ -2,8 +2,10 @@
  *
  * Built by the Vite plugin in vite.config.ts, which puts the build's file list and a version in place of the two
  * markers below and writes this file out as /sw.js. On install it stores every file the game needs; pages are
- * fetched from the network first (so a new deploy shows when online) and from the store when offline; everything
- * else comes from the store first. A new version takes over once every tab of the old one has closed.
+ * fetched from the network first (so a new deploy shows when online) and from the store when offline, and so are the
+ * public files whose names never change (the art, the street map: a retaken picture shows at once); the built files
+ * (/assets/, named by their contents) come from the store first. A new version takes over once every tab of the
+ * old one has closed.
  */
 const VERSION = "__SW_VERSION__";
 const PRECACHE = __SW_FILES__;
@@ -24,6 +26,20 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (!url.pathname.startsWith("/assets/") && request.mode !== "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok && response.type === "basic") {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request, { ignoreVary: true }).then((hit) => hit || Response.error()))
+    );
+    return;
+  }
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)

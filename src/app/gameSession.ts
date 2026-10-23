@@ -22,7 +22,7 @@ import { WildlifeDirector } from "@render/wildlife";
 import { KhazanPeople } from "@render/khazanPeople";
 import { ObjectivePulse } from "@render/objectivePulse";
 import { IdleReset, watchIdle } from "./idleReset";
-import { CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
+import { CARD_LINES, TUTORIAL_CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
@@ -2390,7 +2390,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             : panjim && isCracked(def, built, state.turn)
               ? `${crackedNote(def)}. In this game a seawall or small dam cracks at 10 years old.`
               : panjim && CARD_LINES[def.id]
-                ? `In this game: ${CARD_LINES[def.id][0]}`
+                ? `In this game: ${(panjim.tutorial ? TUTORIAL_CARD_LINES : CARD_LINES)[def.id][0]}`
                 : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
@@ -2447,7 +2447,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           playSound("build");
         },
         // The year chip first (never covered), then the rest of the HUD.
-        { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"], onHover: (id) => controller.cardHover(coord, id) }
+        { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
       );
       controller.cardsOpened();
       return;
@@ -2940,6 +2940,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __elementsForTest: elements,
     __tileHoverForTest: () => tileHover,
     __wildlifeForTest: () => wildlife,
+    /** Section 30 QA: the objective's pulsing tiles, the storm's faint trail and the khazan people. */
+    __objectivePulseForTest: objectivePulse,
+    __coneOverlayForTest: coneOverlay,
+    __khazanPeopleForTest: () => khazanPeople,
     /** Steps the wildlife's clock by `ms` in 50 ms ticks, and keeps it stepped by hand from then on (QA frames at exact moment times). */
     __wildlifeStepForTest: (ms: number): void => {
       if (!wildlife) return;

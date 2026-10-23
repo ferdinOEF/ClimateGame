@@ -125,7 +125,9 @@ export const HUD_OBSTACLES = [
   ".brief-card",
   ".replay-card",
   // Section 16 B6: the note beside a just-built tile (it was a banner, which is above).
-  ".map-note.beside"
+  ".map-note.beside",
+  // Section 30.10: Speed up, bottom centre while a storm or its replay plays (its Tutorial hint just above it).
+  ".speed-up:not([hidden])"
 ];
 
 export class Maya {
@@ -410,6 +412,12 @@ export class Maya {
   }
 
   /** Silences her lines (M). The heat and everything else carry on. */
+  /** Section 30.12: the text size changed (Larger text): her bubble is measured and placed again. */
+  textResized(): void {
+    this.heightCache.clear();
+    this.layoutDirty = true;
+  }
+
   setMuted(muted: boolean): void {
     this.muted = muted;
     this.el.classList.toggle("muted", muted);

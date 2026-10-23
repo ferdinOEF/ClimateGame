@@ -47,6 +47,7 @@ export class ReplayCard {
       let timer = 0;
       const abort = new AbortController();
       const finish = (): void => {
+        this.skipNow = null;
         window.clearTimeout(timer);
         abort.abort();
         hooks.light(null);
@@ -85,6 +86,7 @@ export class ReplayCard {
           finish();
         }, { signal: abort.signal, capture: true });
       }, 300);
+      this.skipNow = finish;
       next();
     });
   }
@@ -111,6 +113,13 @@ export class ReplayCard {
     this.el.classList.add("replay-low");
     if (covered() >= atTop) this.el.classList.remove("replay-low");
   }
+
+  /** Ends the replay now, as Skip does (Section 30.10: Speed up). */
+  skip(): void {
+    this.skipNow?.();
+  }
+
+  private skipNow: (() => void) | null = null;
 
   get isOpen(): boolean {
     return !this.el.hidden;

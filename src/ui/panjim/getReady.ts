@@ -145,6 +145,9 @@ export class GetReadyPanel {
       rows.set(row.job.id, el);
     }
     this.jobs.set(row.job.id, row.job);
+    // The label as the job now has it (a row of the same id can be worded afresh).
+    const label = el.querySelector(".get-ready-label") as HTMLElement;
+    if (label.textContent !== row.job.label) label.textContent = row.job.label;
     el.classList.toggle("done", row.done);
     (el.querySelector(".get-ready-progress") as HTMLElement).textContent = `${Math.min(row.current, row.target)}/${row.target}`;
   }

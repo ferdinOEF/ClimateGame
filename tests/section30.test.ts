@@ -130,3 +130,20 @@ describe("Section 30.9: objectives point at the board", () => {
     expect(ahead.objective.rows.length).toBeLessThanOrEqual(4);
   });
 });
+
+describe("Section 30.9 (review fix): Get ahead keeps its rows while the player builds on them", () => {
+  it("a build on a Get ahead pick counts on its row, and the row stays the same", async () => {
+    const { newRun, BOT_LEVEL } = await import("../tools/panjimBots/bots");
+    const { prepProgress } = await import("../src/core/prep");
+    const run = newRun("ahead-2", BOT_LEVEL, true);
+    const ahead = run.aheadObjective()!;
+    const pick = ahead.objective.picks[0];
+    const row = ahead.objective.rows.find((r) => r.elementId === pick.elementId && r.tiles!.includes(pick.key))!;
+    const before = prepProgress(row, run.state, run.zones!).current;
+    const [q, r] = pick.key.split(",").map(Number);
+    expect(run.build({ q, r }, pick.elementId).ok).toBe(true);
+    const again = run.aheadObjective()!;
+    expect(again.objective).toBe(ahead.objective);
+    expect(prepProgress(row, run.state, run.zones!).current).toBe(before + 1);
+  });
+});

@@ -348,7 +348,10 @@ export class PanjimController {
     this.textToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:large-text", label: "Larger text", shortcut: "", defaultOn: false, className: "text-toggle", persist: false },
-      (on) => host.container.classList.toggle("large-text", on)
+      (on) => {
+        host.container.classList.toggle("large-text", on);
+        this.maya.textResized();
+      }
     );
     this.qualityButton = document.createElement("button");
     this.qualityButton.type = "button";
@@ -987,8 +990,9 @@ export class PanjimController {
     button.innerHTML = `<span class="speed-up-icon" aria-hidden="true">\u25B6\u25B6</span><span>Speed up</span>`;
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      // A board click: the storm's and the replay's own listeners take a pointerdown on the page.
-      document.dispatchEvent(new PointerEvent("pointerdown"));
+      // A board click: the storm's own listener takes a pointerdown on the page; the replay ends at once.
+      if (this.replayCard.isOpen) this.replayCard.skip();
+      else document.dispatchEvent(new PointerEvent("pointerdown"));
       this.showSpeedUp(false);
     });
     this.host.container.appendChild(button);
@@ -1301,6 +1305,19 @@ export class PanjimController {
     }
     this.host.tintTiles([...change.saved.map((key) => ({ key, color: "#59d47e", blend: 0.62 })), ...change.added.map((key) => ({ key, color: "#e5533f", blend: 0.62 }))]);
     return change.saved.length === 0 && change.added.length === 0 ? "This doesn't change the next storm" : null;
+  }
+
+  /** Section 30.8: the next storm's homes at risk on screen (container pixels): the cards keep off them. */
+  riskPoints(): { x: number; y: number }[] {
+    const next = this.run.nextChallenge();
+    if (!next || this.run.finished) return [];
+    return this.run
+      .homesAtRiskKeys(next)
+      .map((key) => {
+        const [q, r] = key.split(",").map(Number);
+        return this.host.project({ q, r });
+      })
+      .filter((p): p is { x: number; y: number } => p !== null);
   }
 
   /** True while a storm that the last build brought is being staged: no fact or tip should start over it. */

@@ -218,7 +218,7 @@ export class BuildPopover {
     screenY: number,
     cards: BuildCard[],
     onSelect: (id: string) => void,
-    mode: { notice?: string; blocked?: boolean; avoid?: string[]; onHover?: (id: string | null) => string | null } = {}
+    mode: { notice?: string; blocked?: boolean; avoid?: string[]; onHover?: (id: string | null) => string | null; avoidPoints?: readonly { x: number; y: number }[] } = {}
   ): void {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
@@ -293,7 +293,7 @@ export class BuildPopover {
       line.textContent = `Not here: ${elsewhere.map((card) => card.name.replace(/ /g, "\u00a0")).join(", ")}`;
       this.el.appendChild(line);
     }
-    this.placeBeside(screenX, screenY, mode.avoid ?? []);
+    this.placeBeside(screenX, screenY, mode.avoid ?? [], mode.avoidPoints ?? []);
     this.returnFocus = document.activeElement instanceof HTMLElement && !this.el.contains(document.activeElement) ? document.activeElement : null;
     (this.el.querySelector<HTMLElement>(".build-card:not(.disabled)") ?? null)?.focus({ preventScroll: true });
   }
@@ -304,7 +304,11 @@ export class BuildPopover {
    * each obstacle, and takes the spot that covers the least of the HUD (the
    * first listed, the year chip, counts most), then the one nearest the tile.
    */
-  private placeBeside(screenX: number, screenY: number, avoid: string[]): void {
+  /**
+   * `points` (container pixels): Section 30.8, the homes at risk, which a hovered card lights up: the cards sit where
+   * they cover the fewest of them (never over the HUD or the tile all the same).
+   */
+  private placeBeside(screenX: number, screenY: number, avoid: string[], points: readonly { x: number; y: number }[] = []): void {
     this.el.style.left = "0px";
     this.el.style.top = "0px";
     this.backdrop.hidden = false;
@@ -330,6 +334,11 @@ export class BuildPopover {
           const w = Math.min(left + width, r.right) - Math.max(left, r.left);
           const h = Math.min(top + height, r.bottom) - Math.max(top, r.top);
           if (w > 0 && h > 0) covered += w * h * weight;
+        }
+        for (const p of points) {
+          const x = p.x + origin.left;
+          const y = p.y + origin.top;
+          if (x > left - 12 && x < left + width + 12 && y > top - 12 && y < top + height + 12) covered += 400;
         }
         // Covering the tile itself is never wanted either; then nearer is better.
         const overTile = screenX > left - 8 && screenX < left + width + 8 && screenY > top - 8 && screenY < top + height + 8 ? 1e6 : 0;
