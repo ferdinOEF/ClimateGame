@@ -3502,7 +3502,7 @@
   font-style: italic;
 }
 
-/* Section 16 B6: the note beside a just-built tile ("This is outside the area, so it doesn't count for the objective."), about 3 s. */
+/* Section 16 B6: a note beside a tile for a few seconds (Section 30.11: "Broken with age", "Cracked with age"). */
 .map-note.beside {
   margin-left: 34px;
   margin-top: -24px;

@@ -100,7 +100,7 @@ export interface PanjimHost {
   /** The skyline reveal: the camera pulls back over the whole city. */
   revealSkyline: () => void;
   showBanner: (text: string, ms?: number) => void;
-  /** A short note beside a tile for `ms` (Section 16 B6: the build that counts for no objective). */
+  /** A short note beside a tile for `ms` (Section 16 B6; Section 30.11: a defence broken or cracked with age). */
   noteAt: (coord: AxialCoord, text: string, ms: number) => void;
   /**
    * The landmarks whose labels show at the usual zoom (Section 16 B6): those in the current storm's area, and the
@@ -1460,15 +1460,14 @@ export class PanjimController {
     this.noteBoard();
     // A refused build changes nothing, the year included.
     const turn = this.run.turnNumber;
-    // Worked out on the board before the build, said only once the build went through.
     const buildable = this.host.state.canBuild(coord, elementId);
-    const outside = buildable ? this.outsideNote(coord, elementId) : null;
     // Section 31.4: in the Tutorial, what this build takes out of each coming storm's way, worked out before it
     // goes down (the same model as the storm); the storm's card credits each defence with it.
     const credit = this.tutorial && buildable
       ? this.run.schedule.filter((c) => !this.run.landed.has(c.id)).map((c) => ({ id: c.id, saves: this.run.homesSavedBy(c, coord, elementId) ?? 0, atRisk: this.run.homesAtRisk(c) }))
       : [];
-    // No pop-up over the tile after a build (Section 23.2, owner decision): it just goes down.
+    // No pop-up over the tile after a build (Section 23.2, owner decision), and no note beside it when it is off the
+    // objective's tiles (Section 32, owner decision): it just goes down.
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
     // Section 31.2: the checklist ticks the defence; its caption says "Built" before the next slides in.
@@ -1487,8 +1486,6 @@ export class PanjimController {
       // line waits for the year to settle).
       this.renderTutorial(false);
     }
-    // Beside its tile for about three seconds (Section 16 B6), not in a banner across the screen.
-    if (outside) this.host.noteAt(coord, outside, 3000);
     this.lastTurnEnded = turn;
     this.host.placeElement(coord, elementId);
     this.host.telemetry.action("build", 1);
@@ -1737,21 +1734,6 @@ export class PanjimController {
     if (this.outlined > 0 && keys.length === 0 && area.length > 0) this.host.areaProtected();
     this.outlined = keys.length;
   }
-
-  /**
-   * A build that counts for no open objective row gets one line saying so
-   * (Section 12). No count of homes: never shown on a build (Section 23.2).
-   */
-  private outsideNote(coord: AxialCoord, elementId: string): string | null {
-    const next = this.run.nextChallenge();
-    const zones = this.run.zones;
-    if (!next || !zones) return null;
-    const key = `${coord.q},${coord.r}`;
-    const open = this.run.prep.filter((job) => job.challengeId === next.id && !prepProgress(job, this.host.state, zones).done);
-    if (open.length === 0 || open.some((job) => job.elementId === elementId && (job.tiles ?? []).includes(key))) return null;
-    return "This is outside the area, so it doesn't count for the objective.";
-  }
-
 
   /** One of the Tutorial's coaching lines, at once and once (the build menu may be open: she stands clear of it). */
   private coach(id: keyof typeof TUTORIAL_LINES, state: MayaState): void {
