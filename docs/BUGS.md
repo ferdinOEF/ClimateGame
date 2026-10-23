@@ -250,3 +250,7 @@ shown, "Adil Shah Palace" left off (it sat on the first).
   at 5 places, shown on the map"); the tiles pulse and a click pans to one.
 - 30.12: the idle reset runs in the Tutorial too (it returns to the menu, which is what a festival needs); Larger
   text is not remembered (each visitor starts with the usual size).
+- For the owner (balance, not changed): the best plan's board is at +42 biodiversity just after the 2040 flood,
+  past the 2050 storm's three star target (+40, Section 26.2, set when the plan reached +39 there). Its builds after
+  2040 still decide the 2050 stars, through the homes (37 of 57 saved without them, 49 with). Raise the target (to
+  about +44) if biodiversity should still need those builds.
