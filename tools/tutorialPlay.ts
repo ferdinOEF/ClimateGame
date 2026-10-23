@@ -157,6 +157,8 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   const stormStart = Date.now();
   while (Date.now() - stormStart < 20000 && !(await page.evaluate(() => Boolean((window as any).__panjimForTest?.host.challengeFx.isPlaying())))) await page.waitForTimeout(200);
   await page.waitForTimeout(2200);
+  // Section 30.10: Speed up is on screen in the Tutorial's storm, pulsing, with a word on what it does.
+  if ((await page.locator(".speed-up.coach-pulse:visible").count()) !== 1) problems.push("[tutorial-storm] no pulsing Speed up button during the storm");
   await shot("tutorial-6-cyclone");
   const start = Date.now();
   while (Date.now() - start < 120000) {

@@ -1682,6 +1682,62 @@
 
 /* ---- Aftermath replay ---------------------------------------------------- */
 
+/* Section 30.10: Speed up, bottom centre while a storm or its replay plays. */
+.speed-up {
+  position: absolute;
+  z-index: 31;
+  left: 50%;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 195, 91, 0.7);
+  background: rgba(24, 33, 30, 0.9);
+  color: #fdf6e6;
+  font: 600 15px/1.2 var(--font-ui, system-ui, sans-serif);
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+}
+
+.speed-up[hidden] {
+  display: none;
+}
+
+.speed-up:hover {
+  background: rgba(40, 52, 46, 0.95);
+}
+
+.speed-up:focus-visible {
+  outline: 3px solid #f2c35b;
+  outline-offset: 2px;
+}
+
+.speed-up-icon {
+  font-size: 11px;
+  letter-spacing: -2px;
+  color: #f2c35b;
+}
+
+/* The Tutorial's storm: what it does, just above it. */
+.speed-up[data-hint]:not([data-hint=""])::after {
+  content: attr(data-hint);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(253, 246, 230, 0.95);
+  color: #1d2a24;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .replay-card {
   position: absolute;
   z-index: 30;
@@ -3033,7 +3089,8 @@
 
 /* Section 15: the Tutorial. Maya points at the build cards' lines (Section 17.1: the cards carry no number); they pulse until a card is picked. */
 /* Section 30.11 bug 3: in the Tutorial only the card it wants pulses, round the whole card. */
-.build-card.coach-pulse {
+.build-card.coach-pulse,
+.speed-up.coach-pulse {
   animation: coach-pulse 1.1s ease-in-out infinite;
   border-color: #f2c35b;
 }
@@ -3042,7 +3099,8 @@
   50% { box-shadow: 0 0 0 5px rgba(242, 195, 91, 0.55); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .build-card.coach-pulse { animation: none; }
+  .build-card.coach-pulse,
+  .speed-up.coach-pulse { animation: none; }
 }
 .result-subtitle {
   margin: 14px 0 4px;
@@ -3194,7 +3252,8 @@
 .brief-card.brief-tutorial.with-feature > .brief-body { grid-row: 4; font-size: 16px; }
 .brief-card.brief-tutorial.with-feature > .brief-cta { grid-row: 5; }
 .brief-card.brief-tutorial.with-feature > .brief-feature { grid-row: 1 / 7; }
-.calm-motion .build-card-line.coach-pulse {
+.calm-motion .build-card.coach-pulse,
+.calm-motion .speed-up.coach-pulse {
   animation: none;
 }
 .panjim-help-note a {

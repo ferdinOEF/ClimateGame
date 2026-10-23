@@ -305,6 +305,7 @@ export class PanjimController {
     this.resultCards = new ResultCards(host.container);
     this.finaleCard = new FinaleCard(host.container);
     this.replayCard = new ReplayCard(host.container);
+    this.speedUp = this.makeSpeedUp();
     this.riskToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: false, className: "risk-toggle", persist: false },
@@ -788,6 +789,7 @@ export class PanjimController {
 
     let hurry = false;
     const abort = new AbortController();
+    this.showSpeedUp(true);
     // A click on the board hurries the storm; one on the HUD (volume, switches, Maya) does not.
     document.addEventListener(
       "pointerdown",
@@ -795,6 +797,7 @@ export class PanjimController {
         const target = event.target;
         if (target instanceof Element && target.closest(".hud-panel, .panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready")) return;
         hurry = true;
+        this.showSpeedUp(false);
       },
       { signal: abort.signal, capture: true }
     );
@@ -828,6 +831,7 @@ export class PanjimController {
       }
     } finally {
       abort.abort();
+      this.showSpeedUp(false);
       this.host.container.classList.remove("slowmo", "storm-playing");
       // The storm's own count, exactly: the pill holds it through the result cards.
       this.outlook.renderLost(outcome.housesTotal - outcome.housesSaved);
@@ -952,6 +956,34 @@ export class PanjimController {
   }
 
 
+  /**
+   * Section 30.10 (owner decision): "Speed up", on screen while a storm or its replay plays. It does what a click on
+   * the board does (hurries the storm; ends the replay). In the Tutorial's storm it pulses, with a word on what it does.
+   */
+  private readonly speedUp: HTMLButtonElement;
+
+  private makeSpeedUp(): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "speed-up";
+    button.hidden = true;
+    button.innerHTML = `<span class="speed-up-icon" aria-hidden="true">\u25B6\u25B6</span><span>Speed up</span>`;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      // A board click: the storm's and the replay's own listeners take a pointerdown on the page.
+      document.dispatchEvent(new PointerEvent("pointerdown"));
+      this.showSpeedUp(false);
+    });
+    this.host.container.appendChild(button);
+    return button;
+  }
+
+  private showSpeedUp(on: boolean): void {
+    this.speedUp.hidden = !on;
+    this.speedUp.classList.toggle("coach-pulse", on && this.tutorial);
+    this.speedUp.dataset.hint = on && this.tutorial ? "It hurries the storm" : "";
+  }
+
   /** The Aftermath replay: what the storm did, step by step, in the record's real numbers. Skippable. */
   private async replay(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
     const steps = replaySteps(record, this.preChallengeIds);
@@ -964,6 +996,7 @@ export class PanjimController {
       }, { q: 0, r: 0 });
       this.host.focusCamera({ q: Math.round(sum.q / focusKeys.length), r: Math.round(sum.r / focusKeys.length) }, true, 1.4);
     }
+    this.showSpeedUp(steps.length > 0);
     await this.replayCard.play(challenge.name, steps, {
       light: (step) => {
         if (!step) {
@@ -982,6 +1015,7 @@ export class PanjimController {
         this.maya.next();
       }
     });
+    this.showSpeedUp(false);
   }
 
   /** Real milliseconds played on this run, across any resume. */
