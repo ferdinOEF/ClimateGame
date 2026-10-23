@@ -213,7 +213,13 @@ export class BuildPopover {
    * on this ground follow, greyed and small, each saying "Not here".
    * `avoid` lists HUD elements the cards must never cover (the year chip).
    */
-  showCards(screenX: number, screenY: number, cards: BuildCard[], onSelect: (id: string) => void, mode: { notice?: string; blocked?: boolean; avoid?: string[] } = {}): void {
+  showCards(
+    screenX: number,
+    screenY: number,
+    cards: BuildCard[],
+    onSelect: (id: string) => void,
+    mode: { notice?: string; blocked?: boolean; avoid?: string[]; onHover?: (id: string | null) => string | null } = {}
+  ): void {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
     // What each card says is this game's rule, and its number this game's model.
@@ -229,6 +235,18 @@ export class BuildPopover {
       this.el.appendChild(notice);
     }
     const open = cards.filter((card) => !card.notHere);
+    // Section 30.8: hovering (or focusing) a card shows on the board what it would do; when it does nothing to the
+    // next storm, one line here says so.
+    const hoverNote = document.createElement("p");
+    hoverNote.className = "build-hover-note";
+    hoverNote.setAttribute("role", "status");
+    hoverNote.hidden = true;
+    const hover = (id: string | null): void => {
+      const note = mode.onHover?.(id) ?? null;
+      hoverNote.textContent = note ?? "";
+      hoverNote.hidden = !note;
+    };
+    this.cardHover = mode.onHover ? () => mode.onHover?.(null) : null;
     const elsewhere = cards.filter((card) => card.notHere);
     for (const card of open) {
       const btn = document.createElement("button");
@@ -247,6 +265,15 @@ export class BuildPopover {
         btn.querySelector(".build-card-text")!.appendChild(detail);
       }
       if (card.biodiversity !== undefined) btn.querySelector(".build-card-title")!.appendChild(leafChip(card.biodiversity));
+      if (mode.onHover && !mode.blocked) {
+        btn.addEventListener("pointerenter", () => hover(card.id));
+        btn.addEventListener("pointerleave", () => hover(null));
+        // A keyboard focus only (the menu focuses its first card as it opens; that is not a hover).
+        btn.addEventListener("focus", () => {
+          if (btn.matches(":focus-visible")) hover(card.id);
+        });
+        btn.addEventListener("blur", () => hover(null));
+      }
       if (mode.blocked) btn.setAttribute("aria-disabled", "true");
       else
         btn.addEventListener("click", (e) => {
@@ -256,6 +283,7 @@ export class BuildPopover {
         });
       this.el.appendChild(btn);
     }
+    this.el.appendChild(hoverNote);
     if (elsewhere.length > 0) {
       // Section 16 B6: one quiet line, not a greyed card each.
       const line = document.createElement("p");
@@ -414,6 +442,8 @@ export class BuildPopover {
 
   /** Where focus was before the cards took it: given back when they close. */
   private returnFocus: HTMLElement | null = null;
+  /** Section 30.8: clears the board's hover glow when the cards close. */
+  private cardHover: (() => void) | null = null;
 
   hide(): void {
     const hadFocus = this.el.contains(document.activeElement);
@@ -421,6 +451,8 @@ export class BuildPopover {
     if (hadFocus && this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
     this.returnFocus = null;
     this.tooltips?.hide();
+    this.cardHover?.();
+    this.cardHover = null;
     this.onHide?.();
   }
 }

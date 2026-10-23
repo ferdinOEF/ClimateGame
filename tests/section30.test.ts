@@ -84,3 +84,28 @@ describe("30.3 pandanus lowers a cyclone's waves and surge, less than a dune", (
     expect(dune).toBeLessThan(pandanus);
   });
 });
+
+describe("Section 30.8: a card's hover glow", () => {
+  it("the homes a build takes out of risk and puts at risk match Homes at risk before and after it", async () => {
+    const { newRun } = await import("../tools/panjimBots/bots");
+    const run = newRun("hover-1", (await import("../tools/panjimBots/bots")).BOT_LEVEL, true);
+    const next = run.nextChallenge()!;
+    const before = run.homesAtRisk(next);
+    let checked = 0;
+    for (const pick of run.objective!.picks) {
+      const [q, r] = pick.key.split(",").map(Number);
+      const change = run.riskChangeBy(next, { q, r }, pick.elementId)!;
+      expect(change).not.toBeNull();
+      expect(before - change.saved.length + change.added.length).toBe(before - run.homesSavedBy(next, { q, r }, pick.elementId)!);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(0);
+    // A defence far from the storm changes nothing (the card then says so).
+    const far = [...run.state.placed.values()].find((tile) => run.state.canBuild(tile.coord, "small_dam") && tile.coord.r < 2);
+    if (far) {
+      const change = run.riskChangeBy(next, far.coord, "small_dam")!;
+      expect(change.saved).toHaveLength(0);
+      expect(change.added).toHaveLength(0);
+    }
+  });
+});

@@ -2424,7 +2424,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           playSound("build");
         },
         // The year chip first (never covered), then the rest of the HUD.
-        { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"] }
+        { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"], onHover: (id) => controller.cardHover(coord, id) }
       );
       controller.cardsOpened();
       return;

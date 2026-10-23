@@ -2981,6 +2981,18 @@
 }
 
 /* Section 16 B6: what cannot go on this ground, as one quiet line. */
+/* Section 30.8: a hovered card that does nothing to the next storm says so. */
+.build-hover-note {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #f2d9a6;
+}
+
+.build-hover-note[hidden] {
+  display: none;
+}
+
 .build-card-elsewhere {
   margin: 2px 0 0;
   padding-top: 6px;

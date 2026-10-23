@@ -1179,6 +1179,21 @@ export class PanjimController {
     return cards;
   }
 
+  /**
+   * Section 30.8: a build card hovered. The homes it would take out of the next storm's risk glow green, the homes
+   * it would put at risk glow red (the model of Homes at risk); none either way gives the line returned. Null clears.
+   */
+  cardHover(coord: AxialCoord, elementId: string | null): string | null {
+    const next = this.run.nextChallenge();
+    const change = elementId && next && !this.run.finished ? this.run.riskChangeBy(next, coord, elementId) : null;
+    if (!change) {
+      this.host.tintTiles(null);
+      return null;
+    }
+    this.host.tintTiles([...change.saved.map((key) => ({ key, color: "#59d47e", blend: 0.62 })), ...change.added.map((key) => ({ key, color: "#e5533f", blend: 0.62 }))]);
+    return change.saved.length === 0 && change.added.length === 0 ? "This doesn't change the next storm" : null;
+  }
+
   /** True while a storm that the last build brought is being staged: no fact or tip should start over it. */
   get stormComing(): boolean {
     return this.stagingYearEnd;
