@@ -19,6 +19,7 @@ import { BuildFlourish } from "@render/buildFlourish";
 import { BuildPuff } from "@render/buildPuff";
 import { TileHover } from "@render/tileHover";
 import { WildlifeDirector } from "@render/wildlife";
+import { KhazanPeople } from "@render/khazanPeople";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
@@ -338,6 +339,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         }
       })
     : null;
+  /** Section 30.6: people at work in the khazans (transplanters, a net caster). */
+  const khazanPeople = redrawnDefences ? new KhazanPeople(scene) : null;
   let wildlifeSourcesAt = -Infinity;
   /** QA only: the wildlife's clock stepped by hand (`__wildlifeStepForTest`) instead of by the frame loop. */
   const wildlifeManual = { on: false, clock: 0 };
@@ -2661,7 +2664,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         wildlifeSourcesAt = nowMs;
         const mangroves: { x: number; y: number; z: number }[] = [];
         const khazanPonds: { x: number; y: number; z: number; radius: number }[] = [];
+        const khazans: { x: number; y: number; z: number }[] = [];
         for (const placed of elements.placedElements()) {
+          if (placed.elementId === "khazan") khazans.push({ x: placed.x, y: placed.y, z: placed.z });
           if (placed.elementId === "mangrove") mangroves.push({ x: placed.x, y: placed.y + 0.02, z: placed.z });
           // The khazan's pond is its west half (render/defenceGeometry.ts; a khazan is never turned).
           else if (placed.elementId === "khazan") khazanPonds.push({ x: placed.x - 0.3, y: placed.y + 0.035, z: placed.z, radius: 0.24 });
@@ -2669,9 +2674,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         const waters: { x: number; y: number; z: number }[] = [];
         for (const tile of dolphinWaterTilesOnce()) if (!state.elements.has(tile.key)) waters.push(tile.point);
         wildlife.setSources({ mangroves, khazanPonds, waters });
+        khazanPeople?.setKhazans(khazans);
       }
       wildlife.setCalm(!(panjim?.isBusy ?? false) && !stormDirector?.playing && !document.querySelector(".result-cards:not([hidden])"));
       if (!wildlifeManual.on) wildlife.tick(nowMs);
+    }
+    if (khazanPeople) {
+      khazanPeople.setHidden(Boolean(stormDirector?.playing));
+      khazanPeople.setStill(puffMotion.reduced);
+      khazanPeople.tick(nowMs);
     }
     panjim?.frame();
     stormDirector?.tick(nowMs);
@@ -3068,6 +3079,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     buildFlourish.dispose();
     buildPuff?.dispose();
     wildlife?.dispose();
+    khazanPeople?.dispose();
     tileHover?.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();
