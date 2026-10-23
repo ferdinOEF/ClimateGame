@@ -70,6 +70,12 @@ function figureFor(viewport: { w: number; h: number }): { w: number; h: number }
 
 /** How often, while a line is up, the HUD is checked for anything that moved without a change the observer sees (a card sliding into place). */
 const POLL_MS = 400;
+/**
+ * Section 30b: a placed bubble moves at most once in this long, and only to a spot that has held this long
+ * (`SETTLE_MS`), so something on screen for a frame or two never makes it jump; the new spot fades in.
+ */
+export const MOVE_GAP_MS = 1000;
+export const SETTLE_MS = 250;
 
 /**
  * Where a new line waits. Warnings (urgent) go first; a discovery goes after
@@ -159,6 +165,13 @@ export class Maya {
   private heightCacheKey = "";
   private lastPollMs = 0;
   private obstacleKey = "";
+  /** Section 30b: the pointer is over her figure or her bubble; while it is, the bubble does not move. */
+  private pointerOver = false;
+  /** Section 30b: when the bubble last moved, and the spot a re-layout found that is waiting to settle. */
+  private lastMoveMs = -Infinity;
+  private pendingSpot: { key: string; since: number } | null = null;
+  /** Section 30b: a held move is looked at again at this time, not every frame. */
+  private deferUntil = 0;
   /** Called when a line is shown: the Field Guide records it. */
   onSpoken: ((line: MayaLine) => void) | null = null;
 
@@ -208,6 +221,14 @@ export class Maya {
     };
     this.bubble.addEventListener("pointerenter", () => hold(true));
     this.bubble.addEventListener("pointerleave", () => hold(false));
+    // Section 30b: while the pointer is on her or her bubble, nothing moves the bubble out from under it.
+    for (const part of [this.bubble, this.figure]) {
+      part.addEventListener("pointerenter", () => (this.pointerOver = true));
+      part.addEventListener("pointerleave", (event) => {
+        const to = event.relatedTarget as Node | null;
+        if (!to || !(this.bubble.contains(to) || this.figure.contains(to))) this.pointerOver = false;
+      });
+    }
     this.bubble.addEventListener("focusin", () => hold(true));
     this.bubble.addEventListener("focusout", () => hold(false));
     this.badge = this.el.querySelector(".maya-badge")!;
@@ -380,6 +401,11 @@ export class Maya {
     this.bubble.hidden = true;
     this.el.classList.remove("talking");
     this.setState("idle");
+    // Section 30b: the next line is placed at once, wherever it fits; the pointer counts as on her only if it is on her figure.
+    this.pointerOver = this.figure.matches(":hover");
+    this.bubbleAt = "";
+    this.pendingSpot = null;
+    this.bubble.classList.remove("moved");
     this.layoutDirty = true;
   }
 
@@ -394,6 +420,8 @@ export class Maya {
   setMinimised(minimised: boolean): void {
     if (minimised === this.minimised) return;
     this.minimised = minimised;
+    // Section 30b: her figure hides under the pointer when she is minimised; the freeze goes with it.
+    this.pointerOver = false;
     if (minimised) this.dismiss();
     this.el.classList.toggle("minimised", minimised);
     this.figure.hidden = minimised;
@@ -412,8 +440,11 @@ export class Maya {
   obstacles(): Rect[] {
     const box = this.container.getBoundingClientRect();
     const rects: Rect[] = [];
+    // Section 30b: a tooltip on one of her own controls ("Got it") is about her, never something to clear.
+    const ownTips = new Set(Array.from(this.el.querySelectorAll("[aria-describedby]")).flatMap((el) => (el.getAttribute("aria-describedby") ?? "").split(/\s+/)));
     for (const el of Array.from(this.container.querySelectorAll<HTMLElement>(HUD_OBSTACLES.join(",")))) {
       if (this.el.contains(el) || el.closest("[hidden]")) continue;
+      if (el.matches(".hud-tooltip") && el.id && ownTips.has(el.id)) continue;
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       if (getComputedStyle(el).visibility === "hidden" || getComputedStyle(el).display === "none") continue;
@@ -442,6 +473,11 @@ export class Maya {
   private layout(): void {
     this.layoutDirty = false;
     if (this.minimised || !this.current) return;
+    // Section 30b: frozen while the pointer is on her or her bubble (it is laid out again once the pointer leaves).
+    if (this.pointerOver && this.bubbleAt !== "") {
+      this.layoutDirty = true;
+      return;
+    }
     const viewport = { w: this.container.clientWidth, h: this.container.clientHeight };
     if (viewport.w < 50 || viewport.h < 50 || this.figureBox.w === 0) return;
     this.watchHud();
@@ -451,6 +487,14 @@ export class Maya {
   }
 
   private placeBubble(figure: Rect, obstacles: Rect[], viewport: { w: number; h: number }): void {
+    // Section 30b: the search tries widths (and the compact look) on the live bubble; whenever it ends without a
+    // move, they are put back, so the bubble never changes shape where it stands.
+    const keptWidth = this.bubble.style.width;
+    const keptCompact = this.bubble.classList.contains("compact");
+    const putBack = (): void => {
+      this.bubble.style.width = keptWidth;
+      this.bubble.classList.toggle("compact", keptCompact);
+    };
     // Heights by width for this line (and look), so a re-layout does not force a reflow per candidate.
     const cacheKey = `${this.textEl.textContent ?? ""}|${this.factEl.hidden}|${this.sourceEl.hidden}|${this.ruleEl.hidden}`;
     if (this.heightCacheKey !== cacheKey) {
@@ -472,6 +516,20 @@ export class Maya {
       this.bubble.classList.add("compact");
       spot = placeBubble(figure, measure, obstacles, viewport, 260);
     }
+    // Section 30b: a bubble already up changes only for a state that holds (SETTLE_MS), at most once a MOVE_GAP_MS.
+    const placed = this.bubbleAt !== "";
+    const key = spot ? `${spot.rect.x},${spot.rect.y},${spot.rect.w},${spot.side}` : "none";
+    if (placed && key !== this.bubbleAt) {
+      const now = performance.now();
+      if (this.pendingSpot?.key !== key) this.pendingSpot = { key, since: now };
+      if (now - this.pendingSpot.since < SETTLE_MS || now - this.lastMoveMs < MOVE_GAP_MS) {
+        putBack();
+        this.deferUntil = Math.max(this.pendingSpot.since + SETTLE_MS, this.lastMoveMs + MOVE_GAP_MS);
+        this.layoutDirty = true;
+        return;
+      }
+    }
+    this.pendingSpot = null;
     if (!spot) {
       // No room anywhere beside her: hold the line back and try again when something moves. She does not move.
       const line = this.current!;
@@ -483,12 +541,25 @@ export class Maya {
       this.queue.unshift(line);
       this.heldBack = true;
       this.bubbleAt = "";
+      this.bubble.classList.remove("moved");
       return;
     }
     // Only a changed spot is written.
-    const at = `${spot.rect.x},${spot.rect.y},${spot.rect.w},${spot.side}`;
-    if (at === this.bubbleAt) return;
+    const at = key;
+    if (at === this.bubbleAt) {
+      putBack();
+      return;
+    }
     this.bubbleAt = at;
+    // Section 30b: the once-a-second count starts when a line first appears, too.
+    if (!placed) this.lastMoveMs = performance.now();
+    if (placed) {
+      // Section 30b: a move fades in at its new spot (never a jump for a frame).
+      this.lastMoveMs = performance.now();
+      this.bubble.classList.remove("moved");
+      void this.bubble.offsetWidth;
+      this.bubble.classList.add("moved");
+    }
     this.bubble.style.width = `${spot.rect.w}px`;
     this.bubble.style.left = `${spot.rect.x}px`;
     this.bubble.style.top = `${spot.rect.y}px`;
@@ -511,6 +582,8 @@ export class Maya {
       if (key !== this.obstacleKey) this.layoutDirty = true;
     }
     if (!this.layoutDirty) return;
+    // Section 30b: a held move waits for its time.
+    if (nowMs < this.deferUntil) return;
     if (!waiting) {
       this.layoutDirty = false;
       return;

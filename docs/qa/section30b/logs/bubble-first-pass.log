@@ -1,0 +1,25 @@
+=== bubble-1366x768 (00:08:49)
+PASS [1366x768] the tip is up (62,577 190x148)
+PASS [1366x768] pointer on the bubble, 3 s: 6 frames, 1 position(s) [62,577,190,148], figure missing in 0
+PASS [1366x768] pointer on Got it, 3 s: 6 frames, 1 position(s) [62,577,190,148], figure missing in 0
+PASS [1366x768] no tile hover outline under the bubble while the pointer is on it (outlined in 0 frames)
+PASS [1366x768] one click on Got it closes the bubble
+PASS [1366x768] console errors: 0
+=== exit 0 (00:09:53)
+=== bubble-1024x640 (00:09:53)
+PASS [1024x640] the tip is up (53,469 190x148)
+PASS [1024x640] pointer on the bubble, 3 s: 7 frames, 1 position(s) [53,469,190,148], figure missing in 0
+PASS [1024x640] pointer on Got it, 3 s: 7 frames, 1 position(s) [53,469,190,148], figure missing in 0
+PASS [1024x640] no tile hover outline under the bubble while the pointer is on it (outlined in 0 frames)
+PASS [1024x640] one click on Got it closes the bubble
+PASS [1024x640] console errors: 0
+=== exit 0 (00:10:49)
+=== bubble-1920x1080 (00:10:49)
+PASS [1920x1080] the tip is up (72,881 184x144)
+PASS [1920x1080] pointer on the bubble, 3 s: 4 frames, 1 position(s) [69,873,190,148], figure missing in 0
+PASS [1920x1080] pointer on Got it, 3 s: 5 frames, 1 position(s) [69,873,190,148], figure missing in 0
+PASS [1920x1080] no tile hover outline under the bubble while the pointer is on it (outlined in 0 frames)
+PASS [1920x1080] one click on Got it closes the bubble
+PASS [1920x1080] console errors: 0
+=== exit 0 (00:12:07)
+ALLDONE

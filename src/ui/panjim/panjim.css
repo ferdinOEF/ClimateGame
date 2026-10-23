@@ -1285,6 +1285,15 @@
 @media (prefers-reduced-motion: reduce) {
   .maya *, .maya { animation: none !important; transition: none !important; }
 }
+/* Section 30b: a bubble that had to move fades in at its new spot (at most once a second; maya.ts MOVE_GAP_MS). */
+.maya-bubble.moved {
+  animation: maya-bubble-moved 220ms ease-out;
+}
+@keyframes maya-bubble-moved {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .maya.reduced-motion *, .maya.reduced-motion { animation: none !important; transition: none !important; }
 
 /* ---- Field Guide: Maya's notes --------------------------------------------------- */

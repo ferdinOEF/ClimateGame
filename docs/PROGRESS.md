@@ -8921,3 +8921,8 @@ The game will be shown at the Emergence festival in Panjim: many people sit, pla
 - **Visible:** `SHOW_MAYA` is on by default (`flagOr(VITE_SHOW_MAYA, true)`, `src/services/features.ts`): her figure and bubbles in the Panjim game, the start popup, the Tutorial and the result cards, ☰'s Maya item and M. Section 17c's gates stay, so `VITE_SHOW_MAYA=false` hides her everywhere again.
 - **Skin 50% fairer:** `MAYA_PALETTE` only (she is not redrawn): the base skin halfway to white in CIELAB lightness (L* 64 to 82), the shadow, deep and hand tones moved by the same step so her shading keeps its depth, each a little less saturated. Before: #c98f68, #ab7551, #92603f, #dda882; after: #f5c2a1, #d7a688, #bd9074, #fdcfb0. The cheek colour is unchanged (it reads a little stronger on the lighter skin). Sheets: `docs/qa/section29/before/`, `after/`.
 - `tests/hideMaya.test.ts` became `tests/showMaya.test.ts` (on by default, the gates kept, the lightness step checked); `tests/mayaArt.test.ts` pins the new skin; CLAUDE.md's Maya rule updated.
+
+## Section 30b — Maya's speech bubble holds still, Got it works first time (owner bug) — DONE (QA in docs/QA_REPORT.md, cause and fix in docs/BUGS.md)
+
+- Cause: "Got it" carries a HUD tooltip, and HUD tooltips are among Maya's obstacles; hovering Got it opened the tooltip over the bubble, the bubble moved away, the tooltip closed, the bubble moved back, about once a second.
+- Fix (`src/ui/panjim/maya.ts`, `panjim.css`): frozen while the pointer is on her or her bubble; her own controls' tooltips are never obstacles; a placed bubble moves only to a spot that held 250 ms, at most once a second, fading in, never changing shape where it stands. Browser test `tools/section30bBubble.ts`; `tests/section30b.test.ts`.
