@@ -3578,3 +3578,262 @@
 .large-text .panjim-help-body li,
 .large-text .panjim-help-body .help-roster-item { font-size: 16px; }
 .large-text .speed-up { font-size: 17px; }
+
+/* ---- Section 31: the Tutorial's caption card and checklist (the objective panel), its cards ---------------- */
+.tutorial-panel {
+  text-align: left;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.tutorial-card {
+  position: relative;
+  padding: 9px 11px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(242, 195, 91, 0.45);
+  color: #fdf6e6;
+}
+
+.tutorial-card.slide-in {
+  animation: tutorial-slide 360ms ease-out;
+}
+
+@keyframes tutorial-slide {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+.calm-motion .tutorial-card.slide-in {
+  animation: none;
+}
+
+.tutorial-card.built {
+  border-color: #7fe0b8;
+  background: rgba(127, 224, 184, 0.12);
+}
+
+.tutorial-built {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #7fe0b8;
+  color: #13261e;
+  font: 700 12px/1.4 var(--font-ui, system-ui, sans-serif);
+}
+
+.tutorial-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tutorial-card-icon svg {
+  display: block;
+  width: 30px;
+  height: 30px;
+}
+
+.tutorial-card-name {
+  font: 700 16px/1.2 "Fraunces", Georgia, serif;
+  color: #ffd98a;
+}
+
+.tutorial-chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 7px 0 6px;
+  padding: 0;
+}
+
+.tutorial-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(127, 192, 214, 0.22);
+  border: 1px solid rgba(127, 192, 214, 0.5);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #dff1f7;
+}
+
+.tutorial-how-head {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f2c35b;
+}
+
+.tutorial-how {
+  margin: 2px 0 5px;
+  font-size: 13px;
+  line-height: 1.38;
+}
+
+.tutorial-ingame {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.38;
+  color: rgba(253, 246, 230, 0.78);
+}
+
+.tutorial-card-done b {
+  font: 700 15px/1.2 "Fraunces", Georgia, serif;
+  color: #9fdcae;
+}
+
+.tutorial-card-done p {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.tutorial-checklist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f2c35b;
+}
+
+.tutorial-count {
+  font-size: 13px;
+  letter-spacing: 0;
+  color: #fdf6e6;
+}
+
+.tutorial-checks {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 5px 0 0;
+  padding: 0;
+}
+
+.tutorial-check {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.55;
+}
+
+.tutorial-check.done,
+.tutorial-check.next {
+  opacity: 1;
+}
+
+.tutorial-check-icon svg {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+}
+
+.tutorial-check.next .tutorial-check-icon svg {
+  box-shadow: 0 0 0 2px #f2c35b;
+}
+
+.tutorial-check-tick {
+  position: absolute;
+  top: -4px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: none;
+  background: #7fe0b8;
+  box-shadow: 0 0 0 2px #1d2a24;
+}
+
+.tutorial-check-tick::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  width: 4px;
+  height: 7px;
+  border: solid #13261e;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.tutorial-check.done .tutorial-check-tick {
+  display: block;
+}
+
+.tutorial-check-name {
+  font-size: 9.5px;
+  line-height: 1.1;
+  text-align: center;
+  color: rgba(253, 246, 230, 0.85);
+}
+
+/* The result card's rows: every defence, and why where it saved none. */
+.tutorial-rows li {
+  flex-wrap: wrap;
+}
+
+.result-row-why {
+  flex: 1 0 100%;
+  grid-column: 1 / -1;
+  margin-top: -2px;
+  font-size: 12px;
+  color: #e8dcc6;
+}
+
+/* The Tutorial's last card: the seven defences. */
+.tutorial-final-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+  margin: 6px 0 10px;
+  padding: 0;
+}
+
+.tutorial-final-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tutorial-final-list li.untried {
+  opacity: 0.55;
+}
+
+.tutorial-final-icon svg {
+  display: block;
+  width: 30px;
+  height: 30px;
+}
+
+.tutorial-final-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+
+.tutorial-final-text b {
+  font-size: 13.5px;
+}
+
+/* Section 31.4: a defence's name over it as the storm reaches it, for a moment. */
+.storm-word.named {
+  animation-duration: 1.8s;
+}
+
+.large-text .tutorial-how { font-size: 15.5px; }
+.large-text .tutorial-ingame,
+.large-text .tutorial-chip { font-size: 14px; }
+.large-text .tutorial-final-text { font-size: 15px; }

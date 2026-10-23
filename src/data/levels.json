@@ -3,11 +3,11 @@
     "id": "l00-tutorial",
     "name": "Tutorial",
     "subtitle": "How this works",
-    "brief": "Each build is one year. A cyclone comes in 3 years.",
+    "brief": "Each build is one year. A cyclone comes after 4 builds, then a river flood after 3 more.",
     "mapId": "tutorial",
     "tutorial": true,
     "startingCoin": 0,
-    "parTurns": 3,
+    "parTurns": 7,
     "mapRadius": null,
     "hazards": {
       "cycloneEnabled": true,
@@ -23,7 +23,7 @@
     "timeModel": "years",
     "timeline": {
       "startYear": 2026,
-      "endYear": 2028
+      "endYear": 2032
     },
     "economy": {
       "enabled": false,
@@ -36,14 +36,22 @@
     "climate": {
       "seaLevelCmPerYear": 0,
       "intensityPerStrength": 50,
+      "floodSource": ["5,0"],
       "challenges": [
         {
           "id": "t-cyclone",
           "name": "Cyclone",
           "kind": "cyclone",
-          "year": 2028,
-          "strength": 1.3,
+          "year": 2029,
+          "strength": 1.7,
           "landfall": "-3,1"
+        },
+        {
+          "id": "t-flood",
+          "name": "River flood",
+          "kind": "flood",
+          "year": 2032,
+          "strength": 1.5
         }
       ]
     },
@@ -69,20 +77,10 @@
       360,
       440
     ],
-    "prep": {
-      "model": true,
-      "max": 3,
-      "places": {
-        "z1": "the beach",
-        "z2": "the estuary",
-        "z3": "the river",
-        "z4": "the village"
-      },
-      "templates": []
-    },
     "houseStars": {
       "three": 0.79,
-      "two": 0.5
+      "two": 0.5,
+      "one": 0.3
     }
   },
   {

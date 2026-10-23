@@ -9,7 +9,9 @@ import levels from "../src/data/levels.json";
  * has to be made on purpose, with this fingerprint updated in the same change.
  *
  * Section 15 rebuilt the Tutorial on purpose (the Panjim game on a small
- * coast: three builds, one cyclone) and re-locked it with these fingerprints.
+ * coast: three builds, one cyclone) and re-locked it with these fingerprints. Section 31 rebuilt it again on purpose
+ * (owner decision: seven builds, one of each defence, a cyclone after the fourth and a river flood after the
+ * seventh; the map unchanged) and re-locked its level entry.
  * tests/tutorialRun.test.ts and the walkthrough check that it plays.
  */
 const sha = (text: string): string => createHash("sha256").update(text).digest("hex");
@@ -17,7 +19,7 @@ const sha = (text: string): string => createHash("sha256").update(text).digest("
 describe("the Tutorial is locked", () => {
   it("its level entry is exactly as it was", () => {
     const tutorial = (levels as { id: string }[]).find((level) => level.id === "l00-tutorial")!;
-    expect(sha(JSON.stringify(tutorial))).toBe("39ac180f2b760c90394cfda4d9f5f3c30caca548cecacd36258c793c2b78a5b1");
+    expect(sha(JSON.stringify(tutorial))).toBe("f95e6155a44f3a818d9e0080e0b1df2f6b9777b6de11660841ec7c8289dc81b3");
   });
 
   it("its map is exactly as it was", () => {

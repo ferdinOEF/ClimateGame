@@ -6,6 +6,7 @@
   "readinessNone": "Every storm is behind you.",
   "homesAtRisk": "Homes at risk: if the {storm} came now, this game's model says it would take {homes}.",
   "biodiversityCounter": "Biodiversity since {start}: {change}. In this game three stars in the {storm} need {target}; the mark on the bar shows it.",
+  "biodiversityCounterTutorial": "Biodiversity since {start}: {change}. In this game the Tutorial's stars count homes only; this shows what each defence adds to nature or costs it.",
   "sea": "Sea level in this game: {cm} cm above {start}. It rises a little every year.",
   "coin": "Your Coin: {coin}. Spend it on defences. Your city earns {income} Coin a season, collecting in the jar below.",
   "fieldGuide": "Maya's notes in your Field Guide: {notes}. Her tips show the same count. Inside, you have spotted {found} of {species} creatures.",

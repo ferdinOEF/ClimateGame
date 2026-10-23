@@ -8,7 +8,7 @@ import type { HouseStars } from "@core/zones";
  * cards' brown, one small picture per idea, each picture a render of the game
  * itself (public/art/help-*.jpg, made by tools/shellArt.ts). Built from the
  * level's own numbers, so it never disagrees with them: the Tutorial's page
- * says three builds and one cyclone, Panaji's twenty-five and three storms.
+ * says seven builds, a cyclone and a river flood (Section 31), Panaji's twenty five and three storms.
  *
  * Everything on it is a rule of this game, and says so. The facts Maya tells
  * about real defences carry their own sources (Facts & sources).

@@ -42,7 +42,12 @@ export interface StormDirectorDeps {
   /** The ring and the creatures: a defence answering. */
   defenceAnswers: (coord: AxialCoord, elementId: string) => void;
   /** A short word over a tile ("Absorbed", "Overwhelmed", "Failed"). */
-  label: (coord: AxialCoord, text: string, tone: "good" | "warn" | "bad") => void;
+  label: (coord: AxialCoord, text: string, tone: "good" | "warn" | "bad", brief?: boolean) => void;
+  /**
+   * Section 31.4 (the Tutorial): a defence's name, shown over it for a moment the first time the storm reaches it
+   * (beside its glow), in place of the word on the first few. Absent: the words as before.
+   */
+  defenceName?: (elementId: string) => string | null;
   /** A capped, rate-limited lightning flash on screen (alpha ≤ 0.25). */
   screenFlash: () => void;
   reducedMotion: () => boolean;
@@ -108,6 +113,8 @@ export class StormDirector {
   private channelMid = new THREE.Vector2();
   private readonly windDir = new THREE.Vector2(1, 0);
   private labelled = 0;
+  /** Defences whose name has shown in this storm (Section 31.4). */
+  private readonly named = new Set<string>();
 
   constructor(private readonly deps: StormDirectorDeps) {}
 
@@ -157,6 +164,7 @@ export class StormDirector {
     this.lastMs = null;
     this.slowUntilMs = 0;
     this.labelled = 0;
+    this.named.clear();
     this.pulses.clear();
     this.contacted.clear();
     this.phases = this.phasesFor(record, tested);
@@ -424,8 +432,15 @@ export class StormDirector {
           if (event.result === "overwhelmed") this.deps.defenceWorn(coord, this.deps.degradeAt(event.key));
           this.deps.sound?.(event.result === "held" ? "absorbed" : "overwhelmed");
         }
-        // A word over the first few, so the screen does not fill with them.
-        if (event.first || this.labelled < 4) {
+        const name = this.deps.defenceName?.(event.elementId) ?? null;
+        if (name) {
+          // Section 31.4: each defence's name over it once, as it takes the hit.
+          if (!this.named.has(event.key)) {
+            this.named.add(event.key);
+            this.deps.label(coord, name, event.result === "held" ? "good" : event.result === "overwhelmed" ? "warn" : "bad", true);
+          }
+        } else if (event.first || this.labelled < 4) {
+          // A word over the first few, so the screen does not fill with them.
           this.labelled++;
           this.deps.label(coord, event.result === "held" ? "Absorbed" : event.result === "overwhelmed" ? "Overwhelmed" : "Failed", event.result === "held" ? "good" : event.result === "overwhelmed" ? "warn" : "bad");
         }

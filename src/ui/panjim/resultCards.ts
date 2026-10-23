@@ -156,22 +156,56 @@ export function comingUpCard(title: string, preview: HTMLElement | null, mayaLin
   return body;
 }
 
-/** The Tutorial's one card (Section 15): the stars, the homes saved and what protected them. */
-export function tutorialResultCard(result: PhaseResult): HTMLElement {
-  const most = Math.max(1, ...result.defences.map((d) => d.homes));
-  const rows = result.defences.length
-    ? `<h3 class="result-subtitle">What protected them</h3>
-       <p class="result-sub">Defences share the work: each number is the homes that would have been lost without that one alone, so they need not add up to the homes saved.</p>
-       <ul class="result-rows">${result.defences
-         .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span>${rowValue(d)}</li>`)
+/**
+ * Section 31.4: a Tutorial storm's defence row: every defence built so far, the homes it saved in this storm, and
+ * where it saved none, one line why ("A cyclone defence; this was a flood").
+ */
+export interface TutorialDefenceRow {
+  elementId: string;
+  name: string;
+  homes: number;
+  why: string | null;
+}
+
+/** The Tutorial's card for one storm: the stars, the homes saved and every defence built, with why where it saved none. */
+export function tutorialResultCard(result: PhaseResult, rows: readonly TutorialDefenceRow[], last: boolean): HTMLElement {
+  const most = Math.max(1, ...rows.map((d) => d.homes));
+  const list = rows.length
+    ? `<h3 class="result-subtitle">What protected your homes</h3>
+       <p class="result-sub">Each number is the homes it took out of this storm's way when you built it.</p>
+       <ul class="result-rows tutorial-rows">${rows
+         .map(
+           (d) =>
+             `<li data-defence="${esc(d.elementId)}"><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span><span class="result-row-value">${d.homes}</span>${d.why ? `<span class="result-row-why">${esc(d.why)}</span>` : ""}</li>`
+         )
          .join("")}</ul>`
-    : `<p class="result-sub">Nothing stood in the cyclone's way this time.</p>`;
+    : `<p class="result-sub">Nothing stood in the storm's way this time.</p>`;
   return el(`<div class="result-card-body tutorial-result">
     <div class="result-eyebrow">Tutorial, ${esc(result.eyebrow)}</div>
     <h2 class="result-title">${esc(resultHeadline(result.stars))}</h2>
     ${starsHtml(result.stars)}
-    ${homesHtml(result.homesSaved, result.homesTotal)}
-    ${rows}
+    ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}
+    ${list}
+    ${last ? "" : `<p class="result-sub">Next, a river flood. Its defences grow on the estuary and the river.</p>`}
+  </div>`);
+}
+
+/**
+ * Section 31.4: the Tutorial's last card: how many of the seven defences the player tried, each with its icon and one
+ * line on what it is best at (game rules), then on to Panjim, the real city.
+ */
+export function tutorialFinalCard(tried: ReadonlySet<string>, steps: readonly { id: string; name: string; icon: string; bestAt: string }[]): HTMLElement {
+  const n = steps.filter((s) => tried.has(s.id)).length;
+  return el(`<div class="result-card-body tutorial-final">
+    <div class="result-eyebrow">Tutorial</div>
+    <h2 class="result-title">You tried ${n} of ${steps.length} defences</h2>
+    <div class="result-sub">In this game:</div>
+    <ul class="tutorial-final-list">${steps
+      .map(
+        (s) =>
+          `<li class="${tried.has(s.id) ? "tried" : "untried"}" data-defence="${esc(s.id)}"><span class="tutorial-final-icon" aria-hidden="true">${s.icon}</span><span class="tutorial-final-text"><b>${esc(s.name)}</b><span>${esc(s.bestAt)}</span></span></li>`
+      )
+      .join("")}</ul>
     <p class="result-sub">Panjim is the real city: ${esc(panajiRunPhrase())}.</p>
   </div>`);
 }
