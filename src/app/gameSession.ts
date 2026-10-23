@@ -955,7 +955,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             elements.setQualityMotion(quality !== "low");
             puffMotion.low = quality === "low";
             if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
-            wildlife?.setEnabled(!puffMotion.low);
+            // Section 30.5: on Low the mangroves' birds still come (the otter, pond life and dolphins do not).
+            wildlife?.setLite(puffMotion.low);
           },
           setReducedMotion: (reduced) => {
             storm.setReducedMotion(reduced);
@@ -963,7 +964,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             elements.setSwayEnabled(!reduced);
             puffMotion.reduced = reduced;
             if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
-            wildlife?.setEnabled(!puffMotion.low);
             wildlife?.setGentle(reduced);
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
@@ -2762,6 +2762,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const world = axialToWorld(coord, 1.0);
       buildFlourish.play(world.x, topY, world.z, performance.now());
       buildPuff?.play(elementId, world.x, topY, world.z, performance.now());
+      // Section 30.5: a planted mangrove sends its bird up once the year has passed.
+      if (elementId === "mangrove") wildlife?.birdFrom({ x: world.x, y: topY + 0.02, z: world.z });
       // The tile is taken now: no build outline on it until the pointer moves again.
       tileHover?.show(null);
     }
