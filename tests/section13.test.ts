@@ -18,8 +18,8 @@ describe("Section 13", () => {
     const session = fs.readFileSync("src/app/gameSession.ts", "utf8");
     const css = fs.readFileSync("src/ui/panjim/panjim.css", "utf8");
     expect(controller).not.toMatch(/floatAt|floatText\(saved|homes safe/);
-    // Nor any count of homes in the note beside a build outside the area.
-    expect(controller).toContain(`return "This is outside the area, so it doesn't count for the objective.";`);
+    // Nor a note beside it (Section 32, owner decision: the "outside the area" note is gone).
+    expect(controller).not.toMatch(/outsideNote|outside the area|count for the objective/);
     expect(controller).not.toMatch(/This protects \$\{homes\}|This protects no homes/);
     expect(session).not.toMatch(/BuildFloat|buildFloat/);
     expect(css).not.toContain(".build-float");

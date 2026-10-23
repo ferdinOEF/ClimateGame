@@ -154,13 +154,13 @@ async function main(): Promise<void> {
         const pinNames = (await page.evaluate(`Array.from(document.querySelectorAll(".map-pin-name")).map(function (e) { return e.textContent; })`)) as string[];
         // Section 16: the first objective is the ground round Sharada Mandir School, pinned alone.
         check(pinNames.some((n) => /Sharada Mandir/.test(n)), `pins name the objective's places: ${pinNames.join(", ")}`);
-        // A build that counts for no row says so.
+        // A build that counts for no row just goes down (Section 32: no note).
         const before = await val<number>(page, "r.turnNumber");
-        await page.evaluate("window.__panjimForTest.host && 0");
         const outside = (await page.evaluate(`window.__panjimForTest.build({ q: 20, r: 20 }, "khazan") || window.__panjimForTest.build({ q: 26, r: 14 }, "mangrove")`)) as boolean;
         await page.waitForTimeout(800);
         const banner = await page.evaluate(`Array.from(document.querySelectorAll(".banner, .hud-banner, [class*='banner']")).map(function (e) { return e.innerText; }).join(" | ")`) as string;
-        check(outside && /doesn't count for the objective/.test(banner), `a build outside every row says so: "${banner.slice(0, 120)}"`);
+        const note = await page.evaluate(`Array.from(document.querySelectorAll(".map-note")).map(function (e) { return e.innerText; }).join(" | ")`) as string;
+        check(outside && !/outside the area|count for the objective/.test(banner + note), `a build outside every row shows no note: "${(banner + note).slice(0, 120)}"`);
         check((await val<number>(page, "r.turnNumber")) === before + 1, "that build was the year's build");
       }
       // The outline after the first build (the cone has gone).

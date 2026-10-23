@@ -124,7 +124,7 @@ export const HUD_OBSTACLES = [
   ".result-cards",
   ".brief-card",
   ".replay-card",
-  // Section 16 B6: the note beside a just-built tile (it was a banner, which is above).
+  // Section 16 B6: a note beside a tile (Section 30.11: broken or cracked with age).
   ".map-note.beside",
   // Section 30.10: Speed up, bottom centre while a storm or its replay plays (its Tutorial hint just above it).
   ".speed-up:not([hidden])"
