@@ -1754,6 +1754,11 @@
   pointer-events: auto;
   font: 500 14px/1.4 var(--font-ui, system-ui, sans-serif);
 }
+/* Section 30.11 bug 11: at the bottom when its usual place would cover the tiles it describes (above Speed up). */
+.replay-card.replay-low {
+  top: auto;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+}
 .replay-head { display: flex; align-items: center; gap: 8px; }
 .replay-eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #e8a64a; }
 .replay-title { flex: 1; font-weight: 700; }
@@ -2615,6 +2620,13 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+}
+
+.result-row-value.shared {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #cfe7c2;
 }
 
 .result-maya {
@@ -3526,5 +3538,11 @@
 }
 .field-guide-backdrop.no-notes .field-guide-notes-head,
 .field-guide-backdrop.no-notes .field-guide-notes {
+  display: none;
+}
+
+/* Section 30.11 bug 12: the objective panel never shows empty (the "Panjim, 2050" title, the end of a run). */
+.has-panjim-clock .objectives-panel.custom-body:has(> .get-ready[hidden]),
+.has-panjim-clock:has(.finale-title-main) .objectives-panel {
   display: none;
 }

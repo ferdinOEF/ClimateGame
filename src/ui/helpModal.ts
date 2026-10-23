@@ -82,7 +82,7 @@ const HELP_CONTENT = `
       <div class="help-roster-group">
         <div class="help-roster-terrain">Beach</div>
         <div class="help-roster-item"><span>Dune</span><span>Cheap. Soaks up part of a surge; weakens but is not destroyed.</span></div>
-        <div class="help-roster-item"><span>Sandy Vegetation</span><span>The cheapest defence. Softens a surge a little.</span></div>
+        <div class="help-roster-item"><span>Pandanus</span><span>The cheapest defence. Softens a surge a little.</span></div>
         <div class="help-roster-item"><span>Seawall</span><span>Strong at once. Fails all at once if a storm is too big for it.</span></div>
       </div>
 

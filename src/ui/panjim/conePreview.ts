@@ -215,6 +215,7 @@ function keepLabelsReadable(svg: SVGSVGElement, viewWidth: number, viewHeight: n
       text.style.strokeWidth = `${0.32 * k}px`;
     }
     for (const dot of Array.from(svg.querySelectorAll<SVGCircleElement>(".cone-preview-place circle"))) dot.setAttribute("r", fmt(0.42 * Math.min(k, 1.6)));
+    placeLabels(svg, font);
   };
   if (typeof ResizeObserver === "function") {
     let shown = false;
@@ -230,4 +231,51 @@ function keepLabelsReadable(svg: SVGSVGElement, viewWidth: number, viewHeight: n
     observer.observe(svg);
   }
   if (typeof requestAnimationFrame === "function") requestAnimationFrame(fit);
+}
+
+/**
+ * Section 30.11 bug 2: the names as drawn (their real size, once the font is set), each to the right of its dot, or
+ * to its left when it would run off the map's right edge, slid back inside when it runs off either; a name that
+ * would still sit on one placed before it is left off. So a name never clips at the edge or covers another.
+ */
+function placeLabels(svg: SVGSVGElement, font: number): void {
+  const vb = svg.viewBox.baseVal;
+  if (!vb || vb.width <= 0) return;
+  const margin = font * 0.3;
+  const kept: { x0: number; y0: number; x1: number; y1: number }[] = [];
+  for (const group of Array.from(svg.querySelectorAll<SVGGElement>(".cone-preview-place"))) {
+    const text = group.querySelector("text");
+    const dot = group.querySelector("circle");
+    if (!text || !dot || typeof text.getBBox !== "function") continue;
+    group.style.display = "";
+    const cx = Number(dot.getAttribute("cx"));
+    const cy = Number(dot.getAttribute("cy"));
+    const r = Number(dot.getAttribute("r"));
+    const gap = r + font * 0.3;
+    text.setAttribute("y", fmt(cy + font * 0.36));
+    text.setAttribute("text-anchor", "start");
+    text.setAttribute("x", fmt(cx + gap));
+    let box = text.getBBox();
+    if (box.width <= 0) continue;
+    if (box.x + box.width > vb.x + vb.width - margin) {
+      text.setAttribute("text-anchor", "end");
+      text.setAttribute("x", fmt(cx - gap));
+      box = text.getBBox();
+    }
+    // Still off an edge (a long name near a narrow map): slide it back in.
+    const overRight = box.x + box.width - (vb.x + vb.width - margin);
+    const overLeft = vb.x + margin - box.x;
+    if (overLeft > 0 || overRight > 0) {
+      const shift = overLeft > 0 ? overLeft : -overRight;
+      text.setAttribute("x", fmt(Number(text.getAttribute("x")) + shift));
+      box = text.getBBox();
+    }
+    const area = { x0: Math.min(box.x, cx - r), y0: Math.min(box.y, cy - r), x1: Math.max(box.x + box.width, cx + r), y1: Math.max(box.y + box.height, cy + r) };
+    const pad = font * 0.15;
+    if (kept.some((o) => area.x0 < o.x1 + pad && o.x0 < area.x1 + pad && area.y0 < o.y1 + pad && o.y0 < area.y1 + pad)) {
+      group.style.display = "none";
+      continue;
+    }
+    kept.push(area);
+  }
 }

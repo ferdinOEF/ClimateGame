@@ -21,6 +21,7 @@ import { TileHover } from "@render/tileHover";
 import { WildlifeDirector } from "@render/wildlife";
 import { KhazanPeople } from "@render/khazanPeople";
 import { ObjectivePulse } from "@render/objectivePulse";
+import { CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
@@ -2367,8 +2368,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         name: def.name,
         // No NBS / ENGINEERED / BUILDING tags on Panjim (Section 13).
         kindLabel: panjim ? undefined : kindLabel(def),
-        // With coins off, what a thing earns is not shown: no money anywhere.
-        effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
+        // With coins off, what a thing earns is not shown: no money anywhere. Section 30.11 bug 6: on Panjim a
+        // defence shows its biodiversity only (no carbon or resilience), and its rule line below.
+        effects: panjim
+          ? CARD_LINES[def.id]
+            ? { biodiversity: cardBiodiversity(def.id) }
+            : {}
+          : economy
+            ? def.effects
+            : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
         removeLabel: panjim ? "Demolish (uses this year's build)" : undefined,
         // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
         note:
@@ -2376,7 +2384,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only."
             : panjim && isCracked(def, built, state.turn)
               ? `${crackedNote(def)}. In this game a seawall or small dam cracks at 10 years old.`
-              : undefined,
+              : panjim && CARD_LINES[def.id]
+                ? `In this game: ${CARD_LINES[def.id][0]}`
+                : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
             ? [

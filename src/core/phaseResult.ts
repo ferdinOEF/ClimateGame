@@ -31,6 +31,8 @@ export interface DefenceResult {
   name: string;
   /** Homes that would have been lost without this kind of defence. */
   homes: number;
+  /** Section 30.11 bug 13: none alone, because another defence covered for it: it shared the work. */
+  shared?: boolean;
 }
 
 export interface PhaseResult {
@@ -53,6 +55,8 @@ export interface PhaseResult {
   windLost: number;
   /** Section 30.9: with the objective done but fewer than 3 stars, one line on what stopped the third (a game rule). */
   shortOfThree?: string;
+  /** Section 30.11 bug 1: a damaged place a seawall's end push reached (a game rule), named. */
+  pushNote?: string;
 }
 
 /** Section 25.2: the card's second line: the board's biodiversity change since the run began, and why. */
@@ -154,7 +158,7 @@ export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, 
   const saved = record.withoutEach;
   const kinds = [...new Set(builtKinds)].filter((id) => (ELEMENT_BY_ID.get(id)?.effects.resilience ?? 0) > 0);
   const defences = kinds
-    .map((elementId) => ({ elementId, name: ELEMENT_BY_ID.get(elementId)?.name ?? elementId, homes: saved.get(elementId) ?? 0 }))
+    .map((elementId) => ({ elementId, name: ELEMENT_BY_ID.get(elementId)?.name ?? elementId, homes: saved.get(elementId) ?? 0, ...(record.sharedWork?.includes(elementId) ? { shared: true } : {}) }))
     .sort((a, b) => b.homes - a.homes || (a.name < b.name ? -1 : 1));
   return {
     challengeId: challenge.id,

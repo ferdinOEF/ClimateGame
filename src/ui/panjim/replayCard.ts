@@ -89,6 +89,29 @@ export class ReplayCard {
     });
   }
 
+  /**
+   * Section 30.11 bug 11: never over the tiles it describes. `points` are those tiles on screen (container pixels);
+   * the card sits at its place under the HUD unless that covers more of them than the bottom of the screen does.
+   */
+  placeAvoiding(points: readonly { x: number; y: number }[]): void {
+    const parent = this.el.offsetParent as HTMLElement | null;
+    if (!parent || this.el.hidden) return;
+    const covered = (): number => {
+      const box = this.el.getBoundingClientRect();
+      const origin = parent.getBoundingClientRect();
+      const left = box.left - origin.left - 24;
+      const right = box.right - origin.left + 24;
+      const top = box.top - origin.top - 24;
+      const bottom = box.bottom - origin.top + 24;
+      return points.filter((p) => p.x >= left && p.x <= right && p.y >= top && p.y <= bottom).length;
+    };
+    this.el.classList.remove("replay-low");
+    const atTop = covered();
+    if (atTop === 0) return;
+    this.el.classList.add("replay-low");
+    if (covered() >= atTop) this.el.classList.remove("replay-low");
+  }
+
   get isOpen(): boolean {
     return !this.el.hidden;
   }

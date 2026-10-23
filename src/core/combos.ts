@@ -18,9 +18,9 @@ import type { GameState } from "./gameState";
  */
 export type ComboId = "mangrove_belt" | "living_bund";
 
-export const COMBO_INFO: Record<ComboId, { name: string; bonus: number; line: string }> = {
-  mangrove_belt: { name: "Mangrove Belt", bonus: 2, line: "Three or more mangroves together slow the water far more than scattered trees." },
-  living_bund: { name: "Living Bund", bonus: 2, line: "Khazan beside mangroves: the bund and the roots hold the bank together." }
+export const COMBO_INFO: Record<ComboId, { name: string; bonus: number; line: string; plain: string }> = {
+  mangrove_belt: { name: "Mangrove Belt", bonus: 2, line: "Three or more mangroves together slow the water far more than scattered trees.", plain: "Three or more mangroves side by side protect each other." },
+  living_bund: { name: "Living Bund", bonus: 2, line: "Khazan beside mangroves: the bund and the roots hold the bank together.", plain: "A khazan and mangroves side by side protect each other." }
 };
 
 export interface ComboState {

@@ -302,6 +302,8 @@ export class PanjimController {
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     // Section 17c: Maya's notes come from her; hidden, the guide is the species alone.
     this.fieldGuide.showNotes(SHOW_MAYA);
+    // Section 30.11 bug 9: opening the Field Guide from the menu closes the menu.
+    this.fieldGuide.onOpen = () => this.panels?.settings.close();
     this.resultCards = new ResultCards(host.container);
     this.finaleCard = new FinaleCard(host.container);
     this.replayCard = new ReplayCard(host.container);
@@ -902,7 +904,13 @@ export class PanjimController {
         : undefined;
     const base = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature);
     const short = stormStars ? shortOfThree(base.stars, base.homesSaved, base.homesTotal, stormStars, record.outcome.biodiversityChange) : null;
-    const result = { ...base, objectiveComplete: this.run.objectivesComplete.has(challenge.id), ...(short ? { shortOfThree: short } : {}) };
+    const pushed = this.pushedPlaces(base.places);
+    const result = {
+      ...base,
+      objectiveComplete: this.run.objectivesComplete.has(challenge.id),
+      ...(short ? { shortOfThree: short } : {}),
+      ...(pushed.length ? { pushNote: `In this game a seawall pushes water round its ends: it reached ${joinNames(pushed)}.` } : {})
+    };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
@@ -984,6 +992,23 @@ export class PanjimController {
     this.speedUp.dataset.hint = on && this.tutorial ? "It hurries the storm" : "";
   }
 
+  /**
+   * Section 30.11 bug 1: the damaged places beside a wall that pushes water round its ends (a seawall, as the storm
+   * came): the push is why a place can be damaged with every home round it saved.
+   */
+  private pushedPlaces(places: readonly { name: string; stood: boolean }[]): string[] {
+    const all = this.places();
+    const out: string[] = [];
+    for (const place of places) {
+      if (place.stood) continue;
+      const at = all.find((p) => p.name === place.name);
+      if (!at) continue;
+      const beside = neighbors({ q: at.q, r: at.r }).some((n) => (ELEMENT_BY_ID.get(this.preChallengeIds.get(`${n.q},${n.r}`) ?? "")?.endPushM ?? 0) > 0);
+      if (beside && !out.includes(place.name)) out.push(place.name);
+    }
+    return out;
+  }
+
   /** The Aftermath replay: what the storm did, step by step, in the record's real numbers. Skippable. */
   private async replay(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
     const steps = replaySteps(record, this.preChallengeIds);
@@ -997,6 +1022,15 @@ export class PanjimController {
       this.host.focusCamera({ q: Math.round(sum.q / focusKeys.length), r: Math.round(sum.r / focusKeys.length) }, true, 1.4);
     }
     this.showSpeedUp(steps.length > 0);
+    // Section 30.11 bug 11: the card moves off the tiles it describes (once drawn, the camera framed).
+    const keys = [...new Set(steps.flatMap((step) => [...step.hit, ...step.dry, ...step.highlight]))];
+    window.setTimeout(() => {
+      const points = keys.map((key) => {
+        const [q, r] = key.split(",").map(Number);
+        return this.host.project({ q, r });
+      }).filter((p): p is { x: number; y: number } => p !== null);
+      this.replayCard.placeAvoiding(points);
+    }, 60);
     await this.replayCard.play(challenge.name, steps, {
       light: (step) => {
         if (!step) {
@@ -1434,7 +1468,8 @@ export class PanjimController {
           const [q, r] = key.split(",").map(Number);
           return { q, r };
         }));
-        this.host.showBanner(`${info.name}! +${info.bonus} defence on each of its ${event.all.length} tiles`, 3800);
+        // Section 30.11 bug 7: plain words, no exclamation and no number.
+        this.host.showBanner(info.plain, 3800);
         this.host.telemetry.reward("combo");
         break;
       }
@@ -1462,6 +1497,17 @@ export class PanjimController {
         // Section 26.1: a breakwater broke as it turned 10. Drawn broken (the refresh), and said beside it.
         const [q, r] = event.key.split(",").map(Number);
         this.host.noteAt({ q, r }, "Broken with age: in this game a breakwater lasts 10 years. Build again here.", 4000);
+        // Section 30.11 bug 5: said where it is seen, wherever the camera is.
+        this.host.showBanner("A breakwater broke with age. In this game a breakwater lasts 10 years.", 3600);
+        break;
+      }
+      case "cracked": {
+        // Section 30.11 bug 5: a seawall or dam turned 10: cracked, it breaks in the next storm of its kind.
+        const [q, r] = event.key.split(",").map(Number);
+        const name = event.elementId === "small_dam" ? "small dam" : "seawall";
+        const storm = event.elementId === "small_dam" ? "flood" : "cyclone";
+        this.host.noteAt({ q, r }, `Cracked with age: in this game it breaks in the next ${storm}.`, 4000);
+        this.host.showBanner(`A ${name} cracked with age. In this game it breaks in the next ${storm}.`, 3600);
         break;
       }
     }
@@ -2111,3 +2157,7 @@ export function comingUpTitle(name: string, year: number, years: number): string
   return `${name} in ${year}, ${years} ${years === 1 ? "year" : "years"} away`;
 }
 
+/** "A", "A and B", "A, B and C". */
+function joinNames(names: readonly string[]): string {
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}

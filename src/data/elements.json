@@ -28,7 +28,7 @@
   {
     "id": "sandy_vegetation",
     "matureQuarters": 0,
-    "name": "Sandy Vegetation (Pandanus)",
+    "name": "Pandanus",
     "kind": "defense",
     "category": "nbs",
     "targetsHazards": [
@@ -154,7 +154,7 @@
   {
     "id": "khazan",
     "matureQuarters": 12,
-    "name": "Khazan (Bundh & Sluice)",
+    "name": "Khazan",
     "kind": "defense",
     "category": "hybrid",
     "targetsHazards": [

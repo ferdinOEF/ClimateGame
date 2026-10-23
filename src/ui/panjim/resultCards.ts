@@ -93,6 +93,7 @@ export function resultCard(result: PhaseResult): HTMLElement {
     ${windHtml(result.windLost)}
     ${result.nature ? natureHtml(result.nature) : ""}
     ${places}
+    ${result.pushNote ? `<p class="result-short result-push">${esc(result.pushNote)}</p>` : ""}
   </div>`);
 }
 
@@ -119,13 +120,18 @@ export function natureHtml(nature: { change: number; target: number; reason: str
   return `<div class="result-nature ${tone}" role="note"><span><b>${sign}${Math.abs(Math.round(nature.change))}</b> biodiversity ${nature.at ? `${esc(nature.at)}, against ${nature.since}` : `since ${nature.since}`}</span><span class="result-nature-why">${esc(nature.reason)}</span></div>`;
 }
 
+/** A defence row's number; Section 30.11 bug 13: one that shared the work reads so, never 0. */
+function rowValue(d: { homes: number; shared?: boolean }): string {
+  return d.homes === 0 && d.shared ? `<span class="result-row-value shared">Shared the work</span>` : `<span class="result-row-value">${d.homes}</span>`;
+}
+
 /** Card 2: what protected the homes, one row per kind of defence built in the phase. */
 export function defencesCard(result: PhaseResult, mayaLine: CardLine): HTMLElement {
   const most = Math.max(1, ...result.defences.map((d) => d.homes));
   const rows = result.defences.length
     ? `<p class="result-sub">Homes that would have been lost without each defence.</p>
        <ul class="result-rows">${result.defences
-         .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span><span class="result-row-value">${d.homes}</span></li>`)
+         .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span>${rowValue(d)}</li>`)
          .join("")}</ul>`
     : `<p class="result-sub">Nothing stood in the way this time.</p>`;
   return el(`<div class="result-card-body">
@@ -157,7 +163,7 @@ export function tutorialResultCard(result: PhaseResult): HTMLElement {
     ? `<h3 class="result-subtitle">What protected them</h3>
        <p class="result-sub">Defences share the work: each number is the homes that would have been lost without that one alone, so they need not add up to the homes saved.</p>
        <ul class="result-rows">${result.defences
-         .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span><span class="result-row-value">${d.homes}</span></li>`)
+         .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span>${rowValue(d)}</li>`)
          .join("")}</ul>`
     : `<p class="result-sub">Nothing stood in the cyclone's way this time.</p>`;
   return el(`<div class="result-card-body tutorial-result">

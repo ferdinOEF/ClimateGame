@@ -5,7 +5,7 @@ import { buildSchedule, challengeStrength, shelterOf, yearsUntil, type Challenge
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
-import { ageBroken, landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
+import { ageBroken, isCracked, landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
 import { generatePrep, openingJobs, prepProgress, regionPlace, regionPlaces, type OpeningRegion, type PhaseArea, type PrepConfig, type PrepObjective } from "./prep";
 import { generatePhaseObjective, type PhaseObjective } from "./phaseObjectives";
 import { discTiles, localityTiles, nearestLocality, stretchTiles } from "./stretch";
@@ -71,7 +71,9 @@ export type RunEvent =
   /** The Get ready jobs for the next storm were set. */
   | { type: "prep_new"; objectives: PrepObjective[] }
   /** Section 26.1: a defence broke with age (a breakwater at 10 years), storm or none. */
-  | { type: "aged"; key: string; elementId: string };
+  | { type: "aged"; key: string; elementId: string }
+  /** Section 30.11 bug 5: a seawall or dam turned 10 this year and is cracked (it breaks in the next storm of its kind). */
+  | { type: "cracked"; key: string; elementId: string };
 
 export interface ActionRunOptions {
   /** The level's climate: the three storms on their fixed calendar. */
@@ -456,6 +458,12 @@ export class ActionRun {
       if (!def || inst.broken || !ageBroken(def, inst, this.state.turn)) continue;
       inst.broken = true;
       events.push({ type: "aged", key, elementId: inst.elementId });
+    }
+    // Section 30.11 bug 5: a seawall or dam cracked with age this year (not last), storm or none.
+    for (const [key, inst] of this.state.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def || !isCracked(def, inst, this.state.turn) || isCracked(def, inst, this.state.turn - 1)) continue;
+      events.push({ type: "cracked", key, elementId: inst.elementId });
     }
     return events;
   }

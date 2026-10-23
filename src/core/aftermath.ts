@@ -54,10 +54,10 @@ function plural(elementId: string): string {
     dune: "dunes",
     sandy_vegetation: "pandanus",
     mangrove: "mangroves",
-    khazan: "khazan bunds",
+    khazan: "khazans",
     seawall: "seawalls",
     breakwater: "breakwaters",
-    small_dam: "dams"
+    small_dam: "small dams"
   };
   return names[elementId] ?? (ELEMENT_BY_ID.get(elementId)?.name ?? elementId).toLowerCase();
 }
