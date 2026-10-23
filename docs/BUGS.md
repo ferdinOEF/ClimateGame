@@ -203,3 +203,47 @@ aside until the pointer moves (the rule as asked: her position is frozen under t
 **Left as it is, for the owner:** Got it keeps its tooltip ("Closes Maya's tip.": every HUD control has one, checked
 by `verify:maya`). In a small window it opens above the button, over the bubble's last lines (the "5 of 20" count),
 while the pointer is on Got it. It no longer moves the bubble. Say if Got it should lose its tooltip.
+
+# Section 30: the review's bugs (30.11), and the choices made carrying out the owner's decisions
+
+**Bug 1, "Objective complete" while Sharada Mandir School was Damaged.** Reproduced headless on master
+(the board in `tools/section30Shots.ts`): the objective's builds plus a seawall
+beside the school. The cause is the seawall's end push (Section 25.1, a game rule): the land beside each end of a wall
+keeps `endPushM` (0.3 m) of water. The school's tile is beside the wall, so it takes 0.3 m and is drawn Damaged while
+all 9 homes are saved; the seawall's cost to biodiversity takes the storm to 2 stars. On master the card said
+"Objective complete" and nothing else. Now (Section 30.9) a card under 3 stars says "Objective done" with one line
+on what stopped the third star ("In this game biodiversity was +1; three stars need +6."), and a damaged place beside
+a seawall is named: "In this game a seawall pushes water round its ends: it reached Sharada Mandir School."
+With Section 30.2 the objective now asks for a dune at -4,18, so the seawall can only go beside it (-3,17).
+
+**Bug 2, the 2050 map's names.** The names grew with the map's 12 px minimum font after their boxes were checked
+at the map's own size, so long names ran off the edge and onto others. Now each name is placed as drawn (its real
+box): to the right of its dot, else to its left, slid back inside an edge, and left off if it would still cover one
+placed before it. On the 2040 storm's last card: "Our Lady of the Immaculate Conception" and "Mahalaxmi Temple"
+shown, "Adil Shah Palace" left off (it sat on the first).
+
+**Bugs 3 to 13:** done as asked; see docs/QA_REPORT.md (Section 30) for each one's check. Choices made:
+- Bug 5: a breakwater breaking with age already had a note at its tile; it now also gets a banner, wherever the
+  camera is, and a seawall or small dam turning 10 (cracked) gets both.
+- Bug 7: the combo line asked for ("Khazans side by side protect each other.") does not match the rule in the game:
+  the pair is a khazan beside mangroves (Living Bund), and three or more mangroves together (Mangrove Belt). The
+  toasts say so in plain words: "A khazan and mangroves side by side protect each other." and "Three or more
+  mangroves side by side protect each other." Both are in the Field Guide ("Side by side"), as game rules.
+- Bug 8: the data names are now "Pandanus" and "Khazan" (they were "Sandy Vegetation (Pandanus)" and "Khazan
+  (Bundh & Sluice)"), so every place that shows a name says the same.
+- Bug 13: "Shared the work" reads where a defence's own number is 0 only because another would have covered for it
+  (taken away together with that other, the storm takes more homes than without the other alone).
+
+**Owner decisions carried out, and where the brief and the board differ:**
+- 30.1: three of the 16 tiles listed as "already unplayable" (27,10, 27,11 and 26,12) were playable river tiles;
+  all 33 are now dry and grey. 13 of the 33 were already grey scenery.
+- 30.3: the mangrove's "best for biodiversity" reads "great for biodiversity": in this game pandanus ties it (+3
+  each). The dune's second line stays a game line ("Good for nature: it adds to biodiversity."): no one source was
+  found that says "home to beach plants and ghost crabs", and no page could be opened from here to check one (leads
+  kept in facts.json, `card-dune`). The four others are sourced (facts.json `card-*`, the Sources screen); three of
+  them were checked from the search engine's quotation of the page, as the pages could not be opened from this
+  environment (their notes say so). The khazan keeps its sourced line ("Farmers and fishers share it.").
+- 30.9: a merged row that would name more than about 40 characters of places counts them instead ("Build 7 khazans
+  at 5 places, shown on the map"); the tiles pulse and a click pans to one.
+- 30.12: the idle reset runs in the Tutorial too (it returns to the menu, which is what a festival needs); Larger
+  text is not remembered (each visitor starts with the usual size).

@@ -6,7 +6,7 @@
  *   - the faint storm track in year 3 (30.7); Speed up during the 2030 cyclone (30.10);
  *   - the 2030 result card from review bug 1: the objective done with a seawall beside the school (30.11);
  *   - the 2050 forecast map on the 2040 storm's last card (30.11 bug 2).
- * The kingfisher fly-in and the khazan people have their own frames (tools/zzbirds.ts, tools/zzkhazan.ts output,
+ * The kingfisher fly-in and the khazan people have their own frames (tools/section30Birds.ts, tools/section30Khazan.ts output,
  * kept in docs/qa/section30). Checks what each shot is about, and console errors (0).
  *
  * Usage: npx tsx tools/section30Shots.ts <width> <height> [outDir=docs/qa/section30]
