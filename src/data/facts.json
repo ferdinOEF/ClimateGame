@@ -463,6 +463,66 @@
         "url": "https://www.downtoearth.org.in/news/water/water-stressed-in-india-ground-water-mostly-neglected-in-rain-surplus-south-goa-69852",
         "note": "Section 30.3, the build card's second line. The article says the flow of the Sal river is regulated by small check dams (bandharas), closed in September or October depending on the rainfall and opened again in the dry season in May when water is required. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
       }
+    },
+    {
+      "id": "dune-plants",
+      "kind": "fact",
+      "text": "Grasses and creeping vines trap blowing sand and help build coastal dunes.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "Coastal vegetation and sand dunes",
+        "authors": "Gladstone Regional Council",
+        "publisher": "Gladstone Regional Council, Queensland",
+        "year": "n.d.",
+        "url": "https://www.gladstone.qld.gov.au/downloads/file/2513/coastal-vegetation-and-sand-dunes",
+        "note": "Section 31, the Tutorial's dune caption. The sheet says grasses, vines and fallen timber are obstructions that trap windblown sand and help to build the dunes. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+      }
+    },
+    {
+      "id": "seawall-what",
+      "kind": "fact",
+      "text": "A seawall is a hard wall along the shore that shields the land behind it from waves and surges.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "Seawall",
+        "authors": "Coastal Wiki (Flanders Marine Institute, VLIZ)",
+        "publisher": "Coastal Wiki",
+        "year": "n.d.",
+        "url": "https://www.coastalwiki.org/wiki/Seawall",
+        "note": "Section 31, the Tutorial's seawall caption. Describes a seawall as a shore parallel hard coastal protection structure at the seaward edge of the land, whose job is to shield the landward side from waves, surges and erosion. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+      }
+    },
+    {
+      "id": "mangrove-surge",
+      "kind": "fact",
+      "text": "Mangroves can lower storm surge levels by slowing the flow of water and reducing surface waves.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "Storm surge reduction by mangroves (Natural Coastal Protection Series, Report 2)",
+        "authors": "McIvor, A.L., Spencer, T., Möller, I. and Spalding, M.",
+        "publisher": "The Nature Conservancy and Wetlands International",
+        "year": "2012",
+        "url": "https://www.conservationgateway.org/collections/ocean/storm-surge-reduction-mangroves/",
+        "note": "Section 31, the Tutorial's mangrove caption. The report examines how mangroves reduce surge water levels and wave energy: they can lower surge levels by slowing the flow of water and reducing surface waves. Checked from the search engine's quotation of summaries of the report (the report itself could not be opened from this environment)."
+      }
+    },
+    {
+      "id": "pandanus-windbreak",
+      "kind": "fact",
+      "text": "Pandanus is planted in living fences and coastal windbreaks, and to hold the soil.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "Pandanus odoratissimus (PROTA)",
+        "authors": "PROTA (Plant Resources of Tropical Africa)",
+        "publisher": "Pl@ntUse, PROTA4U",
+        "year": "n.d.",
+        "url": "https://uses.plantnet-project.org/en/Pandanus_odoratissimus_(PROTA)",
+        "note": "Section 31, the Tutorial's pandanus caption. The record says Pandanus odoratissimus is used in living fences and coastal windbreaks and is planted for soil stabilization. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+      }
     }
   ]
 }

@@ -22,7 +22,7 @@ import { WildlifeDirector } from "@render/wildlife";
 import { KhazanPeople } from "@render/khazanPeople";
 import { ObjectivePulse } from "@render/objectivePulse";
 import { IdleReset, watchIdle } from "./idleReset";
-import { CARD_LINES, TUTORIAL_CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
+import { CARD_LINES, CARD_NAME, TUTORIAL_CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
@@ -2106,9 +2106,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         buildFlourish.play(world.x, terrain.heightAt(coord), world.z, performance.now());
         reactions.trigger(elementId, world.x, terrain.heightAt(coord), world.z);
       },
-      label: (coord, text, tone) => {
+      // Section 31.4: in the Tutorial each defence says its name as the storm reaches it.
+      defenceName: (elementId) => (panjim?.tutorial ? (CARD_NAME[elementId] ?? null) : null),
+      label: (coord, text, tone, brief) => {
         const el = document.createElement("div");
-        el.className = `storm-word ${tone}`;
+        el.className = `storm-word ${tone}${brief ? " named" : ""}`;
         el.textContent = text;
         container.appendChild(el);
         const word = { el, coord };
@@ -2448,7 +2450,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           playSound("build");
         },
         // The year chip first (never covered), then the rest of the HUD.
-        { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
+        { avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
       );
       controller.cardsOpened();
       return;

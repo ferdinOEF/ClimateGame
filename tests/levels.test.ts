@@ -263,11 +263,11 @@ describe("level definitions", () => {
 
   it("keeps the tutorial survivable", () => {
     // A tutorial a player can lose by doing what it says is not a tutorial.
-    // Section 15: one cyclone and nothing else; tests/tutorialRun.test.ts plays
-    // its objective and checks that every home in the path is saved.
+    // Section 31: a cyclone, then a river flood; tests/tutorialRun.test.ts plays
+    // its nudges and checks three stars in both.
     const tutorial = LEVELS.find((level) => level.tutorial)!;
     const storms = tutorial.climate?.challenges ?? [];
-    expect(storms.map((c) => c.kind), "the tutorial should teach one storm").toEqual(["cyclone"]);
+    expect(storms.map((c) => c.kind), "the tutorial teaches a cyclone, then a river flood").toEqual(["cyclone", "flood"]);
   });
 
   it("describes every objective without leaking a raw id", () => {

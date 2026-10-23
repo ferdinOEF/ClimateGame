@@ -6,6 +6,9 @@ import { drawStormCard, type StormCardInput } from "@ui/panjim/stormCard";
 import { forecastPlaceCandidates } from "@ui/panjim/forecastPlaces";
 import { replaySteps } from "@core/stormReplay";
 import { ReplayCard } from "@ui/panjim/replayCard";
+import { TutorialPanel } from "@ui/panjim/tutorialPanel";
+import { STEP_BY_ID, TUTORIAL_STEPS } from "@ui/panjim/tutorialSteps";
+import { goodTiles, suggestedDefence } from "@core/tutorialNudge";
 import { setSoundEnabled, setSoundVolume, soundVolume } from "@ui/audioHooks";
 import type { AxialCoord } from "@core/hex";
 import type { Telemetry } from "@core/telemetry";
@@ -20,7 +23,7 @@ import { COMBO_INFO, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
-import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialResultCard, type CardSpec, type CardsChoice } from "@ui/panjim/resultCards";
+import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
 import { biodiversityByKind, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
@@ -302,7 +305,9 @@ export class PanjimController {
       const [q, r] = key.split(",").map(Number);
       this.host.focusCamera({ q, r });
     });
-    host.mountPanel(this.getReady.el);
+    // Section 31.2: the Tutorial's panel is its caption card and checklist, not the objective rows.
+    this.tutorialPanel = this.tutorial ? new TutorialPanel() : null;
+    host.mountPanel(this.tutorialPanel?.el ?? this.getReady.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     // Section 17c: Maya's notes come from her; hidden, the guide is the species alone.
     this.fieldGuide.showNotes(SHOW_MAYA);
@@ -342,9 +347,11 @@ export class PanjimController {
       { storageKey: "riptide-rising:calm-motion", label: "Calm motion", shortcut: "", defaultOn: prefersReducedMotion(), className: "motion-toggle" },
       (on) => {
         host.setReducedMotion(on);
+        this.tutorialPanel?.setReducedMotion(on);
         this.recheckRiskIntroMode();
       }
     );
+    this.tutorialPanel?.setReducedMotion(this.motionToggle.value);
     // Section 30.12 (festival mode): larger words for those who need them; not remembered (the next visitor
     // starts with the usual size).
     this.textToggle = new PrefToggle(
@@ -590,7 +597,7 @@ export class PanjimController {
       return { homes: `${homes} ${homes === 1 ? "home" : "homes"}`, storm: next ? stormWord(next.kind) : "storm" };
     });
 
-    tips.attach(this.outlook.bioEl, "biodiversityCounter", () => {
+    tips.attach(this.outlook.bioEl, this.tutorial ? "biodiversityCounterTutorial" : "biodiversityCounter", () => {
       const view = this.biodiversityView();
       const fmt = (n: number): string => (n > 0 ? `+${n}` : n < 0 ? `\u2212${Math.abs(n)}` : "0");
       return { start: this.run.config.startYear, change: view ? fmt(view.change) : "0", target: view?.target !== null && view ? fmt(view.target) : "a rise", storm: view?.storm ?? "storm" };
@@ -625,7 +632,60 @@ export class PanjimController {
     this.fieldGuide.spot(species);
   }
 
+  /** Section 31.2: the Tutorial's panel (caption and checklist), and the defences tried so far. */
+  private readonly tutorialPanel: TutorialPanel | null;
+  private readonly tutorialTried = new Set<string>();
+  /** Section 31.4: by storm, the homes each defence took out of its way when it was built. */
+  private readonly tutorialCredit = new Map<string, Map<string, number>>();
+  /** By storm, why a defence's build took none: no home left at risk ("safe"), or too far from them ("far"). */
+  private readonly tutorialNoneWhy = new Map<string, Map<string, "safe" | "far">>();
+  /** The Tutorial's last build (it may be the one that brought the storm, so not yet on `preChallengeIds`). */
+  private tutorialLastBuild: { key: string; elementId: string } | null = null;
+  /** The defence the player has just built in the Tutorial, for its caption's "Built". */
+  private tutorialJustBuilt: string | null = null;
+  /** The step Maya last gave her line for. */
+  private tutorialSaid: string | null = null;
+
+  /**
+   * Section 31.2 and 31.3: the Tutorial's year. The suggested defence (the first of the seven not yet tried), its
+   * caption and the checklist; its 2 or 3 best tiles pulse on the board (where it saves homes in the coming storm);
+   * Maya says the step's one line.
+   */
+  private renderTutorial(speak = true): void {
+    const panel = this.tutorialPanel!;
+    const suggested = this.run.finished ? null : this.tutorialSuggestion();
+    panel.render(this.tutorialTried, suggested, this.tutorialJustBuilt);
+    this.tutorialJustBuilt = null;
+    const tiles = suggested && !this.busy ? goodTiles(this.run, suggested).map(({ coord }) => `${coord.q},${coord.r}`) : [];
+    this.host.showObjectiveTiles(tiles);
+    if (speak && suggested && suggested !== this.tutorialSaid && !this.holding && !this.busy) {
+      this.tutorialSaid = suggested;
+      // A suggestion that does nothing in the coming storm (only such defences are left untried) says so.
+      const step = STEP_BY_ID.get(suggested)!;
+      const next = this.run.nextChallenge();
+      const hazard = next?.kind === "flood" ? "flood" : "cyclone";
+      const fits = !next || (ELEMENT_BY_ID.get(suggested)?.targetsHazards ?? []).includes(hazard);
+      const line = fits ? step.maya : `${step.name} will not help in the ${hazard === "flood" ? "river flood" : "cyclone"}, but you can still try it.`;
+      // The first step's line follows her opening line; later ones replace whatever she was saying.
+      if (this.run.turnNumber > 1) {
+        this.maya.withdraw((l) => l.id.startsWith("tutorial:"));
+        this.maya.dismiss();
+      }
+      this.maya.say({ id: `tutorial:step:${suggested}`, text: line, state: "tip", urgent: this.run.turnNumber > 1 });
+      if (this.run.turnNumber > 1) this.maya.next();
+    }
+  }
+
+  /** Section 31.2: the defence suggested now, for the coming storm (`suggestedDefence`). */
+  private tutorialSuggestion(): ReturnType<typeof suggestedDefence> {
+    return suggestedDefence(this.tutorialTried, this.run.nextChallenge()?.kind ?? null);
+  }
+
   private renderGetReady(): void {
+    if (this.tutorialPanel) {
+      this.renderTutorial();
+      return;
+    }
     const next = this.run.nextChallenge();
     const zones = this.run.zones;
     const rows = zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : [];
@@ -760,10 +820,15 @@ export class PanjimController {
 
   /**
    * Section 30.4: biodiversity since the run began, and the next storm's three star target (the last storm's once
-   * the run is over). Null where the level's stars do not count nature (the Tutorial).
+   * the run is over). Section 31.1: the Tutorial's stars count homes only, but it shows the count too (no target),
+   * so each defence's gain or cost shows.
    */
   biodiversityView(): { change: number; target: number | null; storm: string } | null {
     const stars = this.run.houseStars;
+    if (stars && stars.bioThree === undefined && this.tutorial) {
+      const storm = this.run.nextChallenge() ?? this.run.schedule[this.run.schedule.length - 1] ?? null;
+      return { change: Math.round(this.host.state.biodiversity - (stars.bioStart ?? 0)), target: null, storm: storm ? stormWord(storm.kind) : "storm" };
+    }
     if (!stars || stars.bioThree === undefined) return null;
     const storm = this.run.nextChallenge() ?? this.run.schedule[this.run.schedule.length - 1] ?? null;
     const target = storm ? (this.run.houseStarsFor(storm)?.bioThree ?? stars.bioThree) : stars.bioThree;
@@ -929,10 +994,16 @@ export class PanjimController {
     const top = result.defences.find((d) => d.homes > 0);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
     if (this.tutorial) {
-      // One card: the stars, the homes saved and what protected them; then on to Panaji.
+      // Section 31.4: a card for each storm, every defence built listed (why where it saved none); after the flood,
+      // the last card: the defences tried, then Play Panjim, Try again (the Tutorial from its start) or the menu.
       this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, tutorial: true });
-      // Section 28.1: "Try again" starts the Tutorial's storm over (the Tutorial from its first build).
-      this.tutorialChoice = await this.resultCards.show([{ body: tutorialResultCard(result), button: "Play Panjim", alt: "Try again", link: "Back to the menu" }]);
+      const last = next === null;
+      const card = { body: tutorialResultCard(result, this.tutorialRows(challenge), last), button: last ? "See what you tried" : `On to ${this.run.year}` };
+      const cards: CardSpec[] = last
+        ? [card, { body: tutorialFinalCard(this.tutorialTried, TUTORIAL_STEPS), button: "Play Panjim", alt: "Try again", link: "Back to the menu" }]
+        : [card];
+      const choice = await this.resultCards.show(cards);
+      if (last) this.tutorialChoice = choice;
       return;
     }
     const cards: CardSpec[] = [
@@ -949,6 +1020,45 @@ export class PanjimController {
     }
     this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });
     if ((await this.resultCards.show(cards)) === "alt") this.retryRequested = challenge.id;
+  }
+
+  /**
+   * Section 31.4: the Tutorial card's rows: every defence tried so far, in the nudge's order, with the homes it took
+   * out of this storm's way when it was built (the same model as the storm, so the rows add up to the homes kept
+   * safe), and why where none: the wrong kind of storm, broken before it, or its homes already safe.
+   */
+  private tutorialRows(challenge: ScheduledChallenge): TutorialDefenceRow[] {
+    const storm = challenge.kind === "flood" ? "flood" : "cyclone";
+    const credit = this.tutorialCredit.get(challenge.id) ?? new Map<string, number>();
+    const none = this.tutorialNoneWhy.get(challenge.id) ?? new Map<string, "safe" | "far">();
+    // The board as the storm came: the one before the action that brought it, and that action's own build.
+    const standing = new Map(this.preChallengeIds);
+    if (this.tutorialLastBuild) standing.set(this.tutorialLastBuild.key, this.tutorialLastBuild.elementId);
+    const rows: TutorialDefenceRow[] = [];
+    for (const step of TUTORIAL_STEPS) {
+      if (!this.tutorialTried.has(step.id)) continue;
+      const targets = ELEMENT_BY_ID.get(step.id)?.targetsHazards ?? [];
+      const keys = [...standing].filter(([, id]) => id === step.id).map(([key]) => key);
+      const gone = keys.length === 0;
+      const broken = !gone && keys.every((key) => this.wasBroken(key));
+      // Taken down or broken before the storm: it took nothing out of its way, whatever it did when built.
+      const homes = gone || broken ? 0 : Math.max(0, credit.get(step.id) ?? 0);
+      let why: string | null = null;
+      if (homes === 0) {
+        if (gone) why = "Taken down before this storm";
+        else if (broken) why = "Broken before this storm";
+        else if (!targets.includes(storm)) why = `A ${targets.includes("flood") ? "flood" : "cyclone"} defence; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
+        else if (none.get(step.id) === "safe") why = "Its homes were already safe when you built it";
+        else why = "Too far from the homes in this storm's path";
+      }
+      rows.push({ elementId: step.id, name: step.name, homes, why });
+    }
+    return rows;
+  }
+
+  /** Was the defence at `key` broken as the storm came (from the record of the board before it)? */
+  private wasBroken(key: string): boolean {
+    return this.preChallengeBroken.has(key);
   }
 
   /** Section 28.1: the storm whose result card asked to try it again, until `endTurn` takes the run back. */
@@ -1338,7 +1448,11 @@ export class PanjimController {
 
   private noteBoard(): void {
     this.preChallengeIds = new Map([...this.host.state.elements].map(([key, inst]) => [key, inst.elementId]));
+    this.preChallengeBroken = new Set([...this.host.state.elements].filter(([, inst]) => inst.broken).map(([key]) => key));
   }
+
+  /** Defences already broken as the current action began (Section 31.4: their row says so). */
+  private preChallengeBroken = new Set<string>();
 
   build(coord: AxialCoord, elementId: string): boolean {
     this.host.cancelRiskIntro("build");
@@ -1349,9 +1463,30 @@ export class PanjimController {
     // Worked out on the board before the build, said only once the build went through.
     const buildable = this.host.state.canBuild(coord, elementId);
     const outside = buildable ? this.outsideNote(coord, elementId) : null;
+    // Section 31.4: in the Tutorial, what this build takes out of each coming storm's way, worked out before it
+    // goes down (the same model as the storm); the storm's card credits each defence with it.
+    const credit = this.tutorial && buildable
+      ? this.run.schedule.filter((c) => !this.run.landed.has(c.id)).map((c) => ({ id: c.id, saves: this.run.homesSavedBy(c, coord, elementId) ?? 0, atRisk: this.run.homesAtRisk(c) }))
+      : [];
     // No pop-up over the tile after a build (Section 23.2, owner decision): it just goes down.
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
+    // Section 31.2: the checklist ticks the defence; its caption says "Built" before the next slides in.
+    if (this.tutorial) {
+      for (const { id, saves, atRisk } of credit) {
+        const byDefence = this.tutorialCredit.get(id) ?? new Map<string, number>();
+        byDefence.set(elementId, (byDefence.get(elementId) ?? 0) + saves);
+        this.tutorialCredit.set(id, byDefence);
+        // Why a build took none out of this storm's way: nothing left at risk, or too far from what was.
+        if (saves <= 0) (this.tutorialNoneWhy.get(id) ?? this.tutorialNoneWhy.set(id, new Map()).get(id)!).set(elementId, atRisk === 0 ? "safe" : "far");
+      }
+      this.tutorialLastBuild = { key: `${coord.q},${coord.r}`, elementId };
+      this.tutorialTried.add(elementId);
+      this.tutorialJustBuilt = elementId;
+      // At once, before a storm this build brings: the tick and "Built" show as the defence goes down (Maya's next
+      // line waits for the year to settle).
+      this.renderTutorial(false);
+    }
     // Beside its tile for about three seconds (Section 16 B6), not in a banner across the screen.
     if (outside) this.host.noteAt(coord, outside, 3000);
     this.lastTurnEnded = turn;
@@ -1623,7 +1758,7 @@ export class PanjimController {
     if (!this.tutorial || this.coached.has(id)) return;
     this.coached.add(id);
     // Only the line for now: one left waiting (Maya muted or shut) would be stale by the time she speaks.
-    this.maya.withdraw((line) => line.id.startsWith("tutorial:"));
+    this.maya.withdraw((line) => line.id.startsWith("tutorial:") && !line.id.startsWith("tutorial:step:"));
     this.maya.dismiss();
     this.maya.say({ id: `tutorial:${id}`, text: TUTORIAL_LINES[id], state, urgent: true });
     this.maya.next();
@@ -1635,23 +1770,20 @@ export class PanjimController {
    * round the whole card; no outline on every line.
    */
   cardsOpened(): void {
-    if (!this.tutorial || this.run.turnNumber !== 1) return;
-    this.coach("cards", "explains");
-    const wanted = this.run.prep.find((job) => !job.done)?.elementId;
+    if (!this.tutorial) return;
+    if (this.run.turnNumber === 1) this.coach("cards", "explains");
+    // Section 31.2: every year, the card of the defence the Tutorial suggests glows.
+    const wanted = this.tutorialSuggestion();
     const card = [...this.host.container.querySelectorAll<HTMLElement>(".build-popover .build-card")].find((el) => el.dataset.element === wanted);
     card?.classList.add("coach-pulse");
   }
 
-  /** A new Tutorial year: after the first build, the faint outline; in the cyclone's own year, the red heat. */
+  /** A new Tutorial year: in a storm's own year, its red heat (Maya's line is the step's, Section 31.3). */
   private coachYear(): void {
     if (!this.tutorial) return;
     const next = this.run.nextChallenge();
     if (!next) return;
-    if (this.run.yearsUntil(next) <= 1) {
-      if (this.run.zones && this.run.climate) this.showForecast(next);
-      this.coach("heat", "warning");
-    }
-    else if (this.run.turnNumber === 2) this.coach("outline", "tip");
+    if (this.run.yearsUntil(next) <= 1 && this.run.zones && this.run.climate) this.showForecast(next);
   }
 
   private syncControls(): void {
@@ -2128,6 +2260,7 @@ export class PanjimController {
 
   dispose(): void {
     this.keyAbort.abort();
+    this.tutorialPanel?.dispose();
     this.maya.dispose();
     this.mayaToggle.dispose();
     this.replayCard.dispose();
