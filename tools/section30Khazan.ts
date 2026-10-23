@@ -22,13 +22,17 @@ for (const [W, H] of [[1366, 768], [1920, 1080]]) {
   const t0 = Date.now();
   while (Date.now() - t0 < 30000 && (await page.evaluate(`window.__panjimForTest.busy`))) await page.waitForTimeout(200);
   await page.evaluate(`window.__focusTileForTest(${tile.q}, ${tile.r})`);
-  await page.evaluate(`window.__zoomForTest.zoomBy(-4)`);
+  await page.evaluate(`window.__zoomForTest.zoomBy(-12)`);
   await page.waitForTimeout(2500);
   // Wait for the net mid-throw (lying on the water): the cycle is 6.5 s.
+  // The net mid throw: wait until it is out (its instanced mesh has a count), then three frames.
+  const t1 = Date.now();
+  while (Date.now() - t1 < 15000 && !(await page.evaluate(`(window.__khazanPeopleForTest()?.group.children[3]?.count ?? 0) > 0`))) await page.waitForTimeout(100);
   for (let i = 0; i < 3; i++) {
-    await page.waitForTimeout(1700);
     await page.screenshot({ path: `${out}/khazan-${i + 1}-${W}x${H}.png` });
+    await page.waitForTimeout(700);
   }
+  console.log(W, "people draw calls", await page.evaluate(`window.__khazanPeopleForTest()?.drawCalls`));
   console.log(W, "tile", tile.q, tile.r, "calls", JSON.stringify(await page.evaluate(`window.__frameStatsForTest`)));
   console.log(W, "errors", errs.length, errs.slice(0, 2));
   await page.close();

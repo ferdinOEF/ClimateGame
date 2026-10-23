@@ -160,7 +160,10 @@ function play(actions: PlanAction[]): Played {
   });
   return { actions, storms, stars: storms.reduce((s, x) => s + x.stars, 0), lost: storms.reduce((s, x) => s + x.lost, 0) };
 }
-const finals = beam.map((b) => play(b.actions));
+// A seed plan cut short (Section 30: builds the new board refuses were left out of it) never reaches the last storm:
+// only whole runs are results.
+const finals = beam.filter((b) => replay(b.actions).finished).map((b) => play(b.actions));
+if (finals.length === 0) throw new Error("no plan in the beam reaches the end of the run");
 // Ties go to the plan with the most biodiversity at the end of 2050 (Section 26.2).
 const endBioOf = (p: Played): number => p.storms[p.storms.length - 1].biodiversityChange ?? 0;
 const byGoal1 = [...finals].sort((a, b) => b.stars - a.stars || a.lost - b.lost || endBioOf(b) - endBioOf(a))[0];
