@@ -169,3 +169,37 @@ Done as asked (engineered defences age, biodiversity at the end of 2050 counts, 
    the loss line), as the brief asks; the test allows that line only.
 10. **Build cards:** seawall "Strongest; breaks in its 2nd cyclone, cracks at 10"; small dam "Strong in floods; breaks
    in its 2nd flood, cracks at 10"; breakwater "Breaks waves at sea; lasts 10 years".
+
+# Section 30b: Maya's speech bubble flickered and Got it missed (owner bug)
+
+**What:** in the owner's recording (a laptop, the browser not full screen) a Field Guide tip ("5 of 20", Got it)
+flickered: for single frames the bubble jumped up the screen, then snapped back; it began as the pointer reached
+Got it, and Got it often missed because the button moved away under the pointer.
+
+**Cause, confirmed in a browser at 1024x640:** "Got it" carries a HUD tooltip ("Closes Maya's tip.", attached in
+`src/app/panjimController.ts` `attachTooltips`), and `.hud-tooltip` is one of Maya's obstacles (`HUD_OBSTACLES`,
+`src/ui/panjim/maya.ts`). 400 ms after the pointer reached Got it the tooltip opened below the button, over the
+bubble's lower edge; her layout moved the bubble clear (y 469 to 321); the pointer was then off Got it, the tooltip
+hid, and the bubble moved back: a loop about once a second. Not the tile hover (it is not an obstacle, and the
+board's outline already clears when the pointer leaves the canvas for the bubble).
+
+**Fix (`maya.ts` and `panjim.css` only):**
+- While the pointer is on her figure or her bubble, the bubble does not move (laid out again once it leaves).
+- A tooltip on one of her own controls is never an obstacle (matched by the tooltip's id in the control's
+  `aria-describedby`).
+- A bubble already up moves only to a spot that has held for 250 ms (`SETTLE_MS`), at most once a second
+  (`MOVE_GAP_MS`, counted from the line's first appearance too), and the new spot fades in (220 ms; off with reduced
+  or calm motion). A transient lack of room no longer hides it for a frame. A held move is looked at again when due,
+  not every frame. The search's trial widths and compact look are put back whenever it ends without a move, so the
+  bubble never changes shape where it stands. A new line is placed at once.
+- Test: `tools/section30bBubble.ts` (1366x768, 1024x640, 1920x1080): the pointer on the bubble and on Got it for 3 s
+  each, the bubble at one position in every frame and Maya drawn; one click on Got it closes it; no tile outline; an
+  obstacle dropped on the bubble: unchanged where it stood, then one change within about a second.
+  `tests/section30b.test.ts` pins the rules.
+
+**For the owner:** while the pointer rests on Maya or her bubble, a card that opens over the bubble does not push it
+aside until the pointer moves (the rule as asked: her position is frozen under the pointer).
+
+**Left as it is, for the owner:** Got it keeps its tooltip ("Closes Maya's tip.": every HUD control has one, checked
+by `verify:maya`). In a small window it opens above the button, over the bubble's last lines (the "5 of 20" count),
+while the pointer is on Got it. It no longer moves the bubble. Say if Got it should lose its tooltip.
