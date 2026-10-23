@@ -867,6 +867,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             const [q, r] = key.split(",").map(Number);
             return { q, r };
           }), (coord) => terrain.heightAt(coord)),
+          dimCone: (dimmed) => coneOverlay.setDimmed(dimmed),
           showStormTrail: (trail) => {
             if (trail) coneOverlay.showTrail(trail.key, trail.tracks, (coord) => terrain.heightAt(coord));
             else coneOverlay.hideTrail();

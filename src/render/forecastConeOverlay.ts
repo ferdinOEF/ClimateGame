@@ -215,6 +215,17 @@ export class ForecastConeOverlay {
     }
   }
 
+  /**
+   * Section 30.8: while a build card is hovered, the cone's bands step back (a faint wash) so the homes the build
+   * would save or put at risk show their glow underneath; its outline and tracks stay. Off: the cone as it was.
+   */
+  setDimmed(dimmed: boolean): void {
+    this.dimmed = dimmed;
+    this.apply();
+  }
+
+  private dimmed = false;
+
   /** Fades the cone out (`instant` removes it at once). */
   hide(instant = false): void {
     this.fadeTarget = 0;
@@ -251,7 +262,7 @@ export class ForecastConeOverlay {
   }
 
   private apply(): void {
-    this.bandMaterial.uniforms.uFade.value = this.fade;
+    this.bandMaterial.uniforms.uFade.value = this.fade * (this.dimmed ? 0.18 : 1);
     this.darkLine.opacity = 0.9 * this.fade;
     this.lightLine.opacity = 0.85 * this.fade;
     if (this.fade <= 0 && this.fadeTarget <= 0) {

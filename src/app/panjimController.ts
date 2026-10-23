@@ -137,6 +137,8 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the forecast cone (null fades it out). */
   showCone: (cone: ConeShow | null) => void;
+  /** Section 30.8: the cone's bands step back while a build card is hovered (so the homes' glow shows). */
+  dimCone: (dimmed: boolean) => void;
   /** Section 30.9: the objective's tiles still to build, pulsing on the board. */
   showObjectiveTiles: (keys: string[]) => void;
   /** Section 30.7: the storm's faint track all phase after the cone has gone (null hides it). */
@@ -1299,6 +1301,7 @@ export class PanjimController {
   cardHover(coord: AxialCoord, elementId: string | null): string | null {
     const next = this.run.nextChallenge();
     const change = elementId && next && !this.run.finished ? this.run.riskChangeBy(next, coord, elementId) : null;
+    this.host.dimCone(change !== null);
     if (!change) {
       this.host.tintTiles(null);
       return null;

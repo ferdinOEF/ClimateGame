@@ -6,26 +6,26 @@ Strengths 1.2 / 2.35 / 3; stars at 0.85 (three), 0.55 (two) and 0.3 (one); 200 s
 | far | 2040 monsoon flood | 0% (0% to 0%) | 100% / 0% / 0% / 0% | 1.0 (1) |
 | far | 2050 cyclone and flood | 0% (0% to 0%) | 100% / 0% / 0% / 0% | 12.0 (12) |
 | far | whole run | 0% (0% to 0%) | total 0.0 of 9 | 16.0 (16) |
-| random | 2030 cyclone | 3% (0% to 0%) | 97% / 4% / 0% / 0% | 3.0 (3) |
-| random | 2040 monsoon flood | 18% (6% to 37%) | 84% / 16% / 0% / 0% | 0.6 (1) |
-| random | 2050 cyclone and flood | 18% (5% to 33%) | 85% / 15% / 0% / 0% | 10.6 (12) |
-| random | whole run | 17% (6% to 28%) | total 0.3 of 9 | 14.2 (16) |
+| random | 2030 cyclone | 4% (0% to 11%) | 96% / 4% / 0% / 0% | 3.0 (3) |
+| random | 2040 monsoon flood | 18% (4% to 32%) | 87% / 14% / 0% / 0% | 0.6 (1) |
+| random | 2050 cyclone and flood | 19% (5% to 35%) | 81% / 20% / 0% / 0% | 10.5 (12) |
+| random | whole run | 17% (6% to 26%) | total 0.4 of 9 | 14.1 (16) |
 | nature | 2030 cyclone | 99% (100% to 100%) | 0% / 0% / 2% / 98% | 0.8 (3) |
-| nature | 2040 monsoon flood | 86% (80% to 89%) | 0% / 0% / 33% / 67% | 0.3 (1) |
-| nature | 2050 cyclone and flood | 66% (61% to 70%) | 0% / 1% / 100% / 0% | 8.5 (12) |
-| nature | whole run | 78% (74% to 80%) | total 7.6 of 9 | 9.7 (16) |
+| nature | 2040 monsoon flood | 81% (75% to 84%) | 0% / 0% / 98% / 3% | 0.5 (1) |
+| nature | 2050 cyclone and flood | 67% (63% to 71%) | 0% / 0% / 100% / 0% | 8.6 (12) |
+| nature | whole run | 76% (74% to 79%) | total 7.0 of 9 | 9.9 (15) |
 | seawalls | 2030 cyclone | 56% (56% to 56%) | 0% / 100% / 0% / 0% | 3.0 (3) |
 | seawalls | 2040 monsoon flood | 0% (0% to 0%) | 100% / 0% / 0% / 0% | 1.0 (1) |
-| seawalls | 2050 cyclone and flood | 50% (50% to 50%) | 0% / 100% / 0% / 0% | 8.0 (8) |
-| seawalls | whole run | 18% (18% to 18%) | total 2.0 of 9 | 12.0 (12) |
+| seawalls | 2050 cyclone and flood | 44% (44% to 44%) | 0% / 100% / 0% / 0% | 8.0 (8) |
+| seawalls | whole run | 15% (15% to 15%) | total 2.0 of 9 | 12.0 (12) |
 | smart | 2030 cyclone | 98% (100% to 100%) | 0% / 33% / 36% / 32% | 0.6 (3) |
-| smart | 2040 monsoon flood | 85% (80% to 89%) | 0% / 0% / 34% / 67% | 0.0 (1) |
-| smart | 2050 cyclone and flood | 79% (72% to 84%) | 0% / 5% / 95% / 0% | 4.4 (10) |
-| smart | whole run | 83% (79% to 87%) | total 6.6 of 9 | 5.1 (12) |
+| smart | 2040 monsoon flood | 82% (77% to 86%) | 0% / 0% / 69% / 31% | 0.0 (1) |
+| smart | 2050 cyclone and flood | 80% (74% to 84%) | 0% / 3% / 98% / 0% | 4.4 (7) |
+| smart | whole run | 82% (78% to 85%) | total 6.3 of 9 | 5.0 (10) |
 | best | 2030 cyclone | 100% (100% to 100%) | 0% / 35% / 61% / 5% | 0.0 (0) |
-| best | 2040 monsoon flood | 91% (91% to 91%) | 0% / 0% / 0% / 100% | 0.0 (0) |
-| best | 2050 cyclone and flood | 85% (85% to 85%) | 0% / 0% / 100% / 0% | 4.0 (5) |
-| best | whole run | 89% (89% to 89%) | total 6.7 of 9 | 4.0 (5) |
+| best | 2040 monsoon flood | 90% (89% to 89%) | 0% / 0% / 0% / 100% | 0.0 (0) |
+| best | 2050 cyclone and flood | 84% (83% to 85%) | 0% / 0% / 100% / 0% | 3.6 (5) |
+| best | whole run | 88% (87% to 88%) | total 6.7 of 9 | 3.6 (5) |
 
 | Style | Clears the level (a star in every storm, 5 of 9 in all) | 3 stars in every storm |
 |---|---|---|
