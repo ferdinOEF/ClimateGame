@@ -137,6 +137,8 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the forecast cone (null fades it out). */
   showCone: (cone: ConeShow | null) => void;
+  /** Section 30.7: the storm's faint track all phase after the cone has gone (null hides it). */
+  showStormTrail: (trail: { key: string; tracks: ConeShow["tracks"] } | null) => void;
   /** Glides the camera to frame a box of the board, in world x/z. */
   frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }) => void;
   /** The phase's area to protect, faintly, once the cone has gone (an empty list fades it out). */
@@ -1412,6 +1414,9 @@ export class PanjimController {
    * build); "Area protected" when none is left, and back if a tile is unsafe
    * again. And pins on every place an open objective names.
    */
+  /** Each storm's track, as its cone drew it (the storm's way does not change with the defences). */
+  private readonly trailTracks = new Map<string, ConeShow["tracks"]>();
+
   private renderGuidance(): void {
     const next = this.run.nextChallenge();
     const zones = this.run.zones;
@@ -1420,6 +1425,15 @@ export class PanjimController {
     for (const job of open) for (const pin of job.pins ?? []) pins.set(pin.name, pin);
     this.host.showPins([...pins.values()]);
     this.host.highlightPlaces(next && !this.run.finished ? this.areaPlaceNames(next) : [], [...pins.keys()]);
+    // Section 30.7: once the cone has gone, the storm's way in (or the flood's path) stays on the board, faint.
+    if (next && !this.coneShown && !this.run.finished) {
+      let tracks = this.trailTracks.get(next.id);
+      if (!tracks) {
+        tracks = this.run.forecastCone(next)?.tracks ?? [];
+        this.trailTracks.set(next.id, tracks);
+      }
+      this.host.showStormTrail(tracks.length ? { key: next.id, tracks } : null);
+    } else this.host.showStormTrail(null);
     if (!next || this.coneShown || this.run.finished) {
       this.host.showAreaOutline([]);
       this.outlined = 0;

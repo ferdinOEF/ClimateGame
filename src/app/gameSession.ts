@@ -360,6 +360,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const coneOverlay = new ForecastConeOverlay(levelTiles.length);
   coneOverlay.reducedMotion = prefersReducedMotionNow();
   scene.add(coneOverlay.group);
+  scene.add(coneOverlay.trail);
   /** Panjim 2050: the phase's area to protect, kept faintly once the cone has gone (Section 12). */
   const areaOutline = new AreaOutline();
   areaOutline.reducedMotion = prefersReducedMotionNow();
@@ -851,6 +852,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           showCone: (cone) => {
             if (cone) coneOverlay.show(cone, (coord) => terrain.heightAt(coord));
             else coneOverlay.hide();
+          },
+          showStormTrail: (trail) => {
+            if (trail) coneOverlay.showTrail(trail.key, trail.tracks, (coord) => terrain.heightAt(coord));
+            else coneOverlay.hideTrail();
           },
           showAreaOutline: (keys) => areaOutline.show(keys.map((key) => {
             const [q, r] = key.split(",").map(Number);
@@ -2690,6 +2695,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
     coneOverlay.tick(nowMs);
+    // Section 30.7: the faint storm track stays all phase, but not while a storm plays.
+    if (stormDirector?.playing) coneOverlay.trail.visible = false;
     areaOutline.tick(nowMs);
     // Section 22.2: zoomed out (the camera past the opening view's distance), the labels a little smaller again.
     const far = cameraDistance() > LABELS_FAR_DISTANCE;
