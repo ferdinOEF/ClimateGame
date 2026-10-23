@@ -156,7 +156,6 @@ async function main(): Promise<void> {
         check(pinNames.some((n) => /Sharada Mandir/.test(n)), `pins name the objective's places: ${pinNames.join(", ")}`);
         // A build that counts for no row just goes down (Section 32: no note).
         const before = await val<number>(page, "r.turnNumber");
-        await page.evaluate("window.__panjimForTest.host && 0");
         const outside = (await page.evaluate(`window.__panjimForTest.build({ q: 20, r: 20 }, "khazan") || window.__panjimForTest.build({ q: 26, r: 14 }, "mangrove")`)) as boolean;
         await page.waitForTimeout(800);
         const banner = await page.evaluate(`Array.from(document.querySelectorAll(".banner, .hud-banner, [class*='banner']")).map(function (e) { return e.innerText; }).join(" | ")`) as string;
