@@ -124,7 +124,9 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
       await waitForMaya(page, LINES.cards, where, problems);
       // Section 17.1: the cards carry no number; Maya points at what each card does.
       if ((await page.locator(".build-popover .build-card-pill").count()) > 0) problems.push(`[${where}] a card still shows a home count`);
-      if ((await page.locator(".build-popover .build-card-line.coach-pulse").count()) === 0) problems.push(`[${where}] the cards' lines are not pointed at`);
+      // Section 30.11 bug 3: one card pulses (the one the Tutorial wants), round the whole card; never every line.
+      if ((await page.locator(".build-popover .build-card.coach-pulse").count()) !== 1) problems.push(`[${where}] not exactly one card is pointed at`);
+      if ((await page.locator(".build-popover .build-card-line.coach-pulse").count()) > 0) problems.push(`[${where}] a card's line still has the debug like outline`);
       await checkWords(page, where, problems);
       await shot("tutorial-3-cards");
     }

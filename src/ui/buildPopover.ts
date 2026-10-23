@@ -60,12 +60,27 @@ export interface PopoverMode {
 export interface BuildCard {
   id: string;
   name: string;
-  /** One line, in game wording. */
+  /** Section 30.3: its main job, in game wording. */
   line: string;
+  /** Section 30.3: one other thing it does (a real world fact with a source, or for the seawall a game rule). */
+  detail?: string;
+  /** Section 30.4: its change to biodiversity, shown in a small leaf chip. */
+  biodiversity?: number;
   /** Inline SVG markup. */
   icon: string;
   /** Cannot go on this ground: named on the one "Not here" line. */
   notHere?: boolean;
+}
+
+/** Section 30.4: "+3" in a small leaf chip (a fall in a brown one; no red on the cards, Section 13). */
+export function leafChip(change: number): HTMLElement {
+  const chip = document.createElement("span");
+  const sign = change > 0 ? "+" : change < 0 ? "\u2212" : "";
+  chip.className = `leaf-chip ${change > 0 ? "up" : change < 0 ? "down" : "level"}`;
+  chip.setAttribute("role", "img");
+  chip.setAttribute("aria-label", `Biodiversity ${change > 0 ? "plus " : change < 0 ? "minus " : ""}${Math.abs(change)}`);
+  chip.innerHTML = `<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true" focusable="false"><path d="M2 10 C2 4 6 1.5 10.5 1.5 C10.5 6 8 10 2 10 Z M2 10 L7 5" fill="currentColor" stroke="currentColor" stroke-width="0.6"/></svg><span>${sign}${Math.abs(change)}</span>`;
+  return chip;
 }
 
 const VIEWPORT_MARGIN = 8;
@@ -220,10 +235,18 @@ export class BuildPopover {
       btn.type = "button";
       btn.className = "build-card" + (mode.blocked ? " disabled" : "");
       btn.dataset.element = card.id;
-      // Section 17.1: the name, the icon and the line; no home count.
-      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-name"></span><span class="build-card-line"></span></span>`;
+      // Section 17.1: the name, the icon and the line; no home count. Section 30.3: a second line; Section 30.4: a
+      // leaf chip with the build's change to biodiversity.
+      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-title"><span class="build-card-name"></span></span><span class="build-card-line"></span></span>`;
       (btn.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
       (btn.querySelector(".build-card-line") as HTMLElement).textContent = card.line;
+      if (card.detail) {
+        const detail = document.createElement("span");
+        detail.className = "build-card-detail";
+        detail.textContent = card.detail;
+        btn.querySelector(".build-card-text")!.appendChild(detail);
+      }
+      if (card.biodiversity !== undefined) btn.querySelector(".build-card-title")!.appendChild(leafChip(card.biodiversity));
       if (mode.blocked) btn.setAttribute("aria-disabled", "true");
       else
         btn.addEventListener("click", (e) => {

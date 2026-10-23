@@ -65,3 +65,22 @@ describe("30.2 a river tile takes only a small dam", () => {
     }
   });
 });
+
+describe("30.3 pandanus lowers a cyclone's waves and surge, less than a dune", () => {
+  it("lowers the 2030 cyclone's water on the land behind it, by less than a dune on the same tile", () => {
+    const run = newRun("s30-3", BOT_LEVEL);
+    const c = run.schedule[0];
+    const lz = run.zones!.keys(LANDFALL_ZONE);
+    const water = (id: string | null): number => {
+      const s = run.state.clone();
+      if (id) s.build({ q: -4, r: 18 }, id, false);
+      const f = computeWater(s, { kind: c.kind, strength: c.strength, landfall: run.landfallOf(c), sheltered: shelterOf(c), turn: c.turn - 1 }, { landfallZoneTiles: lz });
+      return ["-3,18", "-3,19", "-4,19", "-2,18"].reduce((sum, k) => sum + (f.depth.get(k) ?? 0), 0);
+    };
+    const bare = water(null);
+    const pandanus = water("sandy_vegetation");
+    const dune = water("dune");
+    expect(pandanus).toBeLessThan(bare);
+    expect(dune).toBeLessThan(pandanus);
+  });
+});

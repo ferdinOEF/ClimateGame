@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isProse, punctuationProblems, uiStrings } from "./helpers/uiStrings";
-import { BROKEN_RULE, CARD_LINE, defenceRules } from "../src/ui/panjim/defenceCards";
+import { BROKEN_RULE, CARD_LINES, defenceRules, TUTORIAL_CARD_LINES } from "../src/ui/panjim/defenceCards";
 import { natureReason } from "../src/core/phaseResult";
 import { numberWord, menuTagline, panajiRunPhrase } from "../src/ui/screens/runWords";
 import { countdownText } from "../src/ui/panjim/clockHud";
@@ -82,7 +82,7 @@ describe("no dots or hyphens between words (Section 17b)", () => {
   });
 
   it("keeps Section 25's words clean: the defence rules, the broken rule, the card lines and every reason on a result card", () => {
-    const lines = [...defenceRules().map((r) => r.text), BROKEN_RULE, ...Object.values(CARD_LINE)];
+    const lines = [...defenceRules().map((r) => r.text), BROKEN_RULE, ...Object.values(CARD_LINES).flat(), ...Object.values(TUTORIAL_CARD_LINES).flat()];
     for (const change of [-12, 0, 3, 9]) {
       for (const kinds of [new Map([["seawall", -10]]), new Map([["mangrove", 6]]), new Map<string, number>()]) lines.push(natureReason(change, 6, kinds));
     }

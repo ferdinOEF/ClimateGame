@@ -47,7 +47,7 @@ import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
 import type { BuildCard } from "@ui/buildPopover";
-import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER } from "@ui/panjim/defenceCards";
+import { CARD_ICON, CARD_LINES, CARD_NAME, cardBiodiversity, DEFENCE_ORDER, TUTORIAL_CARD_LINES } from "@ui/panjim/defenceCards";
 import { SHOW_MAYA } from "@services/features";
 import { leaveText } from "@ui/panjim/modalStack";
 
@@ -562,6 +562,11 @@ export class PanjimController {
       return { homes: `${homes} ${homes === 1 ? "home" : "homes"}`, storm: next ? stormWord(next.kind) : "storm" };
     });
 
+    tips.attach(this.outlook.bioEl, "biodiversityCounter", () => {
+      const view = this.biodiversityView();
+      const fmt = (n: number): string => (n > 0 ? `+${n}` : n < 0 ? `\u2212${Math.abs(n)}` : "0");
+      return { start: this.run.config.startYear, change: view ? fmt(view.change) : "0", target: view?.target !== null && view ? fmt(view.target) : "a rise", storm: view?.storm ?? "storm" };
+    });
     tips.attach(this.fieldGuide.buttonEl, "fieldGuide", () => ({ notes: this.fieldGuide.notesProgress(), found: this.fieldGuide.count, species: this.fieldGuide.speciesTotal }));
     tips.attach(this.riskToggle.el, "riskToggle");
     tips.attach(this.getReady.el, "getReady");
@@ -701,6 +706,19 @@ export class PanjimController {
     // The next storm's toll on the board as it stands, from the same model as the storm (Section 13).
     const next = this.run.nextChallenge();
     this.outlook.renderRisk(next ? this.run.homesAtRisk(next) : null);
+    this.outlook.renderBiodiversity(this.biodiversityView());
+  }
+
+  /**
+   * Section 30.4: biodiversity since the run began, and the next storm's three star target (the last storm's once
+   * the run is over). Null where the level's stars do not count nature (the Tutorial).
+   */
+  biodiversityView(): { change: number; target: number | null; storm: string } | null {
+    const stars = this.run.houseStars;
+    if (!stars || stars.bioThree === undefined) return null;
+    const storm = this.run.nextChallenge() ?? this.run.schedule[this.run.schedule.length - 1] ?? null;
+    const target = storm ? (this.run.houseStarsFor(storm)?.bioThree ?? stars.bioThree) : stars.bioThree;
+    return { change: Math.round(this.host.state.biodiversity - (stars.bioStart ?? 0)), target: target ?? null, storm: storm ? stormWord(storm.kind) : "storm" };
   }
 
   /** Defences against the challenge's hazards that have not reached full strength yet. */
@@ -1148,10 +1166,12 @@ export class PanjimController {
       return i < 0 ? DEFENCE_ORDER.length : i;
     };
     const here = this.host.state.buildableAt(coord).map((def) => def).sort((a, b) => order(a.id) - order(b.id));
-    const cards: BuildCard[] = here.map((def) => ({ id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "" }));
+    // Section 30.3: two lines (the Tutorial's never mention a second storm or ageing); Section 30.4: the leaf chip.
+    const lines = this.tutorial ? TUTORIAL_CARD_LINES : CARD_LINES;
+    const cards: BuildCard[] = here.map((def) => ({ id: def.id, name: CARD_NAME[def.id] ?? def.name, line: lines[def.id]?.[0] ?? "", detail: lines[def.id]?.[1], biodiversity: cardBiodiversity(def.id), icon: CARD_ICON[def.id] ?? "" }));
     for (const id of DEFENCE_ORDER) {
       if (here.some((def) => def.id === id)) continue;
-      cards.push({ id, name: CARD_NAME[id], line: CARD_LINE[id], icon: CARD_ICON[id], notHere: true });
+      cards.push({ id, name: CARD_NAME[id], line: lines[id][0], icon: CARD_ICON[id], notHere: true });
     }
     this.lastCardsMs = performance.now() - started;
     return cards;
@@ -1441,12 +1461,15 @@ export class PanjimController {
 
   /**
    * The build menu just opened. In the Tutorial, the first time: Maya says what
-   * the cards are, and their lines pulse (Section 17.1: the cards carry no number).
+   * the cards are. Section 30.11 bug 3: only the card the Tutorial wants pulses (its objective's next defence),
+   * round the whole card; no outline on every line.
    */
   cardsOpened(): void {
     if (!this.tutorial || this.run.turnNumber !== 1) return;
     this.coach("cards", "explains");
-    for (const line of this.host.container.querySelectorAll(".build-popover .build-card-line")) line.classList.add("coach-pulse");
+    const wanted = this.run.prep.find((job) => !job.done)?.elementId;
+    const card = [...this.host.container.querySelectorAll<HTMLElement>(".build-popover .build-card")].find((el) => el.dataset.element === wanted);
+    card?.classList.add("coach-pulse");
   }
 
   /** A new Tutorial year: after the first build, the faint outline; in the cyclone's own year, the red heat. */

@@ -383,6 +383,66 @@
         "url": "https://www.downtoearth.org.in/news/wildlife-biodiversity/goa-at-sea-54653",
         "note": "The article describes the humpback dolphin as a major tourist attraction in Goa, with nearly 400 dolphin sighting trips a day. Its date could not be read from the page, so none is given."
       }
+    },
+    {
+      "id": "card-dune",
+      "kind": "fact",
+      "text": "Sand dunes are home to beach plants and ghost crabs.",
+      "elements": [
+        "dune"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "Owner's card line (Section 30.3). No page could be opened to check it. Leads: https://home.nps.gov/cuis/learn/nature/beaches.htm ; https://njseagrant.org/wp-content/uploads/2016/05/Dune-Ecology-Beaches-and-Primary-Dunes.pdf ; https://digitalrepository.wii.gov.in/handle/123456789/1368"
+    },
+    {
+      "id": "card-pandanus",
+      "kind": "fact",
+      "text": "Pandanus binds coastal sand, and its leaves are woven into mats.",
+      "elements": [
+        "sandy_vegetation"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "Owner's card line (Section 30.3). No page could be opened to check it. Leads: https://www.fao.org/4/ai387e/AI387E08.htm (binding sand) ; https://uses.plantnet-project.org/en/Pandanus_odoratissimus_(PROTA) (mats)"
+    },
+    {
+      "id": "card-mangrove",
+      "kind": "fact",
+      "text": "A mangrove forest is a nursery for young fish and crabs.",
+      "elements": [
+        "mangrove"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "Owner's card line (Section 30.3); 'best for biodiversity' found no support and is left out. No page could be opened to check it. Leads: https://www.wm.edu/news/stories/2019/study-confirms-and-ranks-nursery-value-of-coastal-habitats.php"
+    },
+    {
+      "id": "card-khazan",
+      "kind": "fact",
+      "text": "A khazan grows paddy, and fish are caught at its sluice gates.",
+      "elements": [
+        "khazan"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "Owner's card line (Section 30.3). No page could be opened to check it. Leads: https://www.mundusmaris.org/the-seafood-we-eat/khazan-traditional-coastal-zone-management-in-goa-india/ ; https://southasia.iclei.org/wp-content/uploads/2024/08/Khazan-Final-web.pdf"
+    },
+    {
+      "id": "card-breakwater",
+      "kind": "fact",
+      "text": "A breakwater makes calm water behind it for boats.",
+      "elements": [
+        "breakwater"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "Owner's card line (Section 30.3). No page could be opened to check it. Lead: https://www.iala.int/wiki/dictionary/index.php/Breakwater_(2)"
+    },
+    {
+      "id": "card-small-dam",
+      "kind": "fact",
+      "text": "A small dam (a bandhara) stores river water for the dry season.",
+      "elements": [
+        "small_dam"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "Owner's card line (Section 30.3). No page could be opened to check it. Leads: https://www.downtoearth.org.in/news/water/water-stressed-in-india-ground-water-mostly-neglected-in-rain-surplus-south-goa-69852"
     }
   ]
 }
