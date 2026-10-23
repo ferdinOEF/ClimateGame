@@ -250,6 +250,8 @@ export class PanjimController {
   private readonly replayCard: ReplayCard;
   /** Reduced motion: no shake or flashes, calmer waves, fewer rain streaks. Starts from the system setting. */
   readonly motionToggle: PrefToggle;
+  /** Section 30.12: ☰ → Larger text. */
+  readonly textToggle: PrefToggle;
   /** Graphics quality: Auto (from the frame rate), Low, Medium or High. */
   private readonly qualityButton: HTMLButtonElement;
   private qualityChoice: QualityChoice = "auto";
@@ -340,6 +342,13 @@ export class PanjimController {
         host.setReducedMotion(on);
         this.recheckRiskIntroMode();
       }
+    );
+    // Section 30.12 (festival mode): larger words for those who need them; not remembered (the next visitor
+    // starts with the usual size).
+    this.textToggle = new PrefToggle(
+      host.container,
+      { storageKey: "riptide-rising:large-text", label: "Larger text", shortcut: "", defaultOn: false, className: "text-toggle", persist: false },
+      (on) => host.container.classList.toggle("large-text", on)
     );
     this.qualityButton = document.createElement("button");
     this.qualityButton.type = "button";

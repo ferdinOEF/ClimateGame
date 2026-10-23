@@ -21,6 +21,7 @@ import { TileHover } from "@render/tileHover";
 import { WildlifeDirector } from "@render/wildlife";
 import { KhazanPeople } from "@render/khazanPeople";
 import { ObjectivePulse } from "@render/objectivePulse";
+import { IdleReset, watchIdle } from "./idleReset";
 import { CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
@@ -113,6 +114,8 @@ export interface GameSessionOptions {
   onExit: () => void;
   /** ☰ → Start again (Section 16 B3): the same level afresh, from its start popup. Absent: leaves instead. */
   onRestart?: () => void;
+  /** Section 30.12: 3 minutes with no input (not in a storm): back to the menu. Absent: leaves as onExit. */
+  onIdle?: () => void;
 }
 
 export interface GameSessionHandle {
@@ -341,6 +344,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         }
       })
     : null;
+  /** Section 30.12 (festival mode): no input for 3 minutes, not during a storm: back to the menu. */
+  const stopIdle = watchIdle(new IdleReset(() => (options.onIdle ?? options.onExit)(), () => Boolean(stormDirector?.playing || panjim?.isBusy)));
   /** Section 30.6: people at work in the khazans (transplanters, a net caster). */
   const khazanPeople = redrawnDefences ? new KhazanPeople(scene) : null;
   let wildlifeSourcesAt = -Infinity;
@@ -3107,6 +3112,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     buildFlourish.dispose();
     buildPuff?.dispose();
     wildlife?.dispose();
+    stopIdle();
     khazanPeople?.dispose();
     objectivePulse.dispose();
     tileHover?.dispose();

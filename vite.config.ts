@@ -1,7 +1,45 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import path from "node:path";
+import fs from "node:fs";
+import crypto from "node:crypto";
+
+/**
+ * Section 30.12 (festival mode): writes /sw.js (src/sw/serviceWorker.js) into the build with the list of every file
+ * the game needs offline: the built page and its scripts, styles, fonts and pictures, and the public files the game
+ * loads (the board's street map, the art, the two partner logos). Not the source maps or the Firebase chunk (the
+ * cloud features are off by default). Only in a production build; the dev server has no service worker.
+ */
+function serviceWorker(): Plugin {
+  const publicFiles = (dir: string, base = ""): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const rel = `${base}/${entry.name}`;
+      if (entry.isDirectory()) return publicFiles(path.join(dir, entry.name), rel);
+      return [rel];
+    });
+  return {
+    name: "riptide-service-worker",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const built = Object.keys(bundle)
+        .filter((file) => !file.endsWith(".map") && !/firebase/.test(file))
+        .map((file) => `/${file}`);
+      const fromPublic = publicFiles(path.resolve(__dirname, "public")).filter((file) => !file.startsWith("/branding/") || /oneearth-foundation-256\.webp$|gokhush-charitable-trust\.svg$/.test(file));
+      const files = [...new Set(["/", ...built, ...fromPublic])].sort();
+      // The version follows the contents too: a public picture retaken under the same name is fetched afresh.
+      const template = fs.readFileSync(path.resolve(__dirname, "src/sw/serviceWorker.js"), "utf8");
+      const hash = crypto.createHash("sha256").update(files.join("\n")).update(template);
+      for (const file of fromPublic) hash.update(fs.readFileSync(path.resolve(__dirname, "public", `.${file}`)));
+      const version = hash.digest("hex").slice(0, 12);
+      const source = template
+        .replace("__SW_VERSION__", version)
+        .replace("__SW_FILES__", JSON.stringify(files));
+      this.emitFile({ type: "asset", fileName: "sw.js", source });
+    }
+  };
+}
 
 export default defineConfig({
+  plugins: [serviceWorker()],
   resolve: {
     alias: {
       "@core": path.resolve(__dirname, "src/core"),

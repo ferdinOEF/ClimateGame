@@ -3546,3 +3546,35 @@
 .has-panjim-clock:has(.finale-title-main) .objectives-panel {
   display: none;
 }
+
+/*
+ * Section 30.12 (festival mode): ☰ → Larger text. The words players read (the cards, the objective, Maya's
+ * bubble, the result cards, the tooltips, Help and the Field Guide) about a fifth larger. The board, the icons
+ * and Maya herself keep their size.
+ */
+.large-text .build-card-name { font-size: 17px; }
+.large-text .build-card-line { font-size: 14.5px; }
+.large-text .build-card-detail,
+.large-text .build-card-elsewhere,
+.large-text .build-hover-note { font-size: 14px; }
+.large-text .get-ready-row { font-size: 15.5px; }
+.large-text .get-ready-title,
+.large-text .get-ready-ahead-title { font-size: 13px; }
+.large-text .get-ready-progress { font-size: 14px; }
+.large-text .maya-bubble { font-size: max(14px, calc(17.5px * var(--maya-scale))); }
+.large-text .hud-tooltip { font-size: 15px; }
+.large-text .result-sub,
+.large-text .result-homes-text,
+.large-text .result-nature,
+.large-text .result-wind,
+.large-text .result-short,
+.large-text .result-places li,
+.large-text .result-maya,
+.large-text .replay-text { font-size: 16px; }
+.large-text .field-guide-defence p,
+.large-text .field-guide-page p,
+.large-text .field-guide-hint { font-size: 15px; }
+.large-text .panjim-help-body p,
+.large-text .panjim-help-body li,
+.large-text .panjim-help-body .help-roster-item { font-size: 16px; }
+.large-text .speed-up { font-size: 17px; }
