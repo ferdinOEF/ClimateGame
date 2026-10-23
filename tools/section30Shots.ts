@@ -100,9 +100,12 @@ await page.keyboard.press("Escape");
 await page.waitForTimeout(600);
 
 // 30.1: the creek corner east of Merces, grey and out of the game.
-await focus(26, 9, true, 0.9);
-const dry = await js<{ scenery: boolean; dry: boolean; build: boolean }>(`(() => { const t = window.__panjimForTest.host.state.placed.get("25,8"); return { scenery: !!t.scenery, dry: !!t.dry, build: window.__panjimForTest.host.state.buildableAt({ q: 25, r: 8 }).length > 0 }; })()`);
+// Beside it, the east edge's older grey (30,7) and the estuary that stays in play (25,6).
+await focus(27, 8, true, 1.5);
+const dry = await js<{ scenery: boolean; dry: boolean; build: boolean; old: boolean; oldDry: boolean; kept: boolean }>(`(() => { const s = window.__panjimForTest.host.state; const t = s.placed.get("25,8"); const o = s.placed.get("30,7"); const k = s.placed.get("25,6"); return { scenery: !!t.scenery, dry: !!t.dry, build: s.buildableAt({ q: 25, r: 8 }).length > 0, old: !!o.scenery, oldDry: !!o.dry, kept: !k.scenery && s.buildableAt({ q: 25, r: 6 }).length > 0 }; })()`);
 check(dry.scenery && dry.dry && !dry.build, "25,8 is grey, dry and takes no build");
+check(dry.old && !dry.oldDry, "30,7 beside it is the older grey: the same scenery layer, so the same shade");
+check(dry.kept, "the estuary at 25,6 stays in play and takes a build");
 await shot("creek-corner");
 
 // 30.7: two builds of the objective, then the faint storm track in year 3.
