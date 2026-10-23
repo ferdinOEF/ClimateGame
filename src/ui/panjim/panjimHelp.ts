@@ -123,7 +123,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       ${picture("help-cards.jpg", "The build cards for a beach tile: each defence's name and what it does")}
       <div>
         <h3>The cards ${RULE}</h3>
-        <p>Each card is one defence. Nature based ones come first. In this game each has a pro and a con, and engineered ones age: the Field Guide gives them.</p>
+        <p>Each card is one defence. Nature based ones come first. In this game each has a pro and a con, and engineered ones age: the Field Guide gives them. A river tile takes only a small dam; mangroves grow on wetland.</p>
       </div>
     </section>
 

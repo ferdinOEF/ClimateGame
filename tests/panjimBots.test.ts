@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BOT_LEVEL, SEEDS, replaySmartWithout, runBot, runSmartOnly, savedShare, smartRun, type BotResult } from "../tools/panjimBots/bots";
+import { BOT_LEVEL, SEEDS, newRun, replaySmartWithout, runBot, runSmartOnly, savedShare, smartRun, type BotResult } from "../tools/panjimBots/bots";
 
 /**
  * The bots on the real rules (Section 10: 25 builds, one a year). Each
@@ -65,9 +65,15 @@ describe("Panjim bots, 25 builds", () => {
           expect(without, `${id} ${seed}`).toBeLessThanOrEqual(savedShare(smart[i]) + 1e-9);
           margin += savedShare(smart[i]) - without;
         }
-        expect(margin, id).toBeGreaterThan(0);
+        // Section 30: since mangroves left the river tiles (30.2), Smart opens 2030 with seawalls and breakwaters, and
+        // the dunes it adds after them hold nothing more; a dune's own weight is checked below, on the board.
+        if (id === "dune") expect(margin, id).toBeGreaterThanOrEqual(0);
+        else expect(margin, id).toBeGreaterThan(0);
         if (!beach.has(id)) expect(margin / seeds.length, id).toBeGreaterThanOrEqual(0.02);
       }
+      // A dune in front of Sharada Mandir School, first: it takes homes out of the 2030 cyclone's way.
+      const bare = newRun("dune-weight", BOT_LEVEL);
+      expect(bare.homesSavedBy(bare.nextChallenge()!, { q: -4, r: 18 }, "dune")!).toBeGreaterThan(0);
       // One kind only: clearly behind the mix.
       for (const id of ids) expect(savedShare(runSmartOnly(id, SEEDS[0])), id).toBeLessThanOrEqual(savedShare(smart[0]) - 0.08);
     },

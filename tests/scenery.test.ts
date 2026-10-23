@@ -32,7 +32,8 @@ describe("the north bank (scenery)", () => {
   });
 
   it("leaves the Mandovi and every river and sea tile playable", () => {
-    for (const tile of MAP.tiles) if (tile.terrainId === "river" || tile.terrainId === "coast") expect(tile.scenery).toBeUndefined();
+    // Section 30.1: except the dropped creek corner east of Merces (dry, scenery whatever its terrain).
+    for (const tile of MAP.tiles) if ((tile.terrainId === "river" || tile.terrainId === "coast") && !tile.dry) expect(tile.scenery).toBeUndefined();
   });
 
   it("never counts in a storm, its cone, its heat or its area to protect", () => {
@@ -80,10 +81,12 @@ describe("the east edge (scenery)", () => {
   const EAST = MAP.tiles.filter((t) => t.coord.q + t.coord.r / 2 >= 30.2);
   it("is scenery on all its land, beach and estuary, and nowhere else east of the line", () => {
     for (const t of EAST) {
-      const dry = ["land", "beach", "estuary"].includes(t.terrainId);
+      // Section 30.1: the dropped creek corner is scenery whatever its terrain.
+      const dry = ["land", "beach", "estuary"].includes(t.terrainId) || !!t.dry;
       expect(!!t.scenery, `${t.coord.q},${t.coord.r} ${t.terrainId}`).toBe(dry);
     }
-    expect(EAST.filter((t) => t.scenery && t.coord.r >= 4)).toHaveLength(121);
+    // Section 30.1: 13 of the 121 are in the dropped corner now (dry): 108 outside it.
+    expect(EAST.filter((t) => t.scenery && !t.dry && t.coord.r >= 4)).toHaveLength(108);
     expect(MAP.unplayableEastFrom).toBe(30.2);
   });
 

@@ -51,6 +51,8 @@ export class OutlookBar {
   private readonly lineEl: HTMLElement;
   /** "Homes at risk N": the next storm's toll on the board as it stands, live (Section 13). */
   readonly riskEl: HTMLElement;
+  /** Section 30.4: biodiversity since the run began, with the next storm's three star target marked. */
+  readonly bioEl: HTMLElement;
 
   constructor(parent: HTMLElement) {
     this.el = document.createElement("div");
@@ -64,6 +66,7 @@ export class OutlookBar {
       </div>
       <span class="outlook-line visually-hidden"></span>
       <span class="outlook-risk" data-tip="homesAtRisk"></span>
+      <span class="outlook-bio" data-tip="biodiversityCounter" hidden></span>
     `;
     parent.appendChild(this.el);
     this.trackEl = this.el.querySelector(".outlook-track")!;
@@ -72,6 +75,7 @@ export class OutlookBar {
     this.markersEl = this.el.querySelector(".outlook-markers")!;
     this.lineEl = this.el.querySelector(".outlook-line")!;
     this.riskEl = this.el.querySelector(".outlook-risk")!;
+    this.bioEl = this.el.querySelector(".outlook-bio")!;
 
   }
 
@@ -89,7 +93,28 @@ export class OutlookBar {
 
   /** Moves the Homes at risk pill to `slot` (the top bar's right end). */
   mountRisk(slot: HTMLElement): void {
+    // Section 30.4: biodiversity stands just before Homes at risk.
+    slot.appendChild(this.bioEl);
     slot.appendChild(this.riskEl);
+  }
+
+  /**
+   * Section 30.4: "Biodiversity +12" since the run began, with a small bar: its fill is the change, a mark is the
+   * next storm's three star target (+6, or +40 for 2050). Null hides it (a level whose stars do not count nature).
+   */
+  renderBiodiversity(view: { change: number; target: number | null } | null): void {
+    this.bioEl.hidden = view === null;
+    if (!view) return;
+    const { change, target } = view;
+    const top = Math.max(10, (target ?? 0) * 1.25, change + 2);
+    const pct = (v: number): number => Math.max(0, Math.min(100, (v / top) * 100));
+    const sign = change > 0 ? "+" : change < 0 ? "\u2212" : "";
+    const reached = target !== null && change >= target;
+    this.bioEl.classList.toggle("reached", reached);
+    this.bioEl.classList.toggle("below", change < 0);
+    this.bioEl.innerHTML = `<span class="outlook-bio-label">Biodiversity</span> <b class="outlook-bio-count">${sign}${Math.abs(change)}</b><span class="outlook-bio-bar" aria-hidden="true"><span class="outlook-bio-fill" style="width:${pct(change)}%"></span>${target !== null ? `<span class="outlook-bio-target" style="left:${pct(target)}%"></span>` : ""}</span>`;
+    this.bioEl.setAttribute("role", "img");
+    this.bioEl.setAttribute("aria-label", `Biodiversity ${sign}${Math.abs(change)} since the start${target !== null ? `; three stars need ${target > 0 ? "+" : ""}${target}` : ""}`);
   }
   /** True while a storm or its result cards are on screen: no countdown on the line (Section 12). */
   private hold = false;

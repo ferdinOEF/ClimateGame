@@ -124,7 +124,9 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
       await waitForMaya(page, LINES.cards, where, problems);
       // Section 17.1: the cards carry no number; Maya points at what each card does.
       if ((await page.locator(".build-popover .build-card-pill").count()) > 0) problems.push(`[${where}] a card still shows a home count`);
-      if ((await page.locator(".build-popover .build-card-line.coach-pulse").count()) === 0) problems.push(`[${where}] the cards' lines are not pointed at`);
+      // Section 30.11 bug 3: one card pulses (the one the Tutorial wants), round the whole card; never every line.
+      if ((await page.locator(".build-popover .build-card.coach-pulse").count()) !== 1) problems.push(`[${where}] not exactly one card is pointed at`);
+      if ((await page.locator(".build-popover .build-card-line.coach-pulse").count()) > 0) problems.push(`[${where}] a card's line still has the debug like outline`);
       await checkWords(page, where, problems);
       await shot("tutorial-3-cards");
     }
@@ -155,6 +157,8 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   const stormStart = Date.now();
   while (Date.now() - stormStart < 20000 && !(await page.evaluate(() => Boolean((window as any).__panjimForTest?.host.challengeFx.isPlaying())))) await page.waitForTimeout(200);
   await page.waitForTimeout(2200);
+  // Section 30.10: Speed up is on screen in the Tutorial's storm, pulsing, with a word on what it does.
+  if ((await page.locator(".speed-up.coach-pulse:visible").count()) !== 1) problems.push("[tutorial-storm] no pulsing Speed up button during the storm");
   await shot("tutorial-6-cyclone");
   const start = Date.now();
   while (Date.now() - start < 120000) {

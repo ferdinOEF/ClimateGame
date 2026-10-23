@@ -4,8 +4,8 @@ import path from "node:path";
 import { assess, replay, trialBoard, type PlanAction } from "../tools/bestPlan/plan";
 
 /**
- * Section 24: the best plan the solver found (docs/qa/section26/best_plan.json,
- * from `npm run bestplan` on Section 26's rules), replayed through the game's own run with nothing
+ * Section 24: the best plan the solver found (docs/qa/section30/best_plan.json,
+ * from `npm run bestplan` on Section 30's rules), replayed through the game's own run with nothing
  * but its actions, gives the stars and homes the plan file says, storm by storm.
  * If the rules or the map change, this fails until the plan is searched again.
  */
@@ -13,7 +13,7 @@ interface PlanFile {
   goal1: { stars: number; lost: number; nineOfNine: boolean; storms: { id: string; stars: number; saved: number; total: number }[]; actions: { action: string; elementId: string; q: number; r: number }[] };
   goal2: { sameAsGoal1: boolean; stars: number; lost: number; everyHomeSaved: boolean; storms: { id: string; stars: number; saved: number; total: number }[]; actions: { action: string; elementId: string; q: number; r: number }[] };
 }
-const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../docs/qa/section26/best_plan.json"), "utf8")) as PlanFile;
+const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../docs/qa/section30/best_plan.json"), "utf8")) as PlanFile;
 const actionsOf = (rows: PlanFile["goal1"]["actions"]): PlanAction[] =>
   rows.map((r) => (r.action === "repair" ? { type: "repair", q: r.q, r: r.r } : { type: "build", q: r.q, r: r.r, elementId: r.elementId }));
 
@@ -54,14 +54,16 @@ describe("the best plan, replayed headless", () => {
     expect(ahead.storms[0]).toMatchObject({ stars: real.outcomes.get("c1-cyclone")!.stars });
   });
 
-  it("needs its builds after 2040 to reach the 2050 storm's three star biodiversity (Section 26.2)", () => {
+  it("needs its builds after 2040 for the 2050 storm's three stars (Section 26.2)", () => {
     const actions = actionsOf(plan.goal1.actions);
     const real = replay(actions);
     const last = real.schedule[real.schedule.length - 1];
     const target = real.houseStarsFor(last)!.bioThree!;
     expect(real.outcomes.get(last.id)!.biodiversityChange!).toBeGreaterThanOrEqual(target);
-    // The board after the 2040 flood, nothing more built: short of the target.
+    expect(real.outcomes.get(last.id)!.stars).toBe(3);
+    // The board after the 2040 flood, nothing more built: the 2050 storm short of three stars. Section 30: on this
+    // plan's board that is its homes (37 of 57 saved), as its biodiversity is past the +40 already (+42).
     const at2040 = replay(actions.slice(0, 15));
-    expect(assess(at2040, at2040.state).endBio).toBeLessThan(target);
+    expect(assess(at2040, at2040.state).storms[2].stars).toBeLessThan(3);
   });
 });

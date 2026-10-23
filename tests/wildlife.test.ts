@@ -136,8 +136,10 @@ describe("wildlife director", () => {
     for (; t < 240_000; t += 1000 / 60) {
       d.tick(t);
       // Never two kinds out at once.
-      const st = d as unknown as { kf: { stage: string }; eg: { stage: string }; otterLive: boolean; jumpers: { live: boolean }[] };
-      const out = (st.kf.stage !== "off" ? 1 : 0) + (st.eg.stage !== "off" ? 1 : 0) + (st.otterLive ? 1 : 0) + (st.jumpers.some((j) => j.live) ? 1 : 0);
+      // Section 30.5: the mangroves' birds fly in on their own clock (tested below); here, the other moments.
+      const st = d as unknown as { kf: { stage: string; flyIn: number }; eg: { stage: string; flyIn: number }; otterLive: boolean; jumpers: { live: boolean }[] };
+      const bird = (b: { stage: string; flyIn: number }) => (b.stage !== "off" && b.flyIn < 0 ? 1 : 0);
+      const out = bird(st.kf) + bird(st.eg) + (st.otterLive ? 1 : 0) + (st.jumpers.some((j) => j.live) ? 1 : 0);
       maxConcurrent = Math.max(maxConcurrent, out);
     }
     const log = d.momentLog;
@@ -148,7 +150,9 @@ describe("wildlife director", () => {
     for (const m of log) expect(m.source).toBe(1);
     // Every kind turns up.
     const kinds = new Set(log.map((m) => m.kind));
-    for (const k of ["kingfisher", "egret", "otter", "fish", "prawn"]) expect(kinds.has(k as never)).toBe(true);
+    for (const k of ["otter", "fish", "prawn"]) expect(kinds.has(k as never)).toBe(true);
+    // The birds came too, as fly-ins, both kinds.
+    expect(new Set(d.flyIns.map((f) => f.kind))).toEqual(new Set(["kingfisher", "egret"]));
   });
 
   it("the next moment comes 6-10 s after the last one ended", () => {
@@ -464,5 +468,125 @@ describe("humpback dolphins (Section 18)", () => {
     b.setEnabled(false);
     run(b, 0, 60_000);
     expect(b.momentLog).toHaveLength(0);
+  });
+});
+
+/**
+ * Section 30.5 (owner decision, critical): the mangrove's bird. When a mangrove is planted, and then every 20-30 s
+ * for each mangrove on screen (one bird at a time across the board), a kingfisher or an egret flies up out of it
+ * toward the screen, big enough to see at the opening zoom on a 1366x768 screen. Never in a storm, under a result
+ * card (both: not calm) or with Calm motion.
+ */
+describe("the mangrove's bird (Section 30.5)", () => {
+  const VW = 1366;
+  const VH = 768;
+  /**
+   * "Clearly visible", chosen and reported: a projected radius of at least 40 CSS px (80 px across, wings spread) at
+   * 1366x768, at least 0.6 opaque, for at least 1.5 s of the flight.
+   */
+  const MIN_SEEN_MS = 1500;
+  /** The opening view of Panjim at its farthest (scene.ts CAM_DISTANCE_OPENING_MAX), on a 1366x768 screen. */
+  function openingCamera(): THREE.PerspectiveCamera {
+    const cam = new THREE.PerspectiveCamera(38, VW / VH, 0.1, 200);
+    const el = THREE.MathUtils.degToRad(58);
+    cam.position.set(0, Math.sin(el) * 44, Math.cos(el) * 44);
+    cam.lookAt(0, 0, 0);
+    cam.updateMatrixWorld(true);
+    return cam;
+  }
+  function director(seed: number, rects: () => ScreenRect[] = () => []) {
+    const d = new WildlifeDirector({ scene: new THREE.Scene(), camera: openingCamera(), viewport: () => ({ width: VW, height: VH }), avoidRects: rects, random: seeded(seed) });
+    return d;
+  }
+  const ONE: WildlifeSources = { mangroves: [{ x: 3, y: 0.02, z: 2 }], khazanPonds: [] };
+
+  it("over 2 minutes with one mangrove planted on screen: at least 4 fly-ins, each 40 px or more in radius for 1.5 s", () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const d = director(seed);
+      d.tick(0);
+      d.setSources(ONE);
+      d.birdFrom(ONE.mangroves[0]);
+      run(d, 0, 120_000);
+      const seen = d.flyIns.filter((f) => f.seenMs >= MIN_SEEN_MS);
+      console.log(`seed ${seed}: ${d.flyIns.length} fly-ins: ${d.flyIns.map((f) => `${f.kind} up to ${f.maxPx.toFixed(0)}px, ${(f.seenMs / 1000).toFixed(1)}s at 40px+`).join("; ")}`);
+      expect(seen.length, `seed ${seed}`).toBeGreaterThanOrEqual(4);
+      expect(d.flyIns[0].trigger).toBe("build");
+      expect(d.flyIns[0].at).toBeLessThan(100);
+      expect(new Set(d.flyIns.map((f) => f.kind))).toEqual(new Set(["kingfisher", "egret"]));
+    }
+  });
+
+  it("even without the planting: a mangrove on screen sends a bird every 20-30 s", () => {
+    const d = director(4);
+    d.tick(0);
+    d.setSources(ONE);
+    run(d, 0, 300_000);
+    const at = d.flyIns.map((f) => f.at);
+    expect(at.length).toBeGreaterThanOrEqual(10);
+    for (let i = 1; i < at.length; i++) {
+      expect(at[i] - at[i - 1]).toBeGreaterThanOrEqual(19_990);
+      expect(at[i] - at[i - 1]).toBeLessThanOrEqual(30_100);
+    }
+  });
+
+  it("one bird at a time across the board, however many mangroves are on screen", () => {
+    const many: WildlifeSources = { mangroves: Array.from({ length: 12 }, (_, i) => ({ x: -5 + (i % 4) * 3, y: 0.02, z: -3 + Math.floor(i / 4) * 3 })), khazanPonds: [] };
+    const d = director(9);
+    d.tick(0);
+    d.setSources(many);
+    const st = d as unknown as { kf: { stage: string }; eg: { stage: string } };
+    let both = 0;
+    for (let t = 0; t < 180_000; t += 1000 / 60) {
+      d.tick(t);
+      if (st.kf.stage !== "off" && st.eg.stage !== "off") both++;
+    }
+    expect(both).toBe(0);
+    expect(d.flyIns.length).toBeGreaterThan(12);
+  });
+
+  it("not in a storm or under a result card (not calm), not with Calm motion; a planting then waits for calm", () => {
+    const d = director(2);
+    d.tick(0);
+    d.setSources(ONE);
+    d.setCalm(false);
+    d.birdFrom(ONE.mangroves[0]);
+    run(d, 0, 60_000);
+    expect(d.flyIns).toHaveLength(0);
+    d.setCalm(true);
+    run(d, 60_000, 61_000);
+    // The planted one waited too long and was dropped; the mangrove's own clock, overdue, sends its bird now.
+    expect(d.flyIns).toHaveLength(1);
+    expect(d.flyIns[0].trigger).toBe("timer");
+
+    const g = director(3);
+    g.tick(0);
+    g.setSources(ONE);
+    g.setGentle(true);
+    g.birdFrom(ONE.mangroves[0]);
+    run(g, 0, 120_000);
+    expect(g.flyIns).toHaveLength(0);
+  });
+
+  it("a planting during the year's turn flies up as soon as the board is calm", () => {
+    const d = director(5);
+    d.tick(0);
+    d.setSources(ONE);
+    d.setCalm(false);
+    d.birdFrom(ONE.mangroves[0]);
+    run(d, 0, 4000);
+    d.setCalm(true);
+    run(d, 4000, 4200);
+    expect(d.flyIns).toHaveLength(1);
+    expect(d.flyIns[0].trigger).toBe("build");
+  });
+
+  it("still comes on Low quality (lite), where the otter, pond life and dolphins do not", () => {
+    const d = director(6);
+    d.setLite(true);
+    d.tick(0);
+    d.setSources({ mangroves: ONE.mangroves, khazanPonds: [{ x: -2, y: 0, z: 1, radius: 0.38 }] });
+    run(d, 0, 120_000);
+    expect(d.flyIns.length).toBeGreaterThanOrEqual(3);
+    expect(d.momentLog).toHaveLength(0);
   });
 });

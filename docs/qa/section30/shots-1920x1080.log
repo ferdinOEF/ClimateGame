@@ -1,0 +1,26 @@
+PASS [1920x1080] the objective's 3 tiles pulse (-4,18 -5,21 -2,16)
+PASS [1920x1080] the biodiversity counter is on the HUD
+PASS [1920x1080] each card shows both lines unclipped and a leaf chip (dune, sandy_vegetation, seawall)
+PASS [1920x1080] no home counts on the cards
+PASS [1920x1080] the dune here changes the next storm (no "doesn't change" line)
+PASS [1920x1080] a river tile offers a small dam only (small_dam)
+PASS [1920x1080] 25,8 is grey, dry and takes no build
+PASS [1920x1080] 30,7 beside it is the older grey: the same scenery layer, so the same shade
+PASS [1920x1080] the estuary at 25,6 stays in play and takes a build
+PASS [1920x1080] build dune at -4,18
+PASS [1920x1080] build sandy_vegetation at -5,21
+PASS [1920x1080] 2028: the storm's faint track is on the board
+PASS [1920x1080] the full cone is gone
+PASS [1920x1080] build seawall at -3,17
+PASS [1920x1080] build sandy_vegetation at -2,16
+PASS [1920x1080] build breakwater at -5,19 (brings the 2030 cyclone)
+PASS [1920x1080] Speed up is on screen during the storm
+PASS [1920x1080] the card says Objective done (2 stars)
+PASS [1920x1080] with one line on what stopped the third star
+PASS [1920x1080] and names the seawall's push on the school
+PASS [1920x1080] the 2040 storm's last card carries the 2050 forecast map
+  2050 map labels: Our Lady of the Immaculate Conception; Adil Shah Palace (left off); Mahalaxmi Temple
+PASS [1920x1080] no name clips at the map's edge or covers another
+PASS [1920x1080] console errors: 0
+ALL PASS [1920x1080]
+SHOTSDONE

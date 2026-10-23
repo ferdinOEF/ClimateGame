@@ -60,12 +60,27 @@ export interface PopoverMode {
 export interface BuildCard {
   id: string;
   name: string;
-  /** One line, in game wording. */
+  /** Section 30.3: its main job, in game wording. */
   line: string;
+  /** Section 30.3: one other thing it does (a real world fact with a source, or for the seawall a game rule). */
+  detail?: string;
+  /** Section 30.4: its change to biodiversity, shown in a small leaf chip. */
+  biodiversity?: number;
   /** Inline SVG markup. */
   icon: string;
   /** Cannot go on this ground: named on the one "Not here" line. */
   notHere?: boolean;
+}
+
+/** Section 30.4: "+3" in a small leaf chip (a fall in a brown one; no red on the cards, Section 13). */
+export function leafChip(change: number): HTMLElement {
+  const chip = document.createElement("span");
+  const sign = change > 0 ? "+" : change < 0 ? "\u2212" : "";
+  chip.className = `leaf-chip ${change > 0 ? "up" : change < 0 ? "down" : "level"}`;
+  chip.setAttribute("role", "img");
+  chip.setAttribute("aria-label", `Biodiversity ${change > 0 ? "plus " : change < 0 ? "minus " : ""}${Math.abs(change)}`);
+  chip.innerHTML = `<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true" focusable="false"><path d="M2 10 C2 4 6 1.5 10.5 1.5 C10.5 6 8 10 2 10 Z M2 10 L7 5" fill="currentColor" stroke="currentColor" stroke-width="0.6"/></svg><span>${sign}${Math.abs(change)}</span>`;
+  return chip;
 }
 
 const VIEWPORT_MARGIN = 8;
@@ -198,7 +213,13 @@ export class BuildPopover {
    * on this ground follow, greyed and small, each saying "Not here".
    * `avoid` lists HUD elements the cards must never cover (the year chip).
    */
-  showCards(screenX: number, screenY: number, cards: BuildCard[], onSelect: (id: string) => void, mode: { notice?: string; blocked?: boolean; avoid?: string[] } = {}): void {
+  showCards(
+    screenX: number,
+    screenY: number,
+    cards: BuildCard[],
+    onSelect: (id: string) => void,
+    mode: { notice?: string; blocked?: boolean; avoid?: string[]; onHover?: (id: string | null) => string | null; avoidPoints?: readonly { x: number; y: number }[] } = {}
+  ): void {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
     // What each card says is this game's rule, and its number this game's model.
@@ -214,16 +235,45 @@ export class BuildPopover {
       this.el.appendChild(notice);
     }
     const open = cards.filter((card) => !card.notHere);
+    // Section 30.8: hovering (or focusing) a card shows on the board what it would do; when it does nothing to the
+    // next storm, one line here says so.
+    const hoverNote = document.createElement("p");
+    hoverNote.className = "build-hover-note";
+    hoverNote.setAttribute("role", "status");
+    hoverNote.hidden = true;
+    const hover = (id: string | null): void => {
+      const note = mode.onHover?.(id) ?? null;
+      hoverNote.textContent = note ?? "";
+      hoverNote.hidden = !note;
+    };
+    this.cardHover = mode.onHover ? () => mode.onHover?.(null) : null;
     const elsewhere = cards.filter((card) => card.notHere);
     for (const card of open) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "build-card" + (mode.blocked ? " disabled" : "");
       btn.dataset.element = card.id;
-      // Section 17.1: the name, the icon and the line; no home count.
-      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-name"></span><span class="build-card-line"></span></span>`;
+      // Section 17.1: the name, the icon and the line; no home count. Section 30.3: a second line; Section 30.4: a
+      // leaf chip with the build's change to biodiversity.
+      btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-title"><span class="build-card-name"></span></span><span class="build-card-line"></span></span>`;
       (btn.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
       (btn.querySelector(".build-card-line") as HTMLElement).textContent = card.line;
+      if (card.detail) {
+        const detail = document.createElement("span");
+        detail.className = "build-card-detail";
+        detail.textContent = card.detail;
+        btn.querySelector(".build-card-text")!.appendChild(detail);
+      }
+      if (card.biodiversity !== undefined) btn.querySelector(".build-card-title")!.appendChild(leafChip(card.biodiversity));
+      if (mode.onHover && !mode.blocked) {
+        btn.addEventListener("pointerenter", () => hover(card.id));
+        btn.addEventListener("pointerleave", () => hover(null));
+        // A keyboard focus only (the menu focuses its first card as it opens; that is not a hover).
+        btn.addEventListener("focus", () => {
+          if (btn.matches(":focus-visible")) hover(card.id);
+        });
+        btn.addEventListener("blur", () => hover(null));
+      }
       if (mode.blocked) btn.setAttribute("aria-disabled", "true");
       else
         btn.addEventListener("click", (e) => {
@@ -233,6 +283,7 @@ export class BuildPopover {
         });
       this.el.appendChild(btn);
     }
+    this.el.appendChild(hoverNote);
     if (elsewhere.length > 0) {
       // Section 16 B6: one quiet line, not a greyed card each.
       const line = document.createElement("p");
@@ -242,7 +293,7 @@ export class BuildPopover {
       line.textContent = `Not here: ${elsewhere.map((card) => card.name.replace(/ /g, "\u00a0")).join(", ")}`;
       this.el.appendChild(line);
     }
-    this.placeBeside(screenX, screenY, mode.avoid ?? []);
+    this.placeBeside(screenX, screenY, mode.avoid ?? [], mode.avoidPoints ?? []);
     this.returnFocus = document.activeElement instanceof HTMLElement && !this.el.contains(document.activeElement) ? document.activeElement : null;
     (this.el.querySelector<HTMLElement>(".build-card:not(.disabled)") ?? null)?.focus({ preventScroll: true });
   }
@@ -253,7 +304,11 @@ export class BuildPopover {
    * each obstacle, and takes the spot that covers the least of the HUD (the
    * first listed, the year chip, counts most), then the one nearest the tile.
    */
-  private placeBeside(screenX: number, screenY: number, avoid: string[]): void {
+  /**
+   * `points` (container pixels): Section 30.8, the homes at risk, which a hovered card lights up: the cards sit where
+   * they cover the fewest of them (never over the HUD or the tile all the same).
+   */
+  private placeBeside(screenX: number, screenY: number, avoid: string[], points: readonly { x: number; y: number }[] = []): void {
     this.el.style.left = "0px";
     this.el.style.top = "0px";
     this.backdrop.hidden = false;
@@ -279,6 +334,11 @@ export class BuildPopover {
           const w = Math.min(left + width, r.right) - Math.max(left, r.left);
           const h = Math.min(top + height, r.bottom) - Math.max(top, r.top);
           if (w > 0 && h > 0) covered += w * h * weight;
+        }
+        for (const p of points) {
+          const x = p.x + origin.left;
+          const y = p.y + origin.top;
+          if (x > left - 12 && x < left + width + 12 && y > top - 12 && y < top + height + 12) covered += 400;
         }
         // Covering the tile itself is never wanted either; then nearer is better.
         const overTile = screenX > left - 8 && screenX < left + width + 8 && screenY > top - 8 && screenY < top + height + 8 ? 1e6 : 0;
@@ -391,6 +451,8 @@ export class BuildPopover {
 
   /** Where focus was before the cards took it: given back when they close. */
   private returnFocus: HTMLElement | null = null;
+  /** Section 30.8: clears the board's hover glow when the cards close. */
+  private cardHover: (() => void) | null = null;
 
   hide(): void {
     const hadFocus = this.el.contains(document.activeElement);
@@ -398,6 +460,8 @@ export class BuildPopover {
     if (hadFocus && this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
     this.returnFocus = null;
     this.tooltips?.hide();
+    this.cardHover?.();
+    this.cardHover = null;
     this.onHide?.();
   }
 }

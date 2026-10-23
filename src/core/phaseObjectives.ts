@@ -167,6 +167,23 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
   return { picks, rows: rowsOf(input, picks, candidates), lostBefore, lostAfter: lost };
 }
 
+/** Section 30.9: the most rows an objective shows. */
+export const MAX_ROWS = 4;
+
+/** "in Merces", "in St Cruz" → "in Merces and St Cruz"; places with different words keep theirs ("at X and near Y"). */
+function joinPlaces(places: string[]): string {
+  const words = places.map((place) => /^(in front of|between|near|at|in) (.+)$/.exec(place));
+  const sameWord = words.every((m) => m && m[1] === words[0]![1]) && words[0]![1] !== "between";
+  const parts = sameWord ? words.map((m) => m![2]) : places;
+  const list = parts.length <= 1 ? parts.join("") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  const joined = sameWord ? `${words[0]![1]} ${list}` : list;
+  // A row stays one short line in the panel: many places are counted, and their tiles pulse on the map.
+  return joined.length <= MAX_PLACE_CHARS ? joined : `at ${places.length} places, shown on the map`;
+}
+
+/** Section 30.9: the longest place text a merged row keeps; longer, it counts its places instead. */
+const MAX_PLACE_CHARS = 40;
+
 /** The place a tile's row is named for. */
 function placeOf(input: PhaseObjectiveInput, key: string): string {
   if (input.stretch?.tiles.has(key)) return input.stretch.placeOf ? input.stretch.placeOf(key) : input.stretch.place;
@@ -188,9 +205,26 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
     groups.set(id, group);
   }
   const allInStretch = picks.length > 0 && !!input.stretch && picks.every((p) => input.stretch!.tiles.has(p.key));
-  return [...groups.values()].map((group, i) => {
+  // Section 30.9 (owner decision): at most 4 rows. More than that, and each defence's rows become one, naming its
+  // places together ("in Merces and St Cruz"). The objectives suggest the four nature-based defences only, so this
+  // leaves 4 at most.
+  let list: { elementId: string; place: string; places: string[]; picks: ObjectivePick[] }[] = [...groups.values()].map((g) => ({ ...g, places: [g.place] }));
+  if (list.length > MAX_ROWS) {
+    const merged = new Map<string, { elementId: string; place: string; places: string[]; picks: ObjectivePick[] }>();
+    for (const group of list) {
+      const into = merged.get(group.elementId);
+      if (!into) merged.set(group.elementId, { ...group, places: [group.place] });
+      else {
+        into.places.push(group.place);
+        into.picks.push(...group.picks);
+      }
+    }
+    list = [...merged.values()].map((group) => ({ ...group, place: joinPlaces(group.places) }));
+  }
+  return list.map((group, i) => {
     // The tiles that count: where this defence could go in this place, round the area to protect.
-    const tiles = [...new Set([...candidates.filter((c) => c.elementId === group.elementId && placeOf(input, c.key) === group.place).map((c) => c.key), ...group.picks.map((p) => p.key)])].sort();
+    const places = new Set(group.places);
+    const tiles = [...new Set([...candidates.filter((c) => c.elementId === group.elementId && places.has(placeOf(input, c.key))).map((c) => c.key), ...group.picks.map((p) => p.key)])].sort();
     const [verb, one, many] = NOUN[group.elementId] ?? ["Build", group.elementId, group.elementId];
     const count = group.picks.length;
     const baseline = tiles.filter((key) => input.state.elements.get(key)?.elementId === group.elementId).length;
@@ -207,7 +241,7 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
       done: false,
       tiles,
       heading: allInStretch ? input.stretch!.title : undefined,
-      pins: group.picks.every((p) => input.stretch?.tiles.has(p.key)) ? input.stretch!.pins : pinsOf(input, group.place, tiles),
+      pins: group.picks.every((p) => input.stretch?.tiles.has(p.key)) ? input.stretch!.pins : group.places.flatMap((place) => pinsOf(input, place, tiles)),
       homes: group.picks.reduce((s, p) => s + p.homes, 0)
     };
   });

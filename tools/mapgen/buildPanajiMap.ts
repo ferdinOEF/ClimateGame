@@ -1238,6 +1238,12 @@ interface HandEdits {
   localities: { name: string; from: [number, number]; to: [number, number] }[];
   /** The north bank, kept as scenery (see unplayableTiles). */
   unplayable: [number, number][];
+  /**
+   * Section 30.1 (owner decision): the creek east of Merces, its wetland and its bank leave the game. These tiles are
+   * scenery (added to the unplayable set) and dry for the storms: no surge, flood or backwater reaches them, and water
+   * does not pass through them (the map's `dry` list).
+   */
+  dropped?: [number, number][];
 }
 
 /**
@@ -1306,7 +1312,7 @@ const EAST_EDGE_Q_PLUS_HALF_R = 30.2;
  * beach and estuary (Section 19.2). The hand-edits file stores the result as
  * data; this is the rule it is checked against.
  */
-function unplayableTiles(cells: Cell[]): Set<string> {
+function unplayableTiles(cells: Cell[], dropped: readonly [number, number][] = []): Set<string> {
   const dry = new Set(["land", "beach", "estuary"]);
   const byKey = new Map(cells.map((cell) => [axialKey(cell.coord), cell]));
   const seen = new Set(cells.filter((cell) => cell.coord.r <= 1 && dry.has(cell.terrainId)).map((cell) => axialKey(cell.coord)));
@@ -1323,6 +1329,8 @@ function unplayableTiles(cells: Cell[]): Set<string> {
     }
   }
   for (const cell of cells) if (dry.has(cell.terrainId) && cell.coord.q + cell.coord.r / 2 >= EAST_EDGE_Q_PLUS_HALF_R) seen.add(axialKey(cell.coord));
+  // Section 30.1: the dropped corner, whatever its terrain (its creek's river tiles too).
+  for (const [q, r] of dropped) if (byKey.has(`${q},${r}`)) seen.add(`${q},${r}`);
   return seen;
 }
 
@@ -1651,7 +1659,9 @@ async function main(): Promise<void> {
   const handEdits = JSON.parse(fs.readFileSync(HAND_EDITS, "utf8")) as HandEdits;
   notes.push(...applyHandEdits(handEdits, meta, cells, monuments, placements));
   console.log(`after the hand edits:   ${JSON.stringify(countTerrain(cells))}`);
-  const unplayable = unplayableTiles(cells);
+  const unplayable = unplayableTiles(cells, handEdits.dropped ?? []);
+  const droppedKeys = (handEdits.dropped ?? []).filter(([q, r]) => cells.some((cell) => cell.coord.q === q && cell.coord.r === r));
+  if (droppedKeys.length !== (handEdits.dropped ?? []).length) throw new Error("a dropped tile (Section 30.1) is not on the board");
   const stored = new Set(handEdits.unplayable.map(([q, r]) => `${q},${r}`));
   const unplayableDiff = [...unplayable].filter((key) => !stored.has(key)).concat([...stored].filter((key) => !unplayable.has(key)));
   // MAPGEN_SHOW_UNPLAYABLE=1 prints what the rules give, to copy into the hand-edits file after a map edit.
@@ -1806,6 +1816,8 @@ async function main(): Promise<void> {
     unplayable: [...unplayable].map((key) => key.split(",").map(Number) as [number, number]).sort((a, b) => a[1] - b[1] || a[0] - b[0]),
     // Where the east edge begins (q + r/2), so a click there can say so.
     unplayableEastFrom: EAST_EDGE_Q_PLUS_HALF_R,
+    // Section 30.1: the dropped corner east of Merces, dry for the storms (and scenery, above).
+    dry: [...droppedKeys].sort((a, b) => a[1] - b[1] || a[0] - b[0]),
     // Major roads and bridges, read from the OSM picture (see findRoads).
     roads: roads.map((coord) => [coord.q, coord.r]),
     bridges: bridges.map((coord) => [coord.q, coord.r]),

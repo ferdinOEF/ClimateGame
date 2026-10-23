@@ -83,6 +83,15 @@ export class ForecastConeOverlay {
   private readonly darkLine = new THREE.MeshBasicMaterial({ color: "#2a0c08", transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
   private readonly lightLine = new THREE.MeshBasicMaterial({ color: "#fff3e0", transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
   private lines: THREE.Mesh[] = [];
+  /**
+   * Section 30.7 (owner decision): after the cone goes (the phase's first build), the storm's track stays on the
+   * board all phase, faint: the same dashed arrow (a cyclone's way in, or the flood's path down the river) at low
+   * opacity. Its own group, so the cone's fade never touches it.
+   */
+  readonly trail = new THREE.Group();
+  private readonly trailDark = new THREE.MeshBasicMaterial({ color: "#2a0c08", transparent: true, opacity: 0.42, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
+  private readonly trailLight = new THREE.MeshBasicMaterial({ color: "#fff3e0", transparent: true, opacity: 0.32, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
+  private trailKey = "";
   private readonly scratch = new THREE.Matrix4();
   private fade = 0;
   private fadeTarget = 0;
@@ -120,6 +129,49 @@ export class ForecastConeOverlay {
     this.group.name = "forecast-cone";
     this.group.add(this.bands);
     this.group.visible = false;
+    this.trail.name = "storm-trail";
+    this.trail.visible = false;
+  }
+
+  /** Shows the faint track (Section 30.7); `key` names the storm, so the same trail is not rebuilt. */
+  showTrail(key: string, tracks: ConeTrack[], heightAt: (coord: AxialCoord) => number): void {
+    if (key === this.trailKey && this.trail.children.length > 0) {
+      this.trail.visible = true;
+      return;
+    }
+    this.clearTrail();
+    this.trailKey = key;
+    const nearestHeight = (x: number, z: number): number => heightAt(nearestCoord(x, z));
+    for (const track of tracks) {
+      const shapes = trackShapes(track, nearestHeight);
+      for (const [positions, material, order] of [[shapes.halo, this.trailLight, 5], [shapes.dash, this.trailDark, 6]] as const) {
+        if (positions.length === 0) continue;
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.renderOrder = order;
+        mesh.frustumCulled = false;
+        this.trail.add(mesh);
+      }
+    }
+    this.trail.visible = this.trail.children.length > 0;
+  }
+
+  hideTrail(): void {
+    this.trail.visible = false;
+  }
+
+  /** Is the faint trail on the board? */
+  get trailShown(): boolean {
+    return this.trail.visible && this.trail.children.length > 0;
+  }
+
+  private clearTrail(): void {
+    for (const mesh of [...this.trail.children] as THREE.Mesh[]) {
+      this.trail.remove(mesh);
+      mesh.geometry.dispose();
+    }
+    this.trailKey = "";
   }
 
   /** Draws the cone and fades it in. `heightAt` gives each tile's top surface. */
@@ -163,6 +215,17 @@ export class ForecastConeOverlay {
     }
   }
 
+  /**
+   * Section 30.8: while a build card is hovered, the cone's bands step back (a faint wash) so the homes the build
+   * would save or put at risk show their glow underneath; its outline and tracks stay. Off: the cone as it was.
+   */
+  setDimmed(dimmed: boolean): void {
+    this.dimmed = dimmed;
+    this.apply();
+  }
+
+  private dimmed = false;
+
   /** Fades the cone out (`instant` removes it at once). */
   hide(instant = false): void {
     this.fadeTarget = 0;
@@ -199,7 +262,7 @@ export class ForecastConeOverlay {
   }
 
   private apply(): void {
-    this.bandMaterial.uniforms.uFade.value = this.fade;
+    this.bandMaterial.uniforms.uFade.value = this.fade * (this.dimmed ? 0.18 : 1);
     this.darkLine.opacity = 0.9 * this.fade;
     this.lightLine.opacity = 0.85 * this.fade;
     if (this.fade <= 0 && this.fadeTarget <= 0) {
@@ -231,6 +294,9 @@ export class ForecastConeOverlay {
 
   dispose(): void {
     this.clearLines();
+    this.clearTrail();
+    this.trailDark.dispose();
+    this.trailLight.dispose();
     this.bands.geometry.dispose();
     this.bandMaterial.dispose();
     this.darkLine.dispose();

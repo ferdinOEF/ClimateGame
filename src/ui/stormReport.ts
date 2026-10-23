@@ -51,7 +51,7 @@ interface Row {
 /** Display names and bar colours per defence family. Keyed by the same `ElementCategory` the elements roster uses. */
 const FAMILIES: { category: string; label: string; className: string }[] = [
   { category: "nbs", label: "Mangroves, dunes & pandanus", className: "nbs" },
-  { category: "hybrid", label: "Khazan bunds & sluices", className: "hybrid" },
+  { category: "hybrid", label: "Khazans", className: "hybrid" },
   { category: "engineered", label: "Seawalls, breakwaters & dams", className: "engineered" }
 ];
 

@@ -30,7 +30,7 @@ describe("saves from earlier builds", () => {
 
   it("a saved discovery takes today's wording and its element's name for a title", () => {
     const notes = refreshSavedNotes([{ id: "pandanus-cheap", title: "old", text: "Pandanus is the cheapest defence you can build. It softens a surge a little, on sand where mangroves can't grow." }]);
-    expect(notes).toEqual([{ id: "pandanus-cheap", title: "Sandy Vegetation (Pandanus)", text: "Pandanus softens a surge a little, on sand where mangroves can't grow." }]);
+    expect(notes).toEqual([{ id: "pandanus-cheap", title: "Pandanus", text: "Pandanus softens a surge a little, on sand where mangroves can't grow." }]);
   });
 
   it("a saved note about a feature this version has switched off (growth, coins) is dropped", () => {

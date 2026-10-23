@@ -1,3 +1,5 @@
+// Section 30.12: the title font, bundled (works offline; no Google Fonts).
+import "@fontsource/fraunces/latin-700.css";
 import "@ui/hud.css";
 import "@ui/screens/screens.css";
 import "@ui/panjim/panjim.css";
@@ -37,3 +39,10 @@ new AppShell(root);
 // first screen — means a slow connection shows the splash rather than a
 // blank page, and it never lingers over a live menu.
 document.getElementById("boot-splash")?.remove();
+
+// Section 30.12 (festival mode): after one visit the game works offline (the service worker, vite.config.ts).
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  });
+}

@@ -137,6 +137,8 @@ export function waterBoard(state: GameState, landfallZoneTiles?: readonly string
   if (cached) return cached;
   const tiles = new Map<string, BoardTile>();
   for (const [key, tile] of state.placed) {
+    // Section 30.1: a dry tile is outside the storms: not in the water graph, so no water reaches or passes through it.
+    if (tile.dry) continue;
     tiles.set(key, { key, terrainId: tile.terrainId, ground: tile.terrainId === "coast" ? 0 : Math.max(0, tile.elevationM ?? 0), neighbours: [] });
   }
   for (const tile of tiles.values()) {

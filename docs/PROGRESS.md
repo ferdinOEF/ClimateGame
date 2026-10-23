@@ -8926,3 +8926,19 @@ The game will be shown at the Emergence festival in Panjim: many people sit, pla
 
 - Cause: "Got it" carries a HUD tooltip, and HUD tooltips are among Maya's obstacles; hovering Got it opened the tooltip over the bubble, the bubble moved away, the tooltip closed, the bubble moved back, about once a second.
 - Fix (`src/ui/panjim/maya.ts`, `panjim.css`): frozen while the pointer is on her or her bubble; her own controls' tooltips are never obstacles; a placed bubble moves only to a spot that held 250 ms, at most once a second, fading in, never changing shape where it stands. Browser test `tools/section30bBubble.ts`; `tests/section30b.test.ts`.
+
+## Section 30 — festival clarity: biodiversity on screen, the storm kept in view, builds that show what they do, objectives on the board, the mangrove's birds back, festival mode — DONE (QA in docs/QA_REPORT.md, decisions and the review's bugs in docs/BUGS.md)
+
+Owner decisions, all game rules ("In this game…" in Help and the Field Guide):
+- 30.1 The creek east of Merces, its wetland and its bank (28 tiles) leave the game: grey (the scenery layer, the same shade as the other unplayable tiles of the same ground), nothing to build, and dry for every storm (`tools/mapgen/panaji-hand-edits.json` `dropped`, the map's `dry` list, `PlacedTile.dry`, skipped by `waterBoard`). The estuary 24,6 25,6 26,6 and the home on 25,7 stay in play; defences on the estuary still protect it. 8 homes leave the counts; the undefended 2040 flood takes 57 homes (65 before), 2050 63 (71).
+- 30.2 A river tile takes only a small dam; mangroves grow on wetland (estuary) only. The objectives choose again: 2030 asks for a dune, two pandanus (was a mangrove on the river at -1,19).
+- 30.3 Each build card: its main job and one other thing it does (`CARD_LINES`); no pairing lines; sourced second lines for pandanus, mangrove, khazan, breakwater and small dam (facts.json `card-*`, the Sources screen), a game line for the dune and the seawall's game rule. Pandanus lowers a cyclone's waves and surge less than a dune (checked, `tests/section30.test.ts`); its wind shelter stays.
+- 30.4 A biodiversity counter beside Homes at risk (since 2026, with the next storm's three star mark on its bar), and a leaf chip on each card.
+- 30.5 The mangrove's bird: on planting and every 20 to 30 s per mangrove on screen, one at a time, a kingfisher or an egret flies up out of it toward the screen, never smaller than a share of the screen height (`src/render/wildlife/wildlifeDirector.ts`). Cause of the loss: commit 8390df3 (Section 14) left the mangroves out of the old bird flush when the 3D director came in, whose kingfisher was tiny, perched first, shared its turns with five other moments and was off on Low quality.
+- 30.6 People in every khazan: three transplanters (one with a head cover) and a net caster on the bund whose round net spreads, lands and is pulled back (`src/render/khazanPeople.ts`, 4 instanced draw calls).
+- 30.7 After the phase's first build, the storm's track stays on the board, faint, all phase (the flood's path down the river with its arrowhead).
+- 30.8 Hovering a build card lights the homes it takes out of the next storm's risk green and those it puts at risk red (the cone steps back meanwhile); "This doesn't change the next storm" when it changes none. The cards sit on the side with fewer homes at risk.
+- 30.9 The objective's tiles pulse until built; a row click pans to its tile; at most 4 rows; "Get ahead" (the next storm's objective) once it is done; "Objective done" plus what stopped the third star on a card under 3 stars.
+- 30.10 Speed up during storms and replays, taught in the Tutorial's storm.
+- 30.11 The review's 13 bugs (docs/BUGS.md).
+- 30.12 Festival mode: back to the menu after 3 minutes with no input (not during a storm), Fraunces bundled, a service worker (offline after one visit), Larger text in ☰.

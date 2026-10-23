@@ -24,15 +24,48 @@ export const CARD_NAME: Record<string, string> = {
   small_dam: "Small dam"
 };
 
-export const CARD_LINE: Record<string, string> = {
-  dune: "Two side by side hold like a seawall",
-  sandy_vegetation: "Shields nearby homes from the wind",
-  seawall: "Strongest; breaks in its 2nd cyclone, cracks at 10",
-  breakwater: "Breaks waves at sea; lasts 10 years",
-  mangrove: "Helps in both storms; good for nature",
-  khazan: "Two hold like a small dam; no repairs",
-  small_dam: "Strong in floods; breaks in its 2nd flood, cracks at 10"
+/**
+ * Section 30.3 (owner decision): each card says what the defence is for, in two short lines: its main job in this
+ * game, then one other thing it does. The owner asked for a real world fact with a source as each second line (the
+ * seawall's a game rule). Sourced (`CARD_FACT`, facts.json, the Sources screen): pandanus, mangrove, khazan,
+ * breakwater, small dam. The dune's found no one source that says it, so it is a plain game line; the owner's
+ * wording and its leads stay in facts.json as the hidden `card-dune`. The mangrove's "best for biodiversity" reads
+ * "great": in this game pandanus ties it (+3 each). No pairing lines on the cards (the rule stays in the game).
+ */
+export const CARD_LINES: Record<string, readonly [string, string]> = {
+  dune: ["Shields homes from cyclone waves and surge.", "Good for nature: it adds to biodiversity."],
+  sandy_vegetation: ["Shields homes from cyclone waves and wind.", "Binds the sand; its leaves are woven into mats."],
+  mangrove: ["Protects against waves and surge in both storms.", "A nursery for fish and crabs; great for biodiversity."],
+  khazan: ["Holds back river floods.", "Farmers and fishers share it."],
+  seawall: ["The strongest wall against cyclone surge.", "Costs nature, and cracks with age."],
+  breakwater: ["Breaks cyclone waves out at sea.", "Calm water behind it for boats."],
+  small_dam: ["Holds back river floods.", "Stores water for the dry season."]
 };
+
+/**
+ * Section 30.11 bug 4: the Tutorial's one storm. Its cards never mention a second storm, both storms or ageing.
+ */
+export const TUTORIAL_CARD_LINES: Record<string, readonly [string, string]> = {
+  ...CARD_LINES,
+  mangrove: ["Protects against waves and surge.", CARD_LINES.mangrove[1]],
+  seawall: [CARD_LINES.seawall[0], "Costs nature."],
+};
+
+/** Section 30.3: the facts.json entry that sources a card's second line, where it is a real world fact. */
+export const CARD_FACT: Record<string, string | null> = {
+  dune: null,
+  sandy_vegetation: "card-pandanus",
+  mangrove: "card-mangrove",
+  khazan: "khazan-what",
+  seawall: null,
+  breakwater: "card-breakwater",
+  small_dam: "card-small-dam"
+};
+
+/** Section 30.4: a build's change to biodiversity, for the card's leaf chip. */
+export function cardBiodiversity(id: string): number {
+  return ELEMENT_BY_ID.get(id)?.effects.biodiversity ?? 0;
+}
 
 const bio = (id: string): number => ELEMENT_BY_ID.get(id)?.effects.biodiversity ?? 0;
 const nature = (id: string): string => {
@@ -48,10 +81,10 @@ export function defenceRules(): { id: string; name: string; text: string }[] {
   const windShare = Math.round((HAZARD_MODEL.wind?.shelter.sandy_vegetation ?? 0) * 100);
   const reach = HAZARD_MODEL.wind?.shelterReachHex ?? 2;
   const rules: Record<string, string> = {
-    dune: `In this game a dune ${nature("dune")}. Two dunes side by side protect the tiles behind them as much as one seawall.`,
-    sandy_vegetation: `In this game pandanus is at full strength from the year it is planted and ${nature("sandy_vegetation")}, but on its own it holds back little water and gives a dune no bonus. It is the only defence that lowers a cyclone's wind: homes within ${reach} tiles of it take ${windShare}% less wind damage.`,
-    mangrove: `In this game a mangrove has one strength from the year it is planted, ${nature("mangrove")} and helps in both kinds of storm. It grows only on wetland and at a river's edge.`,
-    khazan: `In this game two khazans side by side protect as much as one small dam. A khazan is never worn, so it never needs a repair, and it ${nature("khazan")}; it does little against a cyclone's surge.`,
+    dune: `In this game a dune shields the homes behind it from a cyclone's waves and surge, and it ${nature("dune")}.`,
+    sandy_vegetation: `In this game pandanus is at full strength from the year it is planted and ${nature("sandy_vegetation")}. It lowers a cyclone's waves and surge a little (less than a dune), and it is the only defence that lowers a cyclone's wind: homes within ${reach} tiles of it take ${windShare}% less wind damage.`,
+    mangrove: `In this game a mangrove has one strength from the year it is planted, ${nature("mangrove")} and helps in both kinds of storm. It grows only on wetland. A river tile takes only a small dam.`,
+    khazan: `In this game a khazan holds back river floods. It is never worn, so it never needs a repair, and it ${nature("khazan")}; it does little against a cyclone's surge.`,
     seawall: `In this game a seawall is the strongest defence from the year it is built, but it ${nature("seawall")}. It comes through the first cyclone it faces and breaks in the second (every storm that brings a cyclone counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("seawall")?.cracksAtAge} years old it is cracked and breaks in the next cyclone, even its first. It pushes extra water onto the land at each end of the wall.`,
     breakwater: `In this game a breakwater breaks a cyclone's waves out at sea but is almost no help in a river flood, and it ${nature("breakwater")}. It breaks when it is ${ELEMENT_BY_ID.get("breakwater")?.breaksAtAge} years old, storm or none, and must be built again.`,
     small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone. It comes through the first flood it faces and breaks in the second (every storm that brings a river flood counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("small_dam")?.cracksAtAge} years old it is cracked and breaks in the next flood, even its first. It ${nature("small_dam")}.`

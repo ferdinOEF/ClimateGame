@@ -5,7 +5,7 @@ import { buildSchedule, challengeStrength, shelterOf, yearsUntil, type Challenge
 import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, type HouseRule, type ZoneDef } from "./zones";
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
-import { ageBroken, landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
+import { ageBroken, isCracked, landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
 import { generatePrep, openingJobs, prepProgress, regionPlace, regionPlaces, type OpeningRegion, type PhaseArea, type PrepConfig, type PrepObjective } from "./prep";
 import { generatePhaseObjective, type PhaseObjective } from "./phaseObjectives";
 import { discTiles, localityTiles, nearestLocality, stretchTiles } from "./stretch";
@@ -71,7 +71,9 @@ export type RunEvent =
   /** The Get ready jobs for the next storm were set. */
   | { type: "prep_new"; objectives: PrepObjective[] }
   /** Section 26.1: a defence broke with age (a breakwater at 10 years), storm or none. */
-  | { type: "aged"; key: string; elementId: string };
+  | { type: "aged"; key: string; elementId: string }
+  /** Section 30.11 bug 5: a seawall or dam turned 10 this year and is cracked (it breaks in the next storm of its kind). */
+  | { type: "cracked"; key: string; elementId: string };
 
 export interface ActionRunOptions {
   /** The level's climate: the three storms on their fixed calendar. */
@@ -290,6 +292,7 @@ export class ActionRun {
     else if (saved.snapshot.prep) this.prep = JSON.parse(JSON.stringify(saved.snapshot.prep)) as PrepObjective[];
     for (const [id, later] of [...this.phaseSnapshots]) if (later.snapshot.turn > at) this.phaseSnapshots.delete(id);
     for (const id of [...this.stormRecords.keys()]) if (!this.landed.has(id)) this.stormRecords.delete(id);
+    this.aheadCache = null;
     this.moment++;
     return true;
   }
@@ -315,6 +318,63 @@ export class ActionRun {
    * board stands now. Called when the run starts and when a storm resolves;
    * jobs from the storm that passed are dropped.
    */
+  /** The phase's own builds (5, 10, 10): set as its storm lands, the clock still reads the year before. */
+  private budgetFor(challenge: ScheduledChallenge): number {
+    return Math.min(this.buildsUntil(challenge), challenge.turn - this.phaseStart(challenge) + 1);
+  }
+
+  /** `challenge`'s objective chosen by the model on the board as it stands now (Section 12). */
+  private objectiveFor(challenge: ScheduledChallenge, budget: number): PhaseObjective {
+    const own = this.ownAreas.get(challenge.id);
+    const landfallTiles = this.zones!.keys(LANDFALL_ZONE);
+    return generatePhaseObjective({
+      state: this.state,
+      zones: this.zones!,
+      challenge,
+      storm: { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge), sheltered: shelterOf(challenge), wind: challenge.wind, turn: challenge.turn - 1 },
+      landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
+      area: this.exposureFor(challenge)?.housesAtRisk ?? [],
+      budget,
+      places: this.prepConfig!.places,
+      localities: this.landmarkList,
+      stretch: own
+        ? {
+            tiles: own.tiles,
+            place: regionPlace(own.region),
+            // A localities area names each row by its own locality ("in Merces").
+            placeOf: "localities" in own.region ? this.localityPlace(own.region.localities) : undefined,
+            title: own.title,
+            pins: this.regionPins(own.region),
+            // Its rows only from tiles inside it (Section 16.4 and 16.5).
+            only: true
+          }
+        : null
+    });
+  }
+
+  private aheadCache: { key: string; objective: PhaseObjective | null } | null = null;
+
+  /**
+   * Section 30.9: once this phase's objective is done, the storm after it ("Get ahead"): its objective chosen by
+   * the model on the board as it stood when it was first asked for, with the builds left before the next storm as
+   * its budget. Chosen once per storm (its baseline fixed, so the player's builds count on it); a rewind or a
+   * restore chooses afresh. Null when there is no later storm or the level has no model objectives.
+   */
+  aheadObjective(): { challenge: ScheduledChallenge; objective: PhaseObjective } | null {
+    const next = this.nextChallenge();
+    if (!next || !this.zones || !this.prepConfig?.model || !this.generateObjectives) return null;
+    const i = this.schedule.indexOf(next);
+    const later = i >= 0 ? this.schedule[i + 1] : undefined;
+    if (!later || this.landed.has(later.id)) return null;
+    const key = `${next.id}|${later.id}`;
+    if (this.aheadCache?.key !== key) {
+      const budget = Math.max(0, this.buildsUntil(next) - 1);
+      this.aheadCache = { key, objective: budget > 0 ? this.objectiveFor(later, budget) : null };
+    }
+    const objective = this.aheadCache.objective;
+    return objective && objective.rows.length > 0 ? { challenge: later, objective } : null;
+  }
+
   refreshPrep(): PrepObjective[] {
     const next = this.nextChallenge();
     if (!this.prepConfig || !next || !this.zones) {
@@ -326,32 +386,7 @@ export class ActionRun {
       this.objective = null;
       this.prep = [];
       if (!this.generateObjectives) return this.prep;
-      const own = this.ownAreas.get(next.id);
-      const landfallTiles = this.zones.keys(LANDFALL_ZONE);
-      this.objective = generatePhaseObjective({
-        state: this.state,
-        zones: this.zones,
-        challenge: next,
-        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next), sheltered: shelterOf(next), wind: next.wind, turn: next.turn - 1 },
-        landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
-        area: this.exposureFor(next)?.housesAtRisk ?? [],
-        // The phase's own builds (5, 10, 10): set as its storm lands, the clock still reads the year before.
-        budget: Math.min(this.buildsUntil(next), next.turn - this.phaseStart(next) + 1),
-        places: this.prepConfig.places,
-        localities: this.landmarkList,
-        stretch: own
-          ? {
-              tiles: own.tiles,
-              place: regionPlace(own.region),
-              // A localities area names each row by its own locality ("in Merces").
-              placeOf: "localities" in own.region ? this.localityPlace(own.region.localities) : undefined,
-              title: own.title,
-              pins: this.regionPins(own.region),
-              // Its rows only from tiles inside it (Section 16.4 and 16.5).
-              only: true
-            }
-          : null
-      });
+      this.objective = this.objectiveFor(next, this.budgetFor(next));
       this.prep = this.objective.rows;
       return this.prep;
     }
@@ -426,11 +461,18 @@ export class ActionRun {
       inst.broken = true;
       events.push({ type: "aged", key, elementId: inst.elementId });
     }
+    // Section 30.11 bug 5: a seawall or dam cracked with age this year (not last), storm or none.
+    for (const [key, inst] of this.state.elements) {
+      const def = ELEMENT_BY_ID.get(inst.elementId);
+      if (!def || !isCracked(def, inst, this.state.turn) || isCracked(def, inst, this.state.turn - 1)) continue;
+      events.push({ type: "cracked", key, elementId: inst.elementId });
+    }
     return events;
   }
 
   /** Puts the run back to `snapshot`. Replay snapshots taken after it are dropped; those before it stay. */
   restore(snapshot: RunSnapshot): void {
+    this.aheadCache = null;
     const copy = JSON.parse(JSON.stringify(snapshot)) as RunSnapshot;
     this.state.elements.clear();
     for (const [key, inst] of copy.elements) this.state.elements.set(key, inst);
@@ -610,7 +652,38 @@ export class ActionRun {
     return saved;
   }
 
-  private savedCache: { key: string; before: number; site: number | null; trials: Map<string, number> } | null = null;
+  /**
+   * Section 30.8: which homes a build would take out of `challenge`'s risk (`saved`) and which it would put at risk
+   * (`added`), on the board as it stands, by the same model as Homes at risk. Null when it cannot go there or there
+   * is no storm to meet. Cached like the card numbers.
+   */
+  riskChangeBy(challenge: ScheduledChallenge, coord: AxialCoord, elementId: string): { saved: string[]; added: string[] } | null {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id) || !this.state.canBuild(coord, elementId)) return null;
+    this.cardCache(challenge);
+    const cache = this.savedCache!;
+    const trialKey = `${coord.q},${coord.r}|${elementId}`;
+    const known = cache.changes.get(trialKey);
+    if (known) return known;
+    const trial = this.state.clone();
+    trial.build(coord, elementId, false);
+    trial.turn = challenge.turn - 1;
+    const after = new Set(computeExposure(trial, this.zones, challenge.kind, this.intensityOf(challenge), this.climate.intensityPerStrength, {
+      combos: computeCombos(trial).bonus,
+      houseStars: this.houseStarsFor(challenge),
+      houseRule: this.houseRule,
+      landfallSites: cache.site === null ? null : [cache.site],
+      sheltered: shelterOf(challenge),
+      wind: challenge.wind,
+      turn: challenge.turn - 1
+    }).housesAtRisk);
+    const before = new Set(cache.beforeKeys);
+    const change = { saved: [...before].filter((key) => !after.has(key)), added: [...after].filter((key) => !before.has(key)) };
+    cache.changes.set(trialKey, change);
+    cache.trials.set(trialKey, before.size - after.size);
+    return change;
+  }
+
+  private savedCache: { key: string; before: number; beforeKeys: string[]; site: number | null; trials: Map<string, number>; changes: Map<string, { saved: string[]; added: string[] }> } | null = null;
 
   /** The homes `challenge` would take on the board as it stands (the HUD's "Homes at risk", Section 13). Cached with the build menu's numbers. */
   homesAtRisk(challenge: ScheduledChallenge): number {
@@ -619,10 +692,18 @@ export class ActionRun {
     return this.savedCache!.before;
   }
 
+  /** The keys of the homes `challenge` would take on the board as it stands (cached like `homesAtRisk`). */
+  homesAtRiskKeys(challenge: ScheduledChallenge): readonly string[] {
+    if (!this.climate || !this.zones || this.landed.has(challenge.id)) return [];
+    this.cardCache(challenge);
+    return this.savedCache!.beforeKeys;
+  }
+
   private cardCache(challenge: ScheduledChallenge): void {
     const cacheKey = `${this.moment}|${challenge.id}`;
     if (this.savedCache?.key === cacheKey) return;
-    this.savedCache = { key: cacheKey, before: this.exposureFor(challenge)?.housesAtRisk.length ?? 0, site: this.landfallOf(challenge), trials: new Map() };
+    const beforeKeys = [...(this.exposureFor(challenge)?.housesAtRisk ?? [])];
+    this.savedCache = { key: cacheKey, before: beforeKeys.length, beforeKeys, site: this.landfallOf(challenge), trials: new Map(), changes: new Map() };
   }
 
   exposureFor(challenge: ScheduledChallenge, withoutDefences = false): Exposure | null {

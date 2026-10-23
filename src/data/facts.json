@@ -383,6 +383,86 @@
         "url": "https://www.downtoearth.org.in/news/wildlife-biodiversity/goa-at-sea-54653",
         "note": "The article describes the humpback dolphin as a major tourist attraction in Goa, with nearly 400 dolphin sighting trips a day. Its date could not be read from the page, so none is given."
       }
+    },
+    {
+      "id": "card-dune",
+      "kind": "fact",
+      "text": "Sand dunes are home to beach plants and ghost crabs.",
+      "elements": [
+        "dune"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "Owner's card line (Section 30.3). No one source found that says both; pages could not be opened to check. Leads: https://www.gomantaktimes.com/ampstories/web-stories/guess-what-a-sand-dune-walk-in-goas-caranzalem-revealed (dune creepers at Caranzalem) ; https://philjournalsci.dost.gov.ph/?p=3682 (ghost crab burrows in the dune creeper zone) ; https://home.nps.gov/cuis/learn/nature/beaches.htm ; https://njseagrant.org/wp-content/uploads/2016/05/Dune-Ecology-Beaches-and-Primary-Dunes.pdf ; https://digitalrepository.wii.gov.in/handle/123456789/1368"
+    },
+    {
+      "id": "card-pandanus",
+      "kind": "fact",
+      "text": "Pandanus is planted to hold coastal soil, and its leaves are made into mats.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "Pandanus odoratissimus (PROTA)",
+        "authors": "PROTA (Plant Resources of Tropical Africa)",
+        "publisher": "Pl@ntUse, PROTA4U",
+        "year": "n.d.",
+        "url": "https://uses.plantnet-project.org/en/Pandanus_odoratissimus_(PROTA)",
+        "note": "Section 30.3, the build card's second line. The record says that in Asia the leaves of Pandanus odoratissimus are made into hats, mats, sacks, cordage, baskets and umbrellas, and that it is used in living fences and coastal windbreaks and planted for soil stabilization. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+      }
+    },
+    {
+      "id": "card-mangrove",
+      "kind": "fact",
+      "text": "Mangroves are nursery grounds for young fish, prawns and crabs.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "The habitat function of mangroves for terrestrial and marine fauna: A review",
+        "authors": "Nagelkerken, I., Blaber, S.J.M., Bouillon, S., Green, P., Haywood, M., Kirton, L.G., Meynecke, J.-O., Pawlik, J., Penrose, H.M., Sasekumar, A. and Somerfield, P.J.",
+        "publisher": "Aquatic Botany (Elsevier)",
+        "year": "2008",
+        "url": "https://doi.org/10.1016/j.aquabot.2007.12.007",
+        "note": "Section 30.3, the build card's second line. The review states that mangroves may function as nursery habitats for (commercially important) crab, prawn and fish species, and support offshore fish populations and fisheries."
+      }
+    },
+    {
+      "id": "card-khazan",
+      "kind": "fact",
+      "text": "A khazan grows paddy, and fish are caught at its sluice gates.",
+      "elements": [
+        "khazan"
+      ],
+      "needsSource": true,
+      "hiddenBecause": "Owner's card line (Section 30.3). No page could be opened to check it. Leads: https://www.mundusmaris.org/the-seafood-we-eat/khazan-traditional-coastal-zone-management-in-goa-india/ ; https://southasia.iclei.org/wp-content/uploads/2024/08/Khazan-Final-web.pdf"
+    },
+    {
+      "id": "card-breakwater",
+      "kind": "fact",
+      "text": "A breakwater makes an area of calm water for boats behind it.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "Breakwater (2), IALA International Dictionary of Marine Aids to Navigation",
+        "authors": "IALA (International Organization for Marine Aids to Navigation)",
+        "publisher": "IALA",
+        "year": "n.d.",
+        "url": "https://www.iala.int/wiki/dictionary/index.php/Breakwater_(2)",
+        "note": "Section 30.3, the build card's second line. Defines a breakwater as a construction that creates an area of calm water for shipping or protects a coast or harbour from wave action. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+      }
+    },
+    {
+      "id": "card-small-dam",
+      "kind": "fact",
+      "text": "In Goa, small river dams called bandharas hold water back for the dry season.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "Water-stressed in India: Ground water mostly neglected in rain-surplus South Goa",
+        "authors": "Down To Earth",
+        "publisher": "Down To Earth",
+        "year": "n.d.",
+        "url": "https://www.downtoearth.org.in/news/water/water-stressed-in-india-ground-water-mostly-neglected-in-rain-surplus-south-goa-69852",
+        "note": "Section 30.3, the build card's second line. The article says the flow of the Sal river is regulated by small check dams (bandharas), closed in September or October depending on the rainfall and opened again in the dry season in May when water is required. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+      }
     }
   ]
 }

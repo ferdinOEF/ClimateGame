@@ -3,6 +3,7 @@ import { playSound } from "@ui/audioHooks";
 import { noteIdsFor, notesProgress } from "@core/mayaLines";
 import { factById } from "@core/facts";
 import { BROKEN_RULE, defenceRules } from "@ui/panjim/defenceCards";
+import { COMBO_INFO } from "@core/combos";
 
 /**
  * The Field Guide: eleven species of the Panjim coast, collected by tapping the
@@ -69,7 +70,7 @@ export class FieldGuide {
     this.backdrop.innerHTML = `
       <div class="field-guide-card" role="dialog" aria-label="Field Guide">
         <div class="field-guide-head"><b>Field Guide</b><span class="field-guide-count"></span><button type="button" class="field-guide-close" aria-label="Close">×</button></div>
-        <p class="field-guide-hint">Tap the creatures you see on the board. Free: no time passes. <span class="field-guide-creatures"></span></p>
+        <p class="field-guide-hint">Tap the creatures you see on the board. Free: no time passes.</p>
         <div class="field-guide-grid"></div>
         <div class="field-guide-defences-head"><b>Defences</b><span class="result-rule">Game rules</span></div>
         <ul class="field-guide-defences"></ul>
@@ -164,9 +165,13 @@ export class FieldGuide {
     this.toastTimer = window.setTimeout(() => (this.toast.hidden = true), 3200);
   }
 
+  /** Called as the guide opens (the menu it was opened from closes). */
+  onOpen: (() => void) | null = null;
+
   open(): void {
-    (this.backdrop.querySelector(".field-guide-count") as HTMLElement).textContent = this.notesProgress();
-    (this.backdrop.querySelector(".field-guide-creatures") as HTMLElement).textContent = `Creatures you have spotted: ${this.count} of ${SPECIES.length}.`;
+    this.onOpen?.();
+    // Section 30.11 bug 9: one count, the creatures.
+    (this.backdrop.querySelector(".field-guide-count") as HTMLElement).textContent = `Creatures spotted: ${this.count} of ${SPECIES.length}`;
     this.grid.innerHTML = "";
     for (const species of SPECIES) {
       const page = document.createElement("div");
@@ -191,7 +196,9 @@ export class FieldGuide {
     // Section 25.1: each defence's pro and con, as game rules, from the game's own data.
     const defences = this.backdrop.querySelector(".field-guide-defences") as HTMLElement;
     defences.innerHTML = "";
-    for (const rule of [...defenceRules(), { id: "broken", name: "Broken defences", text: BROKEN_RULE }]) {
+    // Section 30.11 bug 7: what side by side does, in the game's plain words.
+    const together = Object.entries(COMBO_INFO).map(([id, info]) => ({ id, name: "Side by side", text: `In this game: ${info.plain}` }));
+    for (const rule of [...defenceRules(), { id: "broken", name: "Broken defences", text: BROKEN_RULE }, ...together]) {
       const item = document.createElement("li");
       item.className = "field-guide-defence";
       item.dataset.defence = rule.id;

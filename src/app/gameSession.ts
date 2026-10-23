@@ -19,6 +19,10 @@ import { BuildFlourish } from "@render/buildFlourish";
 import { BuildPuff } from "@render/buildPuff";
 import { TileHover } from "@render/tileHover";
 import { WildlifeDirector } from "@render/wildlife";
+import { KhazanPeople } from "@render/khazanPeople";
+import { ObjectivePulse } from "@render/objectivePulse";
+import { IdleReset, watchIdle } from "./idleReset";
+import { CARD_LINES, TUTORIAL_CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
@@ -110,6 +114,8 @@ export interface GameSessionOptions {
   onExit: () => void;
   /** ☰ → Start again (Section 16 B3): the same level afresh, from its start popup. Absent: leaves instead. */
   onRestart?: () => void;
+  /** Section 30.12: 3 minutes with no input (not in a storm): back to the menu. Absent: leaves as onExit. */
+  onIdle?: () => void;
 }
 
 export interface GameSessionHandle {
@@ -338,6 +344,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         }
       })
     : null;
+  /** Section 30.12 (festival mode): no input for 3 minutes, not during a storm: back to the menu. */
+  const stopIdle = watchIdle(new IdleReset(() => (options.onIdle ?? options.onExit)(), () => Boolean(stormDirector?.playing || panjim?.isBusy)));
+  /** Section 30.6: people at work in the khazans (transplanters, a net caster). */
+  const khazanPeople = redrawnDefences ? new KhazanPeople(scene) : null;
   let wildlifeSourcesAt = -Infinity;
   /** QA only: the wildlife's clock stepped by hand (`__wildlifeStepForTest`) instead of by the frame loop. */
   const wildlifeManual = { on: false, clock: 0 };
@@ -357,6 +367,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const coneOverlay = new ForecastConeOverlay(levelTiles.length);
   coneOverlay.reducedMotion = prefersReducedMotionNow();
   scene.add(coneOverlay.group);
+  scene.add(coneOverlay.trail);
+  /** Section 30.9: the objective's tiles still to build pulse until built. */
+  const objectivePulse = new ObjectivePulse();
+  scene.add(objectivePulse.mesh);
   /** Panjim 2050: the phase's area to protect, kept faintly once the cone has gone (Section 12). */
   const areaOutline = new AreaOutline();
   areaOutline.reducedMotion = prefersReducedMotionNow();
@@ -849,6 +863,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             if (cone) coneOverlay.show(cone, (coord) => terrain.heightAt(coord));
             else coneOverlay.hide();
           },
+          showObjectiveTiles: (keys) => objectivePulse.show(keys.map((key) => {
+            const [q, r] = key.split(",").map(Number);
+            return { q, r };
+          }), (coord) => terrain.heightAt(coord)),
+          dimCone: (dimmed) => coneOverlay.setDimmed(dimmed),
+          showStormTrail: (trail) => {
+            if (trail) coneOverlay.showTrail(trail.key, trail.tracks, (coord) => terrain.heightAt(coord));
+            else coneOverlay.hideTrail();
+          },
           showAreaOutline: (keys) => areaOutline.show(keys.map((key) => {
             const [q, r] = key.split(",").map(Number);
             return { q, r };
@@ -955,7 +978,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             elements.setQualityMotion(quality !== "low");
             puffMotion.low = quality === "low";
             if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
-            wildlife?.setEnabled(!puffMotion.low);
+            // Section 30.5: on Low the mangroves' birds still come (the otter, pond life and dolphins do not).
+            wildlife?.setLite(puffMotion.low);
           },
           setReducedMotion: (reduced) => {
             storm.setReducedMotion(reduced);
@@ -963,7 +987,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             elements.setSwayEnabled(!reduced);
             puffMotion.reduced = reduced;
             if (buildPuff) buildPuff.enabled = !puffMotion.reduced && !puffMotion.low;
-            wildlife?.setEnabled(!puffMotion.low);
             wildlife?.setGentle(reduced);
             coneOverlay.reducedMotion = reduced;
             container.classList.toggle("calm-motion", reduced);
@@ -2313,7 +2336,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // North of the Mandovi (Section 11.4) and the east edge (Section 19.2) are scenery: no build menu, one line saying so.
     if (state.isScenery(key)) {
       const east = levelMap.unplayableEastFrom !== undefined && coord.q + coord.r / 2 >= levelMap.unplayableEastFrom;
-      buildPopover.showNote(screen.x, screen.y, east ? "Outside Panjim, not part of this game" : "North of the Mandovi: not part of this game");
+      // Section 30.1: the creek corner east of Merces is out of the game too (and out of the storms).
+      const corner = state.placed.get(key)?.dry === true;
+      buildPopover.showNote(screen.x, screen.y, corner ? "Outside Panjim: this creek corner is not part of this game" : east ? "Outside Panjim, not part of this game" : "North of the Mandovi: not part of this game");
       return;
     }
 
@@ -2349,8 +2374,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         name: def.name,
         // No NBS / ENGINEERED / BUILDING tags on Panjim (Section 13).
         kindLabel: panjim ? undefined : kindLabel(def),
-        // With coins off, what a thing earns is not shown: no money anywhere.
-        effects: economy ? def.effects : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
+        // With coins off, what a thing earns is not shown: no money anywhere. Section 30.11 bug 6: on Panjim a
+        // defence shows its biodiversity only (no carbon or resilience), and its rule line below.
+        effects: panjim
+          ? CARD_LINES[def.id]
+            ? { biodiversity: cardBiodiversity(def.id) }
+            : {}
+          : economy
+            ? def.effects
+            : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
         removeLabel: panjim ? "Demolish (uses this year's build)" : undefined,
         // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
         note:
@@ -2358,7 +2390,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only."
             : panjim && isCracked(def, built, state.turn)
               ? `${crackedNote(def)}. In this game a seawall or small dam cracks at 10 years old.`
-              : undefined,
+              : panjim && CARD_LINES[def.id]
+                ? `In this game: ${(panjim.tutorial ? TUTORIAL_CARD_LINES : CARD_LINES)[def.id][0]}`
+                : undefined,
         extraActions:
           panjim && panjim.run.needsRepair(coord)
             ? [
@@ -2414,7 +2448,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           playSound("build");
         },
         // The year chip first (never covered), then the rest of the HUD.
-        { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"] }
+        { avoid: [".panjim-clock", ".get-ready", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
       );
       controller.cardsOpened();
       return;
@@ -2659,7 +2693,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         wildlifeSourcesAt = nowMs;
         const mangroves: { x: number; y: number; z: number }[] = [];
         const khazanPonds: { x: number; y: number; z: number; radius: number }[] = [];
+        const khazans: { x: number; y: number; z: number }[] = [];
         for (const placed of elements.placedElements()) {
+          if (placed.elementId === "khazan") khazans.push({ x: placed.x, y: placed.y, z: placed.z });
           if (placed.elementId === "mangrove") mangroves.push({ x: placed.x, y: placed.y + 0.02, z: placed.z });
           // The khazan's pond is its west half (render/defenceGeometry.ts; a khazan is never turned).
           else if (placed.elementId === "khazan") khazanPonds.push({ x: placed.x - 0.3, y: placed.y + 0.035, z: placed.z, radius: 0.24 });
@@ -2667,9 +2703,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         const waters: { x: number; y: number; z: number }[] = [];
         for (const tile of dolphinWaterTilesOnce()) if (!state.elements.has(tile.key)) waters.push(tile.point);
         wildlife.setSources({ mangroves, khazanPonds, waters });
+        khazanPeople?.setKhazans(khazans);
       }
       wildlife.setCalm(!(panjim?.isBusy ?? false) && !stormDirector?.playing && !document.querySelector(".result-cards:not([hidden])"));
       if (!wildlifeManual.on) wildlife.tick(nowMs);
+    }
+    if (khazanPeople) {
+      khazanPeople.setHidden(Boolean(stormDirector?.playing));
+      khazanPeople.setStill(puffMotion.reduced);
+      khazanPeople.tick(nowMs);
     }
     panjim?.frame();
     stormDirector?.tick(nowMs);
@@ -2677,6 +2719,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
     coneOverlay.tick(nowMs);
+    // Section 30.7: the faint storm track stays all phase, but not while a storm plays.
+    if (stormDirector?.playing) coneOverlay.trail.visible = false;
+    objectivePulse.mesh.visible = !stormDirector?.playing;
+    objectivePulse.still = puffMotion.reduced;
+    objectivePulse.tick(nowMs);
     areaOutline.tick(nowMs);
     // Section 22.2: zoomed out (the camera past the opening view's distance), the labels a little smaller again.
     const far = cameraDistance() > LABELS_FAR_DISTANCE;
@@ -2760,6 +2807,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       const world = axialToWorld(coord, 1.0);
       buildFlourish.play(world.x, topY, world.z, performance.now());
       buildPuff?.play(elementId, world.x, topY, world.z, performance.now());
+      // Section 30.5: a planted mangrove sends its bird up once the year has passed.
+      if (elementId === "mangrove") wildlife?.birdFrom({ x: world.x, y: topY + 0.02, z: world.z });
       // The tile is taken now: no build outline on it until the pointer moves again.
       tileHover?.show(null);
     }
@@ -2892,6 +2941,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __elementsForTest: elements,
     __tileHoverForTest: () => tileHover,
     __wildlifeForTest: () => wildlife,
+    /** Section 30 QA: the objective's pulsing tiles, the storm's faint trail and the khazan people. */
+    __objectivePulseForTest: objectivePulse,
+    __coneOverlayForTest: coneOverlay,
+    __khazanPeopleForTest: () => khazanPeople,
     /** Steps the wildlife's clock by `ms` in 50 ms ticks, and keeps it stepped by hand from then on (QA frames at exact moment times). */
     __wildlifeStepForTest: (ms: number): void => {
       if (!wildlife) return;
@@ -3064,6 +3117,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     buildFlourish.dispose();
     buildPuff?.dispose();
     wildlife?.dispose();
+    stopIdle();
+    khazanPeople?.dispose();
+    objectivePulse.dispose();
     tileHover?.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();

@@ -13,6 +13,12 @@ export interface PlacedTile {
    */
   scenery?: boolean;
   /**
+   * Section 30.1 (owner decision): outside the storms. No surge, flood or backwater reaches the tile and water does
+   * not pass through it (the hazard model leaves it out of its water graph). Always scenery too (Panaji's creek
+   * corner east of Merces).
+   */
+  dry?: boolean;
+  /**
    * Where the level's monsoon flood comes from (Section 16.5): river tiles the
    * level names in `climate.floodSource` (levels.json). On a map without
    * them the hazard model falls back to its automatic rule.
@@ -291,8 +297,6 @@ export class GameState {
     for (const def of ELEMENT_BY_ID.values()) {
       // Section 17.3: a retired element (sand mining) is never offered, on any level.
       if (!def.validTerrainIds.includes(tile.terrainId) || this.excludedElements.has(def.id) || RETIRED_ELEMENTS.has(def.id)) continue;
-      // Section 25.1: on a river, only at its edge (beside land, a beach or a wetland).
-      if (def.riverEdgeOnly && tile.terrainId === "river" && !this.atRiverEdge(coord)) continue;
       results.push(def);
     }
     return results;

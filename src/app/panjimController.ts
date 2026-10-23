@@ -21,7 +21,7 @@ import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
 import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialResultCard, type CardSpec, type CardsChoice } from "@ui/panjim/resultCards";
-import { biodiversityByKind, natureReason, nextLabel, phaseResult, type Place } from "@core/phaseResult";
+import { biodiversityByKind, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
 import { FinaleCard } from "@ui/panjim/finaleCard";
@@ -47,7 +47,7 @@ import { forecastLine } from "@core/forecastCone";
 import { renderConePreview } from "@ui/panjim/conePreview";
 import type { Tooltips } from "@ui/tooltip";
 import type { BuildCard } from "@ui/buildPopover";
-import { CARD_ICON, CARD_LINE, CARD_NAME, DEFENCE_ORDER } from "@ui/panjim/defenceCards";
+import { CARD_ICON, CARD_LINES, CARD_NAME, cardBiodiversity, DEFENCE_ORDER, TUTORIAL_CARD_LINES } from "@ui/panjim/defenceCards";
 import { SHOW_MAYA } from "@services/features";
 import { leaveText } from "@ui/panjim/modalStack";
 
@@ -137,6 +137,12 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the forecast cone (null fades it out). */
   showCone: (cone: ConeShow | null) => void;
+  /** Section 30.8: the cone's bands step back while a build card is hovered (so the homes' glow shows). */
+  dimCone: (dimmed: boolean) => void;
+  /** Section 30.9: the objective's tiles still to build, pulsing on the board. */
+  showObjectiveTiles: (keys: string[]) => void;
+  /** Section 30.7: the storm's faint track all phase after the cone has gone (null hides it). */
+  showStormTrail: (trail: { key: string; tracks: ConeShow["tracks"] } | null) => void;
   /** Glides the camera to frame a box of the board, in world x/z. */
   frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }) => void;
   /** The phase's area to protect, faintly, once the cone has gone (an empty list fades it out). */
@@ -246,6 +252,8 @@ export class PanjimController {
   private readonly replayCard: ReplayCard;
   /** Reduced motion: no shake or flashes, calmer waves, fewer rain streaks. Starts from the system setting. */
   readonly motionToggle: PrefToggle;
+  /** Section 30.12: ☰ → Larger text. */
+  readonly textToggle: PrefToggle;
   /** Graphics quality: Auto (from the frame rate), Low, Medium or High. */
   private readonly qualityButton: HTMLButtonElement;
   private qualityChoice: QualityChoice = "auto";
@@ -287,13 +295,23 @@ export class PanjimController {
     this.getReady = new GetReadyPanel(this.run.economyEnabled);
     // Hovering a row lights the tiles that count for it (Section 12).
     this.getReady.onRowHover((job) => this.host.tintTiles(job ? (job.tiles ?? []).map((key) => ({ key, color: "#fff3c4", blend: 0.5 })) : null));
+    // Section 30.9: a row clicked pans the board to its tile (the first of its picks still to build).
+    this.getReady.onRowClick((job) => {
+      const key = this.pulseKeys(job)[0] ?? job.tiles?.[0];
+      if (!key) return;
+      const [q, r] = key.split(",").map(Number);
+      this.host.focusCamera({ q, r });
+    });
     host.mountPanel(this.getReady.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     // Section 17c: Maya's notes come from her; hidden, the guide is the species alone.
     this.fieldGuide.showNotes(SHOW_MAYA);
+    // Section 30.11 bug 9: opening the Field Guide from the menu closes the menu.
+    this.fieldGuide.onOpen = () => this.panels?.settings.close();
     this.resultCards = new ResultCards(host.container);
     this.finaleCard = new FinaleCard(host.container);
     this.replayCard = new ReplayCard(host.container);
+    this.speedUp = this.makeSpeedUp();
     this.riskToggle = new PrefToggle(
       host.container,
       { storageKey: "riptide-rising:show-risk:v1", label: "Show risk", shortcut: "R", defaultOn: false, className: "risk-toggle", persist: false },
@@ -325,6 +343,16 @@ export class PanjimController {
       (on) => {
         host.setReducedMotion(on);
         this.recheckRiskIntroMode();
+      }
+    );
+    // Section 30.12 (festival mode): larger words for those who need them; not remembered (the next visitor
+    // starts with the usual size).
+    this.textToggle = new PrefToggle(
+      host.container,
+      { storageKey: "riptide-rising:large-text", label: "Larger text", shortcut: "", defaultOn: false, className: "text-toggle", persist: false },
+      (on) => {
+        host.container.classList.toggle("large-text", on);
+        this.maya.textResized();
       }
     );
     this.qualityButton = document.createElement("button");
@@ -562,6 +590,11 @@ export class PanjimController {
       return { homes: `${homes} ${homes === 1 ? "home" : "homes"}`, storm: next ? stormWord(next.kind) : "storm" };
     });
 
+    tips.attach(this.outlook.bioEl, "biodiversityCounter", () => {
+      const view = this.biodiversityView();
+      const fmt = (n: number): string => (n > 0 ? `+${n}` : n < 0 ? `\u2212${Math.abs(n)}` : "0");
+      return { start: this.run.config.startYear, change: view ? fmt(view.change) : "0", target: view?.target !== null && view ? fmt(view.target) : "a rise", storm: view?.storm ?? "storm" };
+    });
     tips.attach(this.fieldGuide.buttonEl, "fieldGuide", () => ({ notes: this.fieldGuide.notesProgress(), found: this.fieldGuide.count, species: this.fieldGuide.speciesTotal }));
     tips.attach(this.riskToggle.el, "riskToggle");
     tips.attach(this.getReady.el, "getReady");
@@ -570,8 +603,7 @@ export class PanjimController {
     tips.attach(this.motionToggle.el, "motionToggle");
     tips.attach(this.qualityButton, "qualityControl", () => ({ choice: this.qualityLabel(), fps: this.lastFps > 0 ? Math.round(this.lastFps) : "–" }));
     tips.attach(this.volumeSlider, "soundVolume", () => ({ pct: this.volumeSlider.value }));
-    const dismiss = this.maya.el.querySelector<HTMLElement>(".maya-dismiss");
-    if (dismiss) tips.attach(dismiss, "mayaDismiss");
+    // Section 30 (owner decision): "Got it" has no tooltip (it said what the button says, and covered her words).
   }
 
   // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -597,8 +629,29 @@ export class PanjimController {
     const next = this.run.nextChallenge();
     const zones = this.run.zones;
     const rows = zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : [];
-    this.getReady.render(next ? next.name : null, rows);
+    // Section 30.9: the objective done, the storm after it to get ahead on (not in the Tutorial).
+    const complete = rows.length > 0 && rows.every((row) => row.done);
+    const ahead = complete && zones && !this.tutorial ? this.run.aheadObjective() : null;
+    this.aheadRows = ahead ? ahead.objective.rows : [];
+    this.aheadPicks = ahead ? ahead.objective.picks : [];
+    this.getReady.render(next ? next.name : null, rows, ahead && zones ? { storm: ahead.challenge.name, rows: ahead.objective.rows.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) } : null);
+    // The tiles still to build pulse on the board (this objective's, or once it is done, Get ahead's).
+    const jobs = complete ? this.aheadRows : this.run.prep;
+    this.host.showObjectiveTiles(this.run.finished ? [] : jobs.flatMap((job) => this.pulseKeys(job)));
     if (this.run.prep.length > 0) this.mayaDirector?.tip("get-ready");
+  }
+
+  /** Section 30.9: Get ahead's rows and picks now (empty until the objective is done). */
+  private aheadRows: PrepObjective[] = [];
+  private aheadPicks: { key: string; elementId: string }[] = [];
+
+  /** A row's picked tiles not yet built with its defence (the model's picks; the row's own tiles if it has none). */
+  private pulseKeys(job: PrepObjective): string[] {
+    const zones = this.run.zones;
+    if (zones && prepProgress(job, this.host.state, zones).done) return [];
+    const tiles = new Set(job.tiles ?? []);
+    const picks = [...(this.run.objective?.picks ?? []), ...this.aheadPicks].filter((pick) => pick.elementId === job.elementId && tiles.has(pick.key)).map((pick) => pick.key);
+    return [...new Set(picks)].filter((key) => this.host.state.elements.get(key)?.elementId !== job.elementId && this.host.state.canBuild({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, job.elementId));
   }
 
   /**
@@ -702,6 +755,19 @@ export class PanjimController {
     // The next storm's toll on the board as it stands, from the same model as the storm (Section 13).
     const next = this.run.nextChallenge();
     this.outlook.renderRisk(next ? this.run.homesAtRisk(next) : null);
+    this.outlook.renderBiodiversity(this.biodiversityView());
+  }
+
+  /**
+   * Section 30.4: biodiversity since the run began, and the next storm's three star target (the last storm's once
+   * the run is over). Null where the level's stars do not count nature (the Tutorial).
+   */
+  biodiversityView(): { change: number; target: number | null; storm: string } | null {
+    const stars = this.run.houseStars;
+    if (!stars || stars.bioThree === undefined) return null;
+    const storm = this.run.nextChallenge() ?? this.run.schedule[this.run.schedule.length - 1] ?? null;
+    const target = storm ? (this.run.houseStarsFor(storm)?.bioThree ?? stars.bioThree) : stars.bioThree;
+    return { change: Math.round(this.host.state.biodiversity - (stars.bioStart ?? 0)), target: target ?? null, storm: storm ? stormWord(storm.kind) : "storm" };
   }
 
   /** Defences against the challenge's hazards that have not reached full strength yet. */
@@ -739,6 +805,7 @@ export class PanjimController {
 
     let hurry = false;
     const abort = new AbortController();
+    this.showSpeedUp(true);
     // A click on the board hurries the storm; one on the HUD (volume, switches, Maya) does not.
     document.addEventListener(
       "pointerdown",
@@ -746,6 +813,7 @@ export class PanjimController {
         const target = event.target;
         if (target instanceof Element && target.closest(".hud-panel, .panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready")) return;
         hurry = true;
+        this.showSpeedUp(false);
       },
       { signal: abort.signal, capture: true }
     );
@@ -779,6 +847,7 @@ export class PanjimController {
       }
     } finally {
       abort.abort();
+      this.showSpeedUp(false);
       this.host.container.classList.remove("slowmo", "storm-playing");
       // The storm's own count, exactly: the pill holds it through the result cards.
       this.outlook.renderLost(outcome.housesTotal - outcome.housesSaved);
@@ -847,7 +916,15 @@ export class PanjimController {
       bioThree !== undefined
         ? { target: bioThree, since: this.run.config.startYear, at: stormStars?.bioAtEnd ? `at the end of ${challenge.year}` : undefined, byKind: biodiversityByKind(this.host.state.elements.values()) }
         : undefined;
-    const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
+    const base = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature);
+    const short = stormStars ? shortOfThree(base.stars, base.homesSaved, base.homesTotal, stormStars, record.outcome.biodiversityChange) : null;
+    const pushed = this.pushedPlaces(base.places);
+    const result = {
+      ...base,
+      objectiveComplete: this.run.objectivesComplete.has(challenge.id),
+      ...(short ? { shortOfThree: short } : {}),
+      ...(pushed.length ? { pushNote: `In this game a seawall pushes water round its ends: it reached ${joinNames(pushed)}.` } : {})
+    };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
@@ -901,6 +978,52 @@ export class PanjimController {
   }
 
 
+  /**
+   * Section 30.10 (owner decision): "Speed up", on screen while a storm or its replay plays. It does what a click on
+   * the board does (hurries the storm; ends the replay). In the Tutorial's storm it pulses, with a word on what it does.
+   */
+  private readonly speedUp: HTMLButtonElement;
+
+  private makeSpeedUp(): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "speed-up";
+    button.hidden = true;
+    button.innerHTML = `<span class="speed-up-icon" aria-hidden="true">\u25B6\u25B6</span><span>Speed up</span>`;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      // A board click: the storm's own listener takes a pointerdown on the page; the replay ends at once.
+      if (this.replayCard.isOpen) this.replayCard.skip();
+      else document.dispatchEvent(new PointerEvent("pointerdown"));
+      this.showSpeedUp(false);
+    });
+    this.host.container.appendChild(button);
+    return button;
+  }
+
+  private showSpeedUp(on: boolean): void {
+    this.speedUp.hidden = !on;
+    this.speedUp.classList.toggle("coach-pulse", on && this.tutorial);
+    this.speedUp.dataset.hint = on && this.tutorial ? "It hurries the storm" : "";
+  }
+
+  /**
+   * Section 30.11 bug 1: the damaged places beside a wall that pushes water round its ends (a seawall, as the storm
+   * came): the push is why a place can be damaged with every home round it saved.
+   */
+  private pushedPlaces(places: readonly { name: string; stood: boolean }[]): string[] {
+    const all = this.places();
+    const out: string[] = [];
+    for (const place of places) {
+      if (place.stood) continue;
+      const at = all.find((p) => p.name === place.name);
+      if (!at) continue;
+      const beside = neighbors({ q: at.q, r: at.r }).some((n) => (ELEMENT_BY_ID.get(this.preChallengeIds.get(`${n.q},${n.r}`) ?? "")?.endPushM ?? 0) > 0);
+      if (beside && !out.includes(place.name)) out.push(place.name);
+    }
+    return out;
+  }
+
   /** The Aftermath replay: what the storm did, step by step, in the record's real numbers. Skippable. */
   private async replay(challenge: ScheduledChallenge, record: StormRecord): Promise<void> {
     const steps = replaySteps(record, this.preChallengeIds);
@@ -913,6 +1036,16 @@ export class PanjimController {
       }, { q: 0, r: 0 });
       this.host.focusCamera({ q: Math.round(sum.q / focusKeys.length), r: Math.round(sum.r / focusKeys.length) }, true, 1.4);
     }
+    this.showSpeedUp(steps.length > 0);
+    // Section 30.11 bug 11: the card moves off the tiles it describes (once drawn, the camera framed).
+    const keys = [...new Set(steps.flatMap((step) => [...step.hit, ...step.dry, ...step.highlight]))];
+    window.setTimeout(() => {
+      const points = keys.map((key) => {
+        const [q, r] = key.split(",").map(Number);
+        return this.host.project({ q, r });
+      }).filter((p): p is { x: number; y: number } => p !== null);
+      this.replayCard.placeAvoiding(points);
+    }, 60);
     await this.replayCard.play(challenge.name, steps, {
       light: (step) => {
         if (!step) {
@@ -931,6 +1064,7 @@ export class PanjimController {
         this.maya.next();
       }
     });
+    this.showSpeedUp(false);
   }
 
   /** Real milliseconds played on this run, across any resume. */
@@ -1149,13 +1283,44 @@ export class PanjimController {
       return i < 0 ? DEFENCE_ORDER.length : i;
     };
     const here = this.host.state.buildableAt(coord).map((def) => def).sort((a, b) => order(a.id) - order(b.id));
-    const cards: BuildCard[] = here.map((def) => ({ id: def.id, name: CARD_NAME[def.id] ?? def.name, line: CARD_LINE[def.id] ?? "", icon: CARD_ICON[def.id] ?? "" }));
+    // Section 30.3: two lines (the Tutorial's never mention a second storm or ageing); Section 30.4: the leaf chip.
+    const lines = this.tutorial ? TUTORIAL_CARD_LINES : CARD_LINES;
+    const cards: BuildCard[] = here.map((def) => ({ id: def.id, name: CARD_NAME[def.id] ?? def.name, line: lines[def.id]?.[0] ?? "", detail: lines[def.id]?.[1], biodiversity: cardBiodiversity(def.id), icon: CARD_ICON[def.id] ?? "" }));
     for (const id of DEFENCE_ORDER) {
       if (here.some((def) => def.id === id)) continue;
-      cards.push({ id, name: CARD_NAME[id], line: CARD_LINE[id], icon: CARD_ICON[id], notHere: true });
+      cards.push({ id, name: CARD_NAME[id], line: lines[id][0], icon: CARD_ICON[id], notHere: true });
     }
     this.lastCardsMs = performance.now() - started;
     return cards;
+  }
+
+  /**
+   * Section 30.8: a build card hovered. The homes it would take out of the next storm's risk glow green, the homes
+   * it would put at risk glow red (the model of Homes at risk); none either way gives the line returned. Null clears.
+   */
+  cardHover(coord: AxialCoord, elementId: string | null): string | null {
+    const next = this.run.nextChallenge();
+    const change = elementId && next && !this.run.finished ? this.run.riskChangeBy(next, coord, elementId) : null;
+    this.host.dimCone(change !== null);
+    if (!change) {
+      this.host.tintTiles(null);
+      return null;
+    }
+    this.host.tintTiles([...change.saved.map((key) => ({ key, color: "#59d47e", blend: 0.62 })), ...change.added.map((key) => ({ key, color: "#e5533f", blend: 0.62 }))]);
+    return change.saved.length === 0 && change.added.length === 0 ? "This doesn't change the next storm" : null;
+  }
+
+  /** Section 30.8: the next storm's homes at risk on screen (container pixels): the cards keep off them. */
+  riskPoints(): { x: number; y: number }[] {
+    const next = this.run.nextChallenge();
+    if (!next || this.run.finished) return [];
+    return this.run
+      .homesAtRiskKeys(next)
+      .map((key) => {
+        const [q, r] = key.split(",").map(Number);
+        return this.host.project({ q, r });
+      })
+      .filter((p): p is { x: number; y: number } => p !== null);
   }
 
   /** True while a storm that the last build brought is being staged: no fact or tip should start over it. */
@@ -1332,7 +1497,8 @@ export class PanjimController {
           const [q, r] = key.split(",").map(Number);
           return { q, r };
         }));
-        this.host.showBanner(`${info.name}! +${info.bonus} defence on each of its ${event.all.length} tiles`, 3800);
+        // Section 30.11 bug 7: plain words, no exclamation and no number.
+        this.host.showBanner(info.plain, 3800);
         this.host.telemetry.reward("combo");
         break;
       }
@@ -1360,6 +1526,17 @@ export class PanjimController {
         // Section 26.1: a breakwater broke as it turned 10. Drawn broken (the refresh), and said beside it.
         const [q, r] = event.key.split(",").map(Number);
         this.host.noteAt({ q, r }, "Broken with age: in this game a breakwater lasts 10 years. Build again here.", 4000);
+        // Section 30.11 bug 5: said where it is seen, wherever the camera is.
+        this.host.showBanner("A breakwater broke with age. In this game a breakwater lasts 10 years.", 3600);
+        break;
+      }
+      case "cracked": {
+        // Section 30.11 bug 5: a seawall or dam turned 10: cracked, it breaks in the next storm of its kind.
+        const [q, r] = event.key.split(",").map(Number);
+        const name = event.elementId === "small_dam" ? "small dam" : "seawall";
+        const storm = event.elementId === "small_dam" ? "flood" : "cyclone";
+        this.host.noteAt({ q, r }, `Cracked with age: in this game it breaks in the next ${storm}.`, 4000);
+        this.host.showBanner(`A ${name} cracked with age. In this game it breaks in the next ${storm}.`, 3600);
         break;
       }
     }
@@ -1393,6 +1570,9 @@ export class PanjimController {
    * build); "Area protected" when none is left, and back if a tile is unsafe
    * again. And pins on every place an open objective names.
    */
+  /** Each storm's track, as its cone drew it (the storm's way does not change with the defences). */
+  private readonly trailTracks = new Map<string, ConeShow["tracks"]>();
+
   private renderGuidance(): void {
     const next = this.run.nextChallenge();
     const zones = this.run.zones;
@@ -1401,6 +1581,15 @@ export class PanjimController {
     for (const job of open) for (const pin of job.pins ?? []) pins.set(pin.name, pin);
     this.host.showPins([...pins.values()]);
     this.host.highlightPlaces(next && !this.run.finished ? this.areaPlaceNames(next) : [], [...pins.keys()]);
+    // Section 30.7: once the cone has gone, the storm's way in (or the flood's path) stays on the board, faint.
+    if (next && !this.coneShown && !this.run.finished) {
+      let tracks = this.trailTracks.get(next.id);
+      if (!tracks) {
+        tracks = this.run.forecastCone(next)?.tracks ?? [];
+        this.trailTracks.set(next.id, tracks);
+      }
+      this.host.showStormTrail(tracks.length ? { key: next.id, tracks } : null);
+    } else this.host.showStormTrail(null);
     if (!next || this.coneShown || this.run.finished) {
       this.host.showAreaOutline([]);
       this.outlined = 0;
@@ -1442,12 +1631,15 @@ export class PanjimController {
 
   /**
    * The build menu just opened. In the Tutorial, the first time: Maya says what
-   * the cards are, and their lines pulse (Section 17.1: the cards carry no number).
+   * the cards are. Section 30.11 bug 3: only the card the Tutorial wants pulses (its objective's next defence),
+   * round the whole card; no outline on every line.
    */
   cardsOpened(): void {
     if (!this.tutorial || this.run.turnNumber !== 1) return;
     this.coach("cards", "explains");
-    for (const line of this.host.container.querySelectorAll(".build-popover .build-card-line")) line.classList.add("coach-pulse");
+    const wanted = this.run.prep.find((job) => !job.done)?.elementId;
+    const card = [...this.host.container.querySelectorAll<HTMLElement>(".build-popover .build-card")].find((el) => el.dataset.element === wanted);
+    card?.classList.add("coach-pulse");
   }
 
   /** A new Tutorial year: after the first build, the faint outline; in the cyclone's own year, the red heat. */
@@ -1994,3 +2186,7 @@ export function comingUpTitle(name: string, year: number, years: number): string
   return `${name} in ${year}, ${years} ${years === 1 ? "year" : "years"} away`;
 }
 
+/** "A", "A and B", "A, B and C". */
+function joinNames(names: readonly string[]): string {
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}

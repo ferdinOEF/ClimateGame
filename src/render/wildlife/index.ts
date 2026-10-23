@@ -33,6 +33,11 @@
  *   burst from an on-screen mangrove if none was out), the otter dives, and
  *   nothing new starts until setCalm(true).
  * - setEnabled(false) hides everything at once.
+ * - Section 30.5: the mangroves' birds run on their own clock. birdFrom(point) on planting sends a kingfisher
+ *   or an egret (taking turns) up out of that mangrove toward the screen as soon as the board is calm; then each
+ *   mangrove on screen sends one every 20-30 s, one bird at a time. A fly-in never looks smaller than a floor
+ *   fraction of the screen height, so it reads at the opening zoom. setLite(true) (Low quality) keeps only the birds.
+ *   flyIns logs each one with its largest on-screen radius and its time at 40 px or more.
  * - forceMoment(kind, sourceIndex?) starts a moment now (for QA shots).
  * - triangleCounts reports the triangles of each model.
  *

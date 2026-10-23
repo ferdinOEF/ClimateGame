@@ -387,7 +387,9 @@ export class AppShell {
       // the browser so they cannot disagree with its own Back button.
       onExit: () => this.goBack(),
       // ☰ → Start again (Section 16 B3): the same level afresh, in place of this run.
-      onRestart: () => this.requestLevel(level.id, "replace")
+      onRestart: () => this.requestLevel(level.id, "replace"),
+      // Section 30.12 (festival mode): left alone for 3 minutes, the game goes back to the menu for the next visitor.
+      onIdle: () => this.go({ name: "menu" }, "replace")
     });
   }
 

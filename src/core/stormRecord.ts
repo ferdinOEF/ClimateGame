@@ -54,6 +54,12 @@ export interface StormRecord {
    * removed and everything else is equal (`housesLostWithout`). Can be 0.
    */
   withoutEach: Map<string, number>;
+  /**
+   * Section 30.11 bug 13: kinds whose `withoutEach` is 0 only because another kind would have covered for them:
+   * taken away together with that other kind, the storm takes more homes than without the other alone. The card
+   * says "Shared the work" for them, not 0.
+   */
+  sharedWork?: string[];
 }
 
 export interface StormArgs {
@@ -183,10 +189,24 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
     if (inst.broken || withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
     withoutEach.set(inst.elementId, Math.max(0, housesLostWithout(before, args, inst.elementId).housesDamaged - outcome.housesDamaged));
   }
+  const sharedWork: string[] = [];
+  const kinds = [...withoutEach.keys()];
+  for (const kind of kinds) {
+    if (withoutEach.get(kind)! > 0 || !defendsAgainst(kind, hazards)) continue;
+    for (const other of kinds) {
+      if (other === kind) continue;
+      const both = without((id) => id !== kind && id !== other);
+      const lost = resolveChallenge(both, args.zones, args.kind, args.intensity, args.strengthUnit, args.combos ? computeCombos(both).bonus : undefined, args.houseStars, args.houseRule, undefined, args.landfall, args.sheltered, args.wind).housesDamaged;
+      if (lost > outcome.housesDamaged + withoutEach.get(other)!) {
+        sharedWork.push(kind);
+        break;
+      }
+    }
+  }
   const defences = new Map<string, string>();
   for (const [key, inst] of before.elements) if (!inst.broken && defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
   const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
   const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);
-  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field }, savedBy, defences, landfallKey, depth, wind, withoutEach };
+  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field }, savedBy, defences, landfallKey, depth, wind, withoutEach, sharedWork };
 }

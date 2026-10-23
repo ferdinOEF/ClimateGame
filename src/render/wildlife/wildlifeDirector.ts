@@ -82,6 +82,30 @@ const GAP_SPAN = 4000;
 /** A flying bird at the end of its path fills about this fraction of half the screen height. */
 const END_SCREEN_FRACTION = 0.22;
 const EXTRA_SCALE = 0.3;
+/**
+ * Section 30.5 (owner decision): the mangrove's bird. When a mangrove is planted, and then every 20-30 s for each
+ * mangrove on screen (one bird at a time across the board), a kingfisher or an egret flies up out of it toward the
+ * screen. It is drawn larger than the perched bird (BOOST) and ends bigger on screen (FLY_IN_END_FRACTION), so it
+ * reads at the opening zoom; it fades only in the last moment before the lens.
+ */
+const BIRD_GAP_MIN = 20000;
+const BIRD_GAP_SPAN = 10000;
+/** At least this long between one bird ending and the next starting, however many mangroves are on screen. */
+const BIRD_REST = 3000;
+const FLY_IN_BOOST = { kingfisher: 1.9, egret: 1.3 } as const;
+const FLY_IN_END_FRACTION = 0.34;
+/**
+ * The fly-in never looks smaller on screen than this fraction of the screen height (its radius): from the board's
+ * far opening view perspective alone would keep it a speck until the last half second. Rising out of the leaves it
+ * is at least RISE; in flight it grows from FLIGHT_START to FLIGHT_END along the path (then perspective takes over).
+ */
+const FLY_IN_FLOOR_RISE = 0.03;
+const FLY_IN_FLOOR_START = 0.05;
+const FLY_IN_FLOOR_END = 0.075;
+/** A fly-in counts as clearly seen while its radius is at least this many CSS px and it is at least 0.6 opaque. */
+export const FLY_IN_SEEN_PX = 40;
+/** A planted mangrove's bird waits this long at most for the year to pass (the board busy) before it is dropped. */
+const BUILD_BIRD_WAIT = 20000;
 
 // --- Scratch (never allocate in tick) -------------------------------------------
 const _v = new THREE.Vector3();
@@ -161,7 +185,7 @@ class FlightPath {
 }
 
 /** Which stage a bird is in. */
-type BirdStage = "off" | "perch" | "dive" | "under" | "emerge" | "wade" | "crouch" | "takeoff" | "fly" | "flush";
+type BirdStage = "off" | "perch" | "dive" | "under" | "emerge" | "wade" | "crouch" | "takeoff" | "rise" | "fly" | "flush";
 
 interface BirdActor {
   kind: "kingfisher" | "egret";
@@ -178,6 +202,10 @@ interface BirdActor {
   bank: number;
   lastYaw: number;
   baseScale: number;
+  /** Size multiplier of a fly-in (Section 30.5); 1 otherwise. */
+  boost: number;
+  /** The fly-in's entry in `flyIns`, or -1. */
+  flyIn: number;
   radius: number;
   shadow: THREE.Mesh;
   shadowSize: number;
@@ -252,6 +280,21 @@ export class WildlifeDirector {
   private activeStart = 0;
   /** Starts of every moment (clock ms), for tests and QA. */
   readonly momentLog: { kind: WildlifeKind; at: number; source: number }[] = [];
+  /**
+   * Section 30.5: every bird fly-in, its trigger, and how big it got on screen while clearly seen (the largest
+   * projected radius, in CSS px, while its opacity was at least 0.6).
+   */
+  readonly flyIns: { kind: "kingfisher" | "egret"; at: number; trigger: "build" | "timer"; maxPx: number; seenMs: number }[] = [];
+  /** When each mangrove (by its tile centre) next sends a bird up. */
+  private readonly birdDue = new Map<string, number>();
+  /** Each mangrove's key in `birdDue`, in the order of `sources.mangroves` (worked out once, in setSources). */
+  private mangroveKeys: string[] = [];
+  private birdRestUntil = 0;
+  private lastBird: "kingfisher" | "egret" = "egret";
+  /** A planted mangrove's bird, waiting for the board to be calm. */
+  private pendingBird: { point: WildlifePoint; until: number } | null = null;
+  /** Low quality: only the birds; the otter, the pond life and the dolphins stay away. */
+  private lite = false;
   /** Pond launch points of the latest fish/prawn moment (world x, z) — for tests. */
   readonly lastLaunches: { x: number; z: number; pond: number }[] = [];
 
@@ -316,7 +359,7 @@ export class WildlifeDirector {
       this.group.add(shadow);
       return {
         kind, root, pose: restPose(), path: new FlightPath(), stage: "off", stageAt: 0, opacity: 0, escape: 1, escaping: false,
-        flapPhase: 0, bank: 0, lastYaw: 0, baseScale, radius, shadow, shadowSize, waterY: 0, yaw: 0,
+        flapPhase: 0, bank: 0, lastYaw: 0, baseScale, boost: 1, flyIn: -1, radius, shadow, shadowSize, waterY: 0, yaw: 0,
         pos: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), seed: 0
       };
     };
@@ -339,6 +382,35 @@ export class WildlifeDirector {
 
   setSources(s: WildlifeSources): void {
     this.sources = s;
+    // A mangrove seen for the first time sends its first bird up 20-30 s from now (a planted one sooner: birdFrom).
+    const keep = new Set<string>();
+    this.mangroveKeys = s.mangroves.map(birdKey);
+    for (const key of this.mangroveKeys) {
+      keep.add(key);
+      if (!this.birdDue.has(key)) this.birdDue.set(key, this.clock + this.birdGap());
+    }
+    for (const key of [...this.birdDue.keys()]) if (!keep.has(key)) this.birdDue.delete(key);
+  }
+
+  /** Low quality (Section 30.5): the birds still come; nothing else does. */
+  setLite(lite: boolean): void {
+    if (lite === this.lite) return;
+    this.lite = lite;
+    if (lite && this.active !== null) this.hideAll();
+  }
+
+  /**
+   * A mangrove was just planted at `point`: its bird flies up as soon as the board is calm again (the year has
+   * passed), then every 20-30 s while it is on screen.
+   */
+  birdFrom(point: WildlifePoint): void {
+    if (!this.enabled || this.gentle) return;
+    this.pendingBird = { point: { x: point.x, y: point.y, z: point.z }, until: this.clock + BUILD_BIRD_WAIT };
+    this.birdDue.set(birdKey(point), this.clock + this.birdGap());
+  }
+
+  private birdGap(): number {
+    return BIRD_GAP_MIN + this.random() * BIRD_GAP_SPAN;
   }
 
   setEnabled(on: boolean): void {
@@ -363,7 +435,8 @@ export class WildlifeDirector {
   setGentle(gentle: boolean): void {
     if (gentle === this.gentle) return;
     this.gentle = gentle;
-    if (gentle && this.active !== null && this.active !== "dolphins") this.hideAll();
+    if (gentle && ((this.active !== null && this.active !== "dolphins") || this.birdOut)) this.hideAll();
+    if (gentle) this.pendingBird = null;
     this.nextAt = this.clock + this.gap();
   }
 
@@ -374,6 +447,12 @@ export class WildlifeDirector {
   /** True while any moment (or a flush) is still playing. */
   get busy(): boolean {
     return this.active !== null || this.kf.stage !== "off" || this.eg.stage !== "off" || this.otterLive || this.anyJumper() || this.podLive;
+  }
+
+  /** True while a moment other than a mangrove's bird fly-in (or a flush) is still playing. */
+  private get momentBusy(): boolean {
+    const bird = (x: BirdActor) => x.stage !== "off" && x.flyIn < 0;
+    return this.active !== null || bird(this.kf) || bird(this.eg) || this.otterLive || this.anyJumper() || this.podLive;
   }
 
   /** The moment playing now, if any. */
@@ -407,7 +486,9 @@ export class WildlifeDirector {
     const now = this.clock;
     this.opts.camera.updateMatrixWorld();
 
-    if (this.active === null && this.calm && now >= this.nextAt && !this.busy) this.schedule();
+    // The other moments do not wait for a mangrove's bird (it has its own clock), only for each other.
+    if (this.active === null && this.calm && !this.lite && now >= this.nextAt && !this.momentBusy) this.schedule();
+    this.scheduleBird(now);
 
     this.tickBird(this.kf, now, dt);
     this.tickBird(this.eg, now, dt);
@@ -419,6 +500,115 @@ export class WildlifeDirector {
     if (this.active !== null && !this.busyWith(this.active)) {
       this.active = null;
       this.nextAt = now + this.gap();
+    }
+  }
+
+  /** True while a bird (a fly-in, a perch-and-dive or a wade) is out. */
+  private get birdOut(): boolean {
+    return this.kf.stage !== "off" || this.eg.stage !== "off";
+  }
+
+  /** Section 30.5: the mangroves' birds, one at a time, on their own clock. */
+  private scheduleBird(now: number): void {
+    if (this.pendingBird && now > this.pendingBird.until) this.pendingBird = null;
+    if (!this.calm || this.gentle || this.birdOut) return;
+    if (this.active === "kingfisher" || this.active === "egret") return;
+    if (now < this.birdRestUntil) return;
+    const rects = this.opts.avoidRects();
+    // The planted mangrove's bird waits (up to BUILD_BIRD_WAIT) until its tile is on screen and clear of the HUD.
+    if (this.pendingBird && this.sourceVisible(this.pendingBird.point, rects)) {
+      const p = this.pendingBird.point;
+      this.pendingBird = null;
+      this.startFlyIn(p, "build");
+      return;
+    }
+    let best = -1;
+    let bestDue = Infinity;
+    const list = this.sources.mangroves;
+    for (let i = 0; i < list.length; i++) {
+      const due = this.birdDue.get(this.mangroveKeys[i]) ?? Infinity;
+      if (due > now || due >= bestDue) continue;
+      if (!this.sourceVisible(list[i], rects)) continue;
+      best = i;
+      bestDue = due;
+    }
+    if (best >= 0) this.startFlyIn(list[best], "timer");
+  }
+
+  /** A kingfisher or an egret (taking turns) flies up out of the mangrove at `m` toward the screen. */
+  private startFlyIn(m: WildlifePoint, trigger: "build" | "timer"): void {
+    const kind = this.lastBird === "kingfisher" ? "egret" : "kingfisher";
+    this.lastBird = kind;
+    this.birdDue.set(birdKey(m), this.clock + this.birdGap());
+    const a = kind === "kingfisher" ? this.kf : this.eg;
+    if (kind === "kingfisher") {
+      this.kingfisher.perch.visible = false;
+      this.twigFadeAt = -1;
+    }
+    this.towardCamera(m, _w, _right);
+    const side = this.random() < 0.5 ? -1 : 1;
+    // Out of the canopy on the camera's side of the tile.
+    a.pos.set(m.x + _w.x * 0.3 + _right.x * 0.12 * side, m.y + 0.5, m.z + _w.z * 0.3 + _right.z * 0.12 * side);
+    a.a.copy(a.pos);
+    a.waterY = m.y;
+    a.yaw = Math.atan2(_w.x + _right.x * 0.5 * side, _w.z + _right.z * 0.5 * side);
+    a.boost = FLY_IN_BOOST[kind];
+    a.stage = "rise";
+    a.stageAt = this.clock;
+    a.seed = this.random() * 100;
+    a.opacity = 0;
+    a.escape = 1;
+    a.escaping = false;
+    a.bank = 0;
+    a.flapPhase = 0;
+    a.root.visible = true;
+    a.root.scale.setScalar(a.baseScale * a.boost);
+    a.root.position.copy(a.pos);
+    a.root.rotation.set(0, a.yaw, 0);
+    const p = a.pose;
+    p.fold = 0; p.legTuck = 0.4; p.carrying = false; p.neck = kind === "egret" ? 0.2 : 0.3; p.neckThrust = 0;
+    p.bodyLift = 0; p.bodyPitch = 0.5; p.bodyRoll = 0; p.headYaw = 0; p.headPitch = -0.1; p.spread = 1;
+    a.flyIn = this.flyIns.length;
+    this.flyIns.push({ kind, at: this.clock, trigger, maxPx: 0, seenMs: 0 });
+    if (this.flyIns.length > 200) {
+      this.flyIns.shift();
+      a.flyIn = this.flyIns.length - 1;
+    }
+  }
+
+  /** The fly-in's first half second: straight up out of the leaves, beating hard, then into the flight to the lens. */
+  private tickRise(a: BirdActor, now: number, dt: number): void {
+    const t = now - a.stageAt;
+    const DUR = 520;
+    const k = Math.min(1, t / DUR);
+    const p = a.pose;
+    a.opacity = Math.min(1, t / 220);
+    a.flapPhase += (dt / 1000) * (a.kind === "kingfisher" ? 11 : 3.2);
+    beat(a.flapPhase, _beat);
+    p.fold = 0;
+    p.flap = (a.kind === "kingfisher" ? 0.65 : 0.9) * _beat[0];
+    p.wristFlex = 0.6 * _beat[1];
+    p.twist = 0.1;
+    p.spread = 1;
+    p.legTuck = 0.4 + 0.6 * k;
+    p.bodyPitch = 0.5 - 0.4 * k;
+    a.pos.set(a.a.x, a.a.y + 0.28 * (1 - (1 - k) * (1 - k)), a.a.z);
+    a.root.position.copy(a.pos);
+    a.root.rotation.set(0, a.yaw, 0);
+    a.root.scale.setScalar(this.floored(a, a.baseScale * a.boost, FLY_IN_FLOOR_RISE * Math.min(1, t / 300)));
+    if (k >= 1) {
+      const path = a.path;
+      path.away = false;
+      path.p0.copy(a.pos);
+      this.towardCamera(a.pos, _w, _right);
+      path.v0.set(Math.sin(a.yaw) * 0.5 + _w.x * 0.3, 0.8, Math.cos(a.yaw) * 0.5 + _w.z * 0.3).normalize();
+      this.planEnd(a);
+      path.t0 = now;
+      path.dur = a.kind === "kingfisher" ? 2800 : 3600;
+      path.anchor(this.opts.camera);
+      a.lastYaw = a.yaw;
+      a.stage = "fly";
+      a.stageAt = now;
     }
   }
 
@@ -463,7 +653,8 @@ export class WildlifeDirector {
     const pond = this.gentle ? -1 : this.pickOnScreen(this.sources.khazanPonds);
     const water = this.pickOnScreen(this.sources.waters ?? []);
     const kinds: WildlifeKind[] = [];
-    if (mang >= 0) kinds.push("kingfisher", "egret", "otter");
+    // The birds have their own clock (scheduleBird, Section 30.5); the otter is the mangrove's moment here.
+    if (mang >= 0) kinds.push("otter");
     if (pond >= 0) kinds.push("fish", "prawn");
     if (water >= 0) kinds.push("dolphins");
     if (!kinds.length) {
@@ -517,6 +708,8 @@ export class WildlifeDirector {
       a.stage = "off";
       a.root.visible = false;
       a.shadow.visible = false;
+      a.flyIn = -1;
+      a.boost = 1;
     }
     this.kingfisher.perch.visible = false;
     this.otter.root.visible = false;
@@ -593,6 +786,10 @@ export class WildlifeDirector {
     path.dur = a.kind === "kingfisher" ? 1100 : 1500;
     a.stage = "flush";
     a.stageAt = now;
+    // A fly-in caught by a storm goes as any bird does: its own size, no floor.
+    if (a.flyIn >= 0) this.birdRestUntil = this.clock + BIRD_REST;
+    a.flyIn = -1;
+    a.boost = 1;
     a.escaping = false;
     a.escape = 1;
     if (fromCover) a.opacity = 0;
@@ -609,6 +806,8 @@ export class WildlifeDirector {
 
   private startKingfisher(m: WildlifePoint): void {
     const a = this.kf;
+    a.boost = 1;
+    a.flyIn = -1;
     this.towardCamera(m, _w, _right);
     const side = this.random() < 0.5 ? -1 : 1;
     // Perch: a bare twig at the tile's camera-facing edge, a little off centre.
@@ -765,6 +964,8 @@ export class WildlifeDirector {
 
   private startEgret(m: WildlifePoint): void {
     const a = this.eg;
+    a.boost = 1;
+    a.flyIn = -1;
     this.towardCamera(m, _w, _right);
     const side = this.random() < 0.5 ? -1 : 1;
     // Wades across the camera's view along the tile's near edge.
@@ -897,8 +1098,8 @@ export class WildlifeDirector {
     const path = a.path;
     const cam = this.opts.camera;
     const halfTan = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
-    const rEnd = a.radius * (1 + EXTRA_SCALE);
-    path.endDist = Math.max(1, rEnd / (END_SCREEN_FRACTION * halfTan));
+    const rEnd = a.radius * a.boost * (1 + EXTRA_SCALE);
+    path.endDist = Math.max(1, rEnd / ((a.flyIn >= 0 ? FLY_IN_END_FRACTION : END_SCREEN_FRACTION) * halfTan));
     const camDist = cam.position.distanceTo(path.p0);
     path.endDist = Math.min(path.endDist, camDist * 0.6);
     const vp = this.opts.viewport();
@@ -925,7 +1126,7 @@ export class WildlifeDirector {
     }
     path.endX = cands[best][0] * sx;
     path.endY = cands[best][1];
-    path.bulge = (this.random() < 0.5 ? -1 : 1) * (0.3 + this.random() * 0.15);
+    path.bulge = (this.random() < 0.5 ? -1 : 1) * (a.flyIn >= 0 ? 0.06 + this.random() * 0.05 : 0.3 + this.random() * 0.15);
   }
 
   private tickFlight(a: BirdActor, now: number, dt: number): void {
@@ -993,7 +1194,8 @@ export class WildlifeDirector {
     p.bodyLift = 0;
 
     // Grows naturally with perspective, plus a slight extra scale-up.
-    const scale = a.baseScale * (1 + EXTRA_SCALE * (path.away ? 0 : s * s));
+    let scale = a.baseScale * a.boost * (1 + EXTRA_SCALE * (path.away ? 0 : s * s));
+    if (a.flyIn >= 0) scale = this.floored(a, scale, FLY_IN_FLOOR_START + (FLY_IN_FLOOR_END - FLY_IN_FLOOR_START) * s);
     a.root.scale.setScalar(scale);
 
     // Fades: before the near plane (distance), when an avoid rect would be
@@ -1002,6 +1204,7 @@ export class WildlifeDirector {
     const dist = cam.position.distanceTo(a.pos);
     let o = 1;
     if (path.away) o = 1 - smoothstep(0.45, 1, t);
+    else if (a.flyIn >= 0) o = 1 - smoothstep(path.endDist * 1.12, path.endDist * 1.0, dist) - smoothstep(0.94, 1, t);
     else o = 1 - smoothstep(path.endDist * 1.4, path.endDist * 1.03, dist) - smoothstep(0.9, 1, t);
     // A flush from cover fades in quickly.
     if (path.away && now - path.t0 < 160 && a.opacity < 1) o = Math.min(o, (now - path.t0) / 160);
@@ -1009,11 +1212,37 @@ export class WildlifeDirector {
     if (a.escaping) a.escape = Math.max(0, a.escape - dt / 260);
     a.opacity = Math.max(0, Math.min(1, o)) * a.escape;
     if (dist < cam.near * 6) a.opacity = 0;
-    if (t >= 1 || a.opacity <= 0.001) {
-      a.stage = "off";
-      a.root.visible = false;
-      a.shadow.visible = false;
+    if (a.flyIn >= 0 && a.opacity >= 0.6 && a.flyIn < this.flyIns.length) {
+      const px = this.projectedRadius(a, scale);
+      const rec = this.flyIns[a.flyIn];
+      if (px > rec.maxPx) rec.maxPx = px;
+      if (px >= FLY_IN_SEEN_PX) rec.seenMs += dt;
     }
+    if (t >= 1 || a.opacity <= 0.001) this.birdDone(a);
+  }
+
+  /** `scale`, raised if need be so the bird's radius on screen is at least `fraction` of the screen height. */
+  private floored(a: BirdActor, scale: number, fraction: number): number {
+    const want = fraction * this.opts.viewport().height;
+    const px = this.projectedRadius(a, scale);
+    return px > 0 && px < want ? scale * (want / px) : scale;
+  }
+
+  /** A bird's projected radius on screen, CSS px. */
+  private projectedRadius(a: BirdActor, scale: number): number {
+    const cam = this.opts.camera;
+    const dist = Math.max(0.001, cam.position.distanceTo(a.pos));
+    const halfTan = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+    return ((a.radius * scale) / a.baseScale / (dist * halfTan)) * (this.opts.viewport().height / 2);
+  }
+
+  private birdDone(a: BirdActor): void {
+    a.stage = "off";
+    a.root.visible = false;
+    a.shadow.visible = false;
+    if (a.flyIn >= 0) this.birdRestUntil = this.clock + BIRD_REST;
+    a.flyIn = -1;
+    a.boost = 1;
   }
 
   /** Would the bird's projected bounds enter an avoid rect? */
@@ -1036,7 +1265,9 @@ export class WildlifeDirector {
       if (a.kind === "kingfisher" && this.twigFadeAt >= 0) this.tickKingfisherGround(a, now, dt);
       return;
     }
-    if (a.stage === "fly" || a.stage === "flush") {
+    if (a.stage === "rise") {
+      this.tickRise(a, now, dt);
+    } else if (a.stage === "fly" || a.stage === "flush") {
       this.tickFlight(a, now, dt);
       if (a.kind === "kingfisher" && this.twigFadeAt >= 0) {
         const perch = this.kingfisher.perch;
@@ -1348,6 +1579,10 @@ export class WildlifeDirector {
 }
 
 /** End-of-approach screen positions (NDC), tried in order; x is mirrored to the bird's side. */
+function birdKey(p: WildlifePoint): string {
+  return `${Math.round(p.x * 10)},${Math.round(p.z * 10)}`;
+}
+
 const CANDIDATES: readonly (readonly [number, number])[] = [
   [0.42, 0.12],
   [0.4, -0.22],

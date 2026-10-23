@@ -320,6 +320,57 @@
   border-color: rgba(159, 220, 174, 0.6);
 }
 
+/* Section 30.4: biodiversity since the start, with the next storm's three star target marked on a small bar. */
+.outlook-bio {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 10px;
+  margin-right: 6px;
+  border-radius: 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #cfe9c4;
+  border: 1px solid rgba(169, 227, 160, 0.55);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.outlook-bio[hidden] { display: none !important; }
+.outlook-bio-count {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+.outlook-bio.below { color: #e3c39a; border-color: rgba(227, 195, 154, 0.6); }
+.outlook-bio.reached { color: #b6f0a8; border-color: rgba(182, 240, 168, 0.85); }
+.outlook-bio-bar {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 2px;
+  background: rgba(251, 238, 217, 0.18);
+}
+.outlook-bio-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: #8fd486;
+}
+.outlook-bio-target {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 10px;
+  margin-left: -1px;
+  background: #fff3c4;
+  border-radius: 1px;
+}
+
 /* During a storm: "Homes lost N", live. */
 .outlook-risk.lost {
   color: #ffb39e;
@@ -1631,6 +1682,62 @@
 
 /* ---- Aftermath replay ---------------------------------------------------- */
 
+/* Section 30.10: Speed up, bottom centre while a storm or its replay plays. */
+.speed-up {
+  position: absolute;
+  z-index: 31;
+  left: 50%;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 195, 91, 0.7);
+  background: rgba(24, 33, 30, 0.9);
+  color: #fdf6e6;
+  font: 600 15px/1.2 var(--font-ui, system-ui, sans-serif);
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+}
+
+.speed-up[hidden] {
+  display: none;
+}
+
+.speed-up:hover {
+  background: rgba(40, 52, 46, 0.95);
+}
+
+.speed-up:focus-visible {
+  outline: 3px solid #f2c35b;
+  outline-offset: 2px;
+}
+
+.speed-up-icon {
+  font-size: 11px;
+  letter-spacing: -2px;
+  color: #f2c35b;
+}
+
+/* The Tutorial's storm: what it does, just above it. */
+.speed-up[data-hint]:not([data-hint=""])::after {
+  content: attr(data-hint);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(253, 246, 230, 0.95);
+  color: #1d2a24;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .replay-card {
   position: absolute;
   z-index: 30;
@@ -1646,6 +1753,11 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   pointer-events: auto;
   font: 500 14px/1.4 var(--font-ui, system-ui, sans-serif);
+}
+/* Section 30.11 bug 11: at the bottom when its usual place would cover the tiles it describes (above Speed up). */
+.replay-card.replay-low {
+  top: auto;
+  bottom: calc(86px + env(safe-area-inset-bottom));
 }
 .replay-head { display: flex; align-items: center; gap: 8px; }
 .replay-eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #e8a64a; }
@@ -2510,6 +2622,13 @@
   font-weight: 700;
 }
 
+.result-row-value.shared {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #cfe7c2;
+}
+
 .result-maya {
   margin: 4px 0 12px;
   padding: 10px 12px;
@@ -2675,6 +2794,14 @@
   letter-spacing: 0.04em;
   color: #1f3a1c;
   background: #a6d88a;
+}
+
+/* Section 30.9: under "Objective done", what stopped the third star. */
+.result-short {
+  margin: -4px 0 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e8dcc6;
 }
 
 /*
@@ -2889,7 +3016,59 @@
   color: rgba(251, 238, 217, 0.85);
 }
 
+/* Section 30.3: the second line, quieter; Section 30.4: the leaf chip beside the name. */
+.build-card-detail {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: rgba(251, 238, 217, 0.68);
+}
+
+.build-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leaf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px 1px 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.leaf-chip.up {
+  background: rgba(111, 186, 111, 0.22);
+  color: #a9e3a0;
+}
+
+.leaf-chip.down {
+  background: rgba(176, 132, 82, 0.28);
+  color: #e3c39a;
+}
+
+.leaf-chip.level {
+  background: rgba(251, 238, 217, 0.12);
+  color: #e8dcc8;
+}
+
 /* Section 16 B6: what cannot go on this ground, as one quiet line. */
+/* Section 30.8: a hovered card that does nothing to the next storm says so. */
+.build-hover-note {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #f2d9a6;
+}
+
+.build-hover-note[hidden] {
+  display: none;
+}
+
 .build-card-elsewhere {
   margin: 2px 0 0;
   padding-top: 6px;
@@ -2921,17 +3100,19 @@
 }
 
 /* Section 15: the Tutorial. Maya points at the build cards' lines (Section 17.1: the cards carry no number); they pulse until a card is picked. */
-.build-card-line.coach-pulse {
+/* Section 30.11 bug 3: in the Tutorial only the card it wants pulses, round the whole card. */
+.build-card.coach-pulse,
+.speed-up.coach-pulse {
   animation: coach-pulse 1.1s ease-in-out infinite;
-  outline: 2px solid #f2c35b;
-  outline-offset: 2px;
+  border-color: #f2c35b;
 }
 @keyframes coach-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(242, 195, 91, 0.0); }
   50% { box-shadow: 0 0 0 5px rgba(242, 195, 91, 0.55); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .build-card-line.coach-pulse { animation: none; }
+  .build-card.coach-pulse,
+  .speed-up.coach-pulse { animation: none; }
 }
 .result-subtitle {
   margin: 14px 0 4px;
@@ -3083,7 +3264,8 @@
 .brief-card.brief-tutorial.with-feature > .brief-body { grid-row: 4; font-size: 16px; }
 .brief-card.brief-tutorial.with-feature > .brief-cta { grid-row: 5; }
 .brief-card.brief-tutorial.with-feature > .brief-feature { grid-row: 1 / 7; }
-.calm-motion .build-card-line.coach-pulse {
+.calm-motion .build-card.coach-pulse,
+.calm-motion .speed-up.coach-pulse {
   animation: none;
 }
 .panjim-help-note a {
@@ -3227,6 +3409,36 @@
   color: #9fdcae;
 }
 
+/* Section 30.9: rows are clickable (the board pans to their tile); "Get ahead" follows a done objective. */
+.get-ready-row {
+  cursor: pointer;
+}
+
+.get-ready-row:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.get-ready-row:focus-visible {
+  outline: 2px solid #f2c35b;
+  outline-offset: 1px;
+}
+
+.get-ready-ahead[hidden] {
+  display: none;
+}
+
+.get-ready-ahead-title {
+  margin: 8px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f2c35b;
+}
+
+.get-ready.complete .get-ready-ahead-list {
+  display: flex;
+}
+
 .has-panjim-clock .objectives-panel,
 .has-panjim-clock .empty-prompt,
 .has-panjim-clock .maya-bubble {
@@ -3328,3 +3540,41 @@
 .field-guide-backdrop.no-notes .field-guide-notes {
   display: none;
 }
+
+/* Section 30.11 bug 12: the objective panel never shows empty (the "Panjim, 2050" title, the end of a run). */
+.has-panjim-clock .objectives-panel.custom-body:has(> .get-ready[hidden]),
+.has-panjim-clock:has(.finale-title-main) .objectives-panel {
+  display: none;
+}
+
+/*
+ * Section 30.12 (festival mode): ☰ → Larger text. The words players read (the cards, the objective, Maya's
+ * bubble, the result cards, the tooltips, Help and the Field Guide) about a fifth larger. The board, the icons
+ * and Maya herself keep their size.
+ */
+.large-text .build-card-name { font-size: 17px; }
+.large-text .build-card-line { font-size: 14.5px; }
+.large-text .build-card-detail,
+.large-text .build-card-elsewhere,
+.large-text .build-hover-note { font-size: 14px; }
+.large-text .get-ready-row { font-size: 15.5px; }
+.large-text .get-ready-title,
+.large-text .get-ready-ahead-title { font-size: 13px; }
+.large-text .get-ready-progress { font-size: 14px; }
+.large-text .maya-bubble { font-size: max(14px, calc(17.5px * var(--maya-scale))); }
+.large-text .hud-tooltip { font-size: 15px; }
+.large-text .result-sub,
+.large-text .result-homes-text,
+.large-text .result-nature,
+.large-text .result-wind,
+.large-text .result-short,
+.large-text .result-places li,
+.large-text .result-maya,
+.large-text .replay-text { font-size: 16px; }
+.large-text .field-guide-defence p,
+.large-text .field-guide-page p,
+.large-text .field-guide-hint { font-size: 15px; }
+.large-text .panjim-help-body p,
+.large-text .panjim-help-body li,
+.large-text .panjim-help-body .help-roster-item { font-size: 16px; }
+.large-text .speed-up { font-size: 17px; }
