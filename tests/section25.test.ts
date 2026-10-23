@@ -178,16 +178,12 @@ describe("growing, wear and repair", () => {
     for (const c of sites) expect(r.needsRepair(c)).toBe(false);
   });
 
-  it("a mangrove goes on an estuary or at a river's edge, never mid river", () => {
+  it("Section 30.2: a mangrove goes on a wetland (estuary) only; a river tile takes only a small dam", () => {
     const def = ELEMENT_BY_ID.get("mangrove")!;
-    expect(def.validTerrainIds.sort()).toEqual(["estuary", "river"]);
+    expect(def.validTerrainIds).toEqual(["estuary"]);
     const rivers = [...run.state.placed.values()].filter((t) => t.terrainId === "river" && !run.state.isScenery(axialKey(t.coord)) && !run.state.elements.has(axialKey(t.coord)));
-    const edge = rivers.filter((t) => run.state.atRiverEdge(t.coord));
-    const mid = rivers.filter((t) => !run.state.atRiverEdge(t.coord));
-    expect(edge.length).toBeGreaterThan(0);
-    expect(mid.length).toBeGreaterThan(0);
-    for (const t of mid) expect(run.state.canBuild(t.coord, "mangrove")).toBe(false);
-    expect(edge.some((t) => run.state.canBuild(t.coord, "mangrove"))).toBe(true);
+    expect(rivers.length).toBeGreaterThan(0);
+    for (const t of rivers) expect(run.state.buildableAt(t.coord).map((d) => d.id)).toEqual(["small_dam"]);
   });
 });
 

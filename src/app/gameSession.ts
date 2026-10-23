@@ -2313,7 +2313,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // North of the Mandovi (Section 11.4) and the east edge (Section 19.2) are scenery: no build menu, one line saying so.
     if (state.isScenery(key)) {
       const east = levelMap.unplayableEastFrom !== undefined && coord.q + coord.r / 2 >= levelMap.unplayableEastFrom;
-      buildPopover.showNote(screen.x, screen.y, east ? "Outside Panjim, not part of this game" : "North of the Mandovi: not part of this game");
+      // Section 30.1: the creek corner east of Merces is out of the game too (and out of the storms).
+      const corner = state.placed.get(key)?.dry === true;
+      buildPopover.showNote(screen.x, screen.y, corner ? "Outside Panjim: this creek corner is not part of this game" : east ? "Outside Panjim, not part of this game" : "North of the Mandovi: not part of this game");
       return;
     }
 

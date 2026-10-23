@@ -75,7 +75,8 @@ describe("the forecast cone", () => {
     // channel by Ribandar (25,5 to 28,5) and ends in Taleigao, Merces or St Cruz, at a home at risk there.
     const keys = track.points.map((p) => { const a = worldToAxial(p.x, p.z, 1); return `${a.q},${a.r}`; });
     expect(BOT_LEVEL.climate!.floodSource).toContain(keys[0]);
-    expect(keys.some((key) => ["25,5", "26,5", "27,5", "28,5"].includes(key))).toBe(true);
+    // Section 30.1: the creek corner east of Merces is out of the storms: the track never crosses a dry tile.
+    expect(keys.some((key) => run.state.placed.get(key)?.dry)).toBe(false);
     const own = run.ownAreaFor(run.schedule[1].id)!;
     expect(own.title).toBe("Protect Taleigao, Merces and St Cruz");
     expect(own.tiles.has(keys[keys.length - 1])).toBe(true);

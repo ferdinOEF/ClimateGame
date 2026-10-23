@@ -132,8 +132,7 @@
       "cyclone"
     ],
     "validTerrainIds": [
-      "estuary",
-      "river"
+      "estuary"
     ],
     "buildCost": 30,
     "maintenanceCostPerTurn": 0,
@@ -150,8 +149,7 @@
       "resilience": 5
     },
     "failureMode": "No destruction. Above overwhelmSeverity, absorption is cut to overwhelmedAbsorptionMultiplier for that hazard, but the buffer survives to the next one.",
-    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) — deliberately the smallest of the four money-generating elements (Sand Mining 14 > Beachside Resort 5 > Khazan 2 > Mangrove 1): Mangrove's value proposition is Biodiversity/Food, income is a bonus, not its purpose. Feed into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster.",
-    "riverEdgeOnly": true
+    "note": "PLACEHOLDER money magnitude (STEP_PROMPT_economy_food_yacht.md item 1) — deliberately the smallest of the four money-generating elements (Sand Mining 14 > Beachside Resort 5 > Khazan 2 > Mangrove 1): Mangrove's value proposition is Biodiversity/Food, income is a bonus, not its purpose. Feed into STEP_PROMPT_balance_tuning.md's harness once re-run against this roster."
   },
   {
     "id": "khazan",

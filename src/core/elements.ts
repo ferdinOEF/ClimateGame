@@ -79,8 +79,6 @@ export interface ElementDef {
   breaksAtAge?: number;
   /** Section 26.1, a game rule: cracked at this age in years, and then breaks in the next storm of its kind (seawall, small dam: 10). */
   cracksAtAge?: number;
-  /** Section 25.1, a game rule: on a river tile only at the river's edge, beside dry ground or a wetland (mangrove). */
-  riverEdgeOnly?: boolean;
 }
 
 export const ELEMENT_DEFS: ElementDef[] = elementData as unknown as ElementDef[];

@@ -570,8 +570,7 @@ export class PanjimController {
     tips.attach(this.motionToggle.el, "motionToggle");
     tips.attach(this.qualityButton, "qualityControl", () => ({ choice: this.qualityLabel(), fps: this.lastFps > 0 ? Math.round(this.lastFps) : "–" }));
     tips.attach(this.volumeSlider, "soundVolume", () => ({ pct: this.volumeSlider.value }));
-    const dismiss = this.maya.el.querySelector<HTMLElement>(".maya-dismiss");
-    if (dismiss) tips.attach(dismiss, "mayaDismiss");
+    // Section 30 (owner decision): "Got it" has no tooltip (it said what the button says, and covered her words).
   }
 
   // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version

@@ -161,6 +161,8 @@ export interface GameMap {
   unplayable: [number, number][];
   /** Where the east edge's scenery begins (q + r/2 at least this; Panaji, Section 19.2), for its note; absent elsewhere. */
   unplayableEastFrom?: number;
+  /** Section 30.1: scenery tiles outside the storms (`PlacedTile.dry`). Empty on maps without them. */
+  dry: [number, number][];
   tiles: PlacedTile[];
 }
 
@@ -184,6 +186,7 @@ interface MapFileShape {
   roadLinks?: [number, number, number, number][];
   unplayable?: [number, number][];
   unplayableEastFrom?: number;
+  dry?: [number, number][];
   skirtOpenSeaWestFromRow?: number;
   tiles: { q: number; r: number; terrainId: string; elevationM?: number }[];
 }
@@ -191,6 +194,7 @@ interface MapFileShape {
 function fromFile(file: unknown): GameMap {
   const data = file as MapFileShape;
   const scenery = new Set((data.unplayable ?? []).map(([q, r]) => `${q},${r}`));
+  const dry = new Set((data.dry ?? []).map(([q, r]) => `${q},${r}`));
   return {
     id: data.id,
     name: data.name,
@@ -212,12 +216,18 @@ function fromFile(file: unknown): GameMap {
     roadLinks: data.roadLinks ?? [],
     unplayable: data.unplayable ?? [],
     unplayableEastFrom: data.unplayableEastFrom,
+    dry: data.dry ?? [],
     skirtOpenSeaWestFromRow: data.skirtOpenSeaWestFromRow,
     tiles: data.tiles.map((tile) => {
       const placed: PlacedTile = tile.elevationM === undefined
         ? { coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId }
         : { coord: { q: tile.q, r: tile.r }, terrainId: tile.terrainId, elevationM: tile.elevationM };
       if (scenery.has(`${tile.q},${tile.r}`)) placed.scenery = true;
+      // Section 30.1: dry for the storms, and always scenery.
+      if (dry.has(`${tile.q},${tile.r}`)) {
+        placed.scenery = true;
+        placed.dry = true;
+      }
       return placed;
     })
   };
@@ -257,6 +267,7 @@ const LEGACY_MAP: GameMap = (() => {
     bridges: [],
     roadLinks: [],
     unplayable: [],
+    dry: [],
     name: "The Goa Coast",
     region: "Generated coastline",
     blurb:

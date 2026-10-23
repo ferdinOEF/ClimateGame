@@ -93,18 +93,28 @@ describe("the Panaji hand edits", () => {
   // tiles to the owner's new river and gained 23,1 (now estuary): 135, 4 of them on row 0 east of the line; the east
   // edge adds 121 more on rows 5 to 36: 256. Merces and St Cruz stay in the game; river and sea stay water.
   // Section 22.1: 16,4 is river now (the owner's fourth round), and water stays playable: 255.
-  it("keeps the north bank and the east edge as the stored unplayable tiles: 255, Ribandar among them", () => {
+  // Section 30.1 (owner decision): the creek corner east of Merces (33 tiles) leaves the game: 20 of them were
+  // playable (17 land, wetland and creek tiles, and 3 river tiles), so 275; all 33 are dry for the storms.
+  it("keeps the north bank, the east edge and the dropped corner as the stored unplayable tiles: 275, Ribandar among them", () => {
+    const dropped = new Set((edits.dropped ?? []).map(([q, r]: number[]) => `${q},${r}`));
+    expect(dropped.size).toBe(33);
     expect(panaji.unplayable).toEqual(edits.unplayable);
-    expect(edits.unplayable).toHaveLength(255);
+    expect(edits.unplayable).toHaveLength(275);
+    for (const key of dropped) expect(edits.unplayable.some(([q, r]: number[]) => `${q},${r}` === key), key).toBe(true);
+    expect((panaji.dry ?? []).map(([q, r]: number[]) => `${q},${r}`).sort()).toEqual([...dropped].sort());
+    const kept = edits.unplayable.filter(([q, r]: number[]) => !dropped.has(`${q},${r}`));
+    // 13 of the 33 were already scenery (the corner's wetland east of the line): 255 - 13 = 242 outside the corner.
+    expect(kept).toHaveLength(242);
     expect(edits.unplayable.some(([q, r]) => q === 16 && r === 4)).toBe(false);
-    const east = edits.unplayable.filter(([q, r]) => q + r / 2 >= 30.2);
-    expect(east).toHaveLength(125);
-    expect(east.filter(([, r]) => r >= 4)).toHaveLength(121);
+    const east = kept.filter(([q, r]: number[]) => q + r / 2 >= 30.2);
+    // Section 30.1: 13 of the east edge's 125 are in the dropped corner now: 112 outside it, 108 of them from row 4.
+    expect(east).toHaveLength(112);
+    expect(east.filter(([, r]: number[]) => r >= 4)).toHaveLength(108);
     expect(edits.unplayable.some(([q, r]) => q === 30 && r === 5)).toBe(true);
     expect(edits.unplayable.some(([q, r]) => (q === 19 && r === 16) || (q === 13 && r === 22))).toBe(false);
     for (const t of panaji.tiles) if (t.q + t.r / 2 >= 30.2 && ["land", "beach", "estuary"].includes(t.terrainId)) expect(edits.unplayable.some(([q, r]) => q === t.q && r === t.r), `${t.q},${t.r}`).toBe(true);
     for (const [q, r] of [[30, 4], [31, 4], [32, 4]]) expect(tiles.get(`${q},${r}`)?.terrainId).toBe("river");
-    for (const [q, r] of edits.unplayable) expect(["land", "beach", "estuary"]).toContain(tiles.get(`${q},${r}`)?.terrainId);
+    for (const [q, r] of kept) expect(["land", "beach", "estuary"]).toContain(tiles.get(`${q},${r}`)?.terrainId);
   });
 
   it("credits OpenStreetMap exactly as before, and says the board was adjusted by hand", () => {
