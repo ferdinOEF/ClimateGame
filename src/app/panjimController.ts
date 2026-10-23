@@ -21,7 +21,7 @@ import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
 import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialResultCard, type CardSpec, type CardsChoice } from "@ui/panjim/resultCards";
-import { biodiversityByKind, natureReason, nextLabel, phaseResult, type Place } from "@core/phaseResult";
+import { biodiversityByKind, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
 import { FinaleCard } from "@ui/panjim/finaleCard";
@@ -137,6 +137,8 @@ export interface PanjimHost {
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the forecast cone (null fades it out). */
   showCone: (cone: ConeShow | null) => void;
+  /** Section 30.9: the objective's tiles still to build, pulsing on the board. */
+  showObjectiveTiles: (keys: string[]) => void;
   /** Section 30.7: the storm's faint track all phase after the cone has gone (null hides it). */
   showStormTrail: (trail: { key: string; tracks: ConeShow["tracks"] } | null) => void;
   /** Glides the camera to frame a box of the board, in world x/z. */
@@ -289,6 +291,13 @@ export class PanjimController {
     this.getReady = new GetReadyPanel(this.run.economyEnabled);
     // Hovering a row lights the tiles that count for it (Section 12).
     this.getReady.onRowHover((job) => this.host.tintTiles(job ? (job.tiles ?? []).map((key) => ({ key, color: "#fff3c4", blend: 0.5 })) : null));
+    // Section 30.9: a row clicked pans the board to its tile (the first of its picks still to build).
+    this.getReady.onRowClick((job) => {
+      const key = this.pulseKeys(job)[0] ?? job.tiles?.[0];
+      if (!key) return;
+      const [q, r] = key.split(",").map(Number);
+      this.host.focusCamera({ q, r });
+    });
     host.mountPanel(this.getReady.el);
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     // Section 17c: Maya's notes come from her; hidden, the guide is the species alone.
@@ -603,8 +612,29 @@ export class PanjimController {
     const next = this.run.nextChallenge();
     const zones = this.run.zones;
     const rows = zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : [];
-    this.getReady.render(next ? next.name : null, rows);
+    // Section 30.9: the objective done, the storm after it to get ahead on (not in the Tutorial).
+    const complete = rows.length > 0 && rows.every((row) => row.done);
+    const ahead = complete && zones && !this.tutorial ? this.run.aheadObjective() : null;
+    this.aheadRows = ahead ? ahead.objective.rows : [];
+    this.aheadPicks = ahead ? ahead.objective.picks : [];
+    this.getReady.render(next ? next.name : null, rows, ahead && zones ? { storm: ahead.challenge.name, rows: ahead.objective.rows.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) } : null);
+    // The tiles still to build pulse on the board (this objective's, or once it is done, Get ahead's).
+    const jobs = complete ? this.aheadRows : this.run.prep;
+    this.host.showObjectiveTiles(this.run.finished ? [] : jobs.flatMap((job) => this.pulseKeys(job)));
     if (this.run.prep.length > 0) this.mayaDirector?.tip("get-ready");
+  }
+
+  /** Section 30.9: Get ahead's rows and picks now (empty until the objective is done). */
+  private aheadRows: PrepObjective[] = [];
+  private aheadPicks: { key: string; elementId: string }[] = [];
+
+  /** A row's picked tiles not yet built with its defence (the model's picks; the row's own tiles if it has none). */
+  private pulseKeys(job: PrepObjective): string[] {
+    const zones = this.run.zones;
+    if (zones && prepProgress(job, this.host.state, zones).done) return [];
+    const tiles = new Set(job.tiles ?? []);
+    const picks = [...(this.run.objective?.picks ?? []), ...this.aheadPicks].filter((pick) => pick.elementId === job.elementId && tiles.has(pick.key)).map((pick) => pick.key);
+    return [...new Set(picks)].filter((key) => this.host.state.elements.get(key)?.elementId !== job.elementId && this.host.state.canBuild({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, job.elementId));
   }
 
   /**
@@ -866,7 +896,9 @@ export class PanjimController {
       bioThree !== undefined
         ? { target: bioThree, since: this.run.config.startYear, at: stormStars?.bioAtEnd ? `at the end of ${challenge.year}` : undefined, byKind: biodiversityByKind(this.host.state.elements.values()) }
         : undefined;
-    const result = { ...phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature), objectiveComplete: this.run.objectivesComplete.has(challenge.id) };
+    const base = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature);
+    const short = stormStars ? shortOfThree(base.stars, base.homesSaved, base.homesTotal, stormStars, record.outcome.biodiversityChange) : null;
+    const result = { ...base, objectiveComplete: this.run.objectivesComplete.has(challenge.id), ...(short ? { shortOfThree: short } : {}) };
     const next = this.run.nextChallenge();
     const top = result.defences.find((d) => d.homes > 0);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };

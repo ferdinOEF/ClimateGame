@@ -20,6 +20,7 @@ import { BuildPuff } from "@render/buildPuff";
 import { TileHover } from "@render/tileHover";
 import { WildlifeDirector } from "@render/wildlife";
 import { KhazanPeople } from "@render/khazanPeople";
+import { ObjectivePulse } from "@render/objectivePulse";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
@@ -361,6 +362,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   coneOverlay.reducedMotion = prefersReducedMotionNow();
   scene.add(coneOverlay.group);
   scene.add(coneOverlay.trail);
+  /** Section 30.9: the objective's tiles still to build pulse until built. */
+  const objectivePulse = new ObjectivePulse();
+  scene.add(objectivePulse.mesh);
   /** Panjim 2050: the phase's area to protect, kept faintly once the cone has gone (Section 12). */
   const areaOutline = new AreaOutline();
   areaOutline.reducedMotion = prefersReducedMotionNow();
@@ -853,6 +857,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             if (cone) coneOverlay.show(cone, (coord) => terrain.heightAt(coord));
             else coneOverlay.hide();
           },
+          showObjectiveTiles: (keys) => objectivePulse.show(keys.map((key) => {
+            const [q, r] = key.split(",").map(Number);
+            return { q, r };
+          }), (coord) => terrain.heightAt(coord)),
           showStormTrail: (trail) => {
             if (trail) coneOverlay.showTrail(trail.key, trail.tracks, (coord) => terrain.heightAt(coord));
             else coneOverlay.hideTrail();
@@ -2697,6 +2705,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     coneOverlay.tick(nowMs);
     // Section 30.7: the faint storm track stays all phase, but not while a storm plays.
     if (stormDirector?.playing) coneOverlay.trail.visible = false;
+    objectivePulse.mesh.visible = !stormDirector?.playing;
+    objectivePulse.still = puffMotion.reduced;
+    objectivePulse.tick(nowMs);
     areaOutline.tick(nowMs);
     // Section 22.2: zoomed out (the camera past the opening view's distance), the labels a little smaller again.
     const far = cameraDistance() > LABELS_FAR_DISTANCE;
@@ -3087,6 +3098,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     buildPuff?.dispose();
     wildlife?.dispose();
     khazanPeople?.dispose();
+    objectivePulse.dispose();
     tileHover?.dispose();
     forecastOutline.dispose();
     heatOverlay.dispose();

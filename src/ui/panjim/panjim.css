@@ -2728,6 +2728,14 @@
   background: #a6d88a;
 }
 
+/* Section 30.9: under "Objective done", what stopped the third star. */
+.result-short {
+  margin: -4px 0 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #e8dcc6;
+}
+
 /*
  * Pins for the places an open objective names, and the "Area protected"
  * note (Section 12). Small, under every card and HUD panel, above the board.
@@ -3328,6 +3336,36 @@
 
 .get-ready.complete .get-ready-title {
   color: #9fdcae;
+}
+
+/* Section 30.9: rows are clickable (the board pans to their tile); "Get ahead" follows a done objective. */
+.get-ready-row {
+  cursor: pointer;
+}
+
+.get-ready-row:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.get-ready-row:focus-visible {
+  outline: 2px solid #f2c35b;
+  outline-offset: 1px;
+}
+
+.get-ready-ahead[hidden] {
+  display: none;
+}
+
+.get-ready-ahead-title {
+  margin: 8px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f2c35b;
+}
+
+.get-ready.complete .get-ready-ahead-list {
+  display: flex;
 }
 
 .has-panjim-clock .objectives-panel,

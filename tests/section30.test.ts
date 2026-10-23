@@ -109,3 +109,24 @@ describe("Section 30.8: a card's hover glow", () => {
     }
   });
 });
+
+describe("Section 30.9: objectives point at the board", () => {
+  it("what stopped three stars, in one line", async () => {
+    const { shortOfThree } = await import("../src/core/phaseResult");
+    const lines = { three: 0.9, bioThree: 6 };
+    expect(shortOfThree(3, 9, 9, lines, 8)).toBeNull();
+    expect(shortOfThree(2, 8, 9, lines, 8)).toBe("In this game 1 home was lost; three stars allow none.");
+    expect(shortOfThree(2, 9, 9, lines, 3)).toBe("In this game biodiversity was +3; three stars need +6.");
+    expect(shortOfThree(1, 40, 54, lines, -2)).toBe("In this game 14 homes were lost; three stars allow 5 at most, and biodiversity was −2; three stars need +6.");
+  });
+
+  it("Get ahead: once a phase's objective is done, the storm after it has its own objective", async () => {
+    const { newRun, BOT_LEVEL } = await import("../tools/panjimBots/bots");
+    const run = newRun("ahead-1", BOT_LEVEL, true);
+    expect(run.aheadObjective()).not.toBeNull();
+    const ahead = run.aheadObjective()!;
+    expect(ahead.challenge.id).toBe(run.schedule[1].id);
+    expect(ahead.objective.rows.length).toBeGreaterThan(0);
+    expect(ahead.objective.rows.length).toBeLessThanOrEqual(4);
+  });
+});

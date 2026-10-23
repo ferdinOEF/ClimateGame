@@ -315,6 +315,62 @@ export class ActionRun {
    * board stands now. Called when the run starts and when a storm resolves;
    * jobs from the storm that passed are dropped.
    */
+  /** The phase's own builds (5, 10, 10): set as its storm lands, the clock still reads the year before. */
+  private budgetFor(challenge: ScheduledChallenge): number {
+    return Math.min(this.buildsUntil(challenge), challenge.turn - this.phaseStart(challenge) + 1);
+  }
+
+  /** `challenge`'s objective chosen by the model on the board as it stands now (Section 12). */
+  private objectiveFor(challenge: ScheduledChallenge, budget: number): PhaseObjective {
+    const own = this.ownAreas.get(challenge.id);
+    const landfallTiles = this.zones!.keys(LANDFALL_ZONE);
+    return generatePhaseObjective({
+      state: this.state,
+      zones: this.zones!,
+      challenge,
+      storm: { kind: challenge.kind, strength: challenge.strength, landfall: this.landfallOf(challenge), sheltered: shelterOf(challenge), wind: challenge.wind, turn: challenge.turn - 1 },
+      landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
+      area: this.exposureFor(challenge)?.housesAtRisk ?? [],
+      budget,
+      places: this.prepConfig!.places,
+      localities: this.landmarkList,
+      stretch: own
+        ? {
+            tiles: own.tiles,
+            place: regionPlace(own.region),
+            // A localities area names each row by its own locality ("in Merces").
+            placeOf: "localities" in own.region ? this.localityPlace(own.region.localities) : undefined,
+            title: own.title,
+            pins: this.regionPins(own.region),
+            // Its rows only from tiles inside it (Section 16.4 and 16.5).
+            only: true
+          }
+        : null
+    });
+  }
+
+  private aheadCache: { key: string; objective: PhaseObjective | null } | null = null;
+
+  /**
+   * Section 30.9: once this phase's objective is done, the storm after it ("Get ahead"): its objective chosen by
+   * the model on the board as it stands, with the builds left before the next storm as its budget. Null when there
+   * is no later storm or the level has no model objectives. Cached until the board changes.
+   */
+  aheadObjective(): { challenge: ScheduledChallenge; objective: PhaseObjective } | null {
+    const next = this.nextChallenge();
+    if (!next || !this.zones || !this.prepConfig?.model || !this.generateObjectives) return null;
+    const i = this.schedule.indexOf(next);
+    const later = i >= 0 ? this.schedule[i + 1] : undefined;
+    if (!later || this.landed.has(later.id)) return null;
+    const key = `${this.moment}|${later.id}`;
+    if (this.aheadCache?.key !== key) {
+      const budget = Math.max(0, this.buildsUntil(next) - 1);
+      this.aheadCache = { key, objective: budget > 0 ? this.objectiveFor(later, budget) : null };
+    }
+    const objective = this.aheadCache.objective;
+    return objective && objective.rows.length > 0 ? { challenge: later, objective } : null;
+  }
+
   refreshPrep(): PrepObjective[] {
     const next = this.nextChallenge();
     if (!this.prepConfig || !next || !this.zones) {
@@ -326,32 +382,7 @@ export class ActionRun {
       this.objective = null;
       this.prep = [];
       if (!this.generateObjectives) return this.prep;
-      const own = this.ownAreas.get(next.id);
-      const landfallTiles = this.zones.keys(LANDFALL_ZONE);
-      this.objective = generatePhaseObjective({
-        state: this.state,
-        zones: this.zones,
-        challenge: next,
-        storm: { kind: next.kind, strength: next.strength, landfall: this.landfallOf(next), sheltered: shelterOf(next), wind: next.wind, turn: next.turn - 1 },
-        landfallZoneTiles: landfallTiles.length > 0 ? landfallTiles : undefined,
-        area: this.exposureFor(next)?.housesAtRisk ?? [],
-        // The phase's own builds (5, 10, 10): set as its storm lands, the clock still reads the year before.
-        budget: Math.min(this.buildsUntil(next), next.turn - this.phaseStart(next) + 1),
-        places: this.prepConfig.places,
-        localities: this.landmarkList,
-        stretch: own
-          ? {
-              tiles: own.tiles,
-              place: regionPlace(own.region),
-              // A localities area names each row by its own locality ("in Merces").
-              placeOf: "localities" in own.region ? this.localityPlace(own.region.localities) : undefined,
-              title: own.title,
-              pins: this.regionPins(own.region),
-              // Its rows only from tiles inside it (Section 16.4 and 16.5).
-              only: true
-            }
-          : null
-      });
+      this.objective = this.objectiveFor(next, this.budgetFor(next));
       this.prep = this.objective.rows;
       return this.prep;
     }

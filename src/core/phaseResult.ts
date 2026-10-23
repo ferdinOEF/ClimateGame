@@ -51,6 +51,8 @@ export interface PhaseResult {
   nature?: NatureLine;
   /** Section 26.3: homes lost that the water alone would have left standing: the wind took them. */
   windLost: number;
+  /** Section 30.9: with the objective done but fewer than 3 stars, one line on what stopped the third (a game rule). */
+  shortOfThree?: string;
 }
 
 /** Section 25.2: the card's second line: the board's biodiversity change since the run began, and why. */
@@ -169,6 +171,25 @@ export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, 
       ? { nature: { change: outcome.biodiversityChange, target: nature.target, since: nature.since, ...(nature.at ? { at: nature.at } : {}), reason: natureReason(outcome.biodiversityChange, nature.target, nature.byKind) } }
       : {})
   };
+}
+
+/**
+ * Section 30.9: what kept a storm under three stars, in one line (the level's star lines are game rules): too many
+ * homes lost, too little biodiversity, or both. Null at three stars.
+ */
+export function shortOfThree(stars: number, saved: number, total: number, thresholds: { three: number; bioThree?: number }, biodiversityChange?: number): string | null {
+  if (stars >= 3) return null;
+  const lost = total - saved;
+  const allowed = Math.max(0, total - Math.ceil(thresholds.three * total - 1e-9));
+  const homesShort = total > 0 && saved / total < thresholds.three;
+  const bioShort = thresholds.bioThree !== undefined && biodiversityChange !== undefined && biodiversityChange < thresholds.bioThree;
+  const homes = `${lost} ${lost === 1 ? "home was" : "homes were"} lost; three stars allow ${allowed === 0 ? "none" : `${allowed} at most`}`;
+  const sign = (n: number): string => (n > 0 ? `+${n}` : n < 0 ? `\u2212${Math.abs(n)}` : "0");
+  const bio = bioShort ? `biodiversity was ${sign(Math.round(biodiversityChange!))}; three stars need ${sign(thresholds.bioThree!)}` : "";
+  if (homesShort && bioShort) return `In this game ${homes}, and ${bio}.`;
+  if (homesShort) return `In this game ${homes}.`;
+  if (bioShort) return `In this game ${bio}.`;
+  return null;
 }
 
 /** Card 1's headline, by stars. */

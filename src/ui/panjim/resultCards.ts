@@ -88,12 +88,22 @@ export function resultCard(result: PhaseResult): HTMLElement {
     <div class="result-eyebrow">${esc(result.eyebrow)}</div>
     <h2 class="result-title">${esc(resultHeadline(result.stars))}</h2>
     ${starsHtml(result.stars)}
-    ${result.objectiveComplete ? `<div class="result-badge" role="note">Objective complete</div>` : ""}
+    ${objectiveHtml(result)}
     ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}
     ${windHtml(result.windLost)}
     ${result.nature ? natureHtml(result.nature) : ""}
     ${places}
   </div>`);
+}
+
+/**
+ * The objective's badge (Section 12): "Objective complete" with three stars; with fewer (Section 30.9) "Objective
+ * done" and one line on what stopped the third star.
+ */
+export function objectiveHtml(result: PhaseResult): string {
+  if (!result.objectiveComplete) return "";
+  if (result.stars >= 3 || !result.shortOfThree) return `<div class="result-badge" role="note">Objective complete</div>`;
+  return `<div class="result-badge" role="note">Objective done</div><p class="result-short">${esc(result.shortOfThree)}</p>`;
 }
 
 /** Section 26.3: the homes the wind alone took, and what shields them (a game rule). Nothing when it took none. */

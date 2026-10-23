@@ -64,6 +64,7 @@ describe("objectives chosen by the model", () => {
     for (let phase = 0; phase < 3; phase++) {
       const objective = r.objective!;
       expect(objective.rows.length, `phase ${phase + 1}`).toBeGreaterThan(0);
+      expect(objective.rows.length, `phase ${phase + 1}: Section 30.9, at most 4 rows`).toBeLessThanOrEqual(4);
       for (const row of r.prep) {
         expect(row.homes!, row.label).toBeGreaterThanOrEqual(1);
         expect(row.count).toBeGreaterThanOrEqual(1);
@@ -138,7 +139,8 @@ describe("objectives chosen by the model", () => {
     expect(r.objective!.rows.length).toBeGreaterThan(0);
     for (const row of r.objective!.rows) {
       expect(row.heading).toBe("Protect Taleigao, Merces and St Cruz");
-      expect(row.label).toMatch(/ in (Taleigao|Merces|St Cruz)$/);
+      // Section 30.9: at most 4 rows, a defence's places named together when there would be more.
+      expect(row.label).toMatch(/ in (Taleigao|Merces|St Cruz)((, | and )(Taleigao|Merces|St Cruz))*$/);
       expect(row.pins!.map((p) => p.name)).toEqual(["Taleigao", "Merces", "St Cruz"]);
     }
     for (const pick of r.objective!.picks) expect(own.tiles.has(pick.key), pick.key).toBe(true);
