@@ -1,0 +1,7 @@
+PASS [1920x1080] the Tutorial played by its nudges: seven captions, both storms 3 stars, the last card, on to Panjim
+PASS [1920x1080] console errors: 0
+TIME [1920x1080] with Speed up: 1.4 min (82 s, Begin to the last card; software GL)
+PASS [1920x1080] Try again restarts the Tutorial at 2026 with its opening card ({"hash":"#/play/l00-tutorial","brief":true,"year":2026})
+PASS [1920x1080] played without Speed up
+TIME [1920x1080] without Speed up: 2.8 min (169 s; software GL)
+ALL PASS [1920x1080]
