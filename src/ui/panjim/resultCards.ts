@@ -186,7 +186,7 @@ export function tutorialResultCard(result: PhaseResult, rows: readonly TutorialD
     ${starsHtml(result.stars)}
     ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}
     ${list}
-    ${last ? "" : `<p class="result-sub">Next, a river flood. Its defences grow on the estuary and the river.</p>`}
+    ${last ? "" : `<p class="result-sub">Next, a river flood. Its defences go on the estuary and the river.</p>`}
   </div>`);
 }
 

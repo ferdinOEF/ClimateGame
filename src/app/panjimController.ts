@@ -347,9 +347,11 @@ export class PanjimController {
       { storageKey: "riptide-rising:calm-motion", label: "Calm motion", shortcut: "", defaultOn: prefersReducedMotion(), className: "motion-toggle" },
       (on) => {
         host.setReducedMotion(on);
+        this.tutorialPanel?.setReducedMotion(on);
         this.recheckRiskIntroMode();
       }
     );
+    this.tutorialPanel?.setReducedMotion(this.motionToggle.value);
     // Section 30.12 (festival mode): larger words for those who need them; not remembered (the next visitor
     // starts with the usual size).
     this.textToggle = new PrefToggle(
@@ -635,6 +637,10 @@ export class PanjimController {
   private readonly tutorialTried = new Set<string>();
   /** Section 31.4: by storm, the homes each defence took out of its way when it was built. */
   private readonly tutorialCredit = new Map<string, Map<string, number>>();
+  /** By storm, why a defence's build took none: no home left at risk ("safe"), or too far from them ("far"). */
+  private readonly tutorialNoneWhy = new Map<string, Map<string, "safe" | "far">>();
+  /** The Tutorial's last build (it may be the one that brought the storm, so not yet on `preChallengeIds`). */
+  private tutorialLastBuild: { key: string; elementId: string } | null = null;
   /** The defence the player has just built in the Tutorial, for its caption's "Built". */
   private tutorialJustBuilt: string | null = null;
   /** The step Maya last gave her line for. */
@@ -647,14 +653,19 @@ export class PanjimController {
    */
   private renderTutorial(speak = true): void {
     const panel = this.tutorialPanel!;
-    const suggested = this.run.finished ? null : suggestedDefence(this.tutorialTried);
+    const suggested = this.run.finished ? null : this.tutorialSuggestion();
     panel.render(this.tutorialTried, suggested, this.tutorialJustBuilt);
     this.tutorialJustBuilt = null;
     const tiles = suggested && !this.busy ? goodTiles(this.run, suggested).map(({ coord }) => `${coord.q},${coord.r}`) : [];
     this.host.showObjectiveTiles(tiles);
     if (speak && suggested && suggested !== this.tutorialSaid && !this.holding && !this.busy) {
       this.tutorialSaid = suggested;
-      const line = STEP_BY_ID.get(suggested)!.maya;
+      // A suggestion that does nothing in the coming storm (only such defences are left untried) says so.
+      const step = STEP_BY_ID.get(suggested)!;
+      const next = this.run.nextChallenge();
+      const hazard = next?.kind === "flood" ? "flood" : "cyclone";
+      const fits = !next || (ELEMENT_BY_ID.get(suggested)?.targetsHazards ?? []).includes(hazard);
+      const line = fits ? step.maya : `${step.name} will not help in the ${hazard === "flood" ? "river flood" : "cyclone"}, but you can still try it.`;
       // The first step's line follows her opening line; later ones replace whatever she was saying.
       if (this.run.turnNumber > 1) {
         this.maya.withdraw((l) => l.id.startsWith("tutorial:"));
@@ -663,6 +674,11 @@ export class PanjimController {
       this.maya.say({ id: `tutorial:step:${suggested}`, text: line, state: "tip", urgent: this.run.turnNumber > 1 });
       if (this.run.turnNumber > 1) this.maya.next();
     }
+  }
+
+  /** Section 31.2: the defence suggested now, for the coming storm (`suggestedDefence`). */
+  private tutorialSuggestion(): ReturnType<typeof suggestedDefence> {
+    return suggestedDefence(this.tutorialTried, this.run.nextChallenge()?.kind ?? null);
   }
 
   private renderGetReady(): void {
@@ -982,7 +998,7 @@ export class PanjimController {
       // the last card: the defences tried, then Play Panjim, Try again (the Tutorial from its start) or the menu.
       this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, tutorial: true });
       const last = next === null;
-      const card = { body: tutorialResultCard(result, this.tutorialRows(challenge, record), last), button: last ? "See what you tried" : `On to ${this.run.year}` };
+      const card = { body: tutorialResultCard(result, this.tutorialRows(challenge), last), button: last ? "See what you tried" : `On to ${this.run.year}` };
       const cards: CardSpec[] = last
         ? [card, { body: tutorialFinalCard(this.tutorialTried, TUTORIAL_STEPS), button: "Play Panjim", alt: "Try again", link: "Back to the menu" }]
         : [card];
@@ -1011,22 +1027,29 @@ export class PanjimController {
    * out of this storm's way when it was built (the same model as the storm, so the rows add up to the homes kept
    * safe), and why where none: the wrong kind of storm, broken before it, or its homes already safe.
    */
-  private tutorialRows(challenge: ScheduledChallenge, record: StormRecord): TutorialDefenceRow[] {
-    void record;
+  private tutorialRows(challenge: ScheduledChallenge): TutorialDefenceRow[] {
     const storm = challenge.kind === "flood" ? "flood" : "cyclone";
     const credit = this.tutorialCredit.get(challenge.id) ?? new Map<string, number>();
+    const none = this.tutorialNoneWhy.get(challenge.id) ?? new Map<string, "safe" | "far">();
+    // The board as the storm came: the one before the action that brought it, and that action's own build.
+    const standing = new Map(this.preChallengeIds);
+    if (this.tutorialLastBuild) standing.set(this.tutorialLastBuild.key, this.tutorialLastBuild.elementId);
     const rows: TutorialDefenceRow[] = [];
     for (const step of TUTORIAL_STEPS) {
       if (!this.tutorialTried.has(step.id)) continue;
       const targets = ELEMENT_BY_ID.get(step.id)?.targetsHazards ?? [];
-      const homes = Math.max(0, credit.get(step.id) ?? 0);
-      const keys = [...this.preChallengeIds].filter(([, id]) => id === step.id).map(([key]) => key);
-      const broken = keys.length > 0 && keys.every((key) => this.wasBroken(key));
+      const keys = [...standing].filter(([, id]) => id === step.id).map(([key]) => key);
+      const gone = keys.length === 0;
+      const broken = !gone && keys.every((key) => this.wasBroken(key));
+      // Taken down or broken before the storm: it took nothing out of its way, whatever it did when built.
+      const homes = gone || broken ? 0 : Math.max(0, credit.get(step.id) ?? 0);
       let why: string | null = null;
       if (homes === 0) {
-        if (!targets.includes(storm)) why = `A ${targets.includes("flood") ? "flood" : "cyclone"} defence; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
+        if (gone) why = "Taken down before this storm";
         else if (broken) why = "Broken before this storm";
-        else why = "Its homes were already safe when you built it";
+        else if (!targets.includes(storm)) why = `A ${targets.includes("flood") ? "flood" : "cyclone"} defence; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
+        else if (none.get(step.id) === "safe") why = "Its homes were already safe when you built it";
+        else why = "Too far from the homes in this storm's path";
       }
       rows.push({ elementId: step.id, name: step.name, homes, why });
     }
@@ -1442,17 +1465,22 @@ export class PanjimController {
     const outside = buildable ? this.outsideNote(coord, elementId) : null;
     // Section 31.4: in the Tutorial, what this build takes out of each coming storm's way, worked out before it
     // goes down (the same model as the storm); the storm's card credits each defence with it.
-    const credit = this.tutorial && buildable ? this.run.schedule.filter((c) => !this.run.landed.has(c.id)).map((c) => ({ id: c.id, saves: this.run.homesSavedBy(c, coord, elementId) ?? 0 })) : [];
+    const credit = this.tutorial && buildable
+      ? this.run.schedule.filter((c) => !this.run.landed.has(c.id)).map((c) => ({ id: c.id, saves: this.run.homesSavedBy(c, coord, elementId) ?? 0, atRisk: this.run.homesAtRisk(c) }))
+      : [];
     // No pop-up over the tile after a build (Section 23.2, owner decision): it just goes down.
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
     // Section 31.2: the checklist ticks the defence; its caption says "Built" before the next slides in.
     if (this.tutorial) {
-      for (const { id, saves } of credit) {
+      for (const { id, saves, atRisk } of credit) {
         const byDefence = this.tutorialCredit.get(id) ?? new Map<string, number>();
         byDefence.set(elementId, (byDefence.get(elementId) ?? 0) + saves);
         this.tutorialCredit.set(id, byDefence);
+        // Why a build took none out of this storm's way: nothing left at risk, or too far from what was.
+        if (saves <= 0) (this.tutorialNoneWhy.get(id) ?? this.tutorialNoneWhy.set(id, new Map()).get(id)!).set(elementId, atRisk === 0 ? "safe" : "far");
       }
+      this.tutorialLastBuild = { key: `${coord.q},${coord.r}`, elementId };
       this.tutorialTried.add(elementId);
       this.tutorialJustBuilt = elementId;
       // At once, before a storm this build brings: the tick and "Built" show as the defence goes down (Maya's next
@@ -1730,7 +1758,7 @@ export class PanjimController {
     if (!this.tutorial || this.coached.has(id)) return;
     this.coached.add(id);
     // Only the line for now: one left waiting (Maya muted or shut) would be stale by the time she speaks.
-    this.maya.withdraw((line) => line.id.startsWith("tutorial:"));
+    this.maya.withdraw((line) => line.id.startsWith("tutorial:") && !line.id.startsWith("tutorial:step:"));
     this.maya.dismiss();
     this.maya.say({ id: `tutorial:${id}`, text: TUTORIAL_LINES[id], state, urgent: true });
     this.maya.next();
@@ -1745,7 +1773,7 @@ export class PanjimController {
     if (!this.tutorial) return;
     if (this.run.turnNumber === 1) this.coach("cards", "explains");
     // Section 31.2: every year, the card of the defence the Tutorial suggests glows.
-    const wanted = suggestedDefence(this.tutorialTried);
+    const wanted = this.tutorialSuggestion();
     const card = [...this.host.container.querySelectorAll<HTMLElement>(".build-popover .build-card")].find((el) => el.dataset.element === wanted);
     card?.classList.add("coach-pulse");
   }
@@ -2232,6 +2260,7 @@ export class PanjimController {
 
   dispose(): void {
     this.keyAbort.abort();
+    this.tutorialPanel?.dispose();
     this.maya.dispose();
     this.mayaToggle.dispose();
     this.replayCard.dispose();

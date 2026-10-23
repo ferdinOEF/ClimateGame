@@ -31,9 +31,9 @@ export interface TutorialStep {
 
 const bio = (id: string): number => ELEMENT_BY_ID.get(id)?.effects.biodiversity ?? 0;
 const def = (id: string) => ELEMENT_BY_ID.get(id);
-const ORDINAL = ["first", "1st", "2nd", "3rd", "4th", "5th"];
+const ORDINAL = ["", "1st", "2nd", "3rd", "4th", "5th"];
 /** "2nd": the storm a defence that comes through `survivesStorms` of them breaks in. */
-const breaksIn = (id: string): string => ORDINAL[(def(id)?.survivesStorms ?? 0) + 1] ?? `${(def(id)?.survivesStorms ?? 0) + 1}th`;
+export const breaksIn = (id: string): string => ORDINAL[(def(id)?.survivesStorms ?? 0) + 1] ?? `${(def(id)?.survivesStorms ?? 0) + 1}th`;
 const defenceBios = NUDGE_ORDER.map((id) => bio(id));
 const mostBio = Math.max(...defenceBios);
 const leastBio = Math.min(...defenceBios);
@@ -57,7 +57,7 @@ const STEPS: Omit<TutorialStep, "name" | "icon">[] = [
   {
     id: "dune",
     protects: ["Cyclone waves", "Surge"],
-    how: ["Sand held by grasses and creepers.", "It takes the force of the waves and the surge before they reach the homes."],
+    how: ["Sand held by grasses and creepers.", "It stands as a barrier between the sea and the homes behind it."],
     sources: ["dune-plants", "dunes-barrier"],
     inGame: `In this game: adds ${bio("dune")} biodiversity.`,
     maya: "Try a dune on the glowing beach.",
@@ -66,16 +66,16 @@ const STEPS: Omit<TutorialStep, "name" | "icon">[] = [
   {
     id: "sandy_vegetation",
     protects: ["Cyclone waves", "Wind"],
-    how: ["Screw pine.", "Its roots bind the sand and its thick leaves break the wind."],
-    sources: ["card-pandanus"],
+    how: ["Screw pine.", "It holds the sand, and a row of it shelters what is behind from the wind."],
+    sources: ["pandanus-windbreak"],
     inGame: "In this game: the only defence that shields homes from a cyclone's wind.",
-    maya: "Now pandanus on the beach: it stops the wind.",
+    maya: "Now pandanus on the beach: it breaks the wind.",
     bestAt: "The only shelter from a cyclone's wind."
   },
   {
     id: "breakwater",
     protects: ["Cyclone waves"],
-    how: ["A rock barrier out in the sea.", "It breaks cyclone waves before they reach the shore."],
+    how: ["A barrier out in the sea.", "It breaks the waves before they reach the shore."],
     sources: ["card-breakwater"],
     inGame: `In this game: little help in a river flood, costs ${-bio("breakwater")} biodiversity, breaks at ${def("breakwater")?.breaksAtAge} years old.`,
     maya: "A breakwater goes out in the sea. Try the glowing water.",
@@ -87,16 +87,16 @@ const STEPS: Omit<TutorialStep, "name" | "icon">[] = [
     how: ["A hard wall along the shore.", "It shields the land behind it from waves and surge."],
     sources: ["seawall-what"],
     inGame: seawallLine(),
-    maya: "Last before the cyclone: a seawall on the beach.",
+    maya: "Try a seawall on the glowing beach.",
     bestAt: "The strongest wall against a cyclone's surge."
   },
   {
     id: "mangrove",
     protects: ["Cyclone waves", "Surge", "River flood"],
-    how: ["Trees whose tangled roots stand in salty water.", "They slow the waves and lower the surge."],
+    how: ["Mangrove forests slow the flow of the water.", "They lower a storm's surge and cut the height of its waves."],
     sources: ["mangrove-surge", "mangrove-waves"],
     inGame: mangroveLine(),
-    maya: "The river floods next. Plant a mangrove in the estuary.",
+    maya: "Plant a mangrove in the estuary: it helps in both storms.",
     bestAt: "Helps in both storms, and adds the most to nature."
   },
   {
@@ -114,7 +114,7 @@ const STEPS: Omit<TutorialStep, "name" | "icon">[] = [
     how: ["A low wall across the river.", "It holds back the river's water."],
     sources: ["card-small-dam"],
     inGame: `In this game: little help in a cyclone, costs ${-bio("small_dam")} biodiversity, breaks in its ${breaksIn("small_dam")} flood or once ${def("small_dam")?.cracksAtAge} years old.`,
-    maya: "Last one: a small dam on the river.",
+    maya: "Try a small dam on the river.",
     bestAt: "The strongest stop for a river flood."
   }
 ];

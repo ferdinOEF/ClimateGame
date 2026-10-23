@@ -69,6 +69,11 @@ describe("the nudge (Section 31.2)", () => {
     expect(suggestedDefence(triedDefences(["dune", "sandy_vegetation", "mangrove"]))).toBe("breakwater");
     expect(suggestedDefence(triedDefences([...NUDGE_ORDER]))).toBeNull();
     expect(triedDefences(["house", "dune"]).size).toBe(1);
+    // Before the flood, a player who left the order is pointed at a defence for the flood first.
+    expect(suggestedDefence(triedDefences(["dune", "small_dam"]), "flood")).toBe("mangrove");
+    expect(suggestedDefence(triedDefences(["mangrove", "khazan", "small_dam"]), "cyclone")).toBe("dune");
+    // Only cyclone defences left before the flood: the first of them, all the same.
+    expect(suggestedDefence(triedDefences(["dune", "mangrove", "khazan", "small_dam"]), "flood")).toBe("sandy_vegetation");
   });
 
   it("pulses 2 or 3 tiles where the suggested defence saves homes, every year of the nudged path", () => {

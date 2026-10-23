@@ -508,6 +508,21 @@
         "url": "https://www.conservationgateway.org/collections/ocean/storm-surge-reduction-mangroves/",
         "note": "Section 31, the Tutorial's mangrove caption. The report examines how mangroves reduce surge water levels and wave energy: they can lower surge levels by slowing the flow of water and reducing surface waves. Checked from the search engine's quotation of summaries of the report (the report itself could not be opened from this environment)."
       }
+    },
+    {
+      "id": "pandanus-windbreak",
+      "kind": "fact",
+      "text": "Pandanus is planted in living fences and coastal windbreaks, and to hold the soil.",
+      "sourcesOnly": true,
+      "elements": [],
+      "citation": {
+        "title": "Pandanus odoratissimus (PROTA)",
+        "authors": "PROTA (Plant Resources of Tropical Africa)",
+        "publisher": "Pl@ntUse, PROTA4U",
+        "year": "n.d.",
+        "url": "https://uses.plantnet-project.org/en/Pandanus_odoratissimus_(PROTA)",
+        "note": "Section 31, the Tutorial's pandanus caption. The record says Pandanus odoratissimus is used in living fences and coastal windbreaks and is planted for soil stabilization. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+      }
     }
   ]
 }

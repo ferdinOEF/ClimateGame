@@ -19,6 +19,8 @@ export class TutorialPanel {
   /** A step waiting for "Built" to finish before it slides in. */
   private queued: NudgeId | null | undefined = undefined;
   private reducedMotion = false;
+  /** How many of the seven are tried (the closing card says so when the run ends short of seven). */
+  private tried = 0;
 
   constructor() {
     this.el = document.createElement("section");
@@ -47,6 +49,7 @@ export class TutorialPanel {
 
   setReducedMotion(on: boolean): void {
     this.reducedMotion = on;
+    this.el.classList.toggle("still", on);
   }
 
   /**
@@ -64,6 +67,7 @@ export class TutorialPanel {
       li.setAttribute("aria-label", `${STEP_BY_ID.get(id)!.name}${done ? ", tried" : ""}`);
     }
     this.countEl.textContent = `${count} of ${NUDGE_ORDER.length}`;
+    this.tried = count;
     if (justBuilt && justBuilt === this.shown && suggested !== this.shown) {
       this.showBuilt(suggested);
       return;
@@ -102,7 +106,10 @@ export class TutorialPanel {
     if (!id) {
       const done = document.createElement("div");
       done.className = "tutorial-card tutorial-card-done";
-      done.innerHTML = `<b>Every defence tried</b><p>Watch what each one does in the storm.</p>`;
+      // No suggestion: every defence tried, or the seven years are up (Section 31: never "every" when it was not).
+      const all = this.tried >= NUDGE_ORDER.length;
+      done.innerHTML = `<b></b><p>Watch what each one does in the storm.</p>`;
+      (done.querySelector("b") as HTMLElement).textContent = all ? "Every defence tried" : `You tried ${this.tried} of ${NUDGE_ORDER.length}`;
       this.caption.appendChild(done);
       return;
     }

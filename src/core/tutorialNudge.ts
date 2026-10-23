@@ -1,4 +1,5 @@
 import type { ActionRun } from "./actionRun";
+import { ELEMENT_BY_ID } from "./elements";
 import type { AxialCoord } from "./hex";
 
 /**
@@ -16,9 +17,16 @@ export function triedDefences(builtIds: Iterable<string>): Set<NudgeId> {
   return tried;
 }
 
-/** The defence the Tutorial suggests now: the first in the order not yet tried, or null once all seven are. */
-export function suggestedDefence(tried: ReadonlySet<string>): NudgeId | null {
-  return NUDGE_ORDER.find((id) => !tried.has(id)) ?? null;
+/**
+ * The defence the Tutorial suggests now: the first in the order not yet tried that works against the coming storm
+ * (`storm`, its kind: a player who left the order is never pointed at a defence for a storm already past), else the
+ * first not yet tried; null once all seven are.
+ */
+export function suggestedDefence(tried: ReadonlySet<string>, storm?: string | null): NudgeId | null {
+  const untried = NUDGE_ORDER.filter((id) => !tried.has(id));
+  const hazard = storm === "flood" ? "flood" : storm ? "cyclone" : null;
+  const fits = hazard ? untried.find((id) => (ELEMENT_BY_ID.get(id)?.targetsHazards ?? []).includes(hazard)) : undefined;
+  return fits ?? untried[0] ?? null;
 }
 
 /**

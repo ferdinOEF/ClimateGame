@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { NUDGE_ORDER } from "../src/core/tutorialNudge";
 import { factById } from "../src/core/facts";
-import { STEP_BY_ID, TUTORIAL_STEPS, tutorialStepStrings } from "../src/ui/panjim/tutorialSteps";
+import { STEP_BY_ID, TUTORIAL_STEPS, breaksIn, tutorialStepStrings } from "../src/ui/panjim/tutorialSteps";
 import { punctuationProblems } from "./helpers/uiStrings";
 import maya from "../src/data/maya.json";
 import tooltips from "../src/data/tooltips.json";
@@ -30,9 +30,10 @@ describe("the Tutorial's captions (Section 31.3)", () => {
     expect(STEP_BY_ID.get("breakwater")!.inGame).toContain(`costs ${-bio("breakwater")} biodiversity, breaks at ${ELEMENT_BY_ID.get("breakwater")!.breaksAtAge} years old`);
     const seawall = ELEMENT_BY_ID.get("seawall")!;
     expect(STEP_BY_ID.get("seawall")!.inGame).toContain(`costs ${-bio("seawall")} biodiversity`);
-    expect(STEP_BY_ID.get("seawall")!.inGame).toContain(`breaks in its ${seawall.survivesStorms! + 1 === 2 ? "2nd" : "?"} cyclone or once ${seawall.cracksAtAge} years old`);
+    expect(breaksIn("seawall")).toBe(["", "1st", "2nd", "3rd"][seawall.survivesStorms! + 1]);
+    expect(STEP_BY_ID.get("seawall")!.inGame).toContain(`breaks in its ${breaksIn("seawall")} cyclone or once ${seawall.cracksAtAge} years old`);
     const dam = ELEMENT_BY_ID.get("small_dam")!;
-    expect(STEP_BY_ID.get("small_dam")!.inGame).toContain(`costs ${-bio("small_dam")} biodiversity, breaks in its ${dam.survivesStorms! + 1 === 2 ? "2nd" : "?"} flood or once ${dam.cracksAtAge} years old`);
+    expect(STEP_BY_ID.get("small_dam")!.inGame).toContain(`costs ${-bio("small_dam")} biodiversity, breaks in its ${breaksIn("small_dam")} flood or once ${dam.cracksAtAge} years old`);
     // And in the source, no digit is typed into an "In this game" line (each comes through ${...} from the data).
     const source = fs.readFileSync("src/ui/panjim/tutorialSteps.ts", "utf8");
     for (const line of source.split("\n").filter((l) => /inGame: `|return `In this game/.test(l))) expect(line.replace(/\$\{[^}]*\}/g, ""), line).not.toMatch(/\d/);
@@ -53,7 +54,7 @@ describe("the Tutorial's captions (Section 31.3)", () => {
     const strings = [...tutorialStepStrings(), ...Object.values(maya.tutorial), tooltips.biodiversityCounterTutorial];
     // The result cards' lines (Section 31.4), as the controller writes them.
     for (const storm of ["cyclone", "river flood"]) for (const kind of ["flood", "cyclone"]) strings.push(`A ${kind} defence; this was a ${storm}`);
-    strings.push("Broken before this storm", "Its homes were already safe when you built it", "Each number is the homes it took out of this storm's way when you built it.", "Next, a river flood. Its defences grow on the estuary and the river.", "You tried 7 of 7 defences", "Try every defence", "Every defence tried", "Watch what each one does in the storm.", "It hurries the storm");
+    strings.push("Broken before this storm", "Taken down before this storm", "Too far from the homes in this storm's path", "You tried 3 of 7", "Pandanus will not help in the river flood, but you can still try it.", "Its homes were already safe when you built it", "Each number is the homes it took out of this storm's way when you built it.", "Next, a river flood. Its defences go on the estuary and the river.", "You tried 7 of 7 defences", "Try every defence", "Every defence tried", "Watch what each one does in the storm.", "It hurries the storm");
     for (const s of strings) {
       expect(punctuationProblems(s), s).toEqual([]);
       expect(s, s).not.toMatch(/·|\s[-–—]\s|\be\.g\.|\betc\.|\b\w+-\w+\b/);
