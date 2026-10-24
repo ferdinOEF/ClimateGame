@@ -708,9 +708,9 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  color: #fdf6e6;
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+  color: var(--ink);
   animation: finale-title-in 1.4s ease-out both;
+  gap: 10px;
 }
 
 .finale-title.leaving {
@@ -721,7 +721,12 @@
   font-size: 18px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: #9fd8c6;
+  color: var(--band-ink);
+  background: var(--band);
+  padding: 6px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: 0 4px 0 var(--panel-shadow);
 }
 
 .finale-title-main {
@@ -729,6 +734,10 @@
   font-size: clamp(64px, 8vw, 132px);
   font-weight: 700;
   line-height: 1;
+  background: var(--panel);
+  padding: 14px 40px 18px;
+  border-radius: 20px;
+  box-shadow: 0 6px 0 var(--panel-shadow);
 }
 
 @keyframes finale-title-in {
@@ -763,7 +772,7 @@
   font-size: 12px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #9fd8c6;
+  color: var(--accent-ink);
 }
 
 .finale-index {
@@ -777,13 +786,13 @@
   font-family: var(--font-head);
   font-size: 72px;
   font-weight: 700;
-  color: #f2c35b;
+  color: var(--ink);
   line-height: 1;
 }
 
 .finale-index-label {
   font-size: 15px;
-  color: rgba(253, 246, 230, 0.8);
+  color: var(--ink-2);
 }
 
 .finale-parts {
@@ -808,18 +817,18 @@
 .finale-bar {
   height: 7px;
   border-radius: 4px;
-  background: rgba(253, 246, 230, 0.12);
+  background: var(--panel-shadow);
   overflow: hidden;
 }
 
 .finale-bar span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #6fc2a8, #f2c35b);
+  background: var(--good);
 }
 
 .finale-storms {
-  border-top: 1px solid rgba(253, 246, 230, 0.15);
+  border-top: 1.5px dashed var(--stitch);
   padding-top: 10px;
   display: grid;
   gap: 4px;
@@ -832,14 +841,14 @@
 }
 
 .finale-storm-stars {
-  color: #f2c35b;
+  color: var(--cta-ink);
   letter-spacing: 2px;
 }
 
 .finale-tempo {
   margin-top: 10px;
   font-size: 13px;
-  color: #9fd8c6;
+  color: var(--accent-ink);
 }
 
 .finale-actions {
@@ -850,15 +859,15 @@
 
 .finale-actions button {
   flex: 1;
-  font: inherit;
   font-weight: 600;
   padding: 10px 14px;
   cursor: pointer;
+  font-size: inherit;
 }
 .finale-share-note {
   margin-top: 8px;
   font-size: 12px;
-  color: rgba(253, 246, 230, 0.75);
+  color: var(--ink-2);
 }
 
 .outlook-risk[hidden],
@@ -1607,15 +1616,20 @@
   border-radius: 999px;
   font: 700 13px/1.2 var(--font-body);
   letter-spacing: 0.02em;
-  color: #fff;
-  background: #1f6f5c;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: 0 3px 0 var(--panel-shadow);
   animation: storm-word 3.2s ease-out forwards;
+  border: 2px solid var(--good);
 }
 .storm-word::before { content: "✓ "; }
-.storm-word.warn { background: #8a5a12; }
+.storm-word.warn {
+  border-color: var(--cta-shadow);
+}
 .storm-word.warn::before { content: "! "; }
-.storm-word.bad { background: #8e2b2b; }
+.storm-word.bad {
+  border-color: var(--warn);
+}
 .storm-word.bad::before { content: "✕ "; }
 @keyframes storm-word {
   0% { opacity: 0; transform: translate(-50%, -80%) scale(0.9); }
@@ -1666,7 +1680,7 @@
 .speed-up-icon {
   font-size: 11px;
   letter-spacing: -2px;
-  color: #f2c35b;
+  color: var(--accent-ink);
 }
 
 /* The Tutorial's storm: what it does, just above it. */
@@ -1679,8 +1693,6 @@
   white-space: nowrap;
   padding: 4px 10px;
   border-radius: 8px;
-  background: rgba(253, 246, 230, 0.95);
-  color: #1d2a24;
   font-size: 13px;
   font-weight: 500;
 }
@@ -1703,7 +1715,12 @@
   bottom: calc(86px + env(safe-area-inset-bottom));
 }
 .replay-head { display: flex; align-items: center; gap: 8px; }
-.replay-eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #e8a64a; }
+.replay-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
 .replay-title { flex: 1; font-weight: 700; }
 .replay-skip {
   font: inherit;
@@ -1712,12 +1729,31 @@
   cursor: pointer;
 }.replay-text { margin: 8px 0 6px; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .replay-dots { display: flex; gap: 5px; }
-.replay-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
-.replay-dot.on { background: #e8a64a; }
-.replay-legend { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: #cfc6b2; }
-.replay-legend .hit { color: #ff8a73; }
-.replay-legend .dry { color: #8fdca4; }
-.replay-legend .gold { color: #f2c35b; }
+.replay-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--panel-shadow);
+}
+.replay-dot.on {
+  background: var(--accent-ink);
+}
+.replay-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.replay-legend .hit {
+  color: var(--warn-ink);
+}
+.replay-legend .dry {
+  color: var(--good);
+}
+.replay-legend .gold {
+  color: var(--cta-ink);
+}
 
 /* The in-game Calm motion switch does what the system setting does. */
 .calm-motion .storm-word { animation: storm-word-still 3.2s linear forwards; }
@@ -2293,7 +2329,7 @@
 }
 
 .result-card {
-  width: min(520px, 94vw);
+  width: min(556px, 94vw);
   max-height: 92vh;
   overflow-y: auto;
   box-sizing: border-box;
@@ -2321,34 +2357,34 @@
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #e6b268;
 }
 
 .result-title {
   font-family: var(--font-head);
   font-size: 26px;
   font-weight: 700;
-  color: #f4d9a6;
+  color: var(--ink);
   margin: 4px 0 10px;
 }
 
 .result-sub {
   margin: 0 0 12px;
   font-size: 14px;
-  color: rgba(251, 238, 217, 0.85);
+  color: var(--ink-2);
 }
 
 .result-stars {
   font-size: 28px;
   letter-spacing: 4px;
-  color: #f2c35b;
+  color: var(--cta);
   margin: 2px 0 10px;
+  -webkit-text-stroke: 1px var(--cta-ink);
 }
 
 /* An empty star is an outline in a dimmer tone, so the count reads without colour too. */
 .result-stars-empty {
   color: transparent;
-  -webkit-text-stroke: 1.2px rgba(242, 195, 91, 0.7);
+  -webkit-text-stroke: 1.2px var(--ink-3);
 }
 
 .result-homes {
@@ -2362,26 +2398,26 @@
 
 .result-homes-text b {
   font-size: 20px;
-  color: #9fe3c4;
+  color: var(--good);
 }
 
 /* Section 22.4: the homes an earlier storm ruined, a small line of their own under the bar. */
 .result-homes-before {
   margin-top: 6px;
   font-size: 12.5px;
-  color: rgba(251, 238, 217, 0.75);
+  color: var(--ink-2);
 }
 
 /* Section 26.3: the homes the wind alone took, under the homes saved. */
 .result-wind {
   margin: -6px 0 12px;
   font-size: 13.5px;
-  color: rgba(251, 238, 217, 0.9);
+  color: var(--ink);
 }
 
 .result-wind-why {
   font-size: 12.5px;
-  color: rgba(251, 238, 217, 0.72);
+  color: var(--ink-2);
 }
 
 /* Section 25.2: the second line on a result card: biodiversity since the run began, and why. */
@@ -2396,20 +2432,20 @@
 
 .result-nature b {
   font-size: 20px;
-  color: #b9e08a;
+  color: var(--good);
 }
 
 .result-nature.down b {
-  color: #f0a58a;
+  color: var(--warn-ink);
 }
 
 .result-nature.level b {
-  color: #f2d48a;
+  color: var(--accent-ink);
 }
 
 .result-nature-why {
   font-size: 13px;
-  color: rgba(251, 238, 217, 0.8);
+  color: var(--ink-2);
 }
 
 /* Section 22.4: the final card's stars of the stars there were, and the clear rule. */
@@ -2419,7 +2455,7 @@
 }
 .result-stars-total b {
   font-size: 22px;
-  color: #f4d9a6;
+  color: var(--ink);
 }
 .result-clear {
   display: inline-block;
@@ -2429,18 +2465,19 @@
   font-size: 14px;
 }
 .result-clear.cleared {
-  background: rgba(159, 227, 196, 0.22);
-  color: #9fe3c4;
+  background: var(--panel-raised);
+  color: var(--good);
+  box-shadow: inset 0 0 0 1.5px var(--good);
 }
 .result-clear.not-cleared {
-  background: rgba(240, 160, 120, 0.2);
-  color: #f6b89a;
+  background: var(--warn-soft);
+  color: var(--warn-ink);
 }
 .result-clear-rule {
   margin: 8px 0 0;
   font-size: 12.5px;
   line-height: 1.45;
-  color: rgba(251, 238, 217, 0.8);
+  color: var(--ink-2);
 }
 .result-clear-rule .result-rule {
   margin-right: 6px;
@@ -2449,14 +2486,14 @@
 .result-bar {
   height: 10px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--panel-shadow);
   overflow: hidden;
 }
 
 .result-bar span {
   display: block;
   height: 100%;
-  background: #7fd1ab;
+  background: var(--good);
 }
 
 .result-places,
@@ -2488,14 +2525,14 @@
 }
 
 .result-chip.stood {
-  background: #2f7a55;
-  color: #f2fff7;
+  background: var(--good);
+  color: var(--panel-raised);
 }
 
 .result-chip.damaged {
-  background: #f2c35b;
-  color: #3a2200;
-  border: 1px dashed #3a2200;
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+  border: 1px dashed var(--warn-ink);
 }
 
 .result-rows li {
@@ -2509,14 +2546,14 @@
 .result-row-bar {
   height: 10px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--panel-shadow);
   overflow: hidden;
 }
 
 .result-row-bar span {
   display: block;
   height: 100%;
-  background: #f2c35b;
+  background: var(--cta);
 }
 
 .result-row-value {
@@ -2529,7 +2566,7 @@
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
-  color: #cfe7c2;
+  color: var(--ink-2);
 }
 
 .result-maya {
@@ -2537,14 +2574,14 @@
   padding: 10px 12px;
   font-size: 13.5px;
   line-height: 1.5;
-  background: rgba(0, 0, 0, 0.2);
-  border-left: 2px solid #e6b268;
+  background: var(--panel-raised);
+  border-left: 2px solid var(--accent-ink);
   border-radius: 0 8px 8px 0;
 }
 
 .result-maya-name {
   font-weight: 700;
-  color: #f4d9a6;
+  color: var(--accent-ink);
   margin-right: 6px;
 }
 
@@ -2552,7 +2589,7 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #e6b268;
+  color: var(--accent-ink);
   margin-right: 6px;
 }
 
@@ -2569,9 +2606,10 @@
 .result-actions button {
   flex: 1;
   min-height: 44px;
-  font: inherit;
   font-weight: 700;
   cursor: pointer;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .result-next {
@@ -2582,19 +2620,12 @@
   flex: 0 1 auto;
   padding: 0 18px;
 }
-
-.result-actions button:focus-visible,
-.result-link:focus-visible {
-  outline: 3px solid #fff3c4;
-  outline-offset: 2px;
-}
-
 .result-link {
   display: block;
   margin: 12px auto 0;
   background: none;
   border: none;
-  color: rgba(251, 238, 217, 0.85);
+  color: var(--ink-2);
   text-decoration: underline;
   font: inherit;
   font-size: 13px;
@@ -2629,13 +2660,12 @@
   font-family: var(--font-head);
   font-size: 20px;
   font-weight: 700;
-  color: #f4d9a6;
 }
 
 .leave-confirm-text {
   margin: 6px 0 14px;
   font-size: 14px;
-  color: rgba(251, 238, 217, 0.88);
+  color: var(--ink-2);
 }
 
 .leave-confirm-buttons {
@@ -2647,14 +2677,11 @@
 .leave-confirm-buttons button {
   min-height: 36px;
   padding: 0 18px;
-  font: 600 14px/1 var(--font-body);
   cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 600;
 }
-.leave-confirm-buttons button:focus-visible {
-  outline: 2px solid #fff3e0;
-  outline-offset: 2px;
-}
-
 /* Result card 1: the phase's objective was complete (Section 12). Never stars: a separate badge. */
 .result-badge {
   display: inline-block;
@@ -2663,8 +2690,8 @@
   border-radius: 999px;
   font: 600 12px/1.4 var(--font-body);
   letter-spacing: 0.04em;
-  color: #1f3a1c;
-  background: #a6d88a;
+  color: var(--panel-raised);
+  background: var(--good);
 }
 
 /* Section 30.9: under "Objective done", what stopped the third star. */
@@ -2672,7 +2699,7 @@
   margin: -4px 0 10px;
   font-size: 13px;
   line-height: 1.4;
-  color: #e8dcc6;
+  color: var(--ink-2);
 }
 
 /*
@@ -2925,7 +2952,7 @@
 .result-homes-all {
   font-size: 15px;
   font-weight: 700;
-  color: #9fdcae;
+  color: var(--good);
   margin-bottom: 2px;
 }
 
@@ -3274,7 +3301,7 @@
 .result-places .result-places-more {
   justify-content: flex-start;
   font-size: 12.5px;
-  color: rgba(253, 246, 230, 0.7);
+  color: var(--ink-2);
   font-style: italic;
 }
 
@@ -3551,7 +3578,7 @@
   grid-column: 1 / -1;
   margin-top: -2px;
   font-size: 12px;
-  color: #e8dcc6;
+  color: var(--ink-2);
 }
 
 /* The Tutorial's last card: the seven defences. */

@@ -1,6 +1,7 @@
 import { axialToWorld } from "@core/hex";
 import { peakDepth } from "@core/hazard";
 import type { StormRecord } from "@core/stormRecord";
+import { themeColor } from "@ui/themeColor";
 
 /**
  * The storm card: one storm, side by side, with the player's defences and
@@ -24,6 +25,7 @@ export interface StormCardInput {
 
 const W = 1200;
 const H = 630;
+/** The board's own colours (the map, its water and its homes, as the game draws them): not the interface's. */
 const TERRAIN: Record<string, string> = {
   land: "#cfd8b0",
   beach: "#ead59c",
@@ -49,7 +51,8 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#1c2521";
+  // Section 33.5d: the card itself in Harbour Morning, from the tokens; the board on it keeps the board's colours.
+  ctx.fillStyle = themeColor("--panel", "#f2ebdd");
   ctx.fillRect(0, 0, W, H);
 
   // Fit the board into each half.
@@ -113,23 +116,23 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
         ctx.fillRect(px - s / 2, py - s / 2, s, s);
       }
     }
-    ctx.fillStyle = "#f4efe2";
-    ctx.font = "600 22px system-ui, sans-serif";
+    ctx.fillStyle = themeColor("--ink", "#22344a");
+    ctx.font = '600 22px "Work Sans", system-ui, sans-serif';
     ctx.fillText(half.label, half.x0 + 8, 132);
-    ctx.font = "700 22px system-ui, sans-serif";
-    ctx.fillStyle = half.outcome.housesDamaged > 0 ? "#ff8a73" : "#8fdca4";
+    ctx.font = '700 22px "Work Sans", system-ui, sans-serif';
+    ctx.fillStyle = half.outcome.housesDamaged > 0 ? themeColor("--warn-ink", "#4a1a0e") : themeColor("--good", "#2f6a4a");
     const count = `${half.outcome.housesDamaged} ${half.outcome.housesDamaged === 1 ? "home" : "homes"} hit`;
     ctx.fillText(count, half.x0 + panelW - ctx.measureText(count).width - 8, 132);
   }
 
-  ctx.fillStyle = "#e8a64a";
-  ctx.font = "600 16px system-ui, sans-serif";
+  ctx.fillStyle = themeColor("--accent-ink", "#3f5f86");
+  ctx.font = '600 16px "Work Sans", system-ui, sans-serif';
   ctx.fillText("RIPTIDE RISING, PANJIM 2050", 28, 40);
-  ctx.fillStyle = "#f4efe2";
-  ctx.font = "700 30px system-ui, sans-serif";
+  ctx.fillStyle = themeColor("--ink", "#22344a");
+  ctx.font = '700 30px "Zilla Slab", Georgia, serif';
   ctx.fillText(input.title, 28, 72);
-  ctx.fillStyle = "#cfc6b2";
-  ctx.font = "15px system-ui, sans-serif";
+  ctx.fillStyle = themeColor("--ink-3", "#4b5a6c");
+  ctx.font = '15px "Work Sans", system-ui, sans-serif';
   ctx.fillText("Same storm, same board: only the defences differ.   ● not hit   ✕ hit   ■ defence", 28, 608);
   return canvas;
 }
