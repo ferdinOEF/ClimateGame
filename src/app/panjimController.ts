@@ -134,8 +134,6 @@ export interface PanjimHost {
   repairVisual: (coord: AxialCoord) => void;
   /** The map's opening focus: the in-scene label anchors on the threatened tile nearest it, so it starts on screen. */
   focus: AxialCoord;
-  /** Puts the Get ready panel where the objectives list would be. */
-  mountPanel: (el: HTMLElement) => void;
   /** Sparkle, ring and glow over tiles that just joined a combo. */
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the forecast cone (null fades it out). */
@@ -309,7 +307,10 @@ export class PanjimController {
     });
     // Section 31.2: the Tutorial's panel is its caption card and checklist, not the objective rows.
     this.tutorialPanel = this.tutorial ? new TutorialPanel() : null;
-    host.mountPanel(this.tutorialPanel?.el ?? this.getReady.el);
+    // Section 33b.3: the objective (or the Tutorial's caption and checklist) lives in the HUD card, under its tiles;
+    // the old bottom right objective panel is not shown in Panjim (panjim.css).
+    this.clock.objectiveSlot.appendChild(this.tutorialPanel?.el ?? this.getReady.el);
+    this.clock.objectiveSlot.hidden = false;
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     // Section 17c: Maya's notes come from her; hidden, the guide is the species alone.
     this.fieldGuide.showNotes(SHOW_MAYA);

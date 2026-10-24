@@ -457,6 +457,196 @@
   border-color: var(--warn);
 }
 
+/* ---- The objective, in the HUD card (Section 33b.3) ---------------------------------------------------------
+ * Under the tiles, past a 1 px --panel-edge divider (inset 14 px): a flag and the objective's title in sentence case,
+ * then one line a row with a ring that fills with a tick when done and the count on the right. The Tutorial's caption
+ * and its checklist take the same place and style. No card per row, no band; the old bottom right panel is gone.
+ */
+.panjim-clock .clock-objective {
+  margin: 2px -2px 0;
+  padding: 10px 2px 0;
+  border-top: 1px solid var(--panel-edge);
+}
+
+.panjim-clock .clock-objective[hidden],
+.panjim-clock .clock-objective:has(> .get-ready[hidden]) {
+  display: none;
+}
+
+.has-panjim-clock .objectives-panel {
+  display: none !important;
+}
+
+.panjim-clock .get-ready-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  margin: 0 0 6px;
+}
+
+.panjim-clock .get-ready-flag {
+  flex: none;
+  color: var(--accent-ink);
+}
+
+.panjim-clock .get-ready-flag svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.panjim-clock .get-ready-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+/* The old panel's minimise button: the card never collapses. */
+.panjim-clock .get-ready-toggle {
+  display: none;
+}
+
+.panjim-clock .get-ready-list {
+  gap: 2px;
+}
+
+.panjim-clock .get-ready-row {
+  grid-template-columns: 14px 1fr auto auto;
+  gap: 8px;
+  padding: 3px 4px;
+  margin: 0 -4px;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.panjim-clock .get-ready-row:hover {
+  background: var(--button);
+}
+
+/* A 14 px ring that fills with a tick when the row is done. */
+.panjim-clock .get-ready-check {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-ink);
+  box-shadow: none;
+}
+
+.panjim-clock .get-ready-row.done .get-ready-check {
+  background: var(--accent-ink);
+  border-color: var(--accent-ink);
+  box-shadow: none;
+}
+
+.panjim-clock .get-ready-row.done .get-ready-check::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0.5px;
+  width: 3px;
+  height: 6px;
+  border: solid var(--panel-raised);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.panjim-clock .get-ready-row.done .get-ready-label {
+  color: var(--ink-2);
+}
+
+.panjim-clock .get-ready-progress {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
+/* "Objective done" and "Get ahead": quiet lines. */
+.panjim-clock .get-ready.complete .get-ready-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.panjim-clock .get-ready-ahead-title {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+}
+
+/* The Tutorial's caption: the defence's icon and name as the title row, then what it does. */
+.panjim-clock .tutorial-panel {
+  gap: 10px;
+  padding: 0;
+}
+
+.panjim-clock .tutorial-card,
+.panjim-clock .tutorial-checklist {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.panjim-clock .tutorial-card.built {
+  background: transparent;
+  box-shadow: none;
+}
+
+.panjim-clock .tutorial-card-head {
+  margin: 0;
+  padding: 0;
+  gap: 7px;
+}
+
+.panjim-clock .tutorial-card-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.panjim-clock .tutorial-card-name {
+  font: 700 14px/1.2 var(--font-body);
+  color: var(--ink);
+}
+
+.panjim-clock .tutorial-built {
+  top: 0;
+  right: 0;
+}
+
+.panjim-clock .tutorial-chips {
+  margin: 6px 0 5px;
+}
+
+/* "Try every defence: N of 7" and the seven icons, after a divider like the objective's. */
+.panjim-clock .tutorial-checklist {
+  padding-top: 10px;
+  border-top: 1px solid var(--panel-edge);
+}
+
+.panjim-clock .tutorial-checklist-head {
+  margin: 0 0 6px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.panjim-clock .tutorial-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
 /* ---- In-scene forecast label -------------------------------------------- */
 
 .forecast-label {
