@@ -145,7 +145,11 @@ export interface PanjimHost {
   /** Section 30.7: the storm's faint track all phase after the cone has gone (null hides it). */
   showStormTrail: (trail: { key: string; tracks: ConeShow["tracks"] } | null) => void;
   /** Glides the camera to frame a box of the board, in world x/z. */
-  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }) => void;
+  /**
+   * Frames the box; then, if `keepClear` is given, slides the view just enough that none of those points sits under
+   * the HUD card or Maya (or, when no slide clears them all, none of `arrows`).
+   */
+  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }, keepClear?: readonly { x: number; z: number }[], arrows?: readonly { x: number; z: number }[]) => void;
   /** The phase's area to protect, faintly, once the cone has gone (an empty list fades it out). */
   showAreaOutline: (keys: string[]) => void;
   /** "Area protected", where the outline was. */
@@ -486,12 +490,17 @@ export class PanjimController {
       return axialToWorld({ q, r }, 1);
     })];
     if (points.length > 0) {
+      // Section 33b.5: the forecast arrows (sampled along their length) and the land they cross stay clear of the HUD card and Maya.
+      const along = cone.tracks.flatMap((t) => t.points.flatMap((p, i) => {
+        const q = t.points[i + 1];
+        return q ? [0, 0.2, 0.4, 0.6, 0.8].map((f) => ({ x: p.x + (q.x - p.x) * f, z: p.z + (q.z - p.z) * f })) : [p];
+      }));
       this.host.frameWorld({
         minX: Math.min(...points.map((p) => p.x)),
         maxX: Math.max(...points.map((p) => p.x)),
         minZ: Math.min(...points.map((p) => p.z)),
         maxZ: Math.max(...points.map((p) => p.z))
-      });
+      }, [...along, ...points], along);
     }
     this.coneShown = true;
     this.host.telemetry.emit("checkpoint", { cone: next.id, tiles: cone.bands.size, area: cone.area.length });

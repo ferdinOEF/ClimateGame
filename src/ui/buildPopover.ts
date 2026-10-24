@@ -86,6 +86,8 @@ export function leafChip(change: number): HTMLElement {
 const VIEWPORT_MARGIN = 8;
 /** Gap between the tile and the cards beside it. */
 const CARD_GAP = 34;
+/** The pointer's highest spot: below the cards' header band. */
+const POINTER_MIN_Y = 46;
 
 /**
  * The contextual build menu: a small popover anchored to the clicked tile's
@@ -348,6 +350,12 @@ export class BuildPopover {
     }
     this.el.style.left = `${Math.round(best.left - origin.left)}px`;
     this.el.style.top = `${Math.round(best.top - origin.top)}px`;
+    // Section 33b.5: a small pointer on the side facing the tile, at the tile's height (kept off the header band and
+    // the rounded corners). None when the cards had to sit over the tile's column.
+    const side = best.left >= screenX ? "left" : best.left + width <= screenX ? "right" : null;
+    this.el.classList.toggle("pointer-left", side === "left");
+    this.el.classList.toggle("pointer-right", side === "right");
+    this.el.style.setProperty("--pointer-y", `${Math.round(Math.max(POINTER_MIN_Y, Math.min(height - 18, screenY - best.top)))}px`);
   }
 
   /** A one-line note in place of a build menu (a tile that is not part of the game). */

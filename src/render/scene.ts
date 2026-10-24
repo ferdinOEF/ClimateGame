@@ -36,6 +36,13 @@ export interface KhazanScene {
    * chosen their own framing, a resize must not throw it away.
    */
   fitTo: (worldWidth: number, worldDepth: number, immediate?: boolean) => void;
+  /**
+   * Section 33b.5: pans where the camera is gliding to, by the least it takes, so that none of `points` (world) sits
+   * under one of `obstacles` (rectangles in container pixels: the HUD card, Maya) and no more of them are out of view
+   * (under an obstacle or off the screen) than before. Only the target moves: the distance, the angle and the glide are unchanged. Returns the pan (world
+   * units), or null (and no pan) when they are clear already or no pan of up to `maxShift` world units clears them.
+   */
+  keepClearOf: (points: readonly { x: number; y: number; z: number }[], obstacles: readonly { x: number; y: number; w: number; h: number }[], margin?: number, maxShift?: number) => { dx: number; dz: number } | null;
   /** Offsets the camera by a small amount without moving what it looks at — the storm's impact tremor. Pass (0, 0) to clear. */
   setShake: (x: number, z: number) => void;
   /** Where the camera is currently looking, so effects anchored to the view (the rain volume) can follow it. */
@@ -273,6 +280,46 @@ export function createScene(container: HTMLElement): KhazanScene {
     // estate at all four corners and would otherwise cover the board's own
     // corners exactly.
     return THREE.MathUtils.clamp(Math.max(forWidth, forDepth) * 1.18, CAM_DISTANCE_MIN, CAM_DISTANCE_OPENING_MAX);
+  }
+
+  function keepClearOf(points: readonly { x: number; y: number; z: number }[], obstacles: readonly { x: number; y: number; w: number; h: number }[], margin = 12, maxShift = 12): { dx: number; dz: number } | null {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    if (points.length === 0 || w === 0 || h === 0) return null;
+    const probe = camera.clone();
+    const v = new THREE.Vector3();
+    /** How many points sit under an obstacle and how many are off the screen, with the camera looking at (tx, tz). */
+    const count = (tx: number, tz: number): { hidden: number; off: number } => {
+      probe.position.set(tx, Math.sin(rad) * desiredDistance, tz + Math.cos(rad) * desiredDistance);
+      probe.lookAt(tx, 0, tz);
+      probe.updateMatrixWorld();
+      let hidden = 0;
+      let off = 0;
+      for (const p of points) {
+        v.set(p.x, p.y, p.z).project(probe);
+        const x = ((v.x + 1) / 2) * w;
+        const y = ((1 - v.y) / 2) * h;
+        if (x < margin || y < margin || x > w - margin || y > h - margin) off++;
+        else if (obstacles.some((o) => x > o.x - margin && x < o.x + o.w + margin && y > o.y - margin && y < o.y + o.h + margin)) hidden++;
+      }
+      return { hidden, off };
+    };
+    const start = count(desiredTarget.x, desiredTarget.z);
+    if (start.hidden === 0) return null;
+    // The eight ways the target can go, a quarter unit at a time: the nearest spot that clears them wins.
+    const step = 0.25;
+    for (let k = 1; k * step <= maxShift; k++) {
+      for (const [dx, dz] of [[-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const d = (k * step) / Math.hypot(dx, dz);
+        const at = count(desiredTarget.x + dx * d, desiredTarget.z + dz * d);
+        // Under the card is as unseen as off the screen: nothing may stay under an obstacle, and no more may be out of view in all.
+        if (at.hidden === 0 && at.off <= start.off + start.hidden) {
+          desiredTarget = { x: desiredTarget.x + dx * d, z: desiredTarget.z + dz * d };
+          return { dx: dx * d, dz: dz * d };
+        }
+      }
+    }
+    return null;
   }
 
   function fitTo(worldWidth: number, worldDepth: number, immediate = false): void {
@@ -584,6 +631,7 @@ export function createScene(container: HTMLElement): KhazanScene {
     onResize,
     focusOn,
     fitTo,
+    keepClearOf,
     frameStats,
     setShake,
     focusPoint,

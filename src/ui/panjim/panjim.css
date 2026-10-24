@@ -57,11 +57,13 @@
 .panjim-clock .hud-line-1 {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
+/* The free space: ? and ☰ take it with an auto margin (a spacer would cost the line a gap). Their 44 px hit areas reach
+   8 px into the card's side padding, so a "Cyclone in 5 builds" chip stays on one line. */
 .panjim-clock .hud-spacer {
-  flex: 1;
+  display: none;
 }
 
 .panjim-clock .clock-face {
@@ -101,28 +103,37 @@
 }
 
 .panjim-clock .clock-countdown {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
 }
 
-/* The countdown chip: the storm's icon and "Cyclone in 5 builds". */
+/* The countdown chip: the storm's icon and "Cyclone in 5 builds". A long one ("Cyclone and flood in 10 builds")
+   wraps onto two lines rather than push ? and ☰ out of the card. */
 .outlook-countdown-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   box-sizing: border-box;
-  height: 38px;
-  padding: 0 12px;
+  min-height: 38px;
+  padding: 3px 10px;
   border-radius: 10px;
   background: var(--warn-soft);
   border: 2px solid var(--warn);
   color: var(--warn-ink);
-  font: 700 15px/1 var(--font-body);
-  white-space: nowrap;
+  font: 700 15px/1.15 var(--font-body);
+}
+
+.outlook-countdown-chip .outlook-countdown {
+  text-wrap: balance;
 }
 
 .outlook-countdown-chip[hidden] {
   display: none;
+}
+
+.outlook-countdown-chip .outlook-icon {
+  flex: none;
 }
 
 .outlook-countdown-chip .outlook-icon svg {
@@ -137,6 +148,8 @@
   align-items: center;
   gap: 2px;
   flex: none;
+  margin-left: auto;
+  margin-right: -8px;
 }
 
 .panjim-clock .hud-chrome {
@@ -3118,6 +3131,27 @@
   padding: 8px;
 }
 
+/* Section 33b.5: a small pointer to the tile, on the side facing it (buildPopover.ts sets the side and --pointer-y). */
+.build-popover.as-cards.pointer-left::before,
+.build-popover.as-cards.pointer-right::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--pointer-y, 50%) - 9px);
+  border: 9px solid transparent;
+}
+
+.build-popover.as-cards.pointer-left::before {
+  left: -9px;
+  border-left-width: 0;
+  border-right-color: var(--panel);
+}
+
+.build-popover.as-cards.pointer-right::before {
+  right: -9px;
+  border-right-width: 0;
+  border-left-color: var(--panel);
+}
+
 .build-card {
   display: flex;
   align-items: flex-start;
@@ -3511,6 +3545,25 @@
   pointer-events: none;
 }
 
+/* Section 33b.5: the hint as a pill, bottom centre, 40 px high and wholly on screen at every size. */
+.has-panjim-clock .empty-prompt {
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  max-width: calc(100vw - 32px);
+  padding: 0 20px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 97%, transparent);
+  box-shadow: 0 2px 12px var(--hud-shadow);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* The hint shows only until the run's first build. */
 .has-panjim-clock.has-built .empty-prompt {
   display: none;
@@ -3614,8 +3667,9 @@
 .large-text .build-card-elsewhere,
 .large-text .build-hover-note { font-size: 14px; }
 .large-text .get-ready-row { font-size: 15.5px; }
-.large-text .get-ready-title,
-.large-text .get-ready-ahead-title { font-size: 13px; }
+.large-text .get-ready-title { font-size: 16px; }
+.large-text .get-ready-ahead-title,
+.large-text .panjim-clock .get-ready.complete .get-ready-title { font-size: 14px; }
 .large-text .get-ready-progress { font-size: 14px; }
 .large-text .maya-bubble { font-size: max(14px, calc(17.5px * var(--maya-scale))); }
 .large-text .hud-tooltip { font-size: 15px; }
