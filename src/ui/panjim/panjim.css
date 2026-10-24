@@ -30,10 +30,6 @@
   max-width: calc(100vw - 260px);
   height: 58px;
   padding: 6px 12px 6px 16px;
-  background: rgba(20, 30, 26, 0.86);
-  border: 1px solid rgba(255, 243, 196, 0.3);
-  border-radius: 14px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   font-variant-numeric: tabular-nums;
 }
 
@@ -545,7 +541,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(8, 14, 12, 0.55);
 }
 
 .field-guide-backdrop[hidden] {
@@ -557,10 +552,6 @@
   max-height: calc(100vh - 80px);
   overflow: auto;
   padding: 18px 20px;
-  border-radius: 14px;
-  background: #1d2a24;
-  border: 1px solid rgba(255, 243, 196, 0.3);
-  color: #fdf6e6;
 }
 
 .field-guide-head {
@@ -768,7 +759,6 @@
   align-items: center;
   justify-content: flex-end;
   padding-right: 6vw;
-  background: linear-gradient(90deg, rgba(8, 14, 12, 0) 35%, rgba(8, 14, 12, 0.55));
 }
 
 .finale[hidden] {
@@ -778,11 +768,6 @@
 .finale-card {
   width: min(480px, calc(100vw - 32px));
   padding: 24px 28px;
-  border-radius: 18px;
-  background: #1d2a24;
-  border: 1px solid rgba(255, 243, 196, 0.35);
-  color: #fdf6e6;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
   animation: aftermath-in 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 
@@ -1757,10 +1742,6 @@
   width: min(440px, calc(100% - 32px));
   box-sizing: border-box;
   padding: 12px 16px 10px;
-  border-radius: 14px;
-  background: rgba(24, 33, 30, 0.92);
-  color: #f4efe2;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   pointer-events: auto;
   font: 500 14px/1.4 var(--font-body);
 }
@@ -2166,10 +2147,6 @@
 .status-objective {
   margin-top: 8px;
   padding: 8px 10px;
-  background: rgba(20, 30, 26, 0.86);
-  border: 1px solid rgba(255, 243, 196, 0.3);
-  border-radius: 10px;
-  color: #fdf6e6;
   max-width: 280px;
   text-align: left;
   pointer-events: auto;
@@ -2386,7 +2363,6 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(8, 14, 12, 0.6);
   pointer-events: auto;
 }
 
@@ -2400,11 +2376,6 @@
   overflow-y: auto;
   box-sizing: border-box;
   padding: 24px 26px 20px;
-  border-radius: 16px;
-  color: #fbeed9;
-  background: linear-gradient(160deg, #6e2c16 0%, #3c1509 100%);
-  border: 1px solid rgba(230, 178, 104, 0.45);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
 }
 
 .result-card.entering {
@@ -2731,7 +2702,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(8, 14, 12, 0.45);
   pointer-events: auto;
 }
 
@@ -2743,11 +2713,6 @@
   width: min(320px, 90vw);
   box-sizing: border-box;
   padding: 18px 20px 16px;
-  border-radius: 14px;
-  color: #fbeed9;
-  background: linear-gradient(160deg, #6e2c16 0%, #3c1509 100%);
-  border: 1px solid rgba(230, 178, 104, 0.45);
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
 }
 
 .leave-confirm-title {
@@ -2964,9 +2929,6 @@
   width: 296px;
   gap: 6px;
   padding: 8px;
-  background: rgba(38, 20, 10, 0.95);
-  border: 1px solid rgba(230, 178, 104, 0.45);
-  border-radius: 12px;
 }
 
 .build-card {
@@ -3133,17 +3095,12 @@
 /* Section 15: How to play, in the result cards' brown, one small game render per idea. */
 .help-card:has(.panjim-help) {
   width: min(620px, 94vw);
-  background: #3c1509;
-  border-color: rgba(230, 178, 104, 0.45);
 }
 .panjim-help {
   min-height: 100%;
-  background: linear-gradient(160deg, #6e2c16 0%, #3c1509 100%);
-  color: #fbeed9;
 }
 .panjim-help .help-header {
-  background: #5e2512;
-  border-bottom-color: rgba(230, 178, 104, 0.3);
+
 }
 .panjim-help .help-title {
   font-family: var(--font-head);
@@ -3267,13 +3224,8 @@
 /* Section 15: the Tutorial's opening card, one line and the cone: the line and Begin sit centred beside the map. */
 .brief-card.brief-tutorial.with-feature {
   width: min(780px, 94vw);
-  grid-template-rows: 1fr auto auto auto auto 1fr;
 }
-.brief-card.brief-tutorial.with-feature > .brief-eyebrow { grid-row: 2; }
-.brief-card.brief-tutorial.with-feature > .brief-title { grid-row: 3; }
-.brief-card.brief-tutorial.with-feature > .brief-body { grid-row: 4; font-size: 16px; }
-.brief-card.brief-tutorial.with-feature > .brief-cta { grid-row: 5; }
-.brief-card.brief-tutorial.with-feature > .brief-feature { grid-row: 1 / 7; }
+.brief-card.brief-tutorial.with-feature > .brief-body { font-size: 16px; }
 .calm-motion .build-card.coach-pulse,
 .calm-motion .speed-up.coach-pulse {
   animation: none;
@@ -3322,10 +3274,6 @@
   padding: 10px;
   gap: 6px;
   align-items: stretch;
-  background: rgba(20, 30, 26, 0.94);
-  border: 1px solid rgba(253, 246, 230, 0.28);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 .has-panjim-clock .hud-panel-settings .hud-panel-body > * {
@@ -3480,14 +3428,7 @@
 .brief-card.brief-panjim.with-feature {
   width: min(980px, 94vw);
   grid-template-columns: minmax(0, 1fr) minmax(0, 500px);
-  grid-template-rows: 1fr auto auto auto auto auto auto 1fr;
 }
-.brief-card.brief-panjim.with-feature > .brief-eyebrow { grid-row: 2; }
-.brief-card.brief-panjim.with-feature > .brief-title { grid-row: 3; }
-.brief-card.brief-panjim.with-feature > .brief-body { grid-row: 4; }
-.brief-card.brief-panjim.with-feature > .brief-goal-line { grid-row: 5; }
-.brief-card.brief-panjim.with-feature > .brief-cta { grid-row: 6; }
-.brief-card.brief-panjim.with-feature > .brief-feature { grid-row: 1 / 9; }
 
 .brief-card.brief-panjim .cone-preview-map {
   max-height: min(400px, calc(100vh - 230px));
@@ -3603,9 +3544,6 @@
   position: relative;
   padding: 9px 11px 10px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(242, 195, 91, 0.45);
-  color: #fdf6e6;
 }
 
 .tutorial-card.slide-in {

@@ -6,7 +6,7 @@ import fs from "node:fs";
  * interface uses meets WCAG AA, calm and storm: 4.5:1, or 3:1 for text 24 px and larger.
  */
 const THEME = fs.readFileSync("src/ui/theme.css", "utf8");
-const SHEETS = ["src/ui/hud.css", "src/ui/panjim/panjim.css", "src/ui/screens/screens.css"];
+const SHEETS = ["src/ui/hud.css", "src/ui/panjim/panjim.css", "src/ui/screens/screens.css", "src/ui/harbour.css"];
 
 function block(selector: string): Record<string, string> {
   const start = THEME.indexOf(`${selector} {`);

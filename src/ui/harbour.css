@@ -1,0 +1,286 @@
+/*
+ * Section 33.4 (owner decision): Harbour Morning's shapes, shared by every panel, card and button. Colours come only
+ * from the tokens in theme.css. Each component's own sheet (hud.css, panjim.css, screens.css) keeps its size and
+ * layout; the look common to many lives here, imported after them.
+ */
+
+/* ---- 33.4a Panels -------------------------------------------------------------------------------------------- */
+
+/* The cream body, a flat bottom shadow, no blur and no gradient. */
+.panjim-clock,
+.build-popover,
+.objectives-panel,
+.replay-card,
+.status-objective,
+.leave-confirm,
+.field-guide-card,
+.help-card,
+.sources-panel,
+.era-end-card,
+.welcome-card,
+.tutorial-coach,
+.results-card,
+.level-card,
+.auth-card,
+.storm-report,
+.instrument-cluster,
+.hazard-test-panel,
+.has-panjim-clock .hud-panel-settings .hud-panel-body,
+.brief-card,
+.result-card,
+.finale-card,
+.menu-card {
+  background: var(--panel);
+  color: var(--ink);
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--panel-shadow);
+  text-shadow: none;
+}
+
+/* Modal cards: rounder, and a deeper flat shadow. */
+.brief-card,
+.result-card,
+.finale-card,
+.menu-card,
+.help-card,
+.field-guide-card,
+.sources-panel,
+.storm-report {
+  border-radius: 20px;
+  box-shadow: 0 6px 0 var(--panel-shadow);
+}
+
+/*
+ * Large modal cards (the start popup, the result cards and the final card, the old finale card, the main menu card):
+ * a --warn strip down the left edge and a mesh strip down the right (an 8 px pattern of dots, drawn in CSS). The
+ * strips are the card's own borders, so they stay put when the card scrolls; the cream is a flat layer clipped to
+ * the padding box over the mesh.
+ */
+.brief-card,
+.result-card,
+.finale-card,
+.menu-card {
+  border-left: 14px solid var(--warn);
+  border-right: 20px solid transparent;
+  background:
+    linear-gradient(var(--panel), var(--panel)) padding-box,
+    radial-gradient(circle at 4px 4px, var(--mesh-dot) 2.2px, transparent 2.7px) 0 0 / 8px 8px border-box,
+    var(--mesh) border-box;
+}
+
+/* The dark overlay behind modals. */
+.result-cards,
+.brief-backdrop,
+.help-backdrop,
+.field-guide-backdrop,
+.leave-confirm-backdrop,
+.sources-backdrop,
+.era-end-backdrop,
+.welcome-backdrop,
+.storm-report-backdrop,
+.finale {
+  background: var(--overlay);
+}
+
+/*
+ * Titled panels: a header band in --band with the title or eyebrow in --band-ink, then a dashed stitch line 6 px
+ * below it, inset 13 px. Each band reaches its panel's edges (its margins below match the panel's padding).
+ */
+.brief-eyebrow,
+.result-eyebrow,
+.result-card-body > .result-title:first-child,
+.help-header,
+.panjim-help .help-header,
+.field-guide-head,
+.sources-head,
+.leave-confirm-title,
+.build-card-head,
+.tutorial-card-head,
+.tutorial-checklist-head,
+.get-ready-head,
+.menu-card .menu-eyebrow {
+  position: relative;
+  background: var(--band);
+  color: var(--band-ink);
+  font-weight: 700;
+}
+
+.brief-eyebrow::after,
+.result-eyebrow::after,
+.result-card-body > .result-title:first-child::after,
+.help-header::after,
+.field-guide-head::after,
+.sources-head::after,
+.leave-confirm-title::after,
+.build-card-head::after,
+.tutorial-card-head::after,
+.tutorial-checklist-head::after,
+.get-ready-head::after,
+.menu-card .menu-eyebrow::after {
+  content: "";
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  bottom: -7.5px;
+  border-top: 1.5px dashed var(--stitch);
+  pointer-events: none;
+}
+
+/* Eyebrows: letterspaced. */
+.brief-eyebrow,
+.result-eyebrow,
+.build-card-head,
+.tutorial-checklist-head,
+.get-ready-title,
+.menu-card .menu-eyebrow {
+  letter-spacing: 0.16em;
+}
+
+/* The start popup (padding 26 px 24 px): its eyebrow is the band across the top, over both columns. */
+.brief-eyebrow {
+  margin: -26px -24px 16px;
+  padding: 11px 24px;
+}
+
+.brief-card.with-feature > .brief-eyebrow {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.brief-card.brief-panjim.with-feature {
+  grid-template-rows: auto 1fr auto auto auto auto 1fr;
+}
+.brief-card.brief-panjim.with-feature > .brief-eyebrow { grid-row: 1; }
+.brief-card.brief-panjim.with-feature > .brief-title { grid-row: 3; }
+.brief-card.brief-panjim.with-feature > .brief-body { grid-row: 4; }
+.brief-card.brief-panjim.with-feature > .brief-goal-line { grid-row: 5; }
+.brief-card.brief-panjim.with-feature > .brief-cta { grid-row: 6; }
+.brief-card.brief-panjim.with-feature > .brief-feature { grid-row: 2 / 8; }
+
+.brief-card.brief-tutorial.with-feature {
+  grid-template-rows: auto 1fr auto auto auto 1fr;
+}
+.brief-card.brief-tutorial.with-feature > .brief-eyebrow { grid-row: 1; }
+.brief-card.brief-tutorial.with-feature > .brief-title { grid-row: 3; }
+.brief-card.brief-tutorial.with-feature > .brief-body { grid-row: 4; }
+.brief-card.brief-tutorial.with-feature > .brief-cta { grid-row: 5; }
+.brief-card.brief-tutorial.with-feature > .brief-feature { grid-row: 2 / 7; }
+
+/* The result cards (padding 24 px 26 px 20 px): the eyebrow, or the final card's title, is the band. */
+.result-eyebrow,
+.result-card-body > .result-title:first-child {
+  margin: -24px -26px 16px;
+  padding: 11px 26px;
+}
+
+/* How to play: the header is the band (the card scrolls, and clips it to its corners). */
+.help-header,
+.panjim-help .help-header {
+  border-bottom: none;
+}
+
+.help-header .help-title,
+.panjim-help .help-header .help-title {
+  color: var(--band-ink);
+}
+
+/* The Field Guide (padding 18 px 20 px). */
+.field-guide-head {
+  margin: -18px -20px 16px;
+  padding: 12px 20px;
+}
+
+/* Sources: the panel clips its band to its corners. */
+.sources-panel {
+  overflow: hidden;
+}
+
+.sources-head {
+  padding: 14px 20px;
+  margin-bottom: 14px;
+}
+
+.sources-head h2 {
+  color: var(--band-ink);
+}
+
+/* "Leave Panjim?" (padding 18 px 20 px 16 px). */
+.leave-confirm-title {
+  margin: -18px -20px 14px;
+  padding: 10px 20px;
+  border-radius: 16px 16px 0 0;
+}
+
+/* The build menu (padding 8 px). */
+.build-card-head {
+  margin: -8px -8px 12px;
+  padding: 8px 12px;
+  border-radius: 16px 16px 0 0;
+}
+
+/* The objective panel (padding 11 px 13 px): its title row is the band. */
+.get-ready-head {
+  margin: -11px -13px 14px;
+  padding: 7px 13px;
+  border-radius: 16px 16px 0 0;
+}
+
+.get-ready-head .get-ready-title {
+  color: var(--band-ink);
+}
+
+/* The Tutorial's caption card and checklist: two raised cards in the objective panel, each with its band. */
+.tutorial-card,
+.tutorial-checklist {
+  background: var(--panel-raised);
+  border-radius: 12px;
+}
+
+.tutorial-checklist {
+  padding: 0 11px 10px;
+}
+
+.tutorial-card-head {
+  margin: -9px -11px 12px;
+  padding: 7px 11px;
+  border-radius: 12px 12px 0 0;
+}
+
+.tutorial-card-head .tutorial-card-name {
+  color: var(--band-ink);
+}
+
+.tutorial-checklist-head {
+  margin: 0 -11px 12px;
+  padding: 7px 11px;
+  border-radius: 12px 12px 0 0;
+}
+
+.tutorial-checklist-head .tutorial-count {
+  color: var(--band-ink);
+}
+
+/* ☰ has no title: a slim band across its top, and the stitch 6 px under it. */
+.has-panjim-clock .hud-panel-settings .hud-panel-body {
+  position: relative;
+  border-top: 12px solid var(--band);
+  padding-top: 18px;
+}
+
+.has-panjim-clock .hud-panel-settings .hud-panel-body::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  top: 6px;
+  border-top: 1.5px dashed var(--stitch);
+  pointer-events: none;
+}
+
+/* Phones: How to play stays a full-screen sheet. */
+@media (max-width: 560px) {
+  .help-card {
+    border-radius: 0;
+  }
+}

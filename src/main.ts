@@ -11,6 +11,8 @@ import "@ui/theme.css";
 import "@ui/hud.css";
 import "@ui/screens/screens.css";
 import "@ui/panjim/panjim.css";
+// Section 33.4: Harbour Morning's shared shapes, after the sheets they restyle.
+import "@ui/harbour.css";
 import { AppShell } from "@app/appShell";
 import { clearOldProgress } from "@services/storagePolicy";
 
