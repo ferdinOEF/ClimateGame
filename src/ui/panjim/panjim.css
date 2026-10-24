@@ -14,23 +14,31 @@
   font-family: var(--font-head);
 }
 
-/* ---- The top bar (Section 16 B2) ----------------------------------------
- * One row, top centre: the year big with "Year N of 25" under it, the
- * 2026-2050 track with the three storms (the next carries the countdown),
- * and the Homes at risk pill. About 58 px high and 640 px wide at 1366.
+/* ---- The HUD card, top left (Section 33b.2) ----------------------------------------------------------------
+ * One static card at left 14 px, top 12 px, 400 px wide: line 1, the year with "Year N of 25", the countdown chip,
+ * then How to play and ☰; line 2, the timeline; line 3, Biodiversity and Homes at risk; then the objective
+ * (Section 33b.3). It never collapses, never moves, and stays during storms. No band, stitch or strips: those are
+ * the cards'. It replaces Section 16 B2's top bar, top centre.
  */
 .panjim-clock {
-  pointer-events: none;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 14px;
+  position: absolute;
+  z-index: 10;
+  left: calc(14px + env(safe-area-inset-left));
+  top: calc(12px + env(safe-area-inset-top));
   box-sizing: border-box;
-  width: clamp(540px, 47vw, 820px);
-  max-width: calc(100vw - 260px);
-  height: 58px;
-  padding: 9px 14px 9px 16px;
+  width: 400px;
+  max-width: calc(100vw - 28px);
+  padding: 12px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel) 97%, transparent);
+  border: 1px solid var(--panel-edge);
+  border-radius: 18px;
+  box-shadow: 0 2px 12px var(--hud-shadow);
   font-variant-numeric: tabular-nums;
+  pointer-events: auto;
 }
 
 .visually-hidden {
@@ -45,10 +53,21 @@
   border: 0 !important;
 }
 
+/* Line 1: the year, the countdown chip, free space, then ? and ☰. */
+.panjim-clock .hud-line-1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panjim-clock .hud-spacer {
+  flex: 1;
+}
+
 .panjim-clock .clock-face {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   flex: none;
   line-height: 1;
@@ -60,14 +79,14 @@
   font-weight: 700;
   color: var(--ink);
   line-height: 1;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .panjim-clock .clock-turn {
   margin-top: 3px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--accent-ink);
-  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
@@ -81,11 +100,103 @@
   100% { transform: translateY(0) scale(1); }
 }
 
+.panjim-clock .clock-countdown {
+  flex: none;
+  display: flex;
+}
+
+/* The countdown chip: the storm's icon and "Cyclone in 5 builds". */
+.outlook-countdown-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--warn-soft);
+  border: 2px solid var(--warn);
+  color: var(--warn-ink);
+  font: 700 15px/1 var(--font-body);
+  white-space: nowrap;
+}
+
+.outlook-countdown-chip[hidden] {
+  display: none;
+}
+
+.outlook-countdown-chip .outlook-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* How to play (?) and ☰: 44 px, no fill, the same buttons as before. */
+.panjim-clock .clock-chrome {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.panjim-clock .hud-chrome {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+}
+
+.panjim-clock .help-button,
+.panjim-clock .hud-panel-settings .hud-panel-button {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.panjim-clock .help-button:hover,
+.panjim-clock .hud-panel-settings .hud-panel-button:hover,
+.panjim-clock .hud-panel-settings.open .hud-panel-button {
+  background: var(--button);
+}
+
+.panjim-clock .hud-panel-settings .hud-panel-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ☰ in the card: its menu drops below it, over the board. */
+.panjim-clock .hud-panel-settings {
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  z-index: auto;
+  align-items: flex-end;
+}
+
+.panjim-clock .hud-panel-settings .hud-panel-body {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  margin-top: 0;
+  z-index: 30;
+}
+
+.panjim-clock .hud-panel-settings .hud-panel-button::before {
+  top: calc(100% + 6px);
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .panjim-clock .clock-buttons {
   display: flex;
   gap: 8px;
   pointer-events: auto;
-  flex: none;
 }
 
 .panjim-clock .clock-buttons:not(:has(:not([hidden]))) {
@@ -98,6 +209,7 @@
   padding: 4px 12px;
   cursor: pointer;
 }
+
 .panjim-clock .clock-ff:disabled {
   opacity: 0.4;
   cursor: default;
@@ -107,7 +219,7 @@
   display: none;
 }
 
-/* The banner moves below the bar. */
+/* The banner moves below the card's first line. */
 .has-panjim-clock .era-banner {
   top: calc(84px + env(safe-area-inset-top));
 }
@@ -116,52 +228,49 @@
   margin-bottom: 6px;
 }
 
-/* ---- Climate Outlook: the track in the bar ------------------------------ */
+/* ---- Line 2: the timeline ------------------------------------------------------------------------------------ */
 
 .panjim-clock .clock-outlook {
-  flex: 1;
-  min-width: 0;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-}
-
-.panjim-clock .clock-risk {
-  flex: none;
-  display: flex;
-  align-items: center;
+  display: block;
 }
 
 .outlook {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 .outlook-track {
   position: relative;
-  height: 40px;
-  border-radius: 8px;
-  background: var(--panel-raised);
+  height: 34px;
+  margin: 0 6px;
   pointer-events: auto;
 }
 
-.outlook-fill {
+/* A 3 px track. */
+.outlook-track::before {
+  content: "";
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 0;
-  border-radius: 8px 0 0 8px;
-  background: var(--button);
-  transition: width 220ms ease-out;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--button-border);
 }
 
+.outlook-fill {
+  display: none;
+}
+
+/* The current year: a 4 x 15 px mark. */
 .outlook-now {
   position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 3px;
-  margin-left: -1.5px;
+  top: 1px;
+  width: 4px;
+  height: 15px;
+  margin-left: -2px;
   border-radius: 2px;
   background: var(--ink);
+  z-index: 2;
   transition: left 220ms ease-out;
 }
 
@@ -170,14 +279,31 @@
   inset: 0;
 }
 
+/* Every fifth year: a 6 px dot and its year under it (a storm year's dot is the storm's). */
 .outlook-tick {
   position: absolute;
-  bottom: 1px;
+  top: 18px;
   transform: translateX(-50%);
-  font-size: 9px;
-  color: var(--ink-3);
-  border-left: 1px solid var(--stitch);
-  padding-left: 2px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.outlook-tick::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -13px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--button-border);
+}
+
+.outlook-tick.storm-year::before {
+  display: none;
 }
 
 .outlook-markers {
@@ -185,61 +311,29 @@
   inset: 0;
 }
 
-/*
- * A storm on the yearly calendar (Section 5): a pin at the end of its year,
- * in the top of the track so the year labels stay readable beneath it.
- */
+/* A storm: an 11 px dot at its year; its name, strength and stars are in its tooltip. */
 .outlook-marker {
   position: absolute;
   top: 3px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 0 6px;
-  border-radius: 6px;
-  color: var(--ink);
-  min-width: 20px;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  transition: left 300ms ease, background 300ms ease, opacity 300ms ease;
-}
-
-.outlook-marker.at-end {
-  transform: translateX(-100%);
-}
-
-.outlook-marker svg {
-  width: 13px;
-  height: 13px;
-  display: block;
-}
-
-/* Still to come, after the next: dim. */
-.outlook-marker.phase-coming {
-  background: var(--warn-soft);
-  border: 1px solid var(--warn);
-  color: var(--warn-ink);
-}
-
-.outlook-marker.later {
-  opacity: 0.5;
-}
-
-/* The next storm: it carries the countdown, and pulses gently. */
-.outlook-marker.next {
-  background: var(--warn-soft);
-  border: 2px solid var(--warn);
-  opacity: 1;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--accent-ink);
+  cursor: default;
   z-index: 1;
-  animation: outlook-next 2.4s ease-in-out infinite;
-  color: var(--warn-ink);
 }
 
-.outlook-marker.phase-soon {
-  background: var(--warn-soft);
-  border: 2px solid var(--warn);
+/* Behind the player: a ring, so the dots ahead stand out. */
+.outlook-marker.phase-past {
+  background: var(--panel);
+  border: 2px solid var(--accent-ink);
+}
+
+/* The next storm, inside its two year warning: a gentle pulse. */
+.outlook-marker.next.phase-soon {
+  animation: outlook-next 2.4s ease-in-out infinite;
 }
 
 @keyframes outlook-next {
@@ -248,37 +342,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .outlook-marker.next {
+  .outlook-marker.next.phase-soon {
     animation: none;
   }
 }
 
-.calm-motion .outlook-marker.next {
+.calm-motion .outlook-marker.next.phase-soon {
   animation: none;
-}
-
-.outlook-countdown {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-/* Behind the player: green, with its stars. */
-.outlook-marker.phase-past {
-  background: var(--button);
-  border: 1px solid var(--button-border);
-  color: var(--ink);
-}
-
-.outlook-strength {
-  font-size: 9px;
-  letter-spacing: -1px;
-}
-
-.outlook-stars {
-  font-size: 11px;
-  color: var(--accent-ink);
-  letter-spacing: -0.5px;
 }
 
 .outlook-track.pulse {
@@ -289,73 +359,63 @@
   30% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 60%, transparent); }
 }
 
-/* ---- Homes at risk (Section 13): the next storm's toll, live ------------ */
+/* ---- Line 3: Biodiversity and Homes at risk ------------------------------------------------------------------ */
 
+.panjim-clock .clock-risk {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.outlook-bio,
 .outlook-risk {
-  display: inline-flex;
-  flex-direction: column;
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 1px;
-  padding: 4px 10px;
-  border-radius: 10px;
-  font-size: 10.5px;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 50px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.1;
-  color: var(--warn-ink);
-  border: 1px solid var(--warn);
+  line-height: 1.15;
   white-space: nowrap;
   pointer-events: auto;
-  background: var(--warn-soft);
 }
 
+.outlook-tile-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.outlook-bio-count,
 .outlook-risk-count {
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+  font-family: var(--font-head);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
-.outlook-risk.none {
-  color: var(--good);
-  border-color: var(--good);
-  background: var(--panel-raised);
-}
-
-/* Section 30.4: biodiversity since the start, with the next storm's three star target marked on a small bar. */
+/* Biodiversity: --button, a leaf, the next storm's three star mark on a thin bar along its bottom edge. */
 .outlook-bio {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 4px 10px;
-  margin-right: 6px;
-  border-radius: 10px;
-  font-size: 10.5px;
-  font-weight: 600;
-  line-height: 1.1;
   color: var(--ink);
-  border: 1px solid var(--button-border);
-  white-space: nowrap;
-  pointer-events: auto;
   background: var(--button);
+  border: 1px solid var(--button-border);
 }
 .outlook-bio[hidden] { display: none !important; }
-.outlook-bio-count {
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
-}
-.outlook-bio.below {
-  color: var(--warn-ink);
-  border-color: var(--warn);
-}
-.outlook-bio.reached {
-  color: var(--ink);
-  border-color: var(--good);
-}
+.outlook-bio .outlook-tile-icon { color: var(--accent-ink); }
+.outlook-bio-label { color: var(--ink-2); }
+.outlook-bio.below .outlook-bio-count { color: var(--warn-ink); }
+.outlook-bio.reached { border-color: var(--good); }
 .outlook-bio-bar {
-  position: relative;
-  display: block;
-  width: 56px;
-  height: 4px;
-  margin-top: 2px;
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 5px;
+  height: 3px;
   border-radius: 2px;
   background: var(--panel-shadow);
 }
@@ -371,17 +431,30 @@
   position: absolute;
   top: -3px;
   width: 2px;
-  height: 10px;
+  height: 9px;
   margin-left: -1px;
   background: var(--ink);
   border-radius: 1px;
 }
 
+/* Homes at risk: --warn-soft, a house, --warn-ink. */
+.outlook-risk {
+  color: var(--warn-ink);
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+}
+
+.outlook-risk.none {
+  color: var(--good);
+  background: var(--panel-raised);
+  border-color: var(--good);
+}
+
 /* During a storm: "Homes lost N", live. */
 .outlook-risk.lost {
   color: var(--warn-ink);
-  border-color: var(--warn);
   background: var(--warn-soft);
+  border-color: var(--warn);
 }
 
 /* ---- In-scene forecast label -------------------------------------------- */
@@ -3130,26 +3203,9 @@
   display: none;
 }
 
-.has-panjim-clock .hud-corner.top-right {
-  top: calc(12px + env(safe-area-inset-top));
-  right: calc(58px + env(safe-area-inset-right));
-}
-
-.has-panjim-clock .hud-chrome {
-  display: flex;
-  gap: 8px;
-}
-
-.has-panjim-clock .help-button {
-  width: 36px;
-  height: 36px;
-  margin: 0;
-  font-size: 16px;
-}
-
-.has-panjim-clock .hud-panel-settings {
-  top: calc(12px + env(safe-area-inset-top));
-  right: calc(12px + env(safe-area-inset-right));
+/* Section 33b.2: "?" and "☰" live in the HUD card now; the empty top-right corner they left takes no room. */
+.has-panjim-clock .hud-corner.top-right:not(:has(:not(:empty))) {
+  display: none;
 }
 
 /* ☰: one card, a row per item. */
@@ -3329,8 +3385,24 @@
  * Section 16 B5: ☰ stays reachable over the start popup, so "Leave Panjim" is a way out of it (Esc there does
  * nothing: the popup is the topmost layer). "?" stays under it: How to Play is the popup's own subject.
  */
-.has-panjim-clock:has(.brief-backdrop:not([hidden])) .hud-panel-settings {
+/*
+ * Section 33b.2: ☰ lives in the HUD card, under the popup's overlay with the rest of the card; while the popup is
+ * open the card stops being a layer of its own and ☰ alone stands where it stood before, top right, over the overlay.
+ */
+.has-panjim-clock:has(.brief-backdrop:not([hidden])) .panjim-clock {
+  z-index: auto;
+}
+
+.has-panjim-clock:has(.brief-backdrop:not([hidden])) .panjim-clock .hud-panel-settings {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
   z-index: 56;
+}
+
+.has-panjim-clock:has(.brief-backdrop:not([hidden])) .panjim-clock .hud-panel-settings .hud-panel-body {
+  left: auto;
+  right: 0;
 }
 
 /* Section 16 B3: the objective card is hidden while any result card is up (the final card included), not only in a storm. */

@@ -290,7 +290,8 @@ export class PanjimController {
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, { onSkipYear: () => void this.skipYear() });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
-    // One top bar (Section 16 B2): the pill at its right end, the countdown on the next storm's marker.
+    // Section 33b.2: one HUD card, top left: the countdown chip beside the year, the two tiles under the timeline.
+    this.outlook.mountCountdown(this.clock.countdownSlot);
     this.outlook.mountRisk(this.clock.riskSlot);
     this.clock.onCountdown = (text) => this.outlook.setCountdown(text);
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -447,6 +448,11 @@ export class PanjimController {
     this.menuStreetSlot.className = "hud-menu-street";
     this.menuStreetSlot.hidden = true;
     this.panels.settings.adopt(this.fieldGuide.buttonEl, this.menuStreetSlot, togglesRow(host.container), this.menuActions());
+    // Section 33b.2: How to play (?) and ☰ move into the HUD card's first line, the same elements with their handlers,
+    // tooltips and shortcuts (the "?" keeps its .hud-chrome, Back hidden in it as before).
+    const chrome = host.container.querySelector<HTMLElement>(".hud-chrome");
+    if (chrome) this.clock.chromeSlot.appendChild(chrome);
+    this.clock.chromeSlot.appendChild(this.panels.settings.el);
     if (this.jar && this.panels.status) {
       const status = this.panels.status;
       this.jar.onGain = (text) => status.floatText(text);
@@ -592,6 +598,8 @@ export class PanjimController {
     tips.attach(clock.skip, "skipYear");
     const outlook = this.outlook.parts;
     tips.attach(outlook.track, "outlookTrack", () => ({ start: this.run.config.startYear, end: this.run.config.endYear }));
+    // Section 33b.2: each storm dot's tooltip names the storm, its strength and, once past, its stars.
+    this.outlook.onMarker = (el, text) => tips.attach(el, () => text);
     tips.attach(outlook.risk, "homesAtRisk", () => {
       const next = this.run.nextChallenge();
       const homes = next ? this.run.homesAtRisk(next) : 0;

@@ -91,6 +91,8 @@ if (want("panjim")) {
   await page.waitForTimeout(800);
   await shot(page, "topbar-calm");
   await shot(page, "topbar-calm-clip", ".panjim-clock");
+  // STOP=start: only the opening screens (a quick look while restyling).
+  if (process.env.STOP !== "start") {
   // The build menu on a beach tile in front of Sharada Mandir School, its first card hovered.
   await js(page, `window.__openTileForTest(-4, 18)`);
   await page.waitForTimeout(1500);
@@ -165,6 +167,7 @@ if (want("panjim")) {
     await page.mouse.move(2, H - 2);
     if (final) await shot(page, "finale-card");
     else missed.push("finale: the final card never opened");
+  }
   }
   await page.close();
   }

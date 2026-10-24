@@ -7,7 +7,6 @@
 /* ---- 33.4a Panels -------------------------------------------------------------------------------------------- */
 
 /* The cream body, a flat bottom shadow, no blur and no gradient. */
-.panjim-clock,
 .build-popover,
 .objectives-panel,
 .replay-card,
@@ -627,16 +626,6 @@ a:focus-visible,
 }
 
 /* ---- 33.5b The top bar, its outlook, the toggles, the build menu, the objective panel -------------------------- */
-
-/* The top bar: a dashed stitch border 5 px inside it, radius 10 px. */
-.panjim-clock::before {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  border: 1.5px dashed var(--stitch);
-  border-radius: 10px;
-  pointer-events: none;
-}
 
 /* The objective panel's minimise button sits on its band: a small chip. */
 .get-ready-head .get-ready-toggle {

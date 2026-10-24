@@ -78,7 +78,8 @@ const boxes = (): Promise<unknown> =>
 await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
 if (!(await stepUntil(`!!document.querySelector(".brief-card") && !!window.__panjimForTest`))) throw new Error("the game did not load");
 await steps(40);
-await page.locator(".brief-cta").first().click();
+// A DOM click: with the clock held, Playwright's own click waits for animation frames that never come.
+await page.evaluate(() => (document.querySelector(".brief-cta") as HTMLButtonElement).click());
 await steps(60);
 await page.evaluate(() => (window as any).__panjimForTest.maya.dismiss());
 
@@ -106,7 +107,7 @@ for (let i = 0; i < 20000; i++) {
 }
 for (let i = 0; i < 6; i++) {
   if (!(await page.locator(".result-cards:not([hidden]) .result-next").count())) break;
-  await page.locator(".result-cards:not([hidden]) .result-next").first().click();
+  await page.evaluate(() => (document.querySelector(".result-cards:not([hidden]) .result-next") as HTMLButtonElement).click());
   await steps(30);
 }
 await stepUntil(`!window.__panjimForTest.busy`, 20000);
