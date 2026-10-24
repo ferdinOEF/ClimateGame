@@ -830,6 +830,11 @@ html, body {
   font-weight: 700;
 }
 
+/* --accent-ink is too faint on --button-on: the cost darkens with the hovered row. */
+.build-option:hover .cost {
+  color: var(--ink);
+}
+
 .build-option em {
   display: block;
   font-style: normal;
@@ -1491,6 +1496,7 @@ html, body {
   z-index: 8;
   pointer-events: none;
   overflow: hidden;
+  font-family: var(--fixed-label-font);
 }
 
 .map-labels[hidden] {
@@ -1515,7 +1521,7 @@ html, body {
   /* Section 22.2 (owner decision): 30% smaller padding and a lighter shadow; 11 px text, the floor at 1366x768. */
   padding: 1.5px 5.5px;
   white-space: nowrap;
-  font: 600 11px/1.3 var(--font-body);
+  font: 600 11px/1.3 var(--fixed-label-font);
   color: var(--fixed-label-ink);
   background: var(--fixed-label-bg);
   border-radius: 999px;

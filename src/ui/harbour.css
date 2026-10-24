@@ -643,3 +643,20 @@ a:focus-visible,
   border-width: 1.5px;
   border-radius: 8px;
 }
+
+/* ---- 33.6 Focus on the band ----------------------------------------------------------------------------------- */
+
+/*
+ * --button-on-border is too close to --band to read as a ring (1.9:1 calm). Where a control sits on a band (the
+ * close buttons and the objective's minimise in the headers, the links on the shell's blue page), a --panel-raised
+ * ring fills the 2 px gap under the outline, so the outline keeps its colour and stands 5.3:1 against the ring.
+ */
+.help-header button:focus-visible,
+.sources-head button:focus-visible,
+.field-guide-head button:focus-visible,
+.get-ready-head button:focus-visible,
+.menu-sources-link:focus-visible,
+.menu-art-credit:focus-visible,
+.screen-layer .link-button:focus-visible {
+  box-shadow: 0 0 0 2px var(--panel-raised);
+}

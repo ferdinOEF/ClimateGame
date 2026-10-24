@@ -123,7 +123,7 @@ if (want("panjim")) {
   await page.screenshot({ path: path.join(OUT, `storm-moment-${W}x${H}.png`) });
   await shot(page, "topbar-storm-clip", ".panjim-clock");
   // The boxes of every panel on screen (the diff leaves them out).
-  const boxes = await js<{ x: number; y: number; width: number; height: number }[]>(page, `[...document.querySelectorAll(".panjim-clock, .panjim-toggles, .hud-corner, .help-button, .hud-panel, .get-ready, .objectives-panel, .maya, .maya-bubble, .speed-up, .storm-card, .map-note, .map-pin, .attribution, .osm-attribution, [class*='attribution'], .tutorial-panel, .empty-prompt, .storm-caption, .storm-phase, .storm-word, .map-label, .map-pin, .label-layer *")].filter((el) => { const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden"; }).map((el) => { const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; }).filter((b) => b.width > 0 && b.height > 0)`);
+  const boxes = await js<{ x: number; y: number; width: number; height: number }[]>(page, `[...document.querySelectorAll(".panjim-clock, .panjim-toggles, .hud-corner, .help-button, .hud-panel, .get-ready, .objectives-panel, .maya-figure-wrap, .maya-badge, .maya-bubble, .speed-up, .storm-card, .map-note, .map-pin, .attribution, .osm-attribution, [class*='attribution'], .tutorial-panel, .empty-prompt, .storm-caption, .storm-phase, .storm-word, .map-label, .map-pin, .label-layer *")].filter((el) => { const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden"; }).map((el) => { const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; }).filter((b) => b.width > 0 && b.height > 0)`);
   fs.writeFileSync(path.join(OUT, `storm-moment-${W}x${H}.json`), JSON.stringify(boxes));
   await js(page, `window.__freezeShaderTimeForTest && window.__freezeShaderTimeForTest(null)`);
   await js(page, `window.__panjimForTest.scenario("storm-release")`);
@@ -168,6 +168,31 @@ if (want("panjim")) {
   }
   await page.close();
   }
+}
+
+// ---- the calm board, settled: the camera still and the shader clock held (the before and after pixel diff) -------
+if (want("calm")) {
+  const page = await newPage();
+  await startPanjim(page, "l01-first-rains");
+  await page.locator(".brief-cta").first().click();
+  await page.waitForTimeout(1500);
+  await js(page, `window.__panjimForTest.maya.dismiss()`);
+  // Until the camera's glide has stopped.
+  let last = "";
+  for (let i = 0; i < 60; i++) {
+    const now = await js<string>(page, `(() => { const c = window.__cameraForTest; return [c.position.x, c.position.y, c.position.z].map((v) => v.toFixed(3)).join(","); })()`);
+    if (now === last) break;
+    last = now;
+    await page.waitForTimeout(500);
+  }
+  await js(page, `window.__freezeShaderTimeForTest && window.__freezeShaderTimeForTest(12)`);
+  await js(page, `window.__panjimForTest.maya.dismiss()`);
+  await page.mouse.move(2, H - 2);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(OUT, `calm-settled-${W}x${H}.png`) });
+  const boxes = await js<{ x: number; y: number; width: number; height: number }[]>(page, `[...document.querySelectorAll(".panjim-clock, .hud-corner, .help-button, .hud-panel, .objectives-panel, .maya-figure-wrap, .maya-badge, .maya-bubble, .map-note, .map-pin, .map-corner, .empty-prompt, .map-label")].filter((el) => { const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden"; }).map((el) => { const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height }; }).filter((b) => b.width > 0 && b.height > 0)`);
+  fs.writeFileSync(path.join(OUT, `calm-settled-${W}x${H}.json`), JSON.stringify(boxes));
+  await page.close();
 }
 
 // ---- the Tutorial's first caption, the build menu open on a pulsing tile ----------------------------------------

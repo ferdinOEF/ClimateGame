@@ -70,6 +70,8 @@
   --fixed-label-halo: #fbf4e4;
   --fixed-label-halo-soft: rgba(251, 244, 228, 0.9);
   --fixed-pin-dot: #f2c35b;
+  /* Their type too: the sheets named Inter, which was never bundled, so they drew in the system's sans serif. */
+  --fixed-label-font: system-ui, sans-serif;
   /* The risk intro's ball on Low quality: the board's heat, red and blue, as the canvas ball draws it. */
   --fixed-risk-red: #e2453a;
   --fixed-risk-blue: #2f6fd8;

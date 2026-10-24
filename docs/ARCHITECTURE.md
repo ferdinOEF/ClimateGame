@@ -26,6 +26,8 @@ src/
     townDecor.ts      roads, bridges and gardens (instanced)
     ambientLife.ts    walkers and boats (instanced)
   ui/         HUD, popovers, modals
+    theme.css         the interface's colour tokens, calm and storm (Section 33)
+    harbour.css       the shapes panels and buttons share (Section 33)
     screens/          full-screen shell surfaces    (new)
   levels/     campaign definitions, map registry, progression
     levelMap.ts       which board each level plays on
@@ -171,6 +173,48 @@ them. Every caller that resolves, previews or draws a storm passes it (the
 resolver, `computeExposure`, `resolveStorm`, `forecastCone`, the objective,
 the bots), so the preview still equals the resolution
 (`tests/section23.test.ts`).
+
+## The interface's look: tokens and the storm class (Section 33, Harbour Morning)
+
+Every interface colour is a CSS variable in `src/ui/theme.css`, imported once
+in `src/main.ts` before the sheets that use it. `hud.css`, `panjim.css`,
+`screens.css` and `harbour.css` name no colour of their own;
+`tests/theme.test.ts` fails on any hex, `rgb()`, `hsl()` or named colour in
+them, and on any colour variable that is not a token.
+
+- **Harbour tokens** (`--panel`, `--panel-raised`, `--panel-shadow`, `--band`,
+  `--band-ink`, `--ink`, `--ink-2`, `--ink-3`, `--accent-ink`, `--button`,
+  `--button-border`, `--button-on`, `--button-on-border`, `--cta`,
+  `--cta-shadow`, `--cta-ink`, `--warn`, `--warn-soft`, `--warn-ink`,
+  `--gold-soft`, `--stitch`, `--good`): calm values on `:root`, storm values
+  on `:root.storm`. Every text and background pair the CSS uses is checked for
+  4.5:1 (3:1 for large text) in both moods by the same test.
+- **Details** (`--cta-stitch`, `--mesh`, `--mesh-dot`, `--overlay`) and the two
+  font tokens (`--font-head`, Zilla Slab; `--font-body`, Work Sans, both
+  bundled with @fontsource so the service worker caches them).
+- **Fixed tokens** (`--fixed-*`): colours that are not the interface's (the
+  forecast cone's bands and preview map, the map's place labels and the
+  objective's pins, the lightning, the letterbox, the arrival edge, the risk
+  intro's Low-quality ball, Maya's shadow). Their values are the ones the
+  sheets had; they are the same calm and storm. Nothing under `src/render/`
+  reads any token.
+
+`src/ui/harbour.css`, imported after the three sheets, holds the shapes many
+components share: the cream panel with its flat shadow, the header band and
+its dashed stitch, the large modal cards' `--warn` and mesh strips, the
+overlay, secondary buttons and chips, the one main action (`--cta`), build
+cards, the focus outline, tooltips and map notes. Each component's own sheet
+keeps its size and layout. Canvas pictures (the share card, the storm card)
+read the tokens at draw time with `src/ui/themeColor.ts`.
+
+**The storm class.** `PanjimController.stormHues(on)` puts `storm` on `<html>`
+when a storm starts playing (Panjim and the Tutorial) and takes it off when its
+result cards open, and on leaving. The tokens that change are registered with
+`@property` as colours, so the variables themselves fade over 600 ms and every
+panel follows; nothing moves. With Calm motion on the controller also sets
+`storm-instant` (and the system's reduced motion has the same effect), and the
+change is at once. During the storm the Homes at risk box wears a 3 px `--warn`
+ring at 30%. `tools/section33Storm.ts` checks all of it in a browser.
 
 ## Navigation and history
 

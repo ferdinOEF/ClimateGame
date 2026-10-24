@@ -93,7 +93,6 @@
 }
 
 .panjim-clock .clock-ff {
-  font: inherit;
   font-size: 12px;
   font-weight: 600;
   padding: 4px 12px;
@@ -722,7 +721,7 @@
 
 .finale-title-eyebrow {
   font-size: 18px;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--band-ink);
   background: var(--band);
@@ -924,7 +923,7 @@
   padding: 0 5px;
   border-radius: 4px;
   border: 1px solid var(--stitch);
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 /* ---- Maya, the field guide ------------------------------------------------------ */
@@ -1225,6 +1224,17 @@
 .maya-dismiss:active {
   transform: translateY(2px);
   box-shadow: 0 1px 0 var(--cta-shadow);
+}
+
+/* With a result card open its button is the screen's main action: Got it steps back to the secondary look. */
+.has-panjim-clock.has-result-cards .maya-dismiss {
+  background: var(--button);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--button-border);
+}
+
+.has-panjim-clock.has-result-cards .maya-dismiss::before {
+  display: none;
 }
 
 .maya.muted .maya-figure-wrap {
@@ -2296,7 +2306,7 @@
 }
 
 .cone-preview-place text {
-  font-family: var(--font-body);
+  font-family: var(--fixed-label-font);
   font-size: 1.05px;
   font-weight: 700;
   fill: var(--fixed-cone-place);
@@ -2747,7 +2757,7 @@
   max-width: 220px;
   padding: 1.5px 5.5px;
   border-radius: 999px;
-  font: 600 11px/1.3 var(--font-body);
+  font: 600 11px/1.3 var(--fixed-label-font);
   color: var(--fixed-label-ink);
   background: var(--fixed-label-bg);
   box-shadow: 0 1px 2px var(--fixed-label-shadow);

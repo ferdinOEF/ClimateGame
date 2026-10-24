@@ -8958,3 +8958,32 @@ Owner decision: the note beside a build away from the objective's tiles ("This i
 - Removed: `outsideNote()` and its call in `build()` (`src/app/panjimController.ts`), with their comments. Nothing else showed the note: no Maya line, announcement, Help line, tooltip or data string repeated it. The note beside a tile itself (`host.noteAt`, `.map-note.beside`, its `HUD_OBSTACLES` entry) stays for "Broken with age" and "Cracked with age" (Section 30.11); their comments now say so.
 - Unchanged: the objectives, their pulsing tiles and the checklist; the build menu's "This doesn't change the next storm" (Section 30.8).
 - Tests: `tests/section13.test.ts` now checks the note is gone; `tests/section32.test.ts` checks `build()` (shared by Panjim and the Tutorial) shows no note and no player text anywhere in `src/` says it. The browser half is `tools/section32Shots.ts`: a real build off the objective's tiles in Panjim and in the Tutorial, and no note on screen. `tools/section12Checks.ts` now checks for no note.
+
+## Section 33 — Harbour Morning: every interface panel and button restyled — DONE (QA in docs/QA_REPORT.md)
+
+Owner decision: the interface (HTML and CSS) in the Harbour Morning look. No rule, text, layout order or behaviour
+changes; the map, its tiles, homes, landmarks, defences, water, the storm, the forecast cone, tile pulses, the map's
+place labels, wildlife, khazan people, walkers and Maya's figure are untouched (nothing under `src/render/` changed).
+- 33.1 `src/ui/theme.css`: every interface colour as a token, calm on `:root`, storm on `:root.storm`, imported once
+  in `src/main.ts`. `tests/theme.test.ts` checks every text and background pair the CSS may use for 4.5:1 (3:1 for
+  large text) in both moods, and that the four sheets name no colour of their own.
+- 33.2 The storm class: `storm` on `<html>` while a storm plays (Panjim and the Tutorial), off when its result cards
+  open; the tokens are registered colours, so they fade over 600 ms, at once with Calm motion. Homes at risk wears a
+  3 px `--warn` ring at 30% in the storm. `tools/section33Storm.ts` checks it in the browser.
+- 33.3 Zilla Slab (headings, the year, big numbers, button labels) and Work Sans (the rest), bundled with
+  @fontsource (latin) and cached by the service worker (festival mode offline checked). Fraunces, Segoe UI and Inter
+  are gone, and the Fraunces package.
+- 33.4 `src/ui/harbour.css`, the shared shapes: cream panels with a flat bottom shadow; header bands with a dashed
+  stitch; the start popup, result cards, final card and menu card with a `--warn` strip and a CSS mesh strip; the
+  overlay; secondary buttons and chips in `--button`; one main action per screen in `--cta` with two stitches; build
+  cards with an inner stitch; a 3 px `--button-on-border` focus outline (with a `--panel-raised` ring where it sits on
+  a band); tooltips and map notes; Maya's bubble (in `panjim.css` only) with her name in small caps over a stitch.
+- 33.5 Every screen: the menu (its title and buttons on a new `.menu-card`, the page behind it `--band`), the start
+  popup (its eyebrow now the band over both columns), the top bar, outlook, toggles, build menu, objective panel,
+  Tutorial caption and checklist, risk intro, result cards (36 px wider so the text column keeps its width), replay
+  card, storm words, the 2050 title, Help (its three interface pictures retaken), the Field Guide, Sources, Leave
+  Panjim?, ☰, Larger text, the level select and the old screens. The share card and storm card canvases read the
+  tokens (`src/ui/themeColor.ts`).
+- Fixed tokens (`--fixed-*`) keep, at their old values, the colours that are not the interface's: the cone's bands
+  and preview, the map's place labels and the objective's pins (and their system sans serif), the lightning, the
+  letterbox, the arrival edge, the risk intro's Low-quality ball, Maya's shadow.
