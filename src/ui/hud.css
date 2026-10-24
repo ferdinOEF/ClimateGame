@@ -19,7 +19,7 @@ html, body {
   height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
-  background: #0b1512;
+  background: var(--band);
   font-family: var(--font-body);
 }
 

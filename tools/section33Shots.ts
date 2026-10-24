@@ -77,6 +77,10 @@ if (want("panjim")) {
   await startPanjim(page, "l01-first-rains");
   await page.mouse.move(2, H - 2);
   await shot(page, "start-popup");
+  // STOP=popup: only the start popup (a quick look while restyling).
+  if (process.env.STOP === "popup") {
+    await page.close();
+  } else {
   await page.locator(".brief-cta").first().click();
   // Maya's opening line.
   await page.waitForSelector(".maya-bubble:not([hidden])", { timeout: 15000 }).catch(() => missed.push("maya: no bubble"));
@@ -163,6 +167,7 @@ if (want("panjim")) {
     else missed.push("finale: the final card never opened");
   }
   await page.close();
+  }
 }
 
 // ---- the Tutorial's first caption, the build menu open on a pulsing tile ----------------------------------------

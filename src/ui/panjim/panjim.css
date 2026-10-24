@@ -1819,7 +1819,7 @@
   width: 102px;
   height: 250px;
   pointer-events: none;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 6px 10px var(--fixed-maya-shadow));
 }
 @media (max-width: 900px), (max-height: 560px) {
   .maya-full-figure { display: none; }
@@ -2136,10 +2136,10 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 4px 14px;
-  background: rgba(20, 30, 26, 0.86);
-  border: 1px solid rgba(255, 243, 196, 0.3);
+  background: var(--panel-raised);
+  border: none;
   border-radius: 10px;
-  color: #fdf6e6;
+  color: var(--ink);
   font-size: 12px;
 }
 
@@ -2162,26 +2162,26 @@
 
 /* The three bands differ by lightness, matching the board. */
 .cone-swatch.band-3 {
-  background: #821a1c;
+  background: var(--fixed-cone-band-3);
 }
 
 .cone-swatch.band-2 {
-  background: #dc5a4a;
+  background: var(--fixed-cone-band-2);
 }
 
 .cone-swatch.band-1 {
-  background: #fdc2b4;
+  background: var(--fixed-cone-band-1);
 }
 
 /* Area to protect: a dashed outline, as on the board. */
 .cone-swatch.area {
-  background: #fff3e0;
-  border: 2px dashed #2a0c08;
+  background: var(--fixed-cone-area);
+  border: 2px dashed var(--fixed-cone-area-edge);
 }
 
 /* Where they meet: indigo, hatched. */
 .cone-swatch.meet {
-  background: repeating-linear-gradient(-45deg, #4c38b3 0 3px, #ecebff 3px 5px);
+  background: repeating-linear-gradient(-45deg, var(--fixed-cone-meet) 0 3px, var(--fixed-cone-meet-light) 3px 5px);
 }
 
 /*
@@ -2235,7 +2235,7 @@
   font-family: var(--font-head);
   font-size: 18px;
   font-weight: 700;
-  color: var(--rr-gold-bright, #ffd98a);
+  color: var(--ink);
 }
 
 .cone-preview-map {
@@ -2243,23 +2243,23 @@
   width: 100%;
   max-height: 300px;
   border-radius: 10px;
-  background: #10201c;
-  border: 1px solid rgba(255, 243, 196, 0.3);
+  background: var(--fixed-cone-map);
+  border: none;
 }
 
 .cone-preview-place text {
   font-family: var(--font-body);
   font-size: 1.05px;
   font-weight: 700;
-  fill: #fff3e0;
+  fill: var(--fixed-cone-place);
   paint-order: stroke;
-  stroke: #1b0c06;
+  stroke: var(--fixed-cone-place-edge);
   stroke-width: 0.32px;
 }
 
 .cone-preview .cone-legend {
   justify-content: flex-start;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--panel-raised);
 }
 
 /*
@@ -3259,7 +3259,7 @@
   margin: 4px 0 6px;
   font-size: 15px;
   font-weight: 700;
-  color: #ffd98a;
+  color: var(--ink);
 }
 
 .has-panjim-clock:has(.brief-backdrop:not([hidden])) .maya {

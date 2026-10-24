@@ -607,3 +607,21 @@ a:focus-visible,
 .map-note.beside {
   border-left: 4px solid var(--warn);
 }
+
+/* ---- 33.5a The main menu and the start popup ------------------------------------------------------------------ */
+
+/* The menu's card: the title and the buttons, the eyebrow its band (padding 24 px 26px). */
+.menu-card {
+  box-sizing: border-box;
+  width: min(600px, 100%);
+  margin: 0 auto;
+  padding: 24px 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.menu-card .menu-eyebrow {
+  margin: -24px -26px 6px;
+  padding: 11px 26px;
+}

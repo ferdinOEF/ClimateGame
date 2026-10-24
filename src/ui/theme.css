@@ -40,6 +40,23 @@
   --mesh-dot: #cbbd9f;
   --overlay: rgba(27, 42, 60, 0.35);
 
+  /*
+   * Fixed: not Harbour Morning. Colours that belong to the map, the storm and the forecast cone (CLAUDE.md: they do
+   * not change), and to Maya's figure, written here only so the sheets name no colour. Their values are the ones the
+   * sheets had; they are the same calm and storm.
+   */
+  --fixed-cone-band-3: #821a1c;
+  --fixed-cone-band-2: #dc5a4a;
+  --fixed-cone-band-1: #fdc2b4;
+  --fixed-cone-area: #fff3e0;
+  --fixed-cone-area-edge: #2a0c08;
+  --fixed-cone-meet: #4c38b3;
+  --fixed-cone-meet-light: #ecebff;
+  --fixed-cone-map: #10201c;
+  --fixed-cone-place: #fff3e0;
+  --fixed-cone-place-edge: #1b0c06;
+  --fixed-maya-shadow: rgba(0, 0, 0, 0.45);
+
   /* Section 33.3: headings, the year, big numbers and button labels; everything else. */
   --font-head: "Zilla Slab", Georgia, serif;
   --font-body: "Work Sans", system-ui, sans-serif;
