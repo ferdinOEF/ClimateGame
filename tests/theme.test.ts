@@ -142,3 +142,16 @@ describe("Section 33.4: the shapes", () => {
     expect(harbour).toMatch(/button:focus-visible,[\s\S]*?\{\s*outline: 3px solid var\(--button-on-border\);\s*outline-offset: 2px;/);
   });
 });
+
+describe("Section 33.4c: Maya's bubble (panjim.css only)", () => {
+  const panjim = fs.readFileSync("src/ui/panjim/panjim.css", "utf8");
+  it("--panel with the flat shadow, her name in --accent-ink small caps above a dashed stitch, the tail in --panel", () => {
+    expect(panjim).toMatch(/\.maya-bubble \{[^}]*background: var\(--panel\);[^}]*box-shadow: 0 4px 0 var\(--panel-shadow\);/);
+    expect(panjim).toMatch(/\.maya-name \{[^}]*font-variant: small-caps;/);
+    expect(panjim).toMatch(/\.maya-name \{[^}]*color: var\(--accent-ink\);/);
+    expect(panjim).toMatch(/\.maya-name::after \{[^}]*border-top: 1\.5px dashed var\(--stitch\);/);
+    for (const side of ["right", "left", "above"]) expect(panjim).toMatch(new RegExp(`\\.maya-bubble\\.side-${side}::before \\{[^}]*-color: var\\(--panel\\);`));
+    // Maya's figure is untouched: no sheet but panjim.css styles her bubble.
+    expect(fs.readFileSync("src/ui/harbour.css", "utf8")).not.toMatch(/\.maya/);
+  });
+});
