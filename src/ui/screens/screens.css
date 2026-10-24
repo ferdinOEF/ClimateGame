@@ -75,10 +75,6 @@
   display: block;
   width: 100%;
   padding: 14px 18px;
-  border-radius: 999px;
-  border: 2px solid var(--rr-line);
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--rr-gold-bright);
   font-family: inherit;
   font-weight: 700;
   font-size: 15px;
@@ -86,13 +82,6 @@
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
 }
-
-.btn:hover,
-.btn:focus-visible {
-  background: rgba(230, 178, 104, 0.14);
-  border-color: var(--rr-gold);
-}
-
 .btn:active {
   transform: translateY(1px);
 }
@@ -101,19 +90,6 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-
-.btn-primary {
-  background: var(--rr-gold);
-  border-color: var(--rr-gold);
-  color: #3c1509;
-}
-
-.btn-primary:hover,
-.btn-primary:focus-visible {
-  background: var(--rr-gold-bright);
-  border-color: var(--rr-gold-bright);
-}
-
 .btn-small {
   width: auto;
   padding: 9px 16px;
@@ -516,22 +492,11 @@
 .board-tab {
   flex: 1;
   padding: 10px;
-  border-radius: 10px;
-  border: 1px solid var(--rr-line);
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--rr-ink-dim);
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
-
-.board-tab.active {
-  background: rgba(230, 178, 104, 0.16);
-  color: var(--rr-gold-bright);
-  border-color: var(--rr-gold);
-}
-
 .board-level-picker {
   padding: 10px 12px;
   border-radius: 10px;
@@ -894,22 +859,12 @@
 .brief-cta {
   width: 100%;
   padding: 13px;
-  border-radius: 999px;
-  border: 2px solid var(--rr-gold);
-  background: transparent;
-  color: var(--rr-gold-bright);
   font-family: inherit;
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 0.04em;
   cursor: pointer;
 }
-
-.brief-cta:hover,
-.brief-cta:focus-visible {
-  background: rgba(230, 178, 104, 0.14);
-}
-
 /* --- mobile -------------------------------------------------------- */
 
 @media (max-width: 620px) {
@@ -1254,21 +1209,11 @@
   width: 100%;
   margin-top: 16px;
   padding: 12px 18px;
-  border: none;
-  border-radius: 999px;
-  background: var(--rr-gold);
-  color: #2a0f07;
   font-family: inherit;
   font-weight: 700;
   font-size: 14.5px;
   cursor: pointer;
 }
-
-.storm-report-dismiss:hover,
-.storm-report-dismiss:focus-visible {
-  background: var(--rr-gold-bright);
-}
-
 @media (max-width: 560px) {
   .storm-report {
     padding: 18px 16px 14px;

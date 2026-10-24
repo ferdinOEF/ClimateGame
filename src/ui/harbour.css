@@ -284,3 +284,326 @@
     border-radius: 0;
   }
 }
+
+/* ---- 33.4b Buttons, the main action, build cards, focus, tooltips, map notes -------------------------------- */
+
+/* Button labels in Zilla Slab. */
+.brief-cta,
+.result-next,
+.leave-confirm-stay,
+.welcome-cta,
+.coach-cta,
+.era-end-restart,
+.storm-report-dismiss,
+.btn,
+.finale-done,
+.result-retry,
+.result-back,
+.leave-confirm-leave,
+.finale-share,
+.speed-up,
+.panjim-toggle,
+.hud-menu-action,
+.field-guide-button,
+.field-guide-replay,
+.replay-skip,
+.get-ready-toggle,
+.clock-ff,
+.build-notice-action,
+.back-button,
+.preview-toggle,
+.build-option,
+.built-info-remove,
+.board-tab,
+.hazard-test-tab,
+.hazard-test-trigger,
+.hazard-test-reset,
+.hud-panel-button,
+.help-button,
+.help-close,
+.sources-close,
+.field-guide-close,
+.welcome-close {
+  font-family: var(--font-head);
+  text-shadow: none;
+}
+
+/* Secondary buttons and chips: --button with a 2 px --button-border. */
+.btn,
+.result-retry,
+.result-back,
+.leave-confirm-leave,
+.finale-share,
+.speed-up,
+.panjim-toggle,
+.hud-menu-action,
+.field-guide-button,
+.field-guide-replay,
+.replay-skip,
+.get-ready-toggle,
+.clock-ff,
+.build-notice-action,
+.back-button,
+.preview-toggle,
+.build-option,
+.built-info-remove,
+.board-tab,
+.hazard-test-tab,
+.hazard-test-trigger,
+.hazard-test-reset,
+.hud-panel-button,
+.help-button,
+.help-close,
+.sources-close,
+.field-guide-close,
+.welcome-close,
+.tutorial-chip {
+  background: var(--button);
+  color: var(--ink);
+  border: 2px solid var(--button-border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+/* Hover, picked and pressed: --button-on with its darker border. */
+.btn:hover,
+.result-retry:hover,
+.result-back:hover,
+.leave-confirm-leave:hover,
+.finale-share:hover,
+.speed-up:hover,
+.panjim-toggle:hover,
+.panjim-toggle.on,
+.hud-menu-action:hover,
+.field-guide-button:hover,
+.field-guide-replay:hover,
+.replay-skip:hover,
+.get-ready-toggle:hover,
+.clock-ff:hover:not(:disabled),
+.build-notice-action:hover,
+.back-button:hover,
+.preview-toggle:hover,
+.preview-toggle.active,
+.build-option:hover,
+.built-info-remove:hover,
+.board-tab:hover,
+.board-tab.active,
+.hazard-test-tab:hover,
+.hazard-test-tab.active,
+.hazard-test-trigger:hover,
+.hazard-test-reset:hover,
+.hud-panel-button:hover,
+.hud-panel.open .hud-panel-button,
+.help-button:hover,
+.help-close:hover,
+.sources-close:hover,
+.field-guide-close:hover,
+.welcome-close:hover,
+.btn:active,
+.speed-up:active,
+.panjim-toggle:active,
+.hud-menu-action:active {
+  background: var(--button-on);
+  border-color: var(--button-on-border);
+}
+
+/* The round ones stay round. */
+.hud-panel-button,
+.help-button,
+.help-close,
+.sources-close,
+.field-guide-close,
+.welcome-close {
+  border-radius: 50%;
+}
+
+/* Chips are smaller: a pill. */
+.tutorial-chip {
+  border-width: 1.5px;
+  border-radius: 999px;
+}
+
+/* A warning on Status: its rim in --warn (it reads without colour too: the diamond). */
+.hud-panel.danger .hud-panel-button {
+  border-color: var(--warn);
+}
+
+/*
+ * The one main action of a screen (the start popup's start, On to the next year and the other card buttons, Play
+ * Panjim and Play again, "Stay" on Leave Panjim?, Got it where it is the only action): --cta with --cta-ink, a flat
+ * shadow and two dashed stitch lines across it, 5 px in from its top and bottom.
+ */
+.brief-cta,
+.result-next,
+.leave-confirm-stay,
+.welcome-cta,
+.coach-cta,
+.era-end-restart,
+.storm-report-dismiss,
+.btn-primary,
+.finale-done {
+  position: relative;
+  background: var(--cta);
+  color: var(--cta-ink);
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--cta-shadow);
+  font-weight: 700;
+}
+
+.brief-cta::before,
+.result-next::before,
+.leave-confirm-stay::before,
+.welcome-cta::before,
+.coach-cta::before,
+.era-end-restart::before,
+.storm-report-dismiss::before,
+.btn-primary::before,
+.finale-done::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 5px;
+  bottom: 5px;
+  border-top: 1.5px dashed var(--cta-stitch);
+  border-bottom: 1.5px dashed var(--cta-stitch);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.brief-cta:hover,
+.result-next:hover,
+.leave-confirm-stay:hover,
+.welcome-cta:hover,
+.coach-cta:hover,
+.era-end-restart:hover,
+.storm-report-dismiss:hover,
+.btn-primary:hover,
+.finale-done:hover {
+  background: color-mix(in srgb, var(--cta) 82%, var(--panel-raised));
+}
+
+.brief-cta:active,
+.result-next:active,
+.leave-confirm-stay:active,
+.welcome-cta:active,
+.coach-cta:active,
+.era-end-restart:active,
+.storm-report-dismiss:active,
+.btn-primary:active,
+.finale-done:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--cta-shadow);
+}
+
+/* Focus: a 3 px outline in --button-on-border, 2 px off, on every button and input. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--button-on-border);
+  outline-offset: 2px;
+}
+
+/*
+ * Build cards: --panel-raised with a 2 px border and a dashed stitch 5 px inside it; the hovered card, and the one
+ * the Tutorial glows, in --button-on. Leaf chips and icons keep their meaning.
+ */
+.build-card {
+  position: relative;
+  background: var(--panel-raised);
+  color: var(--ink);
+  border: 2px solid var(--button-border);
+  border-radius: 12px;
+}
+
+.build-card::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1.5px dashed var(--stitch);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.build-card:hover,
+.build-card:focus-visible,
+.build-card.coach-pulse {
+  background: var(--button-on);
+  border-color: var(--button-on-border);
+}
+
+.build-card-name {
+  font-family: var(--font-head);
+  color: var(--ink);
+}
+
+.build-card-line {
+  color: var(--ink-2);
+}
+
+.build-card-detail {
+  color: var(--ink-3);
+}
+
+/* --ink-3 is too faint on --button-on: the quieter line darkens with the card. */
+.build-card:hover .build-card-detail,
+.build-card:focus-visible .build-card-detail,
+.build-card.coach-pulse .build-card-detail {
+  color: var(--ink-2);
+}
+
+.build-hover-note {
+  color: var(--accent-ink);
+}
+
+.build-card-elsewhere {
+  border-top: 1.5px dashed var(--stitch);
+  color: var(--ink-3);
+}
+
+.leaf-chip.up {
+  background: var(--panel);
+  color: var(--good);
+  box-shadow: inset 0 0 0 1.5px var(--good);
+}
+
+.leaf-chip.down {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.leaf-chip.level {
+  background: var(--button);
+  color: var(--ink-2);
+}
+
+/* The Tutorial's glow round the card it wants, and round Speed up: a ring in --button-on-border. */
+@keyframes coach-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--button-on-border) 0%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--button-on-border) 55%, transparent); }
+}
+
+.speed-up.coach-pulse {
+  border-color: var(--button-on-border);
+}
+
+/* Tooltips and map notes: --panel with --ink and the flat shadow. */
+.hud-tooltip,
+.hud-panel-button::before,
+.speed-up[data-hint]:not([data-hint=""])::after,
+.map-note {
+  background: var(--panel);
+  color: var(--ink);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 0 var(--panel-shadow);
+}
+
+/* "Broken with age", "Cracked with age": a --warn edge, as a warning. */
+.map-note.beside {
+  border-left: 4px solid var(--warn);
+}

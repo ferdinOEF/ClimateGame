@@ -121,3 +121,24 @@ describe("Section 33.3: the fonts", () => {
     for (const file of [...SHEETS, "index.html"]) expect(fs.readFileSync(file, "utf8"), file).not.toMatch(/Fraunces|Segoe UI|"Inter"|\bInter,/);
   });
 });
+
+describe("Section 33.4: the shapes", () => {
+  const harbour = fs.readFileSync("src/ui/harbour.css", "utf8");
+
+  it("panels: --panel, a flat shadow and no blur; large modal cards carry the --warn strip and the mesh strip", () => {
+    expect(harbour).toMatch(/\.menu-card \{\s*background: var\(--panel\);[^}]*box-shadow: 0 4px 0 var\(--panel-shadow\);/);
+    expect(harbour).toMatch(/border-left: 14px solid var\(--warn\);\s*border-right: 20px solid transparent;/);
+    expect(harbour).toMatch(/radial-gradient\(circle at 4px 4px, var\(--mesh-dot\) 2\.2px, transparent 2\.7px\) 0 0 \/ 8px 8px border-box/);
+    expect(THEME).toContain("--mesh: #e6dcc7;");
+    expect(THEME).toContain("--mesh-dot: #cbbd9f;");
+    expect(THEME).toContain("--overlay: rgba(27, 42, 60, 0.35);");
+    // No blurred shadow anywhere in the shapes.
+    for (const m of harbour.matchAll(/box-shadow:([^;]+);/g)) expect(m[1], m[1]).not.toMatch(/\d+px \d+px \d+px [^0]/);
+  });
+
+  it("the main action: --cta, a flat shadow and two dashed stitches; focus is a 3 px --button-on-border outline", () => {
+    expect(harbour).toMatch(/\.finale-done \{\s*position: relative;\s*background: var\(--cta\);\s*color: var\(--cta-ink\);[^}]*box-shadow: 0 4px 0 var\(--cta-shadow\);/);
+    expect(harbour).toMatch(/border-top: 1\.5px dashed var\(--cta-stitch\);\s*border-bottom: 1\.5px dashed var\(--cta-stitch\);/);
+    expect(harbour).toMatch(/button:focus-visible,[\s\S]*?\{\s*outline: 3px solid var\(--button-on-border\);\s*outline-offset: 2px;/);
+  });
+});
