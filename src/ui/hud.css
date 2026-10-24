@@ -86,8 +86,7 @@ html, body {
   position: absolute;
   z-index: 10;
   pointer-events: none;
-  color: #fdf6e6;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  color: var(--ink);
   font-size: 13px;
 }
 
@@ -666,11 +665,13 @@ html, body {
 }
 
 .empty-prompt {
-  background: rgba(20, 30, 26, 0.7);
-  border-radius: 8px;
+  background: var(--panel);
+  border-radius: 10px;
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 600;
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--panel-shadow);
 }
 
 /*
@@ -819,7 +820,7 @@ html, body {
 }
 
 .build-option .cost {
-  color: #ffe9a8;
+  color: var(--accent-ink);
   font-weight: 700;
 }
 
@@ -840,13 +841,13 @@ html, body {
 }
 
 .built-info-header:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--button);
 }
 
 .built-info-effects {
   padding: 0 10px 4px;
   font-size: 11px;
-  color: #cfe6d8;
+  color: var(--good);
   white-space: nowrap;
 }
 
@@ -859,7 +860,7 @@ html, body {
   padding: 0 10px 8px;
   font-size: 11.5px;
   line-height: 1.5;
-  color: rgba(253, 246, 230, 0.72);
+  color: var(--ink-2);
   max-width: 210px;
   white-space: normal;
 }
@@ -867,7 +868,7 @@ html, body {
 /* The whole popover on a tile that is not part of the game (Panaji's north bank): one line. */
 .built-info-note.popover-note {
   padding: 8px 10px;
-  color: rgba(253, 246, 230, 0.86);
+  color: var(--ink-2);
   max-width: none;
   white-space: nowrap;
 }

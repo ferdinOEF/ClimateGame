@@ -697,26 +697,26 @@
 .objectives-level-name {
   font-family: var(--font-head);
   font-size: 14px;
-  color: var(--rr-gold-bright);
+  color: var(--ink);
 }
 
 .objectives-level-sub {
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--rr-ink-dim);
+  color: var(--ink-3);
 }
 
 .objectives-counter {
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--rr-ink-dim);
+  color: var(--ink-3);
   margin: 6px 0 4px;
 }
 
 .objectives-counter.all-done {
-  color: var(--rr-good);
+  color: var(--good);
 }
 
 .objectives-list {
@@ -735,7 +735,7 @@
   align-items: start;
   font-size: 12px;
   line-height: 1.35;
-  color: var(--rr-ink);
+  color: var(--ink);
 }
 
 .objective-check {
@@ -743,23 +743,23 @@
   height: 12px;
   margin-top: 2px;
   border-radius: 3px;
-  border: 1.5px solid var(--rr-ink-dim);
+  border: 1.5px solid var(--ink-3);
 }
 
 .objective-row.complete .objective-check {
-  background: var(--rr-good);
-  border-color: var(--rr-good);
+  background: var(--good);
+  border-color: var(--good);
 }
 
 .objective-row.complete .objective-text {
-  color: var(--rr-ink-dim);
+  color: var(--ink-2);
   text-decoration: line-through;
 }
 
 .objective-progress {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: var(--rr-gold);
+  color: var(--accent-ink);
 }
 
 @keyframes objective-pop {
