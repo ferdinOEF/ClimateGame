@@ -1211,14 +1211,14 @@
 }
 
 /*
- * Her home: the bottom-left corner, one fixed rule. Never written by script,
- * never animated, never moved; if something would cover it, that element
- * moves (--maya-reserve, hud.css). No filter: a filter on a figure that
+ * Her home: the bottom-right corner (Section 33b), one fixed rule. Never
+ * written by script, never animated, never moved; if something would cover
+ * it, that element moves. No filter: a filter on a figure that
  * animates is redone every frame, so her shadow is baked into her pictures.
  */
 .maya-figure-wrap {
   position: absolute;
-  left: var(--maya-home);
+  right: var(--maya-home);
   bottom: var(--maya-home);
   width: var(--maya-fig-w);
   height: var(--maya-fig-h);
@@ -1274,7 +1274,7 @@
 
 .maya-badge {
   position: absolute;
-  left: var(--maya-home);
+  right: var(--maya-home);
   bottom: var(--maya-home);
   /* --maya-badge: her scaled 52 px, never under 30 (mayaLayout.ts). */
   width: var(--maya-badge);
@@ -1347,13 +1347,6 @@
   border: var(--maya-tail) solid transparent;
 }
 
-.maya-bubble.side-right::before {
-  left: calc(-1px - var(--maya-tail));
-  top: 12px;
-  border-right-color: var(--panel);
-  border-left-width: 0;
-}
-
 .maya-bubble.side-left::before {
   right: calc(-1px - var(--maya-tail));
   top: 12px;
@@ -1363,7 +1356,7 @@
 
 .maya-bubble.side-above::before {
   bottom: calc(-1px - var(--maya-tail));
-  left: 16px;
+  right: 16px;
   border-top-color: var(--panel);
   border-bottom-width: 0;
 }
@@ -3450,26 +3443,17 @@
   padding: 7px 10px;
   cursor: pointer;
 }
-/* The credit: one small line in the bottom-right corner, always visible, under the objective card. */
+/* The street map's corner (its credit; the switch is in ☰): the bottom-left corner, Maya having the right (Section 33b). */
 .has-panjim-clock .map-corner {
-  left: auto;
-  right: calc(12px + env(safe-area-inset-right));
+  left: calc(12px + env(safe-area-inset-left));
+  right: auto;
   bottom: calc(4px + env(safe-area-inset-bottom));
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .has-panjim-clock .map-corner .map-attribution {
   padding: 0 6px;
   background: var(--panel);
-}
-
-.has-panjim-clock .objectives-panel {
-  bottom: calc(26px + env(safe-area-inset-bottom));
-}
-
-/* The objective card has no level header: the objective is the card. */
-.has-panjim-clock .objectives-panel.custom-body .objectives-header {
-  display: none;
 }
 
 /* Section 16 B3/B4: the objective card done, and the HUD during a storm. */

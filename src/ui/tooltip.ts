@@ -215,7 +215,9 @@ export const HUD_SELECTORS = [
   ".instrument-cluster button:not([hidden])",
   ".hud-chrome button",
   ".panjim-clock .clock-face",
-  ".panjim-clock button",
+  // Section 33b: ☰ and its menu sit in the HUD card now; they are checked as before (not at all), and the old panel's
+  // minimise button is hidden there.
+  ".panjim-clock button:not(.hud-panel *):not(.get-ready-toggle)",
   ".panjim-clock .outlook-track",
   ".panjim-clock .outlook-risk:not([hidden])",
   ".coin-jar",

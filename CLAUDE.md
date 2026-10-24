@@ -45,7 +45,8 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
   in the Panjim game, the start popup, the Tutorial and the result cards; ☰ has her item and M mutes her. The switch
   stays: `VITE_SHOW_MAYA=false` hides her everywhere (`SHOW_MAYA`, `src/services/features.ts`). Her skin is 50%
   fairer (Section 29, a `MAYA_PALETTE` change). The old rule holds: do not redraw her; edit only
-  `src/ui/panjim/mayaArt.ts`, `maya.ts` and `panjim.css`; she is locked in place (`tests/mayaLocked.test.ts`); her
+  `src/ui/panjim/mayaArt.ts`, `maya.ts` and `panjim.css`; she is locked in place in the bottom right corner
+  (Section 33b, owner decision; `tests/mayaLocked.test.ts`); her
   colours come from `MAYA_PALETTE`; whenever a HUD element moves, update `HUD_OBSTACLES` (in `maya.ts`) and her
   layout rules.
 - **Desktop browsers first** (Chrome, Edge, Firefox, Safari; mouse, wheel,

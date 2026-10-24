@@ -17,16 +17,16 @@ import {
 import { HUD_UNIT_PX, HUD_VIEWBOX } from "../src/ui/panjim/mayaArt";
 
 const VIEW = { w: 1920, h: 1080 };
-const streetMap: Rect = { x: 80, y: 1020, w: 200, h: 48 };
-const getReady: Rect = { x: 1600, y: 840, w: 300, h: 220 };
-const topBar: Rect = { x: 640, y: 10, w: 640, h: 160 };
-const objectives: Rect = { x: 900, y: 700, w: 340, h: 280 };
+const streetMap: Rect = { x: 12, y: 1050, w: 200, h: 26 };
+const hudCard: Rect = { x: 14, y: 12, w: 400, h: 420 };
+const hint: Rect = { x: 760, y: 1028, w: 400, h: 40 };
+const popover: Rect = { x: 900, y: 600, w: 320, h: 360 };
 
 describe("Maya's home", () => {
-  it("is the bottom-left corner, a fixed margin from both edges, on whole pixels", () => {
+  it("is the bottom-right corner (Section 33b), a fixed margin from both edges, on whole pixels", () => {
     const size = figureSize(HUD_VIEWBOX, HUD_UNIT_PX, screenTier(VIEW));
     const home = homeRect(size, VIEW);
-    expect(home.x).toBe(HOME_MARGIN);
+    expect(VIEW.w - (home.x + home.w)).toBe(HOME_MARGIN);
     expect(VIEW.h - (home.y + home.h)).toBe(HOME_MARGIN);
     for (const v of [home.x, home.y, home.w, home.h]) expect(Number.isInteger(v)).toBe(true);
     expect(inside(home, VIEW)).toBe(true);
@@ -76,17 +76,23 @@ describe("Maya's bubble", () => {
   const home = homeRect(size, VIEW);
 
   it("opens beside her toward free space and never covers the HUD", () => {
-    const obstacles = [streetMap, getReady, topBar, objectives];
+    const obstacles = [streetMap, hudCard, hint, popover];
     const bubble = placeBubble(home, measure, obstacles, VIEW)!;
     expect(bubble).not.toBeNull();
     for (const o of obstacles) expect(intersects(bubble.rect, o, CLEARANCE)).toBe(false);
     expect(intersects(bubble.rect, home)).toBe(false);
     expect(inside(bubble.rect, VIEW)).toBe(true);
-    expect(["right", "above"]).toContain(bubble.side);
+    expect(["left", "above"]).toContain(bubble.side);
   });
 
-  it("flips above her when something is to her right, and never leaves her home to do it", () => {
-    const wall: Rect = { x: home.x + home.w, y: 0, w: 1800, h: 1080 };
+  it("opens to her left when there is room", () => {
+    const bubble = placeBubble(home, measure, [hudCard, hint], VIEW)!;
+    expect(bubble.side).toBe("left");
+    expect(bubble.rect.x + bubble.rect.w).toBeLessThanOrEqual(home.x);
+  });
+
+  it("flips above her when something is to her left, and never leaves her home to do it", () => {
+    const wall: Rect = { x: 0, y: 0, w: home.x, h: 1080 };
     const bubble = placeBubble(home, measure, [wall], VIEW);
     // The figure is not an argument that can change: with no room beside her the line waits.
     expect(bubble === null || bubble.side === "above").toBe(true);
@@ -94,8 +100,8 @@ describe("Maya's bubble", () => {
 
   it("narrows, then gives up (so the line is held back) when there is no room", () => {
     const wall: Rect = { x: 0, y: 0, w: 1920, h: 1080 - home.h - 2 * HOME_MARGIN - 6 };
-    const right: Rect = { x: home.x + home.w, y: home.y - 40, w: 1800, h: 1080 };
-    expect(placeBubble(home, measure, [wall, right], VIEW)).toBeNull();
+    const left: Rect = { x: 0, y: home.y - 40, w: home.x, h: 1080 };
+    expect(placeBubble(home, measure, [wall, left], VIEW)).toBeNull();
   });
 
   it("never gets narrower than her text can use, however small she is", () => {

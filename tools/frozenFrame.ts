@@ -90,7 +90,11 @@ async function hold(scenario: string, name: string, seconds: number): Promise<vo
   await page.evaluate(() => (window as any).__panjimForTest.maya.dismiss());
   await page.mouse.move(2, H - 2);
   await steps(10);
-  await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.png`) });
+  // Straight from the compositor: Playwright's own screenshot waits for an animation frame, which the held clock withholds.
+  const cdp = await page.context().newCDPSession(page);
+  const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
+  fs.writeFileSync(path.join(OUT, `${name}-${W}x${H}.png`), Buffer.from(data, "base64"));
+  await cdp.detach();
   fs.writeFileSync(path.join(OUT, `${name}-${W}x${H}.json`), JSON.stringify(await boxes()));
   console.log(`${name}: storm time ${await page.evaluate(() => (window as any).__stormForTest.time())}`);
 }

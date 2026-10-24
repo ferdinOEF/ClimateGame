@@ -157,7 +157,7 @@ describe("Section 33.4c: Maya's bubble (panjim.css only)", () => {
     expect(panjim).toMatch(/\.maya-name \{[^}]*font-variant: small-caps;/);
     expect(panjim).toMatch(/\.maya-name \{[^}]*color: var\(--accent-ink\);/);
     expect(panjim).toMatch(/\.maya-name::after \{[^}]*border-top: 1\.5px dashed var\(--stitch\);/);
-    for (const side of ["right", "left", "above"]) expect(panjim).toMatch(new RegExp(`\\.maya-bubble\\.side-${side}::before \\{[^}]*-color: var\\(--panel\\);`));
+    for (const side of ["left", "above"]) expect(panjim).toMatch(new RegExp(`\\.maya-bubble\\.side-${side}::before \\{[^}]*-color: var\\(--panel\\);`));
     // Maya's figure is untouched: no sheet but panjim.css styles her bubble.
     expect(fs.readFileSync("src/ui/harbour.css", "utf8")).not.toMatch(/\.maya/);
   });

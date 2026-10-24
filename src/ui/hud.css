@@ -1730,8 +1730,7 @@ html, body {
 */
 .map-corner {
   position: absolute;
-  /* Maya stands at the bottom-left corner and never moves; the street-map switch and credit stand to her right (--maya-reserve, set by maya.ts; 10px where she is not). */
-  left: var(--maya-reserve, 10px);
+  left: 10px;
   bottom: 8px;
   z-index: 9;
   display: flex;
