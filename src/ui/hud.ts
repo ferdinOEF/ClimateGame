@@ -127,8 +127,8 @@ export class Hud {
       <button type="button" class="cluster-pill" aria-label="Expand HUD">
         <span class="pill-item pill-coin">
           <svg class="pill-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-            <circle cx="8" cy="8" r="6" fill="none" stroke="#ffe9a8" stroke-width="1.4"></circle>
-            <line x1="3.5" y1="8" x2="12.5" y2="8" stroke="#ffe9a8" stroke-width="1.4"></line>
+            <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.4"></circle>
+            <line x1="3.5" y1="8" x2="12.5" y2="8" stroke="currentColor" stroke-width="1.4"></line>
           </svg>
           <span class="pill-coin-value">0</span>
         </span>

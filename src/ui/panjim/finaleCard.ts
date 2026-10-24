@@ -1,5 +1,6 @@
 import type { PanjimIndex } from "@core/panjimIndex";
 import { playSound } from "@ui/audioHooks";
+import { themeColor } from "@ui/themeColor";
 import { downloadStormCard, type StormCardInput } from "./stormCard";
 
 /**
@@ -133,44 +134,52 @@ export class FinaleCard {
   }
 }
 
-/** A 1200×630 card: the index, the stars per storm and the tempo, in the game's colours. */
+/** A 1200×630 card: the index, the stars per storm and the tempo, in the interface's colours (Harbour Morning). */
 export function drawShareCard(view: FinaleView): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = 1200;
   canvas.height = 630;
   const ctx = canvas.getContext("2d")!;
-  const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
-  gradient.addColorStop(0, "#1d3a33");
-  gradient.addColorStop(1, "#5c2a1a");
-  ctx.fillStyle = gradient;
+  // Section 33.5d: Harbour Morning, from the tokens: the cream card, a band across its top and the mesh strip.
+  const ink = themeColor("--ink", "#22344a");
+  ctx.fillStyle = themeColor("--panel", "#f2ebdd");
   ctx.fillRect(0, 0, 1200, 630);
-  ctx.fillStyle = "rgba(242,195,91,0.12)";
-  for (let i = 0; i < 9; i++) ctx.fillRect(0, 540 + i * 10, 1200, 4);
+  ctx.fillStyle = themeColor("--band", "#7fa0c4");
+  ctx.fillRect(0, 0, 1200, 120);
+  ctx.fillStyle = themeColor("--warn", "#d9765f");
+  ctx.fillRect(0, 0, 24, 630);
+  ctx.fillStyle = themeColor("--mesh", "#e6dcc7");
+  ctx.fillRect(1166, 0, 34, 630);
+  ctx.fillStyle = themeColor("--mesh-dot", "#cbbd9f");
+  for (let y = 4; y < 630; y += 8) for (let x = 1170; x < 1200; x += 8) {
+    ctx.beginPath();
+    ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  ctx.fillStyle = "#9fd8c6";
-  ctx.font = "600 28px Inter, system-ui, sans-serif";
-  ctx.fillText("RIPTIDE RISING", 70, 90);
-  ctx.fillStyle = "#fdf6e6";
-  ctx.font = "700 84px Georgia, serif";
-  ctx.fillText("Panjim, 2050", 70, 190);
+  ctx.fillStyle = themeColor("--band-ink", "#18263a");
+  ctx.font = '700 28px "Work Sans", system-ui, sans-serif';
+  ctx.fillText("RIPTIDE RISING", 70, 72);
+  ctx.fillStyle = ink;
+  ctx.font = '700 84px "Zilla Slab", Georgia, serif';
+  ctx.fillText("Panjim, 2050", 70, 220);
 
-  ctx.fillStyle = "#f2c35b";
-  ctx.font = "800 150px Georgia, serif";
-  ctx.fillText(String(view.index.index), 70, 380);
-  ctx.fillStyle = "#fdf6e6";
-  ctx.font = "500 30px Inter, system-ui, sans-serif";
-  ctx.fillText("Panjim 2050 index", 76, 425);
+  ctx.font = '700 150px "Zilla Slab", Georgia, serif';
+  ctx.fillText(String(view.index.index), 70, 390);
+  ctx.fillStyle = themeColor("--ink-2", "#3b4b5f");
+  ctx.font = '500 30px "Work Sans", system-ui, sans-serif';
+  ctx.fillText("Panjim 2050 index", 76, 435);
 
-  ctx.font = "500 32px Inter, system-ui, sans-serif";
+  ctx.font = '500 32px "Work Sans", system-ui, sans-serif';
   view.challengeNames.forEach((name, i) => {
     const stars = view.index.challengeStars[i] ?? 0;
-    ctx.fillStyle = "#fdf6e6";
-    ctx.fillText(name, 640, 270 + i * 64);
-    ctx.fillStyle = "#f2c35b";
-    ctx.fillText("★".repeat(stars) + "☆".repeat(3 - stars), 980, 270 + i * 64);
+    ctx.fillStyle = ink;
+    ctx.fillText(name, 640, 280 + i * 64);
+    ctx.fillStyle = themeColor("--cta-shadow", "#b9821c");
+    ctx.fillText("★".repeat(stars) + "☆".repeat(3 - stars), 980, 280 + i * 64);
   });
-  ctx.fillStyle = "#9fd8c6";
-  ctx.font = "500 28px Inter, system-ui, sans-serif";
+  ctx.fillStyle = themeColor("--accent-ink", "#3f5f86");
+  ctx.font = '500 28px "Work Sans", system-ui, sans-serif';
   ctx.fillText(`Tempo: ${view.tempo.name}, ${view.tempo.minutes} min`, 640, 480);
   return canvas;
 }

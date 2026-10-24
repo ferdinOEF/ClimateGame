@@ -31,10 +31,10 @@ export class CoinJar {
     this.el.innerHTML = `
       <svg viewBox="0 0 48 56" width="48" height="56" aria-hidden="true">
         <defs><clipPath id="jar-clip"><path d="M10 14h28v4c4 3 6 7 6 13v15a7 7 0 0 1-7 7H11a7 7 0 0 1-7-7V31c0-6 2-10 6-13z"/></clipPath></defs>
-        <path d="M10 14h28v4c4 3 6 7 6 13v15a7 7 0 0 1-7 7H11a7 7 0 0 1-7-7V31c0-6 2-10 6-13z" fill="rgba(253,246,230,0.12)" stroke="#fdf6e6" stroke-width="2"/>
-        <rect class="jar-fill" x="0" y="53" width="48" height="0" fill="#f2c35b" clip-path="url(#jar-clip)"/>
-        <rect x="8" y="6" width="32" height="8" rx="2" fill="#a46a3c" stroke="#fdf6e6" stroke-width="2"/>
-        <circle cx="24" cy="38" r="6" fill="none" stroke="#7a5212" stroke-width="2" opacity="0.6"/>
+        <path d="M10 14h28v4c4 3 6 7 6 13v15a7 7 0 0 1-7 7H11a7 7 0 0 1-7-7V31c0-6 2-10 6-13z" style="fill: var(--panel-raised); stroke: var(--ink)" stroke-width="2"/>
+        <rect class="jar-fill" x="0" y="53" width="48" height="0" style="fill: var(--cta)" clip-path="url(#jar-clip)"/>
+        <rect x="8" y="6" width="32" height="8" rx="2" style="fill: var(--cta-shadow); stroke: var(--ink)" stroke-width="2"/>
+        <circle cx="24" cy="38" r="6" fill="none" style="stroke: var(--cta-ink)" stroke-width="2" opacity="0.6"/>
       </svg>
       <span class="jar-amount">0</span>
       <span class="jar-pops"></span>

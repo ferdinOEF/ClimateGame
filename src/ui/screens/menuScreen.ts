@@ -80,18 +80,24 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
   const screen = el("div", {
     className: "screen menu-screen",
     children: [
+      // Section 33.5a: the title and the buttons on one card (Harbour Morning's large modal card), in the same order.
       el("div", {
-        className: "menu-hero",
+        className: "menu-card",
         children: [
-          el("div", { className: "menu-eyebrow", text: "A coast defence game set in Goa" }),
-          el("h1", { className: "menu-title", text: "Riptide Rising" }),
-          el("p", { className: "menu-tagline", text: menuTagline() })
-        ]
-      }),
+          el("div", {
+            className: "menu-hero",
+            children: [
+              el("div", { className: "menu-eyebrow", text: "A coast defence game set in Goa" }),
+              el("h1", { className: "menu-title", text: "Riptide Rising" }),
+              el("p", { className: "menu-tagline", text: menuTagline() })
+            ]
+          }),
 
-      el("div", {
-        className: "menu-actions",
-        children: model.buttons.map((spec) => menuButton(spec, actions))
+          el("div", {
+            className: "menu-actions",
+            children: model.buttons.map((spec) => menuButton(spec, actions))
+          })
+        ]
       }),
 
       model.showStatsAndFooter ? statsBlock() : null,

@@ -1,0 +1,158 @@
+/*
+ * Section 33 (owner decision): Harbour Morning, the interface's colours.
+ *
+ * Every interface colour comes from these variables; hud.css, panjim.css and screens.css use only them
+ * (tests/theme.test.ts). Calm values on :root; storm values on :root.storm, the class <html> carries while a storm
+ * plays (Panjim and the Tutorial), removed when its result cards open. Nothing under src/render/ reads them: the
+ * map, its tiles, the storm and the wildlife keep their own colours.
+ *
+ * Text and background pairs the CSS may use are checked for contrast (4.5:1; 3:1 for text 24 px and larger) in both
+ * moods by tests/theme.test.ts. Pairs that fail and are never used: --ink-3 and --accent-ink on --button-on (both
+ * moods); in a storm, --ink on --band and --good on --gold-soft.
+ */
+:root {
+  --panel: #f2ebdd;
+  --panel-raised: #fbf8f1;
+  --panel-shadow: #cdbf9f;
+  --band: #7fa0c4;
+  --band-ink: #18263a;
+  --ink: #22344a;
+  --ink-2: #3b4b5f;
+  --ink-3: #4b5a6c;
+  --accent-ink: #3f5f86;
+  --button: #d6e1ee;
+  --button-border: #b5cae2;
+  --button-on: #b5cae2;
+  --button-on-border: #4a6e99;
+  --cta: #e3a93b;
+  --cta-shadow: #b9821c;
+  --cta-ink: #3a2606;
+  --warn: #d9765f;
+  --warn-soft: #f4cfc4;
+  --warn-ink: #4a1a0e;
+  --gold-soft: #f6dfa6;
+  --stitch: rgba(34, 52, 74, 0.35);
+  --good: #2f6a4a;
+
+  /* Fixed details (the same calm and storm): the main button's stitches, the mesh strip on large cards, the overlay. */
+  --cta-stitch: rgba(58, 38, 6, 0.45);
+  --mesh: #e6dcc7;
+  --mesh-dot: #cbbd9f;
+  --overlay: rgba(27, 42, 60, 0.35);
+
+  /*
+   * Fixed: not Harbour Morning. Colours that belong to the map, the storm and the forecast cone (CLAUDE.md: they do
+   * not change), and to Maya's figure, written here only so the sheets name no colour. Their values are the ones the
+   * sheets had; they are the same calm and storm.
+   */
+  --fixed-cone-band-3: #821a1c;
+  --fixed-cone-band-2: #dc5a4a;
+  --fixed-cone-band-1: #fdc2b4;
+  --fixed-cone-area: #fff3e0;
+  --fixed-cone-area-edge: #2a0c08;
+  --fixed-cone-meet: #4c38b3;
+  --fixed-cone-meet-light: #ecebff;
+  --fixed-cone-map: #10201c;
+  --fixed-cone-place: #fff3e0;
+  --fixed-cone-place-edge: #1b0c06;
+  --fixed-maya-shadow: rgba(0, 0, 0, 0.45);
+  /* The storm on screen: lightning's lift, the slow motion letterbox, the arrival edge before JS sets its own. */
+  --fixed-storm-flash: #e9f1ff;
+  --fixed-letterbox: #000;
+  --fixed-arrival-flash: #3a3348;
+  /* The map's place labels, and the objective's pins that share their cream card (Section 16 B6). */
+  --fixed-label-ink: #2a1408;
+  --fixed-label-bg: rgba(255, 246, 224, 0.92);
+  --fixed-label-card-bg: rgba(255, 246, 224, 0.98);
+  --fixed-label-sub: #5a3a22;
+  --fixed-label-shadow: rgba(0, 0, 0, 0.22);
+  --fixed-label-locality: #181009;
+  --fixed-label-halo: #fbf4e4;
+  --fixed-label-halo-soft: rgba(251, 244, 228, 0.9);
+  --fixed-pin-dot: #f2c35b;
+  /* Their type too: the sheets named Inter, which was never bundled, so they drew in the system's sans serif. */
+  --fixed-label-font: system-ui, sans-serif;
+  /* The risk intro's ball on Low quality: the board's heat, red and blue, as the canvas ball draws it. */
+  --fixed-risk-red: #e2453a;
+  --fixed-risk-blue: #2f6fd8;
+
+  /* Section 33.3: headings, the year, big numbers and button labels; everything else. */
+  --font-head: "Zilla Slab", Georgia, serif;
+  --font-body: "Work Sans", system-ui, sans-serif;
+}
+
+:root.storm {
+  --panel: #e9dcc3;
+  --panel-raised: #f4ecdc;
+  --panel-shadow: #b9a77f;
+  --band: #4a6e99;
+  --band-ink: #f7f2e7;
+  --ink: #1b2a3c;
+  --ink-2: #2c3a4c;
+  --ink-3: #3e4c5e;
+  --accent-ink: #35557d;
+  --button: #b5cae2;
+  --button-border: #93b0d4;
+  --button-on: #93b0d4;
+  --button-on-border: #35557d;
+  --cta: #d9922a;
+  --cta-shadow: #a86f12;
+  --cta-ink: #2e1e04;
+  --warn: #c4553e;
+  --warn-soft: #e9a390;
+  --warn-ink: #3e1309;
+  --gold-soft: #efc97a;
+  --stitch: rgba(27, 42, 60, 0.5);
+  --good: #2f6a4a;
+}
+
+/*
+ * Section 33.2: calm to storm and back fades over 600 ms. The tokens that change are registered as colours, so the
+ * variables themselves animate and every panel follows; nothing moves. At once with Calm motion on (`storm-instant`,
+ * set by the controller) or the system's reduced motion.
+ */
+@property --panel { syntax: "<color>"; inherits: true; initial-value: #f2ebdd; }
+@property --panel-raised { syntax: "<color>"; inherits: true; initial-value: #fbf8f1; }
+@property --panel-shadow { syntax: "<color>"; inherits: true; initial-value: #cdbf9f; }
+@property --band { syntax: "<color>"; inherits: true; initial-value: #7fa0c4; }
+@property --band-ink { syntax: "<color>"; inherits: true; initial-value: #18263a; }
+@property --ink { syntax: "<color>"; inherits: true; initial-value: #22344a; }
+@property --ink-2 { syntax: "<color>"; inherits: true; initial-value: #3b4b5f; }
+@property --ink-3 { syntax: "<color>"; inherits: true; initial-value: #4b5a6c; }
+@property --accent-ink { syntax: "<color>"; inherits: true; initial-value: #3f5f86; }
+@property --button { syntax: "<color>"; inherits: true; initial-value: #d6e1ee; }
+@property --button-border { syntax: "<color>"; inherits: true; initial-value: #b5cae2; }
+@property --button-on { syntax: "<color>"; inherits: true; initial-value: #b5cae2; }
+@property --button-on-border { syntax: "<color>"; inherits: true; initial-value: #4a6e99; }
+@property --cta { syntax: "<color>"; inherits: true; initial-value: #e3a93b; }
+@property --cta-shadow { syntax: "<color>"; inherits: true; initial-value: #b9821c; }
+@property --cta-ink { syntax: "<color>"; inherits: true; initial-value: #3a2606; }
+@property --warn { syntax: "<color>"; inherits: true; initial-value: #d9765f; }
+@property --warn-soft { syntax: "<color>"; inherits: true; initial-value: #f4cfc4; }
+@property --warn-ink { syntax: "<color>"; inherits: true; initial-value: #4a1a0e; }
+@property --gold-soft { syntax: "<color>"; inherits: true; initial-value: #f6dfa6; }
+@property --stitch { syntax: "<color>"; inherits: true; initial-value: rgba(34, 52, 74, 0.35); }
+
+:root {
+  transition-property: --panel, --panel-raised, --panel-shadow, --band, --band-ink, --ink, --ink-2, --ink-3, --accent-ink, --button, --button-border, --button-on, --button-on-border, --cta, --cta-shadow, --cta-ink, --warn, --warn-soft, --warn-ink, --gold-soft, --stitch;
+  transition-duration: 600ms;
+  transition-timing-function: ease-in-out;
+}
+
+:root.storm-instant {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition: none;
+  }
+}
+
+/*
+ * During a storm the Homes at risk box (then Homes lost) wears a 3 px ring in --warn at 30%, and a 1 px --warn rim
+ * inside its edge, so it stands out in grey too (Section 33.6, the grayscale check). Shadows only: nothing moves.
+ */
+:root.storm .outlook-risk {
+  box-shadow: inset 0 0 0 1px var(--warn), 0 0 0 3px color-mix(in srgb, var(--warn) 30%, transparent);
+}

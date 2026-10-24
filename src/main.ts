@@ -1,8 +1,18 @@
-// Section 30.12: the title font, bundled (works offline; no Google Fonts).
-import "@fontsource/fraunces/latin-700.css";
+// Section 33.3: Harbour Morning's two fonts, bundled (latin) so festival mode works offline (Section 30.12): Zilla Slab
+// for headings, the year, big numbers and button labels; Work Sans for everything else.
+import "@fontsource/zilla-slab/latin-600.css";
+import "@fontsource/zilla-slab/latin-700.css";
+import "@fontsource/work-sans/latin-400.css";
+import "@fontsource/work-sans/latin-500.css";
+import "@fontsource/work-sans/latin-600.css";
+import "@fontsource/work-sans/latin-700.css";
+// Section 33.1: Harbour Morning's colour tokens, before the sheets that use them.
+import "@ui/theme.css";
 import "@ui/hud.css";
 import "@ui/screens/screens.css";
 import "@ui/panjim/panjim.css";
+// Section 33.4: Harbour Morning's shared shapes, after the sheets they restyle.
+import "@ui/harbour.css";
 import { AppShell } from "@app/appShell";
 import { clearOldProgress } from "@services/storagePolicy";
 

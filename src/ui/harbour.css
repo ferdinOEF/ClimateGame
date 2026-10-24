@@ -1,0 +1,662 @@
+/*
+ * Section 33.4 (owner decision): Harbour Morning's shapes, shared by every panel, card and button. Colours come only
+ * from the tokens in theme.css. Each component's own sheet (hud.css, panjim.css, screens.css) keeps its size and
+ * layout; the look common to many lives here, imported after them.
+ */
+
+/* ---- 33.4a Panels -------------------------------------------------------------------------------------------- */
+
+/* The cream body, a flat bottom shadow, no blur and no gradient. */
+.panjim-clock,
+.build-popover,
+.objectives-panel,
+.replay-card,
+.status-objective,
+.leave-confirm,
+.field-guide-card,
+.help-card,
+.sources-panel,
+.era-end-card,
+.welcome-card,
+.tutorial-coach,
+.results-card,
+.level-card,
+.auth-card,
+.storm-report,
+.instrument-cluster,
+.hazard-test-panel,
+.has-panjim-clock .hud-panel-settings .hud-panel-body,
+.brief-card,
+.result-card,
+.finale-card,
+.menu-card {
+  background: var(--panel);
+  color: var(--ink);
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--panel-shadow);
+  text-shadow: none;
+}
+
+/* Modal cards: rounder, and a deeper flat shadow. */
+.brief-card,
+.result-card,
+.finale-card,
+.menu-card,
+.help-card,
+.field-guide-card,
+.sources-panel,
+.storm-report {
+  border-radius: 20px;
+  box-shadow: 0 6px 0 var(--panel-shadow);
+}
+
+/*
+ * Large modal cards (the start popup, the result cards and the final card, the old finale card, the main menu card):
+ * a --warn strip down the left edge and a mesh strip down the right (an 8 px pattern of dots, drawn in CSS). The
+ * strips are the card's own borders, so they stay put when the card scrolls; the cream is a flat layer clipped to
+ * the padding box over the mesh.
+ */
+.brief-card,
+.result-card,
+.finale-card,
+.menu-card {
+  border-left: 14px solid var(--warn);
+  border-right: 20px solid transparent;
+  background:
+    linear-gradient(var(--panel), var(--panel)) padding-box,
+    radial-gradient(circle at 4px 4px, var(--mesh-dot) 2.2px, transparent 2.7px) 0 0 / 8px 8px border-box,
+    var(--mesh) border-box;
+}
+
+/* The dark overlay behind modals. */
+.result-cards,
+.brief-backdrop,
+.help-backdrop,
+.field-guide-backdrop,
+.leave-confirm-backdrop,
+.sources-backdrop,
+.era-end-backdrop,
+.welcome-backdrop,
+.storm-report-backdrop,
+.finale {
+  background: var(--overlay);
+}
+
+/*
+ * Titled panels: a header band in --band with the title or eyebrow in --band-ink, then a dashed stitch line 6 px
+ * below it, inset 13 px. Each band reaches its panel's edges (its margins below match the panel's padding).
+ */
+.brief-eyebrow,
+.result-eyebrow,
+.result-card-body > .result-title:first-child,
+.help-header,
+.panjim-help .help-header,
+.field-guide-head,
+.sources-head,
+.leave-confirm-title,
+.build-card-head,
+.tutorial-card-head,
+.tutorial-checklist-head,
+.get-ready-head,
+.menu-card .menu-eyebrow {
+  position: relative;
+  background: var(--band);
+  color: var(--band-ink);
+  font-weight: 700;
+}
+
+.brief-eyebrow::after,
+.result-eyebrow::after,
+.result-card-body > .result-title:first-child::after,
+.help-header::after,
+.field-guide-head::after,
+.sources-head::after,
+.leave-confirm-title::after,
+.build-card-head::after,
+.tutorial-card-head::after,
+.tutorial-checklist-head::after,
+.get-ready-head::after,
+.menu-card .menu-eyebrow::after {
+  content: "";
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  bottom: -7.5px;
+  border-top: 1.5px dashed var(--stitch);
+  pointer-events: none;
+}
+
+/* Eyebrows: letterspaced. */
+.brief-eyebrow,
+.result-eyebrow,
+.build-card-head,
+.tutorial-checklist-head,
+.get-ready-title,
+.menu-card .menu-eyebrow {
+  letter-spacing: 0.16em;
+}
+
+/* The start popup (padding 26 px 24 px): its eyebrow is the band across the top, over both columns. */
+.brief-eyebrow {
+  margin: -26px -24px 16px;
+  padding: 11px 24px;
+}
+
+.brief-card.with-feature > .brief-eyebrow {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.brief-card.brief-panjim.with-feature {
+  grid-template-rows: auto 1fr auto auto auto auto 1fr;
+}
+.brief-card.brief-panjim.with-feature > .brief-eyebrow { grid-row: 1; }
+.brief-card.brief-panjim.with-feature > .brief-title { grid-row: 3; }
+.brief-card.brief-panjim.with-feature > .brief-body { grid-row: 4; }
+.brief-card.brief-panjim.with-feature > .brief-goal-line { grid-row: 5; }
+.brief-card.brief-panjim.with-feature > .brief-cta { grid-row: 6; }
+.brief-card.brief-panjim.with-feature > .brief-feature { grid-row: 2 / 8; }
+
+.brief-card.brief-tutorial.with-feature {
+  grid-template-rows: auto 1fr auto auto auto 1fr;
+}
+.brief-card.brief-tutorial.with-feature > .brief-eyebrow { grid-row: 1; }
+.brief-card.brief-tutorial.with-feature > .brief-title { grid-row: 3; }
+.brief-card.brief-tutorial.with-feature > .brief-body { grid-row: 4; }
+.brief-card.brief-tutorial.with-feature > .brief-cta { grid-row: 5; }
+.brief-card.brief-tutorial.with-feature > .brief-feature { grid-row: 2 / 7; }
+
+/* The result cards (padding 24 px 26 px 20 px): the eyebrow, or the final card's title, is the band. */
+.result-eyebrow,
+.result-card-body > .result-title:first-child {
+  margin: -24px -26px 16px;
+  padding: 11px 26px;
+}
+
+/* How to play: the header is the band (the card scrolls, and clips it to its corners). */
+.help-header,
+.panjim-help .help-header {
+  border-bottom: none;
+}
+
+.help-header .help-title,
+.panjim-help .help-header .help-title {
+  color: var(--band-ink);
+}
+
+/* The Field Guide (padding 18 px 20 px). */
+.field-guide-head {
+  margin: -18px -20px 16px;
+  padding: 12px 20px;
+}
+
+/* Sources: the panel clips its band to its corners. */
+.sources-panel {
+  overflow: hidden;
+}
+
+.sources-head {
+  padding: 14px 20px;
+  margin-bottom: 14px;
+}
+
+.sources-head h2 {
+  color: var(--band-ink);
+}
+
+/* "Leave Panjim?" (padding 18 px 20 px 16 px). */
+.leave-confirm-title {
+  margin: -18px -20px 14px;
+  padding: 10px 20px;
+  border-radius: 16px 16px 0 0;
+}
+
+/* The build menu (padding 8 px). */
+.build-card-head {
+  margin: -8px -8px 12px;
+  padding: 8px 12px;
+  border-radius: 16px 16px 0 0;
+}
+
+/* The objective panel (padding 11 px 13 px): its title row is the band. */
+.get-ready-head {
+  margin: -11px -13px 14px;
+  padding: 7px 13px;
+  border-radius: 16px 16px 0 0;
+}
+
+.get-ready-head .get-ready-title {
+  color: var(--band-ink);
+}
+
+/* The Tutorial's caption card and checklist: two raised cards in the objective panel, each with its band. */
+.tutorial-card,
+.tutorial-checklist {
+  background: var(--panel-raised);
+  border-radius: 12px;
+}
+
+.tutorial-checklist {
+  padding: 0 11px 10px;
+}
+
+.tutorial-card-head {
+  margin: -9px -11px 12px;
+  padding: 7px 11px;
+  border-radius: 12px 12px 0 0;
+}
+
+.tutorial-card-head .tutorial-card-name {
+  color: var(--band-ink);
+}
+
+.tutorial-checklist-head {
+  margin: 0 -11px 12px;
+  padding: 7px 11px;
+  border-radius: 12px 12px 0 0;
+}
+
+.tutorial-checklist-head .tutorial-count {
+  color: var(--band-ink);
+}
+
+/* ☰ has no title: a slim band across its top, and the stitch 6 px under it. */
+.has-panjim-clock .hud-panel-settings .hud-panel-body {
+  position: relative;
+  border-top: 12px solid var(--band);
+  padding-top: 18px;
+}
+
+.has-panjim-clock .hud-panel-settings .hud-panel-body::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  top: 6px;
+  border-top: 1.5px dashed var(--stitch);
+  pointer-events: none;
+}
+
+/* Phones: How to play stays a full-screen sheet. */
+@media (max-width: 560px) {
+  .help-card {
+    border-radius: 0;
+  }
+}
+
+/* ---- 33.4b Buttons, the main action, build cards, focus, tooltips, map notes -------------------------------- */
+
+/* Button labels in Zilla Slab. */
+.brief-cta,
+.result-next,
+.leave-confirm-stay,
+.welcome-cta,
+.coach-cta,
+.era-end-restart,
+.storm-report-dismiss,
+.btn,
+.finale-done,
+.result-retry,
+.result-back,
+.leave-confirm-leave,
+.finale-share,
+.speed-up,
+.panjim-toggle,
+.hud-menu-action,
+.field-guide-button,
+.field-guide-replay,
+.replay-skip,
+.get-ready-toggle,
+.clock-ff,
+.build-notice-action,
+.back-button,
+.preview-toggle,
+.build-option,
+.built-info-remove,
+.board-tab,
+.hazard-test-tab,
+.hazard-test-trigger,
+.hazard-test-reset,
+.hud-panel-button,
+.help-button,
+.help-close,
+.sources-close,
+.field-guide-close,
+.welcome-close {
+  font-family: var(--font-head);
+  text-shadow: none;
+}
+
+/* Secondary buttons and chips: --button with a 2 px --button-border. */
+.btn,
+.result-retry,
+.result-back,
+.leave-confirm-leave,
+.finale-share,
+.speed-up,
+.panjim-toggle,
+.hud-menu-action,
+.field-guide-button,
+.field-guide-replay,
+.replay-skip,
+.get-ready-toggle,
+.clock-ff,
+.build-notice-action,
+.back-button,
+.preview-toggle,
+.build-option,
+.built-info-remove,
+.board-tab,
+.hazard-test-tab,
+.hazard-test-trigger,
+.hazard-test-reset,
+.hud-panel-button,
+.help-button,
+.help-close,
+.sources-close,
+.field-guide-close,
+.welcome-close,
+.tutorial-chip {
+  background: var(--button);
+  color: var(--ink);
+  border: 2px solid var(--button-border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+/* Hover, picked and pressed: --button-on with its darker border. */
+.btn:hover,
+.result-retry:hover,
+.result-back:hover,
+.leave-confirm-leave:hover,
+.finale-share:hover,
+.speed-up:hover,
+.panjim-toggle:hover,
+.panjim-toggle.on,
+.hud-menu-action:hover,
+.field-guide-button:hover,
+.field-guide-replay:hover,
+.replay-skip:hover,
+.get-ready-toggle:hover,
+.clock-ff:hover:not(:disabled),
+.build-notice-action:hover,
+.back-button:hover,
+.preview-toggle:hover,
+.preview-toggle.active,
+.build-option:hover,
+.built-info-remove:hover,
+.board-tab:hover,
+.board-tab.active,
+.hazard-test-tab:hover,
+.hazard-test-tab.active,
+.hazard-test-trigger:hover,
+.hazard-test-reset:hover,
+.hud-panel-button:hover,
+.hud-panel.open .hud-panel-button,
+.help-button:hover,
+.help-close:hover,
+.sources-close:hover,
+.field-guide-close:hover,
+.welcome-close:hover,
+.btn:active,
+.speed-up:active,
+.panjim-toggle:active,
+.hud-menu-action:active {
+  background: var(--button-on);
+  border-color: var(--button-on-border);
+}
+
+/* The round ones stay round. */
+.hud-panel-button,
+.help-button,
+.help-close,
+.sources-close,
+.field-guide-close,
+.welcome-close {
+  border-radius: 50%;
+}
+
+/* Chips are smaller: a pill. */
+.tutorial-chip {
+  border-width: 1.5px;
+  border-radius: 999px;
+}
+
+/* A warning on Status: its rim in --warn (it reads without colour too: the diamond). */
+.hud-panel.danger .hud-panel-button {
+  border-color: var(--warn);
+}
+
+/*
+ * The one main action of a screen (the start popup's start, On to the next year and the other card buttons, Play
+ * Panjim and Play again, "Stay" on Leave Panjim?, Got it where it is the only action): --cta with --cta-ink, a flat
+ * shadow and two dashed stitch lines across it, 5 px in from its top and bottom.
+ */
+.brief-cta,
+.result-next,
+.leave-confirm-stay,
+.welcome-cta,
+.coach-cta,
+.era-end-restart,
+.storm-report-dismiss,
+.btn-primary,
+.finale-done {
+  position: relative;
+  background: var(--cta);
+  color: var(--cta-ink);
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--cta-shadow);
+  font-weight: 700;
+}
+
+.brief-cta::before,
+.result-next::before,
+.leave-confirm-stay::before,
+.welcome-cta::before,
+.coach-cta::before,
+.era-end-restart::before,
+.storm-report-dismiss::before,
+.btn-primary::before,
+.finale-done::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 5px;
+  bottom: 5px;
+  border-top: 1.5px dashed var(--cta-stitch);
+  border-bottom: 1.5px dashed var(--cta-stitch);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.brief-cta:hover,
+.result-next:hover,
+.leave-confirm-stay:hover,
+.welcome-cta:hover,
+.coach-cta:hover,
+.era-end-restart:hover,
+.storm-report-dismiss:hover,
+.btn-primary:hover,
+.finale-done:hover {
+  background: color-mix(in srgb, var(--cta) 82%, var(--panel-raised));
+}
+
+.brief-cta:active,
+.result-next:active,
+.leave-confirm-stay:active,
+.welcome-cta:active,
+.coach-cta:active,
+.era-end-restart:active,
+.storm-report-dismiss:active,
+.btn-primary:active,
+.finale-done:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--cta-shadow);
+}
+
+/* Focus: a 3 px outline in --button-on-border, 2 px off, on every button and input. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--button-on-border);
+  outline-offset: 2px;
+}
+
+/*
+ * Build cards: --panel-raised with a 2 px border and a dashed stitch 5 px inside it; the hovered card, and the one
+ * the Tutorial glows, in --button-on. Leaf chips and icons keep their meaning.
+ */
+.build-card {
+  position: relative;
+  background: var(--panel-raised);
+  color: var(--ink);
+  border: 2px solid var(--button-border);
+  border-radius: 12px;
+}
+
+.build-card::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1.5px dashed var(--stitch);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.build-card:hover,
+.build-card:focus-visible,
+.build-card.coach-pulse {
+  background: var(--button-on);
+  border-color: var(--button-on-border);
+}
+
+.build-card-name {
+  font-family: var(--font-head);
+  color: var(--ink);
+}
+
+.build-card-line {
+  color: var(--ink-2);
+}
+
+.build-card-detail {
+  color: var(--ink-3);
+}
+
+/* --ink-3 is too faint on --button-on: the quieter line darkens with the card. */
+.build-card:hover .build-card-detail,
+.build-card:focus-visible .build-card-detail,
+.build-card.coach-pulse .build-card-detail {
+  color: var(--ink-2);
+}
+
+.build-hover-note {
+  color: var(--accent-ink);
+}
+
+.build-card-elsewhere {
+  border-top: 1.5px dashed var(--stitch);
+  color: var(--ink-3);
+}
+
+.leaf-chip.up {
+  background: var(--panel);
+  color: var(--good);
+  box-shadow: inset 0 0 0 1.5px var(--good);
+}
+
+.leaf-chip.down {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.leaf-chip.level {
+  background: var(--button);
+  color: var(--ink-2);
+}
+
+/* The Tutorial's glow round the card it wants, and round Speed up: a ring in --button-on-border. */
+@keyframes coach-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--button-on-border) 0%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--button-on-border) 55%, transparent); }
+}
+
+.speed-up.coach-pulse {
+  border-color: var(--button-on-border);
+}
+
+/* Tooltips and map notes: --panel with --ink and the flat shadow. */
+.hud-tooltip,
+.hud-panel-button::before,
+.speed-up[data-hint]:not([data-hint=""])::after,
+.map-note {
+  background: var(--panel);
+  color: var(--ink);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 0 var(--panel-shadow);
+}
+
+/* "Broken with age", "Cracked with age": a --warn edge, as a warning. */
+.map-note.beside {
+  border-left: 4px solid var(--warn);
+}
+
+/* ---- 33.5a The main menu and the start popup ------------------------------------------------------------------ */
+
+/* The menu's card: the title and the buttons, the eyebrow its band (padding 24 px 26px). */
+.menu-card {
+  box-sizing: border-box;
+  width: min(600px, 100%);
+  margin: 0 auto;
+  padding: 24px 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.menu-card .menu-eyebrow {
+  margin: -24px -26px 6px;
+  padding: 11px 26px;
+}
+
+/* ---- 33.5b The top bar, its outlook, the toggles, the build menu, the objective panel -------------------------- */
+
+/* The top bar: a dashed stitch border 5 px inside it, radius 10 px. */
+.panjim-clock::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1.5px dashed var(--stitch);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+/* The objective panel's minimise button sits on its band: a small chip. */
+.get-ready-head .get-ready-toggle {
+  border-width: 1.5px;
+  border-radius: 8px;
+}
+
+/* ---- 33.6 Focus on the band ----------------------------------------------------------------------------------- */
+
+/*
+ * --button-on-border is too close to --band to read as a ring (1.9:1 calm). Where a control sits on a band (the
+ * close buttons and the objective's minimise in the headers, the links on the shell's blue page), a --panel-raised
+ * ring fills the 2 px gap under the outline, so the outline keeps its colour and stands 5.3:1 against the ring.
+ */
+.help-header button:focus-visible,
+.sources-head button:focus-visible,
+.field-guide-head button:focus-visible,
+.get-ready-head button:focus-visible,
+.menu-sources-link:focus-visible,
+.menu-art-credit:focus-visible,
+.screen-layer .link-button:focus-visible {
+  box-shadow: 0 0 0 2px var(--panel-raised);
+}
