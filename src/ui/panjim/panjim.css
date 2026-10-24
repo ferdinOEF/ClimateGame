@@ -1758,8 +1758,8 @@
 /* Low quality: a plain flat disc, half red and half blue. */
 .risk-intro-disc {
   border-radius: 50%;
-  background: linear-gradient(135deg, #e2453a 0 50%, #2f6fd8 50% 100%);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(135deg, var(--fixed-risk-red) 0 50%, var(--fixed-risk-blue) 50% 100%);
+  box-shadow: 0 2px 0 var(--panel-shadow);
 }
 
 /*
@@ -1777,7 +1777,7 @@
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  border: 2px solid rgba(226, 69, 58, 0.85);
+  border: 2px solid var(--warn);
   pointer-events: none;
   animation: risk-intro-ripple 600ms ease-out 1 forwards;
 }
@@ -1800,9 +1800,9 @@
 }
 
 @keyframes risk-intro-glow {
-  0% { box-shadow: 0 0 0 0 rgba(226, 69, 58, 0); }
-  40% { box-shadow: 0 0 0 4px rgba(226, 69, 58, 0.55); }
-  100% { box-shadow: 0 0 0 0 rgba(226, 69, 58, 0); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 0%, transparent); }
+  40% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 55%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 0%, transparent); }
 }
 
 .risk-toggle {
@@ -3382,8 +3382,8 @@
 }
 
 .tutorial-card.built {
-  border-color: #7fe0b8;
-  background: rgba(127, 224, 184, 0.12);
+  background: var(--panel-raised);
+  box-shadow: inset 0 0 0 2px var(--good);
 }
 
 .tutorial-built {
@@ -3392,8 +3392,8 @@
   right: 10px;
   padding: 2px 9px;
   border-radius: 999px;
-  background: #7fe0b8;
-  color: #13261e;
+  background: var(--good);
+  color: var(--panel-raised);
   font: 700 12px/1.4 var(--font-body);
 }
 
@@ -3411,7 +3411,6 @@
 
 .tutorial-card-name {
   font: 700 16px/1.2 var(--font-head);
-  color: #ffd98a;
 }
 
 .tutorial-chips {
@@ -3433,7 +3432,7 @@
   font-size: 10.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #f2c35b;
+  color: var(--accent-ink);
 }
 
 .tutorial-how {
@@ -3446,12 +3445,12 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.38;
-  color: rgba(253, 246, 230, 0.78);
+  color: var(--ink-2);
 }
 
 .tutorial-card-done b {
   font: 700 15px/1.2 var(--font-head);
-  color: #9fdcae;
+  color: var(--good);
 }
 
 .tutorial-card-done p {
@@ -3466,13 +3465,11 @@
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #f2c35b;
 }
 
 .tutorial-count {
   font-size: 13px;
   letter-spacing: 0;
-  color: #fdf6e6;
 }
 
 .tutorial-checks {
@@ -3506,7 +3503,7 @@
 }
 
 .tutorial-check.next .tutorial-check-icon svg {
-  box-shadow: 0 0 0 2px #f2c35b;
+  box-shadow: 0 0 0 2px var(--button-on-border);
 }
 
 .tutorial-check-tick {
@@ -3517,8 +3514,8 @@
   height: 14px;
   border-radius: 50%;
   display: none;
-  background: #7fe0b8;
-  box-shadow: 0 0 0 2px #1d2a24;
+  background: var(--good);
+  box-shadow: 0 0 0 2px var(--panel-raised);
 }
 
 .tutorial-check-tick::after {
@@ -3528,7 +3525,7 @@
   top: 2px;
   width: 4px;
   height: 7px;
-  border: solid #13261e;
+  border: solid var(--panel-raised);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -3541,7 +3538,7 @@
   font-size: 9.5px;
   line-height: 1.1;
   text-align: center;
-  color: rgba(253, 246, 230, 0.85);
+  color: var(--ink-2);
 }
 
 /* The result card's rows: every defence, and why where it saved none. */

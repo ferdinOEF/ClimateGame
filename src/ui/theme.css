@@ -56,6 +56,9 @@
   --fixed-cone-place: #fff3e0;
   --fixed-cone-place-edge: #1b0c06;
   --fixed-maya-shadow: rgba(0, 0, 0, 0.45);
+  /* The risk intro's ball on Low quality: the board's heat, red and blue, as the canvas ball draws it. */
+  --fixed-risk-red: #e2453a;
+  --fixed-risk-blue: #2f6fd8;
 
   /* Section 33.3: headings, the year, big numbers and button labels; everything else. */
   --font-head: "Zilla Slab", Georgia, serif;
