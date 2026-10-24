@@ -101,7 +101,7 @@ describe("Section 33.2: the storm hues", () => {
   });
 
   it("the Homes at risk box wears a 3 px --warn ring at 30% in a storm", () => {
-    expect(THEME).toMatch(/:root\.storm \.outlook-risk \{\s*box-shadow: 0 0 0 3px color-mix\(in srgb, var\(--warn\) 30%, transparent\);/);
+    expect(THEME).toMatch(/:root\.storm \.outlook-risk \{\s*box-shadow: inset 0 0 0 1px var\(--warn\), 0 0 0 3px color-mix\(in srgb, var\(--warn\) 30%, transparent\);/);
   });
 });
 

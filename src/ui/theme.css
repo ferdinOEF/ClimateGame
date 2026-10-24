@@ -149,7 +149,10 @@
   }
 }
 
-/* During a storm the Homes at risk box (then Homes lost) wears a 3 px ring in --warn at 30%. */
+/*
+ * During a storm the Homes at risk box (then Homes lost) wears a 3 px ring in --warn at 30%, and a 1 px --warn rim
+ * inside its edge, so it stands out in grey too (Section 33.6, the grayscale check). Shadows only: nothing moves.
+ */
 :root.storm .outlook-risk {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 30%, transparent);
+  box-shadow: inset 0 0 0 1px var(--warn), 0 0 0 3px color-mix(in srgb, var(--warn) 30%, transparent);
 }
