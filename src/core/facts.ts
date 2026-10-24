@@ -1,6 +1,6 @@
 import factsData from "@data/facts.json";
 import nuggetsData from "@data/nuggets.json";
-import { ELEMENT_BY_ID } from "./elements";
+import { ELEMENT_BY_ID, RETIRED_ELEMENTS } from "./elements";
 
 /**
  * Everything the game says about the real world, in one place
@@ -62,6 +62,8 @@ export const FEATURES_OFF: ReadonlySet<string> = new Set(["economy", "growth"]);
 export function isShown(fact: Fact): boolean {
   if (fact.needsSource) return false;
   if (fact.needs?.some((feature) => FEATURES_OFF.has(feature))) return false;
+  // Section 34: a rule about a retired build (sand mining) names something no level offers.
+  if (fact.elements.length > 0 && fact.elements.every((id) => RETIRED_ELEMENTS.has(id))) return false;
   return fact.kind === "gameRule" || Boolean(fact.citation);
 }
 

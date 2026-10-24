@@ -576,6 +576,20 @@ a:focus-visible,
   color: var(--warn-ink);
 }
 
+/* Section 34: the card a pulsing tile's objective asks for says so in words, not only by its glow. */
+.objective-chip {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: var(--button);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1.5px var(--button-on-border);
+}
+
 .leaf-chip.level {
   background: var(--button);
   color: var(--ink-2);

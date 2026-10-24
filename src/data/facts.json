@@ -113,7 +113,7 @@
     {
       "id": "dune-shrinks",
       "kind": "gameRule",
-      "text": "A dune that takes a beating isn't destroyed: it weakens for that storm and is still there for the next.",
+      "text": "A dune that takes a beating isn't destroyed: it stays weaker until you repair it, and is still there for the next storm.",
       "elements": [
         "dune"
       ]
@@ -183,6 +183,9 @@
     {
       "id": "resort-no-defence",
       "kind": "gameRule",
+      "needs": [
+        "economy"
+      ],
       "text": "A resort defends nothing: a storm that reaches it does damage.",
       "elements": [
         "beachside_resort"
@@ -210,6 +213,9 @@
     {
       "id": "yacht-nothing",
       "kind": "gameRule",
+      "needs": [
+        "economy"
+      ],
       "text": "The Yacht does nothing for your defences or your resilience. It's there to be seen.",
       "elements": [
         "yacht"

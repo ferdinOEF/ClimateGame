@@ -637,7 +637,7 @@ export class PanjimController {
   private readonly tutorialPanel: TutorialPanel | null;
   private readonly tutorialTried = new Set<string>();
   /** Section 31.4: by storm, the homes each defence took out of its way when it was built. */
-  private readonly tutorialCredit = new Map<string, Map<string, number>>();
+  private readonly tutorialCredit = new Map<string, Map<string, Set<string>>>();
   /** By storm, why a defence's build took none: no home left at risk ("safe"), or too far from them ("far"). */
   private readonly tutorialNoneWhy = new Map<string, Map<string, "safe" | "far">>();
   /** The Tutorial's last build (it may be the one that brought the storm, so not yet on `preChallengeIds`). */
@@ -1045,7 +1045,16 @@ export class PanjimController {
    */
   private tutorialRows(challenge: ScheduledChallenge): TutorialDefenceRow[] {
     const storm = challenge.kind === "flood" ? "flood" : "cyclone";
-    const credit = this.tutorialCredit.get(challenge.id) ?? new Map<string, number>();
+    const credit = this.tutorialCredit.get(challenge.id) ?? new Map<string, Set<string>>();
+    // Section 34: a home credited when a defence went down counts only if it still stood after this storm (an earlier
+    // storm may have ruined it, or this one taken it), so the rows never add up to more than the homes saved.
+    const lost = new Set<string>();
+    for (const c of this.run.schedule) {
+      const outcome = this.run.outcomes.get(c.id);
+      if (outcome) for (const key of outcome.damagedHouses) lost.add(key);
+      if (c.id === challenge.id) break;
+    }
+    const kept = (keys: Set<string> | undefined): number => [...(keys ?? [])].filter((key) => !lost.has(key)).length;
     const none = this.tutorialNoneWhy.get(challenge.id) ?? new Map<string, "safe" | "far">();
     // The board as the storm came: the one before the action that brought it, and that action's own build.
     const standing = new Map(this.preChallengeIds);
@@ -1058,7 +1067,7 @@ export class PanjimController {
       const gone = keys.length === 0;
       const broken = !gone && keys.every((key) => this.wasBroken(key));
       // Taken down or broken before the storm: it took nothing out of its way, whatever it did when built.
-      const homes = gone || broken ? 0 : Math.max(0, credit.get(step.id) ?? 0);
+      const homes = gone || broken ? 0 : kept(credit.get(step.id));
       let why: string | null = null;
       if (homes === 0) {
         if (gone) why = "Taken down before this storm";
@@ -1480,7 +1489,7 @@ export class PanjimController {
     // Section 31.4: in the Tutorial, what this build takes out of each coming storm's way, worked out before it
     // goes down (the same model as the storm); the storm's card credits each defence with it.
     const credit = this.tutorial && buildable
-      ? this.run.schedule.filter((c) => !this.run.landed.has(c.id)).map((c) => ({ id: c.id, saves: this.run.homesSavedBy(c, coord, elementId) ?? 0, atRisk: this.run.homesAtRisk(c) }))
+      ? this.run.schedule.filter((c) => !this.run.landed.has(c.id)).map((c) => ({ id: c.id, saves: this.run.riskChangeBy(c, coord, elementId)?.saved ?? [], atRisk: this.run.homesAtRisk(c) }))
       : [];
     // No pop-up over the tile after a build (Section 23.2, owner decision), and no note beside it when it is off the
     // objective's tiles (Section 32, owner decision): it just goes down.
@@ -1489,11 +1498,11 @@ export class PanjimController {
     // Section 31.2: the checklist ticks the defence; its caption says "Built" before the next slides in.
     if (this.tutorial) {
       for (const { id, saves, atRisk } of credit) {
-        const byDefence = this.tutorialCredit.get(id) ?? new Map<string, number>();
-        byDefence.set(elementId, (byDefence.get(elementId) ?? 0) + saves);
+        const byDefence = this.tutorialCredit.get(id) ?? new Map<string, Set<string>>();
+        byDefence.set(elementId, new Set([...(byDefence.get(elementId) ?? []), ...saves]));
         this.tutorialCredit.set(id, byDefence);
         // Why a build took none out of this storm's way: nothing left at risk, or too far from what was.
-        if (saves <= 0) (this.tutorialNoneWhy.get(id) ?? this.tutorialNoneWhy.set(id, new Map()).get(id)!).set(elementId, atRisk === 0 ? "safe" : "far");
+        if (saves.length === 0) (this.tutorialNoneWhy.get(id) ?? this.tutorialNoneWhy.set(id, new Map()).get(id)!).set(elementId, atRisk === 0 ? "safe" : "far");
       }
       this.tutorialLastBuild = { key: `${coord.q},${coord.r}`, elementId };
       this.tutorialTried.add(elementId);
@@ -1767,13 +1776,37 @@ export class PanjimController {
    * the cards are. Section 30.11 bug 3: only the card the Tutorial wants pulses (its objective's next defence),
    * round the whole card; no outline on every line.
    */
-  cardsOpened(): void {
-    if (!this.tutorial) return;
+  cardsOpened(coord?: AxialCoord): void {
+    if (!this.tutorial) {
+      this.markObjectiveCard(coord);
+      return;
+    }
     if (this.run.turnNumber === 1) this.coach("cards", "explains");
     // Section 31.2: every year, the card of the defence the Tutorial suggests glows.
     const wanted = this.tutorialSuggestion();
     const card = [...this.host.container.querySelectorAll<HTMLElement>(".build-popover .build-card")].find((el) => el.dataset.element === wanted);
     card?.classList.add("coach-pulse");
+  }
+
+  /**
+   * Section 34: on a tile the objective pulses, the card of the defence it asks for there glows and says "Objective"
+   * (a pulsing tile alone did not say which defence counts, and players built another one there).
+   */
+  private markObjectiveCard(coord?: AxialCoord): void {
+    if (!coord || this.run.finished) return;
+    const key = `${coord.q},${coord.r}`;
+    const zones = this.run.zones;
+    const open = this.run.prep.filter((job) => !zones || !prepProgress(job, this.host.state, zones).done);
+    const jobs = open.length > 0 ? this.run.prep : this.aheadRows;
+    const wanted = new Set(jobs.filter((job) => this.pulseKeys(job).includes(key)).map((job) => job.elementId));
+    for (const card of this.host.container.querySelectorAll<HTMLElement>(".build-popover .build-card")) {
+      if (!card.dataset.element || !wanted.has(card.dataset.element) || card.querySelector(".objective-chip")) continue;
+      card.classList.add("coach-pulse", "objective-pick");
+      const chip = document.createElement("span");
+      chip.className = "objective-chip";
+      chip.textContent = "Objective";
+      card.querySelector(".build-card-title")?.appendChild(chip);
+    }
   }
 
   /** A new Tutorial year: in a storm's own year, its red heat (Maya's line is the step's, Section 31.3). */

@@ -815,7 +815,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             refreshHud();
             refreshPreview();
           },
-          onRunComplete: (result, then) => finishRun(true, result, then),
+          // Section 34: Panjim counts as completed only when it is cleared (a star in every storm, five of nine), as
+          // its final card says; the Tutorial always completes.
+          onRunComplete: (result, then) => finishRun(level.tutorial === true || result.cleared, result, then),
           revealSkyline: () => {
             // Up and back over the whole city, the light clearing.
             stormImpactActive = false;
@@ -997,7 +999,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,
-      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule, heatLeadYears: panjim.heatLeadYears, houseStars: panjim.run.houseStars })
+      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule, heatLeadYears: panjim.heatLeadYears, houseStars: panjim.run.houseStars, tutorial: level.tutorial === true })
     );
   /**
    * The step-by-step coach, on the tutorial level only.
@@ -1333,12 +1335,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // them to act on a board that is now read-only.
     tutorialCoach?.dismiss();
 
-    const stats = runTracker.snapshot();
+    const runStats = runTracker.snapshot();
+    // Section 34: a yearly run's storms are resolved from their records, which the old tracker never sees, so the
+    // defences they broke are counted from the board; and a yearly run has no turn budget, so no par.
+    const stats = panjimResult ? { ...runStats, defensesDestroyed: [...state.elements.values()].filter((inst) => inst.broken).length } : runStats;
     const counts = standingCounts();
     const baseScore = computeLevelScore({
       state,
       stats,
-      parTurns: level.parTurns,
+      parTurns: panjimResult ? 0 : level.parTurns,
       starThresholds: level.starThresholds,
       completed
     });
@@ -2452,7 +2457,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         // The year chip first (never covered), then the rest of the HUD.
         { avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
       );
-      controller.cardsOpened();
+      controller.cardsOpened(coord);
       return;
     }
 

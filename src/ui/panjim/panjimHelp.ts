@@ -21,6 +21,8 @@ export interface PanjimHelpInput {
   heatLeadYears?: number;
   /** The level's star lines (Section 25.2): said in words when they count biodiversity. */
   houseStars?: HouseStars;
+  /** The Tutorial (Section 34): it has no clear rule, and its stars count homes only. */
+  tutorial?: boolean;
 }
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
@@ -68,14 +70,16 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
     .map((storm) => `<p>In this game, the ${storm.year} storm does not reach ${esc(storm.shelteredPlace!)}.</p>`)
     .join("");
   const stormsTitle = count === 1 ? "The storm" : `${countWord(count).replace(/^./, (c) => c.toUpperCase())} storms`;
-  // Section 25.2: the star lines, in words, where they count biodiversity; the Tutorial's one storm counts the homes
-  // alone, and says that Panjim's count nature too.
+  // Section 25.2: the star lines, in words, where they count biodiversity; the Tutorial's stars count the homes alone
+  // (its lines in words, Section 34), and it says that Panjim's count nature too.
   const countsNature = input.houseStars && (input.houseStars.bioTwo !== undefined || input.houseStars.bioThree !== undefined);
   const starsLine = countsNature
     ? ` In this game ${starRule(input.houseStars!, input.storms).replace(/^A/, "a")}`
-    : count === 1
-      ? " In this game the stars here count the homes saved. In Play Panjim they count biodiversity too."
+    : input.tutorial
+      ? ` In this game the stars here count the homes saved${input.houseStars ? `: ${starRule(input.houseStars).replace(/^A storm gives /, "")}`.replace(/\.$/, "") : ""}. In Play Panjim they count biodiversity too.`
       : "";
+  // Section 34: the clear rule is Panjim's alone (the Tutorial has none), with its own star count.
+  const clearLine = !input.tutorial && count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : "";
   return `
   <div class="panjim-help">
   <div class="help-header">
@@ -97,7 +101,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>${stormsTitle} ${RULE}</h3>
         <ul>${stormList}</ul>
-        <p>After each, a result card: ${countsNature ? "stars, homes saved, biodiversity and what protected them" : "the stars, the homes saved, and what protected them"}.${count > 1 ? ` You clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(count * 3)} stars in all.` : ""}${starsLine}</p>
+        <p>After each, a result card: ${countsNature ? "stars, homes saved, biodiversity and what protected them" : "the stars, the homes saved, and what protected them"}.${clearLine}${starsLine}</p>
         ${shelters}
       </div>
     </section>

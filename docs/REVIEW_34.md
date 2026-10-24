@@ -7,7 +7,24 @@ CLAUDE.md applies.
 ## Where we are (read this first after a restart)
 
 - Round 0 (setup): done. See "Setup" below.
-- Round 1: in progress.
+- Round 1: in progress (stopped mid round on a usage limit).
+  - Done: bots 200 seeds x 7 styles (`docs/qa/section34/round1/bots.md`, identical to Section 30: smart clears 98%,
+    above the 60 to 80% target); core code review (`docs/qa/section34/core-review.md`: 0 blocker, 4 major, 8 minor);
+    five playtester diaries (festival, student, casual, local, scientist in `docs/qa/section34/round1/`), all cleared
+    at 7 or 8 of 9; their quiz scores 4.5 of 5 each (none could say why the flood comes from the river).
+  - Still running or not read: the optimiser, keyboard and chaos playtesters (drivers on ports 7104, 7107, 7108);
+    their diaries may land in `round1/`. Ask them the five quiz questions.
+  - Fixed in code, NOT yet tested (run tsc, the tests and the build first): core review MAJOR 1 (a run not cleared
+    was recorded as completed), MAJOR 2 (Tutorial Help gave Panjim's clear rule), MAJOR 3 (Tutorial flood rows
+    credited homes ruined earlier), MAJOR 4 partly (no par, broken defences counted for badges); MINOR 2 (dune rule
+    text; resort, yacht and sand mining rules hidden); the playtesters' top bug: a pulsing tile's build menu now marks
+    the objective's card ("Objective" chip, `markObjectiveCard`).
+  - New: `tools/fuzz34.ts` (every invariant after each action and storm; 6 runs, 0 failures so far; run it with
+    runs=1000 jobs=6).
+  - Next: test the fixes; read the scientist's claims audit (developer notes visible on the Sources screen; untagged
+    Maya lines; three definitions of "what protected your homes"); fix the click swallowed after "Got it" (not
+    reproduced on the first try), the second click on a just opened menu building its first card, the biodiversity
+    counter lag, a row with no pulsing tile left; then the issue list, balance and Round 2.
 
 ## What the game is (one page)
 
