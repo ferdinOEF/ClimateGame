@@ -138,16 +138,29 @@ if (want("panjim")) {
     await page.waitForTimeout(1000);
     // Every storm but the last played through; the last one hurried to its cards, then on to the finale.
     await js(page, `(async () => { const c = window.__panjimForTest; while (c.run.nextChallenge() && c.run.schedule.filter((s) => !c.run.landed.has(s.id)).length > 1) await c.scenario("past-storm"); return c.scenario("to-results"); })()`);
-    const end = Date.now() + 120000;
-    while (Date.now() < end && (await page.locator(".finale-card").count()) === 0) {
+    // Through the last storm's cards (never the final card's own button, which is Play again) to the 2050 title and
+    // the final card with its stars total.
+    const end = Date.now() + 240000;
+    let titled = false;
+    let final = false;
+    while (Date.now() < end) {
+      if (!titled && (await page.locator(".finale-title:visible").count())) {
+        titled = true;
+        await page.waitForTimeout(700);
+        await shot(page, "finale-title");
+      }
+      if (await page.locator(".result-cards:not([hidden]) .result-stars-total").count()) {
+        final = true;
+        break;
+      }
       const next = page.locator(".result-cards:not([hidden]) .result-next").first();
       if (await next.count()) await next.click().catch(() => undefined);
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(500);
     }
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(1500);
     await page.mouse.move(2, H - 2);
-    if (await page.locator(".finale-card").count()) await shot(page, "finale-card");
-    else missed.push("finale: never opened");
+    if (final) await shot(page, "finale-card");
+    else missed.push("finale: the final card never opened");
   }
   await page.close();
 }

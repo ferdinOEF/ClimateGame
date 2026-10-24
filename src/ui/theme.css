@@ -65,3 +65,51 @@
   --stitch: rgba(27, 42, 60, 0.5);
   --good: #2f6a4a;
 }
+
+/*
+ * Section 33.2: calm to storm and back fades over 600 ms. The tokens that change are registered as colours, so the
+ * variables themselves animate and every panel follows; nothing moves. At once with Calm motion on (`storm-instant`,
+ * set by the controller) or the system's reduced motion.
+ */
+@property --panel { syntax: "<color>"; inherits: true; initial-value: #f2ebdd; }
+@property --panel-raised { syntax: "<color>"; inherits: true; initial-value: #fbf8f1; }
+@property --panel-shadow { syntax: "<color>"; inherits: true; initial-value: #cdbf9f; }
+@property --band { syntax: "<color>"; inherits: true; initial-value: #7fa0c4; }
+@property --band-ink { syntax: "<color>"; inherits: true; initial-value: #18263a; }
+@property --ink { syntax: "<color>"; inherits: true; initial-value: #22344a; }
+@property --ink-2 { syntax: "<color>"; inherits: true; initial-value: #3b4b5f; }
+@property --ink-3 { syntax: "<color>"; inherits: true; initial-value: #4b5a6c; }
+@property --accent-ink { syntax: "<color>"; inherits: true; initial-value: #3f5f86; }
+@property --button { syntax: "<color>"; inherits: true; initial-value: #d6e1ee; }
+@property --button-border { syntax: "<color>"; inherits: true; initial-value: #b5cae2; }
+@property --button-on { syntax: "<color>"; inherits: true; initial-value: #b5cae2; }
+@property --button-on-border { syntax: "<color>"; inherits: true; initial-value: #4a6e99; }
+@property --cta { syntax: "<color>"; inherits: true; initial-value: #e3a93b; }
+@property --cta-shadow { syntax: "<color>"; inherits: true; initial-value: #b9821c; }
+@property --cta-ink { syntax: "<color>"; inherits: true; initial-value: #3a2606; }
+@property --warn { syntax: "<color>"; inherits: true; initial-value: #d9765f; }
+@property --warn-soft { syntax: "<color>"; inherits: true; initial-value: #f4cfc4; }
+@property --warn-ink { syntax: "<color>"; inherits: true; initial-value: #4a1a0e; }
+@property --gold-soft { syntax: "<color>"; inherits: true; initial-value: #f6dfa6; }
+@property --stitch { syntax: "<color>"; inherits: true; initial-value: rgba(34, 52, 74, 0.35); }
+
+:root {
+  transition-property: --panel, --panel-raised, --panel-shadow, --band, --band-ink, --ink, --ink-2, --ink-3, --accent-ink, --button, --button-border, --button-on, --button-on-border, --cta, --cta-shadow, --cta-ink, --warn, --warn-soft, --warn-ink, --gold-soft, --stitch;
+  transition-duration: 600ms;
+  transition-timing-function: ease-in-out;
+}
+
+:root.storm-instant {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition: none;
+  }
+}
+
+/* During a storm the Homes at risk box (then Homes lost) wears a 3 px ring in --warn at 30%. */
+:root.storm .outlook-risk {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 30%, transparent);
+}

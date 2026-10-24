@@ -286,6 +286,7 @@ export class PanjimController {
     });
     // The game layer is shared by every session (appShell): no state class from the last run may carry over.
     host.container.classList.remove(...SESSION_CLASSES);
+    document.documentElement.classList.remove("storm", "storm-instant");
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, { onSkipYear: () => void this.skipYear() });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
@@ -863,6 +864,8 @@ export class PanjimController {
     this.maya.setState("worried");
     // The storm itself (Section 16 B4): the objective card, Maya's bubble and the hint fade; the top bar counts the homes lost.
     this.host.container.classList.add("storm-playing");
+    // Section 33.2: the interface takes its storm hues while the storm plays, until its result cards open.
+    this.stormHues(true);
     // Counted as the result card counts (Section 16 B4; Section 22.4: against the homes still standing when it hit),
     // so the count starts at 0 and ends at the card's homes not saved, the ones this storm destroyed.
     let lost = outcome.housesTotal - outcome.housesSaved - outcome.housesDamaged;
@@ -945,11 +948,22 @@ export class PanjimController {
 
     // The result cards (Section 9): what the storm did, what protected the homes, and what comes next.
     if (record) await this.showResults(challenge, record);
+    this.stormHues(false);
     // The phase is over: nothing she queued about it may be said in the next one (Section 12).
     this.maya.dismiss();
     const nextKind = this.run.nextChallenge()?.kind;
     this.maya.withdraw((line) => isPhaseLine(line.id) || (!!nextKind && staleTip(line.id, nextKind)));
     this.maya.setState("idle");
+  }
+
+  /**
+   * Section 33.2 (owner decision): `storm` on <html> switches the interface's tokens to their storm values
+   * (src/ui/theme.css), fading over 600 ms, at once with Calm motion on (`storm-instant`).
+   */
+  private stormHues(on: boolean): void {
+    const root = document.documentElement;
+    root.classList.toggle("storm-instant", Boolean(this.motionToggle?.value) || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches));
+    root.classList.toggle("storm", on);
   }
 
   /** The landmarks of a storm's area (Section 16 B6): on its tiles, or the places its forecast names. */
@@ -1002,6 +1016,7 @@ export class PanjimController {
       const cards: CardSpec[] = last
         ? [card, { body: tutorialFinalCard(this.tutorialTried, TUTORIAL_STEPS), button: "Play Panjim", alt: "Try again", link: "Back to the menu" }]
         : [card];
+      this.stormHues(false);
       const choice = await this.resultCards.show(cards);
       if (last) this.tutorialChoice = choice;
       return;
@@ -1019,6 +1034,7 @@ export class PanjimController {
       });
     }
     this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });
+    this.stormHues(false);
     if ((await this.resultCards.show(cards)) === "alt") this.retryRequested = challenge.id;
   }
 
@@ -2259,6 +2275,7 @@ export class PanjimController {
     this.clock.dispose();
     this.disposed = true;
     this.host.container.classList.remove("has-panjim-clock", ...SESSION_CLASSES);
+    document.documentElement.classList.remove("storm", "storm-instant");
   }
 }
 

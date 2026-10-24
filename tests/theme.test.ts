@@ -74,3 +74,31 @@ describe("Section 33.1: Harbour Morning's tokens", () => {
     }
   });
 });
+
+describe("Section 33.2: the storm hues", () => {
+  const controller = fs.readFileSync("src/app/panjimController.ts", "utf8");
+
+  it("html takes `storm` as a storm starts playing and drops it as its result cards open", () => {
+    const play = controller.indexOf("await this.host.challengeFx.play(");
+    const on = controller.indexOf("this.stormHues(true)");
+    expect(on).toBeGreaterThan(0);
+    expect(on).toBeLessThan(play);
+    // Every result card show in a storm's results comes after the hues go back to calm.
+    const results = controller.slice(controller.indexOf("private async showResults("), controller.indexOf("private tutorialRows("));
+    for (const m of results.matchAll(/this\.resultCards\.show\(/g)) expect(results.slice(0, m.index).lastIndexOf("this.stormHues(false)"), "a result card opens in storm hues").toBeGreaterThan(-1);
+    expect(controller).toMatch(/dispose\(\): void \{[\s\S]*classList\.remove\("storm", "storm-instant"\)/);
+  });
+
+  it("only the variables change: they fade over 600 ms, at once with Calm motion", () => {
+    expect(THEME).toMatch(/@property --panel \{ syntax: "<color>"/);
+    expect(THEME).toMatch(/transition-duration: 600ms/);
+    expect(THEME).toMatch(/:root\.storm-instant \{\s*transition: none;/);
+    expect(controller).toMatch(/classList\.toggle\("storm-instant", Boolean\(this\.motionToggle\?\.value\)/);
+    // Every token that changes in a storm is registered, so it fades rather than jumps.
+    for (const key of Object.keys(block(":root.storm"))) if (CALM[key] !== STORM[key]) expect(THEME, key).toContain(`@property --${key} `);
+  });
+
+  it("the Homes at risk box wears a 3 px --warn ring at 30% in a storm", () => {
+    expect(THEME).toMatch(/:root\.storm \.outlook-risk \{\s*box-shadow: 0 0 0 3px color-mix\(in srgb, var\(--warn\) 30%, transparent\);/);
+  });
+});
