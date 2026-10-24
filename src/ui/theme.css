@@ -39,6 +39,10 @@
   --mesh: #e6dcc7;
   --mesh-dot: #cbbd9f;
   --overlay: rgba(27, 42, 60, 0.35);
+
+  /* Section 33.3: headings, the year, big numbers and button labels; everything else. */
+  --font-head: "Zilla Slab", Georgia, serif;
+  --font-body: "Work Sans", system-ui, sans-serif;
 }
 
 :root.storm {

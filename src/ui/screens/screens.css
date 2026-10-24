@@ -51,7 +51,7 @@
   overscroll-behavior: contain;
   background: linear-gradient(165deg, var(--rr-ground-top) 0%, var(--rr-ground-bottom) 100%);
   color: var(--rr-ink);
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 .screen-layer[hidden] {
@@ -165,7 +165,7 @@
 }
 
 .screen-title {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: 26px;
   font-weight: 700;
   color: var(--rr-gold-bright);
@@ -204,7 +204,7 @@
 }
 
 .menu-title {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: clamp(38px, 11vw, 62px);
   font-weight: 700;
   color: var(--rr-gold-bright);
@@ -330,7 +330,7 @@
 }
 
 .level-number {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: 20px;
   color: var(--rr-gold);
 }
@@ -393,7 +393,7 @@
 }
 
 .results-title {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: 27px;
   margin: 4px 0 6px;
   color: var(--rr-gold-bright);
@@ -422,7 +422,7 @@
 }
 
 .results-score {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: 46px;
   font-weight: 700;
   color: var(--rr-gold-bright);
@@ -736,7 +736,7 @@
 }
 
 .objectives-level-name {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: 14px;
   color: var(--rr-gold-bright);
 }
@@ -858,7 +858,7 @@
 }
 
 .brief-title {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: 26px;
   font-weight: 700;
   color: var(--rr-gold-bright);
@@ -917,7 +917,7 @@
   background: transparent;
   color: var(--rr-gold-bright);
   font-family: inherit;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -1163,7 +1163,7 @@
   background: linear-gradient(165deg, #2c3b3a 0%, #1a2524 100%);
   border: 1px solid var(--rr-line);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 .storm-report-eyebrow {
@@ -1184,7 +1184,7 @@
   and one that argues with it is not.
 */
 .storm-report-big {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: 46px;
   line-height: 1;
   color: #f0a98b;
@@ -1265,7 +1265,7 @@
 }
 
 .storm-report-lesson-title {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--font-head);
   font-size: 16px;
   line-height: 1.25;
   color: var(--rr-gold-bright);

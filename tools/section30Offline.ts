@@ -18,7 +18,12 @@ page.on("console", (m) => console.log("console", m.type(), m.text().slice(0, 200
 await page.reload();
 await page.waitForTimeout(12000);
 console.log("offline menu text:", (await page.evaluate(() => document.body.innerText)).slice(0, 120).replace(/\s+/g, " "));
-console.log("title font", await page.evaluate(() => document.fonts.check('700 20px "Fraunces"')));
+// Section 33.3: both fonts come from the cache (check() is true once a face is loaded, so load them first).
+console.log("fonts", await page.evaluate(async () => {
+  const faces = ['700 20px "Zilla Slab"', '600 20px "Zilla Slab"', '400 16px "Work Sans"', '700 16px "Work Sans"'];
+  const loaded = await Promise.all(faces.map((f) => document.fonts.load(f).then((list) => list.length > 0).catch(() => false)));
+  return faces.map((f, i) => `${f}: ${loaded[i]}`).join(", ");
+}));
 await page.goto("http://localhost:4179/#/play/l01-first-rains");
 await page.waitForTimeout(20000);
 console.log("offline game canvas", await page.evaluate(() => !!document.querySelector("canvas")), "brief", await page.evaluate(() => document.querySelector(".brief-title")?.textContent));

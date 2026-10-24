@@ -21,7 +21,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="manifest" href="/manifest.webmanifest" />
 
-<!-- Section 30.12 (festival mode): Fraunces is bundled (src/main.ts, @fontsource/fraunces), not fetched from Google Fonts, so the game works offline. -->
+<!-- Section 30.12 (festival mode), Section 33.3: Zilla Slab and Work Sans are bundled (src/main.ts, @fontsource), not fetched from Google Fonts, so the game works offline. -->
 
 <!--
   Stylesheets are imported from src/main.ts rather than linked here. A
@@ -49,14 +49,15 @@
     gap: 14px;
     background: linear-gradient(165deg, #6e2c16 0%, #2a0f07 100%);
     color: #f4d9a6;
-    font-family: "Fraunces", Georgia, serif;
+    font-family: "Zilla Slab", Georgia, serif;
+    font-weight: 700;
   }
   #boot-splash .boot-title {
     font-size: 34px;
     letter-spacing: 0.01em;
   }
   #boot-splash .boot-sub {
-    font-family: "Segoe UI", system-ui, sans-serif;
+    font-family: "Work Sans", system-ui, sans-serif;
     font-size: 13px;
     letter-spacing: 0.16em;
     text-transform: uppercase;

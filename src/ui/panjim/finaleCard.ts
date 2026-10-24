@@ -148,20 +148,20 @@ export function drawShareCard(view: FinaleView): HTMLCanvasElement {
   for (let i = 0; i < 9; i++) ctx.fillRect(0, 540 + i * 10, 1200, 4);
 
   ctx.fillStyle = "#9fd8c6";
-  ctx.font = "600 28px Inter, system-ui, sans-serif";
+  ctx.font = '600 28px "Work Sans", system-ui, sans-serif';
   ctx.fillText("RIPTIDE RISING", 70, 90);
   ctx.fillStyle = "#fdf6e6";
-  ctx.font = "700 84px Georgia, serif";
+  ctx.font = '700 84px "Zilla Slab", Georgia, serif';
   ctx.fillText("Panjim, 2050", 70, 190);
 
   ctx.fillStyle = "#f2c35b";
-  ctx.font = "800 150px Georgia, serif";
+  ctx.font = '700 150px "Zilla Slab", Georgia, serif';
   ctx.fillText(String(view.index.index), 70, 380);
   ctx.fillStyle = "#fdf6e6";
-  ctx.font = "500 30px Inter, system-ui, sans-serif";
+  ctx.font = '500 30px "Work Sans", system-ui, sans-serif';
   ctx.fillText("Panjim 2050 index", 76, 425);
 
-  ctx.font = "500 32px Inter, system-ui, sans-serif";
+  ctx.font = '500 32px "Work Sans", system-ui, sans-serif';
   view.challengeNames.forEach((name, i) => {
     const stars = view.index.challengeStars[i] ?? 0;
     ctx.fillStyle = "#fdf6e6";
@@ -170,7 +170,7 @@ export function drawShareCard(view: FinaleView): HTMLCanvasElement {
     ctx.fillText("★".repeat(stars) + "☆".repeat(3 - stars), 980, 270 + i * 64);
   });
   ctx.fillStyle = "#9fd8c6";
-  ctx.font = "500 28px Inter, system-ui, sans-serif";
+  ctx.font = '500 28px "Work Sans", system-ui, sans-serif';
   ctx.fillText(`Tempo: ${view.tempo.name}, ${view.tempo.minutes} min`, 640, 480);
   return canvas;
 }

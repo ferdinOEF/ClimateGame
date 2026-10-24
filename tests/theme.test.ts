@@ -102,3 +102,22 @@ describe("Section 33.2: the storm hues", () => {
     expect(THEME).toMatch(/:root\.storm \.outlook-risk \{\s*box-shadow: 0 0 0 3px color-mix\(in srgb, var\(--warn\) 30%, transparent\);/);
   });
 });
+
+describe("Section 33.3: the fonts", () => {
+  it("Zilla Slab 600 and 700 and Work Sans 400 to 700 are bundled (latin), Fraunces gone", () => {
+    const main = fs.readFileSync("src/main.ts", "utf8");
+    for (const w of [600, 700]) expect(main).toContain(`import "@fontsource/zilla-slab/latin-${w}.css";`);
+    for (const w of [400, 500, 600, 700]) expect(main).toContain(`import "@fontsource/work-sans/latin-${w}.css";`);
+    expect(main).not.toMatch(/fraunces/i);
+    const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+    expect(pkg.dependencies["@fontsource/fraunces"]).toBeUndefined();
+    expect(pkg.dependencies["@fontsource/zilla-slab"]).toBeDefined();
+    expect(pkg.dependencies["@fontsource/work-sans"]).toBeDefined();
+    expect(THEME).toContain('--font-head: "Zilla Slab", Georgia, serif;');
+    expect(THEME).toContain('--font-body: "Work Sans", system-ui, sans-serif;');
+  });
+
+  it("no sheet names Fraunces, Segoe UI or Inter", () => {
+    for (const file of [...SHEETS, "index.html"]) expect(fs.readFileSync(file, "utf8"), file).not.toMatch(/Fraunces|Segoe UI|"Inter"|\bInter,/);
+  });
+});
