@@ -1,5 +1,7 @@
 // Section 30.12: the title font, bundled (works offline; no Google Fonts).
 import "@fontsource/fraunces/latin-700.css";
+// Section 33.1: Harbour Morning's colour tokens, before the sheets that use them.
+import "@ui/theme.css";
 import "@ui/hud.css";
 import "@ui/screens/screens.css";
 import "@ui/panjim/panjim.css";

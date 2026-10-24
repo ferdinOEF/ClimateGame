@@ -1,0 +1,67 @@
+/*
+ * Section 33 (owner decision): Harbour Morning, the interface's colours.
+ *
+ * Every interface colour comes from these variables; hud.css, panjim.css and screens.css use only them
+ * (tests/theme.test.ts). Calm values on :root; storm values on :root.storm, the class <html> carries while a storm
+ * plays (Panjim and the Tutorial), removed when its result cards open. Nothing under src/render/ reads them: the
+ * map, its tiles, the storm and the wildlife keep their own colours.
+ *
+ * Text and background pairs the CSS may use are checked for contrast (4.5:1; 3:1 for text 24 px and larger) in both
+ * moods by tests/theme.test.ts. Pairs that fail and are never used: --ink-3 and --accent-ink on --button-on (both
+ * moods); in a storm, --ink on --band and --good on --gold-soft.
+ */
+:root {
+  --panel: #f2ebdd;
+  --panel-raised: #fbf8f1;
+  --panel-shadow: #cdbf9f;
+  --band: #7fa0c4;
+  --band-ink: #18263a;
+  --ink: #22344a;
+  --ink-2: #3b4b5f;
+  --ink-3: #4b5a6c;
+  --accent-ink: #3f5f86;
+  --button: #d6e1ee;
+  --button-border: #b5cae2;
+  --button-on: #b5cae2;
+  --button-on-border: #4a6e99;
+  --cta: #e3a93b;
+  --cta-shadow: #b9821c;
+  --cta-ink: #3a2606;
+  --warn: #d9765f;
+  --warn-soft: #f4cfc4;
+  --warn-ink: #4a1a0e;
+  --gold-soft: #f6dfa6;
+  --stitch: rgba(34, 52, 74, 0.35);
+  --good: #2f6a4a;
+
+  /* Fixed details (the same calm and storm): the main button's stitches, the mesh strip on large cards, the overlay. */
+  --cta-stitch: rgba(58, 38, 6, 0.45);
+  --mesh: #e6dcc7;
+  --mesh-dot: #cbbd9f;
+  --overlay: rgba(27, 42, 60, 0.35);
+}
+
+:root.storm {
+  --panel: #e9dcc3;
+  --panel-raised: #f4ecdc;
+  --panel-shadow: #b9a77f;
+  --band: #4a6e99;
+  --band-ink: #f7f2e7;
+  --ink: #1b2a3c;
+  --ink-2: #2c3a4c;
+  --ink-3: #3e4c5e;
+  --accent-ink: #35557d;
+  --button: #b5cae2;
+  --button-border: #93b0d4;
+  --button-on: #93b0d4;
+  --button-on-border: #35557d;
+  --cta: #d9922a;
+  --cta-shadow: #a86f12;
+  --cta-ink: #2e1e04;
+  --warn: #c4553e;
+  --warn-soft: #e9a390;
+  --warn-ink: #3e1309;
+  --gold-soft: #efc97a;
+  --stitch: rgba(27, 42, 60, 0.5);
+  --good: #2f6a4a;
+}
