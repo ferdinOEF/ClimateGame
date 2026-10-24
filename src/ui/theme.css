@@ -56,6 +56,20 @@
   --fixed-cone-place: #fff3e0;
   --fixed-cone-place-edge: #1b0c06;
   --fixed-maya-shadow: rgba(0, 0, 0, 0.45);
+  /* The storm on screen: lightning's lift, the slow motion letterbox, the arrival edge before JS sets its own. */
+  --fixed-storm-flash: #e9f1ff;
+  --fixed-letterbox: #000;
+  --fixed-arrival-flash: #3a3348;
+  /* The map's place labels, and the objective's pins that share their cream card (Section 16 B6). */
+  --fixed-label-ink: #2a1408;
+  --fixed-label-bg: rgba(255, 246, 224, 0.92);
+  --fixed-label-card-bg: rgba(255, 246, 224, 0.98);
+  --fixed-label-sub: #5a3a22;
+  --fixed-label-shadow: rgba(0, 0, 0, 0.22);
+  --fixed-label-locality: #181009;
+  --fixed-label-halo: #fbf4e4;
+  --fixed-label-halo-soft: rgba(251, 244, 228, 0.9);
+  --fixed-pin-dot: #f2c35b;
   /* The risk intro's ball on Low quality: the board's heat, red and blue, as the canvas ball draws it. */
   --fixed-risk-red: #e2453a;
   --fixed-risk-blue: #2f6fd8;

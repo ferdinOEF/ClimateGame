@@ -70,7 +70,7 @@ describe("Section 33.1: Harbour Morning's tokens", () => {
         const body = m[2];
         const color = /(?:^|[;\s])color:\s*var\(--([a-z0-9-]+)\)/.exec(body)?.[1];
         const bg = /background(?:-color)?:\s*var\(--([a-z0-9-]+)\)/.exec(body)?.[1];
-        if (!color || !bg || !(color in CALM) || !(bg in CALM)) continue;
+        if (!color || !bg || !(color in CALM) || !(bg in CALM) || color.startsWith("fixed-") || bg.startsWith("fixed-")) continue;
         expect(ALLOWED.has(`${color}|${bg}`), `${file}: ${m[1].trim()} puts --${color} on --${bg}`).toBe(true);
       }
     }
@@ -156,4 +156,25 @@ describe("Section 33.4c: Maya's bubble (panjim.css only)", () => {
     // Maya's figure is untouched: no sheet but panjim.css styles her bubble.
     expect(fs.readFileSync("src/ui/harbour.css", "utf8")).not.toMatch(/\.maya/);
   });
+});
+
+describe("Section 33.5: every interface colour comes from the tokens", () => {
+  const COLOUR_PROPS = /^(color|background(-color|-image)?|border(-(top|right|bottom|left))?(-color)?|outline(-color)?|box-shadow|text-shadow|fill|stroke|accent-color|caret-color|text-decoration(-color)?|-webkit-text-stroke|filter|(-webkit-)?mask-image)$/;
+  const LITERAL = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(|\b(white|black|red|green|blue|gr[ae]y|gold|orange|yellow|navy|silver|maroon|purple|brown|beige|ivory|tan)\b/;
+  const DEFINED = new Set(Object.keys(CALM));
+
+  for (const file of SHEETS) {
+    it(`${file} names no colour of its own`, () => {
+      const css = fs.readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(/([a-z-]+)\s*:\s*([^;{}]+);/g)) {
+        const [, prop, value] = m;
+        if (!COLOUR_PROPS.test(prop)) continue;
+        expect(value.replace(/var\([^)]*\)/g, ""), `${file}: ${prop}: ${value}`).not.toMatch(LITERAL);
+        // Every variable a colour uses is a token; the others are Maya's sizes and the arrival edge's colour (set per
+        // storm by hud.ts, its fallback a token).
+        for (const v of value.matchAll(/var\(--([a-z0-9-]+)/g)) expect(DEFINED.has(v[1]) || /^maya-|^arrival-flash-color$/.test(v[1]), `${file}: ${prop} uses --${v[1]}`).toBe(true);
+      }
+      expect(css).not.toMatch(/--rr-/);
+    });
+  }
 });

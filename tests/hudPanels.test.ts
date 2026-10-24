@@ -74,7 +74,8 @@ describe("the two HUD panels", () => {
 
   it("marks danger without a number, in a shape and a ring as well as a colour", () => {
     expect(panels).toContain("setDanger(on: boolean)");
-    expect(css).toMatch(/\.hud-panel-danger \{[^}]*border: 2px solid #fdf6e6;[^}]*transform: rotate\(45deg\);/);
+    // Section 33.5e: its light ring is the token --panel-raised now (Harbour Morning).
+    expect(css).toMatch(/\.hud-panel-danger \{[^}]*border: 2px solid var\(--panel-raised\);[^}]*transform: rotate\(45deg\);/);
     expect(css).toMatch(/\.hud-panel\.danger \.hud-panel-button \{[^}]*border-width: 2px;/);
     // On the Status panel only. Section 13: never set on Panaji (Maya says the warning; Status holds no meters).
     expect(panels).toContain('if (id === "status")');

@@ -59,7 +59,7 @@ html, body {
   z-index: 15;
   pointer-events: none;
   opacity: 0;
-  background: radial-gradient(ellipse at center, transparent 45%, var(--arrival-flash-color, #3a3348) 140%);
+  background: radial-gradient(ellipse at center, transparent 45%, var(--arrival-flash-color, var(--fixed-arrival-flash)) 140%);
 }
 
 .hazard-arrival-flash.flashing {
@@ -136,8 +136,8 @@ html, body {
 }
 
 .era-banner {
-  background: rgba(20, 30, 26, 0.85);
-  border: 1px solid rgba(255, 243, 196, 0.4);
+  background: var(--panel);
+  border: none;
   border-radius: 8px;
   padding: 8px 18px;
   font-size: 14px;
@@ -157,6 +157,8 @@ html, body {
   max-width: calc(100vw - 24px);
   white-space: normal;
   text-align: center;
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--panel-shadow);
 }
 
 .tile-count-value {
@@ -237,7 +239,7 @@ html, body {
   font-size: 13px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(253, 246, 230, 0.7);
+  color: var(--ink-2);
   margin: 0 0 8px;
 }
 
@@ -248,7 +250,7 @@ html, body {
 
 .help-note {
   font-size: 12.5px;
-  color: rgba(253, 246, 230, 0.6);
+  color: var(--ink-3);
 }
 
 .help-steps {
@@ -267,7 +269,7 @@ html, body {
 .help-roster-terrain {
   font-size: 12px;
   font-weight: 700;
-  color: #8fbf3e;
+  color: var(--good);
   margin-bottom: 4px;
 }
 
@@ -277,7 +279,7 @@ html, body {
   gap: 12px;
   font-size: 13.5px;
   padding: 4px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px dashed var(--stitch);
 }
 
 .help-roster-item span:first-child {
@@ -286,7 +288,7 @@ html, body {
 }
 
 .help-roster-item span:last-child {
-  color: rgba(253, 246, 230, 0.75);
+  color: var(--ink-2);
   text-align: right;
 }
 
@@ -296,11 +298,14 @@ html, body {
   gap: 12px;
   font-size: 13.5px;
   padding: 5px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px dashed var(--stitch);
 }
 
 .help-meter span:first-child { font-weight: 600; }
-.help-meter span:last-child { color: rgba(253, 246, 230, 0.75); text-align: right; }
+.help-meter span:last-child {
+  color: var(--ink-2);
+  text-align: right;
+}
 
 .help-threat {
   font-size: 13.5px;
@@ -415,8 +420,8 @@ html, body {
   display: block;
   width: 8px;
   height: 8px;
-  border-right: 2px solid #fdf6e6;
-  border-bottom: 2px solid #fdf6e6;
+  border-right: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
 }
 
 .chevron-up {
@@ -459,13 +464,13 @@ html, body {
 }
 
 .income-value {
-  color: #7bd4c4;
+  color: var(--good);
   font-weight: 700;
 }
 
 /* Same warning family as .meter-chip-warning — a shrinking Coin trend is worth flagging the same way a Food deficit is. */
 .income-value.negative {
-  color: #ff8a5c;
+  color: var(--warn-ink);
 }
 
 /*
@@ -500,19 +505,19 @@ html, body {
   width: 100%;
   height: 7px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--panel-shadow);
   overflow: hidden;
 }
 
 .resilience-gauge-fill {
   height: 100%;
-  background: #7bd4c4;
+  background: var(--good);
   transition: width 0.3s ease, background-color 0.3s ease;
 }
 
 /* Same warning family as .meter-chip-warning below — Resilience reads as actively critical, not just "some damage taken." */
 .resilience-gauge-fill.critical {
-  background: #ff8a5c;
+  background: var(--warn);
 }
 
 /*
@@ -569,7 +574,7 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--panel-raised);
   border-radius: 6px;
   padding: 4px 8px;
 }
@@ -589,12 +594,12 @@ html, body {
   as a real warning, not just "this number is negative."
 */
 .meter-chip-warning {
-  color: #ff8a5c;
+  color: var(--warn-ink);
   opacity: 1;
 }
 
 .meter-chip-warning b {
-  color: #ffb199;
+  color: var(--warn-ink);
 }
 
 /*
@@ -625,7 +630,7 @@ html, body {
   padding: 0;
   border: none;
   background: none;
-  color: #fdf6e6;
+  color: var(--ink);
   font-family: inherit;
   cursor: pointer;
   pointer-events: auto;
@@ -648,7 +653,7 @@ html, body {
   flex: none;
   width: 1px;
   height: 14px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--stitch);
 }
 
 /* Same normal/critical colors as `.resilience-gauge-fill`/`.resilience-gauge-fill.critical` above — a summary should carry the same "is this actually fine" signal the full gauge does, not just a bare number. */
@@ -657,11 +662,11 @@ html, body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #7bd4c4;
+  background: var(--good);
 }
 
 .pill-resilience-dot.critical {
-  background: #ff8a5c;
+  background: var(--warn);
 }
 
 .empty-prompt {
@@ -759,8 +764,9 @@ html, body {
 .era-end-score {
   font-size: 40px;
   font-weight: 700;
-  color: #ffe9a8;
+  color: var(--ink);
   margin: 16px 0;
+  font-family: var(--font-head);
 }
 
 .era-end-breakdown {
@@ -776,7 +782,7 @@ html, body {
   justify-content: space-between;
   font-size: 12px;
   opacity: 0.85;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--panel-raised);
   border-radius: 6px;
   padding: 4px 10px;
 }
@@ -927,23 +933,23 @@ html, body {
 
 /* Storm Surge blue: PALETTE.riverBlue, the closest existing token — there's no dedicated "storm" color yet. Flood brown: PALETTE.defenseKhazanBund, close enough to read as "flood/earth" without a new unreferenced hex value. */
 .hazard-test-row.storm {
-  border-left-color: #3e86b0;
+  border-left-color: var(--band);
 }
 
 .hazard-test-row.flood {
-  border-left-color: #8c6a3f;
+  border-left-color: var(--cta-shadow);
 }
 
 .hazard-test-label {
   font-size: 12px;
   font-weight: 700;
-  color: #fdf6e6;
+  color: var(--ink);
 }
 
 .hazard-test-schedule {
   font-size: 10px;
   opacity: 0.6;
-  color: #cfe6d8;
+  color: var(--ink-2);
 }
 
 .hazard-test-controls {
@@ -954,13 +960,13 @@ html, body {
 
 .hazard-test-slider {
   flex: 1;
-  accent-color: #d8b158;
+  accent-color: var(--button-on-border);
 }
 
 .hazard-test-readout {
   font-size: 11px;
   font-weight: 700;
-  color: #ffe9a8;
+  color: var(--accent-ink);
   min-width: 30px;
   text-align: right;
 }
@@ -986,21 +992,21 @@ html, body {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #cfe6d8;
+  color: var(--ink-2);
   cursor: pointer;
 }
 
 .hazard-test-preview {
-  accent-color: #7fe0ff;
+  accent-color: var(--button-on-border);
   cursor: pointer;
 }
 
 /* STEP_PROMPT_manual_only_mode.md Part B: same warning color .meter-chip-warning/.resilience-gauge-fill.critical already use — destructive and can't be undone, so it should read as visually distinct from the two trigger buttons above it, not just another row. */
 .hazard-test-row.reset {
-  border-left-color: #ff8a5c;
+  border-left-color: var(--warn);
   margin-top: 2px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px dashed var(--stitch);
 }
 
 .hazard-test-reset {
@@ -1309,7 +1315,7 @@ html, body {
   font-family: var(--font-head);
   font-size: 24px;
   font-weight: 700;
-  color: #f4d9a6;
+  color: var(--ink);
   margin-bottom: 10px;
 }
 
@@ -1510,10 +1516,10 @@ html, body {
   padding: 1.5px 5.5px;
   white-space: nowrap;
   font: 600 11px/1.3 var(--font-body);
-  color: #2a1408;
-  background: rgba(255, 246, 224, 0.92);
+  color: var(--fixed-label-ink);
+  background: var(--fixed-label-bg);
   border-radius: 999px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 1px 2px var(--fixed-label-shadow);
   /*
     Only opacity transitions. The transform is rewritten every frame to track
     the camera, so transitioning it would make every label lag the board by
@@ -1548,19 +1554,19 @@ html, body {
   font-variant: small-caps;
   text-transform: none;
   letter-spacing: 0.14em;
-  color: #181009;
+  color: var(--fixed-label-locality);
   background: none;
   box-shadow: none;
   border: none;
   border-radius: 0;
   backdrop-filter: none;
   text-shadow:
-    0 0 2px #fbf4e4,
-    1px 1px 0 #fbf4e4,
-    -1px 1px 0 #fbf4e4,
-    1px -1px 0 #fbf4e4,
-    -1px -1px 0 #fbf4e4,
-    0 0 6px rgba(251, 244, 228, 0.9);
+    0 0 2px var(--fixed-label-halo),
+    1px 1px 0 var(--fixed-label-halo),
+    -1px 1px 0 var(--fixed-label-halo),
+    1px -1px 0 var(--fixed-label-halo),
+    -1px -1px 0 var(--fixed-label-halo),
+    0 0 6px var(--fixed-label-halo-soft);
 }
 
 /* Section 22.2: zoomed out, the place pills a little tighter again (the text stays at its 11 px floor). */
@@ -1582,7 +1588,7 @@ html, body {
   padding: 4px 11px 5px;
   font-size: 13px;
   border-radius: 10px;
-  background: rgba(255, 246, 224, 0.98);
+  background: var(--fixed-label-card-bg);
   text-align: center;
 }
 
@@ -1591,7 +1597,7 @@ html, body {
   margin-top: 1px;
   font-size: 11px;
   font-weight: 500;
-  color: #5a3a22;
+  color: var(--fixed-label-sub);
 }
 
 .map-label.locality.rank-2 {
@@ -1690,8 +1696,8 @@ html, body {
   letter-spacing: 0.02em;
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgba(16, 24, 20, 0.5);
-  color: rgba(253, 246, 230, 0.72);
+  background: var(--panel);
+  color: var(--ink-2);
 }
 
 .map-attribution a {
@@ -1701,7 +1707,7 @@ html, body {
 
 .map-attribution a:hover,
 .map-attribution a:focus-visible {
-  color: #fdf6e6;
+  color: var(--ink);
   text-decoration: underline;
 }
 
@@ -1743,11 +1749,10 @@ html, body {
   gap: 8px;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(16, 24, 20, 0.62);
-  color: rgba(253, 246, 230, 0.9);
+  background: var(--panel);
+  color: var(--ink);
   font-size: 12px;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 3px 0 var(--panel-shadow);
 }
 
 .map-layer-toggle {
@@ -1760,7 +1765,7 @@ html, body {
 
 .map-layer-toggle input,
 .map-layer-opacity {
-  accent-color: #d8b158;
+  accent-color: var(--button-on-border);
   margin: 0;
 }
 
@@ -1815,7 +1820,6 @@ html, body {
 .sources-head h2 {
   margin: 0;
   font-size: 20px;
-  color: #e6b268;
 }
 
 .sources-close {
@@ -1834,7 +1838,7 @@ html, body {
 .sources-intro {
   margin: 0 0 12px;
   font-size: 13px;
-  color: rgba(251, 238, 217, 0.82);
+  color: var(--ink-2);
 }
 
 .sources-list {
@@ -1851,8 +1855,8 @@ html, body {
 }
 
 .sources-item.highlight {
-  background: rgba(230, 178, 104, 0.16);
-  outline: 1px solid rgba(230, 178, 104, 0.6);
+  background: var(--gold-soft);
+  outline: 1.5px solid var(--cta-shadow);
 }
 
 .sources-item p {
@@ -1873,20 +1877,21 @@ html, body {
 .sources-note {
   font-size: 12px;
   line-height: 1.4;
-  color: rgba(251, 238, 217, 0.78);
+  color: var(--ink-2);
 }
 
 .sources-link {
   display: block;
   font-size: 12px;
-  color: #9fd8c6;
+  color: var(--accent-ink);
   word-break: break-all;
 }
 
 .sources-subhead {
   margin: 20px 0 6px;
   font-size: 15px;
-  color: #e6b268;
+  color: var(--ink);
+  font-family: var(--font-head);
 }
 
 .sources-rules {
@@ -1894,7 +1899,7 @@ html, body {
   padding-left: 22px;
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(251, 238, 217, 0.88);
+  color: var(--ink-2);
 }
 
 /* The map-data credits: plain entries, not numbered facts. */
