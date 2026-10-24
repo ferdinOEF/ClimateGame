@@ -1,5 +1,6 @@
 /*
- * Section 33 (owner decision): Harbour Morning, the interface's colours.
+ * Section 33 (owner decision): Harbour Morning, the interface's colours; Section 33b (owner decision): Tone A, Sand and
+ * Sea, the colours taken from the map (the dusty blue is gone). The names stayed; the values changed.
  *
  * Every interface colour comes from these variables; hud.css, panjim.css and screens.css use only them
  * (tests/theme.test.ts). Calm values on :root; storm values on :root.storm, the class <html> carries while a storm
@@ -7,38 +8,42 @@
  * map, its tiles, the storm and the wildlife keep their own colours.
  *
  * Text and background pairs the CSS may use are checked for contrast (4.5:1; 3:1 for text 24 px and larger) in both
- * moods by tests/theme.test.ts. Pairs that fail and are never used: --ink-3 and --accent-ink on --button-on (both
- * moods); in a storm, --ink on --band and --good on --gold-soft.
+ * moods by tests/theme.test.ts. Pairs that fail and are never used: --ink-3 and --accent-ink on --button-on, --ink on
+ * --band and --good on --gold-soft. --button-on-border is --band's own colour: on a band the focus outline sits on a
+ * --panel-raised ring (harbour.css).
  */
 :root {
-  --panel: #f2ebdd;
-  --panel-raised: #fbf8f1;
-  --panel-shadow: #cdbf9f;
-  --band: #7fa0c4;
-  --band-ink: #18263a;
-  --ink: #22344a;
-  --ink-2: #3b4b5f;
-  --ink-3: #4b5a6c;
-  --accent-ink: #3f5f86;
-  --button: #d6e1ee;
-  --button-border: #b5cae2;
-  --button-on: #b5cae2;
-  --button-on-border: #4a6e99;
-  --cta: #e3a93b;
-  --cta-shadow: #b9821c;
-  --cta-ink: #3a2606;
-  --warn: #d9765f;
-  --warn-soft: #f4cfc4;
-  --warn-ink: #4a1a0e;
+  --panel: #f6edd9;
+  --panel-edge: #e2d2ae;
+  --panel-raised: #fbf6ea;
+  --panel-shadow: #d9c79f;
+  --band: #2e6e64;
+  --band-ink: #f6edd9;
+  --ink: #1f3d3a;
+  --ink-2: #3d5552;
+  --ink-3: #4d615e;
+  --accent-ink: #2e6e64;
+  --button: #dcebe5;
+  --button-border: #b9d6cc;
+  --button-on: #b9d6cc;
+  --button-on-border: #2e6e64;
+  --cta: #e8913a;
+  --cta-shadow: #b96a1e;
+  --cta-ink: #3a1e06;
+  --warn: #c4523c;
+  --warn-soft: #f6d3c8;
+  --warn-ink: #4a170c;
   --gold-soft: #f6dfa6;
-  --stitch: rgba(34, 52, 74, 0.35);
+  --stitch: rgba(31, 61, 58, 0.3);
   --good: #2f6a4a;
 
-  /* Fixed details (the same calm and storm): the main button's stitches, the mesh strip on large cards, the overlay. */
-  --cta-stitch: rgba(58, 38, 6, 0.45);
-  --mesh: #e6dcc7;
-  --mesh-dot: #cbbd9f;
-  --overlay: rgba(27, 42, 60, 0.35);
+  /* Details: the main button's stitches, the mesh strip on large cards, the overlay behind modals. */
+  --cta-stitch: rgba(58, 30, 6, 0.45);
+  --mesh: #ede0c4;
+  --mesh-dot: #d2bf97;
+  --overlay: rgba(20, 45, 42, 0.35);
+  /* Section 33b.2: the HUD card's soft shadow (the same calm and storm). */
+  --hud-shadow: rgba(20, 45, 42, 0.22);
 
   /*
    * Fixed: not Harbour Morning. Colours that belong to the map, the storm and the forecast cone (CLAUDE.md: they do
@@ -82,28 +87,33 @@
 }
 
 :root.storm {
-  --panel: #e9dcc3;
-  --panel-raised: #f4ecdc;
-  --panel-shadow: #b9a77f;
-  --band: #4a6e99;
-  --band-ink: #f7f2e7;
-  --ink: #1b2a3c;
-  --ink-2: #2c3a4c;
-  --ink-3: #3e4c5e;
-  --accent-ink: #35557d;
-  --button: #b5cae2;
-  --button-border: #93b0d4;
-  --button-on: #93b0d4;
-  --button-on-border: #35557d;
-  --cta: #d9922a;
-  --cta-shadow: #a86f12;
-  --cta-ink: #2e1e04;
-  --warn: #c4553e;
-  --warn-soft: #e9a390;
-  --warn-ink: #3e1309;
+  --panel: #efe2c6;
+  --panel-edge: #cdb98d;
+  --panel-raised: #f6ecd8;
+  --panel-shadow: #c7b184;
+  --band: #24574f;
+  --band-ink: #f6edd9;
+  --ink: #17302d;
+  --ink-2: #33494a;
+  --ink-3: #42564f;
+  --accent-ink: #245a51;
+  --button: #c7dfd5;
+  --button-border: #9fc3b8;
+  --button-on: #9fc3b8;
+  --button-on-border: #245a51;
+  --cta: #de7f24;
+  --cta-shadow: #a85c14;
+  --cta-ink: #2e1704;
+  --warn: #b0412c;
+  --warn-soft: #efb9a9;
+  --warn-ink: #3e1208;
   --gold-soft: #efc97a;
-  --stitch: rgba(27, 42, 60, 0.5);
+  --stitch: rgba(23, 48, 45, 0.45);
   --good: #2f6a4a;
+  --cta-stitch: rgba(46, 23, 4, 0.5);
+  --mesh: #e4d4b2;
+  --mesh-dot: #c2ac80;
+  --overlay: rgba(20, 45, 42, 0.45);
 }
 
 /*
@@ -111,30 +121,34 @@
  * variables themselves animate and every panel follows; nothing moves. At once with Calm motion on (`storm-instant`,
  * set by the controller) or the system's reduced motion.
  */
-@property --panel { syntax: "<color>"; inherits: true; initial-value: #f2ebdd; }
-@property --panel-raised { syntax: "<color>"; inherits: true; initial-value: #fbf8f1; }
-@property --panel-shadow { syntax: "<color>"; inherits: true; initial-value: #cdbf9f; }
-@property --band { syntax: "<color>"; inherits: true; initial-value: #7fa0c4; }
-@property --band-ink { syntax: "<color>"; inherits: true; initial-value: #18263a; }
-@property --ink { syntax: "<color>"; inherits: true; initial-value: #22344a; }
-@property --ink-2 { syntax: "<color>"; inherits: true; initial-value: #3b4b5f; }
-@property --ink-3 { syntax: "<color>"; inherits: true; initial-value: #4b5a6c; }
-@property --accent-ink { syntax: "<color>"; inherits: true; initial-value: #3f5f86; }
-@property --button { syntax: "<color>"; inherits: true; initial-value: #d6e1ee; }
-@property --button-border { syntax: "<color>"; inherits: true; initial-value: #b5cae2; }
-@property --button-on { syntax: "<color>"; inherits: true; initial-value: #b5cae2; }
-@property --button-on-border { syntax: "<color>"; inherits: true; initial-value: #4a6e99; }
-@property --cta { syntax: "<color>"; inherits: true; initial-value: #e3a93b; }
-@property --cta-shadow { syntax: "<color>"; inherits: true; initial-value: #b9821c; }
-@property --cta-ink { syntax: "<color>"; inherits: true; initial-value: #3a2606; }
-@property --warn { syntax: "<color>"; inherits: true; initial-value: #d9765f; }
-@property --warn-soft { syntax: "<color>"; inherits: true; initial-value: #f4cfc4; }
-@property --warn-ink { syntax: "<color>"; inherits: true; initial-value: #4a1a0e; }
+@property --panel { syntax: "<color>"; inherits: true; initial-value: #f6edd9; }
+@property --panel-edge { syntax: "<color>"; inherits: true; initial-value: #e2d2ae; }
+@property --panel-raised { syntax: "<color>"; inherits: true; initial-value: #fbf6ea; }
+@property --panel-shadow { syntax: "<color>"; inherits: true; initial-value: #d9c79f; }
+@property --band { syntax: "<color>"; inherits: true; initial-value: #2e6e64; }
+@property --ink { syntax: "<color>"; inherits: true; initial-value: #1f3d3a; }
+@property --ink-2 { syntax: "<color>"; inherits: true; initial-value: #3d5552; }
+@property --ink-3 { syntax: "<color>"; inherits: true; initial-value: #4d615e; }
+@property --accent-ink { syntax: "<color>"; inherits: true; initial-value: #2e6e64; }
+@property --button { syntax: "<color>"; inherits: true; initial-value: #dcebe5; }
+@property --button-border { syntax: "<color>"; inherits: true; initial-value: #b9d6cc; }
+@property --button-on { syntax: "<color>"; inherits: true; initial-value: #b9d6cc; }
+@property --button-on-border { syntax: "<color>"; inherits: true; initial-value: #2e6e64; }
+@property --cta { syntax: "<color>"; inherits: true; initial-value: #e8913a; }
+@property --cta-shadow { syntax: "<color>"; inherits: true; initial-value: #b96a1e; }
+@property --cta-ink { syntax: "<color>"; inherits: true; initial-value: #3a1e06; }
+@property --warn { syntax: "<color>"; inherits: true; initial-value: #c4523c; }
+@property --warn-soft { syntax: "<color>"; inherits: true; initial-value: #f6d3c8; }
+@property --warn-ink { syntax: "<color>"; inherits: true; initial-value: #4a170c; }
 @property --gold-soft { syntax: "<color>"; inherits: true; initial-value: #f6dfa6; }
-@property --stitch { syntax: "<color>"; inherits: true; initial-value: rgba(34, 52, 74, 0.35); }
+@property --stitch { syntax: "<color>"; inherits: true; initial-value: rgba(31, 61, 58, 0.3); }
+@property --cta-stitch { syntax: "<color>"; inherits: true; initial-value: rgba(58, 30, 6, 0.45); }
+@property --mesh { syntax: "<color>"; inherits: true; initial-value: #ede0c4; }
+@property --mesh-dot { syntax: "<color>"; inherits: true; initial-value: #d2bf97; }
+@property --overlay { syntax: "<color>"; inherits: true; initial-value: rgba(20, 45, 42, 0.35); }
 
 :root {
-  transition-property: --panel, --panel-raised, --panel-shadow, --band, --band-ink, --ink, --ink-2, --ink-3, --accent-ink, --button, --button-border, --button-on, --button-on-border, --cta, --cta-shadow, --cta-ink, --warn, --warn-soft, --warn-ink, --gold-soft, --stitch;
+  transition-property: --panel, --panel-edge, --panel-raised, --panel-shadow, --band, --ink, --ink-2, --ink-3, --accent-ink, --button, --button-border, --button-on, --button-on-border, --cta, --cta-shadow, --cta-ink, --warn, --warn-soft, --warn-ink, --gold-soft, --stitch, --cta-stitch, --mesh, --mesh-dot, --overlay;
   transition-duration: 600ms;
   transition-timing-function: ease-in-out;
 }

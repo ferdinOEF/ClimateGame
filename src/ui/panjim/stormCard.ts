@@ -52,7 +52,7 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
   // Section 33.5d: the card itself in Harbour Morning, from the tokens; the board on it keeps the board's colours.
-  ctx.fillStyle = themeColor("--panel", "#f2ebdd");
+  ctx.fillStyle = themeColor("--panel", "#f6edd9");
   ctx.fillRect(0, 0, W, H);
 
   // Fit the board into each half.
@@ -116,22 +116,22 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
         ctx.fillRect(px - s / 2, py - s / 2, s, s);
       }
     }
-    ctx.fillStyle = themeColor("--ink", "#22344a");
+    ctx.fillStyle = themeColor("--ink", "#1f3d3a");
     ctx.font = '600 22px "Work Sans", system-ui, sans-serif';
     ctx.fillText(half.label, half.x0 + 8, 132);
     ctx.font = '700 22px "Work Sans", system-ui, sans-serif';
-    ctx.fillStyle = half.outcome.housesDamaged > 0 ? themeColor("--warn-ink", "#4a1a0e") : themeColor("--good", "#2f6a4a");
+    ctx.fillStyle = half.outcome.housesDamaged > 0 ? themeColor("--warn-ink", "#4a170c") : themeColor("--good", "#2f6a4a");
     const count = `${half.outcome.housesDamaged} ${half.outcome.housesDamaged === 1 ? "home" : "homes"} hit`;
     ctx.fillText(count, half.x0 + panelW - ctx.measureText(count).width - 8, 132);
   }
 
-  ctx.fillStyle = themeColor("--accent-ink", "#3f5f86");
+  ctx.fillStyle = themeColor("--accent-ink", "#2e6e64");
   ctx.font = '600 16px "Work Sans", system-ui, sans-serif';
   ctx.fillText("RIPTIDE RISING, PANJIM 2050", 28, 40);
-  ctx.fillStyle = themeColor("--ink", "#22344a");
+  ctx.fillStyle = themeColor("--ink", "#1f3d3a");
   ctx.font = '700 30px "Zilla Slab", Georgia, serif';
   ctx.fillText(input.title, 28, 72);
-  ctx.fillStyle = themeColor("--ink-3", "#4b5a6c");
+  ctx.fillStyle = themeColor("--ink-3", "#4d615e");
   ctx.font = '15px "Work Sans", system-ui, sans-serif';
   ctx.fillText("Same storm, same board: only the defences differ.   ● not hit   ✕ hit   ■ defence", 28, 608);
   return canvas;
