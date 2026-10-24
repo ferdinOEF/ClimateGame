@@ -106,7 +106,8 @@ function sourceStrings(): UiString[] {
   for (const dir of SOURCE_DIRS) walk(path.join(ROOT, dir), files);
   const out: UiString[] = [];
   for (const full of files) {
-    const rel = path.relative(ROOT, full);
+    // Forward slashes on every platform, so the file names match the allow-list on Windows too.
+    const rel = path.relative(ROOT, full).split(path.sep).join("/");
     const text = readFileSync(full, "utf8");
     const source = ts.createSourceFile(rel, text, ts.ScriptTarget.Latest, true);
     const push = (node: ts.Node, value: string): void => {
