@@ -142,6 +142,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     start,
     focusOn,
     fitTo,
+    keepClearOf,
     setShake,
     focusPoint,
     cameraDistance,
@@ -645,6 +646,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     });
   }
 
+  /** Section 33b.5: the pan the last framed view took to keep its points clear of the HUD card and Maya (test hook). */
+  let lastKeepClear: { dx: number; dz: number } | null = null;
+
   const hud = new Hud(container, {
     onPreviewToggle: () => toggleHudPreview(),
     onBack: () => options.onExit()
@@ -845,7 +849,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           },
           repairVisual: (coord) => elements.repairVisual(coord),
           focus: levelMap.focus,
-          mountPanel: (el) => objectivesPanel.mountBody(el),
           showHeat: (tiles, warning) => {
             heatOverlay.show(
               tiles.map((tile) => {
@@ -899,10 +902,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // The bottom prompt too (Section 13.4): not during a storm or its result cards.
             container.querySelector(".empty-prompt")?.classList.toggle("held", !visible);
           },
-          frameWorld: (box) => {
+          frameWorld: (box, keepClear, arrows) => {
             // A gentle glide (cancelled by any drag) to frame the box, a little wider than it.
             focusOn((box.minX + box.maxX) / 2, (box.minZ + box.maxZ) / 2, false);
             fitTo(Math.max(18, (box.maxX - box.minX) * 1.15), Math.max(12, (box.maxZ - box.minZ) * 1.2), false);
+            // Section 33b.5: then slid just enough that none of these points sits under the HUD card or Maya.
+            lastKeepClear = null;
+            if (keepClear?.length) {
+              const origin = container.getBoundingClientRect();
+              const obstacles = [...container.querySelectorAll<HTMLElement>(".panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden])")]
+                .map((el) => el.getBoundingClientRect())
+                .filter((r) => r.width > 0 && r.height > 0)
+                .map((r) => ({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height }));
+              const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] => points.map((p) => ({ x: p.x, y: 0.6, z: p.z }));
+              // Everything if a pan can clear it; else the arrows alone (a forecast wider than the screen).
+              lastKeepClear = keepClearOf(lift(keepClear), obstacles) ?? (arrows?.length ? keepClearOf(lift(arrows), obstacles) : null);
+            }
           },
           landmarks: levelMap.landmarks,
           localities: levelMap.localities,
@@ -2450,7 +2465,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           playSound("build");
         },
         // The year chip first (never covered), then the rest of the HUD.
-        { avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".map-corner", ".hud-chrome"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
+        { avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".maya-badge:not([hidden])", ".map-corner", ".hud-chrome", ".empty-prompt"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
       );
       controller.cardsOpened();
       return;
@@ -2929,6 +2944,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Exposes the real THREE.Camera so a verification script can read back
     // its actual position after a simulated pinch/pan/wheel gesture.
     __cameraForTest: camera,
+    // Section 33b.5: the last pan a phase's opening view took to keep the forecast clear of the HUD card and Maya (null: none).
+    __keepClearForTest: () => lastKeepClear,
     // Section 22.3: the camera's distance (displayed and still settling) and its limits, for the zoom checks.
     __zoomForTest: { distance: cameraDistance, target: zoomTargetDistance, limits: zoomLimits, zoomBy },
     // Forces the cloud layer visible without waiting for a real telegraph

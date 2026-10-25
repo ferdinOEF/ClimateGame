@@ -182,7 +182,13 @@ in `src/main.ts` before the sheets that use it. `hud.css`, `panjim.css`,
 `tests/theme.test.ts` fails on any hex, `rgb()`, `hsl()` or named colour in
 them, and on any colour variable that is not a token.
 
-- **Harbour tokens** (`--panel`, `--panel-raised`, `--panel-shadow`, `--band`,
+Since Section 33b the values are **Tone A, Sand and Sea** (owner decision): the
+interface takes its colours from the map (sand panels, sea-teal bands and
+buttons, the dusty blue gone). The names are Section 33's; only the values
+changed, and `--panel-edge` (the HUD card's and the objective's 1 px edge) and
+`--hud-shadow` (the HUD card's soft shadow) were added.
+
+- **Harbour tokens** (`--panel`, `--panel-edge`, `--panel-raised`, `--panel-shadow`, `--band`,
   `--band-ink`, `--ink`, `--ink-2`, `--ink-3`, `--accent-ink`, `--button`,
   `--button-border`, `--button-on`, `--button-on-border`, `--cta`,
   `--cta-shadow`, `--cta-ink`, `--warn`, `--warn-soft`, `--warn-ink`,
@@ -215,6 +221,41 @@ panel follows; nothing moves. With Calm motion on the controller also sets
 `storm-instant` (and the system's reduced motion has the same effect), and the
 change is at once. During the storm the Homes at risk box wears a 3 px `--warn`
 ring at 30%. `tools/section33Storm.ts` checks all of it in a browser.
+
+## The game screen's layout (Section 33b)
+
+Owner decisions: every status and the objective live in **one static card in
+the top left corner**, which never collapses, never moves and stays during
+storms; **Maya lives in the bottom right corner**.
+
+- **The HUD card** (`.panjim-clock`, `src/ui/panjim/clockHud.ts`, styled in
+  `panjim.css`): 14 px from the left, 12 px from the top, 400 px wide, as tall
+  as its content; no header band, stitch or strips. Line 1: the year and "Year
+  N of 25", the countdown chip (`OutlookBar.mountCountdown`; a long one wraps
+  onto two lines), then ? and ☰ (the existing `.hud-chrome` and ☰ panel,
+  moved into `clock.chromeSlot`, so their actions, shortcuts and tooltips are
+  the same). Line 2: the timeline (`OutlookBar`): a dot at each storm year
+  whose tooltip (`markerText`) says which storm and how it went, small dots at
+  2035 and 2045, a mark for the current year. Line 3: the Biodiversity and
+  Homes at risk tiles. Below a divider, `clock.objectiveSlot` holds the
+  objective (`GetReadyPanel`) or, in the Tutorial, its caption and checklist
+  (`TutorialPanel`): the old bottom right objective panel is hidden in the
+  Panjim game (it remains for the old levels).
+- **Maya** (`mayaLayout.ts homeRect`): `HOME_MARGIN` in from the right and the
+  bottom; her bubble opens to her left, else above her. `HUD_OBSTACLES` names
+  the HUD card at its full size. The street map corner (its credit; the switch
+  is in ☰) is in the bottom left.
+- **The hint** (`.empty-prompt`) is a 40 px pill at the bottom centre, until
+  the run's first build.
+- **The build menu** opens beside its tile with a pointer on the side facing it
+  (`pointer-left`/`pointer-right`, `--pointer-y`), and keeps off the HUD card,
+  Maya and the hint.
+- **A phase's opening view.** `showConeIfPhaseStart` frames the forecast (its
+  arrows and the land they cross) and passes those points to `frameWorld`,
+  which asks the scene (`keepClearOf`) for the smallest pan of where the camera
+  looks (never its distance or angle) that leaves none of them under the HUD
+  card or Maya, and no more of them out of view than before; when no pan clears
+  them all (a forecast wider than the screen), the arrows alone.
 
 ## Navigation and history
 

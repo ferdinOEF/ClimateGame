@@ -141,23 +141,23 @@ export function drawShareCard(view: FinaleView): HTMLCanvasElement {
   canvas.height = 630;
   const ctx = canvas.getContext("2d")!;
   // Section 33.5d: Harbour Morning, from the tokens: the cream card, a band across its top and the mesh strip.
-  const ink = themeColor("--ink", "#22344a");
-  ctx.fillStyle = themeColor("--panel", "#f2ebdd");
+  const ink = themeColor("--ink", "#1f3d3a");
+  ctx.fillStyle = themeColor("--panel", "#f6edd9");
   ctx.fillRect(0, 0, 1200, 630);
-  ctx.fillStyle = themeColor("--band", "#7fa0c4");
+  ctx.fillStyle = themeColor("--band", "#2e6e64");
   ctx.fillRect(0, 0, 1200, 120);
-  ctx.fillStyle = themeColor("--warn", "#d9765f");
+  ctx.fillStyle = themeColor("--warn", "#c4523c");
   ctx.fillRect(0, 0, 24, 630);
-  ctx.fillStyle = themeColor("--mesh", "#e6dcc7");
+  ctx.fillStyle = themeColor("--mesh", "#ede0c4");
   ctx.fillRect(1166, 0, 34, 630);
-  ctx.fillStyle = themeColor("--mesh-dot", "#cbbd9f");
+  ctx.fillStyle = themeColor("--mesh-dot", "#d2bf97");
   for (let y = 4; y < 630; y += 8) for (let x = 1170; x < 1200; x += 8) {
     ctx.beginPath();
     ctx.arc(x, y, 2.2, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  ctx.fillStyle = themeColor("--band-ink", "#18263a");
+  ctx.fillStyle = themeColor("--band-ink", "#f6edd9");
   ctx.font = '700 28px "Work Sans", system-ui, sans-serif';
   ctx.fillText("RIPTIDE RISING", 70, 72);
   ctx.fillStyle = ink;
@@ -166,7 +166,7 @@ export function drawShareCard(view: FinaleView): HTMLCanvasElement {
 
   ctx.font = '700 150px "Zilla Slab", Georgia, serif';
   ctx.fillText(String(view.index.index), 70, 390);
-  ctx.fillStyle = themeColor("--ink-2", "#3b4b5f");
+  ctx.fillStyle = themeColor("--ink-2", "#3d5552");
   ctx.font = '500 30px "Work Sans", system-ui, sans-serif';
   ctx.fillText("Panjim 2050 index", 76, 435);
 
@@ -175,10 +175,10 @@ export function drawShareCard(view: FinaleView): HTMLCanvasElement {
     const stars = view.index.challengeStars[i] ?? 0;
     ctx.fillStyle = ink;
     ctx.fillText(name, 640, 280 + i * 64);
-    ctx.fillStyle = themeColor("--cta-shadow", "#b9821c");
+    ctx.fillStyle = themeColor("--cta-shadow", "#b96a1e");
     ctx.fillText("★".repeat(stars) + "☆".repeat(3 - stars), 980, 280 + i * 64);
   });
-  ctx.fillStyle = themeColor("--accent-ink", "#3f5f86");
+  ctx.fillStyle = themeColor("--accent-ink", "#2e6e64");
   ctx.font = '500 28px "Work Sans", system-ui, sans-serif';
   ctx.fillText(`Tempo: ${view.tempo.name}, ${view.tempo.minutes} min`, 640, 480);
   return canvas;

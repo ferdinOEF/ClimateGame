@@ -8987,3 +8987,34 @@ place labels, wildlife, khazan people, walkers and Maya's figure are untouched (
 - Fixed tokens (`--fixed-*`) keep, at their old values, the colours that are not the interface's: the cone's bands
   and preview, the map's place labels and the objective's pins (and their system sans serif), the lightning, the
   letterbox, the arrival edge, the risk intro's Low-quality ball, Maya's shadow.
+
+## Section 33b — Tone A and one HUD card — DONE (QA in docs/QA_REPORT.md)
+
+Owner decisions: the interface takes its colours from the map (Tone A, Sand and Sea; the dusty blue is gone); every
+status and the objective live in one static card in the top left corner that never collapses, never moves and stays
+during storms; Maya lives in the bottom right corner. The map, tiles, homes, landmarks, defences, water, storm
+visuals, forecast cone, wildlife, map labels, Maya's figure, the street map at 21% and every game rule are
+unchanged.
+- 33b.1 `src/ui/theme.css`: the Tone A values, calm and storm, under Section 33's names, plus `--panel-edge` (and
+  `--hud-shadow` for the card's shadow). `tests/theme.test.ts` checks the new values and every pair the interface
+  uses: lowest 4.83:1 calm (`--accent-ink` on `--button`), 4.99:1 storm (`--good` on `--panel`). The splash and the
+  canvas fallbacks follow.
+- 33b.2 The HUD card (`.panjim-clock`): the year and "Year N of 25", the countdown chip, ? and ☰ (the same buttons,
+  moved in); the timeline with a dot per storm year (its tooltip says which storm and how it went) and small dots at
+  2035 and 2045; the Biodiversity and Homes at risk tiles. The old top bar and the separate ? and ☰ circles are gone.
+- 33b.3 The objective under the tiles: a flag and the title in sentence case (the one text change), one-line rows
+  with a ring that fills with a tick, the count on the right; pulses, row clicks, four rows at most, "Get ahead" and
+  "Objective done" unchanged. The Tutorial's caption and checklist take the same place. The old bottom right panel
+  is hidden in the Panjim game.
+- 33b.4 Maya's home is the bottom right corner (`mayaLayout.ts homeRect`, the margins mirrored); her bubble opens to
+  her left, else above her. `HUD_OBSTACLES` names the HUD card, not the old panel. The street map corner is in the
+  bottom left. Her two lines that said the card is "bottom right" now say "top left", where it is. CLAUDE.md's Maya
+  rule says bottom right.
+- 33b.5 The hint is a 40 px pill at the bottom centre. The build menu has a pointer to its tile and keeps off the
+  card, Maya and the hint. A phase's opening view slides just enough (`scene.keepClearOf`: only where the camera
+  looks, never its distance or angle) that the forecast arrows and the land they cross are under neither the card
+  nor Maya: at 1366x768 phase 1 5.75 world units right, phase 2 9.25 right, phase 3 6.5 down; at 1920x1080 phase 2
+  3.75 right, phase 3 1.75 down. A long countdown wraps rather than push ? and ☰ out of the card.
+- 33b.6 QA (docs/QA_REPORT.md). From the review: ☰'s menu opens under ☰ over the board again; the objective takes no
+  clicks during a storm or its cards; the storm dots keep focus and their tooltips; Maya's bubble clears ☰'s open
+  menu. The map, storm and birds are pixel identical outside the interface (frozen storm frames, before and after).

@@ -134,8 +134,6 @@ export interface PanjimHost {
   repairVisual: (coord: AxialCoord) => void;
   /** The map's opening focus: the in-scene label anchors on the threatened tile nearest it, so it starts on screen. */
   focus: AxialCoord;
-  /** Puts the Get ready panel where the objectives list would be. */
-  mountPanel: (el: HTMLElement) => void;
   /** Sparkle, ring and glow over tiles that just joined a combo. */
   celebrateCombo: (tiles: AxialCoord[]) => void;
   /** Draws the forecast cone (null fades it out). */
@@ -147,7 +145,11 @@ export interface PanjimHost {
   /** Section 30.7: the storm's faint track all phase after the cone has gone (null hides it). */
   showStormTrail: (trail: { key: string; tracks: ConeShow["tracks"] } | null) => void;
   /** Glides the camera to frame a box of the board, in world x/z. */
-  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }) => void;
+  /**
+   * Frames the box; then, if `keepClear` is given, slides the view just enough that none of those points sits under
+   * the HUD card or Maya (or, when no slide clears them all, none of `arrows`).
+   */
+  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }, keepClear?: readonly { x: number; z: number }[], arrows?: readonly { x: number; z: number }[]) => void;
   /** The phase's area to protect, faintly, once the cone has gone (an empty list fades it out). */
   showAreaOutline: (keys: string[]) => void;
   /** "Area protected", where the outline was. */
@@ -290,7 +292,8 @@ export class PanjimController {
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, { onSkipYear: () => void this.skipYear() });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
-    // One top bar (Section 16 B2): the pill at its right end, the countdown on the next storm's marker.
+    // Section 33b.2: one HUD card, top left: the countdown chip beside the year, the two tiles under the timeline.
+    this.outlook.mountCountdown(this.clock.countdownSlot);
     this.outlook.mountRisk(this.clock.riskSlot);
     this.clock.onCountdown = (text) => this.outlook.setCountdown(text);
     // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
@@ -308,7 +311,10 @@ export class PanjimController {
     });
     // Section 31.2: the Tutorial's panel is its caption card and checklist, not the objective rows.
     this.tutorialPanel = this.tutorial ? new TutorialPanel() : null;
-    host.mountPanel(this.tutorialPanel?.el ?? this.getReady.el);
+    // Section 33b.3: the objective (or the Tutorial's caption and checklist) lives in the HUD card, under its tiles;
+    // the old bottom right objective panel is not shown in Panjim (panjim.css).
+    this.clock.objectiveSlot.appendChild(this.tutorialPanel?.el ?? this.getReady.el);
+    this.clock.objectiveSlot.hidden = false;
     this.fieldGuide = new FieldGuide(host.container, () => host.telemetry.reward("species"));
     // Section 17c: Maya's notes come from her; hidden, the guide is the species alone.
     this.fieldGuide.showNotes(SHOW_MAYA);
@@ -447,6 +453,11 @@ export class PanjimController {
     this.menuStreetSlot.className = "hud-menu-street";
     this.menuStreetSlot.hidden = true;
     this.panels.settings.adopt(this.fieldGuide.buttonEl, this.menuStreetSlot, togglesRow(host.container), this.menuActions());
+    // Section 33b.2: How to play (?) and ☰ move into the HUD card's first line, the same elements with their handlers,
+    // tooltips and shortcuts (the "?" keeps its .hud-chrome, Back hidden in it as before).
+    const chrome = host.container.querySelector<HTMLElement>(".hud-chrome");
+    if (chrome) this.clock.chromeSlot.appendChild(chrome);
+    this.clock.chromeSlot.appendChild(this.panels.settings.el);
     if (this.jar && this.panels.status) {
       const status = this.panels.status;
       this.jar.onGain = (text) => status.floatText(text);
@@ -479,12 +490,17 @@ export class PanjimController {
       return axialToWorld({ q, r }, 1);
     })];
     if (points.length > 0) {
+      // Section 33b.5: the forecast arrows (sampled along their length) and the land they cross stay clear of the HUD card and Maya.
+      const along = cone.tracks.flatMap((t) => t.points.flatMap((p, i) => {
+        const q = t.points[i + 1];
+        return q ? [0, 0.2, 0.4, 0.6, 0.8].map((f) => ({ x: p.x + (q.x - p.x) * f, z: p.z + (q.z - p.z) * f })) : [p];
+      }));
       this.host.frameWorld({
         minX: Math.min(...points.map((p) => p.x)),
         maxX: Math.max(...points.map((p) => p.x)),
         minZ: Math.min(...points.map((p) => p.z)),
         maxZ: Math.max(...points.map((p) => p.z))
-      });
+      }, [...along, ...points], along);
     }
     this.coneShown = true;
     this.host.telemetry.emit("checkpoint", { cone: next.id, tiles: cone.bands.size, area: cone.area.length });
@@ -592,6 +608,8 @@ export class PanjimController {
     tips.attach(clock.skip, "skipYear");
     const outlook = this.outlook.parts;
     tips.attach(outlook.track, "outlookTrack", () => ({ start: this.run.config.startYear, end: this.run.config.endYear }));
+    // Section 33b.2: each storm dot's tooltip names the storm, its strength and, once past, its stars.
+    this.outlook.onMarker = (el, text) => tips.attach(el, () => text);
     tips.attach(outlook.risk, "homesAtRisk", () => {
       const next = this.run.nextChallenge();
       const homes = next ? this.run.homesAtRisk(next) : 0;

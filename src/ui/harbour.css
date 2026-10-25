@@ -7,7 +7,6 @@
 /* ---- 33.4a Panels -------------------------------------------------------------------------------------------- */
 
 /* The cream body, a flat bottom shadow, no blur and no gradient. */
-.panjim-clock,
 .build-popover,
 .objectives-panel,
 .replay-card,
@@ -96,9 +95,6 @@
 .sources-head,
 .leave-confirm-title,
 .build-card-head,
-.tutorial-card-head,
-.tutorial-checklist-head,
-.get-ready-head,
 .menu-card .menu-eyebrow {
   position: relative;
   background: var(--band);
@@ -114,9 +110,6 @@
 .sources-head::after,
 .leave-confirm-title::after,
 .build-card-head::after,
-.tutorial-card-head::after,
-.tutorial-checklist-head::after,
-.get-ready-head::after,
 .menu-card .menu-eyebrow::after {
   content: "";
   position: absolute;
@@ -131,8 +124,6 @@
 .brief-eyebrow,
 .result-eyebrow,
 .build-card-head,
-.tutorial-checklist-head,
-.get-ready-title,
 .menu-card .menu-eyebrow {
   letter-spacing: 0.16em;
 }
@@ -217,48 +208,6 @@
   margin: -8px -8px 12px;
   padding: 8px 12px;
   border-radius: 16px 16px 0 0;
-}
-
-/* The objective panel (padding 11 px 13 px): its title row is the band. */
-.get-ready-head {
-  margin: -11px -13px 14px;
-  padding: 7px 13px;
-  border-radius: 16px 16px 0 0;
-}
-
-.get-ready-head .get-ready-title {
-  color: var(--band-ink);
-}
-
-/* The Tutorial's caption card and checklist: two raised cards in the objective panel, each with its band. */
-.tutorial-card,
-.tutorial-checklist {
-  background: var(--panel-raised);
-  border-radius: 12px;
-}
-
-.tutorial-checklist {
-  padding: 0 11px 10px;
-}
-
-.tutorial-card-head {
-  margin: -9px -11px 12px;
-  padding: 7px 11px;
-  border-radius: 12px 12px 0 0;
-}
-
-.tutorial-card-head .tutorial-card-name {
-  color: var(--band-ink);
-}
-
-.tutorial-checklist-head {
-  margin: 0 -11px 12px;
-  padding: 7px 11px;
-  border-radius: 12px 12px 0 0;
-}
-
-.tutorial-checklist-head .tutorial-count {
-  color: var(--band-ink);
 }
 
 /* ☰ has no title: a slim band across its top, and the stitch 6 px under it. */
@@ -628,21 +577,6 @@ a:focus-visible,
 
 /* ---- 33.5b The top bar, its outlook, the toggles, the build menu, the objective panel -------------------------- */
 
-/* The top bar: a dashed stitch border 5 px inside it, radius 10 px. */
-.panjim-clock::before {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  border: 1.5px dashed var(--stitch);
-  border-radius: 10px;
-  pointer-events: none;
-}
-
-/* The objective panel's minimise button sits on its band: a small chip. */
-.get-ready-head .get-ready-toggle {
-  border-width: 1.5px;
-  border-radius: 8px;
-}
 
 /* ---- 33.6 Focus on the band ----------------------------------------------------------------------------------- */
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 
 /**
- * Section 33.1 (owner decision): Harbour Morning's tokens (src/ui/theme.css). Every text and background pair the
+ * Section 33.1 (owner decision): Harbour Morning's tokens (src/ui/theme.css), with Section 33b.1's Tone A values. Every text and background pair the
  * interface uses meets WCAG AA, calm and storm: 4.5:1, or 3:1 for text 24 px and larger.
  */
 const THEME = fs.readFileSync("src/ui/theme.css", "utf8");
@@ -47,10 +47,15 @@ const ALLOWED = new Set(PAIRS.map(([t, b]) => `${t}|${b}`));
 
 describe("Section 33.1: Harbour Morning's tokens", () => {
   it("defines every token in both moods, as the brief gives them", () => {
-    expect(CALM.panel).toBe("#f2ebdd");
-    expect(STORM.panel).toBe("#e9dcc3");
-    expect(CALM.cta).toBe("#e3a93b");
-    expect(STORM.band).toBe("#4a6e99");
+    // Section 33b.1 (owner decision): Tone A, Sand and Sea.
+    expect(CALM.panel).toBe("#f6edd9");
+    expect(STORM.panel).toBe("#efe2c6");
+    expect(CALM["panel-edge"]).toBe("#e2d2ae");
+    expect(STORM["panel-edge"]).toBe("#cdb98d");
+    expect(CALM.cta).toBe("#e8913a");
+    expect(STORM.band).toBe("#24574f");
+    expect(CALM.band).toBe("#2e6e64");
+    expect(STORM.overlay).toBe("rgba(20, 45, 42, 0.45)");
     for (const key of Object.keys(block(":root.storm"))) expect(CALM[key], key).toBeDefined();
   });
 
@@ -131,9 +136,9 @@ describe("Section 33.4: the shapes", () => {
     expect(harbour).toMatch(/\.menu-card \{\s*background: var\(--panel\);[^}]*box-shadow: 0 4px 0 var\(--panel-shadow\);/);
     expect(harbour).toMatch(/border-left: 14px solid var\(--warn\);\s*border-right: 20px solid transparent;/);
     expect(harbour).toMatch(/radial-gradient\(circle at 4px 4px, var\(--mesh-dot\) 2\.2px, transparent 2\.7px\) 0 0 \/ 8px 8px border-box/);
-    expect(THEME).toContain("--mesh: #e6dcc7;");
-    expect(THEME).toContain("--mesh-dot: #cbbd9f;");
-    expect(THEME).toContain("--overlay: rgba(27, 42, 60, 0.35);");
+    expect(THEME).toContain("--mesh: #ede0c4;");
+    expect(THEME).toContain("--mesh-dot: #d2bf97;");
+    expect(THEME).toContain("--overlay: rgba(20, 45, 42, 0.35);");
     // No blurred shadow anywhere in the shapes.
     for (const m of harbour.matchAll(/box-shadow:([^;]+);/g)) expect(m[1], m[1]).not.toMatch(/\d+px \d+px \d+px [^0]/);
   });
@@ -152,7 +157,7 @@ describe("Section 33.4c: Maya's bubble (panjim.css only)", () => {
     expect(panjim).toMatch(/\.maya-name \{[^}]*font-variant: small-caps;/);
     expect(panjim).toMatch(/\.maya-name \{[^}]*color: var\(--accent-ink\);/);
     expect(panjim).toMatch(/\.maya-name::after \{[^}]*border-top: 1\.5px dashed var\(--stitch\);/);
-    for (const side of ["right", "left", "above"]) expect(panjim).toMatch(new RegExp(`\\.maya-bubble\\.side-${side}::before \\{[^}]*-color: var\\(--panel\\);`));
+    for (const side of ["left", "above"]) expect(panjim).toMatch(new RegExp(`\\.maya-bubble\\.side-${side}::before \\{[^}]*-color: var\\(--panel\\);`));
     // Maya's figure is untouched: no sheet but panjim.css styles her bubble.
     expect(fs.readFileSync("src/ui/harbour.css", "utf8")).not.toMatch(/\.maya/);
   });

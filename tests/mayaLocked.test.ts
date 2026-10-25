@@ -23,6 +23,16 @@ describe("Maya is locked in place", () => {
     expect(maya).not.toMatch(/badge\.style\.(left|top)/);
   });
 
+  it("stands in the bottom right corner (Section 33b): her figure and badge are placed from the right and the bottom", () => {
+    const css = strip(readFileSync("src/ui/panjim/panjim.css", "utf8"));
+    for (const sel of [".maya-figure-wrap", ".maya-badge"]) {
+      const rule = css.match(new RegExp(`\\n\\${sel} \\{([^}]*)\\}`))?.[1] ?? "";
+      expect(rule, sel).toMatch(/\bright: var\(--maya-home\);/);
+      expect(rule, sel).toMatch(/\bbottom: var\(--maya-home\);/);
+      expect(rule, sel).not.toMatch(/\bleft:/);
+    }
+  });
+
   it("watches only the HUD elements her bubble must clear, not the whole page", () => {
     const maya = strip(readFileSync("src/ui/panjim/maya.ts", "utf8"));
     // The observer is pointed at obstacles one by one (and the container's own children), never at the container's subtree.

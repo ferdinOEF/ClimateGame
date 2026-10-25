@@ -51,6 +51,7 @@ export class GetReadyPanel {
     this.el.setAttribute("aria-label", "Objective");
     this.el.innerHTML = `
       <div class="get-ready-head">
+        <span class="get-ready-flag" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 1.5v13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M4.8 2.2h8.4l-2 3 2 3H4.8z" fill="currentColor"/></svg></span>
         <span class="get-ready-title">Get ready</span>
         <button type="button" class="get-ready-toggle" aria-expanded="true" aria-label="Collapse the objective">–</button>
       </div>

@@ -213,7 +213,7 @@ async function main(): Promise<void> {
       result.live.push(r);
       check(!r.moved, `${state}: her figure's box never moved in ${r.frames} frames over ${r.seconds}s (${r.box.x},${r.box.y} ${r.box.w}x${r.box.h})`);
       if (homeX !== undefined && homeBottom !== undefined) {
-        check(r.box.x === homeX && Math.abs(1080 - (r.box.y + r.box.h) - homeBottom) < 0.001, `${state}: she stands at her home (${homeX}px from the left, ${homeBottom}px from the bottom)`);
+        check(1920 - (r.box.x + r.box.w) === homeX && Math.abs(1080 - (r.box.y + r.box.h) - homeBottom) < 0.001, `${state}: she stands at her home (${homeX}px from the right, ${homeBottom}px from the bottom; Section 33b)`);
         check(Number.isInteger(r.box.x) && Number.isInteger(r.box.y) && Number.isInteger(r.box.w) && Number.isInteger(r.box.h), `${state}: her box is on whole pixels`);
       }
       console.log(`      per second: layouts ${r.perSecond.layouts}, figure style writes ${r.perSecond.figureWrites}, class writes ${r.perSecond.classWrites}, hop restarts ${r.perSecond.hops}, observer hits ${r.perSecond.observerHits}; frames that changed ${r.framesChanged} of ${r.frames - 1} (${r.strongChanged} strongly)`);

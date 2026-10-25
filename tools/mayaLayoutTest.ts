@@ -91,9 +91,9 @@ async function assertClear(page: Page, label: string, expectBubble: boolean): Pr
     const why = await page.evaluate(`(() => { const m = window.__panjimForTest.maya; return JSON.stringify({ current: m.current && m.current.id, pending: m.pending, heldBack: m.heldBack, minimised: m.minimised, muted: m.muted, bubbleHidden: m.bubble.hidden, view: [innerWidth, innerHeight] }); })()`);
     problems.push(`her bubble is not showing ${why}`);
   }
-  // She never moves: her figure (or her badge) stands at her home, a fixed margin in from the bottom-left corner, on whole pixels.
+  // She never moves: her figure (or her badge) stands at her home, a fixed margin in from the bottom-right corner (Section 33b), on whole pixels.
   for (const m of maya.filter((r) => r.label === "figure" || r.label === "badge")) {
-    if (m.x !== 12 || Math.abs(view.h - (m.y + m.h) - 12) > 0.001) problems.push(`${m.label} is not at home: ${JSON.stringify([m.x, m.y, m.w, m.h])} on ${view.w}x${view.h}`);
+    if (view.w - (m.x + m.w) !== 12 || Math.abs(view.h - (m.y + m.h) - 12) > 0.001) problems.push(`${m.label} is not at home: ${JSON.stringify([m.x, m.y, m.w, m.h])} on ${view.w}x${view.h}`);
     if (![m.x, m.y, m.w, m.h].every(Number.isInteger)) problems.push(`${m.label} is not on whole pixels: ${JSON.stringify([m.x, m.y, m.w, m.h])}`);
   }
   for (const m of maya) {
