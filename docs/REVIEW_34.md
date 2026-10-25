@@ -259,8 +259,12 @@ checks), the sheltered centre untouched (775 storms). No walker on water: `tests
 `docs/qa/section34/round1/health-gpu.md`):
 - Load: the menu's first paint 140 ms, on screen 341 ms; Play Panjim to its start popup 3.6 s.
 - Frame time on the calm board: median 16.7 ms (the display's 60 Hz), p95 33.4 ms, 43 to 45 fps at Low, Medium and
-  High. Section 21's numbers were software GL (2.0 to 2.3 fps at 1920x1080); the same software GL tool
-  (`tools/stormPerf.ts`) is run again for the comparison below.
+  High. Section 21's numbers were software GL in the Linux container (2.0 to 2.3 fps at 1920x1080), which this
+  laptop's CPU cannot reproduce (its software GL gives about 1 fps on either build), so the comparison that holds is
+  the same machine before and after: `pre-section-34` built beside the branch, 1920x1080, Medium: GPU 42.6 fps before,
+  44.0 after (median 16.7 ms both); software GL 0.8 fps both (median 1317 and 1350 ms, within the noise of four
+  samples). No regression. (`tools/stormPerf.ts` stopped midway: with no input for minutes under software GL, the
+  festival idle reset took its page to the menu.)
 - **A memory leak, found and fixed.** Three full runs in one tab first grew the JS heap 15.5, 19.3, 22.2, 26.9 MB
   (DOM flat). Heap snapshots (`tools/leak34.ts`, new) traced it to things shared across sessions at module level: a
   shared material kept a "dispose" listener from every renderer (`particleMaterial`, the creature materials, the

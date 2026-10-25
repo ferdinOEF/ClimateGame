@@ -36,6 +36,8 @@ export interface KhazanScene {
    * chosen their own framing, a resize must not throw it away.
    */
   fitTo: (worldWidth: number, worldDepth: number, immediate?: boolean) => void;
+  /** Section 34: a drag keeps the camera's target inside this box (the board, with a margin); null lifts it. */
+  setPanBounds: (bounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null) => void;
   /** Offsets the camera by a small amount without moving what it looks at — the storm's impact tremor. Pass (0, 0) to clear. */
   setShake: (x: number, z: number) => void;
   /** Where the camera is currently looking, so effects anchored to the view (the rain volume) can follow it. */
@@ -158,6 +160,7 @@ export function createScene(container: HTMLElement): KhazanScene {
    */
   let target = { x: 0, z: 0 };
   let desiredTarget = { x: 0, z: 0 };
+  let panBounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
   let distance = CAM_DISTANCE_DEFAULT;
   let desiredDistance = CAM_DISTANCE_DEFAULT;
 
@@ -377,6 +380,8 @@ export function createScene(container: HTMLElement): KhazanScene {
     // overlaps a zoom travel the wrong amount.
     const panScale = desiredDistance / Math.max(1, container.clientHeight);
     desiredTarget = { x: desiredTarget.x - dx * panScale, z: desiredTarget.z - dy * panScale };
+    // Section 34: a wild drag could carry the board off the screen (only Home brought it back).
+    if (panBounds) desiredTarget = { x: Math.min(panBounds.maxX, Math.max(panBounds.minX, desiredTarget.x)), z: Math.min(panBounds.maxZ, Math.max(panBounds.minZ, desiredTarget.z)) };
     pointerDown = { x: e.clientX, y: e.clientY };
   }, { signal });
 
@@ -584,6 +589,9 @@ export function createScene(container: HTMLElement): KhazanScene {
     onResize,
     focusOn,
     fitTo,
+    setPanBounds: (bounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null) => {
+      panBounds = bounds;
+    },
     frameStats,
     setShake,
     focusPoint,

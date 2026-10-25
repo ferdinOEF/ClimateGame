@@ -145,6 +145,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     start,
     focusOn,
     fitTo,
+    setPanBounds,
     setShake,
     focusPoint,
     cameraDistance,
@@ -664,6 +665,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     focusOn(focus.x, focus.z, true);
     openingFit = { width: maxX - minX + Math.sqrt(3), depth: maxZ - minZ + 2 };
     fitTo(openingFit.width, openingFit.depth, true);
+    // Section 34: a drag keeps the board's middle on screen: the target stays over the board (a few tiles of margin).
+    setPanBounds({ minX: minX - 4, maxX: maxX + 4, minZ: minZ - 4, maxZ: maxZ + 4 });
     // Section 22.3: Home (or 0) glides back to this opening view.
     setHome(() => {
       focusOn(focus.x, focus.z, false);
