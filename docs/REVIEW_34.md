@@ -9,8 +9,9 @@ CLAUDE.md applies.
 - Round 0 (setup): done. See "Setup" below.
 - Round 1: done (eight playtesters, bots, fuzz, the core review, the diff review; every BLOCKER and MAJOR fixed;
   commits on `section-34-deep-review`).
-- Next: health measurements (frame time per quality, memory over three runs, load time), then Round 2 with eight fresh
-  playtesters on the new build.
+- Health measured and the memory leak fixed (see Round 1 measurements).
+- Round 2: in progress since commit `646313f`: eight fresh playtesters (drivers on ports 7201 to 7208, diaries in
+  `docs/qa/section34/round2/`). Then: their quiz, the issue list, fixes, the diff review, bots and fuzz again.
 
 ## What the game is (one page)
 
