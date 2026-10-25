@@ -110,12 +110,10 @@ describe("Section 34: a pulsing tile's build menu names the objective's defence"
 const popover = fs.readFileSync("src/ui/buildPopover.ts", "utf8");
 
 describe("Section 34: clicks that were lost or doubled", () => {
-  it("a click that closes the build menu or a tile's card on another tile opens that tile", () => {
-    expect(popover).toContain("this.onOutsideClick?.(e.clientX, e.clientY);");
-    expect(session).toContain("buildPopover.onOutsideClick = (x, y) => {");
-    // Only to another tile that takes a build; the open tile, a house, plain land or the sea only close; a drag only closes.
-    expect(session).toContain("=== lastOpenedKey || state.buildableAt(coord).length === 0) return;");
-    expect(popover).toContain("if (dragged) return;");
+  it("a click outside a menu or a tile's card only closes it (no click through: it led to accidental builds)", () => {
+    expect(popover).not.toContain("onOutsideClick");
+    expect(session).not.toContain("onOutsideClick");
+    expect(popover).toContain("if (e.target === this.backdrop) this.hide();");
   });
 
   it("a pointer click on a card in the first moment after the menu opens is ignored (a double click's second half)", () => {
@@ -190,5 +188,42 @@ describe("Section 34: no memory growth run over run", () => {
       expect(session.indexOf(call), call).toBeGreaterThan(0);
       expect(session.indexOf(call), `${call} before the scene goes`).toBeLessThan(session.indexOf("    disposeScene();"));
     }
+  });
+});
+
+describe("Section 34 Round 2 fixes", () => {
+  const scene = fs.readFileSync("src/render/scene.ts", "utf8");
+  const director = fs.readFileSync("src/app/mayaDirector.ts", "utf8");
+  const cards = fs.readFileSync("src/ui/panjim/defenceCards.ts", "utf8");
+  const steps = fs.readFileSync("src/ui/panjim/tutorialSteps.ts", "utf8");
+
+  it("the idle reset is held only while a storm plays (a result card left alone resets for the next visitor)", () => {
+    expect(session).toContain("() => Boolean(stormDirector?.playing),");
+  });
+
+  it("a drag or a zoom keeps the board on screen; a resize closes an open build menu", () => {
+    expect(scene.match(/clampTarget\(\);/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(session).toContain('window.addEventListener("resize", () => buildPopover.hide(), { signal: keydownAbort.signal });');
+  });
+
+  it("a tile pulses only while a build there still takes homes out of the storm's risk", () => {
+    expect(controller).toContain("const open = [...new Set(picks)].filter((key) => fits(key) && helps(key));");
+  });
+
+  it("Maya's 'strengthen it now' names homes near the objective's open tiles when there are any", () => {
+    expect(director).toContain("riskHotspot(nearPicks.length > 0 ? nearPicks : exposure.housesAtRisk, exposure.intensity)");
+  });
+
+  it("keyboard: O jumps the map cursor to the objective's next tile, and Help says so; Tab stays in the build menu", () => {
+    expect(session).toContain('event.key === "o" || event.key === "O"');
+    expect(panjimHelpHtml({ startYear: 2026, endYear: 2050, storms: [] })).toContain("O jumps to the objective's tiles");
+    expect(fs.readFileSync("src/ui/buildPopover.ts", "utf8")).toContain("trapFocus(this.el, () => this.isOpen);");
+  });
+
+  it("words: the striped red (readable without colour), what a khazan is, the Tutorial's seawall tile, the source's 'can be'", () => {
+    expect(JSON.stringify(maya)).toContain("The striped red tiles show where the {storm} will hit.");
+    expect(cards).toContain('"Wetland walled off from the tide; farmers and fishers share it."');
+    expect(steps).toContain('"Try a seawall on a glowing tile by the sea."');
+    expect(factById("card-mangrove")!.text).toBe("Mangroves can be nursery grounds for young fish, prawns and crabs.");
   });
 });

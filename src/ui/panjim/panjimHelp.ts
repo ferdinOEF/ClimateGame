@@ -93,6 +93,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>One build a year ${RULE}</h3>
         <p>Click a tile and pick a card. That build ends the year. ${years} builds, ${input.startYear} to ${input.endYear}.</p>
+        <p>By keyboard: Tab to the map, the arrow keys move between tiles, O jumps to the objective's tiles, Enter opens one.</p>
       </div>
     </section>
 
@@ -118,7 +119,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       ${picture("help-heat.jpg", "Red striped tiles: homes the coming storm would flood")}
       <div>
         <h3>The heat ${RULE}</h3>
-        <p>${heatLead(input.heatLeadYears ?? HEAT_LEAD_YEARS)}, red marks the homes it would flood.</p>
+        <p>${heatLead(input.heatLeadYears ?? HEAT_LEAD_YEARS)}, striped red tiles mark the homes it would flood.</p>
         <p>Show risk (R): the homes the next storm would hit today, counting the defences you have built.</p>
       </div>
     </section>

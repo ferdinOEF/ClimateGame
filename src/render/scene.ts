@@ -161,6 +161,10 @@ export function createScene(container: HTMLElement): KhazanScene {
   let target = { x: 0, z: 0 };
   let desiredTarget = { x: 0, z: 0 };
   let panBounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
+  /** Section 34: keeps the camera's target over the board (with a margin), whatever moved it. */
+  function clampTarget(): void {
+    if (panBounds) desiredTarget = { x: Math.min(panBounds.maxX, Math.max(panBounds.minX, desiredTarget.x)), z: Math.min(panBounds.maxZ, Math.max(panBounds.minZ, desiredTarget.z)) };
+  }
   let distance = CAM_DISTANCE_DEFAULT;
   let desiredDistance = CAM_DISTANCE_DEFAULT;
 
@@ -381,7 +385,7 @@ export function createScene(container: HTMLElement): KhazanScene {
     const panScale = desiredDistance / Math.max(1, container.clientHeight);
     desiredTarget = { x: desiredTarget.x - dx * panScale, z: desiredTarget.z - dy * panScale };
     // Section 34: a wild drag could carry the board off the screen (only Home brought it back).
-    if (panBounds) desiredTarget = { x: Math.min(panBounds.maxX, Math.max(panBounds.minX, desiredTarget.x)), z: Math.min(panBounds.maxZ, Math.max(panBounds.minZ, desiredTarget.z)) };
+    clampTarget();
     pointerDown = { x: e.clientX, y: e.clientY };
   }, { signal });
 
@@ -433,6 +437,8 @@ export function createScene(container: HTMLElement): KhazanScene {
       if (pointer) {
         const anchored = zoomTowardTarget(target, pointer, distance, next);
         desiredTarget = { x: desiredTarget.x + (anchored.x - target.x), z: desiredTarget.z + (anchored.z - target.z) };
+        // Section 34: zooming out hard at a corner carried the board into that corner (only Home brought it back).
+        clampTarget();
       }
     }
     desiredDistance = next;

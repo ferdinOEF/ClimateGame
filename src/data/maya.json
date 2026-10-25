@@ -50,7 +50,7 @@
     }
   ],
   "warning": {
-    "exposed": "The red shows where the {storm} will hit. {place} is most at risk: strengthen it now.",
+    "exposed": "The striped red tiles show where the {storm} will hit. {place} is most at risk: strengthen it now.",
     "lastCall": "Last call! {count} homes are still in danger, most of them around {place}.",
     "fixed": "{place} looks safe now. Well done!"
   },

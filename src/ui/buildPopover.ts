@@ -1,3 +1,4 @@
+import { trapFocus } from "./focusTrap";
 import type { Tooltips } from "./tooltip";
 
 export interface PopoverOption {
@@ -132,26 +133,18 @@ export class BuildPopover {
     this.backdrop = document.createElement("div");
     this.backdrop.className = "popover-backdrop";
     this.backdrop.hidden = true;
-    // Section 34: a press that became a drag on the backdrop only closes (it never opens the tile at its release).
-    let downAt: { x: number; y: number } | null = null;
-    this.backdrop.addEventListener("pointerdown", (e) => {
-      downAt = e.target === this.backdrop ? { x: e.clientX, y: e.clientY } : null;
-    });
+    // A click outside only closes (Section 34 tried opening the tile under it, and players then built by accident on
+    // the menu that opened under their next click: an accidental build costs a year and cannot be undone).
     this.backdrop.addEventListener("click", (e) => {
-      if (e.target !== this.backdrop) return;
-      const dragged = !downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6;
-      downAt = null;
-      this.hide();
-      if (dragged) return;
-      // Section 34: a click on another tile closes this card and opens that tile (players' first click after a card
-      // only closed it, and read as a lost click). A click off the board still only closes.
-      this.onOutsideClick?.(e.clientX, e.clientY);
+      if (e.target === this.backdrop) this.hide();
     });
 
     this.el = document.createElement("div");
     this.el.className = "build-popover";
     this.backdrop.appendChild(this.el);
     container.appendChild(this.backdrop);
+    // Section 34: Tab stays among the cards while the menu is open (it wandered to the panels behind).
+    trapFocus(this.el, () => this.isOpen);
   }
 
   get isOpen(): boolean {
@@ -467,8 +460,6 @@ export class BuildPopover {
 
   /** Called whenever the popover closes, however it closes. */
   onHide: (() => void) | null = null;
-  /** Section 34: where a click that closed the popover landed, so the board can open the tile there. */
-  onOutsideClick: ((clientX: number, clientY: number) => void) | null = null;
   /** Section 34: when the cards opened; a pointer click on one in the first moment is a double click's second half. */
   private openedAt = 0;
 

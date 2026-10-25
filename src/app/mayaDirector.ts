@@ -1,5 +1,5 @@
 import type { ActionRun } from "@core/actionRun";
-import type { AxialCoord } from "@core/hex";
+import { axialDistance as hexDistance, type AxialCoord } from "@core/hex";
 import type { Exposure } from "@core/exposure";
 import { MAYA, openingLine, placeName, riskHotspot, stormWord, warningLine } from "@core/mayaLines";
 import type { Maya, MayaLine, MayaState } from "@ui/panjim/maya";
@@ -108,7 +108,12 @@ export class MayaDirector {
     }
 
     if (exposure && yearsLeft >= 1 && yearsLeft <= 2) {
-      const hotspot = riskHotspot(exposure.housesAtRisk, exposure.intensity);
+      // Section 34: "strengthen it now" pointed at homes no build could help. While the objective has open rows, she
+      // names the homes at risk near its tiles still to build (where a build does help); otherwise all of them.
+      const zones = run.zones;
+      const openPicks = zones ? (run.objective?.picks ?? []).filter((pick) => run.state.canBuild(coordOf(pick.key), pick.elementId)).map((pick) => coordOf(pick.key)) : [];
+      const nearPicks = exposure.housesAtRisk.filter((key) => openPicks.some((pick) => hexDistance(pick, coordOf(key)) <= 3));
+      const hotspot = riskHotspot(nearPicks.length > 0 ? nearPicks : exposure.housesAtRisk, exposure.intensity);
       const place = hotspot ? placeName(coordOf(hotspot.key), this.ctx.landmarks, run.zones?.zoneOf(hotspot.key) ?? null) : null;
 
       // When the heat first appears in this storm's phase: one line, where

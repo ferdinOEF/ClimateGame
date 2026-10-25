@@ -715,14 +715,18 @@ export class PanjimController {
     const tiles = new Set(job.tiles ?? []);
     const picks = [...(this.run.objective?.picks ?? []), ...this.aheadPicks].filter((pick) => pick.elementId === job.elementId && tiles.has(pick.key)).map((pick) => pick.key);
     const fits = (key: string): boolean => this.host.state.elements.get(key)?.elementId !== job.elementId && this.host.state.canBuild({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, job.elementId);
-    const open = [...new Set(picks)].filter(fits);
+    // Section 34: a tile pulses only while building there still takes homes out of the storm's risk (the picks are
+    // chosen at the phase's start; later builds can save their homes first, and a player then spent a year on a
+    // pulsing tile that changed nothing). The same model as Homes at risk, cached until the board changes.
+    const storm = this.run.schedule.find((c) => c.id === job.challengeId);
+    const helps = (key: string): boolean => !!storm && !this.run.landed.has(storm.id) && (this.run.riskChangeBy(storm, { q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, job.elementId)?.saved.length ?? 0) > 0;
+    const open = [...new Set(picks)].filter((key) => fits(key) && helps(key));
     // Section 34: a row whose picked tiles were taken by other builds still has a way to finish: the tiles in its
-    // area where its defence fits, those nearest the most homes its storm still puts at risk first, as many as it
-    // still needs (counted, not simulated: this runs on every repaint).
+    // area where its defence fits and helps, those nearest the most homes its storm still puts at risk first, as
+    // many as it still needs (ranked by a count, and only the best few simulated: this runs on every repaint).
     const progress = zones ? prepProgress(job, this.host.state, zones) : null;
     const need = progress ? progress.target - progress.current : 0;
     if (open.length >= need || tiles.size === 0) return open;
-    const storm = this.run.schedule.find((c) => c.id === job.challengeId);
     const risk = storm && !this.run.landed.has(storm.id) ? this.run.homesAtRiskKeys(storm).map((key) => key.split(",").map(Number)) : [];
     const near = (key: string): number => {
       const [q, r] = key.split(",").map(Number);
@@ -731,9 +735,12 @@ export class PanjimController {
     const extra = [...tiles]
       .filter((key) => !open.includes(key) && fits(key))
       .map((key) => ({ key, saves: near(key) }))
+      .filter((tile) => tile.saves > 0)
       .sort((a, b) => b.saves - a.saves || (a.key < b.key ? -1 : 1))
-      .slice(0, need - open.length)
-      .map((tile) => tile.key);
+      .slice(0, 12)
+      .map((tile) => tile.key)
+      .filter(helps)
+      .slice(0, need - open.length);
     return [...open, ...extra];
   }
 

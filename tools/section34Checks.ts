@@ -5,8 +5,8 @@
  *   - the start popup takes focus on Begin and keeps Tab inside; Enter begins;
  *   - a mouse click on the board, never focused before: the camera does not jump, the board does not take focus, and
  *     the menu that opens is the clicked tile's (the reviewer's B1);
- *   - a click on the open tile again, or on a house, only closes the menu; a click on another buildable tile opens
- *     that tile's menu (M2);
+ *   - with a menu open, a click on the open tile, a house or another tile only closes it (a click through was tried
+ *     and reverted: players then built by accident on the menu that opened under their next click);
  *   - a second pointer click right after a menu opens builds nothing (a double click);
  *   - the map by keyboard: Tab reaches it, the cursor shows (dark ring) and stays drawn with the mouse resting on the
  *     board (M1), the camera follows the arrows, Enter opens the tile, the objective's card says "Objective", Enter
@@ -120,14 +120,13 @@ async function tilesOnScreen(page: Page): Promise<{ key: string; x: number; y: n
         check(!(await menuOpen(page)), `with a menu open, a click on a house (${house.key}) only closes it`);
       } else console.log(`INFO [${tag}] no house clear of the open menu for the close check`);
     }
-    // Another buildable tile, with a menu open: it opens that tile's menu.
+    // Another buildable tile, with a menu open: it only closes.
     if (await openTarget()) {
       const other = (await Promise.all(around.filter((t) => t.options.length > 0 && !t.house && t.key !== target.key).map(async (t) => ((await clear(t.x, t.y)) ? t : null)))).find(Boolean) ?? null;
       if (other) {
         await page.mouse.click(other.x, other.y);
         await page.waitForTimeout(800);
-        check((await menuOpen(page)) && JSON.stringify(await cards(page)) === JSON.stringify(other.options), `with a menu open, a click on another buildable tile (${other.key}) opens its menu (${(await cards(page)).join(", ")})`);
-        await page.screenshot({ path: path.join(OUT, `click-through-${tag}.jpg`), type: "jpeg", quality: 75 });
+        check(!(await menuOpen(page)), `with a menu open, a click on another buildable tile (${other.key}) only closes the menu (no build, nothing opened)`);
       } else console.log(`INFO [${tag}] no other buildable tile clear of the open menu`);
     }
     // A double click: the second click lands on the card that opened under the pointer, and must not build.

@@ -87,7 +87,7 @@ const STEPS: Omit<TutorialStep, "name" | "icon">[] = [
     how: ["A hard wall along the shore.", "It shields the land behind it from waves and surge."],
     sources: ["seawall-what"],
     inGame: seawallLine(),
-    maya: "Try a seawall on the glowing beach.",
+    maya: "Try a seawall on a glowing tile by the sea.",
     bestAt: "The strongest wall against a cyclone's surge."
   },
   {

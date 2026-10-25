@@ -361,7 +361,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const stopIdle = watchIdle(
     new IdleReset(
       () => (options.onIdle ?? options.onExit)(),
-      () => Boolean(stormDirector?.playing || panjim?.isBusy),
+      // Section 34: only a storm playing holds the clock; a result card left alone counted as busy and never reset.
+      () => Boolean(stormDirector?.playing),
       undefined,
       undefined,
       (left) => {
@@ -2344,10 +2345,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * of ever offering a second build menu — the UI should never let a player
    * attempt (or appear to attempt) building a second thing on an occupied tile.
    */
-  /** Section 34: the tile whose menu or card opened last (a click on it again only closes). */
-  let lastOpenedKey = "";
   function openTilePopover(coord: AxialCoord): void {
-    lastOpenedKey = `${coord.q},${coord.r}`;
     // The coach's "click any tile" step waits on this. Set before the early
     // returns below so it also counts for a tile whose menu turns out to be
     // empty — the player did the thing they were asked to do, and telling
@@ -2602,7 +2600,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (panjim && tileHover) {
     const canvas = renderer.domElement;
     canvas.tabIndex = 0;
-    canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles; Enter opens the tile.");
+    canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles, O jumps to the next tile the objective asks for, Enter opens the tile.");
     const said = document.createElement("div");
     said.className = "visually-hidden";
     said.setAttribute("aria-live", "polite");
@@ -2662,6 +2660,18 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       } else if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         openTilePopover(cursor);
+      } else if (event.key === "o" || event.key === "O") {
+        // Section 34: a keyboard player took 10 to 30 arrow presses to reach a pulsing tile; O jumps to the next one.
+        event.preventDefault();
+        const open = (panjim.run.objective?.picks ?? []).map((p) => ({ q: Number(p.key.split(",")[0]), r: Number(p.key.split(",")[1]), id: p.elementId })).filter((p) => state.canBuild(p, p.id));
+        if (open.length === 0) {
+          said.textContent = "No tile left for the objective.";
+          return;
+        }
+        const at = open.findIndex((p) => p.q === cursor!.q && p.r === cursor!.r);
+        const next = open[(at + 1) % open.length];
+        cursor = { q: next.q, r: next.r };
+        showCursor(true);
       }
     });
   }
@@ -2698,26 +2708,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
     openTileAt(event.clientX, event.clientY);
   });
-  // Section 34: a click that closes the build menu or a tile's card on another tile opens that tile.
-  // Only to another tile that takes a build: a click on the open tile, a house, plain land or the sea still only closes.
-  buildPopover.onOutsideClick = (x, y) => {
-    if (document.elementFromPoint(x, y) !== renderer.domElement || panjim?.isBusy || sessionFinished) return;
-    const coord = tileAt(x, y);
-    if (!coord || `${coord.q},${coord.r}` === lastOpenedKey || state.buildableAt(coord).length === 0) return;
-    openTilePopover(coord);
-  };
-
-  /** The tile under a screen point (a monument counts as its tile), or null. */
-  function tileAt(clientX: number, clientY: number): AxialCoord | null {
-    const rect = renderer.domElement.getBoundingClientRect();
-    pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-    raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(hoverTargets);
-    if (hits.length === 0 || hits[0].instanceId === undefined) return null;
-    return monuments.atHit(hits[0].object, hits[0].instanceId)?.coord ?? terrain.coordForHit(hits[0].object, hits[0].instanceId) ?? null;
-  }
-
   /** The tile (or creature) under a screen point, opened as a click on it would. */
   function openTileAt(clientX: number, clientY: number): void {
     if (panjim?.isBusy) return; // a time-lapse is playing; the click skips it instead
@@ -2780,6 +2770,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     return top !== null && top.name !== "build";
   });
   const keydownAbort = new AbortController();
+  // Section 34: a menu left open through a resize no longer pointed at its tile (and could be cut off): it closes.
+  window.addEventListener("resize", () => buildPopover.hide(), { signal: keydownAbort.signal });
   document.addEventListener(
     "keydown",
     (event: KeyboardEvent) => {
