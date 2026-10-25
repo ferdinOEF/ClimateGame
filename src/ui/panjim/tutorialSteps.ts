@@ -115,7 +115,7 @@ const STEPS: Omit<TutorialStep, "name" | "icon">[] = [
     sources: ["card-small-dam"],
     inGame: `In this game: little help in a cyclone, costs ${-bio("small_dam")} biodiversity, breaks in its ${breaksIn("small_dam")} flood or once ${def("small_dam")?.cracksAtAge} years old.`,
     maya: "Try a small dam on the river.",
-    bestAt: "The strongest stop for a river flood."
+    bestAt: "Holds back a river flood, on the river itself."
   }
 ];
 

@@ -35,7 +35,7 @@ export const CARD_NAME: Record<string, string> = {
 export const CARD_LINES: Record<string, readonly [string, string]> = {
   dune: ["Shields homes from cyclone waves and surge.", "Good for nature: it adds to biodiversity."],
   sandy_vegetation: ["Shields homes from cyclone waves and wind.", "Binds the sand; its leaves are woven into mats."],
-  mangrove: ["Protects against waves and surge in both storms.", "A nursery for fish and crabs; great for biodiversity."],
+  mangrove: ["Slows cyclone surge and waves, and river floods too.", "A nursery for fish and crabs; great for biodiversity."],
   khazan: ["Holds back river floods.", "Farmers and fishers share it."],
   seawall: ["The strongest wall against cyclone surge.", "Costs nature, and cracks with age."],
   breakwater: ["Breaks cyclone waves out at sea.", "Calm water behind it for boats."],
@@ -47,7 +47,7 @@ export const CARD_LINES: Record<string, readonly [string, string]> = {
  */
 export const TUTORIAL_CARD_LINES: Record<string, readonly [string, string]> = {
   ...CARD_LINES,
-  mangrove: ["Protects against waves and surge.", CARD_LINES.mangrove[1]],
+  mangrove: ["Slows a cyclone's surge and waves, and a river flood too.", CARD_LINES.mangrove[1]],
   seawall: [CARD_LINES.seawall[0], "Costs nature."],
 };
 

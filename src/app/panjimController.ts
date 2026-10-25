@@ -21,7 +21,7 @@ import { prepProgress, regionPlaces, type PrepObjective } from "@core/prep";
 import { FieldGuide } from "@ui/panjim/fieldGuide";
 import { COMBO_INFO, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
-import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome } from "@core/zones";
+import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome, starsForHouses } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
 import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
 import { biodiversityByKind, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
@@ -712,7 +712,27 @@ export class PanjimController {
     if (zones && prepProgress(job, this.host.state, zones).done) return [];
     const tiles = new Set(job.tiles ?? []);
     const picks = [...(this.run.objective?.picks ?? []), ...this.aheadPicks].filter((pick) => pick.elementId === job.elementId && tiles.has(pick.key)).map((pick) => pick.key);
-    return [...new Set(picks)].filter((key) => this.host.state.elements.get(key)?.elementId !== job.elementId && this.host.state.canBuild({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, job.elementId));
+    const fits = (key: string): boolean => this.host.state.elements.get(key)?.elementId !== job.elementId && this.host.state.canBuild({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, job.elementId);
+    const open = [...new Set(picks)].filter(fits);
+    // Section 34: a row whose picked tiles were taken by other builds still has a way to finish: the tiles in its
+    // area where its defence fits, those nearest the most homes its storm still puts at risk first, as many as it
+    // still needs (counted, not simulated: this runs on every repaint).
+    const progress = zones ? prepProgress(job, this.host.state, zones) : null;
+    const need = progress ? progress.target - progress.current : 0;
+    if (open.length >= need || tiles.size === 0) return open;
+    const storm = this.run.schedule.find((c) => c.id === job.challengeId);
+    const risk = storm && !this.run.landed.has(storm.id) ? this.run.homesAtRiskKeys(storm).map((key) => key.split(",").map(Number)) : [];
+    const near = (key: string): number => {
+      const [q, r] = key.split(",").map(Number);
+      return risk.filter(([hq, hr]) => (Math.abs(q - hq) + Math.abs(r - hr) + Math.abs(q + r - hq - hr)) / 2 <= 2).length;
+    };
+    const extra = [...tiles]
+      .filter((key) => !open.includes(key) && fits(key))
+      .map((key) => ({ key, saves: near(key) }))
+      .sort((a, b) => b.saves - a.saves || (a.key < b.key ? -1 : 1))
+      .slice(0, need - open.length)
+      .map((tile) => tile.key);
+    return [...open, ...extra];
   }
 
   /**
@@ -756,6 +776,8 @@ export class PanjimController {
   /** The storm whose phase Show risk's defaults were last set for, and whether its warning years have switched it on. */
   private riskPhase: string | null = null;
   private riskWarned = false;
+  /** Section 34: the phase's objective done, the red came on by itself (once a phase; R still turns it off). */
+  private riskAfterObjective = false;
   /** True while riskDefaults sets the switch (its onChange then skips the repaint renderHeat is already making). */
   private riskDefaulting = false;
 
@@ -770,10 +792,19 @@ export class PanjimController {
       if (id !== this.riskPhase) {
         this.riskPhase = id;
         this.riskWarned = false;
+        this.riskAfterObjective = false;
         this.riskToggle.set(false);
       }
       if (warning && !this.riskWarned) {
         this.riskWarned = true;
+        this.riskToggle.set(true);
+      }
+      // Section 34: with the objective's checklist done, the builds left in the phase were aimless (players could not
+      // see which homes were still at risk), so the red comes on by itself then, as it does two years out.
+      const zones = this.run.zones;
+      const done = !this.tutorial && !!zones && this.run.prep.length > 0 && this.run.prep.every((job) => prepProgress(job, this.host.state, zones).done);
+      if (done && !this.riskAfterObjective && next) {
+        this.riskAfterObjective = true;
         this.riskToggle.set(true);
       }
     } finally {
@@ -824,14 +855,15 @@ export class PanjimController {
    * the run is over). Section 31.1: the Tutorial's stars count homes only, but it shows the count too (no target),
    * so each defence's gain or cost shows.
    */
-  biodiversityView(): { change: number; target: number | null; storm: string } | null {
+  biodiversityView(landing?: ScheduledChallenge): { change: number; target: number | null; storm: string } | null {
     const stars = this.run.houseStars;
     if (stars && stars.bioThree === undefined && this.tutorial) {
       const storm = this.run.nextChallenge() ?? this.run.schedule[this.run.schedule.length - 1] ?? null;
       return { change: Math.round(this.host.state.biodiversity - (stars.bioStart ?? 0)), target: null, storm: storm ? stormWord(storm.kind) : "storm" };
     }
     if (!stars || stars.bioThree === undefined) return null;
-    const storm = this.run.nextChallenge() ?? this.run.schedule[this.run.schedule.length - 1] ?? null;
+    // Section 34: while a storm that has just landed plays, its own target.
+    const storm = landing ?? this.run.nextChallenge() ?? this.run.schedule[this.run.schedule.length - 1] ?? null;
     const target = storm ? (this.run.houseStarsFor(storm)?.bioThree ?? stars.bioThree) : stars.bioThree;
     return { change: Math.round(this.host.state.biodiversity - (stars.bioStart ?? 0)), target: target ?? null, storm: storm ? stormWord(storm.kind) : "storm" };
   }
@@ -1000,6 +1032,7 @@ export class PanjimController {
     const pushed = this.pushedPlaces(base.places);
     const result = {
       ...base,
+      ...(stormStars ? { homesStars: starsForHouses(base.homesSaved, base.homesTotal, { ...stormStars, bioTwo: undefined, bioThree: undefined }) } : {}),
       objectiveComplete: this.run.objectivesComplete.has(challenge.id),
       ...(short ? { shortOfThree: short } : {}),
       ...(pushed.length ? { pushNote: `In this game a seawall pushes water round its ends: it reached ${joinNames(pushed)}.` } : {})
@@ -1575,6 +1608,10 @@ export class PanjimController {
     const now = yearEnd < 0 ? outcome.events : outcome.events.slice(0, yearEnd);
     const later = yearEnd < 0 ? [] : outcome.events.slice(yearEnd);
     for (const event of now) this.handleEvent(event);
+    // Section 34: the build is on the board, so biodiversity counts it now; the storm it brings (and the rest of the
+    // Outlook) waits, but this counter lagged the whole storm behind the build players had just made.
+    const landing = later.find((event): event is Extract<RunEvent, { type: "challenge" }> => event.type === "challenge");
+    this.outlook.renderBiodiversity(this.biodiversityView(landing?.challenge));
     this.host.telemetry.emit("year_end", { turn: this.lastTurnEnded || this.run.turnNumber - 1 });
     this.busy = true;
     this.syncControls();
@@ -1998,7 +2035,7 @@ export class PanjimController {
     if (pose) {
       const samples: Record<string, string> = {
         greeting: "Hello! I am Maya. Let us keep Panjim dry.",
-        tip: "Dunes and pandanus shield the beach from a cyclone's surge.",
+        tip: "Dunes and pandanus shield the homes behind the beach from a cyclone.",
         explains: "A khazan holds floodwater, so nearby homes stay drier.",
         warning: "Taleigao is exposed! Strengthen it before the flood.",
         worried: "We lost 6 homes at Taleigao. A few more defences there next time and they will stand.",

@@ -113,7 +113,7 @@
     {
       "id": "dune-shrinks",
       "kind": "gameRule",
-      "text": "A dune that takes a beating isn't destroyed: it stays weaker until you repair it, and is still there for the next storm.",
+      "text": "A dune that takes a beating isn't destroyed: it stays weaker until repaired, and is there for the next storm.",
       "elements": [
         "dune"
       ]
@@ -412,7 +412,9 @@
         "publisher": "Pl@ntUse, PROTA4U",
         "year": "n.d.",
         "url": "https://uses.plantnet-project.org/en/Pandanus_odoratissimus_(PROTA)",
-        "note": "Section 30.3, the build card's second line. The record says that in Asia the leaves of Pandanus odoratissimus are made into hats, mats, sacks, cordage, baskets and umbrellas, and that it is used in living fences and coastal windbreaks and planted for soil stabilization. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "note": "The record says that in Asia the leaves of Pandanus odoratissimus are made into hats, mats, sacks, cordage, baskets and umbrellas, and that it is used in living fences and coastal windbreaks and planted for soil stabilization.",
+        "usedFor": "Section 30.3, the build card's second line",
+        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
       }
     },
     {
@@ -427,7 +429,8 @@
         "publisher": "Aquatic Botany (Elsevier)",
         "year": "2008",
         "url": "https://doi.org/10.1016/j.aquabot.2007.12.007",
-        "note": "Section 30.3, the build card's second line. The review states that mangroves may function as nursery habitats for (commercially important) crab, prawn and fish species, and support offshore fish populations and fisheries."
+        "note": "The review states that mangroves may function as nursery habitats for (commercially important) crab, prawn and fish species, and support offshore fish populations and fisheries.",
+        "usedFor": "Section 30.3, the build card's second line"
       }
     },
     {
@@ -452,7 +455,9 @@
         "publisher": "IALA",
         "year": "n.d.",
         "url": "https://www.iala.int/wiki/dictionary/index.php/Breakwater_(2)",
-        "note": "Section 30.3, the build card's second line. Defines a breakwater as a construction that creates an area of calm water for shipping or protects a coast or harbour from wave action. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "note": "Defines a breakwater as a construction that creates an area of calm water for shipping or protects a coast or harbour from wave action.",
+        "usedFor": "Section 30.3, the build card's second line",
+        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
       }
     },
     {
@@ -467,7 +472,9 @@
         "publisher": "Down To Earth",
         "year": "n.d.",
         "url": "https://www.downtoearth.org.in/news/water/water-stressed-in-india-ground-water-mostly-neglected-in-rain-surplus-south-goa-69852",
-        "note": "Section 30.3, the build card's second line. The article says the flow of the Sal river is regulated by small check dams (bandharas), closed in September or October depending on the rainfall and opened again in the dry season in May when water is required. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "note": "The article says the flow of the Sal river is regulated by small check dams (bandharas), closed in September or October depending on the rainfall and opened again in the dry season in May when water is required.",
+        "usedFor": "Section 30.3, the build card's second line",
+        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
       }
     },
     {
@@ -482,7 +489,9 @@
         "publisher": "Gladstone Regional Council, Queensland",
         "year": "n.d.",
         "url": "https://www.gladstone.qld.gov.au/downloads/file/2513/coastal-vegetation-and-sand-dunes",
-        "note": "Section 31, the Tutorial's dune caption. The sheet says grasses, vines and fallen timber are obstructions that trap windblown sand and help to build the dunes. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "note": "The sheet says grasses, vines and fallen timber are obstructions that trap windblown sand and help to build the dunes.",
+        "usedFor": "Section 31, the Tutorial's dune caption",
+        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
       }
     },
     {
@@ -497,7 +506,9 @@
         "publisher": "Coastal Wiki",
         "year": "n.d.",
         "url": "https://www.coastalwiki.org/wiki/Seawall",
-        "note": "Section 31, the Tutorial's seawall caption. Describes a seawall as a shore parallel hard coastal protection structure at the seaward edge of the land, whose job is to shield the landward side from waves, surges and erosion. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "note": "Describes a seawall as a shore parallel hard coastal protection structure at the seaward edge of the land, whose job is to shield the landward side from waves, surges and erosion.",
+        "usedFor": "Section 31, the Tutorial's seawall caption",
+        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
       }
     },
     {
@@ -512,7 +523,9 @@
         "publisher": "The Nature Conservancy and Wetlands International",
         "year": "2012",
         "url": "https://www.conservationgateway.org/collections/ocean/storm-surge-reduction-mangroves/",
-        "note": "Section 31, the Tutorial's mangrove caption. The report examines how mangroves reduce surge water levels and wave energy: they can lower surge levels by slowing the flow of water and reducing surface waves. Checked from the search engine's quotation of summaries of the report (the report itself could not be opened from this environment)."
+        "note": "The report examines how mangroves reduce surge water levels and wave energy: they can lower surge levels by slowing the flow of water and reducing surface waves.",
+        "usedFor": "Section 31, the Tutorial's mangrove caption",
+        "checked": "Checked from the search engine's quotation of summaries of the report (the report itself could not be opened from this environment)."
       }
     },
     {
@@ -527,7 +540,9 @@
         "publisher": "Pl@ntUse, PROTA4U",
         "year": "n.d.",
         "url": "https://uses.plantnet-project.org/en/Pandanus_odoratissimus_(PROTA)",
-        "note": "Section 31, the Tutorial's pandanus caption. The record says Pandanus odoratissimus is used in living fences and coastal windbreaks and is planted for soil stabilization. Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "note": "The record says Pandanus odoratissimus is used in living fences and coastal windbreaks and is planted for soil stabilization.",
+        "usedFor": "Section 31, the Tutorial's pandanus caption",
+        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
       }
     }
   ]

@@ -576,6 +576,35 @@ a:focus-visible,
   color: var(--warn-ink);
 }
 
+/* Section 34: the map takes keyboard focus (its tile cursor is the hover outline): a ring inside its edge. */
+canvas:focus-visible {
+  outline: 3px solid var(--button-on-border);
+  outline-offset: -3px;
+}
+
+/* Section 34: the warning before festival mode's idle reset. */
+.idle-warning {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: min(560px, calc(100% - 32px));
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--panel-shadow), inset 0 0 0 2px var(--warn);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.idle-warning[hidden] {
+  display: none;
+}
+
 /* Section 34: the card a pulsing tile's objective asks for says so in words, not only by its glow. */
 .objective-chip {
   margin-left: 6px;

@@ -24,6 +24,8 @@ function fakeMaya(): { maya: Maya; said: MayaLine[]; calls: string[] } {
 
 const ELEMENTS = Object.keys(nuggets as Record<string, string[]>);
 const CAUTION = new Set(["beachside_resort", "sand_mining", "yacht"]);
+/** Section 34: built only with coins on (resort, yacht) or retired (sand mining): no level offers them now, so nothing is said. */
+const NOT_BUILT = new Set(["beachside_resort", "sand_mining", "yacht"]);
 
 describe("NuggetPopup hands the fact to Maya", () => {
   it("says one line for each of the ten elements, in the right state, as a line she will say once", () => {
@@ -31,6 +33,10 @@ describe("NuggetPopup hands the fact to Maya", () => {
     for (const element of ELEMENTS) {
       const { maya, said } = fakeMaya();
       new NuggetPopup(maya).show(element);
+      if (NOT_BUILT.has(element)) {
+        expect(said, element).toHaveLength(0);
+        continue;
+      }
       expect(said, element).toHaveLength(1);
       const line = said[0];
       const fact = discoveryFacts(element).find((f) => f.id === line.id)!;

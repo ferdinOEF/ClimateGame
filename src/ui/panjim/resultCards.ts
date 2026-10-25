@@ -50,10 +50,14 @@ export function homesHtml(saved: number, total: number, lostBefore = 0): string 
   const all = total > 0 && saved >= total ? `<div class="result-homes-all">Every home in the path survived</div>` : "";
   const before = lostBefore > 0 ? `<div class="result-homes-before">Lost in earlier storms: ${lostBefore}</div>` : "";
   const text = total === 0 && lostBefore > 0 ? "No home in its path was still standing" : `<b>${saved}</b> of ${total} homes saved`;
+  // Section 34: players read the total as the top bar's Homes at risk (the homes the storm would take); it is every
+  // home standing in the storm's path, so it says so.
+  const path = total > 0 && saved < total ? `<div class="result-homes-before result-homes-path">${total} homes stood in its path; ${total - saved} ${total - saved === 1 ? "was" : "were"} lost</div>` : "";
   return `<div class="result-homes">
     ${all}
     <div class="result-homes-text">${text}</div>
     <div class="result-bar" role="img" aria-label="${pct}% of homes saved"><span style="width:${pct}%"></span></div>
+    ${path}
     ${before}
   </div>`;
 }
@@ -86,7 +90,7 @@ export function resultCard(result: PhaseResult): HTMLElement {
     : "";
   return el(`<div class="result-card-body">
     <div class="result-eyebrow">${esc(result.eyebrow)}</div>
-    <h2 class="result-title">${esc(resultHeadline(result.stars))}</h2>
+    <h2 class="result-title">${esc(resultHeadline(result.stars, result.homesStars))}</h2>
     ${starsHtml(result.stars)}
     ${objectiveHtml(result)}
     ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}

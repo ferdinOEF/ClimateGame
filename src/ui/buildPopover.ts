@@ -119,6 +119,9 @@ const CARD_GAP = 34;
  * dead weight once nothing set that attribute on `.build-popover` itself
  * anymore — removed in the STEP_PROMPT_code_review_cleanup.md pass.
  */
+/** Section 34: how long after the cards open a pointer click on one is taken as a double click's second half. */
+export const CARD_CLICK_GUARD_MS = 400;
+
 export class BuildPopover {
   private backdrop: HTMLElement;
   private el: HTMLElement;
@@ -130,7 +133,11 @@ export class BuildPopover {
     this.backdrop.className = "popover-backdrop";
     this.backdrop.hidden = true;
     this.backdrop.addEventListener("click", (e) => {
-      if (e.target === this.backdrop) this.hide();
+      if (e.target !== this.backdrop) return;
+      this.hide();
+      // Section 34: a click on another tile closes this card and opens that tile (players' first click after a card
+      // only closed it, and read as a lost click). A click off the board still only closes.
+      this.onOutsideClick?.(e.clientX, e.clientY);
     });
 
     this.el = document.createElement("div");
@@ -222,6 +229,7 @@ export class BuildPopover {
   ): void {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
+    this.openedAt = performance.now();
     // What each card says is this game's rule, and its number this game's model.
     const head = document.createElement("div");
     head.className = "build-card-head";
@@ -278,6 +286,9 @@ export class BuildPopover {
       else
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
+          // Section 34: the second click of a double click on the tile lands on the card that opened under the
+          // pointer, and built it. A pointer click (detail > 0; a key's has 0) that soon after opening is ignored.
+          if (e.detail > 0 && performance.now() - this.openedAt < CARD_CLICK_GUARD_MS) return;
           onSelect(card.id);
           this.hide();
         });
@@ -448,6 +459,10 @@ export class BuildPopover {
 
   /** Called whenever the popover closes, however it closes. */
   onHide: (() => void) | null = null;
+  /** Section 34: where a click that closed the popover landed, so the board can open the tile there. */
+  onOutsideClick: ((clientX: number, clientY: number) => void) | null = null;
+  /** Section 34: when the cards opened; a pointer click on one in the first moment is a double click's second half. */
+  private openedAt = 0;
 
   /** Where focus was before the cards took it: given back when they close. */
   private returnFocus: HTMLElement | null = null;

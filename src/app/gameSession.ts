@@ -29,6 +29,7 @@ import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { crackedNote, isCracked } from "@core/hazardModel";
 import { axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
+import { TERRAIN_BY_ID } from "@core/terrain";
 import { facingAngle } from "@render/defenceGeometry";
 import { buildingGeometry } from "@render/townGeometry";
 import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
@@ -345,7 +346,24 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       })
     : null;
   /** Section 30.12 (festival mode): no input for 3 minutes, not during a storm: back to the menu. */
-  const stopIdle = watchIdle(new IdleReset(() => (options.onIdle ?? options.onExit)(), () => Boolean(stormDirector?.playing || panjim?.isBusy)));
+  // Section 34: the last 30 s before the reset say so; any input cancels it.
+  const idleNote = document.createElement("div");
+  idleNote.className = "idle-warning";
+  idleNote.setAttribute("role", "alert");
+  idleNote.hidden = true;
+  container.appendChild(idleNote);
+  const stopIdle = watchIdle(
+    new IdleReset(
+      () => (options.onIdle ?? options.onExit)(),
+      () => Boolean(stormDirector?.playing || panjim?.isBusy),
+      undefined,
+      undefined,
+      (left) => {
+        idleNote.hidden = left === null;
+        if (left !== null) idleNote.textContent = `Still there? Back to the menu in ${left} s for the next visitor. Move the mouse or press a key to keep playing.`;
+      }
+    )
+  );
   /** Section 30.6: people at work in the khazans (transplanters, a net caster). */
   const khazanPeople = redrawnDefences ? new KhazanPeople(scene) : null;
   let wildlifeSourcesAt = -Infinity;
@@ -2436,7 +2454,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         const tip = hideCost ? tooltipText("buildFree", values) : tooltipText(state.coin >= d.buildCost ? "build" : "buildUnaffordable", values);
         return { id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), tip };
       });
-    if (popoverOptions.length === 0) return;
+    if (popoverOptions.length === 0) {
+      // Section 34: a click on ground that takes no build said nothing, and players read it as a lost click.
+      if (panjim) buildPopover.showNote(screen.x, screen.y, "Nothing can be built here. Defences go on the beach, the wetland, the river and the near sea.");
+      return;
+    }
     const mode = panjim ? { hideCost } : undefined;
 
     // Panjim (Section 13): cards beside the tile, each with the model's number.
@@ -2548,10 +2570,72 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   };
   renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
     if (event.pointerType !== "mouse" || event.buttons !== 0) return;
+    tileHover?.setKeyboard(false);
     const rect = renderer.domElement.getBoundingClientRect();
     hoverAt = (hoverAt ?? new THREE.Vector2()).set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     hoverDirty = true;
   });
+  // Section 34: the map by keyboard (a keyboard player could reach every card and dialog but no tile). The board
+  // takes focus with Tab; the arrow keys move a cursor from tile to tile (the hover outline, the camera following),
+  // Enter or Space opens it as a click would. Its tile is said aloud for a screen reader.
+  if (panjim && tileHover) {
+    const canvas = renderer.domElement;
+    canvas.tabIndex = 0;
+    canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles; Enter opens the tile.");
+    const said = document.createElement("div");
+    said.className = "visually-hidden";
+    said.setAttribute("aria-live", "polite");
+    container.appendChild(said);
+    let cursor: AxialCoord | null = null;
+    const DIRS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+    const showCursor = (glide: boolean): void => {
+      if (!cursor) return;
+      tileHover.setKeyboard(true);
+      tileHover.show(cursor, terrain.heightAt(cursor));
+      const world = axialToWorld(cursor, 1.0);
+      if (glide) focusOn(world.x, world.z, true);
+      const tile = state.placed.get(`${cursor.q},${cursor.r}`);
+      const name = monuments.at(cursor)?.name ?? TERRAIN_BY_ID.get(tile?.terrainId ?? "")?.name ?? "Tile";
+      said.textContent = `${name}${state.buildableAt(cursor).length > 0 ? ", you can build here" : ""}`;
+    };
+    canvas.addEventListener("focus", () => {
+      if (!cursor) {
+        const pick = panjim.run.objective?.picks.find((p) => state.canBuild({ q: Number(p.key.split(",")[0]), r: Number(p.key.split(",")[1]) }, p.elementId));
+        cursor = pick ? { q: Number(pick.key.split(",")[0]), r: Number(pick.key.split(",")[1]) } : { ...levelMap.focus };
+      }
+      showCursor(true);
+    });
+    canvas.addEventListener("blur", () => {
+      tileHover.setKeyboard(false);
+      if (!buildPopover.isOpen) tileHover.show(null);
+    });
+    canvas.addEventListener("keydown", (event: KeyboardEvent) => {
+      if (!cursor || panjim.isBusy || overlayOpen()) return;
+      const dir = DIRS[event.key];
+      if (dir) {
+        event.preventDefault();
+        // The neighbour that lies most in the arrow's direction on screen (the camera looks north, up is -z).
+        const here = axialToWorld(cursor, 1.0);
+        let best: { coord: AxialCoord; score: number } | null = null;
+        for (let side = 0; side < 6; side++) {
+          const n = neighbor(cursor, side);
+          if (!state.placed.has(`${n.q},${n.r}`)) continue;
+          const w = axialToWorld(n, 1.0);
+          const dx = w.x - here.x;
+          const dz = w.z - here.z;
+          const score = (dx * dir[0] + dz * dir[1]) / Math.hypot(dx, dz);
+          if (score > 0.3 && (!best || score > best.score)) best = { coord: n, score };
+        }
+        if (best) {
+          cursor = best.coord;
+          showCursor(true);
+        }
+      } else if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openTilePopover(cursor);
+      }
+    });
+  }
   renderer.domElement.addEventListener("pointerleave", () => {
     hoverAt = null;
     tileHover?.show(null);
@@ -2583,12 +2667,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   renderer.domElement.addEventListener("click", (event: MouseEvent) => {
     if (wasDrag()) return; // a pan, not a click — don't also open a popover at the drag's end point
     if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
+    openTileAt(event.clientX, event.clientY);
+  });
+  // Section 34: a click that closes the build menu or a tile's card on another tile opens that tile.
+  buildPopover.onOutsideClick = (x, y) => {
+    const under = document.elementFromPoint(x, y);
+    if (under === renderer.domElement) openTileAt(x, y);
+  };
+
+  /** The tile (or creature) under a screen point, opened as a click on it would. */
+  function openTileAt(clientX: number, clientY: number): void {
     if (panjim?.isBusy) return; // a time-lapse is playing; the click skips it instead
     if (sessionFinished) return; // the run is over and the shell is showing its results screen — the board is read-only now
 
     const rect = renderer.domElement.getBoundingClientRect();
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera(pointer, camera);
     // Panjim 2050: a tap on a creature itself spots it for the Field Guide
@@ -2608,7 +2702,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (!coord) return;
 
     openTilePopover(coord);
-  });
+  }
 
   // "Leave Panjim?" on Esc (Section 12). Panjim only: the Tutorial keeps its behaviour.
   const leaveConfirm = panjim ? new LeaveConfirm(container) : null;

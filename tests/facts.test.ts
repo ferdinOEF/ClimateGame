@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
+import { RETIRED_ELEMENTS } from "../src/core/elements";
 import { ALL_FACTS, CITED_FACTS, FEATURES_OFF, SHOWN_FACTS, discoveryFacts, discoveryTotal, displayText, firstAuthor, isShown } from "../src/core/facts";
 import nuggets from "../src/data/nuggets.json";
 import maya from "../src/data/maya.json";
@@ -85,7 +86,8 @@ describe("Discoveries (Maya says each one)", () => {
         const fact = ALL_FACTS.find((f) => f.id === id);
         expect(fact, `${element}: ${id}`).toBeDefined();
         // Coins and growth are off (Section 5): their rules are kept but not said.
-        const off = fact!.needs?.some((feature) => FEATURES_OFF.has(feature)) ?? false;
+        // Section 34: a rule about a retired build (sand mining) is not shown either.
+        const off = (fact!.needs?.some((feature) => FEATURES_OFF.has(feature)) ?? false) || (fact!.elements.length > 0 && fact!.elements.every((id) => RETIRED_ELEMENTS.has(id)));
         expect(isShown(fact!), `${element}: ${id} is hidden`).toBe(!off);
         if (!off) shown++;
       }

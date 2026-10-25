@@ -2574,6 +2574,11 @@
   font-weight: 700;
 }
 
+/* Section 34: "Shared the work" ran past the narrow number column and was cut off; a list that has one widens it. */
+.result-rows:has(.result-row-value.shared) li {
+  grid-template-columns: 9em 1fr 7.5em;
+}
+
 .result-row-value.shared {
   font-size: 12px;
   font-weight: 600;

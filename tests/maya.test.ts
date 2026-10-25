@@ -23,11 +23,14 @@ describe("Maya's words", () => {
   it("covers the four tips the brief asks for", () => {
     const text = MAYA.tips.map((tip) => tip.text).join(" ");
     // Rules of this game (src/data/facts.json, docs/FACTS_AUDIT.md): Maya tags them "Game rule" in her bubble.
-    expect(text).toMatch(/Mangroves slow the surge before it reaches the houses/);
+    expect(text).toMatch(/Mangroves slow the water before it reaches the houses, in a cyclone or a flood/);
     expect(text).toMatch(/A khazan holds floodwater, so nearby homes stay drier/);
-    expect(text).toMatch(/Dunes and pandanus shield the beach/);
-    expect(text).toMatch(/A seawall holds no water/);
+    expect(text).toMatch(/Dunes and pandanus shield the homes behind the beach/);
+    // Section 34: the seawall's tip says the rule as it is (Sections 25 and 26), not the old "fails all at once".
+    expect(text).toMatch(/A seawall holds back a cyclone's surge until it breaks: in its second cyclone, or its next once 10 years old/);
+    expect(text).not.toMatch(/fails all at once|holds no water/);
   });
+
 
   it("fills the warning templates", () => {
     expect(warningLine("exposed", "Taleigao", "cyclone")).toBe("The red shows where the cyclone will hit. Taleigao is most at risk: strengthen it now.");

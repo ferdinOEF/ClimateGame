@@ -1,3 +1,4 @@
+import { trapFocus } from "./focusTrap";
 import { describeObjective, type ObjectiveProgress } from "@core/objectives";
 import type { LevelDef } from "@levels/levels";
 import { boardDescription, type GameMap } from "@levels/levelMap";
@@ -126,6 +127,11 @@ export class ObjectivesPanel {
     stage.appendChild(card);
     this.briefBackdrop.appendChild(stage);
     container.appendChild(this.briefBackdrop);
+    // Section 34: the start popup takes focus on its main button and keeps Tab inside it while it is open.
+    trapFocus(card, () => this.briefOpen);
+    window.requestAnimationFrame(() => {
+      if (this.briefOpen && !card.contains(document.activeElement)) card.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
+    });
   }
 
   /**

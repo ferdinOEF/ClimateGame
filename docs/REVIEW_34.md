@@ -129,3 +129,102 @@ evidence and a recommendation; it is not changed here.
 - `tools/playtest/driver.ts`: a browser a playtester drives by hand over a local port (screenshot, the words on
   screen, click, key, wheel, drag, resize, reload, a second tab, console), logging every action with the game's year
   for the measurements. The playtesters use only it; the one hook it reads is whether a storm is still playing, to wait.
+- `tools/fuzz34.ts`: random action sequences (builds, demolitions, repairs, retries) through the game's own run, every
+  invariant checked after each action and each storm.
+
+## Round 1
+
+Eight fresh playtester agents, each driving its own Chromium through `tools/playtest/driver.ts` on the production
+build (`vite preview`), by screenshot and click only. Diaries: `docs/qa/section34/round1/diary-*.md`; screenshots
+`docs/qa/section34/round1/shots/`. The optimiser and the chaos tester were cut off by an API rate limit and resumed.
+
+### Results and fun signals
+
+| Persona | Tutorial | Panjim stars (2030 / 2040 / 2050) | Final | First build | Whole run (player time) | Real choices | Play again / tell a friend | Quiz |
+|---|---|---|---|---|---|---|---|---|
+| Festival visitor (1920x1080, never opens Help) | 3 / 3 | 3 / 2 / 2 | 7 of 9, cleared | 34 s (Tutorial), 165 s in Panjim | about 10 min (2.3 + 7.4) | 3 | not today / yes | 4.5 |
+| Student 13 to 15 (1366x768) | skipped | 3 / 2 / 2 | 7 of 9, cleared | 33 s | about 8 min | 4 | yes once / maybe | 4.5 |
+| Casual, story (1366x768) | 3 / 3 | 3 / 2 / 2 | 7 of 9, cleared | 65 s (Tutorial) | about 17 min (4.5 + 12) | 5 | yes once / yes | 4.5 |
+| Optimiser (1920x1080) | skipped | 3 / 3 / 2 | 8 of 9, cleared | 155 s | about 33 min (an idle reset made it replay) | many (9 plans compared) | yes / yes | 4.5 |
+| Panjim local (1920x1080) | skipped | 3 / 3 / 2 | 8 of 9, cleared | 69 s | about 14 min | 4 | yes once / yes | 4.5 |
+| Coastal scientist (1366x768) | 3 / 3 | 3 / 2 / 2 | 7 of 9, cleared | 60 s (Tutorial) | about 16 min | not counted | yes / yes | 4.5 |
+| Keyboard only, deuteranopia (1366x768) | 3 / 3 | 3 / 3 / 2 | 8 of 9, cleared (a mouse click per build) | about 3 min, 56 keys | about 19 min | 5 | no, not by keyboard / yes | 4.5 |
+| Chaos tester (1366x768) | (running) | | | | | | | |
+
+- **Quiz** (asked after play: what a mangrove does in a storm, why a seawall can be risky, what a khazan is for,
+  where and why the 2040 flood came from, what helps against wind): every persona answered four fully; nobody could
+  say *why* the flood came from the river (the game says where, never why). The optimiser's seawall answer repeated an
+  outdated Maya line ("if a storm is bigger than the wall, it fails all at once"), no longer the rule.
+- **Why homes were lost**, one sentence after the cards: clear for 2030 everywhere; partly for 2040; for 2050 most
+  could not say (Speed up skips the replay, and the card names no places for the homes lost).
+- **One pattern wins?** No single defence: the optimiser's one kind plans all lost stars (five seawalls 1 star, five
+  pandanus 2). But "khazans on the glowing wetland tiles" is the answer every persona found for the floods.
+- **Surprises:** the breakwater out at sea saving 0 in 2030; "Homes at risk 15" before the flood against "57 homes"
+  on the card; a damaged landmark when every home stood.
+
+### Issues
+
+Who found it, how to reproduce, what fixed looks like (F festival, S student, C casual, O optimiser, L local,
+Sc scientist, K keyboard, X chaos, R the core review in `docs/qa/section34/core-review.md`).
+
+**BLOCKER**
+1. **No keyboard way to pick a map tile** (K). Tab reaches only Maya's minimise, ☰, an invisible map stop and ?;
+   arrows, Enter and Space do nothing on the map. Fixed: from the map, arrow keys move a visible tile cursor and Enter
+   opens its build menu.
+2. **The idle reset wipes a run with no warning** (O twice, S once). Three minutes without input (festival mode,
+   Section 30.12) goes back to the menu mid run. Fixed: the owner's reset kept, with a "Still there?" warning for the
+   last 30 s that any input cancels.
+
+**MAJOR**
+3. **A pulsing tile did not say which defence counts** (C, F, S): a khazan on a mangrove row's tile never ticks.
+   Fixed: on a pulsing tile the build menu marks the objective's card ("Objective").
+4. **A row can be left with no pulsing tile** (F: "2 khazans in Merces" stuck at 1/2; S): its picked tiles were taken
+   by other builds. Fixed: such a row pulses other tiles in its area where its defence fits.
+5. **A second click right after the menu opens builds its first card** (L: an unwanted seawall). Fixed: the cards
+   ignore a click in the first moment after the menu opens.
+6. **Clicks swallowed** (C, L, O, S): the first map click after an open menu or a house's card only closes it. Fixed:
+   a click on another tile closes the open card and opens that tile.
+7. **The biodiversity counter lags the last build before a storm** (F, C, Sc, S, O).
+8. **Homes at risk against the card's homes** (F, S, O): the HUD counts the homes the storm would take, the card the
+   homes in its path. Fixed: the card says "in its path".
+9. **Developer notes on the Facts & sources screen** (Sc): "Section 30.3, the build card's second line", "Checked
+   from the search engine's quotation".
+10. **Maya lines without a tag, one outdated** (Sc, O): "A seawall holds no water. If a storm is bigger than the wall,
+    it fails all at once." (not the rule since Section 25); "Dunes and pandanus shield the beach from a cyclone's
+    surge"; "Mangroves slow the surge before it reaches the houses" said before the flood; the khazan rule once with
+    its tag and once without.
+11. **Tutorial text against what the player just saw** (Sc): "Small dam: the strongest stop for a river flood" after
+    the mangrove saved more; the mangrove card's "waves and surge in both storms" mixes the hazards (Sc, F).
+12. **Three definitions of "what protected your homes"** (Sc); Panjim's rows do not add up and nothing says why.
+13. **Keyboard: dialogs do not take focus or keep it; Esc does not close Help opened by keyboard** (K).
+14. **Colour only: the replay legend's three squares** (K, deuteranopia); "Watch the red" readable only by hatching.
+15. **The middle of the run is "click the glowing tile"** (F, S, C, L): 3 to 5 real choices in 25 builds; the two
+    ten build stretches are the boring part. See balance and the owner decisions.
+16. **The run record and badges** (R MAJOR 1 and 4): a run not cleared recorded as completed; "Unbroken" and "Ahead
+    of the Weather" on every finish. Fixed (`tests/section34.test.ts`).
+17. **The Tutorial's How to play gave Panjim's clear rule** (R MAJOR 2). Fixed (`tests/section34.test.ts`).
+18. **The Tutorial's flood rows credited homes an earlier storm ruined** (R MAJOR 3). Fixed (`tests/section34.test.ts`).
+
+**MINOR** (fixed where cheap; the rest carried to later rounds)
+19. Clicking land that takes no build gives no feedback (F, L, O, K).
+20. "Shared the work" cut off on card 2 (S).
+21. A result card's stars read as three stars to a screen reader whatever the stars (O).
+22. Maya's tips can close before Got it or Source is clicked (Sc, O); an old tip beside the final card (F).
+23. ☰ does nothing over the final card (Sc).
+24. The breakwater and the khazan beside mangroves are found only by luck (O).
+25. Labels overlap in the old city; "Government Polytechnic" drifts over Campal zoomed out (C, S).
+26. "The Mandovi waterfront" area name sits between Patto and Merces (L).
+27. The dune rule said a dune "weakens for that storm" (the wear lasts until repaired); rules about sand mining, the
+    resort and the yacht shown though no level offers them (R MINOR 2). Fixed (`tests/section34.test.ts`).
+28. `docs/HAZARD_ELEMENT_CITATIONS.md` out of date with the data (R MINOR 1).
+29. Dead code and old comments in core (R MINOR 3 to 8, NITs): listed in `core-review.md`.
+
+**Checked, not bugs**
+- Card 2 showing the same numbers in 2040 and 2050 (C): headless, the numbers differ storm by storm on every seed
+  tried; not reproduced.
+- "Homes at risk said 15, 9 were lost" (O): the last build is what brings the storm, so the counter before it cannot
+  count that build.
+
+## Owner decisions needed
+
+(Filled in as the rounds go; each with evidence, options and a recommendation.)
