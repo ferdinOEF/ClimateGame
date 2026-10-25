@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
-import { ElementReactions } from "@render/elementReactions";
+import { ElementReactions, releaseSharedReactionMaterials } from "@render/elementReactions";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
 import { CloudLayerManager } from "@render/cloudLayerManager";
 import { BoardSkirtManager } from "@render/boardSkirtManager";
@@ -13,7 +13,7 @@ import { StormSky } from "@render/storm/stormSky";
 import { StormDirector } from "./stormDirector";
 import { StormSound } from "@ui/stormSound";
 import { combinedDepth as combinedDepthAt } from "@core/hazard";
-import { MonumentMeshManager } from "@render/monumentMeshManager";
+import { MonumentMeshManager, releaseSharedMonumentMaterials } from "@render/monumentMeshManager";
 import { landmarkDamageSoFar } from "@core/landmarkDamage";
 import { BuildFlourish } from "@render/buildFlourish";
 import { BuildPuff } from "@render/buildPuff";
@@ -30,8 +30,10 @@ import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { crackedNote, isCracked } from "@core/hazardModel";
 import { axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
 import { TERRAIN_BY_ID } from "@core/terrain";
+import { releaseOverlayPlaceholder } from "@render/mapOverlayShader";
+import { releaseRuinGeometries } from "@render/ruinGeometry";
 import { facingAngle } from "@render/defenceGeometry";
-import { buildingGeometry } from "@render/townGeometry";
+import { buildingGeometry, releaseTownGeometries } from "@render/townGeometry";
 import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
@@ -3266,6 +3268,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     townDecor?.dispose();
     ambientLife?.dispose();
     tooltips.dispose();
+    // Section 34: before the renderer goes, so it drops the listeners it put on the materials shared across sessions.
+    releaseSharedReactionMaterials();
+    releaseSharedMonumentMaterials();
+    releaseRuinGeometries();
+    releaseTownGeometries();
+    releaseOverlayPlaceholder();
     disposeScene();
 
     // The session owns every DOM node it appended to `container` (HUD,

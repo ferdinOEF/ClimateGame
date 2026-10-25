@@ -181,3 +181,14 @@ describe("Section 34: Maya's rule tips keep their tag", () => {
     for (const tip of (maya as { tips: { id: string; rule?: boolean }[] }).tips.filter((t) => ["mangroves", "khazans", "dunes", "seawall"].includes(t.id))) expect(tip.rule, tip.id).toBe(true);
   });
 });
+
+describe("Section 34: no memory growth run over run", () => {
+  it("a session's end disposes what is shared across sessions, so no old renderer (and its whole session) stays alive", () => {
+    // Found with heap snapshots (tools/leak34.ts): each shared material, geometry and texture kept the old renderer's
+    // listener or GPU record, and through it the old canvas and session, about 4.5 MB a run.
+    for (const call of ["releaseSharedReactionMaterials();", "releaseSharedMonumentMaterials();", "releaseRuinGeometries();", "releaseTownGeometries();", "releaseOverlayPlaceholder();"]) {
+      expect(session.indexOf(call), call).toBeGreaterThan(0);
+      expect(session.indexOf(call), `${call} before the scene goes`).toBeLessThan(session.indexOf("    disposeScene();"));
+    }
+  });
+});

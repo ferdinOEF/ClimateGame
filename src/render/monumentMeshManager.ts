@@ -74,6 +74,11 @@ function placement(matrix: THREE.Matrix4, x: number, y: number, z: number, sx: n
 const DAMAGE_TINT = new THREE.Color("#5a5048");
 const RUBBLE_MATERIAL = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 0.95, vertexColors: true });
 
+/** Section 34: the shared rubble material is disposed as a session ends, so no old renderer stays reachable through it. */
+export function releaseSharedMonumentMaterials(): void {
+  RUBBLE_MATERIAL.dispose();
+}
+
 export class MonumentMeshManager {
   readonly group = new THREE.Group();
   private readonly meshes = new Map<string, THREE.InstancedMesh>();

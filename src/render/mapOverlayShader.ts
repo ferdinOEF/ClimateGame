@@ -17,6 +17,11 @@ import { SCENERY_GREY_FRAGMENT_DECL, SCENERY_GREY_GLSL, SCENERY_GREY_VERTEX, SCE
 export const OVERLAY_PLACEHOLDER = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
 OVERLAY_PLACEHOLDER.needsUpdate = true;
 
+/** Section 34: disposed as a session ends, so the old renderer's texture record (and its canvas) is not kept alive by it. */
+export function releaseOverlayPlaceholder(): void {
+  OVERLAY_PLACEHOLDER.dispose();
+}
+
 export interface OverlayUniforms {
   uOsmMap: { value: THREE.Texture };
   /** World x, z of the image's north-west corner, then its width and depth. */

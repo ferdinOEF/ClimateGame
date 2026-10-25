@@ -255,6 +255,23 @@ lost, the card adds up, the heat equals Homes at risk (25,174), objective comple
 thresholds, a retry restores the exact board (922), nothing counts or builds on unplayable tiles (5.3 million tile
 checks), the sheltered centre untouched (775 storms). No walker on water: `tests/noWalkingOnWater.test.ts` passes.
 
+**Health** (`tools/health34.ts`, production build, 1920x1080, the laptop's Intel Iris Xe through ANGLE D3D11;
+`docs/qa/section34/round1/health-gpu.md`):
+- Load: the menu's first paint 140 ms, on screen 341 ms; Play Panjim to its start popup 3.6 s.
+- Frame time on the calm board: median 16.7 ms (the display's 60 Hz), p95 33.4 ms, 43 to 45 fps at Low, Medium and
+  High. Section 21's numbers were software GL (2.0 to 2.3 fps at 1920x1080); the same software GL tool
+  (`tools/stormPerf.ts`) is run again for the comparison below.
+- **A memory leak, found and fixed.** Three full runs in one tab first grew the JS heap 15.5, 19.3, 22.2, 26.9 MB
+  (DOM flat). Heap snapshots (`tools/leak34.ts`, new) traced it to things shared across sessions at module level: a
+  shared material kept a "dispose" listener from every renderer (`particleMaterial`, the creature materials, the
+  window glow, the rubble material), shared geometries and the map overlay's placeholder texture kept each old
+  renderer's GPU record, and through either the old canvas and its whole session stayed alive, about 4.5 MB a run.
+  Each session now disposes them as it ends (`releaseSharedReactionMaterials`, `releaseSharedMonumentMaterials`,
+  `releaseRuinGeometries`, `releaseTownGeometries`, `releaseOverlayPlaceholder`, before the scene goes). After: 18.6,
+  19.3, 19.6 MB at the ends of runs 1 to 3 (heap snapshots: 35 KB between runs 1 and 3). Test:
+  `tests/section34.test.ts`.
+- Console errors and warnings over the three runs: none.
+
 **Inputs per playthrough** (the driver's logs): festival 88 inputs for the Tutorial and a full run (first build at
 command 17); student 96; casual 114; local 121; scientist 128; keyboard 217 (keys); optimiser 374 (nine plans); chaos
 704.
