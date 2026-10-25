@@ -907,6 +907,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             focusOn((box.minX + box.maxX) / 2, (box.minZ + box.maxZ) / 2, false);
             fitTo(Math.max(18, (box.maxX - box.minX) * 1.15), Math.max(12, (box.maxZ - box.minZ) * 1.2), false);
             // Section 33b.5: then slid just enough that none of these points sits under the HUD card or Maya.
+            lastKeepClear = null;
             if (keepClear?.length) {
               const origin = container.getBoundingClientRect();
               const obstacles = [...container.querySelectorAll<HTMLElement>(".panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden])")]

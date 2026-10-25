@@ -306,16 +306,19 @@ export function createScene(container: HTMLElement): KhazanScene {
     };
     const start = count(desiredTarget.x, desiredTarget.z);
     if (start.hidden === 0) return null;
-    // The eight ways the target can go, a quarter unit at a time: the nearest spot that clears them wins.
+    // The eight ways the target can go, a quarter unit at a time: the nearest spot that clears them wins. First a spot
+    // that pushes none of them off the screen; failing that, one where under the card and off the screen together hide
+    // no more than before (a point under the card near the edge may then go off it).
     const step = 0.25;
-    for (let k = 1; k * step <= maxShift; k++) {
-      for (const [dx, dz] of [[-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-        const d = (k * step) / Math.hypot(dx, dz);
-        const at = count(desiredTarget.x + dx * d, desiredTarget.z + dz * d);
-        // Under the card is as unseen as off the screen: nothing may stay under an obstacle, and no more may be out of view in all.
-        if (at.hidden === 0 && at.off <= start.off + start.hidden) {
-          desiredTarget = { x: desiredTarget.x + dx * d, z: desiredTarget.z + dz * d };
-          return { dx: dx * d, dz: dz * d };
+    for (const allowed of [start.off, start.off + start.hidden]) {
+      for (let k = 1; k * step <= maxShift; k++) {
+        for (const [dx, dz] of [[-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+          const d = (k * step) / Math.hypot(dx, dz);
+          const at = count(desiredTarget.x + dx * d, desiredTarget.z + dz * d);
+          if (at.hidden === 0 && at.off <= allowed) {
+            desiredTarget = { x: desiredTarget.x + dx * d, z: desiredTarget.z + dz * d };
+            return { dx: dx * d, dz: dz * d };
+          }
         }
       }
     }

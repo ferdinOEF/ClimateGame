@@ -112,6 +112,8 @@ export const HUD_OBSTACLES = [
   ".hud-panel",
   // Section 33b: the HUD card, top left, at its full size (status, ? and ☰, and the objective).
   ".panjim-clock",
+  // ☰'s menu, open: it hangs below the card, outside its box.
+  ".hud-panel-body:not([hidden])",
   ".map-corner",
   ".empty-prompt",
   ".era-banner",

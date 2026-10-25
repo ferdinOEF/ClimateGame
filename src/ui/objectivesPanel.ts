@@ -129,17 +129,6 @@ export class ObjectivesPanel {
   }
 
   /**
-   * Replaces the objective checklist with another body (Panaji's Get ready
-   * panel). The header with the level name stays.
-   */
-  mountBody(body: HTMLElement): void {
-    this.listEl.hidden = true;
-    this.counterEl.hidden = true;
-    this.el.classList.add("custom-body");
-    this.el.appendChild(body);
-  }
-
-  /**
    * Adds a panel beside the brief's text (Panjim 2050's forecast map): the
    * card widens to two columns, the text on the left and `el` on the right.
    */

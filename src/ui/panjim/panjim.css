@@ -191,7 +191,8 @@
   align-items: flex-end;
 }
 
-.panjim-clock .hud-panel-settings .hud-panel-body {
+/* Out of the card's flow, under ☰ (the .has-panjim-clock prefix outranks harbour.css's band rule, imported later). */
+.has-panjim-clock .panjim-clock .hud-panel-settings .hud-panel-body {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
@@ -3630,6 +3631,13 @@
 .has-panjim-clock:has(.brief-backdrop:not([hidden])) .panjim-clock .hud-panel-settings .hud-panel-body {
   left: auto;
   right: 0;
+}
+
+/* Section 33b: the objective stays in the card through a storm and its cards (the card never changes), but it is
+   still: no row lights tiles or pans the board until the storm is over. */
+.has-panjim-clock.storm-hold .panjim-clock .clock-objective,
+.has-panjim-clock.has-result-cards .panjim-clock .clock-objective {
+  pointer-events: none;
 }
 
 /* Section 16 B3: the objective card is hidden while any result card is up (the final card included), not only in a storm. */

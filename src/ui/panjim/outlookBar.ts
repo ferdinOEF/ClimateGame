@@ -160,8 +160,26 @@ export class OutlookBar {
     this.fillEl.style.width = `${pct(view.year)}%`;
     this.nowEl.style.left = `${pct(view.year)}%`;
 
-    this.markersEl.innerHTML = "";
     const nextStorm = view.storms.find((st) => !st.past);
+    this.renderMarkers(view, nextStorm, pct);
+    this.renderCountdown(nextStorm ?? null);
+
+    const next = view.storms.find((storm) => !storm.past);
+    this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, this.hold)}` : `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.`;
+    this.lineEl.classList.toggle("locked", next !== undefined && next.yearsUntil <= 2);
+  }
+
+  private markersFor = "";
+
+  /**
+   * The storm dots, rebuilt only when what they show changes (a dot that is rebuilt under the pointer or the keyboard
+   * focus would drop it and strand its tooltip).
+   */
+  private renderMarkers(view: OutlookView, nextStorm: OutlookStorm | undefined, pct: (year: number) => number): void {
+    const key = view.storms.map((storm) => `${storm.challenge.id}:${storm.past}:${storm.yearsUntil <= 2}:${storm === nextStorm}:${markerText(storm, view.results.get(storm.challenge.id))}:${pct(storm.challenge.year).toFixed(3)}`).join("|");
+    if (key === this.markersFor) return;
+    this.markersFor = key;
+    this.markersEl.innerHTML = "";
     for (const storm of view.storms) {
       const marker = document.createElement("div");
       const stars = view.results.get(storm.challenge.id);
@@ -178,11 +196,6 @@ export class OutlookBar {
       this.markersEl.appendChild(marker);
       this.onMarker?.(marker, text);
     }
-    this.renderCountdown(nextStorm ?? null);
-
-    const next = view.storms.find((storm) => !storm.past);
-    this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, this.hold)}` : `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.`;
-    this.lineEl.classList.toggle("locked", next !== undefined && next.yearsUntil <= 2);
   }
 
   /** The chip beside the year: the next storm's icon and the clock's countdown; hidden while a storm or its cards play. */
