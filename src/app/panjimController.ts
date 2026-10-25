@@ -638,6 +638,8 @@ export class PanjimController {
   private readonly tutorialTried = new Set<string>();
   /** Section 31.4: by storm, the homes each defence took out of its way when it was built. */
   private readonly tutorialCredit = new Map<string, Map<string, Set<string>>>();
+  /** Section 34: each defence's net homes (taken out of the way, less any it put at risk) when built, per storm: a row's cap. */
+  private readonly tutorialNet = new Map<string, Map<string, number>>();
   /** By storm, why a defence's build took none: no home left at risk ("safe"), or too far from them ("far"). */
   private readonly tutorialNoneWhy = new Map<string, Map<string, "safe" | "far">>();
   /** The Tutorial's last build (it may be the one that brought the storm, so not yet on `preChallengeIds`). */
@@ -776,7 +778,7 @@ export class PanjimController {
   /** The storm whose phase Show risk's defaults were last set for, and whether its warning years have switched it on. */
   private riskPhase: string | null = null;
   private riskWarned = false;
-  /** Section 34: the phase's objective done, the red came on by itself (once a phase; R still turns it off). */
+  /** Section 34: the phase's objective done, Maya said once that R shows the homes still at risk. */
   private riskAfterObjective = false;
   /** True while riskDefaults sets the switch (its onChange then skips the repaint renderHeat is already making). */
   private riskDefaulting = false;
@@ -800,12 +802,13 @@ export class PanjimController {
         this.riskToggle.set(true);
       }
       // Section 34: with the objective's checklist done, the builds left in the phase were aimless (players could not
-      // see which homes were still at risk), so the red comes on by itself then, as it does two years out.
+      // see which homes were still at risk). Show risk keeps its Section 21.4 default; Maya says once a phase where
+      // to look (owner decision 7 in docs/REVIEW_34.md: whether the red should come on by itself then).
       const zones = this.run.zones;
       const done = !this.tutorial && !!zones && this.run.prep.length > 0 && this.run.prep.every((job) => prepProgress(job, this.host.state, zones).done);
-      if (done && !this.riskAfterObjective && next) {
+      if (done && !this.riskAfterObjective && next && !warning && !this.riskToggle.value) {
         this.riskAfterObjective = true;
-        this.riskToggle.set(true);
+        this.maya.say({ id: `objective-done:${next.id}`, text: "The list is done. Press R to see the homes this storm would still take, and choose where to build next.", state: "tip" });
       }
     } finally {
       this.riskDefaulting = false;
@@ -1087,7 +1090,8 @@ export class PanjimController {
       if (outcome) for (const key of outcome.damagedHouses) lost.add(key);
       if (c.id === challenge.id) break;
     }
-    const kept = (keys: Set<string> | undefined): number => [...(keys ?? [])].filter((key) => !lost.has(key)).length;
+    const net = this.tutorialNet.get(challenge.id) ?? new Map<string, number>();
+    const kept = (id: string): number => Math.min(net.get(id) ?? 0, [...(credit.get(id) ?? [])].filter((key) => !lost.has(key)).length);
     const none = this.tutorialNoneWhy.get(challenge.id) ?? new Map<string, "safe" | "far">();
     // The board as the storm came: the one before the action that brought it, and that action's own build.
     const standing = new Map(this.preChallengeIds);
@@ -1100,7 +1104,7 @@ export class PanjimController {
       const gone = keys.length === 0;
       const broken = !gone && keys.every((key) => this.wasBroken(key));
       // Taken down or broken before the storm: it took nothing out of its way, whatever it did when built.
-      const homes = gone || broken ? 0 : kept(credit.get(step.id));
+      const homes = gone || broken ? 0 : kept(step.id);
       let why: string | null = null;
       if (homes === 0) {
         if (gone) why = "Taken down before this storm";
@@ -1220,10 +1224,12 @@ export class PanjimController {
           this.host.tintTiles(null);
           return;
         }
+        // Section 34: the three tints differ by lightness, not only hue (a deuteranope saw three alike): lost homes
+        // dark, wet homes still standing pale, the defences between.
         const tints: { key: string; color: string; blend: number }[] = [];
-        for (const key of step.dry) tints.push({ key, color: "#5fbf7a", blend: 0.5 });
-        for (const key of step.hit) tints.push({ key, color: "#d9553d", blend: 0.6 });
-        for (const key of step.highlight) tints.push({ key, color: "#f2c35b", blend: 0.7 });
+        for (const key of step.dry) tints.push({ key, color: "#b4ecc9", blend: 0.55 });
+        for (const key of step.hit) tints.push({ key, color: "#8f2417", blend: 0.7 });
+        for (const key of step.highlight) tints.push({ key, color: "#d49a1c", blend: 0.75 });
         this.host.tintTiles(tints);
       },
       say: (line) => {
@@ -1522,7 +1528,7 @@ export class PanjimController {
     // Section 31.4: in the Tutorial, what this build takes out of each coming storm's way, worked out before it
     // goes down (the same model as the storm); the storm's card credits each defence with it.
     const credit = this.tutorial && buildable
-      ? this.run.schedule.filter((c) => !this.run.landed.has(c.id)).map((c) => ({ id: c.id, saves: this.run.riskChangeBy(c, coord, elementId)?.saved ?? [], atRisk: this.run.homesAtRisk(c) }))
+      ? this.run.schedule.filter((c) => !this.run.landed.has(c.id)).map((c) => ({ id: c.id, saves: this.run.riskChangeBy(c, coord, elementId)?.saved ?? [], net: Math.max(0, this.run.homesSavedBy(c, coord, elementId) ?? 0), atRisk: this.run.homesAtRisk(c) }))
       : [];
     // No pop-up over the tile after a build (Section 23.2, owner decision), and no note beside it when it is off the
     // objective's tiles (Section 32, owner decision): it just goes down.
@@ -1530,7 +1536,10 @@ export class PanjimController {
     if (!outcome.ok) return false;
     // Section 31.2: the checklist ticks the defence; its caption says "Built" before the next slides in.
     if (this.tutorial) {
-      for (const { id, saves, atRisk } of credit) {
+      for (const { id, saves, net, atRisk } of credit) {
+        const byNet = this.tutorialNet.get(id) ?? new Map<string, number>();
+        byNet.set(elementId, (byNet.get(elementId) ?? 0) + net);
+        this.tutorialNet.set(id, byNet);
         const byDefence = this.tutorialCredit.get(id) ?? new Map<string, Set<string>>();
         byDefence.set(elementId, new Set([...(byDefence.get(elementId) ?? []), ...saves]));
         this.tutorialCredit.set(id, byDefence);
@@ -1838,7 +1847,7 @@ export class PanjimController {
     const wanted = new Set(jobs.filter((job) => this.pulseKeys(job).includes(key)).map((job) => job.elementId));
     for (const card of this.host.container.querySelectorAll<HTMLElement>(".build-popover .build-card")) {
       if (!card.dataset.element || !wanted.has(card.dataset.element) || card.querySelector(".objective-chip")) continue;
-      card.classList.add("coach-pulse", "objective-pick");
+      card.classList.add("coach-pulse");
       const chip = document.createElement("span");
       chip.className = "objective-chip";
       chip.textContent = "Objective";

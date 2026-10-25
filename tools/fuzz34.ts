@@ -132,7 +132,8 @@ function fuzzRun(level: LevelDef, seed: number, t: Tally): void {
     const outcome = run.outcomes.get(stormNow.id)!;
     const lost = new Set(outcome.damagedHouses);
     if (expected) check("preview = resolution", lost.size === expected.size && [...lost].every((key) => expected!.has(key)), `took ${lost.size}, preview said ${expected.size}`);
-    else if (before) check("preview = resolution (no build)", true, "");
+    // A storm brought by a demolition or a repair: the preview of a build does not apply; counted, not compared.
+    else if (before) t.checks["storm year action not a build (not compared)"] = (t.checks["storm year action not a build (not compared)"] ?? 0) + 1;
     check("ruins = homes lost", ruinCount(run) - ruinsBefore === outcome.housesDamaged && [...lost].every((key) => isRuin(run, key)), `ruins +${ruinCount(run) - ruinsBefore}, card ${outcome.housesDamaged}`);
     check("card adds up", outcome.housesSaved + outcome.housesDamaged === outcome.housesTotal, `${outcome.housesSaved} + ${outcome.housesDamaged} != ${outcome.housesTotal}`);
     const stars = run.houseStarsFor(stormNow);

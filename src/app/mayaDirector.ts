@@ -36,7 +36,7 @@ export interface DirectorContext {
   quiet?: boolean;
 }
 
-type Note = { id: string; title: string; text: string };
+type Note = { id: string; title: string; text: string; rule?: boolean };
 
 const TIPS = new Map<string, Note>(MAYA.tips.map((tip) => [tip.id, tip]));
 /** Every line that becomes a Field Guide page, by id. Warnings are situational and are not kept. */
@@ -77,7 +77,8 @@ export class MayaDirector {
   }
 
   private say(note: Note, state: MayaState, extra: Partial<MayaLine> = {}): void {
-    this.maya.say({ id: note.id, text: note.text, state, ...extra });
+    // Section 34: a rule tip keeps its "Game rule" tag (it was dropped here, so the tips read as plain claims).
+    this.maya.say({ id: note.id, text: note.text, state, ...(note.rule ? { rule: true } : {}), ...extra });
   }
 
   /** A tip by id (also used by the Get ready panel). */

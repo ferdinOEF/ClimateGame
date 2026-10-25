@@ -349,7 +349,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // Section 34: the last 30 s before the reset say so; any input cancels it.
   const idleNote = document.createElement("div");
   idleNote.className = "idle-warning";
-  idleNote.setAttribute("role", "alert");
+  // Said once as it appears (polite); the countdown that follows is for the eye only.
+  idleNote.setAttribute("role", "status");
+  idleNote.setAttribute("aria-live", "polite");
+  idleNote.innerHTML = `<span class="idle-warning-text"></span> <span class="idle-warning-count" aria-hidden="true"></span>`;
   idleNote.hidden = true;
   container.appendChild(idleNote);
   const stopIdle = watchIdle(
@@ -359,8 +362,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       undefined,
       undefined,
       (left) => {
+        const wasHidden = idleNote.hidden;
         idleNote.hidden = left === null;
-        if (left !== null) idleNote.textContent = `Still there? Back to the menu in ${left} s for the next visitor. Move the mouse or press a key to keep playing.`;
+        if (left === null) return;
+        if (wasHidden) idleNote.querySelector(".idle-warning-text")!.textContent = "Still there? The game goes back to the menu soon, for the next visitor. Move the mouse or press a key to keep playing.";
+        idleNote.querySelector(".idle-warning-count")!.textContent = `${left} s`;
       }
     )
   );
@@ -1356,7 +1362,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const runStats = runTracker.snapshot();
     // Section 34: a yearly run's storms are resolved from their records, which the old tracker never sees, so the
     // defences they broke are counted from the board; and a yearly run has no turn budget, so no par.
-    const stats = panjimResult ? { ...runStats, defensesDestroyed: [...state.elements.values()].filter((inst) => inst.broken).length } : runStats;
+    // Broken in a storm (its records, so one rebuilt over or demolished still counts), or broken on the board now.
+    const brokenInStorms = panjim ? [...panjim.run.outcomes.values()].reduce((n, outcome) => n + outcome.zones.reduce((m, zone) => m + zone.failed.length, 0), 0) : 0;
+    const stats = panjimResult ? { ...runStats, defensesDestroyed: Math.max(brokenInStorms, [...state.elements.values()].filter((inst) => inst.broken).length) } : runStats;
     const counts = standingCounts();
     const baseScore = computeLevelScore({
       state,
@@ -2331,7 +2339,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * of ever offering a second build menu — the UI should never let a player
    * attempt (or appear to attempt) building a second thing on an occupied tile.
    */
+  /** Section 34: the tile whose menu or card opened last (a click on it again only closes). */
+  let lastOpenedKey = "";
   function openTilePopover(coord: AxialCoord): void {
+    lastOpenedKey = `${coord.q},${coord.r}`;
     // The coach's "click any tile" step waits on this. Set before the early
     // returns below so it also counts for a tile whose menu turns out to be
     // empty — the player did the thing they were asked to do, and telling
@@ -2456,7 +2467,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       });
     if (popoverOptions.length === 0) {
       // Section 34: a click on ground that takes no build said nothing, and players read it as a lost click.
-      if (panjim) buildPopover.showNote(screen.x, screen.y, "Nothing can be built here. Defences go on the beach, the wetland, the river and the near sea.");
+      if (panjim) buildPopover.showNote(screen.x, screen.y, "Nothing can be built on this tile.");
       return;
     }
     const mode = panjim ? { hideCost } : undefined;
@@ -2544,6 +2555,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const hoverTargets = [...terrain.raycastTargets, ...monuments.group.children];
   // Section 14 (Panaji): a light outline on the tile under the pointer, when a build is possible there.
   const tileHover = panjim ? new TileHover() : null;
+  /** Section 34: the keyboard's tile cursor is showing; the pointer's hover leaves it alone until the mouse moves. */
+  let keyboardCursor = false;
   if (tileHover) scene.add(tileHover.mesh);
   const pickHover = (now: number): void => {
     lastHoverPick = now;
@@ -2560,7 +2573,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
     hoveredMonument = name;
     mapLabels.setFocus(hoveredMonument ?? selectedMonument);
-    if (tileHover) {
+    if (tileHover && !keyboardCursor) {
       const coord = hit && hit.instanceId !== undefined && !name ? terrain.coordForHit(hit.object, hit.instanceId) : null;
       const buildable = coord && !panjim?.isBusy && !overlayOpen() && state.buildableAt(coord).length > 0;
       tileHover.show(buildable ? coord : null, coord ? terrain.heightAt(coord) : 0);
@@ -2570,7 +2583,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   };
   renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
     if (event.pointerType !== "mouse" || event.buttons !== 0) return;
-    tileHover?.setKeyboard(false);
+    if (keyboardCursor) {
+      keyboardCursor = false;
+      tileHover?.setKeyboard(false);
+    }
     const rect = renderer.domElement.getBoundingClientRect();
     hoverAt = (hoverAt ?? new THREE.Vector2()).set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     hoverDirty = true;
@@ -2588,26 +2604,34 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     container.appendChild(said);
     let cursor: AxialCoord | null = null;
     const DIRS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
-    const showCursor = (glide: boolean): void => {
+    const showCursor = (follow: boolean): void => {
       if (!cursor) return;
+      keyboardCursor = true;
       tileHover.setKeyboard(true);
       tileHover.show(cursor, terrain.heightAt(cursor));
       const world = axialToWorld(cursor, 1.0);
-      if (glide) focusOn(world.x, world.z, true);
+      // The camera glides after the cursor (never a jump, and never on focus alone).
+      if (follow) focusOn(world.x, world.z, false);
       const tile = state.placed.get(`${cursor.q},${cursor.r}`);
       const name = monuments.at(cursor)?.name ?? TERRAIN_BY_ID.get(tile?.terrainId ?? "")?.name ?? "Tile";
       said.textContent = `${name}${state.buildableAt(cursor).length > 0 ? ", you can build here" : ""}`;
     };
+    // A mouse press never focuses the board (it would show the cursor and take focus back after a card closes):
+    // the keyboard alone brings focus here, with Tab.
+    canvas.addEventListener("mousedown", (event) => event.preventDefault());
     canvas.addEventListener("focus", () => {
+      if (!canvas.matches(":focus-visible")) return;
       if (!cursor) {
         const pick = panjim.run.objective?.picks.find((p) => state.canBuild({ q: Number(p.key.split(",")[0]), r: Number(p.key.split(",")[1]) }, p.elementId));
         cursor = pick ? { q: Number(pick.key.split(",")[0]), r: Number(pick.key.split(",")[1]) } : { ...levelMap.focus };
       }
-      showCursor(true);
+      showCursor(false);
     });
     canvas.addEventListener("blur", () => {
+      if (buildPopover.isOpen) return;
+      keyboardCursor = false;
       tileHover.setKeyboard(false);
-      if (!buildPopover.isOpen) tileHover.show(null);
+      tileHover.show(null);
     });
     canvas.addEventListener("keydown", (event: KeyboardEvent) => {
       if (!cursor || panjim.isBusy || overlayOpen()) return;
@@ -2670,10 +2694,24 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     openTileAt(event.clientX, event.clientY);
   });
   // Section 34: a click that closes the build menu or a tile's card on another tile opens that tile.
+  // Only to another tile that takes a build: a click on the open tile, a house, plain land or the sea still only closes.
   buildPopover.onOutsideClick = (x, y) => {
-    const under = document.elementFromPoint(x, y);
-    if (under === renderer.domElement) openTileAt(x, y);
+    if (document.elementFromPoint(x, y) !== renderer.domElement || panjim?.isBusy || sessionFinished) return;
+    const coord = tileAt(x, y);
+    if (!coord || `${coord.q},${coord.r}` === lastOpenedKey || state.buildableAt(coord).length === 0) return;
+    openTilePopover(coord);
   };
+
+  /** The tile under a screen point (a monument counts as its tile), or null. */
+  function tileAt(clientX: number, clientY: number): AxialCoord | null {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects(hoverTargets);
+    if (hits.length === 0 || hits[0].instanceId === undefined) return null;
+    return monuments.atHit(hits[0].object, hits[0].instanceId)?.coord ?? terrain.coordForHit(hits[0].object, hits[0].instanceId) ?? null;
+  }
 
   /** The tile (or creature) under a screen point, opened as a click on it would. */
   function openTileAt(clientX: number, clientY: number): void {

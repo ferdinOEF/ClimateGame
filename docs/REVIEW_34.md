@@ -7,24 +7,10 @@ CLAUDE.md applies.
 ## Where we are (read this first after a restart)
 
 - Round 0 (setup): done. See "Setup" below.
-- Round 1: in progress (stopped mid round on a usage limit).
-  - Done: bots 200 seeds x 7 styles (`docs/qa/section34/round1/bots.md`, identical to Section 30: smart clears 98%,
-    above the 60 to 80% target); core code review (`docs/qa/section34/core-review.md`: 0 blocker, 4 major, 8 minor);
-    five playtester diaries (festival, student, casual, local, scientist in `docs/qa/section34/round1/`), all cleared
-    at 7 or 8 of 9; their quiz scores 4.5 of 5 each (none could say why the flood comes from the river).
-  - Still running or not read: the optimiser, keyboard and chaos playtesters (drivers on ports 7104, 7107, 7108);
-    their diaries may land in `round1/`. Ask them the five quiz questions.
-  - Fixed in code, NOT yet tested (run tsc, the tests and the build first): core review MAJOR 1 (a run not cleared
-    was recorded as completed), MAJOR 2 (Tutorial Help gave Panjim's clear rule), MAJOR 3 (Tutorial flood rows
-    credited homes ruined earlier), MAJOR 4 partly (no par, broken defences counted for badges); MINOR 2 (dune rule
-    text; resort, yacht and sand mining rules hidden); the playtesters' top bug: a pulsing tile's build menu now marks
-    the objective's card ("Objective" chip, `markObjectiveCard`).
-  - New: `tools/fuzz34.ts` (every invariant after each action and storm; 6 runs, 0 failures so far; run it with
-    runs=1000 jobs=6).
-  - Next: test the fixes; read the scientist's claims audit (developer notes visible on the Sources screen; untagged
-    Maya lines; three definitions of "what protected your homes"); fix the click swallowed after "Got it" (not
-    reproduced on the first try), the second click on a just opened menu building its first card, the biodiversity
-    counter lag, a row with no pulsing tile left; then the issue list, balance and Round 2.
+- Round 1: done (eight playtesters, bots, fuzz, the core review, the diff review; every BLOCKER and MAJOR fixed;
+  commits on `section-34-deep-review`).
+- Next: health measurements (frame time per quality, memory over three runs, load time), then Round 2 with eight fresh
+  playtesters on the new build.
 
 ## What the game is (one page)
 
@@ -219,6 +205,67 @@ Sc scientist, K keyboard, X chaos, R the core review in `docs/qa/section34/core-
 28. `docs/HAZARD_ELEMENT_CITATIONS.md` out of date with the data (R MINOR 1).
 29. Dead code and old comments in core (R MINOR 3 to 8, NITs): listed in `core-review.md`.
 
+**Fixed later in Round 1:** 10 (the director dropped the tips' "Game rule" tag, so they read as plain claims), 12 (card
+2 says the rows need not add up), 14 (the replay's three tints now differ by lightness and the legend names it), 19
+("Nothing can be built on this tile."), 20 ("Shared the work" column), and two facts added from the game's own
+sources, opened and checked: khazan bunds breach when not kept up (Lobo 2020), a broken mud bandhara can bring flash
+floods (Down To Earth 2020). The six citations once checked only from a search engine's quotation were opened and
+verified word for word. Issue 21 is not a bug: the stars carry `role="img"` with "N of 3 stars". Carried: 22 to 26.
+
+### Round 1: the diff review and its fixes
+
+An independent reviewer read the round's diff (`docs/qa/section34/round1/diff-review.md`): 1 BLOCKER, 2 MAJOR,
+7 MINOR, 5 NIT. All fixed:
+- BLOCKER, the map focus: a mouse press focused the board, which jumped the camera to the keyboard cursor, so the
+  click opened another tile (Panjim and the Tutorial). Now a mouse press never focuses the board, the cursor shows
+  only on keyboard focus, and the camera glides after the arrows.
+- MAJOR, the cursor vanished with the mouse resting on the board: the pointer's hover now leaves it alone until the
+  mouse moves.
+- MAJOR, most clicks with a card open opened something new: the click passes through only to a different tile that
+  takes a build, never after a drag; the open tile, a house, land and sea only close.
+- MINOR: the idle warning is said once (polite) and draws above the result cards; the note's wording; the Tutorial's
+  rows back to net credit, capped by the homes still standing; broken defences counted from the storms' records;
+  real browser checks for each fix (`tools/section34Checks.ts`, all pass at 1366x768 and 1920x1080); the live risk
+  default restored (owner decision 7) with Maya pointing to R instead; the sources verified (above).
+- NIT: the driver listens on 127.0.0.1 only; the fuzz's always true check removed; Maya's seawall tip tested against
+  the data; an unused class removed.
+
+### Round 1 measurements
+
+**Bots, 200 seeds a style** (`docs/qa/section34/round1/bots.md`; identical to Section 30, nothing in the model
+changed):
+
+| Style | 2030 homes saved, stars 1/2/3 | 2040 | 2050 | Whole run | Clears |
+|---|---|---|---|---|---|
+| far (nothing) | 0%, 0/0/0 | 0% | 0% | 0%, 0.0 of 9 | 0% |
+| random | 4%, 4/0/0 | 18% | 19% | 17%, 0.4 | 0% |
+| nature only | 99%, 0/2/98 | 81%, 0/98/3 | 67%, 0/100/0 | 76%, 7.0 | 100% |
+| seawalls only | 56%, 100/0/0 | 0% | 44%, 100/0/0 | 15%, 2.0 | 0% |
+| sensible (smart) | 98%, 33/36/32 | 82%, 0/69/31 | 80%, 3/98/0 | 82%, 6.3 | 98% |
+| guided (follows the card) | 100%, 16/37/48 | 84%, 0/100/1 | 81%, 0/89/12 | 84%, 6.4 | 100% |
+| best | 100%, 35/61/5 | 90%, 0/0/100 | 84%, 0/100/0 | 88%, 6.7 | 100% |
+
+Targets: nothing 0% (met); random under 10% (0%, met); sensible 60 to 80% (98%, not met: owner decision 1); best 100%
+(met); nature only above seawalls only over the run (76% against 15%, met) and in the flood (81% against 0%, met);
+2050 the hardest (for nature, smart, guided and best, met; the seawalls bot does worst in the flood).
+
+**Fuzz** (`docs/qa/section34/round1/fuzz.md`): 1,200 random runs (600 Panjim, 600 Tutorial), 25,174 actions, 3,922
+storms, 922 retries, 0 failures over every invariant: preview equals resolution (3,693 storms), ruins equal homes
+lost, the card adds up, the heat equals Homes at risk (25,174), objective completion equals the board, stars equal the
+thresholds, a retry restores the exact board (922), nothing counts or builds on unplayable tiles (5.3 million tile
+checks), the sheltered centre untouched (775 storms). No walker on water: `tests/noWalkingOnWater.test.ts` passes.
+
+**Inputs per playthrough** (the driver's logs): festival 88 inputs for the Tutorial and a full run (first build at
+command 17); student 96; casual 114; local 121; scientist 128; keyboard 217 (keys); optimiser 374 (nine plans); chaos
+704.
+
+**What changed in the feel of the game this round.** Before: a handsome, legible first storm, then twenty builds of
+following pulses without knowing which defence a pulse wanted, losing clicks, and a silent reset that wiped runs.
+After: each pulse names its defence on its card, a row never strands the player, clicks go where they are aimed,
+the counter and the headline tell the truth about biodiversity, Maya's rules say they are rules, and the whole game
+can be played without a mouse. The middle of the run is still the weakest part: once the checklist is done, Maya now
+points to R, but the red does not come on by itself (owner decision 7).
+
 **Checked, not bugs**
 - Card 2 showing the same numbers in 2040 and 2050 (C): headless, the numbers differ storm by storm on every seed
   tried; not reproduced.
@@ -227,4 +274,34 @@ Sc scientist, K keyboard, X chaos, R the core review in `docs/qa/section34/core-
 
 ## Owner decisions needed
 
-(Filled in as the rounds go; each with evidence, options and a recommendation.)
+Each would change an accepted behaviour or an owner decision, so none is changed here.
+
+1. **The sensible clear rate (target 60 to 80%) is 98%.** Evidence: the smart bot clears 98% of 200 seeds; all eight
+   Round 1 playtesters cleared (7 or 8 of 9). Why it cannot be met: the clear rule is a star in every storm and 5 of 9
+   (owner, Section 22), the 2030 cyclone is capped at strength 1.3 (owner, Section 16.4) and its objective saves all
+   9 homes, so 3 + 1 + 1 already clears. Raising the two star line far enough (to about 80% of the homes) turns a
+   player's 46 of 57 into "a heavy hit" and costs the festival visitor the payoff. Options: (a) accept; (b) a harder
+   clear (for example two stars in two storms); (c) a stronger 2030 cyclone. **Recommendation: (a).** The most common
+   reason players gave to play again was "one home short of three stars": the stars, not the clear, carry the
+   challenge.
+2. **Rules that teach the wrong real world lesson, though labelled "In this game"** (the scientist). Defences at full
+   strength the year they are planted (growth off, Section 5); khazans never wear (Section 25); the small dam as the
+   flood defence (the roster); a seawall can stand on a sea tile. Done here: two sourced facts the game now shows,
+   from the game's own sources, checked today: khazan bunds breach when they are not kept up (Lobo 2020), and a broken
+   mud bandhara can bring flash floods (Down To Earth, 2020). Options for the rules themselves: (a) keep; (b) growth
+   on for mangroves; (c) khazan upkeep; (d) seawalls on the shore line only. **Recommendation: (a) for this festival,
+   with the two facts; revisit (b) and (d) later.**
+3. **Esc on a result card jumps to the last card** (Section 9). The chaos tester and others lost a storm's payoff to
+   one Esc. Options: (a) keep; (b) Esc on the cards does nothing (Back and the buttons stay). **Recommendation: (b).**
+4. **No saved progress** (Section 28.2): a reload or a closed tab loses a run of 10 to 30 minutes (chaos tester).
+   **Recommendation: keep for the festival** (the idle reset now warns first).
+5. **"The Mandovi waterfront" area** (local): the objective names it where the zone lies, between Patto and Merces,
+   not on the riverfront road. The zone is map data (generated, fixed). Options: rename the zone ("the Ourem
+   riverside"?) or redraw it. **Recommendation: rename**, the owner's call as map data.
+6. **The idle reset's 3 minutes** (Section 30.12). Thinking players pause; the reset now warns for 30 s. Options:
+   keep 3 minutes, or 4. **Recommendation: keep 3 with the warning.**
+7. **Show risk once the objective is done** (Section 21.4: off at a phase's start, on by itself in the two years
+   before a storm). Four of eight playtesters called the builds after the checklist "aimless": they could not see which
+   homes were still at risk. Tried in Round 1 and reverted (it changes the accepted default); Maya now says once a
+   phase "The list is done. Press R to see the homes this storm would still take". Options: (a) keep; (b) the red
+   comes on by itself once the objective is done (R still turns it off). **Recommendation: (b).**

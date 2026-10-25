@@ -133,7 +133,7 @@ function rowValue(d: { homes: number; shared?: boolean }): string {
 export function defencesCard(result: PhaseResult, mayaLine: CardLine): HTMLElement {
   const most = Math.max(1, ...result.defences.map((d) => d.homes));
   const rows = result.defences.length
-    ? `<p class="result-sub">Homes that would have been lost without each defence.</p>
+    ? `<p class="result-sub">Homes that would have been lost without each defence. Defences cover for each other, so the rows need not add up to the homes saved.</p>
        <ul class="result-rows">${result.defences
          .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span>${rowValue(d)}</li>`)
          .join("")}</ul>`

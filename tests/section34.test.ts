@@ -25,7 +25,9 @@ describe("Section 34: a run is recorded as its final card says", () => {
 
   it("a yearly run has no turn budget (no par) and counts the defences its storms broke", () => {
     expect(session).toContain("parTurns: panjimResult ? 0 : level.parTurns");
-    expect(session).toMatch(/defensesDestroyed: \[\.\.\.state\.elements\.values\(\)\]\.filter\(\(inst\) => inst\.broken\)\.length/);
+    // Broken in a storm (its records, so one rebuilt over or demolished still counts), or broken on the board now.
+    expect(session).toContain("zone.failed.length");
+    expect(session).toContain("defensesDestroyed: Math.max(brokenInStorms,");
   });
 });
 
@@ -84,7 +86,9 @@ describe("Section 34: the Tutorial's result rows credit homes still standing", (
       const credited = [...(credit.get(c.id)?.values() ?? [])].reduce((sum, keys) => sum + [...keys].filter((k) => !lost.has(k)).length, 0);
       expect(credited, c.id).toBeLessThanOrEqual(outcome.housesSaved);
     }
-    expect(controller).toContain("const homes = gone || broken ? 0 : kept(credit.get(step.id));");
+    expect(controller).toContain("const homes = gone || broken ? 0 : kept(step.id);");
+    // Net, as before this section (a seawall's row never claims homes its own push put back at risk), capped by the homes still standing.
+    expect(controller).toContain("Math.min(net.get(id) ?? 0,");
   });
 });
 
@@ -109,7 +113,9 @@ describe("Section 34: clicks that were lost or doubled", () => {
   it("a click that closes the build menu or a tile's card on another tile opens that tile", () => {
     expect(popover).toContain("this.onOutsideClick?.(e.clientX, e.clientY);");
     expect(session).toContain("buildPopover.onOutsideClick = (x, y) => {");
-    expect(session).toContain("if (under === renderer.domElement) openTileAt(x, y);");
+    // Only to another tile that takes a build; the open tile, a house, plain land or the sea only close; a drag only closes.
+    expect(session).toContain("=== lastOpenedKey || state.buildableAt(coord).length === 0) return;");
+    expect(popover).toContain("if (dragged) return;");
   });
 
   it("a pointer click on a card in the first moment after the menu opens is ignored (a double click's second half)", () => {
@@ -165,5 +171,13 @@ describe("Section 34: the HUD and the objective", () => {
 
   it("a row whose picked tiles were taken still pulses tiles in its area where its defence fits", () => {
     expect(controller).toContain("if (open.length >= need || tiles.size === 0) return open;");
+  });
+});
+
+describe("Section 34: Maya's rule tips keep their tag", () => {
+  it("the director passes a tip's rule flag to her bubble", () => {
+    const director = fs.readFileSync("src/app/mayaDirector.ts", "utf8");
+    expect(director).toContain("...(note.rule ? { rule: true } : {})");
+    for (const tip of (maya as { tips: { id: string; rule?: boolean }[] }).tips.filter((t) => ["mangroves", "khazans", "dunes", "seawall"].includes(t.id))) expect(tip.rule, tip.id).toBe(true);
   });
 });

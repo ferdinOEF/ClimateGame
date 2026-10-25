@@ -84,6 +84,25 @@
       }
     },
     {
+      "id": "khazan-upkeep",
+      "kind": "fact",
+      "reported": true,
+      "elements": [
+        "khazan"
+      ],
+      "text": "Khazan bunds breach when the bunds and sluice gates are no longer kept up.",
+      "citation": {
+        "title": "Mangroves and Khazan agriculture: Sustaining Goa's promise for fish, curry and rice",
+        "authors": "Lobo, A.S.",
+        "publisher": "Down To Earth",
+        "year": "2020",
+        "url": "https://www.downtoearth.org.in/blog/wildlife-biodiversity/mangroves-and-khazan-agriculture-sustaining-goa-s-promise-for-fish-curry-and-rice-72460",
+        "note": "Published 24 July 2020. The author writes: \"Lack of cultivation and maintenance of the bunds and sluice gates is leading to their breaching\". A blog article, so the game shows this as reported by the author.",
+        "usedFor": "Section 34: what the game's khazan rule (never worn) leaves out",
+        "checked": "Opened and checked on 2026-10-25 (Section 34)."
+      }
+    },
+    {
       "id": "khazan-holds-floodwater",
       "kind": "gameRule",
       "text": "A khazan holds floodwater, so nearby homes stay drier.",
@@ -411,10 +430,10 @@
         "authors": "PROTA (Plant Resources of Tropical Africa)",
         "publisher": "Pl@ntUse, PROTA4U",
         "year": "n.d.",
-        "url": "https://uses.plantnet-project.org/en/Pandanus_odoratissimus_(PROTA)",
+        "url": "https://plantuse.plantnet.org/en/Pandanus_odoratissimus_(PROTA)",
         "note": "The record says that in Asia the leaves of Pandanus odoratissimus are made into hats, mats, sacks, cordage, baskets and umbrellas, and that it is used in living fences and coastal windbreaks and planted for soil stabilization.",
         "usedFor": "Section 30.3, the build card's second line",
-        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "checked": "Opened and checked on 2026-10-25 (Section 34): the page says what the note quotes."
       }
     },
     {
@@ -457,7 +476,7 @@
         "url": "https://www.iala.int/wiki/dictionary/index.php/Breakwater_(2)",
         "note": "Defines a breakwater as a construction that creates an area of calm water for shipping or protects a coast or harbour from wave action.",
         "usedFor": "Section 30.3, the build card's second line",
-        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "checked": "Opened and checked on 2026-10-25 (Section 34): the page says what the note quotes."
       }
     },
     {
@@ -470,11 +489,29 @@
         "title": "Water-stressed in India: Ground water mostly neglected in rain-surplus South Goa",
         "authors": "Down To Earth",
         "publisher": "Down To Earth",
-        "year": "n.d.",
+        "year": "2020",
         "url": "https://www.downtoearth.org.in/news/water/water-stressed-in-india-ground-water-mostly-neglected-in-rain-surplus-south-goa-69852",
-        "note": "The article says the flow of the Sal river is regulated by small check dams (bandharas), closed in September or October depending on the rainfall and opened again in the dry season in May when water is required.",
+        "note": "Published 19 March 2020. The article says the flow of the Sal river is regulated by small check dams (bandharas), closed in September or October depending on the rainfall and opened again in the dry season in May when water is required.",
         "usedFor": "Section 30.3, the build card's second line",
-        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "checked": "Opened and checked on 2026-10-25 (Section 34)."
+      }
+    },
+    {
+      "id": "bandhara-floods",
+      "kind": "fact",
+      "elements": [
+        "small_dam"
+      ],
+      "text": "A mud bandhara is risky in heavy rain: if one breaks, nearby areas can suffer flash floods.",
+      "citation": {
+        "title": "Water-stressed in India: Ground water mostly neglected in rain-surplus South Goa",
+        "authors": "Down To Earth",
+        "publisher": "Down To Earth",
+        "year": "2020",
+        "url": "https://www.downtoearth.org.in/news/water/water-stressed-in-india-ground-water-mostly-neglected-in-rain-surplus-south-goa-69852",
+        "note": "Published 19 March 2020. The article says seepage from mud bandharas \"becomes risky during heavy rains and floods\", that \"if the mud bandhara breaks, the nearby areas will suffer from flash floods when it rains heavily\", and that the Rumda bandhara had to be opened urgently in the November 2019 floods.",
+        "usedFor": "Section 34: what the game's small dam rule leaves out",
+        "checked": "Opened and checked on 2026-10-25 (Section 34)."
       }
     },
     {
@@ -491,7 +528,7 @@
         "url": "https://www.gladstone.qld.gov.au/downloads/file/2513/coastal-vegetation-and-sand-dunes",
         "note": "The sheet says grasses, vines and fallen timber are obstructions that trap windblown sand and help to build the dunes.",
         "usedFor": "Section 31, the Tutorial's dune caption",
-        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "checked": "Opened and checked on 2026-10-25 (Section 34): the page says what the note quotes."
       }
     },
     {
@@ -508,7 +545,7 @@
         "url": "https://www.coastalwiki.org/wiki/Seawall",
         "note": "Describes a seawall as a shore parallel hard coastal protection structure at the seaward edge of the land, whose job is to shield the landward side from waves, surges and erosion.",
         "usedFor": "Section 31, the Tutorial's seawall caption",
-        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "checked": "Opened and checked on 2026-10-25 (Section 34): the page says what the note quotes."
       }
     },
     {
@@ -525,7 +562,7 @@
         "url": "https://www.conservationgateway.org/collections/ocean/storm-surge-reduction-mangroves/",
         "note": "The report examines how mangroves reduce surge water levels and wave energy: they can lower surge levels by slowing the flow of water and reducing surface waves.",
         "usedFor": "Section 31, the Tutorial's mangrove caption",
-        "checked": "Checked from the search engine's quotation of summaries of the report (the report itself could not be opened from this environment)."
+        "checked": "Opened and checked on 2026-10-25 (Section 34): the page says what the note quotes."
       }
     },
     {
@@ -539,10 +576,10 @@
         "authors": "PROTA (Plant Resources of Tropical Africa)",
         "publisher": "Pl@ntUse, PROTA4U",
         "year": "n.d.",
-        "url": "https://uses.plantnet-project.org/en/Pandanus_odoratissimus_(PROTA)",
+        "url": "https://plantuse.plantnet.org/en/Pandanus_odoratissimus_(PROTA)",
         "note": "The record says Pandanus odoratissimus is used in living fences and coastal windbreaks and is planted for soil stabilization.",
         "usedFor": "Section 31, the Tutorial's pandanus caption",
-        "checked": "Checked from the search engine's quotation of the page (the page itself could not be opened from this environment)."
+        "checked": "Opened and checked on 2026-10-25 (Section 34): the page says what the note quotes."
       }
     }
   ]

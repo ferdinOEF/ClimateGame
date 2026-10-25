@@ -132,9 +132,17 @@ export class BuildPopover {
     this.backdrop = document.createElement("div");
     this.backdrop.className = "popover-backdrop";
     this.backdrop.hidden = true;
+    // Section 34: a press that became a drag on the backdrop only closes (it never opens the tile at its release).
+    let downAt: { x: number; y: number } | null = null;
+    this.backdrop.addEventListener("pointerdown", (e) => {
+      downAt = e.target === this.backdrop ? { x: e.clientX, y: e.clientY } : null;
+    });
     this.backdrop.addEventListener("click", (e) => {
       if (e.target !== this.backdrop) return;
+      const dragged = !downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6;
+      downAt = null;
       this.hide();
+      if (dragged) return;
       // Section 34: a click on another tile closes this card and opens that tile (players' first click after a card
       // only closed it, and read as a lost click). A click off the board still only closes.
       this.onOutsideClick?.(e.clientX, e.clientY);

@@ -295,8 +295,9 @@ async function main(): Promise<void> {
         const index = LEVEL_IDS.indexOf(levelId);
         await page.locator(".level-card").nth(index).click();
 
-        await page.waitForSelector("canvas", { timeout: 15000 });
-        await page.waitForSelector(".brief-card", { timeout: 15000 });
+        // Section 34: 60 s, not 15: under software GL on a laptop the Panjim board takes longer than 15 s to draw.
+        await page.waitForSelector("canvas", { timeout: 60000 });
+        await page.waitForSelector(".brief-card", { timeout: 60000 });
         const place = (await page.locator(".brief-title").textContent())?.trim();
         await clickByText(page, "Begin");
         await page.waitForTimeout(1100);

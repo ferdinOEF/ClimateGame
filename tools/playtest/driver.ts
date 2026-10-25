@@ -211,4 +211,5 @@ http
         res.end(JSON.stringify({ ok: false, error: e.message }));
       });
   })
-  .listen(PORT, () => console.log(`playtest driver on http://localhost:${PORT} (${W}x${H}), out ${OUT}`));
+  // Local only: nobody else on the network can drive this browser.
+  .listen(PORT, "127.0.0.1", () => console.log(`playtest driver on http://localhost:${PORT} (${W}x${H}), out ${OUT}`));

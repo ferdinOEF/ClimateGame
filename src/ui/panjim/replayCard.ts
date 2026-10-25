@@ -37,7 +37,7 @@ export class ReplayCard {
         <button type="button" class="replay-skip">Skip</button></div>
       <div class="replay-text"></div>
       <div class="replay-dots">${steps.map(() => `<span class="replay-dot"></span>`).join("")}</div>
-      <div class="replay-legend"><span class="hit">■ hit</span><span class="dry">■ wet, standing</span><span class="gold">■ defence</span></div>`;
+      <div class="replay-legend"><span class="hit">■ dark: lost</span><span class="dry">■ pale: wet, standing</span><span class="gold">■ gold: defence</span></div>`;
     (this.el.querySelector(".replay-title") as HTMLElement).textContent = title;
     this.el.hidden = false;
     const text = this.el.querySelector(".replay-text") as HTMLElement;

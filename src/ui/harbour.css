@@ -588,7 +588,8 @@ canvas:focus-visible {
   left: 50%;
   bottom: 72px;
   transform: translateX(-50%);
-  z-index: 60;
+  /* Above the result cards (60), below Leave Panjim? (80). */
+  z-index: 70;
   max-width: min(560px, calc(100% - 32px));
   padding: 12px 18px;
   border-radius: 12px;
@@ -603,6 +604,11 @@ canvas:focus-visible {
 
 .idle-warning[hidden] {
   display: none;
+}
+
+.idle-warning-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Section 34: the card a pulsing tile's objective asks for says so in words, not only by its glow. */

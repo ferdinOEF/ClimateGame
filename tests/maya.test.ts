@@ -1,4 +1,5 @@
 import { passYear } from "./helpers/passYear";
+import { ELEMENT_BY_ID } from "../src/core/elements";
 import { describe, expect, it } from "vitest";
 import { MAYA, mayaAftermath, placeName, riskHotspot, warningLine } from "../src/core/mayaLines";
 import { BOT_LEVEL, newRun } from "../tools/panjimBots/bots";
@@ -29,6 +30,9 @@ describe("Maya's words", () => {
     // Section 34: the seawall's tip says the rule as it is (Sections 25 and 26), not the old "fails all at once".
     expect(text).toMatch(/A seawall holds back a cyclone's surge until it breaks: in its second cyclone, or its next once 10 years old/);
     expect(text).not.toMatch(/fails all at once|holds no water/);
+    // Its numbers are the data's: the second cyclone (survivesStorms 1) and the age it cracks at.
+    expect(ELEMENT_BY_ID.get("seawall")!.survivesStorms).toBe(1);
+    expect(text).toContain(`once ${ELEMENT_BY_ID.get("seawall")!.cracksAtAge} years old`);
   });
 
 

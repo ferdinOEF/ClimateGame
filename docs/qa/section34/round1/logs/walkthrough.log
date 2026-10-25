@@ -2,7 +2,7 @@
 > riptide-rising@1.0.0 walkthrough
 > tsx tools/walkthrough.ts
 
-(node:6896) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(node:20384) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 Target: http://localhost:5184 (local dev server)
 
@@ -20,6 +20,26 @@ tutorial build 4: seawall at -3,0
   shot: tools\screenshots\walkthrough\06-tutorial-storm-1.png
   shot: tools\screenshots\walkthrough\07-tutorial-result-1.png
 tutorial storm 1:  Tutorial, Cyclone in 2029 Your city came through. ★★★ Every home in the path survived 22 of 22 homes saved What protected your homes Each n
+tutorial build 5: mangrove at 0,1
+tutorial build 6: khazan at 1,-1
+tutorial build 7: small_dam at 3,0
+  shot: tools\screenshots\walkthrough\08-tutorial-storm-2.png
+  shot: tools\screenshots\walkthrough\09-tutorial-result-2.png
+tutorial storm 2:  Tutorial, River flood in 2032 Your city came through. ★★★ Every home in the path survived 26 of 26 homes saved What protected your homes Ea
+  shot: tools\screenshots\walkthrough\10-tutorial-final.png
+tutorial: played start to finish, on to Panaji
+after the Tutorial: Panjim's first-build hint shows, no stale state classes
+☰ → Leave Panjim → Leave returns to the menu
+  shot: tools\screenshots\walkthrough\11-after-leave.png
+browser Back: http://localhost:5184/#/play/l00-tutorial -> http://localhost:5184/ (menu: true)
+  shot: tools\screenshots\walkthrough\12-after-browser-back.png
+Play Panjim: http://localhost:5184/#/play/l01-first-rains, start popup offers Begin
+  shot: tools\screenshots\walkthrough\13-play-panjim.png
+  shot: tools\screenshots\walkthrough\14-level-l01-first-rains-FAILED.png
 
 1 problem(s):
- - [fatal] locator.click: Timeout 30000ms exceeded.
+ - [l01-first-rains] page.waitForSelector: Timeout 15000ms exceeded.
+
+real	3m48.115s
+user	0m0.167s
+sys	0m0.075s

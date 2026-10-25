@@ -26,6 +26,10 @@ export interface Citation {
   landingUrl?: string;
   /** What the source says that supports the text, in its own terms. */
   note: string;
+  /** Section 34: where the game shows it (kept for the record, never shown). */
+  usedFor?: string;
+  /** Section 34: how and when the page was checked (kept for the record, never shown). */
+  checked?: string;
 }
 
 export interface Fact {
