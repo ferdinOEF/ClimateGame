@@ -455,6 +455,11 @@ from the playtests, 1 BLOCKER and 1 MAJOR from the diff review), plus a memory l
 - The full browser check: `npm run walkthrough` passed its Tutorial and Play Panjim parts but its level survey timed
   out under software GL on this laptop (its wait is now 60 s, not rerun to the end); `test:labels`, `test:layout`,
   `test:maya`, the four sizes, axe, and the grayscale and deuteranopia copies were not run this section.
-- The merge to master and the Vercel check: waiting for the owner.
 - The solver (`npm run bestplan`) was not rerun (no rule changed; the optimiser reached 9 of 9 by hand).
 - Firefox and Safari: only Chromium here.
+
+## Merged
+
+Merged to master with `git merge --no-ff` as `e53f639` (master had taken Section 33b meanwhile; conflicts resolved
+keeping both sides, the checks rerun on the merged tree). Vercel's production deployment of `e53f639` is READY and
+serves the Section 34 code. Revert: `git revert -m 1 e53f639`. Safety copy: the tag `pre-section-34` (on `1c4eaba`).
