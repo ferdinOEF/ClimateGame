@@ -2218,3 +2218,19 @@ Branch `section-33-harbour-morning-ui`, from master `b928d66` (Section 32 merged
 | Independent reviewer | No BLOCKER. MAJOR, fixed: the focus outline's colour on a band (a `--panel-raised` ring under it); the QA record and docs (this). MINOR, fixed: Skip year's label font; three quiet lines on `--button-on`; Maya's Got it as a second main button with a result card open (it takes the secondary look then); the map's labels changing font (kept); the 2050 title's eyebrow spacing. MINOR, told the owner: the start popup's eyebrow is now the band across the top over both columns; the start popup's text column is 34 px narrower (the strips), and reflows; the dead `.forecast-label` restyled. NIT left: `.btn:active` paints `--button-on` on a pressed `.btn-primary` without hover. |
 | Merge and Vercel | Merged with `git merge --no-ff`: `849fbcd`. Vercel's production deployment of `849fbcd` (`3LevMqSZVHirCoutxPkaPzmizACS`) completed (GitHub status: success). Production could not be loaded from here (the environment's proxy refuses the host). Revert: `git revert -m 1 849fbcd`. |
 | Not run | The full browser check (not asked for). A real GPU, Firefox and Safari. Production loaded in a browser (network). |
+
+# Section 34 — the deep review (stopped after Round 2 at the owner's request)
+
+Branch `section-34-deep-review`, from master `1c4eaba` (tag `pre-section-34`, branch `backup/pre-section-34`). The
+full record, round by round, is `docs/REVIEW_34.md`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: 745 passed, 6 skipped; build clean. |
+| Preview equals resolution | Passes (`tests/preview.test.ts`), and the fuzz (`tools/fuzz34.ts`): 1,800 random runs, 5,884 storms, 0 failures over every invariant. |
+| Playtests | Two rounds of eight fresh playtester agents in the real game (`tools/playtest/driver.ts`); every persona cleared; quiz 4.5 then 4.8 of 5. |
+| Bots, 200 seeds a style | Unchanged from Section 30 (no rule changed): nothing 0%, random 0%, sensible 98% (owner decision), best 100% clears; nature 76% against seawalls 15%. |
+| Health | Load 0.3 s to the menu, 3.6 s to the game; 43 to 45 fps at Low, Medium and High at 1920x1080 on the laptop's GPU (no regression against `pre-section-34`); a memory leak fixed (three runs 18.6, 19.3, 19.6 MB); zero console errors. |
+| Browser checks | `tools/section34Checks.ts` all pass at 1366x768 and 1920x1080; the Tutorial start to finish. |
+| Independent reviewers | A core review (0 BLOCKER, 4 MAJOR) and two diff reviews (1 BLOCKER, 2 MAJOR; 1 BLOCKER, 1 MAJOR): all fixed. |
+| Not run | Round 3 and the exit test (stopped); the full browser check (`test:labels`, `test:layout`, `test:maya`, four sizes, axe, grayscale and deuteranopia copies; the walkthrough's level survey timed out under software GL); the solver; Firefox and Safari. Not merged: the owner reviews first. |

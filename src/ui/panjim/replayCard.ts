@@ -46,6 +46,7 @@ export class ReplayCard {
       let index = -1;
       let timer = 0;
       const abort = new AbortController();
+      this.abort = abort;
       const finish = (): void => {
         this.skipNow = null;
         window.clearTimeout(timer);
@@ -125,7 +126,12 @@ export class ReplayCard {
     return !this.el.hidden;
   }
 
+  /** Section 34: the playing replay's listeners, so a session disposed mid replay takes its window Esc away too. */
+  private abort: AbortController | null = null;
+
   dispose(): void {
+    this.abort?.abort();
+    this.abort = null;
     this.el.remove();
   }
 }

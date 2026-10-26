@@ -2660,10 +2660,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       } else if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         openTilePopover(cursor);
-      } else if (event.key === "o" || event.key === "O") {
-        // Section 34: a keyboard player took 10 to 30 arrow presses to reach a pulsing tile; O jumps to the next one.
+      } else if ((event.key === "o" || event.key === "O") && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        // Section 34: a keyboard player took 10 to 30 arrow presses to reach a pulsing tile; O jumps to the next one:
+        // the tiles pulsing on the board now (the objective's, Get ahead's, the Tutorial's), whatever chose them.
         event.preventDefault();
-        const open = (panjim.run.objective?.picks ?? []).map((p) => ({ q: Number(p.key.split(",")[0]), r: Number(p.key.split(",")[1]), id: p.elementId })).filter((p) => state.canBuild(p, p.id));
+        const open = [...objectivePulse.tiles].map((key) => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }));
         if (open.length === 0) {
           said.textContent = "No tile left for the objective.";
           return;

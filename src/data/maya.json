@@ -52,7 +52,9 @@
   "warning": {
     "exposed": "The striped red tiles show where the {storm} will hit. {place} is most at risk: strengthen it now.",
     "lastCall": "Last call! {count} homes are still in danger, most of them around {place}.",
-    "fixed": "{place} looks safe now. Well done!"
+    "fixed": "{place} looks safe now. Well done!",
+    "exposedHelp": "The striped red tiles show where the {storm} will hit. Build around {place} now: homes there can still be saved.",
+    "lastCallHelp": "Last call! {count} homes are still in danger. Build around {place}: homes there can still be saved."
   },
   "aftermath": {
     "held": "The {defence} at {place} held {count} homes.",

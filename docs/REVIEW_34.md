@@ -10,8 +10,10 @@ CLAUDE.md applies.
 - Round 1: done (eight playtesters, bots, fuzz, the core review, the diff review; every BLOCKER and MAJOR fixed;
   commits on `section-34-deep-review`).
 - Health measured and the memory leak fixed (see Round 1 measurements).
-- Round 2: in progress since commit `646313f`: eight fresh playtesters (drivers on ports 7201 to 7208, diaries in
-  `docs/qa/section34/round2/`). Then: their quiz, the issue list, fixes, the diff review, bots and fuzz again.
+- Round 2: done (eight fresh playtesters, the diff review, bots and fuzz; every BLOCKER and MAJOR fixed).
+- **Stopped after Round 2 on the owner's instruction** (2026-10-26: "Stop after the round 2 itself"). Not merged to
+  master: the owner reviews the report first. No Round 3, so the exit test was not run with a third set of fresh
+  playtesters, and the full browser check was not run (see "Not done" at the end).
 
 ## What the game is (one page)
 
@@ -294,6 +296,109 @@ points to R, but the red does not come on by itself (owner decision 7).
 - "Homes at risk said 15, 9 were lost" (O): the last build is what brings the storm, so the counter before it cannot
   count that build.
 
+## Round 2
+
+Eight fresh playtester agents (same personas and briefs as Round 1, plus a note that the game resets after 3 minutes
+with no input), on the build of commit `646313f`. Diaries: `docs/qa/section34/round2/diary-*.md`. One rebuild landed
+mid round (the click through revert), picked up only on a reload by the three players still playing.
+
+### Results and fun signals
+
+| Persona | Panjim stars (2030 / 2040 / 2050) | Final | First build | Clean run (player time) | Real choices | Play again / tell a friend | Quiz |
+|---|---|---|---|---|---|---|---|
+| Festival visitor | 3 / 2 / 2 | 7 of 9, cleared | 40 s | 7 to 8 min | 4 | at home / yes | 4.5 |
+| Student | 3 / 3 / 2 | 8 of 9, cleared | 28 s | 6 to 7 min | 4 | maybe / yes | 5 |
+| Casual | 3 / 3 / 2 | 8 of 9, cleared (Tutorial 3 / 3) | 60 s | about 15 min | 3 | maybe / yes | 5 |
+| Optimiser | 3 / 3 / 3 | **9 of 9**, cleared (with retries) | 175 s | 12 to 15 min | 8 | yes once / yes | 4.5 |
+| Panjim local | 3 / 2 / 2 | 7 of 9, cleared | 75 s | about 15 min | 6 | yes once / yes | 5 |
+| Coastal scientist | 3 / 2 / 2 | 7 of 9, cleared | 60 s (Tutorial) | about 16 min | 5 | yes once / yes | 4.5 |
+| Keyboard only, deuteranopia | 3 / 3 / 2 | 8 of 9, cleared, **no mouse at all** | 50 s, 14 keys | about 20 min | 4 | (diary) / yes | 5 |
+| Chaos tester | 3 / 3 / 2 | 8 of 9, cleared | (not timed) | (not timed) | (not counted) | yes / yes | 5 |
+
+- **Quiz average 4.8 of 5** (Round 1: 4.5). The flood's "why" is now answered by all eight (Maya's line: monsoon rain
+  swells the Mandovi upstream); the two half points lost were players who could not say what a khazan physically is
+  (its card now says so, below).
+- **Every persona finished; all eight would play again or tell a friend** (the festival visitor: "at home, not at the
+  festival, after losing two runs to the menu").
+- **First build within 60 s** for the festival visitor (40 s), the student (28 s), the casual (60 s), the keyboard
+  player (50 s).
+- **Real choices**: 3 to 8 a run; "follow the glow and pick the card tagged Objective" is still the main loop.
+- **No single defence always wins** (the optimiser again: one kind plans lose stars; a breakwater was 2050's best
+  build, mangroves and khazans the floods'). The best plan needs a mix.
+
+### Issues (Round 2)
+
+**BLOCKER:** none. Nothing crashed, froze or soft locked; the console stayed empty for every player.
+
+**"Thrown back to the menu" (six players): the idle reset, as designed.** The driver's logs show 186 to 259 s with no
+input before every one of them (the agents think for minutes between moves; a visitor at a screen does not). Not a
+bug; the 30 s warning was shown (the chaos tester saw it and dismissed it) but the slow agents missed it. Owner
+decision 6 stands.
+
+**MAJOR, fixed this round**
+1. **Building by accident on a menu that opened under the next click** (local, three mangroves; optimiser). Caused by
+   Round 1's click through. Reverted: a click outside a menu only closes it.
+2. **Pulsing tiles that no longer help** (optimiser, casual, festival): the objective's picks are chosen at the
+   phase's start, later builds save their homes first, and a player spent a year on a pulsing tile that changed
+   nothing. A tile now pulses (and its card says "Objective") only while a build there still takes homes out of the
+   storm's risk (the same model as Homes at risk).
+3. **A result card left alone never reset for the next visitor** (chaos, 6 minutes). The idle clock is now held only
+   while a storm plays.
+4. **Maya's "strengthen it now" named places no build could help** (casual, twice): she now names the homes near the
+   objective's open tiles while it has any.
+5. **Keyboard: Tab left the build menu; reaching a pulsing tile took 10 to 30 presses; "the red" means nothing to a
+   deuteranope** (keyboard). Tab stays in the menu; O jumps to the objective's next tile (said in Help and the map's
+   label); Maya and Help say "striped red tiles".
+6. **Zooming out hard at a corner lost the board** (chaos): a zoom keeps the board on screen, as a drag already did.
+
+**MINOR, fixed:** a build menu left open through a resize closes; the khazan card says what one is ("Wetland walled off
+from the tide", from the game's source); "Mangroves can be nursery grounds" (the source says "may"); the Field Guide's
+khazan and small dam rules say what real ones need or do; the Tutorial's "Try a seawall on the glowing beach" (the
+tiles were sea).
+
+**Carried, minor:** two cards look picked at once by keyboard (focus ring and the Tutorial's glow); the map cursor is
+thin zoomed out; the top bar breaks below about 500 px wide (desktop first); the result card's stars read as "★★★" in
+plain text (the element is `role="img"` with "N of 3 stars", so a screen reader says it right); "Lost in earlier storms"
+counts only the homes in this storm's path (correct, but read as a contradiction); the double click's second half can
+open a menu on the map (never a build); labels overlap in the old city.
+
+**Checked again:** the Tutorial plays start to finish (both storms 3 stars, no console messages); every number the
+chaos tester checked agreed across the cards, the top bar and the final card; two tabs run apart; retries restore the
+board exactly.
+
+### Round 2: the diff review and its fixes
+
+An independent reviewer read the round's diff (`docs/qa/section34/round2/diff-review.md`): 1 BLOCKER, 1 MAJOR,
+5 MINOR, 2 NIT. Fixed:
+- BLOCKER: with the idle reset now able to fire over a result card, the cards' window key listener (capture phase)
+  outlived the session: on the menu after the reset no key worked, and the old session stayed in memory. The result
+  cards and the replay card now take their listeners away when the session goes. Checked in the browser: a session
+  left with a result card up, then Enter on the menu's Tutorial starts it.
+- MAJOR: O cycled the phase's first picks, not the tiles pulsing (nothing in the Tutorial; dead picks in Panjim). It now
+  cycles the tiles pulsing on the board, and leaves Ctrl+O to the browser.
+- MINOR, fixed: Maya's targeted warning says "Build around {place} now: homes there can still be saved" (her place now
+  comes from the objective's tiles that still help, so "most at risk" could be untrue); the "still helps" check is
+  skipped for Get ahead's rows (it swapped the model's one storm cache back and forth, a repaint from 17 to 40 ms);
+  the mangrove card "Can be a nursery", the Field Guide's "a 2020 report says real bunds breach", "one had to be opened
+  urgently in the 2019 floods". Carried: a row whose homes other builds saved stays open with nothing pulsing (m1); the
+  new tests are mostly source checks, the browser half is `tools/section34Checks.ts` (m5).
+
+### Round 2 measurements
+
+- **Bots, 200 seeds a style** (`docs/qa/section34/round2/bots.md`): the same as Round 1 (no rule or number changed;
+  one rounding, random's 2030 homes 4% to 3%). Sensible clears 98% (owner decision 1).
+- **Fuzz** (`docs/qa/section34/round2/fuzz.md`): 600 more random runs, 12,413 actions, 1,962 storms, 462 retries,
+  0 failures. Over both rounds: 1,800 runs, 37,587 actions, 5,884 storms, 1,384 retries, 0 failures.
+- **Browser:** `tools/section34Checks.ts` all pass at 1366x768 and 1920x1080; the Tutorial start to finish (both
+  storms 3 stars); zero console errors and warnings in every playtest and check. `npm run test`: 745 passed (6
+  skipped; one full run first timed out two slow build card tests under load, both pass alone and on the rerun).
+
+**What changed in the feel of the game this round.** The pulsing tiles now only ever point at a build that helps, so
+"follow the glow" no longer wastes a year; nothing builds by accident; a keyboard player can jump straight to the
+objective's tiles; and Maya's warnings point where a build can still save homes. The middle of the run is still guided
+(3 to 8 real choices a run): owner decision 7 is the lever.
+
+
 ## Owner decisions needed
 
 Each would change an accepted behaviour or an owner decision, so none is changed here.
@@ -327,3 +432,29 @@ Each would change an accepted behaviour or an owner decision, so none is changed
    homes were still at risk. Tried in Round 1 and reverted (it changes the accepted default); Maya now says once a
    phase "The list is done. Press R to see the homes this storm would still take". Options: (a) keep; (b) the red
    comes on by itself once the objective is done (R still turns it off). **Recommendation: (b).**
+8. **"Try this storm again" undoes the stretch with no warning** (Section 28.1, "No confirm"). The chaos tester called
+   it a major: the 2030 retry silently goes back to 2026. Options: (a) keep; (b) the button says where it goes ("Try
+   again from 2026"). **Recommendation: (b)**, words only.
+9. **The 2050 wind at Campal** (Section 26, BUGS item 6, already open). Round 2's festival visitor, student and local
+   all lost most of 2050's homes on the Campal front, and learned only after the storm that pandanus would have shielded
+   them; its checklist asked for khazans. Options: (a) keep; (b) pandanus on more ground; (c) a word about the wind
+   before 2050 (for example in Maya's warning). **Recommendation: (c)**, then (b) if it is still opaque.
+10. **Free, exact retries plus the live counter make 9 of 9 a matter of patience** (optimiser). Fine for a festival
+    (nobody has time for it), and it teaches cause and effect. **Recommendation: keep.**
+
+## The report (stopped after Round 2)
+
+**Blockers and majors.** Found over two rounds: 4 BLOCKER and 26 MAJOR (Round 1: 2 BLOCKER and 13 MAJOR from the
+playtests, 4 MAJOR from the core review, 1 BLOCKER and 2 MAJOR from the diff review; Round 2: no BLOCKER and 6 MAJOR
+from the playtests, 1 BLOCKER and 1 MAJOR from the diff review), plus a memory leak found by measurement.
+**All are fixed; none is open.** The open items are the owner decisions above and the carried minors.
+
+**Not done**
+- Round 3 (the owner stopped the loop after Round 2), so the exit test was not passed with a third set of fresh
+  playtesters.
+- The full browser check: `npm run walkthrough` passed its Tutorial and Play Panjim parts but its level survey timed
+  out under software GL on this laptop (its wait is now 60 s, not rerun to the end); `test:labels`, `test:layout`,
+  `test:maya`, the four sizes, axe, and the grayscale and deuteranopia copies were not run this section.
+- The merge to master and the Vercel check: waiting for the owner.
+- The solver (`npm run bestplan`) was not rerun (no rule changed; the optimiser reached 9 of 9 by hand).
+- Firefox and Safari: only Chromium here.

@@ -8987,3 +8987,14 @@ place labels, wildlife, khazan people, walkers and Maya's figure are untouched (
 - Fixed tokens (`--fixed-*`) keep, at their old values, the colours that are not the interface's: the cone's bands
   and preview, the map's place labels and the objective's pins (and their system sans serif), the lightning, the
   letterbox, the arrival edge, the risk intro's Low-quality ball, Maya's shadow.
+
+## Section 34 — the deep review: two rounds of playtests, every blocker and major fixed — ON ITS BRANCH (stopped after Round 2; not merged)
+
+Played hard by sixteen fresh playtester agents over two rounds, measured with the bots, a fuzzer and health tools, and
+reviewed three times; the record is `docs/REVIEW_34.md`. What changed for a player: the whole game plays by keyboard (a
+tile cursor on the map, O jumps to the objective's tiles); the idle reset warns first and works over a result card; a
+pulsing tile names its defence and pulses only while it helps; no lost or doubled clicks; the counter and the headline
+tell the truth about biodiversity; Maya's rules say they are rules, her flood line says why it comes down the river, her
+warnings point where a build can still help; the khazan card says what a khazan is; two sourced facts on khazan upkeep
+and bandhara floods; a memory leak fixed. No rule, number or owner decision changed; ten owner decisions are listed
+for the owner in `docs/REVIEW_34.md`.

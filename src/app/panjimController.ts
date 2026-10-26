@@ -719,7 +719,14 @@ export class PanjimController {
     // chosen at the phase's start; later builds can save their homes first, and a player then spent a year on a
     // pulsing tile that changed nothing). The same model as Homes at risk, cached until the board changes.
     const storm = this.run.schedule.find((c) => c.id === job.challengeId);
-    const helps = (key: string): boolean => !!storm && !this.run.landed.has(storm.id) && (this.run.riskChangeBy(storm, { q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, job.elementId)?.saved.length ?? 0) > 0;
+    // Only for the next storm's rows: the model's cache holds one storm, and checking Get ahead's (the storm after)
+    // on every repaint swapped it back and forth (a repaint went from about 17 ms to 40). Get ahead's tiles pulse as chosen.
+    const next = this.run.nextChallenge();
+    const helps = (key: string): boolean => {
+      if (!storm || this.run.landed.has(storm.id)) return false;
+      if (storm.id !== next?.id) return true;
+      return (this.run.riskChangeBy(storm, { q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, job.elementId)?.saved.length ?? 0) > 0;
+    };
     const open = [...new Set(picks)].filter((key) => fits(key) && helps(key));
     // Section 34: a row whose picked tiles were taken by other builds still has a way to finish: the tiles in its
     // area where its defence fits and helps, those nearest the most homes its storm still puts at risk first, as

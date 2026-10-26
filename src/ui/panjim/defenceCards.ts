@@ -35,7 +35,7 @@ export const CARD_NAME: Record<string, string> = {
 export const CARD_LINES: Record<string, readonly [string, string]> = {
   dune: ["Shields homes from cyclone waves and surge.", "Good for nature: it adds to biodiversity."],
   sandy_vegetation: ["Shields homes from cyclone waves and wind.", "Binds the sand; its leaves are woven into mats."],
-  mangrove: ["Slows cyclone surge and waves, and river floods too.", "A nursery for fish and crabs; great for biodiversity."],
+  mangrove: ["Slows cyclone surge and waves, and river floods too.", "Can be a nursery for fish and crabs; great for biodiversity."],
   // Section 34: players could not say what a khazan is; its source (khazan-what) says both halves of the second line.
   khazan: ["Holds back river floods.", "Wetland walled off from the tide; farmers and fishers share it."],
   seawall: ["The strongest wall against cyclone surge.", "Costs nature, and cracks with age."],
@@ -85,10 +85,10 @@ export function defenceRules(): { id: string; name: string; text: string }[] {
     dune: `In this game a dune shields the homes behind it from a cyclone's waves and surge, and it ${nature("dune")}.`,
     sandy_vegetation: `In this game pandanus is at full strength from the year it is planted and ${nature("sandy_vegetation")}. It lowers a cyclone's waves and surge a little (less than a dune), and it is the only defence that lowers a cyclone's wind: homes within ${reach} tiles of it take ${windShare}% less wind damage.`,
     mangrove: `In this game a mangrove has one strength from the year it is planted, ${nature("mangrove")} and helps in both kinds of storm. It grows only on wetland. A river tile takes only a small dam.`,
-    khazan: `In this game a khazan holds back river floods. It is never worn here, so it needs no repair (real bunds breach when they are not kept up), and it ${nature("khazan")}; it does little against a cyclone's surge.`,
+    khazan: `In this game a khazan holds back river floods. It is never worn here, so it needs no repair (a 2020 report says real bunds breach when they are not kept up), and it ${nature("khazan")}; it does little against a cyclone's surge.`,
     seawall: `In this game a seawall is the strongest defence from the year it is built, but it ${nature("seawall")}. It comes through the first cyclone it faces and breaks in the second (every storm that brings a cyclone counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("seawall")?.cracksAtAge} years old it is cracked and breaks in the next cyclone, even its first. It pushes extra water onto the land at each end of the wall.`,
     breakwater: `In this game a breakwater breaks a cyclone's waves out at sea but is almost no help in a river flood, and it ${nature("breakwater")}. It breaks when it is ${ELEMENT_BY_ID.get("breakwater")?.breaksAtAge} years old, storm or none, and must be built again.`,
-    small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone (Goa's real bandharas store water for the dry season, and are opened in big floods). It comes through the first flood it faces and breaks in the second (every storm that brings a river flood counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("small_dam")?.cracksAtAge} years old it is cracked and breaks in the next flood, even its first. It ${nature("small_dam")}.`
+    small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone (Goa's real bandharas store water for the dry season; one had to be opened urgently in the 2019 floods). It comes through the first flood it faces and breaks in the second (every storm that brings a river flood counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("small_dam")?.cracksAtAge} years old it is cracked and breaks in the next flood, even its first. It ${nature("small_dam")}.`
   };
   return DEFENCE_ORDER.map((id) => ({ id, name: CARD_NAME[id], text: rules[id] }));
 }

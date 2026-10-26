@@ -254,3 +254,28 @@ shown, "Adil Shah Palace" left off (it sat on the first).
   past the 2050 storm's three star target (+40, Section 26.2, set when the plan reached +39 there). Its builds after
   2040 still decide the 2050 stars, through the homes (37 of 57 saved without them, 49 with). Raise the target (to
   about +44) if biodiversity should still need those builds.
+
+# Section 34: the deep review's bugs (two rounds of playtests, two diff reviews, a core review)
+
+Every bug, how it was found and its test; the full list with who found it and how to reproduce is in
+`docs/REVIEW_34.md` (Rounds 1 and 2). All fixed; none open.
+
+| Bug | Severity | Test |
+|---|---|---|
+| No keyboard way to pick a map tile | BLOCKER | `tools/section34Checks.ts` (Tab to the map, arrows, Enter, O), `tests/section34.test.ts` |
+| The festival idle reset wiped a run with no warning | BLOCKER | `tests/idleReset.test.ts` (the 30 s warning) |
+| A mouse press focused the board and jumped the camera, so the click opened another tile (Round 1's own fix) | BLOCKER | `tools/section34Checks.ts` (a press on an unfocused board) |
+| An idle reset over a result card left the menu deaf to the keyboard and the session in memory (Round 2's own fix) | BLOCKER | `tests/section34.test.ts`; browser check in `docs/REVIEW_34.md` |
+| A memory leak: each run kept the previous session alive (about 4.5 MB a run) | MAJOR | `tests/section34.test.ts`; `tools/leak34.ts`, `tools/health34.ts` |
+| A pulsing tile did not say which defence counts; later, it pulsed when no longer helping | MAJOR | `tools/section34Checks.ts` (the Objective chip), `tests/section34.test.ts` |
+| A row could be left with no pulsing tile | MAJOR | `tests/section34.test.ts` |
+| A double click built the card that opened under the pointer | MAJOR | `tools/section34Checks.ts` |
+| Clicks lost on an open menu; then a click through that built by accident (reverted) | MAJOR | `tools/section34Checks.ts` |
+| The biodiversity counter lagged the build that brought a storm | MAJOR | `tests/section34.test.ts` |
+| The result headline said "heavy hit" when biodiversity, not homes, held the stars down | MAJOR | `tests/section34.test.ts` |
+| Developer notes on Facts and sources; Maya's rule tips without their tag; an outdated seawall tip | MAJOR | `tests/section34.test.ts`, `tests/maya.test.ts` |
+| A run not cleared recorded as completed; false badges; the Tutorial's Help gave Panjim's clear rule; its flood rows over credited | MAJOR | `tests/section34.test.ts` |
+| Focus and Tab traps on the start popup, Help and the build menu; Esc on Help | MAJOR | `tools/section34Checks.ts` |
+| The replay's tints by hue only; "the red" for a deuteranope | MAJOR | `tests/maya.test.ts`, `tests/section34.test.ts` |
+| A result card left alone never reset; zoom at a corner lost the board; the O key cycled dead picks | MAJOR | `tests/section34.test.ts` |
+| Maya named places no build could help | MAJOR | `tests/section34.test.ts` |

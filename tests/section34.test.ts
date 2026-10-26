@@ -211,7 +211,7 @@ describe("Section 34 Round 2 fixes", () => {
   });
 
   it("Maya's 'strengthen it now' names homes near the objective's open tiles when there are any", () => {
-    expect(director).toContain("riskHotspot(nearPicks.length > 0 ? nearPicks : exposure.housesAtRisk, exposure.intensity)");
+    expect(director).toContain("riskHotspot(helpful ? nearPicks : exposure.housesAtRisk, exposure.intensity)");
   });
 
   it("keyboard: O jumps the map cursor to the objective's next tile, and Help says so; Tab stays in the build menu", () => {
@@ -225,5 +225,34 @@ describe("Section 34 Round 2 fixes", () => {
     expect(cards).toContain('"Wetland walled off from the tide; farmers and fishers share it."');
     expect(steps).toContain('"Try a seawall on a glowing tile by the sea."');
     expect(factById("card-mangrove")!.text).toBe("Mangroves can be nursery grounds for young fish, prawns and crabs.");
+  });
+});
+
+describe("Section 34 Round 2: the diff review's fixes", () => {
+  it("a session disposed with result cards or a replay up takes their window key listeners away", () => {
+    for (const file of ["src/ui/panjim/resultCards.ts", "src/ui/panjim/replayCard.ts"]) {
+      const src = fs.readFileSync(file, "utf8");
+      expect(src, file).toContain("this.abort = abort;");
+      expect(src, file).toMatch(/dispose\(\): void \{\s+(\/\/[^\n]*\n\s+)*this\.abort\?\.abort\(\);/);
+    }
+  });
+
+  it("O cycles the tiles pulsing on the board now, and leaves Ctrl+O to the browser", () => {
+    expect(session).toContain("const open = [...objectivePulse.tiles]");
+    expect(session).toContain('(event.key === "o" || event.key === "O") && !event.ctrlKey && !event.metaKey && !event.altKey');
+  });
+
+  it("Maya's targeted warning says homes there can still be saved, not that the place is most at risk", () => {
+    const warning = (maya as { warning: Record<string, string> }).warning;
+    expect(warning.exposedHelp).toContain("homes there can still be saved");
+    expect(warning.lastCallHelp).toContain("homes there can still be saved");
+    expect(fs.readFileSync("src/app/mayaDirector.ts", "utf8")).toContain('warningLine(helpful ? "exposedHelp" : "exposed"');
+  });
+
+  it("the build card and Field Guide say no more than their sources", () => {
+    const cards = fs.readFileSync("src/ui/panjim/defenceCards.ts", "utf8");
+    expect(cards).toContain("Can be a nursery for fish and crabs");
+    expect(cards).toContain("a 2020 report says real bunds breach");
+    expect(cards).toContain("one had to be opened urgently in the 2019 floods");
   });
 });

@@ -144,7 +144,7 @@ export function openingLine(objective: string, storm: string): string {
 }
 
 /** The line she gives when the heat first appears, and the last call in the storm's own year. */
-export function warningLine(kind: "exposed" | "lastCall" | "fixed", place: string, storm: ChallengeKind, count = 0): string {
+export function warningLine(kind: "exposed" | "lastCall" | "fixed" | "exposedHelp" | "lastCallHelp", place: string, storm: ChallengeKind, count = 0): string {
   return fill(MAYA.warning[kind], { place, storm: stormWord(storm), count });
 }
 

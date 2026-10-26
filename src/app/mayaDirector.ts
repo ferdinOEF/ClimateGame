@@ -111,9 +111,12 @@ export class MayaDirector {
       // Section 34: "strengthen it now" pointed at homes no build could help. While the objective has open rows, she
       // names the homes at risk near its tiles still to build (where a build does help); otherwise all of them.
       const zones = run.zones;
-      const openPicks = zones ? (run.objective?.picks ?? []).filter((pick) => run.state.canBuild(coordOf(pick.key), pick.elementId)).map((pick) => coordOf(pick.key)) : [];
+      // The open tiles are those where a build still saves homes from this storm (the same model as Homes at risk), and
+      // then the line says so ("homes there can still be saved") rather than "most at risk", which may not be true.
+      const openPicks = zones ? (run.objective?.picks ?? []).filter((pick) => run.state.canBuild(coordOf(pick.key), pick.elementId) && (run.riskChangeBy(next, coordOf(pick.key), pick.elementId)?.saved.length ?? 0) > 0).map((pick) => coordOf(pick.key)) : [];
       const nearPicks = exposure.housesAtRisk.filter((key) => openPicks.some((pick) => hexDistance(pick, coordOf(key)) <= 3));
-      const hotspot = riskHotspot(nearPicks.length > 0 ? nearPicks : exposure.housesAtRisk, exposure.intensity);
+      const helpful = nearPicks.length > 0;
+      const hotspot = riskHotspot(helpful ? nearPicks : exposure.housesAtRisk, exposure.intensity);
       const place = hotspot ? placeName(coordOf(hotspot.key), this.ctx.landmarks, run.zones?.zoneOf(hotspot.key) ?? null) : null;
 
       // When the heat first appears in this storm's phase: one line, where
@@ -123,7 +126,7 @@ export class MayaDirector {
         const coord = coordOf(hotspot.key);
         this.maya.say({
           id: `warn:${next.id}`,
-          text: warningLine("exposed", place, next.kind),
+          text: warningLine(helpful ? "exposedHelp" : "exposed", place, next.kind),
           state: "warning",
           urgent: true,
           onShow: () => this.ctx.focus(coord)
@@ -138,7 +141,7 @@ export class MayaDirector {
           const coord = coordOf(hotspot.key);
           this.maya.say({
             id: `last:${next.id}`,
-            text: warningLine("lastCall", place, next.kind, exposure.housesAtRisk.length),
+            text: warningLine(helpful ? "lastCallHelp" : "lastCall", place, next.kind, exposure.housesAtRisk.length),
             state: "warning",
             urgent: true,
               onShow: () => this.ctx.focus(coord)

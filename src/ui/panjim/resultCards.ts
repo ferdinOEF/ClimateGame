@@ -242,6 +242,8 @@ export class ResultCards {
   readonly el: HTMLElement;
   private readonly cardEl: HTMLElement;
   private open = false;
+  /** Section 34: the open card set's listeners, so a session disposed with cards up (the idle reset) takes them away. */
+  private abort: AbortController | null = null;
 
   constructor(private readonly container: HTMLElement) {
     this.el = document.createElement("div");
@@ -266,6 +268,7 @@ export class ResultCards {
     return new Promise((resolve) => {
       let index = 0;
       const abort = new AbortController();
+      this.abort = abort;
       const close = (choice: CardsChoice): void => {
         abort.abort();
         this.open = false;
@@ -383,6 +386,11 @@ export class ResultCards {
   }
 
   dispose(): void {
+    // Its window keydown listener (capture phase) swallowed every key on the menu after an idle reset over the cards,
+    // and kept the old session alive.
+    this.abort?.abort();
+    this.abort = null;
+    this.open = false;
     this.el.remove();
   }
 }
