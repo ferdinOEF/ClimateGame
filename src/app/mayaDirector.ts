@@ -1,5 +1,5 @@
 import type { ActionRun } from "@core/actionRun";
-import type { AxialCoord } from "@core/hex";
+import { axialDistance as hexDistance, type AxialCoord } from "@core/hex";
 import type { Exposure } from "@core/exposure";
 import { MAYA, openingLine, placeName, riskHotspot, stormWord, warningLine } from "@core/mayaLines";
 import type { Maya, MayaLine, MayaState } from "@ui/panjim/maya";
@@ -36,7 +36,7 @@ export interface DirectorContext {
   quiet?: boolean;
 }
 
-type Note = { id: string; title: string; text: string };
+type Note = { id: string; title: string; text: string; rule?: boolean };
 
 const TIPS = new Map<string, Note>(MAYA.tips.map((tip) => [tip.id, tip]));
 /** Every line that becomes a Field Guide page, by id. Warnings are situational and are not kept. */
@@ -77,7 +77,8 @@ export class MayaDirector {
   }
 
   private say(note: Note, state: MayaState, extra: Partial<MayaLine> = {}): void {
-    this.maya.say({ id: note.id, text: note.text, state, ...extra });
+    // Section 34: a rule tip keeps its "Game rule" tag (it was dropped here, so the tips read as plain claims).
+    this.maya.say({ id: note.id, text: note.text, state, ...(note.rule ? { rule: true } : {}), ...extra });
   }
 
   /** A tip by id (also used by the Get ready panel). */
@@ -107,7 +108,15 @@ export class MayaDirector {
     }
 
     if (exposure && yearsLeft >= 1 && yearsLeft <= 2) {
-      const hotspot = riskHotspot(exposure.housesAtRisk, exposure.intensity);
+      // Section 34: "strengthen it now" pointed at homes no build could help. While the objective has open rows, she
+      // names the homes at risk near its tiles still to build (where a build does help); otherwise all of them.
+      const zones = run.zones;
+      // The open tiles are those where a build still saves homes from this storm (the same model as Homes at risk), and
+      // then the line says so ("homes there can still be saved") rather than "most at risk", which may not be true.
+      const openPicks = zones ? (run.objective?.picks ?? []).filter((pick) => run.state.canBuild(coordOf(pick.key), pick.elementId) && (run.riskChangeBy(next, coordOf(pick.key), pick.elementId)?.saved.length ?? 0) > 0).map((pick) => coordOf(pick.key)) : [];
+      const nearPicks = exposure.housesAtRisk.filter((key) => openPicks.some((pick) => hexDistance(pick, coordOf(key)) <= 3));
+      const helpful = nearPicks.length > 0;
+      const hotspot = riskHotspot(helpful ? nearPicks : exposure.housesAtRisk, exposure.intensity);
       const place = hotspot ? placeName(coordOf(hotspot.key), this.ctx.landmarks, run.zones?.zoneOf(hotspot.key) ?? null) : null;
 
       // When the heat first appears in this storm's phase: one line, where
@@ -117,7 +126,7 @@ export class MayaDirector {
         const coord = coordOf(hotspot.key);
         this.maya.say({
           id: `warn:${next.id}`,
-          text: warningLine("exposed", place, next.kind),
+          text: warningLine(helpful ? "exposedHelp" : "exposed", place, next.kind),
           state: "warning",
           urgent: true,
           onShow: () => this.ctx.focus(coord)
@@ -132,7 +141,7 @@ export class MayaDirector {
           const coord = coordOf(hotspot.key);
           this.maya.say({
             id: `last:${next.id}`,
-            text: warningLine("lastCall", place, next.kind, exposure.housesAtRisk.length),
+            text: warningLine(helpful ? "lastCallHelp" : "lastCall", place, next.kind, exposure.housesAtRisk.length),
             state: "warning",
             urgent: true,
               onShow: () => this.ctx.focus(coord)

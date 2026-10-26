@@ -42,65 +42,61 @@ the mangrove's strength in the game.
 ## gameRule: the hazard model (`src/data/hazardModel.json`)
 
 All read by `src/core/hazardModel.ts`, the one module the preview, the risk
-overlay, the storm animation and the damage resolution share.
+overlay, the storm animation and the damage resolution share. Brought up to
+date with the data in Section 34 (the tables had drifted since Section 4).
 
 | Constant | Value | What it does | Kind |
 |---|---|---|---|
-| `surge.baseM`, `surge.perStrengthM` | 8.5, 1.45 | Surge level at landfall = base + per-strength × strength (game metres) | gameRule |
+| `surge.baseM`, `surge.perStrengthM` | 7, 2.027 | Surge level at landfall = base + per-strength × strength (game metres) | gameRule |
+| `surge.weakStorm` (refStrength, seaExponent, channelExponent) | 2.6, 1.42, 0.9 | A storm weaker than 2.6 loses more height per hex, × (2.6 / strength) to these powers (Section 6.1) | gameRule |
 | `surge.lossPerHex` (sea, channel, beach, land) | 0.43, 0.35, 0.8, 0.7 | How much the surge drops each hex; the lower channel loss is the funnelling up the river | gameRule |
 | `flood.baseM`, `flood.perStrengthM` | 5, 1.9 | River flood level at its upstream sources | gameRule |
-| `flood.sourceShare` | 0.35 | Which upstream part of the river feeds the flood | gameRule |
-| `flood.lossPerHex` (sea, channel, wetland, beach, land) | 3, 0.25, 0.2, 1, 0.35 | How much the flood drops each hex; low wetland loss lets it spread across the khazan fields | gameRule |
-| `compound.surgeShare`, `compound.floodShare` | 0.9, 0.85 | Each part's share in the finale | gameRule |
+| `flood.sourceShare` | 0.35 | Which upstream part of the river feeds the flood, on a map with no `floodSource` (Panjim names its own) | gameRule |
+| `flood.lossPerHex` (sea, channel, wetland, beach, land) | 3, 0.2, 0.15, 1, 0.35 | How much the flood drops each hex | gameRule |
+| `compound.surgeShare`, `compound.floodShare` | 0.9, 0.85 | Each part's share in the 2050 storm | gameRule |
 | `compound.backwaterShare`, `backwaterExponent` | 0.6, 1.2 | The surge holding the river back at the mouth | gameRule |
-| `defence.metresPerResilience` | 0.9 | Game metres of protection per point of an element's resilience | gameRule |
+| `defence.metresPerResilience` | 0.9 | Game metres of protection per point of a defence's resilience | gameRule |
 | `defence.radiusHex`, `defence.falloff` | 3, [1, 0.9, 0.7, 0.45] | How far a defence's protection reaches, and how it fades | gameRule |
-| `defence.stackCap` | 1.6 | Different kinds of defence on a tile add up to at most 1.6 × the strongest; several of one kind count once (layered defence) | gameRule |
-| `defence.maxProtectionM` | 5 | Living defences together protect a tile by no more than this | gameRule |
-| `defence.engineeredMaxProtectionM` | 6 | An engineered structure's own protection may rise to this (a seawall reaches further than a breakwater) | gameRule |
-| `defence.pathShare`, `defence.neighbourShare` | 0.4, 0.5 | Drag on water passing through a defended tile and its neighbours (strongest of each kind counts once; on top of the area ceiling) | gameRule |
-| `defence.comboMetresPerPoint` | 0.4 | Extra protection from a combo | gameRule |
-| `defence.failDepthPerUnit` | 8.7 | Water depth (× an engineered element's failureThreshold) that breaks it | gameRule |
+| `defence.stackCap` | 1.6 | Different kinds on a tile add up to at most 1.6 × the strongest; several of one kind count once, except a pair (`pairsLike`: two dunes side by side count like a seawall, two khazans like a small dam, Section 25) | gameRule |
+| `defence.maxProtectionM`, `engineeredMaxProtectionM` | 5, 6 | The ceiling on a tile's protection, living defences only, and with an engineered one | gameRule |
+| `defence.pathShare`, `defence.neighbourShare` | 0.4, 0.5 | Drag on water passing through a defended tile and its neighbours | gameRule |
+| `defence.comboMetresPerPoint` | 0.4 | Extra protection from a combo (a khazan beside mangroves; three mangroves together) | gameRule |
 | `defence.overwhelmDepthPerUnit` | 3.5 | Water depth (× a nature element's overwhelmSeverity) that wears it | gameRule |
-| `houseLossDepthM` | 0.6 | Water this deep on a house takes it | gameRule |
-| `landfall.jitterSites` | 1 | The real landfall is at most one coastal site from the forecast centre (the bounded jitter) | gameRule |
-| `landfall.coneFarSites` | 7 | Half-width of the forecast cone when the warning starts | gameRule |
-| `landfall.centreMin`, `centreMax` | 0.15, 0.85 | Where along the coast a forecast centre may fall | gameRule |
+| `defence.failDepthPerUnit` | 8.7 | The old depth failure; no engineered defence on today's levels uses it (they break by storm count and age, below) | gameRule (unused) |
+| `houseLossDepthM` | 0.6 | Water (plus wind) this deep on a house takes it | gameRule |
+| `wind.perStrengthM`, `inlandKeep`, `landfallReachHex` | 0.2, 0.75, 14 | The default cyclone wind (the Tutorial's): metres of water equivalent per strength at landfall, kept per hex inland | gameRule |
+| `wind.shelter.sandy_vegetation`, `shelterReachHex`, `minKeep` | 0.5, 2, 0.4 | Pandanus halves the wind on homes within 2 tiles; wind never falls below 0.4 of itself | gameRule |
+| Panjim's own wind (`levels.json`, on the storms) | 2030: 1.0 a strength, 0.8 a hex; 2050: 0.6, 0.8, 1.1 in the compound storm | The two Panjim cyclones' wind (Section 26.3) | gameRule |
 
 ## gameRule: the elements (`src/data/elements.json`)
 
-Every cost, resilience, maturity, failure and wear number is a design choice.
-The `note` fields in the file that say "PLACEHOLDER" are historical and mean
-the same thing.
+Every resilience, biodiversity, ageing and wear number is a design choice.
+Costs and growth times are kept in the file for when coins and growth return
+(both off on every level, Section 5).
 
-| Element | Cost | Resilience | Answers | Matures (quarters) | Breaks / wears at | Kind |
-|---|---|---|---|---|---|---|
-| Dune | 15 | 4 | cyclone | 8 | overwhelm 1.3 | gameRule |
-| Pandanus (sandy vegetation) | 10 | 3 | cyclone | 8 | overwhelm 1.1 | gameRule |
-| Seawall | 80 | 16 | cyclone | 0 | fails 1.2 | gameRule |
-| Breakwater | 85 | 12 | cyclone | 0 | fails 1.25 | gameRule |
-| Mangrove | 30 | 5 | cyclone, flood | 20 | overwhelm 1.4 | gameRule |
-| Khazan | 65 | 5 | flood | 12 | overwhelm 1.6 | gameRule |
-| Small dam | 55 | 10 | flood | 0 | fails 1.15 | gameRule |
-| Sand mining | 35 | −4 | (harms) | 0 | – | gameRule |
-| Beachside resort | 40 | −1 | (harms) | 0 | – | gameRule |
+| Element | Resilience | Biodiversity | Builds on | Breaks or wears | Kind |
+|---|---|---|---|---|---|
+| Dune | 4 | +2 | beach | worn by a big storm (overwhelm 1.3), until repaired; two side by side count like a seawall | gameRule |
+| Pandanus | 3 | +3 | beach | worn (overwhelm 1.1); the only wind shelter | gameRule |
+| Mangrove | 5 | +3 | estuary (wetland) | worn (overwhelm 1.4) | gameRule |
+| Khazan | 4.5 | +2 | estuary (wetland) | never worn; two side by side count like a small dam | gameRule |
+| Seawall | 16 | −5 | beach, coast | breaks in its 2nd cyclone; cracked from 10 years old, then breaks in its next | gameRule |
+| Breakwater | 12 | −2 | coast (near sea) | breaks at 10 years old | gameRule |
+| Small dam | 10 | −1 | river | breaks in its 2nd flood; cracked from 10 years old, then breaks in its next | gameRule |
+| Sand mining | −4 | −3 | river | retired: no level offers it (Section 17.3) | gameRule |
+| Beachside resort, yacht | – | – | – | built only with coins on | gameRule |
 
-Income (`effects.money`), biodiversity, carbon, food and population effects
-are gameRule too.
-
-## gameRule: the level (`src/data/levels.json`, Panaji)
+## gameRule: the level (`src/data/levels.json`, Panjim)
 
 | Constant | Value | Kind |
 |---|---|---|
-| `startingCoin` | 500 | gameRule |
-| `timeline.economy.incomeScale`, `jarStart` | 0.35, 40 | gameRule |
-| Storm years, `jitterYears`, `strength` (1.2 / 1.8 / 2.6) | – | gameRule: the escalation, not a forecast for Goa |
-| `climate.intensityPerStrength`, `baselinePerYear`, `seaLevelCmPerYear` | 50, 0.02, 0.4 | gameRule |
-| `houseStars` (three 0.9, two 0.6) | – | gameRule |
-| Time costs (build 1 quarter, 2 for a seawall or small dam; fast-forward a year 4) | – | gameRule |
-
-The easy-test balance preset (coin × 10, softened storms) is deleted. There
-is one baseline (`tests/section4.test.ts`).
+| Storms (year, strength, landfall) | 2030 cyclone 1.2 at -5,18; 2040 flood 2.35 from the Mandovi (33,1 33,2 32,3); 2050 cyclone and flood 3.0 at 2,12 | gameRule: the escalation, not a forecast for Goa |
+| `houseStars` | one 30%, two 55% with biodiversity at or above the start, three 85% with biodiversity up 6 (up 40 by the end of 2050 for the 2050 storm) | gameRule |
+| The clear rule | a star in every storm and 5 of 9 in all | gameRule |
+| `shelteredTiles` on the 2050 storm | 134 tiles in the middle of Taleigao take no water or wind | gameRule |
+| `climate.seaLevelCmPerYear` | 0.4 (not shown anywhere: no cited source) | gameRule |
+| `economy`, `growth` | off (`startingCoin` 10000 kept for when coins return) | gameRule |
+| `parTurns`, `starThresholds` | old score fields; the yearly game has no par (Section 34) | unused |
 
 ## How the game keeps tuning from looking like science
 

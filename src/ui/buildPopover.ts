@@ -1,3 +1,4 @@
+import { trapFocus } from "./focusTrap";
 import type { Tooltips } from "./tooltip";
 
 export interface PopoverOption {
@@ -121,6 +122,9 @@ const POINTER_MIN_Y = 46;
  * dead weight once nothing set that attribute on `.build-popover` itself
  * anymore — removed in the STEP_PROMPT_code_review_cleanup.md pass.
  */
+/** Section 34: how long after the cards open a pointer click on one is taken as a double click's second half. */
+export const CARD_CLICK_GUARD_MS = 400;
+
 export class BuildPopover {
   private backdrop: HTMLElement;
   private el: HTMLElement;
@@ -131,6 +135,8 @@ export class BuildPopover {
     this.backdrop = document.createElement("div");
     this.backdrop.className = "popover-backdrop";
     this.backdrop.hidden = true;
+    // A click outside only closes (Section 34 tried opening the tile under it, and players then built by accident on
+    // the menu that opened under their next click: an accidental build costs a year and cannot be undone).
     this.backdrop.addEventListener("click", (e) => {
       if (e.target === this.backdrop) this.hide();
     });
@@ -139,6 +145,8 @@ export class BuildPopover {
     this.el.className = "build-popover";
     this.backdrop.appendChild(this.el);
     container.appendChild(this.backdrop);
+    // Section 34: Tab stays among the cards while the menu is open (it wandered to the panels behind).
+    trapFocus(this.el, () => this.isOpen);
   }
 
   get isOpen(): boolean {
@@ -224,6 +232,7 @@ export class BuildPopover {
   ): void {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
+    this.openedAt = performance.now();
     // What each card says is this game's rule, and its number this game's model.
     const head = document.createElement("div");
     head.className = "build-card-head";
@@ -280,6 +289,9 @@ export class BuildPopover {
       else
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
+          // Section 34: the second click of a double click on the tile lands on the card that opened under the
+          // pointer, and built it. A pointer click (detail > 0; a key's has 0) that soon after opening is ignored.
+          if (e.detail > 0 && performance.now() - this.openedAt < CARD_CLICK_GUARD_MS) return;
           onSelect(card.id);
           this.hide();
         });
@@ -456,6 +468,8 @@ export class BuildPopover {
 
   /** Called whenever the popover closes, however it closes. */
   onHide: (() => void) | null = null;
+  /** Section 34: when the cards opened; a pointer click on one in the first moment is a double click's second half. */
+  private openedAt = 0;
 
   /** Where focus was before the cards took it: given back when they close. */
   private returnFocus: HTMLElement | null = null;

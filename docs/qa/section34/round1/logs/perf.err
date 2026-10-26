@@ -1,0 +1,10 @@
+(node:16216) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+| low | calm | 1.2 | 0.8 | 1333.3 | 67 | 371642 |
+| low | cyclone | 1.5 | 1.1 | 883.4 | 59 | 381302 |
+page.evaluate: Execution context was destroyed, most likely because of a navigation.
+    at scenario (C:\Users\ferdi\OneDrive\Ferdin\Earth Foundation\Projects\POG\panjim-digital-twin\code\tools\stormPerf.ts:33:22)
+    at main (C:\Users\ferdi\OneDrive\Ferdin\Earth Foundation\Projects\POG\panjim-digital-twin\code\tools\stormPerf.ts:82:54) {
+  log: [],
+  name: 'Error'
+}

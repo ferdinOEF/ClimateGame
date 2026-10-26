@@ -23,7 +23,7 @@
       "id": "mangroves",
       "title": "Mangroves",
       "rule": true,
-      "text": "Mangroves slow the surge before it reaches the houses. Plant them on the wetland edge."
+      "text": "Mangroves slow the water before it reaches the houses, in a cyclone or a flood. Plant them on the wetland edge."
     },
     {
       "id": "khazans",
@@ -35,13 +35,13 @@
       "id": "dunes",
       "title": "Dunes and pandanus",
       "rule": true,
-      "text": "Dunes and pandanus shield the beach from a cyclone's surge."
+      "text": "Dunes and pandanus shield the homes behind the beach from a cyclone."
     },
     {
       "id": "seawall",
       "title": "Seawalls",
       "rule": true,
-      "text": "A seawall holds no water. If a storm is bigger than the wall, it fails all at once."
+      "text": "A seawall holds back a cyclone's surge until it breaks: in its second cyclone, or its next once 10 years old."
     },
     {
       "id": "get-ready",
@@ -50,9 +50,11 @@
     }
   ],
   "warning": {
-    "exposed": "The red shows where the {storm} will hit. {place} is most at risk: strengthen it now.",
+    "exposed": "The striped red tiles show where the {storm} will hit. {place} is most at risk: strengthen it now.",
     "lastCall": "Last call! {count} homes are still in danger, most of them around {place}.",
-    "fixed": "{place} looks safe now. Well done!"
+    "fixed": "{place} looks safe now. Well done!",
+    "exposedHelp": "The striped red tiles show where the {storm} will hit. Build around {place} now: homes there can still be saved.",
+    "lastCallHelp": "Last call! {count} homes are still in danger. Build around {place}: homes there can still be saved."
   },
   "aftermath": {
     "held": "The {defence} at {place} held {count} homes.",
@@ -108,7 +110,7 @@
     },
     "comingUp": {
       "flood": {
-        "text": "In this game, the flood comes down the Mandovi, through the channel at Ribandar, into Merces, St Cruz and Taleigao. Watch the red.",
+        "text": "In this game, monsoon rain swells the Mandovi upstream; the flood comes down it through the channel at Ribandar into Merces, St Cruz and Taleigao.",
         "rule": true
       },
       "compound": {

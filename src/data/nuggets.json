@@ -23,10 +23,12 @@
     "khazan-what",
     "khazan-mangrove-bund",
     "khazan-bund-breach",
+    "khazan-upkeep",
     "khazan-holds-floodwater"
   ],
   "small_dam": [
     "dam-fails",
+    "bandhara-floods",
     "dam-coin"
   ],
   "beachside_resort": [

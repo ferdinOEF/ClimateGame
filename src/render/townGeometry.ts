@@ -140,6 +140,11 @@ const BUILDERS: Record<BuildingKind, () => THREE.BufferGeometry> = {
 
 const cache = new Map<BuildingKind, THREE.BufferGeometry>();
 
+/** Section 34: disposed as a session ends, so no old renderer's GPU buffers (and canvas) stay reachable through it. */
+export function releaseTownGeometries(): void {
+  for (const geometry of cache.values()) geometry.dispose();
+}
+
 /**
  * Everything above is modelled at half the classic House; this brings the
  * small house to about 56% of its footprint and 57% of its height, the top

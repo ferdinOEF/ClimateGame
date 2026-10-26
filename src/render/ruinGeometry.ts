@@ -19,6 +19,11 @@ const FLOOR = "#5d5246";
 
 const cache = new Map<BuildingKind, THREE.BufferGeometry>();
 
+/** Section 34: disposed as a session ends, so no old renderer's GPU buffers (and canvas) stay reachable through it. */
+export function releaseRuinGeometries(): void {
+  for (const geometry of cache.values()) geometry.dispose();
+}
+
 /** A small fixed pseudo-random sequence per kind, so every ruin of a kind is the same wreck (no flicker, no jitter). */
 function sequence(seed: number): () => number {
   let s = seed;

@@ -37,7 +37,7 @@ export class ReplayCard {
         <button type="button" class="replay-skip">Skip</button></div>
       <div class="replay-text"></div>
       <div class="replay-dots">${steps.map(() => `<span class="replay-dot"></span>`).join("")}</div>
-      <div class="replay-legend"><span class="hit">■ hit</span><span class="dry">■ wet, standing</span><span class="gold">■ defence</span></div>`;
+      <div class="replay-legend"><span class="hit">■ dark: lost</span><span class="dry">■ pale: wet, standing</span><span class="gold">■ gold: defence</span></div>`;
     (this.el.querySelector(".replay-title") as HTMLElement).textContent = title;
     this.el.hidden = false;
     const text = this.el.querySelector(".replay-text") as HTMLElement;
@@ -46,6 +46,7 @@ export class ReplayCard {
       let index = -1;
       let timer = 0;
       const abort = new AbortController();
+      this.abort = abort;
       const finish = (): void => {
         this.skipNow = null;
         window.clearTimeout(timer);
@@ -125,7 +126,12 @@ export class ReplayCard {
     return !this.el.hidden;
   }
 
+  /** Section 34: the playing replay's listeners, so a session disposed mid replay takes its window Esc away too. */
+  private abort: AbortController | null = null;
+
   dispose(): void {
+    this.abort?.abort();
+    this.abort = null;
     this.el.remove();
   }
 }

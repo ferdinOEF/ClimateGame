@@ -2237,3 +2237,19 @@ Branch `section-33b-tone-a-hud-column`, from master `1c4eaba` (Section 33 merged
 | Independent reviewer | BLOCKER, fixed: ☰'s menu stayed in the card's flow (a harbour.css `position: relative` of equal specificity won); it opens under ☰ over the board again (`menu-open-*`). MAJOR, fixed: the objective's rows stayed live in a storm (a row click could pan the board mid storm); the objective stays in the card, as the owner asked, but takes no clicks during a storm or its cards. MINOR, fixed: `keepClearOf` now first looks for a slide that pushes nothing off the screen; its test hook resets; the storm dots are rebuilt only when what they show changes (focus and tooltips no longer dropped); Maya's bubble keeps clear of ☰'s open menu; `ObjectivesPanel.mountBody` removed. MINOR, told the owner: Maya's two lines now say the card is "top left" (they said "bottom right", which is no longer true). Left: a harmless dead selector for the old top-right corner. |
 | Merge and Vercel | Merged with `git merge --no-ff`: `8d12d51`. Vercel's production deployment of `8d12d51` (`FvkKfVG35g1GTFV7hsojLLqKx5X5`) completed (GitHub status: success, "Deployment has completed"). Production could not be loaded from here (the environment's proxy refuses the host). Revert: `git revert -m 1 8d12d51`. |
 | Not run | The full browser check (not asked for). A real GPU, Firefox and Safari. Production loaded in a browser (network). |
+
+# Section 34 — the deep review (stopped after Round 2 at the owner's request)
+
+Branch `section-34-deep-review`, from master `1c4eaba` (tag `pre-section-34`, branch `backup/pre-section-34`). The
+full record, round by round, is `docs/REVIEW_34.md`.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: 745 passed, 6 skipped; build clean. |
+| Preview equals resolution | Passes (`tests/preview.test.ts`), and the fuzz (`tools/fuzz34.ts`): 1,800 random runs, 5,884 storms, 0 failures over every invariant. |
+| Playtests | Two rounds of eight fresh playtester agents in the real game (`tools/playtest/driver.ts`); every persona cleared; quiz 4.5 then 4.8 of 5. |
+| Bots, 200 seeds a style | Unchanged from Section 30 (no rule changed): nothing 0%, random 0%, sensible 98% (owner decision), best 100% clears; nature 76% against seawalls 15%. |
+| Health | Load 0.3 s to the menu, 3.6 s to the game; 43 to 45 fps at Low, Medium and High at 1920x1080 on the laptop's GPU (no regression against `pre-section-34`); a memory leak fixed (three runs 18.6, 19.3, 19.6 MB); zero console errors. |
+| Browser checks | `tools/section34Checks.ts` all pass at 1366x768 and 1920x1080; the Tutorial start to finish. |
+| Independent reviewers | A core review (0 BLOCKER, 4 MAJOR) and two diff reviews (1 BLOCKER, 2 MAJOR; 1 BLOCKER, 1 MAJOR): all fixed. |
+| Not run | Round 3 and the exit test (stopped); the full browser check (`test:labels`, `test:layout`, `test:maya`, four sizes, axe, grayscale and deuteranopia copies; the walkthrough's level survey timed out under software GL); the solver; Firefox and Safari. Not merged: the owner reviews first. |

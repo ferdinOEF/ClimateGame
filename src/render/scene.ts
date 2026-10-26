@@ -43,6 +43,8 @@ export interface KhazanScene {
    * units), or null (and no pan) when they are clear already or no pan of up to `maxShift` world units clears them.
    */
   keepClearOf: (points: readonly { x: number; y: number; z: number }[], obstacles: readonly { x: number; y: number; w: number; h: number }[], margin?: number, maxShift?: number) => { dx: number; dz: number } | null;
+  /** Section 34: a drag keeps the camera's target inside this box (the board, with a margin); null lifts it. */
+  setPanBounds: (bounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null) => void;
   /** Offsets the camera by a small amount without moving what it looks at — the storm's impact tremor. Pass (0, 0) to clear. */
   setShake: (x: number, z: number) => void;
   /** Where the camera is currently looking, so effects anchored to the view (the rain volume) can follow it. */
@@ -165,6 +167,11 @@ export function createScene(container: HTMLElement): KhazanScene {
    */
   let target = { x: 0, z: 0 };
   let desiredTarget = { x: 0, z: 0 };
+  let panBounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
+  /** Section 34: keeps the camera's target over the board (with a margin), whatever moved it. */
+  function clampTarget(): void {
+    if (panBounds) desiredTarget = { x: Math.min(panBounds.maxX, Math.max(panBounds.minX, desiredTarget.x)), z: Math.min(panBounds.maxZ, Math.max(panBounds.minZ, desiredTarget.z)) };
+  }
   let distance = CAM_DISTANCE_DEFAULT;
   let desiredDistance = CAM_DISTANCE_DEFAULT;
 
@@ -427,6 +434,8 @@ export function createScene(container: HTMLElement): KhazanScene {
     // overlaps a zoom travel the wrong amount.
     const panScale = desiredDistance / Math.max(1, container.clientHeight);
     desiredTarget = { x: desiredTarget.x - dx * panScale, z: desiredTarget.z - dy * panScale };
+    // Section 34: a wild drag could carry the board off the screen (only Home brought it back).
+    clampTarget();
     pointerDown = { x: e.clientX, y: e.clientY };
   }, { signal });
 
@@ -478,6 +487,8 @@ export function createScene(container: HTMLElement): KhazanScene {
       if (pointer) {
         const anchored = zoomTowardTarget(target, pointer, distance, next);
         desiredTarget = { x: desiredTarget.x + (anchored.x - target.x), z: desiredTarget.z + (anchored.z - target.z) };
+        // Section 34: zooming out hard at a corner carried the board into that corner (only Home brought it back).
+        clampTarget();
       }
     }
     desiredDistance = next;
@@ -635,6 +646,9 @@ export function createScene(container: HTMLElement): KhazanScene {
     focusOn,
     fitTo,
     keepClearOf,
+    setPanBounds: (bounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null) => {
+      panBounds = bounds;
+    },
     frameStats,
     setShake,
     focusPoint,

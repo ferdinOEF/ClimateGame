@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
-import { ElementReactions } from "@render/elementReactions";
+import { ElementReactions, releaseSharedReactionMaterials } from "@render/elementReactions";
 import { HazardOverlayManager, FLOOD_OVERLAY_COLORS, CYCLONE_OVERLAY_COLORS, type HazardKind } from "@render/floodOverlayManager";
 import { CloudLayerManager } from "@render/cloudLayerManager";
 import { BoardSkirtManager } from "@render/boardSkirtManager";
@@ -13,7 +13,7 @@ import { StormSky } from "@render/storm/stormSky";
 import { StormDirector } from "./stormDirector";
 import { StormSound } from "@ui/stormSound";
 import { combinedDepth as combinedDepthAt } from "@core/hazard";
-import { MonumentMeshManager } from "@render/monumentMeshManager";
+import { MonumentMeshManager, releaseSharedMonumentMaterials } from "@render/monumentMeshManager";
 import { landmarkDamageSoFar } from "@core/landmarkDamage";
 import { BuildFlourish } from "@render/buildFlourish";
 import { BuildPuff } from "@render/buildPuff";
@@ -29,8 +29,11 @@ import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { crackedNote, isCracked } from "@core/hazardModel";
 import { axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
+import { TERRAIN_BY_ID } from "@core/terrain";
+import { releaseOverlayPlaceholder } from "@render/mapOverlayShader";
+import { releaseRuinGeometries } from "@render/ruinGeometry";
 import { facingAngle } from "@render/defenceGeometry";
-import { buildingGeometry } from "@render/townGeometry";
+import { buildingGeometry, releaseTownGeometries } from "@render/townGeometry";
 import { resolveMonsoonFlood, resolveCyclone, type HazardResult } from "@core/hazard";
 import { Hud } from "@ui/hud";
 import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
@@ -143,6 +146,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     focusOn,
     fitTo,
     keepClearOf,
+    setPanBounds,
     setShake,
     focusPoint,
     cameraDistance,
@@ -346,7 +350,31 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       })
     : null;
   /** Section 30.12 (festival mode): no input for 3 minutes, not during a storm: back to the menu. */
-  const stopIdle = watchIdle(new IdleReset(() => (options.onIdle ?? options.onExit)(), () => Boolean(stormDirector?.playing || panjim?.isBusy)));
+  // Section 34: the last 30 s before the reset say so; any input cancels it.
+  const idleNote = document.createElement("div");
+  idleNote.className = "idle-warning";
+  // Said once as it appears (polite); the countdown that follows is for the eye only.
+  idleNote.setAttribute("role", "status");
+  idleNote.setAttribute("aria-live", "polite");
+  idleNote.innerHTML = `<span class="idle-warning-text"></span> <span class="idle-warning-count" aria-hidden="true"></span>`;
+  idleNote.hidden = true;
+  container.appendChild(idleNote);
+  const stopIdle = watchIdle(
+    new IdleReset(
+      () => (options.onIdle ?? options.onExit)(),
+      // Section 34: only a storm playing holds the clock; a result card left alone counted as busy and never reset.
+      () => Boolean(stormDirector?.playing),
+      undefined,
+      undefined,
+      (left) => {
+        const wasHidden = idleNote.hidden;
+        idleNote.hidden = left === null;
+        if (left === null) return;
+        if (wasHidden) idleNote.querySelector(".idle-warning-text")!.textContent = "Still there? The game goes back to the menu soon, for the next visitor. Move the mouse or press a key to keep playing.";
+        idleNote.querySelector(".idle-warning-count")!.textContent = `${left} s`;
+      }
+    )
+  );
   /** Section 30.6: people at work in the khazans (transplanters, a net caster). */
   const khazanPeople = redrawnDefences ? new KhazanPeople(scene) : null;
   let wildlifeSourcesAt = -Infinity;
@@ -639,6 +667,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     focusOn(focus.x, focus.z, true);
     openingFit = { width: maxX - minX + Math.sqrt(3), depth: maxZ - minZ + 2 };
     fitTo(openingFit.width, openingFit.depth, true);
+    // Section 34: a drag keeps the board's middle on screen: the target stays over the board (a few tiles of margin).
+    setPanBounds({ minX: minX - 4, maxX: maxX + 4, minZ: minZ - 4, maxZ: maxZ + 4 });
     // Section 22.3: Home (or 0) glides back to this opening view.
     setHome(() => {
       focusOn(focus.x, focus.z, false);
@@ -819,7 +849,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             refreshHud();
             refreshPreview();
           },
-          onRunComplete: (result, then) => finishRun(true, result, then),
+          // Section 34: Panjim counts as completed only when it is cleared (a star in every storm, five of nine), as
+          // its final card says; the Tutorial always completes.
+          onRunComplete: (result, then) => finishRun(level.tutorial === true || result.cleared, result, then),
           revealSkyline: () => {
             // Up and back over the whole city, the light clearing.
             stormImpactActive = false;
@@ -1012,7 +1044,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,
-      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule, heatLeadYears: panjim.heatLeadYears, houseStars: panjim.run.houseStars })
+      panjimHelpHtml({ startYear: panjim.run.config.startYear, endYear: panjim.run.config.endYear, storms: panjim.run.schedule, heatLeadYears: panjim.heatLeadYears, houseStars: panjim.run.houseStars, tutorial: level.tutorial === true })
     );
   /**
    * The step-by-step coach, on the tutorial level only.
@@ -1348,12 +1380,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // them to act on a board that is now read-only.
     tutorialCoach?.dismiss();
 
-    const stats = runTracker.snapshot();
+    const runStats = runTracker.snapshot();
+    // Section 34: a yearly run's storms are resolved from their records, which the old tracker never sees, so the
+    // defences they broke are counted from the board; and a yearly run has no turn budget, so no par.
+    // Broken in a storm (its records, so one rebuilt over or demolished still counts), or broken on the board now.
+    const brokenInStorms = panjim ? [...panjim.run.outcomes.values()].reduce((n, outcome) => n + outcome.zones.reduce((m, zone) => m + zone.failed.length, 0), 0) : 0;
+    const stats = panjimResult ? { ...runStats, defensesDestroyed: Math.max(brokenInStorms, [...state.elements.values()].filter((inst) => inst.broken).length) } : runStats;
     const counts = standingCounts();
     const baseScore = computeLevelScore({
       state,
       stats,
-      parTurns: level.parTurns,
+      parTurns: panjimResult ? 0 : level.parTurns,
       starThresholds: level.starThresholds,
       completed
     });
@@ -2446,7 +2483,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         const tip = hideCost ? tooltipText("buildFree", values) : tooltipText(state.coin >= d.buildCost ? "build" : "buildUnaffordable", values);
         return { id: d.id, name: d.name, buildCost: d.buildCost, kindLabel: kindLabel(d), tip };
       });
-    if (popoverOptions.length === 0) return;
+    if (popoverOptions.length === 0) {
+      // Section 34: a click on ground that takes no build said nothing, and players read it as a lost click.
+      if (panjim) buildPopover.showNote(screen.x, screen.y, "Nothing can be built on this tile.");
+      return;
+    }
     const mode = panjim ? { hideCost } : undefined;
 
     // Panjim (Section 13): cards beside the tile, each with the model's number.
@@ -2467,7 +2508,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         // The year chip first (never covered), then the rest of the HUD.
         { avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".maya-badge:not([hidden])", ".map-corner", ".hud-chrome", ".empty-prompt"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
       );
-      controller.cardsOpened();
+      controller.cardsOpened(coord);
       return;
     }
 
@@ -2532,6 +2573,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   const hoverTargets = [...terrain.raycastTargets, ...monuments.group.children];
   // Section 14 (Panaji): a light outline on the tile under the pointer, when a build is possible there.
   const tileHover = panjim ? new TileHover() : null;
+  /** Section 34: the keyboard's tile cursor is showing; the pointer's hover leaves it alone until the mouse moves. */
+  let keyboardCursor = false;
   if (tileHover) scene.add(tileHover.mesh);
   const pickHover = (now: number): void => {
     lastHoverPick = now;
@@ -2548,7 +2591,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
     hoveredMonument = name;
     mapLabels.setFocus(hoveredMonument ?? selectedMonument);
-    if (tileHover) {
+    if (tileHover && !keyboardCursor) {
       const coord = hit && hit.instanceId !== undefined && !name ? terrain.coordForHit(hit.object, hit.instanceId) : null;
       const buildable = coord && !panjim?.isBusy && !overlayOpen() && state.buildableAt(coord).length > 0;
       tileHover.show(buildable ? coord : null, coord ? terrain.heightAt(coord) : 0);
@@ -2558,10 +2601,96 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   };
   renderer.domElement.addEventListener("pointermove", (event: PointerEvent) => {
     if (event.pointerType !== "mouse" || event.buttons !== 0) return;
+    if (keyboardCursor) {
+      keyboardCursor = false;
+      tileHover?.setKeyboard(false);
+    }
     const rect = renderer.domElement.getBoundingClientRect();
     hoverAt = (hoverAt ?? new THREE.Vector2()).set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     hoverDirty = true;
   });
+  // Section 34: the map by keyboard (a keyboard player could reach every card and dialog but no tile). The board
+  // takes focus with Tab; the arrow keys move a cursor from tile to tile (the hover outline, the camera following),
+  // Enter or Space opens it as a click would. Its tile is said aloud for a screen reader.
+  if (panjim && tileHover) {
+    const canvas = renderer.domElement;
+    canvas.tabIndex = 0;
+    canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles, O jumps to the next tile the objective asks for, Enter opens the tile.");
+    const said = document.createElement("div");
+    said.className = "visually-hidden";
+    said.setAttribute("aria-live", "polite");
+    container.appendChild(said);
+    let cursor: AxialCoord | null = null;
+    const DIRS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+    const showCursor = (follow: boolean): void => {
+      if (!cursor) return;
+      keyboardCursor = true;
+      tileHover.setKeyboard(true);
+      tileHover.show(cursor, terrain.heightAt(cursor));
+      const world = axialToWorld(cursor, 1.0);
+      // The camera glides after the cursor (never a jump, and never on focus alone).
+      if (follow) focusOn(world.x, world.z, false);
+      const tile = state.placed.get(`${cursor.q},${cursor.r}`);
+      const name = monuments.at(cursor)?.name ?? TERRAIN_BY_ID.get(tile?.terrainId ?? "")?.name ?? "Tile";
+      said.textContent = `${name}${state.buildableAt(cursor).length > 0 ? ", you can build here" : ""}`;
+    };
+    // A mouse press never focuses the board (it would show the cursor and take focus back after a card closes):
+    // the keyboard alone brings focus here, with Tab.
+    canvas.addEventListener("mousedown", (event) => event.preventDefault());
+    canvas.addEventListener("focus", () => {
+      if (!canvas.matches(":focus-visible")) return;
+      if (!cursor) {
+        const pick = panjim.run.objective?.picks.find((p) => state.canBuild({ q: Number(p.key.split(",")[0]), r: Number(p.key.split(",")[1]) }, p.elementId));
+        cursor = pick ? { q: Number(pick.key.split(",")[0]), r: Number(pick.key.split(",")[1]) } : { ...levelMap.focus };
+      }
+      showCursor(false);
+    });
+    canvas.addEventListener("blur", () => {
+      if (buildPopover.isOpen) return;
+      keyboardCursor = false;
+      tileHover.setKeyboard(false);
+      tileHover.show(null);
+    });
+    canvas.addEventListener("keydown", (event: KeyboardEvent) => {
+      if (!cursor || panjim.isBusy || overlayOpen()) return;
+      const dir = DIRS[event.key];
+      if (dir) {
+        event.preventDefault();
+        // The neighbour that lies most in the arrow's direction on screen (the camera looks north, up is -z).
+        const here = axialToWorld(cursor, 1.0);
+        let best: { coord: AxialCoord; score: number } | null = null;
+        for (let side = 0; side < 6; side++) {
+          const n = neighbor(cursor, side);
+          if (!state.placed.has(`${n.q},${n.r}`)) continue;
+          const w = axialToWorld(n, 1.0);
+          const dx = w.x - here.x;
+          const dz = w.z - here.z;
+          const score = (dx * dir[0] + dz * dir[1]) / Math.hypot(dx, dz);
+          if (score > 0.3 && (!best || score > best.score)) best = { coord: n, score };
+        }
+        if (best) {
+          cursor = best.coord;
+          showCursor(true);
+        }
+      } else if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openTilePopover(cursor);
+      } else if ((event.key === "o" || event.key === "O") && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        // Section 34: a keyboard player took 10 to 30 arrow presses to reach a pulsing tile; O jumps to the next one:
+        // the tiles pulsing on the board now (the objective's, Get ahead's, the Tutorial's), whatever chose them.
+        event.preventDefault();
+        const open = [...objectivePulse.tiles].map((key) => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }));
+        if (open.length === 0) {
+          said.textContent = "No tile left for the objective.";
+          return;
+        }
+        const at = open.findIndex((p) => p.q === cursor!.q && p.r === cursor!.r);
+        const next = open[(at + 1) % open.length];
+        cursor = { q: next.q, r: next.r };
+        showCursor(true);
+      }
+    });
+  }
   renderer.domElement.addEventListener("pointerleave", () => {
     hoverAt = null;
     tileHover?.show(null);
@@ -2593,12 +2722,16 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   renderer.domElement.addEventListener("click", (event: MouseEvent) => {
     if (wasDrag()) return; // a pan, not a click — don't also open a popover at the drag's end point
     if (buildPopover.isOpen) return; // shouldn't be reachable — the backdrop intercepts this click first
+    openTileAt(event.clientX, event.clientY);
+  });
+  /** The tile (or creature) under a screen point, opened as a click on it would. */
+  function openTileAt(clientX: number, clientY: number): void {
     if (panjim?.isBusy) return; // a time-lapse is playing; the click skips it instead
     if (sessionFinished) return; // the run is over and the shell is showing its results screen — the board is read-only now
 
     const rect = renderer.domElement.getBoundingClientRect();
-    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera(pointer, camera);
     // Panjim 2050: a tap on a creature itself spots it for the Field Guide
@@ -2618,7 +2751,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (!coord) return;
 
     openTilePopover(coord);
-  });
+  }
 
   // "Leave Panjim?" on Esc (Section 12). Panjim only: the Tutorial keeps its behaviour.
   const leaveConfirm = panjim ? new LeaveConfirm(container) : null;
@@ -2653,6 +2786,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     return top !== null && top.name !== "build";
   });
   const keydownAbort = new AbortController();
+  // Section 34: a menu left open through a resize no longer pointed at its tile (and could be cut off): it closes.
+  window.addEventListener("resize", () => buildPopover.hide(), { signal: keydownAbort.signal });
   document.addEventListener(
     "keydown",
     (event: KeyboardEvent) => {
@@ -3146,6 +3281,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     townDecor?.dispose();
     ambientLife?.dispose();
     tooltips.dispose();
+    // Section 34: before the renderer goes, so it drops the listeners it put on the materials shared across sessions.
+    releaseSharedReactionMaterials();
+    releaseSharedMonumentMaterials();
+    releaseRuinGeometries();
+    releaseTownGeometries();
+    releaseOverlayPlaceholder();
     disposeScene();
 
     // The session owns every DOM node it appended to `container` (HUD,

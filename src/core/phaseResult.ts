@@ -51,6 +51,8 @@ export interface PhaseResult {
   objectiveComplete?: boolean;
   /** Section 25.2: the biodiversity line, where the level's stars count it. */
   nature?: NatureLine;
+  /** Section 34: the stars the homes alone would give (biodiversity not asked), for the headline. */
+  homesStars?: number;
   /** Section 26.3: homes lost that the water alone would have left standing: the wind took them. */
   windLost: number;
   /** Section 30.9: with the objective done but fewer than 3 stars, one line on what stopped the third (a game rule). */
@@ -197,9 +199,13 @@ export function shortOfThree(stars: number, saved: number, total: number, thresh
   return null;
 }
 
-/** Card 1's headline, by stars. */
-export function resultHeadline(stars: number): string {
+/**
+ * Card 1's headline, by stars. Section 34: when biodiversity held the stars below what the homes alone earned
+ * (`homesStars`), it says so, so saving 8 of 9 homes never reads as a heavy hit.
+ */
+export function resultHeadline(stars: number, homesStars = stars): string {
   if (stars >= 3) return "Your city came through.";
+  if (homesStars > stars) return homesStars >= 3 ? "Your homes held, but nature paid for it." : "Most of your city held, but nature paid for it.";
   if (stars === 2) return "Most of your city held.";
   return "Your city took a heavy hit.";
 }

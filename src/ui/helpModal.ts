@@ -1,3 +1,4 @@
+import { trapFocus } from "./focusTrap";
 /**
  * The in-game "How to Play" reference. Static content, no game-state
  * coupling — unlike EraEndScreen (which needs an onStartNewEra callback
@@ -32,7 +33,11 @@ export class HelpModal {
 
     this.backdrop.appendChild(this.card);
     container.appendChild(this.backdrop);
+    trapFocus(this.card, () => this.isOpen);
   }
+
+  /** Section 34: where focus was when Help opened, given back when it closes. */
+  private returnFocus: HTMLElement | null = null;
 
   get isOpen(): boolean {
     return !this.backdrop.hidden;
@@ -46,10 +51,16 @@ export class HelpModal {
 
   show(): void {
     this.backdrop.hidden = false;
+    // Section 34: focus goes into the card, so Esc and Tab act on Help, not on the "?" behind it.
+    this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.card.querySelector<HTMLElement>(".help-close")?.focus({ preventScroll: true });
   }
 
   hide(): void {
+    const had = this.card.contains(document.activeElement);
     this.backdrop.hidden = true;
+    if (had && this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
+    this.returnFocus = null;
   }
 }
 

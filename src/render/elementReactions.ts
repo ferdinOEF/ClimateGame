@@ -124,6 +124,21 @@ function particleGroup(count: number, radius: number, color: string): THREE.Mesh
 let windowGlowGeometry: THREE.BoxGeometry | null = null;
 let windowGlowMaterial: THREE.MeshBasicMaterial | null = null;
 
+/**
+ * Section 34 (a leak found by heap snapshots): a material shared across sessions keeps a "dispose" listener from every
+ * renderer that drew it, and through it that renderer's canvas and its whole session (about 2 MB a run). Disposing
+ * the shared materials as a session ends lets each renderer drop its listener; the next session uploads them afresh.
+ */
+export function releaseSharedReactionMaterials(): void {
+  for (const material of creatureMaterialCache.values()) material.dispose();
+  particleMaterial?.dispose();
+  windowGlowMaterial?.dispose();
+  // The cached geometries too: a renderer keeps each drawn attribute's GPU buffer in a WeakMap keyed by it, and a
+  // geometry that outlives the session keeps that buffer, its WebGL context and so the old canvas reachable.
+  for (const geometry of creatureGeometryCache.values()) geometry.dispose();
+  for (const geometry of particleGeometryCache.values()) geometry.dispose();
+}
+
 function windowGlow(): THREE.Mesh {
   windowGlowGeometry ??= new THREE.BoxGeometry(0.09, 0.11, 0.012);
   windowGlowMaterial ??= new THREE.MeshBasicMaterial({ color: "#f4d9a6" });
