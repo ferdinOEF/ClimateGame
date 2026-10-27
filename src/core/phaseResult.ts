@@ -21,9 +21,14 @@ import type { StormRecord } from "./stormRecord";
  *
  * Pure: no DOM, no renderer.
  */
+/** Section 34b.5: the monument kinds that are buildings; a beach, a garden or a viewpoint is not one (nor a locality). */
+export const BUILDING_KINDS: ReadonlySet<string> = new Set(["church", "palace", "market", "institution", "temple", "mosque"]);
+
 export interface PlaceResult {
   name: string;
   stood: boolean;
+  /** Section 34b.5: a building (a church, a school...); a place that is not one (a beach, a garden, a locality) reads "Flooded", not "Damaged". */
+  building?: boolean;
 }
 
 export interface DefenceResult {
@@ -59,6 +64,8 @@ export interface PhaseResult {
   shortOfThree?: string;
   /** Section 30.11 bug 1: a damaged place a seawall's end push reached (a game rule), named. */
   pushNote?: string;
+  /** Section 34b.5: each defence that broke in this storm, by the build card's name, and whether it had cracked with age. */
+  broken?: { elementId: string; name: string; cracked: boolean }[];
 }
 
 /** Section 25.2: the card's second line: the board's biodiversity change since the run began, and why. */

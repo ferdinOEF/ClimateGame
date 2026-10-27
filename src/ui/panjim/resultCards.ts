@@ -6,8 +6,8 @@ import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
 
 /**
  * The end-of-phase result cards (Section 9): after each storm, a short
- * sequence in a modal. Each card's button names what comes next; Back on
- * every card after the first; Enter goes on, Esc jumps to the last card.
+ * sequence in a modal. Each card's button names what comes next; Previous card
+ * on every card after the first; Enter goes on, Esc jumps to the last card.
  * Focus stays inside while it is open, and nothing else (Maya's bubble, the
  * map's labels) draws over it: it is above them and in their obstacle lists.
  * The only motion is a short fade between cards, none with reduced motion.
@@ -44,7 +44,7 @@ function starsHtml(stars: number): string {
  * "N of M homes saved" with a bar. Section 22.4 (owner decision): M is the homes still standing when the storm hit;
  * the ones an earlier storm ruined are their own small line, so a card never reads "0 of M" for earlier losses.
  */
-export function homesHtml(saved: number, total: number, lostBefore = 0): string {
+export function homesHtml(saved: number, total: number, lostBefore = 0, paths: "its" | "the storms'" = "its"): string {
   const pct = total > 0 ? Math.round((saved / total) * 100) : 100;
   // Section 14: said in words when nothing in the path was lost.
   const all = total > 0 && saved >= total ? `<div class="result-homes-all">Every home in the path survived</div>` : "";
@@ -52,7 +52,8 @@ export function homesHtml(saved: number, total: number, lostBefore = 0): string 
   const text = total === 0 && lostBefore > 0 ? "No home in its path was still standing" : `<b>${saved}</b> of ${total} homes saved`;
   // Section 34: players read the total as the top bar's Homes at risk (the homes the storm would take); it is every
   // home standing in the storm's path, so it says so.
-  const path = total > 0 && saved < total ? `<div class="result-homes-before result-homes-path">${total} homes stood in its path; ${total - saved} ${total - saved === 1 ? "was" : "were"} lost</div>` : "";
+  // Section 34b.5: the final card counts every storm's path ("125 homes stood in the storms' paths; 20 were lost").
+  const path = total > 0 && saved < total ? `<div class="result-homes-before result-homes-path">${total} homes stood in ${paths === "its" ? "its path" : "the storms' paths"}; ${total - saved} ${total - saved === 1 ? "was" : "were"} lost</div>` : "";
   return `<div class="result-homes">
     ${all}
     <div class="result-homes-text">${text}</div>
@@ -79,13 +80,25 @@ export function cardPlaces(places: PhaseResult["places"]): { shown: PhaseResult[
   return { shown: places.slice(0, MAX_PLACES), more: rest.length === 0 ? null : `+${rest.length} more ${restDamaged === 0 ? "stood" : `(${restDamaged} damaged)`}` };
 }
 
+/** A place's chip: "Stood", "Damaged" for a building, "Flooded" for a place that is not one (Section 34b.5: a beach read "Damaged"). */
+export function placeWord(place: { stood: boolean; building?: boolean }): string {
+  return place.stood ? "Stood" : place.building === false ? "Flooded" : "Damaged";
+}
+
+/** Section 34b.5: a defence row of the other storm's kind gets the Tutorial's note ("A cyclone defence; this was a river flood"). */
+export function otherKindNote(targets: readonly string[], storm: string): string | null {
+  if (storm !== "cyclone" && storm !== "flood") return null;
+  if (targets.includes(storm) || targets.length === 0) return null;
+  return `A ${targets.includes("flood") ? "flood" : "cyclone"} defence; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
+}
+
 /** Card 1: the storm's result. */
 export function resultCard(result: PhaseResult): HTMLElement {
   const { shown, more: moreText } = cardPlaces(result.places);
   const more = moreText ? `<li class="result-places-more">${esc(moreText)}</li>` : "";
   const places = result.places.length
     ? `<ul class="result-places">${shown
-        .map((p) => `<li><span class="result-place-name">${esc(p.name)}</span><span class="result-chip ${p.stood ? "stood" : "damaged"}">${p.stood ? "Stood" : "Damaged"}</span></li>`)
+        .map((p) => `<li><span class="result-place-name">${esc(p.name)}</span><span class="result-chip ${p.stood ? "stood" : "damaged"}">${placeWord(p)}</span></li>`)
         .join("")}${more}</ul>`
     : "";
   return el(`<div class="result-card-body">
@@ -129,14 +142,28 @@ function rowValue(d: { homes: number; shared?: boolean }): string {
   return d.homes === 0 && d.shared ? `<span class="result-row-value shared">Shared the work</span>` : `<span class="result-row-value">${d.homes}</span>`;
 }
 
-/** Card 2: what protected the homes, one row per kind of defence built in the phase. */
-export function defencesCard(result: PhaseResult, mayaLine: CardLine): HTMLElement {
+/**
+ * Card 2: what protected the homes, one row per kind of defence built in the phase. Section 34b.5: a row of the other
+ * storm's kind says so (`targets`: what each defence answers, `storm`: "cyclone", "flood" or "compound"), and each
+ * defence that broke in this storm has a row of its own after them.
+ */
+export function defencesCard(result: PhaseResult, mayaLine: CardLine, targets: (elementId: string) => readonly string[] = () => [], storm = ""): HTMLElement {
   const most = Math.max(1, ...result.defences.map((d) => d.homes));
-  const rows = result.defences.length
+  const stormWord = storm === "cyclone" ? "cyclone" : "flood";
+  const broken = (result.broken ?? [])
+    .map(
+      (b) =>
+        `<li class="result-row-broken" data-defence="${esc(b.elementId)}"><span class="result-row-name">${esc(b.name)}</span><span class="result-row-value broken">Broke in this ${stormWord}</span>${b.cracked ? `<span class="result-row-why">Cracked with age</span>` : ""}</li>`
+    )
+    .join("");
+  const rows = result.defences.length || broken
     ? `<p class="result-sub">Homes that would have been lost without each defence. Defences cover for each other, so the rows need not add up to the homes saved.</p>
        <ul class="result-rows">${result.defences
-         .map((d) => `<li><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span>${rowValue(d)}</li>`)
-         .join("")}</ul>`
+         .map((d) => {
+           const why = otherKindNote(targets(d.elementId), storm);
+           return `<li data-defence="${esc(d.elementId)}"><span class="result-row-name">${esc(d.name)}</span><span class="result-row-bar" aria-hidden="true"><span style="width:${Math.round((d.homes / most) * 100)}%"></span></span>${rowValue(d)}${why ? `<span class="result-row-why">${esc(why)}</span>` : ""}</li>`;
+         })
+         .join("")}${broken}</ul>`
     : `<p class="result-sub">Nothing stood in the way this time.</p>`;
   return el(`<div class="result-card-body">
     <div class="result-eyebrow">${esc(result.eyebrow)}</div>
@@ -230,7 +257,7 @@ export function finalCard(
   return el(`<div class="result-card-body">
     <h2 class="result-title">Panjim, 2026 to 2050</h2>
     <ul class="result-phases">${phases.map((p) => `<li><span>${esc(p.label)}</span><span><b>${p.saved}</b> of ${p.total} homes saved</span></li>`).join("")}</ul>
-    ${homesHtml(saved, total)}
+    ${homesHtml(saved, total, 0, "the storms'")}
     ${nature ? natureHtml(nature.line) : ""}
     <div class="result-stars-total" role="img" aria-label="${result.totalStars} of ${most} stars"><b>${result.totalStars}</b> of ${most} stars</div>
     <div class="result-clear ${result.cleared ? "cleared" : "not-cleared"}">${result.cleared ? "Panjim cleared" : "Not cleared yet"}</div>
@@ -289,7 +316,8 @@ export class ResultCards {
           const back = document.createElement("button");
           back.type = "button";
           back.className = "result-back";
-          back.textContent = "Back";
+          // Section 34b.5: "Back" sat beside "Back to the menu" and read as one.
+          back.textContent = "Previous card";
           back.addEventListener("click", () => {
             index--;
             render();

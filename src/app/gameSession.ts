@@ -984,7 +984,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           flashTiles: (tiles) => objectivePulse.flash([...tiles], (coord) => terrain.heightAt(coord), performance.now()),
           landmarks: levelMap.landmarks,
           localities: levelMap.localities,
-          monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
+          monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r, kind: m.kind })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           requestLeave: () => askLeave(true),
           requestRestart: () => askRestart(true),
@@ -2456,7 +2456,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
       const economy = !panjim || panjim.run.economyEnabled;
       buildPopover.showInfo(screen.x, screen.y, {
-        name: def.name,
+        // Section 34b.5: on Panjim, the build card's name ("Small dam", not "Small Dam").
+        name: panjim ? (CARD_NAME[def.id] ?? def.name) : def.name,
         // No NBS / ENGINEERED / BUILDING tags on Panjim (Section 13).
         kindLabel: panjim ? undefined : kindLabel(def),
         // With coins off, what a thing earns is not shown: no money anywhere. Section 30.11 bug 6: on Panjim a

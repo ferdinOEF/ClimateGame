@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { insertLine, type Maya, type MayaLine } from "../src/ui/panjim/maya";
 import { MayaDirector, phaseLine } from "../src/app/mayaDirector";
 import { buildHoverLine, prepProgress, rowMissNote } from "../src/core/prep";
+import { BUILDING_KINDS, type PhaseResult } from "../src/core/phaseResult";
+import { ELEMENT_BY_ID } from "../src/core/elements";
+import { CARD_NAME } from "../src/ui/panjim/defenceCards";
+import { defencesCard, homesHtml, otherKindNote, placeWord, resultCard } from "../src/ui/panjim/resultCards";
 
 /**
  * Section 34b: the fixes from the owner's two live play tests (24 and 27 October). Each step's unit checks; the browser
@@ -260,5 +264,97 @@ describe("34b.4: rows count the place they name", () => {
     expect(buildHoverLine({ saved: ["1,1"], added: [] })).toBeNull();
     expect(buildHoverLine({ saved: ["1,1"], added: ["2,2"] })).toBeNull();
     expect(buildHoverLine({ saved: [], added: ["2,2"] })).toBe("This saves no home from the next storm, and puts some at risk");
+  });
+});
+
+describe("34b.5: the result cards tell the whole story", () => {
+  /** The cards build their HTML with `document`; here a stand-in hands back the markup they wrote. */
+  const realDocument = (globalThis as { document?: unknown }).document;
+  beforeAll(() => {
+    (globalThis as { document?: unknown }).document = {
+      createElement: () => {
+        let html = "";
+        return {
+          set innerHTML(value: string) {
+            html = value;
+          },
+          get firstElementChild() {
+            return { outerHTML: html, text: html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() };
+          }
+        };
+      }
+    };
+  });
+  afterAll(() => {
+    (globalThis as { document?: unknown }).document = realDocument;
+  });
+  const card = (el: unknown): { outerHTML: string; text: string } => el as { outerHTML: string; text: string };
+  const result = (extra: Partial<PhaseResult> = {}): PhaseResult => ({
+    challengeId: "c2-flood",
+    eyebrow: "2040, Flood",
+    stars: 2,
+    homesSaved: 40,
+    homesTotal: 50,
+    homesLostBefore: 0,
+    places: [],
+    defences: [
+      { elementId: "mangrove", name: "Mangrove", homes: 6 },
+      { elementId: "sandy_vegetation", name: "Pandanus", homes: 0 }
+    ],
+    windLost: 0,
+    ...extra
+  });
+  const targets = (id: string): readonly string[] => ELEMENT_BY_ID.get(id)?.targetsHazards ?? [];
+
+  it("card 2 has a row for each defence that broke in this storm, and says when it had cracked with age", () => {
+    const html = card(defencesCard(result({ broken: [{ elementId: "small_dam", name: "Small dam", cracked: true }] }), null, targets, "flood")).text;
+    expect(html).toContain("Small dam Broke in this flood Cracked with age");
+    const cyclone = card(defencesCard(result({ broken: [{ elementId: "seawall", name: "Seawall", cracked: false }] }), null, targets, "cyclone")).text;
+    expect(cyclone).toContain("Seawall Broke in this cyclone");
+    expect(cyclone).not.toContain("Cracked with age");
+  });
+
+  it("names each defence as its build card does: Small dam, never Small Dam", () => {
+    expect(CARD_NAME.small_dam).toBe("Small dam");
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    expect(controller).toContain("defences: phase.defences.map((d) => ({ ...d, name: CARD_NAME[d.elementId] ?? d.name })),");
+    expect(readFileSync("src/app/gameSession.ts", "utf8")).toContain("name: panjim ? (CARD_NAME[def.id] ?? def.name) : def.name,");
+  });
+
+  it("a row of the other storm's kind carries the Tutorial's note", () => {
+    const flood = card(defencesCard(result(), null, targets, "flood")).text;
+    expect(flood).toContain("Pandanus 0 A cyclone defence; this was a river flood");
+    expect(flood).not.toMatch(/Mangrove 6 A /);
+    expect(otherKindNote(targets("khazan"), "cyclone")).toBe("A flood defence; this was a cyclone");
+    expect(otherKindNote(targets("small_dam"), "cyclone")).toBe("A flood defence; this was a cyclone");
+    // The 2050 storm is both: no row is the wrong kind.
+    expect(otherKindNote(targets("khazan"), "compound")).toBeNull();
+  });
+
+  it("the final card counts every storm's path", () => {
+    expect(homesHtml(105, 125, 0, "the storms'")).toContain("125 homes stood in the storms' paths; 20 were lost");
+    expect(homesHtml(46, 57)).toContain("57 homes stood in its path; 11 were lost");
+  });
+
+  it("a place that is not a building reads Flooded", () => {
+    expect(placeWord({ stood: false, building: false })).toBe("Flooded");
+    expect(placeWord({ stood: false, building: true })).toBe("Damaged");
+    expect(placeWord({ stood: true, building: false })).toBe("Stood");
+    expect(BUILDING_KINDS.has("beach")).toBe(false);
+    expect(BUILDING_KINDS.has("institution")).toBe(true);
+    const html = card(resultCard(result({ places: [{ name: "Miramar Beach", stood: false, building: false }, { name: "Kala Academy", stood: false, building: true }] }))).text;
+    expect(html).toContain("Miramar Beach Flooded");
+    expect(html).toContain("Kala Academy Damaged");
+  });
+
+  it("Back on the cards reads Previous card; Speed up's words are a tooltip, not a label", () => {
+    const cards = readFileSync("src/ui/panjim/resultCards.ts", "utf8");
+    expect(cards).toContain(`back.textContent = "Previous card";`);
+    expect(cards).not.toContain(`back.textContent = "Back";`);
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    expect(controller).toContain("button.title = SPEED_UP_WHY;");
+    expect(controller).toContain(`button.setAttribute("aria-describedby", why.id);`);
+    expect(controller).not.toContain("dataset.hint");
+    expect(css).not.toContain("data-hint");
   });
 });

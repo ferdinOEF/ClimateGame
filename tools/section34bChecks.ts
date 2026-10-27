@@ -317,6 +317,58 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.5: Speed up hidden in the replay, its words a tooltip; Previous card; the forecast card's labels apart ----
+STEPS.push([
+  "34b.5",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    // To the storm's year, then the build that brings the 2030 cyclone, played as a player sees it.
+    for (let i = 0; i < 4; i++) {
+      await page.evaluate(`window.__panjimScenarioForTest("pass-year")`);
+      await page.waitForTimeout(900);
+    }
+    const tile = (await page.evaluate(`(() => { const c = window.__panjimForTest; for (const [key, t] of c.run.state.placed) { if (c.run.state.elements.has(key)) continue; const o = c.run.state.buildableAt(t.coord); if (o.length && t.coord.q > 12) return { q: t.coord.q, r: t.coord.r, id: o[0].id }; } return null; })()`)) as { q: number; r: number; id: string } | null;
+    check(tile !== null, "a tile away from the storm for the last build");
+    if (tile) await page.evaluate(`window.__panjimForTest.build({ q: ${tile.q}, r: ${tile.r} }, "${tile.id}")`);
+    // While the storm plays: Speed up shows, with its words as a tooltip, no label over it.
+    await page.waitForFunction(`!!document.querySelector(".speed-up:not([hidden])")`, undefined, { timeout: 30000 }).catch(() => undefined);
+    const speed = (await page.evaluate(`(() => { const b = document.querySelector(".speed-up"); if (!b) return null; const after = getComputedStyle(b, "::after").content; return { title: b.title, described: document.getElementById(b.getAttribute("aria-describedby") || "")?.textContent ?? null, after }; })()`)) as { title: string; described: string | null; after: string } | null;
+    check(!!speed && speed.title === "It hurries the storm" && speed.described === "It hurries the storm" && (speed.after === "none" || speed.after === "normal"), `Speed up's words are a tooltip, not a label (${JSON.stringify(speed)})`);
+    // The replay card: Speed up is gone while it is up.
+    await page.waitForFunction(`!!document.querySelector(".replay-card:not([hidden])")`, undefined, { timeout: 90000 }).catch(() => undefined);
+    await page.waitForTimeout(400);
+    const replay = (await page.evaluate(`(() => ({ replay: !!document.querySelector(".replay-card:not([hidden])"), speed: !!document.querySelector(".speed-up:not([hidden])") }))()`)) as { replay: boolean; speed: boolean };
+    check(replay.replay && !replay.speed, `with the replay card up, Speed up is hidden (${JSON.stringify(replay)})`);
+    await page.screenshot({ path: path.join(ctx.out, `34b5-replay-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+    await page.mouse.click(ctx.W / 2, ctx.H - 40);
+    await page.waitForFunction(`!!document.querySelector(".result-cards:not([hidden])")`, undefined, { timeout: 60000 }).catch(() => undefined);
+    await page.locator(".result-next").click();
+    await page.waitForTimeout(500);
+    check(((await page.locator(".result-back").textContent()) ?? "") === "Previous card", "card 2's way back reads Previous card");
+    await page.screenshot({ path: path.join(ctx.out, `34b5-card2-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+    for (let i = 0; i < 3 && (await page.locator(".result-cards:not([hidden])").count()); i++) {
+      await page.locator(".result-next").click();
+      await page.waitForTimeout(400);
+    }
+    // The 2040 flood to its cards; card 3 is the 2050 forecast.
+    await page.waitForTimeout(1500);
+    await page.evaluate(`window.__panjimScenarioForTest("to-results")`);
+    for (let i = 0; i < 2; i++) {
+      await page.locator(".result-next").click();
+      await page.waitForTimeout(500);
+    }
+    const labels = (await page.evaluate(`[...document.querySelectorAll(".result-cards .cone-preview-place text")].map((t) => { const r = t.getBoundingClientRect(); return { name: t.textContent, x: r.left, y: r.top, w: r.width, h: r.height }; })`)) as { name: string; x: number; y: number; w: number; h: number }[];
+    const clash = labels.flatMap((a, i) => labels.slice(i + 1).filter((b) => intersects(a, b)).map((b) => `${a.name} / ${b.name}`));
+    check(labels.length > 0 && clash.length === 0, `the 2050 forecast card's names never overlap (${labels.map((l) => l.name).join(", ")}${clash.length ? `; overlapping: ${clash.join(", ")}` : ""})`);
+    const map = await rectOf(page, ".result-cards .cone-preview-map");
+    // A name left off (it would sit on one before it, even under its own dot) is not drawn: 0 by 0.
+    const outside = map ? labels.filter((l) => l.w > 0).filter((l) => l.x < map.x - 1 || l.y < map.y - 1 || l.x + l.w > map.x + map.w + 1 || l.y + l.h > map.y + map.h + 1) : labels;
+    check(outside.length === 0, `and each sits inside the map (${labels.map((l) => `${l.name} ${Math.round(l.x)},${Math.round(l.y)} ${Math.round(l.w)}x${Math.round(l.h)}`).join("; ")}; map ${JSON.stringify(map)})`);
+    await page.screenshot({ path: path.join(ctx.out, `34b5-forecast-2050-${ctx.tag}.jpg`), type: "jpeg", quality: 80 });
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

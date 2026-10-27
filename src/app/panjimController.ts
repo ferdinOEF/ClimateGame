@@ -24,13 +24,14 @@ import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome, starsForHouses } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
 import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
-import { biodiversityByKind, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
+import { biodiversityByKind, BUILDING_KINDS, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
 import { FinaleCard } from "@ui/panjim/finaleCard";
 import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIndex";
 import { axialToWorld, neighbors } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
+import { isCracked } from "@core/hazardModel";
 import { playSound } from "@ui/audioHooks";
 import { buildHeatView, hazardsOf, HEAT_LEAD_YEARS, type Exposure, type HeatViewTile } from "@core/exposure";
 import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
@@ -183,7 +184,7 @@ export interface PanjimHost {
   /** The map's locality labels, for an objective's area of named localities (Section 16.5). */
   localities: readonly { name: string; q: number; r: number }[];
   /** The map's monuments (named buildings), for the result cards' places. */
-  monuments: readonly { name: string; q: number; r: number }[];
+  monuments: readonly { name: string; q: number; r: number; kind?: string }[];
   /** True while the build menu or the opening brief is open: Maya stays quiet. */
   uiBlocked: () => boolean;
   /** ☰ → Leave Panjim (Section 16 B3): asks first, as Esc does. */
@@ -195,6 +196,9 @@ export interface PanjimHost {
   /** The session's tooltip manager, for this run's own controls. */
   tooltips: Tooltips;
 }
+
+/** Section 34b.5: what Speed up does, as its tooltip. */
+export const SPEED_UP_WHY = "It hurries the storm";
 
 export class PanjimController {
   readonly run: ActionRun;
@@ -1060,6 +1064,22 @@ export class PanjimController {
     return [...names];
   }
 
+  /**
+   * Section 34b.5: each defence that broke in `challenge` (the storm record's failed structures, drawn broken on the
+   * board after it), by its build card's name, and whether it had cracked with age (its card said it would break).
+   */
+  private brokenIn(challenge: ScheduledChallenge, record: StormRecord): { elementId: string; name: string; cracked: boolean }[] {
+    const keys = [...new Set(record.outcome.zones.flatMap((zone) => zone.failed))];
+    return keys.flatMap((key) => {
+      const inst = this.host.state.elements.get(key);
+      const elementId = inst?.elementId ?? this.preChallengeIds.get(key);
+      const def = elementId ? ELEMENT_BY_ID.get(elementId) : undefined;
+      if (!elementId || !def) return [];
+      const cracked = !!inst && isCracked(def, { builtOnTurn: inst.builtOnTurn, broken: false }, challenge.turn);
+      return [{ elementId, name: CARD_NAME[elementId] ?? def.name, cracked }];
+    });
+  }
+
   /** The named places the result cards can list: the map's landmarks and monuments. */
   private places(): Place[] {
     return [...this.host.landmarks, ...this.host.monuments];
@@ -1081,7 +1101,16 @@ export class PanjimController {
       bioThree !== undefined
         ? { target: bioThree, since: this.run.config.startYear, at: stormStars?.bioAtEnd ? `at the end of ${challenge.year}` : undefined, byKind: biodiversityByKind(this.host.state.elements.values()) }
         : undefined;
-    const base = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature);
+    const phase = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature);
+    // Section 34b.5: the cards name each defence as its build card does ("Small dam"); a place that is not a building
+    // reads "Flooded"; each defence that broke in this storm gets a row of its own.
+    const buildings = new Set(this.host.monuments.filter((m) => m.kind && BUILDING_KINDS.has(m.kind)).map((m) => m.name));
+    const base = {
+      ...phase,
+      defences: phase.defences.map((d) => ({ ...d, name: CARD_NAME[d.elementId] ?? d.name })),
+      places: phase.places.map((p) => ({ ...p, building: buildings.has(p.name) })),
+      broken: this.brokenIn(challenge, record)
+    };
     const short = stormStars ? shortOfThree(base.stars, base.homesSaved, base.homesTotal, stormStars, record.outcome.biodiversityChange) : null;
     const pushed = this.pushedPlaces(base.places);
     const result = {
@@ -1112,7 +1141,7 @@ export class PanjimController {
       // Section 28.1 (owner decision): back to the start of this storm's build years, no confirm.
       { body: resultCard(result), button: "See what protected your city", alt: "Try this storm again" },
       // Section 17c: with Maya hidden, the cards carry no line of hers.
-      { body: defencesCard(result, SHOW_MAYA && top ? results.byDefence[top.elementId] ?? null : null), button: nextLabel(next) }
+      { body: defencesCard(result, SHOW_MAYA && top ? results.byDefence[top.elementId] ?? null : null, (id) => ELEMENT_BY_ID.get(id)?.targetsHazards ?? [], challenge.kind), button: nextLabel(next) }
     ];
     if (next) {
       cards.push({
@@ -1215,6 +1244,15 @@ export class PanjimController {
     button.className = "speed-up";
     button.hidden = true;
     button.innerHTML = `<span class="speed-up-icon" aria-hidden="true">\u25B6\u25B6</span><span>Speed up</span>`;
+    // Section 34b.5: what it does is a hover tooltip and a description for a screen reader, never a label on screen
+    // (players read "It hurries the storm" as the button's own name).
+    button.title = SPEED_UP_WHY;
+    const why = document.createElement("span");
+    why.id = "speed-up-why";
+    why.className = "visually-hidden";
+    why.textContent = SPEED_UP_WHY;
+    button.setAttribute("aria-describedby", why.id);
+    button.appendChild(why);
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       // A board click: the storm's own listener takes a pointerdown on the page; the replay ends at once.
@@ -1229,7 +1267,6 @@ export class PanjimController {
   private showSpeedUp(on: boolean): void {
     this.speedUp.hidden = !on;
     this.speedUp.classList.toggle("coach-pulse", on && this.tutorial);
-    this.speedUp.dataset.hint = on && this.tutorial ? "It hurries the storm" : "";
   }
 
   /**
@@ -1261,7 +1298,8 @@ export class PanjimController {
       }, { q: 0, r: 0 });
       this.host.focusCamera({ q: Math.round(sum.q / focusKeys.length), r: Math.round(sum.r / focusKeys.length) }, true, 1.4);
     }
-    this.showSpeedUp(steps.length > 0);
+    // Section 34b.5: the replay card has its own Skip; Speed up stayed on screen under it, beside it.
+    this.showSpeedUp(false);
     // Section 30.11 bug 11: the card moves off the tiles it describes (once drawn, the camera framed).
     const keys = [...new Set(steps.flatMap((step) => [...step.hit, ...step.dry, ...step.highlight]))];
     window.setTimeout(() => {
