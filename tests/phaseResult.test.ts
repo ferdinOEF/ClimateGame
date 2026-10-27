@@ -126,7 +126,8 @@ describe("the result cards' words", () => {
     // Section 26.3 (owner decision): the one wind line, the homes the wind alone took, and pandanus as a game rule.
     const windLines = source.split("\n").filter((l) => /\bwind\b/i.test(l) && !/^\s*(\/\/|\*|\/\*\*)/.test(l));
     expect(windLines.length).toBeGreaterThan(0);
-    for (const l of windLines) expect(l, l).toMatch(/windHtml|The wind alone took|In this game pandanus/);
+    // Section 34b.13 (owner request): card 2 after 2050 may say most of the homes lost stood in the wind at Campal.
+    for (const l of windLines) expect(l, l).toMatch(/windHtml|The wind alone took|In this game pandanus|result\.windNote|^\s*\$\{wind\}$/);
   });
 
   it("puts both game rules on the Sources screen", async () => {
