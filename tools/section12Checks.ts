@@ -77,7 +77,7 @@ const text = (page: Page, selector: string): Promise<string> => page.evaluate(`(
 const outline = (page: Page): Promise<number> => page.evaluate("window.__areaOutlineForTest.tileCount") as Promise<number>;
 
 async function open(page: Page, url: string): Promise<void> {
-  await page.goto(`${url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForTimeout(1500);
 }
@@ -236,7 +236,7 @@ async function main(): Promise<void> {
         await page.waitForTimeout(2500);
         check(!page.url().includes("/play/l01"), `6: Leave goes (${page.url().replace(server.url, "")})`);
         // 7: the level card.
-        await page.goto(`${server.url}/#/levels`, { waitUntil: "domcontentloaded" });
+        await page.goto(`${server.url}/?qa=1#/levels`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2500);
         const card = (await page.evaluate(`Array.from(document.querySelectorAll(".level-card")).map(function (e) { return e.innerText.replace(/\\s+/g, " "); }).join(" | ")`)) as string;
         check(!/Continue from/.test(card), `7 (Section 28.2): the level card never says "Continue from": "${card.slice(0, 160)}"`);

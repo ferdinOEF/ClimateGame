@@ -463,6 +463,27 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.10: no test hooks or telemetry lines on the production build without ?qa=1; both with it ----
+STEPS.push([
+  "34b.10",
+  async (ctx) => {
+    for (const qa of [false, true]) {
+      const page = await newPage(ctx);
+      const telemetry: string[] = [];
+      page.on("console", (m) => {
+        if (m.text().startsWith("[telemetry]")) telemetry.push(m.text());
+      });
+      await page.goto(`${ctx.url}/${qa ? "?qa=1" : ""}#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".panjim-clock", { timeout: 120000 });
+      await page.waitForTimeout(2500);
+      const hooks = (await page.evaluate(`["__panjimForTest", "__buildForTest", "__destroyForTest", "__telemetry", "__stormForTest"].filter((n) => window[n] !== undefined)`)) as string[];
+      if (qa) check(hooks.includes("__panjimForTest") && telemetry.length > 0, `with ?qa=1 the hooks are there (${hooks.join(", ")}) and the telemetry logs (${telemetry.length} lines)`);
+      else check(hooks.length === 0 && telemetry.length === 0, `without ?qa=1 the production build has no test hooks (${hooks.join(", ") || "none"}) and no [telemetry] line (${telemetry.length})`);
+      await page.close();
+    }
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

@@ -45,6 +45,7 @@ import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
 import { RiskIntroFx, type ScreenPolygon } from "@ui/riskIntroFx";
 import { MapAttribution } from "@ui/attribution";
+import { qaHooksOn } from "@services/features";
 import { TILE_NOTES } from "@ui/panjim/defenceCards";
 import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
@@ -137,6 +138,8 @@ function prefersReducedMotionNow(): boolean {
 }
 
 export function startGameSession(options: GameSessionOptions): GameSessionHandle {
+  // Section 34b.10: the test hooks and the telemetry's console lines, for the QA tools only.
+  const qaHooks = qaHooksOn();
   const { container, level } = options;
   const {
     scene,
@@ -171,7 +174,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   const telemetry = new Telemetry(
     () => performance.now(),
-    (event) => console.info(`[telemetry] ${event.name} t=${event.t}ms`, event.data),
+    // Section 34b.10: the console lines only for the QA tools (a development build, or ?qa=1).
+    (event) => {
+      if (qaHooks) console.info(`[telemetry] ${event.name} t=${event.t}ms`, event.data);
+    },
     { levelId: level.id }
   );
 
@@ -3278,8 +3284,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       return counts;
     }
   };
-  for (const [name, hook] of Object.entries(testHooks)) {
-    (window as unknown as Record<string, unknown>)[name] = hook;
+  // Section 34b.10: only for the QA tools (a development build, or ?qa=1); the live site has none of them.
+  if (qaHooks) {
+    for (const [name, hook] of Object.entries(testHooks)) {
+      (window as unknown as Record<string, unknown>)[name] = hook;
+    }
   }
 
   // Dev-only URL params, unchanged in spirit: still no visible affordance

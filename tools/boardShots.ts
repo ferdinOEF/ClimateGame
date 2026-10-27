@@ -90,10 +90,10 @@ async function main(): Promise<void> {
         if (msg.type() === "error") errors.push(`${shot.name}: ${msg.text()}`);
       });
       if (shot.name.startsWith("tutorial")) {
-        await page.goto(`http://localhost:${PORT}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+        await page.goto(`http://localhost:${PORT}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(6000);
       } else {
-        await page.goto(`http://localhost:${PORT}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+        await page.goto(`http://localhost:${PORT}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-cta", { timeout: 90000 });
         await page.locator(".brief-cta").first().click();
         await page.waitForTimeout(3500);

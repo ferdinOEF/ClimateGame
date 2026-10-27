@@ -10,6 +10,7 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { qaUrl } from "./qaUrl";
 
 const OUT = path.resolve("docs", "qa", "pixeldiff");
 
@@ -40,11 +41,11 @@ async function shoot(port: number, label: string): Promise<void> {
     args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
   });
   const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
-  await page.goto(`http://localhost:${port}/`, { waitUntil: "domcontentloaded" });
+  await page.goto(qaUrl(`http://localhost:${port}/`), { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".menu-screen", { timeout: 30000 });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(OUT, `menu-${label}.png`) });
-  await page.goto(`http://localhost:${port}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://localhost:${port}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(6000);
   await page.screenshot({ path: path.join(OUT, `tutorial-${label}.png`) });
   await browser.close();

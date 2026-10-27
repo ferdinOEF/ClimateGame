@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { qaUrl } from "./qaUrl";
 const server = spawn("npx", ["vite", "preview", "--port", "4179", "--strictPort"], { stdio: "pipe" });
 await new Promise((r) => setTimeout(r, 4000));
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
@@ -7,7 +8,7 @@ const context = await browser.newContext({ viewport: { width: 1366, height: 768 
 const page = await context.newPage();
 const errs: string[] = [];
 page.on("pageerror", (e) => errs.push(e.message));
-await page.goto("http://localhost:4179/");
+await page.goto(qaUrl("http://localhost:4179/"));
 await page.waitForFunction(() => navigator.serviceWorker?.controller !== undefined && navigator.serviceWorker.ready.then(() => true), undefined, { timeout: 30000 });
 await page.evaluate(() => navigator.serviceWorker.ready);
 await page.waitForTimeout(3000);
@@ -24,7 +25,7 @@ console.log("fonts", await page.evaluate(async () => {
   const loaded = await Promise.all(faces.map((f) => document.fonts.load(f).then((list) => list.length > 0).catch(() => false)));
   return faces.map((f, i) => `${f}: ${loaded[i]}`).join(", ");
 }));
-await page.goto("http://localhost:4179/#/play/l01-first-rains");
+await page.goto("http://localhost:4179/?qa=1#/play/l01-first-rains");
 await page.waitForTimeout(20000);
 console.log("offline game canvas", await page.evaluate(() => !!document.querySelector("canvas")), "brief", await page.evaluate(() => document.querySelector(".brief-title")?.textContent));
 console.log("errors", errs);

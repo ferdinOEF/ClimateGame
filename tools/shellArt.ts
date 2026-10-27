@@ -15,6 +15,7 @@ import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 import { startDevServer } from "./devServer";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.join(ROOT, "public", "art");
@@ -30,7 +31,7 @@ const HIDE_HUD = `
 const errors: string[] = [];
 
 async function open(page: Page, url: string): Promise<void> {
-  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.goto(qaUrl(url), { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForTimeout(1200);
 }
@@ -73,7 +74,7 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
 
   // --- Panaji: the header, its level thumbnail, and the Help pictures -------
-  await open(page, `${server.url}/#/play/l01-first-rains`);
+  await open(page, `${server.url}/?qa=1#/play/l01-first-rains`);
   await begin(page);
   // The Help page's cone: the board as the first phase opens, the cone on it.
   let show = await hideHud(page);
@@ -117,7 +118,7 @@ try {
   await saveElement(page, ".result-cards .result-card, .result-cards [class*=card]", "help-result.jpg", 0);
 
   // --- The Tutorial's coast -----------------------------------------------
-  await open(page, `${server.url}/#/play/l00-tutorial`);
+  await open(page, `${server.url}/?qa=1#/play/l00-tutorial`);
   await begin(page);
   show = await hideHud(page);
   await page.waitForTimeout(800);

@@ -19,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { startDevServer } from "./devServer";
 import { CITED_FACTS } from "../src/core/facts";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.resolve(ROOT, process.argv[2] ?? path.join("docs", "qa", "credits"));
@@ -102,7 +103,7 @@ async function main(): Promise<void> {
       const page = await (await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: dpr })).newPage();
       page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") errors.push(`${label}: ${m.text()}`); });
       page.on("requestfailed", (r) => errors.push(`${label}: failed ${r.url()}`));
-      await page.goto(server.url, { waitUntil: "networkidle" });
+      await page.goto(qaUrl(server.url), { waitUntil: "networkidle" });
       if (PLATE_ON) {
         await page.waitForSelector(".menu-credits-plate img");
         await page.waitForTimeout(500);
@@ -140,13 +141,13 @@ async function main(): Promise<void> {
         await page.keyboard.press("Escape");
         check((await page.locator(".sources-panel").count()) === 0, "Esc closes the Sources screen");
         // Into a level: no credits strip (the switch off or on).
-        await page.goto(`${server.url}#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+        await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-card", { timeout: 60000 });
         await page.locator(".brief-cta").first().click();
         await page.waitForTimeout(1500);
         check((await page.locator(".menu-credits").count()) === 0, "No credits strip inside a level");
         // On Panaji Maya tells the fact: her bubble carries its count and a Source button.
-        await page.goto(`${server.url}#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+        await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-card", { timeout: 60000 });
         await page.locator(".brief-cta").first().click();
         await page.waitForTimeout(1500);

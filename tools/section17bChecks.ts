@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { startDevServer } from "./devServer";
 import { punctuationProblems } from "../tests/helpers/uiStrings";
+import { qaUrl } from "./qaUrl";
 
 const [w = "1366", h = "768", outDir = "docs/qa/section17b"] = process.argv.slice(2);
 const W = Number(w);
@@ -38,7 +39,7 @@ async function open(route: string): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: W, height: H } });
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(`${server.url}/${route}`, { waitUntil: "domcontentloaded" });
+  await page.goto(qaUrl(`${server.url}/${route}`), { waitUntil: "domcontentloaded" });
   return page;
 }
 

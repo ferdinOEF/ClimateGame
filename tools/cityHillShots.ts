@@ -51,7 +51,7 @@ async function main(): Promise<void> {
       const page = await (await browser.newContext({ viewport: { width: w, height: h } })).newPage();
       page.on("pageerror", (e) => errors.push(`${tag}: ${e.message}`));
       page.on("console", (m) => { if (m.type() === "error") errors.push(`${tag}: ${m.text()}`); });
-      await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".brief-card", { timeout: 90000 });
       await page.locator(".brief-cta").first().click();
       await settle(page);

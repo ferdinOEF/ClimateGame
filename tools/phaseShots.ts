@@ -20,6 +20,7 @@ import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 import { startDevServer } from "./devServer";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT_DIR = path.join(ROOT, "docs", "screenshots", process.env.SHOTS_DIR ?? "panjim2050");
@@ -91,11 +92,11 @@ async function main(): Promise<void> {
       if (msg.type() === "error") errors.push(msg.text());
     });
 
-    await page.goto(`http://localhost:${PORT}/`, { waitUntil: "domcontentloaded" });
+    await page.goto(qaUrl(`http://localhost:${PORT}/`), { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".menu-screen", { timeout: 20000 });
     await shot(page, "menu");
 
-    await page.goto(`http://localhost:${PORT}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.goto(`http://localhost:${PORT}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-card", { timeout: 60000 });
     await shot(page, "brief");
     await page.locator(".brief-cta").first().click();

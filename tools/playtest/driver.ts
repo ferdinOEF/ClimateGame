@@ -32,6 +32,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { chromium, type Page } from "playwright";
+import { qaUrl } from "../qaUrl";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split(/=(.*)/s).slice(0, 2) as [string, string]));
 const PORT = Number(args.get("port") ?? 7101);
@@ -64,7 +65,7 @@ async function open(url: string): Promise<Page> {
   pages.push(page);
   // vision=deuteranopia (or protanopia, tritanopia, achromatopsia): the page drawn as that eye sees it, screenshots too.
   if (args.has("vision")) await (await context.newCDPSession(page)).send("Emulation.setEmulatedVisionDeficiency", { type: args.get("vision") as "deuteranopia" });
-  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.goto(qaUrl(url), { waitUntil: "domcontentloaded" });
   return page;
 }
 await open(URL0);

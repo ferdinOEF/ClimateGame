@@ -21,6 +21,7 @@ import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 import { startDevServer } from "./devServer";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section16");
@@ -110,7 +111,7 @@ async function main(): Promise<void> {
       });
 
       // --- the landing page ------------------------------------------------
-      await page.goto(server.url, { waitUntil: "domcontentloaded" });
+      await page.goto(qaUrl(server.url), { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".menu-screen", { timeout: 120000 });
       await page.waitForTimeout(1500);
       const buttons = (await page.locator(".menu-actions button").allTextContents()).map((t) => t.trim());
@@ -187,7 +188,7 @@ async function main(): Promise<void> {
 
       // --- Section 28.2: nothing is saved, so Play Panjim offers Begin only --------
       if (full) {
-        await page.goto(server.url, { waitUntil: "domcontentloaded" });
+        await page.goto(qaUrl(server.url), { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".menu-screen", { timeout: 120000 });
         await page.locator(".menu-actions button", { hasText: "Play Panjim" }).click();
         await page.waitForSelector(".brief-card", { timeout: 120000 });

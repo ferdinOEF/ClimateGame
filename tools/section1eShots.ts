@@ -39,7 +39,7 @@ async function open(browser: import("playwright").Browser, url: string, w: numbe
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(`${w}x${h}: ${m.text()}`);
   });
-  await page.goto(`${url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForTimeout(1500);
   await page.locator(".brief-cta").first().click();

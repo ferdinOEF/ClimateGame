@@ -18,6 +18,7 @@
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
+import { qaUrl } from "./qaUrl";
 
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith("--")));
@@ -39,7 +40,7 @@ async function open(width: number, height: number, route: string, scale = 1): Pr
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(`${server.url}/${route}`, { waitUntil: "domcontentloaded" });
+  await page.goto(qaUrl(`${server.url}/${route}`), { waitUntil: "domcontentloaded" });
   return page;
 }
 

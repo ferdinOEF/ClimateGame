@@ -48,7 +48,7 @@ async function main(): Promise<void> {
       page.on("console", (m) => {
         if (m.type() === "error") errors.push(`${tag}: ${m.text()}`);
       });
-      await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".brief-card", { timeout: 120000 });
       await page.waitForTimeout(2500);
       await shot(page, `brief-${tag}`);
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
     tut.on("console", (m) => {
       if (m.type() === "error") errors.push(`tutorial: ${m.text()}`);
     });
-    await tut.goto(`${server.url}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    await tut.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
     await tut.waitForSelector(".brief-card", { timeout: 120000 });
     await tut.waitForTimeout(2500);
     const figure = await tut.locator(".brief-stage .maya-full-figure").isVisible();
