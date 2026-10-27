@@ -24,14 +24,14 @@ import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome, starsForHouses } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
 import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, retryLabel, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
-import { biodiversityByKind, BUILDING_KINDS, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
+import { biodiversityByKind, BUILDING_KINDS, campalWindNote, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
 import { FinaleCard } from "@ui/panjim/finaleCard";
 import { computePanjimIndex, tempoBadge, type PanjimIndex } from "@core/panjimIndex";
 import { axialToWorld, neighbors } from "@core/hex";
 import { ELEMENT_BY_ID } from "@core/elements";
-import { isCracked } from "@core/hazardModel";
+import { floodsHouse, isCracked } from "@core/hazardModel";
 import { playSound } from "@ui/audioHooks";
 import { buildHeatView, hazardsOf, HEAT_LEAD_YEARS, type Exposure, type HeatViewTile } from "@core/exposure";
 import { RiskIntroGate, riskIntroMode, type RiskIntroMode } from "@core/riskIntro";
@@ -1114,6 +1114,9 @@ export class PanjimController {
       places: phase.places.map((p) => ({ ...p, building: buildings.has(p.name) })),
       broken: this.brokenIn(challenge, record)
     };
+    // Section 34b.13: the 2050 storm's card 2 says so when most of the homes lost stood in the wind at Campal.
+    const windKeys = record.outcome.damagedHouses.filter((key) => !floodsHouse(record.depth.get(key) ?? 0));
+    const windNote = campalWindNote(challenge.kind, phase.homesTotal - phase.homesSaved, windKeys, this.host.localities);
     const short = stormStars ? shortOfThree(base.stars, base.homesSaved, base.homesTotal, stormStars, record.outcome.biodiversityChange) : null;
     const pushed = this.pushedPlaces(base.places);
     const result = {
@@ -1121,6 +1124,7 @@ export class PanjimController {
       ...(stormStars ? { homesStars: starsForHouses(base.homesSaved, base.homesTotal, { ...stormStars, bioTwo: undefined, bioThree: undefined }) } : {}),
       objectiveComplete: this.run.objectivesComplete.has(challenge.id),
       ...(short ? { shortOfThree: short } : {}),
+      ...(windNote ? { windNote } : {}),
       ...(pushed.length ? { pushNote: `In this game a seawall pushes water round its ends: it reached ${joinNames(pushed)}.` } : {})
     };
     const next = this.run.nextChallenge();

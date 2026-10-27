@@ -171,10 +171,13 @@ export function defencesCard(result: PhaseResult, mayaLine: CardLine, targets: (
          })
          .join("")}${broken}</ul>`
     : `<p class="result-sub">Nothing stood in the way this time.</p>`;
+  // Section 34b.13: after the 2050 storm, when most of the homes lost stood in the wind at Campal.
+  const wind = result.windNote ? `<p class="result-short result-wind-note">${esc(result.windNote)}</p>` : "";
   return el(`<div class="result-card-body">
     <div class="result-eyebrow">${esc(result.eyebrow)}</div>
     <h2 class="result-title">What protected your homes</h2>
     ${rows}
+    ${wind}
     ${result.defences.length ? mayaHtml(mayaLine) : ""}
   </div>`);
 }

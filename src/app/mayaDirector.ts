@@ -139,7 +139,8 @@ export class MayaDirector {
         this.warned.add(next.id);
         this.maya.say({
           id: `warn:${next.id}`,
-          text: warningLine(helpful ? "exposedHelp" : "exposed", place, next.kind),
+          // Section 34b.13: before the 2050 storm (cyclone and flood), a word about its wind.
+          text: warningLine(helpful ? "exposedHelp" : "exposed", place, next.kind) + (next.kind === "compound" ? ` ${MAYA.warning.wind}` : ""),
           state: "warning",
           urgent: true
         });

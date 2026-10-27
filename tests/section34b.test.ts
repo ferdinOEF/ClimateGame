@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { insertLine, type Maya, type MayaLine } from "../src/ui/panjim/maya";
 import { MayaDirector, phaseLine } from "../src/app/mayaDirector";
 import { buildHoverLine, prepProgress, rowMissNote } from "../src/core/prep";
-import { BUILDING_KINDS, type PhaseResult } from "../src/core/phaseResult";
+import { BUILDING_KINDS, CAMPAL_WIND_NOTE, campalWindNote, type PhaseResult } from "../src/core/phaseResult";
+import { MAYA } from "../src/core/mayaLines";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { CARD_NAME } from "../src/ui/panjim/defenceCards";
 import { defencesCard, homesHtml, otherKindNote, placeWord, resultCard, retryLabel } from "../src/ui/panjim/resultCards";
@@ -498,4 +499,35 @@ describe("34b.11 and 34b.12: Esc on the result cards; Try again says where it go
     const run = newRun("retry-label", BOT_LEVEL);
     expect(run.schedule.map((c) => retryLabel(run.phaseStartYear(c)))).toEqual(["Try again from 2026", "Try again from 2031", "Try again from 2041"]);
   });
+});
+
+describe("34b.13: a word about the wind before 2050 and after", () => {
+  it("Maya's 2050 warning says the cyclone brings wind onto Campal, and that only pandanus shelters homes from it (a game rule)", () => {
+    expect(MAYA.warning.wind).toBe("The cyclone brings wind onto Campal. In this game only pandanus shelters homes from the wind.");
+    const director = readFileSync("src/app/mayaDirector.ts", "utf8");
+    expect(director).toContain("(next.kind === \"compound\" ? ` ${MAYA.warning.wind}` : \"\")");
+  });
+
+  it("card 2 after 2050 says so when most of the homes lost stood in the wind at Campal, and only then", () => {
+    const places = [{ name: "Campal", q: 6, r: 10 }, { name: "Miramar", q: -2, r: 17 }];
+    const campal = ["6,3", "4,4", "5,4", "2,5"];
+    expect(campalWindNote("compound", 6, campal, places)).toBe(CAMPAL_WIND_NOTE);
+    // Not most of the homes lost; not at Campal; not the 2050 storm.
+    expect(campalWindNote("compound", 10, campal, places)).toBeNull();
+    expect(campalWindNote("compound", 4, ["-2,17", "-3,18", "-2,18"], places)).toBeNull();
+    expect(campalWindNote("cyclone", 6, campal, places)).toBeNull();
+  });
+
+  it("the wind row asks for pandanus only where a beach tile can shelter the homes in the wind; at Campal none can (the gap for the owner)", async () => {
+    const { newRun, BOT_LEVEL } = await import("../tools/panjimBots/bots");
+    const { passYear } = await import("./helpers/passYear");
+    const run = newRun("wind-row", BOT_LEVEL, true);
+    while (run.landed.size < 2) passYear(run);
+    expect(run.nextChallenge()!.kind).toBe("compound");
+    // The 2050 wind takes homes at the Campal front, three to six hexes from the nearest beach: pandanus (beach only,
+    // a shelter of two hexes) cannot reach them, so no wind row is offered there.
+    const pandanus = run.prep.filter((row) => row.elementId === "sandy_vegetation");
+    for (const row of pandanus) expect(row.label).toMatch(/^Plant [12] pandanus on (the Campal beach|the beach near .+|the beach)$/);
+    expect(pandanus).toHaveLength(0);
+  }, 120_000);
 });
