@@ -74,6 +74,8 @@ const RAIN_VERTEX = /* glsl */ `
   uniform float uTime;
   uniform vec3 uCentre;
   uniform float uActive;
+  // Section 34b.14: the horizontal drift per unit of fall, set from the storm's wind (it leans with the wind).
+  uniform vec2 uSlant;
   varying float vAlpha;
   void main() {
     float height = ${(16 - -2).toFixed(1)};
@@ -82,9 +84,9 @@ const RAIN_VERTEX = /* glsl */ `
     float drop = (1.0 - fall) * height;
     // Drops past the active share sit below the floor: lighter rain is fewer drops, not fainter ones.
     float on = step(fract(aDrop.x * 12.9898 + aDrop.y * 78.233), uActive);
-    vec3 p = vec3(uCentre.x + aDrop.x + drop * ${RAIN_SLANT_X.toFixed(3)}, y - (1.0 - on) * 40.0, uCentre.z + aDrop.y + drop * ${RAIN_SLANT_Z.toFixed(3)});
-    // The streak: a thin quad, its top end trailing up and back along the slant.
-    vec3 along = normalize(vec3(-${RAIN_SLANT_X.toFixed(3)}, 1.0, -${RAIN_SLANT_Z.toFixed(3)}));
+    vec3 p = vec3(uCentre.x + aDrop.x + drop * uSlant.x, y - (1.0 - on) * 40.0, uCentre.z + aDrop.y + drop * uSlant.y);
+    // The streak: a thin quad along the way the drop moves, its top end trailing up and back where it came from.
+    vec3 along = normalize(vec3(uSlant.x, 1.0, uSlant.y));
     p += along * position.y * ${RAIN_STREAK.toFixed(2)};
     vec4 view = viewMatrix * vec4(p, 1.0);
     view.x += position.x * 0.018;
@@ -173,7 +175,7 @@ export class StormManager {
       // it, and additive blending also means overlapping streaks build up
       // into the denser-looking core a real downpour has.
       blending: THREE.AdditiveBlending,
-      uniforms: { uTime: { value: 0 }, uCentre: { value: new THREE.Vector3() }, uActive: { value: 0 }, uOpacity: { value: 0 } }
+      uniforms: { uTime: { value: 0 }, uCentre: { value: new THREE.Vector3() }, uActive: { value: 0 }, uOpacity: { value: 0 }, uSlant: { value: new THREE.Vector2(RAIN_SLANT_X, RAIN_SLANT_Z) } }
     });
     this.rain = this.buildRain(RAIN_DROPS[this.quality]);
     this.group.add(this.rain);
@@ -227,6 +229,22 @@ export class StormManager {
   /** A scripted storm's wind (null hands it back to the intensity dial). */
   setWind(wind: number | null): void {
     this.windOverride = wind === null ? null : THREE.MathUtils.clamp(wind, 0, 1);
+  }
+
+  /**
+   * Section 34b.14: where the storm's wind blows (world x, z; undefined with no storm playing): the rain leans with it,
+   * harder as the wind rises. Without one it keeps its old gentle slant.
+   */
+  setWindDirection(direction: { x: number; y: number } | undefined): void {
+    const slant = this.rainMaterial.uniforms.uSlant.value as THREE.Vector2;
+    if (!direction || direction.x * direction.x + direction.y * direction.y < 1e-6) {
+      slant.set(RAIN_SLANT_X, RAIN_SLANT_Z);
+      return;
+    }
+    const lean = 0.18 + 0.42 * this.windStrength;
+    const length = Math.hypot(direction.x, direction.y);
+    // A drop drifts the way the wind blows as it falls (the shader moves it by -slant per unit of fall).
+    slant.set((-direction.x / length) * lean, (-direction.y / length) * lean);
   }
 
   /** A scripted storm's rain, 0–1 (null hands it back to the intensity dial). */

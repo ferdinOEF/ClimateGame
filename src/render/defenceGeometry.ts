@@ -326,7 +326,9 @@ function pandanusGeometry(): THREE.BufferGeometry {
 // in front of it inside the tile. Staggered block courses on its face, a
 // pale cap with a small curved wave-return lip on the sea side, a darker
 // stepped toe at the bottom. A continuous built wall, unlike the
-// breakwater's rock pile.
+// breakwater's blocks. Section 34b.14: it read as a flat grey slab, so the
+// cap is brighter and thicker with a shadow line under it, the courses part
+// more, and a dark base line runs along its foot.
 // ---------------------------------------------------------------------------
 function seawallGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
@@ -335,7 +337,7 @@ function seawallGeometry(): THREE.BufferGeometry {
   const length = 1.36;
   const height = 0.46;
   const courses = 4;
-  const stones = ["#a4a39b", "#97968e", "#b0aea4", "#8d8c85"];
+  const stones = ["#a29f95", "#8c8a82", "#b3b0a5", "#7e7c75"];
   for (let c = 0; c < courses; c++) {
     const h = height / courses;
     const blockLen = length / 6;
@@ -354,15 +356,22 @@ function seawallGeometry(): THREE.BufferGeometry {
   const core = box(face - back - 0.02, height, length - 0.01, "#6c6b65", 0);
   move(core, (face + back) / 2 - 0.004, 0, 0);
   parts.push(tag(core, 0, PART.solid));
-  // The cap, slightly wider than the wall.
-  const cap = box(face - back + 0.05, 0.05, length + 0.02, "#dcd8cb", height);
+  // The cap, slightly wider than the wall, bright, with a shadow line under its seaward edge.
+  const cap = box(face - back + 0.06, 0.07, length + 0.02, "#efece2", height);
   move(cap, (face + back) / 2 + 0.01, 0, 0);
   parts.push(tag(cap, 0, PART.solid));
+  const capShadow = box(0.012, 0.03, length, "#4f4e49", height - 0.03);
+  move(capShadow, face + 0.004, 0, 0);
+  parts.push(tag(capShadow, 0, PART.solid));
+  // The dark base line along the foot of the face.
+  const base = box(0.014, 0.06, length, "#3f403c", 0);
+  move(base, face + 0.004, 0, 0);
+  parts.push(tag(base, 0, PART.solid));
   // The wave-return lip: a quarter round curling seaward off the cap.
   const lip = new THREE.CylinderGeometry(0.07, 0.07, length + 0.02, 6, 1, true, 0, Math.PI / 2);
   lip.rotateX(Math.PI / 2);
   lip.rotateZ(Math.PI);
-  lip.translate(face + 0.03, height + 0.05, 0);
+  lip.translate(face + 0.03, height + 0.07, 0);
   parts.push(tag(paintAll(lip, "#cfcabb"), 0, PART.solid));
   // The stepped toe at the foot, seaward.
   const toe1 = box(0.08, 0.08, length, "#6e706a", 0);
@@ -379,37 +388,42 @@ function seawallGeometry(): THREE.BufferGeometry {
 }
 
 // ---------------------------------------------------------------------------
-// Breakwater: a line of grey armour blocks out in the sea, white foam on the
-// seaward side. Grey and white against the sea's blue-green, so it stands out.
+// Breakwater: a row of dark concrete armour blocks out in the sea on a low
+// rubble base, white foam breaking on the seaward side. Section 34b.14: it was
+// two rows of rounded grey rocks and read as a pebble heap; dark, squared
+// blocks in one line read as a built breakwater against the sea.
 // ---------------------------------------------------------------------------
 function breakwaterGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  const greys = ["#8f9391", "#a6aaa8", "#7c807e", "#b4b7b4", "#969a97"];
-  let k = 0;
-  for (let row = 0; row < 2; row++) {
-    const count = row === 0 ? 8 : 7;
-    for (let i = 0; i < count; i++) {
-      const z = -0.72 + (1.44 * (i + (row ? 0.5 : 0))) / (count - 1 + (row ? 0 : 0));
-      if (Math.abs(z) > 0.74) continue;
-      const s = 0.13 + ((k * 37) % 7) * 0.008;
-      const rock = new THREE.DodecahedronGeometry(s, 0);
-      rock.scale(1, 0.85 + ((k * 13) % 5) * 0.06, 1);
-      rock.rotateX(k * 0.7);
-      rock.rotateY(k * 1.3);
-      rock.translate(row === 0 ? 0.06 : -0.1, s * (row === 0 ? 0.75 : 1.1), z);
-      parts.push(tag(paintAll(rock, greys[k % greys.length]), 0, PART.solid));
-      k++;
-    }
+  // The rubble base, low and a little wider than the blocks.
+  const rubble = box(0.4, 0.07, 1.46, "#5d615f", 0);
+  move(rubble, -0.02, 0, 0);
+  parts.push(tag(rubble, 0, PART.solid));
+  const darks = ["#4c5150", "#575c5a", "#444948", "#5f6462"];
+  const count = 7;
+  for (let i = 0; i < count; i++) {
+    const z = -0.62 + (1.24 * i) / (count - 1);
+    const w = 0.17 + ((i * 37) % 5) * 0.008;
+    const h = 0.17 + ((i * 13) % 4) * 0.012;
+    const block = box(w, h, w * 0.92, darks[i % darks.length], 0.07);
+    rotate(block, 0, ((i * 29) % 9) * 0.05 - 0.2, 0);
+    move(block, ((i * 17) % 3) * 0.025 - 0.03, 0, z);
+    parts.push(tag(block, 0, PART.solid));
+    // A pale top face catches the light, so each block reads on its own.
+    const top = box(w * 0.8, 0.012, w * 0.74, "#7c817f", 0.07 + h);
+    rotate(top, 0, ((i * 29) % 9) * 0.05 - 0.2, 0);
+    move(top, ((i * 17) % 3) * 0.025 - 0.03, 0, z);
+    parts.push(tag(top, 0, PART.solid));
   }
-  // Foam on the seaward side: a broken band of low irregular flecks.
+  // Foam on the seaward side: a broken band of white, wider and brighter than before.
   const fleck: number[] = [];
-  for (let i = 0; i < 16; i++) {
-    const z = -0.68 + i * 0.09;
-    const x = 0.24 + 0.05 * Math.sin(i * 2.7);
-    const r = 0.035 + 0.02 * Math.abs(Math.sin(i * 1.3));
-    fleck.push(x, 0.02, z - r, x - r, 0.02, z + r * 0.6, x + r * 1.2, 0.02, z + r * 0.4);
+  for (let i = 0; i < 20; i++) {
+    const z = -0.7 + i * 0.074;
+    const x = 0.2 + 0.05 * Math.sin(i * 2.7);
+    const r = 0.045 + 0.025 * Math.abs(Math.sin(i * 1.3));
+    fleck.push(x, 0.03, z - r, x - r, 0.03, z + r * 0.6, x + r * 1.3, 0.03, z + r * 0.4);
   }
-  parts.push(tag(triangles(fleck, "#eef7f6"), 0, PART.foam));
+  parts.push(tag(triangles(fleck, "#f6fbfa"), 0, PART.foam));
   return mergeGeometries(parts);
 }
 

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { PALETTE } from "../palette";
 import { axialToWorld, axialKey, neighbor } from "@core/hex";
 import { floodDepth, surgeDepth, type DepthField } from "@core/hazard";
 
@@ -189,8 +190,11 @@ const FRAGMENT = /* glsl */ `
     vec3 col = mix(seaCol, riverCol, riverShare);
     col = mix(col, uBoth, clamp(both * 0.85, 0.0, 0.85));
     if (kind > 2.5) col = mix(uKhazan, col, 0.25);
-    // The open sea is deeper and darker than water over the land.
-    if (kind < 0.5) col = mix(vec3(0.13, 0.38, 0.54), col, 0.45);
+    // The open sea is deeper and darker than water over the land (Section 34b.14: toward the board's own sea,
+    // not a fixed blue, so the storm sea and the hex sea read as one).
+    if (kind < 0.5) col = mix(uSeaLight * 1.1, col, 0.45);
+    // Section 34b.14: the surge over land a lighter shade of the same sea, so it reads as water, not night.
+    if (kind > 1.5 && kind < 2.5) col = min(col * 1.4, vec3(1.0));
 
     // Light: soft diffuse and a small glint, so the waves read as relief.
     float diffuse = 0.62 + 0.38 * max(dot(normalize(vNormal), normalize(uSunDir)), 0.0);
@@ -285,6 +289,16 @@ export interface WaterFrame {
   fills?: ReadonlyMap<string, number>;
 }
 
+/**
+ * Section 34b.14: the storm sea's colour from the board's own sea (PALETTE.seaTurquoise): its lightness times `light`
+ * (0.8 is 20% darker) and its saturation times `saturation`.
+ */
+export function stormSea(light: number, saturation: number): THREE.Color {
+  const hsl = { h: 0, s: 0, l: 0 };
+  PALETTE.seaTurquoise.getHSL(hsl);
+  return new THREE.Color().setHSL(hsl.h, hsl.s * saturation, hsl.l * light);
+}
+
 export class StormWater {
   readonly mesh: THREE.InstancedMesh;
   private readonly material: THREE.ShaderMaterial;
@@ -311,8 +325,10 @@ export class StormWater {
         uMotion: { value: 1 },
         uWindDir: { value: new THREE.Vector2(0.8, 0.6) },
         uSunDir: { value: new THREE.Vector3(-8, 14, 6).normalize() },
-        uSeaLight: { value: new THREE.Color("#7cc6e0") },
-        uSeaDeep: { value: new THREE.Color("#3c96c8") },
+        // Section 34b.14: the storm's sea is the board's own sea, a little greyer, and 20% darker where deep, so the two read as one
+        // sea (it was a light blue over the board's teal).
+        uSeaLight: { value: stormSea(1, 0.8) },
+        uSeaDeep: { value: stormSea(0.8, 0.7) },
         uRiverLight: { value: new THREE.Color("#3f7fb3") },
         uRiverDeep: { value: new THREE.Color("#123e7d") },
         uBoth: { value: new THREE.Color("#5846a0") },
@@ -462,7 +478,8 @@ export class StormWater {
       water[i4 + 2] = amp;
       water[i4 + 3] = frame.fade * visible * (wetLand ? 0.82 : slot.sea ? 0.78 : 0.86);
       look[i4] = Math.max(0, surge);
-      look[i4 + 1] = Math.max(flood, stored);
+      // Section 34b.14: a river flood is never drawn on the sea (it painted the sea at Miramar river blue).
+      look[i4 + 1] = slot.sea ? 0 : Math.max(flood, stored);
       // The swell's crest: bright just as the water reaches its peak here.
       const tile = field.tiles.get(slot.key)!;
       // The swell's pale crest rides its front, just as the water starts to lift here.

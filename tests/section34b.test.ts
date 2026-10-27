@@ -531,3 +531,50 @@ describe("34b.13: a word about the wind before 2050 and after", () => {
     expect(pandanus).toHaveLength(0);
   }, 120_000);
 });
+
+describe("34b.14: the art pass (render only, no change to what a storm takes)", () => {
+  it("the cyclone is soft rings, not puffs; the rain leans with the wind; a river flood is never drawn on the sea", () => {
+    const sky = readFileSync("src/render/storm/stormSky.ts", "utf8");
+    expect(sky).toContain("function ringTexture(");
+    expect(sky).not.toMatch(/buildSpiral\(|spiralMaterial/);
+    // Three to five rings, each 0.35 to 0.5 at most.
+    const rings = [...sky.matchAll(/\{ radius: [\d.]+, strength: ([\d.]+), spin: [\d.]+, seed: \d+ \}/g)].map((m) => Number(m[1]));
+    expect(rings.length).toBeGreaterThanOrEqual(3);
+    expect(rings.length).toBeLessThanOrEqual(5);
+    for (const s of rings) expect(s >= 0.35 && s <= 0.5, String(s)).toBe(true);
+    expect(readFileSync("src/render/stormManager.ts", "utf8")).toContain("uniform vec2 uSlant;");
+    expect(readFileSync("src/app/gameSession.ts", "utf8")).toContain("storm.setWindDirection(stormDirector?.windDirection);");
+    const water = readFileSync("src/render/storm/stormWater.ts", "utf8");
+    expect(water).toContain("look[i4 + 1] = slot.sea ? 0 : Math.max(flood, stored);");
+    expect(water).not.toContain("vec3(0.13, 0.38, 0.54)");
+  });
+
+  it("the storm sea is the board's own sea, a little greyer, and 20% darker where deep", async () => {
+    const { stormSea } = await import("../src/render/storm/stormWater");
+    const { PALETTE } = await import("../src/render/palette");
+    const hsl = (c: { getHSL: (t: { h: number; s: number; l: number }) => unknown }) => {
+      const out = { h: 0, s: 0, l: 0 };
+      c.getHSL(out);
+      return out;
+    };
+    const sea = hsl(PALETTE.seaTurquoise);
+    const deep = hsl(stormSea(0.8, 0.7));
+    expect(deep.h).toBeCloseTo(sea.h, 3);
+    expect(deep.l).toBeCloseTo(sea.l * 0.8, 3);
+    expect(deep.s).toBeCloseTo(sea.s * 0.7, 3);
+  });
+
+  it("the seawall and the breakwater keep their footprints on the tile", async () => {
+    const { createDefenceGeometry } = await import("../src/render/defenceGeometry");
+    for (const id of ["seawall", "breakwater"]) {
+      const g = createDefenceGeometry(id)!;
+      g.computeBoundingBox();
+      const box = g.boundingBox!;
+      // The same footprint as before the pass (its tile ring included: x -0.78 to 0.86 at most, z within 0.9), low.
+      expect(box.min.x, id).toBeGreaterThanOrEqual(-0.79);
+      expect(box.max.x, id).toBeLessThanOrEqual(0.87);
+      expect(Math.max(-box.min.z, box.max.z), id).toBeLessThanOrEqual(0.91);
+      expect(box.max.y, id).toBeLessThanOrEqual(0.65);
+    }
+  });
+});

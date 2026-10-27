@@ -2267,7 +2267,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const share = zone.incoming > 0 ? zone.leak / zone.incoming : 0;
     const kind: HazardKind = zone.hazard === "flood" ? "flood" : "storm";
     if (share > 0.05) {
-      for (const coord of coords) hazardOverlay.show(kind, coord, terrain.heightAt(coord), 0.3 + share * 1.2, performance.now());
+      // Section 34b.14: a river flood never draws on the sea.
+      for (const coord of coords) if (!(kind === "flood" && state.placed.get(`${coord.q},${coord.r}`)?.terrainId === "coast")) hazardOverlay.show(kind, coord, terrain.heightAt(coord), 0.3 + share * 1.2, performance.now());
     }
     // The defences answer one at a time: a ring and their creatures, in turn.
     const defenders = keys.filter((key) => {
@@ -2892,6 +2893,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     storm.tick(nowMs, focusPoint());
     setShake(storm.shakeX, storm.shakeZ);
     elements.setWind(storm.windStrength, stormDirector?.windDirection);
+    // Section 34b.14: the rain leans with the storm's wind.
+    storm.setWindDirection(stormDirector?.windDirection);
     townDecor?.setWind(storm.windStrength, nowMs, stormDirector?.windDirection);
 
     terrain.tick(nowMs);
