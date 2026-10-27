@@ -23,7 +23,9 @@
  * HOW SHE TALKS. Lines queue and never overlap. The controller decides when
  * she may speak (at most one line per moment, never mid-build, never over a
  * modal) and calls `next()`; Maya shows the next line, which stays until the
- * player presses "Got it" (or Esc), or for long enough to read. Each line is
+ * player presses "Got it", builds, or a storm or an urgent line takes its place
+ * (Section 34b.2); only a passing line (`hint`) has no Got it and closes by
+ * itself once read, leaving a short shield where it was. Each line is
  * spoken once per session unless the player reopens it from the Field Guide.
  * The bubble is real text in an `aria-live="polite"` region.
  *
@@ -53,6 +55,11 @@ export interface MayaLine {
   /** A game rule, not a fact about the world: the bubble says so ("Game rule"). */
   rule?: boolean;
   /**
+   * Section 34b.2: a passing line (a storm's phases, the calm after it, the replay): no Got it, and it closes by itself
+   * once read. Every other line has Got it and stays until Got it, a build, a storm or the next urgent line.
+   */
+  hint?: boolean;
+  /**
    * A discovery (nuggetPopup.ts): the bubble shows its running count under
    * the line ("2 of 21"), and a Source button when it has a `credit`. It
    * waits behind a warning but goes ahead of ordinary tips.
@@ -76,6 +83,8 @@ const POLL_MS = 400;
  */
 export const MOVE_GAP_MS = 1000;
 export const SETTLE_MS = 250;
+/** Section 34b.2: how long the shield stays where a bubble closed by itself. */
+export const SHIELD_MS = 500;
 
 /**
  * Where a new line waits. Warnings (urgent) go first; a discovery goes after
@@ -140,6 +149,7 @@ export class Maya {
   private readonly countEl: HTMLElement;
   private readonly ruleEl: HTMLElement;
   private readonly sourceEl: HTMLButtonElement;
+  private readonly dismissEl: HTMLButtonElement;
   private readonly badge: HTMLButtonElement;
   private readonly queue: MayaLine[] = [];
   /** Lines already spoken this session, by id. */
@@ -220,7 +230,7 @@ export class Maya {
     const hold = (on: boolean): void => {
       this.holding = on;
       if (on) window.clearTimeout(this.hideTimer);
-      else if (this.current && !this.holdLines) this.armHide(this.current, 4000);
+      else if (this.current?.hint && !this.holdLines) this.armHide(this.current, 4000);
     };
     this.bubble.addEventListener("pointerenter", () => hold(true));
     this.bubble.addEventListener("pointerleave", () => hold(false));
@@ -235,7 +245,8 @@ export class Maya {
     this.bubble.addEventListener("focusin", () => hold(true));
     this.bubble.addEventListener("focusout", () => hold(false));
     this.badge = this.el.querySelector(".maya-badge")!;
-    this.el.querySelector(".maya-dismiss")!.addEventListener("click", (event) => {
+    this.dismissEl = this.el.querySelector(".maya-dismiss")!;
+    this.dismissEl.addEventListener("click", (event) => {
       event.stopPropagation();
       this.dismiss();
     });
@@ -349,13 +360,22 @@ export class Maya {
     return this.queue[0] ?? null;
   }
 
-  /** Says the next queued line now, if there is one and she is free. Returns true if she spoke. */
-  next(): boolean {
+  /**
+   * Says the next queued line now, if there is one and she is free; with `pick`, the first queued line it allows
+   * (Section 34b.2: a tip held to one a year lets a line behind it go first). Returns true if she spoke.
+   */
+  next(pick?: (line: MayaLine) => boolean): boolean {
     if (this.current || this.muted || this.minimised) return false;
-    const line = this.queue.shift();
-    if (!line) return false;
+    const at = pick ? this.queue.findIndex(pick) : 0;
+    if (at < 0 || at >= this.queue.length) return false;
+    const [line] = this.queue.splice(at, 1);
     this.show(line);
     return true;
+  }
+
+  /** The queued lines, in order, without saying any (Section 34b.2: the director picks the one it may say). */
+  get queued(): readonly MayaLine[] {
+    return this.queue;
   }
 
   private show(line: MayaLine): void {
@@ -368,9 +388,11 @@ export class Maya {
     this.setState(line.state);
     line.onShow?.();
     this.renderFact(line);
+    // Section 34b.2: Got it on every line but a passing one; only a passing line closes on a timer.
+    this.dismissEl.hidden = !!line.hint;
     window.clearTimeout(this.hideTimer);
     this.holding = false;
-    if (!this.holdLines) this.armHide(line);
+    if (line.hint && !this.holdLines) this.armHide(line);
     this.onSpoken?.(line);
     this.layout();
   }
@@ -389,15 +411,38 @@ export class Maya {
     this.factEl.hidden = !fact && !line.rule;
   }
 
+  /** A passing line's timer (Section 34b.2: never for a line with Got it). */
   private armHide(line: MayaLine, minMs = 0): void {
     window.clearTimeout(this.hideTimer);
-    this.hideTimer = window.setTimeout(() => this.dismiss(), Math.max(minMs, readingMs(line.text)));
+    if (!line.hint) return;
+    this.hideTimer = window.setTimeout(() => this.dismiss(true), Math.max(minMs, readingMs(line.text)));
   }
 
-  /** Closes the current line. */
-  dismiss(): void {
+  /**
+   * Section 34b.2: after a bubble closed by itself, a transparent shield over where it was takes clicks for
+   * `SHIELD_MS`, so a click aimed at it does not land on the board under it.
+   */
+  private shield(): void {
+    const box = this.container.getBoundingClientRect();
+    const r = this.bubble.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return;
+    const el = document.createElement("div");
+    el.className = "maya-shield";
+    el.setAttribute("aria-hidden", "true");
+    el.style.left = `${r.left - box.left}px`;
+    el.style.top = `${r.top - box.top}px`;
+    el.style.width = `${r.width}px`;
+    el.style.height = `${r.height}px`;
+    for (const type of ["pointerdown", "pointerup", "click"]) el.addEventListener(type, (event) => event.stopPropagation());
+    this.container.appendChild(el);
+    window.setTimeout(() => el.remove(), SHIELD_MS);
+  }
+
+  /** Closes the current line (`byItself`: its own timer closed it, Section 34b.2). */
+  dismiss(byItself = false): void {
     window.clearTimeout(this.hideTimer);
     if (!this.current) return;
+    if (byItself) this.shield();
     this.current = null;
     this.bubble.hidden = true;
     this.el.classList.remove("talking");
@@ -537,6 +582,12 @@ export class Maya {
       }
     }
     this.pendingSpot = null;
+    if (!spot && placed) {
+      // Section 34b.2: a line already up stays where it is (it was taken down and said again later, so a player saw
+      // the same fact twice).
+      putBack();
+      return;
+    }
     if (!spot) {
       // No room anywhere beside her: hold the line back and try again when something moves. She does not move.
       const line = this.current!;

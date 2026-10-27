@@ -1242,6 +1242,13 @@
    */
 }
 
+/* Section 34b.2: where a bubble closed by itself, for 500 ms: it takes the click meant for the bubble (maya.ts). */
+.maya-shield {
+  position: absolute;
+  z-index: 13;
+  pointer-events: auto;
+}
+
 /*
  * Her home: the bottom-right corner (Section 33b), one fixed rule. Never
  * written by script, never animated, never moved; if something would cover

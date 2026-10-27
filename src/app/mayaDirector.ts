@@ -59,10 +59,23 @@ function coordOf(key: string): AxialCoord {
   return { q, r };
 }
 
+/** Section 34b.2: a fact or a tip, which she gives at most one a year and never twice in a run. */
+export function isTip(line: MayaLine): boolean {
+  return !!line.fact || TIPS.has(line.id);
+}
+
+/** "Back at 2026. 5 builds before the cyclone." (a retry) and "On to 2031. 10 builds before the flood." (a phase start). */
+export function phaseLine(retry: boolean, year: number, builds: number, kind: string): string {
+  return `${retry ? "Back at" : "On to"} ${year}. ${builds} ${builds === 1 ? "build" : "builds"} before the ${stormWord(kind as Parameters<typeof stormWord>[0])}.`;
+}
+
 export class MayaDirector {
   private lastSpokenMoment = -1;
   private readonly warned = new Set<string>();
   private readonly lastCalled = new Set<string>();
+  /** Section 34b.2: the facts and tips said this run (kept on a retry, which is the same run), and the year of the last. */
+  readonly shownTips = new Set<string>();
+  private tipYear: number | null = null;
 
   constructor(private readonly maya: Maya, private readonly ctx: DirectorContext) {
     if (ctx.quiet) return;
@@ -160,7 +173,12 @@ export class MayaDirector {
   pump(): void {
     if (this.maya.isMuted || this.ctx.blocked()) return;
     const moment = this.ctx.run.moment;
-    const line = this.maya.peek();
+    const year = this.ctx.run.year;
+    // Section 34b.2: a fact or tip already said this run is not said again; at most one a year (the lines behind a
+    // held tip, a warning or her objective line, may go first).
+    this.maya.withdraw((queued) => isTip(queued) && !queued.force && this.shownTips.has(queued.id));
+    const allowed = (queued: MayaLine): boolean => queued.force === true || !isTip(queued) || this.tipYear !== year;
+    const line = this.maya.queued.find(allowed);
     if (!line) return;
     if (moment === this.lastSpokenMoment) return;
     // A warning does not wait behind a line left over from an earlier
@@ -171,7 +189,30 @@ export class MayaDirector {
     }
     // Ordinary tips rest two moments between them; a discovery is news about what was just built, so it does not wait out that rest.
     if (!line.urgent && !line.fact && this.lastSpokenMoment >= 0 && moment - this.lastSpokenMoment < 2) return;
-    if (this.maya.next()) this.lastSpokenMoment = moment;
+    if (this.maya.next((queued) => queued === line)) {
+      this.lastSpokenMoment = moment;
+      if (isTip(line)) {
+        this.shownTips.add(line.id);
+        this.tipYear = year;
+      }
+    }
+  }
+
+  /**
+   * Section 34b.2: a phase's first line, after the storm before it ("On to 2031. 10 builds before the flood."), or
+   * after "Try this storm again" ("Back at 2026. 5 builds before the cyclone."). It goes ahead of every tip; a retry
+   * also drops every tip still waiting, and whatever she was saying.
+   */
+  phaseStart(retry: boolean): void {
+    if (this.ctx.quiet) return;
+    const run = this.ctx.run;
+    const next = run.nextChallenge();
+    if (!next) return;
+    if (retry) {
+      this.maya.withdraw((queued) => isTip(queued));
+      this.maya.dismiss();
+    }
+    this.maya.say({ id: `phase:${next.id}:${run.moment}`, text: phaseLine(retry, run.year, run.buildsUntil(next), next.kind), state: "explains", urgent: true, force: true });
   }
 
   /** A note reopened from the Field Guide: said at once, whatever the moment. */

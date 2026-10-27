@@ -964,7 +964,7 @@ export class PanjimController {
           // Maya calls the storm's phases as they come.
           onPhase: (phase, line) => {
             this.maya.dismiss();
-            this.maya.say({ id: `storm:${challenge.id}:${phase}`, text: line, state: phase === "Recede" ? "explains" : "warning", urgent: true });
+            this.maya.say({ id: `storm:${challenge.id}:${phase}`, text: line, state: phase === "Recede" ? "explains" : "warning", urgent: true, hint: true });
             this.maya.next();
           }
         });
@@ -992,7 +992,7 @@ export class PanjimController {
       // The calm after the finale's storm, then the replay of what happened.
       if (record.kind === "compound") {
         this.maya.dismiss();
-        this.maya.say({ id: `calm:${challenge.id}`, text: "The water has gone down and the sun is out again.", state: "celebrates", urgent: true });
+        this.maya.say({ id: `calm:${challenge.id}`, text: "The water has gone down and the sun is out again.", state: "celebrates", urgent: true, hint: true });
         this.maya.next();
         await this.host.calmEnding(4500);
       }
@@ -1179,8 +1179,9 @@ export class PanjimController {
     this.host.refresh();
     this.syncControls();
     this.showConeIfPhaseStart();
+    // Section 34b.2: her first line after the retry says where the run is; no tip waits from before it.
+    this.mayaDirector.phaseStart(true);
   }
-
 
   /**
    * Section 30.10 (owner decision): "Speed up", on screen while a storm or its replay plays. It does what a click on
@@ -1266,7 +1267,7 @@ export class PanjimController {
       },
       say: (line) => {
         this.maya.dismiss();
-        this.maya.say({ id: `replay:${challenge.id}:${line}`, text: line, state: "explains", urgent: true, force: true });
+        this.maya.say({ id: `replay:${challenge.id}:${line}`, text: line, state: "explains", urgent: true, force: true, hint: true });
         this.maya.next();
       }
     });
@@ -1566,6 +1567,8 @@ export class PanjimController {
     // objective's tiles (Section 32, owner decision): it just goes down.
     const outcome = this.run.build(coord, elementId);
     if (!outcome.ok) return false;
+    // Section 34b.2: a build closes her line (lines with Got it no longer close on a timer).
+    this.maya.dismiss();
     // Section 31.2: the checklist ticks the defence; its caption says "Built" before the next slides in.
     if (this.tutorial) {
       for (const { id, saves, net, atRisk } of credit) {
@@ -1685,6 +1688,8 @@ export class PanjimController {
       if (!this.run.finished) this.clock.tick(this.clockView());
       else this.clock.set(this.clockView());
       this.showConeIfPhaseStart();
+      // Section 34b.2: a phase that follows a storm opens with her line on what comes next, ahead of any tip.
+      if (pending.length > 0 && !this.run.finished) this.mayaDirector.phaseStart(false);
     } finally {
       this.stagingYearEnd = false;
       this.holdCountdowns(false);

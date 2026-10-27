@@ -2761,6 +2761,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const coord = monuments.atHit(hits[0].object, hits[0].instanceId)?.coord ?? terrain.coordForHit(hits[0].object, hits[0].instanceId);
     if (!coord) return;
 
+    // Section 34b.2: a click on the map with her bubble open closes the bubble and still opens the tile, as if the
+    // bubble were not there (the menu's cards ignore clicks for their first moment, so it never builds).
+    if (panjim?.maya.speaking) panjim.maya.dismiss();
     openTilePopover(coord);
   }
 

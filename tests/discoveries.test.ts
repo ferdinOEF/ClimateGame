@@ -120,9 +120,17 @@ describe("a discovery never jumps ahead of a hazard warning", () => {
       dismiss: () => {
         speaking = false;
       },
-      next: () => {
-        const l = queue.shift();
-        if (!l) return false;
+      // Section 34b.2: the director picks the first line it may say, and drops tips already said.
+      get queued() {
+        return queue;
+      },
+      withdraw: (p: (l: MayaLine) => boolean) => {
+        for (let i = queue.length - 1; i >= 0; i--) if (p(queue[i])) queue.splice(i, 1);
+      },
+      next: (pick?: (l: MayaLine) => boolean) => {
+        const at = pick ? queue.findIndex(pick) : 0;
+        if (at < 0 || at >= queue.length) return false;
+        const [l] = queue.splice(at, 1);
         order.push(l.id);
         return true;
       }

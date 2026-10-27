@@ -139,6 +139,82 @@ STEPS.push([
   }
 ]);
 
+const bubbleOpen = (page: Page): Promise<boolean> => page.evaluate(`!!document.querySelector(".maya-bubble:not([hidden])")`) as Promise<boolean>;
+const menuOpen = (page: Page): Promise<boolean> => page.evaluate(`(() => { const b = document.querySelector(".popover-backdrop"); return !!b && !b.hidden; })()`) as Promise<boolean>;
+
+/** A tile on the canvas (nothing over it), in the middle of the window, of this terrain, with what can be built there. */
+async function tileOnScreen(page: Page, ctx: Ctx, terrain: string): Promise<{ key: string; x: number; y: number; options: string[] } | null> {
+  return (await page.evaluate(`(() => { const c = window.__panjimForTest; const run = c.run; const box = c.host.container.getBoundingClientRect(); const out = [];
+    for (const [key, t] of run.state.placed) { if (t.terrainId !== ${JSON.stringify(terrain)} || run.state.elements.has(key)) continue;
+      const p = c.host.project(t.coord); if (!p) continue; const x = p.x + box.left, y = p.y + box.top;
+      if (x < ${ctx.W} * 0.35 || x > ${ctx.W} * 0.65 || y < ${ctx.H} * 0.3 || y > ${ctx.H} * 0.75) continue;
+      const el = document.elementFromPoint(x, y); if (!el || el.tagName !== "CANVAS") continue;
+      const options = run.state.buildableAt(t.coord).map((o) => o.id).sort(); if (options.length) out.push({ key, x, y, options }); }
+    return out[0] ?? null; })()`)) as { key: string; x: number; y: number; options: string[] } | null;
+}
+
+// ---- 34b.2: Maya's bubble holds for Got it, passes a tile click through, Source works ----
+STEPS.push([
+  "34b.2",
+  async (ctx) => {
+    // The greeting stays until Got it; a click where Got it was closes it and opens nothing.
+    {
+      const page = await openGame(ctx);
+      await page.waitForFunction(`!!document.querySelector(".maya-bubble:not([hidden])")`, undefined, { timeout: 15000 }).catch(() => undefined);
+      const gotIt = await rectOf(page, ".maya-dismiss");
+      check(gotIt !== null, "the greeting is up with Got it");
+      await page.waitForTimeout(20000);
+      check(await bubbleOpen(page), "after 20 s the greeting is still up (a line with Got it has no timer)");
+      if (gotIt) await page.mouse.click(gotIt.x + gotIt.w / 2, gotIt.y + gotIt.h / 2);
+      await page.waitForTimeout(700);
+      check(!(await bubbleOpen(page)) && !(await menuOpen(page)), "a click where Got it was closes the bubble and opens no build menu");
+      await page.close();
+    }
+    // With the bubble open, a click on a beach tile closes it and opens that tile's menu.
+    {
+      const page = await openGame(ctx);
+      await page.waitForFunction(`!!document.querySelector(".maya-bubble:not([hidden])")`, undefined, { timeout: 15000 }).catch(() => undefined);
+      const tile = (await tileOnScreen(page, ctx, "beach")) ?? (await tileOnScreen(page, ctx, "estuary"));
+      check(tile !== null && (await bubbleOpen(page)), `the bubble is open and a free beach tile is on screen (${tile?.key})`);
+      if (tile) {
+        await page.mouse.click(tile.x, tile.y);
+        await page.waitForTimeout(800);
+        const cards = (await page.evaluate("[...document.querySelectorAll('.build-popover .build-card:not(.disabled)')].map((c) => c.dataset.element).sort()")) as string[];
+        check(!(await bubbleOpen(page)), "the map click closed the bubble");
+        check((await menuOpen(page)) && JSON.stringify(cards) === JSON.stringify(tile.options), `and opened that tile's menu (${cards.join(", ")}; want ${tile.options.join(", ")})`);
+        await page.screenshot({ path: path.join(ctx.out, `34b2-click-through-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+      }
+      await page.close();
+    }
+    // Source on a fact opens Facts and sources at that fact.
+    {
+      const page = await openGame(ctx);
+      await page.evaluate(`(() => { const m = window.__panjimForTest.maya; m.dismiss(); window.__nuggetPopupForTest.replay("dunes-barrier"); })()`);
+      await page.waitForTimeout(800);
+      const source = await rectOf(page, ".maya-source");
+      check(source !== null, "a fact line shows Source");
+      if (source) await page.mouse.click(source.x + source.w / 2, source.y + source.h / 2);
+      await page.waitForTimeout(900);
+      const at = (await page.evaluate(`(() => { const el = document.querySelector(".sources-item.highlight"); if (!el) return null; const r = el.getBoundingClientRect(); return { id: el.dataset.factId, anchor: el.id, top: r.top, bottom: r.bottom, h: window.innerHeight }; })()`)) as { id: string; anchor: string; top: number; bottom: number; h: number } | null;
+      check(!!at && at.id === "dunes-barrier" && at.anchor === "fact-dunes-barrier" && at.top >= 0 && at.bottom <= at.h, `Source opens Facts and sources at that fact (${JSON.stringify(at)})`);
+      await page.screenshot({ path: path.join(ctx.out, `34b2-source-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+      await page.close();
+    }
+    // A passing line closes by itself and leaves a shield for a moment.
+    {
+      const page = await openGame(ctx);
+      await page.evaluate(`(() => { const m = window.__panjimForTest.maya; m.dismiss(); m.say({ id: "qa-hint", text: "A passing line.", state: "tip", urgent: true, hint: true }); m.next(); })()`);
+      await page.waitForTimeout(300);
+      check(!(await page.evaluate(`!!document.querySelector(".maya-dismiss:not([hidden])")`)), "a passing line has no Got it");
+      await page.waitForFunction(`!document.querySelector(".maya-bubble:not([hidden])")`, undefined, { timeout: 20000 }).catch(() => undefined);
+      check((await page.evaluate(`!!document.querySelector(".maya-shield")`)) as boolean, "when it closes by itself, a shield stands where it was");
+      await page.waitForTimeout(700);
+      check(!(await page.evaluate(`!!document.querySelector(".maya-shield")`)), "and is gone after 500 ms");
+      await page.close();
+    }
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

@@ -254,5 +254,5 @@ export function mayaAftermath(
  * (Section 12), so none of them is said in the next one.
  */
 export function isPhaseLine(id: string): boolean {
-  return /^(storm|replay|calm|warn|last|fixed|sample-warn):/.test(id) || id === MAYA.opening.id;
+  return /^(storm|replay|calm|warn|last|fixed|sample-warn|phase):/.test(id) || id === MAYA.opening.id;
 }
