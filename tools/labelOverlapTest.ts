@@ -26,6 +26,9 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const PORT = Number(process.env.LABELS_PORT ?? 5198);
 const SHOTS = path.join(ROOT, "docs", "qa", "labels");
 const SIZES = [
+  // Section 34b.7: the owner's narrow play test window, and a small laptop's.
+  { w: 520, h: 599 },
+  { w: 1024, h: 640 },
   { w: 1280, h: 600 },
   { w: 1366, h: 768 },
   { w: 1920, h: 1080 },

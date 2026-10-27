@@ -19,7 +19,7 @@ import { CoinJar } from "@ui/panjim/coinJar";
 import { GetReadyPanel } from "@ui/panjim/getReady";
 import { buildHoverLine, prepProgress, regionPlaces, rowMissNote, type PrepObjective } from "@core/prep";
 import { FieldGuide } from "@ui/panjim/fieldGuide";
-import { COMBO_INFO, type ComboId } from "@core/combos";
+import { COMBO_INFO, comboNote, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome, starsForHouses } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
@@ -688,6 +688,9 @@ export class PanjimController {
    * Maya says the step's one line.
    */
   private renderTutorial(speak = true): void {
+    // Section 34b.7: through the storm and its result cards the caption keeps the defence just built (it moved on to
+    // the next suggestion mid storm); it is drawn again once the cards close.
+    if (this.stagingYearEnd) return;
     const panel = this.tutorialPanel!;
     const suggested = this.run.finished ? null : this.tutorialSuggestion();
     panel.render(this.tutorialTried, suggested, this.tutorialJustBuilt);
@@ -1797,8 +1800,8 @@ export class PanjimController {
           const [q, r] = key.split(",").map(Number);
           return { q, r };
         }));
-        // Section 30.11 bug 7: plain words, no exclamation and no number.
-        this.host.showBanner(info.plain, 3800);
+        // Section 30.11 bug 7: plain words, no exclamation and no number. Section 34b.7: said as a game rule.
+        this.host.showBanner(comboNote(info), 3800);
         this.host.telemetry.reward("combo");
         break;
       }

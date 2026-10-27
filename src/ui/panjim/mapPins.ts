@@ -91,10 +91,22 @@ export class MapPins {
       if (name && dot && name.offsetWidth > 0) entry.size = { w: name.offsetWidth, h: name.offsetHeight, d: dot.offsetHeight };
     }
     const width = this.layer.clientWidth;
+    // Section 34b.7: a pin's name that would sit on one placed before it (an earlier, more important row's) is hidden
+    // for this frame, as the landmark labels are ("The Mandovi waterfront" lay over "Taleigao").
+    const taken: Rect[] = [];
     for (const entry of this.pins) {
       const at = this.project(entry.pin.x, entry.pin.y, entry.pin.z);
       place(entry.el, at);
       if (at && entry.size) this.nudge(entry.el, entry.pin, entry.size, at, headBoxes, width);
+      if (!at || !entry.size) continue;
+      const name = entry.el.querySelector<HTMLElement>(".map-pin-name");
+      const shift = /translate\((-?\d+)px, (-?\d+)px\)/.exec(name?.style.transform ?? "");
+      const cx = at.x + (shift ? Number(shift[1]) : 0);
+      const cy = at.y - entry.size.d / 2 - 2 - entry.size.h / 2 + (shift ? Number(shift[2]) : 0);
+      const box: Rect = { x0: cx - entry.size.w / 2, y0: cy - entry.size.h / 2, x1: cx + entry.size.w / 2, y1: cy + entry.size.h / 2 };
+      const hidden = taken.some((other) => overlaps(box, other));
+      entry.el.style.visibility = hidden ? "hidden" : "";
+      if (!hidden) taken.push(box);
     }
     if (this.note) {
       if (nowMs > this.note.until) {

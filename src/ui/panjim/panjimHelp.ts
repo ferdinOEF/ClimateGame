@@ -119,7 +119,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       ${picture("help-heat.jpg", "Red striped tiles: homes the coming storm would flood")}
       <div>
         <h3>The heat ${RULE}</h3>
-        <p>${heatLead(input.heatLeadYears ?? HEAT_LEAD_YEARS)}, striped red tiles mark the homes it would flood.</p>
+        <p>${heatLead(input.heatLeadYears ?? HEAT_LEAD_YEARS)}, striped red tiles mark the homes it would take, by water or wind.</p>
         <p>Show risk (R): the homes the next storm would hit today, counting the defences you have built.</p>
       </div>
     </section>

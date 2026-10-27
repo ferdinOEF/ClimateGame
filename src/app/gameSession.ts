@@ -45,6 +45,7 @@ import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
 import { RiskIntroFx, type ScreenPolygon } from "@ui/riskIntroFx";
 import { MapAttribution } from "@ui/attribution";
+import { TILE_NOTES } from "@ui/panjim/defenceCards";
 import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
 import { TownDecor } from "@render/townDecor";
@@ -2470,10 +2471,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             ? def.effects
             : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
         removeLabel: panjim ? "Demolish (uses this year's build)" : undefined,
+        removeNote: panjim && def.kind !== "building" ? TILE_NOTES.oneBuild : undefined,
         // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
         note:
           panjim && def.kind === "building" && built.degradeAmount >= 1
             ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only."
+            : panjim && def.kind === "building"
+              ? TILE_NOTES.home
             : panjim && isCracked(def, built, state.turn)
               ? `${crackedNote(def)}. In this game a seawall or small dam cracks at 10 years old.`
               : panjim && CARD_LINES[def.id]
@@ -2517,7 +2521,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       });
     if (popoverOptions.length === 0) {
       // Section 34: a click on ground that takes no build said nothing, and players read it as a lost click.
-      if (panjim) buildPopover.showNote(screen.x, screen.y, "Nothing can be built on this tile.");
+      // Section 34b.7: open sea says so in its own words.
+      if (panjim) buildPopover.showNote(screen.x, screen.y, state.placed.get(key)?.terrainId === "coast" ? TILE_NOTES.sea : TILE_NOTES.nothing);
       return;
     }
     const mode = panjim ? { hideCost } : undefined;

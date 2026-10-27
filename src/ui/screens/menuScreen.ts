@@ -96,7 +96,9 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
           el("div", {
             className: "menu-actions",
             children: model.buttons.map((spec) => menuButton(spec, actions))
-          })
+          }),
+          // Section 34b.7: in a small window (shown by CSS under 700 px tall or 900 px wide).
+          el("p", { className: "menu-window-note", text: "Best played in a window 1366 by 768 or larger." })
         ]
       }),
 
@@ -109,8 +111,10 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
 
   // The header: the game's own Panjim board (a render, tools/shellArt.ts), fading into the page.
   root.appendChild(menuArt());
-  root.appendChild(menuArtCredit());
   root.appendChild(screen);
+  // Section 34b.7: the map credit after the buttons in the tab order (Tab then Enter on a fresh menu starts the
+  // Tutorial); it is placed by CSS, so where it shows is unchanged.
+  root.appendChild(menuArtCredit());
   // The partner credits are behind `SHOW_PARTNER_CREDITS` (Section 17b, off by default); without them the way to
   // the Sources screen is a quiet text link in the bottom corner.
   if (SHOW_PARTNER_CREDITS) {

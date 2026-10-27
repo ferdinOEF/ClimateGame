@@ -34,6 +34,8 @@ export interface BuiltElementInfo {
   extraActions?: { label: string; onClick: () => void; disabled?: boolean }[];
   /** A short line under the name. Used by monuments to say what the building is; built elements get their effects instead. */
   note?: string;
+  /** Section 34b.7: a line under the remove button ("A tile holds one build; demolish to build another here."). */
+  removeNote?: string;
 }
 
 /** How the build menu is drawn on a level that differs from the default. */
@@ -470,6 +472,12 @@ export class BuildPopover {
         onRemove();
       });
       this.el.appendChild(removeBtn);
+      if (info.removeNote) {
+        const note = document.createElement("p");
+        note.className = "built-info-remove-note";
+        note.textContent = info.removeNote;
+        this.el.appendChild(note);
+      }
     }
 
     this.positionAndReveal(screenX, screenY);

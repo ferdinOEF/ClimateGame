@@ -404,6 +404,42 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.7: the menu's small window note, Tab then Enter starts the Tutorial; ☰ inside a narrow window ----
+STEPS.push([
+  "34b.7",
+  async (ctx) => {
+    // The main menu, fresh.
+    {
+      const page = await newPage(ctx);
+      await page.goto(`${ctx.url}/?qa=1`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".menu-actions button", { timeout: 60000 });
+      await page.waitForTimeout(800);
+      const small = ctx.W < 900 || ctx.H < 700;
+      const note = await rectOf(page, ".menu-window-note");
+      check(small ? note !== null : note === null, `the small window note ${small ? "shows" : "is hidden"} at ${ctx.tag}`);
+      await page.screenshot({ path: path.join(ctx.out, `34b7-menu-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+      await page.keyboard.press("Tab");
+      const first = (await page.evaluate(`document.activeElement?.textContent?.trim() ?? ""`)) as string;
+      check(/Tutorial/.test(first), `Tab on a fresh menu reaches the Tutorial first (${first})`);
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(2500);
+      check(/#\/play\/l00-tutorial|#\/start\/l00-tutorial/.test(page.url()), `Enter starts the Tutorial (${page.url()})`);
+      await page.close();
+    }
+    // ☰ in the owner's narrow window: its menu stays inside the window.
+    if (ctx.W === SIZES[0][0]) {
+      const narrow: Ctx = { ...ctx, W: 520, H: 599, tag: "520x599" };
+      const page = await openGame(narrow);
+      await page.locator(".panjim-clock .hud-panel-settings .hud-panel-button").click();
+      await page.waitForTimeout(500);
+      const menu = await rectOf(page, ".panjim-clock .hud-panel-settings .hud-panel-body");
+      check(!!menu && menu.x >= 0 && menu.x + menu.w <= 520 - 12 + 0.5, `at 520x599 the ☰ menu stays inside the window (${JSON.stringify(menu)})`);
+      await page.screenshot({ path: path.join(ctx.out, `34b7-menu-open-520x599.jpg`), type: "jpeg", quality: 75 });
+      await page.close();
+    }
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

@@ -7,6 +7,11 @@ import { BUILDING_KINDS, type PhaseResult } from "../src/core/phaseResult";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { CARD_NAME } from "../src/ui/panjim/defenceCards";
 import { defencesCard, homesHtml, otherKindNote, placeWord, resultCard } from "../src/ui/panjim/resultCards";
+import { guideCounts, SPECIES, visitLine } from "../src/ui/panjim/fieldGuide";
+import { TILE_NOTES } from "../src/ui/panjim/defenceCards";
+import { COMBO_INFO, COMBO_SOURCE, comboNote } from "../src/core/combos";
+import { factById } from "../src/core/facts";
+import { LEVELS } from "../src/levels/levels";
 
 /**
  * Section 34b: the fixes from the owner's two live play tests (24 and 27 October). Each step's unit checks; the browser
@@ -356,5 +361,63 @@ describe("34b.5: the result cards tell the whole story", () => {
     expect(controller).toContain(`button.setAttribute("aria-describedby", why.id);`);
     expect(controller).not.toContain("dataset.hint");
     expect(css).not.toContain("data-hint");
+  });
+});
+
+describe("34b.7: text and small interface fixes", () => {
+  it("1. an unseen creature's line names its home as the build cards do", () => {
+    expect(visitLine("sandy_vegetation")).toBe("Not seen yet. Something visits pandanus.");
+    expect(visitLine("mangrove")).toBe("Not seen yet. Something visits mangrove.");
+    expect(visitLine("dune")).toBe("Not seen yet. Something visits a dune.");
+    expect(visitLine("small_dam")).toBe("Not seen yet. Something visits a small dam.");
+    expect(visitLine("water")).toBe("Not seen yet. Something swims in the open water.");
+    for (const species of SPECIES) expect(visitLine(species.home)).not.toMatch(/_|sandy vegetation/);
+  });
+
+  it("2. the menu's Field Guide line counts notes and creatures apart", () => {
+    expect(guideCounts("1 of 22", 0, 11)).toBe("1 of 22 notes, 0 of 11 creatures");
+    expect(guideCounts(null, 3, 11)).toBe("3 of 11 creatures");
+  });
+
+  it("3. How to play: the heat marks the homes a storm would take, by water or wind", () => {
+    expect(readFileSync("src/ui/panjim/panjimHelp.ts", "utf8")).toContain("striped red tiles mark the homes it would take, by water or wind.");
+  });
+
+  it("4. the Tutorial's timeline ticks its own storm years; the last line goes when no builds remain; the caption holds through the storm", () => {
+    const outlook = readFileSync("src/ui/panjim/outlookBar.ts", "utf8");
+    expect(outlook).toContain("const years = span <= 10 ? [...stormYears].sort((a, b) => a - b) :");
+    expect(outlook).toContain("view.year < view.endYear ? `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.` : \"\"");
+    // The Tutorial runs 2026 to 2032 with storms in 2029 and 2032; Panjim's 25 years keep the five year marks.
+    const tutorial = LEVELS.find((l) => l.tutorial)!;
+    expect(tutorial).toBeDefined();
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    const render = controller.slice(controller.indexOf("  private renderTutorial("), controller.indexOf("  private tutorialSuggestion("));
+    expect(render).toContain("if (this.stagingYearEnd) return;");
+  });
+
+  it("5. a home's card, the line under Demolish and the open sea say what they are", () => {
+    expect(TILE_NOTES.home).toBe("Homes stand here. Nothing can be built on a home.");
+    expect(TILE_NOTES.oneBuild).toBe("A tile holds one build; demolish to build another here.");
+    expect(TILE_NOTES.sea).toBe("Nothing can be built out here.");
+    const session = readFileSync("src/app/gameSession.ts", "utf8");
+    expect(session).toContain("removeNote: panjim && def.kind !== \"building\" ? TILE_NOTES.oneBuild : undefined,");
+    expect(session).toContain(": panjim && def.kind === \"building\"\n              ? TILE_NOTES.home");
+    expect(session).toContain("terrainId === \"coast\" ? TILE_NOTES.sea : TILE_NOTES.nothing");
+  });
+
+  it("6. the combo notes are game rules, and the Field Guide's combo rules carry the Sahapedia fact", () => {
+    expect(comboNote(COMBO_INFO.living_bund)).toBe("In this game: a khazan and mangroves side by side protect each other.");
+    expect(comboNote(COMBO_INFO.mangrove_belt)).toBe("In this game: three or more mangroves side by side protect each other.");
+    const fact = factById(COMBO_SOURCE);
+    expect(fact?.citation?.publisher).toBe("Sahapedia");
+    expect(fact?.kind).toBe("fact");
+    expect(readFileSync("src/app/panjimController.ts", "utf8")).toContain("this.host.showBanner(comboNote(info), 3800);");
+  });
+
+  it("7. the main menu's map credit comes after its buttons in the tab order", () => {
+    const menu = readFileSync("src/ui/screens/menuScreen.ts", "utf8");
+    expect(menu.indexOf("root.appendChild(screen);")).toBeGreaterThan(-1);
+    expect(menu.indexOf("root.appendChild(menuArtCredit());")).toBeGreaterThan(menu.indexOf("root.appendChild(screen);"));
+    expect(menu).toContain(`text: "Best played in a window 1366 by 768 or larger."`);
   });
 });

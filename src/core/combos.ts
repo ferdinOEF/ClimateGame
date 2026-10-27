@@ -94,3 +94,14 @@ export function newComboMembers(before: ComboState, after: ComboState): { combo:
   }
   return out;
 }
+
+/**
+ * Section 34b.7: a combo's note on screen, said as the game rule it is ("In this game: a khazan and mangroves side by
+ * side protect each other.").
+ */
+export function comboNote(info: { plain: string }): string {
+  return `In this game: ${info.plain.charAt(0).toLowerCase()}${info.plain.slice(1)}`;
+}
+
+/** The real world fact behind the combos, their source in the Field Guide: mangroves on a khazan's outer bund break the waves (Sahapedia). */
+export const COMBO_SOURCE = "khazan-mangrove-bund";
