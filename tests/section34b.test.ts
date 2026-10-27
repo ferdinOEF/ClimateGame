@@ -484,3 +484,12 @@ describe("34b.9: seawalls on the shore, small dams on the upstream river", () =>
     }
   });
 });
+
+describe("34b.11: Esc on the result cards", () => {
+  it("Esc on a result card does nothing (it jumped to the last card)", () => {
+    const cards = readFileSync("src/ui/panjim/resultCards.ts", "utf8");
+    const esc = cards.slice(cards.indexOf(`if (event.key === "Escape") {`), cards.indexOf(`if (event.key === "Enter") {`));
+    expect(esc).toContain("event.stopImmediatePropagation();");
+    expect(esc).not.toMatch(/index =|render\(\)/);
+  });
+});

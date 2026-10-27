@@ -7,7 +7,8 @@ import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
 /**
  * The end-of-phase result cards (Section 9): after each storm, a short
  * sequence in a modal. Each card's button names what comes next; Previous card
- * on every card after the first; Enter goes on, Esc jumps to the last card.
+ * on every card after the first; Enter goes on; Esc does nothing (Section 34b.11: it jumped to the last card, and a
+ * player lost a storm's payoff to one stray Esc).
  * Focus stays inside while it is open, and nothing else (Maya's bubble, the
  * map's labels) draws over it: it is above them and in their obstacle lists.
  * The only motion is a short fade between cards, none with reduced motion.
@@ -370,13 +371,10 @@ export class ResultCards {
             return;
           }
           if (event.key === "Escape") {
-            // Esc jumps to the last card.
+            // Section 34b.11 (owner decision 3): Esc does nothing on the cards (it jumped to the last card); Previous
+            // card and the buttons stay. It still stops here, so nothing under the cards takes it.
             event.preventDefault();
             event.stopImmediatePropagation();
-            if (index !== cards.length - 1) {
-              index = cards.length - 1;
-              render();
-            }
             return;
           }
           if (event.key === "Enter") {
