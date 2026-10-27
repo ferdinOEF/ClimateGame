@@ -6,7 +6,7 @@ import { resolveChallenge, ZoneIndex, type ChallengeOutcome, type ComboBonus, ty
 import { computeCombos, newComboMembers, type ComboId, type ComboState } from "./combos";
 import { computeExposure, HEAT_LEAD_YEARS, type Exposure } from "./exposure";
 import { ageBroken, isCracked, landfallSite, LANDFALL_ZONE, waterBoard, type WaterBoard } from "./hazardModel";
-import { generatePrep, openingJobs, prepProgress, regionPlace, regionPlaces, type OpeningRegion, type PhaseArea, type PrepConfig, type PrepObjective } from "./prep";
+import { generatePrep, openingJobs, prepProgress, regionPlace, regionPlaces, rowsForBuild, type OpeningRegion, type PhaseArea, type PrepConfig, type PrepObjective } from "./prep";
 import { generatePhaseObjective, type PhaseObjective } from "./phaseObjectives";
 import { discTiles, localityTiles, nearestLocality, stretchTiles } from "./stretch";
 import { forecastCone, type ForecastCone } from "./forecastCone";
@@ -140,6 +140,11 @@ export interface ActionOutcome {
   events: RunEvent[];
   /** Why the action was refused, for the UI to say. */
   reason?: string;
+  /**
+   * Section 34b.4: a build of an objective row's defence in the place it names that took no home out of the storm's
+   * risk, so it does not count: how the row names its place ("in Merces").
+   */
+  rowMiss?: string;
 }
 
 /** Why `skipYear` is refused: there is a build to make. */
@@ -514,7 +519,8 @@ export class ActionRun {
       (!this.prepConfig?.model || copy.prep.every((job) => job.templateId.startsWith("model:") && (NATURE_BASED as readonly string[]).includes(job.elementId))) &&
       copy.prep.every((job) => !(job.tiles ?? []).some((key) => shelterOfJob(job)?.has(key)));
     if (savedRowsFit) {
-      this.prep = copy.prep!;
+      // Section 34b.4: a copy, so the rows credited after a retry never write into the snapshot it came from.
+      this.prep = JSON.parse(JSON.stringify(copy.prep)) as PrepObjective[];
       this.objective = null;
     } else this.refreshPrep();
     this.areas.clear();
@@ -805,10 +811,24 @@ export class ActionRun {
   /** Builds `elementId` at `coord`. It ends the year: a storm due this year resolves straight after it. */
   build(coord: AxialCoord, elementId: string): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
+    // Section 34b.4: a build of a row's defence in the place it names counts for it when it takes at least one home out
+    // of the storm's risk (the same model as the pulse and Homes at risk), asked before it goes down.
+    const next = this.nextChallenge();
+    const key = axialKey(coord);
+    const buildable = this.state.canBuild(coord, elementId);
+    const rows = next && buildable ? rowsForBuild(this.prep, next.id, key, elementId) : [];
+    const helps = rows.length > 0 && (this.riskChangeBy(next!, coord, elementId)?.saved.length ?? 0) > 0;
+    // Get ahead's rows (the storm after), when they are on screen (their objective cached): the same, against that storm.
+    const later = next ? this.schedule[this.schedule.indexOf(next) + 1] : undefined;
+    const aheadRows = later && buildable && this.aheadCache?.key === `${next!.id}|${later.id}` ? rowsForBuild(this.aheadCache.objective?.rows ?? [], later.id, key, elementId) : [];
+    const helpsAhead = aheadRows.length > 0 && (this.riskChangeBy(later!, coord, elementId)?.saved.length ?? 0) > 0;
     if (!this.state.build(coord, elementId, false)) return refuse("Can't build that here.");
+    if (helps) for (const row of rows) row.credited = [...new Set([...(row.credited ?? []), key])];
+    if (helpsAhead) for (const row of aheadRows) row.credited = [...new Set([...(row.credited ?? []), key])];
     this.noteBuild(elementId);
     this.moment++;
-    return { ok: true, events: [...this.settle(), ...this.endYear()] };
+    const rowMiss = rows.length > 0 && !helps ? rows[0].place : undefined;
+    return { ok: true, events: [...this.settle(), ...this.endYear()], ...(rowMiss ? { rowMiss } : {}) };
   }
 
   /**

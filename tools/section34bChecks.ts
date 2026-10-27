@@ -277,6 +277,46 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.4: the rings seen zoomed out and in (over the heat's hatching), and a row's flash ----
+STEPS.push([
+  "34b.4",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    // 2029: the heat is on, with its hatching, and the objective's tiles pulse.
+    for (let i = 0; i < 3; i++) {
+      await page.evaluate(`window.__panjimScenarioForTest("pass-year")`);
+      await page.waitForTimeout(1200);
+    }
+    await page.evaluate(`window.__panjimForTest.maya.dismiss()`);
+    const pulses = await pulsePoints(page);
+    check(pulses.length > 0, `the objective's tiles pulse in 2029 (${pulses.length})`);
+    const order = (await page.evaluate(`(() => { const p = window.__objectivePulseForTest; return { ring: p.mesh.renderOrder, depthTest: p.mesh.material.depthTest, heat: window.__heatForTest.mesh.renderOrder }; })()`)) as { ring: number; depthTest: boolean; heat: number };
+    check(order.ring > order.heat && order.depthTest === false, `the rings draw over the heat (${JSON.stringify(order)})`);
+    await page.screenshot({ path: path.join(ctx.out, `34b4-rings-default-${ctx.tag}.jpg`), type: "jpeg", quality: 80 });
+    if (pulses[0]) {
+      const [q, r] = pulses[0].key.split(",").map(Number);
+      // Zoomed in (negative notches) over the hatching, then out.
+      for (const [notches, name] of [[-6, "in"], [12, "out"], [-6, ""]] as const) {
+        await page.evaluate(`(() => { window.__focusTileForTest(${q}, ${r}); window.__zoomForTest.zoomBy(${notches}); })()`);
+        await page.waitForTimeout(1800);
+        if (name) await page.screenshot({ path: path.join(ctx.out, `34b4-rings-${name}-${ctx.tag}.jpg`), type: "jpeg", quality: 80 });
+      }
+    }
+    // A row clicked: its tiles flash twice over 2 s.
+    const row = page.locator(".get-ready-row").first();
+    if (await row.count()) {
+      await row.click();
+      await page.waitForTimeout(250);
+      const level = (await page.evaluate(`window.__objectivePulseForTest.flashLevel(performance.now())`)) as number;
+      await page.screenshot({ path: path.join(ctx.out, `34b4-row-flash-${ctx.tag}.jpg`), type: "jpeg", quality: 80 });
+      check(level > 0.3, `a row click flashes its tiles (strength ${level.toFixed(2)} at 0.25 s)`);
+      await page.waitForTimeout(2100);
+      check(((await page.evaluate(`window.__objectivePulseForTest.flashLevel(performance.now())`)) as number) === 0, "the flash is over after 2 s");
+    } else check(false, "an objective row to click");
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

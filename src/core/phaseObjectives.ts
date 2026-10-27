@@ -221,13 +221,25 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
     }
     list = [...merged.values()].map((group) => ({ ...group, place: joinPlaces(group.places) }));
   }
+  // Section 34b.4: the homes the storm takes on the board as it stands, worked out once if a row needs it.
+  let lostNow: number | null = null;
   return list.map((group, i) => {
-    // The tiles that count: where this defence could go in this place, round the area to protect.
+    // The tiles that pulse: where this defence could go in this place, round the area to protect.
     const places = new Set(group.places);
     const tiles = [...new Set([...candidates.filter((c) => c.elementId === group.elementId && places.has(placeOf(input, c.key))).map((c) => c.key), ...group.picks.map((p) => p.key)])].sort();
     const [verb, one, many] = NOUN[group.elementId] ?? ["Build", group.elementId, group.elementId];
     const count = group.picks.length;
     const baseline = tiles.filter((key) => input.state.elements.get(key)?.elementId === group.elementId).length;
+    // Section 34b.4: the tiles that count are the whole place the row names. Its defences already standing there that
+    // take a home out of this storm's risk (Get ahead's, an earlier phase's) count from the start.
+    const placeTiles = [...input.state.placed.keys()].filter((key) => (!input.stretch?.only || input.stretch.tiles.has(key)) && places.has(placeOf(input, key))).sort();
+    const credited = placeTiles.filter((key) => {
+      if (input.state.elements.get(key)?.elementId !== group.elementId) return false;
+      lostNow ??= homesLost(input.state, input.storm, input.landfallZoneTiles).size;
+      const without = input.state.clone();
+      without.elements.delete(key);
+      return homesLost(without, input.storm, input.landfallZoneTiles).size > lostNow;
+    });
     return {
       id: `${input.challenge.id}:model:${i}:${group.elementId}`,
       challengeId: input.challenge.id,
@@ -242,7 +254,10 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
       tiles,
       heading: allInStretch ? input.stretch!.title : undefined,
       pins: group.picks.every((p) => input.stretch?.tiles.has(p.key)) ? input.stretch!.pins : group.places.flatMap((place) => pinsOf(input, place, tiles)),
-      homes: group.picks.reduce((s, p) => s + p.homes, 0)
+      homes: group.picks.reduce((s, p) => s + p.homes, 0),
+      placeTiles,
+      place: group.place,
+      credited
     };
   });
 }

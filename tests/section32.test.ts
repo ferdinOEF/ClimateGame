@@ -26,7 +26,11 @@ describe("Section 32: no note after a build off the objective's tiles", () => {
   it("build() shows no note beside the tile, in Panjim or the Tutorial", () => {
     const body = buildBody();
     expect(body).toContain("this.run.build(coord, elementId)");
-    expect(body).not.toMatch(/noteAt|showBanner|NOTE|outside/);
+    // Section 34b.4 (owner request): the one note a build may give is for a build of a row's defence in the place the
+    // row names that took no home out of the storm's risk; a build off the objective's place still says nothing.
+    const notes = body.match(/noteAt\([^;]*;/g) ?? [];
+    expect(notes).toEqual(["noteAt(coord, rowMissNote(outcome.rowMiss), 4200);"]);
+    expect(body).not.toMatch(/showBanner|NOTE|outside/);
     expect(controller).not.toMatch(NOTE);
   });
 
@@ -38,7 +42,9 @@ describe("Section 32: no note after a build off the objective's tiles", () => {
 
   it("the objective's other signs stay: the pulsing tiles, the checklist and the build menu's line", () => {
     expect(controller).toContain("showObjectiveTiles");
-    expect(controller).toContain(`"This doesn't change the next storm"`);
+    // Section 34b.4: the line moved to core/prep.ts (buildHoverLine), where it is tested on its own.
+    expect(controller).toContain("return buildHoverLine(change);");
+    expect(fs.readFileSync("src/core/prep.ts", "utf8")).toContain(`"This doesn't change the next storm"`);
     // The note beside a tile stays for a defence broken or cracked with age (Section 30.11).
     expect(controller).toMatch(/noteAt\(\{ q, r \}, "Broken with age/);
   });

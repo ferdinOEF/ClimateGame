@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { insertLine, type Maya, type MayaLine } from "../src/ui/panjim/maya";
 import { MayaDirector, phaseLine } from "../src/app/mayaDirector";
+import { buildHoverLine, prepProgress, rowMissNote } from "../src/core/prep";
 
 /**
  * Section 34b: the fixes from the owner's two live play tests (24 and 27 October). Each step's unit checks; the browser
@@ -194,5 +195,70 @@ describe("34b.3: the camera moves only at its set moments", () => {
     expect(session).toContain("if (buildPopover.isOpen) pendingCameraMove = move;");
     expect(session).toContain("if (pendingCameraMove && !buildPopover.isOpen) {");
     expect(session).toContain(`.panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden]), .maya-bubble:not([hidden])`);
+  });
+});
+
+describe("34b.4: rows count the place they name", () => {
+  const coordOf = (key: string): { q: number; r: number } => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) });
+
+  it("a build of the row's defence anywhere in its place counts when it takes a home out of the storm's risk; one that takes none says so and does not count", async () => {
+    const { newRun, BOT_LEVEL } = await import("../tools/panjimBots/bots");
+    const { passYear } = await import("./helpers/passYear");
+    const run = newRun("rows-place", BOT_LEVEL, true);
+    // Phase 2 (the 2040 flood): its rows name localities ("in Merces").
+    while (run.landed.size === 0) passYear(run);
+    const next = run.nextChallenge()!;
+    let counted = false;
+    let missed = false;
+    for (const row of run.prep) {
+      expect(row.credited, row.label).toBeDefined();
+      expect(row.placeTiles!.length).toBeGreaterThanOrEqual(row.tiles!.length);
+      // A tile of the place that is not one of the row's own (pulsing) tiles.
+      for (const key of row.placeTiles!) {
+        if (row.tiles!.includes(key) || !run.state.canBuild(coordOf(key), row.elementId)) continue;
+        const saves = (run.riskChangeBy(next, coordOf(key), row.elementId)?.saved.length ?? 0) > 0;
+        if ((saves && counted) || (!saves && missed)) continue;
+        const before = prepProgress(row, run.state, run.zones!).current;
+        const outcome = run.build(coordOf(key), row.elementId);
+        expect(outcome.ok).toBe(true);
+        const after = prepProgress(row, run.state, run.zones!).current;
+        if (saves) {
+          expect(after, `${row.label}: ${key} takes a home out of risk`).toBe(Math.min(row.count, before + 1));
+          expect(outcome.rowMiss).toBeUndefined();
+          counted = true;
+        } else {
+          expect(after, `${row.label}: ${key} takes none`).toBe(before);
+          expect(outcome.rowMiss).toBe(row.place);
+          expect(rowMissNote(outcome.rowMiss!)).toBe(`Built ${row.place}, but no home there was still at risk from this storm.`);
+          missed = true;
+        }
+        if (counted && missed) break;
+      }
+      if (counted && missed) break;
+    }
+    expect(counted, "a build off the row's own tiles that counted").toBe(true);
+    expect(missed, "a build in the place that took no home out of risk").toBe(true);
+  }, 120_000);
+
+  it("a phase's rows start with the builds already standing in their place that help (a Get ahead khazan)", async () => {
+    const { newRun, BOT_LEVEL } = await import("../tools/panjimBots/bots");
+    const { passYear } = await import("./helpers/passYear");
+    const run = newRun("rows-ahead", BOT_LEVEL, true);
+    const ahead = run.aheadObjective()!;
+    expect(ahead).not.toBeNull();
+    const pick = ahead.objective.picks.find((p) => p.elementId === "khazan") ?? ahead.objective.picks[0];
+    expect(run.build(coordOf(pick.key), pick.elementId).ok).toBe(true);
+    while (run.landed.size === 0) passYear(run);
+    const row = run.prep.find((r) => r.elementId === pick.elementId && r.placeTiles!.includes(pick.key));
+    expect(row, `a phase 2 row for ${pick.elementId} whose place holds ${pick.key}`).toBeDefined();
+    expect(row!.credited).toContain(pick.key);
+    expect(prepProgress(row!, run.state, run.zones!).current).toBeGreaterThanOrEqual(1);
+  }, 120_000);
+
+  it("the hover line: every card that takes no home out of the next storm's risk says so, and only those", () => {
+    expect(buildHoverLine({ saved: [], added: [] })).toBe("This doesn't change the next storm");
+    expect(buildHoverLine({ saved: ["1,1"], added: [] })).toBeNull();
+    expect(buildHoverLine({ saved: ["1,1"], added: ["2,2"] })).toBeNull();
+    expect(buildHoverLine({ saved: [], added: ["2,2"] })).toBe("This saves no home from the next storm, and puts some at risk");
   });
 });

@@ -981,6 +981,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             }
           },
           moveCamera: (tiles, centre) => moveCameraClear(tiles, centre),
+          flashTiles: (tiles) => objectivePulse.flash([...tiles], (coord) => terrain.heightAt(coord), performance.now()),
           landmarks: levelMap.landmarks,
           localities: levelMap.localities,
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),

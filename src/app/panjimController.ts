@@ -17,7 +17,7 @@ import { ClockHud, type ClockView } from "@ui/panjim/clockHud";
 import { OutlookBar } from "@ui/panjim/outlookBar";
 import { CoinJar } from "@ui/panjim/coinJar";
 import { GetReadyPanel } from "@ui/panjim/getReady";
-import { prepProgress, regionPlaces, type PrepObjective } from "@core/prep";
+import { buildHoverLine, prepProgress, regionPlaces, rowMissNote, type PrepObjective } from "@core/prep";
 import { FieldGuide } from "@ui/panjim/fieldGuide";
 import { COMBO_INFO, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
@@ -176,6 +176,8 @@ export interface PanjimHost {
    * (else the middle of `tiles`), slid clear of the HUD card and Maya; held while a build menu or tile card is open.
    */
   moveCamera: (tiles: readonly AxialCoord[], centre?: AxialCoord) => void;
+  /** Section 34b.4: a row clicked in the objective: its tiles flash twice over 2 s. */
+  flashTiles: (tiles: readonly AxialCoord[]) => void;
   /** The map's named places, for Maya to call a spot by name. */
   landmarks: readonly { name: string; q: number; r: number }[];
   /** The map's locality labels, for an objective's area of named localities (Section 16.5). */
@@ -315,6 +317,8 @@ export class PanjimController {
       const coordOf = (k: string): AxialCoord => ({ q: Number(k.split(",")[0]), r: Number(k.split(",")[1]) });
       // Section 34b.3: its tiles kept clear of the HUD card and Maya.
       this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key));
+      // Section 34b.4: and the row's tiles flash, so the click is seen to answer.
+      this.host.flashTiles((keys.length ? keys : [key]).map(coordOf));
     });
     // Section 31.2: the Tutorial's panel is its caption card and checklist, not the objective rows.
     this.tutorialPanel = this.tutorial ? new TutorialPanel() : null;
@@ -1530,7 +1534,7 @@ export class PanjimController {
       return null;
     }
     this.host.tintTiles([...change.saved.map((key) => ({ key, color: "#59d47e", blend: 0.62 })), ...change.added.map((key) => ({ key, color: "#e5533f", blend: 0.62 }))]);
-    return change.saved.length === 0 && change.added.length === 0 ? "This doesn't change the next storm" : null;
+    return buildHoverLine(change);
   }
 
   /** Section 30.8: the next storm's homes at risk on screen (container pixels): the cards keep off them. */
@@ -1585,6 +1589,8 @@ export class PanjimController {
     if (!outcome.ok) return false;
     // Section 34b.2: a build closes her line (lines with Got it no longer close on a timer).
     this.maya.dismiss();
+    // Section 34b.4: a build of a row's defence in its place that took no home out of the storm's risk says so.
+    if (outcome.rowMiss) this.host.noteAt(coord, rowMissNote(outcome.rowMiss), 4200);
     // Section 31.2: the checklist ticks the defence; its caption says "Built" before the next slides in.
     if (this.tutorial) {
       for (const { id, saves, net, atRisk } of credit) {
