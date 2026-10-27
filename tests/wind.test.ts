@@ -77,7 +77,8 @@ describe("the cyclone's wind", () => {
   it("is lowered by pandanus only: not by mangroves, dunes, seawalls, khazans or breakwaters (Section 25.1)", () => {
     const bare = coast();
     const a = windField(bare, storm(bare).board, storm(bare).storm);
-    for (const [id, q, r] of [["mangrove", 6, 3], ["dune", 3, 3], ["seawall", 3, 3], ["breakwater", 1, 3]] as const) {
+    // Section 34b.9: the seawall on the shore line, beside the sea (q 1 is sea).
+    for (const [id, q, r] of [["mangrove", 6, 3], ["dune", 3, 3], ["seawall", 2, 3], ["breakwater", 1, 3]] as const) {
       const other = coast();
       expect(other.build({ q, r }, id, false), id).toBe(true);
       const b = windField(other, storm(other).board, storm(other).storm);

@@ -14,7 +14,7 @@ import { passYear } from "./helpers/passYear";
  */
 const TIMELINE: TimelineConfig = { startYear: 2026, endYear: 2050 };
 
-function board(coin = 1000): GameState {
+function board(coin = 1000, sea = false): GameState {
   return new GameState(
     [
       { coord: { q: 0, r: 0 }, terrainId: "beach" },
@@ -22,7 +22,9 @@ function board(coin = 1000): GameState {
       { coord: { q: 2, r: 0 }, terrainId: "land" },
       { coord: { q: 3, r: 0 }, terrainId: "beach" },
       { coord: { q: 4, r: 0 }, terrainId: "beach" },
-      { coord: { q: 5, r: 0 }, terrainId: "beach" }
+      { coord: { q: 5, r: 0 }, terrainId: "beach" },
+      // Section 34b.9: a seawall stands on the shore line, beside the sea.
+      ...(sea ? [{ coord: { q: 0, r: -1 }, terrainId: "coast" }] : [])
     ],
     [],
     coin
@@ -152,7 +154,7 @@ describe("coins off (ECONOMY_DISABLED_V1)", () => {
   });
 
   it("never checks or spends Coin: building at 0 Coin works, and Coin never moves", () => {
-    const run = new ActionRun(board(0), TIMELINE, { economy: panaji.economy });
+    const run = new ActionRun(board(0, true), TIMELINE, { economy: panaji.economy });
     expect(run.economyEnabled).toBe(false);
     expect(run.build(BEACH[0], "seawall").ok).toBe(true);
     expect(run.build(BEACH[1], "dune").ok).toBe(true);

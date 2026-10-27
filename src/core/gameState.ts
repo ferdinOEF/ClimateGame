@@ -297,9 +297,22 @@ export class GameState {
     for (const def of ELEMENT_BY_ID.values()) {
       // Section 17.3: a retired element (sand mining) is never offered, on any level.
       if (!def.validTerrainIds.includes(tile.terrainId) || this.excludedElements.has(def.id) || RETIRED_ELEMENTS.has(def.id)) continue;
+      if (def.placement && !this.placementFits(coord, def.placement)) continue;
       results.push(def);
     }
     return results;
+  }
+
+  /** Section 34b.9: a seawall on the shore line (a sea neighbour), a small dam on the narrow upstream river (no sea neighbour, at most two river neighbours). */
+  placementFits(coord: AxialCoord, placement: "shoreline" | "upstream"): boolean {
+    let sea = 0;
+    let river = 0;
+    for (let dir = 0; dir < 6; dir++) {
+      const terrain = this.placed.get(axialKey(neighbor(coord, dir)))?.terrainId;
+      if (terrain === "coast") sea++;
+      else if (terrain === "river") river++;
+    }
+    return placement === "shoreline" ? sea > 0 : sea === 0 && river <= 2;
   }
 
   canBuild(coord: AxialCoord, elementId: string): boolean {

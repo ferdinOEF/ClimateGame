@@ -12,6 +12,9 @@ import { TILE_NOTES } from "../src/ui/panjim/defenceCards";
 import { COMBO_INFO, COMBO_SOURCE, comboNote } from "../src/core/combos";
 import { factById } from "../src/core/facts";
 import { LEVELS } from "../src/levels/levels";
+import { GameState } from "../src/core/gameState";
+import { goodTiles, suggestedDefence } from "../src/core/tutorialNudge";
+import { sessionRun } from "./helpers/sessionRun";
 
 /**
  * Section 34b: the fixes from the owner's two live play tests (24 and 27 October). Each step's unit checks; the browser
@@ -431,5 +434,53 @@ describe("34b.8: Esc only closes what is open", () => {
     expect(handler).not.toContain("askLeave(");
     // ☰'s Leave still asks.
     expect(session).toContain("requestLeave: () => askLeave(true),");
+  });
+});
+
+describe("34b.9: seawalls on the shore, small dams on the upstream river", () => {
+  const strip = (cells: [number, number, string][]): GameState => new GameState(cells.map(([q, r, terrainId]) => ({ coord: { q, r }, terrainId })), [], 100000);
+
+  it("a seawall needs land (beach, shore or wetland edge) with a sea neighbour; never the sea", () => {
+    const board = strip([[0, 0, "coast"], [1, 0, "beach"], [2, 0, "beach"], [1, -1, "land"], [0, 1, "estuary"], [3, 0, "land"]]);
+    expect(board.canBuild({ q: 1, r: 0 }, "seawall")).toBe(true);
+    expect(board.canBuild({ q: 1, r: -1 }, "seawall")).toBe(true);
+    expect(board.canBuild({ q: 0, r: 1 }, "seawall")).toBe(true);
+    expect(board.canBuild({ q: 0, r: 0 }, "seawall")).toBe(false);
+    expect(board.canBuild({ q: 2, r: 0 }, "seawall")).toBe(false);
+    expect(board.canBuild({ q: 3, r: 0 }, "seawall")).toBe(false);
+    // The breakwater keeps the sea.
+    expect(board.canBuild({ q: 0, r: 0 }, "breakwater")).toBe(true);
+  });
+
+  it("a small dam needs a river tile with no sea neighbour and at most two river neighbours", () => {
+    const narrow = strip([[0, 0, "river"], [1, 0, "river"], [2, 0, "river"], [1, 1, "land"]]);
+    expect(narrow.canBuild({ q: 1, r: 0 }, "small_dam")).toBe(true);
+    const mouth = strip([[0, 0, "river"], [1, 0, "river"], [2, 0, "coast"]]);
+    expect(mouth.canBuild({ q: 1, r: 0 }, "small_dam")).toBe(false);
+    const wide = strip([[1, 0, "river"], [0, 0, "river"], [2, 0, "river"], [1, -1, "river"], [2, -1, "river"]]);
+    expect(wide.canBuild({ q: 1, r: 0 }, "small_dam")).toBe(false);
+  });
+
+  it("the Tutorial's river keeps its dam tiles, and its seawall nudge is on land beside the sea", () => {
+    const tutorial = LEVELS.find((l) => l.tutorial)!;
+    const run = sessionRun(tutorial);
+    const rivers = [...run.state.placed.values()].filter((t) => t.terrainId === "river" && run.state.buildableAt(t.coord).length > 0);
+    expect(rivers.length).toBeGreaterThan(0);
+    for (const t of rivers) expect(run.state.canBuild(t.coord, "small_dam"), `${t.coord.q},${t.coord.r}`).toBe(true);
+    // Play the nudge's order to the seawall, each at its best tile.
+    const tried = new Set<string>();
+    for (;;) {
+      const id = suggestedDefence(tried, run.nextChallenge()?.kind ?? null);
+      expect(id).not.toBeNull();
+      const tiles = goodTiles(run, id!);
+      if (id === "seawall") {
+        expect(tiles.length, "the seawall nudge has a tile").toBeGreaterThan(0);
+        for (const { coord } of tiles) expect(run.state.placed.get(`${coord.q},${coord.r}`)!.terrainId, "a seawall nudge tile").not.toBe("coast");
+        break;
+      }
+      expect(tiles.length, `${id} has a tile`).toBeGreaterThan(0);
+      expect(run.build(tiles[0].coord, id!).ok).toBe(true);
+      tried.add(id!);
+    }
   });
 });

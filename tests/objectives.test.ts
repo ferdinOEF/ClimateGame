@@ -13,11 +13,13 @@ import { RunTracker } from "../src/core/runStats";
 function makeState(): GameState {
   const tiles: PlacedTile[] = [];
   // Enough of each terrain to build several of anything.
+  // Section 34b.9: land beside the sea (a seawall stands on the shore line), the river away from it (a small dam
+  // stands upstream).
   const layout: [string, number][] = [
     ["beach", 6],
     ["estuary", 6],
-    ["land", 6],
     ["river", 4],
+    ["land", 6],
     ["coast", 4]
   ];
   let q = 0;

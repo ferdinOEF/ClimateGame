@@ -101,8 +101,10 @@
     ],
     "validTerrainIds": [
       "beach",
-      "coast"
+      "land",
+      "estuary"
     ],
+    "placement": "shoreline",
     "buildCost": 80,
     "maintenanceCostPerTurn": 5,
     "maintenanceNeglectPenaltyPerTurn": 0.08,
@@ -199,6 +201,7 @@
     "validTerrainIds": [
       "river"
     ],
+    "placement": "upstream",
     "buildCost": 55,
     "maintenanceCostPerTurn": 4,
     "maintenanceNeglectPenaltyPerTurn": 0.08,

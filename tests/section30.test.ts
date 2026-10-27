@@ -72,11 +72,15 @@ describe("30.1 the creek corner east of Merces leaves the game", () => {
 
 describe("30.2 a river tile takes only a small dam", () => {
   const run = newRun("s30-2", BOT_LEVEL);
-  it("offers only Small dam on every free river tile", () => {
+  it("offers only Small dam on every free river tile (Section 34b.9: on the narrow upstream channel; else nothing)", () => {
+    let dams = 0;
     for (const t of run.state.placed.values()) {
       if (t.terrainId !== "river" || t.scenery || run.state.elements.has(`${t.coord.q},${t.coord.r}`)) continue;
-      expect(run.state.buildableAt(t.coord).map((d) => d.id), `${t.coord.q},${t.coord.r}`).toEqual(["small_dam"]);
+      const upstream = run.state.placementFits(t.coord, "upstream");
+      if (upstream) dams++;
+      expect(run.state.buildableAt(t.coord).map((d) => d.id), `${t.coord.q},${t.coord.r}`).toEqual(upstream ? ["small_dam"] : []);
     }
+    expect(dams).toBeGreaterThan(0);
   });
 
   it("never asks for a mangrove on a river tile in any phase's objective", () => {

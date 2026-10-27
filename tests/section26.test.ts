@@ -166,12 +166,14 @@ describe("engineered defences age (Section 26.1)", () => {
     until(run, 2041);
     const coord = first("breakwater", (k) => near.has(k));
     expect(run.build(coord, "breakwater").ok).toBe(true);
-    const events: string[] = [];
+    // Section 34b.9: the open sea now offers the breakwater first (no seawall there), so the years passed on
+    // free tiles build breakwaters that do age by 2050; only this one, built in 2041, must not.
+    const aged: string[] = [];
     while (!run.finished) {
       const tile = firstFree(run);
-      events.push(...run.build(tile, run.state.buildableAt(tile)[0].id).events.map((e) => e.type));
+      for (const e of run.build(tile, run.state.buildableAt(tile)[0].id).events) if (e.type === "aged") aged.push(e.key);
     }
-    expect(events).not.toContain("aged");
+    expect(aged).not.toContain(axialKey(coord));
     expect(run.state.elements.get(axialKey(coord))!.broken ?? false).toBe(false);
   });
 
