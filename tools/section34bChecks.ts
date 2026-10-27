@@ -440,6 +440,29 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.8: Esc with nothing open leaves the board as it was ----
+STEPS.push([
+  "34b.8",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    await page.waitForFunction(`!!document.querySelector(".maya-bubble:not([hidden])")`, undefined, { timeout: 15000 }).catch(() => undefined);
+    // With her line up, Esc closes it, and only it.
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(500);
+    check(!(await bubbleOpen(page)), "Esc closes Maya's line");
+    const state = (): Promise<string> =>
+      page.evaluate(
+        `JSON.stringify({ year: window.__panjimForTest.run.year, url: location.hash, leave: !!document.querySelector(".leave-confirm-backdrop:not([hidden])"), menu: (() => { const b = document.querySelector(".popover-backdrop"); return !!b && !b.hidden; })(), cam: window.__cameraForTest.position.toArray().map((v) => Math.round(v * 100) / 100) })`
+      ) as Promise<string>;
+    const before = await state();
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(800);
+    const after = await state();
+    check(before === after && !JSON.parse(after).leave, `Esc at 2026 with nothing open leaves the board as it was (${after})`);
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

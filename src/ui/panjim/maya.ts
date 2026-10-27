@@ -258,7 +258,7 @@ export class Maya {
       event.stopPropagation();
       this.setMinimised(false);
     });
-    // Esc is the level's own key now ("Leave Panjim?" asks first, Section 12): her line stays, "Got it" and × close it.
+    // Esc with nothing else open closes her line (Section 34b.8: the session's Esc handler; it no longer asks to leave).
     // The page changed size: her box is worked out again (whole pixels), and her bubble is placed again.
     const resized = (): void => {
       this.applyFigureSize();

@@ -2848,11 +2848,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       if (event.key !== "Escape" || event.defaultPrevented) return;
       // Otherwise Esc closes the topmost layer and nothing else; a layer that holds it (the start popup) keeps it.
       if (modals.escape() !== "none") return;
-      // With nothing open, Esc is the "get me out of here" key. On Panjim it asks first (Section 12).
       if (sessionFinished) return;
-      else if (!leaveConfirm) options.onExit();
-      // Not while a storm plays: the year is saved only once it has settled.
-      else if (!panjim?.isBusy) askLeave();
+      // Section 34b.8: on Panjim and the Tutorial, with nothing else open, Esc closes Maya's line if she is speaking,
+      // and otherwise does nothing (at a festival a stray key landed on "Leave Panjim?"; Leave is in ☰ only).
+      if (panjim) {
+        if (panjim.maya.speaking) panjim.maya.dismiss();
+        return;
+      }
+      // The old levels: with nothing open, Esc is the "get me out of here" key.
+      options.onExit();
     },
     { signal: keydownAbort.signal }
   );

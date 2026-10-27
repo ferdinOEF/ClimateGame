@@ -421,3 +421,15 @@ describe("34b.7: text and small interface fixes", () => {
     expect(menu).toContain(`text: "Best played in a window 1366 by 768 or larger."`);
   });
 });
+
+describe("34b.8: Esc only closes what is open", () => {
+  it("with nothing open on Panjim or the Tutorial, Esc closes Maya's line or does nothing; Leave is in ☰ only", () => {
+    const session = readFileSync("src/app/gameSession.ts", "utf8");
+    const at = session.indexOf("if (modals.escape() !== \"none\") return;");
+    const handler = session.slice(at, session.indexOf("{ signal: keydownAbort.signal }", at));
+    expect(handler).toContain("if (panjim.maya.speaking) panjim.maya.dismiss();");
+    expect(handler).not.toContain("askLeave(");
+    // ☰'s Leave still asks.
+    expect(session).toContain("requestLeave: () => askLeave(true),");
+  });
+});
