@@ -233,9 +233,27 @@
   display: none;
 }
 
-/* The banner moves below the card's first line. */
+/* Section 34b.1: the banner (a combo, a crack with age) sits in the band right of the HUD card, centred there and above
+   it, never under it (at 1024 px about 130 px of it was hidden). In a narrow window it moves to the bottom. */
 .has-panjim-clock .era-banner {
-  top: calc(84px + env(safe-area-inset-top));
+  left: calc(14px + 400px + 16px);
+  right: 12px;
+  top: calc(14px + env(safe-area-inset-top));
+  transform: none;
+  max-width: none;
+  width: fit-content;
+  margin-inline: auto;
+  text-align: center;
+  z-index: 12;
+}
+
+@media (max-width: 899px) {
+  .has-panjim-clock .era-banner {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 96px;
+  }
 }
 
 .built-info-action {

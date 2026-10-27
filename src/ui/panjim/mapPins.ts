@@ -105,11 +105,22 @@ export class MapPins {
         place(this.note.el, at);
         // A note beside its tile stays on screen: to the tile's left near the right edge, clear of the top and bottom.
         if (at && this.note.el.classList.contains("beside")) {
-          const { width, height } = this.layer.getBoundingClientRect();
+          const layer = this.layer.getBoundingClientRect();
+          const { width, height } = layer;
           const w = this.note.el.offsetWidth;
-          const flip = at.x + 34 + w > width - 8;
-          const y = Math.max(90, Math.min(height - this.note.el.offsetHeight - 40, at.y));
-          this.note.el.style.transform = `translate(${Math.round(flip ? at.x - 68 - w : at.x)}px, ${Math.round(y)}px)`;
+          // Section 34b.1: a tile under the HUD card gets its note on the card's bottom edge, at the tile's x.
+          const card = this.layer.ownerDocument.querySelector(".panjim-clock")?.getBoundingClientRect();
+          const under = !!card && card.width > 0 && at.x >= card.left - layer.left && at.x <= card.right - layer.left && at.y >= card.top - layer.top && at.y <= card.bottom - layer.top;
+          if (under && card) {
+            // Where its box goes; the transform leaves out the CSS margins (34 px left, -24 px top) that set it beside a tile.
+            const x = Math.max(8, Math.min(width - w - 8, at.x - w / 2));
+            const y = Math.min(height - this.note.el.offsetHeight - 8, card.bottom - layer.top + 8);
+            this.note.el.style.transform = `translate(${Math.round(x - 34)}px, ${Math.round(y + 24)}px)`;
+          } else {
+            const flip = at.x + 34 + w > width - 8;
+            const y = Math.max(90, Math.min(height - this.note.el.offsetHeight - 40, at.y));
+            this.note.el.style.transform = `translate(${Math.round(flip ? at.x - 68 - w : at.x)}px, ${Math.round(y)}px)`;
+          }
         }
       }
     }

@@ -2506,7 +2506,18 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           playSound("build");
         },
         // The year chip first (never covered), then the rest of the HUD.
-        { avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".maya-badge:not([hidden])", ".map-corner", ".hud-chrome", ".empty-prompt"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
+        {
+          avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".maya-badge:not([hidden])", ".map-corner", ".hud-chrome", ".empty-prompt", ".era-banner:not([hidden])"],
+          onHover: (id) => controller.cardHover(coord, id),
+          avoidPoints: controller.riskPoints(),
+          // Section 34b.1: the cards keep off the pulsing tiles and the forecast arrows.
+          pulsePoints: objectivePulse.tiles.map((key) => {
+            const [q, r] = key.split(",").map(Number);
+            const { x, z } = axialToWorld({ q, r }, 1.0);
+            return worldToScreen(x, terrain.heightAt({ q, r }) + 0.4, z);
+          }),
+          arrowPoints: coneOverlay.arrowPoints.map((p) => worldToScreen(p.x, p.y, p.z))
+        }
       );
       controller.cardsOpened(coord);
       return;
