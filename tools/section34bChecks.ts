@@ -369,6 +369,41 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.6: from the last build's click to the first wet land tile, 5 to 9 s in every storm ----
+STEPS.push([
+  "34b.6",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    for (let storm = 0; storm < 3; storm++) {
+      // To the storm's own year (its last build), the storms before it hurried through.
+      const ready = (await page.evaluate(`(async () => { const c = window.__panjimForTest; const next = c.run.nextChallenge(); if (!next) return false;
+        while (c.run.yearsUntil(next) > 1) await window.__panjimScenarioForTest("pass-year"); return true; })()`)) as boolean;
+      if (!ready) break;
+      await page.waitForTimeout(1500);
+      const tile = (await page.evaluate(`(() => { const c = window.__panjimForTest; for (const [key, t] of c.run.state.placed) { if (c.run.state.elements.has(key)) continue; const o = c.run.state.buildableAt(t.coord); if (o.length && t.coord.q > 12) return { q: t.coord.q, r: t.coord.r, id: o[0].id }; } return null; })()`)) as { q: number; r: number; id: string } | null;
+      if (!tile) {
+        check(false, `a tile for storm ${storm + 1}'s last build`);
+        break;
+      }
+      // The click (a build, as a card click makes it), then every frame until storm time reaches the first wave.
+      const timing = (await page.evaluate(`(async () => { const c = window.__panjimForTest; const name = c.run.nextChallenge().name; const t0 = performance.now();
+        c.build({ q: ${tile.q}, r: ${tile.r} }, "${tile.id}"); let cameraAt = null;
+        for (;;) { await new Promise((r) => requestAnimationFrame(r)); const s = window.__stormForTest; if (performance.now() - t0 > 60000) return { name, error: "timeout" };
+          if (!s.playing()) continue; if (cameraAt === null) cameraAt = performance.now(); const w = s.firstWave(); if (w && s.time() >= w.first) return { name, click: (performance.now() - t0) / 1000, camera: (performance.now() - cameraAt) / 1000, first: w.first, duration: w.duration }; } })()`)) as { name: string; click?: number; camera?: number; first?: number; duration?: number; error?: string };
+      info(`${timing.name}: ${JSON.stringify(timing)}`);
+      check(timing.click !== undefined && timing.click >= 5 && timing.click <= 9, `${timing.name}: the first wave ${timing.click?.toFixed(1)} s after the last build's click (5 to 9)`);
+      // The rest of the storm hurried, its cards closed.
+      await page.evaluate(`(async () => { for (let i = 0; i < 400; i++) { if (document.querySelector(".result-cards:not([hidden])")) break; document.dispatchEvent(new PointerEvent("pointerdown")); await new Promise((r) => setTimeout(r, 150)); } })()`);
+      for (let i = 0; i < 4 && (await page.locator(".result-cards:not([hidden])").count()); i++) {
+        await page.locator(".result-next").click();
+        await page.waitForTimeout(400);
+      }
+      await page.waitForTimeout(1500);
+    }
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

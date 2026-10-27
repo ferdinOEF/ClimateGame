@@ -492,11 +492,11 @@ export const DAMAGE_DEPTH = 1;
 
 /** The storm's script, in seconds of storm time. Presentation only: none of it changes an outcome. */
 export const STORM_TIMING = {
-  // Matched to docs/reference/hazard_vfx_prototype.html: landfall at 10 s,
-  // the surge rising from 8 s to its peak at 16 s and gone by 24 s.
+  // After docs/reference/hazard_vfx_prototype.html (landfall at 10 s there). Section 34b.6 (owner request): the first
+  // wave about 7 s after the storm camera moves, so landfall at 9 s and the surge on land from 7 s.
   cyclone: {
     /** The storm comes ashore (the prototype's "Landfall" phase). */
-    landfall: 10,
+    landfall: 9,
     /** Seconds from landfall to the surge reaching the first row of land: it starts rising before the eye arrives. */
     surgeLead: -2,
     /** Seconds per hex the surge takes to push further inland, shortened when it reaches far inland. */
@@ -511,11 +511,11 @@ export const STORM_TIMING = {
     /** How far it draws back, in damage units. */
     drawBackDepth: 0.35
   },
-  // The swell starts upstream at 8 s and travels down at 0.8 s a channel tile,
-  // rising over about 6 s; the river falls from about 26 s.
+  // The swell starts upstream at 7 s (Section 34b.6; it was 8) and travels down at 0.8 s a channel tile,
+  // rising over about 6 s; the river falls from about 25 s.
   flood: {
     /** Rain and the cloud band come first; the swell starts upstream after this. */
-    rainLead: 8,
+    rainLead: 7,
     /** Seconds per channel tile the swell takes downriver ("about 0.8 s"), shortened on a long channel. */
     perRiverIndex: 0.8,
     /** The swell's whole trip down the channel never takes longer than this. */
@@ -530,10 +530,10 @@ export const STORM_TIMING = {
     /** Seconds from the swell passing to the first overflow on the nearest bank. */
     bankLead: 1
   },
-  // Both at once: the surge comes ashore at 10 s while the swell is coming
-  // down; they meet in the channel from about 12 s.
+  // Both at once: the surge comes ashore at 9 s (Section 34b.6; it was 10) while the swell is coming
+  // down; they meet in the channel from about 11 s.
   compound: {
-    landfall: 10,
+    landfall: 9,
     /** Seconds per channel tile the surge's backwater takes to push upriver from the mouth. */
     backwaterPerIndex: 0.3,
     /** Backwater = surge × backwaterScale × (riverIndex / mouthIndex)^backwaterExponent (see `backwaterShare`). */

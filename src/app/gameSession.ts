@@ -3057,6 +3057,19 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         return field ? [...field.tiles.keys()] : [];
       },
       time: () => stormDirector?.time ?? null,
+      /** Section 34b.6: the storm time its water first reaches land (a sea tile is always wet), and how long it plays. */
+      firstWave: () => {
+        const field = stormDirector?.currentField;
+        if (!field) return null;
+        let first = Infinity;
+        for (const tile of field.tiles.values()) {
+          if (tile.terrainId === "coast") continue;
+          if (tile.surgePeak > 0) first = Math.min(first, tile.surgeArrival);
+          if (tile.floodPeak > 0) first = Math.min(first, tile.floodArrival);
+          if (tile.backwaterPeak > 0) first = Math.min(first, tile.backwaterArrival);
+        }
+        return { first, duration: field.duration };
+      },
       playing: () => stormDirector?.playing ?? false,
       /** The depth the water layer drew on a tile, and the core's depth there at the same storm time. */
       compare: (key: string) => {
