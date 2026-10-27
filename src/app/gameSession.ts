@@ -678,6 +678,39 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   /** Section 33b.5: the pan the last framed view took to keep its points clear of the HUD card and Maya (test hook). */
   let lastKeepClear: { dx: number; dz: number } | null = null;
+  /** Section 34b.3: what the camera keeps its points clear of: the HUD card, Maya and her bubble, in container pixels. */
+  function cameraObstacles(): { x: number; y: number; w: number; h: number }[] {
+    const origin = container.getBoundingClientRect();
+    return [...container.querySelectorAll<HTMLElement>(".panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden]), .maya-bubble:not([hidden])")]
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0)
+      .map((r) => ({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height }));
+  }
+  /** Section 34b.3: a camera move asked for while a build menu or tile card is open, made once it closes. */
+  let pendingCameraMove: (() => void) | null = null;
+  /**
+   * Section 34b.3: the camera's set moves (the heat coming on, Last call, an objective row, O): a glide to `centre`
+   * (else the middle of `tiles`), then slid just enough that none of `tiles` sits under the HUD card, Maya or her
+   * bubble. Never under an open build menu or tile card: it waits for it to close.
+   */
+  function moveCameraClear(tiles: readonly AxialCoord[], centre?: AxialCoord): void {
+    if (tiles.length === 0 && !centre) return;
+    const move = (): void => {
+      const at = centre ?? { q: tiles.reduce((s, t) => s + t.q, 0) / tiles.length, r: tiles.reduce((s, t) => s + t.r, 0) / tiles.length };
+      const world = axialToWorld(at, 1.0);
+      focusOn(world.x, world.z, false);
+      const points = tiles.map((t) => {
+        const w = axialToWorld(t, 1.0);
+        return { x: w.x, y: terrain.heightAt(t) + 0.4, z: w.z };
+      });
+      lastKeepClear = points.length ? keepClearOf(points, cameraObstacles()) : null;
+    };
+    if (buildPopover.isOpen) pendingCameraMove = move;
+    else {
+      pendingCameraMove = null;
+      move();
+    }
+  }
 
   const hud = new Hud(container, {
     onPreviewToggle: () => toggleHudPreview(),
@@ -941,16 +974,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // Section 33b.5: then slid just enough that none of these points sits under the HUD card or Maya.
             lastKeepClear = null;
             if (keepClear?.length) {
-              const origin = container.getBoundingClientRect();
-              const obstacles = [...container.querySelectorAll<HTMLElement>(".panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden])")]
-                .map((el) => el.getBoundingClientRect())
-                .filter((r) => r.width > 0 && r.height > 0)
-                .map((r) => ({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height }));
+              const obstacles = cameraObstacles();
               const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] => points.map((p) => ({ x: p.x, y: 0.6, z: p.z }));
               // Everything if a pan can clear it; else the arrows alone (a forecast wider than the screen).
               lastKeepClear = keepClearOf(lift(keepClear), obstacles) ?? (arrows?.length ? keepClearOf(lift(arrows), obstacles) : null);
             }
           },
+          moveCamera: (tiles, centre) => moveCameraClear(tiles, centre),
           landmarks: levelMap.landmarks,
           localities: levelMap.localities,
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
@@ -2698,7 +2728,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         const at = open.findIndex((p) => p.q === cursor!.q && p.r === cursor!.r);
         const next = open[(at + 1) % open.length];
         cursor = { q: next.q, r: next.r };
-        showCursor(true);
+        showCursor(false);
+        // Section 34b.3: one of the camera's set moves, clear of the HUD card and Maya.
+        moveCameraClear([cursor]);
       }
     });
   }
@@ -2913,6 +2945,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // The risk sequence gives way the moment the player opens a menu.
     if (riskIntro.isRunning && overlayOpen()) riskIntro.cancel("menu");
     riskIntro.frame(nowMs);
+    // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes.
+    if (pendingCameraMove && !buildPopover.isOpen) {
+      const move = pendingCameraMove;
+      pendingCameraMove = null;
+      move();
+    }
     mapLabels.update(
       (coord) => {
         // Anchored to the tile's top surface, so a label sits on the land

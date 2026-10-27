@@ -29,8 +29,8 @@ export interface DirectorContext {
   blocked: () => boolean;
   /** A board tile on screen, in container pixels; null if off screen. */
   project: (coord: AxialCoord) => { x: number; y: number } | null;
-  /** A gentle, cancellable camera glide to a tile. */
-  focus: (coord: AxialCoord) => void;
+  /** Section 34b.3: Last call's camera move, to a tile, with the tiles to keep clear of the HUD card and Maya. */
+  focus: (coord: AxialCoord, tiles?: readonly AxialCoord[]) => void;
   landmarks: readonly { name: string; q: number; r: number }[];
   /** The Tutorial (Section 15): no hello, tips or warnings; the controller says its own coaching lines. */
   quiet?: boolean;
@@ -133,16 +133,15 @@ export class MayaDirector {
       const place = hotspot ? placeName(coordOf(hotspot.key), this.ctx.landmarks, run.zones?.zoneOf(hotspot.key) ?? null) : null;
 
       // When the heat first appears in this storm's phase: one line, where
-      // the most homes are at risk and what to do. Quiet if none are.
+      // the most homes are at risk and what to do. Quiet if none are. (Section 34b.3: no camera move of its own; the
+      // heat coming on has moved it to the hot tiles.)
       if (!this.warned.has(next.id) && !this.lastCalled.has(next.id) && hotspot && place) {
         this.warned.add(next.id);
-        const coord = coordOf(hotspot.key);
         this.maya.say({
           id: `warn:${next.id}`,
           text: warningLine(helpful ? "exposedHelp" : "exposed", place, next.kind),
           state: "warning",
-          urgent: true,
-          onShow: () => this.ctx.focus(coord)
+          urgent: true
         });
       }
       // The storm's own year: a last call if homes are still at risk, a cheer
@@ -157,7 +156,7 @@ export class MayaDirector {
             text: warningLine(helpful ? "lastCallHelp" : "lastCall", place, next.kind, exposure.housesAtRisk.length),
             state: "warning",
             urgent: true,
-              onShow: () => this.ctx.focus(coord)
+            onShow: () => this.ctx.focus(coord, [coord, ...exposure.housesAtRisk.map(coordOf).filter((h) => hexDistance(h, coord) <= 2)])
           });
         } else if (this.warned.has(next.id)) {
           this.maya.say({ id: `fixed:${next.id}`, text: warningLine("fixed", this.lastPlace ?? "Panjim", next.kind), state: "celebrates", urgent: true });

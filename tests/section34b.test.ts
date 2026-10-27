@@ -137,3 +137,62 @@ describe("34b.2: Maya's bubble, and tips one a year", () => {
     expect(phaseLine(false, 2031, 10, "flood")).toBe("On to 2031. 10 builds before the flood.");
   });
 });
+
+describe("34b.3: the camera moves only at its set moments", () => {
+  /** Maya, as far as the director's warnings need her: what she was asked to say. */
+  function sayer(): { maya: Maya; said: MayaLine[] } {
+    const said: MayaLine[] = [];
+    const maya = { say: (l: MayaLine) => said.push(l), withdraw: () => undefined, dismiss: () => undefined } as unknown as Maya;
+    return { maya, said };
+  }
+  const challenge = { id: "c2030", kind: "cyclone", turn: 5 };
+  const exposure = { kind: "cyclone", intensity: new Map([["1,1", 2], ["2,1", 2]]), exposure: new Map(), housesAtRisk: ["1,1", "2,1"] };
+
+  it("a build in a heat year moves nothing: the heat's warning has no camera move; Last call moves it once, with its tiles", () => {
+    const focused: { coord: { q: number; r: number }; tiles: readonly { q: number; r: number }[] | undefined }[] = [];
+    const { maya, said } = sayer();
+    const run = { yearsUntil: () => 2, nextChallenge: () => challenge, state: { elements: new Map() }, prep: [], zones: null, objective: null };
+    const director = new MayaDirector(maya, {
+      run,
+      exposure: () => exposure,
+      blocked: () => false,
+      project: () => null,
+      focus: (coord: { q: number; r: number }, tiles?: readonly { q: number; r: number }[]) => focused.push({ coord, tiles }),
+      landmarks: [{ name: "Miramar", q: 1, r: 1 }],
+      quiet: false
+    } as never);
+    said.length = 0;
+    // Two builds in the first heat year: one warning, no camera move.
+    director.consider();
+    director.consider();
+    const warn = said.filter((l) => l.id === "warn:c2030");
+    expect(warn).toHaveLength(1);
+    expect(warn[0].onShow).toBeUndefined();
+    for (const line of said) line.onShow?.();
+    expect(focused).toHaveLength(0);
+    // The storm's year: Last call, and its move when it shows, once, to the place and its homes at risk.
+    run.yearsUntil = () => 1;
+    director.consider();
+    director.consider();
+    const last = said.filter((l) => l.id === "last:c2030");
+    expect(last).toHaveLength(1);
+    last[0].onShow?.();
+    expect(focused).toHaveLength(1);
+    expect(focused[0].tiles?.length).toBeGreaterThan(1);
+  });
+
+  it("the controller moves the camera for the heat once a storm, the row click and Maya's Last call through the clear move", () => {
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    expect(controller).toContain("if (hot.length > 0 && !this.heatFramed.has(next.id) && !this.tutorial) {");
+    expect(controller).toContain("focus: (coord, tiles) => this.host.moveCamera(tiles ?? [coord], coord),");
+    expect(controller).toContain("this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key));");
+    // focusCamera is left to the storms' replay and the test scenarios.
+    const uses = controller.split("\n").filter((l) => l.includes("this.host.focusCamera(")).length;
+    expect(uses).toBe(5);
+    const session = readFileSync("src/app/gameSession.ts", "utf8");
+    // Held while a build menu or tile card is open, made as it closes.
+    expect(session).toContain("if (buildPopover.isOpen) pendingCameraMove = move;");
+    expect(session).toContain("if (pendingCameraMove && !buildPopover.isOpen) {");
+    expect(session).toContain(`.panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden]), .maya-bubble:not([hidden])`);
+  });
+});

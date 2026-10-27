@@ -215,6 +215,68 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.3: the camera moves only at its set moments, and keeps clear of the card ----
+STEPS.push([
+  "34b.3",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    // Every automatic move is logged with its year (the storms' own cameras are not in this phase of play).
+    await page.evaluate(`(() => { const h = window.__panjimForTest.host; window.__moves = [];
+      for (const name of ["moveCamera", "focusCamera"]) { const f = h[name].bind(h); h[name] = (...a) => { window.__moves.push({ name, year: window.__panjimForTest.run.year }); return f(...a); }; } })()`);
+    const cam = (): Promise<number[]> => page.evaluate("window.__cameraForTest.position.toArray().map((v) => Math.round(v * 100) / 100)") as Promise<number[]>;
+    const moves = (): Promise<{ name: string; year: number }[]> => page.evaluate("window.__moves") as Promise<{ name: string; year: number }[]>;
+    const hotClear = async (label: string): Promise<void> => {
+      await page.waitForTimeout(1800);
+      const card = await rectOf(page, ".panjim-clock");
+      const pts = (await page.evaluate(`(() => { const c = window.__panjimForTest; const box = c.host.container.getBoundingClientRect(); return c.riskPoints().map((p) => ({ x: p.x + box.left, y: p.y + box.top })); })()`)) as { x: number; y: number }[];
+      const onScreen = pts.filter((p) => p.x > 0 && p.y > 0 && p.x < ctx.W && p.y < ctx.H);
+      const clear = card ? onScreen.filter((p) => !inside(p, card)) : onScreen;
+      check(clear.length > 0, `${label}: a hot tile is on screen clear of the HUD card (${clear.length} of ${pts.length})`);
+      await page.screenshot({ path: path.join(ctx.out, `34b3-${label.replace(/\W+/g, "-")}-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+    };
+    const passYear = async (): Promise<void> => {
+      await page.evaluate(`window.__panjimScenarioForTest("pass-year")`);
+      await page.waitForTimeout(1600);
+    };
+    // Phase 1: each build to the storm; the camera moves only when the heat comes on and at Last call.
+    let still = 0;
+    let heatYear: number | null = null;
+    for (let i = 0; i < 4; i++) {
+      const before = await cam();
+      const n = (await moves()).length;
+      await passYear();
+      const after = await cam();
+      const made = (await moves()).slice(n);
+      const year = (await page.evaluate("window.__panjimForTest.run.year")) as number;
+      if (made.length === 0) {
+        still++;
+        check(JSON.stringify(before) === JSON.stringify(after), `a build into ${year} with no set move leaves the camera where it was`);
+      } else {
+        info(`${made.map((m) => m.name).join(", ")} into ${year}`);
+        if (heatYear === null) {
+          heatYear = year;
+          await hotClear(`heat ${year}`);
+        }
+      }
+    }
+    check(still > 0, `at least one build in phase 1 left the camera alone (${still})`);
+    check(heatYear !== null, `the heat coming on moved the camera once (in ${heatYear})`);
+    const yearMoves = (await moves()).map((m) => m.year);
+    check(new Set(yearMoves).size === yearMoves.length, `at most one set move a year in phase 1 (${yearMoves.join(", ")})`);
+    // Phase 3: to the 2050 storm's heat.
+    await page.evaluate(`window.__panjimScenarioForTest("past-storm")`);
+    await page.waitForTimeout(1500);
+    await page.evaluate(`window.__panjimScenarioForTest("past-storm")`);
+    await page.waitForTimeout(1500);
+    const n3 = (await moves()).length;
+    for (let i = 0; i < 12 && (await moves()).length === n3; i++) await passYear();
+    const late = (await moves()).slice(n3);
+    if (late.length > 0) await hotClear(`heat ${late[0].year}`);
+    else check(false, "the 2050 storm's heat moved the camera");
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {
@@ -236,6 +298,6 @@ try {
   await browser.close();
   child?.kill();
 }
-void info;
+
 console.log(failures === 0 ? "ALL PASS" : `${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);

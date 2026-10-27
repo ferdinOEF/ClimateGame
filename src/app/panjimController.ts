@@ -171,6 +171,11 @@ export interface PanjimHost {
   cancelRiskIntro: (reason: string) => void;
   /** Glides the camera to a board coordinate (fractional allowed); `close` also zooms in a little. Cancelled by any drag. */
   focusCamera: (coord: AxialCoord, close?: boolean, zoom?: number) => void;
+  /**
+   * Section 34b.3: one of the camera's set moves (the heat coming on, Last call, an objective row): a glide to `centre`
+   * (else the middle of `tiles`), slid clear of the HUD card and Maya; held while a build menu or tile card is open.
+   */
+  moveCamera: (tiles: readonly AxialCoord[], centre?: AxialCoord) => void;
   /** The map's named places, for Maya to call a spot by name. */
   landmarks: readonly { name: string; q: number; r: number }[];
   /** The map's locality labels, for an objective's area of named localities (Section 16.5). */
@@ -304,10 +309,12 @@ export class PanjimController {
     this.getReady.onRowHover((job) => this.host.tintTiles(job ? (job.tiles ?? []).map((key) => ({ key, color: "#fff3c4", blend: 0.5 })) : null));
     // Section 30.9: a row clicked pans the board to its tile (the first of its picks still to build).
     this.getReady.onRowClick((job) => {
-      const key = this.pulseKeys(job)[0] ?? job.tiles?.[0];
+      const keys = this.pulseKeys(job);
+      const key = keys[0] ?? job.tiles?.[0];
       if (!key) return;
-      const [q, r] = key.split(",").map(Number);
-      this.host.focusCamera({ q, r });
+      const coordOf = (k: string): AxialCoord => ({ q: Number(k.split(",")[0]), r: Number(k.split(",")[1]) });
+      // Section 34b.3: its tiles kept clear of the HUD card and Maya.
+      this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key));
     });
     // Section 31.2: the Tutorial's panel is its caption card and checklist, not the objective rows.
     this.tutorialPanel = this.tutorial ? new TutorialPanel() : null;
@@ -421,7 +428,7 @@ export class PanjimController {
       exposure: () => this.exposure,
       blocked: () => this.busy || this.host.uiBlocked() || this.resultCards.isOpen || this.fieldGuide.isOpen || Boolean(this.host.container.querySelector(".finale-card")),
       project: (coord) => this.host.project(coord),
-      focus: (coord) => this.host.focusCamera(coord),
+      focus: (coord, tiles) => this.host.moveCamera(tiles ?? [coord], coord),
       landmarks: host.landmarks,
       quiet: this.tutorial
     });
@@ -800,12 +807,20 @@ export class PanjimController {
     // nothing else is going on (it never waits for, or blocks, the player).
     // The risk sequence belongs to the warning years, as before.
     const hot = warning ? view.filter((tile) => tile.heat > 0).map((tile) => tile.key) : [];
+    // Section 34b.3: the heat coming on for a storm is one of the camera's set moves, once, to its hot tiles.
+    if (hot.length > 0 && !this.heatFramed.has(next.id) && !this.tutorial) {
+      this.heatFramed.add(next.id);
+      this.host.moveCamera(hot.map((key) => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) })));
+    }
     if (hot.length > 0) this.riskGate.see(next.id);
     if (hot.length > 0 && !this.riskGate.spent && !this.busy && !this.host.overlayOpen() && this.host.riskAreaOnScreen(hot) && this.riskGate.offer(next.id)) {
       this.riskIntroModeStarted = this.currentRiskIntroMode();
       this.host.startRiskIntro(this.riskIntroModeStarted, hot);
     }
   }
+
+  /** Section 34b.3: the storms whose heat has had its camera move (once each; a retry lets it come again). */
+  private readonly heatFramed = new Set<string>();
 
   /** The storm whose phase Show risk's defaults were last set for, and whether its warning years have switched it on. */
   private riskPhase: string | null = null;
@@ -1169,6 +1184,7 @@ export class PanjimController {
     this.host.tintTiles(null);
     this.hideCone();
     this.coneSeen.delete(challengeId);
+    this.heatFramed.delete(challengeId);
     this.readinessById.delete(challengeId);
     this.host.redrawBoard();
     // Back at 2026 the first-build hint shows again, as on a new run.
