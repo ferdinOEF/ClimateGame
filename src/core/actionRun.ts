@@ -753,6 +753,11 @@ export class ActionRun {
     return index > 0 ? this.schedule[index - 1].turn + 1 : 1;
   }
 
+  /** Section 34b.12: the year a storm's phase starts (2026, 2031, 2041): where "Try again from" goes back to. */
+  phaseStartYear(challenge: ScheduledChallenge): number {
+    return this.config.startYear + this.phaseStart(challenge) - 1;
+  }
+
   /** The forecast cone for a storm still to come, from the hazard model and the board as it stands (core/forecastCone.ts). */
   forecastCone(challenge: ScheduledChallenge): ForecastCone | null {
     if (!this.climate || !this.zones || this.landed.has(challenge.id)) return null;

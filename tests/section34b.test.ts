@@ -6,7 +6,7 @@ import { buildHoverLine, prepProgress, rowMissNote } from "../src/core/prep";
 import { BUILDING_KINDS, type PhaseResult } from "../src/core/phaseResult";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { CARD_NAME } from "../src/ui/panjim/defenceCards";
-import { defencesCard, homesHtml, otherKindNote, placeWord, resultCard } from "../src/ui/panjim/resultCards";
+import { defencesCard, homesHtml, otherKindNote, placeWord, resultCard, retryLabel } from "../src/ui/panjim/resultCards";
 import { guideCounts, SPECIES, visitLine } from "../src/ui/panjim/fieldGuide";
 import { TILE_NOTES } from "../src/ui/panjim/defenceCards";
 import { COMBO_INFO, COMBO_SOURCE, comboNote } from "../src/core/combos";
@@ -485,11 +485,17 @@ describe("34b.9: seawalls on the shore, small dams on the upstream river", () =>
   });
 });
 
-describe("34b.11: Esc on the result cards", () => {
+describe("34b.11 and 34b.12: Esc on the result cards; Try again says where it goes", () => {
   it("Esc on a result card does nothing (it jumped to the last card)", () => {
     const cards = readFileSync("src/ui/panjim/resultCards.ts", "utf8");
     const esc = cards.slice(cards.indexOf(`if (event.key === "Escape") {`), cards.indexOf(`if (event.key === "Enter") {`));
     expect(esc).toContain("event.stopImmediatePropagation();");
     expect(esc).not.toMatch(/index =|render\(\)/);
+  });
+
+  it("the retry button reads Try again from the phase's first year: 2026, 2031, 2041", async () => {
+    const { newRun, BOT_LEVEL } = await import("../tools/panjimBots/bots");
+    const run = newRun("retry-label", BOT_LEVEL);
+    expect(run.schedule.map((c) => retryLabel(run.phaseStartYear(c)))).toEqual(["Try again from 2026", "Try again from 2031", "Try again from 2041"]);
   });
 });

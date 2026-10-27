@@ -98,7 +98,8 @@ describe("try this storm again (Section 28.1)", () => {
   it("wires the buttons: card 1 of every storm, the Tutorial's Try again, and no new year or finale after a retry", async () => {
     const fs = await import("node:fs");
     const controller = fs.readFileSync("src/app/panjimController.ts", "utf8");
-    expect(controller).toMatch(/\{ body: resultCard\(result\), button: "See what protected your city", alt: "Try this storm again" \}/);
+    // Section 34b.12: the button says where it goes ("Try again from 2026").
+    expect(controller).toContain(`{ body: resultCard(result), button: "See what protected your city", alt: retryLabel(this.run.phaseStartYear(challenge)) }`);
     expect(controller).toMatch(/\(await this\.resultCards\.show\(cards\)\) === "alt"\) this\.retryRequested = challenge\.id/);
     expect(controller).toMatch(/button: "Play Panjim", alt: "Try again", link: "Back to the menu"/);
     expect(controller).toMatch(/this\.tutorialChoice === "alt" \? "again"/);

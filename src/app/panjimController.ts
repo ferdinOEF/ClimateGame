@@ -23,7 +23,7 @@ import { COMBO_INFO, comboNote, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome, starsForHouses } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
-import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
+import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, retryLabel, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
 import { biodiversityByKind, BUILDING_KINDS, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
@@ -1142,7 +1142,8 @@ export class PanjimController {
     }
     const cards: CardSpec[] = [
       // Section 28.1 (owner decision): back to the start of this storm's build years, no confirm.
-      { body: resultCard(result), button: "See what protected your city", alt: "Try this storm again" },
+      // Section 34b.12 (owner decision 8): the button says where it goes ("Try again from 2026").
+      { body: resultCard(result), button: "See what protected your city", alt: retryLabel(this.run.phaseStartYear(challenge)) },
       // Section 17c: with Maya hidden, the cards carry no line of hers.
       { body: defencesCard(result, SHOW_MAYA && top ? results.byDefence[top.elementId] ?? null : null, (id) => ELEMENT_BY_ID.get(id)?.targetsHazards ?? [], challenge.kind), button: nextLabel(next) }
     ];

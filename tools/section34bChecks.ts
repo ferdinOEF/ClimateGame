@@ -484,6 +484,29 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.11 and 34b.12: Esc leaves card 1 open; "Try again from 2026"; Maya's first line after it ----
+STEPS.push([
+  "34b.11",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    await page.evaluate(`window.__panjimScenarioForTest("to-results")`);
+    await page.waitForFunction(`!!document.querySelector(".result-cards:not([hidden])")`, undefined, { timeout: 60000 }).catch(() => undefined);
+    const title = (): Promise<string> => page.evaluate(`document.querySelector(".result-cards .result-title")?.textContent ?? ""`) as Promise<string>;
+    const first = await title();
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(500);
+    check(first !== "" && (await title()) === first && (await page.locator(".result-cards:not([hidden])").count()) === 1, `with card 1 open, Esc leaves card 1 open ("${first}")`);
+    const retry = ((await page.locator(".result-retry").textContent()) ?? "").trim();
+    check(retry === "Try again from 2026", `the 2030 storm's retry reads "${retry}"`);
+    await page.screenshot({ path: path.join(ctx.out, `34b11-card1-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+    await page.locator(".result-retry").click();
+    await page.waitForTimeout(2500);
+    const line = (await page.evaluate(`(() => { const m = window.__panjimForTest.maya; return { year: window.__panjimForTest.run.year, text: m.currentLine?.text ?? null }; })()`)) as { year: number; text: string | null };
+    check(line.year === 2026 && /^Back at 2026\. \d+ builds before the cyclone\.$/.test(line.text ?? ""), `after the retry, Maya's first line says where the run is (${JSON.stringify(line)})`);
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

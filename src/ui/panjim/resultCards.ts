@@ -93,6 +93,11 @@ export function otherKindNote(targets: readonly string[], storm: string): string
   return `A ${targets.includes("flood") ? "flood" : "cyclone"} defence; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
 }
 
+/** Section 34b.12 (owner decision 8): card 1's second button, saying where it goes. */
+export function retryLabel(year: number): string {
+  return `Try again from ${year}`;
+}
+
 /** Card 1: the storm's result. */
 export function resultCard(result: PhaseResult): HTMLElement {
   const { shown, more: moreText } = cardPlaces(result.places);
