@@ -308,7 +308,7 @@ Every finding from the two play tests and what was done; the browser half of eac
 
 **Carried minors closed:** Section 34's issue 22 (Maya's tips could close before Got it or Source was clicked).
 
-**Still open (for the owner):**
+**Still open (for the owner), as recorded before the owner's answers of 28 October** (their outcome below):
 1. **The flood colour (34b.15, A3).** Waits for the owner's mock up values.
 2. **No pandanus can reach the Campal wind (34b.13).** The 2050 wind takes about 20 homes at the Campal front, three to
    six tiles from the nearest beach; pandanus grows on beach only and shelters two tiles. So the "Plant 2 pandanus on
@@ -317,3 +317,30 @@ Every finding from the two play tests and what was done; the browser half of eac
    words, or accept.
 3. **The sensible clear rate fell from 98% to 96% with 34b.9's rule** (4 of 200 seeds), against the brief's "must not
    fall". Nature only stays far above seawalls only (7.0 against 2.0 stars).
+
+## Section 34b, round 2: the owner's answers of 28 October
+
+| Point | Done | Commit, and its test |
+|---|---|---|
+| 1. The flood colour (Option B) | River tiles: a radial gradient #7E6A48, #5D6260 at 55%, #3F7F9E at the rim, 0.92 to 0.70; land #5D6260 at 0.60; foam #DDE3D2 at 0.45 on river tiles; never on the sea | `c35eab2`; review fix `2d1888f` (the colours had come out dark: made linear, written unconverted); `tests/section34b.test.ts` 34b.15 |
+| 2 and 12. The Campal wind | Wind only within 2 of a beach for pandanus (`wind.sandReachHex`); the game rule in the Field Guide and the Facts | `2278e91`; `tests/wind.test.ts`, the 34b wind block, the fuzz's "wind only near the beach" |
+| 9. Mandovi Riverfront | Renamed through the generator; `test:labels` 72 views, no overlap | `6e7a50d` |
+| 11. The red when the list is done | On by itself; R turns it off; the "Press R" line gone | `71c6aa1` |
+| 14. Maya and an open menu | Her bubble steps aside and comes back unless Got it was pressed; the Tutorial's coaching lines stay (review fix) | `b305fa1`, `2d1888f`; browser check "tuck" |
+| 16. The cyclone's blur on Safari | No canvas `filter`: the four rings load pre-blurred PNGs baked by `tools/bakeStormRings.ts` | `fa4ceb0`; checked in Chromium with the filter removed; **Safari itself unchecked** |
+| 3, 4, 5, 6, 8, 10, 13, 15 | Kept as they are (owner) | |
+| 7 (b) and (c) | Left open (owner) | |
+
+**The reviewer on round 2:** two MAJOR, both fixed (the flood's colours; the Tutorial's cards line hidden by the tuck).
+MINOR fixed: flooded land lost its stripes under the grey; a tucked bubble kept a stale pointer hold; the wind reach
+was worked out again on every call (now cached by the sand tiles, the same tiles). MINOR carried: a wind row with one
+pandanus would leave its second reserved build unused (the row is never offered on this board; a fix must also mind the
+four row limit); the red can come on at a phase's start if its list is already done; Maya's 2050 warning still says
+"wind onto Campal" (the owner's words; the wind's six homes lie on the beach front between Campal and Santa Inez).
+
+**Still open for the owner:**
+1. **The pandanus row at Campal is still never offered.** With the reach rule the 2050 wind falls on six homes
+   ((4,11), (3,12), (3,13), (2,14), (1,15), (2,15)), and the water alone takes each of them (3 to 10 m), so pandanus
+   saves none and the still helps rule offers no row.
+2. **For the best plan, 2050 is no longer clearly the hardest storm:** 4 homes lost, as in 2040 (93.2% saved against
+   93.0%); before the rule 8. For every bot style it stays the hardest. No hazard number was changed to restore it.

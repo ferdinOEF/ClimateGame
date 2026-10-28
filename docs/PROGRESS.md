@@ -9030,7 +9030,7 @@ warnings point where a build can still help; the khazan card says what a khazan 
 and bandhara floods; a memory leak fixed. No rule, number or owner decision changed; ten owner decisions are listed
 for the owner in `docs/REVIEW_34.md`.
 
-## Section 34b — fixes from the owner's two live play tests (24 and 27 October) — ON ITS BRANCH (34b.15 waits for the owner; not merged)
+## Section 34b — fixes from the owner's two live play tests (24 and 27 October) — ON ITS BRANCH (the owner's answers done; not merged)
 
 Branch `section-34b-playtest-fixes` from master `e73fd9c` (tag `pre-section-34b`), one commit a step; the record is
 `docs/QA_REPORT.md` (Section 34b) and `docs/BUGS.md` (Section 34b). What changed for a player: notes and the build menu
@@ -9045,5 +9045,11 @@ telemetry only in development or with ?qa=1; "Try again from {year}"; the 2050 w
 (cyclone rings, one storm sea, no flood colour on the sea, new seawall and breakwater). First, a flaky test fixed
 (`tests/buildCards.test.ts`: its speed budget on the median card).
 
-Open for the owner: 34b.15 (the flood colour, waiting for the mock up's values); no pandanus can reach the Campal wind
-homes, so 34b.13's row is never offered there; the sensible clear rate fell from 98% to 96% with 34b.9's rule.
+Round 2, the owner's answers of 28 October: the flood is muddy water in the mock up's colours (Option B); a cyclone's
+wind reaches only the homes within two tiles of a beach for pandanus (a game rule, in the Field Guide and the Facts);
+"Mandovi Riverfront"; the homes at risk show by themselves once the list is done (R hides them); Maya's bubble steps
+aside while a menu is open; the cyclone's rings come pre-blurred where the canvas cannot blur (older Safari). Best plan
+9 of 9 with 9 homes lost; smart clears 98% again.
+
+Open for the owner: the Campal pandanus row is still never offered (the water alone takes the six homes in the wind);
+for the best plan 2050 now loses 4 homes as 2040 does; Safari unchecked.
