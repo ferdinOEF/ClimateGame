@@ -16,11 +16,12 @@ const rule = (selector: string): string => {
 };
 
 describe("Section 33b: the HUD card, top left", () => {
-  it("sits 14 px from the left and 12 px from the top, 400 px wide, never collapsing", () => {
+  it("sits 14 px from the left and 12 px from the top, 300 px wide (Section 34c.1), never collapsing", () => {
     const card = rule(".panjim-clock");
     expect(card).toMatch(/left: calc\(14px/);
     expect(card).toMatch(/top: calc\(12px/);
-    expect(card).toMatch(/width: 400px;/);
+    expect(card).toMatch(/width: 300px;/);
+    expect(card).toMatch(/padding: 8px 12px 10px;/);
     expect(card).toMatch(/border: 1px solid var\(--panel-edge\);/);
     expect(card).toMatch(/border-radius: 18px;/);
     // No header band, stitch or strips on it.

@@ -1,0 +1,111 @@
+{
+ "start": {
+  "card": [
+   14,
+   12,
+   300,
+   243
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "four-rows": {
+  "card": [
+   14,
+   12,
+   300,
+   247
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "storm": {
+  "card": [
+   14,
+   12,
+   300,
+   236
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": [
+   620,
+   698,
+   127,
+   42
+  ]
+ },
+ "large-text": {
+  "card": [
+   14,
+   12,
+   300,
+   318
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ }
+}

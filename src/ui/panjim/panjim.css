@@ -15,10 +15,10 @@
 }
 
 /* ---- The HUD card, top left (Section 33b.2) ----------------------------------------------------------------
- * One static card at left 14 px, top 12 px, 400 px wide: line 1, the year with "Year N of 25", the countdown chip,
- * then How to play and ☰; line 2, the timeline; line 3, Biodiversity and Homes at risk; then the objective
- * (Section 33b.3). It never collapses, never moves, and stays during storms. No band, stitch or strips: those are
- * the cards'. It replaces Section 16 B2's top bar, top centre.
+ * One static card at left 14 px, top 12 px, 300 px wide (Section 34c.1, the owner: half its footprint): line 1, the
+ * year, then How to play and ☰, and under the year "Year N of 25" with the countdown chip; line 2, the timeline; line 3,
+ * Biodiversity and Homes at risk; then the objective (Section 33b.3). It never collapses, never moves, and stays
+ * during storms. No band, stitch or strips: those are the cards'. It replaces Section 16 B2's top bar, top centre.
  */
 .panjim-clock {
   position: absolute;
@@ -26,12 +26,12 @@
   left: calc(14px + env(safe-area-inset-left));
   top: calc(12px + env(safe-area-inset-top));
   box-sizing: border-box;
-  width: 400px;
+  width: 300px;
   max-width: calc(100vw - 28px);
-  padding: 12px 16px 14px;
+  padding: 8px 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
   color: var(--ink);
   background: color-mix(in srgb, var(--panel) 97%, transparent);
   border: 1px solid var(--panel-edge);
@@ -53,11 +53,17 @@
   border: 0 !important;
 }
 
-/* Line 1: the year, the countdown chip, free space, then ? and ☰. */
+/* Line 1 (Section 34c.1): the year, free space, then ? and ☰; under the year, "Year N of 25" and the countdown chip on
+   one line. The year and its turn are the grid's own (their face, the screen reader's live region, takes no box). */
 .panjim-clock .hud-line-1 {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "year . chrome"
+    "turn chip chip";
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 2px;
 }
 
 /* The free space: ? and ☰ take it with an auto margin (a spacer would cost the line a gap). Their 44 px hit areas reach
@@ -67,17 +73,13 @@
 }
 
 .panjim-clock .clock-face {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  flex: none;
-  line-height: 1;
+  display: contents;
 }
 
 .panjim-clock .clock-year {
+  grid-area: year;
   font-family: var(--font-head);
-  font-size: 28px;
+  font-size: 34px;
   font-weight: 700;
   color: var(--ink);
   line-height: 1;
@@ -85,14 +87,15 @@
 }
 
 .panjim-clock .clock-turn {
-  margin-top: 3px;
-  font-size: 12px;
+  grid-area: turn;
+  font-size: 13px;
   font-weight: 600;
   color: var(--accent-ink);
   white-space: nowrap;
 }
 
-.panjim-clock.ticking .clock-face {
+.panjim-clock.ticking .clock-year {
+  transform-origin: left center;
   animation: clock-tick 260ms ease-out;
 }
 
@@ -103,9 +106,23 @@
 }
 
 .panjim-clock .clock-countdown {
-  flex: 0 1 auto;
+  grid-area: chip;
   min-width: 0;
   display: flex;
+}
+
+/* The chip in the card: one 13 px line beside "Year N of 25" (it may wrap only if the storm's name is long). */
+.panjim-clock .outlook-countdown-chip {
+  gap: 5px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.panjim-clock .outlook-countdown-chip .outlook-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* The countdown chip: the storm's icon and "Cyclone in 5 builds". A long one ("Cyclone and flood in 10 builds")
@@ -144,12 +161,11 @@
 
 /* How to play (?) and ☰: 44 px, no fill, the same buttons as before. */
 .panjim-clock .clock-chrome {
+  grid-area: chrome;
   display: flex;
   align-items: center;
   gap: 2px;
-  flex: none;
-  margin-left: auto;
-  margin-right: -8px;
+  margin-right: -6px;
 }
 
 .panjim-clock .hud-chrome {
@@ -160,8 +176,8 @@
 
 .panjim-clock .help-button,
 .panjim-clock .hud-panel-settings .hud-panel-button {
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   margin: 0;
   background: transparent;
   border: none;
@@ -177,8 +193,8 @@
 }
 
 .panjim-clock .hud-panel-settings .hud-panel-button svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 /* ☰ in the card: its menu drops below it, over the board. */
@@ -234,9 +250,10 @@
 }
 
 /* Section 34b.1: the banner (a combo, a crack with age) sits in the band right of the HUD card, centred there and above
-   it, never under it (at 1024 px about 130 px of it was hidden). In a narrow window it moves to the bottom. */
+   it, never under it (at 1024 px about 130 px of it was hidden). In a narrow window it moves to the bottom. Section
+   34c.1: the card is 300 px wide. */
 .has-panjim-clock .era-banner {
-  left: calc(14px + 400px + 16px);
+  left: calc(14px + 300px + 16px);
   right: 12px;
   top: calc(14px + env(safe-area-inset-top));
   transform: none;
@@ -272,7 +289,7 @@
 
 .outlook-track {
   position: relative;
-  height: 34px;
+  height: 26px;
   margin: 0 6px;
   pointer-events: auto;
 }
@@ -283,7 +300,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 7px;
+  top: 4px;
   height: 3px;
   border-radius: 2px;
   background: var(--button-border);
@@ -296,7 +313,7 @@
 /* The current year: a 4 x 15 px mark. */
 .outlook-now {
   position: absolute;
-  top: 1px;
+  top: -2px;
   width: 4px;
   height: 15px;
   margin-left: -2px;
@@ -314,9 +331,9 @@
 /* Every fifth year: a 6 px dot and its year under it (a storm year's dot is the storm's). */
 .outlook-tick {
   position: absolute;
-  top: 18px;
+  top: 14px;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
   color: var(--ink-2);
   white-space: nowrap;
@@ -326,7 +343,7 @@
   content: "";
   position: absolute;
   left: 50%;
-  top: -13px;
+  top: -12px;
   width: 6px;
   height: 6px;
   margin-left: -3px;
@@ -346,7 +363,7 @@
 /* A storm: an 11 px dot at its year; its name, strength and stars are in its tooltip. */
 .outlook-marker {
   position: absolute;
-  top: 3px;
+  top: 0;
   width: 11px;
   height: 11px;
   margin-left: -5.5px;
@@ -393,10 +410,11 @@
 
 /* ---- Line 3: Biodiversity and Homes at risk ------------------------------------------------------------------ */
 
+/* Two boxes in one row, each as wide as its words need and sharing what is left (Section 34c.1). */
 .panjim-clock .clock-risk {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: auto auto;
+  gap: 6px;
 }
 
 .outlook-bio,
@@ -404,11 +422,11 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 3px;
   box-sizing: border-box;
-  height: 50px;
-  padding: 0 12px;
-  border-radius: 12px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.15;
@@ -418,15 +436,15 @@
 
 .outlook-tile-icon svg {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 
 .outlook-bio-count,
 .outlook-risk-count {
   margin-left: auto;
   font-family: var(--font-head);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   font-variant-numeric: lining-nums tabular-nums;
 }
@@ -444,9 +462,9 @@
 .outlook-bio.reached { border-color: var(--good); }
 .outlook-bio-bar {
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 5px;
+  left: 8px;
+  right: 8px;
+  bottom: 4px;
   height: 3px;
   border-radius: 2px;
   background: var(--panel-shadow);
@@ -495,8 +513,8 @@
  * and its checklist take the same place and style. No card per row, no band; the old bottom right panel is gone.
  */
 .panjim-clock .clock-objective {
-  margin: 2px -2px 0;
-  padding: 10px 2px 0;
+  margin: 0 -2px;
+  padding: 6px 2px 0;
   border-top: 1px solid var(--panel-edge);
 }
 
@@ -513,8 +531,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 7px;
-  margin: 0 0 6px;
+  gap: 5px;
+  margin: 0 0 2px;
 }
 
 .panjim-clock .get-ready-flag {
@@ -524,14 +542,15 @@
 
 .panjim-clock .get-ready-flag svg {
   display: block;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .panjim-clock .get-ready-title {
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0;
+  line-height: 1.2;
+  letter-spacing: -0.1px;
   text-transform: none;
   color: var(--ink);
 }
@@ -542,13 +561,14 @@
 }
 
 .panjim-clock .get-ready-list {
-  gap: 2px;
+  gap: 0;
 }
 
 .panjim-clock .get-ready-row {
   grid-template-columns: 14px 1fr auto auto;
   gap: 8px;
-  padding: 3px 4px;
+  padding: 1px 4px;
+  line-height: 1.2;
   margin: 0 -4px;
   border-radius: 6px;
   background: transparent;
@@ -590,6 +610,15 @@
 
 .panjim-clock .get-ready-row.done .get-ready-label {
   color: var(--ink-2);
+}
+
+/* Section 34c.1: a row wraps to two lines at most. */
+.panjim-clock .get-ready-label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 .panjim-clock .get-ready-progress {
