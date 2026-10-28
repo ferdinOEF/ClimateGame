@@ -1,4 +1,5 @@
 import { ActionRun, type ActionOutcome, type RunEvent } from "@core/actionRun";
+import { pointsConfig } from "@levels/panjimRun";
 import type { GameState } from "@core/gameState";
 import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
 import type { StormRecord } from "@core/stormRecord";
@@ -295,7 +296,9 @@ export class PanjimController {
       economy: host.level.economy,
       growth: host.level.growth,
       landmarks: host.landmarks,
-      localities: host.localities
+      localities: host.localities,
+      // Section 35.1: points in Play Panjim only; the Tutorial counts none.
+      ...(this.tutorial ? {} : { points: pointsConfig(host) })
     });
     // The game layer is shared by every session (appShell): no state class from the last run may carry over.
     host.container.classList.remove(...SESSION_CLASSES);
