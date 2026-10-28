@@ -18,6 +18,9 @@ const SIZES = (args.get("sizes") ?? "1366x768,1920x1080").split(",").map((s) => 
 const OUT = path.resolve(args.get("out") ?? "docs/qa/section34b/art");
 /** The storm times held, seconds (7 by default; 12 shows the cyclone near landfall, whole on screen). */
 const TIMES = (args.get("at") ?? "7").split(",").map(Number);
+/** Only these storms (cyclone-2030, flood-2040, finale-2050); all by default. walls=no leaves the walls out. */
+const ONLY = args.get("storms")?.split(",") ?? null;
+const WALLS = args.get("walls") !== "no";
 fs.mkdirSync(OUT, { recursive: true });
 const gpu = process.platform === "win32" ? ["--use-angle=d3d11", "--ignore-gpu-blocklist", "--enable-gpu"] : ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"];
 const browser = await chromium.launch({ args: gpu });
@@ -43,6 +46,7 @@ const scenario = (page: Page, name: string): Promise<boolean> => page.evaluate(`
 for (const [W, H] of SIZES) {
   const tag = `${W}x${H}`;
   for (const at of TIMES) for (const [name, before] of [["cyclone-2030", []], ["flood-2040", ["past-storm"]], ["finale-2050", ["past-storm", "past-storm"]]] as const) {
+    if (ONLY && !ONLY.includes(name)) continue;
     const page = await open(W, H);
     let ok = true;
     for (const step of before) ok = ok && (await scenario(page, step));
@@ -56,6 +60,7 @@ for (const [W, H] of SIZES) {
     await page.close();
   }
   // A seawall on the shore and a breakwater in the sea near Miramar, seen close.
+  if (!WALLS) continue;
   const page = await open(W, H);
   const built = (await page.evaluate(`(() => { const c = window.__panjimForTest; const m = c.host.landmarks.find((l) => /Miramar/.test(l.name)); const out = [];
     for (const id of ["seawall", "breakwater"]) { let best = null; for (const t of c.run.state.placed.values()) { if (!c.run.state.canBuild(t.coord, id)) continue; const d = Math.hypot(t.coord.q - m.q, t.coord.r - m.r); if (!best || d < best.d) best = { coord: t.coord, d }; }

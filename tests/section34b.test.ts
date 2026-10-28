@@ -613,3 +613,17 @@ describe("34b.14: the art pass (render only, no change to what a storm takes)", 
     }
   });
 });
+
+describe("34b.15: the flood is muddy water, not night (the owner's mock up, Option B)", () => {
+  it("a river tile's flood is a radial gradient brown to grey to the river's blue, 0.92 to 0.70; flooded land flat grey at 0.60; foam lines on river tiles only; never on the sea", async () => {
+    const { FLOOD } = await import("../src/render/storm/stormWater");
+    expect(FLOOD).toEqual({ centre: "#7E6A48", mid: "#5D6260", rim: "#3F7F9E", land: "#5D6260", foam: "#DDE3D2" });
+    const water = readFileSync("src/render/storm/stormWater.ts", "utf8");
+    expect(water).toContain("mud = mix(uFloodCentre, uFloodMid, smoothstep(0.0, 0.55, e));");
+    expect(water).toContain("mud = mix(mud, uFloodRim, smoothstep(0.55, 1.0, e));");
+    expect(water).toContain("alpha = mix(alpha, alpha / 0.86 * mix(0.92, 0.70, e), flood);");
+    expect(water).toContain("mud = mix(mud, uFloodFoam, lines * 0.45);");
+    expect(water).toContain("alpha = mix(alpha, alpha / 0.82 * 0.6, flood);");
+    expect(water).toContain("look[i4 + 1] = slot.sea ? 0 : Math.max(flood, stored);");
+  });
+});
