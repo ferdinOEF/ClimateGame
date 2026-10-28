@@ -200,7 +200,8 @@ describe("34b.3: the camera moves only at its set moments", () => {
 
   it("the controller moves the camera for the heat once a storm, the row click and Maya's Last call through the clear move", () => {
     const controller = readFileSync("src/app/panjimController.ts", "utf8");
-    expect(controller).toContain("if (hot.length > 0 && !this.heatFramed.has(next.id) && !this.tutorial) {");
+    // Section 34c.4: the heat year's move also frames Get ahead's tiles (tests/section34c.test.ts).
+    expect(controller).toContain("const framing = warning && !this.heatFramed.has(next.id) && !this.tutorial;");
     expect(controller).toContain("focus: (coord, tiles) => this.host.moveCamera(tiles ?? [coord], coord),");
     expect(controller).toContain("this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key));");
     // focusCamera is left to the storms' replay and the test scenarios.

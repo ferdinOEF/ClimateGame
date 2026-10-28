@@ -77,9 +77,13 @@ describe("34c.2: the card top right, Maya bottom left, the street map's credit b
   it("slides the opening view to keep the objective's places and the main town names clear too, falling back step by step", () => {
     const session = readFileSync("src/app/gameSession.ts", "utf8");
     expect(session).toContain("const towns = levelMap.localities.filter((l) => l.rank === 1)");
-    expect(session).toContain("const tries = [[...keepClear, ...pins, ...towns], [...keepClear, ...pins], keepClear, arrows?.length && pins.length ? [...arrows, ...pins] : [], arrows ?? []];");
-    // A try that fails leaves the view as it was: the first that clears wins.
-    expect(session).toContain("lastKeepClear = keepClearOf(lift(points), obstacles);\n                if (lastKeepClear) break;");
+    expect(session).toContain("= [[keepClear, [...pins, ...towns]], [keepClear, pins], [keepClear, []], [arrows ?? [], pins], [arrows ?? [], []]];");
+    // A try that fails leaves the view as it was: the first that clears wins. The places and names are secondary.
+    expect(session).toContain("lastKeepClear = keepClearOf(lift(points), obstacles, undefined, undefined, lift(secondary));\n                if (lastKeepClear) break;");
+    // keepClearOf: a secondary point never counts as off the screen, and never trades a forecast point's place.
+    const scene = readFileSync("src/render/scene.ts", "utf8");
+    expect(scene).toContain("else if (i < points.length && (x < margin || y < margin || x > w - margin || y > h - margin)) off++;");
+    expect(scene).toContain("for (const allowed of secondary.length ? [start.off] : [start.off, start.off + start.hidden]) {");
     expect(readFileSync("src/app/panjimController.ts", "utf8")).toContain("}, [...along, ...points], along, places);");
   });
 });
@@ -101,5 +105,21 @@ describe("34c.3: Kala Academy on the Mandovi bank at Campal", () => {
   it("is moved by the generator's hand edits, not by hand in the generated map", () => {
     const edits = JSON.parse(readFileSync("tools/mapgen/panaji-hand-edits.json", "utf8")) as { monuments: { id: string; from: number[]; to: number[] }[] };
     expect(edits.monuments.at(-1)).toEqual({ id: "kala_academy", from: [5, 11], to: [5, 10] });
+  });
+});
+
+describe("34c.4: the heat year's camera move frames Get ahead's tiles too", () => {
+  it("works out Get ahead before the move (renderHeat runs before the panels) and centres between the two sets", () => {
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    const heat = controller.slice(controller.indexOf("  renderHeat(): void {"), controller.indexOf("  /** Section 34b.3: the storms whose heat has had its camera move"));
+    expect(heat).toContain("const ahead = framing && this.refreshAhead().complete ? this.aheadRows.flatMap((job) => this.pulseKeys(job)) : [];");
+    expect(heat).toContain("if (framing && (hot.length > 0 || (ahead.length > 0 && !this.aheadFramed.has(next.id)))) {");
+    // A move to Get ahead alone does not use up the heat's own.
+    expect(heat).toContain("if (hot.length > 0) this.heatFramed.add(next.id);");
+    expect(heat).toContain("if (ahead.length === 0) this.host.moveCamera(hot.map(coordOf));");
+    // With the objective done nothing may be hot: Get ahead's tiles alone.
+    expect(heat).toContain("else if (hot.length === 0) this.host.moveCamera(ahead.map(coordOf));");
+    expect(heat).toContain("this.host.moveCamera(all, { q: (h.q + g.q) / 2, r: (h.r + g.r) / 2 });");
+    expect(controller).toContain("const { rows, complete, ahead } = this.refreshAhead();");
   });
 });

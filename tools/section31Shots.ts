@@ -10,7 +10,7 @@
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
-import { startDevServer } from "./devServer";
+import { glArgs, startDevServer } from "./devServer";
 import { playTutorial } from "./tutorialPlay";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -21,7 +21,7 @@ const OUT = path.resolve(ROOT, outDir);
 fs.mkdirSync(OUT, { recursive: true });
 
 const server = await startDevServer(Number(process.env.PORT ?? 5491));
-const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined, args: glArgs() });
 let failed = 0;
 const check = (ok: boolean, label: string): void => {
   if (!ok) failed++;

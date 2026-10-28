@@ -987,15 +987,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
               const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] =>
                 points.map((p) => ({ x: p.x, y: Math.max(0.6, terrain.heightAt(worldToAxial(p.x, p.z, 1.0)) + 0.3), z: p.z }));
               // Section 34c.2, tried in order, the first a pan can clear wins (a try that fails leaves the view as it
-              // was): everything with the objective's places and the main town names (with the card top right the old
-              // city's names could sit under it, with Maya bottom left a place's pin at her feet); everything with the
-              // places; everything; the arrows and the places; the arrows alone (a forecast wider than the screen).
+              // was): the forecast with the objective's places and the main town names (with the card top right the
+              // old city's names could sit under it, with Maya bottom left a place's pin at her feet); the forecast with
+              // the places; the forecast; the arrows with the places; the arrows alone (a forecast wider than the
+              // screen). The places and names are secondary: never under the card or Maya, but they never push a
+              // point of the forecast off the screen.
               const towns = levelMap.localities.filter((l) => l.rank === 1).map((l) => axialToWorld({ q: l.q, r: l.r }, 1));
               const pins = places ?? [];
-              const tries = [[...keepClear, ...pins, ...towns], [...keepClear, ...pins], keepClear, arrows?.length && pins.length ? [...arrows, ...pins] : [], arrows ?? []];
-              for (const points of tries) {
+              const tries: [readonly { x: number; z: number }[], readonly { x: number; z: number }[]][] = [[keepClear, [...pins, ...towns]], [keepClear, pins], [keepClear, []], [arrows ?? [], pins], [arrows ?? [], []]];
+              for (const [points, secondary] of tries) {
                 if (!points.length) continue;
-                lastKeepClear = keepClearOf(lift(points), obstacles);
+                lastKeepClear = keepClearOf(lift(points), obstacles, undefined, undefined, lift(secondary));
                 if (lastKeepClear) break;
               }
             }

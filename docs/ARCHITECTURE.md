@@ -222,40 +222,59 @@ panel follows; nothing moves. With Calm motion on the controller also sets
 change is at once. During the storm the Homes at risk box wears a 3 px `--warn`
 ring at 30%. `tools/section33Storm.ts` checks all of it in a browser.
 
-## The game screen's layout (Section 33b)
+## The game screen's layout (Section 33b; corners swapped in Section 34c)
 
 Owner decisions: every status and the objective live in **one static card in
-the top left corner**, which never collapses, never moves and stays during
-storms; **Maya lives in the bottom right corner**.
+the top right corner** (Section 34c.2; it was top left), which never
+collapses, never moves and stays during storms; **Maya lives in the bottom left
+corner** (Section 34c.2; it was bottom right); the OpenStreetMap credit is in
+the bottom right.
 
 - **The HUD card** (`.panjim-clock`, `src/ui/panjim/clockHud.ts`, styled in
-  `panjim.css`): 14 px from the left, 12 px from the top, 400 px wide, as tall
-  as its content; no header band, stitch or strips. Line 1: the year and "Year
-  N of 25", the countdown chip (`OutlookBar.mountCountdown`; a long one wraps
-  onto two lines), then ? and ☰ (the existing `.hud-chrome` and ☰ panel,
-  moved into `clock.chromeSlot`, so their actions, shortcuts and tooltips are
-  the same). Line 2: the timeline (`OutlookBar`): a dot at each storm year
-  whose tooltip (`markerText`) says which storm and how it went, small dots at
-  2035 and 2045, a mark for the current year. Line 3: the Biodiversity and
-  Homes at risk tiles. Below a divider, `clock.objectiveSlot` holds the
-  objective (`GetReadyPanel`) or, in the Tutorial, its caption and checklist
-  (`TutorialPanel`): the old bottom right objective panel is hidden in the
-  Panjim game (it remains for the old levels).
-- **Maya** (`mayaLayout.ts homeRect`): `HOME_MARGIN` in from the right and the
-  bottom; her bubble opens to her left, else above her. `HUD_OBSTACLES` names
-  the HUD card at its full size. The street map corner (its credit; the switch
-  is in ☰) is in the bottom left.
+  `panjim.css`): 14 px from the right, 12 px from the top, 300 px wide (Section
+  34c.1; it was 400), as tall as its content (about 300 x 250 at 1366x768 with a
+  four row objective); no header band, stitch or strips. Line 1 is a small grid:
+  the year (34 px) with ? and ☰ beside it, and under it "Year N of 25" and the
+  countdown chip (`OutlookBar.mountCountdown`) on one line at 13 px. The face
+  (`.clock-face`) is `display: contents`, so the year and the turn are the
+  grid's own cells; the clock tooltip sits on them. ? and ☰ are the existing
+  `.hud-chrome` and ☰ panel, moved into `clock.chromeSlot`; ☰'s menu opens
+  under it and hangs leftward, inside the window. Line 2: the timeline
+  (`OutlookBar`): a dot at each storm year whose tooltip (`markerText`) says
+  which storm and how it went, small dots at 2035 and 2045, a mark for the
+  current year. Line 3: Biodiversity and Homes at risk, one row of two boxes.
+  Below a divider, `clock.objectiveSlot` holds the objective (`GetReadyPanel`,
+  title 14 px, rows 13 px, at most two lines a row) or, in the Tutorial, its
+  caption and checklist (`TutorialPanel`): the old bottom right objective
+  panel is hidden in the Panjim game (it remains for the old levels). Larger
+  text scales the same layout. In the page the card comes before the board, so
+  the keyboard goes card, board, Maya, as the screen reads.
+- **The era banner** sits left of the card at every width (`right` = 14 + 300 +
+  16 px), centred in the space it has.
+- **Maya** (`mayaLayout.ts homeRect`): `HOME_MARGIN` in from the left and the
+  bottom; her bubble opens to her right, else above her; her minimise button is
+  on her right shoulder as the viewer sees her. `HUD_OBSTACLES` names the HUD
+  card at its full size. The street map corner (its credit; the switch is in
+  ☰) is in the bottom right.
 - **The hint** (`.empty-prompt`) is a 40 px pill at the bottom centre, until
   the run's first build.
 - **The build menu** opens beside its tile with a pointer on the side facing it
   (`pointer-left`/`pointer-right`, `--pointer-y`), and keeps off the HUD card,
-  Maya and the hint.
+  Maya and the hint. A note beside a tile goes to the tile's left when it would
+  run under the card.
 - **A phase's opening view.** `showConeIfPhaseStart` frames the forecast (its
-  arrows and the land they cross) and passes those points to `frameWorld`,
-  which asks the scene (`keepClearOf`) for the smallest pan of where the camera
-  looks (never its distance or angle) that leaves none of them under the HUD
-  card or Maya, and no more of them out of view than before; when no pan clears
-  them all (a forecast wider than the screen), the arrows alone.
+  arrows and the land they cross) and passes those points, with the places the
+  objective pins, to `frameWorld`, which asks the scene (`keepClearOf`) for the
+  smallest pan of where the camera looks (never its distance or angle). It
+  tries, in order, the first a pan can clear winning: the forecast with the
+  objective's places and the main town names; with the places; the forecast
+  alone; the arrows with the places; the arrows alone. The places and names are
+  secondary points: never under the HUD card or Maya, but they never push a
+  forecast point off the screen. A point over the card at the screen's top edge
+  counts as hidden by the card.
+- **The heat years' camera move** (Section 34b.3): once a storm, to its hot
+  tiles; with the objective done also to Get ahead's pulsing tiles, centred
+  between the two sets, or to them alone when nothing is hot (Section 34c.4).
 
 ## Navigation and history
 

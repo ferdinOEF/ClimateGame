@@ -1,4 +1,206 @@
 {
+ "start": {
+  "card": [
+   14,
+   12,
+   400,
+   286
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "four-rows": {
+  "card": [
+   14,
+   12,
+   400,
+   319
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "storm": {
+  "card": [
+   14,
+   12,
+   400,
+   286
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": [
+   620,
+   698,
+   127,
+   42
+  ]
+ },
+ "large-text": {
+  "card": [
+   14,
+   12,
+   400,
+   335
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "bubble": {
+  "card": [
+   14,
+   12,
+   400,
+   286
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": [
+   1114,
+   575,
+   190,
+   151
+  ],
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "menu-miramar": {
+  "card": [
+   14,
+   12,
+   400,
+   286
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": [
+   391,
+   306,
+   312,
+   381
+  ],
+  "banner": null,
+  "speed": null
+ },
+ "result": {
+  "card": [
+   14,
+   12,
+   400,
+   319
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": [
+   1114,
+   651,
+   190,
+   75
+  ],
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
  "final": {
   "card": [
    14,

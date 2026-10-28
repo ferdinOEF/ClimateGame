@@ -4,11 +4,11 @@
  */
 import { chromium } from "playwright";
 import fs from "node:fs";
-import { startDevServer } from "./devServer";
+import { glArgs, startDevServer } from "./devServer";
 
 const sizes = (process.argv.slice(2).length ? process.argv.slice(2) : ["1280x600", "1366x768", "1920x1080", "2560x1440"]).map((s) => s.split("x").map(Number));
 const server = await startDevServer(Number(process.env.PORT ?? 5493));
-const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined, args: glArgs() });
 let failures = 0;
 for (const [w, h] of sizes) {
   const page = await browser.newPage({ viewport: { width: w, height: h } });

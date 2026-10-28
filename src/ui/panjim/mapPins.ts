@@ -129,8 +129,12 @@ export class MapPins {
             const y = Math.min(height - this.note.el.offsetHeight - 8, card.bottom - layer.top + 8);
             this.note.el.style.transform = `translate(${Math.round(x - 34)}px, ${Math.round(y + 24)}px)`;
           } else {
-            const flip = at.x + 34 + w > width - 8;
             const y = Math.max(90, Math.min(height - this.note.el.offsetHeight - 40, at.y));
+            // Section 34c.2: with the card top right, a note to the right of a tile just left of the card would run
+            // under it: to the tile's left then, as at the window's right edge.
+            const h = this.note.el.offsetHeight;
+            const intoCard = !!card && card.width > 0 && at.x + 34 < card.right - layer.left && at.x + 34 + w > card.left - layer.left && y - 24 < card.bottom - layer.top && y - 24 + h > card.top - layer.top;
+            const flip = at.x + 34 + w > width - 8 || intoCard;
             this.note.el.style.transform = `translate(${Math.round(flip ? at.x - 68 - w : at.x)}px, ${Math.round(y)}px)`;
           }
         }

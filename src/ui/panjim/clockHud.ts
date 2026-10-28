@@ -65,8 +65,8 @@ export class ClockHud {
     this.el.className = "hud-card panjim-clock";
     this.el.innerHTML = `
       <div class="hud-line hud-line-1">
-        <div class="clock-face" aria-live="polite">
-          <span class="clock-year">2026</span><span class="clock-turn">Year 1 of 25</span>
+        <div class="clock-face">
+          <span class="clock-year" aria-live="polite">2026</span><span class="clock-turn">Year 1 of 25</span>
         </div>
         <div class="clock-countdown"></div>
         <span class="hud-spacer"></span>
@@ -126,9 +126,12 @@ export class ClockHud {
     this.skipBtn.disabled = !enabled;
   }
 
-  /** The parts, for their tooltips. */
-  get parts(): { face: HTMLElement; until: HTMLElement; skip: HTMLButtonElement } {
-    return { face: this.el.querySelector(".clock-face")!, until: this.untilEl, skip: this.skipBtn };
+  /**
+   * The parts, for their tooltips. Section 34c.1: the face is laid out with `display: contents` (its year and turn
+   * are the card grid's own cells), so it has no box to place a tooltip by: the year and the turn carry it.
+   */
+  get parts(): { face: HTMLElement[]; until: HTMLElement; skip: HTMLButtonElement } {
+    return { face: [this.yearEl, this.turnEl], until: this.untilEl, skip: this.skipBtn };
   }
 
   dispose(): void {

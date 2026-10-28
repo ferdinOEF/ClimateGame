@@ -41,8 +41,10 @@ export interface KhazanScene {
    * under one of `obstacles` (rectangles in container pixels: the HUD card, Maya) and no more of them are out of view
    * (under an obstacle or off the screen) than before. Only the target moves: the distance, the angle and the glide are unchanged. Returns the pan (world
    * units), or null (and no pan) when they are clear already or no pan of up to `maxShift` world units clears them.
+   * `secondary` (Section 34c.2: town names, an objective's pins) must not sit under an obstacle either, but whether
+   * they are on the screen does not count: they never cost one of `points` its place on the screen.
    */
-  keepClearOf: (points: readonly { x: number; y: number; z: number }[], obstacles: readonly { x: number; y: number; w: number; h: number }[], margin?: number, maxShift?: number) => { dx: number; dz: number } | null;
+  keepClearOf: (points: readonly { x: number; y: number; z: number }[], obstacles: readonly { x: number; y: number; w: number; h: number }[], margin?: number, maxShift?: number, secondary?: readonly { x: number; y: number; z: number }[]) => { dx: number; dz: number } | null;
   /** Section 34: a drag keeps the camera's target inside this box (the board, with a margin); null lifts it. */
   setPanBounds: (bounds: { minX: number; maxX: number; minZ: number; maxZ: number } | null) => void;
   /** Offsets the camera by a small amount without moving what it looks at — the storm's impact tremor. Pass (0, 0) to clear. */
@@ -289,7 +291,7 @@ export function createScene(container: HTMLElement): KhazanScene {
     return THREE.MathUtils.clamp(Math.max(forWidth, forDepth) * 1.18, CAM_DISTANCE_MIN, CAM_DISTANCE_OPENING_MAX);
   }
 
-  function keepClearOf(points: readonly { x: number; y: number; z: number }[], obstacles: readonly { x: number; y: number; w: number; h: number }[], margin = 12, maxShift = 12): { dx: number; dz: number } | null {
+  function keepClearOf(points: readonly { x: number; y: number; z: number }[], obstacles: readonly { x: number; y: number; w: number; h: number }[], margin = 12, maxShift = 12, secondary: readonly { x: number; y: number; z: number }[] = []): { dx: number; dz: number } | null {
     const w = container.clientWidth;
     const h = container.clientHeight;
     if (points.length === 0 || w === 0 || h === 0) return null;
@@ -302,14 +304,14 @@ export function createScene(container: HTMLElement): KhazanScene {
       probe.updateMatrixWorld();
       let hidden = 0;
       let off = 0;
-      for (const p of points) {
+      for (const [i, p] of [...points, ...secondary].entries()) {
         v.set(p.x, p.y, p.z).project(probe);
         const x = ((v.x + 1) / 2) * w;
         const y = ((1 - v.y) / 2) * h;
         // Under an obstacle first (Section 34c.2: a name at the top edge over the card is hidden by the card, not off
         // the screen); then off the screen.
         if (x >= 0 && y >= 0 && x <= w && y <= h && obstacles.some((o) => x > o.x - margin && x < o.x + o.w + margin && y > o.y - margin && y < o.y + o.h + margin)) hidden++;
-        else if (x < margin || y < margin || x > w - margin || y > h - margin) off++;
+        else if (i < points.length && (x < margin || y < margin || x > w - margin || y > h - margin)) off++;
       }
       return { hidden, off };
     };
@@ -319,7 +321,8 @@ export function createScene(container: HTMLElement): KhazanScene {
     // that pushes none of them off the screen; failing that, one where under the card and off the screen together hide
     // no more than before (a point under the card near the edge may then go off it).
     const step = 0.25;
-    for (const allowed of [start.off, start.off + start.hidden]) {
+    // With secondary points only the first: a hidden name may not be traded for a point going off the screen.
+    for (const allowed of secondary.length ? [start.off] : [start.off, start.off + start.hidden]) {
       for (let k = 1; k * step <= maxShift; k++) {
         for (const [dx, dz] of [[-1, 0], [0, -1], [1, 0], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
           const d = (k * step) / Math.hypot(dx, dz);

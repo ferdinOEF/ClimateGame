@@ -1,0 +1,7 @@
+(node:30968) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS [1366x768] the Tutorial played by its nudges: seven captions, both storms 3 stars, the last card, on to Panjim
+FAIL [1366x768] console errors: 10 (Failed to load resource: the server responded with a status of 403 (Forbidden) | Failed to load resource: the server responded with a status of 403 (Forbidden))
+TIME [1366x768] with Speed up: 0.7 min (44 s, Begin to the last card; software GL)
+PASS [1366x768] Try again restarts the Tutorial at 2026 with its opening card ({"hash":"#/play/l00-tutorial","brief":true,"year":2026})
+1 FAILED [1366x768]

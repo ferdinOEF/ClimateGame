@@ -9053,3 +9053,20 @@ aside while a menu is open; the cyclone's rings come pre-blurred where the canva
 
 Open for the owner: the Campal pandanus row is still never offered (the water alone takes the six homes in the wind);
 for the best plan 2050 now loses 4 homes as 2040 does; Safari unchecked.
+
+## Section 34c — the HUD card top right at half its size, Maya bottom left, Kala Academy on the bank — READY TO MERGE (QA in docs/QA_REPORT.md)
+
+Branch `section-34c-hud-right-maya-left` from master `f94ae43` (tag `pre-section-34c`), one commit a step. What
+changed for a player: the HUD card is 300 px wide (was 400), its year with ? and ☰ on one line and "Year N of 25" with
+the countdown chip under it, the two boxes in one row, the objective's rows at most two lines; the card is in the top
+right, ☰'s menu opens under ☰, the era banner sits left of the card; Maya stands in the bottom left with her bubble to
+her right, and says the card is "top right"; the OpenStreetMap credit is in the bottom right; the keyboard goes card,
+board, Maya. A phase's opening view keeps the main town names and the objective's pins clear of the card and Maya
+too, and a tile's note never runs under the card. Kala Academy stands on the Mandovi bank at Campal (5,10; it was
+5,11, beside the creek): in all three storms its state is unchanged, and Panjim has one home fewer (the 2050 path).
+In the heat years, with the objective done, the camera also frames Get ahead's tiles (in 2029 the 2040 flood's
+Merces row was off the screen).
+
+Dropped by the owner: the Mandovi Riverfront zone's redraw (it is part of the hazard model; after the festival).
+Open: Safari and Firefox; the joint heat and Get ahead move does not zoom.
+
