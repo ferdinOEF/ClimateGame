@@ -9030,7 +9030,7 @@ warnings point where a build can still help; the khazan card says what a khazan 
 and bandhara floods; a memory leak fixed. No rule, number or owner decision changed; ten owner decisions are listed
 for the owner in `docs/REVIEW_34.md`.
 
-## Section 34b — fixes from the owner's two live play tests (24 and 27 October) — ON ITS BRANCH (the owner's answers done; not merged)
+## Section 34b — fixes from the owner's two live play tests (24 and 27 October) — MERGED (`91a2754`, deployed to production)
 
 Branch `section-34b-playtest-fixes` from master `e73fd9c` (tag `pre-section-34b`), one commit a step; the record is
 `docs/QA_REPORT.md` (Section 34b) and `docs/BUGS.md` (Section 34b). What changed for a player: notes and the build menu
