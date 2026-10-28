@@ -61,7 +61,8 @@ describe("17.2 objectives suggest nature-based defences only", () => {
   });
 
   it("engineered defences stay buildable", () => {
-    const beach = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "beach" }]);
+    // Section 34b.9: a seawall on the shore line, beside the sea.
+    const beach = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "beach" }, { coord: { q: 0, r: -1 }, terrainId: "coast" }]);
     expect(beach.buildableAt({ q: 0, r: 0 }).map((d) => d.id)).toContain("seawall");
     const river = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "river" }]);
     expect(river.buildableAt({ q: 0, r: 0 }).map((d) => d.id)).toContain("small_dam");

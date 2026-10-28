@@ -9,6 +9,7 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 import { startDevServer } from "./devServer";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.resolve(ROOT, "docs/qa/section14/wildlife");
@@ -63,7 +64,7 @@ async function main(): Promise<void> {
       if (m.type() === "error") errors.push(m.text());
     });
     page.on("pageerror", (e) => errors.push(String(e)));
-    await page.goto(`${server.url}/${PAGE}`);
+    await page.goto(qaUrl(`${server.url}/${PAGE}`));
     await page.waitForFunction("window.__wl && window.__wl.ready", null, { timeout: 60000 });
     console.log("counts", JSON.stringify(await page.evaluate("__wl.counts()")));
     for (const s of MODEL) {

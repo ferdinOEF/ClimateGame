@@ -34,6 +34,8 @@ export interface BuiltElementInfo {
   extraActions?: { label: string; onClick: () => void; disabled?: boolean }[];
   /** A short line under the name. Used by monuments to say what the building is; built elements get their effects instead. */
   note?: string;
+  /** Section 34b.7: a line under the remove button ("A tile holds one build; demolish to build another here."). */
+  removeNote?: string;
 }
 
 /** How the build menu is drawn on a level that differs from the default. */
@@ -228,7 +230,16 @@ export class BuildPopover {
     screenY: number,
     cards: BuildCard[],
     onSelect: (id: string) => void,
-    mode: { notice?: string; blocked?: boolean; avoid?: string[]; onHover?: (id: string | null) => string | null; avoidPoints?: readonly { x: number; y: number }[] } = {}
+    mode: {
+      notice?: string;
+      blocked?: boolean;
+      avoid?: string[];
+      onHover?: (id: string | null) => string | null;
+      avoidPoints?: readonly { x: number; y: number }[];
+      /** Section 34b.1: the pulsing tiles and the points along the forecast arrows, in container pixels. */
+      pulsePoints?: readonly { x: number; y: number }[];
+      arrowPoints?: readonly { x: number; y: number }[];
+    } = {}
   ): void {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
@@ -307,7 +318,7 @@ export class BuildPopover {
       line.textContent = `Not here: ${elsewhere.map((card) => card.name.replace(/ /g, "\u00a0")).join(", ")}`;
       this.el.appendChild(line);
     }
-    this.placeBeside(screenX, screenY, mode.avoid ?? [], mode.avoidPoints ?? []);
+    this.placeBeside(screenX, screenY, mode.avoid ?? [], mode.avoidPoints ?? [], mode.pulsePoints ?? [], mode.arrowPoints ?? []);
     this.returnFocus = document.activeElement instanceof HTMLElement && !this.el.contains(document.activeElement) ? document.activeElement : null;
     (this.el.querySelector<HTMLElement>(".build-card:not(.disabled)") ?? null)?.focus({ preventScroll: true });
   }
@@ -322,7 +333,14 @@ export class BuildPopover {
    * `points` (container pixels): Section 30.8, the homes at risk, which a hovered card lights up: the cards sit where
    * they cover the fewest of them (never over the HUD or the tile all the same).
    */
-  private placeBeside(screenX: number, screenY: number, avoid: string[], points: readonly { x: number; y: number }[] = []): void {
+  private placeBeside(
+    screenX: number,
+    screenY: number,
+    avoid: string[],
+    points: readonly { x: number; y: number }[] = [],
+    pulse: readonly { x: number; y: number }[] = [],
+    arrows: readonly { x: number; y: number }[] = []
+  ): void {
     this.el.style.left = "0px";
     this.el.style.top = "0px";
     this.backdrop.hidden = false;
@@ -338,27 +356,44 @@ export class BuildPopover {
     );
     const clampX = (x: number): number => Math.max(VIEWPORT_MARGIN, Math.min(vw - VIEWPORT_MARGIN - width, x));
     const clampY = (y: number): number => Math.max(VIEWPORT_MARGIN, Math.min(vh - VIEWPORT_MARGIN - height, y));
-    const lefts = [clampX(screenX + CARD_GAP), clampX(screenX - CARD_GAP - width)];
+    const page = (list: readonly { x: number; y: number }[]): { x: number; y: number }[] => list.map((p) => ({ x: p.x + origin.left, y: p.y + origin.top }));
+    const pulsePage = page(pulse);
+    const arrowPage = page(arrows);
+    const holds = (p: { x: number; y: number }, left: number, top: number, pad: number): boolean => p.x > left - pad && p.x < left + width + pad && p.y > top - pad && p.y < top + height + pad;
+    // Section 34b.1: a side is free when no point along a forecast arrow lies within 200 px of the cards there.
+    const sideFree = (left: number, top: number): boolean => !arrowPage.some((p) => holds(p, left, top, 200));
     const tops = [screenY - height / 2, ...obstacles.flatMap(({ r }) => [r.bottom + VIEWPORT_MARGIN, r.top - VIEWPORT_MARGIN - height])].map(clampY);
-    let best = { left: lefts[0], top: tops[0], cost: Infinity };
-    for (const left of lefts) {
-      for (const top of tops) {
-        let covered = 0;
-        for (const { r, weight } of obstacles) {
-          const w = Math.min(left + width, r.right) - Math.max(left, r.left);
-          const h = Math.min(top + height, r.bottom) - Math.max(top, r.top);
-          if (w > 0 && h > 0) covered += w * h * weight;
-        }
-        for (const p of points) {
-          const x = p.x + origin.left;
-          const y = p.y + origin.top;
-          if (x > left - 12 && x < left + width + 12 && y > top - 12 && y < top + height + 12) covered += 400;
-        }
-        // Covering the tile itself is never wanted either; then nearer is better.
-        const overTile = screenX > left - 8 && screenX < left + width + 8 && screenY > top - 8 && screenY < top + height + 8 ? 1e6 : 0;
-        const cost = covered + overTile + Math.abs(top + height / 2 - screenY) * 0.5 + Math.abs(left - screenX) * 0.1;
-        if (cost < best.cost) best = { left, top, cost };
+    // Beside the tile, right or left; or slid just past a pulsing tile on that side.
+    const lefts = [clampX(screenX + CARD_GAP), clampX(screenX - CARD_GAP - width), ...pulsePage.flatMap((p) => (p.x > screenX ? [clampX(p.x + 24)] : [clampX(p.x - 24 - width)]))];
+    const sides = lefts.flatMap((left) => tops.map((top) => ({ left, top, below: false })));
+    const anyFree = sides.some(({ left, top }) => sideFree(left, top));
+    // Neither side free of the arrows: below the tile is preferred (unless that would cover the tile, at the window's foot).
+    const belowTop = clampY(screenY + CARD_GAP);
+    const belowFits = !(screenY > belowTop - 8 && screenY < belowTop + height + 8);
+    const belows = belowFits ? [screenX - width / 2, screenX - width * 0.15, screenX - width * 0.85].map((left) => ({ left: clampX(left), top: belowTop, below: true })) : [];
+    const candidates = [...sides, ...belows];
+    let best = { left: candidates[0].left, top: candidates[0].top, cost: Infinity };
+    for (const { left, top, below } of candidates) {
+      let covered = 0;
+      for (const { r, weight } of obstacles) {
+        const w = Math.min(left + width, r.right) - Math.max(left, r.left);
+        const h = Math.min(top + height, r.bottom) - Math.max(top, r.top);
+        if (w > 0 && h > 0) covered += w * h * weight;
       }
+      for (const p of points) {
+        const x = p.x + origin.left;
+        const y = p.y + origin.top;
+        if (x > left - 12 && x < left + width + 12 && y > top - 12 && y < top + height + 12) covered += 400;
+      }
+      // Section 34b.1: the side holding fewer pulsing tiles (the objective's next builds), and never an arrow under it.
+      for (const p of pulsePage) if (holds(p, left, top, 16)) covered += 50000;
+      for (const p of arrowPage) if (holds(p, left, top, 0)) covered += 20000;
+      if (below) covered += anyFree ? 60000 : 0;
+      else if (!sideFree(left, top)) covered += 30000;
+      // Covering the tile itself is never wanted either; then nearer is better.
+      const overTile = screenX > left - 8 && screenX < left + width + 8 && screenY > top - 8 && screenY < top + height + 8 ? 1e6 : 0;
+      const cost = covered + overTile + Math.abs(top + height / 2 - screenY) * 0.5 + Math.abs(left - screenX) * 0.1;
+      if (cost < best.cost) best = { left, top, cost };
     }
     this.el.style.left = `${Math.round(best.left - origin.left)}px`;
     this.el.style.top = `${Math.round(best.top - origin.top)}px`;
@@ -437,6 +472,12 @@ export class BuildPopover {
         onRemove();
       });
       this.el.appendChild(removeBtn);
+      if (info.removeNote) {
+        const note = document.createElement("p");
+        note.className = "built-info-remove-note";
+        note.textContent = info.removeNote;
+        this.el.appendChild(note);
+      }
     }
 
     this.positionAndReveal(screenX, screenY);

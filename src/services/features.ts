@@ -69,3 +69,13 @@ export function flagOr(value: unknown, fallback: boolean): boolean {
   const v = value.trim().toLowerCase();
   return v === "true" ? true : v === "false" ? false : fallback;
 }
+
+/**
+ * Section 34b.10: the test hooks (`window.__panjimForTest` and the rest, gameSession.ts) and the telemetry's console
+ * lines are for the QA tools: on in a development build, and in the production build only with `?qa=1` in the address.
+ * On the live site a player sees neither.
+ */
+export function qaHooksOn(): boolean {
+  if (import.meta.env.MODE !== "production") return true;
+  return typeof location !== "undefined" && new URLSearchParams(location.search).get("qa") === "1";
+}

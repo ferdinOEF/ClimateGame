@@ -9019,7 +9019,7 @@ unchanged.
   clicks during a storm or its cards; the storm dots keep focus and their tooltips; Maya's bubble clears ☰'s open
   menu. The map, storm and birds are pixel identical outside the interface (frozen storm frames, before and after).
 
-## Section 34 — the deep review: two rounds of playtests, every blocker and major fixed — ON ITS BRANCH (stopped after Round 2; not merged)
+## Section 34 — the deep review: two rounds of playtests, every blocker and major fixed — DONE (stopped after Round 2; merged as e53f639)
 
 Played hard by sixteen fresh playtester agents over two rounds, measured with the bots, a fuzzer and health tools, and
 reviewed three times; the record is `docs/REVIEW_34.md`. What changed for a player: the whole game plays by keyboard (a
@@ -9029,3 +9029,27 @@ tell the truth about biodiversity; Maya's rules say they are rules, her flood li
 warnings point where a build can still help; the khazan card says what a khazan is; two sourced facts on khazan upkeep
 and bandhara floods; a memory leak fixed. No rule, number or owner decision changed; ten owner decisions are listed
 for the owner in `docs/REVIEW_34.md`.
+
+## Section 34b — fixes from the owner's two live play tests (24 and 27 October) — ON ITS BRANCH (the owner's answers done; not merged)
+
+Branch `section-34b-playtest-fixes` from master `e73fd9c` (tag `pre-section-34b`), one commit a step; the record is
+`docs/QA_REPORT.md` (Section 34b) and `docs/BUGS.md` (Section 34b). What changed for a player: notes and the build menu
+keep clear of the HUD card, the pulsing tiles and the forecast arrows; Maya's lines with Got it wait for it, a map click
+goes through her bubble, Source opens the fact, at most one tip a year, and a line at each phase start and after a
+retry; the camera moves only at set moments, clear of the card; objective rows count the place they name (and builds
+already standing there), with brighter rings and a flash on a row click; the result cards name broken defences, say
+"Flooded" for places that are not buildings and "Previous card", and hide Speed up under the replay; the first wave 7 s
+after the last build; ten text and small interface fixes; Esc closes only what is open and does nothing on the result
+cards; seawalls on the shore line and small dams on the narrow upstream river (owner decision 2d); test hooks and
+telemetry only in development or with ?qa=1; "Try again from {year}"; the 2050 wind said before and after; an art pass
+(cyclone rings, one storm sea, no flood colour on the sea, new seawall and breakwater). First, a flaky test fixed
+(`tests/buildCards.test.ts`: its speed budget on the median card).
+
+Round 2, the owner's answers of 28 October: the flood is muddy water in the mock up's colours (Option B); a cyclone's
+wind reaches only the homes within two tiles of a beach for pandanus (a game rule, in the Field Guide and the Facts);
+"Mandovi Riverfront"; the homes at risk show by themselves once the list is done (R hides them); Maya's bubble steps
+aside while a menu is open; the cyclone's rings come pre-blurred where the canvas cannot blur (older Safari). Best plan
+9 of 9 with 9 homes lost; smart clears 98% again.
+
+Open for the owner: the Campal pandanus row is still never offered (the water alone takes the six homes in the wind);
+for the best plan 2050 now loses 4 homes as 2040 does; Safari unchecked.

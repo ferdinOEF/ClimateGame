@@ -62,7 +62,7 @@ async function walk(browser: Browser, port: number, label: string): Promise<Step
     await page.screenshot({ path: path.join(OUT, `${name}-${label}.png`) });
     steps.push({ name, text: await visible(page) });
   };
-  await page.goto(`http://localhost:${port}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://localhost:${port}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForTimeout(3000);
   await snap("1-brief");

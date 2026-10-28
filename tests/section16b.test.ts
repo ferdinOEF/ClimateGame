@@ -40,7 +40,7 @@ describe("the forecast maps' labels (Section 16 B4)", () => {
       const labels = previewLabels(forecastPlaceCandidates(run, challenge, landmarks, localities));
       expect(labels.length, challenge.id).toBeGreaterThan(0);
       expect(labels.length, challenge.id).toBeLessThanOrEqual(MAX_PREVIEW_LABELS);
-      for (let i = 0; i < labels.length; i++) for (let j = i + 1; j < labels.length; j++) expect(overlaps(previewLabelBox(labels[i]), previewLabelBox(labels[j])), `${challenge.id}: ${labels[i].name} / ${labels[j].name}`).toBe(false);
+      for (let i = 0; i < labels.length; i++) for (let j = i + 1; j < labels.length; j++) expect(overlaps(previewLabelBox(labels[i], labels[i].at), previewLabelBox(labels[j], labels[j].at)), `${challenge.id}: ${labels[i].name} / ${labels[j].name}`).toBe(false);
     }
   });
 
@@ -55,7 +55,8 @@ describe("the forecast maps' labels (Section 16 B4)", () => {
   it("leave the Tutorial's preview as it was (its first three names near the area)", () => {
     const { run, landmarks, localities } = sessionRun("l00-tutorial");
     const candidates = forecastPlaceCandidates(run, run.schedule[0], landmarks, localities);
-    expect(previewLabels(candidates)).toEqual(candidates.slice(0, 3));
+    // Section 34b.5: each label now says where it goes (beside its dot, or under it).
+    expect(previewLabels(candidates).map((l) => l.name)).toEqual(candidates.slice(0, 3).map((l) => l.name));
   });
 
   it("drop a name that would sit on another", () => {

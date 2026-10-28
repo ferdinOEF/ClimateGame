@@ -183,7 +183,9 @@ describe("growing, wear and repair", () => {
     expect(def.validTerrainIds).toEqual(["estuary"]);
     const rivers = [...run.state.placed.values()].filter((t) => t.terrainId === "river" && !run.state.isScenery(axialKey(t.coord)) && !run.state.elements.has(axialKey(t.coord)));
     expect(rivers.length).toBeGreaterThan(0);
-    for (const t of rivers) expect(run.state.buildableAt(t.coord).map((d) => d.id)).toEqual(["small_dam"]);
+    // Section 34b.9: a small dam on the narrow upstream river only; a wide or seaward river tile takes nothing.
+    for (const t of rivers) expect(run.state.buildableAt(t.coord).map((d) => d.id)).toEqual(run.state.placementFits(t.coord, "upstream") ? ["small_dam"] : []);
+    expect(rivers.some((t) => run.state.placementFits(t.coord, "upstream"))).toBe(true);
   });
 });
 

@@ -20,6 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { startDevServer } from "./devServer";
 import { FORBIDDEN_TEXT, playTutorial } from "./tutorialPlay";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section15");
@@ -83,7 +84,7 @@ try {
     page.on("pageerror", (e) => errors.push(`${tag}: ${e.message}`));
 
     // --- the menu ---------------------------------------------------------
-    await page.goto(server.url, { waitUntil: "domcontentloaded" });
+    await page.goto(qaUrl(server.url), { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".menu-screen", { timeout: 30000 });
     await page.waitForFunction(() => {
       const img = document.querySelector<HTMLImageElement>(".menu-art img");
@@ -115,7 +116,7 @@ try {
     if (full) await axe(page, "menu");
 
     // --- the level select -------------------------------------------------
-    await page.goto(`${server.url}/#/levels`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1#/levels`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".level-grid", { timeout: 10000 });
     await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>(".level-card-thumb img")].every((img) => img.complete && img.naturalWidth > 0), undefined, { timeout: 15000 });
     const cards = await page.evaluate(() => {
@@ -133,7 +134,7 @@ try {
     if (full) await axe(page, "level select");
 
     // --- Help (from inside the Tutorial, where the ? button is) -------------
-    await page.goto(`${server.url}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-card", { timeout: 60000 });
     await page.waitForTimeout(800);
     await page.locator(".brief-cta").first().click();
@@ -160,7 +161,7 @@ try {
     await page.locator(".help-close").first().click().catch(() => undefined);
 
     // --- the Tutorial, start to finish -----------------------------------
-    await page.goto(`${server.url}/#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: "domcontentloaded" });
     const problems: string[] = [];

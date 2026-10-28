@@ -201,7 +201,17 @@ export class ForecastConeOverlay {
     // The tracks, each a dashed line with an arrowhead.
     const nearestHeight = (x: number, z: number): number => heightAt(nearestCoord(x, z));
     this.heads = [];
+    this.along = [];
     for (const track of cone.tracks) {
+      // Section 34b.1: points along each arrow, which the build menu keeps clear of.
+      track.points.forEach((p, i) => {
+        const q = track.points[i + 1];
+        for (const f of q ? [0, 0.25, 0.5, 0.75] : [0]) {
+          const x = q ? p.x + (q.x - p.x) * f : p.x;
+          const z = q ? p.z + (q.z - p.z) * f : p.z;
+          this.along.push({ x, y: nearestHeight(x, z) + 0.3, z });
+        }
+      });
       const shapes = trackShapes(track, nearestHeight);
       this.addLine(shapes.halo, this.lightLine, 7);
       this.addLine(shapes.dash, this.darkLine, 8);
@@ -243,6 +253,13 @@ export class ForecastConeOverlay {
   get arrowHeads(): readonly { tip: { x: number; y: number; z: number }; back: { x: number; y: number; z: number } }[] {
     return this.isShown ? this.heads : [];
   }
+
+  /** Section 34b.1: points along the arrows drawn now, in world space (none while the cone is hidden or fading out). */
+  get arrowPoints(): readonly { x: number; y: number; z: number }[] {
+    return this.isShown ? this.along : [];
+  }
+
+  private along: { x: number; y: number; z: number }[] = [];
 
   /** How many tiles carry a band or the meeting hatch (0 when hidden). */
   get tileCount(): number {

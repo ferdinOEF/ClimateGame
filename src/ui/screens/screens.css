@@ -1458,3 +1458,19 @@
   color: var(--band-ink);
   text-decoration-thickness: 2px;
 }
+
+/* Section 34b.7: a one line note in a small window (the game is laid out for 1366 by 768 and up). */
+.menu-window-note {
+  display: none;
+  margin: 12px auto 0;
+  max-width: 380px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+@media (max-width: 899px), (max-height: 699px) {
+  .menu-window-note {
+    display: block;
+  }
+}

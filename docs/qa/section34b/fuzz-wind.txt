@@ -1,0 +1,22 @@
+Fuzzed 400 runs (l01-first-rains, l00-tutorial), 8496 actions, 1318 storms, 318 retries, in 2757 s.
+| Invariant | Checks |
+|---|---|
+| action accepted | 8496 |
+| card adds up | 1318 |
+| heat = homes at risk | 8496 |
+| nothing on unplayable tiles | 1818814 |
+| objective = board | 1318 |
+| preview = resolution | 1245 |
+| retry restores the board | 318 |
+| ruins = homes lost | 1318 |
+| run reaches its end | 400 |
+| sheltered centre untouched | 264 |
+| stars = thresholds | 1318 |
+| storm year action not a build (not compared) | 73 |
+| wind only near the beach | 1318 |
+
+Failures: 0
+
+real	46m6.045s
+user	0m0.182s
+sys	0m0.262s

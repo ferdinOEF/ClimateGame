@@ -25,6 +25,7 @@ import { chromium } from "playwright";
 import path from "node:path";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const SCREENSHOT_DIR = path.join(ROOT, "tools", "screenshots");
@@ -49,7 +50,7 @@ async function main(): Promise<void> {
     // `domcontentloaded`, not `networkidle`: with a Firebase project
     // configured the SDKs hold a connection open from boot, so the network
     // never goes idle and `networkidle` just times out.
-    await page.goto(DEV_URL, { waitUntil: "domcontentloaded" });
+    await page.goto(qaUrl(DEV_URL), { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".menu-screen", { timeout: 15000 });
 
     // "play" starts the first level, which is the only way to get a board on

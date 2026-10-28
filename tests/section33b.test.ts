@@ -54,7 +54,8 @@ describe("Section 33b.5: the hint, the build menu and the opening views", () => 
     const popover = readFileSync("src/ui/buildPopover.ts", "utf8");
     expect(popover).toMatch(/classList\.toggle\("pointer-left"/);
     const session = readFileSync("src/app/gameSession.ts", "utf8");
-    expect(session).toContain(`{ avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".maya-badge:not([hidden])", ".map-corner", ".hud-chrome", ".empty-prompt"],`);
+    // Section 34b.1 added the banner to the end of the list (and the pulsing tiles and arrows as points).
+    expect(session).toContain(`avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".maya-badge:not([hidden])", ".map-corner", ".hud-chrome", ".empty-prompt", ".era-banner:not([hidden])"],`);
   });
 
   it("slides a phase's opening view clear of the card and Maya by moving only where the camera looks", () => {

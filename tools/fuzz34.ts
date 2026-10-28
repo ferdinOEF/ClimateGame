@@ -26,7 +26,8 @@ import { prepProgress } from "../src/core/prep";
 import { starsForHouses } from "../src/core/zones";
 import { Rng } from "../src/core/rng";
 import type { ActionRun } from "../src/core/actionRun";
-import type { AxialCoord } from "../src/core/hex";
+import { axialDistance, type AxialCoord } from "../src/core/hex";
+import { HAZARD_MODEL, sandForPandanus } from "../src/core/hazardModel";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split("=") as [string, string]));
 const RUNS = Number(args.get("runs") ?? 200);
@@ -145,6 +146,17 @@ function fuzzRun(level: LevelDef, seed: number, t: Tally): void {
       const record = run.stormRecords.get(stormNow.id);
       const wet = record ? [...shelter].filter((key) => (record.depth.get(key) ?? 0) > 0 || (record.wind.get(key) ?? 0) > 0) : [];
       check("sheltered centre untouched", [...lost].every((key) => !shelter.has(key)) && wet.length === 0, `${[...lost].filter((key) => shelter.has(key)).length} homes lost and ${wet.length} wet tiles in the shelter`);
+    }
+    // Section 34b (owner decision): the wind reaches only tiles within sandReachHex of a beach tile that can take pandanus.
+    const windRecord = run.stormRecords.get(stormNow.id);
+    const reach = HAZARD_MODEL.wind?.sandReachHex;
+    if (windRecord && reach !== undefined) {
+      const sand = sandForPandanus(run.state);
+      const far = [...windRecord.wind.keys()].filter((key) => {
+        const [q, r] = key.split(",").map(Number);
+        return !sand.some((b) => axialDistance(b, { q, r }) <= reach);
+      });
+      check("wind only near the beach", far.length === 0, `${far.length} tiles with wind farther than ${reach} from a beach for pandanus`);
     }
     // Sometimes: try this storm again, and check the board is back exactly.
     if (!retried.has(stormNow.id) && rng.next() < 0.3) {

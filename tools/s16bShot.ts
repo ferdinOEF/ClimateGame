@@ -6,6 +6,7 @@
 import { chromium } from "playwright";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
+import { qaUrl } from "./qaUrl";
 
 const [out, w, h, ...steps] = process.argv.slice(2);
 const server = await startDevServer(Number(process.env.PORT ?? 5383));
@@ -14,7 +15,7 @@ const page = await browser.newPage({ viewport: { width: Number(w), height: Numbe
 const errors: string[] = [];
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 page.on("pageerror", (e) => errors.push(e.message));
-await page.goto(`${server.url}/${process.env.ROUTE ?? "#/play/l01-first-rains"}`, { waitUntil: "domcontentloaded" });
+await page.goto(qaUrl(`${server.url}/${process.env.ROUTE ?? "#/play/l01-first-rains"}`), { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".brief-card", { timeout: 120000 });
 await page.waitForTimeout(1500);
 if (!process.env.NOBEGIN) {

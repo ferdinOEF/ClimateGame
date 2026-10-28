@@ -148,6 +148,8 @@ export function openSources(factId?: string): HTMLElement {
     const item = document.createElement("li");
     item.className = "sources-item";
     item.dataset.factId = fact.id;
+    // Section 34b.2: each fact has an anchor, so Source on a line of Maya opens the screen at it.
+    item.id = `fact-${fact.id}`;
     const text = document.createElement("p");
     text.className = "sources-fact";
     text.textContent = displayText(fact);
@@ -192,6 +194,7 @@ export function openSources(factId?: string): HTMLElement {
     if (fact.kind !== "gameRule") continue;
     const item = document.createElement("li");
     item.dataset.factId = fact.id;
+    item.id = `fact-${fact.id}`;
     item.textContent = fact.text;
     rules.appendChild(item);
   }

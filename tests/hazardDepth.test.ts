@@ -182,9 +182,9 @@ describe("the storm's script", () => {
     for (const tile of river) expect(tile.backwaterPeak).toBeCloseTo(seaSurge * STORM_TIMING.compound.backwaterScale * backwaterShare(tile.riverIndex!, compound.field.mouthIndex), 9);
     expect(backwaterShare(compound.field.mouthIndex, compound.field.mouthIndex)).toBe(1);
     expect(backwaterShare(compound.field.mouthIndex / 2, compound.field.mouthIndex)).toBeCloseTo(Math.pow(0.5, 1.6), 9);
-    // The surge meets the swollen river between about 12 s and 28 s.
+    // The surge meets the swollen river between about 11 s and 28 s (Section 34b.6 brought the storm a second earlier).
     const meets = river.filter((t) => t.floodPeak > 0).map((t) => Math.max(t.floodArrival, t.backwaterArrival));
-    expect(Math.min(...meets)).toBeGreaterThanOrEqual(11);
+    expect(Math.min(...meets)).toBeGreaterThanOrEqual(10);
     expect(Math.min(...meets)).toBeLessThanOrEqual(28);
   });
 

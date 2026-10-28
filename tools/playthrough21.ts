@@ -29,6 +29,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { startDevServer } from "./devServer";
 import { punctuationProblems } from "../tests/helpers/uiStrings";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const plain = process.argv.slice(2).filter((a) => !a.includes("="));
@@ -195,7 +196,7 @@ async function playStyle(style: string): Promise<void> {
       /* blocked */
     }
   });
-  await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await ready(page);
   await begin(page);
   let ruins = 0;
@@ -258,7 +259,7 @@ async function playStyle(style: string): Promise<void> {
 // landing=0 skips this part (to rerun only the play styles).
 if (named.get("landing") !== "0") {
   const { page, log, context } = await newPage();
-  await page.goto(server.url, { waitUntil: "domcontentloaded" });
+  await page.goto(qaUrl(server.url), { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(4000);
   const menu = (await page.evaluate("[...document.querySelectorAll('.menu-actions button, .menu-actions a')].filter((b) => b.getClientRects().length).map((b) => b.textContent.trim())")) as string[];
   check(menu.some((t) => /Tutorial/.test(t)) && menu.some((t) => /Play Panjim/.test(t)) && !menu.some((t) => /level/i.test(t)), `the menu offers Tutorial and Play Panjim only (${menu.join(", ")})`);
@@ -341,7 +342,7 @@ if (named.get("landing") !== "0") {
   check((await year(page)) === 2026, "after a reload the run starts at 2026");
   // Two tabs: each its own run.
   const second = await newPage(context);
-  await second.page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await second.page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await ready(second.page);
   await begin(second.page, "Begin");
   const t2 = (await second.page.evaluate("window.__panjimForTest.firstBuildable('dune')")) as { q: number; r: number };

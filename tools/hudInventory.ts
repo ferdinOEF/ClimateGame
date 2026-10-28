@@ -14,7 +14,7 @@ const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-b
 const page = await browser.newPage({ viewport: { width: Number(w), height: Number(h) } });
 const errors: string[] = [];
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".brief-card", { timeout: 120000 });
 await page.waitForTimeout(1500);
 await page.screenshot({ path: `${out}-popup.jpg`, type: "jpeg", quality: 82 });

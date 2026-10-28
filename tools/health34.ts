@@ -16,6 +16,7 @@
  */
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
+import { qaUrl } from "./qaUrl";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split(/=(.*)/s).slice(0, 2) as [string, string]));
 const W = Number(args.get("width") ?? 1920);
@@ -43,7 +44,7 @@ const renderer = await page.evaluate(() => {
 
 // ---- load time ----
 const t0 = Date.now();
-await page.goto(`${URL0}/`, { waitUntil: "load" });
+await page.goto(qaUrl(`${URL0}/`), { waitUntil: "load" });
 const nav = (await page.evaluate(`(() => { const n = performance.getEntriesByType("navigation")[0]; const fp = performance.getEntriesByName("first-contentful-paint")[0]; return { dcl: Math.round(n.domContentLoadedEventEnd), load: Math.round(n.loadEventEnd), fcp: fp ? Math.round(fp.startTime) : null }; })()`)) as { dcl: number; load: number; fcp: number | null };
 await page.waitForSelector(".menu-card button, .menu button", { timeout: 60000 }).catch(() => undefined);
 const menuMs = Date.now() - t0;

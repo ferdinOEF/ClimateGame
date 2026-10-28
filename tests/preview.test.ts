@@ -34,9 +34,10 @@ describe("GameState.clone()", () => {
 
   it("copies elements as distinct objects, not shared references", () => {
     const coord = { q: 0, r: 0 };
-    const state = new GameState([{ coord, terrainId: "beach" }]);
+    // Section 34b.9: the seawall on the shore line, beside the sea.
+    const state = new GameState([{ coord, terrainId: "beach" }, { coord: { q: 0, r: -1 }, terrainId: "coast" }]);
     state.coin = 500;
-    state.build(coord, "seawall");
+    expect(state.build(coord, "seawall")).toBe(true);
     const key = axialKey(coord);
 
     const clone = state.clone();

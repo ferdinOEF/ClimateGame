@@ -381,6 +381,12 @@
       ]
     },
     {
+      "id": "wind-reach",
+      "kind": "gameRule",
+      "text": "A cyclone's wind reaches the homes near the beach; pandanus within two tiles halves the wind damage.",
+      "elements": []
+    },
+    {
       "id": "dolphin-near-shore",
       "kind": "fact",
       "elements": [],

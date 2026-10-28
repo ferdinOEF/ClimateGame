@@ -6,6 +6,7 @@
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
+import { qaUrl } from "./qaUrl";
 
 const [w = "1366", h = "768", outDir = "docs/qa/section17c"] = process.argv.slice(2);
 const W = Number(w);
@@ -25,7 +26,7 @@ async function open(route: string): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: W, height: H } });
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(`${server.url}/${route}`, { waitUntil: "domcontentloaded" });
+  await page.goto(qaUrl(`${server.url}/${route}`), { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 180000 });
   await page.waitForFunction(`typeof window.__panjimForTest === "object" && window.__panjimForTest !== null`, undefined, { timeout: 180000 });
   await wait(1500);

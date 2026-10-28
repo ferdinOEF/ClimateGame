@@ -1912,3 +1912,11 @@ html, body {
   list-style: none;
   padding-left: 0;
 }
+
+/* Section 34b.7: the line under Demolish (a tile holds one build). */
+.built-info-remove-note {
+  margin: 0 10px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}

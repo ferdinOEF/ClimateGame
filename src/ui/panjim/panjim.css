@@ -233,9 +233,27 @@
   display: none;
 }
 
-/* The banner moves below the card's first line. */
+/* Section 34b.1: the banner (a combo, a crack with age) sits in the band right of the HUD card, centred there and above
+   it, never under it (at 1024 px about 130 px of it was hidden). In a narrow window it moves to the bottom. */
 .has-panjim-clock .era-banner {
-  top: calc(84px + env(safe-area-inset-top));
+  left: calc(14px + 400px + 16px);
+  right: 12px;
+  top: calc(14px + env(safe-area-inset-top));
+  transform: none;
+  max-width: none;
+  width: fit-content;
+  margin-inline: auto;
+  text-align: center;
+  z-index: 12;
+}
+
+@media (max-width: 899px) {
+  .has-panjim-clock .era-banner {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 96px;
+  }
 }
 
 .built-info-action {
@@ -1224,6 +1242,13 @@
    */
 }
 
+/* Section 34b.2: where a bubble closed by itself, for 500 ms: it takes the click meant for the bubble (maya.ts). */
+.maya-shield {
+  position: absolute;
+  z-index: 13;
+  pointer-events: auto;
+}
+
 /*
  * Her home: the bottom-right corner (Section 33b), one fixed rule. Never
  * written by script, never animated, never moved; if something would cover
@@ -1962,20 +1987,6 @@
   font-size: 11px;
   letter-spacing: -2px;
   color: var(--accent-ink);
-}
-
-/* The Tutorial's storm: what it does, just above it. */
-.speed-up[data-hint]:not([data-hint=""])::after {
-  content: attr(data-hint);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-  white-space: nowrap;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
 }
 
 .replay-card {
@@ -3950,3 +3961,11 @@
 .large-text .tutorial-ingame,
 .large-text .tutorial-chip { font-size: 14px; }
 .large-text .tutorial-final-text { font-size: 15px; }
+
+/* Section 34b.7: the Field Guide's counts under its name in the menu ("1 of 22 notes, 0 of 11 creatures"). */
+.field-guide-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+}

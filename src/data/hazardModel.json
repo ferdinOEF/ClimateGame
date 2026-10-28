@@ -65,6 +65,8 @@
       "sandy_vegetation": 0.5
     },
     "shelterReachHex": 2,
-    "minKeep": 0.4
+    "minKeep": 0.4,
+    "_sandReachComment": "Section 34b (owner decision, 28 October 2026), a game rule: a cyclone's wind reaches only the tiles within sandReachHex of a beach tile that can take pandanus; every other tile takes no wind damage (the water is unchanged). So every home the wind can take is one pandanus can shelter.",
+    "sandReachHex": 2
   }
 }

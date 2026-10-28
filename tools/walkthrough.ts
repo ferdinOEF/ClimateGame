@@ -24,6 +24,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
 import { playTutorial } from "./tutorialPlay";
+import { qaUrl } from "./qaUrl";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT_DIR = path.join(ROOT, "tools", "screenshots", "walkthrough");
@@ -115,7 +116,7 @@ async function main(): Promise<void> {
     // configured, the Firestore and Auth SDKs hold a long-lived connection
     // open from boot, so the network never goes idle and `networkidle` simply
     // times out — which looks exactly like the app failing to start.
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await page.goto(qaUrl(baseUrl), { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".menu-screen", { timeout: 15000 });
     console.log("menu");
     await shot(page, "menu");
@@ -241,7 +242,7 @@ async function main(): Promise<void> {
     // The menu offers exactly Tutorial and Play Panjim; Play Panjim opens the
     // Panaji game view with its start popup, never the level select.
     stage = "play-panjim";
-    await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+    await page.goto(qaUrl(baseUrl), { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".menu-screen", { timeout: 15000 });
     const menuButtons = (await page.locator(".menu-actions button").allTextContents()).map((t) => t.trim());
     if (JSON.stringify(menuButtons) !== JSON.stringify(["Tutorial", "Play Panjim"])) problems.push(`[play-panjim] the menu offers ${JSON.stringify(menuButtons)}, not Tutorial and Play Panjim`);
@@ -278,7 +279,7 @@ async function main(): Promise<void> {
       // backwards for a script whose job is to survey all nine maps.
       try {
         // No menu button leads to the level select (Section 16.3): it is reached by its own address.
-        await page.goto(`${baseUrl.replace(/#.*$/, "")}#/levels`, { waitUntil: "domcontentloaded" });
+        await page.goto(`${baseUrl.replace(/#.*$/, "")}/?qa=1#/levels`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".level-grid", { timeout: 15000 });
 
         // Nothing should be padlocked while the campaign is open for

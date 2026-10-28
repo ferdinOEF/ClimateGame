@@ -45,6 +45,8 @@ import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
 import { RiskIntroFx, type ScreenPolygon } from "@ui/riskIntroFx";
 import { MapAttribution } from "@ui/attribution";
+import { qaHooksOn } from "@services/features";
+import { TILE_NOTES } from "@ui/panjim/defenceCards";
 import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
 import { TownDecor } from "@render/townDecor";
@@ -136,6 +138,8 @@ function prefersReducedMotionNow(): boolean {
 }
 
 export function startGameSession(options: GameSessionOptions): GameSessionHandle {
+  // Section 34b.10: the test hooks and the telemetry's console lines, for the QA tools only.
+  const qaHooks = qaHooksOn();
   const { container, level } = options;
   const {
     scene,
@@ -170,7 +174,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   const telemetry = new Telemetry(
     () => performance.now(),
-    (event) => console.info(`[telemetry] ${event.name} t=${event.t}ms`, event.data),
+    // Section 34b.10: the console lines only for the QA tools (a development build, or ?qa=1).
+    (event) => {
+      if (qaHooks) console.info(`[telemetry] ${event.name} t=${event.t}ms`, event.data);
+    },
     { levelId: level.id }
   );
 
@@ -678,6 +685,39 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   /** Section 33b.5: the pan the last framed view took to keep its points clear of the HUD card and Maya (test hook). */
   let lastKeepClear: { dx: number; dz: number } | null = null;
+  /** Section 34b.3: what the camera keeps its points clear of: the HUD card, Maya and her bubble, in container pixels. */
+  function cameraObstacles(): { x: number; y: number; w: number; h: number }[] {
+    const origin = container.getBoundingClientRect();
+    return [...container.querySelectorAll<HTMLElement>(".panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden]), .maya-bubble:not([hidden])")]
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0)
+      .map((r) => ({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height }));
+  }
+  /** Section 34b.3: a camera move asked for while a build menu or tile card is open, made once it closes. */
+  let pendingCameraMove: (() => void) | null = null;
+  /**
+   * Section 34b.3: the camera's set moves (the heat coming on, Last call, an objective row, O): a glide to `centre`
+   * (else the middle of `tiles`), then slid just enough that none of `tiles` sits under the HUD card, Maya or her
+   * bubble. Never under an open build menu or tile card: it waits for it to close.
+   */
+  function moveCameraClear(tiles: readonly AxialCoord[], centre?: AxialCoord): void {
+    if (tiles.length === 0 && !centre) return;
+    const move = (): void => {
+      const at = centre ?? { q: tiles.reduce((s, t) => s + t.q, 0) / tiles.length, r: tiles.reduce((s, t) => s + t.r, 0) / tiles.length };
+      const world = axialToWorld(at, 1.0);
+      focusOn(world.x, world.z, false);
+      const points = tiles.map((t) => {
+        const w = axialToWorld(t, 1.0);
+        return { x: w.x, y: terrain.heightAt(t) + 0.4, z: w.z };
+      });
+      lastKeepClear = points.length ? keepClearOf(points, cameraObstacles()) : null;
+    };
+    if (buildPopover.isOpen) pendingCameraMove = move;
+    else {
+      pendingCameraMove = null;
+      move();
+    }
+  }
 
   const hud = new Hud(container, {
     onPreviewToggle: () => toggleHudPreview(),
@@ -941,19 +981,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // Section 33b.5: then slid just enough that none of these points sits under the HUD card or Maya.
             lastKeepClear = null;
             if (keepClear?.length) {
-              const origin = container.getBoundingClientRect();
-              const obstacles = [...container.querySelectorAll<HTMLElement>(".panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden])")]
-                .map((el) => el.getBoundingClientRect())
-                .filter((r) => r.width > 0 && r.height > 0)
-                .map((r) => ({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height }));
+              const obstacles = cameraObstacles();
               const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] => points.map((p) => ({ x: p.x, y: 0.6, z: p.z }));
               // Everything if a pan can clear it; else the arrows alone (a forecast wider than the screen).
               lastKeepClear = keepClearOf(lift(keepClear), obstacles) ?? (arrows?.length ? keepClearOf(lift(arrows), obstacles) : null);
             }
           },
+          moveCamera: (tiles, centre) => moveCameraClear(tiles, centre),
+          flashTiles: (tiles) => objectivePulse.flash([...tiles], (coord) => terrain.heightAt(coord), performance.now()),
           landmarks: levelMap.landmarks,
           localities: levelMap.localities,
-          monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r })),
+          monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r, kind: m.kind })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           requestLeave: () => askLeave(true),
           requestRestart: () => askRestart(true),
@@ -2126,6 +2164,25 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     word.el.style.left = `${Math.round(screen.x)}px`;
     word.el.style.top = `${Math.round(screen.y)}px`;
   }
+  /**
+   * Section 34b.16: every storm word over its tile, and one that would sit on a word placed before it (a dune and
+   * pandanus side by side both saying "Absorbed") lifted just clear of it.
+   */
+  function placeStormWords(): void {
+    const placed: { x: number; y: number; w: number; h: number }[] = [];
+    for (const word of stormWords) {
+      placeStormWord(word);
+      const w = word.el.offsetWidth;
+      const h = word.el.offsetHeight;
+      const x = parseFloat(word.el.style.left);
+      let y = parseFloat(word.el.style.top);
+      // Its box hangs above the point, centred across it (the CSS translates it by -50%, -100%).
+      const clash = (p: { x: number; y: number; w: number; h: number }): boolean => Math.abs(p.x - x) < (p.w + w) / 2 + 2 && y - h < p.y + 2 && p.y - p.h < y + 2;
+      for (let k = 0; k < 6 && placed.some(clash); k++) y = Math.min(...placed.filter(clash).map((p) => p.y - p.h)) - 3;
+      word.el.style.top = `${Math.round(y)}px`;
+      placed.push({ x, y, w, h });
+    }
+  }
   /** The storm player, made on first use (Panjim 2050 only: it needs the run's zones). */
   function stormDirectorFor(): StormDirector {
     if (stormDirector) return stormDirector;
@@ -2167,7 +2224,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         container.appendChild(el);
         const word = { el, coord };
         stormWords.push(word);
-        placeStormWord(word);
+        placeStormWords();
         window.setTimeout(() => {
           el.remove();
           stormWords.splice(stormWords.indexOf(word), 1);
@@ -2229,7 +2286,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const share = zone.incoming > 0 ? zone.leak / zone.incoming : 0;
     const kind: HazardKind = zone.hazard === "flood" ? "flood" : "storm";
     if (share > 0.05) {
-      for (const coord of coords) hazardOverlay.show(kind, coord, terrain.heightAt(coord), 0.3 + share * 1.2, performance.now());
+      // Section 34b.14: a river flood never draws on the sea.
+      for (const coord of coords) if (!(kind === "flood" && state.placed.get(`${coord.q},${coord.r}`)?.terrainId === "coast")) hazardOverlay.show(kind, coord, terrain.heightAt(coord), 0.3 + share * 1.2, performance.now());
     }
     // The defences answer one at a time: a ring and their creatures, in turn.
     const defenders = keys.filter((key) => {
@@ -2425,7 +2483,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
       const economy = !panjim || panjim.run.economyEnabled;
       buildPopover.showInfo(screen.x, screen.y, {
-        name: def.name,
+        // Section 34b.5: on Panjim, the build card's name ("Small dam", not "Small Dam").
+        name: panjim ? (CARD_NAME[def.id] ?? def.name) : def.name,
         // No NBS / ENGINEERED / BUILDING tags on Panjim (Section 13).
         kindLabel: panjim ? undefined : kindLabel(def),
         // With coins off, what a thing earns is not shown: no money anywhere. Section 30.11 bug 6: on Panjim a
@@ -2438,10 +2497,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             ? def.effects
             : Object.fromEntries(Object.entries(def.effects).filter(([key]) => key !== "money")),
         removeLabel: panjim ? "Demolish (uses this year's build)" : undefined,
+        removeNote: panjim && def.kind !== "building" ? TILE_NOTES.oneBuild : undefined,
         // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
         note:
           panjim && def.kind === "building" && built.degradeAmount >= 1
             ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only."
+            : panjim && def.kind === "building"
+              ? TILE_NOTES.home
             : panjim && isCracked(def, built, state.turn)
               ? `${crackedNote(def)}. In this game a seawall or small dam cracks at 10 years old.`
               : panjim && CARD_LINES[def.id]
@@ -2485,7 +2547,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       });
     if (popoverOptions.length === 0) {
       // Section 34: a click on ground that takes no build said nothing, and players read it as a lost click.
-      if (panjim) buildPopover.showNote(screen.x, screen.y, "Nothing can be built on this tile.");
+      // Section 34b.7: open sea says so in its own words.
+      if (panjim) buildPopover.showNote(screen.x, screen.y, state.placed.get(key)?.terrainId === "coast" ? TILE_NOTES.sea : TILE_NOTES.nothing);
       return;
     }
     const mode = panjim ? { hideCost } : undefined;
@@ -2506,7 +2569,18 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           playSound("build");
         },
         // The year chip first (never covered), then the rest of the HUD.
-        { avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".maya-badge:not([hidden])", ".map-corner", ".hud-chrome", ".empty-prompt"], onHover: (id) => controller.cardHover(coord, id), avoidPoints: controller.riskPoints() }
+        {
+          avoid: [".panjim-clock", ".get-ready", ".tutorial-panel", ".maya-bubble:not([hidden])", ".maya-figure-wrap", ".maya-badge:not([hidden])", ".map-corner", ".hud-chrome", ".empty-prompt", ".era-banner:not([hidden])"],
+          onHover: (id) => controller.cardHover(coord, id),
+          avoidPoints: controller.riskPoints(),
+          // Section 34b.1: the cards keep off the pulsing tiles and the forecast arrows.
+          pulsePoints: objectivePulse.tiles.map((key) => {
+            const [q, r] = key.split(",").map(Number);
+            const { x, z } = axialToWorld({ q, r }, 1.0);
+            return worldToScreen(x, terrain.heightAt({ q, r }) + 0.4, z);
+          }),
+          arrowPoints: coneOverlay.arrowPoints.map((p) => worldToScreen(p.x, p.y, p.z))
+        }
       );
       controller.cardsOpened(coord);
       return;
@@ -2687,7 +2761,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         const at = open.findIndex((p) => p.q === cursor!.q && p.r === cursor!.r);
         const next = open[(at + 1) % open.length];
         cursor = { q: next.q, r: next.r };
-        showCursor(true);
+        showCursor(false);
+        // Section 34b.3: one of the camera's set moves, clear of the HUD card and Maya.
+        moveCameraClear([cursor]);
       }
     });
   }
@@ -2750,6 +2826,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const coord = monuments.atHit(hits[0].object, hits[0].instanceId)?.coord ?? terrain.coordForHit(hits[0].object, hits[0].instanceId);
     if (!coord) return;
 
+    // Section 34b.2: a click on the map with her bubble open still opens the tile, as if the bubble were not there (the
+    // menu's cards ignore clicks for their first moment, so it never builds). Section 34b (owner, 28 October): her
+    // bubble steps aside while the menu is open and comes back when it closes (the frame loop's setTucked).
     openTilePopover(coord);
   }
 
@@ -2795,11 +2874,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       if (event.key !== "Escape" || event.defaultPrevented) return;
       // Otherwise Esc closes the topmost layer and nothing else; a layer that holds it (the start popup) keeps it.
       if (modals.escape() !== "none") return;
-      // With nothing open, Esc is the "get me out of here" key. On Panjim it asks first (Section 12).
       if (sessionFinished) return;
-      else if (!leaveConfirm) options.onExit();
-      // Not while a storm plays: the year is saved only once it has settled.
-      else if (!panjim?.isBusy) askLeave();
+      // Section 34b.8: on Panjim and the Tutorial, with nothing else open, Esc closes Maya's line if she is speaking,
+      // and otherwise does nothing (at a festival a stray key landed on "Leave Panjim?"; Leave is in ☰ only).
+      if (panjim) {
+        if (panjim.maya.speaking) panjim.maya.dismiss();
+        return;
+      }
+      // The old levels: with nothing open, Esc is the "get me out of here" key.
+      options.onExit();
     },
     { signal: keydownAbort.signal }
   );
@@ -2829,6 +2912,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     storm.tick(nowMs, focusPoint());
     setShake(storm.shakeX, storm.shakeZ);
     elements.setWind(storm.windStrength, stormDirector?.windDirection);
+    // Section 34b.14: the rain leans with the storm's wind.
+    storm.setWindDirection(stormDirector?.windDirection);
     townDecor?.setWind(storm.windStrength, nowMs, stormDirector?.windDirection);
 
     terrain.tick(nowMs);
@@ -2867,7 +2952,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
     panjim?.frame();
     stormDirector?.tick(nowMs);
-    for (const word of stormWords) placeStormWord(word);
+    placeStormWords();
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
     coneOverlay.tick(nowMs);
@@ -2899,6 +2984,15 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // The risk sequence gives way the moment the player opens a menu.
     if (riskIntro.isRunning && overlayOpen()) riskIntro.cancel("menu");
     riskIntro.frame(nowMs);
+    // Section 34b (owner, 28 October): Maya's bubble steps aside while a build menu or tile card is open, except for
+    // the Tutorial's coaching lines, which are about that very menu (the cards, the glowing one) and stand clear of it.
+    panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:"));
+    // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes.
+    if (pendingCameraMove && !buildPopover.isOpen) {
+      const move = pendingCameraMove;
+      pendingCameraMove = null;
+      move();
+    }
     mapLabels.update(
       (coord) => {
         // Anchored to the tile's top surface, so a label sits on the land
@@ -3003,6 +3097,19 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         return field ? [...field.tiles.keys()] : [];
       },
       time: () => stormDirector?.time ?? null,
+      /** Section 34b.6: the storm time its water first reaches land (a sea tile is always wet), and how long it plays. */
+      firstWave: () => {
+        const field = stormDirector?.currentField;
+        if (!field) return null;
+        let first = Infinity;
+        for (const tile of field.tiles.values()) {
+          if (tile.terrainId === "coast") continue;
+          if (tile.surgePeak > 0) first = Math.min(first, tile.surgeArrival);
+          if (tile.floodPeak > 0) first = Math.min(first, tile.floodArrival);
+          if (tile.backwaterPeak > 0) first = Math.min(first, tile.backwaterArrival);
+        }
+        return { first, duration: field.duration };
+      },
       playing: () => stormDirector?.playing ?? false,
       /** The depth the water layer drew on a tile, and the core's depth there at the same storm time. */
       compare: (key: string) => {
@@ -3202,8 +3309,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       return counts;
     }
   };
-  for (const [name, hook] of Object.entries(testHooks)) {
-    (window as unknown as Record<string, unknown>)[name] = hook;
+  // Section 34b.10: only for the QA tools (a development build, or ?qa=1); the live site has none of them.
+  if (qaHooks) {
+    for (const [name, hook] of Object.entries(testHooks)) {
+      (window as unknown as Record<string, unknown>)[name] = hook;
+    }
   }
 
   // Dev-only URL params, unchanged in spirit: still no visible affordance

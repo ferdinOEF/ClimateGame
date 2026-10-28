@@ -107,3 +107,11 @@ export const CARD_ICON: Record<string, string> = {
   khazan: svg('<rect width="32" height="32" rx="7" fill="#3d6f6a"/><ellipse cx="16" cy="17" rx="13" ry="10" fill="#a9793f"/><path d="M5 17 a11 8 0 0 1 11 -8 V25 a11 8 0 0 1 -11 -8Z" fill="#4a90a4"/><path d="M16 9 a11 8 0 0 1 0 16Z" fill="#3f6b3a"/><path d="M18 12 H25 M18 15 H27 M18 18 H27 M18 21 H25" stroke="#6fa24a" stroke-width="1.4"/><rect x="13" y="23" width="6" height="4" fill="#8a8f91"/>'),
   small_dam: svg('<rect width="32" height="32" rx="7" fill="#4c7a4a"/><path d="M10 0 H22 V32 H10Z" fill="#4a90a4"/><rect x="7" y="14" width="18" height="5" fill="#b9b9b2"/><rect x="14" y="14" width="4" height="2.5" fill="#6fc3e0"/><path d="M12 22 q2 2 4 0 q2 2 4 0 M12 26 q2 2 4 0 q2 2 4 0" fill="none" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round"/>')
 };
+
+/** Section 34b.7: what a tile's card says where nothing more can be built there. */
+export const TILE_NOTES = {
+  home: "Homes stand here. In this game nothing can be built on a home.",
+  oneBuild: "In this game a tile holds one build; demolish to build another here.",
+  sea: "Nothing can be built out here.",
+  nothing: "Nothing can be built on this tile."
+} as const;

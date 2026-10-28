@@ -66,6 +66,7 @@ date with the data in Section 34 (the tables had drifted since Section 4).
 | `houseLossDepthM` | 0.6 | Water (plus wind) this deep on a house takes it | gameRule |
 | `wind.perStrengthM`, `inlandKeep`, `landfallReachHex` | 0.2, 0.75, 14 | The default cyclone wind (the Tutorial's): metres of water equivalent per strength at landfall, kept per hex inland | gameRule |
 | `wind.shelter.sandy_vegetation`, `shelterReachHex`, `minKeep` | 0.5, 2, 0.4 | Pandanus halves the wind on homes within 2 tiles; wind never falls below 0.4 of itself | gameRule |
+| `wind.sandReachHex` | 2 | Section 34b (owner decision, 28 October 2026): a cyclone's wind reaches only the tiles within 2 of a beach tile that can take pandanus; every other tile takes no wind (the water is unchanged). Facts and sources: "A cyclone's wind reaches the homes near the beach; pandanus within two tiles halves the wind damage." | gameRule |
 | Panjim's own wind (`levels.json`, on the storms) | 2030: 1.0 a strength, 0.8 a hex; 2050: 0.6, 0.8, 1.1 in the compound storm | The two Panjim cyclones' wind (Section 26.3) | gameRule |
 
 ## gameRule: the elements (`src/data/elements.json`)

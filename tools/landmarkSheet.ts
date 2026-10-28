@@ -34,7 +34,7 @@ const errors: string[] = [];
 const page = await browser.newPage({ viewport: { width: W, height: H } });
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 page.on("pageerror", (e) => errors.push(e.message));
-await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".brief-card", { timeout: 120000 });
 await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 180000 });
 await page.waitForTimeout(1500);

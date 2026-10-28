@@ -116,7 +116,7 @@ async function main(): Promise<void> {
       page.on("console", (m) => {
         if (m.type() === "error") errors.push(`${tag}: ${m.text()}`);
       });
-      await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".brief-card", { timeout: 120000 });
       await page.waitForTimeout(1200);
       await page.locator(".brief-cta", { hasText: /Begin|Start/i }).first().click();

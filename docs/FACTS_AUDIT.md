@@ -50,7 +50,10 @@ those results on 8 October 2026.
 
 - **Fact 4.** The brief also named Lobo (2020) for this claim. The text
   available here does not show Lobo saying that mangroves act as wave
-  breakers, so the fact cites Sahapedia alone.
+  breakers, so the fact cites Sahapedia alone. Section 34b.7: it is also
+  the source line under the Field Guide's two "Side by side" rules (game
+  rules, each "In this game: ..."), shown as "Source: Sahapedia, n.d.";
+  no new claim and no new citation.
 - **Fact 5.** "Unmaintained" is not in the shown text. The text available
   here supports breaching bunds and mangroves coming back, not the reason
   the bunds breach.

@@ -45,7 +45,7 @@ const shot = (name: string, clip?: { x: number; y: number; width: number; height
   page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 85, ...(clip ? { clip } : {}) });
 const js = <T>(code: string): Promise<T> => page.evaluate(code) as Promise<T>;
 
-await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".brief-card", { timeout: 120000 });
 await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
 await page.waitForTimeout(1500);

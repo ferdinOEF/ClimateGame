@@ -20,6 +20,13 @@ export interface ElementDef {
   /** Defense-kind only: which hazard ids it reduces damage from. */
   targetsHazards?: string[];
   validTerrainIds: string[];
+  /**
+   * Section 34b.9 (owner decision 2d): where on its terrain it may stand. "shoreline": a land tile (beach, shore or
+   * wetland edge) with at least one sea neighbour, never the sea itself (a seawall). "upstream": a river tile with no
+   * sea neighbour and at most two river neighbours, the narrow upstream channel, never the estuary (a small dam: a
+   * bandhara is a check dam on a small stream).
+   */
+  placement?: "shoreline" | "upstream";
   buildCost: number;
   maintenanceCostPerTurn?: number;
   maintenanceNeglectPenaltyPerTurn?: number;

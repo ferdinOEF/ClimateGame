@@ -62,33 +62,46 @@ export function coneLegendHtml(meet: boolean): string {
 /** At most this many places named on a forecast's map (Section 16 B4). */
 export const MAX_PREVIEW_LABELS = 3;
 
-/** A label's box on the preview's map, in world units: the dot, and the name to its right (font 1.05, about 0.62 em a letter). */
-export function previewLabelBox(label: { name: string; q: number; r: number }): { x0: number; z0: number; x1: number; z1: number } {
+/** Section 34b.5: about how wide a letter of a place name is on the preview's map (bold, 1.05 high, with its edge), in world units. */
+const LETTER = 0.72;
+
+/**
+ * A label's box on the preview's map, in world units: the dot, and the name to its right; or (Section 34b.5) the dot,
+ * and the name centred under it.
+ */
+export function previewLabelBox(label: { name: string; q: number; r: number }, at: "right" | "below" = "right"): { x0: number; z0: number; x1: number; z1: number } {
   const { x, z } = axialToWorld({ q: label.q, r: label.r }, 1);
-  return { x0: x - 0.5, z0: z - 0.5, x1: x + 0.75 + label.name.length * 0.65, z1: z + 0.6 };
+  const w = label.name.length * LETTER;
+  return at === "right" ? { x0: x - 0.5, z0: z - 0.5, x1: x + 0.75 + w, z1: z + 0.6 } : { x0: Math.min(x - 0.5, x - w / 2), z0: z - 0.5, x1: Math.max(x + 0.5, x + w / 2), z1: z + 1.85 };
 }
 
 /**
- * The places a forecast's map names (Section 16 B4): in the order given, each
- * kept only if its box clears every one kept before it, at most three. So the
- * names never sit on one another.
+ * The places a forecast's map names (Section 16 B4): in the order given (the first the most wanted), each kept only if
+ * its box clears every one kept before it, at most three. So the names never sit on one another. Section 34b.5: a
+ * name that would overlap one kept before it goes under its own dot instead, and is left off if that overlaps too.
  */
-export function previewLabels<T extends { name: string; q: number; r: number }>(labels: readonly T[], max = MAX_PREVIEW_LABELS): T[] {
-  const kept: { label: T; box: ReturnType<typeof previewLabelBox> }[] = [];
+export function previewLabels<T extends { name: string; q: number; r: number }>(labels: readonly T[], max = MAX_PREVIEW_LABELS): (T & { at: "right" | "below" })[] {
+  const kept: { label: T; at: "right" | "below"; box: ReturnType<typeof previewLabelBox> }[] = [];
+  const clearOf = (box: ReturnType<typeof previewLabelBox>): boolean =>
+    kept.every(({ box: other }) => box.x1 + 0.2 <= other.x0 || other.x1 + 0.2 <= box.x0 || box.z1 + 0.1 <= other.z0 || other.z1 + 0.1 <= box.z0);
   for (const label of labels) {
     if (kept.length >= max) break;
-    const box = previewLabelBox(label);
-    const clear = kept.every(({ box: other }) => box.x1 + 0.2 <= other.x0 || other.x1 + 0.2 <= box.x0 || box.z1 + 0.1 <= other.z0 || other.z1 + 0.1 <= box.z0);
-    if (clear) kept.push({ label, box });
+    for (const at of ["right", "below"] as const) {
+      const box = previewLabelBox(label, at);
+      if (!clearOf(box)) continue;
+      kept.push({ label, at, box });
+      break;
+    }
   }
-  return kept.map((k) => k.label);
+  return kept.map((k) => ({ ...k.label, at: k.at }));
 }
 
 export function renderConePreview(input: ConePreviewInput): HTMLElement {
   const id = `cone-preview-${++previews}`;
   const { cone } = input;
   // Never more than three names, and never one on another (Section 16 B4).
-  input = { ...input, labels: previewLabels(input.labels) };
+  const placed = previewLabels(input.labels);
+  input = { ...input, labels: placed };
   const byKey = new Map(input.tiles.map((t) => [t.key, t]));
   const world = (key: string): { x: number; z: number } | null => {
     const tile = byKey.get(key);
@@ -164,10 +177,12 @@ export function renderConePreview(input: ConePreviewInput): HTMLElement {
     .map((d) => `<path d="${d}" fill="none" stroke="#fff3e0" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round"/>` + `<path d="${d}" fill="none" stroke="#2a0c08" stroke-width="0.38" stroke-dasharray="0.9 0.6" stroke-linejoin="round" marker-end="url(#${id}-arrow)"/>`)
     .join("");
 
-  const labels = input.labels
+  const labels = placed
     .map((label) => {
       const { x, z } = axialToWorld({ q: label.q, r: label.r }, 1);
-      return `<g class="cone-preview-place"><circle cx="${fmt(x)}" cy="${fmt(z)}" r="0.42" fill="#fff3e0" stroke="#2a0c08" stroke-width="0.18"/><text x="${fmt(x + 0.75)}" y="${fmt(z + 0.4)}">${esc(label.name)}</text></g>`;
+      // Section 34b.5: to the right of its dot, or centred under it.
+      const text = label.at === "right" ? `<text x="${fmt(x + 0.75)}" y="${fmt(z + 0.4)}">` : `<text x="${fmt(x)}" y="${fmt(z + 1.55)}" text-anchor="middle">`;
+      return `<g class="cone-preview-place"><circle cx="${fmt(x)}" cy="${fmt(z)}" r="0.42" fill="#fff3e0" stroke="#2a0c08" stroke-width="0.18"/>${text}${esc(label.name)}</text></g>`;
     })
     .join("");
 
@@ -236,7 +251,8 @@ function keepLabelsReadable(svg: SVGSVGElement, viewWidth: number, viewHeight: n
 /**
  * Section 30.11 bug 2: the names as drawn (their real size, once the font is set), each to the right of its dot, or
  * to its left when it would run off the map's right edge, slid back inside when it runs off either; a name that
- * would still sit on one placed before it is left off. So a name never clips at the edge or covers another.
+ * would still sit on one placed before it goes under its own dot (Section 34b.5), and is left off if it would still
+ * sit on one. So a name never clips at the edge or covers another.
  */
 function placeLabels(svg: SVGSVGElement, font: number): void {
   const vb = svg.viewBox.baseVal;
@@ -270,11 +286,27 @@ function placeLabels(svg: SVGSVGElement, font: number): void {
       text.setAttribute("x", fmt(Number(text.getAttribute("x")) + shift));
       box = text.getBBox();
     }
-    const area = { x0: Math.min(box.x, cx - r), y0: Math.min(box.y, cy - r), x1: Math.max(box.x + box.width, cx + r), y1: Math.max(box.y + box.height, cy + r) };
     const pad = font * 0.15;
-    if (kept.some((o) => area.x0 < o.x1 + pad && o.x0 < area.x1 + pad && area.y0 < o.y1 + pad && o.y0 < area.y1 + pad)) {
-      group.style.display = "none";
-      continue;
+    const areaOf = (b: DOMRect): { x0: number; y0: number; x1: number; y1: number } => ({ x0: Math.min(b.x, cx - r), y0: Math.min(b.y, cy - r), x1: Math.max(b.x + b.width, cx + r), y1: Math.max(b.y + b.height, cy + r) });
+    const clashes = (a: { x0: number; y0: number; x1: number; y1: number }): boolean => kept.some((o) => a.x0 < o.x1 + pad && o.x0 < a.x1 + pad && a.y0 < o.y1 + pad && o.y0 < a.y1 + pad);
+    let area = areaOf(box);
+    if (clashes(area)) {
+      // Section 34b.5: under its own dot, centred (slid inside the map), before it is left off.
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("x", fmt(cx));
+      text.setAttribute("y", fmt(cy + r + font * 0.95));
+      box = text.getBBox();
+      const right = box.x + box.width - (vb.x + vb.width - margin);
+      const left = vb.x + margin - box.x;
+      if (left > 0 || right > 0) {
+        text.setAttribute("x", fmt(cx + (left > 0 ? left : -right)));
+        box = text.getBBox();
+      }
+      area = areaOf(box);
+      if (clashes(area) || box.y + box.height > vb.y + vb.height) {
+        group.style.display = "none";
+        continue;
+      }
     }
     kept.push(area);
   }

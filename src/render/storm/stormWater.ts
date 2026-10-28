@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { PALETTE } from "../palette";
 import { axialToWorld, axialKey, neighbor } from "@core/hex";
 import { floodDepth, surgeDepth, type DepthField } from "@core/hazard";
 
@@ -146,6 +147,12 @@ const FRAGMENT = /* glsl */ `
   uniform vec3 uKhazan;
   uniform float uPattern;
   uniform float uDetail;
+  // Section 34b.15: the river flood's own colours (the owner's mock up, Option B).
+  uniform vec3 uFloodCentre;
+  uniform vec3 uFloodMid;
+  uniform vec3 uFloodRim;
+  uniform vec3 uFloodLand;
+  uniform vec3 uFloodFoam;
   varying vec3 vWorld;
   varying vec3 vNormal;
   varying float vEdge;
@@ -166,6 +173,7 @@ const FRAGMENT = /* glsl */ `
     float kind = vWater.y;
     float alpha = vWater.w;
     if (alpha <= 0.002) discard;
+    float streak = 0.0;
     if (kind > 3.5) {
       // A defence answering on dry ground: a pale green rim that pulses, nothing inside.
       float rim = smoothstep(0.62, 0.9, vEdge) * (1.0 - smoothstep(0.97, 1.0, vEdge));
@@ -189,8 +197,11 @@ const FRAGMENT = /* glsl */ `
     vec3 col = mix(seaCol, riverCol, riverShare);
     col = mix(col, uBoth, clamp(both * 0.85, 0.0, 0.85));
     if (kind > 2.5) col = mix(uKhazan, col, 0.25);
-    // The open sea is deeper and darker than water over the land.
-    if (kind < 0.5) col = mix(vec3(0.13, 0.38, 0.54), col, 0.45);
+    // The open sea is deeper and darker than water over the land (Section 34b.14: toward the board's own sea,
+    // not a fixed blue, so the storm sea and the hex sea read as one).
+    if (kind < 0.5) col = mix(uSeaLight * 1.1, col, 0.45);
+    // Section 34b.14: the surge over land a lighter shade of the same sea, so it reads as water, not night.
+    if (kind > 1.5 && kind < 2.5) col = min(col * 1.4, vec3(1.0));
 
     // Light: soft diffuse and a small glint, so the waves read as relief.
     float diffuse = 0.62 + 0.38 * max(dot(normalize(vNormal), normalize(uSunDir)), 0.0);
@@ -207,7 +218,7 @@ const FRAGMENT = /* glsl */ `
       vec2 dir = normalize(vFlow.xy + vec2(0.0001));
       float along = dot(vWorld.xz, dir);
       float across = dot(vWorld.xz, vec2(-dir.y, dir.x));
-      float streak = smoothstep(0.9, 1.0, fract(along * 1.6 - t * vFlow.z)) * smoothstep(0.35, 0.8, noise(vec2(across * 6.0, floor(along * 1.6 - t * vFlow.z))));
+      streak = smoothstep(0.9, 1.0, fract(along * 1.6 - t * vFlow.z)) * smoothstep(0.35, 0.8, noise(vec2(across * 6.0, floor(along * 1.6 - t * vFlow.z))));
       col = mix(col, vec3(0.86, 0.92, 1.0), streak * 0.55);
     }
 
@@ -226,10 +237,11 @@ const FRAGMENT = /* glsl */ `
     }
 
     // Not colour alone: flooded land and khazans carry wavy stripes.
+    float landStripe = 0.0;
     if (kind > 1.5 && uPattern > 0.5) {
       float wave = sin((vWorld.x + vWorld.z) * 7.0 + sin((vWorld.x - vWorld.z) * 3.0) * 1.2);
-      float stripe = smoothstep(0.55, 0.85, wave);
-      col = mix(col, col * 0.78, stripe * clamp(depth * 0.9 + 0.3, 0.0, 0.8));
+      landStripe = smoothstep(0.55, 0.85, wave) * clamp(depth * 0.9 + 0.3, 0.0, 0.8);
+      col = mix(col, col * 0.78, landStripe);
     }
 
     // Khazan holding the water: a slow shimmer; absorbing it: a bright pulse.
@@ -238,6 +250,25 @@ const FRAGMENT = /* glsl */ `
       col = mix(col, vec3(0.8, 1.0, 0.95), shimmer);
     }
     col = mix(col, vec3(0.85, 1.0, 0.96), clamp(pulse, 0.0, 1.0) * 0.6);
+
+    // Section 34b.15 (owner's mock up, Option B): a river flood is muddy water, not night. On a river tile a radial
+    // gradient, brown at the centre (#7E6A48), grey at 55% (#5D6260), the river's own blue at the rim (#3F7F9E),
+    // 0.92 to 0.70 opaque, with foam lines (#DDE3D2 at 0.45) from the flow and the swell's crest; on wet and flooded
+    // land a flat #5D6260 at 0.60. Never on the sea (the river share is 0 there); a khazan keeps its own look.
+    float flood = river > 0.001 ? riverShare : 0.0;
+    if (flood > 0.0 && kind > 0.5 && kind < 1.5) {
+      float e = clamp(vEdge, 0.0, 1.0);
+      vec3 mud = mix(uFloodCentre, uFloodMid, smoothstep(0.0, 0.55, e));
+      mud = mix(mud, uFloodRim, smoothstep(0.55, 1.0, e));
+      float lines = clamp(chop + streak + clamp(crest, 0.0, 1.0) * 0.38, 0.0, 1.0);
+      mud = mix(mud, uFloodFoam, lines * 0.45);
+      col = mix(col, mud, flood);
+      alpha = mix(alpha, alpha / 0.86 * mix(0.92, 0.70, e), flood);
+    } else if (flood > 0.0 && kind > 1.5 && kind < 2.5) {
+      // The flat grey keeps the land's stripes (not colour alone).
+      col = mix(col, uFloodLand * mix(1.0, 0.78, landStripe), flood);
+      alpha = mix(alpha, alpha / 0.82 * 0.6, flood);
+    }
 
     gl_FragColor = vec4(col, alpha);
   }
@@ -285,6 +316,28 @@ export interface WaterFrame {
   fills?: ReadonlyMap<string, number>;
 }
 
+/** Section 34b.15: the river flood's colours, from the owner's mock up (Option B). */
+export const FLOOD = { centre: "#7E6A48", mid: "#5D6260", rim: "#3F7F9E", land: "#5D6260", foam: "#DDE3D2" } as const;
+
+/**
+ * The flood's colours as the shader wants them: this shader writes its colour to the screen as it is (no conversion
+ * from linear), so each uniform holds the hex's own sRGB values and the screen shows the owner's hex exactly.
+ */
+function screenColour(hex: string): THREE.Color {
+  return new THREE.Color().setStyle(hex, THREE.LinearSRGBColorSpace);
+}
+
+/**
+ * Section 34b.14: the storm sea's colour from the board's own sea (PALETTE.seaTurquoise): its lightness times `light`
+ * (0.8 is 20% darker) and its saturation times `saturation`.
+ */
+
+export function stormSea(light: number, saturation: number): THREE.Color {
+  const hsl = { h: 0, s: 0, l: 0 };
+  PALETTE.seaTurquoise.getHSL(hsl);
+  return new THREE.Color().setHSL(hsl.h, hsl.s * saturation, hsl.l * light);
+}
+
 export class StormWater {
   readonly mesh: THREE.InstancedMesh;
   private readonly material: THREE.ShaderMaterial;
@@ -311,13 +364,20 @@ export class StormWater {
         uMotion: { value: 1 },
         uWindDir: { value: new THREE.Vector2(0.8, 0.6) },
         uSunDir: { value: new THREE.Vector3(-8, 14, 6).normalize() },
-        uSeaLight: { value: new THREE.Color("#7cc6e0") },
-        uSeaDeep: { value: new THREE.Color("#3c96c8") },
+        // Section 34b.14: the storm's sea is the board's own sea, a little greyer, and 20% darker where deep, so the two read as one
+        // sea (it was a light blue over the board's teal).
+        uSeaLight: { value: stormSea(1, 0.8) },
+        uSeaDeep: { value: stormSea(0.8, 0.7) },
         uRiverLight: { value: new THREE.Color("#3f7fb3") },
         uRiverDeep: { value: new THREE.Color("#123e7d") },
         uBoth: { value: new THREE.Color("#5846a0") },
         uKhazan: { value: new THREE.Color("#4abec8") },
         uPattern: { value: 1 },
+        uFloodCentre: { value: screenColour(FLOOD.centre) },
+        uFloodMid: { value: screenColour(FLOOD.mid) },
+        uFloodRim: { value: screenColour(FLOOD.rim) },
+        uFloodLand: { value: screenColour(FLOOD.land) },
+        uFloodFoam: { value: screenColour(FLOOD.foam) },
         uDetail: { value: quality === "low" ? 0 : 1 }
       }
     });
@@ -462,7 +522,8 @@ export class StormWater {
       water[i4 + 2] = amp;
       water[i4 + 3] = frame.fade * visible * (wetLand ? 0.82 : slot.sea ? 0.78 : 0.86);
       look[i4] = Math.max(0, surge);
-      look[i4 + 1] = Math.max(flood, stored);
+      // Section 34b.14: a river flood is never drawn on the sea (it painted the sea at Miramar river blue).
+      look[i4 + 1] = slot.sea ? 0 : Math.max(flood, stored);
       // The swell's crest: bright just as the water reaches its peak here.
       const tile = field.tiles.get(slot.key)!;
       // The swell's pale crest rides its front, just as the water starts to lift here.

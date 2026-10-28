@@ -135,7 +135,9 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
   const order = (a: { key: string; elementId: string; gain: number }, b: { key: string; elementId: string; gain: number }): number =>
     b.gain - a.gain || (a.key < b.key ? -1 : a.key > b.key ? 1 : a.elementId < b.elementId ? -1 : a.elementId > b.elementId ? 1 : 0);
   let scored = candidates.map((c) => ({ ...c, gain: gainOf(c), fresh: picks.length }));
-  while (picks.length < input.budget && lost > 0) {
+  /** The greedy, up to `limit` picks in all. */
+  const pick = (limit: number): void => {
+  while (picks.length < limit && lost > 0) {
     scored.sort(order);
     // The leaders are always re-scored fresh (a combo can make a build worth more once another stands), then the lazy check.
     for (const c of scored.slice(0, LEADERS)) {
@@ -163,8 +165,102 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
     const taken = best.key;
     scored = scored.filter((c) => c.key !== taken);
   }
+  };
 
-  return { picks, rows: rowsOf(input, picks, candidates), lostBefore, lostAfter: lost };
+  // Section 34b.13 (owner decision, 28 October): the 2050 storm (cyclone and flood) brings wind, which only pandanus
+  // lowers (a game rule). Its objective keeps WIND_ROW_PANDANUS of the phase's builds for it: when the wind still takes
+  // homes after the other picks, a row asks for pandanus on the beach beside them; when it takes none, the greedy has
+  // those builds back.
+  const compound = input.challenge.kind === "compound";
+  pick(compound ? Math.max(0, input.budget - WIND_ROW_PANDANUS) : input.budget);
+  let rows = rowsOf(input, picks, candidates);
+  const room = input.budget - picks.length;
+  const wind = compound && room > 0 && rows.length < MAX_ROWS && !rows.some((row) => row.elementId === "sandy_vegetation") ? windRow(input, board, lost, room) : null;
+  if (wind) {
+    picks.push(...wind.picks);
+    rows.push(wind.row);
+    lost -= wind.picks.reduce((s, p) => s + p.homes, 0);
+  } else if (compound && picks.length < input.budget) {
+    pick(input.budget);
+    rows = rowsOf(input, picks, candidates);
+  }
+  return { picks, rows, lostBefore, lostAfter: lost };
+}
+
+/** Section 34b.13: how many pandanus the wind row asks for, at most. */
+export const WIND_ROW_PANDANUS = 2;
+
+/**
+ * Section 34b.13: the wind row. The homes the storm's wind takes on `board` (the picks built), those the water alone
+ * would leave standing; the beach tiles within two hexes of them where pandanus takes at least one home out of the
+ * storm's risk (the still helps rule), best first, at most WIND_ROW_PANDANUS. "Plant 2 pandanus on the Campal beach".
+ */
+function windRow(input: PhaseObjectiveInput, board: GameState, lostNow: number, room: number): { picks: ObjectivePick[]; row: PrepObjective } | null {
+  const water = computeWater(board, input.storm, { combos: computeCombos(board).bonus, landfallZoneTiles: input.landfallZoneTiles });
+  const windHomes: { q: number; r: number }[] = [];
+  for (const [key, inst] of board.elements) {
+    if (inst.degradeAmount >= 1 || board.isScenery(key) || ELEMENT_BY_ID.get(inst.elementId)?.kind !== "building") continue;
+    if (floodsHouse(damageAt(water, key)) && !floodsHouse(water.depth.get(key) ?? 0)) windHomes.push(coordOfKey(key));
+  }
+  if (windHomes.length === 0) return null;
+  const nearWind = (key: string): boolean => windHomes.some((h) => axialDistance(h, coordOfKey(key)) <= OBJECTIVE_REACH);
+  const beach = [...board.placed.keys()].filter((key) => board.placed.get(key)!.terrainId === "beach" && nearWind(key) && !input.storm.sheltered?.has(key) && (!input.stretch?.only || input.stretch.tiles.has(key))).sort();
+  const trialBoard = board.clone();
+  let lost = lostNow;
+  const picks: ObjectivePick[] = [];
+  while (picks.length < Math.min(WIND_ROW_PANDANUS, room)) {
+    let best: { key: string; gain: number } | null = null;
+    for (const key of beach) {
+      if (!trialBoard.canBuild(coordOfKey(key), "sandy_vegetation")) continue;
+      const trial = trialBoard.clone();
+      trial.build(coordOfKey(key), "sandy_vegetation", false);
+      const gain = lost - homesLost(trial, input.storm, input.landfallZoneTiles).size;
+      if (gain > 0 && (!best || gain > best.gain)) best = { key, gain };
+    }
+    if (!best) break;
+    trialBoard.build(coordOfKey(best.key), "sandy_vegetation", false);
+    lost -= best.gain;
+    picks.push({ key: best.key, elementId: "sandy_vegetation", homes: best.gain });
+  }
+  if (picks.length === 0) return null;
+  const first = coordOfKey(picks[0].key);
+  const nearest = [...(input.localities ?? [])].sort((a, b) => axialDistance(a, first) - axialDistance(b, first) || (a.name < b.name ? -1 : 1))[0];
+  const place = nearest ? (nearest.name === "Campal" ? "on the Campal beach" : `on the beach near ${nearest.name}`) : "on the beach";
+  // The tiles that count: the beach near the homes in the wind; pandanus already there that helps counts from the start.
+  const lostOnBoard = homesLost(input.state, input.storm, input.landfallZoneTiles).size;
+  const credited = beach.filter((key) => {
+    if (input.state.elements.get(key)?.elementId !== "sandy_vegetation") return false;
+    const without = input.state.clone();
+    without.elements.delete(key);
+    return homesLost(without, input.storm, input.landfallZoneTiles).size > lostOnBoard;
+  });
+  const count = picks.length + credited.length;
+  return {
+    picks,
+    row: {
+      id: `${input.challenge.id}:model:wind:sandy_vegetation`,
+      challengeId: input.challenge.id,
+      templateId: "model:sandy_vegetation",
+      elementId: "sandy_vegetation",
+      zone: input.zones.zoneOf(picks[0].key) ?? "",
+      count,
+      baseline: 0,
+      reward: 0,
+      label: `Plant ${count} pandanus ${place}`,
+      done: false,
+      tiles: beach,
+      pins: nearest ? [nearest] : [],
+      homes: picks.reduce((s, p) => s + p.homes, 0),
+      placeTiles: beach,
+      place,
+      credited
+    }
+  };
+}
+
+function coordOfKey(key: string): { q: number; r: number } {
+  const [q, r] = key.split(",").map(Number);
+  return { q, r };
 }
 
 /** Section 30.9: the most rows an objective shows. */
@@ -221,13 +317,27 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
     }
     list = [...merged.values()].map((group) => ({ ...group, place: joinPlaces(group.places) }));
   }
+  // Section 34b.4: the homes the storm takes on the board as it stands, worked out once if a row needs it.
+  let lostNow: number | null = null;
   return list.map((group, i) => {
-    // The tiles that count: where this defence could go in this place, round the area to protect.
+    // The tiles that pulse: where this defence could go in this place, round the area to protect.
     const places = new Set(group.places);
     const tiles = [...new Set([...candidates.filter((c) => c.elementId === group.elementId && places.has(placeOf(input, c.key))).map((c) => c.key), ...group.picks.map((p) => p.key)])].sort();
     const [verb, one, many] = NOUN[group.elementId] ?? ["Build", group.elementId, group.elementId];
-    const count = group.picks.length;
     const baseline = tiles.filter((key) => input.state.elements.get(key)?.elementId === group.elementId).length;
+    // Section 34b.4: the tiles that count are the whole place the row names. Its defences already standing there that
+    // take a home out of this storm's risk (Get ahead's, an earlier phase's) count from the start.
+    const placeTiles = [...input.state.placed.keys()].filter((key) => (!input.stretch?.only || input.stretch.tiles.has(key)) && places.has(placeOf(input, key))).sort();
+    const credited = placeTiles.filter((key) => {
+      if (input.state.elements.get(key)?.elementId !== group.elementId) return false;
+      lostNow ??= homesLost(input.state, input.storm, input.landfallZoneTiles).size;
+      const without = input.state.clone();
+      without.elements.delete(key);
+      return homesLost(without, input.storm, input.landfallZoneTiles).size > lostNow;
+    });
+    // The model's picks are new builds on a board that already holds the credited ones, so the row asks for both:
+    // "Build 3 khazans in Merces 1/3" with one already standing (never a row that starts done).
+    const count = group.picks.length + credited.length;
     return {
       id: `${input.challenge.id}:model:${i}:${group.elementId}`,
       challengeId: input.challenge.id,
@@ -242,7 +352,10 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
       tiles,
       heading: allInStretch ? input.stretch!.title : undefined,
       pins: group.picks.every((p) => input.stretch?.tiles.has(p.key)) ? input.stretch!.pins : group.places.flatMap((place) => pinsOf(input, place, tiles)),
-      homes: group.picks.reduce((s, p) => s + p.homes, 0)
+      homes: group.picks.reduce((s, p) => s + p.homes, 0),
+      placeTiles,
+      place: group.place,
+      credited
     };
   });
 }

@@ -1,0 +1,20 @@
+(node:27024) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+| low | calm | 1.0 | 0.7 | 1483.3 | 69 | 371714 |
+| low | cyclone | 2.5 | 1.2 | 816.6 | 59 | 381302 |
+| low | flood | 1.5 | 1.0 | 1050.0 | 66 | 588216 |
+| low | finale | 1.4 | 1.3 | 766.7 | 90 | 637558 |
+| medium | calm | 1.3 | 1.0 | 1033.3 | 69 | 371714 |
+| medium | cyclone | 1.3 | 0.9 | 1083.2 | 58 | 402274 |
+| medium | flood | 1.3 | 0.7 | 1349.9 | 65 | 620996 |
+| medium | finale | 1.3 | 0.6 | 1583.2 | 75 | 675524 |
+| high | calm | 1.0 | 0.8 | 1216.5 | 69 | 371714 |
+| high | cyclone | 3.1 | 1.0 | 966.6 | 58 | 417738 |
+| high | flood | 1.5 | 0.8 | 1233.3 | 56 | 645050 |
+| high | finale | 1.2 | 0.9 | 1166.7 | 75 | 708086 |
+page.evaluate: Target crashed 
+    at scenario (C:\Users\ferdi\dev\vchk\tools\stormPerf.ts:33:22)
+    at main (C:\Users\ferdi\dev\vchk\tools\stormPerf.ts:101:39) {
+  log: [],
+  name: 'Error'
+}

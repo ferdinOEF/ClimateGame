@@ -98,7 +98,7 @@ async function copies(name: string): Promise<void> {
 const T = "window.__panjimForTest";
 
 async function openLevel(id: string): Promise<void> {
-  await page.goto(`${server.url}/#/play/${id}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1#/play/${id}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForFunction(`!!${T}`, undefined, { timeout: 180000 });
   await page.waitForTimeout(1500);
@@ -232,7 +232,7 @@ const ctasAfter = (await page.evaluate(`[...document.querySelectorAll(".brief-ct
 check(ctasAfter.length === 1 && ctasAfter[0] === "Begin", `after a reload the start popup offers Begin only (${ctasAfter.join(", ")})`);
 check((await page.evaluate(`${T}.run.year`)) === 2026 && (await page.evaluate(`${T}.run.turnNumber`)) === 1, "after a reload Play Panjim is at 2026, the first build");
 await shot("start-popup-after-reload");
-await page.goto(`${server.url}/#/`, { waitUntil: "domcontentloaded" });
+await page.goto(`${server.url}/?qa=1#/`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".menu-actions", { timeout: 60000 });
 const menu = (await page.evaluate(`[...document.querySelectorAll(".menu-actions button")].map((b) => b.textContent.trim())`)) as string[];
 check(menu.length === 2 && /Tutorial/.test(menu[0]) && /Play Panjim/.test(menu[1]), `after a reload the menu: ${menu.join(" | ")}`);

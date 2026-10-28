@@ -83,6 +83,11 @@ export interface HazardModelConfig {
     minKeep: number;
     /** Section 26.3: the compound storm's wind, as a share of a cyclone's at the same strength (absent: compound.surgeShare). */
     compoundShare?: number;
+    /**
+     * Section 34b (owner decision): the wind reaches only the tiles within this many hexes of a beach tile that can take
+     * pandanus; every other tile takes none. Absent: no limit.
+     */
+    sandReachHex?: number;
   };
 }
 
@@ -847,9 +852,14 @@ export function windField(
   const [sq, sr] = site.split(",").map(Number);
   // In the compound storm the wind comes with the surge, at its own share (Section 26.3; the surge's before).
   const shore = w.perStrengthM * storm.strength * (storm.kind === "compound" ? (w.compoundShare ?? config.compound.surgeShare) : 1);
+  // Section 34b (owner decision), a game rule: the wind reaches only the homes near the beach, within sandReachHex of a
+  // beach tile that can take pandanus (its ground, whatever stands on it now), so every home it can take is one pandanus
+  // can shelter.
+  const near = w.sandReachHex === undefined ? null : nearSand(state, w.sandReachHex);
   for (const [key, tile] of board.tiles) {
     if (tile.terrainId === "coast") continue;
     const [q, r] = key.split(",").map(Number);
+    if (near && !near.has(key)) continue;
     const along = 1 - axialDistance({ q, r }, { q: sq, r: sr }) / w.landfallReachHex;
     if (along <= 0) continue;
     const inland = Math.max(0, (board.seaDistance.get(key) ?? 99) - 1);
@@ -874,6 +884,38 @@ export function windField(
   }
   for (const [key, k] of keep) wind.set(key, wind.get(key)! * Math.max(w.minKeep, k));
   return wind;
+}
+
+/**
+ * Section 34b: the beach tiles that can take pandanus: its ground (the element's terrains), in play (not scenery, not
+ * reserved for a landmark, not unbuildable), whatever stands there now. Fixed for a board: a build never moves the wind.
+ */
+/** The last `nearSand` worked out: the same sand (every clone of a board has it) gives the same tiles. */
+let nearCache: { sand: string; reach: number; keys: Set<string> } | null = null;
+
+/** The tiles within `reach` of a beach tile for pandanus (Section 34b's wind reach), worked out once a board. */
+function nearSand(state: GameState, reach: number): Set<string> {
+  const sand = sandForPandanus(state);
+  const id = sand.map((c) => `${c.q},${c.r}`).join(";");
+  if (nearCache && nearCache.sand === id && nearCache.reach === reach) return nearCache.keys;
+  const keys = new Set<string>();
+  for (const { q, r } of sand) {
+    for (let dq = -reach; dq <= reach; dq++) {
+      for (let dr = Math.max(-reach, -dq - reach); dr <= Math.min(reach, -dq + reach); dr++) keys.add(`${q + dq},${r + dr}`);
+    }
+  }
+  nearCache = { sand: id, reach, keys };
+  return keys;
+}
+
+export function sandForPandanus(state: GameState): { q: number; r: number }[] {
+  const terrains = ELEMENT_BY_ID.get("sandy_vegetation")?.validTerrainIds ?? ["beach"];
+  const out: { q: number; r: number }[] = [];
+  for (const [key, tile] of state.placed) {
+    if (!terrains.includes(tile.terrainId) || state.isScenery(key) || state.reserved.has(key) || state.unbuildable.has(key)) continue;
+    out.push(tile.coord);
+  }
+  return out;
 }
 
 /** Water and wind together on a tile: what a house there has to stand against (game metres). */

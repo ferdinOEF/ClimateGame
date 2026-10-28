@@ -1,62 +1,60 @@
 import * as THREE from "three";
+import { RING_TEXTURE_SIZE, bakedRingUrl, canvasBlurWorks, paintRing } from "./ringPaint";
 
 /**
  * What is overhead in a storm: the cyclone's spiral of cloud, the grey band
  * of rain cloud that brings a river flood, and lightning.
  *
- * The spiral is five arms of cloud puffs and a ring of them round the eye,
- * turning anticlockwise (as a cyclone does in the northern hemisphere). It
+ * The cyclone (Section 34b.14: its puffs read as bubbles) is four soft rings of
+ * cloud round a clear eye, each a flat sheet with a blurred, clumped ring
+ * painted on it, the inner ones denser, all turning slowly anticlockwise (as a
+ * cyclone does in the northern hemisphere), the inner ones faster. It
  * drifts in from the open sea, reaches the coast at landfall, then edges a
  * little inland and fades: it is kept over the sea and the coast, so the town
  * stays readable under it. The band is a long, lower, greyer drift of puffs
  * that comes in from inland, where the river's rain falls.
  *
- * Each is one `InstancedMesh` (one draw call); per frame only the group's
- * position, turn and opacity change. On Low quality each is instead a
- * single flat, textured sheet (a painted spiral, a soft grey band): the
- * same path, turn and fade, at the cost of two triangles. Lightning is a jagged line that shows
+ * The band is one `InstancedMesh` (one draw call), the cyclone four sheets
+ * (four calls, at every quality); per frame only position, turn and opacity
+ * change. On Low quality the band is instead a single flat, textured sheet:
+ * the same path, turn and fade, at the cost of two triangles. Lightning is a jagged line that shows
  * for a tenth of a second; its flash on screen is the session's job (capped
  * in brightness and rate there).
  */
 export type SkyQuality = "low" | "medium" | "high";
 
-const ARM_PUFFS: Record<SkyQuality, number> = { low: 7, medium: 11, high: 14 };
 const BAND_PUFFS: Record<SkyQuality, number> = { low: 24, medium: 40, high: 60 };
 const CLOUD_HEIGHT = 3.6;
-/** The flat Low-quality sheets, in board units: the spiral's reach and the band's length and width. */
-const FLAT_SPIRAL_SIZE = 15;
+/** The flat Low-quality band, in board units: its length and width. */
 const FLAT_BAND_SIZE: [number, number] = [28, 9];
 
-/** A painted cyclone seen from above: a bright eye wall and five arms winding out, soft-edged. */
-function spiralTexture(): THREE.Texture {
-  const size = 256;
+/**
+ * Section 34b.14: the cyclone's rings, from the eye out: each ring's radius (board units), the share of its sheet's half
+ * size the ring sits at, its strength (opacity cap, 0.35 to 0.5) and how fast it turns against the storm's own turn.
+ */
+export const RINGS: { radius: number; strength: number; spin: number; seed: number }[] = [
+  { radius: 1.5, strength: 0.5, spin: 1.6, seed: 3 },
+  { radius: 2.9, strength: 0.46, spin: 1.15, seed: 5 },
+  { radius: 4.5, strength: 0.4, spin: 0.85, seed: 9 },
+  { radius: 6.3, strength: 0.35, spin: 0.6, seed: 13 }
+];
+/** Where on its sheet a ring is painted: this share of the sheet's half size. */
+export const RING_AT = 0.62;
+
+/**
+ * One soft ring of cloud seen from above: blurred edges, thicker in clumps so its turn reads. Painted here where the
+ * canvas can blur (Chrome, Edge, Firefox); otherwise (Section 34b, owner: older Safari) the same ring baked once,
+ * pre-blurred, by `tools/bakeStormRings.ts`.
+ */
+function ringTexture(seed: number): THREE.Texture {
+  if (!canvasBlurWorks()) {
+    const baked = new THREE.TextureLoader().load(bakedRingUrl(seed, import.meta.env.BASE_URL));
+    baked.colorSpace = THREE.SRGBColorSpace;
+    return baked;
+  }
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const g = canvas.getContext("2d")!;
-  const c = size / 2;
-  const scale = size / FLAT_SPIRAL_SIZE;
-  const puff = (x: number, y: number, r: number, light: number): void => {
-    const grad = g.createRadialGradient(x, y, 0, x, y, r);
-    grad.addColorStop(0, `rgba(${light}, ${light + 4}, ${light + 8}, 0.9)`);
-    grad.addColorStop(1, `rgba(${light}, ${light + 4}, ${light + 8}, 0)`);
-    g.fillStyle = grad;
-    g.beginPath();
-    g.arc(x, y, r, 0, Math.PI * 2);
-    g.fill();
-  };
-  // The same shape as the 3D spiral (buildSpiral), painted puff by puff.
-  for (let k = 0; k < 12; k++) {
-    const a = (k / 12) * Math.PI * 2;
-    puff(c + Math.cos(a) * 1.15 * scale, c + Math.sin(a) * 1.15 * scale, 0.6 * scale, 236);
-  }
-  for (let arm = 0; arm < 5; arm++) {
-    for (let p = 0; p < 18; p++) {
-      const f = p / 18;
-      const a = (arm / 5) * Math.PI * 2 - f * 2.6;
-      const r = 1.7 + f * 5.2;
-      puff(c + Math.cos(a) * r * scale, c + Math.sin(a) * r * scale, (0.45 + f * 0.5) * scale, 226 - Math.round(f * 20));
-    }
-  }
+  canvas.width = canvas.height = RING_TEXTURE_SIZE;
+  paintRing(canvas.getContext("2d")!, seed, RING_TEXTURE_SIZE, RING_AT);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -106,23 +104,21 @@ function rng(seed: number): () => number {
 export class StormSky {
   readonly group = new THREE.Group();
   private readonly spiral = new THREE.Group();
-  private readonly spiralMaterial: THREE.MeshLambertMaterial;
+  /** Section 34b.14: the cyclone's rings, one sheet each, at every quality. */
+  private readonly rings: { mesh: THREE.Mesh; material: THREE.MeshBasicMaterial; strength: number; spin: number }[] = [];
   private readonly bandMaterial: THREE.MeshLambertMaterial;
-  private spiralMesh: THREE.Mesh;
   private bandMesh: THREE.Mesh;
-  /** Low quality's flat sheets, made the first time Low is chosen. */
-  private flat: { spiral: THREE.MeshBasicMaterial; band: THREE.MeshBasicMaterial } | null = null;
+  /** Low quality's flat band, made the first time Low is chosen. */
+  private flat: { band: THREE.MeshBasicMaterial } | null = null;
   private readonly band = new THREE.Group();
   private readonly bolt: THREE.LineSegments;
   private readonly boltMaterial: THREE.LineBasicMaterial;
   private boltUntil = 0;
 
   constructor(quality: SkyQuality = "high") {
-    this.spiralMaterial = new THREE.MeshLambertMaterial({ color: "#eef2f4", emissive: "#a9b2b8", transparent: true, opacity: 0, depthWrite: false, flatShading: true });
     this.bandMaterial = new THREE.MeshLambertMaterial({ color: "#c3cad0", emissive: "#5d666e", transparent: true, opacity: 0, depthWrite: false, flatShading: true });
-    this.spiralMesh = quality === "low" ? this.buildFlatSpiral() : this.buildSpiral(quality);
+    this.buildRings();
     this.bandMesh = quality === "low" ? this.buildFlatBand() : this.buildBand(quality);
-    this.spiral.add(this.spiralMesh);
     this.band.add(this.bandMesh);
     this.spiral.visible = false;
     this.band.visible = false;
@@ -138,60 +134,28 @@ export class StormSky {
     this.group.add(this.bolt);
   }
 
-  private buildSpiral(quality: SkyQuality): THREE.InstancedMesh {
-    const perArm = ARM_PUFFS[quality];
-    const eye = 12;
-    const mesh = new THREE.InstancedMesh(puffGeometry(), this.spiralMaterial, 5 * perArm + eye);
-    mesh.name = "storm-spiral";
-    mesh.frustumCulled = false;
-    const random = rng(7);
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const color = new THREE.Color();
-    let i = 0;
-    // The eye wall: a tight ring, the thickest cloud.
-    for (let k = 0; k < eye; k++) {
-      const a = (k / eye) * Math.PI * 2;
-      const r = 1.1 + random() * 0.15;
-      const s = 0.42 + random() * 0.15;
-      m.compose(new THREE.Vector3(Math.cos(a) * r, random() * 0.3, Math.sin(a) * r), q, new THREE.Vector3(s, s, s));
-      mesh.setMatrixAt(i, m);
-      mesh.setColorAt(i++, color.setHSL(0.58, 0.08, 0.86 + random() * 0.08));
-    }
-    // Five arms winding out (a log spiral), the puffs growing and thinning.
-    for (let arm = 0; arm < 5; arm++) {
-      for (let p = 0; p < perArm; p++) {
-        const f = p / perArm;
-        const a = (arm / 5) * Math.PI * 2 - f * 2.6;
-        const r = 1.7 + f * 5.2 + random() * 0.25;
-        const s = 0.32 + f * 0.38 + random() * 0.12;
-        m.compose(new THREE.Vector3(Math.cos(a) * r, -f * 0.6 + random() * 0.3, Math.sin(a) * r), q, new THREE.Vector3(s, s * (1 - f * 0.3), s));
-        mesh.setMatrixAt(i, m);
-        mesh.setColorAt(i++, color.setHSL(0.58, 0.06, 0.8 + random() * 0.12 - f * 0.08));
-      }
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    return mesh;
+  /** Section 34b.14: the cyclone's rings, each a flat sheet a little lower than the one inside it. */
+  private buildRings(): void {
+    RINGS.forEach((ring, i) => {
+      const size = (ring.radius / RING_AT) * 2;
+      const geometry = new THREE.PlaneGeometry(size, size);
+      geometry.rotateX(-Math.PI / 2);
+      const material = new THREE.MeshBasicMaterial({ map: ringTexture(ring.seed), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = "storm-spiral";
+      mesh.frustumCulled = false;
+      mesh.position.y = -i * 0.18;
+      mesh.renderOrder = 6 - i;
+      this.spiral.add(mesh);
+      this.rings.push({ mesh, material, strength: ring.strength, spin: ring.spin });
+    });
   }
 
-  private flatMaterials(): { spiral: THREE.MeshBasicMaterial; band: THREE.MeshBasicMaterial } {
+  private flatMaterials(): { band: THREE.MeshBasicMaterial } {
     if (!this.flat) {
-      const sheet = (map: THREE.Texture): THREE.MeshBasicMaterial =>
-        new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-      this.flat = { spiral: sheet(spiralTexture()), band: sheet(bandTexture()) };
+      this.flat = { band: new THREE.MeshBasicMaterial({ map: bandTexture(), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }) };
     }
     return this.flat;
-  }
-
-  /** Low quality: the spiral as one flat painted sheet. */
-  private buildFlatSpiral(): THREE.Mesh {
-    const geometry = new THREE.PlaneGeometry(FLAT_SPIRAL_SIZE, FLAT_SPIRAL_SIZE);
-    geometry.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(geometry, this.flatMaterials().spiral);
-    mesh.name = "storm-spiral";
-    mesh.frustumCulled = false;
-    return mesh;
   }
 
   /** Low quality: the rain band as one flat sheet. */
@@ -228,19 +192,16 @@ export class StormSky {
   }
 
   setQuality(quality: SkyQuality): void {
-    this.spiral.remove(this.spiralMesh);
+    // The cyclone's rings are the same at every quality; only the band changes.
     this.band.remove(this.bandMesh);
-    this.spiralMesh.geometry.dispose();
     this.bandMesh.geometry.dispose();
-    this.spiralMesh = quality === "low" ? this.buildFlatSpiral() : this.buildSpiral(quality);
     this.bandMesh = quality === "low" ? this.buildFlatBand() : this.buildBand(quality);
-    this.spiral.add(this.spiralMesh);
     this.band.add(this.bandMesh);
   }
 
-  /** Whether the sky is drawn as flat sheets (Low quality). */
+  /** Whether the rain band is drawn as a flat sheet (Low quality). */
   get isFlat(): boolean {
-    return !(this.spiralMesh instanceof THREE.InstancedMesh);
+    return !(this.bandMesh instanceof THREE.InstancedMesh);
   }
 
   /**
@@ -250,10 +211,12 @@ export class StormSky {
   setSpiral(x: number, z: number, angle: number, opacity: number, scale: number): void {
     this.spiral.visible = opacity > 0.01;
     this.spiral.position.set(x, CLOUD_HEIGHT, z);
-    this.spiral.rotation.y = angle;
     this.spiral.scale.setScalar(scale);
-    this.spiralMaterial.opacity = Math.min(0.62, opacity);
-    if (this.flat) this.flat.spiral.opacity = Math.min(0.7, opacity);
+    // Section 34b.14: each ring turns at its own pace (the inner ones faster), each at its own strength.
+    for (const ring of this.rings) {
+      ring.mesh.rotation.y = angle * ring.spin;
+      ring.material.opacity = Math.min(ring.strength, opacity * ring.strength * 1.6);
+    }
   }
 
   /** The rain-cloud band at (x, z), lying along `heading` (radians), at `opacity`. */
@@ -298,15 +261,16 @@ export class StormSky {
   }
 
   dispose(): void {
-    this.spiralMesh.geometry.dispose();
+    for (const ring of this.rings) {
+      ring.mesh.geometry.dispose();
+      ring.material.map?.dispose();
+      ring.material.dispose();
+    }
     this.bandMesh.geometry.dispose();
-    this.spiralMaterial.dispose();
     this.bandMaterial.dispose();
     if (this.flat) {
-      for (const material of [this.flat.spiral, this.flat.band]) {
-        material.map?.dispose();
-        material.dispose();
-      }
+      this.flat.band.map?.dispose();
+      this.flat.band.dispose();
     }
     this.bolt.geometry.dispose();
     this.boltMaterial.dispose();

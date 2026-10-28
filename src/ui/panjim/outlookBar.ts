@@ -149,7 +149,9 @@ export class OutlookBar {
       this.ticksFor = ticksKey;
       const ticks = this.el.querySelector(".outlook-ticks")!;
       ticks.innerHTML = "";
-      for (let year = Math.ceil(view.startYear / 5) * 5; year <= view.endYear; year += 5) {
+      // Section 34b.7: a short run (the Tutorial's seven years) ticks its own storm years, not 2030.
+      const years = span <= 10 ? [...stormYears].sort((a, b) => a - b) : Array.from({ length: Math.floor((view.endYear - Math.ceil(view.startYear / 5) * 5) / 5) + 1 }, (_, i) => Math.ceil(view.startYear / 5) * 5 + i * 5);
+      for (const year of years) {
         const tick = document.createElement("span");
         tick.className = `outlook-tick${stormYears.has(year) ? " storm-year" : ""}`;
         tick.style.left = `${pct(year)}%`;
@@ -165,7 +167,8 @@ export class OutlookBar {
     this.renderCountdown(nextStorm ?? null);
 
     const next = view.storms.find((storm) => !storm.past);
-    this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, this.hold)}` : `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.`;
+    // Section 34b.7: with every storm past there are no builds left (the last storm ends the run): nothing to say.
+    this.lineEl.innerHTML = next ? `<b>Next:</b> ${describe(next, this.hold)}` : view.year < view.endYear ? `<b>Every storm is behind you.</b> Finish the city by ${view.endYear}.` : "";
     this.lineEl.classList.toggle("locked", next !== undefined && next.yearsUntil <= 2);
   }
 

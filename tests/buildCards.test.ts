@@ -74,18 +74,23 @@ describe("build cards: the number is the counterfactual", () => {
       while (chosen.size < Math.min(count, options.length)) chosen.add(Math.floor(pick() * options.length));
       const without = stormToll(run, null);
       let nonZero = 0;
+      const timed: { label: string; ms: number }[] = [];
       for (const index of chosen) {
         const { q, r, elementId } = options[index];
         const started = performance.now();
         const card = run.homesSavedBy(storm, { q, r }, elementId)!;
-        const ms = performance.now() - started;
+        timed.push({ label: `${elementId} at ${q},${r}`, ms: performance.now() - started });
         const withIt = stormToll(run, (copy) => expect(copy.build({ q, r }, elementId).ok).toBe(true));
         expect(card, `${elementId} at ${q},${r}`).toBe(without - withIt);
         if (card !== 0) nonZero++;
-        expect(ms, `${elementId} at ${q},${r}: one card's number`).toBeLessThan(200);
       }
       // A run of zeros would prove little.
       expect(nonZero).toBeGreaterThan(0);
+      // A coarse guard on the model's speed, on the median card rather than each one: alone a card takes 4 to 33 ms, but
+      // with the whole suite sharing the cores a single card can stall past 200 ms (seen at 231), which is noise, not
+      // the model. The first card also fills the board's own cache.
+      const median = timed.map((t) => t.ms).sort((a, b) => a - b)[Math.floor(timed.length / 2)];
+      expect(median, `the median card's number (${timed.map((t) => `${t.label} ${t.ms.toFixed(0)} ms`).join(", ")})`).toBeLessThan(100);
     }, 300_000);
   }
 });

@@ -114,6 +114,15 @@ export interface PrepObjective {
   homes?: number;
   /** The places the row names, pinned on the map while it is open (Section 12). */
   pins?: { name: string; q: number; r: number }[];
+  /**
+   * Section 34b.4: a model row counts by the place it names, not its exact tiles. `placeTiles` are every tile of that
+   * place; `place` how the row names it ("in Merces"); `credited` the tiles where a build of its defence took at least
+   * one home out of the storm's risk (when built, or standing so when the row was set). With `credited` the row counts
+   * those still standing, and `baseline` is not used.
+   */
+  placeTiles?: string[];
+  place?: string;
+  credited?: string[];
 }
 
 function standingIn(state: GameState, zones: ZoneIndex, elementId: string, zone: string, tiles?: ReadonlySet<string>): number {
@@ -220,6 +229,33 @@ export function generatePrep(
  * that once completed it is demolished or lost.
  */
 export function prepProgress(job: PrepObjective, state: GameState, zones: ZoneIndex): { current: number; target: number; done: boolean } {
-  const current = Math.min(Math.max(0, standingIn(state, zones, job.elementId, job.zone, job.tiles ? new Set(job.tiles) : undefined) - job.baseline), job.count);
+  // Section 34b.4: a model row counts its credited builds still standing.
+  const standing = job.credited
+    ? [...new Set(job.credited)].filter((key) => state.elements.get(key)?.elementId === job.elementId).length
+    : standingIn(state, zones, job.elementId, job.zone, job.tiles ? new Set(job.tiles) : undefined) - job.baseline;
+  const current = Math.min(Math.max(0, standing), job.count);
   return { current, target: job.count, done: current >= job.count };
+}
+
+/**
+ * Section 34b.4: the row a build of `elementId` at `key` counts for, if any: a row of the next storm with that defence
+ * whose place holds the tile. The caller asks the model whether it takes a home out of the storm's risk.
+ */
+export function rowsForBuild(jobs: readonly PrepObjective[], challengeId: string, key: string, elementId: string): PrepObjective[] {
+  return jobs.filter((job) => job.credited !== undefined && job.challengeId === challengeId && job.elementId === elementId && (job.placeTiles ?? job.tiles ?? []).includes(key));
+}
+
+/** Section 34b.4: the note for a build of a row's defence in its place that took no home out of the storm's risk. */
+export function rowMissNote(place: string): string {
+  return `Built ${place}, but no home there was still at risk from this storm.`;
+}
+
+/**
+ * Section 34b.4: the line under a hovered build card. Every card whose build takes no home out of the next storm's risk
+ * says so, and only those (a khazan or small dam before a cyclone included); one that also puts homes at risk says that
+ * instead of "doesn't change", which would not be true.
+ */
+export function buildHoverLine(change: { saved: readonly string[]; added: readonly string[] }): string | null {
+  if (change.saved.length > 0) return null;
+  return change.added.length > 0 ? "This saves no home from the next storm, and puts some at risk" : "This doesn't change the next storm";
 }

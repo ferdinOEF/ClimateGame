@@ -66,7 +66,7 @@ const onShelter = (): Promise<Record<string, number>> =>
     return { sheltered: shelter.size, heat: n(ex.exposure.keys()), homesAtRisk: n(ex.housesAtRisk), coneBands: n(cone.bands.keys()), coneArea: n(cone.area), coneMeet: n(cone.meet), next: run.nextChallenge().id };
   })()`) as Promise<Record<string, number>>;
 
-await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".brief-card", { timeout: 120000 });
 await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 180000 });
 await page.waitForTimeout(1500);

@@ -41,12 +41,15 @@ describe("the cyclone's wind", () => {
     expect(windField(state, board, storm(state, "compound").storm).size).toBeGreaterThan(0);
   });
 
-  it("is strongest at the shore and weakens with every hex inland", () => {
+  it("is strongest at the shore and weakens with every hex inland, and stops two hexes past the beach (Section 34b)", () => {
     const state = coast();
     const { board, storm: s } = storm(state);
     const wind = windField(state, board, s);
-    const along = [2, 3, 4, 5, 7, 8].map((q) => wind.get(`${q},3`) ?? 0);
+    // The beach is q 2 and 3: the wind reaches q 5 and no further (sandReachHex 2).
+    expect(HAZARD_MODEL.wind!.sandReachHex).toBe(2);
+    const along = [2, 3, 4, 5].map((q) => wind.get(`${q},3`) ?? 0);
     for (let i = 1; i < along.length; i++) expect(along[i]).toBeLessThan(along[i - 1]);
+    for (const q of [6, 7, 8]) expect(wind.has(`${q},3`), `${q},3`).toBe(false);
     expect(wind.has("0,3")).toBe(false);
     // Its shore value is the configured strength there.
     expect(along[0]).toBeCloseTo(HAZARD_MODEL.wind!.perStrengthM * 2 * (1 - 1 / HAZARD_MODEL.wind!.landfallReachHex), 6);
@@ -70,14 +73,17 @@ describe("the cyclone's wind", () => {
     expect(HAZARD_MODEL.wind!.shelterReachHex).toBe(2);
     // Two hexes in every direction, upwind too.
     for (const key of ["2,3", "4,3", "5,3", "3,1", "3,5", "5,1"]) expect(b.get(key)!, key).toBeCloseTo(a.get(key)! * (1 - share), 9);
-    // Three hexes away: untouched.
-    for (const key of ["6,3", "3,0", "6,0"]) expect(b.get(key), key).toBeCloseTo(a.get(key)!, 9);
+    // Three hexes away (still within the wind's reach of the beach): untouched.
+    for (const key of ["3,0", "5,0", "3,6"]) expect(b.get(key), key).toBeCloseTo(a.get(key)!, 9);
+    // Section 34b: past the wind's reach there is no wind to shelter.
+    expect(a.has("6,3")).toBe(false);
   });
 
   it("is lowered by pandanus only: not by mangroves, dunes, seawalls, khazans or breakwaters (Section 25.1)", () => {
     const bare = coast();
     const a = windField(bare, storm(bare).board, storm(bare).storm);
-    for (const [id, q, r] of [["mangrove", 6, 3], ["dune", 3, 3], ["seawall", 3, 3], ["breakwater", 1, 3]] as const) {
+    // Section 34b.9: the seawall on the shore line, beside the sea (q 1 is sea).
+    for (const [id, q, r] of [["mangrove", 6, 3], ["dune", 3, 3], ["seawall", 2, 3], ["breakwater", 1, 3]] as const) {
       const other = coast();
       expect(other.build({ q, r }, id, false), id).toBe(true);
       const b = windField(other, storm(other).board, storm(other).storm);

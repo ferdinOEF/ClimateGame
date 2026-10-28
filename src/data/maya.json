@@ -54,7 +54,8 @@
     "lastCall": "Last call! {count} homes are still in danger, most of them around {place}.",
     "fixed": "{place} looks safe now. Well done!",
     "exposedHelp": "The striped red tiles show where the {storm} will hit. Build around {place} now: homes there can still be saved.",
-    "lastCallHelp": "Last call! {count} homes are still in danger. Build around {place}: homes there can still be saved."
+    "lastCallHelp": "Last call! {count} homes are still in danger. Build around {place}: homes there can still be saved.",
+    "wind": "The cyclone brings wind onto Campal. In this game only pandanus shelters homes from the wind."
   },
   "aftermath": {
     "held": "The {defence} at {place} held {count} homes.",
@@ -69,7 +70,7 @@
     "z1": "Miramar",
     "z2": "Taleigao",
     "z3": "Fontainhas",
-    "z4": "the Mandovi waterfront"
+    "z4": "the Mandovi Riverfront"
   },
   "stormNames": {
     "cyclone": "cyclone",

@@ -21,9 +21,14 @@ import type { StormRecord } from "./stormRecord";
  *
  * Pure: no DOM, no renderer.
  */
+/** Section 34b.5: the monument kinds that are buildings; a beach, a garden or a viewpoint is not one (nor a locality). */
+export const BUILDING_KINDS: ReadonlySet<string> = new Set(["church", "palace", "market", "institution", "temple", "mosque"]);
+
 export interface PlaceResult {
   name: string;
   stood: boolean;
+  /** Section 34b.5: a building (a church, a school...); a place that is not one (a beach, a garden, a locality) reads "Flooded", not "Damaged". */
+  building?: boolean;
 }
 
 export interface DefenceResult {
@@ -59,6 +64,10 @@ export interface PhaseResult {
   shortOfThree?: string;
   /** Section 30.11 bug 1: a damaged place a seawall's end push reached (a game rule), named. */
   pushNote?: string;
+  /** Section 34b.13: on the 2050 storm's card 2, when most of the homes lost stood in the wind at Campal, the line saying so. */
+  windNote?: string;
+  /** Section 34b.5: each defence that broke in this storm, by the build card's name, and whether it had cracked with age. */
+  broken?: { elementId: string; name: string; cracked: boolean }[];
 }
 
 /** Section 25.2: the card's second line: the board's biodiversity change since the run began, and why. */
@@ -215,4 +224,21 @@ export function nextLabel(next: ScheduledChallenge | null): string {
   if (!next) return "Panjim in 2050";
   if (next.kind === "compound") return `Next: cyclone and flood in ${next.year}`;
   return `Next: the ${next.kind} in ${next.year}`;
+}
+
+/** Section 34b.13: card 2's line after the 2050 storm when most of the homes lost stood in the wind at Campal. */
+export const CAMPAL_WIND_NOTE = "Most of the homes lost stood in the wind at Campal. In this game only pandanus lowers the wind.";
+
+/**
+ * Section 34b.13: whether to say CAMPAL_WIND_NOTE: a storm with wind (the 2050 cyclone and flood), most of the homes
+ * it took lost to the wind alone (`windLost` of `lost`), and most of those nearest Campal of the map's localities.
+ */
+export function campalWindNote(kind: string, lost: number, windKeys: readonly string[], localities: readonly Place[]): string | null {
+  if (kind !== "compound" || windKeys.length === 0 || windKeys.length * 2 <= lost) return null;
+  const nearest = (key: string): string | undefined => {
+    const [q, r] = key.split(",").map(Number);
+    return [...localities].sort((a, b) => hexDistance(`${a.q},${a.r}`, `${q},${r}`) - hexDistance(`${b.q},${b.r}`, `${q},${r}`))[0]?.name;
+  };
+  const atCampal = windKeys.filter((key) => nearest(key) === "Campal").length;
+  return atCampal * 2 > windKeys.length ? CAMPAL_WIND_NOTE : null;
 }

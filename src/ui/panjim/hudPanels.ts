@@ -91,10 +91,25 @@ export class HudPanel {
   open(): void {
     if (this.isOpen) return;
     this.body.hidden = false;
+    this.keepInWindow();
     this.el.classList.add("open");
     this.button.setAttribute("aria-expanded", "true");
     this.onOpen?.();
     this.onToggle(this, true);
+  }
+
+  /** Section 34b.7: a menu whose right edge would pass the window's (12 px in) is pinned 12 px from the right instead. */
+  private keepInWindow(): void {
+    this.body.style.removeProperty("position");
+    this.body.style.removeProperty("right");
+    this.body.style.removeProperty("left");
+    this.body.style.removeProperty("top");
+    const r = this.body.getBoundingClientRect();
+    if (r.width === 0 || r.right <= window.innerWidth - 12) return;
+    this.body.style.position = "fixed";
+    this.body.style.top = `${Math.round(r.top)}px`;
+    this.body.style.right = "12px";
+    this.body.style.left = "auto";
   }
 
   close(): void {

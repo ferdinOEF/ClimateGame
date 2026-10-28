@@ -33,7 +33,7 @@ async function newPage(): Promise<Page> {
 // ---- in Panjim: ☰, Larger text with the build menu, the Field Guide, Leave Panjim? ------------------------------
 {
   const page = await newPage();
-  await page.goto(`${server.url}/#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
   await page.waitForTimeout(1500);
@@ -88,7 +88,7 @@ async function newPage(): Promise<Page> {
 // ---- the Sources screen, from the menu -------------------------------------------------------------------------
 {
   const page = await newPage();
-  await page.goto(`${server.url}/#/`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1#/`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(3000);
   const link = page.locator(".menu-sources-link, .menu-credits-sources").first();
   if (await link.count()) {
@@ -96,7 +96,7 @@ async function newPage(): Promise<Page> {
     await page.waitForTimeout(1200);
     await shot(page, "sources");
   } else missed.push("no Facts & sources link");
-  await page.goto(`${server.url}/#/levels`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1#/levels`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(3000);
   await shot(page, "level-select");
   await page.close();

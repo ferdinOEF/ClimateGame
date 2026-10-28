@@ -11,7 +11,7 @@ import { computeWater, damageAt, defenceMetres, floodsHouse, HAZARD_MODEL, LANDF
  * order: a cyclone makes landfall on the Miramar–Dona Paula beach (Z1), then
  * runs inland over the Taleigao plain (Z2); the monsoon flood rises in the
  * Taleigao, St Cruz and Merces wetlands (Z2), drains down the Ourem creek
- * past Fontainhas (Z3) and ends on the Mandovi waterfront (Z4); the compound
+ * past Fontainhas (Z3) and ends on the Mandovi Riverfront (Z4); the compound
  * storm does both at once and meets itself in Z4.
  *
  * At each zone the hazard meets that zone's defence: the summed `resilience`

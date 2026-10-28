@@ -3,7 +3,7 @@ import { playSound } from "@ui/audioHooks";
 import { noteIdsFor, notesProgress } from "@core/mayaLines";
 import { factById } from "@core/facts";
 import { BROKEN_RULE, defenceRules } from "@ui/panjim/defenceCards";
-import { COMBO_INFO } from "@core/combos";
+import { COMBO_INFO, COMBO_SOURCE, comboNote } from "@core/combos";
 
 /**
  * The Field Guide: eleven species of the Panjim coast, collected by tapping the
@@ -33,6 +33,27 @@ export interface Species {
 }
 
 export const SPECIES: Species[] = guideData as Species[];
+
+/** Section 34b.7: what each home is called in the game (the build cards' words); pandanus and mangrove take no article. */
+const HOME_NAME: Record<string, string> = {
+  dune: "a dune",
+  sandy_vegetation: "pandanus",
+  mangrove: "mangrove",
+  khazan: "a khazan",
+  small_dam: "a small dam",
+  breakwater: "a breakwater",
+  seawall: "a seawall"
+};
+
+/** An unseen creature's line: "Not seen yet. Something visits pandanus." */
+export function visitLine(home: string): string {
+  return home === "water" ? "Not seen yet. Something swims in the open water." : `Not seen yet. Something visits ${HOME_NAME[home] ?? `a ${home.replace(/_/g, " ")}`}.`;
+}
+
+/** Section 34b.7: the guide's line under its name in the menu: "1 of 22 notes, 0 of 11 creatures" (no notes while Maya is hidden). */
+export function guideCounts(notes: string | null, found: number, total: number): string {
+  return `${notes ? `${notes} notes, ` : ""}${found} of ${total} creatures`;
+}
 // Section 28.2 (owner decision): the creatures found and Maya's notes last for this visit only; nothing is saved
 // on the machine (the old keys are cleared on load, services/storagePolicy.ts).
 
@@ -155,7 +176,9 @@ export class FieldGuide {
   }
 
   private renderButton(): void {
-    this.button.textContent = this.notesShown ? `Field Guide ${this.notesProgress()}` : "Field Guide";
+    // Section 34b.7: the menu's line said "1 of 22" (Maya's notes) while the guide opened on "0 of 11" (creatures).
+    this.button.innerHTML = `Field Guide<span class="field-guide-sub"></span>`;
+    (this.button.querySelector(".field-guide-sub") as HTMLElement).textContent = guideCounts(this.notesShown ? this.notesProgress() : null, this.count, SPECIES.length);
   }
 
   private showToast(text: string): void {
@@ -179,7 +202,7 @@ export class FieldGuide {
       page.className = `field-guide-page${known ? " found" : ""}`;
       page.innerHTML = known
         ? `<b></b><p></p>`
-        : `<b>???</b><p>${species.home === "water" ? "Not seen yet. Something swims in the open water." : `Not seen yet. Something visits a ${species.home.replace("_", " ")}.`}</p>`;
+        : `<b>???</b><p>${visitLine(species.home)}</p>`;
       if (known) {
         (page.querySelector("b") as HTMLElement).textContent = species.name;
         (page.querySelector("p") as HTMLElement).textContent = species.line;
@@ -197,14 +220,26 @@ export class FieldGuide {
     const defences = this.backdrop.querySelector(".field-guide-defences") as HTMLElement;
     defences.innerHTML = "";
     // Section 30.11 bug 7: what side by side does, in the game's plain words.
-    const together = Object.entries(COMBO_INFO).map(([id, info]) => ({ id, name: "Side by side", text: `In this game: ${info.plain}` }));
-    for (const rule of [...defenceRules(), { id: "broken", name: "Broken defences", text: BROKEN_RULE }, ...together]) {
+    const together = Object.values(COMBO_INFO).map((info) => ({ id: "combo", name: "Side by side", text: comboNote(info), source: COMBO_SOURCE }));
+    // Section 34b (owner decision): where the wind reaches, from the same rule the Sources screen lists.
+    const windReach = factById("wind-reach")?.text;
+    const wind = windReach ? [{ id: "wind", name: "The wind", text: `In this game ${windReach.charAt(0).toLowerCase()}${windReach.slice(1)}` }] : [];
+    const rules: { id: string; name: string; text: string; source?: string }[] = [...defenceRules(), { id: "broken", name: "Broken defences", text: BROKEN_RULE }, ...wind, ...together];
+    for (const rule of rules) {
       const item = document.createElement("li");
       item.className = "field-guide-defence";
       item.dataset.defence = rule.id;
       item.innerHTML = `<b></b><p></p>`;
       (item.querySelector("b") as HTMLElement).textContent = rule.name;
       (item.querySelector("p") as HTMLElement).textContent = rule.text;
+      // Section 34b.7: a game rule with a real world fact behind it says so, with its source.
+      const fact = rule.source ? factById(rule.source) : undefined;
+      if (fact?.citation) {
+        const line = document.createElement("p");
+        line.className = "field-guide-fact";
+        line.textContent = `${fact.text} Source: ${fact.citation.publisher}, ${fact.citation.year}.`;
+        item.appendChild(line);
+      }
       defences.appendChild(item);
     }
     const list = this.backdrop.querySelector(".field-guide-notes") as HTMLElement;

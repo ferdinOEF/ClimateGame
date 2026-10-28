@@ -55,7 +55,7 @@ const js = <T>(page: Page, code: string): Promise<T> => page.evaluate(code) as P
 const want = (name: string): boolean => !ONLY || ONLY.has(name);
 
 async function startPanjim(page: Page, level: string): Promise<void> {
-  await page.goto(`${server.url}/#/play/${level}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1#/play/${level}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
   await page.waitForTimeout(2000);
@@ -64,7 +64,7 @@ async function startPanjim(page: Page, level: string): Promise<void> {
 // ---- the main menu ---------------------------------------------------------------------------------------------
 if (want("menu")) {
   const page = await newPage();
-  await page.goto(`${server.url}/#/`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1#/`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(4000);
   await page.mouse.move(2, 2);
   await shot(page, "menu");

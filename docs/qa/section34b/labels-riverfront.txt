@@ -1,0 +1,82 @@
+
+> riptide-rising@1.0.0 test:labels
+> tsx tools/labelOverlapTest.ts
+
+(node:28908) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS  520x599 zoom 1 (opening view): label layer 1.70 ms median, 4.00 ms max a frame; 3 drawn [Miramar BeachBeach at the river mouth, Campal, Miramar]; dropped or out of view: 26
+PASS  520x599 zoom 1, church name card: label layer 1.50 ms median, 3.70 ms max a frame; 2 drawn [Altinho, Fontainhas]; dropped or out of view: 27
+INFO  520x599 the name card is drawn, ahead of the localities (not in a window under 900 px: its spot is under the HUD card)
+PASS  520x599 zoom 2: label layer 1.60 ms median, 6.30 ms max a frame; 2 drawn [Altinho, Fontainhas]; dropped or out of view: 27
+PASS  520x599 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  520x599 zoom 2, temple hovered: label layer 1.60 ms median, 5.20 ms max a frame; 3 drawn [Fontainhas, São Tomé, Patto]; dropped or out of view: 26
+PASS  520x599 zoom 3 (close): label layer 1.50 ms median, 4.50 ms max a frame; 1 drawn [Fontainhas]; dropped or out of view: 28
+PASS  520x599 during a drag-pan (frame by frame): no overlap in any frame
+PASS  520x599 zoom 3 after a pan: label layer 1.40 ms median, 3.10 ms max a frame; 0 drawn []; dropped or out of view: 29
+PASS  520x599 zoom 2, Maya talking: label layer 1.30 ms median, 1.70 ms max a frame; 0 drawn []; dropped or out of view: 29
+PASS  520x599 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  520x599 warning showing: label layer 1.50 ms median, 3.90 ms max a frame; 0 drawn []; dropped or out of view: 29
+PASS  1024x640 zoom 1 (opening view): label layer 1.70 ms median, 3.00 ms max a frame; 7 drawn [Miramar BeachBeach at the river mouth, Campal, Altinho, Fontainhas, Miramar, Taleigao, Dona Paula]; dropped or out of view: 22
+PASS  1024x640 zoom 1, church name card: label layer 1.70 ms median, 3.70 ms max a frame; 5 drawn [Our Lady of the Immaculate ConceptionHeritage church, Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 24
+PASS  1024x640 the name card is drawn, ahead of the localities
+PASS  1024x640 zoom 2: label layer 1.80 ms median, 26.00 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1024x640 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1024x640 zoom 2, temple hovered: label layer 1.80 ms median, 4.10 ms max a frame; 8 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 21
+PASS  1024x640 zoom 3 (close): label layer 1.70 ms median, 3.80 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1024x640 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1024x640 zoom 3 after a pan: label layer 1.70 ms median, 2.30 ms max a frame; 2 drawn [Patto, Atal Setu]; dropped or out of view: 27
+PASS  1024x640 zoom 2, Maya talking: label layer 1.60 ms median, 6.60 ms max a frame; 2 drawn [Patto, Atal Setu]; dropped or out of view: 27
+PASS  1024x640 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1024x640 warning showing: label layer 1.60 ms median, 6.50 ms max a frame; 1 drawn [St Cruz]; dropped or out of view: 28
+PASS  1280x600 zoom 1 (opening view): label layer 1.50 ms median, 4.20 ms max a frame; 7 drawn [Miramar BeachBeach at the river mouth, Campal, Altinho, Fontainhas, Miramar, Taleigao, Dona Paula]; dropped or out of view: 22
+PASS  1280x600 zoom 1, church name card: label layer 1.50 ms median, 4.80 ms max a frame; 5 drawn [Our Lady of the Immaculate ConceptionHeritage church, Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 24
+PASS  1280x600 the name card is drawn, ahead of the localities
+PASS  1280x600 zoom 2: label layer 1.70 ms median, 6.50 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1280x600 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1280x600 zoom 2, temple hovered: label layer 1.60 ms median, 4.90 ms max a frame; 8 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 21
+PASS  1280x600 zoom 3 (close): label layer 1.50 ms median, 5.60 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1280x600 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1280x600 zoom 3 after a pan: label layer 1.50 ms median, 2.90 ms max a frame; 2 drawn [Patto, Atal Setu]; dropped or out of view: 27
+PASS  1280x600 zoom 2, Maya talking: label layer 1.60 ms median, 3.10 ms max a frame; 3 drawn [Altinho, Patto, Atal Setu]; dropped or out of view: 26
+PASS  1280x600 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1280x600 warning showing: label layer 1.50 ms median, 2.80 ms max a frame; 3 drawn [Taleigao, St Cruz, Merces]; dropped or out of view: 26
+PASS  1366x768 zoom 1 (opening view): label layer 1.50 ms median, 3.70 ms max a frame; 7 drawn [Miramar BeachBeach at the river mouth, Campal, Altinho, Fontainhas, Miramar, Taleigao, Dona Paula]; dropped or out of view: 22
+PASS  1366x768 zoom 1, church name card: label layer 1.50 ms median, 4.10 ms max a frame; 5 drawn [Our Lady of the Immaculate ConceptionHeritage church, Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 24
+PASS  1366x768 the name card is drawn, ahead of the localities
+PASS  1366x768 zoom 2: label layer 1.60 ms median, 3.30 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1366x768 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1366x768 zoom 2, temple hovered: label layer 1.50 ms median, 6.70 ms max a frame; 8 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 21
+PASS  1366x768 zoom 3 (close): label layer 1.60 ms median, 8.40 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1366x768 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1366x768 zoom 3 after a pan: label layer 1.50 ms median, 4.40 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  1366x768 zoom 2, Maya talking: label layer 1.40 ms median, 4.60 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  1366x768 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1366x768 warning showing: label layer 1.50 ms median, 6.70 ms max a frame; 2 drawn [St Cruz, Merces]; dropped or out of view: 27
+PASS  1920x1080 zoom 1 (opening view): label layer 1.50 ms median, 10.00 ms max a frame; 7 drawn [Miramar BeachBeach at the river mouth, Campal, Altinho, Fontainhas, Miramar, Taleigao, Dona Paula]; dropped or out of view: 22
+PASS  1920x1080 zoom 1, church name card: label layer 1.60 ms median, 63.00 ms max a frame; 4 drawn [Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 25
+PASS  1920x1080 the name card is drawn, ahead of the localities
+PASS  1920x1080 zoom 2: label layer 2.00 ms median, 50.80 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  1920x1080 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  1920x1080 zoom 2, temple hovered: label layer 3.30 ms median, 284.00 ms max a frame; 8 drawn [Mahalaxmi TempleTemple, Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 21
+PASS  1920x1080 zoom 3 (close): label layer 3.40 ms median, 234.80 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  1920x1080 during a drag-pan (frame by frame): no overlap in any frame
+PASS  1920x1080 zoom 3 after a pan: label layer 1.60 ms median, 17.60 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  1920x1080 zoom 2, Maya talking: label layer 1.40 ms median, 28.30 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  1920x1080 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  1920x1080 warning showing: label layer 1.30 ms median, 4.30 ms max a frame; 2 drawn [St Cruz, Merces]; dropped or out of view: 27
+PASS  2560x1440 zoom 1 (opening view): label layer 1.60 ms median, 24.60 ms max a frame; 7 drawn [Miramar BeachBeach at the river mouth, Campal, Altinho, Fontainhas, Miramar, Taleigao, Dona Paula]; dropped or out of view: 22
+PASS  2560x1440 zoom 1, church name card: label layer 2.90 ms median, 254.30 ms max a frame; 4 drawn [Campal, Altinho, Fontainhas, Miramar]; dropped or out of view: 25
+PASS  2560x1440 the name card is drawn, ahead of the localities
+PASS  2560x1440 zoom 2: label layer 2.00 ms median, 164.70 ms max a frame; 3 drawn [Campal, Altinho, Fontainhas]; dropped or out of view: 26
+PASS  2560x1440 hovering the temple's tile brings up its card (Mahalaxmi Temple)
+PASS  2560x1440 zoom 2, temple hovered: label layer 1.70 ms median, 100.70 ms max a frame; 7 drawn [Campal, Altinho, Fontainhas, São Tomé, Patto, Santa Inez, Atal Setu]; dropped or out of view: 22
+PASS  2560x1440 zoom 3 (close): label layer 3.60 ms median, 149.50 ms max a frame; 5 drawn [Campal, Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 24
+PASS  2560x1440 during a drag-pan (frame by frame): no overlap in any frame
+PASS  2560x1440 zoom 3 after a pan: label layer 2.60 ms median, 19.10 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  2560x1440 zoom 2, Maya talking: label layer 2.80 ms median, 29.30 ms max a frame; 4 drawn [Fontainhas, São Tomé, Patto, Atal Setu]; dropped or out of view: 25
+PASS  2560x1440 during a warning's camera glide (frame by frame): no overlap in any frame
+PASS  2560x1440 warning showing: label layer 3.50 ms median, 3.50 ms max a frame; 2 drawn [St Cruz, Merces]; dropped or out of view: 27
+PASS  Tutorial 1920x1080: label layer 1.10 ms median, 3.90 ms max a frame; 5 drawn [Open sea, The beach, The estuary, The river, The village]; dropped or out of view: 0
+FAIL  page errors: 520x599: Failed to load resource: the server responded with a status of 403 (Forbidden) | 520x599: Failed to load resource: the server responded with a status of 403 (Forbidden) | 520x599: Failed to load resource: the server responded with a status of 403 (Forbidden) | 520x599: Failed t
+
+73 views checked, 1 failed; label layer at most 284.00 ms a frame

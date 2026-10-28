@@ -592,7 +592,6 @@ canvas:focus-visible {
 /* Tooltips and map notes: --panel with --ink and the flat shadow. */
 .hud-tooltip,
 .hud-panel-button::before,
-.speed-up[data-hint]:not([data-hint=""])::after,
 .map-note {
   background: var(--panel);
   color: var(--ink);

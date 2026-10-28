@@ -37,7 +37,8 @@ describe("a defence's own strength (defenceMetres)", () => {
 
   it("counts only against the hazards it answers", () => {
     const { state } = fixture();
-    state.build({ q: 0, r: 0 }, "seawall", false);
+    // Its strength, wherever it stands (Section 34b.9 keeps seawalls to the shore line; this board has no sea).
+    state.elements.set("0,0", { elementId: "seawall", builtOnTurn: state.turn, degradeAmount: 0, floodBufferFilled: 0 });
     expect(defenceMetres(state, "0,0", "cyclone")).toBeCloseTo(16 * m);
     expect(defenceMetres(state, "0,0", "flood")).toBe(0);
   });
@@ -120,7 +121,8 @@ describe("area protection (layered defence and its ceilings)", () => {
     expect(Math.max(...lp.values())).toBeCloseTo(maxProtectionM);
     for (const v of lp.values()) expect(v).toBeLessThanOrEqual(maxProtectionM + 1e-9);
     const wall = row();
-    wall.state.build({ q: 3, r: 0 }, "seawall", false);
+    // Its strength, wherever it stands (Section 34b.9 keeps seawalls to the shore line; this row has no sea).
+    wall.state.elements.set("3,0", { elementId: "seawall", builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0 });
     const p = protection(wall.state, wall.board);
     expect(p.get("3,0")!).toBeGreaterThan(maxProtectionM);
     expect(defenceMetres(wall.state, "3,0", "cyclone")).toBeGreaterThan(engineeredMaxProtectionM!);

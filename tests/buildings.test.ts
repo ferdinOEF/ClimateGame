@@ -145,9 +145,9 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     // every Storm-Surge-exposed Coast tile took full, undefended damage,
     // forever, no matter how the player played. Breakwater closes that
     // content gap; Yacht is still Coast's only cosmetic/non-defense option.
-    // Seawall joined it so Coast has two real defences to choose between
-    // (an earlier balance pass): a detached breakwater or a heavier wall.
-    expect(coastOptions.sort()).toEqual(["breakwater", "seawall", "yacht"]);
+    // Seawall joined it (an earlier balance pass); Section 34b.9 (owner decision 2d) moved the seawall to the shore
+    // line, land beside the sea, so open sea offers the breakwater and Yacht.
+    expect(coastOptions.sort()).toEqual(["breakwater", "yacht"]);
 
     for (const terrainId of ["beach", "land", "river", "estuary"]) {
       const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId }]);
