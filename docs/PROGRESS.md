@@ -9054,7 +9054,7 @@ aside while a menu is open; the cyclone's rings come pre-blurred where the canva
 Open for the owner: the Campal pandanus row is still never offered (the water alone takes the six homes in the wind);
 for the best plan 2050 now loses 4 homes as 2040 does; Safari unchecked.
 
-## Section 34c — the HUD card top right at half its size, Maya bottom left, Kala Academy on the bank — READY TO MERGE (QA in docs/QA_REPORT.md)
+## Section 34c — the HUD card top right at half its size, Maya bottom left, Kala Academy on the bank — MERGED (`ec57748`, deployed to production)
 
 Branch `section-34c-hud-right-maya-left` from master `f94ae43` (tag `pre-section-34c`), one commit a step. What
 changed for a player: the HUD card is 300 px wide (was 400), its year with ? and ☰ on one line and "Year N of 25" with

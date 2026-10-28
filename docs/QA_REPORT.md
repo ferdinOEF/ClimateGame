@@ -2363,4 +2363,6 @@ No storm changes its state: nothing that stood dry floods. The 2030 cyclone at 1
 **Not run:** Safari and Firefox; the full browser check (`npm run walkthrough`, all four sizes, axe, grayscale and
 deuteranopia copies; not asked for).
 
-**Revert:** `git revert -m 1 <the merge commit>` (the merge waits for the owner's word).
+**Merge and Vercel.** Merged with `git merge --no-ff` on the owner's word: `ec57748` (tsc and build clean on the merged tree). Vercel's production deployment of `ec57748` (`dpl_5XGBpxovzR8kwWYirhw9wd7CkgF4`) is READY and aliased to climate-game-psi.vercel.app. Production loaded from here at 1920x1080: the card at (1606, 12, 300, 242), Maya at (12, 926), the credit at the bottom right, her greeting "The steps are in the card, top right."; every game file 200, the one console error the Vercel security checkpoint's 403 on the first request.
+
+**Revert:** `git revert -m 1 ec57748`.
