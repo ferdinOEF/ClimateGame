@@ -860,13 +860,13 @@ export class PanjimController {
         this.riskToggle.set(true);
       }
       // Section 34: with the objective's checklist done, the builds left in the phase were aimless (players could not
-      // see which homes were still at risk). Show risk keeps its Section 21.4 default; Maya says once a phase where
-      // to look (owner decision 7 in docs/REVIEW_34.md: whether the red should come on by itself then).
+      // see which homes were still at risk). Section 34b (owner decision 7, option b): the red comes on by itself,
+      // once a phase, when the objective is done; R still turns it off, and it stays off for the phase.
       const zones = this.run.zones;
       const done = !this.tutorial && !!zones && this.run.prep.length > 0 && this.run.prep.every((job) => prepProgress(job, this.host.state, zones).done);
-      if (done && !this.riskAfterObjective && next && !warning && !this.riskToggle.value) {
+      if (done && !this.riskAfterObjective && next && !warning) {
         this.riskAfterObjective = true;
-        this.maya.say({ id: `objective-done:${next.id}`, text: "The list is done. Press R to see the homes this storm would still take, and choose where to build next.", state: "tip" });
+        this.riskToggle.set(true);
       }
     } finally {
       this.riskDefaulting = false;

@@ -627,3 +627,12 @@ describe("34b.15: the flood is muddy water, not night (the owner's mock up, Opti
     expect(water).toContain("look[i4 + 1] = slot.sea ? 0 : Math.max(flood, stored);");
   });
 });
+
+describe("owner decision 7 (28 October): the red comes on by itself once the list is done", () => {
+  it("Show risk turns on once a phase when the objective is done; R still turns it off; Maya's Press R line is gone", () => {
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    expect(controller).toContain("if (done && !this.riskAfterObjective && next && !warning) {\n        this.riskAfterObjective = true;\n        this.riskToggle.set(true);");
+    expect(controller).not.toContain("Press R to see the homes");
+    expect(controller).toContain(`if (event.key === "r" || event.key === "R") this.riskToggle.toggle();`);
+  });
+});

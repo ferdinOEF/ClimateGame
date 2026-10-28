@@ -549,6 +549,45 @@ STEPS.push([
   }
 ]);
 
+// ---- Owner decision 7 (28 October): the red comes on by itself once the list is done; R turns it off ----
+STEPS.push([
+  "risk",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    // The 2040 phase (ten builds, its heat from 2038): follow the objective's picks until its list is done.
+    await page.evaluate(`window.__panjimScenarioForTest("past-storm")`);
+    await page.waitForTimeout(1500);
+    const state = (): Promise<{ year: number; done: boolean; red: boolean; warning: boolean }> =>
+      page.evaluate(`(() => { const c = window.__panjimForTest; const r = c.run; const next = r.nextChallenge(); const left = r.yearsUntil(next);
+        const done = r.prep.length > 0 && r.prep.every((j) => { const t = new Set(j.credited ?? []); return [...t].filter((k) => r.state.elements.get(k)?.elementId === j.elementId).length >= j.count; });
+        return { year: r.year, done, red: c.riskToggle.value, warning: left >= 1 && left <= c.heatLeadYears }; })()`) as Promise<{ year: number; done: boolean; red: boolean; warning: boolean }>;
+    let s = await state();
+    check(!s.red, `the red is off as the 2040 phase begins (${s.year})`);
+    // One pick built, then the list marked done as it stands (each row's target what already counts), in 2032, before the
+    // heat years: the board must answer as it does when a player finishes the list.
+    await page.evaluate(`(() => { const c = window.__panjimForTest; const r = c.run; const p = (r.objective?.picks ?? []).find((x) => { const [q, rr] = x.key.split(",").map(Number); return r.state.canBuild({ q, r: rr }, x.elementId); }); if (p) { const [q, rr] = p.key.split(",").map(Number); c.build({ q, r: rr }, p.elementId); } })()`);
+    await page.waitForTimeout(1600);
+    await page.evaluate(`(() => { const c = window.__panjimForTest; for (const j of c.run.prep) j.count = [...new Set(j.credited ?? [])].filter((k) => c.run.state.elements.get(k)?.elementId === j.elementId).length; c.renderOutlook(); })()`);
+    await page.waitForTimeout(600);
+    s = await state();
+    if (!s.done || s.warning) {
+      info(`the list was not done before the heat years on this board (${JSON.stringify(s)}); the check needs a phase whose list finishes early`);
+    } else {
+      check(s.red, `once the list is done (${s.year}) the red is on by itself`);
+      await page.screenshot({ path: path.join(ctx.out, `risk-on-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+      check(!(await page.evaluate(`window.__panjimForTest.maya.currentLine?.text ?? ""`) as string).includes("Press R"), "Maya no longer says Press R");
+      await page.keyboard.press("r");
+      await page.waitForTimeout(500);
+      check(!(await state()).red, "R turns it off");
+      await page.evaluate(`window.__panjimScenarioForTest("pass-year")`);
+      await page.waitForTimeout(1500);
+      const after = await state();
+      check(!after.red || after.warning, `and it stays off for the phase (${after.year}, ${after.red ? "on: the heat years' own default" : "off"})`);
+    }
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {
