@@ -2984,8 +2984,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // The risk sequence gives way the moment the player opens a menu.
     if (riskIntro.isRunning && overlayOpen()) riskIntro.cancel("menu");
     riskIntro.frame(nowMs);
-    // Section 34b (owner, 28 October): Maya's bubble steps aside while a build menu or tile card is open.
-    panjim?.maya.setTucked(buildPopover.isOpen);
+    // Section 34b (owner, 28 October): Maya's bubble steps aside while a build menu or tile card is open, except for
+    // the Tutorial's coaching lines, which are about that very menu (the cards, the glowing one) and stand clear of it.
+    panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:"));
     // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes.
     if (pendingCameraMove && !buildPopover.isOpen) {
       const move = pendingCameraMove;

@@ -237,10 +237,11 @@ const FRAGMENT = /* glsl */ `
     }
 
     // Not colour alone: flooded land and khazans carry wavy stripes.
+    float landStripe = 0.0;
     if (kind > 1.5 && uPattern > 0.5) {
       float wave = sin((vWorld.x + vWorld.z) * 7.0 + sin((vWorld.x - vWorld.z) * 3.0) * 1.2);
-      float stripe = smoothstep(0.55, 0.85, wave);
-      col = mix(col, col * 0.78, stripe * clamp(depth * 0.9 + 0.3, 0.0, 0.8));
+      landStripe = smoothstep(0.55, 0.85, wave) * clamp(depth * 0.9 + 0.3, 0.0, 0.8);
+      col = mix(col, col * 0.78, landStripe);
     }
 
     // Khazan holding the water: a slow shimmer; absorbing it: a bright pulse.
@@ -264,7 +265,8 @@ const FRAGMENT = /* glsl */ `
       col = mix(col, mud, flood);
       alpha = mix(alpha, alpha / 0.86 * mix(0.92, 0.70, e), flood);
     } else if (flood > 0.0 && kind > 1.5 && kind < 2.5) {
-      col = mix(col, uFloodLand, flood);
+      // The flat grey keeps the land's stripes (not colour alone).
+      col = mix(col, uFloodLand * mix(1.0, 0.78, landStripe), flood);
       alpha = mix(alpha, alpha / 0.82 * 0.6, flood);
     }
 
@@ -314,12 +316,21 @@ export interface WaterFrame {
   fills?: ReadonlyMap<string, number>;
 }
 
+/** Section 34b.15: the river flood's colours, from the owner's mock up (Option B). */
+export const FLOOD = { centre: "#7E6A48", mid: "#5D6260", rim: "#3F7F9E", land: "#5D6260", foam: "#DDE3D2" } as const;
+
+/**
+ * The flood's colours as the shader wants them: this shader writes its colour to the screen as it is (no conversion
+ * from linear), so each uniform holds the hex's own sRGB values and the screen shows the owner's hex exactly.
+ */
+function screenColour(hex: string): THREE.Color {
+  return new THREE.Color().setStyle(hex, THREE.LinearSRGBColorSpace);
+}
+
 /**
  * Section 34b.14: the storm sea's colour from the board's own sea (PALETTE.seaTurquoise): its lightness times `light`
  * (0.8 is 20% darker) and its saturation times `saturation`.
  */
-/** Section 34b.15: the river flood's colours, from the owner's mock up (Option B). */
-export const FLOOD = { centre: "#7E6A48", mid: "#5D6260", rim: "#3F7F9E", land: "#5D6260", foam: "#DDE3D2" } as const;
 
 export function stormSea(light: number, saturation: number): THREE.Color {
   const hsl = { h: 0, s: 0, l: 0 };
@@ -362,11 +373,11 @@ export class StormWater {
         uBoth: { value: new THREE.Color("#5846a0") },
         uKhazan: { value: new THREE.Color("#4abec8") },
         uPattern: { value: 1 },
-        uFloodCentre: { value: new THREE.Color(FLOOD.centre) },
-        uFloodMid: { value: new THREE.Color(FLOOD.mid) },
-        uFloodRim: { value: new THREE.Color(FLOOD.rim) },
-        uFloodLand: { value: new THREE.Color(FLOOD.land) },
-        uFloodFoam: { value: new THREE.Color(FLOOD.foam) },
+        uFloodCentre: { value: screenColour(FLOOD.centre) },
+        uFloodMid: { value: screenColour(FLOOD.mid) },
+        uFloodRim: { value: screenColour(FLOOD.rim) },
+        uFloodLand: { value: screenColour(FLOOD.land) },
+        uFloodFoam: { value: screenColour(FLOOD.foam) },
         uDetail: { value: quality === "low" ? 0 : 1 }
       }
     });

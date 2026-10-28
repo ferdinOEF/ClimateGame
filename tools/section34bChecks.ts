@@ -617,6 +617,19 @@ STEPS.push([
       check(!(await bubbleOpen(page)), "after Got it, closing a menu brings no line back");
     }
     await page.close();
+    // The Tutorial's coaching line about the cards speaks over the menu it is about (review, MAJOR).
+    const tut = await openGame(ctx, { tutorial: true });
+    let free: Awaited<ReturnType<typeof tileOnScreen>> = null;
+    for (const terrain of ["beach", "land", "estuary", "river"]) free ??= await tileOnScreen(tut, ctx, terrain);
+    check(free !== null, "the Tutorial: a free tile is on screen");
+    if (free) {
+      await tut.mouse.click(free.x, free.y);
+      await tut.waitForTimeout(900);
+      const id = (await tut.evaluate(`window.__panjimForTest.maya.currentLine?.id ?? ""`)) as string;
+      check((await menuOpen(tut)) && (await bubbleOpen(tut)) && id === "tutorial:cards", `the Tutorial: with the menu open, her line about the cards shows (${id})`);
+      await tut.screenshot({ path: path.join(ctx.out, `tuck-tutorial-cards-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+    }
+    await tut.close();
   }
 ]);
 

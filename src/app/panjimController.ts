@@ -1919,6 +1919,8 @@ export class PanjimController {
     this.maya.withdraw((line) => line.id.startsWith("tutorial:") && !line.id.startsWith("tutorial:step:"));
     this.maya.dismiss();
     this.maya.say({ id: `tutorial:${id}`, text: TUTORIAL_LINES[id], state, urgent: true });
+    // Section 34b: a coaching line speaks even with a menu open (the session's frame loop keeps it untucked).
+    this.maya.setTucked(false);
     this.maya.next();
   }
 

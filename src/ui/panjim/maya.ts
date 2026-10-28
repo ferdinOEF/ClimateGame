@@ -387,8 +387,12 @@ export class Maya {
     this.el.classList.toggle("tucked", on);
     if (!this.current) return;
     this.bubble.hidden = on;
-    if (on) window.clearTimeout(this.hideTimer);
-    else {
+    if (on) {
+      window.clearTimeout(this.hideTimer);
+      // A hidden bubble never hears the pointer leave it: it starts afresh when it comes back.
+      this.holding = false;
+      this.pointerOver = false;
+    } else {
       if (this.current.hint && !this.holdLines) this.armHide(this.current, 4000);
       this.bubbleAt = "";
       this.layoutDirty = true;

@@ -693,7 +693,9 @@ describe("owner, 28 October: Maya's bubble steps aside for an open build menu or
     expect(maya).toContain("if (this.current || this.muted || this.minimised || this.tucked) return false;");
     expect(maya).toContain("if (this.minimised || this.tucked || !this.current) return;");
     const session = readFileSync("src/app/gameSession.ts", "utf8");
-    expect(session).toContain("panjim?.maya.setTucked(buildPopover.isOpen);");
+    expect(session).toContain('panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:"));');
+    // The Tutorial's coaching lines are about the open menu: they speak over it (review, MAJOR).
+    expect(readFileSync("src/app/panjimController.ts", "utf8")).toContain("    this.maya.setTucked(false);\n    this.maya.next();");
     expect(session).not.toContain("if (panjim?.maya.speaking) panjim.maya.dismiss();\n    openTilePopover(coord);");
   });
 });
