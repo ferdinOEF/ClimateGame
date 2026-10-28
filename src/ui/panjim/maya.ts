@@ -1,6 +1,6 @@
 /**
  * Maya, the field guide: a naturalist from the Goan coast who lives in the
- * bottom-right corner of the HUD and says one short, specific thing at a time.
+ * bottom-left corner of the HUD and says one short, specific thing at a time.
  *
  * Drawn as a few layers and animated with CSS: no textures, no 3D, nothing to
  * load. Her look is an original design for this game (mayaArt.ts): a young
@@ -29,8 +29,8 @@
  * spoken once per session unless the player reopens it from the Field Guide.
  * The bubble is real text in an `aria-live="polite"` region.
  *
- * WHERE SHE STANDS. In one place, her home in the bottom-right corner
- * (Section 33b; mayaLayout.ts HOME_MARGIN), placed by a fixed CSS rule: not travelling to a
+ * WHERE SHE STANDS. In one place, her home in the bottom-left corner
+ * (Section 34c.2; mayaLayout.ts HOME_MARGIN), placed by a fixed CSS rule: not travelling to a
  * tile for a warning, not searching for a free spot, not following the
  * camera. If something would cover her home, that element moves. Only her
  * bubble is placed, beside her, and only when the page size or a HUD element
@@ -119,7 +119,7 @@ function readingMs(text: string): number {
  */
 export const HUD_OBSTACLES = [
   ".hud-panel",
-  // Section 33b: the HUD card, top left, at its full size (status, ? and ☰, and the objective).
+  // Section 33b: the HUD card, top right since Section 34c.2, at its full size (status, ? and ☰, and the objective).
   ".panjim-clock",
   // ☰'s menu, open: it hangs below the card, outside its box.
   ".hud-panel-body:not([hidden])",
@@ -200,7 +200,7 @@ export class Maya {
     if (options.reducedMotion) this.el.classList.add("reduced-motion");
     this.el.innerHTML = `
       <div class="maya-figure-wrap">${SVG}<button type="button" class="maya-minimise" aria-label="Minimise Maya">&minus;</button></div>
-      <div class="maya-bubble side-left" role="status" aria-live="polite" hidden>
+      <div class="maya-bubble side-right" role="status" aria-live="polite" hidden>
         <span class="maya-name">Maya</span>
         <p class="maya-text"></p>
         <div class="maya-fact" hidden>
@@ -651,7 +651,7 @@ export class Maya {
     this.bubble.style.width = `${spot.rect.w}px`;
     this.bubble.style.left = `${spot.rect.x}px`;
     this.bubble.style.top = `${spot.rect.y}px`;
-    this.bubble.classList.remove("side-left", "side-above");
+    this.bubble.classList.remove("side-right", "side-above");
     this.bubble.classList.add(`side-${spot.side}`);
   }
 

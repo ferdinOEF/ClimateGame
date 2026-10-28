@@ -13,6 +13,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { killTree } from "./devServer";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split(/=(.*)/s).slice(0, 2) as [string, string]));
 const SIZES = (args.get("sizes") ?? "1024x640,1366x768,1920x1080").split(",").map((s) => s.split("x").map(Number) as [number, number]);
@@ -51,7 +52,7 @@ async function startPreview(): Promise<{ url: string; child: ChildProcess }> {
     if (ok) return { url, child };
     await new Promise((r) => setTimeout(r, 500));
   }
-  child.kill();
+  killTree(child);
   throw new Error(`vite preview did not answer on ${url}`);
 }
 
@@ -652,7 +653,7 @@ try {
   }
 } finally {
   await browser.close();
-  child?.kill();
+  killTree(child);
 }
 
 console.log(failures === 0 ? "ALL PASS" : `${failures} FAILED`);

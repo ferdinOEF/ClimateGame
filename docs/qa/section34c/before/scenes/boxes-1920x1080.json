@@ -1,0 +1,256 @@
+{
+ "start": {
+  "card": [
+   14,
+   12,
+   400,
+   286
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   1065,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "four-rows": {
+  "card": [
+   14,
+   12,
+   400,
+   319
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   1065,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "storm": {
+  "card": [
+   14,
+   12,
+   400,
+   286
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   1065,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": [
+   897,
+   1010,
+   127,
+   42
+  ]
+ },
+ "large-text": {
+  "card": [
+   14,
+   12,
+   400,
+   335
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   1065,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "bubble": {
+  "card": [
+   14,
+   12,
+   400,
+   286
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": [
+   1661,
+   872,
+   190,
+   151
+  ],
+  "street": null,
+  "credit": [
+   12,
+   1065,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "menu-miramar": {
+  "card": [
+   14,
+   12,
+   400,
+   286
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   1065,
+   169,
+   11
+  ],
+  "popover": [
+   1016,
+   639,
+   312,
+   381
+  ],
+  "banner": null,
+  "speed": null
+ },
+ "result": {
+  "card": [
+   14,
+   12,
+   400,
+   319
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": [
+   1661,
+   947,
+   190,
+   75
+  ],
+  "street": null,
+  "credit": [
+   12,
+   1065,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "final": {
+  "card": [
+   14,
+   12,
+   400,
+   176
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   1065,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "tutorial": {
+  "card": [
+   14,
+   12,
+   400,
+   422
+  ],
+  "menu": null,
+  "maya": [
+   1854,
+   926,
+   54,
+   142
+  ],
+  "bubble": [
+   1661,
+   872,
+   190,
+   151
+  ],
+  "street": null,
+  "credit": null,
+  "popover": null,
+  "banner": null,
+  "speed": null
+ }
+}

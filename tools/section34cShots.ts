@@ -15,6 +15,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { killTree } from "./devServer";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split(/=(.*)/s).slice(0, 2) as [string, string]));
 const SIZES = (args.get("sizes") ?? "1366x768,1920x1080").split(",").map((s) => s.split("x").map(Number) as [number, number]);
@@ -43,7 +44,7 @@ async function startPreview(): Promise<{ url: string; child: ChildProcess | null
     if (await fetch(url).then((r) => r.ok).catch(() => false)) return { url, child };
     await new Promise((r) => setTimeout(r, 500));
   }
-  child.kill();
+  killTree(child);
   throw new Error(`vite preview did not answer on ${url}`);
 }
 
@@ -88,7 +89,7 @@ async function boxes(page: Page): Promise<Record<string, number[] | null>> {
 /** A free tile of `terrain` near the middle of the screen, or null. */
 async function tileOnScreen(page: Page, W: number, H: number, terrains: string[], locality?: string): Promise<{ x: number; y: number } | null> {
   return js(page, `(() => { const c = window.__panjimForTest; const run = c.run; const box = c.host.container.getBoundingClientRect();
-    const near = ${JSON.stringify(locality ?? null)}; const place = near ? (run.level.localities ?? []).find((l) => l.name === near) : null;
+    const near = ${JSON.stringify(locality ?? null)}; const mark = near ? c.host.landmarks.find((l) => l.name.includes(near)) : null; const place = mark ? (mark.coord ?? mark) : null;
     const out = [];
     for (const [key, t] of run.state.placed) { if (!${JSON.stringify(terrains)}.includes(t.terrainId) || run.state.elements.has(key)) continue;
       if (!run.state.buildableAt(t.coord).length) continue;
@@ -136,20 +137,8 @@ const SCENE: Record<string, { level?: string; run: Scene }> = {
     }
   },
   result: { run: async (page) => (await begin(page), await scenario(page, "to-results")) && (await page.waitForTimeout(1500), true) },
-  final: {
-    run: async (page) => {
-      await begin(page);
-      for (let i = 0; i < 3; i++) if (!(await scenario(page, "past-storm"))) return false;
-      const end = Date.now() + 120000;
-      while (Date.now() < end && !(await page.locator(".finale-card:not([hidden]), .result-cards:not([hidden])").count())) await page.waitForTimeout(500);
-      for (let i = 0; i < 10 && (await page.locator(".result-cards:not([hidden]) .result-next").count()); i++) {
-        await page.locator(".result-cards:not([hidden]) .result-next").first().click();
-        await page.waitForTimeout(900);
-      }
-      await page.waitForTimeout(1500);
-      return true;
-    }
-  },
+  // The app's own "finale" scenario: the whole run played, each Aftermath accepted, handed back at the last card.
+  final: { run: async (page) => (await begin(page), await scenario(page, "finale")) && (await page.waitForTimeout(1500), true) },
   tutorial: { level: "l00-tutorial", run: async (page) => (await begin(page), true) }
 };
 
@@ -177,7 +166,7 @@ try {
   }
 } finally {
   await browser.close();
-  child?.kill();
+  killTree(child);
 }
 if (errors.length) console.log(`console errors: ${errors.slice(0, 4).join(" | ")}`);
 console.log(failures === 0 && errors.length === 0 ? "ALL PASS" : `${failures + errors.length} FAILED`);

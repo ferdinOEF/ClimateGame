@@ -15,10 +15,11 @@ const rule = (selector: string): string => {
   return css.slice(at, css.indexOf("}", at));
 };
 
-describe("Section 33b: the HUD card, top left", () => {
-  it("sits 14 px from the left and 12 px from the top, 300 px wide (Section 34c.1), never collapsing", () => {
+describe("Section 33b: the HUD card, top right since Section 34c.2", () => {
+  it("sits 14 px from the right and 12 px from the top, 300 px wide (Section 34c.1), never collapsing", () => {
     const card = rule(".panjim-clock");
-    expect(card).toMatch(/left: calc\(14px/);
+    expect(card).toMatch(/right: calc\(14px \+ env\(safe-area-inset-right\)\);/);
+    expect(card).toMatch(/left: auto;/);
     expect(card).toMatch(/top: calc\(12px/);
     expect(card).toMatch(/width: 300px;/);
     expect(card).toMatch(/padding: 8px 12px 10px;/);
@@ -65,6 +66,7 @@ describe("Section 33b.5: the hint, the build menu and the opening views", () => 
     expect(fn).toContain("desiredTarget = {");
     expect(fn).not.toMatch(/desiredDistance =|distance =|rad =/);
     const controller = readFileSync("src/app/panjimController.ts", "utf8");
-    expect(controller).toMatch(/\}, \[\.\.\.along, \.\.\.points\], along\);/);
+    // Section 34c.2 added the objective's places as a fallback.
+    expect(controller).toMatch(/\}, \[\.\.\.along, \.\.\.points\], along, places\);/);
   });
 });

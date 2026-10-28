@@ -33,14 +33,14 @@ const rule = (selector: string, media?: string): string => {
 };
 
 describe("34b.1: notes clear of the HUD card", () => {
-  it("the banner sits right of the card (left at least the card and 16 px), above it (z-index 12), centred in that band", () => {
+  it("the banner sits beside the card (Section 34c.2: left of it, its right edge the card and 16 px in), above it (z-index 12), centred in that band", () => {
     const banner = rule("\n.has-panjim-clock .era-banner");
-    const left = /left: calc\(([^)]*)\);/.exec(banner)?.[1] ?? "";
-    const px = left.split("+").reduce((sum, part) => sum + Number(part.trim().replace("px", "")), 0);
-    // Section 34c.1: the card is 300 px wide from 14 px.
+    const right = /right: calc\(([^)]*)\);/.exec(banner)?.[1] ?? "";
+    const px = right.split("+").reduce((sum, part) => sum + Number(part.trim().replace("px", "")), 0);
+    // Section 34c.1: the card is 300 px wide from 14 px (now from the right, Section 34c.2).
     expect(px).toBeGreaterThanOrEqual(14 + 300 + 16);
     expect(banner).toMatch(/z-index: 12;/);
-    expect(banner).toMatch(/right: 12px;/);
+    expect(banner).toMatch(/left: 12px;/);
     expect(banner).toMatch(/transform: none;/);
     expect(banner).toMatch(/top: calc\(14px \+ env\(safe-area-inset-top\)\);/);
     // The card it must clear: z-index 10, 300 px wide from 14 px (Section 34c.1).
@@ -49,12 +49,9 @@ describe("34b.1: notes clear of the HUD card", () => {
     expect(card).toMatch(/width: 300px;/);
   });
 
-  it("below 900 px wide the banner goes to the bottom, across the window", () => {
-    const narrow = rule(".has-panjim-clock .era-banner", "(max-width: 899px)");
-    expect(narrow).toMatch(/left: 12px;/);
-    expect(narrow).toMatch(/right: 12px;/);
-    expect(narrow).toMatch(/top: auto;/);
-    expect(narrow).toMatch(/bottom: 96px;/);
+  it("keeps beside the card at every width (Section 34c.2: no narrow window rule moves it to the bottom)", () => {
+    const css = readFileSync("src/ui/panjim/panjim.css", "utf8");
+    expect(css).not.toMatch(/@media \(max-width: 899px\) \{\s*\.has-panjim-clock \.era-banner/);
   });
 });
 

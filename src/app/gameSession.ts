@@ -974,7 +974,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // The bottom prompt too (Section 13.4): not during a storm or its result cards.
             container.querySelector(".empty-prompt")?.classList.toggle("held", !visible);
           },
-          frameWorld: (box, keepClear, arrows) => {
+          frameWorld: (box, keepClear, arrows, places) => {
             // A gentle glide (cancelled by any drag) to frame the box, a little wider than it.
             focusOn((box.minX + box.maxX) / 2, (box.minZ + box.maxZ) / 2, false);
             fitTo(Math.max(18, (box.maxX - box.minX) * 1.15), Math.max(12, (box.maxZ - box.minZ) * 1.2), false);
@@ -983,8 +983,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             if (keepClear?.length) {
               const obstacles = cameraObstacles();
               const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] => points.map((p) => ({ x: p.x, y: 0.6, z: p.z }));
-              // Everything if a pan can clear it; else the arrows alone (a forecast wider than the screen).
-              lastKeepClear = keepClearOf(lift(keepClear), obstacles) ?? (arrows?.length ? keepClearOf(lift(arrows), obstacles) : null);
+              // Everything if a pan can clear it; else the arrows and the objective's places (Section 34c.2: with Maya
+              // bottom left a place's pin could sit at her feet); else the arrows alone (a forecast wider than the screen).
+              const withPlaces = arrows?.length && places?.length ? keepClearOf(lift([...arrows, ...places]), obstacles) : null;
+              lastKeepClear = keepClearOf(lift(keepClear), obstacles) ?? withPlaces ?? (arrows?.length ? keepClearOf(lift(arrows), obstacles) : null);
             }
           },
           moveCamera: (tiles, centre) => moveCameraClear(tiles, centre),
@@ -2690,6 +2692,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const canvas = renderer.domElement;
     canvas.tabIndex = 0;
     canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles, O jumps to the next tile the objective asks for, Enter opens the tile.");
+    // Section 34c.2: the keyboard follows the screen, top right to bottom left: ? and ☰ on the HUD card, then the map,
+    // then Maya. The card goes before the board in the page (its z-index keeps it drawn over the board).
+    const card = container.querySelector<HTMLElement>(".panjim-clock");
+    if (card) container.insertBefore(card, canvas);
     const said = document.createElement("div");
     said.className = "visually-hidden";
     said.setAttribute("aria-live", "polite");

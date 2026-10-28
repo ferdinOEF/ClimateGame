@@ -20,7 +20,7 @@
  */
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
-import { startDevServer } from "./devServer";
+import { glArgs, startDevServer } from "./devServer";
 import { playTutorial } from "./tutorialPlay";
 
 const PORT = 5195;
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   try {
     const browser = await chromium.launch({
       executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
-      args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
+      args: glArgs()
     });
     const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
     page.on("pageerror", (err) => errors.push(String(err)));
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
     check(town.buildingsOnRoads === 0, "Panaji: no building on any road tile");
     const greeting = (await page.locator(".maya-text").textContent()) ?? "";
     // Section 6.3: her first line is the first objective's, and it still says hello.
-    check(greeting === "Hello! I am Maya. Before the cyclone, our first job is to protect Sharada Mandir School. The steps are in the card, top left.", `Panaji: Maya greets: "${greeting}"`);
+    check(greeting === "Hello! I am Maya. Before the cyclone, our first job is to protect Sharada Mandir School. The steps are in the card, top right.", `Panaji: Maya greets: "${greeting}"`);
     await tooltipCheck(page, "Panaji");
 
     await page.keyboard.press("m");

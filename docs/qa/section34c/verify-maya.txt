@@ -1,0 +1,30 @@
+
+> riptide-rising@1.0.0 verify:maya
+> tsx tools/verifyMaya.ts
+
+(node:29740) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS  Tutorial: Maya coaches it
+FAIL  Tutorial: the Get ready card shows its objective
+PASS  Tutorial: no warning heat in its first year
+FAIL  Tutorial: every HUD control has a tooltip (missing: .panjim-toggles button panjim-toggle text-toggle)
+PASS  Tutorial: all 16 tooltips show real text
+PASS  Tutorial: plays start to finish and leads on to Panaji
+PASS  Panaji: Get ready shows 2 rows
+PASS  Panaji: street map on at 21%
+PASS  Panaji: roads come from the street map, not drawn strips (131 road tiles; meshes town-gardens, town-bridges)
+PASS  Panaji: no building on any road tile
+FAIL  Panaji: Maya greets: "Hello! I am Maya. Before the cyclone, our first job is to protect Sharada Mandir School. The steps are in the card, top right."
+FAIL  Panaji: every HUD control has a tooltip (missing: .panjim-toggles button panjim-toggle text-toggle)
+PASS  Panaji: all 20 tooltips show real text
+PASS  Panaji: M mutes Maya
+PASS  Panaji: M unmutes Maya
+PASS  Panaji: warning heat shows two years out (9 tiles)
+PASS  Panaji: R hides the heat
+PASS  Panaji: R shows it again
+PASS  Panaji: cyclone preview matches (9 previewed at risk, 9 lost)
+PASS  Panaji: flood preview matches (57 previewed at risk, 57 lost)
+frame cost so far: 5.42 ms update, 82 draw calls, 603808 triangles
+FAIL  zero console errors: Failed to load resource: the server responded with a status of 403 (Forbidden) | Failed to load resource: the server responded with a status of 403 (Forbidden) | Failed to load resource: the server responded with a status of 403 (Forbidden) | Failed to load resource: the server responded with a status of 403 (Forbidden) | Failed to load resource: the server responded with a status of 403 (Forbidden)
+
+5 CHECK(S) FAILED

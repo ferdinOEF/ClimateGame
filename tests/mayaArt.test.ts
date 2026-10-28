@@ -283,7 +283,7 @@ describe("Maya's HUD figure", () => {
     expect(HUD_UNIT_PX * 158).toBeCloseTo(139, 5);
     expect(box.w).toBe(Math.round(HUD_VIEWBOX.width * HUD_UNIT_PX * MAYA_SCALE));
     // The CSS takes the box (whole pixels, tiered for the screen) from the variables maya.ts sets, and stands her at her home by one fixed rule.
-    expect(css).toMatch(/\.maya-figure-wrap \{\s*position: absolute;\s*right: var\(--maya-home\);\s*bottom: var\(--maya-home\);\s*width: var\(--maya-fig-w\);\s*height: var\(--maya-fig-h\);/);
+    expect(css).toMatch(/\.maya-figure-wrap \{\s*position: absolute;\s*left: var\(--maya-home\);\s*bottom: var\(--maya-home\);\s*width: var\(--maya-fig-w\);\s*height: var\(--maya-fig-h\);/);
     expect(css).not.toMatch(/\.maya-figure-wrap \{[^}]*?(?:filter|top:|width: \d+px)/);
     expect(css).not.toContain("--maya-tier");
   });

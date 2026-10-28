@@ -148,9 +148,9 @@ export interface PanjimHost {
   /** Glides the camera to frame a box of the board, in world x/z. */
   /**
    * Frames the box; then, if `keepClear` is given, slides the view just enough that none of those points sits under
-   * the HUD card or Maya (or, when no slide clears them all, none of `arrows`).
+   * the HUD card or Maya (or, when no slide clears them all, none of `arrows` and `places`; else of `arrows` alone).
    */
-  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }, keepClear?: readonly { x: number; z: number }[], arrows?: readonly { x: number; z: number }[]) => void;
+  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }, keepClear?: readonly { x: number; z: number }[], arrows?: readonly { x: number; z: number }[], places?: readonly { x: number; z: number }[]) => void;
   /** The phase's area to protect, faintly, once the cone has gone (an empty list fades it out). */
   showAreaOutline: (keys: string[]) => void;
   /** "Area protected", where the outline was. */
@@ -510,12 +510,14 @@ export class PanjimController {
         const q = t.points[i + 1];
         return q ? [0, 0.2, 0.4, 0.6, 0.8].map((f) => ({ x: p.x + (q.x - p.x) * f, z: p.z + (q.z - p.z) * f })) : [p];
       }));
+      // Section 34c.2: the places the phase's objective pins, kept clear with the arrows when the whole cone cannot be.
+      const places = this.run.prep.filter((job) => job.challengeId === next.id).flatMap((job) => job.pins ?? []).map((pin) => axialToWorld({ q: pin.q, r: pin.r }, 1));
       this.host.frameWorld({
         minX: Math.min(...points.map((p) => p.x)),
         maxX: Math.max(...points.map((p) => p.x)),
         minZ: Math.min(...points.map((p) => p.z)),
         maxZ: Math.max(...points.map((p) => p.z))
-      }, [...along, ...points], along);
+      }, [...along, ...points], along, places);
     }
     this.coneShown = true;
     this.host.telemetry.emit("checkpoint", { cone: next.id, tiles: cone.bands.size, area: cone.area.length });

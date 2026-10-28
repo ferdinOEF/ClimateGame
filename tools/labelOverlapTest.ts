@@ -20,7 +20,7 @@
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
-import { startDevServer } from "./devServer";
+import { glArgs, startDevServer } from "./devServer";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const PORT = Number(process.env.LABELS_PORT ?? 5198);
@@ -155,7 +155,7 @@ async function main(): Promise<void> {
   const server = await startDevServer(PORT);
   const browser = await chromium.launch({
     executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
-    args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
+    args: glArgs()
   });
   const errors: string[] = [];
   try {

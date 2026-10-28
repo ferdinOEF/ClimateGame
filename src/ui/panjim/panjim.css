@@ -14,8 +14,8 @@
   font-family: var(--font-head);
 }
 
-/* ---- The HUD card, top left (Section 33b.2) ----------------------------------------------------------------
- * One static card at left 14 px, top 12 px, 300 px wide (Section 34c.1, the owner: half its footprint): line 1, the
+/* ---- The HUD card, top right (Section 33b.2; Section 34c.2) ---------------------------------------------------
+ * One static card at right 14 px, top 12 px, 300 px wide (Section 34c.1, the owner: half its footprint): line 1, the
  * year, then How to play and ☰, and under the year "Year N of 25" with the countdown chip; line 2, the timeline; line 3,
  * Biodiversity and Homes at risk; then the objective (Section 33b.3). It never collapses, never moves, and stays
  * during storms. No band, stitch or strips: those are the cards'. It replaces Section 16 B2's top bar, top centre.
@@ -23,7 +23,8 @@
 .panjim-clock {
   position: absolute;
   z-index: 10;
-  left: calc(14px + env(safe-area-inset-left));
+  right: calc(14px + env(safe-area-inset-right));
+  left: auto;
   top: calc(12px + env(safe-area-inset-top));
   box-sizing: border-box;
   width: 300px;
@@ -207,11 +208,13 @@
   align-items: flex-end;
 }
 
-/* Out of the card's flow, under ☰ (the .has-panjim-clock prefix outranks harbour.css's band rule, imported later). */
+/* Out of the card's flow, under ☰ (the .has-panjim-clock prefix outranks harbour.css's band rule, imported later).
+   Section 34c.2: ☰ is near the window's right edge, so its menu hangs leftward from it and stays inside the window. */
 .has-panjim-clock .panjim-clock .hud-panel-settings .hud-panel-body {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
+  left: auto;
   margin-top: 0;
   z-index: 30;
 }
@@ -249,12 +252,12 @@
   display: none;
 }
 
-/* Section 34b.1: the banner (a combo, a crack with age) sits in the band right of the HUD card, centred there and above
-   it, never under it (at 1024 px about 130 px of it was hidden). In a narrow window it moves to the bottom. Section
-   34c.1: the card is 300 px wide. */
+/* Section 34b.1: the banner (a combo, a crack with age) sits in the band beside the HUD card, centred there and above
+   it, never under it (at 1024 px about 130 px of it was hidden). Section 34c.2: the card is top right (300 px wide,
+   Section 34c.1), so the band is left of it, at every width. */
 .has-panjim-clock .era-banner {
-  left: calc(14px + 300px + 16px);
-  right: 12px;
+  left: 12px;
+  right: calc(14px + 300px + 16px);
   top: calc(14px + env(safe-area-inset-top));
   transform: none;
   max-width: none;
@@ -262,15 +265,6 @@
   margin-inline: auto;
   text-align: center;
   z-index: 12;
-}
-
-@media (max-width: 899px) {
-  .has-panjim-clock .era-banner {
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: 96px;
-  }
 }
 
 .built-info-action {
@@ -706,6 +700,25 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--accent-ink);
+}
+
+/* Section 34c.1: the seven in the 300 px card, each as wide as its icon or name, spread across the row; a name of two
+   words ("Small dam") takes two lines. */
+.panjim-clock .tutorial-checks {
+  grid-template-columns: repeat(7, auto);
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.panjim-clock .tutorial-check-icon svg {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.panjim-clock .tutorial-check-name {
+  width: min-content;
+  font-size: 9px;
 }
 
 /* ---- In-scene forecast label -------------------------------------------- */
@@ -1279,14 +1292,14 @@
 }
 
 /*
- * Her home: the bottom-right corner (Section 33b), one fixed rule. Never
+ * Her home: the bottom-left corner (Section 34c.2, the owner; Section 33b had the right), one fixed rule. Never
  * written by script, never animated, never moved; if something would cover
  * it, that element moves. No filter: a filter on a figure that
  * animates is redone every frame, so her shadow is baked into her pictures.
  */
 .maya-figure-wrap {
   position: absolute;
-  right: var(--maya-home);
+  left: var(--maya-home);
   bottom: var(--maya-home);
   width: var(--maya-fig-w);
   height: var(--maya-fig-h);
@@ -1342,7 +1355,7 @@
 
 .maya-badge {
   position: absolute;
-  right: var(--maya-home);
+  left: var(--maya-home);
   bottom: var(--maya-home);
   /* --maya-badge: her scaled 52 px, never under 30 (mayaLayout.ts). */
   width: var(--maya-badge);
@@ -1415,16 +1428,17 @@
   border: var(--maya-tail) solid transparent;
 }
 
-.maya-bubble.side-left::before {
-  right: calc(-1px - var(--maya-tail));
+/* Section 34c.2: she stands bottom left, her bubble to her right (its tail pointing back at her), else above her. */
+.maya-bubble.side-right::before {
+  left: calc(-1px - var(--maya-tail));
   top: 12px;
-  border-left-color: var(--panel);
-  border-right-width: 0;
+  border-right-color: var(--panel);
+  border-left-width: 0;
 }
 
 .maya-bubble.side-above::before {
   bottom: calc(-1px - var(--maya-tail));
-  right: 16px;
+  left: 16px;
   border-top-color: var(--panel);
   border-bottom-width: 0;
 }
@@ -3523,12 +3537,13 @@
   padding: 7px 10px;
   cursor: pointer;
 }
-/* The street map's corner (its credit; the switch is in ☰): the bottom-left corner, Maya having the right (Section 33b). */
+/* The street map's corner (its credit; the switch is in ☰): the bottom-right corner, Maya having the left (Section
+   34c.2; Section 33b had them the other way). */
 .has-panjim-clock .map-corner {
-  left: calc(12px + env(safe-area-inset-left));
-  right: auto;
+  right: calc(12px + env(safe-area-inset-right));
+  left: auto;
   bottom: calc(4px + env(safe-area-inset-bottom));
-  align-items: flex-start;
+  align-items: flex-end;
 }
 
 .has-panjim-clock .map-corner .map-attribution {

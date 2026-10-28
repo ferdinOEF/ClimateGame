@@ -1,0 +1,54 @@
+{
+ "final": {
+  "card": [
+   14,
+   12,
+   400,
+   176
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": null,
+  "street": null,
+  "credit": [
+   12,
+   753,
+   169,
+   11
+  ],
+  "popover": null,
+  "banner": null,
+  "speed": null
+ },
+ "tutorial": {
+  "card": [
+   14,
+   12,
+   400,
+   422
+  ],
+  "menu": null,
+  "maya": [
+   1307,
+   632,
+   47,
+   124
+  ],
+  "bubble": [
+   1114,
+   575,
+   190,
+   151
+  ],
+  "street": null,
+  "credit": null,
+  "popover": null,
+  "banner": null,
+  "speed": null
+ }
+}

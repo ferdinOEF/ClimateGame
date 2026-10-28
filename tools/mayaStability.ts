@@ -27,7 +27,7 @@
 import { chromium, type Browser, type Page } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
-import { startDevServer } from "./devServer";
+import { glArgs, startDevServer } from "./devServer";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section1e");
@@ -190,7 +190,7 @@ async function main(): Promise<void> {
   const server = await startDevServer(PORT);
   const browser = await chromium.launch({
     executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
-    args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
+    args: glArgs()
   });
   const result: { label: string; live: StateResult[]; calm: StateResult[]; home?: Box; idleStill?: { moved: boolean; frames: number } } = { label: LABEL, live: [], calm: [] };
   try {
@@ -213,7 +213,7 @@ async function main(): Promise<void> {
       result.live.push(r);
       check(!r.moved, `${state}: her figure's box never moved in ${r.frames} frames over ${r.seconds}s (${r.box.x},${r.box.y} ${r.box.w}x${r.box.h})`);
       if (homeX !== undefined && homeBottom !== undefined) {
-        check(1920 - (r.box.x + r.box.w) === homeX && Math.abs(1080 - (r.box.y + r.box.h) - homeBottom) < 0.001, `${state}: she stands at her home (${homeX}px from the right, ${homeBottom}px from the bottom; Section 33b)`);
+        check(r.box.x === homeX && Math.abs(1080 - (r.box.y + r.box.h) - homeBottom) < 0.001, `${state}: she stands at her home (${homeX}px from the left, ${homeBottom}px from the bottom; Section 34c.2)`);
         check(Number.isInteger(r.box.x) && Number.isInteger(r.box.y) && Number.isInteger(r.box.w) && Number.isInteger(r.box.h), `${state}: her box is on whole pixels`);
       }
       console.log(`      per second: layouts ${r.perSecond.layouts}, figure style writes ${r.perSecond.figureWrites}, class writes ${r.perSecond.classWrites}, hop restarts ${r.perSecond.hops}, observer hits ${r.perSecond.observerHits}; frames that changed ${r.framesChanged} of ${r.frames - 1} (${r.strongChanged} strongly)`);
