@@ -126,7 +126,10 @@ async function check(page: Page, tag: string, shot?: string, minLocalities = 0):
   checks++;
   const problems: string[] = [];
   const localities = (await page.evaluate(`document.querySelectorAll(".map-label.locality.shown").length`)) as number;
-  if (localities < minLocalities) problems.push(`only ${localities} locality names drawn (expected at least ${minLocalities})`);
+  // Section 34b.7: a narrow window (under 900 px, the owner's 520 px play test) is checked for overlaps only: the HUD card
+  // covers most of the map there, so the desktop counts of names drawn do not apply.
+  const narrow = ((await page.evaluate("window.innerWidth")) as number) < 900;
+  if (!narrow && localities < minLocalities) problems.push(`only ${localities} locality names drawn (expected at least ${minLocalities})`);
   for (let i = 0; i < labels.length; i++) {
     const a = labels[i];
     for (let j = i + 1; j < labels.length; j++) if (hit(a, labels[j])) problems.push(`"${a.label}" overlaps "${labels[j].label}"`);
@@ -181,8 +184,9 @@ async function main(): Promise<void> {
       await check(page, `${tag} zoom 1, church name card`, `panaji-card-${tag}`, 2);
       checks++;
       const cardShown = (await page.evaluate(`!!document.querySelector(".map-label.card.shown")`)) as boolean;
-      if (!cardShown) failures.push(`${tag}: the church's name card was not drawn`);
-      console.log(`${cardShown ? "PASS" : "FAIL"}  ${tag} the name card is drawn, ahead of the localities`);
+      const narrowWindow = size.w < 900;
+      if (!cardShown && !narrowWindow) failures.push(`${tag}: the church's name card was not drawn`);
+      console.log(`${cardShown ? "PASS" : narrowWindow ? "INFO" : "FAIL"}  ${tag} the name card is drawn, ahead of the localities${narrowWindow && !cardShown ? " (not in a window under 900 px: its spot is under the HUD card)" : ""}`);
       await page.evaluate(`window.__labelsForTest.setFocus(null)`);
       await page.mouse.wheel(0, -500);
       await check(page, `${tag} zoom 2`, `panaji-zoom2-${tag}`, 2);
@@ -233,6 +237,8 @@ async function main(): Promise<void> {
     server.stop();
   }
   if (errors.length) failures.push(`page errors: ${errors.join(" | ")}`);
+  // Section 34b.16: say what failed (a page error is not a view).
+  for (const failure of failures) console.log(`FAIL  ${failure.slice(0, 300)}`);
   console.log(`\n${checks} views checked, ${failures.length} failed; label layer at most ${Math.max(...costs).toFixed(2)} ms a frame`);
   if (process.env.LABEL_REPORT) fs.writeFileSync(process.env.LABEL_REPORT, report.join("\n") + "\n");
   if (failures.length) process.exit(1);

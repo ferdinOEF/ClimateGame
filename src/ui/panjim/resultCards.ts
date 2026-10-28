@@ -155,7 +155,7 @@ function rowValue(d: { homes: number; shared?: boolean }): string {
  */
 export function defencesCard(result: PhaseResult, mayaLine: CardLine, targets: (elementId: string) => readonly string[] = () => [], storm = ""): HTMLElement {
   const most = Math.max(1, ...result.defences.map((d) => d.homes));
-  const stormWord = storm === "cyclone" ? "cyclone" : "flood";
+  const stormWord = storm === "cyclone" ? "cyclone" : storm === "flood" ? "flood" : "storm";
   const broken = (result.broken ?? [])
     .map(
       (b) =>

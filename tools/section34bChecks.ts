@@ -507,6 +507,48 @@ STEPS.push([
   }
 ]);
 
+// ---- 34b.16: through the 2030 cyclone with a dune and pandanus side by side at its landfall: no empty countdown box,
+// no two storm words on one another, no ghost of Maya's bubble under the replay card ----
+STEPS.push([
+  "34b.16",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    // A dune and pandanus on neighbouring beach tiles, the ones the objective asks for nearest Miramar.
+    const built = (await page.evaluate(`(() => { const c = window.__panjimForTest; const out = []; const near = (a, b) => (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - b.q - b.r)) / 2;
+      const beach = [...c.run.state.placed.values()].filter((t) => t.terrainId === "beach" && c.run.state.canBuild(t.coord, "dune"));
+      for (const a of beach) for (const b of beach) if (near(a.coord, b.coord) === 1 && a.coord.r > 12 && a.coord.r < 22) { c.build(a.coord, "dune"); out.push("dune@" + a.coord.q + "," + a.coord.r); return { a: a.coord, b: b.coord, out }; }
+      return null; })()`)) as { a: { q: number; r: number }; b: { q: number; r: number } } | null;
+    check(built !== null, "a dune and a pandanus tile side by side on the Miramar beach");
+    if (!built) return void (await page.close());
+    await page.waitForTimeout(1500);
+    await page.evaluate(`window.__panjimForTest.build({ q: ${built.b.q}, r: ${built.b.r} }, "sandy_vegetation")`);
+    await page.waitForTimeout(1500);
+    await page.evaluate(`(async () => { const c = window.__panjimForTest; const next = c.run.nextChallenge(); while (c.run.yearsUntil(next) > 1) await window.__panjimScenarioForTest("pass-year"); })()`);
+    await page.waitForTimeout(1500);
+    // The storm's build, then the storm played as a player sees it, sampled every 200 ms.
+    const tile = (await page.evaluate(`(() => { const c = window.__panjimForTest; for (const [key, t] of c.run.state.placed) { if (c.run.state.elements.has(key)) continue; const o = c.run.state.buildableAt(t.coord); if (o.length && t.coord.q > 12) return { q: t.coord.q, r: t.coord.r, id: o[0].id }; } return null; })()`)) as { q: number; r: number; id: string };
+    const seen = (await page.evaluate(`(async () => { const c = window.__panjimForTest; c.build({ q: ${tile.q}, r: ${tile.r} }, "${tile.id}");
+      const out = { emptyChip: 0, overlaps: [], ghost: 0, samples: 0, words: 0, replay: false };
+      const t0 = performance.now();
+      while (performance.now() - t0 < 90000) { await new Promise((r) => setTimeout(r, 200));
+        const playing = window.__stormForTest.playing(); const replay = document.querySelector(".replay-card:not([hidden])");
+        if (document.querySelector(".result-cards:not([hidden])")) break;
+        if (!playing && !replay) continue; out.samples++;
+        const chip = document.querySelector(".outlook-countdown-chip"); if (chip && !chip.closest("[hidden]") && chip.getBoundingClientRect().width > 0 && !(chip.textContent || "").trim()) out.emptyChip++;
+        const words = [...document.querySelectorAll(".storm-word")].filter((w) => getComputedStyle(w).opacity !== "0" && w.getBoundingClientRect().width > 0).map((w) => ({ t: w.textContent, r: w.getBoundingClientRect() }));
+        out.words = Math.max(out.words, words.length);
+        for (let i = 0; i < words.length; i++) for (let j = i + 1; j < words.length; j++) { const a = words[i].r, b = words[j].r; if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) out.overlaps.push(words[i].t + " / " + words[j].t); }
+        if (replay) { out.replay = true; const bubble = document.querySelector(".maya-bubble"); if (bubble && !bubble.hidden && getComputedStyle(bubble).visibility !== "hidden" && Number(getComputedStyle(bubble).opacity) > 0.05) { const rb = bubble.getBoundingClientRect(), rc = replay.getBoundingClientRect(); if (rb.left < rc.right && rc.left < rb.right && rb.top < rc.bottom && rc.top < rb.bottom) out.ghost++; } }
+      }
+      out.overlaps = [...new Set(out.overlaps)].slice(0, 5); return out; })()`)) as { emptyChip: number; overlaps: string[]; ghost: number; samples: number; words: number; replay: boolean };
+    info(`storm samples ${seen.samples}, most storm words at once ${seen.words}, replay seen ${seen.replay}`);
+    check(seen.samples > 0 && seen.emptyChip === 0, `no empty countdown box during the storm (${seen.emptyChip} of ${seen.samples} samples)`);
+    check(seen.overlaps.length === 0, `no two storm words on one another (${seen.overlaps.join("; ") || "none"})`);
+    check(seen.replay && seen.ghost === 0, `no ghost of Maya's bubble under the replay card (${seen.ghost} samples)`);
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

@@ -2164,6 +2164,25 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     word.el.style.left = `${Math.round(screen.x)}px`;
     word.el.style.top = `${Math.round(screen.y)}px`;
   }
+  /**
+   * Section 34b.16: every storm word over its tile, and one that would sit on a word placed before it (a dune and
+   * pandanus side by side both saying "Absorbed") lifted just clear of it.
+   */
+  function placeStormWords(): void {
+    const placed: { x: number; y: number; w: number; h: number }[] = [];
+    for (const word of stormWords) {
+      placeStormWord(word);
+      const w = word.el.offsetWidth;
+      const h = word.el.offsetHeight;
+      const x = parseFloat(word.el.style.left);
+      let y = parseFloat(word.el.style.top);
+      // Its box hangs above the point, centred across it (the CSS translates it by -50%, -100%).
+      const clash = (p: { x: number; y: number; w: number; h: number }): boolean => Math.abs(p.x - x) < (p.w + w) / 2 + 2 && y - h < p.y + 2 && p.y - p.h < y + 2;
+      for (let k = 0; k < 6 && placed.some(clash); k++) y = Math.min(...placed.filter(clash).map((p) => p.y - p.h)) - 3;
+      word.el.style.top = `${Math.round(y)}px`;
+      placed.push({ x, y, w, h });
+    }
+  }
   /** The storm player, made on first use (Panjim 2050 only: it needs the run's zones). */
   function stormDirectorFor(): StormDirector {
     if (stormDirector) return stormDirector;
@@ -2205,7 +2224,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         container.appendChild(el);
         const word = { el, coord };
         stormWords.push(word);
-        placeStormWord(word);
+        placeStormWords();
         window.setTimeout(() => {
           el.remove();
           stormWords.splice(stormWords.indexOf(word), 1);
@@ -2933,7 +2952,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
     panjim?.frame();
     stormDirector?.tick(nowMs);
-    for (const word of stormWords) placeStormWord(word);
+    placeStormWords();
     forecastOutline.tick(nowMs);
     heatOverlay.tick(nowMs);
     coneOverlay.tick(nowMs);

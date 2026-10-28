@@ -63,9 +63,13 @@ describe("34b.2: Maya's bubble, and tips one a year", () => {
     const queue: MayaLine[] = [];
     const order: string[] = [];
     let dismissals = 0;
+    let current: MayaLine | null = null;
     const maya = {
       isMuted: false,
       speaking: false,
+      get currentLine() {
+        return current;
+      },
       say: (l: MayaLine) => insertLine(queue, l),
       get queued() {
         return queue;
@@ -77,7 +81,8 @@ describe("34b.2: Maya's bubble, and tips one a year", () => {
       next: (pick?: (l: MayaLine) => boolean) => {
         const at = pick ? queue.findIndex(pick) : 0;
         if (at < 0 || at >= queue.length) return false;
-        order.push(queue.splice(at, 1)[0].id);
+        current = queue.splice(at, 1)[0];
+        order.push(current.id);
         return true;
       }
     } as unknown as Maya;
@@ -266,7 +271,34 @@ describe("34b.4: rows count the place they name", () => {
     expect(row, `a phase 2 row for ${pick.elementId} whose place holds ${pick.key}`).toBeDefined();
     expect(row!.credited).toContain(pick.key);
     expect(prepProgress(row!, run.state, run.zones!).current).toBeGreaterThanOrEqual(1);
+    // The review's MAJOR: the target counts the credited builds too, so no row starts done.
+    for (const r of run.prep) {
+      expect(r.count, r.label).toBe(new Set(r.credited).size + (run.objective?.picks.filter((p) => p.elementId === r.elementId && r.placeTiles!.includes(p.key)).length ?? 0));
+      expect(prepProgress(r, run.state, run.zones!).done, `${r.label} starts done`).toBe(false);
+    }
   }, 120_000);
+
+  it("no phase's row starts done, on any of four bot runs that follow the objective and Get ahead", async () => {
+    const { newRun, BOT_LEVEL } = await import("../tools/panjimBots/bots");
+    const { passYear } = await import("./helpers/passYear");
+    for (const seed of ["rows-a", "rows-b", "rows-c", "rows-d"]) {
+      const run = newRun(seed, BOT_LEVEL, true);
+      let checked = run.nextChallenge()?.id;
+      for (const row of run.prep) expect(prepProgress(row, run.state, run.zones!).done, `${seed} ${row.label}`).toBe(false);
+      while (!run.finished) {
+        // Build a pick still open (the objective's, then Get ahead's), else let the year pass.
+        const picks = [...(run.objective?.picks ?? []), ...(run.aheadObjective()?.objective.picks ?? [])];
+        const pick = picks.find((p) => run.state.canBuild(coordOf(p.key), p.elementId));
+        if (pick) run.build(coordOf(pick.key), pick.elementId);
+        else passYear(run);
+        const next = run.nextChallenge()?.id;
+        if (next && next !== checked) {
+          checked = next;
+          for (const row of run.prep) expect(prepProgress(row, run.state, run.zones!).done, `${seed} ${next} ${row.label}`).toBe(false);
+        }
+      }
+    }
+  }, 600_000);
 
   it("the hover line: every card that takes no home out of the next storm's risk says so, and only those", () => {
     expect(buildHoverLine({ saved: [], added: [] })).toBe("This doesn't change the next storm");
@@ -320,6 +352,8 @@ describe("34b.5: the result cards tell the whole story", () => {
     expect(html).toContain("Small dam Broke in this flood Cracked with age");
     const cyclone = card(defencesCard(result({ broken: [{ elementId: "seawall", name: "Seawall", cracked: false }] }), null, targets, "cyclone")).text;
     expect(cyclone).toContain("Seawall Broke in this cyclone");
+    // The 2050 storm is a cyclone and a flood: "this storm".
+    expect(card(defencesCard(result({ broken: [{ elementId: "seawall", name: "Seawall", cracked: true }] }), null, targets, "compound")).text).toContain("Seawall Broke in this storm Cracked with age");
     expect(cyclone).not.toContain("Cracked with age");
   });
 
@@ -400,8 +434,9 @@ describe("34b.7: text and small interface fixes", () => {
   });
 
   it("5. a home's card, the line under Demolish and the open sea say what they are", () => {
-    expect(TILE_NOTES.home).toBe("Homes stand here. Nothing can be built on a home.");
-    expect(TILE_NOTES.oneBuild).toBe("A tile holds one build; demolish to build another here.");
+    // The review: a rule is said as the game's (CLAUDE.md), beyond the brief's own words.
+    expect(TILE_NOTES.home).toBe("Homes stand here. In this game nothing can be built on a home.");
+    expect(TILE_NOTES.oneBuild).toBe("In this game a tile holds one build; demolish to build another here.");
     expect(TILE_NOTES.sea).toBe("Nothing can be built out here.");
     const session = readFileSync("src/app/gameSession.ts", "utf8");
     expect(session).toContain("removeNote: panjim && def.kind !== \"building\" ? TILE_NOTES.oneBuild : undefined,");

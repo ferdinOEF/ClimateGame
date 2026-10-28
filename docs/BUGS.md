@@ -279,3 +279,41 @@ Every bug, how it was found and its test; the full list with who found it and ho
 | The replay's tints by hue only; "the red" for a deuteranope | MAJOR | `tests/maya.test.ts`, `tests/section34.test.ts` |
 | A result card left alone never reset; zoom at a corner lost the board; the O key cycled dead picks | MAJOR | `tests/section34.test.ts` |
 | Maya named places no build could help | MAJOR | `tests/section34.test.ts` |
+
+# Section 34b: the owner's two live play tests (24 and 27 October)
+
+Every finding from the two play tests and what was done; the browser half of each test is `tools/section34bChecks.ts`
+(steps 34b.1 to 34b.11, at 1024x640, 1366x768 and 1920x1080), the unit half `tests/section34b.test.ts`.
+
+| Finding | Step | Fixed by, and its test |
+|---|---|---|
+| Notes drawn behind the HUD card (the combo note, "A small dam cracked with age", its tile note) | 34b.1 | The banner sits right of the card (z 12), at the bottom below 900 px; a tile note under the card goes to its bottom edge |
+| The build menu at Miramar opened over the forecast arrow and the pulsing tiles (U10) | 34b.1 | Placement weighs the pulsing tiles and the arrows; slides past a pulsing tile; below the tile when both sides have an arrow near |
+| The greeting closed by itself; the click meant for Got it built a dune on the wrong tile | 34b.2 | A line with Got it has no timer; a passing line leaves a 500 ms shield |
+| A map click with the bubble open was lost (B3) | 34b.2 | It closes the bubble and opens the tile |
+| Source in the bubble opened nothing (B4) | 34b.2 | Opens Facts and sources at the fact (an id anchor each) |
+| Tips back to back; the same fact twice; a retry or a phase start opened on a random fact; a stale note after a retry (T4) | 34b.2 | One fact or tip a year, none twice a run; a line at a phase start and after a retry, ahead of any tip; a line already up is never taken down and said again |
+| The camera moved after each build in the heat years; the heat, Last call and the row clicks left their tiles under the card (U3) | 34b.3 | Set moments only, each slid clear of the card, Maya and her bubble; held while a menu is open |
+| Rows counted only the exact pulsing tiles (B5); rings faint or under the hatching (U6); a Get ahead khazan not credited; the "doesn't change" line inconsistent (U5) | 34b.4 | Rows count the place; a phase's rows start with the builds that help; brighter rings over the heat and a row flash; one rule for the line |
+| The cards never said a dam broke; "Small Dam"; no note under the other storm's defences; "125 homes stood in its path"; Speed up under the replay card; overlapping forecast names; "Miramar Beach: Damaged" (S5); "Back" beside "Back to the menu" (U8); "It hurries the storm" read as a label (U9) | 34b.5 | All, each tested in `tests/section34b.test.ts` or the browser checks |
+| 15 to 20 s (then 8 to 10 s) of calm sea before the first wave (U2) | 34b.6 | The first wave 7.0 to 7.4 s after the last build's click |
+| The Field Guide's "sandy vegetation"; its two counts; How to play's heat line; the Tutorial's 2030 tick; the empty clock line; the Tutorial caption mid storm; the home, Demolish and open sea notes; the combo note's words; the menu's tab order; ☰ off the window; zone names over each other; the small window | 34b.7 | All ten |
+| Esc with nothing open asked "Leave Panjim?" (B2) | 34b.8 | Esc closes what is open, or Maya's line; else nothing |
+| A seawall on open sea; a small dam in the estuary (S1, S2) | 34b.9 | The shore line and the narrow upstream river only (owner decision 2d) |
+| Test hooks and telemetry live on the production site | 34b.10 | Only in development or with `?qa=1` |
+| Esc on a result card jumped to the last card | 34b.11 | Esc does nothing there (owner decision 3) |
+| "Try this storm again" went back to 2026 silently | 34b.12 | "Try again from {year}" (owner decision 8) |
+| Nothing said wind before or after 2050 | 34b.13 | Maya's 2050 warning and card 2 say it; the pandanus row cannot be offered at Campal (below) |
+| Bubbles for a cyclone; two seas; the flood over the sea; the seawall a slab, the breakwater a pebble heap (A1, A2, A4, S3) | 34b.14 | Rings, one sea, no flood colour on the sea, new walls |
+
+**Carried minors closed:** Section 34's issue 22 (Maya's tips could close before Got it or Source was clicked).
+
+**Still open (for the owner):**
+1. **The flood colour (34b.15, A3).** Waits for the owner's mock up values.
+2. **No pandanus can reach the Campal wind (34b.13).** The 2050 wind takes about 20 homes at the Campal front, three to
+   six tiles from the nearest beach; pandanus grows on beach only and shelters two tiles. So the "Plant 2 pandanus on
+   the Campal beach" row is never offered there, and Maya's line ("only pandanus shelters homes from the wind") names a
+   shelter no player can build at Campal. As Section 26 item 6 (above). Options: pandanus on more ground (a rule), other
+   words, or accept.
+3. **The sensible clear rate fell from 98% to 96% with 34b.9's rule** (4 of 200 seeds), against the brief's "must not
+   fall". Nature only stays far above seawalls only (7.0 against 2.0 stars).

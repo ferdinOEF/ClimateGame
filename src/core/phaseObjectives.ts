@@ -167,7 +167,8 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
   const rows = rowsOf(input, picks, candidates);
   // Section 34b.13: the 2050 storm (cyclone and flood) brings wind, which only pandanus lowers (a game rule). When its
   // wind still takes homes after the picks, a row asks for pandanus on the beach beside them.
-  const wind = input.challenge.kind === "compound" && !rows.some((row) => row.elementId === "sandy_vegetation") ? windRow(input, board, lost) : null;
+  const room = input.budget - picks.length;
+  const wind = input.challenge.kind === "compound" && room > 0 && rows.length < MAX_ROWS && !rows.some((row) => row.elementId === "sandy_vegetation") ? windRow(input, board, lost, room) : null;
   if (wind) {
     picks.push(...wind.picks);
     rows.push(wind.row);
@@ -184,7 +185,7 @@ export const WIND_ROW_PANDANUS = 2;
  * would leave standing; the beach tiles within two hexes of them where pandanus takes at least one home out of the
  * storm's risk (the still helps rule), best first, at most WIND_ROW_PANDANUS. "Plant 2 pandanus on the Campal beach".
  */
-function windRow(input: PhaseObjectiveInput, board: GameState, lostNow: number): { picks: ObjectivePick[]; row: PrepObjective } | null {
+function windRow(input: PhaseObjectiveInput, board: GameState, lostNow: number, room: number): { picks: ObjectivePick[]; row: PrepObjective } | null {
   const water = computeWater(board, input.storm, { combos: computeCombos(board).bonus, landfallZoneTiles: input.landfallZoneTiles });
   const windHomes: { q: number; r: number }[] = [];
   for (const [key, inst] of board.elements) {
@@ -193,11 +194,11 @@ function windRow(input: PhaseObjectiveInput, board: GameState, lostNow: number):
   }
   if (windHomes.length === 0) return null;
   const nearWind = (key: string): boolean => windHomes.some((h) => axialDistance(h, coordOfKey(key)) <= OBJECTIVE_REACH);
-  const beach = [...board.placed.keys()].filter((key) => board.placed.get(key)!.terrainId === "beach" && nearWind(key) && !input.storm.sheltered?.has(key)).sort();
+  const beach = [...board.placed.keys()].filter((key) => board.placed.get(key)!.terrainId === "beach" && nearWind(key) && !input.storm.sheltered?.has(key) && (!input.stretch?.only || input.stretch.tiles.has(key))).sort();
   const trialBoard = board.clone();
   let lost = lostNow;
   const picks: ObjectivePick[] = [];
-  while (picks.length < WIND_ROW_PANDANUS) {
+  while (picks.length < Math.min(WIND_ROW_PANDANUS, room)) {
     let best: { key: string; gain: number } | null = null;
     for (const key of beach) {
       if (!trialBoard.canBuild(coordOfKey(key), "sandy_vegetation")) continue;
@@ -215,7 +216,6 @@ function windRow(input: PhaseObjectiveInput, board: GameState, lostNow: number):
   const first = coordOfKey(picks[0].key);
   const nearest = [...(input.localities ?? [])].sort((a, b) => axialDistance(a, first) - axialDistance(b, first) || (a.name < b.name ? -1 : 1))[0];
   const place = nearest ? (nearest.name === "Campal" ? "on the Campal beach" : `on the beach near ${nearest.name}`) : "on the beach";
-  const count = picks.length;
   // The tiles that count: the beach near the homes in the wind; pandanus already there that helps counts from the start.
   const lostOnBoard = homesLost(input.state, input.storm, input.landfallZoneTiles).size;
   const credited = beach.filter((key) => {
@@ -224,6 +224,7 @@ function windRow(input: PhaseObjectiveInput, board: GameState, lostNow: number):
     without.elements.delete(key);
     return homesLost(without, input.storm, input.landfallZoneTiles).size > lostOnBoard;
   });
+  const count = picks.length + credited.length;
   return {
     picks,
     row: {
@@ -313,7 +314,6 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
     const places = new Set(group.places);
     const tiles = [...new Set([...candidates.filter((c) => c.elementId === group.elementId && places.has(placeOf(input, c.key))).map((c) => c.key), ...group.picks.map((p) => p.key)])].sort();
     const [verb, one, many] = NOUN[group.elementId] ?? ["Build", group.elementId, group.elementId];
-    const count = group.picks.length;
     const baseline = tiles.filter((key) => input.state.elements.get(key)?.elementId === group.elementId).length;
     // Section 34b.4: the tiles that count are the whole place the row names. Its defences already standing there that
     // take a home out of this storm's risk (Get ahead's, an earlier phase's) count from the start.
@@ -325,6 +325,9 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
       without.elements.delete(key);
       return homesLost(without, input.storm, input.landfallZoneTiles).size > lostNow;
     });
+    // The model's picks are new builds on a board that already holds the credited ones, so the row asks for both:
+    // "Build 3 khazans in Merces 1/3" with one already standing (never a row that starts done).
+    const count = group.picks.length + credited.length;
     return {
       id: `${input.challenge.id}:model:${i}:${group.elementId}`,
       challengeId: input.challenge.id,

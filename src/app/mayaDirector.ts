@@ -191,7 +191,8 @@ export class MayaDirector {
     if (!line.urgent && !line.fact && this.lastSpokenMoment >= 0 && moment - this.lastSpokenMoment < 2) return;
     if (this.maya.next((queued) => queued === line)) {
       this.lastSpokenMoment = moment;
-      if (isTip(line)) {
+      // A line held back for want of room (Maya puts it back in her queue) has not been said yet.
+      if (isTip(line) && this.maya.currentLine === line) {
         this.shownTips.add(line.id);
         this.tipYear = year;
       }

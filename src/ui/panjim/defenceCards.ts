@@ -110,8 +110,8 @@ export const CARD_ICON: Record<string, string> = {
 
 /** Section 34b.7: what a tile's card says where nothing more can be built there. */
 export const TILE_NOTES = {
-  home: "Homes stand here. Nothing can be built on a home.",
-  oneBuild: "A tile holds one build; demolish to build another here.",
+  home: "Homes stand here. In this game nothing can be built on a home.",
+  oneBuild: "In this game a tile holds one build; demolish to build another here.",
   sea: "Nothing can be built out here.",
   nothing: "Nothing can be built on this tile."
 } as const;
