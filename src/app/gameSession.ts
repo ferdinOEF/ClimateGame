@@ -2826,9 +2826,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const coord = monuments.atHit(hits[0].object, hits[0].instanceId)?.coord ?? terrain.coordForHit(hits[0].object, hits[0].instanceId);
     if (!coord) return;
 
-    // Section 34b.2: a click on the map with her bubble open closes the bubble and still opens the tile, as if the
-    // bubble were not there (the menu's cards ignore clicks for their first moment, so it never builds).
-    if (panjim?.maya.speaking) panjim.maya.dismiss();
+    // Section 34b.2: a click on the map with her bubble open still opens the tile, as if the bubble were not there (the
+    // menu's cards ignore clicks for their first moment, so it never builds). Section 34b (owner, 28 October): her
+    // bubble steps aside while the menu is open and comes back when it closes (the frame loop's setTucked).
     openTilePopover(coord);
   }
 
@@ -2984,6 +2984,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // The risk sequence gives way the moment the player opens a menu.
     if (riskIntro.isRunning && overlayOpen()) riskIntro.cancel("menu");
     riskIntro.frame(nowMs);
+    // Section 34b (owner, 28 October): Maya's bubble steps aside while a build menu or tile card is open.
+    panjim?.maya.setTucked(buildPopover.isOpen);
     // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes.
     if (pendingCameraMove && !buildPopover.isOpen) {
       const move = pendingCameraMove;

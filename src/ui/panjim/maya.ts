@@ -365,12 +365,38 @@ export class Maya {
    * (Section 34b.2: a tip held to one a year lets a line behind it go first). Returns true if she spoke.
    */
   next(pick?: (line: MayaLine) => boolean): boolean {
-    if (this.current || this.muted || this.minimised) return false;
+    if (this.current || this.muted || this.minimised || this.tucked) return false;
     const at = pick ? this.queue.findIndex(pick) : 0;
     if (at < 0 || at >= this.queue.length) return false;
     const [line] = this.queue.splice(at, 1);
     this.show(line);
     return true;
+  }
+
+  /** Section 34b (owner, 28 October): her bubble has stepped aside for an open build menu or tile card. */
+  private tucked = false;
+
+  /**
+   * Section 34b (owner, 28 October): while a build menu or tile card is open her bubble steps aside (only her figure
+   * shows, as with Minimise for the bubble) and comes back as it was when the menu closes, unless Got it was pressed.
+   * A passing line's timer waits meanwhile; no new line starts.
+   */
+  setTucked(on: boolean): void {
+    if (on === this.tucked) return;
+    this.tucked = on;
+    this.el.classList.toggle("tucked", on);
+    if (!this.current) return;
+    this.bubble.hidden = on;
+    if (on) window.clearTimeout(this.hideTimer);
+    else {
+      if (this.current.hint && !this.holdLines) this.armHide(this.current, 4000);
+      this.bubbleAt = "";
+      this.layoutDirty = true;
+    }
+  }
+
+  get isTucked(): boolean {
+    return this.tucked;
   }
 
   /** The queued lines, in order, without saying any (Section 34b.2: the director picks the one it may say). */
@@ -524,7 +550,7 @@ export class Maya {
    */
   private layout(): void {
     this.layoutDirty = false;
-    if (this.minimised || !this.current) return;
+    if (this.minimised || this.tucked || !this.current) return;
     // Section 30b: frozen while the pointer is on her or her bubble (it is laid out again once the pointer leaves).
     if (this.pointerOver && this.bubbleAt !== "") {
       this.layoutDirty = true;

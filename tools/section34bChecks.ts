@@ -588,6 +588,38 @@ STEPS.push([
   }
 ]);
 
+// ---- Owner, 28 October: Maya's bubble steps aside for an open build menu and comes back when it closes ----
+STEPS.push([
+  "tuck",
+  async (ctx) => {
+    const page = await openGame(ctx);
+    await page.waitForFunction(`!!document.querySelector(".maya-bubble:not([hidden])")`, undefined, { timeout: 15000 }).catch(() => undefined);
+    const line = (await page.evaluate(`window.__panjimForTest.maya.currentLine?.text ?? ""`)) as string;
+    const tile = (await tileOnScreen(page, ctx, "beach")) ?? (await tileOnScreen(page, ctx, "estuary"));
+    check(line !== "" && tile !== null, "her line is up and a free tile is on screen");
+    if (tile) {
+      await page.mouse.click(tile.x, tile.y);
+      await page.waitForTimeout(800);
+      check((await menuOpen(page)) && !(await bubbleOpen(page)), "with the build menu open her bubble has stepped aside");
+      check(((await page.evaluate(`window.__panjimForTest.maya.currentLine?.text ?? ""`)) as string) === line, "her line is kept");
+      await page.screenshot({ path: path.join(ctx.out, `tuck-menu-${ctx.tag}.jpg`), type: "jpeg", quality: 75 });
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(900);
+      const back = (await page.evaluate(`window.__panjimForTest.maya.currentLine?.text ?? ""`)) as string;
+      check(!(await menuOpen(page)) && (await bubbleOpen(page)) && back === line, "the menu closed, the same line is back");
+      // Got it, then a menu: nothing comes back.
+      await page.locator(".maya-dismiss").click();
+      await page.waitForTimeout(400);
+      await page.mouse.click(tile.x, tile.y);
+      await page.waitForTimeout(800);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(900);
+      check(!(await bubbleOpen(page)), "after Got it, closing a menu brings no line back");
+    }
+    await page.close();
+  }
+]);
+
 const { url, child } = args.get("url") ? { url: args.get("url")!, child: null } : await startPreview();
 const browser = await chromium.launch({ args: gpu });
 try {

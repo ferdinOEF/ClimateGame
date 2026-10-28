@@ -636,3 +636,15 @@ describe("owner decision 7 (28 October): the red comes on by itself once the lis
     expect(controller).toContain(`if (event.key === "r" || event.key === "R") this.riskToggle.toggle();`);
   });
 });
+
+describe("owner, 28 October: Maya's bubble steps aside for an open build menu or tile card", () => {
+  it("the bubble hides while a menu is open and comes back as it was (unless Got it was pressed); no new line starts meanwhile", () => {
+    const maya = readFileSync("src/ui/panjim/maya.ts", "utf8");
+    expect(maya).toContain("setTucked(on: boolean): void {");
+    expect(maya).toContain("if (this.current || this.muted || this.minimised || this.tucked) return false;");
+    expect(maya).toContain("if (this.minimised || this.tucked || !this.current) return;");
+    const session = readFileSync("src/app/gameSession.ts", "utf8");
+    expect(session).toContain("panjim?.maya.setTucked(buildPopover.isOpen);");
+    expect(session).not.toContain("if (panjim?.maya.speaking) panjim.maya.dismiss();\n    openTilePopover(coord);");
+  });
+});
