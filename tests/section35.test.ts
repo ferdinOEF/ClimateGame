@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { finaleHtml, finaleTitle, ordinal, rankHtml, stormPointsHtml, VETERANS_LINE, type FinaleView } from "../src/ui/panjim/resultCards";
-import { stormPoints, endPoints } from "../src/core/resiliencePoints";
+import { stormPoints, endPoints, POINT_VALUES } from "../src/core/resiliencePoints";
 import { POINTS_HELP } from "../src/ui/panjim/panjimHelp";
 import { punctuationProblems } from "./helpers/uiStrings";
 import { HUD_OBSTACLES } from "../src/ui/panjim/maya";
@@ -35,7 +35,7 @@ describe("result card 1: Points this storm", () => {
     expect(text(html)).toContain(`Points this storm ${storm2030.total}`);
     expect(html.match(/class="result-points-chip"/g)?.length).toBe(4);
     expect(text(html)).toContain("Homes +420");
-    expect(text(html)).toContain("Places +250");
+    expect(text(html)).toContain(`Places +${POINT_VALUES.place}`);
     expect(text(html)).toContain("Objective +300");
     expect(text(html)).toContain(`Living coast +${3 * 20 + 2 * 30}`);
     expect(html).not.toMatch(/·|•/);

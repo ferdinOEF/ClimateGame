@@ -2152,7 +2152,7 @@ function placesInArea(places, area) {
 // src/core/resiliencePoints.ts
 var POINT_VALUES = {
   home: 10,
-  place: 250,
+  place: 150,
   objective: 300,
   coastStanding: 20,
   coastProtecting: 30,

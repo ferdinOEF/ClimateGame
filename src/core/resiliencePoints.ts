@@ -44,9 +44,13 @@ export interface PointValues {
   veteran: number;
 }
 
+/**
+ * Section 35.6: tuned on the bots (docs/qa/section35/points.md): from the brief's starting values only Iconic places
+ * moved, 250 to 150, so no single source passes 40% of a best play run's total (it was 46%, Places).
+ */
 export const POINT_VALUES: Readonly<PointValues> = {
   home: 10,
-  place: 250,
+  place: 150,
   objective: 300,
   coastStanding: 20,
   coastProtecting: 30,

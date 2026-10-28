@@ -1,0 +1,3220 @@
+{
+ "seeds": [
+  "bot-seed-1",
+  "bot-seed-2",
+  "bot-seed-3",
+  "bot-seed-4",
+  "bot-seed-5",
+  "bot-seed-6",
+  "bot-seed-7",
+  "bot-seed-8",
+  "bot-seed-9",
+  "bot-seed-10",
+  "bot-seed-11",
+  "bot-seed-12",
+  "bot-seed-13",
+  "bot-seed-14",
+  "bot-seed-15",
+  "bot-seed-16",
+  "bot-seed-17",
+  "bot-seed-18",
+  "bot-seed-19",
+  "bot-seed-20"
+ ],
+ "facts": [
+  {
+   "who": "random",
+   "seed": "bot-seed-1",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 7,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 10,
+   "coastProtecting": 4,
+   "bioRise": 0,
+   "veterans": 1,
+   "builds": {
+    "breakwater": 18,
+    "mangrove": 3,
+    "khazan": 2,
+    "sandy_vegetation": 1,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-5",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 23,
+   "places": 1,
+   "objectives": 0,
+   "coastStanding": 12,
+   "coastProtecting": 7,
+   "bioRise": 0,
+   "veterans": 1,
+   "builds": {
+    "breakwater": 18,
+    "khazan": 2,
+    "dune": 1,
+    "sandy_vegetation": 1,
+    "mangrove": 2,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-9",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 27,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 11,
+   "coastProtecting": 6,
+   "bioRise": 0,
+   "veterans": 1,
+   "builds": {
+    "khazan": 2,
+    "small_dam": 4,
+    "breakwater": 14,
+    "seawall": 1,
+    "mangrove": 4
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-13",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 14,
+   "places": 1,
+   "objectives": 0,
+   "coastStanding": 12,
+   "coastProtecting": 5,
+   "bioRise": 0,
+   "veterans": 3,
+   "builds": {
+    "khazan": 3,
+    "mangrove": 2,
+    "breakwater": 16,
+    "small_dam": 2,
+    "seawall": 2
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-17",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 17,
+   "places": 1,
+   "objectives": 0,
+   "coastStanding": 13,
+   "coastProtecting": 6,
+   "bioRise": 0,
+   "veterans": 1,
+   "builds": {
+    "breakwater": 15,
+    "khazan": 5,
+    "small_dam": 1,
+    "mangrove": 3,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-1",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-5",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-9",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-13",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-17",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-1",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 94,
+   "places": 2,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 20,
+   "bioRise": 64,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 4,
+    "mangrove": 10,
+    "khazan": 8
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-5",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 95,
+   "places": 3,
+   "objectives": 0,
+   "coastStanding": 45,
+   "coastProtecting": 24,
+   "bioRise": 64,
+   "veterans": 5,
+   "builds": {
+    "dune": 1,
+    "sandy_vegetation": 6,
+    "khazan": 10,
+    "mangrove": 8
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-9",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 93,
+   "places": 3,
+   "objectives": 0,
+   "coastStanding": 45,
+   "coastProtecting": 27,
+   "bioRise": 61,
+   "veterans": 5,
+   "builds": {
+    "dune": 4,
+    "sandy_vegetation": 3,
+    "mangrove": 8,
+    "khazan": 10
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-13",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 95,
+   "places": 2,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 26,
+   "bioRise": 59,
+   "veterans": 5,
+   "builds": {
+    "sandy_vegetation": 3,
+    "dune": 5,
+    "mangrove": 6,
+    "khazan": 11
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-17",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 91,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 26,
+   "bioRise": 62,
+   "veterans": 5,
+   "builds": {
+    "dune": 5,
+    "sandy_vegetation": 4,
+    "mangrove": 8,
+    "khazan": 8
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-1",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 16,
+    "seawall": 9
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-5",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "seawall": 8,
+    "breakwater": 17
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-9",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 18,
+    "seawall": 7
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-13",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 18,
+    "seawall": 7
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-17",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 16,
+    "seawall": 9
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-1",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 105,
+   "places": 7,
+   "objectives": 0,
+   "coastStanding": 30,
+   "coastProtecting": 18,
+   "bioRise": 19,
+   "veterans": 4,
+   "builds": {
+    "sandy_vegetation": 4,
+    "seawall": 2,
+    "dune": 1,
+    "small_dam": 6,
+    "mangrove": 5,
+    "khazan": 5,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-5",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 7,
+   "objectives": 0,
+   "coastStanding": 28,
+   "coastProtecting": 15,
+   "bioRise": 21,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 4,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "small_dam": 5,
+    "mangrove": 6,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-9",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 102,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 24,
+   "coastProtecting": 11,
+   "bioRise": 4,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 3,
+    "small_dam": 5,
+    "mangrove": 4,
+    "khazan": 5,
+    "seawall": 2
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-13",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 102,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 22,
+   "coastProtecting": 14,
+   "bioRise": 10,
+   "veterans": 2,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 2,
+    "small_dam": 7,
+    "mangrove": 3,
+    "khazan": 6,
+    "dune": 1
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-17",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 105,
+   "places": 7,
+   "objectives": 0,
+   "coastStanding": 30,
+   "coastProtecting": 19,
+   "bioRise": 28,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 3,
+    "sandy_vegetation": 4,
+    "seawall": 1,
+    "small_dam": 4,
+    "mangrove": 5,
+    "khazan": 8
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-1",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 101,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 23,
+   "bioRise": 43,
+   "veterans": 4,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 2,
+    "breakwater": 2,
+    "khazan": 11,
+    "mangrove": 6,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-5",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 102,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 23,
+   "bioRise": 43,
+   "veterans": 4,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "khazan": 12,
+    "mangrove": 5,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-9",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 101,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 43,
+   "coastProtecting": 23,
+   "bioRise": 52,
+   "veterans": 5,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 4,
+    "khazan": 12,
+    "mangrove": 5,
+    "breakwater": 1,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-13",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 102,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 24,
+   "bioRise": 43,
+   "veterans": 4,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "khazan": 12,
+    "mangrove": 5,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-17",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 3,
+   "objectives": 3,
+   "coastStanding": 43,
+   "coastProtecting": 32,
+   "bioRise": 55,
+   "veterans": 5,
+   "builds": {
+    "dune": 4,
+    "sandy_vegetation": 2,
+    "khazan": 12,
+    "mangrove": 6,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-1",
+   "stars": [
+    3,
+    3,
+    2
+   ],
+   "homes": 114,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 29,
+   "coastProtecting": 21,
+   "bioRise": 19,
+   "veterans": 4,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 4,
+    "dune": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-5",
+   "stars": [
+    3,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 29,
+   "coastProtecting": 20,
+   "bioRise": 18,
+   "veterans": 4,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 3,
+    "dune": 2,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-9",
+   "stars": [
+    3,
+    3,
+    2
+   ],
+   "homes": 114,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 29,
+   "coastProtecting": 21,
+   "bioRise": 19,
+   "veterans": 4,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 4,
+    "dune": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-13",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 114,
+   "places": 7,
+   "objectives": 0,
+   "coastStanding": 26,
+   "coastProtecting": 21,
+   "bioRise": 12,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 4,
+    "seawall": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-17",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 26,
+   "coastProtecting": 22,
+   "bioRise": 12,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 4,
+    "seawall": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-2",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 10,
+   "places": 2,
+   "objectives": 0,
+   "coastStanding": 11,
+   "coastProtecting": 2,
+   "bioRise": 0,
+   "veterans": 2,
+   "builds": {
+    "dune": 2,
+    "mangrove": 2,
+    "breakwater": 19,
+    "sandy_vegetation": 1,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-6",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 20,
+   "places": 3,
+   "objectives": 0,
+   "coastStanding": 12,
+   "coastProtecting": 5,
+   "bioRise": 0,
+   "veterans": 2,
+   "builds": {
+    "seawall": 2,
+    "breakwater": 15,
+    "sandy_vegetation": 1,
+    "khazan": 4,
+    "small_dam": 1,
+    "mangrove": 2
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-10",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 9,
+   "places": 2,
+   "objectives": 0,
+   "coastStanding": 4,
+   "coastProtecting": 2,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 20,
+    "seawall": 1,
+    "khazan": 2,
+    "mangrove": 1,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-14",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 18,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 17,
+   "coastProtecting": 9,
+   "bioRise": 0,
+   "veterans": 3,
+   "builds": {
+    "khazan": 3,
+    "mangrove": 3,
+    "breakwater": 17,
+    "dune": 2
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-18",
+   "stars": [
+    0,
+    1,
+    1
+   ],
+   "homes": 38,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 16,
+   "coastProtecting": 10,
+   "bioRise": 0,
+   "veterans": 2,
+   "builds": {
+    "khazan": 1,
+    "breakwater": 15,
+    "mangrove": 5,
+    "small_dam": 2,
+    "seawall": 1,
+    "dune": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-2",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-6",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-10",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-14",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-18",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-2",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 95,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 45,
+   "coastProtecting": 25,
+   "bioRise": 59,
+   "veterans": 5,
+   "builds": {
+    "dune": 4,
+    "sandy_vegetation": 3,
+    "mangrove": 6,
+    "khazan": 12
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-6",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 92,
+   "places": 2,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 24,
+   "bioRise": 62,
+   "veterans": 5,
+   "builds": {
+    "sandy_vegetation": 4,
+    "dune": 4,
+    "mangrove": 8,
+    "khazan": 9
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-10",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 91,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 45,
+   "coastProtecting": 24,
+   "bioRise": 61,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 5,
+    "mangrove": 6,
+    "khazan": 11
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-14",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 96,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 26,
+   "bioRise": 59,
+   "veterans": 5,
+   "builds": {
+    "dune": 4,
+    "sandy_vegetation": 3,
+    "mangrove": 6,
+    "khazan": 12
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-18",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 94,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 23,
+   "bioRise": 63,
+   "veterans": 5,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 5,
+    "mangrove": 8,
+    "khazan": 10
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-2",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 17,
+    "seawall": 8
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-6",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 17,
+    "seawall": 8
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-10",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 17,
+    "seawall": 8
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-14",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 19,
+    "seawall": 6
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-18",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 17,
+    "seawall": 8
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-2",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 104,
+   "places": 6,
+   "objectives": 0,
+   "coastStanding": 33,
+   "coastProtecting": 21,
+   "bioRise": 33,
+   "veterans": 4,
+   "builds": {
+    "seawall": 1,
+    "sandy_vegetation": 3,
+    "dune": 1,
+    "small_dam": 4,
+    "mangrove": 7,
+    "khazan": 7,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-6",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 102,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 29,
+   "coastProtecting": 17,
+   "bioRise": 18,
+   "veterans": 4,
+   "builds": {
+    "seawall": 1,
+    "sandy_vegetation": 3,
+    "dune": 3,
+    "small_dam": 7,
+    "mangrove": 5,
+    "khazan": 3,
+    "breakwater": 3
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-10",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 89,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 31,
+   "coastProtecting": 19,
+   "bioRise": 17,
+   "veterans": 4,
+   "builds": {
+    "sandy_vegetation": 3,
+    "dune": 1,
+    "breakwater": 3,
+    "small_dam": 6,
+    "khazan": 10,
+    "seawall": 1,
+    "mangrove": 1
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-14",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 101,
+   "places": 8,
+   "objectives": 1,
+   "coastStanding": 31,
+   "coastProtecting": 17,
+   "bioRise": 24,
+   "veterans": 4,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 4,
+    "seawall": 1,
+    "small_dam": 4,
+    "mangrove": 5,
+    "khazan": 5,
+    "breakwater": 4
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-18",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 108,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 27,
+   "coastProtecting": 15,
+   "bioRise": 15,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 4,
+    "sandy_vegetation": 4,
+    "seawall": 2,
+    "mangrove": 6,
+    "khazan": 4,
+    "small_dam": 5
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-2",
+   "stars": [
+    1,
+    2,
+    2
+   ],
+   "homes": 99,
+   "places": 3,
+   "objectives": 3,
+   "coastStanding": 37,
+   "coastProtecting": 28,
+   "bioRise": 34,
+   "veterans": 3,
+   "builds": {
+    "dune": 1,
+    "sandy_vegetation": 3,
+    "seawall": 3,
+    "khazan": 11,
+    "mangrove": 6,
+    "breakwater": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-6",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 102,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 23,
+   "bioRise": 45,
+   "veterans": 4,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 2,
+    "breakwater": 3,
+    "khazan": 12,
+    "mangrove": 5
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-10",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 2,
+   "objectives": 3,
+   "coastStanding": 43,
+   "coastProtecting": 31,
+   "bioRise": 49,
+   "veterans": 5,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 4,
+    "khazan": 12,
+    "mangrove": 5,
+    "small_dam": 1,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-14",
+   "stars": [
+    1,
+    2,
+    2
+   ],
+   "homes": 101,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 36,
+   "coastProtecting": 23,
+   "bioRise": 32,
+   "veterans": 3,
+   "builds": {
+    "dune": 1,
+    "sandy_vegetation": 2,
+    "seawall": 2,
+    "khazan": 12,
+    "mangrove": 5,
+    "breakwater": 2,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-18",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 7,
+   "objectives": 3,
+   "coastStanding": 36,
+   "coastProtecting": 23,
+   "bioRise": 40,
+   "veterans": 3,
+   "builds": {
+    "dune": 1,
+    "sandy_vegetation": 2,
+    "seawall": 1,
+    "breakwater": 2,
+    "khazan": 12,
+    "mangrove": 6,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-2",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 114,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 25,
+   "coastProtecting": 19,
+   "bioRise": 8,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 4,
+    "seawall": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 5
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-6",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 114,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 25,
+   "coastProtecting": 19,
+   "bioRise": 7,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "dune": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 5
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-10",
+   "stars": [
+    3,
+    3,
+    2
+   ],
+   "homes": 114,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 29,
+   "coastProtecting": 21,
+   "bioRise": 19,
+   "veterans": 4,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 4,
+    "dune": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-14",
+   "stars": [
+    3,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 29,
+   "coastProtecting": 21,
+   "bioRise": 19,
+   "veterans": 4,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 4,
+    "dune": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-18",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 25,
+   "coastProtecting": 20,
+   "bioRise": 7,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-3",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 18,
+   "places": 3,
+   "objectives": 0,
+   "coastStanding": 12,
+   "coastProtecting": 7,
+   "bioRise": 0,
+   "veterans": 1,
+   "builds": {
+    "breakwater": 16,
+    "mangrove": 1,
+    "small_dam": 2,
+    "khazan": 4,
+    "dune": 2
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-7",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 15,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 10,
+   "coastProtecting": 6,
+   "bioRise": 0,
+   "veterans": 1,
+   "builds": {
+    "khazan": 4,
+    "breakwater": 16,
+    "small_dam": 3,
+    "dune": 1,
+    "mangrove": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-11",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 14,
+   "places": 3,
+   "objectives": 0,
+   "coastStanding": 10,
+   "coastProtecting": 7,
+   "bioRise": 0,
+   "veterans": 2,
+   "builds": {
+    "khazan": 2,
+    "seawall": 3,
+    "mangrove": 2,
+    "breakwater": 16,
+    "small_dam": 2
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-15",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 10,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 6,
+   "coastProtecting": 4,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 19,
+    "small_dam": 2,
+    "mangrove": 2,
+    "dune": 1,
+    "khazan": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-19",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 19,
+   "places": 1,
+   "objectives": 0,
+   "coastStanding": 8,
+   "coastProtecting": 4,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 17,
+    "small_dam": 2,
+    "mangrove": 3,
+    "khazan": 1,
+    "sandy_vegetation": 1,
+    "dune": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-3",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-7",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-11",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-15",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-19",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-3",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 96,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 24,
+   "bioRise": 62,
+   "veterans": 5,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 5,
+    "mangrove": 7,
+    "khazan": 11
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-7",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 94,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 45,
+   "coastProtecting": 25,
+   "bioRise": 63,
+   "veterans": 5,
+   "builds": {
+    "sandy_vegetation": 6,
+    "dune": 3,
+    "mangrove": 7,
+    "khazan": 9
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-11",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 89,
+   "places": 2,
+   "objectives": 0,
+   "coastStanding": 45,
+   "coastProtecting": 20,
+   "bioRise": 64,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 7,
+    "khazan": 8,
+    "mangrove": 7
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-15",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 96,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 23,
+   "bioRise": 63,
+   "veterans": 5,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 5,
+    "mangrove": 8,
+    "khazan": 10
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-19",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 96,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 25,
+   "bioRise": 60,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 4,
+    "khazan": 12,
+    "mangrove": 6
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-3",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "seawall": 9,
+    "breakwater": 16
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-7",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 18,
+    "seawall": 7
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-11",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 16,
+    "seawall": 9
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-15",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 18,
+    "seawall": 7
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-19",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 17,
+    "seawall": 8
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-3",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 103,
+   "places": 8,
+   "objectives": 1,
+   "coastStanding": 31,
+   "coastProtecting": 17,
+   "bioRise": 17,
+   "veterans": 5,
+   "builds": {
+    "sandy_vegetation": 2,
+    "dune": 3,
+    "small_dam": 6,
+    "mangrove": 6,
+    "khazan": 3,
+    "seawall": 1,
+    "breakwater": 4
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-7",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 29,
+   "coastProtecting": 18,
+   "bioRise": 22,
+   "veterans": 4,
+   "builds": {
+    "seawall": 1,
+    "sandy_vegetation": 4,
+    "dune": 2,
+    "small_dam": 7,
+    "mangrove": 4,
+    "khazan": 5,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-11",
+   "stars": [
+    1,
+    2,
+    2
+   ],
+   "homes": 101,
+   "places": 8,
+   "objectives": 1,
+   "coastStanding": 28,
+   "coastProtecting": 18,
+   "bioRise": 3,
+   "veterans": 3,
+   "builds": {
+    "dune": 1,
+    "sandy_vegetation": 3,
+    "seawall": 5,
+    "small_dam": 4,
+    "mangrove": 5,
+    "khazan": 5,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-15",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 94,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 34,
+   "coastProtecting": 18,
+   "bioRise": 24,
+   "veterans": 4,
+   "builds": {
+    "seawall": 2,
+    "sandy_vegetation": 4,
+    "dune": 1,
+    "khazan": 7,
+    "small_dam": 3,
+    "mangrove": 5,
+    "breakwater": 3
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-19",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 93,
+   "places": 7,
+   "objectives": 0,
+   "coastStanding": 27,
+   "coastProtecting": 14,
+   "bioRise": 13,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 3,
+    "sandy_vegetation": 2,
+    "dune": 2,
+    "seawall": 2,
+    "small_dam": 6,
+    "mangrove": 5,
+    "khazan": 5
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-3",
+   "stars": [
+    2,
+    2,
+    3
+   ],
+   "homes": 103,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 25,
+   "bioRise": 44,
+   "veterans": 4,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "khazan": 11,
+    "mangrove": 6,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-7",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 3,
+   "objectives": 3,
+   "coastStanding": 43,
+   "coastProtecting": 32,
+   "bioRise": 56,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 3,
+    "khazan": 12,
+    "mangrove": 6,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-11",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 2,
+   "objectives": 3,
+   "coastStanding": 41,
+   "coastProtecting": 32,
+   "bioRise": 48,
+   "veterans": 4,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "khazan": 12,
+    "mangrove": 5,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-15",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 102,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 23,
+   "bioRise": 43,
+   "veterans": 4,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "khazan": 12,
+    "mangrove": 5,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-19",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 4,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 31,
+   "bioRise": 47,
+   "veterans": 4,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 3,
+    "breakwater": 2,
+    "khazan": 12,
+    "mangrove": 5,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-3",
+   "stars": [
+    1,
+    3,
+    2
+   ],
+   "homes": 113,
+   "places": 7,
+   "objectives": 0,
+   "coastStanding": 22,
+   "coastProtecting": 19,
+   "bioRise": 0,
+   "veterans": 2,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 3,
+    "seawall": 2,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 5
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-7",
+   "stars": [
+    1,
+    3,
+    2
+   ],
+   "homes": 113,
+   "places": 7,
+   "objectives": 0,
+   "coastStanding": 22,
+   "coastProtecting": 19,
+   "bioRise": 0,
+   "veterans": 2,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 3,
+    "seawall": 2,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 5
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-11",
+   "stars": [
+    1,
+    3,
+    2
+   ],
+   "homes": 113,
+   "places": 7,
+   "objectives": 0,
+   "coastStanding": 22,
+   "coastProtecting": 19,
+   "bioRise": 0,
+   "veterans": 2,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 3,
+    "seawall": 2,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 5
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-15",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 26,
+   "coastProtecting": 21,
+   "bioRise": 11,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "dune": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-19",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 26,
+   "coastProtecting": 21,
+   "bioRise": 12,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 4,
+    "seawall": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-4",
+   "stars": [
+    0,
+    1,
+    1
+   ],
+   "homes": 36,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 16,
+   "coastProtecting": 10,
+   "bioRise": 0,
+   "veterans": 1,
+   "builds": {
+    "seawall": 1,
+    "mangrove": 5,
+    "breakwater": 13,
+    "small_dam": 2,
+    "khazan": 3,
+    "dune": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-8",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 6,
+   "places": 1,
+   "objectives": 0,
+   "coastStanding": 10,
+   "coastProtecting": 2,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "seawall": 2,
+    "breakwater": 13,
+    "small_dam": 2,
+    "khazan": 3,
+    "dune": 1,
+    "mangrove": 4
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-12",
+   "stars": [
+    0,
+    0,
+    1
+   ],
+   "homes": 26,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 10,
+   "coastProtecting": 8,
+   "bioRise": 0,
+   "veterans": 1,
+   "builds": {
+    "khazan": 4,
+    "breakwater": 17,
+    "small_dam": 2,
+    "sandy_vegetation": 1,
+    "mangrove": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-16",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 8,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 7,
+   "coastProtecting": 2,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 16,
+    "mangrove": 1,
+    "small_dam": 3,
+    "khazan": 4,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "random",
+   "seed": "bot-seed-20",
+   "stars": [
+    0,
+    1,
+    1
+   ],
+   "homes": 36,
+   "places": 3,
+   "objectives": 0,
+   "coastStanding": 13,
+   "coastProtecting": 6,
+   "bioRise": 0,
+   "veterans": 2,
+   "builds": {
+    "breakwater": 12,
+    "mangrove": 2,
+    "khazan": 4,
+    "small_dam": 7
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-4",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-8",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-12",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-16",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "far",
+   "seed": "bot-seed-20",
+   "stars": [
+    0,
+    0,
+    0
+   ],
+   "homes": 0,
+   "places": 0,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "breakwater": 24,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-4",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 92,
+   "places": 2,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 24,
+   "bioRise": 64,
+   "veterans": 5,
+   "builds": {
+    "dune": 4,
+    "sandy_vegetation": 6,
+    "mangrove": 8,
+    "khazan": 7
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-8",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 86,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 19,
+   "bioRise": 65,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 4,
+    "mangrove": 11,
+    "khazan": 7
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-12",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 89,
+   "places": 4,
+   "objectives": 0,
+   "coastStanding": 45,
+   "coastProtecting": 22,
+   "bioRise": 62,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 4,
+    "mangrove": 8,
+    "khazan": 10
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-16",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 95,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 23,
+   "bioRise": 63,
+   "veterans": 5,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 5,
+    "mangrove": 8,
+    "khazan": 10
+   }
+  },
+  {
+   "who": "nature",
+   "seed": "bot-seed-20",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 95,
+   "places": 4,
+   "objectives": 1,
+   "coastStanding": 45,
+   "coastProtecting": 27,
+   "bioRise": 64,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 4,
+    "mangrove": 10,
+    "khazan": 8
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-4",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "seawall": 8,
+    "breakwater": 17
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-8",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "seawall": 8,
+    "breakwater": 17
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-12",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "seawall": 8,
+    "breakwater": 17
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-16",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "seawall": 7,
+    "breakwater": 18
+   }
+  },
+  {
+   "who": "seawalls",
+   "seed": "bot-seed-20",
+   "stars": [
+    1,
+    0,
+    1
+   ],
+   "homes": 16,
+   "places": 5,
+   "objectives": 0,
+   "coastStanding": 0,
+   "coastProtecting": 0,
+   "bioRise": 0,
+   "veterans": 0,
+   "builds": {
+    "seawall": 7,
+    "breakwater": 18
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-4",
+   "stars": [
+    2,
+    2,
+    2
+   ],
+   "homes": 103,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 28,
+   "coastProtecting": 17,
+   "bioRise": 18,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 4,
+    "sandy_vegetation": 4,
+    "seawall": 2,
+    "mangrove": 6,
+    "khazan": 4,
+    "small_dam": 4,
+    "dune": 1
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-8",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 103,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 32,
+   "coastProtecting": 17,
+   "bioRise": 33,
+   "veterans": 4,
+   "builds": {
+    "sandy_vegetation": 5,
+    "breakwater": 3,
+    "small_dam": 5,
+    "mangrove": 5,
+    "khazan": 7
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-12",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 95,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 32,
+   "coastProtecting": 18,
+   "bioRise": 28,
+   "veterans": 4,
+   "builds": {
+    "breakwater": 4,
+    "sandy_vegetation": 4,
+    "dune": 3,
+    "mangrove": 5,
+    "khazan": 4,
+    "small_dam": 5
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-16",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 103,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 25,
+   "coastProtecting": 14,
+   "bioRise": 11,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 3,
+    "sandy_vegetation": 3,
+    "seawall": 2,
+    "mangrove": 5,
+    "small_dam": 7,
+    "khazan": 4,
+    "dune": 1
+   }
+  },
+  {
+   "who": "smart",
+   "seed": "bot-seed-20",
+   "stars": [
+    3,
+    3,
+    2
+   ],
+   "homes": 105,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 27,
+   "coastProtecting": 12,
+   "bioRise": 7,
+   "veterans": 4,
+   "builds": {
+    "sandy_vegetation": 4,
+    "seawall": 3,
+    "small_dam": 6,
+    "mangrove": 4,
+    "khazan": 5,
+    "breakwater": 3
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-4",
+   "stars": [
+    3,
+    2,
+    3
+   ],
+   "homes": 104,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 43,
+   "coastProtecting": 24,
+   "bioRise": 52,
+   "veterans": 5,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 4,
+    "khazan": 11,
+    "mangrove": 6,
+    "breakwater": 2
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-8",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 101,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 44,
+   "coastProtecting": 23,
+   "bioRise": 54,
+   "veterans": 5,
+   "builds": {
+    "dune": 4,
+    "sandy_vegetation": 3,
+    "khazan": 12,
+    "mangrove": 5,
+    "breakwater": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-12",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 102,
+   "places": 5,
+   "objectives": 3,
+   "coastStanding": 44,
+   "coastProtecting": 24,
+   "bioRise": 56,
+   "veterans": 5,
+   "builds": {
+    "dune": 3,
+    "sandy_vegetation": 4,
+    "khazan": 11,
+    "mangrove": 6,
+    "breakwater": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-16",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 101,
+   "places": 3,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 31,
+   "bioRise": 43,
+   "veterans": 4,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 3,
+    "breakwater": 2,
+    "khazan": 12,
+    "mangrove": 5,
+    "seawall": 1
+   }
+  },
+  {
+   "who": "guided",
+   "seed": "bot-seed-20",
+   "stars": [
+    3,
+    2,
+    2
+   ],
+   "homes": 100,
+   "places": 2,
+   "objectives": 3,
+   "coastStanding": 40,
+   "coastProtecting": 32,
+   "bioRise": 41,
+   "veterans": 4,
+   "builds": {
+    "dune": 2,
+    "sandy_vegetation": 3,
+    "seawall": 2,
+    "khazan": 12,
+    "mangrove": 5,
+    "small_dam": 1
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-4",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 26,
+   "coastProtecting": 21,
+   "bioRise": 15,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 4,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-8",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 113,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 25,
+   "coastProtecting": 19,
+   "bioRise": 7,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 3,
+    "seawall": 1,
+    "dune": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 5
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-12",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 26,
+   "coastProtecting": 21,
+   "bioRise": 11,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 3,
+    "dune": 1,
+    "seawall": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-16",
+   "stars": [
+    2,
+    3,
+    2
+   ],
+   "homes": 114,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 25,
+   "coastProtecting": 19,
+   "bioRise": 8,
+   "veterans": 3,
+   "builds": {
+    "breakwater": 6,
+    "sandy_vegetation": 4,
+    "seawall": 1,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 5
+   }
+  },
+  {
+   "who": "best",
+   "seed": "bot-seed-20",
+   "stars": [
+    3,
+    3,
+    2
+   ],
+   "homes": 115,
+   "places": 8,
+   "objectives": 0,
+   "coastStanding": 29,
+   "coastProtecting": 20,
+   "bioRise": 20,
+   "veterans": 4,
+   "builds": {
+    "breakwater": 5,
+    "sandy_vegetation": 5,
+    "small_dam": 6,
+    "mangrove": 3,
+    "khazan": 6
+   }
+  }
+ ],
+ "bestPlan": {
+  "who": "bestPlan",
+  "seed": "plan",
+  "stars": [
+   3,
+   3,
+   3
+  ],
+  "homes": 115,
+  "places": 7,
+  "objectives": 0,
+  "coastStanding": 40,
+  "coastProtecting": 25,
+  "bioRise": 43,
+  "veterans": 5,
+  "builds": {
+   "mangrove": 10,
+   "dune": 1,
+   "sandy_vegetation": 3,
+   "khazan": 6,
+   "breakwater": 5
+  }
+ },
+ "start": {
+  "home": 10,
+  "place": 250,
+  "objective": 300,
+  "coastStanding": 20,
+  "coastProtecting": 30,
+  "biodiversity": 5,
+  "veteran": 50
+ },
+ "final": {
+  "home": 10,
+  "place": 150,
+  "objective": 300,
+  "coastStanding": 20,
+  "coastProtecting": 30,
+  "biodiversity": 5,
+  "veteran": 50
+ }
+}
