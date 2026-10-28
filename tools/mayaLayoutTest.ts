@@ -14,7 +14,7 @@
  */
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
-import { startDevServer } from "./devServer";
+import { glArgs, startDevServer } from "./devServer";
 
 const PORT = 5197;
 const ALL_RESOLUTIONS = [
@@ -91,9 +91,9 @@ async function assertClear(page: Page, label: string, expectBubble: boolean): Pr
     const why = await page.evaluate(`(() => { const m = window.__panjimForTest.maya; return JSON.stringify({ current: m.current && m.current.id, pending: m.pending, heldBack: m.heldBack, minimised: m.minimised, muted: m.muted, bubbleHidden: m.bubble.hidden, view: [innerWidth, innerHeight] }); })()`);
     problems.push(`her bubble is not showing ${why}`);
   }
-  // She never moves: her figure (or her badge) stands at her home, a fixed margin in from the bottom-right corner (Section 33b), on whole pixels.
+  // She never moves: her figure (or her badge) stands at her home, a fixed margin in from the bottom-left corner (Section 34c.2), on whole pixels.
   for (const m of maya.filter((r) => r.label === "figure" || r.label === "badge")) {
-    if (view.w - (m.x + m.w) !== 12 || Math.abs(view.h - (m.y + m.h) - 12) > 0.001) problems.push(`${m.label} is not at home: ${JSON.stringify([m.x, m.y, m.w, m.h])} on ${view.w}x${view.h}`);
+    if (m.x !== 12 || Math.abs(view.h - (m.y + m.h) - 12) > 0.001) problems.push(`${m.label} is not at home: ${JSON.stringify([m.x, m.y, m.w, m.h])} on ${view.w}x${view.h}`);
     if (![m.x, m.y, m.w, m.h].every(Number.isInteger)) problems.push(`${m.label} is not on whole pixels: ${JSON.stringify([m.x, m.y, m.w, m.h])}`);
   }
   for (const m of maya) {
@@ -112,7 +112,7 @@ async function main(): Promise<void> {
   try {
     const browser = await chromium.launch({
       executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
-      args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
+      args: glArgs()
     });
     for (const res of RESOLUTIONS) {
       const page = await (await browser.newContext({ viewport: { width: res.w, height: res.h } })).newPage();
@@ -147,10 +147,15 @@ async function main(): Promise<void> {
           }
         }
       }
-      // The build menu open, Maya talking.
+      // The build menu open, Maya talking: since Section 34b her bubble steps aside for the menu (only her figure
+      // shows), so the check is her figure clear of the menu and her bubble tucked.
       await page.evaluate("window.__panjimScenarioForTest('maya:tip')");
       await page.evaluate("window.__panjimScenarioForTest('menu-beach')");
-      await assertClear(page, `${tag} build menu open`, true);
+      await assertClear(page, `${tag} build menu open`, false);
+      checks++;
+      const tucked = await page.evaluate(`(() => { const m = window.__panjimForTest.maya; return m.isTucked && m.bubble.hidden; })()`);
+      if (!tucked) failures.push(`${tag} build menu open: her bubble did not step aside for the menu`);
+      console.log(`${tucked ? "PASS" : "FAIL"}  ${tag} build menu open: her bubble steps aside for the menu`);
       await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
       await page.waitForTimeout(300);

@@ -2300,3 +2300,67 @@ blur), `2278e91` (2, the wind near the beach), `2d1888f` (the review's fixes). T
 | Merge and Vercel | Merged with `git merge --no-ff` on the owner's word: `91a2754` (master was an ancestor: the merged tree is the branch's, tsc and build clean on it). Vercel's production deployment of `91a2754` (`EnqLNStVHkYSjmfH7LSBduZBCVNY`) completed (GitHub status: success, "Deployment has completed"). Production loaded from here: its bundle carries this merge (the baked rings, the flood's colours, the wind rule, "Mandovi Riverfront"); the menu (Tutorial and Play Panjim only), Play Panjim's start popup and the Tutorial at 1920x1080 with zero console errors (`docs/qa/section34b/prod-*.jpg`). Revert: `git revert -m 1 91a2754`. |
 | Not run | Safari and Firefox; the full browser check (not asked for). |
 
+# Section 34c — the HUD card top right at half its size, Maya bottom left, Kala Academy on the bank
+
+Branch `section-34c-hud-right-maya-left` from master `f94ae43` (tag `pre-section-34c`): `11a323d` (34c.1), `a37e32c`
+(34c.2), `5df0a6c` (34c.2's checks and their fixes), `d9cd1ca` (34c.3), then this record (34c.4). The Mandovi
+Riverfront redraw (the brief's 34c.4) was dropped by the owner on 28 October: the zone is part of the hazard model (the
+2050 surge front is `["z4"]`), so it waits for the science alignment; no zone polygon was touched. Run on this laptop
+(Windows, Chrome through Playwright, the real GPU through ANGLE D3D11). Before shots: master's production build
+(`git archive pre-section-34c`, built, `vite preview`); after: the branch's production build. Side by side:
+`docs/qa/section34c/side-by-side/`.
+
+**The card's rectangle (x, y, width, height in CSS px).**
+
+| Scene | 1366x768 before | 1366x768 after | 1920x1080 before | 1920x1080 after |
+|---|---|---|---|---|
+| The 2026 start | 14, 12, 400, 286 | 1052, 12, 300, 243 | 14, 12, 400, 286 | 1606, 12, 300, 243 |
+| Four objective rows (2031) | 14, 12, 400, 319 | 1052, 12, 300, 247 | 14, 12, 400, 319 | 1606, 12, 300, 247 |
+| Four rows, Larger text | 14, 12, 400, 335 | 1052, 12, 300, 318 | 14, 12, 400, 335 | 1606, 12, 300, 318 |
+| The Tutorial | 14, 12, 400, 422 | 1052, 12, 300, 393 | 14, 12, 400, 422 | 1606, 12, 300, 393 |
+| The last card of the run | 14, 12, 400, 176 | 1052, 12, 300, 124 | 14, 12, 400, 176 | 1606, 12, 300, 124 |
+
+Maya: 1366 (1307, 632) -> (12, 632); 1920 (1854, 926) -> (12, 926). The OSM credit: 1366 (12, 753) -> (1185, 753);
+1920 (12, 1065) -> (1739, 1065).
+
+**Kala Academy in the three storms** (`tools/section34cKala.ts`, `docs/qa/section34c/kala-{before,after}.md`; the
+game's rule for a building lost, water plus wind at the loss line).
+
+| | 2030 cyclone | 2040 monsoon flood | 2050 cyclone and flood |
+|---|---|---|---|
+| No defences, before (5,11) | dry | dry | flooded, 3.94 m |
+| No defences, after (5,10) | dry | dry | flooded, 10.21 m |
+| Best plan (34b), before | dry | dry | dry |
+| Best plan (34b), after | dry | dry | dry |
+
+No storm changes its state: nothing that stood dry floods. The 2030 cyclone at 1.2 does not reach it.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run test`, `npm run build` | Clean: 807 passed, 6 skipped (34b: 795); build clean. New: `tests/section34c.test.ts`. Updated, each with its reason in the test: `section33b`, `section34b` (the banner's edge next to a 300 px card: `right` at least 14 + 300 + 16, `left: 12px`, no 899 px rule; the heat move's new form), `mayaLayout`, `mayaLocked`, `mayaArt`, `theme`, `bestPlan` (now `docs/qa/section34c/best_plan.json`: the same 25 actions; 2050 54 of 58 saved, was 55 of 59, because the home that stood on Kala Academy's new tile is gone; stars 9 of 9 and homes lost unchanged). |
+| Preview equals resolution | Passes (`tests/preview.test.ts`, `tests/bestPlan.test.ts`: the solver's assessment before the last build equals the real run). |
+| Bots, 200 seeds (34c.3; `docs/qa/section34c/bots-{before,after}.md`, master's copy and the branch) | smart: stars 6.4 -> 6.4, 2050 homes saved 82% -> 83%, clears 98% -> 99%; guided: 6.6 -> 6.6, 2050 81% -> 82%, its 2050 three stars 8% -> 8%, clears 100%. 2030 and 2040 identical. |
+| Opening views (`tools/section33bViews.ts`, both sizes, all three phases) | Landfall, Sharada Mandir School and the 2040 flood path into Merces and St Cruz clear of the card and Maya; the storms' own cameras unchanged. Pans: 1366 phase 1 (4.25, 0), phase 2 (4.5, 0), phase 3 (11.5, 0); 1920 phase 3 (8.75, 0). Zero console errors. At 1920 a storm frame whose screenshot stalls is skipped (the master build stalls the same way). |
+| `test:labels` | 73 views at six sizes, no overlap anywhere; the opening view draws all seven names at 1366 and 1920 (as master). Its one failure is the dev server's font 403 (the node_modules junction, as in 34b). |
+| `test:layout` | 144 layouts, 0 failed. Its "build menu open" step now expects Maya's bubble to step aside for the menu (34b round 2); master failed the old step at four sizes. |
+| `test:maya` | All pass but the font 403. |
+| `verify:maya` | Fails only what master fails: the Tutorial's Get ready card, a tooltip on the text size button, the font 403. The greeting now reads "top right". |
+| `test:help` | How to play fits at 1280x600, 1366x768, 1920x1080 and 2560x1440 (Help's HUD card picture retaken in 34c.1 with `tools/shellArt.ts`; shots in `docs/qa/section34c/help/`). |
+| The Tutorial (`tools/section31Shots.ts 1366 768`; shots in `docs/qa/section34c/tutorial/`) | Seven captions, both storms 3 stars, the last card, on to Panjim; Try again restarts at 2026 with its opening card. Its one failure is the dev server's font 403. |
+| `tools/section34bChecks.ts` (1366x768, 1920x1080, the card's new rectangle) | 127 checks: 126 pass; "a row click flashes its tiles" read 0.00 once at 1920 while the reviewer shared the machine, then 0.68 and 0.69 on two reruns of the step alone. |
+| Get ahead at the heat years (owner, 34c.4; `tools/section34cAhead.ts`, both sizes) | Found: in 2029 Get ahead's tile (16,16, the 2040 flood's Merces row) was off the right of the window at both sizes: with the objective done nothing is hot, so the heat's camera move never came. Fixed: the heat years' move frames Get ahead's tiles too, or them alone (a move to them alone does not use up the heat's). After: inside the window, clear of the card and Maya (1366: 683, 374; 1920: 960, 527). 2039: no Get ahead row (the 2040 objective takes nine of the phase's ten builds); 2049: none (no storm after 2050). |
+| Screenshots (`docs/qa/section34c/after/`, `before/`, `side-by-side/`) | The start, four rows, a storm, Larger text, Maya's bubble, the build menu on a Miramar tile, a result card, the last card, the Tutorial with its caption, the year's tooltip, the Campal bank (1366). Looked at; fixed what was wrong (below). |
+| Independent reviewer (whole diff) | 1 BLOCKER, 3 MAJOR, all fixed: the suite was red on a stale 34b assertion; the year's tooltip opened in the window's corner (its face is `display: contents`, no box: now on the year and the turn, the live region on the year); a town name could trade a forecast point off the screen in the opening view (names and pins are now secondary points in `keepClearOf`, never counted as off the screen); a tile's note could run under the card (it now flips left). MINOR fixed: a move to Get ahead alone no longer uses up the heat's move; the Get ahead tool uses `glArgs`. MINOR carried: the joint heat and Get ahead move pans but does not zoom (only the Get ahead alone case occurs in play here); the banner band is narrow below about 400 px (desktop first, owner: "at every width"). NIT carried: several new tests read the source. |
+| Found by the checks and fixed | At 1366 the opening view put Altinho and Fontainhas under the card; the 2031 Taleigao pin at Maya's feet; points at the screen's top edge over the card counted as off the screen; the views tool stopped on a stalled storm frame; about sixty `vite preview` servers left running by tools that stopped only cmd.exe on Windows (`killTree`). |
+
+**Changed from the brief, and why.**
+- 34c.4 (the Mandovi Riverfront zone) dropped: the owner's decision (above). The owner's drawing was never on this laptop.
+- The street map control: its switch has been inside ☰ since Section 16; only the "© OpenStreetMap contributors" credit sat in a corner, and it moved to the bottom right. The switch stays in ☰.
+- Maya's minimise button stays on her right shoulder as the viewer sees her (`right: -2px`), the side facing the board.
+- "Swap homes if needed" (34c.3): the freed tile 5,11 is a street in OSM (the landmark had covered it), and no home stands on a street, so the home that stood on 5,10 is not replaced: Panjim has one home fewer, in the 2050 storm's path.
+- The brief's "about 600 x 430" for today's card was read as screen pixels at 150% scaling; the CSS values were followed (400 x 322 CSS px with four rows at 1366 before; 300 x 247 after).
+
+**Not run:** Safari and Firefox; the full browser check (`npm run walkthrough`, all four sizes, axe, grayscale and
+deuteranopia copies; not asked for).
+
+**Revert:** `git revert -m 1 <the merge commit>` (the merge waits for the owner's word).

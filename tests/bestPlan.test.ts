@@ -4,7 +4,8 @@ import path from "node:path";
 import { assess, replay, trialBoard, type PlanAction } from "../tools/bestPlan/plan";
 
 /**
- * Section 24: the best plan the solver found (docs/qa/section34b/best_plan.json,
+ * Section 24: the best plan the solver found (docs/qa/section34b/best_plan.json; since Section 34c.3 its copy in
+ * docs/qa/section34c/best_plan.json, the same actions with Kala Academy on the bank: one home fewer in 2050,
  * from `npm run bestplan` on Section 34b's rules: seawalls on the shore line, small dams upstream), replayed through the game's own run with nothing
  * but its actions, gives the stars and homes the plan file says, storm by storm.
  * If the rules or the map change, this fails until the plan is searched again.
@@ -13,7 +14,7 @@ interface PlanFile {
   goal1: { stars: number; lost: number; nineOfNine: boolean; storms: { id: string; stars: number; saved: number; total: number }[]; actions: { action: string; elementId: string; q: number; r: number }[] };
   goal2: { sameAsGoal1: boolean; stars: number; lost: number; everyHomeSaved: boolean; storms: { id: string; stars: number; saved: number; total: number }[]; actions: { action: string; elementId: string; q: number; r: number }[] };
 }
-const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../docs/qa/section34b/best_plan.json"), "utf8")) as PlanFile;
+const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../docs/qa/section34c/best_plan.json"), "utf8")) as PlanFile;
 const actionsOf = (rows: PlanFile["goal1"]["actions"]): PlanAction[] =>
   rows.map((r) => (r.action === "repair" ? { type: "repair", q: r.q, r: r.r } : { type: "build", q: r.q, r: r.r, elementId: r.elementId }));
 

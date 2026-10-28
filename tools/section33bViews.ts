@@ -1,7 +1,8 @@
 /**
  * Section 33b.5's camera check, at one size: Panjim at the start of each phase (the camera settled) and each storm
  * held at a few moments while it plays, so the forecast arrow and cone, the landfall, Sharada Mandir School and the
- * 2040 flood path into Merces and St Cruz can be checked against the HUD card (top left) and Maya (bottom right).
+ * 2040 flood path into Merces and St Cruz can be checked against the HUD card and Maya (Section 34c.2: top right and
+ * bottom left).
  * Saves the shots and, beside each, the boxes of the HUD card and Maya and of the named place labels on screen.
  *
  * Usage: npx tsx tools/section33bViews.ts <width> <height> [outDir=docs/qa/section33b/views]
@@ -17,7 +18,8 @@ const H = Number(h);
 const OUT = path.resolve(outDir);
 fs.mkdirSync(OUT, { recursive: true });
 
-const server = await startDevServer(Number(process.env.PORT ?? 5499));
+// Section 34c: URL=http://localhost:4173 uses a server already running (a production build through vite preview).
+const server = process.env.URL ? { url: process.env.URL, stop: async (): Promise<void> => undefined } : await startDevServer(Number(process.env.PORT ?? 5499));
 const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 const page: Page = await browser.newPage({ viewport: { width: W, height: H } });
 const errors: string[] = [];
@@ -47,7 +49,10 @@ async function shot(name: string): Promise<void> {
   await js(`window.__panjimForTest.maya.dismiss()`);
   await page.mouse.move(W / 2, 2);
   await page.waitForTimeout(700);
-  await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 85 });
+  // Section 34c: on this laptop a storm frame at 1920x1080 can stall the screenshot past its timeout; skip that frame
+  // and go on, so the next phase's opening view is still taken.
+  const taken = await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 85, timeout: 60000 }).then(() => true, (e: Error) => (console.log(`${name}: no screenshot (${e.message.split("\n")[0]})`), false));
+  if (!taken) return;
   const boxes = await js<unknown>(`(() => {
     const box = (el) => { const r = el.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)]; };
     const seen = (el) => { const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden" && el.getBoundingClientRect().width > 0; };

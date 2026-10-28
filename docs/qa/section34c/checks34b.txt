@@ -1,0 +1,142 @@
+(node:37036) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS [1366x768] the banner clears the HUD card (banner {"x":262.4375,"y":14,"w":523.125,"h":32}, card {"x":1052,"y":12,"w":300,"h":243.171875})
+PASS [1366x768] the banner is inside the window
+PASS [1366x768] a pulsing tile near Miramar at 2026 ({"q":-4,"r":18,"name":"Miramar Beach"})
+PASS [1366x768] the Miramar menu covers no pulsing tile (none of 3; menu {"x":750,"y":263,"w":312,"h":380.875})
+PASS [1366x768] the menu clears the HUD card
+PASS [1366x768] the greeting is up with Got it
+PASS [1366x768] after 20 s the greeting is still up (a line with Got it has no timer)
+PASS [1366x768] a click where Got it was closes the bubble and opens no build menu
+PASS [1366x768] the bubble is open and a free beach tile is on screen (-3,17)
+PASS [1366x768] the map click closed the bubble
+PASS [1366x768] and opened that tile's menu (dune, sandy_vegetation, seawall; want dune, sandy_vegetation, seawall)
+PASS [1366x768] a fact line shows Source
+PASS [1366x768] Source opens Facts and sources at that fact ({"id":"dunes-barrier","anchor":"fact-dunes-barrier","top":322.515625,"bottom":523.65625,"h":768})
+PASS [1366x768] a passing line has no Got it
+PASS [1366x768] when it closes by itself, a shield stands where it was
+PASS [1366x768] and is gone after 500 ms
+PASS [1366x768] a build into 2027 with no set move leaves the camera where it was
+PASS [1366x768] a build into 2028 with no set move leaves the camera where it was
+INFO [1366x768] moveCamera into 2029
+PASS [1366x768] heat 2029: a hot tile is on screen clear of the HUD card (9 of 9)
+INFO [1366x768] moveCamera into 2030
+PASS [1366x768] at least one build in phase 1 left the camera alone (2)
+PASS [1366x768] the heat coming on moved the camera once (in 2029)
+PASS [1366x768] at most one set move a year in phase 1 (2029, 2030)
+PASS [1366x768] heat 2049: a hot tile is on screen clear of the HUD card (15 of 17)
+PASS [1366x768] the objective's tiles pulse in 2029 (3)
+PASS [1366x768] the rings draw over the heat ({"ring":10,"depthTest":false,"heat":2})
+PASS [1366x768] a row click flashes its tiles (strength 0.65 at 0.25 s)
+PASS [1366x768] the flash is over after 2 s
+PASS [1366x768] a tile away from the storm for the last build
+PASS [1366x768] Speed up's words are a tooltip, not a label ({"title":"It hurries the storm","described":"It hurries the storm","after":"none"})
+PASS [1366x768] with the replay card up, Speed up is hidden ({"replay":true,"speed":false})
+PASS [1366x768] card 2's way back reads Previous card
+PASS [1366x768] the 2050 forecast card's names never overlap (Our Lady of the Immaculate Conception, Adil Shah Palace, Mahalaxmi Temple)
+PASS [1366x768] and each sits inside the map (Our Lady of the Immaculate Conception 507,235 225x16; Adil Shah Palace 0,0 0x0; Mahalaxmi Temple 696,254 107x16; map {"x":445,"y":214.25,"w":470,"h":240})
+INFO [1366x768] Cyclone: {"name":"Cyclone","click":7.7272000000476835,"camera":6.917099999904632,"first":7,"duration":26}
+PASS [1366x768] Cyclone: the first wave 7.7 s after the last build's click (5 to 9)
+INFO [1366x768] Monsoon flood: {"name":"Monsoon flood","click":7.856600000143051,"camera":6.914100000143051,"first":7,"duration":37.45982142857143}
+PASS [1366x768] Monsoon flood: the first wave 7.9 s after the last build's click (5 to 9)
+INFO [1366x768] Cyclone and flood: {"name":"Cyclone and flood","click":7.345900000095368,"camera":6.945600000143052,"first":7,"duration":35.5875}
+PASS [1366x768] Cyclone and flood: the first wave 7.3 s after the last build's click (5 to 9)
+PASS [1366x768] the small window note is hidden at 1366x768
+PASS [1366x768] Tab on a fresh menu reaches the Tutorial first (Tutorial)
+PASS [1366x768] Enter starts the Tutorial (http://localhost:65495/?qa=1#/play/l00-tutorial)
+PASS [1366x768] at 520x599 the ☰ menu stays inside the window ({"x":239,"y":63,"w":260,"h":433})
+PASS [1366x768] Esc closes Maya's line
+PASS [1366x768] Esc at 2026 with nothing open leaves the board as it was ({"year":2026,"url":"#/play/l01-first-rains","leave":false,"menu":false,"cam":[11.97,37.31,54.82]})
+PASS [1366x768] without ?qa=1 the production build has no test hooks (none) and no [telemetry] line (0)
+PASS [1366x768] with ?qa=1 the hooks are there (__panjimForTest, __buildForTest, __destroyForTest, __telemetry, __stormForTest) and the telemetry logs (2 lines)
+PASS [1366x768] with card 1 open, Esc leaves card 1 open ("Your city took a heavy hit.")
+PASS [1366x768] the 2030 storm's retry reads "Try again from 2026"
+PASS [1366x768] after the retry, Maya's first line says where the run is ({"year":2026,"text":"Back at 2026. 5 builds before the cyclone."})
+PASS [1366x768] a dune and a pandanus tile side by side on the Miramar beach
+INFO [1366x768] storm samples 143, most storm words at once 2, replay seen true
+PASS [1366x768] no empty countdown box during the storm (0 of 143 samples)
+PASS [1366x768] no two storm words on one another (none)
+PASS [1366x768] no ghost of Maya's bubble under the replay card (0 samples)
+PASS [1366x768] the red is off as the 2040 phase begins (2031)
+PASS [1366x768] once the list is done (2032) the red is on by itself
+PASS [1366x768] Maya no longer says Press R
+PASS [1366x768] R turns it off
+PASS [1366x768] and it stays off for the phase (2033, off)
+PASS [1366x768] her line is up and a free tile is on screen
+PASS [1366x768] with the build menu open her bubble has stepped aside
+PASS [1366x768] her line is kept
+PASS [1366x768] the menu closed, the same line is back
+PASS [1366x768] after Got it, closing a menu brings no line back
+PASS [1366x768] the Tutorial: a free tile is on screen
+PASS [1366x768] the Tutorial: with the menu open, her line about the cards shows (tutorial:cards)
+PASS [1366x768] no console errors or warnings
+PASS [1920x1080] the banner clears the HUD card (banner {"x":539.4375,"y":14,"w":523.125,"h":32}, card {"x":1606,"y":12,"w":300,"h":243.171875})
+PASS [1920x1080] the banner is inside the window
+PASS [1920x1080] a pulsing tile near Miramar at 2026 ({"q":-4,"r":18,"name":"Miramar Beach"})
+PASS [1920x1080] the Miramar menu covers no pulsing tile (none of 3; menu {"x":624,"y":537,"w":312,"h":380.875})
+PASS [1920x1080] the menu clears the HUD card
+PASS [1920x1080] the greeting is up with Got it
+PASS [1920x1080] after 20 s the greeting is still up (a line with Got it has no timer)
+PASS [1920x1080] a click where Got it was closes the bubble and opens no build menu
+PASS [1920x1080] the bubble is open and a free beach tile is on screen (-3,17)
+PASS [1920x1080] the map click closed the bubble
+PASS [1920x1080] and opened that tile's menu (dune, sandy_vegetation, seawall; want dune, sandy_vegetation, seawall)
+PASS [1920x1080] a fact line shows Source
+PASS [1920x1080] Source opens Facts and sources at that fact ({"id":"dunes-barrier","anchor":"fact-dunes-barrier","top":388.75,"bottom":589.890625,"h":1080})
+PASS [1920x1080] a passing line has no Got it
+PASS [1920x1080] when it closes by itself, a shield stands where it was
+PASS [1920x1080] and is gone after 500 ms
+PASS [1920x1080] a build into 2027 with no set move leaves the camera where it was
+PASS [1920x1080] a build into 2028 with no set move leaves the camera where it was
+INFO [1920x1080] moveCamera into 2029
+PASS [1920x1080] heat 2029: a hot tile is on screen clear of the HUD card (9 of 9)
+INFO [1920x1080] moveCamera into 2030
+PASS [1920x1080] at least one build in phase 1 left the camera alone (2)
+PASS [1920x1080] the heat coming on moved the camera once (in 2029)
+PASS [1920x1080] at most one set move a year in phase 1 (2029, 2030)
+PASS [1920x1080] heat 2049: a hot tile is on screen clear of the HUD card (15 of 17)
+PASS [1920x1080] the objective's tiles pulse in 2029 (3)
+PASS [1920x1080] the rings draw over the heat ({"ring":10,"depthTest":false,"heat":2})
+FAIL [1920x1080] a row click flashes its tiles (strength 0.00 at 0.25 s)
+PASS [1920x1080] the flash is over after 2 s
+PASS [1920x1080] a tile away from the storm for the last build
+PASS [1920x1080] Speed up's words are a tooltip, not a label ({"title":"It hurries the storm","described":"It hurries the storm","after":"none"})
+PASS [1920x1080] with the replay card up, Speed up is hidden ({"replay":true,"speed":false})
+PASS [1920x1080] card 2's way back reads Previous card
+PASS [1920x1080] the 2050 forecast card's names never overlap (Our Lady of the Immaculate Conception, Adil Shah Palace, Mahalaxmi Temple)
+PASS [1920x1080] and each sits inside the map (Our Lady of the Immaculate Conception 784,391 225x16; Adil Shah Palace 0,0 0x0; Mahalaxmi Temple 973,410 107x16; map {"x":722,"y":370.25,"w":470,"h":240})
+INFO [1920x1080] Cyclone: {"name":"Cyclone","click":8.174799999952317,"camera":6.964200000047684,"first":7,"duration":26}
+PASS [1920x1080] Cyclone: the first wave 8.2 s after the last build's click (5 to 9)
+INFO [1920x1080] Monsoon flood: {"name":"Monsoon flood","click":8.220199999809266,"camera":6.9395,"first":7,"duration":37.45982142857143}
+PASS [1920x1080] Monsoon flood: the first wave 8.2 s after the last build's click (5 to 9)
+INFO [1920x1080] Cyclone and flood: {"name":"Cyclone and flood","click":7.365100000143051,"camera":6.9229000000953675,"first":7,"duration":35.5875}
+PASS [1920x1080] Cyclone and flood: the first wave 7.4 s after the last build's click (5 to 9)
+PASS [1920x1080] the small window note is hidden at 1920x1080
+PASS [1920x1080] Tab on a fresh menu reaches the Tutorial first (Tutorial)
+PASS [1920x1080] Enter starts the Tutorial (http://localhost:65495/?qa=1#/play/l00-tutorial)
+PASS [1920x1080] Esc closes Maya's line
+PASS [1920x1080] Esc at 2026 with nothing open leaves the board as it was ({"year":2026,"url":"#/play/l01-first-rains","leave":false,"menu":false,"cam":[7.72,37.31,54.82]})
+PASS [1920x1080] without ?qa=1 the production build has no test hooks (none) and no [telemetry] line (0)
+PASS [1920x1080] with ?qa=1 the hooks are there (__panjimForTest, __buildForTest, __destroyForTest, __telemetry, __stormForTest) and the telemetry logs (2 lines)
+PASS [1920x1080] with card 1 open, Esc leaves card 1 open ("Your city took a heavy hit.")
+PASS [1920x1080] the 2030 storm's retry reads "Try again from 2026"
+PASS [1920x1080] after the retry, Maya's first line says where the run is ({"year":2026,"text":"Back at 2026. 5 builds before the cyclone."})
+PASS [1920x1080] a dune and a pandanus tile side by side on the Miramar beach
+INFO [1920x1080] storm samples 141, most storm words at once 2, replay seen true
+PASS [1920x1080] no empty countdown box during the storm (0 of 141 samples)
+PASS [1920x1080] no two storm words on one another (none)
+PASS [1920x1080] no ghost of Maya's bubble under the replay card (0 samples)
+PASS [1920x1080] the red is off as the 2040 phase begins (2031)
+PASS [1920x1080] once the list is done (2032) the red is on by itself
+PASS [1920x1080] Maya no longer says Press R
+PASS [1920x1080] R turns it off
+PASS [1920x1080] and it stays off for the phase (2033, off)
+PASS [1920x1080] her line is up and a free tile is on screen
+PASS [1920x1080] with the build menu open her bubble has stepped aside
+PASS [1920x1080] her line is kept
+PASS [1920x1080] the menu closed, the same line is back
+PASS [1920x1080] after Got it, closing a menu brings no line back
+PASS [1920x1080] the Tutorial: a free tile is on screen
+PASS [1920x1080] the Tutorial: with the menu open, her line about the cards shows (tutorial:cards)
+PASS [1920x1080] no console errors or warnings
+1 FAILED

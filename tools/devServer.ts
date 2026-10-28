@@ -91,6 +91,26 @@ export async function startDevServer(port: number, timeoutMs = 30000): Promise<D
   return { url, stop };
 }
 
+/**
+ * Chromium's GL flags for a headless tool: software GL (SwiftShader) by default, which runs anywhere; `GPU=1` uses the
+ * machine's own GPU through ANGLE's Direct3D 11 (Windows), for a laptop too loaded for software GL to draw a frame.
+ */
+export function glArgs(): string[] {
+  return process.env.GPU === "1"
+    ? ["--use-angle=d3d11", "--ignore-gpu-blocklist", "--enable-gpu"]
+    : ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"];
+}
+
+/**
+ * Stops a server a tool spawned with `shell: true` (a `vite preview`, say) and everything it spawned: on Windows
+ * `child.kill()` alone stops only cmd.exe and leaves Vite holding its port (Section 34c found sixty left over).
+ */
+export function killTree(child: ChildProcess | null | undefined): void {
+  if (!child) return;
+  if (process.platform === "win32" && child.pid !== undefined) spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+  child.kill();
+}
+
 function waitForServer(url: string, timeoutMs: number, stop: () => void): Promise<void> {
   const start = Date.now();
   return new Promise((resolve, reject) => {

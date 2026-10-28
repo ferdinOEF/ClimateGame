@@ -148,9 +148,9 @@ export interface PanjimHost {
   /** Glides the camera to frame a box of the board, in world x/z. */
   /**
    * Frames the box; then, if `keepClear` is given, slides the view just enough that none of those points sits under
-   * the HUD card or Maya (or, when no slide clears them all, none of `arrows`).
+   * the HUD card or Maya (or, when no slide clears them all, none of `arrows` and `places`; else of `arrows` alone).
    */
-  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }, keepClear?: readonly { x: number; z: number }[], arrows?: readonly { x: number; z: number }[]) => void;
+  frameWorld: (box: { minX: number; maxX: number; minZ: number; maxZ: number }, keepClear?: readonly { x: number; z: number }[], arrows?: readonly { x: number; z: number }[], places?: readonly { x: number; z: number }[]) => void;
   /** The phase's area to protect, faintly, once the cone has gone (an empty list fades it out). */
   showAreaOutline: (keys: string[]) => void;
   /** "Area protected", where the outline was. */
@@ -510,12 +510,14 @@ export class PanjimController {
         const q = t.points[i + 1];
         return q ? [0, 0.2, 0.4, 0.6, 0.8].map((f) => ({ x: p.x + (q.x - p.x) * f, z: p.z + (q.z - p.z) * f })) : [p];
       }));
+      // Section 34c.2: the places the phase's objective pins, kept clear with the arrows when the whole cone cannot be.
+      const places = this.run.prep.filter((job) => job.challengeId === next.id).flatMap((job) => job.pins ?? []).map((pin) => axialToWorld({ q: pin.q, r: pin.r }, 1));
       this.host.frameWorld({
         minX: Math.min(...points.map((p) => p.x)),
         maxX: Math.max(...points.map((p) => p.x)),
         minZ: Math.min(...points.map((p) => p.z)),
         maxZ: Math.max(...points.map((p) => p.z))
-      }, [...along, ...points], along);
+      }, [...along, ...points], along, places);
     }
     this.coneShown = true;
     this.host.telemetry.emit("checkpoint", { cone: next.id, tiles: cone.bands.size, area: cone.area.length });
@@ -619,7 +621,7 @@ export class PanjimController {
   private attachTooltips(): void {
     const tips = this.host.tooltips;
     const clock = this.clock.parts;
-    tips.attach(clock.face, "clock", () => ({ label: this.run.label, turn: Math.min(this.run.turnNumber, this.run.totalYears), total: this.run.totalYears }));
+    for (const part of clock.face) tips.attach(part, "clock", () => ({ label: this.run.label, turn: Math.min(this.run.turnNumber, this.run.totalYears), total: this.run.totalYears }));
     tips.attach(clock.skip, "skipYear");
     const outlook = this.outlook.parts;
     tips.attach(outlook.track, "outlookTrack", () => ({ start: this.run.config.startYear, end: this.run.config.endYear }));
@@ -727,17 +729,27 @@ export class PanjimController {
     }
     const next = this.run.nextChallenge();
     const zones = this.run.zones;
-    const rows = zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : [];
-    // Section 30.9: the objective done, the storm after it to get ahead on (not in the Tutorial).
-    const complete = rows.length > 0 && rows.every((row) => row.done);
-    const ahead = complete && zones && !this.tutorial ? this.run.aheadObjective() : null;
-    this.aheadRows = ahead ? ahead.objective.rows : [];
-    this.aheadPicks = ahead ? ahead.objective.picks : [];
+    const { rows, complete, ahead } = this.refreshAhead();
     this.getReady.render(next ? next.name : null, rows, ahead && zones ? { storm: ahead.challenge.name, rows: ahead.objective.rows.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) } : null);
     // The tiles still to build pulse on the board (this objective's, or once it is done, Get ahead's).
     const jobs = complete ? this.aheadRows : this.run.prep;
     this.host.showObjectiveTiles(this.run.finished ? [] : jobs.flatMap((job) => this.pulseKeys(job)));
     if (this.run.prep.length > 0) this.mayaDirector?.tip("get-ready");
+  }
+
+  /**
+   * The objective's rows with their progress and, once they are all done, the storm after it to get ahead on (Section
+   * 30.9; not in the Tutorial), keeping Get ahead's rows and picks current. renderHeat asks too: it runs before the
+   * panels are painted, and its camera move frames Get ahead's tiles (Section 34c.4).
+   */
+  private refreshAhead(): { rows: (ReturnType<typeof prepProgress> & { job: PrepObjective })[]; complete: boolean; ahead: ReturnType<ActionRun["aheadObjective"]> } {
+    const zones = this.run.zones;
+    const rows = zones ? this.run.prep.map((job) => ({ job, ...prepProgress(job, this.host.state, zones) })) : [];
+    const complete = rows.length > 0 && rows.every((row) => row.done);
+    const ahead = complete && zones && !this.tutorial ? this.run.aheadObjective() : null;
+    this.aheadRows = ahead ? ahead.objective.rows : [];
+    this.aheadPicks = ahead ? ahead.objective.picks : [];
+    return { rows, complete, ahead };
   }
 
   /** Section 30.9: Get ahead's rows and picks now (empty until the objective is done). */
@@ -819,9 +831,24 @@ export class PanjimController {
     // The risk sequence belongs to the warning years, as before.
     const hot = warning ? view.filter((tile) => tile.heat > 0).map((tile) => tile.key) : [];
     // Section 34b.3: the heat coming on for a storm is one of the camera's set moves, once, to its hot tiles.
-    if (hot.length > 0 && !this.heatFramed.has(next.id) && !this.tutorial) {
-      this.heatFramed.add(next.id);
-      this.host.moveCamera(hot.map((key) => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) })));
+    // Section 34c.4: with the objective done, to Get ahead's tiles too (they can lie across the city from the heat: the
+    // 2040 flood's Merces row in 2029), or to them alone when the objective left nothing hot. A move to Get ahead
+    // alone does not use up the heat's: heat that comes later in the warning years still gets its move.
+    const framing = warning && !this.heatFramed.has(next.id) && !this.tutorial;
+    const ahead = framing && this.refreshAhead().complete ? this.aheadRows.flatMap((job) => this.pulseKeys(job)) : [];
+    if (framing && (hot.length > 0 || (ahead.length > 0 && !this.aheadFramed.has(next.id)))) {
+      if (hot.length > 0) this.heatFramed.add(next.id);
+      this.aheadFramed.add(next.id);
+      const coordOf = (key: string): AxialCoord => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) });
+      if (ahead.length === 0) this.host.moveCamera(hot.map(coordOf));
+      else if (hot.length === 0) this.host.moveCamera(ahead.map(coordOf));
+      else {
+        // Centred between the two sets.
+        const all = [...hot, ...ahead].map(coordOf);
+        const mid = (a: AxialCoord[]): AxialCoord => ({ q: a.reduce((s, t) => s + t.q, 0) / a.length, r: a.reduce((s, t) => s + t.r, 0) / a.length });
+        const [h, g] = [mid(hot.map(coordOf)), mid(ahead.map(coordOf))];
+        this.host.moveCamera(all, { q: (h.q + g.q) / 2, r: (h.r + g.r) / 2 });
+      }
     }
     if (hot.length > 0) this.riskGate.see(next.id);
     if (hot.length > 0 && !this.riskGate.spent && !this.busy && !this.host.overlayOpen() && this.host.riskAreaOnScreen(hot) && this.riskGate.offer(next.id)) {
@@ -832,6 +859,8 @@ export class PanjimController {
 
   /** Section 34b.3: the storms whose heat has had its camera move (once each; a retry lets it come again). */
   private readonly heatFramed = new Set<string>();
+  /** Section 34c.4: the storms whose heat years have had a camera move to Get ahead's tiles alone. */
+  private readonly aheadFramed = new Set<string>();
 
   /** The storm whose phase Show risk's defaults were last set for, and whether its warning years have switched it on. */
   private riskPhase: string | null = null;
@@ -1226,6 +1255,7 @@ export class PanjimController {
     this.hideCone();
     this.coneSeen.delete(challengeId);
     this.heatFramed.delete(challengeId);
+    this.aheadFramed.delete(challengeId);
     this.readinessById.delete(challengeId);
     this.host.redrawBoard();
     // Back at 2026 the first-build hint shows again, as on a new run.

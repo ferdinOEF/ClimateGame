@@ -1,0 +1,53 @@
+
+> riptide-rising@1.0.0 test:maya
+> tsx tools/mayaStability.ts
+
+(node:26676) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS  idle: her figure's box never moved in 47 frames over 10.3s (12,926 54x142)
+PASS  idle: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  idle: her box is on whole pixels
+      per second: layouts 0, figure style writes 0, class writes 0, hop restarts 0, observer hits 49.64; frames that changed 46 of 46 (4 strongly)
+PASS  greeting: her figure's box never moved in 46 frames over 10.3s (12,926 54x142)
+PASS  greeting: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  greeting: her box is on whole pixels
+      per second: layouts 8.24, figure style writes 0, class writes 0, hop restarts 0, observer hits 49.14; frames that changed 45 of 45 (9 strongly)
+PASS  tip: her figure's box never moved in 47 frames over 10.5s (12,926 54x142)
+PASS  tip: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  tip: her box is on whole pixels
+      per second: layouts 8.31, figure style writes 0, class writes 0, hop restarts 0, observer hits 48.78; frames that changed 45 of 46 (6 strongly)
+PASS  explains: her figure's box never moved in 64 frames over 10.3s (12,926 54x142)
+PASS  explains: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  explains: her box is on whole pixels
+      per second: layouts 8.48, figure style writes 0, class writes 0, hop restarts 0, observer hits 60.76; frames that changed 63 of 63 (10 strongly)
+PASS  warning: her figure's box never moved in 72 frames over 10.6s (12,926 54x142)
+PASS  warning: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  warning: her box is on whole pixels
+      per second: layouts 8.51, figure style writes 0, class writes 0, hop restarts 0, observer hits 62.39; frames that changed 70 of 71 (65 strongly)
+PASS  worried: her figure's box never moved in 46 frames over 11s (12,926 54x142)
+PASS  worried: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  worried: her box is on whole pixels
+      per second: layouts 7.9, figure style writes 0, class writes 0, hop restarts 0, observer hits 46.01; frames that changed 45 of 45 (6 strongly)
+PASS  celebrates: her figure's box never moved in 46 frames over 11.3s (12,926 54x142)
+PASS  celebrates: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  celebrates: her box is on whole pixels
+      per second: layouts 7.63, figure style writes 0, class writes 0, hop restarts 0, observer hits 45.58; frames that changed 45 of 45 (45 strongly)
+PASS  idle for 3 seconds on a still page: her figure's rectangle is stable (14 frames)
+PASS  reduced motion, idle: her box never moved
+PASS  reduced motion, idle: no pixel of her changes between 44 photographs (0 did)
+PASS  reduced motion, greeting: her box never moved
+PASS  reduced motion, greeting: no pixel of her changes between 41 photographs (0 did)
+PASS  reduced motion, tip: her box never moved
+PASS  reduced motion, tip: no pixel of her changes between 40 photographs (0 did)
+PASS  reduced motion, explains: her box never moved
+PASS  reduced motion, explains: no pixel of her changes between 45 photographs (0 did)
+PASS  reduced motion, warning: her box never moved
+PASS  reduced motion, warning: no pixel of her changes between 49 photographs (0 did)
+PASS  reduced motion, worried: her box never moved
+PASS  reduced motion, worried: no pixel of her changes between 44 photographs (0 did)
+PASS  reduced motion, celebrates: her box never moved
+PASS  reduced motion, celebrates: no pixel of her changes between 46 photographs (0 did)
+PASS  the Tutorial loads (Section 15: the Panjim HUD, Maya coaching)
+FAIL  zero console errors: Failed to load resource: the server responded with a status of 403 (Forbidden) | Failed to load resource: the server responded with a status of 403 (Forbidden) | Failed to load resource: the server responded with a status of 403 (Forbidden)
+
+1 check(s) failed.

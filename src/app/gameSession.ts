@@ -974,7 +974,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             // The bottom prompt too (Section 13.4): not during a storm or its result cards.
             container.querySelector(".empty-prompt")?.classList.toggle("held", !visible);
           },
-          frameWorld: (box, keepClear, arrows) => {
+          frameWorld: (box, keepClear, arrows, places) => {
             // A gentle glide (cancelled by any drag) to frame the box, a little wider than it.
             focusOn((box.minX + box.maxX) / 2, (box.minZ + box.maxZ) / 2, false);
             fitTo(Math.max(18, (box.maxX - box.minX) * 1.15), Math.max(12, (box.maxZ - box.minZ) * 1.2), false);
@@ -982,9 +982,24 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             lastKeepClear = null;
             if (keepClear?.length) {
               const obstacles = cameraObstacles();
-              const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] => points.map((p) => ({ x: p.x, y: 0.6, z: p.z }));
-              // Everything if a pan can clear it; else the arrows alone (a forecast wider than the screen).
-              lastKeepClear = keepClearOf(lift(keepClear), obstacles) ?? (arrows?.length ? keepClearOf(lift(arrows), obstacles) : null);
+              // At least on the tile's top (Section 34c.2: a pin on a land tile stands higher than 0.6, and at the screen's
+              // edge that is the difference between on screen under Maya and off it).
+              const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] =>
+                points.map((p) => ({ x: p.x, y: Math.max(0.6, terrain.heightAt(worldToAxial(p.x, p.z, 1.0)) + 0.3), z: p.z }));
+              // Section 34c.2, tried in order, the first a pan can clear wins (a try that fails leaves the view as it
+              // was): the forecast with the objective's places and the main town names (with the card top right the
+              // old city's names could sit under it, with Maya bottom left a place's pin at her feet); the forecast with
+              // the places; the forecast; the arrows with the places; the arrows alone (a forecast wider than the
+              // screen). The places and names are secondary: never under the card or Maya, but they never push a
+              // point of the forecast off the screen.
+              const towns = levelMap.localities.filter((l) => l.rank === 1).map((l) => axialToWorld({ q: l.q, r: l.r }, 1));
+              const pins = places ?? [];
+              const tries: [readonly { x: number; z: number }[], readonly { x: number; z: number }[]][] = [[keepClear, [...pins, ...towns]], [keepClear, pins], [keepClear, []], [arrows ?? [], pins], [arrows ?? [], []]];
+              for (const [points, secondary] of tries) {
+                if (!points.length) continue;
+                lastKeepClear = keepClearOf(lift(points), obstacles, undefined, undefined, lift(secondary));
+                if (lastKeepClear) break;
+              }
             }
           },
           moveCamera: (tiles, centre) => moveCameraClear(tiles, centre),
@@ -2690,6 +2705,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     const canvas = renderer.domElement;
     canvas.tabIndex = 0;
     canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles, O jumps to the next tile the objective asks for, Enter opens the tile.");
+    // Section 34c.2: the keyboard follows the screen, top right to bottom left: ? and ☰ on the HUD card, then the map,
+    // then Maya. The card goes before the board in the page (its z-index keeps it drawn over the board).
+    const card = container.querySelector<HTMLElement>(".panjim-clock");
+    if (card) container.insertBefore(card, canvas);
     const said = document.createElement("div");
     said.className = "visually-hidden";
     said.setAttribute("aria-live", "polite");

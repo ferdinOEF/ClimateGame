@@ -12,6 +12,19 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After Section 34c (from docs/QA_REPORT.md)
+
+- **The Mandovi Riverfront zone.** The owner's redraw (the bank from Campal to
+  the Ourem creek mouth) waits for the science alignment after the festival:
+  zone z4 is part of the hazard model (the 2050 surge front, `src/core/zones.ts`).
+  Bring the owner's drawing (`docs/reference/mandovi-riverfront-2026-10-28.png`)
+  and run the guided bots and the fuzz on it.
+- **The heat years' joint move.** With hot tiles and Get ahead's both to show,
+  the camera pans between them but does not zoom; if a player is zoomed in,
+  both sets can sit partly off the screen. Not seen in play here.
+- **Safari and Firefox** for the card at the top right, Maya at the bottom left
+  and the year's tooltip.
+
 ## After the hazard visuals (from docs/QA_REPORT.md)
 
 - **Real-GPU frame rates.** Measure Low/Medium/High on real desktop GPUs

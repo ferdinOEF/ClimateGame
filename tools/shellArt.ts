@@ -7,9 +7,10 @@
  *   public/art/help-*.jpg           the Help page's small illustrations:
  *                                   the clock, the cone, a build card, the heat, a result card
  *
- * `npx tsx tools/shellArt.ts`. Rerun it when the board's look changes, so the
- * pictures stay the game's own. Software GL in the container: the render is
- * the same scene a player sees, at the quality the page picks.
+ * `npx tsx tools/shellArt.ts [url=http://localhost:4173] [only=help-clock.jpg,...]`. Rerun it when the board's look
+ * changes, so the pictures stay the game's own. `url` uses a server already running (a production build through
+ * `vite preview`, whose fonts always load) instead of starting the dev server; `only` saves just the named pictures.
+ * Software GL in the container: the render is the same scene a player sees, at the quality the page picks.
  */
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
@@ -29,6 +30,8 @@ const HIDE_HUD = `
 `;
 
 const errors: string[] = [];
+const args = new Map(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split(/=(.*)/s).slice(0, 2) as [string, string]));
+const ONLY = args.get("only")?.split(",") ?? null;
 
 async function open(page: Page, url: string): Promise<void> {
   await page.goto(qaUrl(url), { waitUntil: "domcontentloaded" });
@@ -49,6 +52,7 @@ async function hideHud(page: Page): Promise<() => Promise<void>> {
 }
 
 async function save(page: Page, name: string, clip?: { x: number; y: number; width: number; height: number }): Promise<void> {
+  if (ONLY && !ONLY.includes(name)) return;
   const file = path.join(OUT, name);
   await page.screenshot({ path: file, type: "jpeg", quality: 82, clip });
   console.log(`${name}: ${Math.round(fs.statSync(file).size / 1024)} KB`);
@@ -63,8 +67,8 @@ async function saveElement(page: Page, selector: string, name: string, pad = 0):
   await save(page, name, { x: Math.max(0, box.x - pad), y: Math.max(0, box.y - pad), width: box.width + pad * 2, height: box.height + pad * 2 });
 }
 
-const server = await startDevServer(5371);
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+const server = args.get("url") ? { url: args.get("url")!, stop: () => undefined } : await startDevServer(5371);
+const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 try {
   const context = await browser.newContext({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1, reducedMotion: "reduce" });
   const page = await context.newPage();

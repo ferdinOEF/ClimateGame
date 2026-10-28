@@ -1,0 +1,29 @@
+phase1 pan: null
+phase1-start: {"card":[14,12,400,286],"maya":[1854,926,54,142],"labels":[{"text":"Miramar Beach","box":[1066,425,75,15]},{"text":"Campal","box":[1276,92,53,16]},{"text":"Alti
+cyclone2030-2s: {"card":[14,12,400,286],"maya":[1854,926,54,142],"labels":[]}
+cyclone2030-5s: {"card":[14,12,400,286],"maya":[1854,926,54,142],"labels":[]}
+cyclone2030-9s: {"card":[14,12,400,286],"maya":[1854,926,54,142],"labels":[]}
+phase2 pan: {"dx":-3.75,"dz":0}
+phase2-start: {"card":[14,12,400,319],"maya":[1854,926,54,142],"labels":[{"text":"Campal","box":[381,361,53,16]},{"text":"Altinho","box":[520,516,58,16]},{"text":"Fontainhas"
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.screenshot: Timeout 30000ms exceeded.
+Call log:
+[2m  - taking page screenshot[22m
+[2m  - waiting for fonts to load...[22m
+[2m  - fonts loaded[22m
+
+    at shot (C:\Users\ferdi\dev\cg34\tools\section33bViews.ts:52:14)
+    at async storm (C:\Users\ferdi\dev\cg34\tools\section33bViews.ts:73:5)
+    at async <anonymous> (C:\Users\ferdi\dev\cg34\tools\section33bViews.ts:102:1) {
+  log: [
+    '  - taking page screenshot',
+    '  - waiting for fonts to load...',
+    '  - fonts loaded'
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v24.19.0
