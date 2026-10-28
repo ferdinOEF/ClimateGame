@@ -5,14 +5,14 @@
     "beam": 20,
     "keep": 16,
     "jobs": 4,
-    "seconds": 2080
+    "seconds": 3653
   },
   "goal1": {
     "stars": 9,
     "of": 9,
     "nineOfNine": true,
     "clears": true,
-    "lost": 13,
+    "lost": 9,
     "storms": [
       {
         "id": "c1-cyclone",
@@ -39,9 +39,9 @@
         "year": 2050,
         "name": "Cyclone and flood",
         "stars": 3,
-        "saved": 51,
+        "saved": 55,
         "total": 59,
-        "lost": 8,
+        "lost": 4,
         "biodiversityChange": 43
       }
     ],
@@ -69,16 +69,12 @@
       },
       {
         "id": "c3-compound",
-        "lost": 8,
+        "lost": 4,
         "homes": [
           "3,12",
           "4,11",
           "3,13",
-          "2,14",
-          "5,10",
-          "6,9",
-          "8,8",
-          "9,8"
+          "2,14"
         ],
         "extraBuildsToSaveAll": null,
         "savedWithExtra": 0
@@ -241,6 +237,15 @@
       {
         "year": 2043,
         "action": "build",
+        "elementId": "breakwater",
+        "q": 4,
+        "r": 10,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2044,
+        "action": "build",
         "elementId": "sandy_vegetation",
         "q": 2,
         "r": 13,
@@ -248,7 +253,7 @@
         "spare": false
       },
       {
-        "year": 2044,
+        "year": 2045,
         "action": "build",
         "elementId": "sandy_vegetation",
         "q": -12,
@@ -257,21 +262,12 @@
         "spare": false
       },
       {
-        "year": 2045,
+        "year": 2046,
         "action": "build",
         "elementId": "mangrove",
         "q": 26,
         "r": 6,
         "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2046,
-        "action": "build",
-        "elementId": "breakwater",
-        "q": 4,
-        "r": 10,
-        "place": "near Campal",
         "spare": false
       },
       {
@@ -287,8 +283,8 @@
         "year": 2048,
         "action": "build",
         "elementId": "breakwater",
-        "q": 5,
-        "r": 7,
+        "q": 3,
+        "r": 11,
         "place": "near Campal",
         "spare": false
       },
@@ -296,8 +292,8 @@
         "year": 2049,
         "action": "build",
         "elementId": "breakwater",
-        "q": 3,
-        "r": 11,
+        "q": 1,
+        "r": 0,
         "place": "near Campal",
         "spare": false
       },
@@ -315,7 +311,7 @@
   "goal2": {
     "sameAsGoal1": true,
     "stars": 9,
-    "lost": 13,
+    "lost": 9,
     "everyHomeSaved": false,
     "storms": [
       {
@@ -343,9 +339,9 @@
         "year": 2050,
         "name": "Cyclone and flood",
         "stars": 3,
-        "saved": 51,
+        "saved": 55,
         "total": 59,
-        "lost": 8,
+        "lost": 4,
         "biodiversityChange": 43
       }
     ],
@@ -373,16 +369,12 @@
       },
       {
         "id": "c3-compound",
-        "lost": 8,
+        "lost": 4,
         "homes": [
           "3,12",
           "4,11",
           "3,13",
-          "2,14",
-          "5,10",
-          "6,9",
-          "8,8",
-          "9,8"
+          "2,14"
         ],
         "extraBuildsToSaveAll": null,
         "savedWithExtra": 0
@@ -545,6 +537,15 @@
       {
         "year": 2043,
         "action": "build",
+        "elementId": "breakwater",
+        "q": 4,
+        "r": 10,
+        "place": "near Campal",
+        "spare": false
+      },
+      {
+        "year": 2044,
+        "action": "build",
         "elementId": "sandy_vegetation",
         "q": 2,
         "r": 13,
@@ -552,7 +553,7 @@
         "spare": false
       },
       {
-        "year": 2044,
+        "year": 2045,
         "action": "build",
         "elementId": "sandy_vegetation",
         "q": -12,
@@ -561,21 +562,12 @@
         "spare": false
       },
       {
-        "year": 2045,
+        "year": 2046,
         "action": "build",
         "elementId": "mangrove",
         "q": 26,
         "r": 6,
         "place": "near Merces",
-        "spare": false
-      },
-      {
-        "year": 2046,
-        "action": "build",
-        "elementId": "breakwater",
-        "q": 4,
-        "r": 10,
-        "place": "near Campal",
         "spare": false
       },
       {
@@ -591,8 +583,8 @@
         "year": 2048,
         "action": "build",
         "elementId": "breakwater",
-        "q": 5,
-        "r": 7,
+        "q": 3,
+        "r": 11,
         "place": "near Campal",
         "spare": false
       },
@@ -600,8 +592,8 @@
         "year": 2049,
         "action": "build",
         "elementId": "breakwater",
-        "q": 3,
-        "r": 11,
+        "q": 1,
+        "r": 0,
         "place": "near Campal",
         "spare": false
       },

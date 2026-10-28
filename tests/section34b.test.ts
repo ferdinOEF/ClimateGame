@@ -559,8 +559,9 @@ describe("34b.13: a word about the wind before 2050 and after", () => {
     const run = newRun("wind-row", BOT_LEVEL, true);
     while (run.landed.size < 2) passYear(run);
     expect(run.nextChallenge()!.kind).toBe("compound");
-    // The 2050 wind takes homes at the Campal front, three to six hexes from the nearest beach: pandanus (beach only,
-    // a shelter of two hexes) cannot reach them, so no wind row is offered there.
+    // Since the owner's decision of 28 October the wind reaches only homes within two tiles of a beach for pandanus;
+    // on this board the 2050 water alone takes every one of them, so no home falls to the wind alone, pandanus saves
+    // none, and the still helps rule offers no pandanus row (reported to the owner).
     const pandanus = run.prep.filter((row) => row.elementId === "sandy_vegetation");
     for (const row of pandanus) expect(row.label).toMatch(/^Plant [12] pandanus on (the Campal beach|the beach near .+|the beach)$/);
     expect(pandanus).toHaveLength(0);
@@ -582,7 +583,6 @@ describe("34b.14: the art pass (render only, no change to what a storm takes)", 
     }
     expect(readFileSync("src/render/storm/ringPaint.ts", "utf8")).toContain("export const RING_TEXTURE_SIZE = 256;");
   });
-
 
   it("the cyclone is soft rings, not puffs; the rain leans with the wind; a river flood is never drawn on the sea", () => {
     const sky = readFileSync("src/render/storm/stormSky.ts", "utf8");
@@ -642,6 +642,39 @@ describe("34b.15: the flood is muddy water, not night (the owner's mock up, Opti
     expect(water).toContain("alpha = mix(alpha, alpha / 0.82 * 0.6, flood);");
     expect(water).toContain("look[i4 + 1] = slot.sea ? 0 : Math.max(flood, stored);");
   });
+});
+
+describe("34b, the owner's decision of 28 October: the wind reaches the homes near the beach", () => {
+  it("in the 2030 cyclone and the 2050 storm, wind falls only on tiles within two of a beach tile that can take pandanus", async () => {
+    const { newRun, BOT_LEVEL } = await import("../tools/panjimBots/bots");
+    const { passYear } = await import("./helpers/passYear");
+    const { computeWater, LANDFALL_ZONE, sandForPandanus, HAZARD_MODEL } = await import("../src/core/hazardModel");
+    const { shelterOf } = await import("../src/core/climate");
+    const { computeCombos } = await import("../src/core/combos");
+    const { axialDistance } = await import("../src/core/hex");
+    expect(HAZARD_MODEL.wind!.sandReachHex).toBe(2);
+    const run = newRun("wind-reach", BOT_LEVEL);
+    const sand = sandForPandanus(run.state);
+    expect(sand.length).toBeGreaterThan(0);
+    for (const storm of run.schedule.filter((c) => c.kind !== "flood")) {
+      while (run.nextChallenge()?.id !== storm.id) passYear(run);
+      const input = { kind: storm.kind, strength: storm.strength, landfall: run.landfallOf(storm), sheltered: shelterOf(storm), wind: storm.wind, turn: storm.turn - 1 };
+      const water = computeWater(run.state, input as never, { combos: computeCombos(run.state).bonus, landfallZoneTiles: run.zones!.keys(LANDFALL_ZONE) });
+      expect(water.wind!.size, storm.id).toBeGreaterThan(0);
+      for (const key of water.wind!.keys()) {
+        const [q, r] = key.split(",").map(Number);
+        expect(sand.some((b) => axialDistance(b, { q, r }) <= 2), `${storm.id} ${key}`).toBe(true);
+      }
+      // The Campal front, three to six tiles from the beach, takes no wind (it took the most in 2050 before).
+      for (const key of ["6,3", "4,4", "2,5", "4,6"]) expect(water.wind!.has(key), `${storm.id} ${key}`).toBe(false);
+      for (const key of shelterOf(storm) ?? []) expect(water.wind!.has(key), `${storm.id} sheltered ${key}`).toBe(false);
+      while (!run.landed.has(storm.id)) passYear(run);
+    }
+    const rule = factById("wind-reach");
+    expect(rule?.kind).toBe("gameRule");
+    expect(rule?.text).toBe("A cyclone's wind reaches the homes near the beach; pandanus within two tiles halves the wind damage.");
+    expect(readFileSync("src/ui/panjim/fieldGuide.ts", "utf8")).toContain(`text: \`In this game \${windReach.charAt(0).toLowerCase()}\${windReach.slice(1)}\``);
+  }, 120_000);
 });
 
 describe("owner decision 7 (28 October): the red comes on by itself once the list is done", () => {

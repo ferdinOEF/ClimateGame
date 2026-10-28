@@ -221,7 +221,10 @@ export class FieldGuide {
     defences.innerHTML = "";
     // Section 30.11 bug 7: what side by side does, in the game's plain words.
     const together = Object.values(COMBO_INFO).map((info) => ({ id: "combo", name: "Side by side", text: comboNote(info), source: COMBO_SOURCE }));
-    const rules: { id: string; name: string; text: string; source?: string }[] = [...defenceRules(), { id: "broken", name: "Broken defences", text: BROKEN_RULE }, ...together];
+    // Section 34b (owner decision): where the wind reaches, from the same rule the Sources screen lists.
+    const windReach = factById("wind-reach")?.text;
+    const wind = windReach ? [{ id: "wind", name: "The wind", text: `In this game ${windReach.charAt(0).toLowerCase()}${windReach.slice(1)}` }] : [];
+    const rules: { id: string; name: string; text: string; source?: string }[] = [...defenceRules(), { id: "broken", name: "Broken defences", text: BROKEN_RULE }, ...wind, ...together];
     for (const rule of rules) {
       const item = document.createElement("li");
       item.className = "field-guide-defence";

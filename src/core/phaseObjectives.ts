@@ -135,7 +135,9 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
   const order = (a: { key: string; elementId: string; gain: number }, b: { key: string; elementId: string; gain: number }): number =>
     b.gain - a.gain || (a.key < b.key ? -1 : a.key > b.key ? 1 : a.elementId < b.elementId ? -1 : a.elementId > b.elementId ? 1 : 0);
   let scored = candidates.map((c) => ({ ...c, gain: gainOf(c), fresh: picks.length }));
-  while (picks.length < input.budget && lost > 0) {
+  /** The greedy, up to `limit` picks in all. */
+  const pick = (limit: number): void => {
+  while (picks.length < limit && lost > 0) {
     scored.sort(order);
     // The leaders are always re-scored fresh (a combo can make a build worth more once another stands), then the lazy check.
     for (const c of scored.slice(0, LEADERS)) {
@@ -163,16 +165,24 @@ export function generatePhaseObjective(input: PhaseObjectiveInput): PhaseObjecti
     const taken = best.key;
     scored = scored.filter((c) => c.key !== taken);
   }
+  };
 
-  const rows = rowsOf(input, picks, candidates);
-  // Section 34b.13: the 2050 storm (cyclone and flood) brings wind, which only pandanus lowers (a game rule). When its
-  // wind still takes homes after the picks, a row asks for pandanus on the beach beside them.
+  // Section 34b.13 (owner decision, 28 October): the 2050 storm (cyclone and flood) brings wind, which only pandanus
+  // lowers (a game rule). Its objective keeps WIND_ROW_PANDANUS of the phase's builds for it: when the wind still takes
+  // homes after the other picks, a row asks for pandanus on the beach beside them; when it takes none, the greedy has
+  // those builds back.
+  const compound = input.challenge.kind === "compound";
+  pick(compound ? Math.max(0, input.budget - WIND_ROW_PANDANUS) : input.budget);
+  let rows = rowsOf(input, picks, candidates);
   const room = input.budget - picks.length;
-  const wind = input.challenge.kind === "compound" && room > 0 && rows.length < MAX_ROWS && !rows.some((row) => row.elementId === "sandy_vegetation") ? windRow(input, board, lost, room) : null;
+  const wind = compound && room > 0 && rows.length < MAX_ROWS && !rows.some((row) => row.elementId === "sandy_vegetation") ? windRow(input, board, lost, room) : null;
   if (wind) {
     picks.push(...wind.picks);
     rows.push(wind.row);
     lost -= wind.picks.reduce((s, p) => s + p.homes, 0);
+  } else if (compound && picks.length < input.budget) {
+    pick(input.budget);
+    rows = rowsOf(input, picks, candidates);
   }
   return { picks, rows, lostBefore, lostAfter: lost };
 }
