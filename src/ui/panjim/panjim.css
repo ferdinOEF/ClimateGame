@@ -4205,3 +4205,126 @@
 @media (max-width: 760px) {
   .finale-points { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---- Section 35.3: the name card, before Play Panjim's start popup ------------------------------------------- */
+
+.brief-stage[hidden] { display: none !important; }
+
+.name-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  width: min(760px, 94vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 26px 26px 22px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 18px;
+  box-shadow: 0 6px 0 var(--panel-shadow);
+}
+.name-card-main {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.name-card-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent-ink);
+}
+.name-card-title {
+  margin: 6px 0 8px;
+  font-family: var(--font-head);
+  font-size: 26px;
+  line-height: 1.15;
+}
+.name-card-line {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.name-card-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+.name-card-field {
+  margin-top: 6px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--button-border);
+  font: 600 16px var(--font-body);
+  color: var(--ink);
+  background: var(--panel-raised);
+}
+.name-card-field[aria-invalid="true"] { border-color: var(--warn); }
+.name-card-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.name-card-error {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warn-ink);
+}
+.name-card-error[hidden] { display: none; }
+.name-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+.name-card-actions button {
+  min-height: 44px;
+  padding: 0 20px;
+  font-size: 16px;
+}
+.name-card-top {
+  padding: 14px;
+  border-radius: 14px;
+  color: var(--ink);
+  background: var(--panel-raised);
+  border: 1px solid var(--gold);
+}
+.name-card-top-title {
+  margin: 0 0 8px;
+  font-family: var(--font-head);
+  font-size: 20px;
+}
+.name-card-top-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.name-card-top-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.name-card-top-rows li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-areas: "rank name points" ". season season";
+  column-gap: 6px;
+  font-size: 13px;
+}
+.name-card-rank { grid-area: rank; font-weight: 700; }
+.name-card-name { grid-area: name; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name-card-top-rows b { grid-area: points; font-family: var(--font-head); }
+.name-card-season { grid-area: season; font-size: 11px; color: var(--ink-3); }
+
+@media (max-width: 760px) {
+  .name-card { grid-template-columns: minmax(0, 1fr); }
+}

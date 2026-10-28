@@ -128,10 +128,31 @@ export class ObjectivesPanel {
     this.briefBackdrop.appendChild(stage);
     container.appendChild(this.briefBackdrop);
     // Section 34: the start popup takes focus on its main button and keeps Tab inside it while it is open.
-    trapFocus(card, () => this.briefOpen);
+    trapFocus(card, () => this.briefOpen && !this.firstCard);
     window.requestAnimationFrame(() => {
-      if (this.briefOpen && !card.contains(document.activeElement)) card.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
+      if (this.briefOpen && !this.firstCard && !card.contains(document.activeElement)) card.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
     });
+    this.stage = stage;
+  }
+
+  private readonly stage: HTMLElement;
+  /** Section 35.3: a card shown in the popup's place before it (Play Panjim's name card), while it is up. */
+  private firstCard: HTMLElement | null = null;
+
+  /**
+   * Section 35.3: shows `el` (the name card) in the start popup's backdrop, before the popup: everything that waits
+   * for the popup waits for it too. The returned function takes it away and shows the popup, its main button focused.
+   */
+  showFirst(el: HTMLElement): () => void {
+    this.firstCard = el;
+    this.stage.hidden = true;
+    this.briefBackdrop.appendChild(el);
+    return () => {
+      el.remove();
+      this.firstCard = null;
+      this.stage.hidden = false;
+      this.briefBackdrop.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
+    };
   }
 
   /**
