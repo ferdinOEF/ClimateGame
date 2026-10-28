@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { PANJIM_POINTS_MODEL } from "@levels/panjimRun";
-import { neonSql, type ServerEnv, type Sql } from "./db";
+import { neonSql, schemaStatements, type ServerEnv, type Sql } from "./db";
 import { getBoard, patchBoard, postBoard, postFeedback, postRun, type Ctx, type Reply } from "./handlers";
 
 /**
@@ -59,6 +59,26 @@ export function contextFor(req: Req, env: ServerEnv = process.env as ServerEnv, 
   return { sql, env, ip: clientIp(req), now: new Date(), model: PANJIM_POINTS_MODEL };
 }
 
+/** db/schema.sql, put in the bundle as text by tools/buildApi.ts. */
+declare const __SCHEMA_SQL__: string;
+
+let schemaReady: Promise<void> | null = null;
+
+/**
+ * The tables, made once per function instance before its first query when they are missing (every statement is
+ * CREATE ... IF NOT EXISTS), so a new database works before anyone runs `npm run db:migrate`. A failure is tried
+ * again on the next request.
+ */
+function ensureSchema(sql: Sql): Promise<void> {
+  schemaReady ??= (async () => {
+    for (const statement of schemaStatements(__SCHEMA_SQL__)) await sql.query(statement);
+  })().catch((error: unknown) => {
+    schemaReady = null;
+    throw error;
+  });
+  return schemaReady;
+}
+
 type Route = (ctx: Ctx, req: Req) => Promise<Reply>;
 
 function handler(routes: Partial<Record<string, Route>>) {
@@ -66,7 +86,9 @@ function handler(routes: Partial<Record<string, Route>>) {
     const route = routes[req.method ?? "GET"];
     if (!route) return send(res, { status: 405, body: { error: "method" } });
     try {
-      send(res, await route(contextFor(req), req));
+      const ctx = contextFor(req);
+      if (ctx.sql) await ensureSchema(ctx.sql);
+      send(res, await route(ctx, req));
     } catch (error) {
       // The database could not be reached or refused the query: the game carries on as offline.
       console.error("api error", error instanceof Error ? error.message : error);

@@ -28,6 +28,10 @@ database. The Firebase notes further down describe older, unused code (kept, off
 
    `db:migrate` reads `DATABASE_URL` from the environment, else from `.env.local` or `.env`.
 
+   The functions also make any missing table themselves, once per instance before their first query (the same
+   statements), so a new database works on the first request; `db:migrate` is the way to apply a changed schema on
+   purpose and to check it.
+
 Without `DATABASE_URL` every endpoint answers `{ "offline": true }` and the game plays the same: the name card says
 "Board offline" and the finale shows the points without a place.
 
