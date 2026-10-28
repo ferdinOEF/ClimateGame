@@ -2365,4 +2365,7 @@ deuteranopia copies; not asked for).
 
 **Merge and Vercel.** Merged with `git merge --no-ff` on the owner's word: `ec57748` (tsc and build clean on the merged tree). Vercel's production deployment of `ec57748` (`dpl_5XGBpxovzR8kwWYirhw9wd7CkgF4`) is READY and aliased to climate-game-psi.vercel.app. Production loaded from here at 1920x1080: the card at (1606, 12, 300, 242), Maya at (12, 926), the credit at the bottom right, her greeting "The steps are in the card, top right."; every game file 200, the one console error the Vercel security checkpoint's 403 on the first request.
 
+- The heat year camera fix (2029: the camera also frames Get ahead's tiles, or them alone when nothing is hot): `src/app/panjimController.ts` `renderHeat` and `refreshAhead`, commit `a668dc4` (34c.4), on master through `ec57748`; checked by `tools/section34cAhead.ts` (`a668dc4`): the 2029 Get ahead tile inside the window and clear of the card and Maya at 1366x768 (683, 374) and 1920x1080 (960, 527), was off the screen (x 1380 and 2080); no Get ahead row in 2039 or 2049.
+- Kala Academy in the three storms (`tools/section34cKala.ts`, `5df0a6c`; `kala-before.md` `5df0a6c`, `kala-after.md` `d9cd1ca`): no defences, dry in 2030 and 2040 and flooded in 2050 before (5,11, 3.94 m) and after (5,10, 10.21 m); best plan, dry in all three before and after. 2030 does not reach it; 2040 and 2050 unchanged.
+
 **Revert:** `git revert -m 1 ec57748`.
