@@ -16,3 +16,6 @@ ui-debug.log
 .env
 .env.local
 .env.*.local
+
+# Section 35.4: npm run export:feedback writes its CSV files here
+exports/

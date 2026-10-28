@@ -1,6 +1,7 @@
 import { ActionRun, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import { runPoints } from "@core/resiliencePoints";
-import { fetchRank } from "@services/board";
+import { beaconRun, fetchRank, newRunId, postBoard, postRun, type RunReport } from "@services/board";
+import { markTutorialPlayed, tutorialPlayedThisVisit } from "@services/visit";
 import { pointsConfig } from "@levels/panjimRun";
 import type { GameState } from "@core/gameState";
 import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
@@ -311,6 +312,9 @@ export class PanjimController {
     this.clock = new ClockHud(host.container, { onSkipYear: () => void this.skipYear() });
     // Section 35.2: Points, in Play Panjim only.
     this.clock.setPoints(this.tutorial ? null : 0);
+    // Section 35.4: the run is reported without a name (reach and completion); the Tutorial never posts.
+    if (this.tutorial) markTutorialPlayed();
+    else window.addEventListener("pagehide", () => this.reportEarlyStop(), { signal: this.keyAbort.signal });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
     // Section 33b.2: one HUD card, top left: the countdown chip beside the year, the two tiles under the timeline.
     this.outlook.mountCountdown(this.clock.countdownSlot);
@@ -1429,15 +1433,29 @@ export class PanjimController {
       { name, points, storms: this.run.schedule.map((c, i) => ({ label: phases[i].label, stars: this.run.outcomes.get(c.id)?.stars ?? 0 })), totalStars: result.totalStars, cleared: result.cleared },
       { status: "loading" }
     );
-    void this.boardPlace(points.total).then((rank) => {
+    // Section 35.4: the run is reported (no name); a named run goes on the board as the finale opens, before the form.
+    this.runReported = true;
+    void postRun(this.runReport());
+    void this.boardPlace(points.total, name).then((rank) => {
       if (!this.disposed) finale.setRank(rank);
     });
     const choice = await this.resultCards.show([{ body: finale.body, button: "Play again", link: "Exit", wide: true }]);
     this.host.onRunComplete(result, choice === "link" ? "menu" : "again");
   }
 
-  /** Section 35.2: where `points` stands on the board (offline when it can't be reached). */
-  private async boardPlace(points: number): Promise<RankState> {
+  /**
+   * Section 35.2 and 35.4: where the run stands on the board. With a name it is posted (the server counts its points
+   * from the builds) and its edit token kept for this run; without one, the place its points would get. Offline when
+   * the board can't be reached.
+   */
+  private async boardPlace(points: number, name: string | null): Promise<RankState> {
+    if (name) {
+      const posted = await postBoard(this.runId, name, this.run.buildLog);
+      if (posted) {
+        this.boardToken = posted.editToken;
+        return { status: "ready", rank: posted };
+      }
+    }
     const rank = await fetchRank(points);
     return rank ? { status: "ready", rank } : { status: "offline" };
   }
@@ -2490,7 +2508,26 @@ export class PanjimController {
     while (this.busy) await new Promise((resolve) => window.setTimeout(resolve, 50));
   }
 
+  /** Section 35.4: this run's id (random, made here), and whether the finale has reported it. */
+  readonly runId = newRunId();
+  private readonly startedAt = new Date().toISOString();
+  private runReported = false;
+  /** Section 35.4: the board row's edit token for this run (memory only), once a named run is on the board. */
+  boardToken: string | null = null;
+
+  /** What the server is told about this run: its builds as played and its timing, never a name. */
+  private runReport(): RunReport {
+    return { runId: this.runId, builds: this.run.buildLog, minutes: Math.round(this.playMs() / 6000) / 10, startedAt: this.startedAt, endedAt: new Date().toISOString(), tutorialFirst: tutorialPlayedThisVisit() };
+  }
+
+  /** Section 35.4: a Play Panjim run that stops before its finale (Exit, the idle reset, the page closed) is still counted. */
+  private reportEarlyStop(): void {
+    if (this.tutorial || this.runReported) return;
+    beaconRun(this.runReport());
+  }
+
   dispose(): void {
+    this.reportEarlyStop();
     this.keyAbort.abort();
     this.tutorialPanel?.dispose();
     this.maya.dispose();

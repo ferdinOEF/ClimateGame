@@ -54,3 +54,55 @@ export function fetchTop(): Promise<{ rows: BoardRow[]; season: string } | null>
 export function fetchRank(points: number): Promise<(RankView & { season: string }) | null> {
   return call<RankView & { season: string }>(`/api/board?points=${Math.max(0, Math.round(points))}`);
 }
+
+/** Section 35.4: what the server is told about a run (no name, IP or device): its build list and its timing. */
+export interface RunReport {
+  runId: string;
+  builds: readonly { year: number; tile: string; element: string }[];
+  minutes: number;
+  startedAt: string;
+  endedAt: string;
+  tutorialFirst: boolean;
+}
+
+/** POST /api/run at the finale. */
+export function postRun(report: RunReport): Promise<{ saved: boolean } | null> {
+  return call<{ saved: boolean }>("/api/run", { method: "POST", body: JSON.stringify(report), keepalive: true });
+}
+
+/** POST /api/run with `navigator.sendBeacon`, when a run stops early (Exit, the idle reset, the page closed). */
+export function beaconRun(report: RunReport): void {
+  try {
+    navigator.sendBeacon?.("/api/run", new Blob([JSON.stringify(report)], { type: "application/json" }));
+  } catch {
+    // Best effort: a run that cannot be reported is simply not counted.
+  }
+}
+
+/** What the server answers a board post: the run's place, the rows round it, and the row's edit token. */
+export type BoardPost = RankView & { editToken: string; season: string; name: string };
+
+/** POST /api/board for a finished run with a name. The server replays the builds and counts the points itself. */
+export function postBoard(runId: string, name: string, builds: RunReport["builds"]): Promise<BoardPost | null> {
+  return call<BoardPost>("/api/board", { method: "POST", body: JSON.stringify({ runId, name, builds }) });
+}
+
+/** PATCH /api/board: renames the run's row (from the feedback form). */
+export function renameOnBoard(editToken: string, name: string): Promise<{ renamed: boolean; name: string; rank: number } | null> {
+  return call<{ renamed: boolean; name: string; rank: number }>("/api/board", { method: "PATCH", body: JSON.stringify({ editToken, name }) });
+}
+
+/** POST /api/feedback: the answered items only, by run id; never a name. */
+export function postFeedback(runId: string, answers: object): Promise<{ saved: boolean } | null> {
+  return call<{ saved: boolean }>("/api/feedback", { method: "POST", body: JSON.stringify({ runId, answers }) });
+}
+
+/** A run's id: random, made by the client when the run starts. */
+export function newRunId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
