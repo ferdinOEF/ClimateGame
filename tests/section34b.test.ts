@@ -568,6 +568,22 @@ describe("34b.13: a word about the wind before 2050 and after", () => {
 });
 
 describe("34b.14: the art pass (render only, no change to what a storm takes)", () => {
+  it("a browser without the canvas blur (older Safari) gets the same rings, baked once, pre-blurred", () => {
+    const sky = readFileSync("src/render/storm/stormSky.ts", "utf8");
+    expect(sky).toContain("if (!canvasBlurWorks()) {");
+    expect(sky).toContain("paintRing(canvas.getContext(\"2d\")!, seed, RING_TEXTURE_SIZE, RING_AT);");
+    const seeds = [...sky.matchAll(/\{ radius: [\d.]+, strength: [\d.]+, spin: [\d.]+, seed: (\d+) \}/g)].map((m) => m[1]);
+    expect(seeds.length).toBeGreaterThan(0);
+    for (const seed of seeds) {
+      // One file per ring (tools/bakeStormRings.ts), a PNG at the painted size.
+      const png = readFileSync(`public/art/storm-ring-${seed}.png`);
+      expect(png.subarray(1, 4).toString("latin1")).toBe("PNG");
+      expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([256, 256]);
+    }
+    expect(readFileSync("src/render/storm/ringPaint.ts", "utf8")).toContain("export const RING_TEXTURE_SIZE = 256;");
+  });
+
+
   it("the cyclone is soft rings, not puffs; the rain leans with the wind; a river flood is never drawn on the sea", () => {
     const sky = readFileSync("src/render/storm/stormSky.ts", "utf8");
     expect(sky).toContain("function ringTexture(");

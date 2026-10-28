@@ -4,6 +4,8 @@
  * and a breakwater built at Miramar, seen close. Run once against a build of the code before the pass and once after.
  *
  * Usage: npx tsx tools/section34bArt.ts url=http://localhost:4173 tag=after [sizes=1366x768,1920x1080] [out=docs/qa/section34b/art]
+ *   [noblur=yes]: the page's 2D canvas has no `filter` (as in older Safari), so the cyclone's rings come from the baked
+ *   files; it checks each of the four was loaded.
  * Exits 1 on a console error or a scenario that does not run.
  */
 import { chromium, type Page } from "playwright";
@@ -21,6 +23,8 @@ const TIMES = (args.get("at") ?? "7").split(",").map(Number);
 /** Only these storms (cyclone-2030, flood-2040, finale-2050); all by default. walls=no leaves the walls out. */
 const ONLY = args.get("storms")?.split(",") ?? null;
 const WALLS = args.get("walls") !== "no";
+const NOBLUR = args.get("noblur") === "yes";
+const ringLoads: string[] = [];
 fs.mkdirSync(OUT, { recursive: true });
 const gpu = process.platform === "win32" ? ["--use-angle=d3d11", "--ignore-gpu-blocklist", "--enable-gpu"] : ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"];
 const browser = await chromium.launch({ args: gpu });
@@ -33,6 +37,10 @@ async function open(W: number, H: number): Promise<Page> {
     if (m.type() === "error") errors.push(`${W}x${H}: ${m.text()}`);
   });
   page.on("pageerror", (e) => errors.push(`${W}x${H}: ${e.message}`));
+  page.on("response", (r) => {
+    if (r.url().includes("storm-ring-")) ringLoads.push(`${r.status()} ${r.url().split("/").pop()}`);
+  });
+  if (NOBLUR) await page.addInitScript(() => delete (CanvasRenderingContext2D.prototype as { filter?: string }).filter);
   await page.goto(qaUrl(`${URL0}/#/play/l01-first-rains`), { waitUntil: "domcontentloaded" });
   await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 120000 });
   await page.waitForTimeout(1500);
@@ -80,6 +88,16 @@ for (const [W, H] of SIZES) {
   console.log(`done [${tag}] ${TAG}`);
 }
 await browser.close();
+if (NOBLUR) {
+  // Each page loads the four baked rings once; all must come back.
+  const bad = ringLoads.filter((l) => !l.startsWith("200 ") && !l.startsWith("304 "));
+  const seeds = new Set(ringLoads.map((l) => l.split(" ")[1]));
+  console.log(`baked rings loaded: ${[...seeds].sort().join(", ") || "none"}`);
+  if (seeds.size !== 4 || bad.length) {
+    failures++;
+    console.log(`FAIL the baked rings: ${bad.join(", ") || `${seeds.size} of 4`}`);
+  }
+}
 if (errors.length) console.log(`console errors: ${errors.slice(0, 3).join(" | ")}`);
 console.log(failures === 0 && errors.length === 0 ? "ALL PASS" : `${failures + errors.length} FAILED`);
 process.exit(failures === 0 && errors.length === 0 ? 0 : 1);

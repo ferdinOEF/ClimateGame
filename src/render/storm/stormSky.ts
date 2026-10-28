@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RING_TEXTURE_SIZE, bakedRingUrl, canvasBlurWorks, paintRing } from "./ringPaint";
 
 /**
  * What is overhead in a storm: the cyclone's spiral of cloud, the grey band
@@ -31,42 +32,29 @@ const FLAT_BAND_SIZE: [number, number] = [28, 9];
  * Section 34b.14: the cyclone's rings, from the eye out: each ring's radius (board units), the share of its sheet's half
  * size the ring sits at, its strength (opacity cap, 0.35 to 0.5) and how fast it turns against the storm's own turn.
  */
-const RINGS: { radius: number; strength: number; spin: number; seed: number }[] = [
+export const RINGS: { radius: number; strength: number; spin: number; seed: number }[] = [
   { radius: 1.5, strength: 0.5, spin: 1.6, seed: 3 },
   { radius: 2.9, strength: 0.46, spin: 1.15, seed: 5 },
   { radius: 4.5, strength: 0.4, spin: 0.85, seed: 9 },
   { radius: 6.3, strength: 0.35, spin: 0.6, seed: 13 }
 ];
 /** Where on its sheet a ring is painted: this share of the sheet's half size. */
-const RING_AT = 0.62;
+export const RING_AT = 0.62;
 
-/** One soft ring of cloud seen from above: blurred edges, thicker in clumps so its turn reads. */
+/**
+ * One soft ring of cloud seen from above: blurred edges, thicker in clumps so its turn reads. Painted here where the
+ * canvas can blur (Chrome, Edge, Firefox); otherwise (Section 34b, owner: older Safari) the same ring baked once,
+ * pre-blurred, by `tools/bakeStormRings.ts`.
+ */
 function ringTexture(seed: number): THREE.Texture {
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const g = canvas.getContext("2d")!;
-  const c = size / 2;
-  const radius = c * RING_AT;
-  const random = rng(seed);
-  // Blurred, where the browser can (every one the game supports): the ring's edges soft, no disc reads.
-  g.filter = "blur(6px)";
-  const clumps = 26;
-  for (let k = 0; k < clumps; k++) {
-    const a = (k / clumps) * Math.PI * 2 + random() * 0.2;
-    const r = radius * (0.92 + random() * 0.16);
-    const blob = c * (0.16 + random() * 0.12);
-    const alpha = 0.35 + random() * 0.55;
-    const x = c + Math.cos(a) * r;
-    const y = c + Math.sin(a) * r;
-    const grad = g.createRadialGradient(x, y, 0, x, y, blob);
-    grad.addColorStop(0, `rgba(238, 242, 245, ${alpha.toFixed(2)})`);
-    grad.addColorStop(1, "rgba(238, 242, 245, 0)");
-    g.fillStyle = grad;
-    g.beginPath();
-    g.arc(x, y, blob, 0, Math.PI * 2);
-    g.fill();
+  if (!canvasBlurWorks()) {
+    const baked = new THREE.TextureLoader().load(bakedRingUrl(seed, import.meta.env.BASE_URL));
+    baked.colorSpace = THREE.SRGBColorSpace;
+    return baked;
   }
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = RING_TEXTURE_SIZE;
+  paintRing(canvas.getContext("2d")!, seed, RING_TEXTURE_SIZE, RING_AT);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
