@@ -7,7 +7,8 @@
  *   [out=docs/qa/section34c/after] [url=http://localhost:4173]
  * Scenes: start, four-rows (the 2031 phase, four objective rows), storm (the 2030 cyclone at 7 s), large-text (four
  * rows, Larger text on), bubble (Maya's line open), menu-miramar (the build menu on a Miramar beach tile), result (the
- * first result card), final (the last card of the run), tutorial (the Tutorial with its caption).
+ * first result card), final (the last card of the run), tutorial (the Tutorial with its caption), campal (the Campal
+ * bank close on Kala Academy, Section 34c.3).
  * Exits 1 on a console error or a scene that does not run.
  */
 import { chromium, type Browser, type Page } from "playwright";
@@ -139,7 +140,9 @@ const SCENE: Record<string, { level?: string; run: Scene }> = {
   result: { run: async (page) => (await begin(page), await scenario(page, "to-results")) && (await page.waitForTimeout(1500), true) },
   // The app's own "finale" scenario: the whole run played, each Aftermath accepted, handed back at the last card.
   final: { run: async (page) => (await begin(page), await scenario(page, "finale")) && (await page.waitForTimeout(1500), true) },
-  tutorial: { level: "l00-tutorial", run: async (page) => (await begin(page), true) }
+  tutorial: { level: "l00-tutorial", run: async (page) => (await begin(page), true) },
+  // Section 34c.3: the Campal bank, close on Kala Academy.
+  campal: { run: async (page) => (await begin(page), await quiet(page), await scenario(page, "look-close-kala-academy")) && (await page.waitForTimeout(2500), true) }
 };
 
 const { url, child } = await startPreview();

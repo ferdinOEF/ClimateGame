@@ -16,7 +16,7 @@ position, the ring the hex the landmark stands on. Positions: `tools/mapgen/pana
 | 8 | Don Bosco College | 15.49660 | 73.82250 | osm-image | 9,9 | land | its hex is taken by Don Bosco High School; moved 1 |
 | 9 | Sharada Mandir School | 15.48043 | 73.80916 | nominatim+osm-image | -3,18 | land | moved by hand to -2,18; moved by hand to -3,18 |
 | 10 | Government Polytechnic | 15.48625 | 73.82388 | nominatim+osm-image | 6,15 | land |  |
-| 11 | Kala Academy | 15.49421 | 73.81741 | nominatim+osm-image | 5,11 | land | its hex reads as estuary in OSM; moved 1 to dry ground |
+| 11 | Kala Academy | 15.49421 | 73.81741 | nominatim+osm-image | 5,10 | land | its hex reads as estuary in OSM; moved 1 to dry ground; moved by hand to 5,10 |
 | 12 | Goa State Museum | 15.49370 | 73.83560 | osm-image | 13,11 | land |  |
 | 13 | Campal Garden | 15.49682 | 73.81825 | osm-image | 7,8 | land | its hex reads as estuary in OSM; moved 1 to dry ground |
 | 14 | Dhempe College | 15.48120 | 73.80980 | osm-image | -2,17 | land | moved by hand to -1,17; moved by hand to -2,17 |

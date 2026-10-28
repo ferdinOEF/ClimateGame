@@ -1,11 +1,13 @@
 /**
  * Section 34c (owner, 28 October 2026): the HUD card at half its size, top right; Maya bottom left; the street map's
- * credit bottom right; Kala Academy on the Mandovi bank; the Mandovi Riverfront zone on the bank. The browser half is
- * tools/section34cShots.ts and tools/section33bViews.ts (docs/qa/section34c/).
+ * credit bottom right; Kala Academy on the Mandovi bank (the Riverfront zone's redraw was dropped by the owner: the
+ * zone is part of the hazard model). The browser half is tools/section34cShots.ts and tools/section33bViews.ts
+ * (docs/qa/section34c/).
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MAYA } from "../src/core/mayaLines";
+import { neighbors } from "../src/core/hex";
 
 const strip = (text: string): string => text.replace(/\/\*[\s\S]*?\*\//g, "");
 const css = strip(readFileSync("src/ui/panjim/panjim.css", "utf8"));
@@ -79,5 +81,25 @@ describe("34c.2: the card top right, Maya bottom left, the street map's credit b
     // A try that fails leaves the view as it was: the first that clears wins.
     expect(session).toContain("lastKeepClear = keepClearOf(lift(points), obstacles);\n                if (lastKeepClear) break;");
     expect(readFileSync("src/app/panjimController.ts", "utf8")).toContain("}, [...along, ...points], along, places);");
+  });
+});
+
+describe("34c.3: Kala Academy on the Mandovi bank at Campal", () => {
+  const map = JSON.parse(readFileSync("src/data/maps/panaji.json", "utf8")) as { monuments: { id: string; q: number; r: number }[]; tiles: { q: number; r: number; terrainId: string }[] };
+  const terrain = new Map(map.tiles.map((t) => [`${t.q},${t.r}`, t.terrainId]));
+  const waterAround = (q: number, r: number): string[] =>
+    neighbors({ q, r }).map((n) => terrain.get(`${n.q},${n.r}`) ?? "").filter((t) => t === "coast" || t === "river" || t === "estuary");
+
+  it("stands on 5,10, a land tile with the Mandovi mouth beside it (its old tile 5,11 looked only onto the creek)", () => {
+    const kala = map.monuments.find((m) => m.id === "kala_academy")!;
+    expect([kala.q, kala.r]).toEqual([5, 10]);
+    expect(terrain.get("5,10")).toBe("land");
+    expect(waterAround(5, 10)).toContain("coast");
+    expect(waterAround(5, 11)).toEqual(["river", "river"]);
+  });
+
+  it("is moved by the generator's hand edits, not by hand in the generated map", () => {
+    const edits = JSON.parse(readFileSync("tools/mapgen/panaji-hand-edits.json", "utf8")) as { monuments: { id: string; from: number[]; to: number[] }[] };
+    expect(edits.monuments.at(-1)).toEqual({ id: "kala_academy", from: [5, 11], to: [5, 10] });
   });
 });

@@ -1,0 +1,165 @@
+
+> riptide-rising@1.0.0 mapgen:panaji
+> tsx tools/mapgen/buildPanajiMap.ts
+
+Grid: 1277 hexes over 15.446..15.513 N, 73.795..73.87 E
+after reading the map:  {"estuary":118,"coast":421,"land":725,"beach":13}
+after splitting water:   {"estuary":189,"coast":253,"land":725,"river":97,"beach":13}
+after paddy:            {"estuary":232,"coast":253,"land":682,"river":97,"beach":13} (43 khazan fields became estuary)
+after widening sand:    {"estuary":232,"coast":253,"land":675,"river":97,"beach":20} (7 land tiles became beach)
+after the hand edits:   {"estuary":109,"coast":246,"land":743,"river":166,"beach":22}
+unplayable (north of the Mandovi and the east edge): 270 tiles
+elevation: 743 land tiles, 0..78.5 m, median 12.5 m
+  road on water: 11,2 (estuary): removed, 11,1 and 12,2 meet round dry ground, no crossing
+  road on water: 12,4 (river): removed, land only at 12,3
+  road on water: 17,4 (river): removed, land only at 17,3
+  road on water: 18,4 (river): removed, no land at either end
+  road on water: 29,4 (river): removed, land only at 29,5
+  road on water: 30,4 (river): removed, no land at either end
+  road on water: 31,4 (river): removed, land only at 31,5
+  road on water: 17,5 (river): removed, no land at either end
+  road on water: 27,5 (river): removed, no land at either end
+  road on water: 28,5 (river): removed, land only at 29,5
+  road on water: 12,6 (river): removed, land only at 12,7
+  road on water: 16,6 (river): removed, no land at either end
+  road on water: 27,6 (river): removed, land only at 27,7
+  road on water: 15,7 (river): removed, no land at either end
+  road on water: 16,7 (estuary): removed, no land at either end
+  road on water: 14,8 (river): removed, land only at 13,8
+  road on water: 15,8 (estuary): removed, land only at 15,9
+  road on water: 16,8 (estuary): removed, no land at either end
+  road on water: 7,9 (river): removed, no land at either end
+  road on water: 16,9 (estuary): removed, land only at 15,9
+  road on water: 28,9 (estuary): removed, 28,8 and 29,9 meet round dry ground, no crossing
+  road on water: 7,10 (river): removed, no land at either end
+  road on water: 6,11 (river): bridge, 6,10 to 7,11
+  road on water: 12,11 (river): removed, land only at 11,12
+  road on water: 14,11 (estuary): removed, land only at 15,10
+  road on water: 16,11 (river): removed, no land at either end
+  road on water: 18,11 (estuary): removed, land only at 17,12
+  road on water: 19,11 (estuary): removed, no land at either end
+  road on water: 16,12 (estuary): removed, land only at 17,12
+  road on water: 11,14 (estuary): removed, land only at 10,14
+  road on water: 12,14 (river): removed, no land at either end
+  road on water: 16,14 (estuary): removed, land only at 17,13
+  road on water: 12,15 (river): removed, no land at either end
+  road on water: 16,15 (estuary): removed, no land at either end
+  road on water: 12,16 (estuary): removed, land only at 13,16
+  road on water: 16,16 (estuary): removed, no land at either end
+  road on water: 16,17 (estuary): removed, land only at 15,18
+  road on water: 7,23 (estuary): removed, land only at 6,23
+  road on water: 8,23 (river): removed, no land at either end
+  road on water: 9,23 (estuary): removed, no land at either end
+  road on water: link 10,14 (land) to 11,14 (estuary): removed
+  road on water: link 11,12 (land) to 12,11 (river): removed
+  road on water: link 11,14 (estuary) to 12,14 (river): removed
+  road on water: link 11,1 (land) to 11,2 (estuary): removed
+  road on water: link 11,2 (estuary) to 12,2 (land): removed
+  road on water: link 12,14 (river) to 12,15 (river): removed
+  road on water: link 12,15 (river) to 12,16 (estuary): removed
+  road on water: link 12,16 (estuary) to 13,16 (land): removed
+  road on water: link 12,3 (land) to 12,4 (river): removed
+  road on water: link 12,6 (river) to 12,7 (land): removed
+  road on water: link 13,8 (land) to 14,8 (river): removed
+  road on water: link 14,11 (estuary) to 15,10 (land): removed
+  road on water: link 14,8 (river) to 15,8 (estuary): removed
+  road on water: link 15,18 (land) to 16,17 (estuary): removed
+  road on water: link 15,7 (river) to 15,8 (estuary): removed
+  road on water: link 15,8 (estuary) to 15,9 (land): removed
+  road on water: link 15,8 (estuary) to 16,7 (estuary): removed
+  road on water: link 15,8 (estuary) to 16,8 (estuary): removed
+  road on water: link 15,9 (land) to 16,9 (estuary): removed
+  road on water: link 16,11 (river) to 16,12 (estuary): removed
+  road on water: link 16,12 (estuary) to 17,12 (land): removed
+  road on water: link 16,14 (estuary) to 16,15 (estuary): removed
+  road on water: link 16,14 (estuary) to 17,13 (land): removed
+  road on water: link 16,15 (estuary) to 16,16 (estuary): removed
+  road on water: link 16,16 (estuary) to 16,17 (estuary): removed
+  road on water: link 16,6 (river) to 16,7 (estuary): removed
+  road on water: link 16,6 (river) to 17,5 (river): removed
+  road on water: link 17,12 (land) to 18,11 (estuary): removed
+  road on water: link 17,3 (land) to 17,4 (river): removed
+  road on water: link 17,4 (river) to 17,5 (river): removed
+  road on water: link 17,4 (river) to 18,4 (river): removed
+  road on water: link 18,11 (estuary) to 19,11 (estuary): removed
+  road on water: link 27,5 (river) to 27,6 (river): removed
+  road on water: link 27,5 (river) to 28,5 (river): removed
+  road on water: link 27,6 (river) to 27,7 (land): removed
+  road on water: link 28,5 (river) to 29,5 (land): removed
+  road on water: link 28,8 (land) to 28,9 (estuary): removed
+  road on water: link 28,9 (estuary) to 29,9 (land): removed
+  road on water: link 29,4 (river) to 29,5 (land): removed
+  road on water: link 29,4 (river) to 30,4 (river): removed
+  road on water: link 30,4 (river) to 31,4 (river): removed
+  road on water: link 31,4 (river) to 31,5 (land): removed
+  road on water: link 6,11 (river) to 7,10 (river): removed
+  road on water: link 6,23 (land) to 7,23 (estuary): removed
+  road on water: link 7,10 (river) to 7,9 (river): removed
+  road on water: link 7,23 (estuary) to 8,23 (river): removed
+  road on water: link 8,23 (river) to 9,23 (estuary): removed
+road links: 112
+roads: 132 land tiles (17.8% of land), 1 bridge and causeway tiles
+zone z1 Miramar to Dona Paula beach: 114 tiles {"coast":31,"land":65,"beach":18}
+zone z2 Taleigao, St Cruz and Merces wetlands: 237 tiles {"land":190,"estuary":33,"river":14}
+zone z3 Ourem creek and Fontainhas: 44 tiles {"land":16,"river":16,"estuary":12}
+zone z4 Mandovi Riverfront: 51 tiles {"river":31,"coast":1,"land":18,"estuary":1}
+Map layer: public\maps\panaji-osm.webp 2048x1939, 391 KB
+
+=== Panaji ===
+1286 tiles, 16 monuments, focus 9,10
+  0 |                  o~oooo~################=ooooooooooo
+  1 |                  ~ooooo####~######o####=oo========= 
+  2 |                  #oo######~~=o####o#####============ 
+  3 |                  ########~~~=o#########============= 
+  4 |                  ########~~~========================  
+  5 |                  #######~~~=====================###   
+  6 |                  ########~~~================ooo=####   
+  7 |                  ########~~~##**##o=o======o##=####    
+  8 |                  ~.######~~~*##**##=oo=====o###=####    
+  9 |                  ~~~##.#~~~#=**###=##o===oo####==o#     
+ 10 |                  ~~~~~~~~~~*#=#**#=###o==oo#####o=oo     
+ 11 |                  ~~~~~~~~~##=#####=*oo=ooo#####oo=o      
+ 12 |                  ~~~~~~~~~##=######=oo=o##oo####o=oo      
+ 13 |                  ~~~~~~~..#=######o====o###o####ooo       
+ 14 |                  ~~~~~~~.##=#######o==o=o###o#####oo       
+ 15 |                  ~~~~~~.###=##*###o==o#=o##########        
+ 16 |                  ~~~~~~.####=#####o==o##=o##########        
+ 17 |                  ~~~~~.*###=#####oo=o####o#########         
+ 18 |                  ~~~~~.*##==######o=o#####o#########         
+ 19 |                  ~~~~~*##=########o=o##############          
+ 20 |                  ~~~~~.############o=o##############          
+ 21 |                  ~~~~~.###########oo=o#############           
+ 22 |                  ~~~~~.############o=o##############           
+ 23 |                  ~~~~.#############o=o#############            
+ 24 |                  ~~~~~.#############o=oo############            
+ 25 |                  ~~~~.##############o=oo###########             
+ 26 |                  ~~~~.################=o############             
+ 27 |              ### ~~~.#################o############              
+ 28 |               ####~..#################o#############              
+ 29 |                ###.################################               
+ 30 |                  ###################################               
+ 31 |                  .#################################                
+ 32 |                  ~~~*~~~~~~#~~~~####################                
+ 33 |                  ~~~#~~~~~~~~~~~~~######~~#########                 
+ 34 |                  ~~~~~~~~~~~~~~~~~~~~##~~~~#########                 
+ 35 |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~########                  
+ 36 |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~######~                  
+
+~ coast  . beach  # land  = river  o estuary  * monument
+
+  note: Don Bosco College: its hex is taken by Don Bosco High School; moved 1
+  note: Kala Academy: its hex reads as estuary in OSM; moved 1 to dry ground
+  note: Campal Garden: its hex reads as estuary in OSM; moved 1 to dry ground
+  note: Miramar Beach: its hex reads as coast in OSM; moved 1 to dry ground
+  note: hand edits: 211 tiles
+  note: hand edit: Sharada Mandir School moved -3,18 to -2,18
+  note: hand edit: Dhempe College moved -2,17 to -1,17
+  note: hand edit: Miramar Beach moved -4,20 to -4,19
+  note: hand edit: Sharada Mandir School moved -2,18 to -3,18
+  note: hand edit: Dhempe College moved -1,17 to -2,17
+  note: hand edit: Kala Academy moved 5,11 to 5,10
+  note: hand edit: the Campal label moved 6,11 to 6,10
+  note: hand edit: the Santa Inez label moved 3,14 to 4,14
+
+Wrote src\data\maps\panaji.json
+Debug images: tools\mapgen\debug\panaji-classes.jpg, tools\mapgen\debug\panaji-landmarks.jpg, panaji-landmarks.md
