@@ -58,6 +58,9 @@ const heatLead = (years: number): string => (years === 1 ? "In a storm's own yea
 
 const RULE = `<span class="result-rule">Game rule</span>`;
 
+/** Section 35.2: Help's one paragraph on points (Play Panjim only). */
+export const POINTS_HELP = "In this game, points come in after each storm: homes and places saved, the objective done, and dunes, pandanus, mangroves and khazans standing. At the end of 2050, biodiversity and veterans add more. Losses never take points away.";
+
 export function panjimHelpHtml(input: PanjimHelpInput): string {
   const years = input.endYear - input.startYear + 1;
   const count = input.storms.length;
@@ -104,6 +107,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
         <ul>${stormList}</ul>
         <p>After each, a result card: ${countsNature ? "stars, homes saved, biodiversity and what protected them" : "the stars, the homes saved, and what protected them"}.${clearLine}${starsLine}</p>
         ${shelters}
+        ${input.tutorial ? "" : `<p>${POINTS_HELP}</p>`}
       </div>
     </section>
 

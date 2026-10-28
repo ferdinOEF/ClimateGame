@@ -12,6 +12,13 @@ import { playSound } from "@ui/audioHooks";
  * when they build, and never when they don't. "Skip this year" appears only
  * if nothing can be built anywhere on the board, which Panaji never reaches.
  */
+/** Section 35.2: how long the Points box counts up, and how long "+N" stays beside it. */
+export const COUNT_UP_MS = 900;
+export const GAIN_MS = 4000;
+
+/** The Points box's icon: a star, drawn as the other boxes' icons are (14 px, currentColor). */
+const STAR = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.2l2 4.3 4.7.5-3.5 3.2 1 4.6L8 11.5l-4.2 2.3 1-4.6L1.3 6l4.7-.5z" fill="currentColor"/></svg>`;
+
 export interface ClockHudActions {
   onSkipYear: () => void;
 }
@@ -59,6 +66,13 @@ export class ClockHud {
   /** Where the countdown goes on screen: the chip (the Outlook's). */
   onCountdown: ((text: string | null) => void) | null = null;
   private lastCountdown: string | null = null;
+  /** Section 35.2: the Points box, line 1 between the year and ? and ☰ (Play Panjim only). */
+  private readonly pointsEl: HTMLElement;
+  private readonly pointsCount: HTMLElement;
+  private readonly pointsGain: HTMLElement;
+  private shownPoints = 0;
+  private pointsFrame = 0;
+  private gainTimer = 0;
 
   constructor(container: HTMLElement, actions: ClockHudActions) {
     this.el = document.createElement("div");
@@ -68,6 +82,7 @@ export class ClockHud {
         <div class="clock-face">
           <span class="clock-year" aria-live="polite">2026</span><span class="clock-turn">Year 1 of 25</span>
         </div>
+        <div class="clock-points" role="status" hidden><span class="outlook-tile-icon" aria-hidden="true">${STAR}</span><span class="clock-points-label">Points</span><span class="clock-points-gain" hidden></span> <b class="clock-points-count">0</b></div>
         <div class="clock-countdown"></div>
         <span class="hud-spacer"></span>
         <div class="clock-chrome"></div>
@@ -90,6 +105,9 @@ export class ClockHud {
     this.objectiveSlot = this.el.querySelector(".clock-objective")!;
     this.untilEl = this.el.querySelector(".clock-until")!;
     this.skipBtn = this.el.querySelector(".clock-skip-year")!;
+    this.pointsEl = this.el.querySelector(".clock-points")!;
+    this.pointsCount = this.el.querySelector(".clock-points-count")!;
+    this.pointsGain = this.el.querySelector(".clock-points-gain")!;
     this.skipBtn.addEventListener("click", () => actions.onSkipYear());
   }
 
@@ -121,6 +139,54 @@ export class ClockHud {
     this.onCountdown?.(hold ? null : this.lastCountdown);
   }
 
+  /**
+   * Section 35.2: the run's points. With `gained` (a storm just resolved) the number counts up, the star sound plays
+   * and "+N" stands beside it for 4 s; without, it is set at once (the start, a retry). Null hides the box.
+   */
+  setPoints(total: number | null, gained = 0, instant = false): void {
+    this.pointsEl.hidden = total === null;
+    if (total === null) return;
+    cancelAnimationFrame(this.pointsFrame);
+    window.clearTimeout(this.gainTimer);
+    const from = this.shownPoints;
+    this.shownPoints = total;
+    this.pointsEl.setAttribute("aria-label", `Points ${total}`);
+    const show = (n: number): void => {
+      this.pointsCount.textContent = String(n);
+    };
+    if (gained <= 0 || instant || from === total) {
+      show(total);
+      this.showGain(gained > 0 ? gained : 0);
+      if (gained > 0) playSound("star");
+      return;
+    }
+    playSound("star");
+    this.showGain(gained);
+    const start = performance.now();
+    const step = (now: number): void => {
+      const t = Math.min(1, (now - start) / COUNT_UP_MS);
+      show(Math.round(from + (total - from) * (1 - (1 - t) ** 3)));
+      if (t < 1) this.pointsFrame = requestAnimationFrame(step);
+    };
+    this.pointsFrame = requestAnimationFrame(step);
+  }
+
+  private showGain(gained: number): void {
+    this.pointsGain.hidden = gained <= 0;
+    this.pointsEl.classList.toggle("gaining", gained > 0);
+    if (gained <= 0) return;
+    this.pointsGain.textContent = `+${gained}`;
+    this.gainTimer = window.setTimeout(() => {
+      this.pointsGain.hidden = true;
+      this.pointsEl.classList.remove("gaining");
+    }, GAIN_MS);
+  }
+
+  /** The Points box, for its tests and screenshots. */
+  get pointsBox(): HTMLElement {
+    return this.pointsEl;
+  }
+
   /** Whether the fallback may be pressed (false while a storm plays, or at the end). */
   setControlsEnabled(enabled: boolean): void {
     this.skipBtn.disabled = !enabled;
@@ -135,6 +201,8 @@ export class ClockHud {
   }
 
   dispose(): void {
+    cancelAnimationFrame(this.pointsFrame);
+    window.clearTimeout(this.gainTimer);
     this.el.remove();
   }
 }

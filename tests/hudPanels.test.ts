@@ -27,6 +27,16 @@ describe("the two HUD panels", () => {
     for (const stays of [".panjim-clock", ".map-corner", ".build-popover", ".hud-tooltip", ".era-banner"]) expect(HUD_OBSTACLES, stays).toContain(stays);
   });
 
+  it("Section 35.2: the HUD card holds a third box, Points, and its rectangle is the obstacle, unchanged", () => {
+    const clock = readFileSync("src/ui/panjim/clockHud.ts", "utf8");
+    // Inside the card's own markup, so the card's rectangle (300 px, top right) covers it.
+    const card = clock.slice(clock.indexOf('this.el.className = "hud-card panjim-clock"'), clock.indexOf("container.appendChild(this.el)"));
+    expect(card).toContain('class="clock-points"');
+    expect(css).toMatch(/\.panjim-clock \{[^}]*width: 300px;/);
+    expect(HUD_OBSTACLES).toContain(".panjim-clock");
+    expect(HUD_OBSTACLES).not.toContain(".clock-points");
+  });
+
   it("moves the existing elements into the panels, never rebuilding them", () => {
     // Section 13: the Status panel holds the Field Guide (and the coin jar, coins on only, Section 5). The meters
     // and the copy of the objectives are taken out of the page on Panaji.

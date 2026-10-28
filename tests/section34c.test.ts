@@ -34,7 +34,8 @@ describe("34c.1: the HUD card at half its size", () => {
 
   it("lays Year N of 25 and the chip on one line under the year, ? and ☰ beside the year", () => {
     const line = rule(".panjim-clock .hud-line-1");
-    expect(line).toMatch(/"year \. chrome"/);
+    // Section 35.2: the Points box takes the space between the year and ? and ☰.
+    expect(line).toMatch(/"year pts chrome"/);
     expect(line).toMatch(/"turn chip chip"/);
   });
 

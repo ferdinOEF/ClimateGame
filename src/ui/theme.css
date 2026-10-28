@@ -44,6 +44,8 @@
   --overlay: rgba(20, 45, 42, 0.35);
   /* Section 33b.2: the HUD card's soft shadow (the same calm and storm). */
   --hud-shadow: rgba(20, 45, 42, 0.22);
+  /* Section 35.2: the Points box's border (the same calm and storm; a border, never text or a background). */
+  --gold: #b8892b;
 
   /*
    * Fixed: not Harbour Morning. Colours that belong to the map, the storm and the forecast cone (CLAUDE.md: they do
