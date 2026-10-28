@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
-import { getBoard, LIMITS, patchBoard, postBoard, postFeedback, postRun, type Ctx } from "../server/handlers";
+import { createHash } from "node:crypto";
+import { getBoard, ipHash, LIMITS, patchBoard, postBoard, postFeedback, postRun, type Ctx } from "../server/handlers";
 import { schemaStatements, seasonOf } from "../server/db";
 import { PANJIM_POINTS_MODEL, newPanjimRun } from "../src/levels/panjimRun";
 import { runPoints, type BuildEntry } from "../src/core/resiliencePoints";
@@ -50,6 +51,12 @@ describe("offline", () => {
     for (const reply of [await postRun(ctx, {}), await getBoard(ctx, {}), await postBoard(ctx, {}), await patchBoard(ctx, {}), await postFeedback(ctx, {})]) {
       expect(reply).toEqual({ status: 200, body: { offline: true } });
     }
+  });
+
+  it("salts the IP hash even without RATE_SALT", () => {
+    const plain = createHash("sha256").update("|203.0.113.9").digest("hex");
+    expect(ipHash({ DATABASE_URL: "postgres://x" }, "203.0.113.9")).not.toBe(plain);
+    expect(ipHash({ RATE_SALT: "a" }, "203.0.113.9")).not.toBe(ipHash({ RATE_SALT: "b" }, "203.0.113.9"));
   });
 
   it("names the season Season 1 when BOARD_SEASON is unset", () => {
@@ -118,11 +125,18 @@ describe("with a database", () => {
     expect((await postBoard(await context(db), { runId: RUN_B, name: "Rui", builds: guided.slice(0, 10) })).body).toEqual({ error: "unfinished" });
   }, SLOW);
 
-  it("refuses a second post for the same run", async () => {
-    const again = await postBoard(await context(db), { runId: RUN_A, name: "Ana again", builds: guided });
+  it("refuses a second post for the same run, and changes nothing with it", async () => {
+    const before = await db.query("SELECT * FROM runs WHERE id = $1", [RUN_A]);
+    const again = await postBoard(await context(db), { runId: RUN_A, name: "Ana again", builds: guided.slice(0, 24).concat([guided[24]]), minutes: 99 });
     expect(again.status).toBe(409);
     expect(await db.query("SELECT * FROM board")).toHaveLength(1);
+    expect(await db.query("SELECT * FROM runs WHERE id = $1", [RUN_A])).toEqual(before);
   }, SLOW);
+
+  it("dates a board row to the day only, so its time ties it to no run", async () => {
+    const [row] = await db.query<{ created_at: Date }>("SELECT created_at FROM board WHERE name = 'Ana'");
+    expect(new Date(row.created_at).toISOString()).toBe("2026-11-01T00:00:00.000Z");
+  });
 
   it("the server's points equal the client's for a run with a retry", async () => {
     const reply = await postBoard(await context(db), { runId: RUN_B, name: "@rui_goa", builds: retried.builds });
@@ -181,6 +195,8 @@ describe("with a database", () => {
     expect(row).not.toHaveProperty("name");
     expect((await postFeedback(await context(db), { runId: RUN_A, answers: { s4_enjoy: 1 } })).status).toBe(409);
     expect((await postFeedback(await context(db), { runId: RUN_C, answers: {} })).body).toEqual({ saved: false });
+    // A form for a run the server never counted is refused.
+    expect((await postFeedback(await context(db), { runId: "66666666-6666-4666-8666-666666666666", answers: { s4_enjoy: 3 } })).status).toBe(404);
   });
 
   it("limits each IP: over the limit is 429, the game carries on as offline", async () => {

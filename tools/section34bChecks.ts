@@ -82,7 +82,7 @@ export async function newPage(ctx: Ctx): Promise<Page> {
 export async function openGame(ctx: Ctx, opts: { tutorial?: boolean; begin?: boolean } = {}): Promise<Page> {
   const page = await newPage(ctx);
   const level = opts.tutorial ? "l00-tutorial" : "l01-first-rains";
-  await page.goto(`${ctx.url}/?qa=1#/play/${level}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${ctx.url}/?qa=1&noname=1#/play/${level}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(`typeof window.__panjimForTest === "object" && window.__panjimForTest !== null`, undefined, { timeout: 120000 });
   await page.waitForTimeout(1500);
   if (opts.begin !== false) {

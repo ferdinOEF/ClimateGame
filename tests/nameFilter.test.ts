@@ -53,7 +53,10 @@ describe("the name filter", () => {
       "randecho",
       "zhavnyo",
       "lauda lassan",
-      "nazi"
+      "nazi",
+      "\uff46\uff55\uff43\uff4b",
+      "fu\u0441k",
+      "\u0455hit"
     ]) {
       const check = checkName(bad);
       expect(check.ok, bad).toBe(false);
@@ -63,7 +66,7 @@ describe("the name filter", () => {
   });
 
   it("asks for 2 to 30 letters or numbers", () => {
-    for (const shape of ["a", " b ", "x".repeat(31), "Maya!", "name#1", "<script>", "...", "@_", "emoji 😀", "tab\tname\u0000"]) {
+    for (const shape of ["Ma\u0301\u0301\u0301\u0301ya", "a", " b ", "x".repeat(31), "Maya!", "name#1", "<script>", "...", "@_", "emoji 😀", "tab\tname\u0000"]) {
       const check = checkName(shape);
       expect(check.ok, shape).toBe(false);
       if (!check.ok) expect(check.message).toBe(NAME_SHAPE);

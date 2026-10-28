@@ -12,7 +12,7 @@ import { discTiles, localityTiles, nearestLocality, stretchTiles } from "./stret
 import { forecastCone, type ForecastCone } from "./forecastCone";
 import { resolveStorm, type StormArgs, type StormRecord } from "./stormRecord";
 import type { HouseStars } from "./zones";
-import { endPoints, livingCoast, placesSaved, standingDefences, stormPoints, DEMOLISH, REPAIR, type BuildEntry, type EndPoints, type PointsConfig, type StormPoints } from "./resiliencePoints";
+import { endPoints, livingCoast, placesSaved, standingDefences, stormPoints, DEMOLISH, REPAIR, SKIP, type BuildEntry, type EndPoints, type PointsConfig, type StormPoints } from "./resiliencePoints";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim, one build a year (Section 8).
@@ -944,6 +944,7 @@ export class ActionRun {
   skipYear(): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
     if (this.canBuildAnywhere()) return refuse(SKIP_REFUSED);
+    this.logAction("0,0", SKIP);
     return { ok: true, events: this.endYear() };
   }
 

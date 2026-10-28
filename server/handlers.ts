@@ -42,8 +42,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 /** At most this many actions in a build list (25 years; a list is refused past it anyway). */
 const MAX_BUILDS = 25;
 
+/**
+ * The salted hash an IP is kept as. Without RATE_SALT the salt is derived from the database's own address (secret
+ * too), so a hash is never a plain SHA-256 of an IP that could be reversed by trying every address.
+ */
 export function ipHash(env: ServerEnv, ip: string): string {
-  return createHash("sha256").update(`${env.RATE_SALT ?? ""}|${ip}`).digest("hex");
+  const salt = env.RATE_SALT?.trim() || createHash("sha256").update(`riptide|${env.DATABASE_URL ?? env.POSTGRES_URL ?? ""}`).digest("hex");
+  return createHash("sha256").update(`${salt}|${ip}`).digest("hex");
 }
 
 /** Counts one write of `kind` for this IP in this hour; false when it is over the limit. Rows older than a day go. */
@@ -220,14 +225,18 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
   if (replay.error) return fail(400, "bad builds");
   const facts = runFacts(replay);
   if (!facts.finished) return fail(400, "unfinished");
-  await saveRun(ctx, runId, builds, facts, body);
-  // One row per run: the flag is set only once, so a second post finds nothing to set.
+  // One row per run: the flag is set only once, so a second post finds nothing to set. Claimed before the run's row
+  // is written, so a refused second post changes nothing.
+  await ctx.sql.query("INSERT INTO runs (id) VALUES ($1) ON CONFLICT (id) DO NOTHING", [runId]);
   const claimed = await ctx.sql.query("UPDATE runs SET on_board = true WHERE id = $1 AND on_board = false RETURNING id", [runId]);
   if (claimed.length === 0) return fail(409, "already on the board");
+  await saveRun(ctx, runId, builds, facts, body);
   const id = randomUUID();
   const editToken = randomBytes(24).toString("base64url");
   const season = seasonOf(ctx.env);
   const stars = facts.stars.reduce((a, b) => a + b, 0);
+  // The row's date only (the day, not the time), so its time can never tie it to a run's or a form's.
+  const day = ctx.now.toISOString().slice(0, 10);
   await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [
     id,
     season,
@@ -235,7 +244,7 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
     facts.points,
     stars,
     editToken,
-    ctx.now.toISOString()
+    `${day}T00:00:00.000Z`
   ]);
   const place = await around(ctx.sql, facts.points, id);
   return ok({ ...place, points: facts.points, editToken, season, name: name.name });
@@ -262,6 +271,8 @@ export async function postFeedback(ctx: Ctx, body: Record<string, unknown>): Pro
   if (!(await underLimit(ctx, "feedback"))) return fail(429, "limit");
   const answers: FeedbackAnswers = checkAnswers(body.answers);
   if (!anyAnswer(answers)) return ok({ saved: false });
+  // A form belongs to a run the server has counted (the finale reports it before the form opens).
+  if ((await ctx.sql.query("SELECT id FROM runs WHERE id = $1", [runId])).length === 0) return fail(404, "no such run");
   if ((await ctx.sql.query("SELECT run_id FROM feedback WHERE run_id = $1", [runId])).length > 0) return fail(409, "already sent");
   await ctx.sql.query(
     `INSERT INTO feedback (run_id, s1_before, s1_now, s2_feeling, s2_why, s3_change, s4_enjoy, s5_actions, s6_remember, s7_age, s7_status, created_at)

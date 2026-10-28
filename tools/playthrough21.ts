@@ -196,7 +196,7 @@ async function playStyle(style: string): Promise<void> {
       /* blocked */
     }
   });
-  await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await ready(page);
   await begin(page);
   let ruins = 0;
@@ -342,7 +342,7 @@ if (named.get("landing") !== "0") {
   check((await year(page)) === 2026, "after a reload the run starts at 2026");
   // Two tabs: each its own run.
   const second = await newPage(context);
-  await second.page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await second.page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await ready(second.page);
   await begin(second.page, "Begin");
   const t2 = (await second.page.evaluate("window.__panjimForTest.firstBuildable('dune')")) as { q: number; r: number };

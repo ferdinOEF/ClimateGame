@@ -197,9 +197,10 @@ export interface BuildEntry {
   element: string;
 }
 
-/** The actions besides a build that also end a year. */
+/** The actions besides a build that also end a year (a skip only when nothing can be built anywhere). */
 export const REPAIR = "repair";
 export const DEMOLISH = "demolish";
+export const SKIP = "skip";
 
 /** How to start a fresh run with points on, as the game starts Play Panjim (levels/panjimRun.ts). */
 export interface PointsModel {
@@ -227,7 +228,7 @@ export function replayBuilds(builds: readonly BuildEntry[], model: PointsModel):
     const match = /^(-?\d{1,3}),(-?\d{1,3})$/.exec(entry.tile);
     if (!match) return done(`action ${i + 1}: bad tile`);
     const coord = { q: Number(match[1]), r: Number(match[2]) };
-    const outcome = entry.element === REPAIR ? run.repair(coord) : entry.element === DEMOLISH ? run.demolish(coord) : run.build(coord, entry.element);
+    const outcome = entry.element === SKIP ? run.skipYear() : entry.element === REPAIR ? run.repair(coord) : entry.element === DEMOLISH ? run.demolish(coord) : run.build(coord, entry.element);
     if (!outcome.ok) return done(`action ${i + 1}: ${outcome.reason ?? "refused"}`);
   }
   return done(null);

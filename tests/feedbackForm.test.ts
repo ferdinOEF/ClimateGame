@@ -41,6 +41,11 @@ describe("what Submit feedback sends", () => {
     expect(plan("Ana", "Ana B").post).toBeNull();
   });
 
+  it("a named run the board could not take at the finale is posted from the form", () => {
+    expect(plan("Ana", "Ana", {}, false).post).toBe("Ana");
+    expect(plan("Ana", "Ana B", {}, false)).toMatchObject({ post: "Ana B", rename: null });
+  });
+
   it("a run without a name goes on the board only when the field is filled", () => {
     expect(plan(null, "").post).toBeNull();
     expect(plan(null, "   ").post).toBeNull();
@@ -109,7 +114,8 @@ describe("the flow", () => {
     expect(controller).toContain('button: "Submit feedback", alt: "Skip"');
     expect(controller).toContain('button: "Play again", link: "Exit", wide: true, ...(note ? { note } : {})');
     expect(controller).toContain('let note = "Thank you.";');
-    expect(controller).toContain("note = `Thank you. You\\u2019re ${ordinal(posted.rank)} on the board.`;");
+    expect(controller).toContain("return `Thank you. You\\u2019re ${ordinal(posted.rank)} on the board.`;");
+    expect(controller).toContain('note = "Thank you. Putting this run on the board.";');
   });
 
   it("a named run is posted as the finale opens, before the form, so Skip never stops it", () => {

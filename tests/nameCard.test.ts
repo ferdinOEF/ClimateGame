@@ -75,6 +75,7 @@ describe("the name lives in memory for this run only", () => {
 
   it("shows only in Play Panjim, before its start popup", () => {
     const session = readFileSync("src/app/gameSession.ts", "utf8");
-    expect(session).toMatch(/if \(level\.timeModel === "years" && !level\.tutorial\) \{\s*const nameCard = new NameCard\(getPlayerName\(\), fetchTop\(\)\);\s*const showPopup = objectivesPanel\.showFirst\(nameCard\.el\);/);
+    expect(session).toContain('const skipNameCard = qaHooks && new URLSearchParams(window.location.search).has("noname");');
+    expect(session).toMatch(/if \(level\.timeModel === "years" && !level\.tutorial && !skipNameCard\) \{\s*const nameCard = new NameCard\(getPlayerName\(\), fetchTop\(\)\);\s*const showPopup = objectivesPanel\.showFirst\(nameCard\.el\);/);
   });
 });

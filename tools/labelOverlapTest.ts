@@ -164,7 +164,7 @@ async function main(): Promise<void> {
       const page = await (await browser.newContext({ viewport: { width: size.w, height: size.h } })).newPage();
       page.on("pageerror", (e) => errors.push(`${tag}: ${e.message}`));
       page.on("console", (m) => { if (m.type() === "error") errors.push(`${tag}: ${m.text()}`); });
-      await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".brief-card", { timeout: 60000 });
       await page.locator(".brief-cta").first().click();
       await page.waitForTimeout(2000);
@@ -227,7 +227,7 @@ async function main(): Promise<void> {
     // The Tutorial's own labels.
     const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
     page.on("pageerror", (e) => errors.push(`tutorial: ${e.message}`));
-    await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-card", { timeout: 60000 });
     await page.locator(".brief-cta").first().click();
     await check(page, "Tutorial 1920x1080", "tutorial-1920x1080");

@@ -309,7 +309,14 @@ export function ordinal(n: number): string {
 }
 
 /** The rank box's state: waiting for the board, the board unreachable, or the run's place. */
-export type RankState = { status: "loading" } | { status: "offline" } | { status: "ready"; rank: RankView };
+export type RankState =
+  | { status: "loading" }
+  | { status: "offline" }
+  | { status: "ready"; rank: RankView }
+  /** A named run the board could not take (over the limit, refused, unreachable mid post): where it would be. */
+  | { status: "unposted"; rank: RankView }
+  /** The board already holds this run (a post that timed out here but landed there). */
+  | { status: "on-board" };
 
 /** Section 35.2: the finale card's view (Play Panjim's last card). */
 export interface FinaleView {
@@ -335,6 +342,10 @@ export function finaleTitle(name: string | null): string {
 export function rankHtml(state: RankState, name: string | null): string {
   if (state.status === "loading") return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">Checking the board.</p>`;
   if (state.status === "offline") return `<div class="finale-rank-head">Board offline</div><p class="finale-rank-note">The board can't be reached right now. Your points are above.</p>`;
+  if (state.status === "on-board") return `<div class="finale-rank-head">On the board</div><p class="finale-rank-note">This run is on the board.</p>`;
+  if (state.status === "unposted") {
+    return `<div class="finale-rank-head">Not on the board yet</div><p class="finale-rank-note">The board could not take this run just now. With these points it would be ${ordinal(state.rank.rank)}. You can try again on the next screen.</p>`;
+  }
   const { rank, points, tenth, above, below } = state.rank;
   if (!name) {
     return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">With a name, this run would be ${ordinal(rank)} on the board. Add one on the next screen.</p>`;

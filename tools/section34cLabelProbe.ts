@@ -13,7 +13,7 @@ const browser = await chromium.launch({ args: gpu });
 for (const [W, H] of sizes) {
   const page = await browser.newPage({ viewport: { width: W, height: H } });
   await page.addInitScript(() => localStorage.clear());
-  await page.goto(`${url}/?qa=1#/play/l01-first-rains`);
+  await page.goto(`${url}/?qa=1&noname=1#/play/l01-first-rains`);
   await page.waitForFunction(`typeof window.__panjimForTest === "object" && window.__panjimForTest !== null`, undefined, { timeout: 120000 });
   await page.waitForTimeout(1500);
   await page.locator(".brief-cta").first().click({ timeout: 10000 }).catch(() => undefined);

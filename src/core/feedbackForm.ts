@@ -76,8 +76,9 @@ export function anyAnswer(answers: FeedbackAnswers): boolean {
  * holds, the answers given and whether the run's board row can be renamed (its edit token is in memory):
  *
  *   - `answers`: the answered items, when there are any (posted with the run id; never a name);
- *   - `rename`: the new name, only when the run had a name, it is on the board and the field now holds another one;
- *   - `post`: the name to put the run on the board with, only when the run had none and the field is filled;
+ *   - `rename`: the new name, only when the run is on the board and the field now holds another name;
+ *   - `post`: the name to put the run on the board with, only when it is not on it (a run without a name, or one whose
+ *     post at the finale failed) and the field is filled;
  *   - `nameError`: why the field's name was refused (the rest still goes).
  */
 export interface SubmitPlan {
@@ -91,10 +92,9 @@ export function planSubmit(input: { runName: string | null; field: string; answe
   const answers = checkAnswers(input.answers);
   const plan: SubmitPlan = { answers: anyAnswer(answers) ? answers : null, rename: null, post: null, nameError: null };
   const typed = input.field.replace(/\s+/g, " ").trim();
-  if (typed === "" || typed === input.runName) return plan;
+  if (typed === "" || (input.onBoard && typed === input.runName)) return plan;
   const name = check(typed);
   if (!name.ok) return { ...plan, nameError: name.message };
-  if (name.name === input.runName) return plan;
-  if (input.runName === null) return { ...plan, post: name.name };
-  return { ...plan, rename: input.onBoard ? name.name : null };
+  if (input.onBoard) return name.name === input.runName ? plan : { ...plan, rename: name.name };
+  return { ...plan, post: name.name };
 }

@@ -75,7 +75,7 @@ async function buildOff(page: Page, where: string, avoid: string[]): Promise<voi
 }
 
 async function open(page: Page, level: string): Promise<void> {
-  await page.goto(`${server.url}/?qa=1#/play/${level}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1&noname=1#/play/${level}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
   await page.waitForTimeout(1500);

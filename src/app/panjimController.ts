@@ -1438,10 +1438,11 @@ export class PanjimController {
       { name, points, storms: this.run.schedule.map((c, i) => ({ label: phases[i].label, stars: this.run.outcomes.get(c.id)?.stars ?? 0 })), totalStars: result.totalStars, cleared: result.cleared },
       { status: "loading" }
     );
-    // Section 35.4: the run is reported (no name); a named run goes on the board as the finale opens, before the form.
+    // Section 35.4: the run is reported (no name); a named run goes on the board as the finale opens, before the form
+    // (its board post saves the run too, so the server replays it once).
     this.runReported = true;
-    void postRun(this.runReport());
-    void this.boardPlace(points.total, name).then((rank) => {
+    if (!name) void postRun(this.runReport());
+    this.boardPending = this.boardPlace(points.total, name).then((rank) => {
       if (!this.disposed) finale.setRank(rank);
     });
     const then = await this.finaleAndFeedback(finale, name);
@@ -1464,14 +1465,24 @@ export class PanjimController {
       const choice = await this.resultCards.show([spec]);
       if (choice === "link") return "menu";
       if (formDone || choice === "alt") return "again";
-      note = await this.feedbackForm(finale, name);
+      const sent = await this.feedbackForm(finale, name);
+      note = sent?.note ?? null;
       formDone = true;
+      // A name added on the form goes on the board while the finale shows; its line says so when the board answers.
+      void sent?.later?.then((line) => {
+        const shown = this.host.container.querySelector(".result-cards .result-note");
+        if (!this.disposed && line && shown) shown.textContent = line;
+        note = line ?? note;
+      });
     }
     return "menu";
   }
 
-  /** Section 35.5: the form, until it is skipped or sent; the line to show after it (null when skipped). */
-  private async feedbackForm(finale: ReturnType<typeof finalePointsCard>, runName: string | null): Promise<string | null> {
+  /**
+   * Section 35.5: the form, until it is skipped or sent; the line to show after it (null when skipped), and, for a
+   * name added here, the line once the board has answered.
+   */
+  private async feedbackForm(finale: ReturnType<typeof finalePointsCard>, runName: string | null): Promise<{ note: string; later?: Promise<string | null> } | null> {
     const holder = document.createElement("div");
     holder.innerHTML = feedbackFormHtml(runName);
     const body = holder.firstElementChild as HTMLElement;
@@ -1480,21 +1491,32 @@ export class PanjimController {
     for (;;) {
       const choice = await this.resultCards.show([{ body, button: "Submit feedback", alt: "Skip", wide: true, focus: 'input[name="name"]' }]);
       if (this.disposed) return null;
-      if (choice !== "button") return answersSent ? note : null;
+      if (choice !== "button") return answersSent ? { note } : null;
       const form = readFeedback(body);
-      const plan = planSubmit({ runName, field: form.name, answers: form.answers, onBoard: this.boardToken !== null }, checkName);
+      // The finale's own board post first: a rename needs its edit token, and a failed post can be tried again here.
+      await this.boardPending;
+      if (this.disposed) return null;
+      const plan = planSubmit({ runName, field: form.name, answers: form.answers, onBoard: this.onBoard }, checkName);
       if (plan.answers && !answersSent) void postFeedback(this.runId, plan.answers);
       answersSent = true;
-      if (plan.post) {
-        const posted = await postBoard(this.runId, plan.post, this.run.buildLog);
-        if (posted) {
+      let later: Promise<string | null> | undefined;
+      if (plan.post && !plan.nameError) {
+        const name = plan.post;
+        note = "Thank you. Putting this run on the board.";
+        later = postBoard(this.runReport(), name).then(({ posted, already }) => {
+          if (this.disposed) return null;
+          if (already) {
+            this.onBoard = true;
+            return "Thank you. This run is already on the board.";
+          }
+          if (!posted) return "Thank you. The board can't be reached right now, so this run is not on it.";
           this.boardToken = posted.editToken;
-          runName = posted.name;
-          this.host.setPlayerName?.(runName);
-          finale.setName(runName);
+          this.onBoard = true;
+          this.host.setPlayerName?.(posted.name);
+          finale.setName(posted.name);
           finale.setRank({ status: "ready", rank: posted });
-          note = `Thank you. You\u2019re ${ordinal(posted.rank)} on the board.`;
-        } else note = "Thank you. The board can't be reached right now, so this run is not on it.";
+          return `Thank you. You\u2019re ${ordinal(posted.rank)} on the board.`;
+        });
       }
       if (plan.rename && this.boardToken) {
         const renamed = await renameOnBoard(this.boardToken, plan.rename);
@@ -1509,7 +1531,7 @@ export class PanjimController {
         setNameError(body, plan.nameError);
         continue;
       }
-      return note;
+      return { note, later };
     }
   }
 
@@ -1520,15 +1542,29 @@ export class PanjimController {
    */
   private async boardPlace(points: number, name: string | null): Promise<RankState> {
     if (name) {
-      const posted = await postBoard(this.runId, name, this.run.buildLog);
+      const { posted, already } = await postBoard(this.runReport(), name);
       if (posted) {
         this.boardToken = posted.editToken;
+        this.onBoard = true;
         return { status: "ready", rank: posted };
       }
+      if (already) {
+        this.onBoard = true;
+        return { status: "on-board" };
+      }
+      // Not on the board (refused, over the limit, or unreachable): the run is still reported, and the form can post it.
+      void postRun(this.runReport());
+      const rank = await fetchRank(points);
+      return rank ? { status: "unposted", rank } : { status: "offline" };
     }
     const rank = await fetchRank(points);
     return rank ? { status: "ready", rank } : { status: "offline" };
   }
+
+  /** Section 35.4: the finale's board post (or place), while it is under way; the form waits for it. */
+  private boardPending: Promise<void> | null = null;
+  /** Section 35.4: this run has its row on the board. */
+  private onBoard = false;
 
   /** The storm card as a PNG data URL (for the screenshots). */
   stormCardDataUrl(): string | null {
@@ -2495,8 +2531,10 @@ export class PanjimController {
 
   /** True while the final card (Panjim, 2026 to 2050) is up. */
   atFinalCard(): boolean {
-    // The last storm's own cards are up with the run already finished: the final card is the one offering Play again.
-    return this.run.finished && this.resultCards.isOpen && this.host.container.querySelector(".result-cards .result-next")?.textContent === "Play again";
+    // The last storm's own cards are up with the run already finished: the final card is the one offering Play again
+    // (Section 35.5: Play Panjim's finale card, before its form, offers it beside "Your feedback").
+    if (!this.run.finished || !this.resultCards.isOpen) return false;
+    return !!this.host.container.querySelector(".result-cards .finale-points") || this.host.container.querySelector(".result-cards .result-next")?.textContent === "Play again";
   }
 
   /** True once the next storm's gauge is green. */

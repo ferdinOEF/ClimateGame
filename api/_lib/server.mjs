@@ -2224,6 +2224,7 @@ function runPoints(run) {
 }
 var REPAIR = "repair";
 var DEMOLISH = "demolish";
+var SKIP = "skip";
 function replayBuilds(builds, model) {
   const run = model.newRun();
   const done = (error) => ({ run, points: runPoints(run), error });
@@ -2234,7 +2235,7 @@ function replayBuilds(builds, model) {
     const match = /^(-?\d{1,3}),(-?\d{1,3})$/.exec(entry.tile);
     if (!match) return done(`action ${i + 1}: bad tile`);
     const coord = { q: Number(match[1]), r: Number(match[2]) };
-    const outcome = entry.element === REPAIR ? run.repair(coord) : entry.element === DEMOLISH ? run.demolish(coord) : run.build(coord, entry.element);
+    const outcome = entry.element === SKIP ? run.skipYear() : entry.element === REPAIR ? run.repair(coord) : entry.element === DEMOLISH ? run.demolish(coord) : run.build(coord, entry.element);
     if (!outcome.ok) return done(`action ${i + 1}: ${outcome.reason ?? "refused"}`);
   }
   return done(null);
@@ -2948,6 +2949,7 @@ var ActionRun = class {
   skipYear() {
     if (this.finished) return refuse("The run has reached 2050.");
     if (this.canBuildAnywhere()) return refuse(SKIP_REFUSED);
+    this.logAction("0,0", SKIP);
     return { ok: true, events: this.endYear() };
   }
   /**
@@ -18515,12 +18517,43 @@ var ANYWHERE = [
 var WORD_START = ["cunt", "shit", "slut", "twat", "wank", "rapist", "porn", "penis", "vagina", "dildo", "retard", "pussy", "boob", "jhaat", "tatti", "zhav", "nazi", "hitler", "lauda", "lavda"];
 var WHOLE_WORD = ["ass", "arse", "cum", "tit", "tits", "anal", "rape", "dick", "cock", "fag", "prick", "piss", "sex", "kkk", "gand", "gaand", "lund", "loda", "chod", "chodu", "randi", "rand", "puchi", "pucchi", "kutta", "kutti"];
 var LEET = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "@": "a", "$": "s" };
+var LOOK_ALIKE = {
+  а: "a",
+  в: "b",
+  е: "e",
+  ё: "e",
+  к: "k",
+  м: "m",
+  н: "h",
+  о: "o",
+  р: "p",
+  с: "c",
+  т: "t",
+  у: "y",
+  х: "x",
+  і: "i",
+  ј: "j",
+  ѕ: "s",
+  "ԁ": "d",
+  ʏ: "y",
+  α: "a",
+  β: "b",
+  ε: "e",
+  ι: "i",
+  κ: "k",
+  ν: "v",
+  ο: "o",
+  ρ: "p",
+  τ: "t",
+  υ: "u",
+  χ: "x"
+};
 var single = (s) => s.replace(/(.)\1+/g, "$1");
 function tidyName(raw) {
-  return raw.replace(/\s+/g, " ").trim();
+  return raw.normalize("NFKC").replace(/\s+/g, " ").trim();
 }
 function isRude(name) {
-  const lower = name.toLowerCase();
+  const lower = [...name.normalize("NFKC").toLowerCase()].map((c) => LOOK_ALIKE[c] ?? c).join("").normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "");
   const leet = lower.replace(/^@/, "").replace(/[013457@8$]/g, (c) => LEET[c] ?? c);
   const words = leet.split(/[\s._@]+/).filter(Boolean);
   const joined = words.join("");
@@ -18536,7 +18569,7 @@ function isRude(name) {
 }
 function checkName(raw) {
   const name = tidyName(raw);
-  if ([...name].length < NAME_MIN || [...name].length > NAME_MAX || !/^[\p{L}\p{M}\p{N} @._]+$/u.test(name) || !/[\p{L}\p{N}]/u.test(name)) {
+  if ([...name].length < NAME_MIN || [...name].length > NAME_MAX || !/^[\p{L}\p{M}\p{N} @._]+$/u.test(name) || !/[\p{L}\p{N}]/u.test(name) || new RegExp("\\p{M}{3,}", "u").test(name)) {
     return { ok: false, reason: "shape", message: NAME_SHAPE };
   }
   if (isRude(name)) return { ok: false, reason: "refused", message: NAME_REFUSED };
@@ -18591,7 +18624,8 @@ var LIMITS = { board: 10, rename: 10, feedback: 20, run: 60 };
 var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 var MAX_BUILDS = 25;
 function ipHash(env, ip) {
-  return createHash("sha256").update(`${env.RATE_SALT ?? ""}|${ip}`).digest("hex");
+  const salt = env.RATE_SALT?.trim() || createHash("sha256").update(`riptide|${env.DATABASE_URL ?? env.POSTGRES_URL ?? ""}`).digest("hex");
+  return createHash("sha256").update(`${salt}|${ip}`).digest("hex");
 }
 async function underLimit(ctx, kind) {
   const sql = ctx.sql;
@@ -18735,13 +18769,15 @@ async function postBoard(ctx, body) {
   if (replay.error) return fail(400, "bad builds");
   const facts = runFacts(replay);
   if (!facts.finished) return fail(400, "unfinished");
-  await saveRun(ctx, runId, builds, facts, body);
+  await ctx.sql.query("INSERT INTO runs (id) VALUES ($1) ON CONFLICT (id) DO NOTHING", [runId]);
   const claimed = await ctx.sql.query("UPDATE runs SET on_board = true WHERE id = $1 AND on_board = false RETURNING id", [runId]);
   if (claimed.length === 0) return fail(409, "already on the board");
+  await saveRun(ctx, runId, builds, facts, body);
   const id = randomUUID();
   const editToken = randomBytes(24).toString("base64url");
   const season = seasonOf(ctx.env);
   const stars = facts.stars.reduce((a, b) => a + b, 0);
+  const day = ctx.now.toISOString().slice(0, 10);
   await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [
     id,
     season,
@@ -18749,7 +18785,7 @@ async function postBoard(ctx, body) {
     facts.points,
     stars,
     editToken,
-    ctx.now.toISOString()
+    `${day}T00:00:00.000Z`
   ]);
   const place = await around(ctx.sql, facts.points, id);
   return ok({ ...place, points: facts.points, editToken, season, name: name.name });
@@ -18772,6 +18808,7 @@ async function postFeedback(ctx, body) {
   if (!await underLimit(ctx, "feedback")) return fail(429, "limit");
   const answers2 = checkAnswers(body.answers);
   if (!anyAnswer(answers2)) return ok({ saved: false });
+  if ((await ctx.sql.query("SELECT id FROM runs WHERE id = $1", [runId])).length === 0) return fail(404, "no such run");
   if ((await ctx.sql.query("SELECT run_id FROM feedback WHERE run_id = $1", [runId])).length > 0) return fail(409, "already sent");
   await ctx.sql.query(
     `INSERT INTO feedback (run_id, s1_before, s1_now, s2_feeling, s2_why, s3_change, s4_enjoy, s5_actions, s6_remember, s7_age, s7_status, created_at)

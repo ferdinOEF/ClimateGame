@@ -8,7 +8,7 @@ for (const [W, H] of [[1366, 768], [1920, 1080]]) {
   const errs: string[] = [];
   page.on("pageerror", (e) => errs.push(e.message));
   page.on("console", (m) => m.type() === "error" && errs.push(m.text()));
-  await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`);
+  await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`);
   await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
   await page.waitForTimeout(1500);
   await page.locator(".brief-cta", { hasText: "Begin" }).first().click();

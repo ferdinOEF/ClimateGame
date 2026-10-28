@@ -2,18 +2,30 @@
  * Section 35: the one running board, through the game's own Vercel functions (api/). Every call is best effort: no
  * network, no database, a refusal or a slow answer reads as offline (null), and the game plays the same.
  */
-const TIMEOUT_MS = 6000;
+/**
+ * How long a read waits. Generous: the board is asked as the game builds its 3D scene, which can hold the page's
+ * thread for seconds on a slow machine, and a cold function makes its tables first. A shorter wait read an answer
+ * that had already come as offline.
+ */
+const TIMEOUT_MS = 20000;
+/** A post the server replays (the run's builds through the hazard model, about 5 s) waits longer before it gives up. */
+const REPLAY_TIMEOUT_MS = 30000;
 
-async function call<T>(path: string, init?: RequestInit): Promise<T | null> {
+async function call<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T | null> {
+  return (await callWithStatus<T>(path, init, timeoutMs)).body;
+}
+
+/** The answer and its status (0 when the board could not be reached at all). */
+async function callWithStatus<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<{ status: number; body: T | null }> {
   const abort = new AbortController();
-  const timer = window.setTimeout(() => abort.abort(), TIMEOUT_MS);
+  const timer = window.setTimeout(() => abort.abort(), timeoutMs);
   try {
     const response = await fetch(path, { ...init, signal: abort.signal, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
-    if (!response.ok) return null;
+    if (!response.ok) return { status: response.status, body: null };
     const body = (await response.json()) as T & { offline?: boolean };
-    return body && !body.offline ? body : null;
+    return { status: body && !body.offline ? response.status : 0, body: body && !body.offline ? body : null };
   } catch {
-    return null;
+    return { status: 0, body: null };
   } finally {
     window.clearTimeout(timer);
   }
@@ -67,13 +79,14 @@ export interface RunReport {
 
 /** POST /api/run at the finale. */
 export function postRun(report: RunReport): Promise<{ saved: boolean } | null> {
-  return call<{ saved: boolean }>("/api/run", { method: "POST", body: JSON.stringify(report), keepalive: true });
+  return call<{ saved: boolean }>("/api/run", { method: "POST", body: JSON.stringify(report), keepalive: true }, REPLAY_TIMEOUT_MS);
 }
 
 /** POST /api/run with `navigator.sendBeacon`, when a run stops early (Exit, the idle reset, the page closed). */
 export function beaconRun(report: RunReport): void {
   try {
-    navigator.sendBeacon?.("/api/run", new Blob([JSON.stringify(report)], { type: "application/json" }));
+    // text/plain: a beacon of another type is refused by some browsers; the server reads the body as JSON either way.
+    navigator.sendBeacon?.("/api/run", new Blob([JSON.stringify(report)], { type: "text/plain;charset=UTF-8" }));
   } catch {
     // Best effort: a run that cannot be reported is simply not counted.
   }
@@ -82,14 +95,19 @@ export function beaconRun(report: RunReport): void {
 /** What the server answers a board post: the run's place, the rows round it, and the row's edit token. */
 export type BoardPost = RankView & { editToken: string; season: string; name: string };
 
-/** POST /api/board for a finished run with a name. The server replays the builds and counts the points itself. */
-export function postBoard(runId: string, name: string, builds: RunReport["builds"]): Promise<BoardPost | null> {
-  return call<BoardPost>("/api/board", { method: "POST", body: JSON.stringify({ runId, name, builds }) });
+/**
+ * POST /api/board for a finished run with a name. The server replays the builds and counts the points itself, and
+ * saves the run (no separate run post is needed). `already`: the server has this run on the board (a post that timed
+ * out here but landed there).
+ */
+export async function postBoard(report: RunReport, name: string): Promise<{ posted: BoardPost | null; already: boolean }> {
+  const { status, body } = await callWithStatus<BoardPost>("/api/board", { method: "POST", body: JSON.stringify({ ...report, name }) }, REPLAY_TIMEOUT_MS);
+  return { posted: body, already: status === 409 };
 }
 
 /** PATCH /api/board: renames the run's row (from the feedback form). */
 export function renameOnBoard(editToken: string, name: string): Promise<{ renamed: boolean; name: string; rank: number } | null> {
-  return call<{ renamed: boolean; name: string; rank: number }>("/api/board", { method: "PATCH", body: JSON.stringify({ editToken, name }) });
+  return call<{ renamed: boolean; name: string; rank: number }>("/api/board", { method: "PATCH", body: JSON.stringify({ editToken, name }) }, REPLAY_TIMEOUT_MS);
 }
 
 /** POST /api/feedback: the answered items only, by run id; never a name. */

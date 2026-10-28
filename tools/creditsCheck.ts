@@ -141,13 +141,13 @@ async function main(): Promise<void> {
         await page.keyboard.press("Escape");
         check((await page.locator(".sources-panel").count()) === 0, "Esc closes the Sources screen");
         // Into a level: no credits strip (the switch off or on).
-        await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+        await page.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-card", { timeout: 60000 });
         await page.locator(".brief-cta").first().click();
         await page.waitForTimeout(1500);
         check((await page.locator(".menu-credits").count()) === 0, "No credits strip inside a level");
         // On Panaji Maya tells the fact: her bubble carries its count and a Source button.
-        await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+        await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-card", { timeout: 60000 });
         await page.locator(".brief-cta").first().click();
         await page.waitForTimeout(1500);

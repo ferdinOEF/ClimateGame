@@ -72,7 +72,7 @@ async function main(): Promise<void> {
     });
 
     // ---- the Tutorial ---------------------------------------------------
-    await page.goto(`http://localhost:${PORT}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-card", { timeout: 60000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(1500);
@@ -82,12 +82,12 @@ async function main(): Promise<void> {
     check(await evalJs<boolean>(page, "window.__heatForTest.visibleCount === 0"), "Tutorial: no warning heat in its first year");
     await tooltipCheck(page, "Tutorial");
     const problems: string[] = [];
-    await page.goto(`http://localhost:${PORT}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
     const played = await playTutorial(page, { problems, shot: async () => undefined, log: () => undefined });
     check(played && problems.length === 0, `Tutorial: plays start to finish and leads on to Panaji${problems.length ? `: ${problems.join("; ")}` : ""}`);
 
     // ---- Panaji ---------------------------------------------------------
-    await page.goto(`http://localhost:${PORT}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-card", { timeout: 60000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(3500);

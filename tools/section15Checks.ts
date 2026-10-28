@@ -116,7 +116,7 @@ try {
     if (full) await axe(page, "menu");
 
     // --- the level select -------------------------------------------------
-    await page.goto(`${server.url}/?qa=1#/levels`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1&noname=1#/levels`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".level-grid", { timeout: 10000 });
     await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>(".level-card-thumb img")].every((img) => img.complete && img.naturalWidth > 0), undefined, { timeout: 15000 });
     const cards = await page.evaluate(() => {
@@ -134,7 +134,7 @@ try {
     if (full) await axe(page, "level select");
 
     // --- Help (from inside the Tutorial, where the ? button is) -------------
-    await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-card", { timeout: 60000 });
     await page.waitForTimeout(800);
     await page.locator(".brief-cta").first().click();
@@ -161,7 +161,7 @@ try {
     await page.locator(".help-close").first().click().catch(() => undefined);
 
     // --- the Tutorial, start to finish -----------------------------------
-    await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: "domcontentloaded" });
     const problems: string[] = [];
