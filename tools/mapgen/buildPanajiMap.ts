@@ -259,7 +259,7 @@ const LOCALITIES: { name: string; lat: number; lon: number; rank: 1 | 2 }[] = [
  *       that gets past the beach runs on into it; the monsoon flood starts
  *       here as rain off the plain.
  *   Z3  the Ourem creek and Fontainhas: the channel the flood drains down.
- *   Z4  the Mandovi waterfront and the old city centre: where the flood ends
+ *   Z4  the Mandovi Riverfront and the old city centre: where the flood ends
  *       up, and where the compound storm's surge comes up the river.
  *
  * A tile in two polygons takes the first listed, so the city centre (Z4) and
@@ -268,7 +268,8 @@ const LOCALITIES: { name: string; lat: number; lon: number; rank: 1 | 2 }[] = [
 const ZONES: { id: string; name: string; polygon: [number, number][] }[] = [
   {
     id: "z4",
-    name: "Mandovi waterfront",
+    // Section 34b (owner decision 5, 28 October 2026): renamed; the zone itself is redrawn in Section 34c.
+    name: "Mandovi Riverfront",
     polygon: [
       [15.507, 73.817], [15.507, 73.838], [15.4995, 73.837], [15.499, 73.829],
       [15.494, 73.8285], [15.493, 73.82], [15.496, 73.818]

@@ -92,7 +92,7 @@ export class MapPins {
     }
     const width = this.layer.clientWidth;
     // Section 34b.7: a pin's name that would sit on one placed before it (an earlier, more important row's) is hidden
-    // for this frame, as the landmark labels are ("The Mandovi waterfront" lay over "Taleigao").
+    // for this frame, as the landmark labels are ("The Mandovi Riverfront", then named the Mandovi waterfront, lay over "Taleigao").
     const taken: Rect[] = [];
     for (const entry of this.pins) {
       const at = this.project(entry.pin.x, entry.pin.y, entry.pin.z);
