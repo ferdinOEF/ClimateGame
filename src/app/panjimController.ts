@@ -1,6 +1,9 @@
 import { ActionRun, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import { runPoints } from "@core/resiliencePoints";
-import { beaconRun, fetchRank, newRunId, postBoard, postRun, type RunReport } from "@services/board";
+import { beaconRun, fetchRank, newRunId, postBoard, postFeedback, postRun, renameOnBoard, type RunReport } from "@services/board";
+import { feedbackFormHtml, readFeedback, setNameError } from "@ui/panjim/feedbackForm";
+import { planSubmit } from "@core/feedbackForm";
+import { checkName } from "@core/nameFilter";
 import { markTutorialPlayed, tutorialPlayedThisVisit } from "@services/visit";
 import { pointsConfig } from "@levels/panjimRun";
 import type { GameState } from "@core/gameState";
@@ -27,7 +30,7 @@ import { COMBO_INFO, comboNote, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome, starsForHouses } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
-import { ResultCards, resultCard, defencesCard, comingUpCard, finalePointsCard, retryLabel, type RankState, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
+import { ResultCards, resultCard, defencesCard, comingUpCard, finalePointsCard, ordinal, retryLabel, type RankState, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
 import { biodiversityByKind, BUILDING_KINDS, campalWindNote, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
@@ -92,6 +95,8 @@ export interface PanjimHost {
   container: HTMLElement;
   /** Section 35.3: the name the player gave for the board, this run only (memory only); null without one. */
   playerName?: () => string | null;
+  /** Section 35.5: a name added or changed on the feedback form (kept for Play again, memory only). */
+  setPlayerName?: (name: string) => void;
   state: GameState;
   level: LevelDef;
   telemetry: Telemetry;
@@ -1439,8 +1444,73 @@ export class PanjimController {
     void this.boardPlace(points.total, name).then((rank) => {
       if (!this.disposed) finale.setRank(rank);
     });
-    const choice = await this.resultCards.show([{ body: finale.body, button: "Play again", link: "Exit", wide: true }]);
-    this.host.onRunComplete(result, choice === "link" ? "menu" : "again");
+    const then = await this.finaleAndFeedback(finale, name);
+    if (this.disposed) return;
+    this.host.onRunComplete(result, then);
+  }
+
+  /**
+   * Section 35.5: the finale card, then the feedback form ("Your feedback"), then the finale again with one line,
+   * "Thank you." (with the place when a name was added on the form), beside Play again and Exit. Skip never stops the
+   * board post (a named run is posted as the finale opens). An idle reset during the form posts nothing.
+   */
+  private async finaleAndFeedback(finale: ReturnType<typeof finalePointsCard>, name: string | null): Promise<"menu" | "again"> {
+    let note: string | null = null;
+    let formDone = false;
+    while (!this.disposed) {
+      const spec: CardSpec = formDone
+        ? { body: finale.body, button: "Play again", link: "Exit", wide: true, ...(note ? { note } : {}) }
+        : { body: finale.body, button: "Your feedback", alt: "Play again", link: "Exit", wide: true };
+      const choice = await this.resultCards.show([spec]);
+      if (choice === "link") return "menu";
+      if (formDone || choice === "alt") return "again";
+      note = await this.feedbackForm(finale, name);
+      formDone = true;
+    }
+    return "menu";
+  }
+
+  /** Section 35.5: the form, until it is skipped or sent; the line to show after it (null when skipped). */
+  private async feedbackForm(finale: ReturnType<typeof finalePointsCard>, runName: string | null): Promise<string | null> {
+    const holder = document.createElement("div");
+    holder.innerHTML = feedbackFormHtml(runName);
+    const body = holder.firstElementChild as HTMLElement;
+    let answersSent = false;
+    let note = "Thank you.";
+    for (;;) {
+      const choice = await this.resultCards.show([{ body, button: "Submit feedback", alt: "Skip", wide: true, focus: 'input[name="name"]' }]);
+      if (this.disposed) return null;
+      if (choice !== "button") return answersSent ? note : null;
+      const form = readFeedback(body);
+      const plan = planSubmit({ runName, field: form.name, answers: form.answers, onBoard: this.boardToken !== null }, checkName);
+      if (plan.answers && !answersSent) void postFeedback(this.runId, plan.answers);
+      answersSent = true;
+      if (plan.post) {
+        const posted = await postBoard(this.runId, plan.post, this.run.buildLog);
+        if (posted) {
+          this.boardToken = posted.editToken;
+          runName = posted.name;
+          this.host.setPlayerName?.(runName);
+          finale.setName(runName);
+          finale.setRank({ status: "ready", rank: posted });
+          note = `Thank you. You\u2019re ${ordinal(posted.rank)} on the board.`;
+        } else note = "Thank you. The board can't be reached right now, so this run is not on it.";
+      }
+      if (plan.rename && this.boardToken) {
+        const renamed = await renameOnBoard(this.boardToken, plan.rename);
+        if (renamed) {
+          runName = renamed.name;
+          this.host.setPlayerName?.(runName);
+          finale.setName(runName);
+        }
+      }
+      if (plan.nameError) {
+        // The rest has gone; the field says why its name was refused and the form stays for another.
+        setNameError(body, plan.nameError);
+        continue;
+      }
+      return note;
+    }
   }
 
   /**

@@ -1026,6 +1026,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r, kind: m.kind })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
           playerName: () => getPlayerName(),
+          setPlayerName: (name) => setPlayerName(name),
           requestLeave: () => askLeave(true),
           requestRestart: () => askRestart(true),
           stormLayersOpen: () => stormLayersOpen(),

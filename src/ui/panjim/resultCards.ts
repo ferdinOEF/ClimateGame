@@ -26,6 +26,10 @@ export interface CardSpec {
   alt?: string;
   /** Section 35.2: a two column card (the finale and its rank box). */
   wide?: boolean;
+  /** Section 35.5: one line in the buttons row ("Thank you."), read out when it appears. */
+  note?: string;
+  /** Section 35.5: what takes focus when the card opens (a selector in its body); the main button otherwise. */
+  focus?: string;
 }
 
 /** What closed the cards: the last card's button, its link, or a card's second button (Section 28.1). */
@@ -375,9 +379,26 @@ export function finaleHtml(view: FinaleView, rank: RankState): string {
 }
 
 /** The finale card as an element; `setRank` fills its rank box when the board answers. */
-export function finalePointsCard(view: FinaleView, rank: RankState): { body: HTMLElement; setRank: (rank: RankState) => void } {
+export function finalePointsCard(view: FinaleView, rank: RankState): { body: HTMLElement; setRank: (rank: RankState) => void; setName: (name: string | null) => void } {
   const body = el(finaleHtml(view, rank));
-  return { body, setRank: (next) => void (body.querySelector(".finale-rank")!.innerHTML = rankHtml(next, view.name)) };
+  let current = view.name;
+  let state = rank;
+  const paint = (): void => {
+    body.querySelector(".finale-main .result-title")!.textContent = finaleTitle(current);
+    body.querySelector(".finale-rank")!.innerHTML = rankHtml(state, current);
+  };
+  return {
+    body,
+    setRank: (next) => {
+      state = next;
+      paint();
+    },
+    // Section 35.5: a name added or changed on the feedback form.
+    setName: (name) => {
+      current = name;
+      paint();
+    }
+  };
 }
 
 export class ResultCards {
@@ -454,6 +475,13 @@ export class ResultCards {
         go.textContent = spec.button;
         go.addEventListener("click", () => advance());
         actions.appendChild(go);
+        if (spec.note) {
+          const note = document.createElement("p");
+          note.className = "result-note";
+          note.setAttribute("role", "status");
+          note.textContent = spec.note;
+          actions.prepend(note);
+        }
         this.cardEl.appendChild(actions);
         if (spec.link) {
           const link = document.createElement("button");
@@ -466,7 +494,9 @@ export class ResultCards {
         this.cardEl.classList.remove("entering");
         void this.cardEl.offsetWidth;
         this.cardEl.classList.add("entering");
-        go.focus();
+        const first = spec.focus ? spec.body.querySelector<HTMLElement>(spec.focus) : null;
+        if (first) first.focus();
+        else go.focus();
       };
       const advance = (): void => {
         if (index < cards.length - 1) {
@@ -497,13 +527,18 @@ export class ResultCards {
             const target = event.target as HTMLElement | null;
             event.stopImmediatePropagation();
             if (target && target.closest("button") && this.el.contains(target)) return;
+            // Section 35.5: in a form's field Enter types (a new line in a text box) or does nothing; it never submits.
+            if (target && target.closest("input, textarea, select") && this.el.contains(target)) {
+              if (target.tagName !== "TEXTAREA") event.preventDefault();
+              return;
+            }
             event.preventDefault();
             advance();
             return;
           }
           if (event.key === "Tab") {
             // Focus stays in the card.
-            const focusable = [...this.cardEl.querySelectorAll<HTMLElement>("button, [href], [tabindex]:not([tabindex='-1'])")];
+            const focusable = [...this.cardEl.querySelectorAll<HTMLElement>("button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])")];
             if (focusable.length === 0) return;
             const first = focusable[0];
             const last = focusable[focusable.length - 1];

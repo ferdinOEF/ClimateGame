@@ -113,6 +113,7 @@ describe("the finale card", () => {
 
   it("offers Play again and Exit", () => {
     expect(controller).toMatch(/button: "Play again", link: "Exit", wide: true/);
+    expect(controller).toMatch(/alt: "Play again", link: "Exit", wide: true/);
   });
 
   it("has no dots, spaced dashes or hyphens between words", () => {

@@ -111,7 +111,10 @@ describe("try this storm again (Section 28.1)", () => {
     expect(retryAt).toBeLessThan(endTurn.indexOf("await this.finale()"));
     expect(retryAt).toBeLessThan(endTurn.indexOf("for (const event of later) if (event.type !== \"challenge\")"));
     // The final card offers Play again, never a retry. Section 35.2: it is the points finale, with Exit.
-    expect(controller).toMatch(/\{ body: finale\.body, button: "Play again", link: "Exit", wide: true \}/);
+    // Section 35.5: before the form its main button is "Your feedback", with Play again beside it.
+    expect(controller).toContain('{ body: finale.body, button: "Play again", link: "Exit", wide: true, ...(note ? { note } : {}) }');
+    expect(controller).toContain('{ body: finale.body, button: "Your feedback", alt: "Play again", link: "Exit", wide: true }');
+    expect(controller).not.toMatch(/finale\.body[^}]*alt: "Try again/);
   });
 
   it("has nothing to retry for a storm not reached yet", () => {
