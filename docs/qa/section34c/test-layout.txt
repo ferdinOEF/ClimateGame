@@ -2,7 +2,7 @@
 > riptide-rising@1.0.0 test:layout
 > tsx tools/mayaLayoutTest.ts
 
-(node:11164) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(node:36576) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 PASS  1280x600 discovery=no getReady=open tooltip=none tip
 PASS  1280x600 discovery=no getReady=open tooltip=none warning=st-cruz
@@ -36,7 +36,8 @@ PASS  1280x600 discovery=said getReady=collapsed tooltip=open tip
 PASS  1280x600 discovery=said getReady=collapsed tooltip=open warning=st-cruz
 PASS  1280x600 discovery=said getReady=collapsed tooltip=open warning=merces
 PASS  1280x600 discovery=said getReady=collapsed tooltip=open warning=miramar
-FAIL  1280x600 build menu open  her bubble is not showing {"current":"sample:tip:36705.299999952316","pending":1,"heldBack":false,"minimised":false,"muted":false,"bubbleHidden":true,"view":[1280,600]}
+PASS  1280x600 build menu open
+PASS  1280x600 build menu open: her bubble steps aside for the menu
 PASS  1280x600 minimised
 PASS  1280x600 resized to 80%
 PASS  1366x768 discovery=no getReady=open tooltip=none tip
@@ -71,7 +72,8 @@ PASS  1366x768 discovery=said getReady=collapsed tooltip=open tip
 PASS  1366x768 discovery=said getReady=collapsed tooltip=open warning=st-cruz
 PASS  1366x768 discovery=said getReady=collapsed tooltip=open warning=merces
 PASS  1366x768 discovery=said getReady=collapsed tooltip=open warning=miramar
-FAIL  1366x768 build menu open  her bubble is not showing {"current":"sample:tip:25014.699999809265","pending":1,"heldBack":false,"minimised":false,"muted":false,"bubbleHidden":true,"view":[1366,768]}
+PASS  1366x768 build menu open
+PASS  1366x768 build menu open: her bubble steps aside for the menu
 PASS  1366x768 minimised
 PASS  1366x768 resized to 80%
 PASS  1920x1080 discovery=no getReady=open tooltip=none tip
@@ -106,7 +108,8 @@ PASS  1920x1080 discovery=said getReady=collapsed tooltip=open tip
 PASS  1920x1080 discovery=said getReady=collapsed tooltip=open warning=st-cruz
 PASS  1920x1080 discovery=said getReady=collapsed tooltip=open warning=merces
 PASS  1920x1080 discovery=said getReady=collapsed tooltip=open warning=miramar
-FAIL  1920x1080 build menu open  her bubble is not showing {"current":"sample:tip:23970.10000014305","pending":1,"heldBack":false,"minimised":false,"muted":false,"bubbleHidden":true,"view":[1920,1080]}
+PASS  1920x1080 build menu open
+PASS  1920x1080 build menu open: her bubble steps aside for the menu
 PASS  1920x1080 minimised
 PASS  1920x1080 resized to 80%
 PASS  2560x1440 discovery=no getReady=open tooltip=none tip
@@ -141,8 +144,9 @@ PASS  2560x1440 discovery=said getReady=collapsed tooltip=open tip
 PASS  2560x1440 discovery=said getReady=collapsed tooltip=open warning=st-cruz
 PASS  2560x1440 discovery=said getReady=collapsed tooltip=open warning=merces
 PASS  2560x1440 discovery=said getReady=collapsed tooltip=open warning=miramar
-FAIL  2560x1440 build menu open  her bubble is not showing {"current":"sample:tip:25084.5","pending":1,"heldBack":false,"minimised":false,"muted":false,"bubbleHidden":true,"view":[2560,1440]}
+PASS  2560x1440 build menu open
+PASS  2560x1440 build menu open: her bubble steps aside for the menu
 PASS  2560x1440 minimised
 PASS  2560x1440 resized to 80%
 
-140 layouts checked, 4 failed
+144 layouts checked, 0 failed

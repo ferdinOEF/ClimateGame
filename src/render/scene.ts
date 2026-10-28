@@ -306,8 +306,10 @@ export function createScene(container: HTMLElement): KhazanScene {
         v.set(p.x, p.y, p.z).project(probe);
         const x = ((v.x + 1) / 2) * w;
         const y = ((1 - v.y) / 2) * h;
-        if (x < margin || y < margin || x > w - margin || y > h - margin) off++;
-        else if (obstacles.some((o) => x > o.x - margin && x < o.x + o.w + margin && y > o.y - margin && y < o.y + o.h + margin)) hidden++;
+        // Under an obstacle first (Section 34c.2: a name at the top edge over the card is hidden by the card, not off
+        // the screen); then off the screen.
+        if (x >= 0 && y >= 0 && x <= w && y <= h && obstacles.some((o) => x > o.x - margin && x < o.x + o.w + margin && y > o.y - margin && y < o.y + o.h + margin)) hidden++;
+        else if (x < margin || y < margin || x > w - margin || y > h - margin) off++;
       }
       return { hidden, off };
     };

@@ -49,7 +49,10 @@ async function shot(name: string): Promise<void> {
   await js(`window.__panjimForTest.maya.dismiss()`);
   await page.mouse.move(W / 2, 2);
   await page.waitForTimeout(700);
-  await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 85 });
+  // Section 34c: on this laptop a storm frame at 1920x1080 can stall the screenshot past its timeout; skip that frame
+  // and go on, so the next phase's opening view is still taken.
+  const taken = await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 85, timeout: 60000 }).then(() => true, (e: Error) => (console.log(`${name}: no screenshot (${e.message.split("\n")[0]})`), false));
+  if (!taken) return;
   const boxes = await js<unknown>(`(() => {
     const box = (el) => { const r = el.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)]; };
     const seen = (el) => { const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden" && el.getBoundingClientRect().width > 0; };

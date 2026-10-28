@@ -42,6 +42,12 @@ describe("34c.1: the HUD card at half its size", () => {
 });
 
 describe("34c.2: the card top right, Maya bottom left, the street map's credit bottom right", () => {
+  it("counts a point over the card at the screen's top edge as hidden by the card, not off the screen", () => {
+    const scene = readFileSync("src/render/scene.ts", "utf8");
+    const fn = scene.slice(scene.indexOf("  function keepClearOf("), scene.indexOf("  function fitTo("));
+    expect(fn.indexOf("hidden++")).toBeLessThan(fn.indexOf("off++"));
+  });
+
   it("puts ☰'s menu under ☰, hanging leftward so it stays inside the window", () => {
     const menu = rule(".has-panjim-clock .panjim-clock .hud-panel-settings .hud-panel-body");
     expect(menu).toMatch(/right: 0;/);
@@ -66,9 +72,12 @@ describe("34c.2: the card top right, Maya bottom left, the street map's credit b
     expect(session).toContain("if (card) container.insertBefore(card, canvas);");
   });
 
-  it("keeps the objective's places clear of the HUD when the whole forecast cannot be", () => {
+  it("slides the opening view to keep the objective's places and the main town names clear too, falling back step by step", () => {
     const session = readFileSync("src/app/gameSession.ts", "utf8");
-    expect(session).toContain("lastKeepClear = keepClearOf(lift(keepClear), obstacles) ?? withPlaces ?? (arrows?.length ? keepClearOf(lift(arrows), obstacles) : null);");
+    expect(session).toContain("const towns = levelMap.localities.filter((l) => l.rank === 1)");
+    expect(session).toContain("const tries = [[...keepClear, ...pins, ...towns], [...keepClear, ...pins], keepClear, arrows?.length && pins.length ? [...arrows, ...pins] : [], arrows ?? []];");
+    // A try that fails leaves the view as it was: the first that clears wins.
+    expect(session).toContain("lastKeepClear = keepClearOf(lift(points), obstacles);\n                if (lastKeepClear) break;");
     expect(readFileSync("src/app/panjimController.ts", "utf8")).toContain("}, [...along, ...points], along, places);");
   });
 });

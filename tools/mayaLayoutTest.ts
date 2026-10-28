@@ -147,10 +147,15 @@ async function main(): Promise<void> {
           }
         }
       }
-      // The build menu open, Maya talking.
+      // The build menu open, Maya talking: since Section 34b her bubble steps aside for the menu (only her figure
+      // shows), so the check is her figure clear of the menu and her bubble tucked.
       await page.evaluate("window.__panjimScenarioForTest('maya:tip')");
       await page.evaluate("window.__panjimScenarioForTest('menu-beach')");
-      await assertClear(page, `${tag} build menu open`, true);
+      await assertClear(page, `${tag} build menu open`, false);
+      checks++;
+      const tucked = await page.evaluate(`(() => { const m = window.__panjimForTest.maya; return m.isTucked && m.bubble.hidden; })()`);
+      if (!tucked) failures.push(`${tag} build menu open: her bubble did not step aside for the menu`);
+      console.log(`${tucked ? "PASS" : "FAIL"}  ${tag} build menu open: her bubble steps aside for the menu`);
       await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
       await page.waitForTimeout(300);

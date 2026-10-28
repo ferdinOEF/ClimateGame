@@ -1,0 +1,19 @@
+[1366x768] start: {"card":[1052,12,300,243],"menu":null,"maya":[12,632,47,124],"bubble":null,"street":null,"credit":[1185,753,169,11],"popover":null,"banner":null,"speed":null}
+[1366x768] four-rows: {"card":[1052,12,300,247],"menu":null,"maya":[12,632,47,124],"bubble":null,"street":null,"credit":[1185,753,169,11],"popover":null,"banner":null,"speed":null}
+[1366x768] storm: {"card":[1052,12,300,236],"menu":null,"maya":[12,632,47,124],"bubble":null,"street":null,"credit":[1185,753,169,11],"popover":null,"banner":null,"speed":[620,698,127,42]}
+[1366x768] large-text: {"card":[1052,12,300,318],"menu":null,"maya":[12,632,47,124],"bubble":null,"street":null,"credit":[1185,753,169,11],"popover":null,"banner":null,"speed":null}
+[1366x768] bubble: {"card":[1052,12,300,243],"menu":null,"maya":[12,632,47,124],"bubble":[62,575,190,151],"street":null,"credit":[1185,753,169,11],"popover":null,"banner":null,"speed":null}
+[1366x768] menu-miramar: {"card":[1052,12,300,243],"menu":null,"maya":[12,632,47,124],"bubble":null,"street":null,"credit":[1185,753,169,11],"popover":[266,327,312,381],"banner":null,"speed":null}
+[1366x768] result: {"card":[1052,12,300,240],"menu":null,"maya":[12,632,47,124],"bubble":[62,651,190,75],"street":null,"credit":[1185,753,169,11],"popover":null,"banner":null,"speed":null}
+[1366x768] final: {"card":[1052,12,300,124],"menu":null,"maya":[12,632,47,124],"bubble":null,"street":null,"credit":[1185,753,169,11],"popover":null,"banner":null,"speed":null}
+[1366x768] tutorial: {"card":[1052,12,300,393],"menu":null,"maya":[12,632,47,124],"bubble":[62,575,190,151],"street":null,"credit":null,"popover":null,"banner":null,"speed":null}
+[1920x1080] start: {"card":[1606,12,300,243],"menu":null,"maya":[12,926,54,142],"bubble":null,"street":null,"credit":[1739,1065,169,11],"popover":null,"banner":null,"speed":null}
+[1920x1080] four-rows: {"card":[1606,12,300,247],"menu":null,"maya":[12,926,54,142],"bubble":null,"street":null,"credit":[1739,1065,169,11],"popover":null,"banner":null,"speed":null}
+[1920x1080] storm: {"card":[1606,12,300,236],"menu":null,"maya":[12,926,54,142],"bubble":null,"street":null,"credit":[1739,1065,169,11],"popover":null,"banner":null,"speed":[897,1010,127,42]}
+[1920x1080] large-text: {"card":[1606,12,300,318],"menu":null,"maya":[12,926,54,142],"bubble":null,"street":null,"credit":[1739,1065,169,11],"popover":null,"banner":null,"speed":null}
+[1920x1080] bubble: {"card":[1606,12,300,243],"menu":null,"maya":[12,926,54,142],"bubble":[69,872,190,151],"street":null,"credit":[1739,1065,169,11],"popover":null,"banner":null,"speed":null}
+[1920x1080] menu-miramar: {"card":[1606,12,300,243],"menu":null,"maya":[12,926,54,142],"bubble":null,"street":null,"credit":[1739,1065,169,11],"popover":[1016,639,312,381],"banner":null,"speed":null}
+[1920x1080] result: {"card":[1606,12,300,240],"menu":null,"maya":[12,926,54,142],"bubble":[69,947,190,75],"street":null,"credit":[1739,1065,169,11],"popover":null,"banner":null,"speed":null}
+[1920x1080] final: {"card":[1606,12,300,124],"menu":null,"maya":[12,926,54,142],"bubble":null,"street":null,"credit":[1739,1065,169,11],"popover":null,"banner":null,"speed":null}
+[1920x1080] tutorial: {"card":[1606,12,300,393],"menu":null,"maya":[12,926,54,142],"bubble":[69,872,190,151],"street":null,"credit":null,"popover":null,"banner":null,"speed":null}
+ALL PASS

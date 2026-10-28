@@ -982,11 +982,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             lastKeepClear = null;
             if (keepClear?.length) {
               const obstacles = cameraObstacles();
-              const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] => points.map((p) => ({ x: p.x, y: 0.6, z: p.z }));
-              // Everything if a pan can clear it; else the arrows and the objective's places (Section 34c.2: with Maya
-              // bottom left a place's pin could sit at her feet); else the arrows alone (a forecast wider than the screen).
-              const withPlaces = arrows?.length && places?.length ? keepClearOf(lift([...arrows, ...places]), obstacles) : null;
-              lastKeepClear = keepClearOf(lift(keepClear), obstacles) ?? withPlaces ?? (arrows?.length ? keepClearOf(lift(arrows), obstacles) : null);
+              // At least on the tile's top (Section 34c.2: a pin on a land tile stands higher than 0.6, and at the screen's
+              // edge that is the difference between on screen under Maya and off it).
+              const lift = (points: readonly { x: number; z: number }[]): { x: number; y: number; z: number }[] =>
+                points.map((p) => ({ x: p.x, y: Math.max(0.6, terrain.heightAt(worldToAxial(p.x, p.z, 1.0)) + 0.3), z: p.z }));
+              // Section 34c.2, tried in order, the first a pan can clear wins (a try that fails leaves the view as it
+              // was): everything with the objective's places and the main town names (with the card top right the old
+              // city's names could sit under it, with Maya bottom left a place's pin at her feet); everything with the
+              // places; everything; the arrows and the places; the arrows alone (a forecast wider than the screen).
+              const towns = levelMap.localities.filter((l) => l.rank === 1).map((l) => axialToWorld({ q: l.q, r: l.r }, 1));
+              const pins = places ?? [];
+              const tries = [[...keepClear, ...pins, ...towns], [...keepClear, ...pins], keepClear, arrows?.length && pins.length ? [...arrows, ...pins] : [], arrows ?? []];
+              for (const points of tries) {
+                if (!points.length) continue;
+                lastKeepClear = keepClearOf(lift(points), obstacles);
+                if (lastKeepClear) break;
+              }
             }
           },
           moveCamera: (tiles, centre) => moveCameraClear(tiles, centre),
