@@ -1,4 +1,4 @@
-## Section 38 — the last result card with the feedback on it — ON BRANCH `section-38-last-card` (not merged)
+## Section 38 — the last result card with the feedback on it — MERGED (`b1fe260`)
 
 Branch `section-38-last-card` from master `49333a1` (safety copy: `backup/pre-section-38`, same point). QA in
 docs/QA_REPORT.md. The owner's mock is on the Design canvas (artboards 7, 8 and 9).

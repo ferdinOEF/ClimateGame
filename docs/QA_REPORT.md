@@ -2658,3 +2658,9 @@ in `6b366ab`: that report is `runPending` too.
 runs after the merge; the ALTER statements were applied twice on pg-mem against a table of the old shape); the
 owner's Design canvas was not seen (the brief's words and numbers were used). `tools/section35Shots.ts` and
 `tools/section37RenameShot.ts` drive the old form and rename and no longer run.
+
+**Section 38 merge and Vercel.** Merged with `git merge --no-ff` on the owner's word: `b1fe260` (tsc clean on the
+merge). Vercel's production deployment of `b1fe260` (`dpl_Ev2Ac6m6DrWUtvr5xh8bTD5jQgdj`) is Ready, checked through
+the Vercel connector; production was not loaded from here (this machine's egress blocks *.vercel.app). PR #36 shows
+as merged. `vercel env pull` could not log in from this container and its egress blocks Neon, so `npm run db:migrate`
+did not run here; the functions apply the same statements on their first request (see below for what was done).
