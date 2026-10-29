@@ -988,6 +988,36 @@ export class PanjimController {
     return count;
   }
 
+  /** Section 37.1: the storm's hurry, armed at the build that brings it (so it covers the lead in), else at staging. */
+  private leadIn: { hurried: () => boolean; stop: () => void } | null = null;
+
+  /**
+   * Shows Speed up and listens for a click on the board, which hurries the storm; one on the HUD (volume, switches,
+   * Maya) does not. `stop` takes both away.
+   */
+  private armHurry(): { hurried: () => boolean; stop: () => void } {
+    let hurry = false;
+    const abort = new AbortController();
+    this.showSpeedUp(true);
+    document.addEventListener(
+      "pointerdown",
+      (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest(".hud-panel, .panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready")) return;
+        hurry = true;
+        this.showSpeedUp(false);
+      },
+      { signal: abort.signal, capture: true }
+    );
+    return {
+      hurried: () => hurry,
+      stop: () => {
+        abort.abort();
+        this.showSpeedUp(false);
+      }
+    };
+  }
+
   /**
    * The challenge, staged: each zone in turn gets its moment (the hazard
    * arrives, the defences there answer one at a time, a "Houses saved"
@@ -1011,20 +1041,10 @@ export class PanjimController {
     let lost = outcome.housesTotal - outcome.housesSaved - outcome.housesDamaged;
     this.outlook.renderLost(lost);
 
-    let hurry = false;
-    const abort = new AbortController();
-    this.showSpeedUp(true);
-    // A click on the board hurries the storm; one on the HUD (volume, switches, Maya) does not.
-    document.addEventListener(
-      "pointerdown",
-      (event) => {
-        const target = event.target;
-        if (target instanceof Element && target.closest(".hud-panel, .panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready")) return;
-        hurry = true;
-        this.showSpeedUp(false);
-      },
-      { signal: abort.signal, capture: true }
-    );
+    // Section 37.1: armed at the build's click (endTurn), so Speed up and a click on the board work through the lead in.
+    const hurrying = this.leadIn ?? this.armHurry();
+    this.leadIn = null;
+    let hurry = hurrying.hurried();
 
     const record = this.run.stormRecords.get(challenge.id);
     try {
@@ -1033,7 +1053,7 @@ export class PanjimController {
         // water passes the line, the defences answer when it reaches them.
         await this.host.challengeFx.play(record, this.preChallengeIds, {
           onHouseLost: () => this.outlook.renderLost(++lost),
-          hurry: () => hurry,
+          hurry: () => (hurry = hurrying.hurried()),
           // Maya calls the storm's phases as they come.
           onPhase: (phase, line) => {
             this.maya.dismiss();
@@ -1045,6 +1065,7 @@ export class PanjimController {
         const biggest = outcome.zones.reduce((best, zone, index) => (zone.absorbed > (outcome.zones[best]?.absorbed ?? -1) ? index : best), 0);
         await wait(500);
         for (const [index, zone] of outcome.zones.entries()) {
+          hurry = hurrying.hurried();
           const slow = index === biggest && zone.absorbed > 0 && !hurry;
           const duration = hurry ? 250 : slow ? 2600 : 1300;
           this.host.container.classList.toggle("slowmo", slow);
@@ -1054,8 +1075,8 @@ export class PanjimController {
         }
       }
     } finally {
-      abort.abort();
-      this.showSpeedUp(false);
+      hurry = hurrying.hurried();
+      hurrying.stop();
       this.host.container.classList.remove("slowmo", "storm-playing");
       // The storm's own count, exactly: the pill holds it through the result cards.
       this.outlook.renderLost(outcome.housesTotal - outcome.housesSaved);
@@ -1907,6 +1928,8 @@ export class PanjimController {
       this.stagingYearEnd = pending.length > 0;
       // No countdowns while the storm and its result cards are on screen: they would read the old year.
       this.holdCountdowns(pending.length > 0);
+      // Section 37.1: Speed up from the build's click, the first frame of the storm's lead in.
+      if (pending.length > 0 && !this.leadIn) this.leadIn = this.armHurry();
       for (const staged of pending) {
         await this.untilLayersShut();
         if (this.disposed) return;
@@ -2637,6 +2660,7 @@ export class PanjimController {
   dispose(): void {
     this.reportEarlyStop();
     this.keyAbort.abort();
+    this.leadIn?.stop();
     this.tutorialPanel?.dispose();
     this.maya.dispose();
     this.mayaToggle.dispose();

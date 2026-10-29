@@ -21,7 +21,8 @@ export type MusicState = "off" | "full" | "soft";
 export const MUSIC_LEVEL: Record<MusicState, number> = { off: 0, full: 0.35, soft: 0.2 };
 
 /** Fade times, seconds: out to silence (a storm), in to full, between full and soft, and on closing before the stop. */
-export const MUSIC_FADE = { out: 2.5, in: 4, soft: 1.5, close: 1 } as const;
+// Section 37.1: out in 1.5 s (it was 2.5), so the music is gone before the first wave, two seconds into the storm.
+export const MUSIC_FADE = { out: 1.5, in: 4, soft: 1.5, close: 1 } as const;
 
 /** setTargetAtTime's time constant for a fade of `seconds`: within 2% of the target when the fade is over. */
 export function fadeTimeConstant(seconds: number): number {

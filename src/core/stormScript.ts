@@ -37,6 +37,32 @@ export interface StormScript {
   firstContact: number | null;
 }
 
+/**
+ * Section 37.1 (owner decision): the storm's clock starts this many seconds (storm time) before its first water, not
+ * at 0, so the first wave or the river's swell comes about two seconds after the storm begins. The sky and the sea
+ * darken over those seconds, while the camera pulls out. Only when the clock starts: the depth field, the damage and
+ * the storm's strength are the same.
+ */
+export const STORM_LEAD = 2;
+
+/** When the storm's water first shows on land or in the river (a sea tile is always wet), or null for a dry storm. */
+export function firstWaterTime(field: DepthField): number | null {
+  let first = Infinity;
+  for (const tile of field.tiles.values()) {
+    if (tile.terrainId === "coast") continue;
+    if (tile.surgePeak > 0) first = Math.min(first, tile.surgeArrival);
+    if (tile.floodPeak > 0) first = Math.min(first, tile.floodArrival);
+    if (tile.backwaterPeak > 0) first = Math.min(first, tile.backwaterArrival);
+  }
+  return Number.isFinite(first) ? first : null;
+}
+
+/** Section 37.1: the storm time the clock starts from: STORM_LEAD before the first water (never below 0). */
+export function stormStartTime(field: DepthField): number {
+  const first = firstWaterTime(field);
+  return first === null ? 0 : Math.max(0, first - STORM_LEAD);
+}
+
 /** Minimum gap between strikes: well under three flashes a second. */
 export const LIGHTNING_GAP = 2.5;
 

@@ -16,6 +16,13 @@ export interface ReplayHooks {
 }
 
 const STEP_MS = 2600;
+/** Section 37.1 (owner decision): the replay is on screen at most this long on its own; its steps share it. */
+export const REPLAY_MAX_MS = 8000;
+
+/** How long each of `steps` steps shows: 2.6 s, shorter when there are more than three, so all of them fit in 8 s. */
+export function replayStepMs(steps: number): number {
+  return steps > 0 ? Math.min(STEP_MS, Math.floor(REPLAY_MAX_MS / steps)) : STEP_MS;
+}
 
 export class ReplayCard {
   private readonly el: HTMLElement;
@@ -42,6 +49,7 @@ export class ReplayCard {
     this.el.hidden = false;
     const text = this.el.querySelector(".replay-text") as HTMLElement;
     const dots = Array.from(this.el.querySelectorAll<HTMLElement>(".replay-dot"));
+    const stepMs = replayStepMs(steps.length);
     return new Promise((resolve) => {
       let index = -1;
       let timer = 0;
@@ -66,7 +74,7 @@ export class ReplayCard {
         dots.forEach((dot, i) => dot.classList.toggle("on", i <= index));
         hooks.light(step);
         hooks.say(step.maya);
-        timer = window.setTimeout(next, STEP_MS);
+        timer = window.setTimeout(next, stepMs);
       };
       this.el.querySelector(".replay-skip")!.addEventListener("click", (event) => {
         event.stopPropagation();

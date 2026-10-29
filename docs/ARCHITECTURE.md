@@ -153,6 +153,12 @@ A Panjim 2050 storm is decided once, when it lands, and then shown.
 **Script.**
 - `core/stormScript.ts` derives the timed moments from the resolution:
   houses going, tested defences answering, the slow-motion beat, lightning.
+- Section 37.1, the lead in: the director's clock starts `STORM_LEAD` (2 s)
+  before the storm's first water on land or in the river (`stormStartTime`),
+  not at 0; the sky, wind, rain and the water's fade come in over 1.5 s from
+  there while the camera pulls out. Speed up (and a click on the board) works
+  from the build's click (`PanjimController.armHurry`, armed in `endTurn`).
+  The replay card shares at most 8 s among its steps (`replayStepMs`).
 - `core/stormReplay.ts` writes the replay's captions.
 
 **Showing** (`app/stormDirector.ts`):
@@ -409,7 +415,7 @@ waiting for it). Any audio failure is swallowed.
   in place of the synthesised `"build"` tone, which stays for everything else (and for a build before the sample has
   loaded: one or the other, never both).
 - **The music** (`ui/music.ts`): one loop under its own gain into the master. Its level is a pure state machine
-  (`MusicMachine`: `"off" | "full" | "soft"`, 0, 0.35 and 0.2 of the master; fades 2.5 s out, 4 s in, 1.5 s between
+  (`MusicMachine`: `"off" | "full" | "soft"`, 0, 0.35 and 0.2 of the master; fades 1.5 s out (2.5 before Section 37.1), 4 s in, 1.5 s between
   full and soft, 1 s on closing). The audio side only follows it with `setTargetAtTime`. The loop's last half second
   fades out, so two sources take turns, each next one starting 1.5 s before the current ends, crossing over with
   equal power curves; there is always one pass queued ahead, from the previous pass's `onended`.
