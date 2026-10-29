@@ -180,7 +180,9 @@ try {
       const thanks = await textOf(page, ".fb-thanks");
       check(thanks === "Thank you. You’re 2nd on the board.", `Submit turns into the line in place: ${thanks}`);
       const feedback = sent.find((s) => s.path === "/api/feedback");
-      check(!!feedback && JSON.stringify(feedback.body.answers) === JSON.stringify({ q1: 4, q2: 4, q3: 4, q4: 4, remember: "The mangroves at Chimbel", age: "31_plus" }) && !("name" in (feedback.body as object)), `the answers posted without a name: ${JSON.stringify(feedback?.body.answers)}`);
+      const answers = (feedback?.body.answers ?? {}) as Record<string, unknown>;
+      const { nudge, cardSeconds, ...given } = answers;
+      check(!!feedback && JSON.stringify(given) === JSON.stringify({ q1: 4, q2: 4, q3: 4, q4: 4, remember: "The mangroves at Chimbel", age: "31_plus" }) && nudge === "none" && typeof cardSeconds === "number" && !("name" in (feedback.body as object)) && !("name" in answers), `the answers posted without a name: ${JSON.stringify(answers)}`);
       check(sent.filter((s) => s.path === "/api/board" && s.method === "POST").length === 1, "the name goes on the board once");
       const rankHead = await textOf(page, ".last-rank .finale-rank-head");
       check(rankHead === "2nd on the board", `the board box shows the place: ${rankHead}`);

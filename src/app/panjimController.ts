@@ -1477,7 +1477,7 @@ export class PanjimController {
     // Section 35.4: the run is reported (no name); a named run goes on the board as the card opens, before the player
     // taps anything (its board post saves the run too, so the server replays it once).
     this.runReported = true;
-    if (!name) void postRun(this.runReport());
+    if (!name) this.runPending = postRun(this.runReport());
     this.boardPending = this.boardPlace(points.total, name).then((rank) => {
       if (!this.disposed) card.setRank(rank);
     });
@@ -1516,8 +1516,12 @@ export class PanjimController {
     if (this.feedbackSent) return;
     this.feedbackSent = true;
     const cardSeconds = Math.round(Math.max(0, performance.now() - this.cardOpenedAt) / 100) / 10;
-    void postFeedback(this.runId, { ...answers, nudge: this.nudge.outcome(submitted), cardSeconds }, testTag());
+    // After the run's own post (the server takes a form only for a run it has counted); the player never waits.
+    void Promise.all([this.boardPending, this.runPending]).then(() => postFeedback(this.runId, { ...answers, nudge: this.nudge.outcome(submitted), cardSeconds }, testTag()));
   }
+
+  /** Section 35.4: the run's own report, under way (a run without a name); the form waits for it. */
+  private runPending: Promise<unknown> | null = null;
 
   /** The card up, until a footer button; resolves with which. */
   private showLastCard(card: LastCard): Promise<FooterAction> {
@@ -2707,6 +2711,8 @@ export class PanjimController {
   }
 
   dispose(): void {
+    // Section 38.4: the idle reset (or Leave) with the last card up still counts the form opened.
+    if (this.cardOpenedAt > 0) this.sendFeedback({});
     this.reportEarlyStop();
     this.keyAbort.abort();
     this.leadIn?.stop();

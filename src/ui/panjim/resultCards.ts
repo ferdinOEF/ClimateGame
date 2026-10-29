@@ -428,6 +428,7 @@ export class ResultCards {
         detailOpen = true;
         this.cardEl.replaceChildren(detail.body);
         this.cardEl.classList.toggle("wide", false);
+        this.cardEl.classList.toggle("last", false);
         this.cardEl.setAttribute("aria-label", detail.body.querySelector(".result-title")?.textContent ?? "Result");
         const actions = document.createElement("div");
         actions.className = "result-actions";
@@ -448,6 +449,8 @@ export class ResultCards {
         detailOpen = false;
         this.cardEl.replaceChildren(spec.body);
         this.cardEl.classList.toggle("wide", spec.wide === true);
+        // Section 38.2: the last card's own width (a class, so no :has() is needed).
+        this.cardEl.classList.toggle("last", spec.body.classList.contains("last-card"));
         const label = spec.body.querySelector(".result-title")?.textContent ?? "Result";
         this.cardEl.setAttribute("aria-label", label);
         if (spec.detail) {
@@ -631,6 +634,8 @@ export class ResultCards {
   }
 
   dispose(): void {
+    // Section 38.2: a hosted card's promise resolves, so its owner's flow ends with the session.
+    this.closeHosted?.();
     // Its window keydown listener (capture phase) swallowed every key on the menu after an idle reset over the cards,
     // and kept the old session alive.
     this.abort?.abort();

@@ -396,6 +396,13 @@ describe("Section 38.4b: test tags", () => {
     expect((place.body.above as { name: string }[]).map((r) => r.name)).toEqual(["ana"]);
   }, SLOW);
 
+  it("a tagged row can never be renamed or ranked through the rename endpoint", async () => {
+    const [{ edit_token: token }] = await db.query<{ edit_token: string }>("SELECT edit_token FROM board WHERE tag = 'FestTesters'");
+    expect(token.startsWith("tagged:")).toBe(true);
+    expect((await patchBoard(await context(db), { editToken: token, name: "Ana B" })).status).toBe(400);
+    expect((await patchBoard(await context(db), { editToken: token.slice(7), name: "Ana B" })).status).toBe(404);
+  });
+
   it("DEFAULT_TAG tags a post that sends none (Vercel Preview); the post's own tag wins", async () => {
     const preview = { ...(await context(db)), env: { BOARD_SEASON: "Festival 2026", RATE_SALT: "salt", DEFAULT_TAG: "Preview" } };
     expect(tagOf({}, preview.env)).toBe("Preview");

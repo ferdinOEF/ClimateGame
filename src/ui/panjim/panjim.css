@@ -3582,6 +3582,13 @@
 }
 
 /* The hint shows only until the run's first build. */
+/* Section 38.2: never under "Back to your result" (View map on a run with no build). */
+.has-panjim-clock:has(.result-return) .empty-prompt {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .has-panjim-clock.has-built .empty-prompt {
   display: none;
 }
@@ -4291,7 +4298,7 @@
 /* ---- Section 38.2: the last result card, after the 2050 storm ------------------------------------------------ */
 
 /* The card: about 1100 x 660 at 1366x768; the band across its top carries the storm left and "The last storm" right. */
-.result-card.wide:has(.last-card) {
+.result-card.wide.last {
   width: min(1100px, 94vw);
   padding-bottom: 18px;
 }

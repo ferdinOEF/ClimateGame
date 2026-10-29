@@ -17,7 +17,9 @@ database. The Firebase notes further down describe older, unused code (kept, off
      the hourly limits, and deleted after a day. Change it and every limit starts again.
    - `DEFAULT_TAG` (Section 38.4b): the test tag every post gets when the page sends none. Set it to `Preview` on
      the **Preview** environment only (Preview and Production share the one database) and leave it unset on
-     Production, so play on a preview deployment is never on the board. A tag in the address wins over it.
+     Production, so play on a preview deployment is never on the board. A tag in the address wins over it. The value
+     must be 2 to 30 letters, digits or underscores: one of another shape is ignored, and posts are then real
+     players'; check it with a preview run (its name card shows no chip for the default, so look at `npm run tag -- list`).
 3. **The tables.** Apply `db/schema.sql` once (it is safe to run again: every statement creates, adds or drops only
    what is missing or no longer wanted):
 

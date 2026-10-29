@@ -265,7 +265,8 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
   if (tag) {
     // Section 38.4b: a test session's row is stored with its tag, outside the one row per name rule, and gets no rank.
     const day = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
-    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, randomBytes(24).toString("base64url"), day, tag]);
+    // Its edit token holds a ":" so it can never pass the rename endpoint's check: a tagged row is never ranked.
+    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, `tagged:${randomBytes(24).toString("base64url")}`, day, tag]);
     return ok({ tagged: true, points: facts.points, editToken: "", season, name: name.name });
   }
   const known = await oneRowFor(ctx.sql, name.name);
@@ -305,7 +306,7 @@ export async function patchBoard(ctx: Ctx, body: Record<string, unknown>): Promi
   if (!(await underLimit(ctx, "rename"))) return fail(429, "limit");
   const name = checkName(typeof body.name === "string" ? body.name : "");
   if (!name.ok) return fail(400, name.reason === "refused" ? "name refused" : "bad name");
-  const own = await ctx.sql.query<{ id: string; points: number }>("SELECT id, points FROM board WHERE edit_token = $1", [token]);
+  const own = await ctx.sql.query<{ id: string; points: number }>("SELECT id, points FROM board WHERE edit_token = $1 AND tag IS NULL", [token]);
   if (own.length === 0) return fail(404, "no such row");
   // Section 37.9 (owner): a rename onto a name already on the board under another run is refused; no row is deleted or
   // replaced because of a rename, and this row keeps its old name.

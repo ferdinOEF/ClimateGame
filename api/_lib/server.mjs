@@ -18817,7 +18817,7 @@ async function postBoard(ctx, body) {
   const tag = tagOf(body, ctx.env);
   if (tag) {
     const day2 = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
-    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, randomBytes(24).toString("base64url"), day2, tag]);
+    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, `tagged:${randomBytes(24).toString("base64url")}`, day2, tag]);
     return ok({ tagged: true, points: facts.points, editToken: "", season, name: name.name });
   }
   const known = await oneRowFor(ctx.sql, name.name);
@@ -18852,7 +18852,7 @@ async function patchBoard(ctx, body) {
   if (!await underLimit(ctx, "rename")) return fail(429, "limit");
   const name = checkName(typeof body.name === "string" ? body.name : "");
   if (!name.ok) return fail(400, name.reason === "refused" ? "name refused" : "bad name");
-  const own = await ctx.sql.query("SELECT id, points FROM board WHERE edit_token = $1", [token]);
+  const own = await ctx.sql.query("SELECT id, points FROM board WHERE edit_token = $1 AND tag IS NULL", [token]);
   if (own.length === 0) return fail(404, "no such row");
   if ((await rowsNamed(ctx.sql, name.name)).some((r) => r.id !== own[0].id)) return fail(409, "name taken");
   const old = await ctx.sql.query("SELECT name FROM board WHERE id = $1", [own[0].id]);

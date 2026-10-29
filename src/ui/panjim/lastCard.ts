@@ -5,6 +5,7 @@ import {
   REMEMBER_LABEL, REMEMBER_MAX, SCALE_HIGH, SCALE_LOW, STARS, starFilled, starsAfterTap, SUBMIT, THANKS, type AgeCode, type FooterAction, type LastCardAnswers
 } from "@core/lastCard";
 import { NAME_MAX } from "@core/nameFilter";
+import { DETAIL_LINK } from "@core/resultFlow";
 import { playSound } from "@ui/audioHooks";
 import { rankHtml, stormPointsHtml, type RankState } from "./resultCards";
 
@@ -56,7 +57,7 @@ export function lastCardLeftHtml(view: LastCardView, rank: RankState): string {
     <h2 class="result-title last-title">${esc(resultHeadline(storm.stars, storm.homesStars))}</h2>
     ${starsHtml(storm.stars)}
     <div class="result-homes last-homes">
-      <div class="result-homes-text">${esc(homesLine(storm.homesSaved, storm.homesTotal))} <button type="button" class="result-detail-link">What protected your homes</button></div>
+      <div class="result-homes-text">${esc(homesLine(storm.homesSaved, storm.homesTotal))} <button type="button" class="result-detail-link">${DETAIL_LINK}</button></div>
       <div class="result-bar" role="img" aria-label="${pct}% of homes saved"><span style="width:${pct}%"></span></div>
     </div>
     ${storm.points ? stormPointsHtml(storm.points, false) : ""}

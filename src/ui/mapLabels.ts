@@ -64,6 +64,7 @@ const LANDMARK_MIN_FADE = 0.5;
  * a panel missing from it would let a name slide under it.
  */
 export const LABEL_OBSTACLES = [
+  ".result-return",
   ".maya-figure-wrap",
   ".result-cards",
   ".maya-bubble",
