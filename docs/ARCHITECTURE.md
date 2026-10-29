@@ -402,7 +402,8 @@ points behind 3rd" uses the same ranks.
 **The edit token.** A board post answers with a random token for its row, kept by the client in memory for that run
 only; `PATCH /api/board` with it renames the row (the feedback form's name field). It is never shown, exported or
 stored on the machine. Nothing about a run is saved on the machine (Section 28): the name lives in memory
-(`services/playerName.ts`) and goes at the menu.
+(`services/playerName.ts`) and goes at the menu, and at Play again on the finale (Section 37.4: the next run's
+name card opens empty; "Try again from {year}" and Start again keep it, the same run).
 
 ## Sound: the sample bank, the music and the storm's hand over (Section 36)
 
