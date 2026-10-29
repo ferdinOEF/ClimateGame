@@ -2401,3 +2401,12 @@ DELETE FROM feedback WHERE run_id = '35353535-3535-4535-8535-353535353535';
 ```
 
 (and, if wanted, `DELETE FROM runs WHERE id = '35353535-3535-4535-8535-353535353535';`).
+
+**Merge and Vercel.** Merged with `git merge --no-ff` on the owner's word: `7d329c9` (tsc and build clean on the merged
+tree; master had not moved, so the tree is the branch's, where the suite passed). Vercel's production deployments of
+`7d329c9` (`dpl_7dbDPpPMkpzwTrKcEdWsGd5QfQue`) and of the PROGRESS note `5db8578` (`dpl_5SBEVopf8NS26aDRPypqJiC83pwR`)
+are READY. Production checked through the Vercel connector (this machine cannot reach `*.vercel.app`): the page 200,
+`GET /api/board` 200 with season "Festival 2026" and the preview's test row (test_oef, 4510), since preview and
+production share one database. Delete it with the SQL above.
+
+**Revert:** `git revert -m 1 7d329c9`.
