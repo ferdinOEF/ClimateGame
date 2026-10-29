@@ -2426,3 +2426,18 @@ merges on their word.
   finale, and the smart hook (3 of 9) for one not cleared. Retaken: `1-name-card`, `4-finale-named` (cleared, 4215
   points, the server's replay the same); new `4b-finale-not-cleared`. The other four shots were retaken by the same
   pass (now from the best plan's run).
+
+**Section 35.8 merge and Vercel.** Merged with `git merge --no-ff` on the owner's word: `59d250d` (tsc and build clean
+on the merged tree; master had not moved, so the tree is the branch's, where the suite passed). Vercel's production
+deployment of `59d250d` is `dpl_GYyjNxLzqoVyCTZ6bU9in5m1MRjQ`, READY. On production (from a Vercel Sandbox; this
+machine cannot reach `*.vercel.app`): `GET /api/board` 200, season "Festival 2026"; `POST /api/board` as test_oef
+(run id `35835835-8358-4358-8358-358358358358`) 200 in 4.7 s, rank 1, 4510 points counted by the server; the top 10
+then held both test rows (4510 each, tied at 1) and one player's run. Delete the test rows:
+
+```sql
+DELETE FROM board WHERE name = 'test_oef';
+DELETE FROM runs WHERE id IN ('35353535-3535-4535-8535-353535353535', '35835835-8358-4358-8358-358358358358');
+DELETE FROM feedback WHERE run_id = '35353535-3535-4535-8535-353535353535';
+```
+
+**Revert:** `git revert -m 1 59d250d`.
