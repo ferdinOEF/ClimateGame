@@ -225,7 +225,7 @@ export class ActionRun {
   readonly areas = new Map<string, string[]>();
   /** The defences the player built in each storm's phase, in order, by that storm's id: the result cards' rows. */
   readonly phaseBuilds = new Map<string, string[]>();
-  /** Storms whose phase objective had every row done when they landed: result card 1's "Objective complete" badge. */
+  /** Storms whose phase objective had every row done when they landed: result card 1's "Objective done" badge. */
   readonly objectivesComplete = new Set<string>();
   /** Every action and every new year counts one: Maya speaks at most once per moment. */
   moment = 0;

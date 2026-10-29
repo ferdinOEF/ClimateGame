@@ -130,14 +130,6 @@
       ]
     },
     {
-      "id": "dune-shrinks",
-      "kind": "gameRule",
-      "text": "A dune that takes a beating isn't destroyed: it stays weaker until repaired, and is there for the next storm.",
-      "elements": [
-        "dune"
-      ]
-    },
-    {
       "id": "seawall-holds",
       "kind": "gameRule",
       "text": "A seawall stops most of a surge while it holds, and it's strong from the day it's built.",
@@ -370,15 +362,6 @@
       "kind": "gameRule",
       "text": "A cyclone brings wind as well as surge, strongest where it lands. Water and wind together decide each house.",
       "elements": []
-    },
-    {
-      "id": "wind-shelter",
-      "kind": "gameRule",
-      "text": "Pandanus is the only defence that lowers the wind: homes within two tiles of it take half the wind damage.",
-      "elements": [
-        "sandy_vegetation",
-        "mangrove"
-      ]
     },
     {
       "id": "wind-reach",

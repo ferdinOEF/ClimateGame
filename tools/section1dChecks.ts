@@ -183,7 +183,7 @@ async function main(): Promise<void> {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
     check((await bubble(page)) === null, "Esc dismisses her line");
-    await page.evaluate(`window.__nuggetPopupForTest.replay("dune-shrinks")`);
+    await page.evaluate(`window.__nuggetPopupForTest.replay("seawall-holds")`);
     await waitForBubble(page);
     await page.locator(".maya-dismiss").click();
     check((await bubble(page)) === null, "Got it dismisses her line");

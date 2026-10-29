@@ -518,17 +518,17 @@ function alongTheCoast(keys) {
   const before = (a, b) => a.r - b.r || a.q - b.q;
   const distance = (a, b) => (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.q + a.r - b.q - b.r)) / 2;
   const left = [...coords].sort(before);
-  const out = [];
+  const out2 = [];
   let at = left.shift();
   while (at) {
-    out.push(at.key);
+    out2.push(at.key);
     let best = -1;
     for (let i = 0; i < left.length; i++) {
       if (best < 0 || distance(at, left[i]) < distance(at, left[best]) || distance(at, left[i]) === distance(at, left[best]) && before(left[i], left[best]) < 0) best = i;
     }
     at = best >= 0 ? left.splice(best, 1)[0] : void 0;
   }
-  return out;
+  return out2;
 }
 function floodSources(board, config = HAZARD_MODEL) {
   if (board.floodSource) return board.floodSource.keys;
@@ -634,15 +634,15 @@ function pathDrag(board, own, config, kindOf) {
     add(key, kind, drag, key);
     for (const n of board.tiles.get(key)?.neighbours ?? []) add(n, kind, drag * config.defence.neighbourShare, key);
   }
-  const out = new Map(harm);
+  const out2 = new Map(harm);
   const adjacent = neighboursOn(board);
-  for (const [tile, kinds] of byKind) out.set(tile, (out.get(tile) ?? 0) + [...kinds].reduce((a, [kind, stack]) => a + kindValue(kind, stack, adjacent).value, 0));
-  return out;
+  for (const [tile, kinds] of byKind) out2.set(tile, (out2.get(tile) ?? 0) + [...kinds].reduce((a, [kind, stack]) => a + kindValue(kind, stack, adjacent).value, 0));
+  return out2;
 }
 function stackInto(stack, m, from) {
-  const out = stack ?? [];
-  out.push({ m, from });
-  return out;
+  const out2 = stack ?? [];
+  out2.push({ m, from });
+  return out2;
 }
 function kindValue(kind, stack, adjacent) {
   const single2 = Math.max(...stack.map((e) => e.m));
@@ -686,7 +686,7 @@ function areaProtection(board, own, config = HAZARD_MODEL, kindOf = (key) => key
       frontier = next;
     }
   }
-  const out = /* @__PURE__ */ new Map();
+  const out2 = /* @__PURE__ */ new Map();
   const adjacent = neighboursOn(board);
   for (const [key, kinds] of best) {
     const judged = [...kinds].map(([kind, stack]) => ({ kind, ...kindValue(kind, stack, adjacent) }));
@@ -695,10 +695,10 @@ function areaProtection(board, own, config = HAZARD_MODEL, kindOf = (key) => key
     let hard = 0;
     for (const j of judged) if (engineeredLike(j.kind, j.paired)) hard = Math.max(hard, j.value);
     const ceiling = Math.min(config.defence.engineeredMaxProtectionM ?? config.defence.maxProtectionM, Math.max(config.defence.maxProtectionM, hard));
-    out.set(key, Math.min(sum, Math.max(...values) * stackCap, ceiling));
+    out2.set(key, Math.min(sum, Math.max(...values) * stackCap, ceiling));
   }
-  for (const [key, h] of harm) out.set(key, (out.get(key) ?? 0) + h);
-  return out;
+  for (const [key, h] of harm) out2.set(key, (out2.get(key) ?? 0) + h);
+  return out2;
 }
 var LevelHeap = class {
   items = [];
@@ -783,9 +783,9 @@ function pushAtWallEnds(state, board, reached, level, own) {
   }
 }
 function protect(level, protection) {
-  const out = /* @__PURE__ */ new Map();
-  for (const [key, l] of level) out.set(key, l - (protection.get(key) ?? 0));
-  return out;
+  const out2 = /* @__PURE__ */ new Map();
+  for (const [key, l] of level) out2.set(key, l - (protection.get(key) ?? 0));
+  return out2;
 }
 function depthOf(board, level) {
   const depth = /* @__PURE__ */ new Map();
@@ -877,14 +877,14 @@ function computeWater(state, storm, options = {}) {
     if ((inst.stormsSurvived ?? 0) >= def.survivesStorms || isCracked(def, inst, at)) breaking.add(key);
     else survived.push(key);
   }
-  const out = /* @__PURE__ */ new Set([...breaking, ...aged]);
-  const first = pass(state, board, storm, options.combos, out, /* @__PURE__ */ new Map(), config);
+  const out2 = /* @__PURE__ */ new Set([...breaking, ...aged]);
+  const first = pass(state, board, storm, options.combos, out2, /* @__PURE__ */ new Map(), config);
   const failed = [...breaking];
   const overwhelmed = [];
   const weaken = /* @__PURE__ */ new Map();
   for (const [key, inst] of state.elements) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (!def || (def.effects.resilience ?? 0) <= 0 || inst.broken || out.has(key)) continue;
+    if (!def || (def.effects.resilience ?? 0) <= 0 || inst.broken || out2.has(key)) continue;
     const d = first.depth.get(key) ?? 0;
     if (d <= 0) continue;
     if (def.category === "engineered" && def.survivesStorms === void 0 && def.breaksAtAge === void 0 && def.failureThreshold !== void 0 && d > def.failureThreshold * config.defence.failDepthPerUnit) failed.push(key);
@@ -982,12 +982,12 @@ function nearSand(state, reach) {
 }
 function sandForPandanus(state) {
   const terrains = ELEMENT_BY_ID.get("sandy_vegetation")?.validTerrainIds ?? ["beach"];
-  const out = [];
+  const out2 = [];
   for (const [key, tile] of state.placed) {
     if (!terrains.includes(tile.terrainId) || state.isScenery(key) || state.reserved.has(key) || state.unbuildable.has(key)) continue;
-    out.push(tile.coord);
+    out2.push(tile.coord);
   }
-  return out;
+  return out2;
 }
 function damageAt(field, key) {
   return (field.depth.get(key) ?? 0) + (field.wind?.get(key) ?? 0);
@@ -1230,13 +1230,13 @@ function computeCombos(state) {
   return { members, bonus };
 }
 function newComboMembers(before, after) {
-  const out = [];
+  const out2 = [];
   for (const [comboId, keys] of after.members) {
     const previous = before.members.get(comboId) ?? /* @__PURE__ */ new Set();
     const added = [...keys].filter((key) => !previous.has(key));
-    if (added.length > 0) out.push({ combo: comboId, tiles: added, all: [...keys] });
+    if (added.length > 0) out2.push({ combo: comboId, tiles: added, all: [...keys] });
   }
-  return out;
+  return out2;
 }
 
 // src/core/exposure.ts
@@ -1664,17 +1664,17 @@ function stretchTiles(tiles, spec) {
     if (tile.terrainId === "coast") sum -= Math.sign(at.across);
   }
   const side = sum >= 0 ? 1 : -1;
-  const out = /* @__PURE__ */ new Set();
+  const out2 = /* @__PURE__ */ new Set();
   for (const { tile, at } of list) {
     const across = at.across * side;
-    if (at.along >= 0 && at.along <= 1 && across <= spec.inland && across >= -spec.seaward) out.add(axialKey(tile.coord));
+    if (at.along >= 0 && at.along <= 1 && across <= spec.inland && across >= -spec.seaward) out2.add(axialKey(tile.coord));
   }
-  return out;
+  return out2;
 }
 function discTiles(tiles, centre, radius) {
-  const out = /* @__PURE__ */ new Set();
-  for (const tile of tiles) if (axialDistance(tile.coord, centre) <= radius) out.add(axialKey(tile.coord));
-  return out;
+  const out2 = /* @__PURE__ */ new Set();
+  for (const tile of tiles) if (axialDistance(tile.coord, centre) <= radius) out2.add(axialKey(tile.coord));
+  return out2;
 }
 function nearestLocality(coord, localities) {
   let best;
@@ -1690,12 +1690,12 @@ function nearestLocality(coord, localities) {
 }
 function localityTiles(tiles, localities, names) {
   const wanted = new Set(names);
-  const out = /* @__PURE__ */ new Set();
+  const out2 = /* @__PURE__ */ new Set();
   for (const tile of tiles) {
     const nearest = nearestLocality(tile.coord, localities);
-    if (nearest && wanted.has(nearest.name)) out.add(axialKey(tile.coord));
+    if (nearest && wanted.has(nearest.name)) out2.add(axialKey(tile.coord));
   }
-  return out;
+  return out2;
 }
 
 // src/core/forecastCone.ts
@@ -1727,15 +1727,15 @@ var world = (key) => {
 var seaward = seawardOf;
 function cycloneTrack(board, site, end) {
   const at = world(site);
-  const out = seaward(board, site);
+  const out2 = seaward(board, site);
   const unit2 = Math.sqrt(3);
   return {
     kind: "cyclone",
     points: [
-      { x: at.x + out.x * unit2 * 7, z: at.z + out.z * unit2 * 7 },
-      { x: at.x + out.x * unit2 * 3, z: at.z + out.z * unit2 * 3 },
+      { x: at.x + out2.x * unit2 * 7, z: at.z + out2.z * unit2 * 7 },
+      { x: at.x + out2.x * unit2 * 3, z: at.z + out2.z * unit2 * 3 },
       { x: at.x, z: at.z },
-      end ? world(end) : { x: at.x - out.x * unit2 * 1.6, z: at.z - out.z * unit2 * 1.6 }
+      end ? world(end) : { x: at.x - out2.x * unit2 * 1.6, z: at.z - out2.z * unit2 * 1.6 }
     ]
   };
 }
@@ -1773,16 +1773,16 @@ function forecastCone(challengeId, state, board, storm, lost, options = {}) {
   const water = computeWater(bare(state), storm, { landfallZoneTiles: options.landfallZoneTiles });
   const site = storm.kind !== "flood" && storm.landfall !== null ? board.sites[storm.landfall] : null;
   const at = site ? world(site) : null;
-  const out = site ? seaward(board, site) : null;
+  const out2 = site ? seaward(board, site) : null;
   const cos = Math.cos(SEA_WEDGE.halfAngleDeg * Math.PI / 180);
   const inWedge = (key) => {
-    if (!at || !out) return false;
+    if (!at || !out2) return false;
     const p = world(key);
     const dx = p.x - at.x;
     const dz = p.z - at.z;
     const distance = Math.hypot(dx, dz);
     if (distance > SEA_WEDGE.reachHex * Math.sqrt(3)) return false;
-    return distance < 0.01 || (dx * out.x + dz * out.z) / distance >= cos;
+    return distance < 0.01 || (dx * out2.x + dz * out2.z) / distance >= cos;
   };
   const reached = [.../* @__PURE__ */ new Set([...water.depth.keys(), ...water.wind.keys()])].filter((key) => !state.isScenery(key) && (!WATER.has(board.tiles.get(key).terrainId) || inWedge(key)));
   const bands = coneBands(reached.map((key) => [key, damageAt(water, key)]));
@@ -2138,15 +2138,15 @@ function hexDistance(a, b) {
 }
 function placesInArea(places, area) {
   const seen = /* @__PURE__ */ new Set();
-  const out = [];
+  const out2 = [];
   for (const place of places) {
     if (seen.has(place.name)) continue;
     const key = `${place.q},${place.r}`;
     if (!area.some((tile) => hexDistance(tile, key) <= 1)) continue;
     seen.add(place.name);
-    out.push(place);
+    out2.push(place);
   }
-  return out;
+  return out2;
 }
 
 // src/core/resiliencePoints.ts
@@ -2164,13 +2164,13 @@ function defenceId(key, elementId, builtOnTurn) {
   return `${key}|${elementId}|${builtOnTurn}`;
 }
 function standingDefences(state) {
-  const out = [];
+  const out2 = [];
   for (const [key, inst] of state.elements) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
     if (!def || def.kind !== "defense" || inst.broken || state.isScenery(key)) continue;
-    out.push(defenceId(key, inst.elementId, inst.builtOnTurn));
+    out2.push(defenceId(key, inst.elementId, inst.builtOnTurn));
   }
-  return out.sort();
+  return out2.sort();
 }
 function livingCoast(before, after, args, housesDamaged) {
   let standing = 0;
@@ -2349,7 +2349,7 @@ var ActionRun = class {
   areas = /* @__PURE__ */ new Map();
   /** The defences the player built in each storm's phase, in order, by that storm's id: the result cards' rows. */
   phaseBuilds = /* @__PURE__ */ new Map();
-  /** Storms whose phase objective had every row done when they landed: result card 1's "Objective complete" badge. */
+  /** Storms whose phase objective had every row done when they landed: result card 1's "Objective done" badge. */
   objectivesComplete = /* @__PURE__ */ new Set();
   /** Every action and every new year counts one: Maya speaks at most once per moment. */
   moment = 0;
@@ -18593,27 +18593,49 @@ function cutText(v, max) {
 }
 function checkAnswers(raw) {
   const input = raw && typeof raw === "object" ? raw : {};
-  const out = {};
-  if (isScale(input.s1_before)) out.s1_before = input.s1_before;
-  if (isScale(input.s1_now)) out.s1_now = input.s1_now;
-  if (oneOf(FEELINGS, input.s2_feeling)) out.s2_feeling = input.s2_feeling;
+  const out2 = {};
+  if (isScale(input.s1_before)) out2.s1_before = input.s1_before;
+  if (isScale(input.s1_now)) out2.s1_now = input.s1_now;
+  if (oneOf(FEELINGS, input.s2_feeling)) out2.s2_feeling = input.s2_feeling;
   const why = cutText(input.s2_why, TEXT_LIMITS.s2_why);
-  if (why) out.s2_why = why;
+  if (why) out2.s2_why = why;
   const change = cutText(input.s3_change, TEXT_LIMITS.s3_change);
-  if (change) out.s3_change = change;
-  if (isScale(input.s4_enjoy)) out.s4_enjoy = input.s4_enjoy;
+  if (change) out2.s3_change = change;
+  if (isScale(input.s4_enjoy)) out2.s4_enjoy = input.s4_enjoy;
   if (Array.isArray(input.s5_actions)) {
     const picked = ACTIONS.filter((a) => input.s5_actions.includes(a));
-    if (picked.length > 0) out.s5_actions = picked;
+    if (picked.length > 0) out2.s5_actions = picked;
   }
   const remember = cutText(input.s6_remember, TEXT_LIMITS.s6_remember);
-  if (remember) out.s6_remember = remember;
-  if (oneOf(AGES, input.s7_age)) out.s7_age = input.s7_age;
-  if (oneOf(STATUSES, input.s7_status)) out.s7_status = input.s7_status;
-  return out;
+  if (remember) out2.s6_remember = remember;
+  if (oneOf(AGES, input.s7_age)) out2.s7_age = input.s7_age;
+  if (oneOf(STATUSES, input.s7_status)) out2.s7_status = input.s7_status;
+  return out2;
 }
 function anyAnswer(answers2) {
   return ANSWER_KEYS.some((key) => answers2[key] !== void 0);
+}
+
+// src/core/boardRank.ts
+function nameKey(name) {
+  return name.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+}
+function bestPerName(rows) {
+  const sorted = [...rows].sort((a, b) => b.points - a.points || (a.createdAt ?? 0) - (b.createdAt ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const seen = /* @__PURE__ */ new Set();
+  const out2 = [];
+  for (const row of sorted) {
+    const key = nameKey(row.name);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out2.push(row);
+  }
+  return out2;
+}
+function denseRank(points, rows) {
+  const above = /* @__PURE__ */ new Set();
+  for (const row of rows) if (row.points > points) above.add(row.points);
+  return above.size + 1;
 }
 
 // server/handlers.ts
@@ -18640,14 +18662,14 @@ async function underLimit(ctx, kind) {
 }
 function parseBuilds(raw) {
   if (!Array.isArray(raw) || raw.length > MAX_BUILDS) return null;
-  const out = [];
+  const out2 = [];
   for (const b of raw) {
     if (!b || typeof b !== "object") return null;
     const { year, tile, element } = b;
     if (typeof year !== "number" || !Number.isInteger(year) || typeof tile !== "string" || tile.length > 12 || typeof element !== "string" || element.length > 40) return null;
-    out.push({ year, tile, element });
+    out2.push({ year, tile, element });
   }
-  return out;
+  return out2;
 }
 function runFacts(replay) {
   const { run, points } = replay;
@@ -18715,31 +18737,20 @@ async function postRun(ctx, body) {
   await saveRun(ctx, runId, builds, facts, body);
   return ok({ saved: true, finished: facts.finished, points: facts.points });
 }
-async function rankOf(sql, points) {
-  const rows = await sql.query("SELECT COUNT(*) AS n FROM board WHERE points > $1", [points]);
-  return Number(rows[0]?.n ?? 0) + 1;
+async function boardRows(sql) {
+  const rows = await sql.query(
+    "SELECT id, name, points, stars, season, created_at FROM board ORDER BY points DESC, created_at ASC"
+  );
+  return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })));
 }
+var out = (rows, r) => ({ rank: denseRank(r.points, rows), name: r.name, points: r.points, stars: r.stars, season: r.season });
 async function around(sql, points, own) {
-  const rank = await rankOf(sql, points);
-  const aboveRows = await sql.query(
-    "SELECT name, points, stars, season FROM board WHERE points > $1 ORDER BY points ASC, created_at DESC LIMIT 2",
-    [points]
-  );
-  const belowRows = await sql.query(
-    "SELECT id, name, points, stars, season FROM board WHERE points <= $1 ORDER BY points DESC, created_at ASC LIMIT 3",
-    [points]
-  );
-  const withRank = async (r) => ({
-    rank: await rankOf(sql, Number(r.points)),
-    name: r.name,
-    points: Number(r.points),
-    stars: Number(r.stars),
-    season: r.season
-  });
-  const above = await Promise.all([...aboveRows].reverse().map(withRank));
-  const below = await Promise.all(belowRows.filter((r) => r.id !== own).slice(0, 2).map(async (r) => ({ ...await withRank(r), rank: Math.max(rank + 1, await rankOf(sql, Number(r.points))) })));
-  const tenth = await sql.query("SELECT points FROM board ORDER BY points DESC LIMIT 1 OFFSET 9");
-  return { rank, above, below, tenth: tenth.length ? Number(tenth[0].points) : null };
+  const rows = await boardRows(sql);
+  const rank = denseRank(points, rows);
+  const above = rows.filter((r) => r.points > points).slice(-2).map((r) => out(rows, r));
+  const below = rows.filter((r) => r.points <= points && r.id !== own).slice(0, 2).map((r) => out(rows, r));
+  const tenth = rows.length >= 10 ? rows[9].points : null;
+  return { rank, above, below, tenth };
 }
 async function getBoard(ctx, query) {
   if (!ctx.sql) return OFFLINE;
@@ -18749,13 +18760,18 @@ async function getBoard(ctx, query) {
     if (!Number.isFinite(points) || points < 0 || points > 1e6) return fail(400, "bad points");
     return ok({ ...await around(ctx.sql, Math.round(points), null), points: Math.round(points), season });
   }
-  const rows = await ctx.sql.query("SELECT name, points, stars, season FROM board ORDER BY points DESC, created_at ASC LIMIT 10");
-  const out = [];
-  for (const [i, r] of rows.entries()) {
-    const prev = out[i - 1];
-    out.push({ rank: prev && prev.points === Number(r.points) ? prev.rank : i + 1, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season });
-  }
-  return ok({ rows: out, season });
+  const rows = await boardRows(ctx.sql);
+  return ok({ rows: rows.slice(0, 10).map((r) => out(rows, r)), season });
+}
+async function oneRowFor(sql, name) {
+  const rows = await sql.query(
+    "SELECT id, name, points, stars, season, created_at FROM board WHERE lower(name) = lower($1)",
+    [name]
+  );
+  const same = rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === nameKey(name));
+  const [best] = bestPerName(same);
+  for (const r of same) if (best && r.id !== best.id) await sql.query("DELETE FROM board WHERE id = $1", [r.id]);
+  return best ?? null;
 }
 async function postBoard(ctx, body) {
   if (!ctx.sql) return OFFLINE;
@@ -18773,20 +18789,23 @@ async function postBoard(ctx, body) {
   const claimed = await ctx.sql.query("UPDATE runs SET on_board = true WHERE id = $1 AND on_board = false RETURNING id", [runId]);
   if (claimed.length === 0) return fail(409, "already on the board");
   await saveRun(ctx, runId, builds, facts, body);
-  const id = randomUUID();
-  const editToken = randomBytes(24).toString("base64url");
   const season = seasonOf(ctx.env);
   const stars = facts.stars.reduce((a, b) => a + b, 0);
-  const day = ctx.now.toISOString().slice(0, 10);
-  await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [
-    id,
-    season,
-    name.name,
-    facts.points,
-    stars,
-    editToken,
-    `${day}T00:00:00.000Z`
-  ]);
+  const known = await oneRowFor(ctx.sql, name.name);
+  if (known && known.points >= facts.points) {
+    const place2 = await around(ctx.sql, known.points, known.id);
+    return ok({ ...place2, points: known.points, editToken: "", season, name: known.name, kept: true });
+  }
+  const editToken = randomBytes(24).toString("base64url");
+  const day = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+  let id;
+  if (known) {
+    id = known.id;
+    await ctx.sql.query("UPDATE board SET season = $1, name = $2, points = $3, stars = $4, edit_token = $5, created_at = $6 WHERE id = $7", [season, name.name, facts.points, stars, editToken, day, id]);
+  } else {
+    id = randomUUID();
+    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [id, season, name.name, facts.points, stars, editToken, day]);
+  }
   const place = await around(ctx.sql, facts.points, id);
   return ok({ ...place, points: facts.points, editToken, season, name: name.name });
 }
@@ -18799,7 +18818,9 @@ async function patchBoard(ctx, body) {
   if (!name.ok) return fail(400, name.reason === "refused" ? "name refused" : "bad name");
   const rows = await ctx.sql.query("UPDATE board SET name = $1 WHERE edit_token = $2 RETURNING points", [name.name, token]);
   if (rows.length === 0) return fail(404, "no such row");
-  return ok({ renamed: true, name: name.name, rank: await rankOf(ctx.sql, Number(rows[0].points)) });
+  const kept = await oneRowFor(ctx.sql, name.name);
+  const points = kept?.points ?? Number(rows[0].points);
+  return ok({ renamed: true, name: name.name, rank: denseRank(points, await boardRows(ctx.sql)) });
 }
 async function postFeedback(ctx, body) {
   if (!ctx.sql) return OFFLINE;

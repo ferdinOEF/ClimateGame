@@ -210,7 +210,7 @@ export class FieldGuide {
         if (fact?.citation) {
           const line = document.createElement("p");
           line.className = "field-guide-fact";
-          line.textContent = `${fact.text} Source: ${fact.citation.publisher}, ${fact.citation.year}.`;
+          line.textContent = sourceLine(fact.text, fact.citation);
           page.appendChild(line);
         }
       }
@@ -220,7 +220,8 @@ export class FieldGuide {
     const defences = this.backdrop.querySelector(".field-guide-defences") as HTMLElement;
     defences.innerHTML = "";
     // Section 30.11 bug 7: what side by side does, in the game's plain words.
-    const together = Object.values(COMBO_INFO).map((info) => ({ id: "combo", name: "Side by side", text: comboNote(info), source: COMBO_SOURCE }));
+    // Section 37.7: one entry for both pairs (there were two named "Side by side").
+    const together = [{ id: "combo", name: "Side by side", text: sideBySideNote(), source: COMBO_SOURCE }];
     // Section 34b (owner decision): where the wind reaches, from the same rule the Sources screen lists.
     const windReach = factById("wind-reach")?.text;
     const wind = windReach ? [{ id: "wind", name: "The wind", text: `In this game ${windReach.charAt(0).toLowerCase()}${windReach.slice(1)}` }] : [];
@@ -237,7 +238,7 @@ export class FieldGuide {
       if (fact?.citation) {
         const line = document.createElement("p");
         line.className = "field-guide-fact";
-        line.textContent = `${fact.text} Source: ${fact.citation.publisher}, ${fact.citation.year}.`;
+        line.textContent = sourceLine(fact.text, fact.citation);
         item.appendChild(line);
       }
       defences.appendChild(item);
@@ -283,4 +284,17 @@ export class FieldGuide {
     this.backdrop.remove();
     this.toast.remove();
   }
+}
+
+/** Section 37.7: a fact and its source; a date that ends in a stop ("n.d.") takes no second one ("n.d.."). */
+export function sourceLine(text: string, citation: { publisher: string; year: string | number }): string {
+  const year = String(citation.year);
+  return `${text} Source: ${citation.publisher}, ${year}${year.endsWith(".") ? "" : "."}`;
+}
+
+/** Section 37.7: the one "Side by side" rule, both pairs in it. */
+export function sideBySideNote(): string {
+  const [first, ...rest] = Object.values(COMBO_INFO);
+  const lower = (text: string): string => `${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+  return [comboNote(first).replace(/\.$/, ""), ...rest.map((info) => lower(info.plain).replace(/\.$/, ""))].join("; ") + ".";
 }

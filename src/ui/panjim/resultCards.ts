@@ -148,12 +148,12 @@ export function resultCard(result: PhaseResult, points?: StormPoints | null): HT
 }
 
 /**
- * The objective's badge (Section 12): "Objective complete" with three stars; with fewer (Section 30.9) "Objective
- * done" and one line on what stopped the third star.
+ * The objective's badge (Section 12): "Objective done" (Section 37.7: everywhere, never "Objective complete"); with
+ * fewer than three stars (Section 30.9) one line under it on what stopped the third star.
  */
 export function objectiveHtml(result: PhaseResult): string {
   if (!result.objectiveComplete) return "";
-  if (result.stars >= 3 || !result.shortOfThree) return `<div class="result-badge" role="note">Objective complete</div>`;
+  if (result.stars >= 3 || !result.shortOfThree) return `<div class="result-badge" role="note">Objective done</div>`;
   return `<div class="result-badge" role="note">Objective done</div><p class="result-short">${esc(result.shortOfThree)}</p>`;
 }
 

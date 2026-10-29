@@ -83,10 +83,10 @@ describe("NuggetPopup hands the fact to Maya", () => {
     const { maya, said, calls } = fakeMaya();
     const picker = new NuggetPopup(maya);
     expect(picker.replay("heat")).toBe(false);
-    expect(picker.replay("dune-shrinks")).toBe(true);
-    expect(said[0]).toMatchObject({ id: "dune-shrinks", force: true, urgent: true });
+    expect(picker.replay("seawall-holds")).toBe(true);
+    expect(said[0]).toMatchObject({ id: "seawall-holds", force: true, urgent: true });
     expect(calls).toEqual(["dismiss", "next"]);
-    expect(factById("dune-shrinks")!.kind).toBe("gameRule");
+    expect(factById("seawall-holds")!.kind).toBe("gameRule");
     // A rule about growth, switched off in this version, is not a fact Maya can replay.
     expect(picker.replay("mangrove-grow")).toBe(false);
   });

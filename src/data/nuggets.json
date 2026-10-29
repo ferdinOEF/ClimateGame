@@ -8,8 +8,7 @@
     "pandanus-cheap"
   ],
   "dune": [
-    "dunes-barrier",
-    "dune-shrinks"
+    "dunes-barrier"
   ],
   "seawall": [
     "seawall-holds",

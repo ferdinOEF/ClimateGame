@@ -2,6 +2,7 @@ import type { ChallengeDef, ScheduledChallenge } from "@core/climate";
 import { HEAT_LEAD_YEARS } from "@core/exposure";
 import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
 import type { HouseStars } from "@core/zones";
+import { SHOW_MAYA } from "@services/features";
 
 /**
  * How to Play for the Panjim game (Section 15): a short page in the result
@@ -96,7 +97,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>One build a year ${RULE}</h3>
         <p>Click a tile and pick a card. That build ends the year. ${years} builds, ${input.startYear} to ${input.endYear}.</p>
-        <p>By keyboard: Tab to the map, the arrow keys move between tiles, O jumps to the objective's tiles, Enter opens one.</p>
+        <p>${keysLine(SHOW_MAYA)}</p>
       </div>
     </section>
 
@@ -140,4 +141,9 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
   </div>
   </div>
 `;
+}
+
+/** Section 37.7: Help's keys line (the M key only while Maya shows). */
+export function keysLine(maya: boolean): string {
+  return `By keyboard: Tab to the board (after the HUD), the arrow keys move between tiles, O jumps to the objective's tiles, Enter opens one, Up and Down pick a card. S: sound on or off.${maya ? " M: Maya's tips on or off." : ""} R: show risk.`;
 }

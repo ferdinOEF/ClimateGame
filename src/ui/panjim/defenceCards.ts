@@ -113,5 +113,7 @@ export const TILE_NOTES = {
   home: "Homes stand here. In this game nothing can be built on a home.",
   oneBuild: "In this game a tile holds one build; demolish to build another here.",
   sea: "Nothing can be built out here.",
+  /** Section 37.7: a river tile at the river's mouth (beside the sea), where no build fits; the real placement rules. */
+  riverMouth: "Open water at the river mouth. In this game a breakwater goes on the sea, up to four tiles from the shore, and a small dam on the narrow river upstream.",
   nothing: "Nothing can be built on this tile."
 } as const;

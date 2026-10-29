@@ -32,7 +32,7 @@ import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { crackedNote, isCracked } from "@core/hazardModel";
-import { axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
+import { axialKey, axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
 import { TERRAIN_BY_ID } from "@core/terrain";
 import { releaseOverlayPlaceholder } from "@render/mapOverlayShader";
 import { releaseRuinGeometries } from "@render/ruinGeometry";
@@ -2631,7 +2631,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (popoverOptions.length === 0) {
       // Section 34: a click on ground that takes no build said nothing, and players read it as a lost click.
       // Section 34b.7: open sea says so in its own words.
-      if (panjim) buildPopover.showNote(screen.x, screen.y, state.placed.get(key)?.terrainId === "coast" ? TILE_NOTES.sea : TILE_NOTES.nothing);
+      // Section 37.7: a river tile at the mouth (beside the sea) says why, as the home and landmark cards do.
+      const terrainId = state.placed.get(key)?.terrainId;
+      const atMouth = terrainId === "river" && [0, 1, 2, 3, 4, 5].some((dir) => state.placed.get(axialKey(neighbor(coord, dir)))?.terrainId === "coast");
+      if (panjim) buildPopover.showNote(screen.x, screen.y, terrainId === "coast" ? TILE_NOTES.sea : atMouth ? TILE_NOTES.riverMouth : TILE_NOTES.nothing);
       return;
     }
     const mode = panjim ? { hideCost } : undefined;

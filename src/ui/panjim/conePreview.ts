@@ -62,6 +62,9 @@ export function coneLegendHtml(meet: boolean): string {
 /** At most this many places named on a forecast's map (Section 16 B4). */
 export const MAX_PREVIEW_LABELS = 3;
 
+/** Section 37.7: the room kept between a place's name and the map's edge, in world units. */
+const LABEL_MARGIN = 0.6;
+
 /** Section 34b.5: about how wide a letter of a place name is on the preview's map (bold, 1.05 high, with its edge), in world units. */
 const LETTER = 0.72;
 
@@ -126,6 +129,14 @@ export function renderConePreview(input: ConePreviewInput): HTMLElement {
   let maxX = Math.max(...points.map((p) => p.x)) + pad;
   let minZ = Math.min(...points.map((p) => p.z)) - pad;
   let maxZ = Math.max(...points.map((p) => p.z)) + pad;
+  // Section 37.7: every named place's dot and name inside the frame, never cut at its edge (the 2050 map cut one).
+  for (const label of placed) {
+    const box = previewLabelBox(label, label.at);
+    minX = Math.min(minX, box.x0 - LABEL_MARGIN);
+    maxX = Math.max(maxX, box.x1 + LABEL_MARGIN);
+    minZ = Math.min(minZ, box.z0 - LABEL_MARGIN);
+    maxZ = Math.max(maxZ, box.z1 + LABEL_MARGIN);
+  }
   // No narrower than 4:3 and no taller than square, so it reads as a map, not a strip.
   const width = maxX - minX;
   const height = maxZ - minZ;
@@ -257,7 +268,8 @@ function keepLabelsReadable(svg: SVGSVGElement, viewWidth: number, viewHeight: n
 function placeLabels(svg: SVGSVGElement, font: number): void {
   const vb = svg.viewBox.baseVal;
   if (!vb || vb.width <= 0) return;
-  const margin = font * 0.3;
+  // Section 37.7: a clear gap between a name and the map's edge (it was 0.3 of the type, and a long name touched it).
+  const margin = font * 0.6;
   const kept: { x0: number; y0: number; x1: number; y1: number }[] = [];
   for (const group of Array.from(svg.querySelectorAll<SVGGElement>(".cone-preview-place"))) {
     const text = group.querySelector("text");
@@ -284,6 +296,13 @@ function placeLabels(svg: SVGSVGElement, font: number): void {
     if (overLeft > 0 || overRight > 0) {
       const shift = overLeft > 0 ? overLeft : -overRight;
       text.setAttribute("x", fmt(Number(text.getAttribute("x")) + shift));
+      box = text.getBBox();
+    }
+    // Section 37.7: nor off the top or the bottom (the 2050 map cut a name at its top edge): moved down or up inside.
+    const overTop = vb.y + margin - box.y;
+    const overBottom = box.y + box.height - (vb.y + vb.height - margin);
+    if (overTop > 0 || overBottom > 0) {
+      text.setAttribute("y", fmt(Number(text.getAttribute("y")) + (overTop > 0 ? overTop : -overBottom)));
       box = text.getBBox();
     }
     const pad = font * 0.15;
