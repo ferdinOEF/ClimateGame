@@ -57,17 +57,20 @@ export class SampleBank {
     if (!ctx) return Promise.resolve(null);
     const context = ctx;
     const loading = (async (): Promise<AudioBuffer | null> => {
-      try {
-        const response = await this.deps.fetch(sampleUrl(name, ogg, this.deps.base));
-        if (!response.ok) return null;
-        const data = await response.arrayBuffer();
-        const buffer = await context.decodeAudioData(data);
-        this.ready.set(name, buffer);
-        return buffer;
-      } catch {
-        // Sound is never worth an error: this one is skipped.
-        return null;
+      // The Ogg first when the browser says it plays it; the MP3 once more if the Ogg fails to load or decode.
+      for (const format of ogg ? [ogg, ""] : [""]) {
+        try {
+          const response = await this.deps.fetch(sampleUrl(name, format, this.deps.base));
+          if (!response.ok) continue;
+          const data = await response.arrayBuffer();
+          const buffer = await context.decodeAudioData(data);
+          this.ready.set(name, buffer);
+          return buffer;
+        } catch {
+          // Sound is never worth an error: the next format, or this one is skipped.
+        }
       }
+      return null;
     })();
     this.loads.set(name, loading);
     return loading;

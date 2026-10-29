@@ -3420,6 +3420,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   function dispose(): void {
     if (disposed) return;
     disposed = true;
+    // Section 36: first, so nothing thrown below can leave the music playing over the menu (after the guard: a
+    // second dispose must not close the next session's music).
+    if (panjim) music.close();
 
     for (const id of timers) window.clearTimeout(id);
     timers.clear();
@@ -3444,7 +3447,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormDirector?.finish();
     storm.dispose();
     stormSound.dispose();
-    if (panjim) music.close();
     stormWater.dispose();
     stormSky.dispose();
     buildFlourish.dispose();

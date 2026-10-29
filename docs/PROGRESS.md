@@ -14,6 +14,8 @@ Panjim and the Tutorial; the menu and the level select stay silent.
   two at once at most, 0.8 of the master, ±4% pitch. The synthesised tone stays everywhere else.
 - 36.5 Docs. No credit line (owner decision). Help: unchanged (it has no keys line for S; the ☰ Sound switch shows
   its S and covers the music).
+- 36.6 QA: tsc, 896 unit tests, build; the browser pass at 1366x768 and 1920x1080 (15 of 15 each, no console errors);
+  the reviewer's MP3 retry and two nits fixed. Details in docs/QA_REPORT.md.
 
 ## Section 35 — points, one running board, and a feedback form after the game — MERGED (`7d329c9`, QA in docs/QA_REPORT.md)
 

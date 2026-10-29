@@ -2441,3 +2441,52 @@ DELETE FROM feedback WHERE run_id = '35353535-3535-4535-8535-353535353535';
 ```
 
 **Revert:** `git revert -m 1 59d250d`.
+
+# Section 36: music and build sounds
+
+Branch `section-36-music` from master `97cdaea`. Safety copy: the local tag `pre-section-36` (the git proxy refuses tag
+pushes) and the branch `backup/pre-section-36` on GitHub. Not merged.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 104 files, 896 pass, 6 skipped (pre-existing). New: `sampleBank.test.ts` (10), `music.test.ts` (6). The preview-equals-resolution test (`preview.test.ts`) passes. |
+| `npm run build` | Clean. `dist/sw.js` PRECACHE lists all 16 `/sound/` files. |
+| Browser pass (`tools/section36Shots.ts builds=1`), dev server, `?qa=1&noname=1` | 15 of 15 checks at 1366x768 and 15 of 15 at 1920x1080; zero console errors. |
+| Bots | Not run: no mechanics or points changed. |
+| Maya, layout, label, help runs | Not run: no file under `src/ui/panjim` changed. |
+| Independent review | No BLOCKER, no MAJOR; 4 MINOR, 3 NIT (below). |
+
+**The browser pass checks:** before the first click, no audio context and no sound file fetched; after the click
+(the start popup's button) the eight samples load as Ogg, the seven short ones first and the music last, and the
+music plays at full; a seawall and a mangrove placed through the build cards ask for `build_seawall` and
+`bird_kingfisher`; S takes the master gain to 0 and back; mid storm the music is off; on result card 1 it is full;
+on the finale card it is soft (its events: open, then begin/end per storm, finale soft). `/api` is answered in the
+page (the dev server has none), with the board's real reply shape. Screenshots in `docs/qa/section36/`: the board with
+the music full, mid storm, result card 1, the finale, at both sizes; looked at, nothing wrong. (A first pass with an
+empty `/api` stub drew "undefinedth on the board" on the finale; that was the stub's reply, not the game: the real
+server always sends a rank. The stub was fixed and the pass rerun.)
+
+**Measured:**
+- First contentful paint, production builds served locally at 1920x1080, five loads each: master median 304 ms
+  (224 to 1096), branch median 300 ms (212 to 984). No change; the spread is the container (the screenshot pass ran
+  alongside). No sound file is requested on the menu, in either.
+- The service worker's precache: 3.11 MB before, 8.42 MB after (50 entries, 16 of them sound: 5.31 MB, both formats).
+  The install time on a real network was not measured here.
+- The loop join, rendered offline from the Ogg (100 ms windows): a straight loop steps 13.8 dB (−30.9 to −17.1 dB);
+  the 1.5 s equal power crossfade's largest step is 2.5 dB, within the music's own variation. Not listened to.
+
+**Review findings and what was done:**
+- MINOR: the precache downloads both formats (5.3 MB) on a first visit before any click, and `cache.addAll` fails the
+  whole install if one file fails. Kept, as the brief says; for the owner to decide (leaving `/sound/` out of the
+  precache would still cache the sounds on first use, as the worker caches public files it serves).
+- MINOR: a third build within about 5 s plays no sound (the cap of two, as briefed; the clips are 4.2 to 5 s). Kept.
+- MINOR: no MP3 retry when the Ogg fails to decode. Fixed: the MP3 is tried once (test added).
+- MINOR: the decoded loop holds about 53 MB of memory for the page's life. Kept; for the owner.
+- NIT: the preload's deferral was undone by the music's own start. Fixed: the music's start is deferred too.
+- NIT: `music.close()` sat late in `dispose`. Fixed: first after the disposed guard.
+- NIT: unlock callbacks gather before the first click (two a session; cleared on the click). Left.
+
+**Not run:** Safari and Firefox (the MP3 path is unit tested only); listening to anything (the calm bed under the soft
+music, two samples at once and the fade over the storm's lead in were not heard: no audio output here); the Tutorial
+in the browser (it shares every code path checked); a production load (nothing merged).

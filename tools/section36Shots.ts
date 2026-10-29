@@ -44,7 +44,13 @@ let wiggle: NodeJS.Timeout | null = null;
 try {
   const context = await browser.newContext({ viewport: { width: W, height: H } });
   // The dev server has no /api (Vercel functions): the run's posts are answered here, as the server would.
-  await context.route("**/api/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "{}" }));
+  // The board's rank answer has its real shape (server/handlers.ts getBoard), else the finale reads "undefinedth".
+  await context.route("**/api/**", (route) => {
+    const url = new URL(route.request().url());
+    const points = Number(url.searchParams.get("points") ?? 0);
+    const body = url.pathname === "/api/board" && url.searchParams.has("points") ? { season: "QA", rank: 1, points, tenth: null, above: [], below: [] } : url.pathname === "/api/board" ? { season: "QA", rows: [] } : {};
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+  });
   const page = await context.newPage();
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(`${m.text()} ${m.location().url}`);

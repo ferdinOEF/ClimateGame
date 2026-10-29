@@ -47,6 +47,15 @@ describe("Section 36.1: the sample bank", () => {
     expect(decoded).toHaveLength(1);
   });
 
+  it("tries the MP3 once when the Ogg fails to load or decode", async () => {
+    let calls = 0;
+    const { bank, fetched } = fakeBank({
+      context: () => ({ decodeAudioData: async () => (calls++ === 0 ? Promise.reject(new Error("bad ogg")) : ({} as AudioBuffer)) }) as unknown as BaseAudioContext
+    });
+    await expect(bank.load("bird_drongo")).resolves.not.toBeNull();
+    expect(fetched).toEqual(["/sound/bird_drongo.ogg", "/sound/bird_drongo.mp3"]);
+  });
+
   it("resolves a failed fetch, a bad response or a failed decode to null without throwing", async () => {
     const thrown = fakeBank({ fetch: async () => Promise.reject(new Error("offline")) });
     await expect(thrown.bank.load("build_dam")).resolves.toBeNull();

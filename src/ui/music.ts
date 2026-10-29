@@ -117,7 +117,8 @@ class MusicPlayer {
     this.machine.send("open");
     this.follow();
     this.log("open");
-    onAudioUnlock(() => void this.start());
+    // After the click's own work, like the preload (sampleBank.ts): nothing starts loading inside the click's frame.
+    onAudioUnlock(() => window.setTimeout(() => void this.start(), 0));
   }
 
   /** The session closed (Exit, Play again, the idle reset): a one second fade, then the loop stops. */
