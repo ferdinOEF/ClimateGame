@@ -6,7 +6,7 @@ const read = (path: string): string => readFileSync(path, "utf8");
 
 describe("Section 37.2: the build menu clear of the bottom banner", () => {
   it("the cards avoid the banner, and the banner hides while a menu is open", () => {
-    expect(read("src/app/gameSession.ts")).toMatch(/avoid: \[[^\]]*"\.empty-prompt"/);
+    expect(read("src/app/gameSession.ts")).toMatch(/avoid: \[".panjim-clock".*"\.empty-prompt"/);
     const popover = read("src/ui/buildPopover.ts");
     expect(popover).toContain('this.backdrop.parentElement?.classList.add("build-menu-open");');
     expect(popover).toContain('this.backdrop.parentElement?.classList.remove("build-menu-open");');

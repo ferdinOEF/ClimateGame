@@ -391,6 +391,14 @@ are by run id alone, so no query can put a name to an age or an answer through a
 scored are in both `runs` and `board`, as the brief asks; two runs rarely tie, so the owner should treat the export as
 personal data.)
 
+**One row per name, dense ranks (Section 37.3).** The board shows one row a name (case and spacing aside,
+`core/boardRank.ts`): the name's best run. A post under a name already on the board replaces that row only when its
+points are higher; otherwise the row stands and the post answers with the row's place, no edit token and `kept: true`
+(the run is still in `runs`). A rename to a name already there leaves one row, the better. Every board answer reads
+the table and keeps the best row a name (so rows from before the rule, or from two posts at once, still show once),
+and ranks densely: equal points share a rank and the next follows (1, 1, 2). The finale's "4th on the board, N
+points behind 3rd" uses the same ranks.
+
 **The edit token.** A board post answers with a random token for its row, kept by the client in memory for that run
 only; `PATCH /api/board` with it renames the row (the feedback form's name field). It is never shown, exported or
 stored on the machine. Nothing about a run is saved on the machine (Section 28): the name lives in memory

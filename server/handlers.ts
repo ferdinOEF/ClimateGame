@@ -3,6 +3,7 @@ import { checkName } from "@core/nameFilter";
 import { checkAnswers, anyAnswer, type FeedbackAnswers } from "@core/feedbackForm";
 import { NATURE_BASED } from "@core/elements";
 import { replayBuilds, type BuildEntry, type PointsModel, type Replay } from "@core/resiliencePoints";
+import { bestPerName, denseRank, nameKey } from "@core/boardRank";
 import { seasonOf, type ServerEnv, type Sql } from "./db";
 
 /**
@@ -158,35 +159,39 @@ interface BoardRowOut {
   season: string;
 }
 
-/** The place `points` gets: one more than the rows with more points (a tie shares the higher place). */
-async function rankOf(sql: Sql, points: number): Promise<number> {
-  const rows = await sql.query<{ n: number | string }>("SELECT COUNT(*) AS n FROM board WHERE points > $1", [points]);
-  return Number(rows[0]?.n ?? 0) + 1;
+interface BoardRow {
+  id: string;
+  name: string;
+  points: number;
+  stars: number;
+  season: string;
+  createdAt: number;
 }
 
-/** The place `points` gets on the board, the rows just above and below it (two each), and the 10th row's points. */
+/**
+ * Section 37.3: the board as players see it, one row per name (the name's best run), by points, most first. Read in
+ * full and kept to one a name here, so a name posted twice before this rule (or by two posts at once) still shows once.
+ */
+async function boardRows(sql: Sql): Promise<BoardRow[]> {
+  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>(
+    "SELECT id, name, points, stars, season, created_at FROM board ORDER BY points DESC, created_at ASC"
+  );
+  return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })));
+}
+
+const out = (rows: readonly BoardRow[], r: BoardRow): BoardRowOut => ({ rank: denseRank(r.points, rows), name: r.name, points: r.points, stars: r.stars, season: r.season });
+
+/**
+ * The place `points` gets on the board (dense: a tie shares the place), the rows just above and below it (two each),
+ * and the 10th row's points. `own`: the run's own row, which is the player's, not a neighbour.
+ */
 async function around(sql: Sql, points: number, own: string | null): Promise<{ rank: number; above: BoardRowOut[]; below: BoardRowOut[]; tenth: number | null }> {
-  const rank = await rankOf(sql, points);
-  const aboveRows = await sql.query<{ name: string; points: number; stars: number; season: string }>(
-    "SELECT name, points, stars, season FROM board WHERE points > $1 ORDER BY points ASC, created_at DESC LIMIT 2",
-    [points]
-  );
-  const belowRows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string }>(
-    "SELECT id, name, points, stars, season FROM board WHERE points <= $1 ORDER BY points DESC, created_at ASC LIMIT 3",
-    [points]
-  );
-  const withRank = async (r: { name: string; points: number; stars: number; season: string }): Promise<BoardRowOut> => ({
-    rank: await rankOf(sql, Number(r.points)),
-    name: r.name,
-    points: Number(r.points),
-    stars: Number(r.stars),
-    season: r.season
-  });
-  const above = await Promise.all([...aboveRows].reverse().map(withRank));
-  // The run's own row (a named post) is the player's, not a neighbour; a row tied with it stands below it.
-  const below = await Promise.all(belowRows.filter((r) => r.id !== own).slice(0, 2).map(async (r) => ({ ...(await withRank(r)), rank: Math.max(rank + 1, await rankOf(sql, Number(r.points))) })));
-  const tenth = await sql.query<{ points: number }>("SELECT points FROM board ORDER BY points DESC LIMIT 1 OFFSET 9");
-  return { rank, above, below, tenth: tenth.length ? Number(tenth[0].points) : null };
+  const rows = await boardRows(sql);
+  const rank = denseRank(points, rows);
+  const above = rows.filter((r) => r.points > points).slice(-2).map((r) => out(rows, r));
+  const below = rows.filter((r) => r.points <= points && r.id !== own).slice(0, 2).map((r) => out(rows, r));
+  const tenth = rows.length >= 10 ? rows[9].points : null;
+  return { rank, above, below, tenth };
 }
 
 /** GET /api/board: the top 10 and the season; with `?points=N`, the place N would get and the rows round it. */
@@ -198,20 +203,31 @@ export async function getBoard(ctx: Ctx, query: Record<string, string | undefine
     if (!Number.isFinite(points) || points < 0 || points > 1_000_000) return fail(400, "bad points");
     return ok({ ...(await around(ctx.sql, Math.round(points), null)), points: Math.round(points), season });
   }
-  const rows = await ctx.sql.query<{ name: string; points: number; stars: number; season: string }>("SELECT name, points, stars, season FROM board ORDER BY points DESC, created_at ASC LIMIT 10");
-  const out: BoardRowOut[] = [];
-  for (const [i, r] of rows.entries()) {
-    const prev = out[i - 1];
-    // A tie shares the higher place.
-    out.push({ rank: prev && prev.points === Number(r.points) ? prev.rank : i + 1, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season });
-  }
-  return ok({ rows: out, season });
+  const rows = await boardRows(ctx.sql);
+  return ok({ rows: rows.slice(0, 10).map((r) => out(rows, r)), season });
+}
+
+/**
+ * Section 37.3: one row a name. After a write, the other rows under the same name go, the best kept (most points,
+ * then the earliest). Returns the kept row.
+ */
+async function oneRowFor(sql: Sql, name: string): Promise<BoardRow | null> {
+  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>(
+    "SELECT id, name, points, stars, season, created_at FROM board WHERE lower(name) = lower($1)",
+    [name]
+  );
+  const same = rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === nameKey(name));
+  const [best] = bestPerName(same);
+  for (const r of same) if (best && r.id !== best.id) await sql.query("DELETE FROM board WHERE id = $1", [r.id]);
+  return best ?? null;
 }
 
 /**
  * POST /api/board: `{ runId, name, builds }` for a finished run. The server replays the builds and stores the points it
- * gets, with the season; one row per run at most. Returns the place and the row's edit token (kept by the client in
- * memory for this run only, for a rename from the feedback form).
+ * gets, with the season; one post per run at most. Section 37.3: one row per name, its best run: a name already on
+ * the board keeps its row unless this run has more points (then the row takes this run's points, stars and date).
+ * Returns the place and the row's edit token (kept by the client in memory for this run only, for a rename from the
+ * feedback form); a run that did not beat its name's row gets the row's place and no token (`kept: true`).
  */
 export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promise<Reply> {
   if (!ctx.sql) return OFFLINE;
@@ -225,27 +241,31 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
   if (replay.error) return fail(400, "bad builds");
   const facts = runFacts(replay);
   if (!facts.finished) return fail(400, "unfinished");
-  // One row per run: the flag is set only once, so a second post finds nothing to set. Claimed before the run's row
+  // One post per run: the flag is set only once, so a second post finds nothing to set. Claimed before the run's row
   // is written, so a refused second post changes nothing.
   await ctx.sql.query("INSERT INTO runs (id) VALUES ($1) ON CONFLICT (id) DO NOTHING", [runId]);
   const claimed = await ctx.sql.query("UPDATE runs SET on_board = true WHERE id = $1 AND on_board = false RETURNING id", [runId]);
   if (claimed.length === 0) return fail(409, "already on the board");
   await saveRun(ctx, runId, builds, facts, body);
-  const id = randomUUID();
-  const editToken = randomBytes(24).toString("base64url");
   const season = seasonOf(ctx.env);
   const stars = facts.stars.reduce((a, b) => a + b, 0);
+  const known = await oneRowFor(ctx.sql, name.name);
+  if (known && known.points >= facts.points) {
+    // The name's row stands: this run did not beat it.
+    const place = await around(ctx.sql, known.points, known.id);
+    return ok({ ...place, points: known.points, editToken: "", season, name: known.name, kept: true });
+  }
+  const editToken = randomBytes(24).toString("base64url");
   // The row's date only (the day, not the time), so its time can never tie it to a run's or a form's.
-  const day = ctx.now.toISOString().slice(0, 10);
-  await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [
-    id,
-    season,
-    name.name,
-    facts.points,
-    stars,
-    editToken,
-    `${day}T00:00:00.000Z`
-  ]);
+  const day = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+  let id: string;
+  if (known) {
+    id = known.id;
+    await ctx.sql.query("UPDATE board SET season = $1, name = $2, points = $3, stars = $4, edit_token = $5, created_at = $6 WHERE id = $7", [season, name.name, facts.points, stars, editToken, day, id]);
+  } else {
+    id = randomUUID();
+    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [id, season, name.name, facts.points, stars, editToken, day]);
+  }
   const place = await around(ctx.sql, facts.points, id);
   return ok({ ...place, points: facts.points, editToken, season, name: name.name });
 }
@@ -260,7 +280,10 @@ export async function patchBoard(ctx: Ctx, body: Record<string, unknown>): Promi
   if (!name.ok) return fail(400, name.reason === "refused" ? "name refused" : "bad name");
   const rows = await ctx.sql.query<{ points: number }>("UPDATE board SET name = $1 WHERE edit_token = $2 RETURNING points", [name.name, token]);
   if (rows.length === 0) return fail(404, "no such row");
-  return ok({ renamed: true, name: name.name, rank: await rankOf(ctx.sql, Number(rows[0].points)) });
+  // Section 37.3: renamed to a name already on the board: one row stays for it, the better.
+  const kept = await oneRowFor(ctx.sql, name.name);
+  const points = kept?.points ?? Number(rows[0].points);
+  return ok({ renamed: true, name: name.name, rank: denseRank(points, await boardRows(ctx.sql)) });
 }
 
 /** POST /api/feedback: `{ runId, answers }`, only the answered items with allowed values, text cut. One form a run. */
