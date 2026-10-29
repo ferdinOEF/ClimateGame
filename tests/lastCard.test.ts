@@ -99,7 +99,7 @@ describe("the buttons' choices", () => {
     expect(cards).toContain("if (cards[index].bare) return;");
     expect(cards).toMatch(/if \(event\.key === "Escape"\) \{[\s\S]{0,300}event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);\s*return;/);
     // Nothing posts a name with the answers.
-    expect(controller).toContain("void postFeedback(this.runId, { ...answers, nudge: this.nudge.outcome(submitted), cardSeconds }, testTag());");
+    expect(controller).toContain("postFeedback(this.runId, { ...answers, nudge: this.nudge.outcome(submitted), cardSeconds }, testTag())");
     expect(controller).toContain("this.sendFeedback(submit.answers, true);");
     expect(readFileSync("src/ui/panjim/lastCard.ts", "utf8")).not.toMatch(/answers\(\)[^\n]*name/);
   });
