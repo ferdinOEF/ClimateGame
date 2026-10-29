@@ -1,4 +1,23 @@
-## Section 36 — music and build sounds — ON BRANCH `section-36-music` (not merged)
+## Section 37 — Section 36 answers, playtest fixes and a shorter storm lead in — ON BRANCH `section-37-playtest-fixes` (not merged)
+
+Branch `section-37-playtest-fixes` from `section-36-music` at `a553820` (safety copy: `backup/pre-section-37`, same
+point). Section 36 itself was already merged to master as `3d0045b` before this brief arrived; merging this branch
+brings only the Section 37 commits. QA in docs/QA_REPORT.md.
+- 37.0 Section 36 answers: the precache holds the Ogg files only (4.90 MB, was 8.42 MB); a third build sound cuts the
+  oldest playing one with a 100 ms fade (still two at once).
+- 37.1 The storm clock starts 2 s before the first water (`stormStartTime`), the weather and water ramp in over 1.5 s;
+  Speed up and a board click work from the build's click; the replay shares at most 8 s; the music fades out in 1.5 s.
+- 37.2 The bottom banner hides while a build menu is open.
+- 37.3 The board: one row per name (its best run), dense ranks (`core/boardRank.ts`), server side only.
+- 37.4 Play again clears the name; Try again and Start again keep it.
+- 37.5 The game's camera moves wait while the pointer moves on the board (1.5 s).
+- 37.6 O cycles exactly the pulsing tiles; the menu opens on the objective's card; Down and Up pick a card; the
+  keyboard ring draws over the pulse.
+- 37.7 Text: one Side by side, "n.d.", two rules removed, "Objective done", outlook labels inside, the keys line, the
+  river mouth note.
+- 37.8 QA, the review's fixes, and How to play fitting again at every size.
+
+## Section 36 — music and build sounds — MERGED (`3d0045b`, on the owner's "close the review and push")
 
 Branch `section-36-music` from master `97cdaea` (`pre-section-36` local tag; `backup/pre-section-36` pushed).
 Panjim and the Tutorial; the menu and the level select stay silent.

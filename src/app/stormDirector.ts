@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { axialToWorld, axialKey, neighbor, type AxialCoord } from "@core/hex";
 import { STORM_TIMING, combinedDepth, type DepthField } from "@core/hazard";
 import { FRONTS, type ZoneIndex } from "@core/zones";
-import { buildStormScript, testedDefences, type StormEvent, type StormScript } from "@core/stormScript";
+import { buildStormScript, stormStartTime, testedDefences, type StormEvent, type StormScript } from "@core/stormScript";
 import type { StormRecord } from "@core/stormRecord";
 import type { StormWater, WaterTile } from "@render/storm/stormWater";
 import type { StormSky } from "@render/storm/stormSky";
@@ -18,6 +18,9 @@ import type { StormManager } from "@render/stormManager";
  * The clock runs at 1x, at 0.4x for about a second and a half when the water
  * first reaches a defence (the slow-motion beat), and at 4x while the player
  * hurries it (a click). Reduced motion skips the slow motion and the shake.
+ *
+ * Section 37.1: the clock starts STORM_LEAD seconds before the storm's first water (`stormStartTime`), not at 0; the
+ * weather and the water's fade come in over the first LEAD_RAMP seconds from there, while the camera pulls out.
  */
 export interface StormDirectorDeps {
   tiles: { coord: AxialCoord; terrainId: string }[];
@@ -70,6 +73,8 @@ export interface StormPlayHooks {
 const SLOW_SCALE = 0.4;
 const SLOW_SECONDS = 1.5;
 const HURRY_SCALE = 4;
+/** Section 37.1: seconds (storm time) over which the sky, the wind, the rain and the water come in from the start. */
+const LEAD_RAMP = 1.5;
 const WET_SAND = new THREE.Color("#c9b98f");
 const SEA = "coast";
 
@@ -95,6 +100,8 @@ export class StormDirector {
   private hooks: StormPlayHooks | null = null;
   private resolve: (() => void) | null = null;
   private t = 0;
+  /** Section 37.1: the storm time the clock started from. */
+  private start = 0;
   private nextEvent = 0;
   private lastMs: number | null = null;
   private slowUntilMs = 0;
@@ -159,7 +166,8 @@ export class StormDirector {
     const tested = testedDefences(record, defences, zoneOf);
     this.script = buildStormScript(record, defences, zoneOf, this.deps.landmarks ?? []);
     this.hooks = hooks;
-    this.t = 0;
+    this.start = stormStartTime(record.field);
+    this.t = this.start;
     this.nextEvent = 0;
     this.lastMs = null;
     this.slowUntilMs = 0;
@@ -304,7 +312,12 @@ export class StormDirector {
 
     // The script's moments, in order.
     const events = this.script.events;
-    while (this.nextEvent < events.length && events[this.nextEvent].t <= t) this.fire(events[this.nextEvent++], nowMs, reduced);
+    while (this.nextEvent < events.length && events[this.nextEvent].t <= t) {
+      const event = events[this.nextEvent++];
+      // A strike from before the clock's start never comes all at once on the first frame.
+      if (event.type === "lightning" && event.t < this.start) continue;
+      this.fire(event, nowMs, reduced);
+    }
 
     // Pulses fade.
     // A defence the water has reached pulses while the water is on it (a
@@ -327,7 +340,7 @@ export class StormDirector {
 
     const kind = this.record.kind;
     const duration = this.script.duration;
-    const fadeIn = smooth(t / 1.5);
+    const fadeIn = smooth((t - this.start) / LEAD_RAMP);
     const fadeOut = 1 - smooth((t - (duration - 2)) / 2);
     const levels = this.weatherAt(t, kind);
     this.deps.weather.setIntensity(levels.intensity);
@@ -361,7 +374,8 @@ export class StormDirector {
    */
   private weatherAt(t: number, kind: string): { intensity: number; wind: number; rain: number } {
     const duration = this.script!.duration;
-    const clearing = 1 - smooth((t - (duration - 10)) / 8);
+    // Section 37.1: from the clock's start, the weather comes in over LEAD_RAMP seconds (it was at 0 there before).
+    const clearing = (1 - smooth((t - (duration - 10)) / 8)) * smooth((t - this.start) / LEAD_RAMP);
     if (kind === "flood") {
       const rain = smooth((t - 3) / 8) * clearing;
       return { intensity: 0.66 * rain, wind: 0.25 * rain, rain: rain };
@@ -403,7 +417,8 @@ export class StormDirector {
     if (this.field?.landfall === null || this.shoreSea.length === 0) return;
     const landfall = this.field!.landfall!;
     const [from, to] = STORM_TIMING.cyclone.drawBack;
-    const out = smooth((t - (landfall - from)) / 2) * (1 - smooth((t - (landfall - to)) / 1.2));
+    // Section 37.8 (review): it comes in with the lead in's ramp, as the weather does.
+    const out = smooth((t - (landfall - from)) / 2) * (1 - smooth((t - (landfall - to)) / 1.2)) * smooth((t - this.start) / LEAD_RAMP);
     for (const coord of this.shoreSea) this.deps.setTint(coord, out > 0.01 ? WET_SAND : null, out * 0.55);
   }
 

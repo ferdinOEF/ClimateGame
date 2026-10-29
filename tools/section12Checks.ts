@@ -15,7 +15,7 @@
  *   - the outline shows after the first build, shrinks as the objective is
  *     followed, and fades with "Area protected" when the area is safe;
  *   - pins name the objective's places; following every row gives result
- *     card 1 its "Objective complete" badge;
+ *     card 1 its "Objective done" badge;
  *   - a build outside every row says so in one line;
  *   - Esc asks "Leave Panjim?"; Esc again and Stay keep playing; Leave goes;
  *   - the level card then never says "Continue from" (Section 28.2: nothing is saved), and the popup
@@ -197,7 +197,7 @@ async function main(): Promise<void> {
         const line = await text(page, ".outlook-line, .clock-outlook");
         check(!/\d+ years/.test(line), `2: no "N years" on the Outlook during the cards: "${line.replace(/\s+/g, " ").slice(0, 80)}"`);
         const badge = await text(page, ".result-badge");
-        check(badge === "Objective complete", `result card 1 says "Objective complete" when every row was done: "${badge}"`);
+        check(badge === "Objective done", `result card 1 says "Objective done" when every row was done (Section 37.7): "${badge}"`);
       }
       await shot(page, `result1-${tag}`, full);
       // To card 3 (coming up), which must fit.

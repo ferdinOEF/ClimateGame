@@ -148,12 +148,12 @@ export function resultCard(result: PhaseResult, points?: StormPoints | null): HT
 }
 
 /**
- * The objective's badge (Section 12): "Objective complete" with three stars; with fewer (Section 30.9) "Objective
- * done" and one line on what stopped the third star.
+ * The objective's badge (Section 12): "Objective done" (Section 37.7: everywhere, never "Objective complete"); with
+ * fewer than three stars (Section 30.9) one line under it on what stopped the third star.
  */
 export function objectiveHtml(result: PhaseResult): string {
   if (!result.objectiveComplete) return "";
-  if (result.stars >= 3 || !result.shortOfThree) return `<div class="result-badge" role="note">Objective complete</div>`;
+  if (result.stars >= 3 || !result.shortOfThree) return `<div class="result-badge" role="note">Objective done</div>`;
   return `<div class="result-badge" role="note">Objective done</div><p class="result-short">${esc(result.shortOfThree)}</p>`;
 }
 
@@ -356,7 +356,12 @@ export function rankHtml(state: RankState, name: string | null): string {
   }
   const head = rank <= 10 || tenth === null ? `${ordinal(rank)} on the board` : `${tenth - points} points short of the top 10`;
   const nearest = above[above.length - 1];
-  const gap = nearest ? `${nearest.points - points} points behind ${ordinal(nearest.rank)}` : "Top of the board";
+  // Section 37.3: one row a name; a run that did not beat its name's best leaves that row on the board.
+  const gap = state.rank.kept
+    ? `Your best run under this name stays on the board, with ${points} points.`
+    : nearest
+      ? `${nearest.points - points} points behind ${ordinal(nearest.rank)}`
+      : "Top of the board";
   const row = (r: BoardRowView, me = false): string =>
     `<li class="${me ? "me" : ""}"${me ? ' aria-current="true"' : ""}><span class="finale-rank-place">${r.rank}</span><span class="finale-rank-name">${esc(r.name)}</span><b>${r.points}</b></li>`;
   const mine: BoardRowView = { rank, name, points, season: "" };

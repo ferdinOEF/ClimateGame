@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BOARD_OFFLINE, nameCardHtml, topTenHtml } from "../src/ui/panjim/nameCard";
+import { getPlayerName, playAgain, setPlayerName } from "../src/services/playerName";
 import { punctuationProblems } from "./helpers/uiStrings";
 
 /** Section 35.3: the name card at the start of Play Panjim. */
@@ -78,11 +79,28 @@ describe("the name lives in memory for this run only", () => {
     for (const file of ["src/services/playerName.ts", "src/ui/panjim/nameCard.ts", "src/services/board.ts"]) expect(readFileSync(file, "utf8")).not.toMatch(/localStorage|sessionStorage|document\.cookie|indexedDB/);
   });
 
-  it("is cleared at the menu (Exit, Leave, the idle reset) and kept by Play again", () => {
+  it("is cleared at the menu (Exit, Leave, the idle reset) and, Section 37.4, by Play again", () => {
     const shell = readFileSync("src/app/appShell.ts", "utf8");
     const menu = shell.slice(shell.indexOf('case "menu":'), shell.indexOf("renderMenuScreen("));
     expect(menu).toContain("clearPlayerName();");
-    expect(shell).not.toMatch(/requestLevel\([^)]*\)[^;]*clearPlayerName/);
+    expect(shell).toMatch(/if \(result\.then === "again"\) \{\s*\/\/[^\n]*\n\s*playAgain\(\);\s*this\.requestLevel\(level\.id, "replace"\);/);
+  });
+
+  it("Section 37.4: Play again opens the name card empty; Try again from a year keeps the run's name", () => {
+    // Play again on the finale: the next run's name card opens with an empty field.
+    setPlayerName("Ana");
+    playAgain();
+    expect(getPlayerName()).toBeNull();
+    expect(nameCardHtml(getPlayerName())).toContain('value=""');
+    // "Try again from {year}" is the same run: nothing clears its name, and a name card would open with it.
+    setPlayerName("Ana");
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    const retry = controller.slice(controller.indexOf("private applyRetry("), controller.indexOf("\n  }\n", controller.indexOf("private applyRetry(")));
+    expect(retry.length).toBeGreaterThan(100);
+    expect(retry).not.toMatch(/playAgain|clearPlayerName|setPlayerName/);
+    expect(getPlayerName()).toBe("Ana");
+    expect(nameCardHtml(getPlayerName())).toContain('value="Ana"');
+    setPlayerName(null);
   });
 
   it("shows only in Play Panjim, before its start popup", () => {

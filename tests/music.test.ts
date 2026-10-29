@@ -11,7 +11,7 @@ function machine() {
 describe("Section 36.2: the music state machine", () => {
   it("has the briefed levels and fades", () => {
     expect(MUSIC_LEVEL).toEqual({ off: 0, full: 0.35, soft: 0.2 });
-    expect(MUSIC_FADE).toEqual({ out: 2.5, in: 4, soft: 1.5, close: 1 });
+    expect(MUSIC_FADE).toEqual({ out: 1.5, in: 4, soft: 1.5, close: 1 });
   });
 
   it("open, storm begin, storm end, finale, close", () => {

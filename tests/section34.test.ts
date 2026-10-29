@@ -93,9 +93,9 @@ describe("Section 34: the Tutorial's result rows credit homes still standing", (
 });
 
 describe("Section 34: rules about builds no level offers are not shown", () => {
-  it("hides the sand mining, resort and yacht rules; the dune rule says the wear lasts until repaired", () => {
+  it("hides the sand mining, resort and yacht rules; Section 37.7: the dune has no wear, so no rule says it has", () => {
     for (const id of ["sandmining-biodiversity", "resort-no-defence", "yacht-nothing"]) expect(isShown(factById(id)!), id).toBe(false);
-    expect(factById("dune-shrinks")!.text).toContain("stays weaker until repaired");
+    expect(factById("dune-shrinks")).toBeUndefined();
   });
 });
 
@@ -240,7 +240,7 @@ describe("Section 34 Round 2: the diff review's fixes", () => {
   });
 
   it("O cycles the tiles pulsing on the board now, and leaves Ctrl+O to the browser", () => {
-    expect(session).toContain("const open = [...objectivePulse.tiles]");
+    expect(session).toContain("nextPulseTile(objectivePulse.tiles,");
     expect(session).toContain('(event.key === "o" || event.key === "O") && !event.ctrlKey && !event.metaKey && !event.altKey');
   });
 

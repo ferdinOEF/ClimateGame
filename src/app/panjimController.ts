@@ -1,7 +1,7 @@
 import { ActionRun, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import { runPoints } from "@core/resiliencePoints";
 import { beaconRun, fetchRank, newRunId, postBoard, postFeedback, postRun, renameOnBoard, type RunReport } from "@services/board";
-import { feedbackFormHtml, readFeedback, setNameError } from "@ui/panjim/feedbackForm";
+import { NAME_TAKEN, feedbackFormHtml, readFeedback, setNameError } from "@ui/panjim/feedbackForm";
 import { planSubmit } from "@core/feedbackForm";
 import { checkName } from "@core/nameFilter";
 import { markTutorialPlayed, tutorialPlayedThisVisit } from "@services/visit";
@@ -63,7 +63,7 @@ import { SHOW_MAYA } from "@services/features";
 import { leaveText } from "@ui/panjim/modalStack";
 
 /** The state classes a Panjim session puts on the shared game layer (Section 16): cleared when one starts and ends. */
-const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards"];
+const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards", "build-menu-open"];
 
 /**
  * The Panjim 2050 run inside a live session.
@@ -187,7 +187,8 @@ export interface PanjimHost {
    * Section 34b.3: one of the camera's set moves (the heat coming on, Last call, an objective row): a glide to `centre`
    * (else the middle of `tiles`), slid clear of the HUD card and Maya; held while a build menu or tile card is open.
    */
-  moveCamera: (tiles: readonly AxialCoord[], centre?: AxialCoord) => void;
+  /** `asked`: the player asked for this move (a row clicked), so it never waits for the pointer (Section 37.5). */
+  moveCamera: (tiles: readonly AxialCoord[], centre?: AxialCoord, asked?: boolean) => void;
   /** Section 34b.4: a row clicked in the objective: its tiles flash twice over 2 s. */
   flashTiles: (tiles: readonly AxialCoord[]) => void;
   /** The map's named places, for Maya to call a spot by name. */
@@ -338,7 +339,7 @@ export class PanjimController {
       if (!key) return;
       const coordOf = (k: string): AxialCoord => ({ q: Number(k.split(",")[0]), r: Number(k.split(",")[1]) });
       // Section 34b.3: its tiles kept clear of the HUD card and Maya.
-      this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key));
+      this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key), true);
       // Section 34b.4: and the row's tiles flash, so the click is seen to answer.
       this.host.flashTiles((keys.length ? keys : [key]).map(coordOf));
     });
@@ -988,6 +989,36 @@ export class PanjimController {
     return count;
   }
 
+  /** Section 37.1: the storm's hurry, armed at the build that brings it (so it covers the lead in), else at staging. */
+  private leadIn: { hurried: () => boolean; stop: () => void } | null = null;
+
+  /**
+   * Shows Speed up and listens for a click on the board, which hurries the storm; one on the HUD (volume, switches,
+   * Maya) does not. `stop` takes both away.
+   */
+  private armHurry(): { hurried: () => boolean; stop: () => void } {
+    let hurry = false;
+    const abort = new AbortController();
+    this.showSpeedUp(true);
+    document.addEventListener(
+      "pointerdown",
+      (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest(".hud-panel, .panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready")) return;
+        hurry = true;
+        this.showSpeedUp(false);
+      },
+      { signal: abort.signal, capture: true }
+    );
+    return {
+      hurried: () => hurry,
+      stop: () => {
+        abort.abort();
+        this.showSpeedUp(false);
+      }
+    };
+  }
+
   /**
    * The challenge, staged: each zone in turn gets its moment (the hazard
    * arrives, the defences there answer one at a time, a "Houses saved"
@@ -1011,20 +1042,10 @@ export class PanjimController {
     let lost = outcome.housesTotal - outcome.housesSaved - outcome.housesDamaged;
     this.outlook.renderLost(lost);
 
-    let hurry = false;
-    const abort = new AbortController();
-    this.showSpeedUp(true);
-    // A click on the board hurries the storm; one on the HUD (volume, switches, Maya) does not.
-    document.addEventListener(
-      "pointerdown",
-      (event) => {
-        const target = event.target;
-        if (target instanceof Element && target.closest(".hud-panel, .panjim-toggles, .maya, .hud-tooltip, .instrument-cluster, .panjim-clock, .map-corner, .get-ready")) return;
-        hurry = true;
-        this.showSpeedUp(false);
-      },
-      { signal: abort.signal, capture: true }
-    );
+    // Section 37.1: armed at the build's click (endTurn), so Speed up and a click on the board work through the lead in.
+    const hurrying = this.leadIn ?? this.armHurry();
+    this.leadIn = null;
+    let hurry = hurrying.hurried();
 
     const record = this.run.stormRecords.get(challenge.id);
     try {
@@ -1033,7 +1054,7 @@ export class PanjimController {
         // water passes the line, the defences answer when it reaches them.
         await this.host.challengeFx.play(record, this.preChallengeIds, {
           onHouseLost: () => this.outlook.renderLost(++lost),
-          hurry: () => hurry,
+          hurry: () => (hurry = hurrying.hurried()),
           // Maya calls the storm's phases as they come.
           onPhase: (phase, line) => {
             this.maya.dismiss();
@@ -1045,6 +1066,7 @@ export class PanjimController {
         const biggest = outcome.zones.reduce((best, zone, index) => (zone.absorbed > (outcome.zones[best]?.absorbed ?? -1) ? index : best), 0);
         await wait(500);
         for (const [index, zone] of outcome.zones.entries()) {
+          hurry = hurrying.hurried();
           const slow = index === biggest && zone.absorbed > 0 && !hurry;
           const duration = hurry ? 250 : slow ? 2600 : 1300;
           this.host.container.classList.toggle("slowmo", slow);
@@ -1054,8 +1076,8 @@ export class PanjimController {
         }
       }
     } finally {
-      abort.abort();
-      this.showSpeedUp(false);
+      hurry = hurrying.hurried();
+      hurrying.stop();
       this.host.container.classList.remove("slowmo", "storm-playing");
       // The storm's own count, exactly: the pill holds it through the result cards.
       this.outlook.renderLost(outcome.housesTotal - outcome.housesSaved);
@@ -1497,8 +1519,11 @@ export class PanjimController {
       await this.boardPending;
       if (this.disposed) return null;
       const plan = planSubmit({ runName, field: form.name, answers: form.answers, onBoard: this.onBoard }, checkName);
-      if (plan.answers && !answersSent) void postFeedback(this.runId, plan.answers);
-      answersSent = true;
+      // Sent once, when there are answers (a refused name, then answers added, still sends them).
+      if (plan.answers && !answersSent) {
+        void postFeedback(this.runId, plan.answers);
+        answersSent = true;
+      }
       let later: Promise<string | null> | undefined;
       if (plan.post && !plan.nameError) {
         const name = plan.post;
@@ -1519,11 +1544,19 @@ export class PanjimController {
         });
       }
       if (plan.rename && this.boardToken) {
-        const renamed = await renameOnBoard(this.boardToken, plan.rename);
+        const { renamed, taken } = await renameOnBoard(this.boardToken, plan.rename);
+        if (this.disposed) return null;
+        if (taken) {
+          // Section 37.9: the server refused it; the run keeps its old name on the board (the answers have gone).
+          setNameError(body, NAME_TAKEN);
+          continue;
+        }
         if (renamed) {
           runName = renamed.name;
           this.host.setPlayerName?.(runName);
           finale.setName(runName);
+          // Section 37.3: the place of the row that stays under the name (another run's, when that one had more points).
+          if (Array.isArray(renamed.above)) finale.setRank({ status: "ready", rank: renamed });
         }
       }
       if (plan.nameError) {
@@ -1907,6 +1940,8 @@ export class PanjimController {
       this.stagingYearEnd = pending.length > 0;
       // No countdowns while the storm and its result cards are on screen: they would read the old year.
       this.holdCountdowns(pending.length > 0);
+      // Section 37.1: Speed up from the build's click, the first frame of the storm's lead in.
+      if (pending.length > 0 && !this.leadIn) this.leadIn = this.armHurry();
       for (const staged of pending) {
         await this.untilLayersShut();
         if (this.disposed) return;
@@ -2132,6 +2167,11 @@ export class PanjimController {
       chip.textContent = "Objective";
       card.querySelector(".build-card-title")?.appendChild(chip);
     }
+    // Section 37.6: the menu opens with the objective's card focused, so Enter (a keyboard player's first press) builds
+    // what this tile is pulsing for, not the first card (a dune on a tile pulsing for pandanus saved no home).
+    const first = this.host.container.querySelector<HTMLElement>(".build-popover .build-card:not(.disabled) .objective-chip")?.closest<HTMLElement>(".build-card");
+    const focused = document.activeElement;
+    if (first && focused instanceof HTMLElement && focused.closest(".build-popover")) first.focus({ preventScroll: true });
   }
 
   /** A new Tutorial year: in a storm's own year, its red heat (Maya's line is the step's, Section 31.3). */
@@ -2637,6 +2677,7 @@ export class PanjimController {
   dispose(): void {
     this.reportEarlyStop();
     this.keyAbort.abort();
+    this.leadIn?.stop();
     this.tutorialPanel?.dispose();
     this.maya.dispose();
     this.mayaToggle.dispose();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BuildSounds, DEFENCE_SAMPLE, MUSIC_SAMPLE, ONE_SHOT_GAIN, ONE_SHOT_MAX, ONE_SHOT_PITCH, OneShots, SAMPLE_ORDER, SampleBank, sampleUrl, type SampleBankDeps } from "../src/ui/sampleBank";
+import { BuildSounds, DEFENCE_SAMPLE, MUSIC_SAMPLE, ONE_SHOT_CUT_FADE, ONE_SHOT_GAIN, ONE_SHOT_MAX, ONE_SHOT_PITCH, OneShots, SAMPLE_ORDER, SampleBank, sampleUrl, type SampleBankDeps } from "../src/ui/sampleBank";
 import { CARD_NAME } from "../src/ui/panjim/defenceCards";
 
 /** Section 36.1: the sample bank, on a fake audio context. */
@@ -111,40 +111,68 @@ describe("Section 36.4: the build sounds", () => {
     expect(new BuildSounds().sampleFor("khazan")).toBe("bird_kingfisher");
   });
 
-  it("plays at most two at once, each at 0.8 of the master with a pitch within 4%", async () => {
-    const sources: { rate: number; gain: number; onended: (() => void) | null }[] = [];
+  it("plays at most two at once, each at 0.8 of the master with a pitch within 4%; a third cuts the oldest with a 100 ms fade", async () => {
+    type FakeSource = { playbackRate: { value: number }; onended: (() => void) | null; stoppedAt: number | null };
+    type FakeGain = { gain: { value: number; ramps: [number, number][] } };
+    const sources: FakeSource[] = [];
+    const made: FakeGain[] = [];
     const ctx = {
+      currentTime: 10,
       createBufferSource: () => {
-        const src = { buffer: null, playbackRate: { value: 1 }, onended: null as (() => void) | null, connect: (g: unknown) => g, start: () => {} };
-        sources.push(src as unknown as { rate: number; gain: number; onended: (() => void) | null });
+        const src = {
+          buffer: null,
+          playbackRate: { value: 1 },
+          onended: null as (() => void) | null,
+          stoppedAt: null as number | null,
+          connect: (g: unknown) => g,
+          start: () => {},
+          stop(at: number) {
+            src.stoppedAt = at;
+          }
+        };
+        sources.push(src);
         return src;
       },
-      createGain: () => ({ gain: { value: 1 }, connect: (n: unknown) => n, disconnect: () => {} })
+      createGain: () => {
+        const gain = {
+          value: 1,
+          ramps: [] as [number, number][],
+          cancelScheduledValues: () => {},
+          setValueAtTime: () => {},
+          linearRampToValueAtTime: (v: number, t: number) => gain.ramps.push([v, t])
+        };
+        const g = { gain, connect: (n: unknown) => n, disconnect: () => {} };
+        made.push(g);
+        return g;
+      }
     } as unknown as BaseAudioContext;
-    const gains: number[] = [];
-    const realGain = ctx.createGain.bind(ctx);
-    (ctx as unknown as { createGain: () => GainNode }).createGain = () => {
-      const g = realGain();
-      queueMicrotask(() => gains.push(g.gain.value));
-      return g;
-    };
     let r = 0;
     const shots = new OneShots({ out: () => ({ ctx, out: {} as AudioNode }), buffer: () => ({}) as AudioBuffer, random: () => [0, 1, 0.5][r++ % 3] });
     expect(shots.play("build_dam")).toBe("played");
     expect(shots.play("bird_kite")).toBe("played");
-    expect(shots.play("bird_eagle")).toBe("dropped");
     expect(shots.active).toBe(2);
-    (sources[0] as unknown as { onended: () => void }).onended();
+    // The third: the oldest (the dam) fades to 0 over 100 ms and stops; the new one plays; still two at once.
     expect(shots.play("bird_eagle")).toBe("played");
-    expect(shots.played).toEqual(["build_dam", "bird_kite", "bird_eagle"]);
-    const rates = sources.map((s) => (s as unknown as { playbackRate: { value: number } }).playbackRate.value);
+    expect(shots.active).toBe(2);
+    expect(made[0].gain.ramps).toEqual([[0, 10 + ONE_SHOT_CUT_FADE]]);
+    expect(sources[0].stoppedAt).toBeCloseTo(10.1, 9);
+    expect(sources[1].stoppedAt).toBeNull();
+    // The cut one ending later does not free the place of one still playing.
+    sources[0].onended!();
+    expect(shots.active).toBe(2);
+    sources[1].onended!();
+    expect(shots.active).toBe(1);
+    expect(shots.play("build_seawall")).toBe("played");
+    expect(sources[2].stoppedAt).toBeNull();
+    expect(shots.played).toEqual(["build_dam", "bird_kite", "bird_eagle", "build_seawall"]);
+    const rates = sources.map((s) => s.playbackRate.value);
     expect(rates[0]).toBeCloseTo(1 - ONE_SHOT_PITCH, 9);
     expect(rates[1]).toBeCloseTo(1 + ONE_SHOT_PITCH, 9);
     expect(rates[2]).toBeCloseTo(1, 9);
     expect(ONE_SHOT_MAX).toBe(2);
     expect(ONE_SHOT_GAIN).toBe(0.8);
-    await Promise.resolve();
-    expect(gains.every((g) => g === 0.8)).toBe(true);
+    expect(ONE_SHOT_CUT_FADE).toBe(0.1);
+    expect(made.slice(1).every((g) => g.gain.value === 0.8)).toBe(true);
   });
 
   it("says missing when the sample has not loaded, and never throws", () => {

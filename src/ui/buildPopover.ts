@@ -149,6 +149,16 @@ export class BuildPopover {
     container.appendChild(this.backdrop);
     // Section 34: Tab stays among the cards while the menu is open (it wandered to the panels behind).
     trapFocus(this.el, () => this.isOpen);
+    // Section 37.6: Down and Up move between the cards (Enter builds the focused one, as a click on it).
+    this.el.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const list = [...this.el.querySelectorAll<HTMLElement>(".build-card:not(.disabled)")];
+      if (list.length === 0) return;
+      event.preventDefault();
+      const at = list.indexOf(document.activeElement as HTMLElement);
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      list[(at < 0 ? 0 : at + step + list.length) % list.length].focus({ preventScroll: true });
+    });
   }
 
   get isOpen(): boolean {
@@ -244,6 +254,8 @@ export class BuildPopover {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
     this.openedAt = performance.now();
+    // Section 37.2: the bottom banner goes while the cards are open (they are placed clear of it too, `avoid`).
+    this.backdrop.parentElement?.classList.add("build-menu-open");
     // What each card says is this game's rule, and its number this game's model.
     const head = document.createElement("div");
     head.className = "build-card-head";
@@ -520,6 +532,7 @@ export class BuildPopover {
   hide(): void {
     const hadFocus = this.el.contains(document.activeElement);
     this.backdrop.hidden = true;
+    this.backdrop.parentElement?.classList.remove("build-menu-open");
     if (hadFocus && this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
     this.returnFocus = null;
     this.tooltips?.hide();

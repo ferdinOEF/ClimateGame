@@ -50,6 +50,8 @@ export interface RankView {
   tenth: number | null;
   above: BoardRowView[];
   below: BoardRowView[];
+  /** Section 37.3: the name's better run stays on the board; `points` and `rank` are that row's. */
+  kept?: boolean;
 }
 
 /** One row of the top 10, as the server sends it. */
@@ -105,9 +107,13 @@ export async function postBoard(report: RunReport, name: string): Promise<{ post
   return { posted: body, already: status === 409 };
 }
 
-/** PATCH /api/board: renames the run's row (from the feedback form). */
-export function renameOnBoard(editToken: string, name: string): Promise<{ renamed: boolean; name: string; rank: number } | null> {
-  return call<{ renamed: boolean; name: string; rank: number }>("/api/board", { method: "PATCH", body: JSON.stringify({ editToken, name }) }, REPLAY_TIMEOUT_MS);
+/**
+ * PATCH /api/board: renames the run's row (from the feedback form). `taken`: the server refused it, the name is on the
+ * board under another run (Section 37.9); the row keeps its old name.
+ */
+export async function renameOnBoard(editToken: string, name: string): Promise<{ renamed: ({ renamed: boolean; name: string } & RankView) | null; taken: boolean }> {
+  const { status, body } = await callWithStatus<{ renamed: boolean; name: string } & RankView>("/api/board", { method: "PATCH", body: JSON.stringify({ editToken, name }) }, REPLAY_TIMEOUT_MS);
+  return { renamed: body, taken: status === 409 };
 }
 
 /** POST /api/feedback: the answered items only, by run id; never a name. */

@@ -213,3 +213,117 @@ describe("with a database", () => {
     expect(stored).not.toContain("203.0.113");
   });
 });
+
+describe("Section 37.3: one row per name, dense ranks", () => {
+  const db = memoryDb();
+  const RUN_D = "44444444-4444-4444-8444-444444444444";
+  const RUN_E = "55555555-5555-4555-8555-555555555555";
+  const RUN_F = "77777777-7777-4777-8777-777777777777";
+  let low: BuildEntry[];
+  let lowPoints: number;
+  let highPoints: number;
+  beforeAll(async () => {
+    await db.apply();
+    low = playedRun("far", "server-1").buildLog;
+    const score = (list: readonly BuildEntry[]): number => {
+      const r = newPanjimRun();
+      for (const b of list) {
+        const [q, rr] = b.tile.split(",").map(Number);
+        r.build({ q, r: rr }, b.element);
+      }
+      return runPoints(r).total;
+    };
+    lowPoints = score(low);
+    highPoints = score(guided);
+  }, SLOW);
+
+  it("a known name's row takes a better run's points and keeps the row when a run does worse; runs keep every run", async () => {
+    expect(lowPoints).toBeLessThan(highPoints);
+    const first = await postBoard(await context(db), { runId: RUN_D, name: "Mira", builds: low });
+    expect(first.status).toBe(200);
+    expect(first.body.points).toBe(lowPoints);
+    // The same name (another case) with more points: the row now holds the better run.
+    const better = await postBoard(await context(db), { runId: RUN_E, name: "mira", builds: guided });
+    expect(better.status).toBe(200);
+    expect(better.body.points).toBe(highPoints);
+    expect(typeof better.body.editToken).toBe("string");
+    expect((better.body.editToken as string).length).toBeGreaterThan(16);
+    let rows = await db.query<{ name: string; points: number }>("SELECT name, points FROM board");
+    expect(rows).toEqual([{ name: "mira", points: highPoints }]);
+    // A worse run under the name: the row stands, and this run gets the row's place and no token.
+    const worse = await postBoard(await context(db), { runId: RUN_F, name: "MIRA", builds: low });
+    expect(worse.status).toBe(200);
+    expect(worse.body).toMatchObject({ kept: true, editToken: "", points: highPoints, rank: 1 });
+    rows = await db.query<{ name: string; points: number }>("SELECT name, points FROM board");
+    expect(rows).toEqual([{ name: "mira", points: highPoints }]);
+    expect(await db.query("SELECT id FROM runs WHERE id IN ($1, $2, $3)", [RUN_D, RUN_E, RUN_F])).toHaveLength(3);
+    // The run that did not beat its row is still counted once on the board's side: a second post is refused.
+    expect((await postBoard(await context(db), { runId: RUN_F, name: "Mira", builds: low })).status).toBe(409);
+  }, SLOW);
+
+  it("ranks are dense and a tie shares its rank, in the top 10, a place for N points and the rows round it", async () => {
+    const add = (i: number, name: string, points: number) =>
+      db.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [
+        `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+        "Festival 2026",
+        name,
+        points,
+        5,
+        `token-${i}-abcdefghijklmnop`,
+        "2026-11-01T09:00:00Z"
+      ]);
+    const top = highPoints + 1000;
+    await add(1, "Ash", top);
+    await add(2, "Bea", top);
+    await add(3, "Cal", top - 100);
+    // A name on the board twice from before the rule: shown once, its best.
+    await add(4, "Dev", top - 200);
+    await add(5, "dev", top - 300);
+    const board = await getBoard(await context(db), {});
+    const rows = board.body.rows as { rank: number; name: string; points: number }[];
+    expect(rows.map((r) => [r.rank, r.name])).toEqual([
+      [1, "Ash"],
+      [1, "Bea"],
+      [2, "Cal"],
+      [3, "Dev"],
+      [4, "mira"]
+    ]);
+    // "4th on the board, N points behind 3rd": the same ranking.
+    const place = await getBoard(await context(db), { points: String(top - 250) });
+    expect(place.body.rank).toBe(4);
+    expect((place.body.above as { rank: number; name: string }[]).map((r) => [r.rank, r.name])).toEqual([
+      [2, "Cal"],
+      [3, "Dev"]
+    ]);
+    expect((place.body.below as { rank: number; name: string }[]).map((r) => [r.rank, r.name])).toEqual([[4, "mira"]]);
+    // A tie with a row shares its rank.
+    expect((await getBoard(await context(db), { points: String(top - 100) })).body.rank).toBe(2);
+  });
+
+  it("Section 37.9: a rename onto a name another run holds is refused, and nothing is deleted or replaced", async () => {
+    const before = await db.query<{ id: string; name: string; points: number }>("SELECT id, name, points FROM board ORDER BY id");
+    const [{ edit_token: token }] = await db.query<{ edit_token: string }>("SELECT edit_token FROM board WHERE name = 'Cal'");
+    // "ASH" is Ash's name (case), and so are fullwidth letters and spaces round it.
+    for (const taken of ["ASH", "  ａｓｈ ", "Mira"]) {
+      const reply = await patchBoard(await context(db), { editToken: token, name: taken });
+      expect(reply, taken).toEqual({ status: 409, body: { error: "name taken" } });
+    }
+    expect(await db.query("SELECT id, name, points FROM board ORDER BY id")).toEqual(before);
+    // A free name goes through, with the row's whole place for the finale (Codex on PR #35).
+    const renamed = await patchBoard(await context(db), { editToken: token, name: "Cal  Two" });
+    expect(renamed.body).toMatchObject({ renamed: true, name: "Cal Two", rank: 2, points: highPoints + 900 });
+    expect(Array.isArray(renamed.body.above) && Array.isArray(renamed.body.below)).toBe(true);
+    // Its own name again, in another case, is not "taken".
+    expect((await patchBoard(await context(db), { editToken: token, name: "CAL TWO" })).status).toBe(200);
+  });
+
+  it("Section 37.9: a second run under a normalised duplicate of a name makes no second row", async () => {
+    const RUN_G = "88888888-8888-4888-8888-888888888888";
+    // "mira" holds the guided run's points; the same run again under "  ＭＩＲＡ " (fullwidth, spaces) is that name.
+    const reply = await postBoard(await context(db), { runId: RUN_G, name: "  ＭＩＲＡ ", builds: guided });
+    expect(reply.status).toBe(200);
+    expect(reply.body).toMatchObject({ kept: true, editToken: "" });
+    const rows = (await db.query<{ name: string }>("SELECT name FROM board")).filter((r) => r.name.normalize("NFKC").trim().toLowerCase() === "mira");
+    expect(rows).toHaveLength(1);
+  }, SLOW);
+});

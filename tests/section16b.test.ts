@@ -175,7 +175,7 @@ describe("the leave prompt's line (Section 16 B5)", () => {
 describe("a session's state classes (Section 16 review)", () => {
   it("are cleared when a Panjim session starts and when it ends: the game layer is shared by every run", () => {
     const controller = readFileSync("src/app/panjimController.ts", "utf8");
-    expect(controller).toContain('const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards"];');
+    expect(controller).toContain('const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards", "build-menu-open"];');
     expect(controller).toContain("host.container.classList.remove(...SESSION_CLASSES);");
     expect(controller).toContain('this.host.container.classList.remove("has-panjim-clock", ...SESSION_CLASSES);');
   });

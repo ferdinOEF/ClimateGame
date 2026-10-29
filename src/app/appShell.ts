@@ -1,5 +1,5 @@
 import { startGameSession, type GameSessionHandle, type SessionResult } from "./gameSession";
-import { clearPlayerName } from "@services/playerName";
+import { clearPlayerName, playAgain } from "@services/playerName";
 import { resolveLevel, type LevelDef } from "@levels/levels";
 import { newlyUnlocked } from "@levels/achievements";
 import {
@@ -229,7 +229,7 @@ export class AppShell {
 
     switch (this.route.name) {
       case "menu":
-        // Section 35.3: the run's name goes at the menu (Exit, Leave, the idle reset); Play again keeps it.
+        // Section 35.3: the run's name goes at the menu (Exit, Leave, the idle reset); Section 37.4: and at Play again.
         clearPlayerName();
         this.screenLayer.hidden = false;
         renderMenuScreen(this.screenLayer, progress, {
@@ -452,6 +452,8 @@ export class AppShell {
       submission.catch(() => undefined);
     }
     if (result.then === "again") {
+      // Section 37.4: Play again starts a new run: its name card opens empty.
+      playAgain();
       this.requestLevel(level.id, "replace");
       return;
     }

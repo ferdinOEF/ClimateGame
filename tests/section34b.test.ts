@@ -203,14 +203,15 @@ describe("34b.3: the camera moves only at its set moments", () => {
     // Section 34c.4: the heat year's move also frames Get ahead's tiles (tests/section34c.test.ts).
     expect(controller).toContain("const framing = warning && !this.heatFramed.has(next.id) && !this.tutorial;");
     expect(controller).toContain("focus: (coord, tiles) => this.host.moveCamera(tiles ?? [coord], coord),");
-    expect(controller).toContain("this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key));");
+    expect(controller).toContain("this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key), true);");
     // focusCamera is left to the storms' replay and the test scenarios.
     const uses = controller.split("\n").filter((l) => l.includes("this.host.focusCamera(")).length;
     expect(uses).toBe(5);
     const session = readFileSync("src/app/gameSession.ts", "utf8");
     // Held while a build menu or tile card is open, made as it closes.
-    expect(session).toContain("if (buildPopover.isOpen) pendingCameraMove = move;");
-    expect(session).toContain("if (pendingCameraMove && !buildPopover.isOpen) {");
+    // Section 37.5: and while the pointer is moving on the board (the player is choosing).
+    expect(session).toContain("if (buildPopover.isOpen || (!asked && pointerChoosing())) pendingCameraMove = move;");
+    expect(session).toContain("if (pendingCameraMove && !buildPopover.isOpen && !pointerChoosing(nowMs) && !stormDirector?.playing) {");
     expect(session).toContain(`.panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden]), .maya-bubble:not([hidden])`);
   });
 });
@@ -440,7 +441,8 @@ describe("34b.7: text and small interface fixes", () => {
     const session = readFileSync("src/app/gameSession.ts", "utf8");
     expect(session).toContain("removeNote: panjim && def.kind !== \"building\" ? TILE_NOTES.oneBuild : undefined,");
     expect(session).toContain(": panjim && def.kind === \"building\"\n              ? TILE_NOTES.home");
-    expect(session).toContain("terrainId === \"coast\" ? TILE_NOTES.sea : TILE_NOTES.nothing");
+    // Section 37.7: a river tile at the mouth says why too.
+    expect(session).toContain("terrainId === \"coast\" ? TILE_NOTES.sea : atMouth ? TILE_NOTES.riverMouth : TILE_NOTES.nothing");
   });
 
   it("6. the combo notes are game rules, and the Field Guide's combo rules carry the Sahapedia fact", () => {

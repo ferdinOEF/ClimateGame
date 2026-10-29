@@ -3372,8 +3372,9 @@
 }
 
 /* Section 15: How to play, in the result cards' brown, one small game render per idea. */
+/* Section 37.8: wider at every height (the keys line grew; How to play had come to scroll at 1366x768). */
 .help-card:has(.panjim-help) {
-  width: min(620px, 94vw);
+  width: min(760px, 94vw);
 }
 .panjim-help {
   min-height: 100%;
@@ -3432,11 +3433,11 @@
 /* Section 21: short desktop windows (1366x768) fit How to play without scrolling: a wider card, smaller pictures. */
 @media (max-height: 900px) and (min-width: 800px) {
   .help-card:has(.panjim-help) {
-    width: min(780px, 94vw);
+    width: min(960px, 94vw);
   }
   .panjim-help-body {
-    gap: 10px;
-    padding-top: 12px;
+    gap: 6px;
+    padding-top: 10px;
   }
   .panjim-help-item {
     grid-template-columns: 132px 1fr;
@@ -3446,11 +3447,23 @@
     width: 132px;
     height: 84px;
   }
+  .panjim-help-item p,
+  .panjim-help-item ul {
+    line-height: 1.36;
+  }
+  /* Section 37.8: the storm list on one line here too (it was only under 680 px high), so 1366x768 fits again. */
+  .panjim-help-item ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 16px;
+    padding-left: 0;
+    list-style: none;
+  }
 }
 @media (max-height: 680px) and (min-width: 800px) {
   /* Section 25: wider still, for the star lines and the defences' pro and con. */
   .help-card:has(.panjim-help) {
-    width: min(980px, 96vw);
+    width: min(1120px, 96vw);
   }
   .panjim-help .help-header {
     padding-top: 10px;
@@ -3461,16 +3474,16 @@
     padding-top: 8px;
   }
   .panjim-help-item {
-    grid-template-columns: 108px 1fr;
+    grid-template-columns: 96px 1fr;
   }
   .panjim-help-pic {
-    width: 108px;
-    height: 68px;
+    width: 96px;
+    height: 54px;
   }
   .panjim-help-item p,
   .panjim-help-item ul {
     font-size: 13px;
-    line-height: 1.35;
+    line-height: 1.28;
     margin-top: 2px;
     margin-bottom: 2px;
   }
@@ -3632,6 +3645,13 @@
 /* A storm and its result cards: the objective card and the hint go; the top bar stays on that storm. */
 .has-panjim-clock.storm-hold .objectives-panel,
 .has-panjim-clock.storm-hold .empty-prompt {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Section 37.2: the bottom banner goes while a build menu is open, so the menu's last line is never under it. */
+.has-panjim-clock.build-menu-open .empty-prompt {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;

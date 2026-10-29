@@ -24,6 +24,7 @@ import { TileHover } from "@render/tileHover";
 import { WildlifeDirector } from "@render/wildlife";
 import { KhazanPeople } from "@render/khazanPeople";
 import { ObjectivePulse } from "@render/objectivePulse";
+import { nextPulseTile } from "@core/keyboardTiles";
 import { IdleReset, watchIdle } from "./idleReset";
 import { CARD_LINES, CARD_NAME, TUTORIAL_CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
@@ -31,7 +32,7 @@ import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
 import { crackedNote, isCracked } from "@core/hazardModel";
-import { axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
+import { axialKey, axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
 import { TERRAIN_BY_ID } from "@core/terrain";
 import { releaseOverlayPlaceholder } from "@render/mapOverlayShader";
 import { releaseRuinGeometries } from "@render/ruinGeometry";
@@ -701,11 +702,29 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   /** Section 34b.3: a camera move asked for while a build menu or tile card is open, made once it closes. */
   let pendingCameraMove: (() => void) | null = null;
   /**
+   * Section 37.5 (A5): the camera holds while the player is choosing. A set move made by the game (after a build: the
+   * heat, Get ahead, Maya's place) waits while the pointer is over the board and has moved in the last 1.5 s; it is
+   * made once the pointer has been still that long, or at once when the pointer is off the board or over the HUD.
+   */
+  const POINTER_HOLD_MS = 1500;
+  let pointerOnBoard = false;
+  let pointerMovedAt = -Infinity;
+  renderer.domElement.addEventListener("pointermove", () => {
+    pointerOnBoard = true;
+    pointerMovedAt = performance.now();
+  });
+  // Onto the HUD (it lies over the board) or out of the window: the board is not under the pointer.
+  renderer.domElement.addEventListener("pointerleave", () => {
+    pointerOnBoard = false;
+  });
+  const pointerChoosing = (now = performance.now()): boolean => pointerOnBoard && now - pointerMovedAt < POINTER_HOLD_MS;
+  /**
    * Section 34b.3: the camera's set moves (the heat coming on, Last call, an objective row, O): a glide to `centre`
    * (else the middle of `tiles`), then slid just enough that none of `tiles` sits under the HUD card, Maya or her
-   * bubble. Never under an open build menu or tile card: it waits for it to close.
+   * bubble. Never under an open build menu or tile card: it waits for it to close. Section 37.5: nor under a pointer
+   * moving on the board (`pointerChoosing`), unless the player asked for it (`asked`: O, a row of the objective).
    */
-  function moveCameraClear(tiles: readonly AxialCoord[], centre?: AxialCoord): void {
+  function moveCameraClear(tiles: readonly AxialCoord[], centre?: AxialCoord, asked = false): void {
     if (tiles.length === 0 && !centre) return;
     const move = (): void => {
       const at = centre ?? { q: tiles.reduce((s, t) => s + t.q, 0) / tiles.length, r: tiles.reduce((s, t) => s + t.r, 0) / tiles.length };
@@ -717,7 +736,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       });
       lastKeepClear = points.length ? keepClearOf(points, cameraObstacles()) : null;
     };
-    if (buildPopover.isOpen) pendingCameraMove = move;
+    if (buildPopover.isOpen || (!asked && pointerChoosing())) pendingCameraMove = move;
     else {
       pendingCameraMove = null;
       move();
@@ -1023,7 +1042,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
               }
             }
           },
-          moveCamera: (tiles, centre) => moveCameraClear(tiles, centre),
+          moveCamera: (tiles, centre, asked) => moveCameraClear(tiles, centre, asked),
           flashTiles: (tiles) => objectivePulse.flash([...tiles], (coord) => terrain.heightAt(coord), performance.now()),
           landmarks: levelMap.landmarks,
           localities: levelMap.localities,
@@ -2311,6 +2330,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     void kind;
     // Section 36.3: the music fades out over the storm's lead in; the storm's own sound takes over.
     music.stormBegin();
+    // Section 37.8 (review): a set move held for the pointer is stale once a storm begins; the storm frames itself.
+    pendingCameraMove = null;
     stormImpactActive = true;
     storm.setIntensity(1);
     mapLabels.setVisible(false);
@@ -2612,7 +2633,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (popoverOptions.length === 0) {
       // Section 34: a click on ground that takes no build said nothing, and players read it as a lost click.
       // Section 34b.7: open sea says so in its own words.
-      if (panjim) buildPopover.showNote(screen.x, screen.y, state.placed.get(key)?.terrainId === "coast" ? TILE_NOTES.sea : TILE_NOTES.nothing);
+      // Section 37.7: a river tile at the mouth (beside the sea) says why, as the home and landmark cards do.
+      const terrainId = state.placed.get(key)?.terrainId;
+      const atMouth = terrainId === "river" && [0, 1, 2, 3, 4, 5].some((dir) => state.placed.get(axialKey(neighbor(coord, dir)))?.terrainId === "coast");
+      if (panjim) buildPopover.showNote(screen.x, screen.y, terrainId === "coast" ? TILE_NOTES.sea : atMouth ? TILE_NOTES.riverMouth : TILE_NOTES.nothing);
       return;
     }
     const mode = panjim ? { hideCost } : undefined;
@@ -2753,7 +2777,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (panjim && tileHover) {
     const canvas = renderer.domElement;
     canvas.tabIndex = 0;
-    canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles, O jumps to the next tile the objective asks for, Enter opens the tile.");
+    canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles, O jumps to the objective's tiles, Enter opens the tile, Up and Down pick a card.");
     // Section 34c.2: the keyboard follows the screen, top right to bottom left: ? and ☰ on the HUD card, then the map,
     // then Maya. The card goes before the board in the page (its z-index keeps it drawn over the board).
     const card = container.querySelector<HTMLElement>(".panjim-clock");
@@ -2763,6 +2787,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     said.setAttribute("aria-live", "polite");
     container.appendChild(said);
     let cursor: AxialCoord | null = null;
+    /** Section 37.6: the tile the last O went to ("q,r"): O goes on from there, else starts from the middle of the view. */
+    let oCursor: string | null = null;
     const DIRS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
     const showCursor = (follow: boolean): void => {
       if (!cursor) return;
@@ -2820,18 +2846,20 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       } else if ((event.key === "o" || event.key === "O") && !event.ctrlKey && !event.metaKey && !event.altKey) {
         // Section 34: a keyboard player took 10 to 30 arrow presses to reach a pulsing tile; O jumps to the next one:
         // the tiles pulsing on the board now (the objective's, Get ahead's, the Tutorial's), whatever chose them.
+        // Section 37.6: exactly those tiles, in order, the first O from the one nearest the middle of the view.
         event.preventDefault();
-        const open = [...objectivePulse.tiles].map((key) => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }));
-        if (open.length === 0) {
+        const here = `${cursor.q},${cursor.r}`;
+        const nextKey = nextPulseTile(objectivePulse.tiles, here === oCursor ? here : null, focusPoint());
+        if (!nextKey) {
           said.textContent = "No tile left for the objective.";
           return;
         }
-        const at = open.findIndex((p) => p.q === cursor!.q && p.r === cursor!.r);
-        const next = open[(at + 1) % open.length];
-        cursor = { q: next.q, r: next.r };
+        oCursor = nextKey;
+        const [nq, nr] = nextKey.split(",").map(Number);
+        cursor = { q: nq, r: nr };
         showCursor(false);
         // Section 34b.3: one of the camera's set moves, clear of the HUD card and Maya.
-        moveCameraClear([cursor]);
+        moveCameraClear([cursor], undefined, true);
       }
     });
   }
@@ -3055,8 +3083,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Section 34b (owner, 28 October): Maya's bubble steps aside while a build menu or tile card is open, except for
     // the Tutorial's coaching lines, which are about that very menu (the cards, the glowing one) and stand clear of it.
     panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:"));
-    // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes.
-    if (pendingCameraMove && !buildPopover.isOpen) {
+    // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes; Section 37.5: and
+    // while the pointer was moving on the board, once it has been still for 1.5 s (or left the board).
+    if (pendingCameraMove && !buildPopover.isOpen && !pointerChoosing(nowMs) && !stormDirector?.playing) {
       const move = pendingCameraMove;
       pendingCameraMove = null;
       move();

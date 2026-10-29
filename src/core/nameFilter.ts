@@ -51,10 +51,17 @@ const LOOK_ALIKE: Record<string, string> = {
 /** Runs of one letter made one ("fuuuck" to "fuck"). */
 const single = (s: string): string => s.replace(/(.)\1+/g, "$1");
 
-/** The name as written: ends trimmed, runs of spaces made one. */
+/** The name as written: ends trimmed, runs of spaces made one (Section 37.9: shown as the player typed it otherwise). */
 export function tidyName(raw: string): string {
-  // NFKC: fullwidth and other compatibility forms ("ｆｕｃｋ") become the plain letters they stand for.
-  return raw.normalize("NFKC").replace(/\s+/g, " ").trim();
+  return raw.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Section 37.9: the key two names are the same board name by: trimmed, runs of spaces made one, Unicode NFKC (fullwidth
+ * and other compatibility forms become the plain letters they stand for) and case ignored. One board row per key.
+ */
+export function boardNameKey(raw: string): string {
+  return raw.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 export type NameCheck = { ok: true; name: string } | { ok: false; reason: "shape" | "refused"; message: string };
@@ -80,10 +87,14 @@ export function isRude(name: string): boolean {
 
 /** Checks a name for the board: its shape, then its words. */
 export function checkName(raw: string): NameCheck {
-  const name = tidyName(raw);
-  if ([...name].length < NAME_MIN || [...name].length > NAME_MAX || !/^[\p{L}\p{M}\p{N} @._]+$/u.test(name) || !/[\p{L}\p{N}]/u.test(name) || /\p{M}{3,}/u.test(name)) {
+  // Kept as typed (NFC only joins a letter and its accents, so fullwidth letters stay fullwidth), checked as its plain
+  // letters too (NFKC: "ｆｕｃｋ" is "fuck"); the length and the stacked accents are checked on both forms.
+  const name = tidyName(raw).normalize("NFC");
+  const plain = name.normalize("NFKC").replace(/\s+/g, " ").trim();
+  const badLength = (s: string): boolean => [...s].length < NAME_MIN || [...s].length > NAME_MAX || /\p{M}{3,}/u.test(s);
+  if (badLength(name) || badLength(plain) || !/^[\p{L}\p{M}\p{N} @._]+$/u.test(plain) || !/[\p{L}\p{N}]/u.test(plain)) {
     return { ok: false, reason: "shape", message: NAME_SHAPE };
   }
-  if (isRude(name)) return { ok: false, reason: "refused", message: NAME_REFUSED };
+  if (isRude(plain)) return { ok: false, reason: "refused", message: NAME_REFUSED };
   return { ok: true, name };
 }

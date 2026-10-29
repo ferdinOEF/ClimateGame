@@ -153,6 +153,12 @@ A Panjim 2050 storm is decided once, when it lands, and then shown.
 **Script.**
 - `core/stormScript.ts` derives the timed moments from the resolution:
   houses going, tested defences answering, the slow-motion beat, lightning.
+- Section 37.1, the lead in: the director's clock starts `STORM_LEAD` (2 s)
+  before the storm's first water on land or in the river (`stormStartTime`),
+  not at 0; the sky, wind, rain and the water's fade come in over 1.5 s from
+  there while the camera pulls out. Speed up (and a click on the board) works
+  from the build's click (`PanjimController.armHurry`, armed in `endTurn`).
+  The replay card shares at most 8 s among its steps (`replayStepMs`).
 - `core/stormReplay.ts` writes the replay's captions.
 
 **Showing** (`app/stormDirector.ts`):
@@ -275,6 +281,14 @@ the bottom right.
 - **The heat years' camera move** (Section 34b.3): once a storm, to its hot
   tiles; with the objective done also to Get ahead's pulsing tiles, centred
   between the two sets, or to them alone when nothing is hot (Section 34c.4).
+- **The keyboard's O** (Section 37.6): `core/keyboardTiles.ts` `nextPulseTile` goes through exactly the tiles
+  pulsing on the board, in their order, the first O from the one nearest the middle of the view. The menu opens with
+  the card the objective asks for on that tile focused (its "Objective" chip); Down and Up move between the cards and
+  Enter builds the focused one. The cursor's ring is drawn over the pulse.
+- **The camera holds while the player is choosing** (Section 37.5): a set move the game makes (the heat, Get ahead,
+  Maya's place) waits while the pointer is over the board and has moved in the last 1.5 s, and is made once it has
+  been still that long, or at once when the pointer leaves the board or is over the HUD. The player's own moves (O, a
+  row of the objective) never wait; the storm's camera, the result cards and the Tutorial's moves are not set moves.
 
 ## Navigation and history
 
@@ -385,10 +399,26 @@ are by run id alone, so no query can put a name to an age or an answer through a
 scored are in both `runs` and `board`, as the brief asks; two runs rarely tie, so the owner should treat the export as
 personal data.)
 
+**One row per name, dense ranks (Section 37.3).** The board shows one row a name (case and spacing aside,
+`core/boardRank.ts`): the name's best run. A post under a name already on the board replaces that row only when its
+points are higher; otherwise the row stands and the post answers with the row's place, no edit token and `kept: true`
+(the run is still in `runs`). Every board answer reads
+the table and keeps the best row a name (so rows from before the rule, or from two posts at once, still show once),
+and ranks densely: equal points share a rank and the next follows (1, 1, 2). The finale's "4th on the board, N
+points behind 3rd" uses the same ranks.
+
+**Board names (Section 37.9).** A name's board key is `boardNameKey` (`core/nameFilter.ts`): trimmed, runs of spaces
+made one, Unicode NFKC (fullwidth letters become plain ones) and case ignored; the name is shown as typed after the
+trim and the collapse. One board row per key; the server matches keys in JS, not SQL. A rename (`PATCH /api/board`)
+onto a key another run holds is refused with 409 "name taken": no row is deleted or replaced, the run keeps its old
+name, and the feedback form shows "That name is already on the board." under its name field (the answers are sent
+either way). A run that does not beat its name's best keeps that row (no edit token, `kept`).
+
 **The edit token.** A board post answers with a random token for its row, kept by the client in memory for that run
 only; `PATCH /api/board` with it renames the row (the feedback form's name field). It is never shown, exported or
 stored on the machine. Nothing about a run is saved on the machine (Section 28): the name lives in memory
-(`services/playerName.ts`) and goes at the menu.
+(`services/playerName.ts`) and goes at the menu, and at Play again on the finale (Section 37.4: the next run's
+name card opens empty; "Try again from {year}" and Start again keep it, the same run).
 
 ## Sound: the sample bank, the music and the storm's hand over (Section 36)
 
@@ -400,16 +430,16 @@ waiting for it). Any audio failure is swallowed.
   MP3 when `canPlayType("audio/ogg; codecs=vorbis")` is empty: Safari). Each is fetched and decoded once, by name,
   into an AudioBuffer on the context from `audioOut()`, never before the unlock, so first paint never waits for a
   sound. A Panjim or Tutorial session asks for all eight once the player has clicked: the seven short ones together,
-  the music last. A sample that fails resolves to null and is skipped. The service worker precaches `public/sound/`
-  with the rest of `public/` (both formats, 5.3 MB).
-- **Build sounds**: `playSample(name)` plays a one shot at 0.8 of the master, at most two at once (a third is
-  dropped), each with a random pitch of ±4%. `BuildSounds` (one a session) maps a defence to its sound: seawall,
+  the music last. A sample that fails resolves to null and is skipped. The service worker precaches the Ogg files only
+  (1.8 MB; Section 37.0); an MP3 is cached the first time it is fetched, like any other public file.
+- **Build sounds**: `playSample(name)` plays a one shot at 0.8 of the master, at most two at once (a third cuts
+  the oldest with a 100 ms fade, so every build makes a sound; Section 37.0), each with a random pitch of ±4%. `BuildSounds` (one a session) maps a defence to its sound: seawall,
   breakwater and small dam their own recording, the living coast (mangrove, khazan, dune, pandanus) the next call of
   a fixed bird cycle, so no call repeats twice in a row. `gameSession.playBuildSound` plays it where the defence lands,
   in place of the synthesised `"build"` tone, which stays for everything else (and for a build before the sample has
   loaded: one or the other, never both).
 - **The music** (`ui/music.ts`): one loop under its own gain into the master. Its level is a pure state machine
-  (`MusicMachine`: `"off" | "full" | "soft"`, 0, 0.35 and 0.2 of the master; fades 2.5 s out, 4 s in, 1.5 s between
+  (`MusicMachine`: `"off" | "full" | "soft"`, 0, 0.35 and 0.2 of the master; fades 1.5 s out (2.5 before Section 37.1), 4 s in, 1.5 s between
   full and soft, 1 s on closing). The audio side only follows it with `setTargetAtTime`. The loop's last half second
   fades out, so two sources take turns, each next one starting 1.5 s before the current ends, crossing over with
   equal power curves; there is always one pass queued ahead, from the previous pass's `onended`.

@@ -1,0 +1,38 @@
+[
+  {
+    "storm": "2030 cyclone",
+    "hurry": true,
+    "leadInS": 45.42,
+    "leadInFrames": 73,
+    "speedUpAfterClickS": 3.836,
+    "directorAfterClickS": 3.836,
+    "moveToResultsS": 36.779,
+    "moveToResultsFrames": 54,
+    "replayS": 2.446,
+    "fps": 1.5
+  },
+  {
+    "storm": "2040 flood",
+    "hurry": true,
+    "leadInS": 74.113,
+    "leadInFrames": 75,
+    "speedUpAfterClickS": 1.609,
+    "directorAfterClickS": 1.609,
+    "moveToResultsS": 78.919,
+    "moveToResultsFrames": 82,
+    "replayS": 2.361,
+    "fps": 1
+  },
+  {
+    "storm": "2050 compound",
+    "hurry": true,
+    "leadInS": 57.084,
+    "leadInFrames": 74,
+    "speedUpAfterClickS": 1.091,
+    "directorAfterClickS": 1.091,
+    "moveToResultsS": 69.232,
+    "moveToResultsFrames": 88,
+    "replayS": 2.872,
+    "fps": 1.3
+  }
+]
