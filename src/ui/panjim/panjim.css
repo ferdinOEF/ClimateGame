@@ -2588,22 +2588,7 @@
   padding: 24px 26px 20px;
 }
 
-.result-card.entering {
-  animation: result-in 220ms ease-out;
-}
-
-@keyframes result-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .result-card.entering { animation: none; }
-}
-
-.calm-motion .result-card.entering {
-  animation: none;
-}
+/* The short fade as a card comes in is made by ResultCards.enter() (Section 38.6), none with Calm motion. */
 
 .result-eyebrow {
   font-size: 11px;

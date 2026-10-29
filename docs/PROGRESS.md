@@ -30,7 +30,11 @@ docs/QA_REPORT.md. The owner's mock is on the Design canvas (artboards 7, 8 and 
   per name rule read untagged rows only. `DEFAULT_TAG` (set to Preview on Vercel Preview) tags posts that send none.
   `npm run tag -- list`; the export has a `tag` column.
 - 38.5 Help: the storms paragraph names the link and the last card. Docs.
-- 38.6 QA (details in docs/QA_REPORT.md).
+- 38.6 QA: tsc, the unit tests, the build, the browser pass at 1366x768 and the card at 1920x1080, the help run, the
+  reviewer's fixes (the older QA tools find the last card; the form on leaving waits for the run's post; the idle
+  reset counts the form; the return button in the obstacle lists; a tagged row's token), and a fade bug the shots
+  found: a card re-rendered in place (card 2 from its link, Previous card) stayed at opacity 0, so the cards' fade is
+  now `ResultCards.enter()` by the Web Animations API. Details in docs/QA_REPORT.md.
 
 ## Section 37 — Section 36 answers, playtest fixes and a shorter storm lead in — MERGED (`5c49144`)
 

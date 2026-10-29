@@ -2635,6 +2635,13 @@ the rows' arithmetic is unit tested with real points.
   121+). Fixed: a class. NIT: a malformed `DEFAULT_TAG` is dropped silently, so a Preview with a bad one writes real
   rows. Documented in DEPLOY.md (the shape); left.
 
+**Found by the shots, not by the checks.** The first pass's shot of card 2 from the last card's link showed the dimmed
+overlay and no card, though its DOM checks passed. A probe on the 2030 storm's card 1 showed why: a card re-rendered
+in place (card 2 from its link, and "Previous card" before this section) restarted the `entering` class's CSS fade and
+its computed opacity stayed at 0 (still 0 after 2.5 s) in headless Chromium. Fixed: the fade is made by the Web
+Animations API (`ResultCards.enter`), which always ends at the stylesheet's opacity; none with Calm motion or the
+system's reduced motion. The pass was run again for the shots below.
+
 **Help fit.** The first help run failed at 1280x600 and 1366x768 (a second paragraph made How to play scroll by about
 20 px). The last card's line now rides the storms paragraph, shorter: __HELPFIX__
 

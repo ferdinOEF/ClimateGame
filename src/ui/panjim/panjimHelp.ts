@@ -61,7 +61,7 @@ const RULE = `<span class="result-rule">Game rule</span>`;
 
 /** Section 35.2: Help's one paragraph on points (Play Panjim only). */
 /** Section 38.5: the last card, in a line. */
-export const LAST_CARD_HELP = "After the last storm, one card: your points, your place on the board and a few questions.";
+export const LAST_CARD_HELP = "After the last, one card: your points, your board place and a few questions.";
 export const POINTS_HELP = "In this game, points come in after each storm: homes and places saved, the objective done, and dunes, pandanus, mangroves and khazans standing. At the end of 2050, biodiversity and veterans add more. Losses never take points away.";
 
 export function panjimHelpHtml(input: PanjimHelpInput): string {
@@ -108,7 +108,7 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>${stormsTitle} ${RULE}</h3>
         <ul>${stormList}</ul>
-        <p>After each, a result card: ${countsNature ? "stars, homes saved, biodiversity and points, with a link to what protected your homes" : "the stars, the homes saved, and what protected them"}.${input.tutorial ? "" : ` ${LAST_CARD_HELP}`}${clearLine}${starsLine}</p>
+        <p>After each, a result card: ${countsNature ? "stars, homes saved, biodiversity and points (what protected your homes is a link)" : "the stars, the homes saved, and what protected them"}.${input.tutorial ? "" : ` ${LAST_CARD_HELP}`}${clearLine}${starsLine}</p>
         ${shelters}
         ${input.tutorial ? "" : `<p>${POINTS_HELP}</p>`}
       </div>

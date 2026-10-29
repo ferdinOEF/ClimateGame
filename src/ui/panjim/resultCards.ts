@@ -439,9 +439,7 @@ export class ResultCards {
         back.addEventListener("click", () => render());
         actions.appendChild(back);
         this.cardEl.appendChild(actions);
-        this.cardEl.classList.remove("entering");
-        void this.cardEl.offsetWidth;
-        this.cardEl.classList.add("entering");
+        this.enter();
         back.focus();
       };
       const render = (): void => {
@@ -471,9 +469,7 @@ export class ResultCards {
           }
         }
         if (spec.bare) {
-          this.cardEl.classList.remove("entering");
-          void this.cardEl.offsetWidth;
-          this.cardEl.classList.add("entering");
+          this.enter();
           const first = spec.focus ? spec.body.querySelector<HTMLElement>(spec.focus) : null;
           (first ?? spec.body.querySelector<HTMLElement>("button, input"))?.focus();
           return;
@@ -522,9 +518,7 @@ export class ResultCards {
           link.addEventListener("click", () => close("link"));
           this.cardEl.appendChild(link);
         }
-        this.cardEl.classList.remove("entering");
-        void this.cardEl.offsetWidth;
-        this.cardEl.classList.add("entering");
+        this.enter();
         const first = spec.focus ? spec.body.querySelector<HTMLElement>(spec.focus) : null;
         if (first) first.focus();
         else go.focus();
@@ -633,13 +627,25 @@ export class ResultCards {
     });
   }
 
+  /**
+   * The short fade as a card (or the next one) comes in. Section 38.6: by the Web Animations API, not by restarting
+   * the `entering` class's CSS animation, which left a re-rendered card (card 2 from its link, Previous card) at
+   * opacity 0 in headless Chromium. None with Calm motion or the system's reduced motion.
+   */
+  private enter(): void {
+    this.cardEl.classList.remove("entering");
+    const calm = this.container.classList.contains("calm-motion") || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (calm || typeof this.cardEl.animate !== "function") return;
+    this.cardEl.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 220, easing: "ease-out" });
+  }
+
   dispose(): void {
-    // Section 38.2: a hosted card's promise resolves, so its owner's flow ends with the session.
-    this.closeHosted?.();
     // Its window keydown listener (capture phase) swallowed every key on the menu after an idle reset over the cards,
     // and kept the old session alive.
     this.abort?.abort();
     this.abort = null;
+    // Section 38.2: a hosted card's promise resolves, so its owner's flow ends with the session.
+    this.closeHosted?.();
     this.open = false;
     this.el.remove();
   }
