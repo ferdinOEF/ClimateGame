@@ -568,8 +568,9 @@ export class ResultCards {
             return;
           }
           if (event.key === "Tab") {
-            // Focus stays in the card.
-            const focusable = [...this.cardEl.querySelectorAll<HTMLElement>("button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])")];
+            // Focus stays in the card (in the nudge's box while it is up, Section 38.3).
+            const scope = this.el.querySelector<HTMLElement>(".result-nudge") ?? this.cardEl;
+            const focusable = [...scope.querySelectorAll<HTMLElement>("button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])")];
             if (focusable.length === 0) return;
             const first = focusable[0];
             const last = focusable[focusable.length - 1];
@@ -589,6 +590,40 @@ export class ResultCards {
         { signal: abort.signal, capture: true }
       );
       render();
+    });
+  }
+
+  /**
+   * Section 38.3: a small box over the dimmed card, once: the title, the line, "Answer now" and "{Action} anyway".
+   * Resolves with which was pressed; Esc does nothing; Tab stays in the box. The card under it is kept as it is.
+   */
+  nudge(text: { title: string; line: string; answer: string; anyway: string }): Promise<"answer" | "anyway"> {
+    return new Promise((resolve) => {
+      const box = document.createElement("div");
+      box.className = "result-nudge";
+      box.setAttribute("role", "dialog");
+      box.setAttribute("aria-modal", "true");
+      box.setAttribute("aria-labelledby", "result-nudge-title");
+      box.innerHTML = `<div class="result-nudge-card">
+        <h3 class="result-nudge-title" id="result-nudge-title">${esc(text.title)}</h3>
+        <p class="result-nudge-line">${esc(text.line)}</p>
+        <div class="result-nudge-actions">
+          <button type="button" class="result-nudge-answer btn-primary">${esc(text.answer)}</button>
+          <button type="button" class="result-nudge-anyway btn">${esc(text.anyway)}</button>
+        </div>
+      </div>`;
+      const before = document.activeElement as HTMLElement | null;
+      const done = (choice: "answer" | "anyway"): void => {
+        box.remove();
+        this.cardEl.classList.remove("dimmed");
+        if (choice === "anyway") before?.focus?.();
+        resolve(choice);
+      };
+      box.querySelector(".result-nudge-answer")!.addEventListener("click", () => done("answer"));
+      box.querySelector(".result-nudge-anyway")!.addEventListener("click", () => done("anyway"));
+      this.cardEl.classList.add("dimmed");
+      this.el.appendChild(box);
+      box.querySelector<HTMLElement>(".result-nudge-answer")!.focus();
     });
   }
 

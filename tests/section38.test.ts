@@ -46,3 +46,40 @@ describe("Section 38.1: card 2 behind a link", () => {
     expect(punctuationProblems(`${DETAIL_LINK} ${DETAIL_BACK}`)).toEqual([]);
   });
 });
+
+describe("Section 38.3: the nudge, once", () => {
+  it("is shown once per run, never after a Submit, and records its outcome", async () => {
+    const { NudgeGate, NUDGE_TITLE, NUDGE_LINE, NUDGE_ANSWER, anywayLabel } = await import("../src/core/nudge");
+    const gate = new NudgeGate();
+    expect(gate.outcome(false)).toBe("none");
+    expect(gate.shouldShow(false)).toBe(true);
+    expect(gate.shouldShow(false)).toBe(false);
+    expect(gate.outcome(false)).toBe("shown_left");
+    expect(gate.outcome(true)).toBe("shown_answered");
+    // After a Submit it never shows.
+    const after = new NudgeGate();
+    expect(after.shouldShow(true)).toBe(false);
+    expect(after.shouldShow(false)).toBe(true);
+    expect(NUDGE_TITLE).toBe("Before you go, five taps?");
+    expect(NUDGE_LINE).toBe("Your answers help us improve the game and share what players learn about Goa's coast. It takes about twenty seconds.");
+    expect(NUDGE_ANSWER).toBe("Answer now");
+    expect(anywayLabel("map")).toBe("View map anyway");
+    expect(anywayLabel("restart")).toBe("Restart anyway");
+    expect(anywayLabel("exit")).toBe("Exit anyway");
+    expect(punctuationProblems(`${NUDGE_TITLE} ${NUDGE_LINE} ${NUDGE_ANSWER} ${anywayLabel("exit")}`)).toEqual([]);
+  });
+
+  it("every path out works: Answer now focuses the first star row, anyway does the action; the Tutorial has no last card", () => {
+    const controller = read("src/app/panjimController.ts");
+    expect(controller).toContain("if (this.nudge.shouldShow(card.submitted)) {");
+    expect(controller).toMatch(/if \(choice === "answer"\) \{\s*card\.focusQuestions\(\);\s*return;\s*\}\s*hosted\.close\(\);\s*resolve\(action\);/);
+    // The last card is only reached through `finale`, which the Tutorial never runs (its last card is its own).
+    expect(controller).toMatch(/if \(this\.tutorial\) \{[\s\S]*?tutorialFinalCard/);
+    const cards = read("src/ui/panjim/resultCards.ts");
+    expect(cards).toContain('const scope = this.el.querySelector<HTMLElement>(".result-nudge") ?? this.cardEl;');
+    expect(cards).toContain('this.cardEl.classList.add("dimmed");');
+    // Leaving without a Submit posts the empty form with the outcome; nothing posts twice.
+    expect(controller).toContain("if (!card.submitted) this.sendFeedback({});");
+    expect(controller).toMatch(/private sendFeedback\([^)]*\): void \{\s*if \(this\.feedbackSent\) return;\s*this\.feedbackSent = true;/);
+  });
+});

@@ -2,7 +2,8 @@ import { ActionRun, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import { runPoints, type StormPoints } from "@core/resiliencePoints";
 import { beaconRun, fetchRank, newRunId, postBoard, postFeedback, postRun, type RunReport } from "@services/board";
 import { LastCard, lastCardTitle, type LastCardSubmit } from "@ui/panjim/lastCard";
-import { RETURN_TO_CARD, submitPlan, THANKS, thanksLine, type FooterAction } from "@core/lastCard";
+import { RETURN_TO_CARD, submitPlan, THANKS, thanksLine, type FooterAction, type LastCardAnswers } from "@core/lastCard";
+import { anywayLabel, NUDGE_ANSWER, NUDGE_LINE, NUDGE_TITLE, NudgeGate } from "@core/nudge";
 import { DETAIL_LINK } from "@core/resultFlow";
 import { checkName } from "@core/nameFilter";
 import { markTutorialPlayed, tutorialPlayedThisVisit } from "@services/visit";
@@ -1479,6 +1480,7 @@ export class PanjimController {
     this.boardPending = this.boardPlace(points.total, name).then((rank) => {
       if (!this.disposed) card.setRank(rank);
     });
+    this.cardOpenedAt = performance.now();
     const then = await this.lastCardFlow(card);
     if (this.disposed) return;
     this.host.onRunComplete(result, then);
@@ -1494,11 +1496,26 @@ export class PanjimController {
     while (!this.disposed) {
       const action = await this.showLastCard(card);
       if (this.disposed) break;
-      if (action === "restart") return "again";
-      if (action === "exit") return "menu";
+      if (action === "restart" || action === "exit") {
+        // Leaving without a Submit still counts the form opened: an empty one with the nudge's outcome and the time.
+        if (!card.submitted) this.sendFeedback({});
+        return action === "restart" ? "again" : "menu";
+      }
       await this.viewMap();
     }
     return "menu";
+  }
+
+  /** Section 38.3 and 38.4: the nudge, once a run; the card's opening time for `cardSeconds`. */
+  private readonly nudge = new NudgeGate();
+  private cardOpenedAt = 0;
+
+  /** The answers go once (one form a run), with the nudge's outcome and the seconds since the card opened; never a name. */
+  private sendFeedback(answers: LastCardAnswers, submitted = false): void {
+    if (this.feedbackSent) return;
+    this.feedbackSent = true;
+    const cardSeconds = Math.round(Math.max(0, performance.now() - this.cardOpenedAt) / 100) / 10;
+    void postFeedback(this.runId, { ...answers, nudge: this.nudge.outcome(submitted), cardSeconds });
   }
 
   /** The card up, until a footer button; resolves with which. */
@@ -1506,6 +1523,19 @@ export class PanjimController {
     return new Promise((resolve) => {
       const hosted = this.resultCards.host({ body: card.body, wide: true, focus: ".fb-name-field, .fb-star", ...(this.lastStorm ? { detail: { link: DETAIL_LINK, body: this.lastStorm.defences } } : {}) });
       card.onAction = (action) => {
+        // Section 38.3: once per run, and never after a Submit, a press without feedback asks first.
+        if (this.nudge.shouldShow(card.submitted)) {
+          void this.resultCards.nudge({ title: NUDGE_TITLE, line: NUDGE_LINE, answer: NUDGE_ANSWER, anyway: anywayLabel(action) }).then((choice) => {
+            if (this.disposed) return;
+            if (choice === "answer") {
+              card.focusQuestions();
+              return;
+            }
+            hosted.close();
+            resolve(action);
+          });
+          return;
+        }
         hosted.close();
         resolve(action);
       };
@@ -1543,10 +1573,7 @@ export class PanjimController {
     if (this.disposed) return { line: THANKS };
     const plan = submitPlan({ onBoard: this.onBoard, field: submit.field }, checkName);
     // Sent once, with or without answers (a refused name, then another try, still sends only once).
-    if (!this.feedbackSent) {
-      this.feedbackSent = true;
-      void postFeedback(this.runId, submit.answers);
-    }
+    this.sendFeedback(submit.answers, true);
     if (plan.nameError) return { nameError: plan.nameError };
     if (!plan.post) return { line: THANKS };
     const { posted, already } = await postBoard(this.runReport(), plan.post);

@@ -4599,3 +4599,52 @@
   .last-columns { grid-template-columns: minmax(0, 1fr); }
   .last-divider { display: none; }
 }
+
+/* ---- Section 38.3: the nudge, once, over the dimmed last card ------------------------------------------------- */
+.result-card.dimmed {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.result-nudge {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.result-nudge-card {
+  width: min(420px, 92vw);
+  padding: 20px 22px 18px;
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--panel-edge);
+  box-shadow: 0 6px 0 var(--panel-shadow);
+}
+.result-nudge-title {
+  margin: 0 0 6px;
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 700;
+}
+.result-nudge-line {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.result-nudge-actions {
+  display: flex;
+  gap: 10px;
+}
+.result-nudge-actions button {
+  flex: 1;
+  width: auto;
+  min-height: 44px;
+  padding: 0 14px;
+  font-weight: 700;
+  font-size: inherit;
+  cursor: pointer;
+}
