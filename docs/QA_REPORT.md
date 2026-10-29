@@ -2589,7 +2589,7 @@ Not merged. One commit a step (38.1, 38.2, 38.3, 38.4, 38.4b, 38.5, 38.6).
 | `npm run test` | __TESTS__. New: `section38` (the card plan, card 2 behind its link, the nudge), `lastCard` (the four rows add up, the stars control, one age box, the no name path, the buttons' choices, the card's text), `testTag` (the URL filter, the chip), and in `server.test.ts` the new feedback shape (a full post, an empty post, a bad value refused, the ALTERs on an old table), the tags (a tagged post stores the tag and gets no rank, tagged rows out of the top 10 and every rank, a tagged and an untagged row with one name independent, `DEFAULT_TAG`, a tagged row's token, `npm run tag -- list`, the export's `tag` column). `feedbackForm.test.ts` (the old form) is gone. The preview-equals-resolution test passes. |
 | `npm run build` | Clean (`tsc -b`, `vite build`, the API bundle rebuilt and current). The precache is unchanged (8 Ogg files). |
 | Browser pass (`tools/section38Shots.ts`), dev server, `?qa=1&noname=1`, `/api` stubbed | 1366x768: __PASS1366__. 1920x1080 (the card only, `only=card`): __PASS1920__. Zero console errors in both. Shots in `docs/qa/section38/`, looked at. |
-| Help (`npm run test:help`) | __HELP__ |
+| Help (`npm run test:help`) | Fits at 1280x600, 1366x768, 1920x1080 and 2560x1440 (the third run; the first two scrolled, below). The shots are not committed (the tool overwrites `docs/qa/section21/help-*.jpg`, restored after). |
 | Bots, Maya, labels, layout | Not run, as the brief says (no mechanics, no file under `src/ui/panjim/maya*` changed). |
 | Independent review | 0 BLOCKER, 1 MAJOR (fixed), 4 MINOR (fixed), 3 NIT (2 fixed, 1 documented). Below. |
 
@@ -2643,7 +2643,9 @@ Animations API (`ResultCards.enter`), which always ends at the stylesheet's opac
 system's reduced motion. The pass was run again for the shots below.
 
 **Help fit.** The first help run failed at 1280x600 and 1366x768 (a second paragraph made How to play scroll by about
-20 px). The last card's line now rides the storms paragraph, shorter: __HELPFIX__
+20 px); the second, with the line folded into the storms paragraph, still scrolled 17 px at 1280x600 and 3 px at
+1366x768. The third fits everywhere: "After each, a result card: stars, homes saved, biodiversity and points (what
+protected your homes is a link). After the last, one card: your points, your board place and a few questions."
 
 **Not run:** Safari and Firefox; a production load (nothing merged); the migration against Neon (`npm run db:migrate`
 runs after the merge; the ALTER statements were applied twice on pg-mem against a table of the old shape); the
