@@ -333,9 +333,13 @@ export interface FinaleView {
 
 export const VETERANS_LINE = "In this game, veterans are defences that stood through all three storms. Losses never take points away.";
 
-/** "Panjim held, {name}." or, without a name, "Panjim held." */
-export function finaleTitle(name: string | null): string {
-  return name ? `Panjim held, ${name}.` : "Panjim held.";
+/**
+ * The finale's heading. Section 35.8: "Panjim held, {name}." only when the run cleared Panjim (the clear rule);
+ * otherwise "Panjim made it to 2050, {name}.". Without a name, the same without it.
+ */
+export function finaleTitle(name: string | null, cleared: boolean): string {
+  const head = cleared ? "Panjim held" : "Panjim made it to 2050";
+  return name ? `${head}, ${name}.` : `${head}.`;
 }
 
 /** The rank box beside the finale: the place on the board, the gap to the row above, and the rows round the run. */
@@ -378,7 +382,7 @@ export function finaleHtml(view: FinaleView, rank: RankState): string {
   return `<div class="result-card-body finale-points">
     <div class="finale-main">
       <div class="result-eyebrow">Panjim, 2026 to 2050</div>
-      <h2 class="result-title">${esc(finaleTitle(view.name))}</h2>
+      <h2 class="result-title">${esc(finaleTitle(view.name, view.cleared))}</h2>
       <div class="finale-total"><b>${points.total}</b><span>points</span></div>
       <ul class="finale-rows">${storms}${bio}${vets}</ul>
       <p class="finale-line">${esc(VETERANS_LINE)}</p>
@@ -395,7 +399,7 @@ export function finalePointsCard(view: FinaleView, rank: RankState): { body: HTM
   let current = view.name;
   let state = rank;
   const paint = (): void => {
-    body.querySelector(".finale-main .result-title")!.textContent = finaleTitle(current);
+    body.querySelector(".finale-main .result-title")!.textContent = finaleTitle(current, view.cleared);
     body.querySelector(".finale-rank")!.innerHTML = rankHtml(state, current);
   };
   return {

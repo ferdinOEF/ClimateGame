@@ -18620,7 +18620,7 @@ function anyAnswer(answers2) {
 var ok = (body) => ({ status: 200, body });
 var fail = (status, error) => ({ status, body: { error } });
 var OFFLINE = { status: 200, body: { offline: true } };
-var LIMITS = { board: 10, rename: 10, feedback: 20, run: 60 };
+var LIMITS = { board: 120, rename: 120, feedback: 120, run: 400 };
 var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 var MAX_BUILDS = 25;
 function ipHash(env, ip) {

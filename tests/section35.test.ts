@@ -68,8 +68,18 @@ describe("the finale card", () => {
     expect(t).not.toMatch(/index/i);
   });
 
+  it("not cleared: Panjim made it to 2050, with or without a name", () => {
+    expect(finaleTitle("@maya_goa", false)).toBe("Panjim made it to 2050, @maya_goa.");
+    expect(finaleTitle(null, false)).toBe("Panjim made it to 2050.");
+    const t = text(finaleHtml({ ...view, cleared: false }, { status: "loading" }));
+    expect(t).toContain("Panjim made it to 2050, @maya_goa.");
+    expect(t).not.toContain("Panjim held");
+    expect(t).toContain("Not cleared yet");
+    expect(punctuationProblems(t)).toEqual([]);
+  });
+
   it("without a name: Panjim held.", () => {
-    expect(finaleTitle(null)).toBe("Panjim held.");
+    expect(finaleTitle(null, true)).toBe("Panjim held.");
     expect(text(finaleHtml({ ...view, name: null }, { status: "loading" }))).toContain("Panjim held.");
   });
 
