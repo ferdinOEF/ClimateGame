@@ -43,7 +43,7 @@ import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { closeSources } from "@ui/sourcesScreen";
 import { audioStateForTest, playSound } from "@ui/audioHooks";
-import { preloadSamples } from "@ui/sampleBank";
+import { BuildSounds, playSample, preloadSamples } from "@ui/sampleBank";
 import { music } from "@ui/music";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
@@ -2202,6 +2202,16 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     });
   }
   const stormSound = new StormSound();
+  /** Section 36.4: the bird cycle's place, for this session only. */
+  const buildSounds = new BuildSounds();
+  /**
+   * A defence landing: in Panjim and the Tutorial its recorded sound (a bird call for the living coast) in place of
+   * the synthesised tone; the tone still, on anything else, and if the sample has not loaded yet. Never both.
+   */
+  function playBuildSound(elementId: string): void {
+    const sample = panjim ? buildSounds.sampleFor(elementId) : null;
+    if (!sample || !playSample(sample)) playSound("build");
+  }
   /** The words over defences answering a storm ("Absorbed"); they follow their tile as the camera moves. */
   const stormWords: { el: HTMLElement; coord: AxialCoord }[] = [];
   function placeStormWord(word: { el: HTMLElement; coord: AxialCoord }): void {
@@ -2620,7 +2630,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           if (!controller.build(coord, id)) return;
           // The Tutorial's Maya has her own lines for each build (Section 15): no fact pops over them.
           if (!controller.stormComing && !controller.tutorial) nuggetPopup?.show(id);
-          playSound("build");
+          playBuildSound(id);
         },
         // The year chip first (never covered), then the rest of the HUD.
         {
@@ -2644,7 +2654,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       if (!state.build(coord, id)) return;
       telemetry.action("build", 1);
       placeElement(coord, id, true);
-      playSound("build");
+      playBuildSound(id);
       // STEP_PROMPT_pacing_telegraph_preview.md: checkHazardSchedule() now
       // runs BEFORE refreshHud() (was the other way around) — it's what
       // updates the telegraph state (tint, cloud layer, pending severity)

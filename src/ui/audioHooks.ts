@@ -144,16 +144,17 @@ if (typeof document !== "undefined") {
   document.addEventListener("keydown", unlock, true);
 }
 
-/** Section 36: what the music adds to the browser checks' view (music.ts sets it). */
-let testExtras: () => { music?: string; musicPlaying?: boolean; musicHistory?: string[]; samples?: string[] } = () => ({});
+/** Section 36: what the music and the samples add to the browser checks' view (music.ts and sampleBank.ts add them). */
+type TestExtras = { music?: string; musicPlaying?: boolean; musicHistory?: string[]; samples?: string[] };
+const testExtras: (() => TestExtras)[] = [];
 
-export function setAudioTestExtras(read: typeof testExtras): void {
-  testExtras = read;
+export function addAudioTestExtras(read: () => TestExtras): void {
+  testExtras.push(read);
 }
 
 /** For the browser checks: has the player unlocked sound, does an audio context exist yet, and the music's state. */
-export function audioStateForTest(): { unlocked: boolean; context: boolean; enabled: boolean; master: number | null; music?: string; musicPlaying?: boolean; musicHistory?: string[]; samples?: string[] } {
-  return { unlocked, context: context !== null, enabled, master: master ? master.gain.value : null, ...testExtras() };
+export function audioStateForTest(): { unlocked: boolean; context: boolean; enabled: boolean; master: number | null } & TestExtras {
+  return Object.assign({ unlocked, context: context !== null, enabled, master: master ? master.gain.value : null }, ...testExtras.map((read) => read()));
 }
 
 export function soundEnabled(): boolean {

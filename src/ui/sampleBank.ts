@@ -1,4 +1,4 @@
-import { audioOut, onAudioUnlock } from "./audioHooks";
+import { addAudioTestExtras, audioOut, onAudioUnlock, soundEnabled } from "./audioHooks";
 
 /**
  * Section 36: the game's recorded sounds (public/sound/), fetched and decoded once each, by name, into an
@@ -103,4 +103,115 @@ export function preloadSamples(): void {
     // After this click's own work: the decoding never competes with the frame the click starts.
     window.setTimeout(() => void samples.preloadAll().catch(() => {}), 0);
   });
+}
+
+/**
+ * Section 36.4: one shot samples (the build sounds), each through its own gain at 0.8 of the master, at most two at
+ * once (a third is dropped), each a little higher or lower (±4%) so a repeat never sounds the same.
+ */
+export const ONE_SHOT_GAIN = 0.8;
+export const ONE_SHOT_MAX = 2;
+export const ONE_SHOT_PITCH = 0.04;
+
+export interface OneShotDeps {
+  out: () => { ctx: BaseAudioContext; out: AudioNode } | null;
+  buffer: (name: SampleName) => AudioBuffer | null;
+  random: () => number;
+}
+
+/** "played", "dropped" (two already playing, or sound off) or "missing" (not loaded: the caller may play its tone). */
+export type OneShotResult = "played" | "dropped" | "missing";
+
+export class OneShots {
+  private playing = 0;
+  /** Every sample asked to play and played, in order (for the browser checks). */
+  readonly played: SampleName[] = [];
+
+  constructor(private readonly deps: OneShotDeps) {}
+
+  get active(): number {
+    return this.playing;
+  }
+
+  play(name: SampleName): OneShotResult {
+    try {
+      const io = this.deps.out();
+      if (!io) return "dropped";
+      const buffer = this.deps.buffer(name);
+      if (!buffer) return "missing";
+      if (this.playing >= ONE_SHOT_MAX) return "dropped";
+      const src = io.ctx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.value = 1 + (this.deps.random() * 2 - 1) * ONE_SHOT_PITCH;
+      const gain = io.ctx.createGain();
+      gain.gain.value = ONE_SHOT_GAIN;
+      src.connect(gain).connect(io.out);
+      this.playing++;
+      src.onended = () => {
+        this.playing = Math.max(0, this.playing - 1);
+        try {
+          gain.disconnect();
+        } catch {
+          // Already gone.
+        }
+      };
+      src.start();
+      this.played.push(name);
+      if (this.played.length > 32) this.played.shift();
+      return "played";
+    } catch {
+      return "dropped";
+    }
+  }
+}
+
+const oneShots = new OneShots({
+  out: () => (soundEnabled() ? audioOut() : null),
+  buffer: (name) => samples.get(name),
+  random: Math.random
+});
+addAudioTestExtras(() => ({ samples: [...oneShots.played] }));
+
+/** Plays a one shot sample; false only when it has not loaded, so the caller can play its tone instead. */
+export function playSample(name: SampleName): boolean {
+  const result = oneShots.play(name);
+  // Not loaded yet (a build in the first seconds): ask for it, for next time.
+  if (result === "missing") void samples.load(name);
+  return result !== "missing";
+}
+
+/** Section 36.4: which sample a defence lands with. The living coast ("bird") takes the next bird call. */
+export const DEFENCE_SAMPLE: Record<string, SampleName | "bird"> = {
+  seawall: "build_seawall",
+  breakwater: "build_breakwater",
+  small_dam: "build_dam",
+  mangrove: "bird",
+  khazan: "bird",
+  dune: "bird",
+  sandy_vegetation: "bird"
+};
+
+/** The birds' turn, one per living coast build: no call twice in a row. */
+export const BIRD_CYCLE: readonly SampleName[] = [
+  "bird_kingfisher",
+  "bird_drongo",
+  "bird_kite",
+  "bird_eagle",
+  "bird_kingfisher",
+  "bird_kite",
+  "bird_drongo",
+  "bird_eagle"
+];
+
+/** A session's build sounds: the bird cycle's place lives here, and starts again with each session. */
+export class BuildSounds {
+  private birds = 0;
+
+  /** The sample for a build of `elementId`, or null for anything without one (it keeps the synthesised tone). */
+  sampleFor(elementId: string): SampleName | null {
+    const sample = DEFENCE_SAMPLE[elementId];
+    if (!sample) return null;
+    if (sample !== "bird") return sample;
+    return BIRD_CYCLE[this.birds++ % BIRD_CYCLE.length];
+  }
 }

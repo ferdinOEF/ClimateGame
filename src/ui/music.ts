@@ -1,4 +1,4 @@
-import { audioOut, onAudioUnlock, setAudioTestExtras } from "./audioHooks";
+import { audioOut, onAudioUnlock, addAudioTestExtras } from "./audioHooks";
 import { MUSIC_SAMPLE, samples } from "./sampleBank";
 
 /**
@@ -240,7 +240,7 @@ class MusicPlayer {
 }
 
 const player = new MusicPlayer();
-setAudioTestExtras(() => {
+addAudioTestExtras(() => {
   const { state, playing, history } = player.probe();
   return { music: state, musicPlaying: playing, musicHistory: history };
 });
