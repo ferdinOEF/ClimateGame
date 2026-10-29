@@ -390,6 +390,38 @@ only; `PATCH /api/board` with it renames the row (the feedback form's name field
 stored on the machine. Nothing about a run is saved on the machine (Section 28): the name lives in memory
 (`services/playerName.ts`) and goes at the menu.
 
+## Sound: the sample bank, the music and the storm's hand over (Section 36)
+
+Every sound goes through the master gain in `ui/audioHooks.ts`, so the Sound switch (S) and the volume slider cover
+all of it, and nothing plays before the player's first click or key press (the unlock; `onAudioUnlock` runs what was
+waiting for it). Any audio failure is swallowed.
+
+- **The sample bank** (`ui/sampleBank.ts`): the recorded sounds in `public/sound/`, each as Ogg Vorbis and as MP3 (the
+  MP3 when `canPlayType("audio/ogg; codecs=vorbis")` is empty: Safari). Each is fetched and decoded once, by name,
+  into an AudioBuffer on the context from `audioOut()`, never before the unlock, so first paint never waits for a
+  sound. A Panjim or Tutorial session asks for all eight once the player has clicked: the seven short ones together,
+  the music last. A sample that fails resolves to null and is skipped. The service worker precaches `public/sound/`
+  with the rest of `public/` (both formats, 5.3 MB).
+- **Build sounds**: `playSample(name)` plays a one shot at 0.8 of the master, at most two at once (a third is
+  dropped), each with a random pitch of ±4%. `BuildSounds` (one a session) maps a defence to its sound: seawall,
+  breakwater and small dam their own recording, the living coast (mangrove, khazan, dune, pandanus) the next call of
+  a fixed bird cycle, so no call repeats twice in a row. `gameSession.playBuildSound` plays it where the defence lands,
+  in place of the synthesised `"build"` tone, which stays for everything else (and for a build before the sample has
+  loaded: one or the other, never both).
+- **The music** (`ui/music.ts`): one loop under its own gain into the master. Its level is a pure state machine
+  (`MusicMachine`: `"off" | "full" | "soft"`, 0, 0.35 and 0.2 of the master; fades 2.5 s out, 4 s in, 1.5 s between
+  full and soft, 1 s on closing). The audio side only follows it with `setTargetAtTime`. The loop's last half second
+  fades out, so two sources take turns, each next one starting 1.5 s before the current ends, crossing over with
+  equal power curves; there is always one pass queued ahead, from the previous pass's `onended`.
+- **Where the storm takes over**: `panjimFxBegin` sends the music off (its fade rides the storm's lead in, and
+  `ui/stormSound.ts` plays the storm, unchanged); the storm director's `"end"` cue (beside `stormSound.quiet()`)
+  brings it back to full, through the result cards (`panjimFxEnd` does the same for a storm staged without the
+  director). `calmEnding` (the finale) makes it soft, and it stays soft on the finale card and the form. The session's
+  `dispose` (Exit, Leave, Start again, Play again, the idle reset to the menu) closes it: a 1 s fade, then the loop
+  stops; the next session opens it again. The menu and the level select open no session, so no music.
+- `__audioForTest()` (QA hooks only) adds the music's state, its last events and the samples played;
+  `tools/section36Shots.ts` is the browser pass.
+
 ## The Spark constraint
 
 Firebase's free tier has no Cloud Functions, so there is no trusted server

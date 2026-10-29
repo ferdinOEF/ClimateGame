@@ -1,3 +1,20 @@
+## Section 36 — music and build sounds — ON BRANCH `section-36-music` (not merged)
+
+Branch `section-36-music` from master `97cdaea` (`pre-section-36` local tag; `backup/pre-section-36` pushed).
+Panjim and the Tutorial; the menu and the level select stay silent.
+- 36.1 The 16 sound files in `public/sound/` (Ogg and MP3 of the music loop, three build sounds, four bird calls);
+  `ui/sampleBank.ts` loads them after the first click, the short ones first and the music last, Ogg or MP3 by
+  `canPlayType`; a failed load is skipped. The service worker precaches them (8.42 MB in all, was 3.11 MB).
+- 36.2 `ui/music.ts`: the loop under its own gain, two alternating sources with a 1.5 s equal power crossfade at the
+  join; `MusicMachine` (off, full 0.35, soft 0.2; fades 2.5 s, 4 s, 1.5 s, close 1 s) on an injected clock.
+- 36.3 The music goes off as a storm begins, back to full on the storm's end cue (and through its result cards), soft
+  from the finale's calm through the finale card and the form; it stops when the session closes. `__audioForTest()`
+  reports it; `tools/section36Shots.ts` checks it.
+- 36.4 Build sounds: seawall, breakwater and small dam their own; the living coast a bird call from a fixed cycle;
+  two at once at most, 0.8 of the master, ±4% pitch. The synthesised tone stays everywhere else.
+- 36.5 Docs. No credit line (owner decision). Help: unchanged (it has no keys line for S; the ☰ Sound switch shows
+  its S and covers the music).
+
 ## Section 35 — points, one running board, and a feedback form after the game — MERGED (`7d329c9`, QA in docs/QA_REPORT.md)
 
 Branch `section-35-points-board-feedback` from master `f847aa9`. Play Panjim only; the Tutorial is unchanged, never
