@@ -20,6 +20,9 @@ src/
                       resolver on a copy (tile probe), heat ramp, shields
     prep.ts           "Get ready" jobs for the next storm, from its exposure
     mayaLines.ts      Maya's words from game data: hotspot, place, Aftermath
+    resultFlow.ts     the cards after a storm (Section 38.1)
+    lastCard.ts       the last card's rows, questions and texts (Section 38.2)
+    nudge.ts          the nudge, once (Section 38.3)
   render/     Three.js scene and mesh managers
     heatOverlay.ts    the warning heat: one instanced layer, one shader
     townGeometry.ts   the seven building kinds and the garden
@@ -415,10 +418,50 @@ name, and the feedback form shows "That name is already on the board." under its
 either way). A run that does not beat its name's best keeps that row (no edit token, `kept`).
 
 **The edit token.** A board post answers with a random token for its row, kept by the client in memory for that run
-only; `PATCH /api/board` with it renames the row (the feedback form's name field). It is never shown, exported or
-stored on the machine. Nothing about a run is saved on the machine (Section 28): the name lives in memory
+only; `PATCH /api/board` with it renames the row. Since Section 38.2 nothing renames (the last card has no name
+field for a named run); the endpoint stays, unused. It is never shown, exported or stored on the machine. Nothing about a run is saved on the machine (Section 28): the name lives in memory
 (`services/playerName.ts`) and goes at the menu, and at Play again on the finale (Section 37.4: the next run's
 name card opens empty; "Try again from {year}" and Start again keep it, the same run).
+
+## The last card, the nudge and the feedback (Section 38)
+
+**The storm cards (38.1).** `core/resultFlow.ts stormCardPlan(next, year)` is the sequence after a storm in Play
+Panjim: after the 2030 and 2040 storms, card 1 (the result) then the outlook card; card 2 ("What protected your
+homes") stays in the code and opens from a text link on card 1 under the homes saved bar (`CardSpec.detail`), "Back"
+its only button (Enter is Back too); card 1's main button is the outlook's old label and its retry button stays.
+After the 2050 storm the plan is empty: `showResults` keeps that storm's result (`lastStorm`) for the last card and
+shows nothing. The Tutorial's cards are not drawn from the plan.
+
+**The last card (38.2).** `ui/panjim/lastCard.ts` draws one wide card from `core/lastCard.ts` (the points rows, the
+four questions, the stars control, the age boxes, `submitPlan`, the texts): left, the 2050 storm as card 1 shows it
+with the link to card 2, the run's four points rows (`pointsRows`: three storms, then "Nature at the end of 2050" with
+the biodiversity and veteran points as one number; they add up to the total), the stars and the cleared chip, and the
+board box (`rankHtml`, the finale's before); right, the feedback. `ResultCards.host()` shows a card that wires its own
+buttons: no buttons row of its own, Enter outside a button does nothing, Esc does nothing (Section 34 decision 3),
+Tab stays inside, and it closes only through its handle, leaving its body intact. That is what lets View map close it
+over the finished board (`PanjimController.viewMap`, "Back to your result" bottom centre) and bring it back with its
+answers kept. Restart is Play again (the name cleared, Section 37.4), Exit the menu. The board post happens as the
+card opens (`boardPlace`), before the player taps anything. Submit (`submitLastCard`) posts the answers once (never
+a name), and a name typed on the card puts the run on the board; the button becomes "Thank you." in place. The old
+`finaleCard.ts` and `feedbackForm.ts` are gone; the title moment is `lastCardTitle`.
+
+**The nudge (38.3).** `core/nudge.ts NudgeGate`: once per run, and never after a Submit, a press of a footer button
+shows `ResultCards.nudge()` over the dimmed card: "Before you go, five taps?", "Answer now" (focus to the first star
+row) and "{Action} anyway". Its outcome ("none", "shown_answered", "shown_left") goes with the feedback. Leaving
+without a Submit still posts the empty form, with the outcome and `cardSeconds` (from the card opening), so the
+count of forms opened is known. The idle reset applies while the card or the box is up and posts nothing.
+
+**The feedback shape (38.4).** `core/feedbackForm.ts checkAnswers`: q1 to q4 (1 to 5), remember (cut at 140), age
+(`u17`, `18_30`, `31_plus`), nudge, cardSeconds; a known key with a bad value is refused (400), an unknown key
+ignored, an empty form a valid post. The table has the same columns (`db/schema.sql`, with idempotent ALTERs for a
+table made before Section 38); the export joins them to the run as before.
+
+**Test tags (38.4b).** `services/testTag.ts` reads `?tag=` once per page load (2 to 30 letters, digits or
+underscores; never stored) and `RunReport.tag` and the feedback post carry it; the server (`server/db.ts tagOf`)
+takes the post's tag, else `DEFAULT_TAG`, else null. `runs`, `board` and `feedback` have a `tag` column. A tagged
+board post is inserted with its tag outside the one row per name rule and answered `{ tagged: true }` (the client's
+`RankState` "tagged": "Test session: not on the board."); `boardRows` and `rowsNamed` read `WHERE tag IS NULL`, so
+the top 10, every rank and the name rule see real players only. Nothing is deleted. `tools/tag.ts` lists the tags.
 
 ## Sound: the sample bank, the music and the storm's hand over (Section 36)
 
