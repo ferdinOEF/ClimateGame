@@ -4276,17 +4276,32 @@
   color: var(--warn-ink);
 }
 .name-card-error[hidden] { display: none; }
+/* Section 35.8: Play full width in the main style; "Play without a name" a plain underlined text button under it. */
 .name-card-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   margin-top: 18px;
 }
-.name-card-actions button {
-  min-height: 44px;
-  padding: 0 20px;
-  font-size: 16px;
+.name-card-actions .name-card-play {
+  width: 100%;
+  min-height: 48px;
+  font-size: 18px;
 }
+.name-card-actions .name-card-skip {
+  align-self: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  background: none;
+  color: var(--ink-2);
+  font: 600 14px var(--font-body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.name-card-actions .name-card-skip:hover { color: var(--ink); }
 .name-card-top {
   padding: 14px;
   border-radius: 14px;

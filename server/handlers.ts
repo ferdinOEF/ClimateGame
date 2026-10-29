@@ -34,8 +34,8 @@ const ok = (body: Record<string, unknown>): Reply => ({ status: 200, body });
 const fail = (status: number, error: string): Reply => ({ status, body: { error } });
 const OFFLINE: Reply = { status: 200, body: { offline: true } };
 
-/** Writes allowed per salted IP per hour (Section 35.4.9). */
-export const LIMITS = { board: 10, rename: 10, feedback: 20, run: 60 } as const;
+/** Writes allowed per salted IP per hour (Section 35.8: festival laptops share one IP, so the limits are generous). */
+export const LIMITS = { board: 120, rename: 120, feedback: 120, run: 400 } as const;
 export type LimitKind = keyof typeof LIMITS;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

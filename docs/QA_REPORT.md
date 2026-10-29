@@ -2410,3 +2410,19 @@ are READY. Production checked through the Vercel connector (this machine cannot 
 production share one database. Delete it with the SQL above.
 
 **Revert:** `git revert -m 1 7d329c9`.
+
+## Section 35.8: limits for a shared IP, the finale heading when not cleared, the Play button
+
+On `section-35-points-board-feedback`, restarted from master `9989ddd` (Section 35 is merged). Not merged: the owner
+merges on their word.
+- Limits per IP per hour: board 120, rename 120, feedback 120, run 400 (festival laptops share one IP);
+  `tests/server.test.ts` and `docs/DEPLOY.md`.
+- The finale heading: "Panjim held, {name}." only when the run is cleared, else "Panjim made it to 2050, {name}."
+  (without a name, the same without it); `tests/section35.test.ts` covers both.
+- The name card: Play full width in the main style; "Play without a name" a plain underlined text button under it,
+  44 px; the Tab order unchanged (`tests/nameCard.test.ts`).
+- `tsc`, vitest (102 files, 880 passed, 6 skipped) and build clean. `tools/section35Shots.ts` (1366x768, 30 checks,
+  all pass, zero console errors) now plays the best plan (tools/bestPlan, 9 of 9) through the game for a cleared
+  finale, and the smart hook (3 of 9) for one not cleared. Retaken: `1-name-card`, `4-finale-named` (cleared, 4215
+  points, the server's replay the same); new `4b-finale-not-cleared`. The other four shots were retaken by the same
+  pass (now from the best plan's run).

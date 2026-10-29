@@ -1,5 +1,5 @@
 /**
- * Section 35.7: the one browser pass of Section 35, on the production build (`vite preview`, `?qa=1`), at 1366x768:
+ * Section 35.7: the one browser pass of Section 35 (Section 35.8: the finale cleared, by the best plan, and not cleared), on the production build (`vite preview`, `?qa=1`), at 1366x768:
  * six screenshots to docs/qa/section35/ (the name card with a top 10, the HUD card after the 2030 storm with its
  * Points box, result card 1 with its chips, the finale card with a name and its rank box, the feedback form, the
  * thank you line), and three checks: the name is gone after a reload; nothing new in localStorage or sessionStorage;
@@ -97,6 +97,50 @@ async function serve(route: Route): Promise<void> {
 // ---- the pass ------------------------------------------------------------------------------------------------------
 const js = <T>(page: Page, code: string): Promise<T> => page.evaluate(code) as Promise<T>;
 const scenario = (page: Page, name: string): Promise<boolean> => js<boolean>(page, `window.__panjimScenarioForTest(${JSON.stringify(name)})`);
+/**
+ * Section 35.8: plays `actions` (the best plan's builds) through the game's own build path, hurrying each storm and
+ * pressing through its cards as a player would; with `stopAtCards`, stops with the last storm's result cards open,
+ * else at the finale card. Returns "ok" or why it stopped.
+ */
+// A plain string, not a function: tsx would add its `__name` helper to a function, and the page has none.
+const PLAY_PLAN = `async ({ actions, stopAtCards }) => {
+  const c = window.__panjimForTest;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const cardsOpen = () => !!document.querySelector(".result-cards:not([hidden]) .result-next");
+  const settle = async (pressCards) => {
+    for (let i = 0; i < 3000; i++) {
+      if (c.atFinalCard()) return;
+      if (cardsOpen()) {
+        if (!pressCards) return;
+        document.querySelector(".result-cards:not([hidden]) .result-next").click();
+        await wait(300);
+        continue;
+      }
+      if (c.isBusy) {
+        document.dispatchEvent(new PointerEvent("pointerdown"));
+        await wait(200);
+        continue;
+      }
+      if (c.maya.speaking) c.maya.dismiss();
+      return;
+    }
+  };
+  for (const a of actions) {
+    await settle(true);
+    if (!c.build({ q: a.q, r: a.r }, a.elementId)) return "refused " + a.elementId + " at " + a.q + "," + a.r;
+    await wait(150);
+  }
+  for (let i = 0; i < 600; i++) {
+    if (stopAtCards ? cardsOpen() : c.atFinalCard()) return "ok";
+    await settle(!stopAtCards);
+    await wait(200);
+  }
+  return "timed out";
+}`;
+const playPlan = (page: Page, actions: { elementId: string; q: number; r: number }[], stopAtCards: boolean): Promise<string> =>
+  js<string>(page, `(${PLAY_PLAN})(${JSON.stringify({ actions: actions.map(({ elementId, q, r }) => ({ elementId, q, r })), stopAtCards })})`);
+const BEST = (JSON.parse(fs.readFileSync("docs/qa/section34c/best_plan.json", "utf8")) as { goal1: { actions: { elementId: string; q: number; r: number }[] } }).goal1.actions;
+
 const shot = async (page: Page, name: string): Promise<void> => {
   await page.screenshot({ path: path.join(OUT, `${name}-${W}x${H}.jpg`), type: "jpeg", quality: 85 });
   console.log(`shot ${name}`);
@@ -142,8 +186,9 @@ try {
   await page.waitForTimeout(2000);
   await js(page, "window.__panjimForTest.maya.dismiss()");
 
-  // 3. Result card 1 with its chips (the 2030 cyclone).
-  check(await scenario(page, "smart-aftermath"), "the 2030 storm, built for with care, resolves to its result cards");
+  // 3. Result card 1 with its chips (the 2030 cyclone), the best plan's first five builds (tools/bestPlan, 9 of 9).
+  const first = await playPlan(page, BEST.slice(0, 5), true);
+  check(first === "ok", `the best plan's first five builds bring the 2030 storm to its result cards (${first})`);
   await page.waitForTimeout(1500);
   const chips = await page.locator(".result-points-chip").allTextContents();
   check(chips.length > 0, `card 1 shows its points chips: ${chips.join(" | ")}`);
@@ -162,12 +207,13 @@ try {
   check(!!card && Math.round(card.width) === 300, `the HUD card stays 300 px wide (${card?.width})`);
   await shot(page, "2-hud-points");
 
-  // 4. The finale card with the name and its rank box.
-  check(await scenario(page, "smart-finale"), "the run plays on, with care, to its finale card");
+  // 4. The finale card with the name and its rank box: the best plan to 2050, a cleared run.
+  const rest = await playPlan(page, BEST.slice(5), false);
+  check(rest === "ok", `the best plan plays on to its finale card (${rest})`);
   await page.waitForSelector(".finale-rank-rows li.me", { timeout: 60000 });
   await page.waitForTimeout(3500);
   const title = await page.locator(".finale-main .result-title").textContent();
-  check(title === "Panjim held, test_oef.", `the finale's title: ${title}`);
+  check(title === "Panjim held, test_oef." && (await page.locator(".finale-clear .result-clear.cleared").count()) === 1, `a cleared run's finale: ${title}`);
   const shown = Number(await page.locator(".finale-total b").textContent());
   const boardPost = posts.find((p) => p.path === "/api/board" && p.method === "POST");
   check(!!boardPost && !("points" in boardPost.body) && Array.isArray(boardPost.body.builds) && boardPost.body.name === "test_oef", "the board post sends the run id, the name and the builds, never a score");
@@ -213,6 +259,21 @@ try {
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForSelector(".name-card-field", { timeout: 120000 });
   check((await page.locator(".name-card-field").inputValue()) === "", "after a reload the name field is empty");
+
+  // 4b. Section 35.8: a run that is not cleared: "Panjim made it to 2050, {name}." (the smart hook: 3 of 9 stars).
+  await page.waitForSelector(".name-card .name-card-top-rows li", { timeout: 20000 });
+  await page.locator(".name-card-field").fill("test_oef_2");
+  await page.locator(".name-card-play").click();
+  await page.waitForSelector(".brief-cta", { state: "visible", timeout: 10000 });
+  await page.locator(".brief-cta").click();
+  await page.waitForTimeout(2000);
+  await js(page, "window.__panjimForTest.maya.dismiss()");
+  check(await scenario(page, "smart-finale"), "a second run plays to its finale card");
+  await page.waitForSelector(".finale-rank-rows li.me", { timeout: 60000 });
+  await page.waitForTimeout(3500);
+  const notCleared = await page.locator(".finale-main .result-title").textContent();
+  check(notCleared === "Panjim made it to 2050, test_oef_2." && (await page.locator(".finale-clear .result-clear.not-cleared").count()) === 1, `a run not cleared: ${notCleared}`);
+  await shot(page, "4b-finale-not-cleared");
 } finally {
   await browser.close();
   killTree(child);

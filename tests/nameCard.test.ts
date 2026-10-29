@@ -36,6 +36,18 @@ describe("the name card", () => {
     expect(topTenHtml({ status: "ready", rows, season: "Festival 2026" })).toContain('tabindex="0"');
   });
 
+  it("Section 35.8: Play full width in the main style, Play without a name a plain underlined text button under it, 44 px", () => {
+    const css = readFileSync("src/ui/panjim/panjim.css", "utf8");
+    expect(nameCardHtml(null)).toContain('<button type="submit" class="name-card-play btn-primary">Play</button>');
+    expect(nameCardHtml(null)).toContain('<button type="button" class="name-card-skip">Play without a name</button>');
+    expect(css).toMatch(/\.name-card-actions \{[^}]*flex-direction: column;/);
+    expect(css).toMatch(/\.name-card-actions \.name-card-play \{[^}]*width: 100%;/);
+    const skip = css.slice(css.indexOf(".name-card-actions .name-card-skip {"), css.indexOf("}", css.indexOf(".name-card-actions .name-card-skip {")));
+    expect(skip).toMatch(/min-height: 44px;/);
+    expect(skip).toMatch(/text-decoration: underline;/);
+    expect(skip).toMatch(/background: none;/);
+  });
+
   it("preloads the run's name (Play again keeps it), escaped", () => {
     expect(nameCardHtml('@a"b')).toContain('value="@a&quot;b"');
   });

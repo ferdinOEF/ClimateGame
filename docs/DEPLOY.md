@@ -39,13 +39,13 @@ Without `DATABASE_URL` every endpoint answers `{ "offline": true }` and the game
 
 | Endpoint | Does | Limit per IP per hour |
 |---|---|---|
-| `POST /api/run` | A Play Panjim run's reach and completion (at the finale; by `sendBeacon` when it stops early). No name. | 60 |
+| `POST /api/run` | A Play Panjim run's reach and completion (at the finale; by `sendBeacon` when it stops early). No name. | 400 |
 | `GET /api/board` | The top 10 and the season; `?points=N` the place N would get and the rows round it. | none |
-| `POST /api/board` | `{ runId, name, builds }` for a finished run: the server replays the builds, counts the points and stores them; one row per run. Returns the place and an edit token. | 10 |
-| `PATCH /api/board` | `{ editToken, name }`: renames that row (the feedback form). | 10 |
-| `POST /api/feedback` | `{ runId, answers }`: the answered items only, checked against the allowed values; one form a run. No name. | 20 |
+| `POST /api/board` | `{ runId, name, builds }` for a finished run: the server replays the builds, counts the points and stores them; one row per run. Returns the place and an edit token. | 120 |
+| `PATCH /api/board` | `{ editToken, name }`: renames that row (the feedback form). | 120 |
+| `POST /api/feedback` | `{ runId, answers }`: the answered items only, checked against the allowed values; one form a run. No name. | 120 |
 
-Over a limit: 429, and the game carries on as offline. The client never sends a score: the server plays the build
+Over a limit: 429, and the game carries on as offline. The limits are generous because the festival's laptops share one IP (Section 35.8). The client never sends a score: the server plays the build
 list through the same hazard model (`replayBuilds` in `src/core/resiliencePoints.ts`) and stores what it counts.
 
 ## How the functions are built

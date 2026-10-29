@@ -199,6 +199,10 @@ describe("with a database", () => {
     expect((await postFeedback(await context(db), { runId: "66666666-6666-4666-8666-666666666666", answers: { s4_enjoy: 3 } })).status).toBe(404);
   });
 
+  it("allows a shared festival IP 120 board posts, renames and forms and 400 run reports an hour", () => {
+    expect(LIMITS).toEqual({ board: 120, rename: 120, feedback: 120, run: 400 });
+  });
+
   it("limits each IP: over the limit is 429, the game carries on as offline", async () => {
     const ip = "203.0.113.9";
     for (let i = 0; i < LIMITS.board; i++) expect((await postBoard(await context(db, ip), { runId: RUN_C, name: "!", builds: [] })).status).toBe(400);

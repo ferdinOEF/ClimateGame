@@ -38,7 +38,7 @@ export function nameCardHtml(initial: string | null): string {
       <p class="name-card-error" id="name-card-error" role="alert" hidden></p>
       <div class="name-card-actions">
         <button type="submit" class="name-card-play btn-primary">Play</button>
-        <button type="button" class="name-card-skip btn">Play without a name</button>
+        <button type="button" class="name-card-skip">Play without a name</button>
       </div>
     </form>
     <aside class="name-card-top" aria-live="polite">${topTenHtml({ status: "loading" })}</aside>
