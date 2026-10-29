@@ -18823,11 +18823,11 @@ async function patchBoard(ctx, body) {
   if (!await underLimit(ctx, "rename")) return fail(429, "limit");
   const name = checkName(typeof body.name === "string" ? body.name : "");
   if (!name.ok) return fail(400, name.reason === "refused" ? "name refused" : "bad name");
-  const rows = await ctx.sql.query("UPDATE board SET name = $1 WHERE edit_token = $2 RETURNING points", [name.name, token]);
+  const rows = await ctx.sql.query("UPDATE board SET name = $1 WHERE edit_token = $2 RETURNING id, points", [name.name, token]);
   if (rows.length === 0) return fail(404, "no such row");
-  const kept = await oneRowFor(ctx.sql, name.name);
-  const points = kept?.points ?? Number(rows[0].points);
-  return ok({ renamed: true, name: name.name, rank: denseRank(points, await boardRows(ctx.sql)) });
+  const kept = await oneRowFor(ctx.sql, name.name) ?? { id: rows[0].id, points: Number(rows[0].points) };
+  const place = await around(ctx.sql, kept.points, kept.id);
+  return ok({ renamed: true, name: name.name, ...place, points: kept.points, ...kept.id !== rows[0].id ? { kept: true } : {} });
 }
 async function postFeedback(ctx, body) {
   if (!ctx.sql) return OFFLINE;

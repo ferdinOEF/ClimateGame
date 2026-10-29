@@ -108,8 +108,8 @@ export async function postBoard(report: RunReport, name: string): Promise<{ post
 }
 
 /** PATCH /api/board: renames the run's row (from the feedback form). */
-export function renameOnBoard(editToken: string, name: string): Promise<{ renamed: boolean; name: string; rank: number } | null> {
-  return call<{ renamed: boolean; name: string; rank: number }>("/api/board", { method: "PATCH", body: JSON.stringify({ editToken, name }) }, REPLAY_TIMEOUT_MS);
+export function renameOnBoard(editToken: string, name: string): Promise<({ renamed: boolean; name: string } & RankView) | null> {
+  return call<{ renamed: boolean; name: string } & RankView>("/api/board", { method: "PATCH", body: JSON.stringify({ editToken, name }) }, REPLAY_TIMEOUT_MS);
 }
 
 /** POST /api/feedback: the answered items only, by run id; never a name. */

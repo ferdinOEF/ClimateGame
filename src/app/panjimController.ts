@@ -1546,6 +1546,8 @@ export class PanjimController {
           runName = renamed.name;
           this.host.setPlayerName?.(runName);
           finale.setName(runName);
+          // Section 37.3: the place of the row that stays under the name (another run's, when that one had more points).
+          if (Array.isArray(renamed.above)) finale.setRank({ status: "ready", rank: renamed });
         }
       }
       if (plan.nameError) {

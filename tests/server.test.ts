@@ -303,7 +303,10 @@ describe("Section 37.3: one row per name, dense ranks", () => {
   it("a rename to a name already on the board leaves one row for it, the better", async () => {
     const [{ edit_token: token }] = await db.query<{ edit_token: string }>("SELECT edit_token FROM board WHERE name = 'Cal'");
     const renamed = await patchBoard(await context(db), { editToken: token, name: "ASH" });
-    expect(renamed.body).toMatchObject({ renamed: true, name: "ASH", rank: 1 });
+    expect(renamed.body).toMatchObject({ renamed: true, name: "ASH", rank: 1, kept: true });
+    // The whole place of the row that stays, for the finale to show (Codex on PR #35).
+    expect(Array.isArray(renamed.body.above) && Array.isArray(renamed.body.below)).toBe(true);
+    expect(renamed.body.points).toBe(highPoints + 1000);
     expect(await db.query("SELECT * FROM board WHERE lower(name) = 'ash'")).toHaveLength(1);
   });
 });

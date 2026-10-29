@@ -2547,6 +2547,10 @@ three). The music's fade out is 1.5 s, inside the 2 s before the first water.
   answer reads the whole board table (fine at festival scale); Up or Down from a control inside a card goes to the
   first card; an offline browser without Ogg has no build sounds until each MP3 was fetched once. Left.
 
+**Codex on PR #35** (`36da4be`), one P2: a rename onto a name with a higher row deleted the run's row but left the
+finale showing it. Fixed: the rename answers with the whole place of the row that stays (`kept` when it is another
+run's), and the finale shows it; server test extended.
+
 **Codex on PR #34:** its review never finished: the summary still reads "running" on `a553820` and it left no
 finding, review or thread. Nothing to act on.
 
