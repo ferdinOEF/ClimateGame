@@ -7,6 +7,8 @@
  *                 the run id (no name);
  *   board.csv     the board: season, name, points, stars, when (never the edit token).
  *
+ * Section 38.4b: each file has a `tag` column (a test session's tag; empty for a real player); nothing is dropped.
+ *
  *   DATABASE_URL=postgres://... npm run export:feedback
  */
 import fs from "node:fs";
@@ -27,14 +29,14 @@ export function toCsv(rows: Record<string, unknown>[], columns: string[]): strin
   return [columns.join(","), ...rows.map((row) => columns.map((c) => csvField(row[c])).join(","))].join("\n") + "\n";
 }
 
-export const RUN_COLUMNS = ["id", "started_at", "ended_at", "finished", "year_reached", "minutes", "points", "stars", "builds", "nature_share", "biodiversity_end", "tutorial_first", "on_board"];
-export const FEEDBACK_COLUMNS = ["run_id", "created_at", "q1", "q2", "q3", "q4", "remember", "age_group", "nudge", "card_seconds", "finished", "year_reached", "minutes", "points", "stars", "nature_share", "tutorial_first"];
-export const BOARD_COLUMNS = ["season", "name", "points", "stars", "created_at"];
+export const RUN_COLUMNS = ["id", "started_at", "ended_at", "finished", "year_reached", "minutes", "points", "stars", "builds", "nature_share", "biodiversity_end", "tutorial_first", "on_board", "tag"];
+export const FEEDBACK_COLUMNS = ["run_id", "created_at", "q1", "q2", "q3", "q4", "remember", "age_group", "nudge", "card_seconds", "tag", "finished", "year_reached", "minutes", "points", "stars", "nature_share", "tutorial_first"];
+export const BOARD_COLUMNS = ["season", "name", "points", "stars", "created_at", "tag"];
 
 export async function exportAll(sql: Sql): Promise<{ runs: string; feedback: string; board: string }> {
   const runs = await sql.query<Record<string, unknown>>(`SELECT ${RUN_COLUMNS.join(", ")} FROM runs ORDER BY started_at, created_at`);
   const feedback = await sql.query<Record<string, unknown>>(
-    `SELECT f.run_id, f.created_at, f.q1, f.q2, f.q3, f.q4, f.remember, f.age_group, f.nudge, f.card_seconds,
+    `SELECT f.run_id, f.created_at, f.q1, f.q2, f.q3, f.q4, f.remember, f.age_group, f.nudge, f.card_seconds, f.tag,
             r.finished, r.year_reached, r.minutes, r.points, r.stars, r.nature_share, r.tutorial_first
      FROM feedback f LEFT JOIN runs r ON r.id = f.run_id ORDER BY f.created_at`
   );

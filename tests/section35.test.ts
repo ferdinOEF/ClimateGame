@@ -111,8 +111,8 @@ describe("the last card's points (Section 38.2, where the finale card was)", () 
   });
 
   it("Section 38.2: Restart is Play again and Exit the menu", () => {
-    expect(controller).toContain('if (action === "restart") return "again";');
-    expect(controller).toContain('if (action === "exit") return "menu";');
+    expect(controller).toContain('if (action === "restart" || action === "exit") {');
+    expect(controller).toContain('return action === "restart" ? "again" : "menu";');
   });
 
   it("has no dots, spaced dashes or hyphens between words", () => {

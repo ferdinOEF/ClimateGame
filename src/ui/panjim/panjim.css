@@ -4160,6 +4160,17 @@
   font-size: 26px;
   line-height: 1.15;
 }
+/* Section 38.4b: the test session chip under the title. */
+.name-card-tag {
+  display: inline-block;
+  margin: -2px 0 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--warn-ink);
+  background: var(--warn-soft);
+}
 .name-card-line {
   margin: 0 0 16px;
   font-size: 15px;

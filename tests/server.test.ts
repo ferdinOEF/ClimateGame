@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { getBoard, ipHash, LIMITS, patchBoard, postBoard, postFeedback, postRun, type Ctx } from "../server/handlers";
-import { schemaStatements, seasonOf } from "../server/db";
+import { schemaStatements, seasonOf, tagOf } from "../server/db";
 import { PANJIM_POINTS_MODEL, newPanjimRun } from "../src/levels/panjimRun";
 import { runPoints, type BuildEntry } from "../src/core/resiliencePoints";
 import { playedRun } from "../tools/panjimBots/bots";
@@ -350,4 +350,81 @@ describe("Section 37.3: one row per name, dense ranks", () => {
     const rows = (await db.query<{ name: string }>("SELECT name FROM board")).filter((r) => r.name.normalize("NFKC").trim().toLowerCase() === "mira");
     expect(rows).toHaveLength(1);
   }, SLOW);
+});
+
+describe("Section 38.4b: test tags", () => {
+  const db = memoryDb();
+  const TAGGED = "88888888-8888-4888-8888-888888888888";
+  const REAL = "99999999-9999-4999-8999-999999999999";
+  const PREVIEW = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  beforeAll(async () => {
+    await db.apply();
+  });
+
+  it("a tagged post stores the tag on the run and the board row and gets no rank; the run report and the form carry it too", async () => {
+    const reply = await postBoard(await context(db), { runId: TAGGED, name: "Ana", builds: guided, tag: "FestTesters" });
+    expect(reply.status).toBe(200);
+    expect(reply.body).toMatchObject({ tagged: true, name: "Ana", editToken: "" });
+    expect(reply.body).not.toHaveProperty("rank");
+    const [row] = await db.query<Record<string, unknown>>("SELECT * FROM board WHERE name = 'Ana'");
+    expect(row.tag).toBe("FestTesters");
+    const [run] = await db.query<Record<string, unknown>>("SELECT * FROM runs WHERE id = $1", [TAGGED]);
+    expect(run.tag).toBe("FestTesters");
+    expect((await postFeedback(await context(db), { runId: TAGGED, answers: { q1: 5 }, tag: "FestTesters" })).body).toEqual({ saved: true });
+    const [form] = await db.query<Record<string, unknown>>("SELECT * FROM feedback WHERE run_id = $1", [TAGGED]);
+    expect(form.tag).toBe("FestTesters");
+    expect(form).not.toHaveProperty("name");
+    // A tag off its shape is ignored: the run is a real player's.
+    await postRun(await context(db), { runId: REAL, builds: guided.slice(0, 7), tag: "no spaces here!" });
+    expect((await db.query<Record<string, unknown>>("SELECT tag FROM runs WHERE id = $1", [REAL]))[0].tag).toBeNull();
+  }, SLOW);
+
+  it("tagged rows are out of the top 10 and every rank; a tagged and an untagged row with the same name are independent", async () => {
+    const top = await getBoard(await context(db), {});
+    expect((top.body.rows as { name: string }[]).map((r) => r.name)).toEqual([]);
+    const real = await postBoard(await context(db), { runId: REAL, name: "ana", builds: guided });
+    expect(real.status).toBe(200);
+    expect(real.body.rank).toBe(1);
+    expect(real.body).not.toHaveProperty("tagged");
+    // Both rows stand: the tester's did not block the name, the real player's did not replace the tester's.
+    const rows = await db.query<{ name: string; tag: string | null }>("SELECT name, tag FROM board ORDER BY tag NULLS FIRST");
+    expect(rows).toEqual([{ name: "ana", tag: null }, { name: "Ana", tag: "FestTesters" }]);
+    const again = await getBoard(await context(db), {});
+    expect((again.body.rows as { name: string; rank: number }[])).toEqual([{ rank: 1, name: "ana", points: real.body.points, stars: expect.any(Number), season: "Festival 2026" }]);
+    const place = await getBoard(await context(db), { points: "1" });
+    expect(place.body.rank).toBe(2);
+    expect((place.body.above as { name: string }[]).map((r) => r.name)).toEqual(["ana"]);
+  }, SLOW);
+
+  it("DEFAULT_TAG tags a post that sends none (Vercel Preview); the post's own tag wins", async () => {
+    const preview = { ...(await context(db)), env: { BOARD_SEASON: "Festival 2026", RATE_SALT: "salt", DEFAULT_TAG: "Preview" } };
+    expect(tagOf({}, preview.env)).toBe("Preview");
+    expect(tagOf({ tag: "FestTesters" }, preview.env)).toBe("FestTesters");
+    expect(tagOf({ tag: "x" }, preview.env)).toBe("Preview");
+    expect(tagOf({}, { DEFAULT_TAG: "not valid" })).toBeNull();
+    expect(tagOf({}, {})).toBeNull();
+    const reply = await postBoard(preview, { runId: PREVIEW, name: "Rui", builds: guided });
+    expect(reply.body).toMatchObject({ tagged: true });
+    expect((await db.query<Record<string, unknown>>("SELECT tag FROM board WHERE name = 'Rui'"))[0].tag).toBe("Preview");
+    expect((await getBoard(await context(db), {})).body.rows).toHaveLength(1);
+  }, SLOW);
+
+  it("npm run tag -- list counts the rows a tag has in each table; the export has a tag column and drops nothing", async () => {
+    const { tagCounts, tagTable } = await import("../tools/tag");
+    const counts = await tagCounts(db);
+    expect(counts).toEqual([
+      { tag: "FestTesters", runs: 1, board: 1, feedback: 1 },
+      { tag: "Preview", runs: 1, board: 1, feedback: 0 }
+    ]);
+    expect(tagTable(counts)).toContain("FestTesters");
+    expect(tagTable([])).toBe("No tagged rows.\n");
+    const { exportAll } = await import("../tools/exportFeedback");
+    const out = await exportAll(db);
+    expect(out.runs.split("\n")[0]).toMatch(/,tag$/);
+    expect(out.board.split("\n")[0]).toBe("season,name,points,stars,created_at,tag");
+    expect(out.feedback.split("\n")[0]).toContain(",tag,");
+    expect(out.board.split("\n").filter((l) => l).length - 1).toBe(3);
+    expect(out.board).toContain("Ana,");
+    expect(out.board).toMatch(/,FestTesters$/m);
+  });
 });

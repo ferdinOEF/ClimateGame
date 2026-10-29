@@ -4,7 +4,7 @@ import { checkAnswers } from "@core/feedbackForm";
 import { NATURE_BASED } from "@core/elements";
 import { replayBuilds, type BuildEntry, type PointsModel, type Replay } from "@core/resiliencePoints";
 import { bestPerName, denseRank, nameKey } from "@core/boardRank";
-import { seasonOf, type ServerEnv, type Sql } from "./db";
+import { seasonOf, tagOf, type ServerEnv, type Sql } from "./db";
 
 /**
  * Section 35.4: the board, runs and feedback, as plain functions of a request (the Vercel adapters are in index.ts).
@@ -104,9 +104,10 @@ const isoOrNull = (v: unknown): string | null => {
 async function saveRun(ctx: Ctx, runId: string, builds: BuildEntry[], facts: ReturnType<typeof runFacts>, extra: Record<string, unknown>): Promise<void> {
   const minutes = typeof extra.minutes === "number" && Number.isFinite(extra.minutes) ? Math.max(0, Math.min(600, Math.round(extra.minutes * 10) / 10)) : null;
   await ctx.sql!.query(
-    `INSERT INTO runs (id, started_at, ended_at, finished, year_reached, minutes, points, stars, builds, nature_share, biodiversity_end, tutorial_first, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `INSERT INTO runs (id, started_at, ended_at, finished, year_reached, minutes, points, stars, builds, nature_share, biodiversity_end, tutorial_first, updated_at, tag)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      ON CONFLICT (id) DO UPDATE SET
+       tag = COALESCE(runs.tag, EXCLUDED.tag),
        started_at = COALESCE(runs.started_at, EXCLUDED.started_at),
        ended_at = EXCLUDED.ended_at,
        finished = runs.finished OR EXCLUDED.finished,
@@ -132,7 +133,8 @@ async function saveRun(ctx: Ctx, runId: string, builds: BuildEntry[], facts: Ret
       facts.natureShare,
       facts.biodiversityEnd,
       typeof extra.tutorialFirst === "boolean" ? extra.tutorialFirst : null,
-      ctx.now.toISOString()
+      ctx.now.toISOString(),
+      tagOf(extra, ctx.env)
     ]
   );
 }
@@ -171,10 +173,11 @@ interface BoardRow {
 /**
  * Section 37.3: the board as players see it, one row per name (the name's best run), by points, most first. Read in
  * full and kept to one a name here, so a name posted twice before this rule (or by two posts at once) still shows once.
+ * Section 38.4b: untagged rows only; a tagged row (a test session) is never shown or counted in a rank.
  */
 async function boardRows(sql: Sql): Promise<BoardRow[]> {
   const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>(
-    "SELECT id, name, points, stars, season, created_at FROM board ORDER BY points DESC, created_at ASC"
+    "SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL ORDER BY points DESC, created_at ASC"
   );
   return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })));
 }
@@ -220,10 +223,11 @@ async function oneRowFor(sql: Sql, name: string): Promise<BoardRow | null> {
 
 /**
  * Section 37.9: every row under `name`'s board key (trimmed, spaces collapsed, NFKC, case ignored: `boardNameKey`).
- * Matched here rather than in SQL, whose lower() knows nothing of fullwidth letters or double spaces.
+ * Matched here rather than in SQL, whose lower() knows nothing of fullwidth letters or double spaces. Section 38.4b:
+ * untagged rows only, so a tester never blocks a real player's name and a real player is never shadowed by a tester.
  */
 async function rowsNamed(sql: Sql, name: string): Promise<BoardRow[]> {
-  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>("SELECT id, name, points, stars, season, created_at FROM board");
+  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>("SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL");
   const key = nameKey(name);
   return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
 }
@@ -232,8 +236,10 @@ async function rowsNamed(sql: Sql, name: string): Promise<BoardRow[]> {
  * POST /api/board: `{ runId, name, builds }` for a finished run. The server replays the builds and stores the points it
  * gets, with the season; one post per run at most. Section 37.3: one row per name, its best run: a name already on
  * the board keeps its row unless this run has more points (then the row takes this run's points, stars and date).
- * Returns the place and the row's edit token (kept by the client in memory for this run only, for a rename from the
- * feedback form); a run that did not beat its name's row gets the row's place and no token (`kept: true`).
+ * Returns the place and the row's edit token (kept by the client in memory for this run only; the rename endpoint
+ * stays, unused since Section 38.2); a run that did not beat its name's row gets the row's place and no token
+ * (`kept: true`). Section 38.4b: a tagged post (a test session) is stored with its tag and answers `tagged: true`,
+ * no rank.
  */
 export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promise<Reply> {
   if (!ctx.sql) return OFFLINE;
@@ -255,6 +261,13 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
   await saveRun(ctx, runId, builds, facts, body);
   const season = seasonOf(ctx.env);
   const stars = facts.stars.reduce((a, b) => a + b, 0);
+  const tag = tagOf(body, ctx.env);
+  if (tag) {
+    // Section 38.4b: a test session's row is stored with its tag, outside the one row per name rule, and gets no rank.
+    const day = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, randomBytes(24).toString("base64url"), day, tag]);
+    return ok({ tagged: true, points: facts.points, editToken: "", season, name: name.name });
+  }
   const known = await oneRowFor(ctx.sql, name.name);
   if (known && known.points >= facts.points) {
     // The name's row stands: this run did not beat it.
@@ -326,9 +339,9 @@ export async function postFeedback(ctx: Ctx, body: Record<string, unknown>): Pro
   if ((await ctx.sql.query("SELECT id FROM runs WHERE id = $1", [runId])).length === 0) return fail(404, "no such run");
   if ((await ctx.sql.query("SELECT run_id FROM feedback WHERE run_id = $1", [runId])).length > 0) return fail(409, "already sent");
   await ctx.sql.query(
-    `INSERT INTO feedback (run_id, q1, q2, q3, q4, remember, age_group, nudge, card_seconds, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (run_id) DO NOTHING`,
-    [runId, answers.q1 ?? null, answers.q2 ?? null, answers.q3 ?? null, answers.q4 ?? null, answers.remember ?? null, answers.age ?? null, answers.nudge ?? null, answers.cardSeconds ?? null, ctx.now.toISOString()]
+    `INSERT INTO feedback (run_id, q1, q2, q3, q4, remember, age_group, nudge, card_seconds, created_at, tag)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (run_id) DO NOTHING`,
+    [runId, answers.q1 ?? null, answers.q2 ?? null, answers.q3 ?? null, answers.q4 ?? null, answers.remember ?? null, answers.age ?? null, answers.nudge ?? null, answers.cardSeconds ?? null, ctx.now.toISOString(), tagOf(body, ctx.env)]
   );
   return ok({ saved: true });
 }

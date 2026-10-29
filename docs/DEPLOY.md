@@ -15,6 +15,9 @@ database. The Firebase notes further down describe older, unused code (kept, off
      name.
    - `RATE_SALT`: any long random string. Each caller's IP is stored only as a SHA-256 of this salt and the IP, for
      the hourly limits, and deleted after a day. Change it and every limit starts again.
+   - `DEFAULT_TAG` (Section 38.4b): the test tag every post gets when the page sends none. Set it to `Preview` on
+     the **Preview** environment only (Preview and Production share the one database) and leave it unset on
+     Production, so play on a preview deployment is never on the board. A tag in the address wins over it.
 3. **The tables.** Apply `db/schema.sql` once (it is safe to run again: every statement creates, adds or drops only
    what is missing or no longer wanted):
 
@@ -48,15 +51,41 @@ database. The Firebase notes further down describe older, unused code (kept, off
    functions apply them too on their first request, so a deploy before the migration still works.
 
 Without `DATABASE_URL` every endpoint answers `{ "offline": true }` and the game plays the same: the name card says
-"Board offline" and the finale shows the points without a place.
+"Board offline" and the last card shows the points without a place.
+
+## Test sessions: tags (Section 38.4b)
+
+The festival is live with real players on production, so test play must never touch the board. Open the game with a
+tag in the address:
+
+```
+https://climate-game-psi.vercel.app/?tag=FestTesters
+```
+
+A tag is 2 to 30 letters, digits or underscores (anything else is ignored). It is kept in memory for that page load
+only, never stored on the machine, and sent with every run, board and feedback post. The name card shows a chip
+under its title ("Test session: FestTesters. Not on the board."); the Top 10 on it still shows the real board. A
+tagged run's board post is stored with its tag and gets no rank: the last card says "Test session: not on the
+board." Every board read (the top 10 and every rank) takes untagged rows only, and the one row per name rule applies
+within untagged rows only, so a tester never blocks a real player's name and a real player is never shadowed by a
+tester's row. Nothing is ever deleted: a tagged row is hidden by its tag existing.
+
+`runs`, `board` and `feedback` each have a `tag` column (null for a real player). To see what test play has written:
+
+```bash
+npm run tag -- list
+```
+
+prints every tag with its row counts in the three tables. The CSV export (`npm run export:feedback`) has a `tag`
+column in `runs.csv`, `feedback.csv` and `board.csv`; nothing is dropped, so filter on it in the spreadsheet.
 
 ## The endpoints
 
 | Endpoint | Does | Limit per IP per hour |
 |---|---|---|
-| `POST /api/run` | A Play Panjim run's reach and completion (at the finale; by `sendBeacon` when it stops early). No name. | 400 |
+| `POST /api/run` | A Play Panjim run's reach and completion (at the last card; by `sendBeacon` when it stops early). No name. Every post may carry a `tag` (Section 38.4b). | 400 |
 | `GET /api/board` | The top 10 and the season; `?points=N` the place N would get and the rows round it. | none |
-| `POST /api/board` | `{ runId, name, builds }` for a finished run: the server replays the builds, counts the points and stores them; one row per run. Returns the place and an edit token. | 120 |
+| `POST /api/board` | `{ runId, name, builds }` for a finished run: the server replays the builds, counts the points and stores them; one row per run. Returns the place and an edit token. With a `tag`, the row is stored tagged and the answer is `{ tagged: true }`, no rank. | 120 |
 | `PATCH /api/board` | `{ editToken, name }`: renames that row (the feedback form). | 120 |
 | `POST /api/feedback` | `{ runId, answers }`: `q1` to `q4` (1 to 5), `remember` (cut at 140), `age` (`u17`, `18_30`, `31_plus`), `nudge` (`none`, `shown_answered`, `shown_left`), `cardSeconds`; a known key with a bad value is refused, an unknown key ignored, an empty form is a valid post; one form a run. No name. | 120 |
 

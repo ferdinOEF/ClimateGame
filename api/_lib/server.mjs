@@ -18449,6 +18449,12 @@ var PANJIM_POINTS_MODEL = { newRun: () => newPanjimRun() };
 
 // server/db.ts
 import { neon } from "@neondatabase/serverless";
+var TAG_PATTERN = /^[A-Za-z0-9_]{2,30}$/;
+function tagOf(body, env) {
+  if (typeof body.tag === "string" && TAG_PATTERN.test(body.tag)) return body.tag;
+  const fallback = env.DEFAULT_TAG?.trim() ?? "";
+  return TAG_PATTERN.test(fallback) ? fallback : null;
+}
 function seasonOf(env) {
   return env.BOARD_SEASON?.trim() || "Season 1";
 }
@@ -18707,9 +18713,10 @@ var isoOrNull = (v) => {
 async function saveRun(ctx, runId, builds, facts, extra) {
   const minutes = typeof extra.minutes === "number" && Number.isFinite(extra.minutes) ? Math.max(0, Math.min(600, Math.round(extra.minutes * 10) / 10)) : null;
   await ctx.sql.query(
-    `INSERT INTO runs (id, started_at, ended_at, finished, year_reached, minutes, points, stars, builds, nature_share, biodiversity_end, tutorial_first, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `INSERT INTO runs (id, started_at, ended_at, finished, year_reached, minutes, points, stars, builds, nature_share, biodiversity_end, tutorial_first, updated_at, tag)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      ON CONFLICT (id) DO UPDATE SET
+       tag = COALESCE(runs.tag, EXCLUDED.tag),
        started_at = COALESCE(runs.started_at, EXCLUDED.started_at),
        ended_at = EXCLUDED.ended_at,
        finished = runs.finished OR EXCLUDED.finished,
@@ -18735,7 +18742,8 @@ async function saveRun(ctx, runId, builds, facts, extra) {
       facts.natureShare,
       facts.biodiversityEnd,
       typeof extra.tutorialFirst === "boolean" ? extra.tutorialFirst : null,
-      ctx.now.toISOString()
+      ctx.now.toISOString(),
+      tagOf(extra, ctx.env)
     ]
   );
 }
@@ -18753,7 +18761,7 @@ async function postRun(ctx, body) {
 }
 async function boardRows(sql) {
   const rows = await sql.query(
-    "SELECT id, name, points, stars, season, created_at FROM board ORDER BY points DESC, created_at ASC"
+    "SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL ORDER BY points DESC, created_at ASC"
   );
   return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })));
 }
@@ -18784,7 +18792,7 @@ async function oneRowFor(sql, name) {
   return best ?? null;
 }
 async function rowsNamed(sql, name) {
-  const rows = await sql.query("SELECT id, name, points, stars, season, created_at FROM board");
+  const rows = await sql.query("SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL");
   const key = nameKey(name);
   return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
 }
@@ -18806,6 +18814,12 @@ async function postBoard(ctx, body) {
   await saveRun(ctx, runId, builds, facts, body);
   const season = seasonOf(ctx.env);
   const stars = facts.stars.reduce((a, b) => a + b, 0);
+  const tag = tagOf(body, ctx.env);
+  if (tag) {
+    const day2 = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, randomBytes(24).toString("base64url"), day2, tag]);
+    return ok({ tagged: true, points: facts.points, editToken: "", season, name: name.name });
+  }
   const known = await oneRowFor(ctx.sql, name.name);
   if (known && known.points >= facts.points) {
     const place2 = await around(ctx.sql, known.points, known.id);
@@ -18861,9 +18875,9 @@ async function postFeedback(ctx, body) {
   if ((await ctx.sql.query("SELECT id FROM runs WHERE id = $1", [runId])).length === 0) return fail(404, "no such run");
   if ((await ctx.sql.query("SELECT run_id FROM feedback WHERE run_id = $1", [runId])).length > 0) return fail(409, "already sent");
   await ctx.sql.query(
-    `INSERT INTO feedback (run_id, q1, q2, q3, q4, remember, age_group, nudge, card_seconds, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (run_id) DO NOTHING`,
-    [runId, answers2.q1 ?? null, answers2.q2 ?? null, answers2.q3 ?? null, answers2.q4 ?? null, answers2.remember ?? null, answers2.age ?? null, answers2.nudge ?? null, answers2.cardSeconds ?? null, ctx.now.toISOString()]
+    `INSERT INTO feedback (run_id, q1, q2, q3, q4, remember, age_group, nudge, card_seconds, created_at, tag)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (run_id) DO NOTHING`,
+    [runId, answers2.q1 ?? null, answers2.q2 ?? null, answers2.q3 ?? null, answers2.q4 ?? null, answers2.remember ?? null, answers2.age ?? null, answers2.nudge ?? null, answers2.cardSeconds ?? null, ctx.now.toISOString(), tagOf(body, ctx.env)]
   );
   return ok({ saved: true });
 }
@@ -18917,6 +18931,8 @@ function ensureSchema(sql) {
 -- statement is idempotent (CREATE IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, DROP COLUMN IF EXISTS), so it can run
 -- again at any time. Four tables, never joined to each other by a name:
 --   runs         one row a Play Panjim run (reach and completion): no name, IP or device.
+-- Section 38.4b: each of the three has a \`tag\` (null = a real player); a tagged row is a test session's, kept but
+-- never shown on the board or counted in a rank. No tags table, no active flag: a tag is hidden by existing.
 --   board        the one running board: a name, its points and stars, its season. No run id.
 --   feedback     the form after the game, by run id. No name.
 --   rate_limits  writes per salted IP hash per hour. The raw IP is never stored.
@@ -18937,8 +18953,12 @@ CREATE TABLE IF NOT EXISTS runs (
   -- The server's own note that this run has put its one row on the board (never which row).
   on_board boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player. A tagged row is never shown on the board.
+  tag text
 );
+
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS tag text;
 
 CREATE TABLE IF NOT EXISTS board (
   id uuid PRIMARY KEY,
@@ -18947,8 +18967,12 @@ CREATE TABLE IF NOT EXISTS board (
   points integer NOT NULL,
   stars integer NOT NULL,
   edit_token text NOT NULL UNIQUE,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player. The board and every rank read untagged rows only.
+  tag text
 );
+
+ALTER TABLE board ADD COLUMN IF NOT EXISTS tag text;
 
 CREATE INDEX IF NOT EXISTS board_points ON board (points DESC);
 
@@ -18968,7 +18992,9 @@ CREATE TABLE IF NOT EXISTS feedback (
   nudge text,
   -- Seconds from the card opening to Submit or to leaving.
   card_seconds real,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player.
+  tag text
 );
 
 -- Section 38.4: a feedback table made before Section 38 gets the new columns and loses the old questions (every row
@@ -18981,6 +19007,7 @@ ALTER TABLE feedback ADD COLUMN IF NOT EXISTS remember text;
 ALTER TABLE feedback ADD COLUMN IF NOT EXISTS age_group text;
 ALTER TABLE feedback ADD COLUMN IF NOT EXISTS nudge text;
 ALTER TABLE feedback ADD COLUMN IF NOT EXISTS card_seconds real;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS tag text;
 ALTER TABLE feedback DROP COLUMN IF EXISTS s1_before;
 ALTER TABLE feedback DROP COLUMN IF EXISTS s1_now;
 ALTER TABLE feedback DROP COLUMN IF EXISTS s2_feeling;

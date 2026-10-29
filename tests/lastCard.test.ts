@@ -87,8 +87,8 @@ describe("the buttons' choices", () => {
     expect(FOOTER).toEqual({ map: "View map", restart: "Restart", exit: "Exit" });
     expect(RETURN_TO_CARD).toBe("Back to your result");
     const controller = readFileSync("src/app/panjimController.ts", "utf8");
-    expect(controller).toContain('if (action === "restart") return "again";');
-    expect(controller).toContain('if (action === "exit") return "menu";');
+    expect(controller).toContain('if (action === "restart" || action === "exit") {');
+    expect(controller).toContain('return action === "restart" ? "again" : "menu";');
     expect(controller).toMatch(/await this\.viewMap\(\);\s*\}\s*return "menu";/);
     // The board post happens as the card opens, before the player taps anything.
     const finale = controller.slice(controller.indexOf("private async finale("), controller.indexOf("private async lastCardFlow("));
@@ -99,7 +99,8 @@ describe("the buttons' choices", () => {
     expect(cards).toContain("if (cards[index].bare) return;");
     expect(cards).toMatch(/if \(event\.key === "Escape"\) \{[\s\S]{0,300}event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);\s*return;/);
     // Nothing posts a name with the answers.
-    expect(controller).toContain("void postFeedback(this.runId, submit.answers);");
+    expect(controller).toContain("void postFeedback(this.runId, { ...answers, nudge: this.nudge.outcome(submitted), cardSeconds }, testTag());");
+    expect(controller).toContain("this.sendFeedback(submit.answers, true);");
     expect(readFileSync("src/ui/panjim/lastCard.ts", "utf8")).not.toMatch(/answers\(\)[^\n]*name/);
   });
 });

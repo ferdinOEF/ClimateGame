@@ -7,6 +7,7 @@ import { anywayLabel, NUDGE_ANSWER, NUDGE_LINE, NUDGE_TITLE, NudgeGate } from "@
 import { DETAIL_LINK } from "@core/resultFlow";
 import { checkName } from "@core/nameFilter";
 import { markTutorialPlayed, tutorialPlayedThisVisit } from "@services/visit";
+import { testTag } from "@services/testTag";
 import { pointsConfig } from "@levels/panjimRun";
 import type { GameState } from "@core/gameState";
 import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
@@ -1515,7 +1516,7 @@ export class PanjimController {
     if (this.feedbackSent) return;
     this.feedbackSent = true;
     const cardSeconds = Math.round(Math.max(0, performance.now() - this.cardOpenedAt) / 100) / 10;
-    void postFeedback(this.runId, { ...answers, nudge: this.nudge.outcome(submitted), cardSeconds });
+    void postFeedback(this.runId, { ...answers, nudge: this.nudge.outcome(submitted), cardSeconds }, testTag());
   }
 
   /** The card up, until a footer button; resolves with which. */
@@ -1587,6 +1588,11 @@ export class PanjimController {
     this.onBoard = true;
     this.host.setPlayerName?.(posted.name);
     card.setName(posted.name);
+    if (posted.tagged) {
+      // Section 38.4b: a test session's run is stored with its tag and never on the board.
+      card.setRank({ status: "tagged" });
+      return { line: THANKS };
+    }
     card.setRank({ status: "ready", rank: posted });
     return { line: thanksLine(posted.rank) };
   }
@@ -1605,7 +1611,8 @@ export class PanjimController {
       if (posted) {
         this.boardToken = posted.editToken;
         this.onBoard = true;
-        return { status: "ready", rank: posted };
+        // Section 38.4b: a test session's run is stored with its tag and never on the board.
+        return posted.tagged ? { status: "tagged" } : { status: "ready", rank: posted };
       }
       if (already) {
         this.onBoard = true;
@@ -2690,7 +2697,7 @@ export class PanjimController {
 
   /** What the server is told about this run: its builds as played and its timing, never a name. */
   private runReport(): RunReport {
-    return { runId: this.runId, builds: this.run.buildLog, minutes: Math.round(this.playMs() / 6000) / 10, startedAt: this.startedAt, endedAt: new Date().toISOString(), tutorialFirst: tutorialPlayedThisVisit() };
+    return { runId: this.runId, builds: this.run.buildLog, minutes: Math.round(this.playMs() / 6000) / 10, startedAt: this.startedAt, endedAt: new Date().toISOString(), tutorialFirst: tutorialPlayedThisVisit(), tag: testTag() };
   }
 
   /** Section 35.4: a Play Panjim run that stops before its finale (Exit, the idle reset, the page closed) is still counted. */

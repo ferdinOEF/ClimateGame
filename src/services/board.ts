@@ -77,6 +77,8 @@ export interface RunReport {
   startedAt: string;
   endedAt: string;
   tutorialFirst: boolean;
+  /** Section 38.4b: this page load's test tag, or null for a real player. */
+  tag: string | null;
 }
 
 /** POST /api/run at the finale. */
@@ -95,7 +97,7 @@ export function beaconRun(report: RunReport): void {
 }
 
 /** What the server answers a board post: the run's place, the rows round it, and the row's edit token. */
-export type BoardPost = RankView & { editToken: string; season: string; name: string };
+export type BoardPost = RankView & { editToken: string; season: string; name: string; /** Section 38.4b: a test session's post, stored with its tag and never ranked. */ tagged?: boolean };
 
 /**
  * POST /api/board for a finished run with a name. The server replays the builds and counts the points itself, and
@@ -117,8 +119,8 @@ export async function renameOnBoard(editToken: string, name: string): Promise<{ 
 }
 
 /** POST /api/feedback: the answered items only, by run id; never a name. `keepalive`: the session may end as it goes (Exit). */
-export function postFeedback(runId: string, answers: object): Promise<{ saved: boolean } | null> {
-  return call<{ saved: boolean }>("/api/feedback", { method: "POST", body: JSON.stringify({ runId, answers }), keepalive: true });
+export function postFeedback(runId: string, answers: object, tag: string | null = null): Promise<{ saved: boolean } | null> {
+  return call<{ saved: boolean }>("/api/feedback", { method: "POST", body: JSON.stringify({ runId, answers, tag }), keepalive: true });
 }
 
 /** A run's id: random, made by the client when the run starts. */

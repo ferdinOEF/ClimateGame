@@ -2,6 +2,8 @@
 -- statement is idempotent (CREATE IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, DROP COLUMN IF EXISTS), so it can run
 -- again at any time. Four tables, never joined to each other by a name:
 --   runs         one row a Play Panjim run (reach and completion): no name, IP or device.
+-- Section 38.4b: each of the three has a `tag` (null = a real player); a tagged row is a test session's, kept but
+-- never shown on the board or counted in a rank. No tags table, no active flag: a tag is hidden by existing.
 --   board        the one running board: a name, its points and stars, its season. No run id.
 --   feedback     the form after the game, by run id. No name.
 --   rate_limits  writes per salted IP hash per hour. The raw IP is never stored.
@@ -22,8 +24,12 @@ CREATE TABLE IF NOT EXISTS runs (
   -- The server's own note that this run has put its one row on the board (never which row).
   on_board boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player. A tagged row is never shown on the board.
+  tag text
 );
+
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS tag text;
 
 CREATE TABLE IF NOT EXISTS board (
   id uuid PRIMARY KEY,
@@ -32,8 +38,12 @@ CREATE TABLE IF NOT EXISTS board (
   points integer NOT NULL,
   stars integer NOT NULL,
   edit_token text NOT NULL UNIQUE,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player. The board and every rank read untagged rows only.
+  tag text
 );
+
+ALTER TABLE board ADD COLUMN IF NOT EXISTS tag text;
 
 CREATE INDEX IF NOT EXISTS board_points ON board (points DESC);
 
@@ -53,7 +63,9 @@ CREATE TABLE IF NOT EXISTS feedback (
   nudge text,
   -- Seconds from the card opening to Submit or to leaving.
   card_seconds real,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player.
+  tag text
 );
 
 -- Section 38.4: a feedback table made before Section 38 gets the new columns and loses the old questions (every row
@@ -66,6 +78,7 @@ ALTER TABLE feedback ADD COLUMN IF NOT EXISTS remember text;
 ALTER TABLE feedback ADD COLUMN IF NOT EXISTS age_group text;
 ALTER TABLE feedback ADD COLUMN IF NOT EXISTS nudge text;
 ALTER TABLE feedback ADD COLUMN IF NOT EXISTS card_seconds real;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS tag text;
 ALTER TABLE feedback DROP COLUMN IF EXISTS s1_before;
 ALTER TABLE feedback DROP COLUMN IF EXISTS s1_now;
 ALTER TABLE feedback DROP COLUMN IF EXISTS s2_feeling;

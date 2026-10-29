@@ -35,8 +35,8 @@ describe("export:feedback", () => {
     await db.query("INSERT INTO feedback (run_id, q1, age_group, nudge, card_seconds) VALUES ($1, 5, 'u17', 'none', 12.5)", [id]);
     await db.query("INSERT INTO board (id, season, name, points, stars, edit_token) VALUES ($1, 'Festival 2026', 'Ana', 1200, 6, 'secret-token-123456')", ["55555555-5555-4555-8555-555555555555"]);
     const out = await exportAll(db);
-    expect(out.feedback.split("\n")[0]).toBe("run_id,created_at,q1,q2,q3,q4,remember,age_group,nudge,card_seconds,finished,year_reached,minutes,points,stars,nature_share,tutorial_first");
-    expect(out.feedback.split("\n")[1]).toMatch(new RegExp(`^${id},[^,]*,5,,,,,u17,none,12.5,true,,,1200,`));
+    expect(out.feedback.split("\n")[0]).toBe("run_id,created_at,q1,q2,q3,q4,remember,age_group,nudge,card_seconds,tag,finished,year_reached,minutes,points,stars,nature_share,tutorial_first");
+    expect(out.feedback.split("\n")[1]).toMatch(new RegExp(`^${id},[^,]*,5,,,,,u17,none,12.5,,true,,,1200,`));
     expect(out.runs.split("\n")[0]).not.toMatch(/name/);
     expect(out.feedback.split("\n")[0]).not.toMatch(/name/);
     expect(out.board).toContain("Festival 2026,Ana,1200,6,");

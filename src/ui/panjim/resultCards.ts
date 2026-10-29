@@ -332,13 +332,16 @@ export type RankState =
   /** A named run the board could not take (over the limit, refused, unreachable mid post): where it would be. */
   | { status: "unposted"; rank: RankView }
   /** The board already holds this run (a post that timed out here but landed there). */
-  | { status: "on-board" };
+  | { status: "on-board" }
+  /** Section 38.4b: a test session's run, stored with its tag and never on the board. */
+  | { status: "tagged" };
 
 /** The rank box on the last card (Section 38.2; the finale's before): the place on the board, the gap to the row above, and the rows round the run. */
 export function rankHtml(state: RankState, name: string | null): string {
   if (state.status === "loading") return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">Checking the board.</p>`;
   if (state.status === "offline") return `<div class="finale-rank-head">Board offline</div><p class="finale-rank-note">The board can't be reached right now. Your points are above.</p>`;
   if (state.status === "on-board") return `<div class="finale-rank-head">On the board</div><p class="finale-rank-note">This run is on the board.</p>`;
+  if (state.status === "tagged") return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">Test session: not on the board.</p>`;
   if (state.status === "unposted") {
     return `<div class="finale-rank-head">Not on the board yet</div><p class="finale-rank-note">The board could not take this run just now. With these points it would be ${ordinal(state.rank.rank)}.</p>`;
   }

@@ -35,7 +35,8 @@
     "playthrough": "tsx tools/playthrough21.ts",
     "build:api": "tsx tools/buildApi.ts",
     "db:migrate": "tsx tools/dbMigrate.ts",
-    "export:feedback": "tsx tools/exportFeedback.ts"
+    "export:feedback": "tsx tools/exportFeedback.ts",
+    "tag": "tsx tools/tag.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",

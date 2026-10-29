@@ -1,6 +1,7 @@
 import { checkName, NAME_HINT, NAME_MAX } from "@core/nameFilter";
 import type { BoardRow } from "@services/board";
 import { trapFocus } from "@ui/focusTrap";
+import { tagChipText } from "@services/testTag";
 
 /**
  * Section 35.3: the name card, before Play Panjim's start popup (never in the Tutorial). Left: what the board is, the
@@ -26,11 +27,13 @@ export function topTenHtml(state: TopState): string {
       .join("")}</ol>`;
 }
 
-export function nameCardHtml(initial: string | null): string {
+/** Section 38.4b: `tag` (a test session's) puts a small chip under the title; the Top 10 still shows the real board. */
+export function nameCardHtml(initial: string | null, tag: string | null = null): string {
   return `<div class="name-card" role="dialog" aria-modal="true" aria-labelledby="name-card-title">
     <form class="name-card-main" novalidate>
       <div class="name-card-eyebrow">PLAY PANJIM, 2026 TO 2050</div>
       <h2 class="name-card-title" id="name-card-title">Save Panjim. Get your name on the board.</h2>
+      ${tag ? `<div class="name-card-tag">${esc(tagChipText(tag))}</div>` : ""}
       <p class="name-card-line">Save Panjim and your name goes up on the board. Points come in after each storm.</p>
       <label class="name-card-label" for="name-card-field">Your name or Instagram handle</label>
       <input class="name-card-field" id="name-card-field" name="name" type="text" maxlength="${NAME_MAX}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="@yourhandle" value="${esc(initial ?? "")}" aria-describedby="name-card-hint name-card-error">
@@ -53,9 +56,9 @@ export class NameCard {
   /** Resolves with the checked name, or null for Play without a name. */
   readonly result: Promise<string | null>;
 
-  constructor(initial: string | null, top: Promise<{ rows: BoardRow[]; season: string } | null>) {
+  constructor(initial: string | null, top: Promise<{ rows: BoardRow[]; season: string } | null>, tag: string | null = null) {
     const holder = document.createElement("div");
-    holder.innerHTML = nameCardHtml(initial);
+    holder.innerHTML = nameCardHtml(initial, tag);
     this.el = holder.firstElementChild as HTMLElement;
     this.field = this.el.querySelector(".name-card-field")!;
     this.error = this.el.querySelector(".name-card-error")!;

@@ -113,7 +113,7 @@ describe("try this storm again (Section 28.1)", () => {
     expect(retryAt).toBeLessThan(endTurn.indexOf("await this.finale()"));
     expect(retryAt).toBeLessThan(endTurn.indexOf("for (const event of later) if (event.type !== \"challenge\")"));
     // Section 38.2: the last card offers Restart (Play again) and Exit, never a retry.
-    expect(controller).toContain('if (action === "restart") return "again";');
+    expect(controller).toContain('return action === "restart" ? "again" : "menu";');
     expect(readFileSync("src/core/lastCard.ts", "utf8")).toContain('export const FOOTER = { map: "View map", restart: "Restart", exit: "Exit" } as const;');
   });
 
