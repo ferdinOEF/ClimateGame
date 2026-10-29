@@ -281,6 +281,10 @@ the bottom right.
 - **The heat years' camera move** (Section 34b.3): once a storm, to its hot
   tiles; with the objective done also to Get ahead's pulsing tiles, centred
   between the two sets, or to them alone when nothing is hot (Section 34c.4).
+- **The keyboard's O** (Section 37.6): `core/keyboardTiles.ts` `nextPulseTile` goes through exactly the tiles
+  pulsing on the board, in their order, the first O from the one nearest the middle of the view. The menu opens with
+  the card the objective asks for on that tile focused (its "Objective" chip); Down and Up move between the cards and
+  Enter builds the focused one. The cursor's ring is drawn over the pulse.
 - **The camera holds while the player is choosing** (Section 37.5): a set move the game makes (the heat, Get ahead,
   Maya's place) waits while the pointer is over the board and has moved in the last 1.5 s, and is made once it has
   been still that long, or at once when the pointer leaves the board or is over the HUD. The player's own moves (O, a

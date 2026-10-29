@@ -34,6 +34,12 @@ export class TileHover {
     material.opacity = on ? 0.95 : 0.85;
     this.mesh.scale.setScalar(on ? 1.04 : 1);
     this.halo.visible = on;
+    // Section 37.6: the keyboard's ring is drawn over the objective's pulse (renderOrder 9 and 10, no depth test), which
+    // hid it on the very tiles O goes to.
+    material.depthTest = !on;
+    (this.halo.material as THREE.MeshBasicMaterial).depthTest = !on;
+    this.mesh.renderOrder = on ? 12 : 5;
+    this.halo.renderOrder = on ? 11.9 : 4.9;
   }
 
   /** Outlines `coord` (its top at `topY`), or hides the outline with null. */

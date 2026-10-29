@@ -24,6 +24,7 @@ import { TileHover } from "@render/tileHover";
 import { WildlifeDirector } from "@render/wildlife";
 import { KhazanPeople } from "@render/khazanPeople";
 import { ObjectivePulse } from "@render/objectivePulse";
+import { nextPulseTile } from "@core/keyboardTiles";
 import { IdleReset, watchIdle } from "./idleReset";
 import { CARD_LINES, CARD_NAME, TUTORIAL_CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
@@ -2771,7 +2772,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   if (panjim && tileHover) {
     const canvas = renderer.domElement;
     canvas.tabIndex = 0;
-    canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles, O jumps to the next tile the objective asks for, Enter opens the tile.");
+    canvas.setAttribute("aria-label", "Map of the city. Arrow keys move between tiles, O jumps to the objective's tiles, Enter opens the tile, Up and Down pick a card.");
     // Section 34c.2: the keyboard follows the screen, top right to bottom left: ? and ☰ on the HUD card, then the map,
     // then Maya. The card goes before the board in the page (its z-index keeps it drawn over the board).
     const card = container.querySelector<HTMLElement>(".panjim-clock");
@@ -2781,6 +2782,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     said.setAttribute("aria-live", "polite");
     container.appendChild(said);
     let cursor: AxialCoord | null = null;
+    /** Section 37.6: the tile the last O went to ("q,r"): O goes on from there, else starts from the middle of the view. */
+    let oCursor: string | null = null;
     const DIRS: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
     const showCursor = (follow: boolean): void => {
       if (!cursor) return;
@@ -2838,15 +2841,17 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       } else if ((event.key === "o" || event.key === "O") && !event.ctrlKey && !event.metaKey && !event.altKey) {
         // Section 34: a keyboard player took 10 to 30 arrow presses to reach a pulsing tile; O jumps to the next one:
         // the tiles pulsing on the board now (the objective's, Get ahead's, the Tutorial's), whatever chose them.
+        // Section 37.6: exactly those tiles, in order, the first O from the one nearest the middle of the view.
         event.preventDefault();
-        const open = [...objectivePulse.tiles].map((key) => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }));
-        if (open.length === 0) {
+        const here = `${cursor.q},${cursor.r}`;
+        const nextKey = nextPulseTile(objectivePulse.tiles, here === oCursor ? here : null, focusPoint());
+        if (!nextKey) {
           said.textContent = "No tile left for the objective.";
           return;
         }
-        const at = open.findIndex((p) => p.q === cursor!.q && p.r === cursor!.r);
-        const next = open[(at + 1) % open.length];
-        cursor = { q: next.q, r: next.r };
+        oCursor = nextKey;
+        const [nq, nr] = nextKey.split(",").map(Number);
+        cursor = { q: nq, r: nr };
         showCursor(false);
         // Section 34b.3: one of the camera's set moves, clear of the HUD card and Maya.
         moveCameraClear([cursor], undefined, true);

@@ -28,3 +28,16 @@ describe("Section 37.5: the camera holds while the player is choosing", () => {
     expect(session).toContain("focusOn: (x, z) => focusOn(x, z, false),");
   });
 });
+
+describe("Section 37.6: O and the card menu by keyboard", () => {
+  it("O goes through the pulsing tiles only; the menu opens on the objective's card; Down and Up move; the ring is drawn over the pulse", () => {
+    const session = read("src/app/gameSession.ts");
+    expect(session).toContain("const nextKey = nextPulseTile(objectivePulse.tiles, here === oCursor ? here : null, focusPoint());");
+    const popover = read("src/ui/buildPopover.ts");
+    expect(popover).toContain('if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;');
+    expect(read("src/app/panjimController.ts")).toContain('.build-popover .build-card:not(.disabled) .objective-chip")?.closest<HTMLElement>(".build-card");');
+    const hover = read("src/render/tileHover.ts");
+    expect(hover).toContain("this.mesh.renderOrder = on ? 12 : 5;");
+    expect(hover).toContain("material.depthTest = !on;");
+  });
+});

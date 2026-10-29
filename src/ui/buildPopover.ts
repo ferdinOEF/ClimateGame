@@ -149,6 +149,16 @@ export class BuildPopover {
     container.appendChild(this.backdrop);
     // Section 34: Tab stays among the cards while the menu is open (it wandered to the panels behind).
     trapFocus(this.el, () => this.isOpen);
+    // Section 37.6: Down and Up move between the cards (Enter builds the focused one, as a click on it).
+    this.el.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const list = [...this.el.querySelectorAll<HTMLElement>(".build-card:not(.disabled)")];
+      if (list.length === 0) return;
+      event.preventDefault();
+      const at = list.indexOf(document.activeElement as HTMLElement);
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      list[(at < 0 ? 0 : at + step + list.length) % list.length].focus({ preventScroll: true });
+    });
   }
 
   get isOpen(): boolean {

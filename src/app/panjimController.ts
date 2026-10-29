@@ -2156,6 +2156,11 @@ export class PanjimController {
       chip.textContent = "Objective";
       card.querySelector(".build-card-title")?.appendChild(chip);
     }
+    // Section 37.6: the menu opens with the objective's card focused, so Enter (a keyboard player's first press) builds
+    // what this tile is pulsing for, not the first card (a dune on a tile pulsing for pandanus saved no home).
+    const first = this.host.container.querySelector<HTMLElement>(".build-popover .build-card:not(.disabled) .objective-chip")?.closest<HTMLElement>(".build-card");
+    const focused = document.activeElement;
+    if (first && focused instanceof HTMLElement && focused.closest(".build-popover")) first.focus({ preventScroll: true });
   }
 
   /** A new Tutorial year: in a storm's own year, its red heat (Maya's line is the step's, Section 31.3). */
