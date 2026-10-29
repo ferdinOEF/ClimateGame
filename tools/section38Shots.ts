@@ -14,7 +14,7 @@
  *
  * The mouse moves through the scripted runs, or the idle reset would fire.
  *
- * Usage: npx tsx tools/section38Shots.ts [w=1366] [h=768] [out=docs/qa/section38] [only=card]
+ * Usage: npx tsx tools/section38Shots.ts [w=1366] [h=768] [out=docs/qa/section38] [only=card] [port=5239]
  * `only=card` runs step 1 alone (the 1920x1080 pass). Exits 1 on a console error or a failed check.
  */
 import { chromium, type Browser, type Page } from "playwright";
@@ -128,7 +128,7 @@ async function cardFit(page: Page): Promise<{ w: number; h: number; clipped: boo
   );
 }
 
-const server = await startDevServer(5239, 120000);
+const server = await startDevServer(Number(args.get("port") ?? 5239), 120000);
 const executablePath = fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined;
 const browser = await chromium.launch({ args: glArgs(), ...(executablePath ? { executablePath } : {}) });
 try {
