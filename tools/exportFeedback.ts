@@ -3,7 +3,8 @@
  * reporting, into exports/ (not committed):
  *
  *   runs.csv      every Play Panjim run: reach, completion, points, stars, builds (no name, IP or device);
- *   feedback.csv  every form, joined to its run on the run id (no name);
+ *   feedback.csv  every form (Section 38.4: q1 to q4, remember, age_group, nudge, card_seconds), joined to its run on
+ *                 the run id (no name);
  *   board.csv     the board: season, name, points, stars, when (never the edit token).
  *
  *   DATABASE_URL=postgres://... npm run export:feedback
@@ -27,13 +28,13 @@ export function toCsv(rows: Record<string, unknown>[], columns: string[]): strin
 }
 
 export const RUN_COLUMNS = ["id", "started_at", "ended_at", "finished", "year_reached", "minutes", "points", "stars", "builds", "nature_share", "biodiversity_end", "tutorial_first", "on_board"];
-export const FEEDBACK_COLUMNS = ["run_id", "created_at", "s1_before", "s1_now", "s2_feeling", "s2_why", "s3_change", "s4_enjoy", "s5_actions", "s6_remember", "s7_age", "s7_status", "finished", "year_reached", "minutes", "points", "stars", "nature_share", "tutorial_first"];
+export const FEEDBACK_COLUMNS = ["run_id", "created_at", "q1", "q2", "q3", "q4", "remember", "age_group", "nudge", "card_seconds", "finished", "year_reached", "minutes", "points", "stars", "nature_share", "tutorial_first"];
 export const BOARD_COLUMNS = ["season", "name", "points", "stars", "created_at"];
 
 export async function exportAll(sql: Sql): Promise<{ runs: string; feedback: string; board: string }> {
   const runs = await sql.query<Record<string, unknown>>(`SELECT ${RUN_COLUMNS.join(", ")} FROM runs ORDER BY started_at, created_at`);
   const feedback = await sql.query<Record<string, unknown>>(
-    `SELECT f.run_id, f.created_at, f.s1_before, f.s1_now, f.s2_feeling, f.s2_why, f.s3_change, f.s4_enjoy, f.s5_actions, f.s6_remember, f.s7_age, f.s7_status,
+    `SELECT f.run_id, f.created_at, f.q1, f.q2, f.q3, f.q4, f.remember, f.age_group, f.nudge, f.card_seconds,
             r.finished, r.year_reached, r.minutes, r.points, r.stars, r.nature_share, r.tutorial_first
      FROM feedback f LEFT JOIN runs r ON r.id = f.run_id ORDER BY f.created_at`
   );

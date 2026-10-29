@@ -67,7 +67,21 @@ describe("offline", () => {
 
 describe("the schema", () => {
   it("is idempotent: every statement creates only if missing", () => {
-    for (const statement of schemaStatements(readFileSync("db/schema.sql", "utf8"))) expect(statement).toMatch(/^CREATE (TABLE|INDEX) IF NOT EXISTS /);
+    for (const statement of schemaStatements(readFileSync("db/schema.sql", "utf8"))) expect(statement).toMatch(/^(CREATE (TABLE|INDEX) IF NOT EXISTS |ALTER TABLE \w+ (ADD COLUMN IF NOT EXISTS|DROP COLUMN IF EXISTS) )/);
+  });
+
+  it("a feedback table made before Section 38 gets the new columns and loses the old ones (the ALTER statements, idempotent)", async () => {
+    // pg-mem cannot CREATE TABLE IF NOT EXISTS over an existing table, so the ALTERs are applied on their own, twice.
+    const old = memoryDb();
+    await old.query("CREATE TABLE feedback (run_id uuid PRIMARY KEY, s1_before integer, s4_enjoy integer, created_at timestamptz NOT NULL DEFAULT now())");
+    const alters = schemaStatements(readFileSync("db/schema.sql", "utf8")).filter((st) => st.startsWith("ALTER TABLE feedback"));
+    expect(alters.length).toBeGreaterThan(0);
+    for (const statement of [...alters, ...alters]) await old.query(statement);
+    await old.query("INSERT INTO feedback (run_id, q1, nudge) VALUES ($1, 4, 'none')", ["77777777-7777-4777-8777-777777777777"]);
+    const [row] = await old.query<Record<string, unknown>>("SELECT * FROM feedback");
+    expect(row).toMatchObject({ q1: 4, nudge: "none" });
+    expect(row).not.toHaveProperty("s1_before");
+    expect(row).not.toHaveProperty("s4_enjoy");
   });
 
   it("keeps no name in runs or feedback, and no run id, IP or device on the board", () => {
@@ -183,20 +197,30 @@ describe("with a database", () => {
     expect(await db.query("SELECT * FROM board WHERE name = 'Ana B'")).toHaveLength(1);
   });
 
-  it("POST /api/feedback: only the answered items with allowed values, text cut, once a run", async () => {
+  it("POST /api/feedback (Section 38.4): a full post, an empty post, a bad value refused, an unknown key ignored, once a run", async () => {
     const reply = await postFeedback(await context(db), {
       runId: RUN_A,
-      answers: { s1_before: 2, s1_now: 9, s2_feeling: "Hopeful", s2_why: "x".repeat(400), s4_enjoy: 5, s5_actions: ["Join a planting or a cleanup", "Hack"], s7_age: "18 to 30", name: "Ana" }
+      answers: { q1: 5, q2: 4, q3: 3, q4: 1, remember: "x".repeat(400), age: "18_30", nudge: "shown_answered", cardSeconds: 41.27, name: "Ana", s4_enjoy: 5 }
     });
     expect(reply.body).toEqual({ saved: true });
     const [row] = await db.query<Record<string, unknown>>("SELECT * FROM feedback WHERE run_id = $1", [RUN_A]);
-    expect(row).toMatchObject({ s1_before: 2, s1_now: null, s2_feeling: "Hopeful", s4_enjoy: 5, s5_actions: ["Join a planting or a cleanup"], s7_age: "18 to 30", s3_change: null });
-    expect((row.s2_why as string).length).toBe(280);
+    expect(row).toMatchObject({ q1: 5, q2: 4, q3: 3, q4: 1, age_group: "18_30", nudge: "shown_answered" });
+    expect((row.remember as string).length).toBe(140);
+    expect(Number(row.card_seconds)).toBeCloseTo(41.3, 1);
     expect(row).not.toHaveProperty("name");
-    expect((await postFeedback(await context(db), { runId: RUN_A, answers: { s4_enjoy: 1 } })).status).toBe(409);
-    expect((await postFeedback(await context(db), { runId: RUN_C, answers: {} })).body).toEqual({ saved: false });
+    expect(row).not.toHaveProperty("s4_enjoy");
+    expect((await postFeedback(await context(db), { runId: RUN_A, answers: { q1: 1 } })).status).toBe(409);
+    // An empty form is a valid post: the count of forms opened is known.
+    expect((await postFeedback(await context(db), { runId: RUN_C, answers: {} })).body).toEqual({ saved: true });
+    const [empty] = await db.query<Record<string, unknown>>("SELECT * FROM feedback WHERE run_id = $1", [RUN_C]);
+    expect(empty).toMatchObject({ q1: null, q2: null, q3: null, q4: null, remember: null, age_group: null, nudge: null, card_seconds: null });
+    // A bad value is refused, and nothing is stored.
+    for (const answers of [{ q1: 6 }, { q2: 0 }, { q3: 2.5 }, { q4: "4" }, { age: "17 and under" }, { nudge: "maybe" }, { cardSeconds: -1 }, { remember: 7 }]) {
+      expect((await postFeedback(await context(db), { runId: RUN_B, answers })).status, JSON.stringify(answers)).toBe(400);
+    }
+    expect(await db.query("SELECT * FROM feedback WHERE run_id = $1", [RUN_B])).toHaveLength(0);
     // A form for a run the server never counted is refused.
-    expect((await postFeedback(await context(db), { runId: "66666666-6666-4666-8666-666666666666", answers: { s4_enjoy: 3 } })).status).toBe(404);
+    expect((await postFeedback(await context(db), { runId: "66666666-6666-4666-8666-666666666666", answers: { q1: 3 } })).status).toBe(404);
   });
 
   it("allows a shared festival IP 120 board posts, renames and forms and 400 run reports an hour", () => {

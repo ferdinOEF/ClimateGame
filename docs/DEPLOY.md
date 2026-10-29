@@ -15,8 +15,8 @@ database. The Firebase notes further down describe older, unused code (kept, off
      name.
    - `RATE_SALT`: any long random string. Each caller's IP is stored only as a SHA-256 of this salt and the IP, for
      the hourly limits, and deleted after a day. Change it and every limit starts again.
-3. **The tables.** Apply `db/schema.sql` once (it is safe to run again: every statement creates only what is
-   missing):
+3. **The tables.** Apply `db/schema.sql` once (it is safe to run again: every statement creates, adds or drops only
+   what is missing or no longer wanted):
 
    ```bash
    vercel env pull .env.local
@@ -32,6 +32,21 @@ database. The Firebase notes further down describe older, unused code (kept, off
    statements), so a new database works on the first request; `db:migrate` is the way to apply a changed schema on
    purpose and to check it.
 
+   **Section 38.4, the migration to run once after the merge:** the `feedback` table's columns changed (q1 to q4,
+   remember, age_group, nudge, card_seconds; the old s1 to s7 columns are dropped, every row then being test data).
+   From a machine with the project's env:
+
+   ```bash
+   vercel env pull .env.local
+   ```
+
+   ```bash
+   npm run db:migrate
+   ```
+
+   The `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `DROP COLUMN IF EXISTS` statements are idempotent, and the
+   functions apply them too on their first request, so a deploy before the migration still works.
+
 Without `DATABASE_URL` every endpoint answers `{ "offline": true }` and the game plays the same: the name card says
 "Board offline" and the finale shows the points without a place.
 
@@ -43,7 +58,7 @@ Without `DATABASE_URL` every endpoint answers `{ "offline": true }` and the game
 | `GET /api/board` | The top 10 and the season; `?points=N` the place N would get and the rows round it. | none |
 | `POST /api/board` | `{ runId, name, builds }` for a finished run: the server replays the builds, counts the points and stores them; one row per run. Returns the place and an edit token. | 120 |
 | `PATCH /api/board` | `{ editToken, name }`: renames that row (the feedback form). | 120 |
-| `POST /api/feedback` | `{ runId, answers }`: the answered items only, checked against the allowed values; one form a run. No name. | 120 |
+| `POST /api/feedback` | `{ runId, answers }`: `q1` to `q4` (1 to 5), `remember` (cut at 140), `age` (`u17`, `18_30`, `31_plus`), `nudge` (`none`, `shown_answered`, `shown_left`), `cardSeconds`; a known key with a bad value is refused, an unknown key ignored, an empty form is a valid post; one form a run. No name. | 120 |
 
 Over a limit: 429, and the game carries on as offline. The limits are generous because the festival's laptops share one IP (Section 35.8). The client never sends a score: the server plays the build
 list through the same hazard model (`replayBuilds` in `src/core/resiliencePoints.ts`) and stores what it counts.
@@ -62,8 +77,9 @@ replay takes about 5 s).
 npm run export:feedback
 ```
 
-writes `exports/runs.csv`, `exports/feedback.csv` (each form joined to its run on the run id; no names) and
-`exports/board.csv` (season, name, points, stars, date; never the edit token), for Excel or Google Sheets.
+writes `exports/runs.csv`, `exports/feedback.csv` (each form, q1 to q4, remember, age_group, nudge and card_seconds,
+joined to its run's finished, year_reached, minutes, points, stars, nature_share and tutorial_first on the run id; no
+names) and `exports/board.csv` (season, name, points, stars, date; never the edit token), for Excel or Google Sheets.
 
 Deleting test rows by hand (Neon's SQL editor):
 

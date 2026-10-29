@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { checkName } from "@core/nameFilter";
-import { checkAnswers, anyAnswer, type FeedbackAnswers } from "@core/feedbackForm";
+import { checkAnswers } from "@core/feedbackForm";
 import { NATURE_BASED } from "@core/elements";
 import { replayBuilds, type BuildEntry, type PointsModel, type Replay } from "@core/resiliencePoints";
 import { bestPerName, denseRank, nameKey } from "@core/boardRank";
@@ -308,34 +308,27 @@ export async function patchBoard(ctx: Ctx, body: Record<string, unknown>): Promi
   return ok({ renamed: true, name: name.name, ...(await around(ctx.sql, points, own[0].id)), points });
 }
 
-/** POST /api/feedback: `{ runId, answers }`, only the answered items with allowed values, text cut. One form a run. */
+/**
+ * POST /api/feedback: `{ runId, answers }`. Section 38.4: the answers are q1 to q4 (1 to 5), remember (cut at 140),
+ * age ("u17", "18_30", "31_plus"), nudge ("none", "shown_answered", "shown_left") and cardSeconds; a known key with a
+ * value off its list is refused, an unknown key ignored, and an empty form is a valid post (the count of forms opened
+ * is known). One form a run.
+ */
 export async function postFeedback(ctx: Ctx, body: Record<string, unknown>): Promise<Reply> {
   if (!ctx.sql) return OFFLINE;
   const runId = typeof body.runId === "string" && UUID.test(body.runId) ? body.runId.toLowerCase() : null;
   if (!runId) return fail(400, "bad run");
+  const checked = checkAnswers(body.answers);
+  if (!checked.ok) return fail(400, checked.error);
   if (!(await underLimit(ctx, "feedback"))) return fail(429, "limit");
-  const answers: FeedbackAnswers = checkAnswers(body.answers);
-  if (!anyAnswer(answers)) return ok({ saved: false });
-  // A form belongs to a run the server has counted (the finale reports it before the form opens).
+  const { answers } = checked;
+  // A form belongs to a run the server has counted (the last card reports it as it opens).
   if ((await ctx.sql.query("SELECT id FROM runs WHERE id = $1", [runId])).length === 0) return fail(404, "no such run");
   if ((await ctx.sql.query("SELECT run_id FROM feedback WHERE run_id = $1", [runId])).length > 0) return fail(409, "already sent");
   await ctx.sql.query(
-    `INSERT INTO feedback (run_id, s1_before, s1_now, s2_feeling, s2_why, s3_change, s4_enjoy, s5_actions, s6_remember, s7_age, s7_status, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (run_id) DO NOTHING`,
-    [
-      runId,
-      answers.s1_before ?? null,
-      answers.s1_now ?? null,
-      answers.s2_feeling ?? null,
-      answers.s2_why ?? null,
-      answers.s3_change ?? null,
-      answers.s4_enjoy ?? null,
-      answers.s5_actions ?? null,
-      answers.s6_remember ?? null,
-      answers.s7_age ?? null,
-      answers.s7_status ?? null,
-      ctx.now.toISOString()
-    ]
+    `INSERT INTO feedback (run_id, q1, q2, q3, q4, remember, age_group, nudge, card_seconds, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (run_id) DO NOTHING`,
+    [runId, answers.q1 ?? null, answers.q2 ?? null, answers.q3 ?? null, answers.q4 ?? null, answers.remember ?? null, answers.age ?? null, answers.nudge ?? null, answers.cardSeconds ?? null, ctx.now.toISOString()]
   );
   return ok({ saved: true });
 }

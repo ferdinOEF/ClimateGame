@@ -116,9 +116,9 @@ export async function renameOnBoard(editToken: string, name: string): Promise<{ 
   return { renamed: body, taken: status === 409 };
 }
 
-/** POST /api/feedback: the answered items only, by run id; never a name. */
+/** POST /api/feedback: the answered items only, by run id; never a name. `keepalive`: the session may end as it goes (Exit). */
 export function postFeedback(runId: string, answers: object): Promise<{ saved: boolean } | null> {
-  return call<{ saved: boolean }>("/api/feedback", { method: "POST", body: JSON.stringify({ runId, answers }) });
+  return call<{ saved: boolean }>("/api/feedback", { method: "POST", body: JSON.stringify({ runId, answers }), keepalive: true });
 }
 
 /** A run's id: random, made by the client when the run starts. */
