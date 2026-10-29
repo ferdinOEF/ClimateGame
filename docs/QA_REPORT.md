@@ -2664,3 +2664,8 @@ merge). Vercel's production deployment of `b1fe260` (`dpl_Ev2Ac6m6DrWUtvr5xh8bTD
 the Vercel connector; production was not loaded from here (this machine's egress blocks *.vercel.app). PR #36 shows
 as merged. `vercel env pull` could not log in from this container and its egress blocks Neon, so `npm run db:migrate`
 did not run here; the functions apply the same statements on their first request (see below for what was done).
+Instead, production's `GET /api/board` was requested once through the Vercel connector after the deployment was
+Ready: it answered 200 with the real board (two rows, "Festival 2026"), and that answer reads `WHERE tag IS NULL`, so
+the function's `ensureSchema` had applied db/schema.sql, the `tag` columns and the feedback ALTERs included, to the
+shared database. `npm run db:migrate` from a machine with the project's env would now change nothing; `DEFAULT_TAG`
+on Preview is still for the owner to set.
