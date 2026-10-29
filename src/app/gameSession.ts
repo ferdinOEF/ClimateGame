@@ -44,6 +44,7 @@ import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { closeSources } from "@ui/sourcesScreen";
 import { audioStateForTest, playSound } from "@ui/audioHooks";
 import { preloadSamples } from "@ui/sampleBank";
+import { music } from "@ui/music";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
@@ -1117,7 +1118,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         })
       : null;
   // Section 36: the recorded sounds load in the background once the player has clicked (Panjim and the Tutorial).
-  if (panjim) preloadSamples();
+  if (panjim) {
+    preloadSamples();
+    // The music plays under Panjim and the Tutorial, never on the menu or the level select (src/ui/music.ts).
+    music.open();
+  }
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,
@@ -3419,6 +3424,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     stormDirector?.finish();
     storm.dispose();
     stormSound.dispose();
+    if (panjim) music.close();
     stormWater.dispose();
     stormSky.dispose();
     buildFlourish.dispose();
