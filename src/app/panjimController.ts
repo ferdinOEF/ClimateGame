@@ -31,7 +31,8 @@ import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome, starsForHouses } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
 import { ResultCards, resultCard, defencesCard, comingUpCard, finalePointsCard, ordinal, retryLabel, type RankState, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
-import { biodiversityByKind, BUILDING_KINDS, campalWindNote, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
+import { biodiversityByKind, BUILDING_KINDS, campalWindNote, natureReason, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
+import { stormCardPlan } from "@core/resultFlow";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
 import { FinaleCard } from "@ui/panjim/finaleCard";
@@ -1221,17 +1222,20 @@ export class PanjimController {
     // Section 35.2: the storm's points count up on the HUD card as its cards open, and card 1 shows them.
     const points = this.run.stormPoints.get(challenge.id) ?? null;
     if (points) this.clock.setPoints(runPoints(this.run).total, points.total + (next ? 0 : (this.run.endPoints?.total ?? 0)), this.calmMotion());
+    // Section 17c: with Maya hidden, the cards carry no line of hers.
+    const defences = defencesCard(result, SHOW_MAYA && top ? results.byDefence[top.elementId] ?? null : null, (id) => ELEMENT_BY_ID.get(id)?.targetsHazards ?? [], challenge.kind);
+    // Section 38.1: card 1 then the outlook card; card 2 opens from card 1's link ("What protected your homes") and
+    // comes back with "Back". Card 1's main button says where the game goes next.
+    const plan = stormCardPlan(next, this.run.year);
     const cards: CardSpec[] = [
       // Section 28.1 (owner decision): back to the start of this storm's build years, no confirm.
       // Section 34b.12 (owner decision 8): the button says where it goes ("Try again from 2026").
-      { body: resultCard(result, points), button: "See what protected your city", alt: retryLabel(this.run.phaseStartYear(challenge)) },
-      // Section 17c: with Maya hidden, the cards carry no line of hers.
-      { body: defencesCard(result, SHOW_MAYA && top ? results.byDefence[top.elementId] ?? null : null, (id) => ELEMENT_BY_ID.get(id)?.targetsHazards ?? [], challenge.kind), button: nextLabel(next) }
+      { body: resultCard(result, points), button: plan.resultButton, alt: retryLabel(this.run.phaseStartYear(challenge)), detail: { link: plan.detailLink, body: defences } }
     ];
-    if (next) {
+    if (next && plan.outlookButton) {
       cards.push({
         body: comingUpCard(comingUpTitle(next.name, next.year, this.run.yearsUntil(next)), this.forecastPreview(next, false), SHOW_MAYA ? results.comingUp[next.kind] ?? null : null),
-        button: `On to ${this.run.year}`
+        button: plan.outlookButton
       });
     }
     this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });

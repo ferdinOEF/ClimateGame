@@ -5,6 +5,7 @@ import { resultHeadline } from "@core/phaseResult";
 import { panajiRunPhrase } from "@ui/screens/runWords";
 import { countWord } from "@ui/panjim/panjimHelp";
 import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
+import { DETAIL_BACK } from "@core/resultFlow";
 
 /**
  * The end-of-phase result cards (Section 9): after each storm, a short
@@ -30,6 +31,11 @@ export interface CardSpec {
   note?: string;
   /** Section 35.5: what takes focus when the card opens (a selector in its body); the main button otherwise. */
   focus?: string;
+  /**
+   * Section 38.1: a second card behind a text link on this one (card 2, "What protected your homes", under the homes
+   * saved bar). Its only button is "Back", to this card; the sequence does not move.
+   */
+  detail?: { link: string; body: HTMLElement };
 }
 
 /** What closed the cards: the last card's button, its link, or a card's second button (Section 28.1). */
@@ -461,12 +467,45 @@ export class ResultCards {
         before?.focus?.();
         resolve(choice);
       };
+      let detailOpen = false;
+      /** Section 38.1: card 2 behind its link: the same slot, "Back" its only button, Enter is Back too. */
+      const renderDetail = (spec: CardSpec): void => {
+        const detail = spec.detail!;
+        detailOpen = true;
+        this.cardEl.replaceChildren(detail.body);
+        this.cardEl.classList.toggle("wide", false);
+        this.cardEl.setAttribute("aria-label", detail.body.querySelector(".result-title")?.textContent ?? "Result");
+        const actions = document.createElement("div");
+        actions.className = "result-actions";
+        const back = document.createElement("button");
+        back.type = "button";
+        back.className = "result-back result-detail-back";
+        back.textContent = DETAIL_BACK;
+        back.addEventListener("click", () => render());
+        actions.appendChild(back);
+        this.cardEl.appendChild(actions);
+        this.cardEl.classList.remove("entering");
+        void this.cardEl.offsetWidth;
+        this.cardEl.classList.add("entering");
+        back.focus();
+      };
       const render = (): void => {
         const spec = cards[index];
+        detailOpen = false;
         this.cardEl.replaceChildren(spec.body);
         this.cardEl.classList.toggle("wide", spec.wide === true);
         const label = spec.body.querySelector(".result-title")?.textContent ?? "Result";
         this.cardEl.setAttribute("aria-label", label);
+        if (spec.detail && !spec.body.querySelector(".result-detail-link")) {
+          const link = document.createElement("button");
+          link.type = "button";
+          link.className = "result-detail-link";
+          link.textContent = spec.detail.link;
+          link.addEventListener("click", () => renderDetail(spec));
+          const homes = spec.body.querySelector(".result-homes");
+          if (homes) homes.after(link);
+          else spec.body.appendChild(link);
+        }
         const actions = document.createElement("div");
         actions.className = "result-actions";
         if (index > 0) {
@@ -519,6 +558,10 @@ export class ResultCards {
         else go.focus();
       };
       const advance = (): void => {
+        if (detailOpen) {
+          render();
+          return;
+        }
         if (index < cards.length - 1) {
           index++;
           render();
