@@ -2650,6 +2650,10 @@ behaviour is the same (none with Calm motion or the system's reduced motion). Sh
 1366x768. The third fits everywhere: "After each, a result card: stars, homes saved, biodiversity and points (what
 protected your homes is a link). After the last, one card: your points, your board place and a few questions."
 
+**Codex on PR #36** (`2a1d750`), one P2: a named run whose board post was refused reported itself with a `postRun`
+the form did not wait for, so a quick Restart or Exit could post the empty form before the run existed (404). Fixed
+in `6b366ab`: that report is `runPending` too.
+
 **Not run:** Safari and Firefox; a production load (nothing merged); the migration against Neon (`npm run db:migrate`
 runs after the merge; the ALTER statements were applied twice on pg-mem against a table of the old shape); the
 owner's Design canvas was not seen (the brief's words and numbers were used). `tools/section35Shots.ts` and
