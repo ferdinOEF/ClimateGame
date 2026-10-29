@@ -108,7 +108,8 @@ const begin = async (page: Page, label = "Begin"): Promise<void> => {
 const year = (page: Page): Promise<number> => page.evaluate("window.__panjimForTest.run.year") as Promise<number>;
 const cardsOpen = (page: Page): Promise<boolean> => page.evaluate("!!document.querySelector('.result-cards:not([hidden]) .result-next')") as Promise<boolean>;
 const storming = (page: Page): Promise<boolean> => page.evaluate("window.__panjimForTest.host.challengeFx.isPlaying()") as Promise<boolean>;
-const finalCard = (page: Page): Promise<boolean> => page.evaluate("!!document.querySelector('.finale-card') || [...document.querySelectorAll('.result-cards:not([hidden]) button')].some((b) => /Play again/.test(b.textContent))") as Promise<boolean>;
+// Section 38.2: the last card (its footer: View map, Restart, Exit).
+const finalCard = (page: Page): Promise<boolean> => page.evaluate("!!document.querySelector('.result-cards:not([hidden]) .last-card')") as Promise<boolean>;
 
 // In-page: the tile a play style builds on next (null: nothing worth building, the year goes away from the storms).
 const PICK = `(style, seed) => {
@@ -180,7 +181,7 @@ async function weatherStorm(page: Page, style: string, ruinsBefore: number): Pro
     const label = (await next.textContent()) ?? "";
     await next.click();
     await page.waitForTimeout(1100);
-    if (/Play again|Back to/.test(label)) break;
+    if (/Play again|Restart|Back to/.test(label)) break;
   }
   await page.waitForTimeout(1500);
   return { ruins, final: await finalCard(page) };
@@ -249,7 +250,7 @@ async function playStyle(style: string): Promise<void> {
   const stars = (await page.evaluate("window.__panjimForTest.run.schedule.map((c) => window.__panjimForTest.run.outcomes.get(c.id)?.stars ?? 0)")) as number[];
   console.log(`INFO [${tag}] ${style}: stars ${stars.join(" / ")}, ruins ${ruins}`);
   const buttons = (await page.evaluate("[...document.querySelectorAll('button')].filter((b) => b.getClientRects().length).map((b) => b.textContent.trim())")) as string[];
-  check(buttons.some((b) => /Play again/.test(b)), `${style}: the final card offers Play again (${buttons.filter((b) => /Play|Back|menu/i.test(b)).join(", ")})`);
+  check(buttons.some((b) => /^Restart$/.test(b)), `${style}: the last card offers Restart (${buttons.filter((b) => /Restart|Exit|View map|Play|Back|menu/i.test(b)).join(", ")})`);
   const errs = log.filter((l) => !/Download the React DevTools|GPU stall|WebGL/.test(l));
   check(errs.length === 0, `${style}: no console errors or warnings${errs.length ? `: ${errs.slice(0, 3).join(" | ")}` : ""}`);
   await context.close();

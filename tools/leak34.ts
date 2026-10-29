@@ -65,14 +65,14 @@ async function playRun(p: Page): Promise<void> {
       if (await speed.count()) await speed.first().click().catch(() => undefined);
       const next = p.locator(".result-cards:not([hidden]) .result-next");
       if (await next.isVisible().catch(() => false)) {
-        if (/Play again|menu/i.test((await next.textContent()) ?? "")) break;
+        if (/Play again|Restart|menu/i.test((await next.textContent()) ?? "")) break;
         await next.click().catch(() => undefined);
         continue;
       }
       if (!((await p.evaluate("window.__panjimForTest.isBusy || window.__panjimForTest.host.challengeFx.isPlaying()")) as boolean)) break;
     }
   }
-  await p.waitForFunction(`[...document.querySelectorAll("button")].some((b) => /Play again/.test(b.textContent) && b.getClientRects().length)`, undefined, { timeout: 120000 }).catch(() => undefined);
+  await p.waitForFunction(`[...document.querySelectorAll("button")].some((b) => /^(Play again|Restart)$/.test(b.textContent) && b.getClientRects().length)`, undefined, { timeout: 120000 }).catch(() => undefined);
 }
 
 await page.goto(`${URL0}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "load" });
@@ -84,7 +84,7 @@ for (let i = 1; i <= RUNS; i++) {
   await playRun(page);
   if (i === 1) first = await snapshot(cdp);
   if (i < RUNS) {
-    await page.locator("button", { hasText: "Play again" }).first().click();
+    await page.locator("button", { hasText: /^(Play again|Restart)$/ }).first().click();
     await page.waitForFunction(`!!document.querySelector(".brief-cta")`, undefined, { timeout: 120000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(2000);

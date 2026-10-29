@@ -108,7 +108,7 @@ async function playRun(): Promise<{ stars: number[]; ms: number }> {
       const next = page.locator(".result-cards:not([hidden]) .result-next");
       if (await next.isVisible().catch(() => false)) {
         const label = (await next.textContent()) ?? "";
-        if (/Play again|menu/i.test(label)) break;
+        if (/Play again|Restart|menu/i.test(label)) break;
         await next.click().catch(() => undefined);
         continue;
       }
@@ -117,7 +117,7 @@ async function playRun(): Promise<{ stars: number[]; ms: number }> {
     }
   }
   // The finale's title and the final card.
-  await page.waitForFunction(`[...document.querySelectorAll("button")].some((b) => /Play again/.test(b.textContent) && b.getClientRects().length)`, undefined, { timeout: 120000 }).catch(() => undefined);
+  await page.waitForFunction(`[...document.querySelectorAll("button")].some((b) => /^(Play again|Restart)$/.test(b.textContent) && b.getClientRects().length)`, undefined, { timeout: 120000 }).catch(() => undefined);
   const stars = (await page.evaluate("window.__panjimForTest.run.schedule.map((c) => window.__panjimForTest.run.outcomes.get(c.id)?.stars ?? 0)")) as number[];
   return { stars, ms: Date.now() - start };
 }
@@ -129,7 +129,8 @@ for (let i = 1; i <= RUNS; i++) {
   runs.push(await playRun());
   mem.push({ when: `end of run ${i}`, ...(await memory()) });
   if (i < RUNS) {
-    await page.locator("button", { hasText: "Play again" }).first().click();
+    // Section 38.2: Restart on the last card is Play again.
+    await page.locator("button", { hasText: /^(Play again|Restart)$/ }).first().click();
     await page.waitForFunction(`!!document.querySelector(".brief-cta")`, undefined, { timeout: 120000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(2500);
