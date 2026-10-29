@@ -2572,3 +2572,8 @@ A run that did not beat its name's best is unchanged.
 | `npm run test` | 109 files, 923 pass, 6 skipped. New: the key (fullwidth, double space, case, trailing space), a refused rename (case, fullwidth with spaces, another name; nothing changed), a second run under a normalised duplicate making no second row, the form's refusal path. |
 | Browser (`tools/section37RenameShot.ts`), 1366x768 | A named run to its finale, a rename to "Test Ana" refused by the (stubbed) server: the line under the field, one rename asked, no console errors. Shot `docs/qa/section37/6-rename-refused-1366x768.jpg`. |
 | Independent review | 1 MAJOR, 3 MINOR, 2 NIT. Fixed: the MAJOR (the filter checked the NFKC form but stored the typed one, so a name past 30 letters in decomposed accents passed; both forms are checked now, the typed one NFC), answers added after a refused name were never sent, two renames to one free name at once (the later steps back with 409). Left: every post and rename reads the whole board table (fine at festival scale); fullwidth "＠" and "．" pass the shape check and show as typed (as the brief says); a post from the form that came back `kept` says "You're Nth" rather than the best run line (older). |
+
+**Section 37 merge and Vercel.** Merged with `git merge --no-ff` on the owner's word: `5c49144` (tsc clean on the
+merge). Vercel's production deployment of `5c49144` (`dpl_EPbTe2K6md77mjr23pSYuD6nP9ff`) is Ready, checked through
+the Vercel connector; production was not loaded from here (this machine's egress blocks *.vercel.app). PR #35 shows
+as merged.
