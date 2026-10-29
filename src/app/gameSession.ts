@@ -701,11 +701,29 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   /** Section 34b.3: a camera move asked for while a build menu or tile card is open, made once it closes. */
   let pendingCameraMove: (() => void) | null = null;
   /**
+   * Section 37.5 (A5): the camera holds while the player is choosing. A set move made by the game (after a build: the
+   * heat, Get ahead, Maya's place) waits while the pointer is over the board and has moved in the last 1.5 s; it is
+   * made once the pointer has been still that long, or at once when the pointer is off the board or over the HUD.
+   */
+  const POINTER_HOLD_MS = 1500;
+  let pointerOnBoard = false;
+  let pointerMovedAt = -Infinity;
+  renderer.domElement.addEventListener("pointermove", () => {
+    pointerOnBoard = true;
+    pointerMovedAt = performance.now();
+  });
+  // Onto the HUD (it lies over the board) or out of the window: the board is not under the pointer.
+  renderer.domElement.addEventListener("pointerleave", () => {
+    pointerOnBoard = false;
+  });
+  const pointerChoosing = (now = performance.now()): boolean => pointerOnBoard && now - pointerMovedAt < POINTER_HOLD_MS;
+  /**
    * Section 34b.3: the camera's set moves (the heat coming on, Last call, an objective row, O): a glide to `centre`
    * (else the middle of `tiles`), then slid just enough that none of `tiles` sits under the HUD card, Maya or her
-   * bubble. Never under an open build menu or tile card: it waits for it to close.
+   * bubble. Never under an open build menu or tile card: it waits for it to close. Section 37.5: nor under a pointer
+   * moving on the board (`pointerChoosing`), unless the player asked for it (`asked`: O, a row of the objective).
    */
-  function moveCameraClear(tiles: readonly AxialCoord[], centre?: AxialCoord): void {
+  function moveCameraClear(tiles: readonly AxialCoord[], centre?: AxialCoord, asked = false): void {
     if (tiles.length === 0 && !centre) return;
     const move = (): void => {
       const at = centre ?? { q: tiles.reduce((s, t) => s + t.q, 0) / tiles.length, r: tiles.reduce((s, t) => s + t.r, 0) / tiles.length };
@@ -717,7 +735,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       });
       lastKeepClear = points.length ? keepClearOf(points, cameraObstacles()) : null;
     };
-    if (buildPopover.isOpen) pendingCameraMove = move;
+    if (buildPopover.isOpen || (!asked && pointerChoosing())) pendingCameraMove = move;
     else {
       pendingCameraMove = null;
       move();
@@ -1023,7 +1041,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
               }
             }
           },
-          moveCamera: (tiles, centre) => moveCameraClear(tiles, centre),
+          moveCamera: (tiles, centre, asked) => moveCameraClear(tiles, centre, asked),
           flashTiles: (tiles) => objectivePulse.flash([...tiles], (coord) => terrain.heightAt(coord), performance.now()),
           landmarks: levelMap.landmarks,
           localities: levelMap.localities,
@@ -2831,7 +2849,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         cursor = { q: next.q, r: next.r };
         showCursor(false);
         // Section 34b.3: one of the camera's set moves, clear of the HUD card and Maya.
-        moveCameraClear([cursor]);
+        moveCameraClear([cursor], undefined, true);
       }
     });
   }
@@ -3055,8 +3073,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     // Section 34b (owner, 28 October): Maya's bubble steps aside while a build menu or tile card is open, except for
     // the Tutorial's coaching lines, which are about that very menu (the cards, the glowing one) and stand clear of it.
     panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:"));
-    // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes.
-    if (pendingCameraMove && !buildPopover.isOpen) {
+    // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes; Section 37.5: and
+    // while the pointer was moving on the board, once it has been still for 1.5 s (or left the board).
+    if (pendingCameraMove && !buildPopover.isOpen && !pointerChoosing(nowMs)) {
       const move = pendingCameraMove;
       pendingCameraMove = null;
       move();

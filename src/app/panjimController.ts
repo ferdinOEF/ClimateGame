@@ -187,7 +187,8 @@ export interface PanjimHost {
    * Section 34b.3: one of the camera's set moves (the heat coming on, Last call, an objective row): a glide to `centre`
    * (else the middle of `tiles`), slid clear of the HUD card and Maya; held while a build menu or tile card is open.
    */
-  moveCamera: (tiles: readonly AxialCoord[], centre?: AxialCoord) => void;
+  /** `asked`: the player asked for this move (a row clicked), so it never waits for the pointer (Section 37.5). */
+  moveCamera: (tiles: readonly AxialCoord[], centre?: AxialCoord, asked?: boolean) => void;
   /** Section 34b.4: a row clicked in the objective: its tiles flash twice over 2 s. */
   flashTiles: (tiles: readonly AxialCoord[]) => void;
   /** The map's named places, for Maya to call a spot by name. */
@@ -338,7 +339,7 @@ export class PanjimController {
       if (!key) return;
       const coordOf = (k: string): AxialCoord => ({ q: Number(k.split(",")[0]), r: Number(k.split(",")[1]) });
       // Section 34b.3: its tiles kept clear of the HUD card and Maya.
-      this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key));
+      this.host.moveCamera((keys.length ? keys : [key]).map(coordOf), coordOf(key), true);
       // Section 34b.4: and the row's tiles flash, so the click is seen to answer.
       this.host.flashTiles((keys.length ? keys : [key]).map(coordOf));
     });
