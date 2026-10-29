@@ -88,7 +88,6 @@ export const LABEL_OBSTACLES = [
   ".map-pin-dot",
   ".map-note",
   ".field-guide-card",
-  ".finale-card",
   ".brief-card",
   ".replay-card",
   ".tutorial-coach",

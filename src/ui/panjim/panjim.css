@@ -1125,128 +1125,6 @@
   to { opacity: 0; transform: translateY(-20px); }
 }
 
-.finale {
-  position: absolute;
-  inset: 0;
-  z-index: 36;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 6vw;
-}
-
-.finale[hidden] {
-  display: none;
-}
-
-.finale-card {
-  width: min(480px, calc(100vw - 32px));
-  padding: 24px 28px;
-  animation: aftermath-in 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
-}
-
-.finale-eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent-ink);
-}
-
-.finale-index {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  margin: 6px 0 12px;
-}
-
-.finale-index-value {
-  font-family: var(--font-head);
-  font-size: 72px;
-  font-weight: 700;
-  color: var(--ink);
-  line-height: 1;
-}
-
-.finale-index-label {
-  font-size: 15px;
-  color: var(--ink-2);
-}
-
-.finale-parts {
-  display: grid;
-  gap: 5px;
-  margin-bottom: 14px;
-}
-
-.finale-part {
-  display: grid;
-  grid-template-columns: 100px 1fr 34px;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-}
-
-.finale-part b {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.finale-bar {
-  height: 7px;
-  border-radius: 4px;
-  background: var(--panel-shadow);
-  overflow: hidden;
-}
-
-.finale-bar span {
-  display: block;
-  height: 100%;
-  background: var(--good);
-}
-
-.finale-storms {
-  border-top: 1.5px dashed var(--stitch);
-  padding-top: 10px;
-  display: grid;
-  gap: 4px;
-}
-
-.finale-storm {
-  display: flex;
-  justify-content: space-between;
-  font-size: 15px;
-}
-
-.finale-storm-stars {
-  color: var(--cta-ink);
-  letter-spacing: 2px;
-}
-
-.finale-tempo {
-  margin-top: 10px;
-  font-size: 13px;
-  color: var(--accent-ink);
-}
-
-.finale-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.finale-actions button {
-  flex: 1;
-  font-weight: 600;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-size: inherit;
-}
-.finale-share-note {
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--ink-2);
-}
-
 .outlook-risk[hidden],
 .houses-saved[hidden] {
   display: none !important;
@@ -4092,7 +3970,7 @@
   color: var(--ink-2);
 }
 
-/* ---- Section 35.2: points on card 1 and the finale card ------------------------------------------------------- */
+/* ---- Section 35.2: points on card 1 and the finale card (Section 38.2: the last card reuses its rows and rank box) ------------------------------------------------------- */
 
 /* Card 1: "Points this storm" and its total, then one chip per source (no dots between them). */
 .result-points {
@@ -4384,122 +4262,6 @@
   .name-card { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ---- Section 35.5: the feedback form, and the line after it ------------------------------------------------- */
-
-.feedback-form .result-sub { margin-bottom: 10px; }
-.fb-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 6px 22px;
-  margin: 0;
-}
-.fb-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.fb-group,
-.fb-inline,
-.fb-scale {
-  margin: 0;
-  padding: 0;
-  border: none;
-  min-width: 0;
-}
-.fb-q,
-.fb-group > legend {
-  padding: 0;
-  margin-bottom: 4px;
-  font-size: 13.5px;
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--ink);
-}
-.fb-name { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; font-weight: 700; }
-.fb-name input,
-.fb-text textarea {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 44px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 2px solid var(--button-border);
-  font: 500 14px var(--font-body);
-  color: var(--ink);
-  background: var(--panel-raised);
-}
-.fb-text textarea { resize: vertical; min-height: 52px; }
-.fb-name input[aria-invalid="true"] { border-color: var(--warn); }
-.fb-hint { margin: -4px 0 0; font-size: 12.5px; color: var(--ink-2); }
-.fb-error { margin: -4px 0 0; font-size: 12.5px; font-weight: 700; color: var(--warn-ink); }
-.fb-error[hidden] { display: none; }
-.fb-text { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; font-weight: 700; color: var(--ink); }
-.fb-scale {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.fb-scale > legend {
-  float: left;
-  width: 100%;
-  margin-bottom: 2px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-2);
-}
-.fb-scale-end { font-size: 11.5px; color: var(--ink-2); }
-.fb-pill,
-.fb-choice {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-}
-.fb-pill input,
-.fb-choice input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-}
-.fb-pill span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  font-weight: 700;
-  color: var(--ink);
-  background: var(--button);
-  border: 2px solid var(--button-border);
-}
-.fb-choices { display: flex; flex-wrap: wrap; gap: 6px; }
-.fb-stack { flex-direction: column; align-items: flex-start; }
-.fb-choice span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  background: var(--button);
-  border: 2px solid var(--button-border);
-}
-.fb-pill input:checked + span,
-.fb-choice input:checked + span {
-  color: var(--ink);
-  background: var(--button-on);
-  border-color: var(--button-on-border);
-}
-.fb-choice input[type="checkbox"]:checked + span::before { content: "\2713\00a0"; }
-.fb-pill input:focus-visible + span,
-.fb-choice input:focus-visible + span {
-  outline: 3px solid var(--button-on-border);
-  outline-offset: 2px;
-}
-.fb-inline { margin-top: 4px; }
-.fb-inline > legend { padding: 0; font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 3px; }
-
 /* The line after the form, in the finale's buttons row. */
 .result-card.wide .result-actions { flex-wrap: wrap; }
 .result-note {
@@ -4513,4 +4275,327 @@
 
 @media (max-width: 760px) {
   .fb-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- Section 38.2: the last result card, after the 2050 storm ------------------------------------------------ */
+
+/* The card: about 1100 x 660 at 1366x768; the band across its top carries the storm left and "The last storm" right. */
+.result-card.wide:has(.last-card) {
+  width: min(1100px, 94vw);
+  padding-bottom: 18px;
+}
+.last-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.last-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  gap: 0 22px;
+  align-items: start;
+}
+.last-divider {
+  align-self: stretch;
+  background: var(--panel-edge);
+}
+.last-left {
+  min-width: 0;
+  color: var(--ink);
+}
+.last-card .result-title.last-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+.last-card .result-stars {
+  font-size: 24px;
+  margin: 0 0 6px;
+}
+.last-homes {
+  margin-bottom: 8px;
+}
+.last-homes .result-homes-text {
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+.last-homes .result-detail-link {
+  margin: 0 0 0 6px;
+  padding: 0;
+  min-height: 0;
+}
+.last-card .result-points {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+}
+.last-card .result-points-head b {
+  font-size: 20px;
+}
+.last-rule {
+  height: 1px;
+  margin: 2px 0 8px;
+  background: var(--panel-edge);
+}
+.last-run-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.result-eyebrow-text {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.last-total {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.last-total b {
+  font-family: var(--font-head);
+  font-size: 34px;
+  line-height: 1;
+  color: var(--ink);
+}
+.last-rows {
+  margin-bottom: 6px;
+  gap: 3px;
+}
+.last-rows li {
+  font-size: 13.5px;
+}
+.last-rows li b {
+  font-size: 16px;
+}
+.last-card .finale-clear {
+  margin-bottom: 8px;
+}
+.last-rank {
+  padding: 10px 12px;
+}
+.last-rank .finale-rank-head {
+  font-size: 18px;
+}
+.last-rank .finale-rank-note {
+  margin: 2px 0 6px;
+}
+
+/* The right column, lighter in weight. */
+.last-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-soft);
+}
+.fb-title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 400;
+}
+.fb-line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.fb-name-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fb-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.fb-name-field,
+.fb-remember-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 2px solid var(--button-border);
+  font: 500 14px var(--font-body);
+  color: var(--ink);
+  background: var(--panel-raised);
+}
+.fb-name-field[aria-invalid="true"] { border-color: var(--warn); }
+.fb-hint { margin: 0; font-size: 12px; }
+.fb-error { margin: 0; font-size: 12px; font-weight: 700; color: var(--warn-ink); }
+.fb-error[hidden] { display: none; }
+.fb-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fb-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.fb-row-q {
+  font-size: 13px;
+  line-height: 1.35;
+}
+/* Five star buttons, 28 px square; the chosen number of stars filled gold. */
+.fb-stars {
+  display: flex;
+  gap: 2px;
+}
+.fb-star {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font-size: 22px;
+  line-height: 28px;
+  color: transparent;
+  -webkit-text-stroke: 1.2px var(--ink-3);
+  cursor: pointer;
+}
+.fb-star.on {
+  color: var(--cta);
+  -webkit-text-stroke: 1px var(--cta-ink);
+}
+.fb-star:disabled { cursor: default; }
+.fb-scale-ends {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin: -2px 0 0;
+  font-size: 12px;
+}
+.fb-remember {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.fb-age {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+.fb-age > legend {
+  padding: 0;
+  margin-bottom: 3px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.fb-age-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.fb-age-box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  font-size: 13px;
+  cursor: pointer;
+}
+/* The box is drawn (the native one reads as a dark square in some browsers); the input stays for the keyboard. */
+.fb-age-box input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.fb-age-box span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.fb-age-box span::before {
+  content: "";
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid var(--button-border);
+  background: var(--panel-raised);
+  font-size: 13px;
+  line-height: 14px;
+  text-align: center;
+}
+.fb-age-box input:checked + span::before {
+  content: "\2713";
+  color: var(--band-ink);
+  background: var(--band);
+  border-color: var(--band);
+}
+.fb-age-box input:focus-visible + span::before {
+  outline: 3px solid var(--button-on-border);
+  outline-offset: 2px;
+}
+.fb-age-box input:disabled + span { opacity: 0.7; }
+.fb-submit-row {
+  margin-top: 2px;
+}
+.fb-submit {
+  width: 100%;
+  min-height: 44px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.fb-thanks {
+  margin: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--good);
+}
+
+/* The footer across the card: View map, Restart, Exit, 44 px high, left aligned. */
+.last-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.last-card .last-action {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 44px;
+  padding: 0 22px;
+  font-weight: 700;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+/* View map: "Back to your result", bottom centre over the finished board (the hint's place). */
+.result-return {
+  position: absolute;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 25;
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 2px solid var(--button-border);
+  background: var(--button);
+  color: var(--ink);
+  font: 700 15px var(--font-head);
+  box-shadow: 0 4px 0 var(--panel-shadow);
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .last-columns { grid-template-columns: minmax(0, 1fr); }
+  .last-divider { display: none; }
 }

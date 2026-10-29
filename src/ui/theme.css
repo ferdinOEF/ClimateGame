@@ -21,6 +21,8 @@
   --band-ink: #f6edd9;
   --ink: #1f3d3a;
   --ink-2: #3d5552;
+  /* Section 38.2: the last card's right column, lighter than --ink-2. */
+  --ink-soft: #3f4f49;
   --ink-3: #4d615e;
   --accent-ink: #2e6e64;
   --button: #dcebe5;
@@ -97,6 +99,7 @@
   --band-ink: #f6edd9;
   --ink: #17302d;
   --ink-2: #33494a;
+  --ink-soft: #3f4f49;
   --ink-3: #42564f;
   --accent-ink: #245a51;
   --button: #c7dfd5;
@@ -130,6 +133,7 @@
 @property --band { syntax: "<color>"; inherits: true; initial-value: #2e6e64; }
 @property --ink { syntax: "<color>"; inherits: true; initial-value: #1f3d3a; }
 @property --ink-2 { syntax: "<color>"; inherits: true; initial-value: #3d5552; }
+@property --ink-soft { syntax: "<color>"; inherits: true; initial-value: #3f4f49; }
 @property --ink-3 { syntax: "<color>"; inherits: true; initial-value: #4d615e; }
 @property --accent-ink { syntax: "<color>"; inherits: true; initial-value: #2e6e64; }
 @property --button { syntax: "<color>"; inherits: true; initial-value: #dcebe5; }

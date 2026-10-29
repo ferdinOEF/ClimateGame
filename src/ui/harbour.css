@@ -27,7 +27,6 @@
 .has-panjim-clock .hud-panel-settings .hud-panel-body,
 .brief-card,
 .result-card,
-.finale-card,
 .menu-card {
   background: var(--panel);
   color: var(--ink);
@@ -40,7 +39,6 @@
 /* Modal cards: rounder, and a deeper flat shadow. */
 .brief-card,
 .result-card,
-.finale-card,
 .menu-card,
 .help-card,
 .field-guide-card,
@@ -58,7 +56,6 @@
  */
 .brief-card,
 .result-card,
-.finale-card,
 .menu-card {
   border-left: 14px solid var(--warn);
   border-right: 20px solid transparent;
@@ -245,11 +242,9 @@
 .era-end-restart,
 .storm-report-dismiss,
 .btn,
-.finale-done,
 .result-retry,
 .result-back,
 .leave-confirm-leave,
-.finale-share,
 .speed-up,
 .panjim-toggle,
 .hud-menu-action,
@@ -282,7 +277,6 @@
 .result-retry,
 .result-back,
 .leave-confirm-leave,
-.finale-share,
 .speed-up,
 .panjim-toggle,
 .hud-menu-action,
@@ -319,7 +313,6 @@
 .result-retry:hover,
 .result-back:hover,
 .leave-confirm-leave:hover,
-.finale-share:hover,
 .speed-up:hover,
 .panjim-toggle:hover,
 .panjim-toggle.on,
@@ -389,8 +382,7 @@
 .coach-cta,
 .era-end-restart,
 .storm-report-dismiss,
-.btn-primary,
-.finale-done {
+.btn-primary {
   position: relative;
   background: var(--cta);
   color: var(--cta-ink);
@@ -407,8 +399,7 @@
 .coach-cta::before,
 .era-end-restart::before,
 .storm-report-dismiss::before,
-.btn-primary::before,
-.finale-done::before {
+.btn-primary::before {
   content: "";
   position: absolute;
   left: 5px;
@@ -428,8 +419,7 @@
 .coach-cta:hover,
 .era-end-restart:hover,
 .storm-report-dismiss:hover,
-.btn-primary:hover,
-.finale-done:hover {
+.btn-primary:hover {
   background: color-mix(in srgb, var(--cta) 82%, var(--panel-raised));
 }
 
@@ -440,8 +430,7 @@
 .coach-cta:active,
 .era-end-restart:active,
 .storm-report-dismiss:active,
-.btn-primary:active,
-.finale-done:active {
+.btn-primary:active {
   transform: translateY(2px);
   box-shadow: 0 2px 0 var(--cta-shadow);
 }

@@ -130,7 +130,6 @@ export const HUD_OBSTACLES = [
   ".hud-tooltip",
   ".field-guide-toast",
   ".field-guide-card",
-  ".finale-card",
   ".result-cards",
   ".brief-card",
   ".replay-card",

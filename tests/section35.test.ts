@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { finaleHtml, finaleTitle, ordinal, rankHtml, stormPointsHtml, VETERANS_LINE, type FinaleView } from "../src/ui/panjim/resultCards";
+import { ordinal, rankHtml, stormPointsHtml } from "../src/ui/panjim/resultCards";
+import { lastCardHtml, type LastCardView } from "../src/ui/panjim/lastCard";
 import { stormPoints, endPoints, POINT_VALUES } from "../src/core/resiliencePoints";
 import { POINTS_HELP } from "../src/ui/panjim/panjimHelp";
 import { punctuationProblems } from "./helpers/uiStrings";
 import { HUD_OBSTACLES } from "../src/ui/panjim/maya";
 
-/** Section 35.2: where points show (the HUD card, result card 1, the finale card), from fixed records. */
+/** Section 35.2: where points show (the HUD card, result card 1, the last card since Section 38.2), from fixed records. */
 const css = readFileSync("src/ui/panjim/panjim.css", "utf8");
 const clock = readFileSync("src/ui/panjim/clockHud.ts", "utf8");
 const controller = readFileSync("src/app/panjimController.ts", "utf8");
@@ -16,8 +17,9 @@ const storm2040 = stormPoints({ id: "c2-flood", year: 2040 }, { homesSaved: 50, 
 const storm2050 = stormPoints({ id: "c3-compound", year: 2050 }, { homesSaved: 40, places: [], objectiveDone: false, coast: { standing: 2, protecting: 0 }, standing: ["a"] });
 const end = endPoints(9, [storm2030.standing, storm2040.standing, storm2050.standing]);
 const points = { storms: [storm2030, storm2040, storm2050], end, total: storm2030.total + storm2040.total + storm2050.total + end.total };
-const view: FinaleView = {
+const view: LastCardView = {
   name: "@maya_goa",
+  storm: { eyebrow: "Cyclone and flood in 2050", stars: 1, homesSaved: 40, homesTotal: 53, points: storm2050 },
   points,
   storms: [
     { label: "Cyclone in 2030", stars: 3 },
@@ -49,38 +51,25 @@ describe("result card 1: Points this storm", () => {
   });
 });
 
-describe("the finale card", () => {
-  it("with a name: the title, the total, a row per storm with its stars and points, Biodiversity, Veterans and the line", () => {
-    const html = finaleHtml(view, { status: "loading" });
+describe("the last card's points (Section 38.2, where the finale card was)", () => {
+  it("with a name: the total, a row per storm with its stars and points, the nature row, the stars and the chip", () => {
+    const html = lastCardHtml(view, { status: "loading" });
     const t = text(html);
-    expect(t).toContain("Panjim held, @maya_goa.");
     expect(t).toContain(`${points.total} points`);
-    for (const [i, s] of view.storms.entries()) expect(t).toContain(`${s.label} ${"★".repeat(s.stars)}`);
-    for (const [i, s] of view.storms.entries()) expect(html).toContain(`aria-label="${s.stars} of 3 stars"`);
+    for (const s of view.storms) expect(t).toContain(`${s.label} ${"★".repeat(s.stars)}`);
+    for (const s of view.storms) expect(html).toContain(`aria-label="${s.stars} of 3 stars"`);
     for (const s of points.storms) expect(html).toContain(`<b>${s.total}</b>`);
-    expect(t).toContain(`Biodiversity, end of 2050 +9 ${9 * 5}`);
-    expect(t).toContain(`Veterans 1 50`);
-    expect(t).toContain(VETERANS_LINE);
-    expect(VETERANS_LINE).toBe("In this game, veterans are defences that stood through all three storms. Losses never take points away.");
+    expect(t).toContain(`Nature at the end of 2050: +9 biodiversity, 1 veteran ${9 * 5 + 50}`);
     expect(t).toContain("6 of 9 stars");
     expect(t).toContain("Panjim cleared");
     // The Panjim 2050 index is not on it.
     expect(t).not.toMatch(/index/i);
   });
 
-  it("not cleared: Panjim made it to 2050, with or without a name", () => {
-    expect(finaleTitle("@maya_goa", false)).toBe("Panjim made it to 2050, @maya_goa.");
-    expect(finaleTitle(null, false)).toBe("Panjim made it to 2050.");
-    const t = text(finaleHtml({ ...view, cleared: false }, { status: "loading" }));
-    expect(t).toContain("Panjim made it to 2050, @maya_goa.");
-    expect(t).not.toContain("Panjim held");
+  it("not cleared: the chip says so", () => {
+    const t = text(lastCardHtml({ ...view, cleared: false }, { status: "loading" }));
     expect(t).toContain("Not cleared yet");
     expect(punctuationProblems(t)).toEqual([]);
-  });
-
-  it("without a name: Panjim held.", () => {
-    expect(finaleTitle(null, true)).toBe("Panjim held.");
-    expect(text(finaleHtml({ ...view, name: null }, { status: "loading" }))).toContain("Panjim held.");
   });
 
   const rank = {
@@ -109,8 +98,8 @@ describe("the finale card", () => {
     expect(t).toContain("120 points short of the top 10");
   });
 
-  it("without a name: where it would be, and the next screen", () => {
-    expect(text(rankHtml({ status: "ready", rank }, null))).toContain("With a name, this run would be 4th on the board. Add one on the next screen.");
+  it("without a name: where it would be, and the field on the right", () => {
+    expect(text(rankHtml({ status: "ready", rank }, null))).toContain("With a name, this run would be 4th on the board. Add one on the right.");
   });
 
   it("offline, it says so", () => {
@@ -121,13 +110,13 @@ describe("the finale card", () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 101, 111].map(ordinal)).toEqual(["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "101st", "111th"]);
   });
 
-  it("offers Play again and Exit", () => {
-    expect(controller).toMatch(/button: "Play again", link: "Exit", wide: true/);
-    expect(controller).toMatch(/alt: "Play again", link: "Exit", wide: true/);
+  it("Section 38.2: Restart is Play again and Exit the menu", () => {
+    expect(controller).toContain('if (action === "restart") return "again";');
+    expect(controller).toContain('if (action === "exit") return "menu";');
   });
 
   it("has no dots, spaced dashes or hyphens between words", () => {
-    for (const s of [text(finaleHtml(view, { status: "ready", rank })), text(rankHtml({ status: "offline" }, null)), text(stormPointsHtml(storm2030)), POINTS_HELP]) {
+    for (const s of [text(lastCardHtml(view, { status: "ready", rank })), text(rankHtml({ status: "offline" }, null)), text(stormPointsHtml(storm2030)), POINTS_HELP]) {
       expect(punctuationProblems(s), s).toEqual([]);
     }
   });

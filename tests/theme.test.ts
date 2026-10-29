@@ -30,7 +30,7 @@ function contrast(a: string, b: string): number {
 
 /** [text, background, large]: every pair the interface's CSS may use. */
 const PAIRS: [string, string, boolean?][] = [
-  ...["ink", "ink-2", "ink-3", "accent-ink", "good", "warn-ink"].flatMap((t) => [[t, "panel"], [t, "panel-raised"]] as [string, string][]),
+  ...["ink", "ink-2", "ink-soft", "ink-3", "accent-ink", "good", "warn-ink"].flatMap((t) => [[t, "panel"], [t, "panel-raised"]] as [string, string][]),
   ["band-ink", "band"],
   ...["ink", "ink-2", "ink-3", "accent-ink"].map((t) => [t, "button"] as [string, string]),
   ...["ink", "ink-2"].map((t) => [t, "button-on"] as [string, string]),
@@ -144,7 +144,7 @@ describe("Section 33.4: the shapes", () => {
   });
 
   it("the main action: --cta, a flat shadow and two dashed stitches; focus is a 3 px --button-on-border outline", () => {
-    expect(harbour).toMatch(/\.finale-done \{\s*position: relative;\s*background: var\(--cta\);\s*color: var\(--cta-ink\);[^}]*box-shadow: 0 4px 0 var\(--cta-shadow\);/);
+    expect(harbour).toMatch(/\.btn-primary \{\s*position: relative;\s*background: var\(--cta\);\s*color: var\(--cta-ink\);[^}]*box-shadow: 0 4px 0 var\(--cta-shadow\);/);
     expect(harbour).toMatch(/border-top: 1\.5px dashed var\(--cta-stitch\);\s*border-bottom: 1\.5px dashed var\(--cta-stitch\);/);
     expect(harbour).toMatch(/button:focus-visible,[\s\S]*?\{\s*outline: 3px solid var\(--button-on-border\);\s*outline-offset: 2px;/);
   });

@@ -888,7 +888,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     objectivesPanel.briefOpen ||
     Boolean(
       document.querySelector(
-        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .result-cards:not([hidden]), .sources-backdrop, .leave-confirm-backdrop:not([hidden])"
+        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .result-cards:not([hidden]), .sources-backdrop, .leave-confirm-backdrop:not([hidden])"
       )
     );
   const riskIntro = new RiskIntroFx(container, {
@@ -2938,7 +2938,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     { name: "sources", isOpen: shown(".sources-backdrop") },
     { name: "result-cards", isOpen: shown(".result-cards:not([hidden])") },
     { name: "replay", isOpen: shown(".replay-card:not([hidden])") },
-    { name: "finale", isOpen: shown(".finale-card") },
     { name: "field-guide", isOpen: () => panjim?.fieldGuide.isOpen ?? false },
     {
       name: "help",

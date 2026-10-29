@@ -1,4 +1,4 @@
-import type { RunPoints, StormPoints } from "@core/resiliencePoints";
+import type { StormPoints } from "@core/resiliencePoints";
 import type { BoardRowView, RankView } from "@services/board";
 import type { PhaseResult } from "@core/phaseResult";
 import { resultHeadline } from "@core/phaseResult";
@@ -6,6 +6,7 @@ import { panajiRunPhrase } from "@ui/screens/runWords";
 import { countWord } from "@ui/panjim/panjimHelp";
 import { CLEAR_TOTAL_STARS } from "@core/panjimIndex";
 import { DETAIL_BACK } from "@core/resultFlow";
+import { ordinalWord } from "@core/lastCard";
 
 /**
  * The end-of-phase result cards (Section 9): after each storm, a short
@@ -36,6 +37,19 @@ export interface CardSpec {
    * saved bar). Its only button is "Back", to this card; the sequence does not move.
    */
   detail?: { link: string; body: HTMLElement };
+  /**
+   * Section 38.2: a card that wires its own buttons (the last card): no buttons row of its own, Enter outside a
+   * button does nothing, and it closes only through `host()`'s handle.
+   */
+  bare?: boolean;
+}
+
+/** Section 38.2: a hosted card's handle. */
+export interface HostedCard {
+  /** Resolves when the card has been closed through `close`. */
+  done: Promise<void>;
+  /** Closes the card (the layer hides; the body is kept by its owner). */
+  close: () => void;
 }
 
 /** What closed the cards: the last card's button, its link, or a card's second button (Section 28.1). */
@@ -116,14 +130,14 @@ export function retryLabel(year: number): string {
  * Section 35.2: card 1's points: "Points this storm" with its total, then one chip per source that earned any (Homes,
  * Places, Objective, Living coast). Separate chips, no dots between them.
  */
-export function stormPointsHtml(points: StormPoints): string {
-  const chips: [string, number][] = [
+export function stormPointsHtml(points: StormPoints, chips = true): string {
+  const sources: [string, number][] = [
     ["Homes", points.homes.points],
     ["Places", points.places.points],
     ["Objective", points.objective.points],
     ["Living coast", points.livingCoast.points]
   ];
-  const shown = chips.filter(([, n]) => n > 0);
+  const shown = chips ? sources.filter(([, n]) => n > 0) : [];
   return `<div class="result-points" role="group" aria-label="Points this storm: ${points.total}">
     <div class="result-points-head"><span>Points this storm</span><b>${points.total}</b></div>
     ${shown.length ? `<ul class="result-points-chips">${shown.map(([label, n]) => `<li class="result-points-chip">${label} <b>+${n}</b></li>`).join("")}</ul>` : ""}
@@ -307,12 +321,8 @@ export function finalCard(
   </div>`);
 }
 
-/** "1st", "2nd", "3rd", "4th", "11th", "21st". */
-export function ordinal(n: number): string {
-  const tens = n % 100;
-  const suffix = tens >= 11 && tens <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
-  return `${n}${suffix}`;
-}
+/** "1st", "2nd", "3rd", "4th", "11th", "21st" (core/lastCard.ts). */
+export const ordinal = ordinalWord;
 
 /** The rank box's state: waiting for the board, the board unreachable, or the run's place. */
 export type RankState =
@@ -324,41 +334,17 @@ export type RankState =
   /** The board already holds this run (a post that timed out here but landed there). */
   | { status: "on-board" };
 
-/** Section 35.2: the finale card's view (Play Panjim's last card). */
-export interface FinaleView {
-  /** The run's name for the board, or null for a run without one. */
-  name: string | null;
-  points: RunPoints;
-  /** Each storm's label ("Cyclone in 2030") and stars, in calendar order. */
-  storms: { label: string; stars: number }[];
-  totalStars: number;
-  cleared: boolean;
-  /** The season the board shows (the server's BOARD_SEASON). */
-  season?: string | null;
-}
-
-export const VETERANS_LINE = "In this game, veterans are defences that stood through all three storms. Losses never take points away.";
-
-/**
- * The finale's heading. Section 35.8: "Panjim held, {name}." only when the run cleared Panjim (the clear rule);
- * otherwise "Panjim made it to 2050, {name}.". Without a name, the same without it.
- */
-export function finaleTitle(name: string | null, cleared: boolean): string {
-  const head = cleared ? "Panjim held" : "Panjim made it to 2050";
-  return name ? `${head}, ${name}.` : `${head}.`;
-}
-
-/** The rank box beside the finale: the place on the board, the gap to the row above, and the rows round the run. */
+/** The rank box on the last card (Section 38.2; the finale's before): the place on the board, the gap to the row above, and the rows round the run. */
 export function rankHtml(state: RankState, name: string | null): string {
   if (state.status === "loading") return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">Checking the board.</p>`;
   if (state.status === "offline") return `<div class="finale-rank-head">Board offline</div><p class="finale-rank-note">The board can't be reached right now. Your points are above.</p>`;
   if (state.status === "on-board") return `<div class="finale-rank-head">On the board</div><p class="finale-rank-note">This run is on the board.</p>`;
   if (state.status === "unposted") {
-    return `<div class="finale-rank-head">Not on the board yet</div><p class="finale-rank-note">The board could not take this run just now. With these points it would be ${ordinal(state.rank.rank)}. You can try again on the next screen.</p>`;
+    return `<div class="finale-rank-head">Not on the board yet</div><p class="finale-rank-note">The board could not take this run just now. With these points it would be ${ordinal(state.rank.rank)}.</p>`;
   }
   const { rank, points, tenth, above, below } = state.rank;
   if (!name) {
-    return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">With a name, this run would be ${ordinal(rank)} on the board. Add one on the next screen.</p>`;
+    return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">With a name, this run would be ${ordinal(rank)} on the board. Add one on the right.</p>`;
   }
   const head = rank <= 10 || tenth === null ? `${ordinal(rank)} on the board` : `${tenth - points} points short of the top 10`;
   const nearest = above[above.length - 1];
@@ -376,56 +362,6 @@ export function rankHtml(state: RankState, name: string | null): string {
     <ol class="finale-rank-rows">${above.map((r) => row(r)).join("")}${row(mine, true)}${below.map((r) => row(r)).join("")}</ol>`;
 }
 
-/** The finale card's main column: the title, the run's total, a row per storm, Biodiversity and Veterans, the line. */
-export function finaleHtml(view: FinaleView, rank: RankState): string {
-  const { points } = view;
-  const end = points.end;
-  const most = view.storms.length * 3;
-  const storms = view.storms
-    .map((storm, i) => {
-      const p = points.storms[i]?.total ?? 0;
-      const n = Math.max(0, Math.min(3, storm.stars));
-      return `<li><span class="finale-row-label">${esc(storm.label)}</span><span class="finale-row-stars" role="img" aria-label="${n} of 3 stars">${"★".repeat(n)}<span class="result-stars-empty">${"★".repeat(3 - n)}</span></span><b>${p}</b></li>`;
-    })
-    .join("");
-  const bio = end ? `<li><span class="finale-row-label">Biodiversity, end of 2050</span><span class="finale-row-detail">+${end.biodiversity.rise}</span><b>${end.biodiversity.points}</b></li>` : "";
-  const vets = end ? `<li><span class="finale-row-label">Veterans</span><span class="finale-row-detail">${end.veterans.count}</span><b>${end.veterans.points}</b></li>` : "";
-  return `<div class="result-card-body finale-points">
-    <div class="finale-main">
-      <div class="result-eyebrow">Panjim, 2026 to 2050</div>
-      <h2 class="result-title">${esc(finaleTitle(view.name, view.cleared))}</h2>
-      <div class="finale-total"><b>${points.total}</b><span>points</span></div>
-      <ul class="finale-rows">${storms}${bio}${vets}</ul>
-      <p class="finale-line">${esc(VETERANS_LINE)}</p>
-      <div class="finale-clear"><span><b>${view.totalStars}</b> of ${most} stars</span><span class="result-clear ${view.cleared ? "cleared" : "not-cleared"}">${view.cleared ? "Panjim cleared" : "Not cleared yet"}</span></div>
-      <p class="result-clear-rule"><span class="result-rule">Game rule</span> In this game you clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(most)} stars in all.</p>
-    </div>
-    <aside class="finale-rank" aria-live="polite">${rankHtml(rank, view.name)}</aside>
-  </div>`;
-}
-
-/** The finale card as an element; `setRank` fills its rank box when the board answers. */
-export function finalePointsCard(view: FinaleView, rank: RankState): { body: HTMLElement; setRank: (rank: RankState) => void; setName: (name: string | null) => void } {
-  const body = el(finaleHtml(view, rank));
-  let current = view.name;
-  let state = rank;
-  const paint = (): void => {
-    body.querySelector(".finale-main .result-title")!.textContent = finaleTitle(current, view.cleared);
-    body.querySelector(".finale-rank")!.innerHTML = rankHtml(state, current);
-  };
-  return {
-    body,
-    setRank: (next) => {
-      state = next;
-      paint();
-    },
-    // Section 35.5: a name added or changed on the feedback form.
-    setName: (name) => {
-      current = name;
-      paint();
-    }
-  };
-}
 
 export class ResultCards {
   readonly el: HTMLElement;
@@ -447,6 +383,19 @@ export class ResultCards {
     return this.open;
   }
 
+  /** Section 38.2: closes the card `host()` put up; nothing when none is. */
+  private closeHosted: (() => void) | null = null;
+
+  /**
+   * Section 38.2: shows one card that wires its own buttons (the last card) and keeps it up until `close` is called.
+   * Its body is the caller's and is left intact on close, so it can be shown again with its state (View map, then
+   * Back to your result). Its "What protected your homes" link, when `detail` is given, opens card 2 with Back.
+   */
+  host(spec: Omit<CardSpec, "button" | "bare">): HostedCard {
+    const done = this.show([{ ...spec, button: "", bare: true }]).then(() => undefined);
+    return { done, close: () => this.closeHosted?.() };
+  }
+
   /** Shows `cards` in order; resolves when the last card's button (or link) is pressed. */
   show(cards: CardSpec[]): Promise<CardsChoice> {
     if (cards.length === 0) return Promise.resolve("button");
@@ -460,6 +409,7 @@ export class ResultCards {
       this.abort = abort;
       const close = (choice: CardsChoice): void => {
         abort.abort();
+        this.closeHosted = null;
         this.open = false;
         this.el.hidden = true;
         this.cardEl.replaceChildren();
@@ -467,6 +417,7 @@ export class ResultCards {
         before?.focus?.();
         resolve(choice);
       };
+      this.closeHosted = () => close("button");
       let detailOpen = false;
       /** Section 38.1: card 2 behind its link: the same slot, "Back" its only button, Enter is Back too. */
       const renderDetail = (spec: CardSpec): void => {
@@ -496,15 +447,30 @@ export class ResultCards {
         this.cardEl.classList.toggle("wide", spec.wide === true);
         const label = spec.body.querySelector(".result-title")?.textContent ?? "Result";
         this.cardEl.setAttribute("aria-label", label);
-        if (spec.detail && !spec.body.querySelector(".result-detail-link")) {
-          const link = document.createElement("button");
-          link.type = "button";
-          link.className = "result-detail-link";
-          link.textContent = spec.detail.link;
-          link.addEventListener("click", () => renderDetail(spec));
-          const homes = spec.body.querySelector(".result-homes");
-          if (homes) homes.after(link);
-          else spec.body.appendChild(link);
+        if (spec.detail) {
+          // The link is made under the homes saved bar, unless the body carries its own (the last card's, inline).
+          let link = spec.body.querySelector<HTMLButtonElement>(".result-detail-link");
+          if (!link) {
+            link = document.createElement("button");
+            link.type = "button";
+            link.className = "result-detail-link";
+            link.textContent = spec.detail.link;
+            const homes = spec.body.querySelector(".result-homes");
+            if (homes) homes.after(link);
+            else spec.body.appendChild(link);
+          }
+          if (!link.dataset.wired) {
+            link.dataset.wired = "1";
+            link.addEventListener("click", () => renderDetail(spec));
+          }
+        }
+        if (spec.bare) {
+          this.cardEl.classList.remove("entering");
+          void this.cardEl.offsetWidth;
+          this.cardEl.classList.add("entering");
+          const first = spec.focus ? spec.body.querySelector<HTMLElement>(spec.focus) : null;
+          (first ?? spec.body.querySelector<HTMLElement>("button, input"))?.focus();
+          return;
         }
         const actions = document.createElement("div");
         actions.className = "result-actions";
@@ -562,6 +528,8 @@ export class ResultCards {
           render();
           return;
         }
+        // A hosted card closes only through its handle.
+        if (cards[index].bare) return;
         if (index < cards.length - 1) {
           index++;
           render();
