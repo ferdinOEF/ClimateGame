@@ -23,7 +23,9 @@ function serviceWorker(): Plugin {
       const built = Object.keys(bundle)
         .filter((file) => !file.endsWith(".map") && !/firebase/.test(file))
         .map((file) => `/${file}`);
-      const fromPublic = publicFiles(path.resolve(__dirname, "public")).filter((file) => !file.startsWith("/branding/") || /oneearth-foundation-256\.webp$|gokhush-charitable-trust\.svg$/.test(file));
+      const fromPublic = publicFiles(path.resolve(__dirname, "public")).filter((file) => !file.startsWith("/branding/") || /oneearth-foundation-256\.webp$|gokhush-charitable-trust\.svg$/.test(file))
+        // Section 37.0: the sounds' MP3 copies (for a browser without Ogg) are cached when first fetched, not here.
+        .filter((file) => !(file.startsWith("/sound/") && file.endsWith(".mp3")));
       const files = [...new Set(["/", ...built, ...fromPublic])].sort();
       // The version follows the contents too: a public picture retaken under the same name is fetched afresh.
       const template = fs.readFileSync(path.resolve(__dirname, "src/sw/serviceWorker.js"), "utf8");

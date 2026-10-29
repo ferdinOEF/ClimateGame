@@ -110,11 +110,14 @@ export function preloadSamples(): void {
 
 /**
  * Section 36.4: one shot samples (the build sounds), each through its own gain at 0.8 of the master, at most two at
- * once (a third is dropped), each a little higher or lower (±4%) so a repeat never sounds the same.
+ * once, each a little higher or lower (±4%) so a repeat never sounds the same. Section 37.0: a third one does not
+ * wait; the oldest playing one fades out over 100 ms and the new one plays, so every build makes a sound.
  */
 export const ONE_SHOT_GAIN = 0.8;
 export const ONE_SHOT_MAX = 2;
 export const ONE_SHOT_PITCH = 0.04;
+/** Section 37.0: how long the oldest sample takes to fade when a third one cuts it (seconds). */
+export const ONE_SHOT_CUT_FADE = 0.1;
 
 export interface OneShotDeps {
   out: () => { ctx: BaseAudioContext; out: AudioNode } | null;
@@ -122,18 +125,24 @@ export interface OneShotDeps {
   random: () => number;
 }
 
-/** "played", "dropped" (two already playing, or sound off) or "missing" (not loaded: the caller may play its tone). */
+/** "played", "dropped" (sound off, or the audio failed) or "missing" (not loaded: the caller may play its tone). */
 export type OneShotResult = "played" | "dropped" | "missing";
 
+interface Voice {
+  src: AudioBufferSourceNode;
+  gain: GainNode;
+}
+
 export class OneShots {
-  private playing = 0;
+  /** The samples playing now, oldest first. */
+  private voices: Voice[] = [];
   /** Every sample asked to play and played, in order (for the browser checks). */
   readonly played: SampleName[] = [];
 
   constructor(private readonly deps: OneShotDeps) {}
 
   get active(): number {
-    return this.playing;
+    return this.voices.length;
   }
 
   play(name: SampleName): OneShotResult {
@@ -142,16 +151,17 @@ export class OneShots {
       if (!io) return "dropped";
       const buffer = this.deps.buffer(name);
       if (!buffer) return "missing";
-      if (this.playing >= ONE_SHOT_MAX) return "dropped";
+      while (this.voices.length >= ONE_SHOT_MAX) this.cut(this.voices.shift()!, io.ctx.currentTime);
       const src = io.ctx.createBufferSource();
       src.buffer = buffer;
       src.playbackRate.value = 1 + (this.deps.random() * 2 - 1) * ONE_SHOT_PITCH;
       const gain = io.ctx.createGain();
       gain.gain.value = ONE_SHOT_GAIN;
       src.connect(gain).connect(io.out);
-      this.playing++;
+      const voice: Voice = { src, gain };
+      this.voices.push(voice);
       src.onended = () => {
-        this.playing = Math.max(0, this.playing - 1);
+        this.voices = this.voices.filter((v) => v !== voice);
         try {
           gain.disconnect();
         } catch {
@@ -164,6 +174,18 @@ export class OneShots {
       return "played";
     } catch {
       return "dropped";
+    }
+  }
+
+  /** Fades `voice` out over ONE_SHOT_CUT_FADE and stops it there; it no longer counts as playing. */
+  private cut(voice: Voice, now: number): void {
+    try {
+      voice.gain.gain.cancelScheduledValues(now);
+      voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+      voice.gain.gain.linearRampToValueAtTime(0, now + ONE_SHOT_CUT_FADE);
+      voice.src.stop(now + ONE_SHOT_CUT_FADE);
+    } catch {
+      // Already stopped.
     }
   }
 }

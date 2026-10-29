@@ -400,10 +400,10 @@ waiting for it). Any audio failure is swallowed.
   MP3 when `canPlayType("audio/ogg; codecs=vorbis")` is empty: Safari). Each is fetched and decoded once, by name,
   into an AudioBuffer on the context from `audioOut()`, never before the unlock, so first paint never waits for a
   sound. A Panjim or Tutorial session asks for all eight once the player has clicked: the seven short ones together,
-  the music last. A sample that fails resolves to null and is skipped. The service worker precaches `public/sound/`
-  with the rest of `public/` (both formats, 5.3 MB).
-- **Build sounds**: `playSample(name)` plays a one shot at 0.8 of the master, at most two at once (a third is
-  dropped), each with a random pitch of ±4%. `BuildSounds` (one a session) maps a defence to its sound: seawall,
+  the music last. A sample that fails resolves to null and is skipped. The service worker precaches the Ogg files only
+  (1.8 MB; Section 37.0); an MP3 is cached the first time it is fetched, like any other public file.
+- **Build sounds**: `playSample(name)` plays a one shot at 0.8 of the master, at most two at once (a third cuts
+  the oldest with a 100 ms fade, so every build makes a sound; Section 37.0), each with a random pitch of ±4%. `BuildSounds` (one a session) maps a defence to its sound: seawall,
   breakwater and small dam their own recording, the living coast (mangrove, khazan, dune, pandanus) the next call of
   a fixed bird cycle, so no call repeats twice in a row. `gameSession.playBuildSound` plays it where the defence lands,
   in place of the synthesised `"build"` tone, which stays for everything else (and for a build before the sample has
