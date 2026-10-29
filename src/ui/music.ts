@@ -1,4 +1,4 @@
-import { audioOut, onAudioUnlock } from "./audioHooks";
+import { audioOut, onAudioUnlock, setAudioTestExtras } from "./audioHooks";
 import { MUSIC_SAMPLE, samples } from "./sampleBank";
 
 /**
@@ -116,6 +116,7 @@ class MusicPlayer {
     window.clearTimeout(this.stopTimer);
     this.machine.send("open");
     this.follow();
+    this.log("open");
     onAudioUnlock(() => void this.start());
   }
 
@@ -123,12 +124,21 @@ class MusicPlayer {
   close(): void {
     if (!this.machine.send("close")) return;
     this.follow();
+    this.log("close");
     window.clearTimeout(this.stopTimer);
     this.stopTimer = window.setTimeout(() => this.teardown(), MUSIC_FADE.close * 1000 + 50);
   }
 
   send(event: "stormBegin" | "stormEnd" | "finale"): void {
     if (this.machine.send(event)) this.follow();
+    this.log(event);
+  }
+
+  /** The last few events and the state each left, for the browser checks. */
+  readonly history: string[] = [];
+  private log(event: string): void {
+    this.history.push(`${event}:${this.machine.state}`);
+    if (this.history.length > 24) this.history.shift();
   }
 
   private follow(): void {
@@ -147,7 +157,9 @@ class MusicPlayer {
     this.starting = true;
     const generation = this.generation;
     try {
-      const buffer = await samples.load(MUSIC_SAMPLE);
+      // After the seven short samples (Section 36.1): the music is the last to load.
+      await samples.preloadAll();
+      const buffer = samples.get(MUSIC_SAMPLE);
       const io = audioOut();
       if (!buffer || !io || generation !== this.generation || !this.machine.isOpen || this.gain) return;
       const gain = io.ctx.createGain();
@@ -222,12 +234,16 @@ class MusicPlayer {
   }
 
   /** For the browser checks: the state, and whether a loop is playing. */
-  probe(): { state: MusicState; playing: boolean } {
-    return { state: this.machine.state, playing: this.sources.length > 0 };
+  probe(): { state: MusicState; playing: boolean; history: string[] } {
+    return { state: this.machine.state, playing: this.sources.length > 0, history: [...this.history] };
   }
 }
 
 const player = new MusicPlayer();
+setAudioTestExtras(() => {
+  const { state, playing, history } = player.probe();
+  return { music: state, musicPlaying: playing, musicHistory: history };
+});
 
 export const music = {
   open: (): void => player.open(),

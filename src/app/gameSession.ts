@@ -2182,6 +2182,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     ambientLife?.setPaused(false);
     reactions.setAmbientPaused(false);
     stormSound.calm(ms / 1000);
+    // Section 36.3: the music goes soft for the finale, and stays soft on its cards and the feedback form.
+    music.finale();
     let shown = 0;
     for (const placed of elements.placedElements()) {
       if (shown >= 10 || !["mangrove", "khazan", "sandy_vegetation", "dune"].includes(placed.elementId)) continue;
@@ -2285,7 +2287,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         if (cue === "thunder") stormSound.thunder();
         else if (cue === "absorbed") playSound("chime");
         else if (cue === "overwhelmed") playSound("hazard_overwhelmed");
-        else if (cue === "end") stormSound.quiet();
+        else if (cue === "end") {
+          stormSound.quiet();
+          // Section 36.3: the storm is over, the music comes back (and plays on under the result cards).
+          music.stormEnd();
+        }
       }
     });
     return stormDirector;
@@ -2293,6 +2299,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   function panjimFxBegin(kind: string): void {
     void kind;
+    // Section 36.3: the music fades out over the storm's lead in; the storm's own sound takes over.
+    music.stormBegin();
     stormImpactActive = true;
     storm.setIntensity(1);
     mapLabels.setVisible(false);
@@ -2377,6 +2385,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   }
 
   function panjimFxEnd(): void {
+    // A storm staged without the storm director has no "end" cue: the music comes back here (no change after the finale).
+    music.stormEnd();
     ambientLife?.setPaused(false);
     reactions.setAmbientPaused(false);
     stormImpactActive = false;
