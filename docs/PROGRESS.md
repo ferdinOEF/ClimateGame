@@ -1,4 +1,43 @@
-## Section 37 — Section 36 answers, playtest fixes and a shorter storm lead in — ON BRANCH `section-37-playtest-fixes` (not merged)
+## Section 38 — the last result card with the feedback on it — ON BRANCH `section-38-last-card` (not merged)
+
+Branch `section-38-last-card` from master `49333a1` (safety copy: `backup/pre-section-38`, same point). QA in
+docs/QA_REPORT.md. The owner's mock is on the Design canvas (artboards 7, 8 and 9).
+- 38.1 After the 2030 and 2040 storms the path is card 1 then the outlook card. Card 2 ("What protected your homes")
+  opens from a text link on card 1 under the homes saved bar, "Back" its only button; card 1's main button is the
+  outlook's old label ("Next: the flood in 2040"); the retry button stays (`core/resultFlow.ts`). The Tutorial's cards
+  are unchanged.
+- 38.2 After the 2050 storm there is one wide card, the last card (`ui/panjim/lastCard.ts` from `core/lastCard.ts`,
+  about 1100 x 680 at 1366x768): left, the storm's headline, stars, "41 of 53 homes saved; 12 lost." with the link to
+  card 2, the bar, "Points this storm", then "Panjim, 2026 to 2050" with the total, four rows (three storms and
+  "Nature at the end of 2050: +9 biodiversity, 2 veterans" as one number), "6 of 9 stars" with the chip, and the
+  board box; right, lighter (`--ink-soft`), "Your feedback": the name field for a run without one, four questions
+  with five 28 px star buttons, "One thing you'll remember", the age group (one box at a time), and Submit feedback,
+  which becomes "Thank you." (with "You're 4th on the board." for a name added there) in place. Across the bottom:
+  View map (the finished board, "Back to your result" bottom centre, the answers kept), Restart (Play again) and Exit.
+  The board post happens as the card opens. `ResultCards.host()` shows a card that wires its own buttons; Esc does
+  nothing. The separate "Your feedback" screen and the old finale card (finaleCard.ts) are gone; the title moment
+  stays (`lastCardTitle`). The 2050 storm has no retry button any more (the last card has none; flagged in QA).
+- 38.3 The nudge, once per run: a press of View map, Restart or Exit without a Submit shows "Before you go, five
+  taps?" over the dimmed card with "Answer now" (focus to the first star row) and "{Action} anyway"; never after a
+  Submit, never twice (`core/nudge.ts`). Leaving without a Submit posts the empty form with the nudge's outcome.
+- 38.4 The feedback table's columns are q1 to q4 (1 to 5), remember (140), age_group (u17, 18_30, 31_plus), nudge
+  (none, shown_answered, shown_left), card_seconds and created_at; the s1 to s7 columns are dropped by idempotent
+  ALTER statements. `POST /api/feedback` refuses a bad value, ignores an unknown key, takes an empty form. The export
+  has the new columns. The migration note is in docs/DEPLOY.md (`npm run db:migrate` once after the merge).
+- 38.4b Test tags: `?tag=FestTesters` (2 to 30 letters, digits or underscores; memory only) goes with every run,
+  board and feedback post; a chip on the name card says so. `tag` on runs, board and feedback; a tagged board post is
+  stored with its tag and gets no rank ("Test session: not on the board."); the top 10, every rank and the one row
+  per name rule read untagged rows only. `DEFAULT_TAG` (set to Preview on Vercel Preview) tags posts that send none.
+  `npm run tag -- list`; the export has a `tag` column.
+- 38.5 Help: the storms paragraph names the link and the last card. Docs.
+- 38.6 QA: tsc, the unit tests, the build, the browser pass at 1366x768 and the card at 1920x1080, the help run, the
+  reviewer's fixes (the older QA tools find the last card; the form on leaving waits for the run's post; the idle
+  reset counts the form; the return button in the obstacle lists; a tagged row's token). The shots showed a card
+  re-rendered in place (card 2 from its link) start its fade only on the next compositor frame, seconds away in
+  software GL (16 ms on a GPU): the shot tool waits for it, and the fade is `ResultCards.enter()` by the Web
+  Animations API now. Details in docs/QA_REPORT.md.
+
+## Section 37 — Section 36 answers, playtest fixes and a shorter storm lead in — MERGED (`5c49144`)
 
 Branch `section-37-playtest-fixes` from `section-36-music` at `a553820` (safety copy: `backup/pre-section-37`, same
 point). Section 36 itself was already merged to master as `3d0045b` before this brief arrived; merging this branch

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { NameCard } from "@ui/panjim/nameCard";
 import { fetchTop } from "@services/board";
+import { testTag } from "@services/testTag";
 import { getPlayerName, setPlayerName } from "@services/playerName";
 import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
@@ -844,7 +845,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   // `noname=1` (the QA tools, with the test hooks on only) opens on the start popup as before.
   const skipNameCard = qaHooks && new URLSearchParams(window.location.search).has("noname");
   if (level.timeModel === "years" && !level.tutorial && !skipNameCard) {
-    const nameCard = new NameCard(getPlayerName(), fetchTop());
+    const nameCard = new NameCard(getPlayerName(), fetchTop(), testTag());
     const showPopup = objectivesPanel.showFirst(nameCard.el);
     window.requestAnimationFrame(() => {
       if (nameCard.isOpen) nameCard.focus();
@@ -888,7 +889,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     objectivesPanel.briefOpen ||
     Boolean(
       document.querySelector(
-        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .finale-card, .result-cards:not([hidden]), .sources-backdrop, .leave-confirm-backdrop:not([hidden])"
+        ".help-backdrop:not([hidden]), .field-guide-backdrop:not([hidden]), .aftermath-backdrop:not([hidden]), .storm-report-backdrop:not([hidden]), .era-end-backdrop:not([hidden]), .welcome-backdrop:not([hidden]), .replay-card:not([hidden]), .result-cards:not([hidden]), .sources-backdrop, .leave-confirm-backdrop:not([hidden])"
       )
     );
   const riskIntro = new RiskIntroFx(container, {
@@ -2938,7 +2939,6 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     { name: "sources", isOpen: shown(".sources-backdrop") },
     { name: "result-cards", isOpen: shown(".result-cards:not([hidden])") },
     { name: "replay", isOpen: shown(".replay-card:not([hidden])") },
-    { name: "finale", isOpen: shown(".finale-card") },
     { name: "field-guide", isOpen: () => panjim?.fieldGuide.isOpen ?? false },
     {
       name: "help",

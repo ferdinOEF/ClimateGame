@@ -14,6 +14,18 @@ export interface ServerEnv {
   POSTGRES_URL?: string;
   BOARD_SEASON?: string;
   RATE_SALT?: string;
+  /** Section 38.4b: the tag every post gets when it sends none ("Preview" on Vercel Preview); a post's own tag wins. */
+  DEFAULT_TAG?: string;
+}
+
+/** Section 38.4b: a test tag's shape (shared with src/services/testTag.ts): 2 to 30 letters, digits or underscores. */
+export const TAG_PATTERN = /^[A-Za-z0-9_]{2,30}$/;
+
+/** The tag a post is stored with: its own when it fits the shape, else the deployment's default, else null (a real player). */
+export function tagOf(body: Record<string, unknown>, env: ServerEnv): string | null {
+  if (typeof body.tag === "string" && TAG_PATTERN.test(body.tag)) return body.tag;
+  const fallback = env.DEFAULT_TAG?.trim() ?? "";
+  return TAG_PATTERN.test(fallback) ? fallback : null;
 }
 
 /** The board's season, stored on every row at post time. Nothing resets: it is a label, not a new board. */

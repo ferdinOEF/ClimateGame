@@ -2577,3 +2577,84 @@ A run that did not beat its name's best is unchanged.
 merge). Vercel's production deployment of `5c49144` (`dpl_EPbTe2K6md77mjr23pSYuD6nP9ff`) is Ready, checked through
 the Vercel connector; production was not loaded from here (this machine's egress blocks *.vercel.app). PR #35 shows
 as merged.
+
+# Section 38: the last result card with the feedback on it
+
+Branch `section-38-last-card` from master `49333a1`; safety copy `backup/pre-section-38` (same point, on GitHub).
+Not merged. One commit a step (38.1, 38.2, 38.3, 38.4, 38.4b, 38.5, 38.6).
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 111 files, 936 pass, 6 skipped (pre-existing). New: `section38` (the card plan, card 2 behind its link, the nudge), `lastCard` (the four rows add up, the stars control, one age box, the no name path, the buttons' choices, the card's text), `testTag` (the URL filter, the chip), and in `server.test.ts` the new feedback shape (a full post, an empty post, a bad value refused, the ALTERs on an old table), the tags (a tagged post stores the tag and gets no rank, tagged rows out of the top 10 and every rank, a tagged and an untagged row with one name independent, `DEFAULT_TAG`, a tagged row's token, `npm run tag -- list`, the export's `tag` column). `feedbackForm.test.ts` (the old form) is gone. The preview-equals-resolution test passes. |
+| `npm run build` | Clean (`tsc -b`, `vite build`, the API bundle rebuilt and current). The precache is unchanged (8 Ogg files). |
+| Browser pass (`tools/section38Shots.ts`), dev server, `?qa=1&noname=1`, `/api` stubbed | 1366x768: 36 of 36, three times (the first with one stale check of the tool, fixed; the second and third after the reviewer's fixes and the fade change). 1920x1080 (the card only, `only=card`): 7 of 7, three times (after each fix). Zero console errors in both. Shots in `docs/qa/section38/`, looked at. |
+| Help (`npm run test:help`) | Fits at 1280x600, 1366x768, 1920x1080 and 2560x1440 (the third run; the first two scrolled, below). The shots are not committed (the tool overwrites `docs/qa/section21/help-*.jpg`, restored after). |
+| Bots, Maya, labels, layout | Not run, as the brief says (no mechanics, no file under `src/ui/panjim/maya*` changed). |
+| Independent review | 0 BLOCKER, 1 MAJOR (fixed), 4 MINOR (fixed), 3 NIT (2 fixed, 1 documented). Below. |
+
+**The browser pass checks** (each a PASS line of the tool): the last card at 1100 x 679 with every named element on
+screen and nothing clipped (the card does not scroll); the header row; the board box without a name ("With a name,
+this run would be 5th on the board. Add one on the right."); the four rows adding up to the total; the run reported as
+the card opens; card 2 from the card's link ("What protected your homes"), Back its only button, Back returning to the
+last card; a tap on star 4 filling 1 to 4 on each of the four rows (16 filled); one age box at a time; a name typed and
+Submit turning in place into "Thank you. You're 2nd on the board." (the stub ranks a named post 2nd between two test
+names); the answers posted as `{ q1: 4, q2: 4, q3: 4, q4: 4, remember, age: "31_plus", nudge: "none", cardSeconds }`
+with no name anywhere in the body; the name going on the board once; View map closing the card and showing "Back to
+your result"; the card coming back with its 16 stars and its line; no nudge after a Submit; Exit reaching the menu. A
+fresh run: View map without a Submit shows the nudge ("Before you go, five taps?", "Answer now", "View map anyway");
+Answer now closes it and focuses the first star row; the nudge never shows twice; Exit then posts the empty form with
+`nudge: "shown_left"` and `cardSeconds`. The 2030 storm: card 1's link under the homes saved bar, its main button
+"Next: the flood in 2040", its retry "Try again from 2026"; the link opening card 2 with Back only; Back; then the
+outlook card. A tagged run (`?qa=1&tag=FestTesters`): the chip on the name card, the Top 10 still the real board, the
+run played to its last card with a name, its board box "Test session: not on the board.", every POST (`/api/run`,
+`/api/board`, `/api/feedback`) carrying `tag: "FestTesters"`, and a tagged Submit saying "Thank you." without a place.
+
+**Screenshots** (`docs/qa/section38/`): `1-last-card-1366x768.jpg` and `1-last-card-1920x1080.jpg` (the card, every
+element visible, nothing clipped), `2-card-2-from-last-1366x768.jpg`, `3-submitted-1366x768.jpg` (four stars, a name,
+Thank you with the place), `4-view-map-1366x768.jpg` (the finished board, "Back to your result" bottom centre),
+`5-nudge-1366x768.jpg`, `6-card-1-2030-1366x768.jpg` (the link and the new main button), `7-name-card-tagged-1366x768.jpg`
+(the chip). The scripted runs make no builds, so every number on the card is 0: the layout is what the pass checks;
+the rows' arithmetic is unit tested with real points.
+
+**Review findings and what was done:**
+- MAJOR: `tools/playthrough21.ts`, `health34.ts` and `leak34.ts` (the full gate) found the finale by `.finale-card` or a
+  "Play again" button, both gone. Fixed: they detect `.last-card` and press Restart; `labelOverlapTest` lists the
+  return button.
+- MINOR: Restart or Exit right after the card opened could post the empty form before the run's own post had landed
+  (404 "no such run"). Fixed: the form goes after the run's report and the board post (the player never waits).
+- MINOR: the idle reset with the card up recorded nothing, and the hosted card's promise never settled. Fixed: the
+  session's `dispose` sends the empty form (keepalive) when the card was opened and nothing was sent, and
+  `ResultCards.dispose` closes a hosted card.
+- MINOR: "Back to your result" was in neither obstacle list and could sit under the hint pill. Fixed: in
+  `HUD_OBSTACLES` and `LABEL_OBSTACLES`; the pill hides while the button is up.
+- MINOR: a tagged row's stored edit token could have renamed and ranked it through `PATCH /api/board` (unreachable, as
+  the client never gets it). Fixed: the token holds a ":" so it never passes the endpoint's check, and the lookup takes
+  untagged rows only (test added).
+- NIT: `lastCard.ts` repeated the link's words. Fixed: `DETAIL_LINK`. NIT: the card's width used `:has()` (Firefox
+  121+). Fixed: a class. NIT: a malformed `DEFAULT_TAG` is dropped silently, so a Preview with a bad one writes real
+  rows. Documented in DEPLOY.md (the shape); left.
+
+**Found by the shots, not by the checks.** The first two passes' shot of card 2 from the last card's link showed the
+dimmed overlay and no card, though its DOM checks passed, with a 0.6 s and then a 2 s wait. A probe on the 2030
+storm's card 1 showed why: a card re-rendered in place (card 2 from its link; "Previous card" before this section)
+starts its 220 ms fade on the next compositor frame, and in this container's software GL that frame came about 3 s
+after the click (`getAnimations()`: running, currentTime 0 for 2.5 s; opacity 1 at 4 s). Not a bug on real hardware,
+where the frame is 16 ms away; the shot tool waits 5 s for it now. The fade moved from a restarted CSS animation to
+the Web Animations API (`ResultCards.enter`) in passing, which also drops the `entering` rules from the sheet; the
+behaviour is the same (none with Calm motion or the system's reduced motion). Shot 2 was taken again with
+`only=detail`.
+
+**Help fit.** The first help run failed at 1280x600 and 1366x768 (a second paragraph made How to play scroll by about
+20 px); the second, with the line folded into the storms paragraph, still scrolled 17 px at 1280x600 and 3 px at
+1366x768. The third fits everywhere: "After each, a result card: stars, homes saved, biodiversity and points (what
+protected your homes is a link). After the last, one card: your points, your board place and a few questions."
+
+**Codex on PR #36** (`2a1d750`), one P2: a named run whose board post was refused reported itself with a `postRun`
+the form did not wait for, so a quick Restart or Exit could post the empty form before the run existed (404). Fixed
+in `6b366ab`: that report is `runPending` too.
+
+**Not run:** Safari and Firefox; a production load (nothing merged); the migration against Neon (`npm run db:migrate`
+runs after the merge; the ALTER statements were applied twice on pg-mem against a table of the old shape); the
+owner's Design canvas was not seen (the brief's words and numbers were used). `tools/section35Shots.ts` and
+`tools/section37RenameShot.ts` drive the old form and rename and no longer run.

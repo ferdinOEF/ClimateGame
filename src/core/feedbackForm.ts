@@ -1,100 +1,69 @@
+import { AGE_CODES, cutText, QUESTION_KEYS, REMEMBER_MAX, STARS, type AgeCode } from "./lastCard";
+import type { NudgeOutcome } from "./nudge";
+
 /**
- * Section 35.5: the feedback form after Play Panjim, as data: every question, its allowed answers and its text limits.
- * The form (ui/panjim/feedbackForm.ts) is drawn from it and the server (server/handlers.ts) checks what it is sent
- * against it, so the two can never disagree. Every item is optional; an item left alone is not sent.
+ * Section 38.4: what the feedback endpoint takes, as data. The last card (core/lastCard.ts, ui/panjim/lastCard.ts) is
+ * drawn from the same lists and the server (server/handlers.ts) checks what it is sent against them, so the two can
+ * never disagree. Every item is optional: an empty form is a valid post (so the count of forms opened is known). A
+ * known key with a value off its list is refused; an unknown key is ignored.
  *
  * Pure: no DOM, no network.
  */
-export const SCALE = [1, 2, 3, 4, 5] as const;
-
-export const FEELINGS = ["Hopeful", "Worried", "Curious", "Ready to help", "No different"] as const;
-export const ACTIONS = ["Talk about it with someone", "Look up Goa's mangroves or khazans", "Visit a mangrove or a khazan", "Join a planting or a cleanup"] as const;
-export const AGES = ["17 and under", "18 to 30", "31 and over"] as const;
-export const STATUSES = ["A student", "A teacher", "Working", "Other"] as const;
-
-/** The longest each free text answer may be (longer is cut). */
-export const TEXT_LIMITS = { s2_why: 280, s3_change: 280, s6_remember: 140 } as const;
+export const NUDGE_CODES: readonly NudgeOutcome[] = ["none", "shown_answered", "shown_left"];
+/** The longest a card's clock can be (a day), so a stray number never grows the column. */
+export const CARD_SECONDS_MAX = 86_400;
 
 export interface FeedbackAnswers {
-  s1_before?: number;
-  s1_now?: number;
-  s2_feeling?: (typeof FEELINGS)[number];
-  s2_why?: string;
-  s3_change?: string;
-  s4_enjoy?: number;
-  s5_actions?: (typeof ACTIONS)[number][];
-  s6_remember?: string;
-  s7_age?: (typeof AGES)[number];
-  s7_status?: (typeof STATUSES)[number];
+  q1?: number;
+  q2?: number;
+  q3?: number;
+  q4?: number;
+  remember?: string;
+  age?: AgeCode;
+  nudge?: NudgeOutcome;
+  /** Seconds from the card opening to Submit or to leaving, to a tenth. */
+  cardSeconds?: number;
 }
 
-export const ANSWER_KEYS = ["s1_before", "s1_now", "s2_feeling", "s2_why", "s3_change", "s4_enjoy", "s5_actions", "s6_remember", "s7_age", "s7_status"] as const;
+export const ANSWER_KEYS = ["q1", "q2", "q3", "q4", "remember", "age", "nudge", "cardSeconds"] as const;
 
-const isScale = (v: unknown): v is number => typeof v === "number" && (SCALE as readonly number[]).includes(v);
-const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T => typeof v === "string" && (list as readonly string[]).includes(v);
+const absent = (v: unknown): boolean => v === undefined || v === null;
+const isStars = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= STARS;
 
-/** A free text answer: control characters out, spaces tidied, cut to `max` characters; empty is no answer. */
-export function cutText(v: unknown, max: number): string | undefined {
-  if (typeof v !== "string") return undefined;
-  const text = [...v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim()].slice(0, max).join("").trim();
-  return text.length > 0 ? text : undefined;
-}
+/** The answers kept from what was sent, or why they were refused. */
+export type CheckedAnswers = { ok: true; answers: FeedbackAnswers } | { ok: false; error: string };
 
-/**
- * The answers kept from what was sent: only the items answered with an allowed value, text cut to its limit. Anything
- * else (an unknown key, a value off the list) is dropped, never stored.
- */
-export function checkAnswers(raw: unknown): FeedbackAnswers {
-  const input = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+export function checkAnswers(raw: unknown): CheckedAnswers {
+  const input = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const out: FeedbackAnswers = {};
-  if (isScale(input.s1_before)) out.s1_before = input.s1_before;
-  if (isScale(input.s1_now)) out.s1_now = input.s1_now;
-  if (oneOf(FEELINGS, input.s2_feeling)) out.s2_feeling = input.s2_feeling;
-  const why = cutText(input.s2_why, TEXT_LIMITS.s2_why);
-  if (why) out.s2_why = why;
-  const change = cutText(input.s3_change, TEXT_LIMITS.s3_change);
-  if (change) out.s3_change = change;
-  if (isScale(input.s4_enjoy)) out.s4_enjoy = input.s4_enjoy;
-  if (Array.isArray(input.s5_actions)) {
-    const picked = ACTIONS.filter((a) => (input.s5_actions as unknown[]).includes(a));
-    if (picked.length > 0) out.s5_actions = picked;
+  for (const key of QUESTION_KEYS) {
+    const v = input[key];
+    if (absent(v)) continue;
+    if (!isStars(v)) return { ok: false, error: `bad ${key}` };
+    out[key] = v;
   }
-  const remember = cutText(input.s6_remember, TEXT_LIMITS.s6_remember);
-  if (remember) out.s6_remember = remember;
-  if (oneOf(AGES, input.s7_age)) out.s7_age = input.s7_age;
-  if (oneOf(STATUSES, input.s7_status)) out.s7_status = input.s7_status;
-  return out;
+  if (!absent(input.remember)) {
+    if (typeof input.remember !== "string") return { ok: false, error: "bad remember" };
+    const remember = cutText(input.remember, REMEMBER_MAX);
+    if (remember) out.remember = remember;
+  }
+  if (!absent(input.age)) {
+    if (typeof input.age !== "string" || !(AGE_CODES as readonly string[]).includes(input.age)) return { ok: false, error: "bad age" };
+    out.age = input.age as AgeCode;
+  }
+  if (!absent(input.nudge)) {
+    if (typeof input.nudge !== "string" || !(NUDGE_CODES as readonly string[]).includes(input.nudge)) return { ok: false, error: "bad nudge" };
+    out.nudge = input.nudge as NudgeOutcome;
+  }
+  if (!absent(input.cardSeconds)) {
+    const v = input.cardSeconds;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return { ok: false, error: "bad cardSeconds" };
+    out.cardSeconds = Math.round(Math.min(CARD_SECONDS_MAX, v) * 10) / 10;
+  }
+  return { ok: true, answers: out };
 }
 
-/** Whether any item was answered. */
+/** Whether any item was answered (the nudge's outcome and the clock are not answers). */
 export function anyAnswer(answers: FeedbackAnswers): boolean {
-  return ANSWER_KEYS.some((key) => answers[key] !== undefined);
-}
-
-/**
- * What a press of "Submit feedback" sends (Section 35.5), from the run's name (null without one), what the name field
- * holds, the answers given and whether the run's board row can be renamed (its edit token is in memory):
- *
- *   - `answers`: the answered items, when there are any (posted with the run id; never a name);
- *   - `rename`: the new name, only when the run is on the board and the field now holds another name;
- *   - `post`: the name to put the run on the board with, only when it is not on it (a run without a name, or one whose
- *     post at the finale failed) and the field is filled;
- *   - `nameError`: why the field's name was refused (the rest still goes).
- */
-export interface SubmitPlan {
-  answers: FeedbackAnswers | null;
-  rename: string | null;
-  post: string | null;
-  nameError: string | null;
-}
-
-export function planSubmit(input: { runName: string | null; field: string; answers: unknown; onBoard: boolean }, check: (raw: string) => { ok: true; name: string } | { ok: false; message: string }): SubmitPlan {
-  const answers = checkAnswers(input.answers);
-  const plan: SubmitPlan = { answers: anyAnswer(answers) ? answers : null, rename: null, post: null, nameError: null };
-  const typed = input.field.replace(/\s+/g, " ").trim();
-  if (typed === "" || (input.onBoard && typed === input.runName)) return plan;
-  const name = check(typed);
-  if (!name.ok) return { ...plan, nameError: name.message };
-  if (input.onBoard) return name.name === input.runName ? plan : { ...plan, rename: name.name };
-  return { ...plan, post: name.name };
+  return QUESTION_KEYS.some((key) => answers[key] !== undefined) || answers.remember !== undefined || answers.age !== undefined;
 }

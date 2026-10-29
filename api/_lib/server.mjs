@@ -18449,6 +18449,12 @@ var PANJIM_POINTS_MODEL = { newRun: () => newPanjimRun() };
 
 // server/db.ts
 import { neon } from "@neondatabase/serverless";
+var TAG_PATTERN = /^[A-Za-z0-9_]{2,30}$/;
+function tagOf(body, env) {
+  if (typeof body.tag === "string" && TAG_PATTERN.test(body.tag)) return body.tag;
+  const fallback = env.DEFAULT_TAG?.trim() ?? "";
+  return TAG_PATTERN.test(fallback) ? fallback : null;
+}
 function seasonOf(env) {
   return env.BOARD_SEASON?.trim() || "Season 1";
 }
@@ -18581,44 +18587,55 @@ function checkName(raw) {
   return { ok: true, name };
 }
 
-// src/core/feedbackForm.ts
-var SCALE = [1, 2, 3, 4, 5];
-var FEELINGS = ["Hopeful", "Worried", "Curious", "Ready to help", "No different"];
-var ACTIONS = ["Talk about it with someone", "Look up Goa's mangroves or khazans", "Visit a mangrove or a khazan", "Join a planting or a cleanup"];
-var AGES = ["17 and under", "18 to 30", "31 and over"];
-var STATUSES = ["A student", "A teacher", "Working", "Other"];
-var TEXT_LIMITS = { s2_why: 280, s3_change: 280, s6_remember: 140 };
-var ANSWER_KEYS = ["s1_before", "s1_now", "s2_feeling", "s2_why", "s3_change", "s4_enjoy", "s5_actions", "s6_remember", "s7_age", "s7_status"];
-var isScale = (v) => typeof v === "number" && SCALE.includes(v);
-var oneOf = (list, v) => typeof v === "string" && list.includes(v);
+// src/core/lastCard.ts
+var QUESTION_KEYS = ["q1", "q2", "q3", "q4"];
+var STARS = 5;
+var REMEMBER_MAX = 140;
+var AGE_GROUPS = [
+  { code: "u17", label: "17 and under" },
+  { code: "18_30", label: "18 to 30" },
+  { code: "31_plus", label: "31 and over" }
+];
+var AGE_CODES = AGE_GROUPS.map((g) => g.code);
 function cutText(v, max) {
   if (typeof v !== "string") return void 0;
   const text = [...v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim()].slice(0, max).join("").trim();
   return text.length > 0 ? text : void 0;
 }
+
+// src/core/feedbackForm.ts
+var NUDGE_CODES = ["none", "shown_answered", "shown_left"];
+var CARD_SECONDS_MAX = 86400;
+var absent = (v) => v === void 0 || v === null;
+var isStars = (v) => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= STARS;
 function checkAnswers(raw) {
-  const input = raw && typeof raw === "object" ? raw : {};
+  const input = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const out2 = {};
-  if (isScale(input.s1_before)) out2.s1_before = input.s1_before;
-  if (isScale(input.s1_now)) out2.s1_now = input.s1_now;
-  if (oneOf(FEELINGS, input.s2_feeling)) out2.s2_feeling = input.s2_feeling;
-  const why = cutText(input.s2_why, TEXT_LIMITS.s2_why);
-  if (why) out2.s2_why = why;
-  const change = cutText(input.s3_change, TEXT_LIMITS.s3_change);
-  if (change) out2.s3_change = change;
-  if (isScale(input.s4_enjoy)) out2.s4_enjoy = input.s4_enjoy;
-  if (Array.isArray(input.s5_actions)) {
-    const picked = ACTIONS.filter((a) => input.s5_actions.includes(a));
-    if (picked.length > 0) out2.s5_actions = picked;
+  for (const key of QUESTION_KEYS) {
+    const v = input[key];
+    if (absent(v)) continue;
+    if (!isStars(v)) return { ok: false, error: `bad ${key}` };
+    out2[key] = v;
   }
-  const remember = cutText(input.s6_remember, TEXT_LIMITS.s6_remember);
-  if (remember) out2.s6_remember = remember;
-  if (oneOf(AGES, input.s7_age)) out2.s7_age = input.s7_age;
-  if (oneOf(STATUSES, input.s7_status)) out2.s7_status = input.s7_status;
-  return out2;
-}
-function anyAnswer(answers2) {
-  return ANSWER_KEYS.some((key) => answers2[key] !== void 0);
+  if (!absent(input.remember)) {
+    if (typeof input.remember !== "string") return { ok: false, error: "bad remember" };
+    const remember = cutText(input.remember, REMEMBER_MAX);
+    if (remember) out2.remember = remember;
+  }
+  if (!absent(input.age)) {
+    if (typeof input.age !== "string" || !AGE_CODES.includes(input.age)) return { ok: false, error: "bad age" };
+    out2.age = input.age;
+  }
+  if (!absent(input.nudge)) {
+    if (typeof input.nudge !== "string" || !NUDGE_CODES.includes(input.nudge)) return { ok: false, error: "bad nudge" };
+    out2.nudge = input.nudge;
+  }
+  if (!absent(input.cardSeconds)) {
+    const v = input.cardSeconds;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return { ok: false, error: "bad cardSeconds" };
+    out2.cardSeconds = Math.round(Math.min(CARD_SECONDS_MAX, v) * 10) / 10;
+  }
+  return { ok: true, answers: out2 };
 }
 
 // src/core/boardRank.ts
@@ -18696,9 +18713,10 @@ var isoOrNull = (v) => {
 async function saveRun(ctx, runId, builds, facts, extra) {
   const minutes = typeof extra.minutes === "number" && Number.isFinite(extra.minutes) ? Math.max(0, Math.min(600, Math.round(extra.minutes * 10) / 10)) : null;
   await ctx.sql.query(
-    `INSERT INTO runs (id, started_at, ended_at, finished, year_reached, minutes, points, stars, builds, nature_share, biodiversity_end, tutorial_first, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `INSERT INTO runs (id, started_at, ended_at, finished, year_reached, minutes, points, stars, builds, nature_share, biodiversity_end, tutorial_first, updated_at, tag)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      ON CONFLICT (id) DO UPDATE SET
+       tag = COALESCE(runs.tag, EXCLUDED.tag),
        started_at = COALESCE(runs.started_at, EXCLUDED.started_at),
        ended_at = EXCLUDED.ended_at,
        finished = runs.finished OR EXCLUDED.finished,
@@ -18724,7 +18742,8 @@ async function saveRun(ctx, runId, builds, facts, extra) {
       facts.natureShare,
       facts.biodiversityEnd,
       typeof extra.tutorialFirst === "boolean" ? extra.tutorialFirst : null,
-      ctx.now.toISOString()
+      ctx.now.toISOString(),
+      tagOf(extra, ctx.env)
     ]
   );
 }
@@ -18742,7 +18761,7 @@ async function postRun(ctx, body) {
 }
 async function boardRows(sql) {
   const rows = await sql.query(
-    "SELECT id, name, points, stars, season, created_at FROM board ORDER BY points DESC, created_at ASC"
+    "SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL ORDER BY points DESC, created_at ASC"
   );
   return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })));
 }
@@ -18773,7 +18792,7 @@ async function oneRowFor(sql, name) {
   return best ?? null;
 }
 async function rowsNamed(sql, name) {
-  const rows = await sql.query("SELECT id, name, points, stars, season, created_at FROM board");
+  const rows = await sql.query("SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL");
   const key = nameKey(name);
   return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
 }
@@ -18795,6 +18814,12 @@ async function postBoard(ctx, body) {
   await saveRun(ctx, runId, builds, facts, body);
   const season = seasonOf(ctx.env);
   const stars = facts.stars.reduce((a, b) => a + b, 0);
+  const tag = tagOf(body, ctx.env);
+  if (tag) {
+    const day2 = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+    await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, `tagged:${randomBytes(24).toString("base64url")}`, day2, tag]);
+    return ok({ tagged: true, points: facts.points, editToken: "", season, name: name.name });
+  }
   const known = await oneRowFor(ctx.sql, name.name);
   if (known && known.points >= facts.points) {
     const place2 = await around(ctx.sql, known.points, known.id);
@@ -18827,7 +18852,7 @@ async function patchBoard(ctx, body) {
   if (!await underLimit(ctx, "rename")) return fail(429, "limit");
   const name = checkName(typeof body.name === "string" ? body.name : "");
   if (!name.ok) return fail(400, name.reason === "refused" ? "name refused" : "bad name");
-  const own = await ctx.sql.query("SELECT id, points FROM board WHERE edit_token = $1", [token]);
+  const own = await ctx.sql.query("SELECT id, points FROM board WHERE edit_token = $1 AND tag IS NULL", [token]);
   if (own.length === 0) return fail(404, "no such row");
   if ((await rowsNamed(ctx.sql, name.name)).some((r) => r.id !== own[0].id)) return fail(409, "name taken");
   const old = await ctx.sql.query("SELECT name FROM board WHERE id = $1", [own[0].id]);
@@ -18843,28 +18868,16 @@ async function postFeedback(ctx, body) {
   if (!ctx.sql) return OFFLINE;
   const runId = typeof body.runId === "string" && UUID.test(body.runId) ? body.runId.toLowerCase() : null;
   if (!runId) return fail(400, "bad run");
+  const checked = checkAnswers(body.answers);
+  if (!checked.ok) return fail(400, checked.error);
   if (!await underLimit(ctx, "feedback")) return fail(429, "limit");
-  const answers2 = checkAnswers(body.answers);
-  if (!anyAnswer(answers2)) return ok({ saved: false });
+  const { answers: answers2 } = checked;
   if ((await ctx.sql.query("SELECT id FROM runs WHERE id = $1", [runId])).length === 0) return fail(404, "no such run");
   if ((await ctx.sql.query("SELECT run_id FROM feedback WHERE run_id = $1", [runId])).length > 0) return fail(409, "already sent");
   await ctx.sql.query(
-    `INSERT INTO feedback (run_id, s1_before, s1_now, s2_feeling, s2_why, s3_change, s4_enjoy, s5_actions, s6_remember, s7_age, s7_status, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (run_id) DO NOTHING`,
-    [
-      runId,
-      answers2.s1_before ?? null,
-      answers2.s1_now ?? null,
-      answers2.s2_feeling ?? null,
-      answers2.s2_why ?? null,
-      answers2.s3_change ?? null,
-      answers2.s4_enjoy ?? null,
-      answers2.s5_actions ?? null,
-      answers2.s6_remember ?? null,
-      answers2.s7_age ?? null,
-      answers2.s7_status ?? null,
-      ctx.now.toISOString()
-    ]
+    `INSERT INTO feedback (run_id, q1, q2, q3, q4, remember, age_group, nudge, card_seconds, created_at, tag)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (run_id) DO NOTHING`,
+    [runId, answers2.q1 ?? null, answers2.q2 ?? null, answers2.q3 ?? null, answers2.q4 ?? null, answers2.remember ?? null, answers2.age ?? null, answers2.nudge ?? null, answers2.cardSeconds ?? null, ctx.now.toISOString(), tagOf(body, ctx.env)]
   );
   return ok({ saved: true });
 }
@@ -18914,7 +18927,106 @@ function contextFor(req, env = process.env, sql = neonSql(env)) {
 var schemaReady = null;
 function ensureSchema(sql) {
   schemaReady ??= (async () => {
-    for (const statement of schemaStatements("-- Section 35.4: Riptide Rising's board, runs and feedback, in Neon Postgres. Applied by `npm run db:migrate`; every\n-- statement is idempotent, so it can run again at any time. Four tables, never joined to each other by a name:\n--   runs         one row a Play Panjim run (reach and completion): no name, IP or device.\n--   board        the one running board: a name, its points and stars, its season. No run id.\n--   feedback     the form after the game, by run id. No name.\n--   rate_limits  writes per salted IP hash per hour. The raw IP is never stored.\n\nCREATE TABLE IF NOT EXISTS runs (\n  id uuid PRIMARY KEY,\n  started_at timestamptz,\n  ended_at timestamptz,\n  finished boolean NOT NULL DEFAULT false,\n  year_reached integer,\n  minutes real,\n  points integer,\n  stars integer[],\n  builds jsonb,\n  nature_share real,\n  biodiversity_end real,\n  tutorial_first boolean,\n  -- The server's own note that this run has put its one row on the board (never which row).\n  on_board boolean NOT NULL DEFAULT false,\n  created_at timestamptz NOT NULL DEFAULT now(),\n  updated_at timestamptz NOT NULL DEFAULT now()\n);\n\nCREATE TABLE IF NOT EXISTS board (\n  id uuid PRIMARY KEY,\n  season text NOT NULL,\n  name text NOT NULL,\n  points integer NOT NULL,\n  stars integer NOT NULL,\n  edit_token text NOT NULL UNIQUE,\n  created_at timestamptz NOT NULL DEFAULT now()\n);\n\nCREATE INDEX IF NOT EXISTS board_points ON board (points DESC);\n\nCREATE TABLE IF NOT EXISTS feedback (\n  -- One form a run.\n  run_id uuid PRIMARY KEY,\n  s1_before integer,\n  s1_now integer,\n  s2_feeling text,\n  s2_why text,\n  s3_change text,\n  s4_enjoy integer,\n  s5_actions text[],\n  s6_remember text,\n  s7_age text,\n  s7_status text,\n  created_at timestamptz NOT NULL DEFAULT now()\n);\n\nCREATE TABLE IF NOT EXISTS rate_limits (\n  ip_hash text NOT NULL,\n  kind text NOT NULL,\n  window_start timestamptz NOT NULL,\n  count integer NOT NULL DEFAULT 0,\n  PRIMARY KEY (ip_hash, kind, window_start)\n);\n")) await sql.query(statement);
+    for (const statement of schemaStatements(`-- Section 35.4: Riptide Rising's board, runs and feedback, in Neon Postgres. Applied by \`npm run db:migrate\`; every
+-- statement is idempotent (CREATE IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, DROP COLUMN IF EXISTS), so it can run
+-- again at any time. Four tables, never joined to each other by a name:
+--   runs         one row a Play Panjim run (reach and completion): no name, IP or device.
+-- Section 38.4b: each of the three has a \`tag\` (null = a real player); a tagged row is a test session's, kept but
+-- never shown on the board or counted in a rank. No tags table, no active flag: a tag is hidden by existing.
+--   board        the one running board: a name, its points and stars, its season. No run id.
+--   feedback     the form after the game, by run id. No name.
+--   rate_limits  writes per salted IP hash per hour. The raw IP is never stored.
+
+CREATE TABLE IF NOT EXISTS runs (
+  id uuid PRIMARY KEY,
+  started_at timestamptz,
+  ended_at timestamptz,
+  finished boolean NOT NULL DEFAULT false,
+  year_reached integer,
+  minutes real,
+  points integer,
+  stars integer[],
+  builds jsonb,
+  nature_share real,
+  biodiversity_end real,
+  tutorial_first boolean,
+  -- The server's own note that this run has put its one row on the board (never which row).
+  on_board boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player. A tagged row is never shown on the board.
+  tag text
+);
+
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS tag text;
+
+CREATE TABLE IF NOT EXISTS board (
+  id uuid PRIMARY KEY,
+  season text NOT NULL,
+  name text NOT NULL,
+  points integer NOT NULL,
+  stars integer NOT NULL,
+  edit_token text NOT NULL UNIQUE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player. The board and every rank read untagged rows only.
+  tag text
+);
+
+ALTER TABLE board ADD COLUMN IF NOT EXISTS tag text;
+
+CREATE INDEX IF NOT EXISTS board_points ON board (points DESC);
+
+CREATE TABLE IF NOT EXISTS feedback (
+  -- One form a run.
+  run_id uuid PRIMARY KEY,
+  -- Section 38.4: the four questions, 1 to 5 stars, null when unanswered.
+  q1 integer,
+  q2 integer,
+  q3 integer,
+  q4 integer,
+  -- "One thing you'll remember", at most 140 characters.
+  remember text,
+  -- "u17", "18_30", "31_plus" or null.
+  age_group text,
+  -- The nudge (Section 38.3): "none", "shown_answered", "shown_left" or null.
+  nudge text,
+  -- Seconds from the card opening to Submit or to leaving.
+  card_seconds real,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- Section 38.4b: a test session's tag; null is a real player.
+  tag text
+);
+
+-- Section 38.4: a feedback table made before Section 38 gets the new columns and loses the old questions (every row
+-- then was test data). Each statement is idempotent, like the rest of this file.
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q1 integer;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q2 integer;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q3 integer;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q4 integer;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS remember text;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS age_group text;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS nudge text;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS card_seconds real;
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS tag text;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s1_before;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s1_now;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s2_feeling;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s2_why;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s3_change;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s4_enjoy;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s5_actions;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s6_remember;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s7_age;
+ALTER TABLE feedback DROP COLUMN IF EXISTS s7_status;
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+  ip_hash text NOT NULL,
+  kind text NOT NULL,
+  window_start timestamptz NOT NULL,
+  count integer NOT NULL DEFAULT 0,
+  PRIMARY KEY (ip_hash, kind, window_start)
+);
+`)) await sql.query(statement);
   })().catch((error) => {
     schemaReady = null;
     throw error;

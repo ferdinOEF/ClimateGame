@@ -40,7 +40,7 @@ const HUD = [
   ".instrument-cluster", ".coin-jar", ".field-guide-button", ".panjim-clock", ".hud-chrome",
   ".hud-panel", ".panjim-toggles", ".objectives-panel", ".get-ready", ".map-corner", ".map-layer-control",
   ".empty-prompt", ".era-banner", ".build-popover", ".hud-tooltip", ".field-guide-toast", ".result-cards",
-  ".field-guide-card", ".finale-card", ".brief-card", ".replay-card", ".tutorial-coach", ".forecast-label", ".storm-card",
+  ".field-guide-card", ".result-return", ".brief-card", ".replay-card", ".tutorial-coach", ".forecast-label", ".storm-card",
   ".hud-corner", ".help-card", ".storm-report", ".era-end-card", ".welcome-card", ".sources-panel"
 ];
 

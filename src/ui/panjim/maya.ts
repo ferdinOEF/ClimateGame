@@ -119,6 +119,8 @@ function readingMs(text: string): number {
  */
 export const HUD_OBSTACLES = [
   ".hud-panel",
+  // Section 38.2: "Back to your result", bottom centre, while the finished board shows.
+  ".result-return",
   // Section 33b: the HUD card, top right since Section 34c.2, at its full size (status, ? and ☰, and the objective).
   ".panjim-clock",
   // ☰'s menu, open: it hangs below the card, outside its box.
@@ -130,7 +132,6 @@ export const HUD_OBSTACLES = [
   ".hud-tooltip",
   ".field-guide-toast",
   ".field-guide-card",
-  ".finale-card",
   ".result-cards",
   ".brief-card",
   ".replay-card",
