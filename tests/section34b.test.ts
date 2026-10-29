@@ -211,7 +211,7 @@ describe("34b.3: the camera moves only at its set moments", () => {
     // Held while a build menu or tile card is open, made as it closes.
     // Section 37.5: and while the pointer is moving on the board (the player is choosing).
     expect(session).toContain("if (buildPopover.isOpen || (!asked && pointerChoosing())) pendingCameraMove = move;");
-    expect(session).toContain("if (pendingCameraMove && !buildPopover.isOpen && !pointerChoosing(nowMs)) {");
+    expect(session).toContain("if (pendingCameraMove && !buildPopover.isOpen && !pointerChoosing(nowMs) && !stormDirector?.playing) {");
     expect(session).toContain(`.panjim-clock, .maya-figure-wrap, .maya-badge:not([hidden]), .maya-bubble:not([hidden])`);
   });
 });

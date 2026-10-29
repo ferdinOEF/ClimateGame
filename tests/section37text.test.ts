@@ -37,3 +37,12 @@ describe("Section 37.7: text", () => {
     for (const text of [keysLine(true), TILE_NOTES.riverMouth, sideBySideNote()]) expect(punctuationProblems(text), text).toEqual([]);
   });
 });
+
+describe("Section 37.3: a run that did not beat its name's best", () => {
+  it("says the best run stays on the board", async () => {
+    const { rankHtml } = await import("../src/ui/panjim/resultCards");
+    const html = rankHtml({ status: "ready", rank: { rank: 3, points: 4200, tenth: null, above: [], below: [], kept: true } }, "Ana");
+    expect(html).toContain("Your best run under this name stays on the board, with 4200 points.");
+    expect(html).toContain("3rd on the board");
+  });
+});

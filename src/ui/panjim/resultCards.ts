@@ -356,7 +356,12 @@ export function rankHtml(state: RankState, name: string | null): string {
   }
   const head = rank <= 10 || tenth === null ? `${ordinal(rank)} on the board` : `${tenth - points} points short of the top 10`;
   const nearest = above[above.length - 1];
-  const gap = nearest ? `${nearest.points - points} points behind ${ordinal(nearest.rank)}` : "Top of the board";
+  // Section 37.3: one row a name; a run that did not beat its name's best leaves that row on the board.
+  const gap = state.rank.kept
+    ? `Your best run under this name stays on the board, with ${points} points.`
+    : nearest
+      ? `${nearest.points - points} points behind ${ordinal(nearest.rank)}`
+      : "Top of the board";
   const row = (r: BoardRowView, me = false): string =>
     `<li class="${me ? "me" : ""}"${me ? ' aria-current="true"' : ""}><span class="finale-rank-place">${r.rank}</span><span class="finale-rank-name">${esc(r.name)}</span><b>${r.points}</b></li>`;
   const mine: BoardRowView = { rank, name, points, season: "" };

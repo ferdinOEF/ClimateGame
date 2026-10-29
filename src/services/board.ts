@@ -50,6 +50,8 @@ export interface RankView {
   tenth: number | null;
   above: BoardRowView[];
   below: BoardRowView[];
+  /** Section 37.3: the name's better run stays on the board; `points` and `rank` are that row's. */
+  kept?: boolean;
 }
 
 /** One row of the top 10, as the server sends it. */

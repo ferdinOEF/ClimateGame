@@ -2330,6 +2330,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     void kind;
     // Section 36.3: the music fades out over the storm's lead in; the storm's own sound takes over.
     music.stormBegin();
+    // Section 37.8 (review): a set move held for the pointer is stale once a storm begins; the storm frames itself.
+    pendingCameraMove = null;
     stormImpactActive = true;
     storm.setIntensity(1);
     mapLabels.setVisible(false);
@@ -3083,7 +3085,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:"));
     // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes; Section 37.5: and
     // while the pointer was moving on the board, once it has been still for 1.5 s (or left the board).
-    if (pendingCameraMove && !buildPopover.isOpen && !pointerChoosing(nowMs)) {
+    if (pendingCameraMove && !buildPopover.isOpen && !pointerChoosing(nowMs) && !stormDirector?.playing) {
       const move = pendingCameraMove;
       pendingCameraMove = null;
       move();

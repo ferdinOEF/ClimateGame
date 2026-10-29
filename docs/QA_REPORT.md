@@ -2490,3 +2490,66 @@ server always sends a rank. The stub was fixed and the pass rerun.)
 **Not run:** Safari and Firefox (the MP3 path is unit tested only); listening to anything (the calm bed under the soft
 music, two samples at once and the fade over the storm's lead in were not heard: no audio output here); the Tutorial
 in the browser (it shares every code path checked); a production load (nothing merged).
+
+# Section 37: Section 36 answers, playtest fixes and a shorter storm lead in
+
+Branch `section-37-playtest-fixes` from `section-36-music` at `a553820`; safety copy `backup/pre-section-37` (same
+point). Section 36 was already merged to master as `3d0045b` (on the owner's "close the review and push", before this
+brief); merging this branch brings only the 37 commits. Not merged.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | Clean. |
+| `npm run test` | 109 files, 920 pass, 6 skipped (pre-existing). New: `boardRank`, `keyboardTiles`, `stormLeadIn`, `section37`, `section37text`, and Section 37.3's server tests (two runs under one name, dense ranks, a rename onto a known name). The preview-equals-resolution test passes. |
+| `npm run build` | Clean. The precache: 42 files, 4.90 MB (was 50 files, 8.42 MB): the 8 Ogg files (1.79 MB) and no MP3. The brief expected about 5.8 MB; 3.11 MB of the game plus 1.79 MB of Ogg is 4.90. |
+| Browser pass (`tools/section37Shots.ts`), dev server, `?qa=1&noname=1`, the finale with a name | 1366x768: every check passes but one, the lead in's frame count (24 frames for 2 s of storm clock: the check was too strict, since a fast frame moves the clock less than 0.1 s; it now reads the clock). 1920x1080 (no finale): the same. Zero console errors. Five shots in `docs/qa/section37/`, looked at. |
+| Storm timings (`tools/section37StormTimes.ts`), before and after, 1366x768 | Below. |
+| Bots | The guided bot, seeds 1 to 3, before (`a553820`) and after: 4565, 4240 and 4650 points both times, the same stars and homes saved. |
+| Help (`npm run test:help`) | Fits at 1280x600, 1366x768, 1920x1080, 2560x1440 (shots in `docs/qa/section37/help/`). It did not before: on `a553820` How to play already scrolled at 1280x600 (36 px) and 1366x768 (68 px), and the longer keys line made 1920x1080 scroll too (29 px). Fixed in CSS: the card wider at every height, the storm list on one line up to 900 px high, a little less space between items, smaller pictures under 680 px high. |
+| Layout (`npm run test:layout`) | 144 of 144 after the fixes. A first run before them had 143 of 144: Maya's bubble not yet showing at 2560x1440 in one case; it passed on the rerun. |
+| Maya, labels | Not run, as the brief says. |
+| Independent review | 2 MAJOR (fixed), 5 MINOR (3 fixed, 2 for the owner), 6 NIT (below). |
+
+**Storm timings, the 2030 cyclone, the 2040 flood and the 2050 storm.** Software GL draws 1 to 1.5 frames a second
+here, and the storm clock moves at most 0.1 s a frame, so wall times are stretched about tenfold; frames and the
+storm clock are what this machine can measure. Last build to first visible movement (first water on land or in the
+river):
+
+| Storm | Lead in before | Lead in after | First water to result card, before / after | With Speed up at the first water, before / after |
+|---|---|---|---|---|
+| 2030 cyclone | 75 frames: 7.0 s of storm clock | 24 frames: 2.0 s (clock 5 to 7) | 202 / 198 frames | 54 / 51 frames |
+| 2040 flood | 76 frames: 7.0 s | 22 frames: 2.0 s | 321 / 313 frames | 82 / 85 frames |
+| 2050 storm | 74 frames: 7.0 s | 22 frames: 2.0 s | 316 / 313 frames | 88 / 82 frames |
+
+On top of the storm clock, the lead in has the build's own work before the first storm frame (the storm's
+resolution): 0.7 to 6 s here in software GL, not measured on a real GPU. Speed up is on screen on the first frame
+after the build's click. First water to the result card is unchanged by design (only when the clock starts moved);
+the replay card, which held one step in these runs, now shares at most 8 s among its steps (2.6 s each, shorter past
+three). The music's fade out is 1.5 s, inside the 2 s before the first water.
+
+**Review findings and what was done:**
+- MAJOR: a camera move held for the pointer could fire after a build that brought a storm and pull the camera off the
+  storm. Fixed: the held move is dropped when a storm begins, and never made while one plays.
+- MAJOR: `build-menu-open` could outlive a session (the idle reset with a menu open) and hide the next run's bottom
+  hint. Fixed: it is one of the session's classes, cleared with them.
+- MINOR: a run that did not beat its name's row showed that row's numbers without saying why. Fixed: the finale says
+  "Your best run under this name stays on the board, with N points." A rename from the form is then not possible (no
+  edit token); left for the owner.
+- MINOR: two posts under one name at once could leave the lower score. Fixed: the row is raised only over fewer points.
+- MINOR: names the browser normalises (full width letters, double spaces) can miss each other in SQL and add a second
+  row; the board still shows one row per name. Left.
+- MINOR: a rename onto a name already on the board keeps the better row and drops the other (the one row rule). Left
+  for the owner.
+- MINOR: the wet sand tint before a cyclone's hit came in at once. Fixed: it rides the lead in's ramp. (The 4 s phase
+  line now comes on the first frame; kept.)
+- NIT: the keyboard ring draws through a tall building in front of the tile (no depth test, so it shows over the
+  pulse). Kept. NIT: `withDenseRanks` is used only by the tests; `playAgain` equals `clearPlayerName`; every board
+  answer reads the whole board table (fine at festival scale); Up or Down from a control inside a card goes to the
+  first card; an offline browser without Ogg has no build sounds until each MP3 was fetched once. Left.
+
+**Codex on PR #34:** its review never finished: the summary still reads "running" on `a553820` and it left no
+finding, review or thread. Nothing to act on.
+
+**Not run:** Safari and Firefox; a real GPU's timings; listening (the 100 ms cut of a third build sound); the Tutorial
+in the browser (it shares the build and storm paths checked); a production load (nothing merged). The playtest notes
+(`claude/PLAYTEST_2026-10-29_three_runs.md`) are not in the repository; the brief's own words were used.

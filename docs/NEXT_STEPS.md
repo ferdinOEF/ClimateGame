@@ -12,6 +12,16 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After Section 37 (from docs/QA_REPORT.md)
+
+- Merge `section-37-playtest-fixes` when the owner says so (`git merge --no-ff`); close PR #34 (already merged as
+  Section 36's `3d0045b`, so it shows merged on GitHub).
+- Time the storm's lead in on a real GPU: the storm clock part fell from 7 s to 2 s; the build's own work before the
+  first storm frame (the storm's resolution) was 0.7 to 6 s here in software GL and was not measured on real hardware.
+- A rename on the feedback form after a run that did not beat its name's best is not possible (no edit token); the
+  finale says the best run stays. A rename to a name already on the board keeps the better row only.
+- Listen: the 100 ms cut of a third build sound.
+
 ## After Section 35 (from docs/QA_REPORT.md)
 
 - Merge Section 35 when the owner says so (`git merge --no-ff`), then confirm Vercel's production deployment.

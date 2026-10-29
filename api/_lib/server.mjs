@@ -18801,7 +18801,14 @@ async function postBoard(ctx, body) {
   let id;
   if (known) {
     id = known.id;
-    await ctx.sql.query("UPDATE board SET season = $1, name = $2, points = $3, stars = $4, edit_token = $5, created_at = $6 WHERE id = $7", [season, name.name, facts.points, stars, editToken, day, id]);
+    const updated = await ctx.sql.query(
+      "UPDATE board SET season = $1, name = $2, points = $3, stars = $4, edit_token = $5, created_at = $6 WHERE id = $7 AND points < $3 RETURNING points",
+      [season, name.name, facts.points, stars, editToken, day, id]
+    );
+    if (updated.length === 0) {
+      const kept = await oneRowFor(ctx.sql, name.name) ?? known;
+      return ok({ ...await around(ctx.sql, kept.points, kept.id), points: kept.points, editToken: "", season, name: kept.name, kept: true });
+    }
   } else {
     id = randomUUID();
     await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [id, season, name.name, facts.points, stars, editToken, day]);

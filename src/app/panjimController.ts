@@ -63,7 +63,7 @@ import { SHOW_MAYA } from "@services/features";
 import { leaveText } from "@ui/panjim/modalStack";
 
 /** The state classes a Panjim session puts on the shared game layer (Section 16): cleared when one starts and ends. */
-const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards"];
+const SESSION_CLASSES = ["has-built", "storm-hold", "storm-playing", "slowmo", "has-result-cards", "build-menu-open"];
 
 /**
  * The Panjim 2050 run inside a live session.

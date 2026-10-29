@@ -417,7 +417,8 @@ export class StormDirector {
     if (this.field?.landfall === null || this.shoreSea.length === 0) return;
     const landfall = this.field!.landfall!;
     const [from, to] = STORM_TIMING.cyclone.drawBack;
-    const out = smooth((t - (landfall - from)) / 2) * (1 - smooth((t - (landfall - to)) / 1.2));
+    // Section 37.8 (review): it comes in with the lead in's ramp, as the weather does.
+    const out = smooth((t - (landfall - from)) / 2) * (1 - smooth((t - (landfall - to)) / 1.2)) * smooth((t - this.start) / LEAD_RAMP);
     for (const coord of this.shoreSea) this.deps.setTint(coord, out > 0.01 ? WET_SAND : null, out * 0.55);
   }
 

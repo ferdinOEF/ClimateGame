@@ -50,7 +50,10 @@ const PROBE = `(() => {
       const s = window.__stormForTest;
       const speed = document.querySelector(".speed-up");
       if (speed && !speed.hidden) mark("speedUp");
-      if (s.playing()) mark("director");
+      if (s.playing()) {
+        if (p.marks.director === undefined) { p.stormStart = s.time(); p.firstWater = s.firstWave()?.first ?? null; p.duration = s.firstWave()?.duration ?? null; }
+        mark("director");
+      }
       const wave = s.firstWave();
       const time = s.time();
       if (wave && time !== null && time >= wave.first) {
@@ -116,10 +119,11 @@ try {
     await js(page, `window.__openTileForTest(${pick.q}, ${pick.r})`);
     await page.waitForSelector(`.build-card[data-element="${pick.element}"]`, { timeout: 10000 });
     await page.waitForTimeout(400);
-    await js(page, `(() => { const p = window.__stormProbe; p.marks = {}; p.armed = true; })()`);
+    await js(page, `(() => { const p = window.__stormProbe; p.marks = {}; p.stormStart = undefined; p.armed = true; })()`);
     await page.locator(`.build-card[data-element="${pick.element}"]`).click();
     await page.waitForFunction(`window.__stormProbe.marks.results !== undefined`, undefined, { timeout: 600000 });
     const m = await js<Record<string, Mark>>(page, `(() => { const p = window.__stormProbe; p.armed = false; return p.marks; })()`);
+    const clock = await js<{ stormStart: number | null; firstWater: number | null; duration: number | null }>(page, `(() => { const p = window.__stormProbe; return { stormStart: p.stormStart ?? null, firstWater: p.firstWater ?? null, duration: p.duration ?? null }; })()`);
     const s = (a: string, b: string): number | null => (m[a] && m[b] ? Math.round(m[b].t - m[a].t) / 1000 : null);
     const f = (a: string, b: string): number | null => (m[a] && m[b] ? m[b].f - m[a].f : null);
     const row = {
@@ -132,6 +136,10 @@ try {
       moveToResultsS: s("move", "results"),
       moveToResultsFrames: f("move", "results"),
       replayS: s("replay", "replayEnd"),
+      // The storm clock: where it started and when the first water comes (storm seconds; 1x unless hurried, 4x hurried).
+      stormClockStart: clock.stormStart,
+      firstWater: clock.firstWater,
+      stormDuration: clock.duration,
       fps: m.click && m.results ? Math.round(((m.results.f - m.click.f) / ((m.results.t - m.click.t) / 1000)) * 10) / 10 : null
     };
     rows.push(row);
