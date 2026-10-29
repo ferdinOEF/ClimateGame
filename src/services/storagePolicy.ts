@@ -8,6 +8,10 @@
  * display preferences only, none about progress. Nothing is kept in sessionStorage. With a Firebase project
  * configured (none is in production), the Firebase SDK keeps its own signed in user in IndexedDB; that is an
  * identity for the leaderboard, not progress, and it brings no progress back (the cloud pull is off).
+ *
+ * Section 35: still nothing is saved on the machine. A Play Panjim run and its feedback go to the database (the
+ * game's Vercel functions, Neon Postgres) by a random run id and never with a name; the name a player gives goes only
+ * to the board, and lives in memory for that run alone (services/playerName.ts), as does the board row's edit token.
  */
 
 /** Progress an older version saved: removed on every load (removing an absent key costs nothing). */

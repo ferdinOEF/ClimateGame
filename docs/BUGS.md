@@ -344,3 +344,15 @@ four row limit); the red can come on at a phase's start if its list is already d
    saves none and the still helps rule offers no row.
 2. **For the best plan, 2050 is no longer clearly the hardest storm:** 4 homes lost, as in 2040 (93.2% saved against
    93.0%); before the rule 8. For every bot style it stays the hardest. No hazard number was changed to restore it.
+
+# Section 35: bugs found and fixed
+
+| Bug | Found by | Fix and test |
+|---|---|---|
+| A board read answered in time but shown as "Board offline": the page's thread was busy building the 3D scene and the 6 s abort ran first | The browser pass | Reads wait 20 s, posts 30 s (`services/board.ts`); the pass checks the top 10 |
+| The client gave up on a board post before the server's replay finished; the row landed without its edit token | Reviewer (BLOCKER) | 30 s for posts; a 409 reads "already on the board" (`tests/server.test.ts`) |
+| A named run the board could not take showed a place as if posted | Reviewer (MAJOR) | "Not on the board yet"; the form can post it (`tests/feedbackForm.test.ts`, `tests/section35.test.ts`) |
+| A board row's time could tie it to its run and its form | Reviewer (MAJOR) | Dated to the day (`tests/server.test.ts`) |
+| A rename typed during the finale's post was dropped | Reviewer (MAJOR) | The form waits for the post |
+| The QA hooks' "finale" scenario clicked through the new "Your feedback" step | The browser pass | `atFinalCard` knows the points finale |
+| Fullwidth and Cyrillic spellings passed the name filter | Reviewer (MINOR) | NFKC and look alike letters (`tests/nameFilter.test.ts`) |
