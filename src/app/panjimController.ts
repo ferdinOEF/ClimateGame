@@ -1622,8 +1622,8 @@ export class PanjimController {
         this.onBoard = true;
         return { status: "on-board" };
       }
-      // Not on the board (refused, over the limit, or unreachable): the run is still reported, and the form can post it.
-      void postRun(this.runReport());
+      // Not on the board (refused, over the limit, or unreachable): the run is still reported (the form waits for it).
+      this.runPending = postRun(this.runReport());
       const rank = await fetchRank(points);
       return rank ? { status: "unposted", rank } : { status: "offline" };
     }
