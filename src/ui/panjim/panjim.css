@@ -3637,6 +3637,13 @@
   pointer-events: none;
 }
 
+/* Section 37.2: the bottom banner goes while a build menu is open, so the menu's last line is never under it. */
+.has-panjim-clock.build-menu-open .empty-prompt {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* The storm itself: Maya's bubble fades too. */
 .has-panjim-clock.storm-playing .maya-bubble {
   opacity: 0;

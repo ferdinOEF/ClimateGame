@@ -244,6 +244,8 @@ export class BuildPopover {
     this.el.innerHTML = "";
     this.el.classList.add("as-cards");
     this.openedAt = performance.now();
+    // Section 37.2: the bottom banner goes while the cards are open (they are placed clear of it too, `avoid`).
+    this.backdrop.parentElement?.classList.add("build-menu-open");
     // What each card says is this game's rule, and its number this game's model.
     const head = document.createElement("div");
     head.className = "build-card-head";
@@ -520,6 +522,7 @@ export class BuildPopover {
   hide(): void {
     const hadFocus = this.el.contains(document.activeElement);
     this.backdrop.hidden = true;
+    this.backdrop.parentElement?.classList.remove("build-menu-open");
     if (hadFocus && this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
     this.returnFocus = null;
     this.tooltips?.hide();
