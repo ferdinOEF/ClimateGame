@@ -32,9 +32,10 @@ docs/QA_REPORT.md. The owner's mock is on the Design canvas (artboards 7, 8 and 
 - 38.5 Help: the storms paragraph names the link and the last card. Docs.
 - 38.6 QA: tsc, the unit tests, the build, the browser pass at 1366x768 and the card at 1920x1080, the help run, the
   reviewer's fixes (the older QA tools find the last card; the form on leaving waits for the run's post; the idle
-  reset counts the form; the return button in the obstacle lists; a tagged row's token), and a fade bug the shots
-  found: a card re-rendered in place (card 2 from its link, Previous card) stayed at opacity 0, so the cards' fade is
-  now `ResultCards.enter()` by the Web Animations API. Details in docs/QA_REPORT.md.
+  reset counts the form; the return button in the obstacle lists; a tagged row's token). The shots showed a card
+  re-rendered in place (card 2 from its link) start its fade only on the next compositor frame, seconds away in
+  software GL (16 ms on a GPU): the shot tool waits for it, and the fade is `ResultCards.enter()` by the Web
+  Animations API now. Details in docs/QA_REPORT.md.
 
 ## Section 37 — Section 36 answers, playtest fixes and a shorter storm lead in — MERGED (`5c49144`)
 

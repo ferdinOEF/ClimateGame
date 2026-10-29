@@ -14,8 +14,8 @@
  *
  * The mouse moves through the scripted runs, or the idle reset would fire.
  *
- * Usage: npx tsx tools/section38Shots.ts [w=1366] [h=768] [out=docs/qa/section38] [only=card] [port=5239]
- * `only=card` runs step 1 alone (the 1920x1080 pass). Exits 1 on a console error or a failed check.
+ * Usage: npx tsx tools/section38Shots.ts [w=1366] [h=768] [out=docs/qa/section38] [only=card|detail] [port=5239]
+ * `only=card` runs step 1 alone (the 1920x1080 pass); `only=detail` steps 1 and 2. Exits 1 on a console error or a failed check.
  */
 import { chromium, type Browser, type Page } from "playwright";
 import fs from "node:fs";
@@ -153,8 +153,8 @@ try {
     } else {
       // 2. Card 2 from its link, and Back.
       await page.locator(".last-card .result-detail-link").click();
-      // Software GL draws about a frame a second: the shot waits for the card to paint.
-      await page.waitForTimeout(2000);
+      // The card's fade starts on the next compositor frame, seconds away in software GL: the shot waits for it.
+      await page.waitForTimeout(5000);
       const card2 = await textOf(page, ".result-cards:not([hidden]) .result-title");
       const backOnly = await js<string[]>(page, `[...document.querySelectorAll(".result-cards:not([hidden]) .result-actions button")].map((b) => b.textContent)`);
       check(card2 === "What protected your homes" && backOnly.join("|") === "Back", `38.1: the link opens card 2 (${card2}); its only button is Back (${backOnly.join(", ")})`);
@@ -162,6 +162,11 @@ try {
       await page.locator(".result-detail-back").click();
       await page.waitForTimeout(600);
       check((await js<boolean>(page, `!!document.querySelector(".result-cards:not([hidden]) .last-card")`)), "Back returns to the last card");
+      if (ONLY === "detail") {
+        stop();
+        await page.context().close();
+        throw new Error("detail-done");
+      }
 
       // 3. Four stars (star 4 on each row), a name, Submit.
       for (const key of ["q1", "q2", "q3", "q4"]) await page.locator(`.fb-row[data-question="${key}"] .fb-star[data-value="4"]`).click();
@@ -211,13 +216,13 @@ try {
     }
   }
 
-  if (ONLY !== "card") {
+  if (ONLY === "") {
     // 5. A fresh run, Exit without a Submit: the nudge, once.
     {
       const { page, sent, stop } = await open(browser, `${server.url}/?qa=1&noname=1#/play/l01-first-rains`);
       await toLastCard(page, null);
       await page.locator('.last-action[data-action="map"]').click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(5000);
       const nudge = await js<{ up: boolean; title: string; line: string; buttons: string[] }>(page, `(() => { const n = document.querySelector(".result-nudge"); return { up: !!n, title: n?.querySelector(".result-nudge-title")?.textContent ?? "", line: n?.querySelector(".result-nudge-line")?.textContent ?? "", buttons: [...(n?.querySelectorAll("button") ?? [])].map((b) => b.textContent) }; })()`);
       check(nudge.up && nudge.title === "Before you go, five taps?" && nudge.buttons.join("|") === "Answer now|View map anyway", `38.3: the nudge on View map: ${nudge.title}; ${nudge.buttons.join(", ")}`);
       await shot(page, "5-nudge");
@@ -294,6 +299,8 @@ try {
       await page.context().close();
     }
   }
+} catch (error) {
+  if (!(error instanceof Error && error.message === "detail-done")) throw error;
 } finally {
   await browser.close();
   server.stop();
