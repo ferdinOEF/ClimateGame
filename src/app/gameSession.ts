@@ -43,6 +43,8 @@ import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { closeSources } from "@ui/sourcesScreen";
 import { audioStateForTest, playSound } from "@ui/audioHooks";
+import { BuildSounds, playSample, preloadSamples } from "@ui/sampleBank";
+import { music } from "@ui/music";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
@@ -1115,6 +1117,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           addBriefFeature: (el) => objectivesPanel.addBriefFeature(el)
         })
       : null;
+  // Section 36: the recorded sounds load in the background once the player has clicked (Panjim and the Tutorial).
+  if (panjim) {
+    preloadSamples();
+    // The music plays under Panjim and the Tutorial, never on the menu or the level select (src/ui/music.ts).
+    music.open();
+  }
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,
@@ -2174,6 +2182,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     ambientLife?.setPaused(false);
     reactions.setAmbientPaused(false);
     stormSound.calm(ms / 1000);
+    // Section 36.3: the music goes soft for the finale, and stays soft on its cards and the feedback form.
+    music.finale();
     let shown = 0;
     for (const placed of elements.placedElements()) {
       if (shown >= 10 || !["mangrove", "khazan", "sandy_vegetation", "dune"].includes(placed.elementId)) continue;
@@ -2192,6 +2202,16 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     });
   }
   const stormSound = new StormSound();
+  /** Section 36.4: the bird cycle's place, for this session only. */
+  const buildSounds = new BuildSounds();
+  /**
+   * A defence landing: in Panjim and the Tutorial its recorded sound (a bird call for the living coast) in place of
+   * the synthesised tone; the tone still, on anything else, and if the sample has not loaded yet. Never both.
+   */
+  function playBuildSound(elementId: string): void {
+    const sample = panjim ? buildSounds.sampleFor(elementId) : null;
+    if (!sample || !playSample(sample)) playSound("build");
+  }
   /** The words over defences answering a storm ("Absorbed"); they follow their tile as the camera moves. */
   const stormWords: { el: HTMLElement; coord: AxialCoord }[] = [];
   function placeStormWord(word: { el: HTMLElement; coord: AxialCoord }): void {
@@ -2277,7 +2297,11 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         if (cue === "thunder") stormSound.thunder();
         else if (cue === "absorbed") playSound("chime");
         else if (cue === "overwhelmed") playSound("hazard_overwhelmed");
-        else if (cue === "end") stormSound.quiet();
+        else if (cue === "end") {
+          stormSound.quiet();
+          // Section 36.3: the storm is over, the music comes back (and plays on under the result cards).
+          music.stormEnd();
+        }
       }
     });
     return stormDirector;
@@ -2285,6 +2309,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
 
   function panjimFxBegin(kind: string): void {
     void kind;
+    // Section 36.3: the music fades out over the storm's lead in; the storm's own sound takes over.
+    music.stormBegin();
     stormImpactActive = true;
     storm.setIntensity(1);
     mapLabels.setVisible(false);
@@ -2369,6 +2395,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   }
 
   function panjimFxEnd(): void {
+    // A storm staged without the storm director has no "end" cue: the music comes back here (no change after the finale).
+    music.stormEnd();
     ambientLife?.setPaused(false);
     reactions.setAmbientPaused(false);
     stormImpactActive = false;
@@ -2602,7 +2630,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           if (!controller.build(coord, id)) return;
           // The Tutorial's Maya has her own lines for each build (Section 15): no fact pops over them.
           if (!controller.stormComing && !controller.tutorial) nuggetPopup?.show(id);
-          playSound("build");
+          playBuildSound(id);
         },
         // The year chip first (never covered), then the rest of the HUD.
         {
@@ -2626,7 +2654,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       if (!state.build(coord, id)) return;
       telemetry.action("build", 1);
       placeElement(coord, id, true);
-      playSound("build");
+      playBuildSound(id);
       // STEP_PROMPT_pacing_telegraph_preview.md: checkHazardSchedule() now
       // runs BEFORE refreshHud() (was the other way around) — it's what
       // updates the telegraph state (tint, cloud layer, pending severity)
@@ -3392,6 +3420,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
   function dispose(): void {
     if (disposed) return;
     disposed = true;
+    // Section 36: first, so nothing thrown below can leave the music playing over the menu (after the guard: a
+    // second dispose must not close the next session's music).
+    if (panjim) music.close();
 
     for (const id of timers) window.clearTimeout(id);
     timers.clear();

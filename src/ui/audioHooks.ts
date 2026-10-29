@@ -106,9 +106,32 @@ export function audioOut(): { ctx: AudioContext; out: GainNode } | null {
   return { ctx, out: master };
 }
 
+/** Waiting for the first click (Section 36: the sample bank and the music start on it). */
+const unlockWaiters: (() => void)[] = [];
+
 /** Called on the first click or key press anywhere: from then on sound may play. */
 export function unlockAudio(): void {
   unlocked = true;
+  for (const run of unlockWaiters.splice(0)) {
+    try {
+      run();
+    } catch {
+      // Sound is decoration.
+    }
+  }
+}
+
+/** Runs `run` once sound may play: now if the player has already clicked, else on the first click or key press. */
+export function onAudioUnlock(run: () => void): void {
+  if (!unlocked) {
+    unlockWaiters.push(run);
+    return;
+  }
+  try {
+    run();
+  } catch {
+    // Sound is decoration.
+  }
 }
 
 if (typeof document !== "undefined") {
@@ -121,9 +144,17 @@ if (typeof document !== "undefined") {
   document.addEventListener("keydown", unlock, true);
 }
 
-/** For the browser checks: has the player unlocked sound, and does an audio context exist yet? */
-export function audioStateForTest(): { unlocked: boolean; context: boolean; enabled: boolean } {
-  return { unlocked, context: context !== null, enabled };
+/** Section 36: what the music and the samples add to the browser checks' view (music.ts and sampleBank.ts add them). */
+type TestExtras = { music?: string; musicPlaying?: boolean; musicHistory?: string[]; samples?: string[] };
+const testExtras: (() => TestExtras)[] = [];
+
+export function addAudioTestExtras(read: () => TestExtras): void {
+  testExtras.push(read);
+}
+
+/** For the browser checks: has the player unlocked sound, does an audio context exist yet, and the music's state. */
+export function audioStateForTest(): { unlocked: boolean; context: boolean; enabled: boolean; master: number | null } & TestExtras {
+  return Object.assign({ unlocked, context: context !== null, enabled, master: master ? master.gain.value : null }, ...testExtras.map((read) => read()));
 }
 
 export function soundEnabled(): boolean {
