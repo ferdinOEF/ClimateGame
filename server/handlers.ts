@@ -212,14 +212,20 @@ export async function getBoard(ctx: Ctx, query: Record<string, string | undefine
  * then the earliest). Returns the kept row.
  */
 async function oneRowFor(sql: Sql, name: string): Promise<BoardRow | null> {
-  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>(
-    "SELECT id, name, points, stars, season, created_at FROM board WHERE lower(name) = lower($1)",
-    [name]
-  );
-  const same = rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === nameKey(name));
+  const same = await rowsNamed(sql, name);
   const [best] = bestPerName(same);
   for (const r of same) if (best && r.id !== best.id) await sql.query("DELETE FROM board WHERE id = $1", [r.id]);
   return best ?? null;
+}
+
+/**
+ * Section 37.9: every row under `name`'s board key (trimmed, spaces collapsed, NFKC, case ignored: `boardNameKey`).
+ * Matched here rather than in SQL, whose lower() knows nothing of fullwidth letters or double spaces.
+ */
+async function rowsNamed(sql: Sql, name: string): Promise<BoardRow[]> {
+  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>("SELECT id, name, points, stars, season, created_at FROM board");
+  const key = nameKey(name);
+  return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
 }
 
 /**
@@ -278,7 +284,7 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
   return ok({ ...place, points: facts.points, editToken, season, name: name.name });
 }
 
-/** PATCH /api/board: `{ editToken, name }` renames that row (the filter applied). */
+/** PATCH /api/board: `{ editToken, name }` renames that row (the filter applied); 409 "name taken" when another run holds the name. */
 export async function patchBoard(ctx: Ctx, body: Record<string, unknown>): Promise<Reply> {
   if (!ctx.sql) return OFFLINE;
   const token = typeof body.editToken === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(body.editToken) ? body.editToken : null;
@@ -286,13 +292,20 @@ export async function patchBoard(ctx: Ctx, body: Record<string, unknown>): Promi
   if (!(await underLimit(ctx, "rename"))) return fail(429, "limit");
   const name = checkName(typeof body.name === "string" ? body.name : "");
   if (!name.ok) return fail(400, name.reason === "refused" ? "name refused" : "bad name");
-  const rows = await ctx.sql.query<{ id: string; points: number }>("UPDATE board SET name = $1 WHERE edit_token = $2 RETURNING id, points", [name.name, token]);
-  if (rows.length === 0) return fail(404, "no such row");
-  // Section 37.3: renamed to a name already on the board: one row stays for it, the better. The answer is the place of
-  // the row that stays (all of it, so the finale can show it), with `kept` when that row is not this run's.
-  const kept = (await oneRowFor(ctx.sql, name.name)) ?? { id: rows[0].id, points: Number(rows[0].points) };
-  const place = await around(ctx.sql, kept.points, kept.id);
-  return ok({ renamed: true, name: name.name, ...place, points: kept.points, ...(kept.id !== rows[0].id ? { kept: true } : {}) });
+  const own = await ctx.sql.query<{ id: string; points: number }>("SELECT id, points FROM board WHERE edit_token = $1", [token]);
+  if (own.length === 0) return fail(404, "no such row");
+  // Section 37.9 (owner): a rename onto a name already on the board under another run is refused; no row is deleted or
+  // replaced because of a rename, and this row keeps its old name.
+  if ((await rowsNamed(ctx.sql, name.name)).some((r) => r.id !== own[0].id)) return fail(409, "name taken");
+  const old = await ctx.sql.query<{ name: string }>("SELECT name FROM board WHERE id = $1", [own[0].id]);
+  await ctx.sql.query("UPDATE board SET name = $1 WHERE id = $2", [name.name, own[0].id]);
+  // Two renames (or a rename and a post) to one free name at once: the later to look sees two rows and steps back.
+  if ((await rowsNamed(ctx.sql, name.name)).some((r) => r.id !== own[0].id)) {
+    await ctx.sql.query("UPDATE board SET name = $1 WHERE id = $2", [old[0]?.name ?? name.name, own[0].id]);
+    return fail(409, "name taken");
+  }
+  const points = Number(own[0].points);
+  return ok({ renamed: true, name: name.name, ...(await around(ctx.sql, points, own[0].id)), points });
 }
 
 /** POST /api/feedback: `{ runId, answers }`, only the answered items with allowed values, text cut. One form a run. */

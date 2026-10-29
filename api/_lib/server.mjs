@@ -18550,7 +18550,10 @@ var LOOK_ALIKE = {
 };
 var single = (s) => s.replace(/(.)\1+/g, "$1");
 function tidyName(raw) {
-  return raw.normalize("NFKC").replace(/\s+/g, " ").trim();
+  return raw.replace(/\s+/g, " ").trim();
+}
+function boardNameKey(raw) {
+  return raw.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
 }
 function isRude(name) {
   const lower = [...name.normalize("NFKC").toLowerCase()].map((c) => LOOK_ALIKE[c] ?? c).join("").normalize("NFD").replace(new RegExp("\\p{M}", "gu"), "");
@@ -18568,11 +18571,13 @@ function isRude(name) {
   return false;
 }
 function checkName(raw) {
-  const name = tidyName(raw);
-  if ([...name].length < NAME_MIN || [...name].length > NAME_MAX || !/^[\p{L}\p{M}\p{N} @._]+$/u.test(name) || !/[\p{L}\p{N}]/u.test(name) || new RegExp("\\p{M}{3,}", "u").test(name)) {
+  const name = tidyName(raw).normalize("NFC");
+  const plain = name.normalize("NFKC").replace(/\s+/g, " ").trim();
+  const badLength = (s) => [...s].length < NAME_MIN || [...s].length > NAME_MAX || new RegExp("\\p{M}{3,}", "u").test(s);
+  if (badLength(name) || badLength(plain) || !/^[\p{L}\p{M}\p{N} @._]+$/u.test(plain) || !/[\p{L}\p{N}]/u.test(plain)) {
     return { ok: false, reason: "shape", message: NAME_SHAPE };
   }
-  if (isRude(name)) return { ok: false, reason: "refused", message: NAME_REFUSED };
+  if (isRude(plain)) return { ok: false, reason: "refused", message: NAME_REFUSED };
   return { ok: true, name };
 }
 
@@ -18617,9 +18622,7 @@ function anyAnswer(answers2) {
 }
 
 // src/core/boardRank.ts
-function nameKey(name) {
-  return name.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
-}
+var nameKey = boardNameKey;
 function bestPerName(rows) {
   const sorted = [...rows].sort((a, b) => b.points - a.points || (a.createdAt ?? 0) - (b.createdAt ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const seen = /* @__PURE__ */ new Set();
@@ -18764,14 +18767,15 @@ async function getBoard(ctx, query) {
   return ok({ rows: rows.slice(0, 10).map((r) => out(rows, r)), season });
 }
 async function oneRowFor(sql, name) {
-  const rows = await sql.query(
-    "SELECT id, name, points, stars, season, created_at FROM board WHERE lower(name) = lower($1)",
-    [name]
-  );
-  const same = rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === nameKey(name));
+  const same = await rowsNamed(sql, name);
   const [best] = bestPerName(same);
   for (const r of same) if (best && r.id !== best.id) await sql.query("DELETE FROM board WHERE id = $1", [r.id]);
   return best ?? null;
+}
+async function rowsNamed(sql, name) {
+  const rows = await sql.query("SELECT id, name, points, stars, season, created_at FROM board");
+  const key = nameKey(name);
+  return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
 }
 async function postBoard(ctx, body) {
   if (!ctx.sql) return OFFLINE;
@@ -18823,11 +18827,17 @@ async function patchBoard(ctx, body) {
   if (!await underLimit(ctx, "rename")) return fail(429, "limit");
   const name = checkName(typeof body.name === "string" ? body.name : "");
   if (!name.ok) return fail(400, name.reason === "refused" ? "name refused" : "bad name");
-  const rows = await ctx.sql.query("UPDATE board SET name = $1 WHERE edit_token = $2 RETURNING id, points", [name.name, token]);
-  if (rows.length === 0) return fail(404, "no such row");
-  const kept = await oneRowFor(ctx.sql, name.name) ?? { id: rows[0].id, points: Number(rows[0].points) };
-  const place = await around(ctx.sql, kept.points, kept.id);
-  return ok({ renamed: true, name: name.name, ...place, points: kept.points, ...kept.id !== rows[0].id ? { kept: true } : {} });
+  const own = await ctx.sql.query("SELECT id, points FROM board WHERE edit_token = $1", [token]);
+  if (own.length === 0) return fail(404, "no such row");
+  if ((await rowsNamed(ctx.sql, name.name)).some((r) => r.id !== own[0].id)) return fail(409, "name taken");
+  const old = await ctx.sql.query("SELECT name FROM board WHERE id = $1", [own[0].id]);
+  await ctx.sql.query("UPDATE board SET name = $1 WHERE id = $2", [name.name, own[0].id]);
+  if ((await rowsNamed(ctx.sql, name.name)).some((r) => r.id !== own[0].id)) {
+    await ctx.sql.query("UPDATE board SET name = $1 WHERE id = $2", [old[0]?.name ?? name.name, own[0].id]);
+    return fail(409, "name taken");
+  }
+  const points = Number(own[0].points);
+  return ok({ renamed: true, name: name.name, ...await around(ctx.sql, points, own[0].id), points });
 }
 async function postFeedback(ctx, body) {
   if (!ctx.sql) return OFFLINE;

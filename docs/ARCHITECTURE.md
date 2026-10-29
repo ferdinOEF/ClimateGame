@@ -402,10 +402,17 @@ personal data.)
 **One row per name, dense ranks (Section 37.3).** The board shows one row a name (case and spacing aside,
 `core/boardRank.ts`): the name's best run. A post under a name already on the board replaces that row only when its
 points are higher; otherwise the row stands and the post answers with the row's place, no edit token and `kept: true`
-(the run is still in `runs`). A rename to a name already there leaves one row, the better. Every board answer reads
+(the run is still in `runs`). Every board answer reads
 the table and keeps the best row a name (so rows from before the rule, or from two posts at once, still show once),
 and ranks densely: equal points share a rank and the next follows (1, 1, 2). The finale's "4th on the board, N
 points behind 3rd" uses the same ranks.
+
+**Board names (Section 37.9).** A name's board key is `boardNameKey` (`core/nameFilter.ts`): trimmed, runs of spaces
+made one, Unicode NFKC (fullwidth letters become plain ones) and case ignored; the name is shown as typed after the
+trim and the collapse. One board row per key; the server matches keys in JS, not SQL. A rename (`PATCH /api/board`)
+onto a key another run holds is refused with 409 "name taken": no row is deleted or replaced, the run keeps its old
+name, and the feedback form shows "That name is already on the board." under its name field (the answers are sent
+either way). A run that does not beat its name's best keeps that row (no edit token, `kept`).
 
 **The edit token.** A board post answers with a random token for its row, kept by the client in memory for that run
 only; `PATCH /api/board` with it renames the row (the feedback form's name field). It is never shown, exported or

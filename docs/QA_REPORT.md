@@ -2557,3 +2557,18 @@ finding, review or thread. Nothing to act on.
 **Not run:** Safari and Firefox; a real GPU's timings; listening (the 100 ms cut of a third build sound); the Tutorial
 in the browser (it shares the build and storm paths checked); a production load (nothing merged). The playtest notes
 (`claude/PLAYTEST_2026-10-29_three_runs.md`) are not in the repository; the brief's own words were used.
+
+## Section 37.9: board names (the owner's answers)
+
+On `section-37-playtest-fixes`, one commit. A rename onto a name another run holds is refused (409 "name taken"): no
+row is deleted or replaced, the run keeps its old name, and the form shows "That name is already on the board." under
+the name field (the answers are sent either way). A board name's key is trimmed, spaces collapsed, NFKC and case
+ignored (`boardNameKey`); the name shows as typed after the trim and the collapse (NFC joins a letter and its accents).
+A run that did not beat its name's best is unchanged.
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit`, `npm run build` | Clean. |
+| `npm run test` | 109 files, 923 pass, 6 skipped. New: the key (fullwidth, double space, case, trailing space), a refused rename (case, fullwidth with spaces, another name; nothing changed), a second run under a normalised duplicate making no second row, the form's refusal path. |
+| Browser (`tools/section37RenameShot.ts`), 1366x768 | A named run to its finale, a rename to "Test Ana" refused by the (stubbed) server: the line under the field, one rename asked, no console errors. Shot `docs/qa/section37/6-rename-refused-1366x768.jpg`. |
+| Independent review | 1 MAJOR, 3 MINOR, 2 NIT. Fixed: the MAJOR (the filter checked the NFKC form but stored the typed one, so a name past 30 letters in decomposed accents passed; both forms are checked now, the typed one NFC), answers added after a refused name were never sent, two renames to one free name at once (the later steps back with 409). Left: every post and rename reads the whole board table (fine at festival scale); fullwidth "＠" and "．" pass the shape check and show as typed (as the brief says); a post from the form that came back `kept` says "You're Nth" rather than the best run line (older). |

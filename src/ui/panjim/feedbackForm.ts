@@ -12,6 +12,8 @@ export const FEEDBACK_TITLE = "Your feedback";
 export const FEEDBACK_LINE = "Your answers help OneEarth Foundation improve this game. You can skip any question.";
 /** The name field's hint for a run without a name. */
 export const ADD_NAME_HINT = "Add a name and this run goes on the board.";
+/** Section 37.9: under the name field, when the board refused a rename onto a name another run holds. */
+export const NAME_TAKEN = "That name is already on the board.";
 
 /** A 1 to 5 row, its two ends named. */
 function scaleRow(name: string, legend: string, low: string, high: string): string {

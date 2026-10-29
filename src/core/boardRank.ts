@@ -1,3 +1,5 @@
+import { boardNameKey } from "./nameFilter";
+
 /**
  * Section 37.3: the board's ranking, shared by every board answer (the top 10, a place for N points, a post, a rename).
  *
@@ -12,10 +14,8 @@ export interface RankedRow {
   points: number;
 }
 
-/** The key two names are the same name by. */
-export function nameKey(name: string): string {
-  return name.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
-}
+/** The key two names are the same name by (Section 37.9: `boardNameKey`, shared with the name check). */
+export const nameKey = boardNameKey;
 
 /**
  * The board's rows, one per name: the name's best (most points; on a tie the earliest, then the lowest id). `rows` in

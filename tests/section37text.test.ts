@@ -46,3 +46,15 @@ describe("Section 37.3: a run that did not beat its name's best", () => {
     expect(html).toContain("3rd on the board");
   });
 });
+
+describe("Section 37.9: a rename onto a taken name", () => {
+  it("the form shows the server's refusal under the name field and stays; the client never decides on its own", async () => {
+    const { NAME_TAKEN } = await import("../src/ui/panjim/feedbackForm");
+    expect(NAME_TAKEN).toBe("That name is already on the board.");
+    expect(punctuationProblems(NAME_TAKEN)).toEqual([]);
+    const { readFileSync } = await import("node:fs");
+    const controller = readFileSync("src/app/panjimController.ts", "utf8");
+    expect(controller).toMatch(/const \{ renamed, taken \} = await renameOnBoard\(this\.boardToken, plan\.rename\);[\s\S]{0,120}if \(taken\) \{[\s\S]{0,160}setNameError\(body, NAME_TAKEN\);\s*continue;/);
+    expect(readFileSync("src/services/board.ts", "utf8")).toContain("taken: status === 409");
+  });
+});

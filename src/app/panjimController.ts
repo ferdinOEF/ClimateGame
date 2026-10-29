@@ -1,7 +1,7 @@
 import { ActionRun, type ActionOutcome, type RunEvent } from "@core/actionRun";
 import { runPoints } from "@core/resiliencePoints";
 import { beaconRun, fetchRank, newRunId, postBoard, postFeedback, postRun, renameOnBoard, type RunReport } from "@services/board";
-import { feedbackFormHtml, readFeedback, setNameError } from "@ui/panjim/feedbackForm";
+import { NAME_TAKEN, feedbackFormHtml, readFeedback, setNameError } from "@ui/panjim/feedbackForm";
 import { planSubmit } from "@core/feedbackForm";
 import { checkName } from "@core/nameFilter";
 import { markTutorialPlayed, tutorialPlayedThisVisit } from "@services/visit";
@@ -1519,8 +1519,11 @@ export class PanjimController {
       await this.boardPending;
       if (this.disposed) return null;
       const plan = planSubmit({ runName, field: form.name, answers: form.answers, onBoard: this.onBoard }, checkName);
-      if (plan.answers && !answersSent) void postFeedback(this.runId, plan.answers);
-      answersSent = true;
+      // Sent once, when there are answers (a refused name, then answers added, still sends them).
+      if (plan.answers && !answersSent) {
+        void postFeedback(this.runId, plan.answers);
+        answersSent = true;
+      }
       let later: Promise<string | null> | undefined;
       if (plan.post && !plan.nameError) {
         const name = plan.post;
@@ -1541,7 +1544,13 @@ export class PanjimController {
         });
       }
       if (plan.rename && this.boardToken) {
-        const renamed = await renameOnBoard(this.boardToken, plan.rename);
+        const { renamed, taken } = await renameOnBoard(this.boardToken, plan.rename);
+        if (this.disposed) return null;
+        if (taken) {
+          // Section 37.9: the server refused it; the run keeps its old name on the board (the answers have gone).
+          setNameError(body, NAME_TAKEN);
+          continue;
+        }
         if (renamed) {
           runName = renamed.name;
           this.host.setPlayerName?.(runName);

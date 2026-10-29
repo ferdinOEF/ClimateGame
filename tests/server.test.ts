@@ -300,13 +300,30 @@ describe("Section 37.3: one row per name, dense ranks", () => {
     expect((await getBoard(await context(db), { points: String(top - 100) })).body.rank).toBe(2);
   });
 
-  it("a rename to a name already on the board leaves one row for it, the better", async () => {
+  it("Section 37.9: a rename onto a name another run holds is refused, and nothing is deleted or replaced", async () => {
+    const before = await db.query<{ id: string; name: string; points: number }>("SELECT id, name, points FROM board ORDER BY id");
     const [{ edit_token: token }] = await db.query<{ edit_token: string }>("SELECT edit_token FROM board WHERE name = 'Cal'");
-    const renamed = await patchBoard(await context(db), { editToken: token, name: "ASH" });
-    expect(renamed.body).toMatchObject({ renamed: true, name: "ASH", rank: 1, kept: true });
-    // The whole place of the row that stays, for the finale to show (Codex on PR #35).
+    // "ASH" is Ash's name (case), and so are fullwidth letters and spaces round it.
+    for (const taken of ["ASH", "  ａｓｈ ", "Mira"]) {
+      const reply = await patchBoard(await context(db), { editToken: token, name: taken });
+      expect(reply, taken).toEqual({ status: 409, body: { error: "name taken" } });
+    }
+    expect(await db.query("SELECT id, name, points FROM board ORDER BY id")).toEqual(before);
+    // A free name goes through, with the row's whole place for the finale (Codex on PR #35).
+    const renamed = await patchBoard(await context(db), { editToken: token, name: "Cal  Two" });
+    expect(renamed.body).toMatchObject({ renamed: true, name: "Cal Two", rank: 2, points: highPoints + 900 });
     expect(Array.isArray(renamed.body.above) && Array.isArray(renamed.body.below)).toBe(true);
-    expect(renamed.body.points).toBe(highPoints + 1000);
-    expect(await db.query("SELECT * FROM board WHERE lower(name) = 'ash'")).toHaveLength(1);
+    // Its own name again, in another case, is not "taken".
+    expect((await patchBoard(await context(db), { editToken: token, name: "CAL TWO" })).status).toBe(200);
   });
+
+  it("Section 37.9: a second run under a normalised duplicate of a name makes no second row", async () => {
+    const RUN_G = "88888888-8888-4888-8888-888888888888";
+    // "mira" holds the guided run's points; the same run again under "  ＭＩＲＡ " (fullwidth, spaces) is that name.
+    const reply = await postBoard(await context(db), { runId: RUN_G, name: "  ＭＩＲＡ ", builds: guided });
+    expect(reply.status).toBe(200);
+    expect(reply.body).toMatchObject({ kept: true, editToken: "" });
+    const rows = (await db.query<{ name: string }>("SELECT name FROM board")).filter((r) => r.name.normalize("NFKC").trim().toLowerCase() === "mira");
+    expect(rows).toHaveLength(1);
+  }, SLOW);
 });
