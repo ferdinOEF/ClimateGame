@@ -1,4 +1,4 @@
-## Section 35 — points, one running board, and a feedback form after the game — DONE, NOT MERGED (QA in docs/QA_REPORT.md)
+## Section 35 — points, one running board, and a feedback form after the game — MERGED (`7d329c9`, QA in docs/QA_REPORT.md)
 
 Branch `section-35-points-board-feedback` from master `f847aa9`. Play Panjim only; the Tutorial is unchanged, never
 posts and never shows the form.
