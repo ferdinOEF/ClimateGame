@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:emulated": "vite --mode emulated",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && tsx tools/buildApi.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -32,14 +32,19 @@
     "test:labels": "tsx tools/labelOverlapTest.ts",
     "test:maya": "tsx tools/mayaStability.ts",
     "test:help": "tsx tools/helpFit.ts",
-    "playthrough": "tsx tools/playthrough21.ts"
+    "playthrough": "tsx tools/playthrough21.ts",
+    "build:api": "tsx tools/buildApi.ts",
+    "db:migrate": "tsx tools/dbMigrate.ts",
+    "export:feedback": "tsx tools/exportFeedback.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",
     "@types/node": "^22.7.0",
     "@types/three": "^0.185.4",
     "axe-core": "^4.10.3",
+    "esbuild": "^0.28.2",
     "firebase-tools": "^13.20.0",
+    "pg-mem": "^3.0.14",
     "playwright": "^1.47.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
@@ -49,6 +54,7 @@
   "dependencies": {
     "@fontsource/work-sans": "^5.3.0",
     "@fontsource/zilla-slab": "^5.3.0",
+    "@neondatabase/serverless": "^1.2.0",
     "firebase": "^11.10.0",
     "three": "^0.169.0"
   },

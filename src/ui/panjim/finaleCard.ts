@@ -8,14 +8,16 @@ import { downloadStormCard, type StormCardInput } from "./stormCard";
  *
  * First a title over the whole city as the camera pulls back (the skyline
  * reveal: the houses have risen, the mangroves have grown in), then this
- * card: the stars from each of the three storms, the Panjim 2050 index with
- * its five parts, the tempo badge, and a share card.
+ * card: the stars from each of the three storms, the run's points (Section 35.2: they replace the Panjim 2050
+ * index, whose code stays in core/panjimIndex.ts), the tempo badge, and a share card.
  *
  * The tempo badge is real minutes played, given a name. It is shown beside
  * the score and deliberately kept out of it.
  */
 export interface FinaleView {
   index: PanjimIndex;
+  /** Section 35.2: the run's points, shown where the Panjim 2050 index was (its parts stay computed, not shown). */
+  points: number;
   challengeNames: string[];
   tempo: { name: string; minutes: number };
   seed: string;
@@ -49,20 +51,10 @@ export class FinaleCard {
   /** The card. Resolves when the player asks for the results. */
   show(view: FinaleView): Promise<void> {
     const { index } = view;
-    const parts: [string, number][] = [
-      ["Resilience", index.resilience],
-      ["Biodiversity", index.biodiversity],
-      ["Livelihoods", index.livelihoods],
-      ["Population", index.population],
-      ["Food", index.food]
-    ];
     this.root.innerHTML = `
       <div class="finale-card" role="dialog" aria-label="Panjim 2050">
         <div class="finale-eyebrow">Panjim 2050</div>
-        <div class="finale-index"><span class="finale-index-value">${index.index}</span><span class="finale-index-label">Panjim 2050 index</span></div>
-        <div class="finale-parts">${parts
-          .map(([label, value]) => `<div class="finale-part"><span>${label}</span><span class="finale-bar"><span style="width:${value}%"></span></span><b>${value}</b></div>`)
-          .join("")}</div>
+        <div class="finale-index"><span class="finale-index-value">${view.points}</span><span class="finale-index-label">points</span></div>
         <div class="finale-storms">${view.challengeNames
           .map(
             (name, i) =>
@@ -101,7 +93,7 @@ export class FinaleCard {
   /** Draws the share card and offers it: the system share sheet where there is one, a download otherwise; plus the text on the clipboard. */
   private async share(view: FinaleView): Promise<void> {
     const canvas = drawShareCard(view);
-    const text = `Panjim 2050: index ${view.index.index}, ${view.index.totalStars}/9 stars across three storms (${view.tempo.name}, ${view.tempo.minutes} min). Riptide Rising.`;
+    const text = `Panjim 2050: ${view.points} points, ${view.index.totalStars}/9 stars across three storms (${view.tempo.name}, ${view.tempo.minutes} min). Riptide Rising.`;
     const note = this.root.querySelector(".finale-share-note") as HTMLElement;
     try {
       await navigator.clipboard?.writeText(text);
@@ -165,10 +157,11 @@ export function drawShareCard(view: FinaleView): HTMLCanvasElement {
   ctx.fillText("Panjim, 2050", 70, 220);
 
   ctx.font = '700 150px "Zilla Slab", Georgia, serif';
-  ctx.fillText(String(view.index.index), 70, 390);
+  // Section 35.2: the run's points, where the Panjim 2050 index was.
+  ctx.fillText(String(view.points), 70, 390);
   ctx.fillStyle = themeColor("--ink-2", "#3d5552");
   ctx.font = '500 30px "Work Sans", system-ui, sans-serif';
-  ctx.fillText("Panjim 2050 index", 76, 435);
+  ctx.fillText("points", 76, 435);
 
   ctx.font = '500 32px "Work Sans", system-ui, sans-serif';
   view.challengeNames.forEach((name, i) => {

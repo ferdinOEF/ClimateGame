@@ -1,3 +1,79 @@
+# The board, runs and feedback: Vercel and Neon (Section 35)
+
+Production is Vercel (`master` deploys to https://climate-game-psi.vercel.app). Play Panjim's points board, the
+anonymous run counts and the feedback form are three Vercel Node functions in `api/` backed by one Neon Postgres
+database. The Firebase notes further down describe older, unused code (kept, off).
+
+## What the owner sets up (once)
+
+1. **Neon.** In Vercel, Project, Storage, connect a Neon Postgres database (or create one at neon.tech and copy its
+   pooled connection string). Preview and Production share this one database; test rows are cleaned by hand.
+2. **Environment variables** (Vercel, Project, Settings, Environment Variables, for Production and Preview):
+   - `DATABASE_URL`: the Neon connection string (`POSTGRES_URL` is read when `DATABASE_URL` is not set).
+   - `BOARD_SEASON`: the label stored on every board row as it is posted, e.g. `Festival 2026`. Unset, it is
+     `Season 1`. Changing it starts no new board: the board is one running table, and the label is shown beside each
+     name.
+   - `RATE_SALT`: any long random string. Each caller's IP is stored only as a SHA-256 of this salt and the IP, for
+     the hourly limits, and deleted after a day. Change it and every limit starts again.
+3. **The tables.** Apply `db/schema.sql` once (it is safe to run again: every statement creates only what is
+   missing):
+
+   ```bash
+   vercel env pull .env.local
+   ```
+
+   ```bash
+   npm run db:migrate
+   ```
+
+   `db:migrate` reads `DATABASE_URL` from the environment, else from `.env.local` or `.env`.
+
+   The functions also make any missing table themselves, once per instance before their first query (the same
+   statements), so a new database works on the first request; `db:migrate` is the way to apply a changed schema on
+   purpose and to check it.
+
+Without `DATABASE_URL` every endpoint answers `{ "offline": true }` and the game plays the same: the name card says
+"Board offline" and the finale shows the points without a place.
+
+## The endpoints
+
+| Endpoint | Does | Limit per IP per hour |
+|---|---|---|
+| `POST /api/run` | A Play Panjim run's reach and completion (at the finale; by `sendBeacon` when it stops early). No name. | 60 |
+| `GET /api/board` | The top 10 and the season; `?points=N` the place N would get and the rows round it. | none |
+| `POST /api/board` | `{ runId, name, builds }` for a finished run: the server replays the builds, counts the points and stores them; one row per run. Returns the place and an edit token. | 10 |
+| `PATCH /api/board` | `{ editToken, name }`: renames that row (the feedback form). | 10 |
+| `POST /api/feedback` | `{ runId, answers }`: the answered items only, checked against the allowed values; one form a run. No name. | 20 |
+
+Over a limit: 429, and the game carries on as offline. The client never sends a score: the server plays the build
+list through the same hazard model (`replayBuilds` in `src/core/resiliencePoints.ts`) and stores what it counts.
+
+## How the functions are built
+
+`src/core` imports through the project's path aliases, which Vercel's own TypeScript step for `api/` does not read,
+so `server/` and the core are bundled by esbuild into `api/_lib/server.mjs` (`npm run build:api`, also run by
+`npm run build`). The bundle is checked in and `tests/apiBundle.test.ts` fails when it is stale; `api/run.js`,
+`api/board.js` and `api/feedback.js` only import their handler from it. `vercel.json` gives the functions 60 s (a
+replay takes about 5 s).
+
+## The data, for reports
+
+```bash
+npm run export:feedback
+```
+
+writes `exports/runs.csv`, `exports/feedback.csv` (each form joined to its run on the run id; no names) and
+`exports/board.csv` (season, name, points, stars, date; never the edit token), for Excel or Google Sheets.
+
+Deleting test rows by hand (Neon's SQL editor):
+
+```sql
+DELETE FROM board WHERE name = 'test_oef';
+DELETE FROM feedback WHERE run_id = '<the run id>';
+```
+
+---
+
 # Deploying Riptide Rising on the Firebase Spark (free) plan
 
 Everything here fits inside the free tier. No billing account, no card.

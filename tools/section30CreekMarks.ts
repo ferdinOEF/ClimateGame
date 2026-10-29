@@ -4,7 +4,7 @@ import { startDevServer } from "./devServer";
 const server = await startDevServer(5490);
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 1366, height: 768 } });
-await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`);
+await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`);
 await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
 await page.waitForTimeout(1500);
 await page.locator(".brief-cta", { hasText: "Begin" }).first().click();

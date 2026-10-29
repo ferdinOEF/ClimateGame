@@ -45,7 +45,7 @@ async function shoot(port: number, label: string): Promise<void> {
   await page.waitForSelector(".menu-screen", { timeout: 30000 });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(OUT, `menu-${label}.png`) });
-  await page.goto(`http://localhost:${port}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+  await page.goto(`http://localhost:${port}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(6000);
   await page.screenshot({ path: path.join(OUT, `tutorial-${label}.png`) });
   await browser.close();

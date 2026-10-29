@@ -1,4 +1,7 @@
 import * as THREE from "three";
+import { NameCard } from "@ui/panjim/nameCard";
+import { fetchTop } from "@services/board";
+import { getPlayerName, setPlayerName } from "@services/playerName";
 import { createScene } from "@render/scene";
 import { TerrainMeshManager } from "@render/terrainMeshManager";
 import { ElementMeshManager } from "@render/elementMeshManager";
@@ -815,6 +818,22 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * to make the next move.
    */
   const objectivesPanel = new ObjectivesPanel(container, level, levelMap);
+  // Section 35.3: Play Panjim (never the Tutorial) opens on the name card, before its start popup. The name is kept in
+  // memory for this run only (services/playerName.ts).
+  // `noname=1` (the QA tools, with the test hooks on only) opens on the start popup as before.
+  const skipNameCard = qaHooks && new URLSearchParams(window.location.search).has("noname");
+  if (level.timeModel === "years" && !level.tutorial && !skipNameCard) {
+    const nameCard = new NameCard(getPlayerName(), fetchTop());
+    const showPopup = objectivesPanel.showFirst(nameCard.el);
+    window.requestAnimationFrame(() => {
+      if (nameCard.isOpen) nameCard.focus();
+    });
+    void nameCard.result.then((name) => {
+      if (disposed) return;
+      setPlayerName(name);
+      showPopup();
+    });
+  }
   /**
    * The first-warning risk sequence (ui/riskIntroFx.ts): the risk tiles'
    * hexagons, projected to the screen every frame so the sheet stays on the
@@ -1008,6 +1027,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           localities: levelMap.localities,
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r, kind: m.kind })),
           uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
+          playerName: () => getPlayerName(),
+          setPlayerName: (name) => setPlayerName(name),
           requestLeave: () => askLeave(true),
           requestRestart: () => askRestart(true),
           stormLayersOpen: () => stormLayersOpen(),

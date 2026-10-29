@@ -65,7 +65,7 @@ async function open(browser: Browser, url: string, W: number, H: number, level =
       /* blocked */
     }
   });
-  await page.goto(`${url}/?qa=1#/play/${level}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${url}/?qa=1&noname=1#/play/${level}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(`typeof window.__panjimForTest === "object" && window.__panjimForTest !== null`, undefined, { timeout: 120000 });
   await page.waitForTimeout(1500);
   return page;

@@ -1,4 +1,11 @@
 import { ActionRun, type ActionOutcome, type RunEvent } from "@core/actionRun";
+import { runPoints } from "@core/resiliencePoints";
+import { beaconRun, fetchRank, newRunId, postBoard, postFeedback, postRun, renameOnBoard, type RunReport } from "@services/board";
+import { feedbackFormHtml, readFeedback, setNameError } from "@ui/panjim/feedbackForm";
+import { planSubmit } from "@core/feedbackForm";
+import { checkName } from "@core/nameFilter";
+import { markTutorialPlayed, tutorialPlayedThisVisit } from "@services/visit";
+import { pointsConfig } from "@levels/panjimRun";
 import type { GameState } from "@core/gameState";
 import { FrameSampler, autoStep, nextChoice, type Quality, type QualityChoice } from "@core/quality";
 import type { StormRecord } from "@core/stormRecord";
@@ -23,7 +30,7 @@ import { COMBO_INFO, comboNote, type ComboId } from "@core/combos";
 import { strengthIcons, challengeStrength, type ScheduledChallenge } from "@core/climate";
 import { FRONTS, type ChallengeOutcome, type ZoneDef, type ZoneOutcome, starsForHouses } from "@core/zones";
 import type { RunSnapshot } from "@core/actionRun";
-import { ResultCards, resultCard, defencesCard, comingUpCard, finalCard, retryLabel, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
+import { ResultCards, resultCard, defencesCard, comingUpCard, finalePointsCard, ordinal, retryLabel, type RankState, tutorialFinalCard, tutorialResultCard, type CardSpec, type CardsChoice, type TutorialDefenceRow } from "@ui/panjim/resultCards";
 import { biodiversityByKind, BUILDING_KINDS, campalWindNote, natureReason, nextLabel, phaseResult, shortOfThree, type Place } from "@core/phaseResult";
 import { starRule } from "@ui/panjim/panjimHelp";
 import MAYA_DATA from "@data/maya.json";
@@ -86,6 +93,10 @@ export interface ChallengeFx {
 
 export interface PanjimHost {
   container: HTMLElement;
+  /** Section 35.3: the name the player gave for the board, this run only (memory only); null without one. */
+  playerName?: () => string | null;
+  /** Section 35.5: a name added or changed on the feedback form (kept for Play again, memory only). */
+  setPlayerName?: (name: string) => void;
   state: GameState;
   level: LevelDef;
   telemetry: Telemetry;
@@ -295,13 +306,20 @@ export class PanjimController {
       economy: host.level.economy,
       growth: host.level.growth,
       landmarks: host.landmarks,
-      localities: host.localities
+      localities: host.localities,
+      // Section 35.1: points in Play Panjim only; the Tutorial counts none.
+      ...(this.tutorial ? {} : { points: pointsConfig(host) })
     });
     // The game layer is shared by every session (appShell): no state class from the last run may carry over.
     host.container.classList.remove(...SESSION_CLASSES);
     document.documentElement.classList.remove("storm", "storm-instant");
     host.container.classList.add("has-panjim-clock");
     this.clock = new ClockHud(host.container, { onSkipYear: () => void this.skipYear() });
+    // Section 35.2: Points, in Play Panjim only.
+    this.clock.setPoints(this.tutorial ? null : 0);
+    // Section 35.4: the run is reported without a name (reach and completion); the Tutorial never posts.
+    if (this.tutorial) markTutorialPlayed();
+    else window.addEventListener("pagehide", () => this.reportEarlyStop(), { signal: this.keyAbort.signal });
     this.outlook = new OutlookBar(this.clock.outlookSlot);
     // Section 33b.2: one HUD card, top left: the countdown chip beside the year, the two tiles under the timeline.
     this.outlook.mountCountdown(this.clock.countdownSlot);
@@ -1082,6 +1100,11 @@ export class PanjimController {
    * Section 33.2 (owner decision): `storm` on <html> switches the interface's tokens to their storm values
    * (src/ui/theme.css), fading over 600 ms, at once with Calm motion on (`storm-instant`).
    */
+  /** Calm motion on (☰) or the system's reduced motion: things change at once. */
+  private calmMotion(): boolean {
+    return Boolean(this.motionToggle?.value) || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
   private stormHues(on: boolean): void {
     const root = document.documentElement;
     root.classList.toggle("storm-instant", Boolean(this.motionToggle?.value) || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches));
@@ -1173,10 +1196,13 @@ export class PanjimController {
       if (last) this.tutorialChoice = choice;
       return;
     }
+    // Section 35.2: the storm's points count up on the HUD card as its cards open, and card 1 shows them.
+    const points = this.run.stormPoints.get(challenge.id) ?? null;
+    if (points) this.clock.setPoints(runPoints(this.run).total, points.total + (next ? 0 : (this.run.endPoints?.total ?? 0)), this.calmMotion());
     const cards: CardSpec[] = [
       // Section 28.1 (owner decision): back to the start of this storm's build years, no confirm.
       // Section 34b.12 (owner decision 8): the button says where it goes ("Try again from 2026").
-      { body: resultCard(result), button: "See what protected your city", alt: retryLabel(this.run.phaseStartYear(challenge)) },
+      { body: resultCard(result, points), button: "See what protected your city", alt: retryLabel(this.run.phaseStartYear(challenge)) },
       // Section 17c: with Maya hidden, the cards carry no line of hers.
       { body: defencesCard(result, SHOW_MAYA && top ? results.byDefence[top.elementId] ?? null : null, (id) => ELEMENT_BY_ID.get(id)?.targetsHazards ?? [], challenge.kind), button: nextLabel(next) }
     ];
@@ -1258,6 +1284,8 @@ export class PanjimController {
     this.aheadFramed.delete(challengeId);
     this.readinessById.delete(challengeId);
     this.host.redrawBoard();
+    // Section 35.1: the retried storm's points go with it; it counts again when it is played again.
+    if (!this.tutorial) this.clock.setPoints(runPoints(this.run).total);
     // Back at 2026 the first-build hint shows again, as on a new run.
     if (this.run.turnNumber === 1) this.host.container.classList.remove("has-built");
     this.busy = false;
@@ -1402,27 +1430,141 @@ export class PanjimController {
       return { label: `${c.name} in ${c.year}`, saved: outcome?.housesSaved ?? 0, total: outcome?.housesTotal ?? 0 };
     });
     this.host.telemetry.emit("checkpoint", { final: true, stars: result.levelStars, tempo: tempoBadge(this.playMs()).name });
-    // Section 25.2: the biodiversity line as the last storm came, and the star lines in words.
-    // Section 26.2: the last storm's biodiversity, measured at the end of its year, against its own target.
-    const lastStorm = this.run.schedule[this.run.schedule.length - 1];
-    const last = lastStorm ? this.run.outcomes.get(lastStorm.id) : undefined;
-    const stars = lastStorm ? this.run.houseStarsFor(lastStorm) : undefined;
-    const nature =
-      stars?.bioThree !== undefined && last?.biodiversityChange !== undefined
-        ? {
-            line: {
-              change: last.biodiversityChange,
-              target: stars.bioThree,
-              since: this.run.config.startYear,
-              at: stars.bioAtEnd ? `at the end of ${lastStorm!.year}` : undefined,
-              reason: natureReason(last.biodiversityChange, stars.bioThree, biodiversityByKind(this.host.state.elements.values()))
-            },
-            rule: starRule(this.run.houseStars!, this.run.schedule)
-          }
-        : undefined;
-    const choice = await this.resultCards.show([{ body: finalCard(phases, result, nature), button: "Play again", link: "Back to the menu" }]);
-    this.host.onRunComplete(result, choice === "link" ? "menu" : "again");
+    // Section 35.2: the finale card: the run's points, a row per storm with its stars, biodiversity and veterans, and
+    // beside them its place on the board. The Panjim 2050 index is no longer shown (its code stays: the bots read it).
+    const name = this.host.playerName?.() ?? null;
+    const points = runPoints(this.run);
+    const finale = finalePointsCard(
+      { name, points, storms: this.run.schedule.map((c, i) => ({ label: phases[i].label, stars: this.run.outcomes.get(c.id)?.stars ?? 0 })), totalStars: result.totalStars, cleared: result.cleared },
+      { status: "loading" }
+    );
+    // Section 35.4: the run is reported (no name); a named run goes on the board as the finale opens, before the form
+    // (its board post saves the run too, so the server replays it once).
+    this.runReported = true;
+    if (!name) void postRun(this.runReport());
+    this.boardPending = this.boardPlace(points.total, name).then((rank) => {
+      if (!this.disposed) finale.setRank(rank);
+    });
+    const then = await this.finaleAndFeedback(finale, name);
+    if (this.disposed) return;
+    this.host.onRunComplete(result, then);
   }
+
+  /**
+   * Section 35.5: the finale card, then the feedback form ("Your feedback"), then the finale again with one line,
+   * "Thank you." (with the place when a name was added on the form), beside Play again and Exit. Skip never stops the
+   * board post (a named run is posted as the finale opens). An idle reset during the form posts nothing.
+   */
+  private async finaleAndFeedback(finale: ReturnType<typeof finalePointsCard>, name: string | null): Promise<"menu" | "again"> {
+    let note: string | null = null;
+    let formDone = false;
+    while (!this.disposed) {
+      const spec: CardSpec = formDone
+        ? { body: finale.body, button: "Play again", link: "Exit", wide: true, ...(note ? { note } : {}) }
+        : { body: finale.body, button: "Your feedback", alt: "Play again", link: "Exit", wide: true };
+      const choice = await this.resultCards.show([spec]);
+      if (choice === "link") return "menu";
+      if (formDone || choice === "alt") return "again";
+      const sent = await this.feedbackForm(finale, name);
+      note = sent?.note ?? null;
+      formDone = true;
+      // A name added on the form goes on the board while the finale shows; its line says so when the board answers.
+      void sent?.later?.then((line) => {
+        const shown = this.host.container.querySelector(".result-cards .result-note");
+        if (!this.disposed && line && shown) shown.textContent = line;
+        note = line ?? note;
+      });
+    }
+    return "menu";
+  }
+
+  /**
+   * Section 35.5: the form, until it is skipped or sent; the line to show after it (null when skipped), and, for a
+   * name added here, the line once the board has answered.
+   */
+  private async feedbackForm(finale: ReturnType<typeof finalePointsCard>, runName: string | null): Promise<{ note: string; later?: Promise<string | null> } | null> {
+    const holder = document.createElement("div");
+    holder.innerHTML = feedbackFormHtml(runName);
+    const body = holder.firstElementChild as HTMLElement;
+    let answersSent = false;
+    let note = "Thank you.";
+    for (;;) {
+      const choice = await this.resultCards.show([{ body, button: "Submit feedback", alt: "Skip", wide: true, focus: 'input[name="name"]' }]);
+      if (this.disposed) return null;
+      if (choice !== "button") return answersSent ? { note } : null;
+      const form = readFeedback(body);
+      // The finale's own board post first: a rename needs its edit token, and a failed post can be tried again here.
+      await this.boardPending;
+      if (this.disposed) return null;
+      const plan = planSubmit({ runName, field: form.name, answers: form.answers, onBoard: this.onBoard }, checkName);
+      if (plan.answers && !answersSent) void postFeedback(this.runId, plan.answers);
+      answersSent = true;
+      let later: Promise<string | null> | undefined;
+      if (plan.post && !plan.nameError) {
+        const name = plan.post;
+        note = "Thank you. Putting this run on the board.";
+        later = postBoard(this.runReport(), name).then(({ posted, already }) => {
+          if (this.disposed) return null;
+          if (already) {
+            this.onBoard = true;
+            return "Thank you. This run is already on the board.";
+          }
+          if (!posted) return "Thank you. The board can't be reached right now, so this run is not on it.";
+          this.boardToken = posted.editToken;
+          this.onBoard = true;
+          this.host.setPlayerName?.(posted.name);
+          finale.setName(posted.name);
+          finale.setRank({ status: "ready", rank: posted });
+          return `Thank you. You\u2019re ${ordinal(posted.rank)} on the board.`;
+        });
+      }
+      if (plan.rename && this.boardToken) {
+        const renamed = await renameOnBoard(this.boardToken, plan.rename);
+        if (renamed) {
+          runName = renamed.name;
+          this.host.setPlayerName?.(runName);
+          finale.setName(runName);
+        }
+      }
+      if (plan.nameError) {
+        // The rest has gone; the field says why its name was refused and the form stays for another.
+        setNameError(body, plan.nameError);
+        continue;
+      }
+      return { note, later };
+    }
+  }
+
+  /**
+   * Section 35.2 and 35.4: where the run stands on the board. With a name it is posted (the server counts its points
+   * from the builds) and its edit token kept for this run; without one, the place its points would get. Offline when
+   * the board can't be reached.
+   */
+  private async boardPlace(points: number, name: string | null): Promise<RankState> {
+    if (name) {
+      const { posted, already } = await postBoard(this.runReport(), name);
+      if (posted) {
+        this.boardToken = posted.editToken;
+        this.onBoard = true;
+        return { status: "ready", rank: posted };
+      }
+      if (already) {
+        this.onBoard = true;
+        return { status: "on-board" };
+      }
+      // Not on the board (refused, over the limit, or unreachable): the run is still reported, and the form can post it.
+      void postRun(this.runReport());
+      const rank = await fetchRank(points);
+      return rank ? { status: "unposted", rank } : { status: "offline" };
+    }
+    const rank = await fetchRank(points);
+    return rank ? { status: "ready", rank } : { status: "offline" };
+  }
+
+  /** Section 35.4: the finale's board post (or place), while it is under way; the form waits for it. */
+  private boardPending: Promise<void> | null = null;
+  /** Section 35.4: this run has its row on the board. */
+  private onBoard = false;
 
   /** The storm card as a PNG data URL (for the screenshots). */
   stormCardDataUrl(): string | null {
@@ -2389,8 +2531,10 @@ export class PanjimController {
 
   /** True while the final card (Panjim, 2026 to 2050) is up. */
   atFinalCard(): boolean {
-    // The last storm's own cards are up with the run already finished: the final card is the one offering Play again.
-    return this.run.finished && this.resultCards.isOpen && this.host.container.querySelector(".result-cards .result-next")?.textContent === "Play again";
+    // The last storm's own cards are up with the run already finished: the final card is the one offering Play again
+    // (Section 35.5: Play Panjim's finale card, before its form, offers it beside "Your feedback").
+    if (!this.run.finished || !this.resultCards.isOpen) return false;
+    return !!this.host.container.querySelector(".result-cards .finale-points") || this.host.container.querySelector(".result-cards .result-next")?.textContent === "Play again";
   }
 
   /** True once the next storm's gauge is green. */
@@ -2472,7 +2616,26 @@ export class PanjimController {
     while (this.busy) await new Promise((resolve) => window.setTimeout(resolve, 50));
   }
 
+  /** Section 35.4: this run's id (random, made here), and whether the finale has reported it. */
+  readonly runId = newRunId();
+  private readonly startedAt = new Date().toISOString();
+  private runReported = false;
+  /** Section 35.4: the board row's edit token for this run (memory only), once a named run is on the board. */
+  boardToken: string | null = null;
+
+  /** What the server is told about this run: its builds as played and its timing, never a name. */
+  private runReport(): RunReport {
+    return { runId: this.runId, builds: this.run.buildLog, minutes: Math.round(this.playMs() / 6000) / 10, startedAt: this.startedAt, endedAt: new Date().toISOString(), tutorialFirst: tutorialPlayedThisVisit() };
+  }
+
+  /** Section 35.4: a Play Panjim run that stops before its finale (Exit, the idle reset, the page closed) is still counted. */
+  private reportEarlyStop(): void {
+    if (this.tutorial || this.runReported) return;
+    beaconRun(this.runReport());
+  }
+
   dispose(): void {
+    this.reportEarlyStop();
     this.keyAbort.abort();
     this.tutorialPanel?.dispose();
     this.maya.dispose();

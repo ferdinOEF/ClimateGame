@@ -26,6 +26,8 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // Section 35.4: the board and the forms are live, never from the store (offline they say so).
+  if (url.pathname.startsWith("/api/")) return;
   if (!url.pathname.startsWith("/assets/") && request.mode !== "navigate") {
     event.respondWith(
       fetch(request)

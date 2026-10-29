@@ -99,7 +99,7 @@ describe("try this storm again (Section 28.1)", () => {
     const fs = await import("node:fs");
     const controller = fs.readFileSync("src/app/panjimController.ts", "utf8");
     // Section 34b.12: the button says where it goes ("Try again from 2026").
-    expect(controller).toContain(`{ body: resultCard(result), button: "See what protected your city", alt: retryLabel(this.run.phaseStartYear(challenge)) }`);
+    expect(controller).toContain(`{ body: resultCard(result, points), button: "See what protected your city", alt: retryLabel(this.run.phaseStartYear(challenge)) }`);
     expect(controller).toMatch(/\(await this\.resultCards\.show\(cards\)\) === "alt"\) this\.retryRequested = challenge\.id/);
     expect(controller).toMatch(/button: "Play Panjim", alt: "Try again", link: "Back to the menu"/);
     expect(controller).toMatch(/this\.tutorialChoice === "alt" \? "again"/);
@@ -110,8 +110,11 @@ describe("try this storm again (Section 28.1)", () => {
     expect(endTurn.slice(retryAt, retryAt + 400)).toMatch(/this\.applyRetry\(id\);\s*return;/);
     expect(retryAt).toBeLessThan(endTurn.indexOf("await this.finale()"));
     expect(retryAt).toBeLessThan(endTurn.indexOf("for (const event of later) if (event.type !== \"challenge\")"));
-    // The final card offers Play again, never a retry.
-    expect(controller).toMatch(/finalCard\(phases, result, nature\), button: "Play again", link: "Back to the menu" \}/);
+    // The final card offers Play again, never a retry. Section 35.2: it is the points finale, with Exit.
+    // Section 35.5: before the form its main button is "Your feedback", with Play again beside it.
+    expect(controller).toContain('{ body: finale.body, button: "Play again", link: "Exit", wide: true, ...(note ? { note } : {}) }');
+    expect(controller).toContain('{ body: finale.body, button: "Your feedback", alt: "Play again", link: "Exit", wide: true }');
+    expect(controller).not.toMatch(/finale\.body[^}]*alt: "Try again/);
   });
 
   it("has nothing to retry for a storm not reached yet", () => {

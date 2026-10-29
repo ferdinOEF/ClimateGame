@@ -357,6 +357,39 @@ and fire-and-forget, so a slow upload never blocks the win screen.
 Cloud merges are **best-of per level**, never last-write-wins: someone who
 played offline on a laptop and signed in on a phone keeps both halves.
 
+## Points, the board and feedback (Section 35)
+
+Play Panjim counts points (`core/resiliencePoints.ts`) as each storm resolves, inside `ActionRun.land`, from the same
+storm record the result cards use: homes saved, iconic places saved (buildings on card 1's list that the storm would
+have damaged with no defences, and that stood), the objective done, the living coast standing and protecting (each
+dune, pandanus, mangrove or khazan taken away alone and the storm run again), and at the end of 2050 biodiversity
+above the start and veterans (defences standing after all three storms). A storm's points live with its record, so
+"Try again from {year}" drops them with it. `ActionRun.buildLog` keeps every year's action as played (a retry trims
+it). The Tutorial counts none.
+
+**The server replay is the anti cheat.** A client never sends a score. The finale sends the run's build list (year,
+tile, element) to `POST /api/board`; the server (`server/handlers.ts`) plays it again on a fresh run started exactly as
+the game starts Play Panjim (`levels/panjimRun.ts newPanjimRun`), through the same hazard model, and stores the points
+that replay counts (`replayBuilds`). A list that is not a legal run (a build out of its year, on a tile it cannot go)
+is refused. `server/` and the core are bundled into `api/_lib/server.mjs` by esbuild (`npm run build:api`), because
+the core's path aliases are not read by Vercel's own step; `tests/apiBundle.test.ts` keeps the bundle current.
+
+**Four tables, never joined by a name** (`db/schema.sql`, Neon Postgres):
+- `runs`: one row a Play Panjim run (reach, completion, points, stars, builds), by a random id the client makes. No
+  name, IP or device.
+- `board`: the running board: a name, points, stars, the season label (`BOARD_SEASON`), dated to the day. No run id.
+- `feedback`: the form after the game, by run id. No name.
+- `rate_limits`: writes per salted IP hash per hour, deleted after a day.
+The name a player gives goes only to the board; the runs and the forms, which hold a child's age band and free text,
+are by run id alone, so no query can put a name to an age or an answer through a shared key. (The points a run
+scored are in both `runs` and `board`, as the brief asks; two runs rarely tie, so the owner should treat the export as
+personal data.)
+
+**The edit token.** A board post answers with a random token for its row, kept by the client in memory for that run
+only; `PATCH /api/board` with it renames the row (the feedback form's name field). It is never shown, exported or
+stored on the machine. Nothing about a run is saved on the machine (Section 28): the name lives in memory
+(`services/playerName.ts`) and goes at the menu.
+
 ## The Spark constraint
 
 Firebase's free tier has no Cloud Functions, so there is no trusted server

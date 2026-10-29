@@ -37,7 +37,7 @@ async function scenario(page: Page, name: string): Promise<boolean> {
 }
 
 async function startPanaji(page: Page, base: string): Promise<void> {
-  await page.goto(`${base}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${base}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 90000 });
   await page.locator(".brief-cta").first().click();
   await page.waitForTimeout(1500);

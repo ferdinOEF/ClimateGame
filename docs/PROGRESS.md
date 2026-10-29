@@ -1,3 +1,23 @@
+## Section 35 — points, one running board, and a feedback form after the game — DONE, NOT MERGED (QA in docs/QA_REPORT.md)
+
+Branch `section-35-points-board-feedback` from master `f847aa9`. Play Panjim only; the Tutorial is unchanged, never
+posts and never shows the form.
+- 35.1 Points (`core/resiliencePoints.ts`), counted as each storm resolves: homes saved 10, iconic places 150 (250 in
+  the brief; 35.6), objective 300, living coast 20 standing and 30 more protecting, biodiversity 5 a point above the
+  start and veterans 50 at the end of 2050. A retry drops the storm's points; `ActionRun.buildLog`;
+  `pointsForRun(builds, model)` and `levels/panjimRun.ts` for the server.
+- 35.2 A Points box on the HUD card (line 1 beside the year: the box row had no room; the card is still 300 px),
+  counting up with the star sound and "+N" for 4 s; card 1's "Points this storm" with its chips; the finale card
+  ("Panjim held, {name}.", the total, a row per storm, Biodiversity, Veterans, the line) with its place on the board;
+  the index off the finale and the share image; a Help paragraph.
+- 35.3 The name card before the start popup, the top 10 or "Board offline"; `core/nameFilter.ts` shared with the
+  server; the name in memory for the run only.
+- 35.4 `api/` (Vercel Node functions), `server/`, `db/schema.sql` (runs, board, feedback, rate_limits), the server's
+  replay as the anti cheat, limits, offline answers, `db:migrate`, `export:feedback`, `docs/DEPLOY.md`.
+- 35.5 The form "Your feedback" after the finale card; Thank you on the finale's buttons row.
+- 35.6 Tuned on 20 seeds (`docs/qa/section35/points.md`); only Iconic places moved.
+- 35.7 Reviewer fixes, one browser pass, the preview checked with test_oef.
+
 # Khazan — Build Progress
 
 v2 build. v1 (a Leaflet sidebar-panel prototype with no 3D world) was

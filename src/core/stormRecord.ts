@@ -36,7 +36,7 @@ export interface StormRecord {
   outcome: ChallengeOutcome;
   field: DepthField;
   /** The same storm on the same board with every defence against it removed. */
-  undefended: { outcome: ChallengeOutcome; field: DepthField };
+  undefended: { outcome: ChallengeOutcome; field: DepthField; depth?: Map<string, number>; wind?: Map<string, number> };
   /** Per kind of defence, most houses saved first. Kinds that saved none are left out. */
   savedBy: DefenceSave[];
   /** The defences against this storm standing when it came (key → element id), before any failed. */
@@ -208,5 +208,5 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
   const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
   const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);
-  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field }, savedBy, defences, landfallKey, depth, wind, withoutEach, sharedWork };
+  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field, depth: undefended.depth, wind: undefended.wind }, savedBy, defences, landfallKey, depth, wind, withoutEach, sharedWork };
 }

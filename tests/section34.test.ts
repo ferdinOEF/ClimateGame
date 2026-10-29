@@ -158,7 +158,9 @@ describe("Section 34: keyboard play", () => {
 
   it("Help and the start popup take focus and keep Tab inside", () => {
     expect(fs.readFileSync("src/ui/helpModal.ts", "utf8")).toContain("trapFocus(this.card, () => this.isOpen);");
-    expect(fs.readFileSync("src/ui/objectivesPanel.ts", "utf8")).toContain("trapFocus(card, () => this.briefOpen);");
+    // Section 35.3: while the name card stands in its place, the name card keeps Tab instead.
+    expect(fs.readFileSync("src/ui/objectivesPanel.ts", "utf8")).toContain("trapFocus(card, () => this.briefOpen && !this.firstCard);");
+    expect(fs.readFileSync("src/ui/panjim/nameCard.ts", "utf8")).toContain("trapFocus(this.el, () => this.open);");
   });
 });
 

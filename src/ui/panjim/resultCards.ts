@@ -1,3 +1,5 @@
+import type { RunPoints, StormPoints } from "@core/resiliencePoints";
+import type { BoardRowView, RankView } from "@services/board";
 import type { PhaseResult } from "@core/phaseResult";
 import { resultHeadline } from "@core/phaseResult";
 import { panajiRunPhrase } from "@ui/screens/runWords";
@@ -22,6 +24,12 @@ export interface CardSpec {
   link?: string;
   /** Section 28.1: a second button beside the main one ("Try this storm again"); it closes the cards. */
   alt?: string;
+  /** Section 35.2: a two column card (the finale and its rank box). */
+  wide?: boolean;
+  /** Section 35.5: one line in the buttons row ("Thank you."), read out when it appears. */
+  note?: string;
+  /** Section 35.5: what takes focus when the card opens (a selector in its body); the main button otherwise. */
+  focus?: string;
 }
 
 /** What closed the cards: the last card's button, its link, or a card's second button (Section 28.1). */
@@ -98,8 +106,26 @@ export function retryLabel(year: number): string {
   return `Try again from ${year}`;
 }
 
-/** Card 1: the storm's result. */
-export function resultCard(result: PhaseResult): HTMLElement {
+/**
+ * Section 35.2: card 1's points: "Points this storm" with its total, then one chip per source that earned any (Homes,
+ * Places, Objective, Living coast). Separate chips, no dots between them.
+ */
+export function stormPointsHtml(points: StormPoints): string {
+  const chips: [string, number][] = [
+    ["Homes", points.homes.points],
+    ["Places", points.places.points],
+    ["Objective", points.objective.points],
+    ["Living coast", points.livingCoast.points]
+  ];
+  const shown = chips.filter(([, n]) => n > 0);
+  return `<div class="result-points" role="group" aria-label="Points this storm: ${points.total}">
+    <div class="result-points-head"><span>Points this storm</span><b>${points.total}</b></div>
+    ${shown.length ? `<ul class="result-points-chips">${shown.map(([label, n]) => `<li class="result-points-chip">${label} <b>+${n}</b></li>`).join("")}</ul>` : ""}
+  </div>`;
+}
+
+/** Card 1: the storm's result. Section 35.2: with its points in Play Panjim. */
+export function resultCard(result: PhaseResult, points?: StormPoints | null): HTMLElement {
   const { shown, more: moreText } = cardPlaces(result.places);
   const more = moreText ? `<li class="result-places-more">${esc(moreText)}</li>` : "";
   const places = result.places.length
@@ -112,6 +138,7 @@ export function resultCard(result: PhaseResult): HTMLElement {
     <h2 class="result-title">${esc(resultHeadline(result.stars, result.homesStars))}</h2>
     ${starsHtml(result.stars)}
     ${objectiveHtml(result)}
+    ${points ? stormPointsHtml(points) : ""}
     ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}
     ${windHtml(result.windLost)}
     ${result.nature ? natureHtml(result.nature) : ""}
@@ -274,6 +301,117 @@ export function finalCard(
   </div>`);
 }
 
+/** "1st", "2nd", "3rd", "4th", "11th", "21st". */
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+  return `${n}${suffix}`;
+}
+
+/** The rank box's state: waiting for the board, the board unreachable, or the run's place. */
+export type RankState =
+  | { status: "loading" }
+  | { status: "offline" }
+  | { status: "ready"; rank: RankView }
+  /** A named run the board could not take (over the limit, refused, unreachable mid post): where it would be. */
+  | { status: "unposted"; rank: RankView }
+  /** The board already holds this run (a post that timed out here but landed there). */
+  | { status: "on-board" };
+
+/** Section 35.2: the finale card's view (Play Panjim's last card). */
+export interface FinaleView {
+  /** The run's name for the board, or null for a run without one. */
+  name: string | null;
+  points: RunPoints;
+  /** Each storm's label ("Cyclone in 2030") and stars, in calendar order. */
+  storms: { label: string; stars: number }[];
+  totalStars: number;
+  cleared: boolean;
+  /** The season the board shows (the server's BOARD_SEASON). */
+  season?: string | null;
+}
+
+export const VETERANS_LINE = "In this game, veterans are defences that stood through all three storms. Losses never take points away.";
+
+/** "Panjim held, {name}." or, without a name, "Panjim held." */
+export function finaleTitle(name: string | null): string {
+  return name ? `Panjim held, ${name}.` : "Panjim held.";
+}
+
+/** The rank box beside the finale: the place on the board, the gap to the row above, and the rows round the run. */
+export function rankHtml(state: RankState, name: string | null): string {
+  if (state.status === "loading") return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">Checking the board.</p>`;
+  if (state.status === "offline") return `<div class="finale-rank-head">Board offline</div><p class="finale-rank-note">The board can't be reached right now. Your points are above.</p>`;
+  if (state.status === "on-board") return `<div class="finale-rank-head">On the board</div><p class="finale-rank-note">This run is on the board.</p>`;
+  if (state.status === "unposted") {
+    return `<div class="finale-rank-head">Not on the board yet</div><p class="finale-rank-note">The board could not take this run just now. With these points it would be ${ordinal(state.rank.rank)}. You can try again on the next screen.</p>`;
+  }
+  const { rank, points, tenth, above, below } = state.rank;
+  if (!name) {
+    return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">With a name, this run would be ${ordinal(rank)} on the board. Add one on the next screen.</p>`;
+  }
+  const head = rank <= 10 || tenth === null ? `${ordinal(rank)} on the board` : `${tenth - points} points short of the top 10`;
+  const nearest = above[above.length - 1];
+  const gap = nearest ? `${nearest.points - points} points behind ${ordinal(nearest.rank)}` : "Top of the board";
+  const row = (r: BoardRowView, me = false): string =>
+    `<li class="${me ? "me" : ""}"${me ? ' aria-current="true"' : ""}><span class="finale-rank-place">${r.rank}</span><span class="finale-rank-name">${esc(r.name)}</span><b>${r.points}</b></li>`;
+  const mine: BoardRowView = { rank, name, points, season: "" };
+  return `<div class="finale-rank-head">${esc(head)}</div>
+    <p class="finale-rank-note">${esc(gap)}</p>
+    <ol class="finale-rank-rows">${above.map((r) => row(r)).join("")}${row(mine, true)}${below.map((r) => row(r)).join("")}</ol>`;
+}
+
+/** The finale card's main column: the title, the run's total, a row per storm, Biodiversity and Veterans, the line. */
+export function finaleHtml(view: FinaleView, rank: RankState): string {
+  const { points } = view;
+  const end = points.end;
+  const most = view.storms.length * 3;
+  const storms = view.storms
+    .map((storm, i) => {
+      const p = points.storms[i]?.total ?? 0;
+      const n = Math.max(0, Math.min(3, storm.stars));
+      return `<li><span class="finale-row-label">${esc(storm.label)}</span><span class="finale-row-stars" role="img" aria-label="${n} of 3 stars">${"★".repeat(n)}<span class="result-stars-empty">${"★".repeat(3 - n)}</span></span><b>${p}</b></li>`;
+    })
+    .join("");
+  const bio = end ? `<li><span class="finale-row-label">Biodiversity, end of 2050</span><span class="finale-row-detail">+${end.biodiversity.rise}</span><b>${end.biodiversity.points}</b></li>` : "";
+  const vets = end ? `<li><span class="finale-row-label">Veterans</span><span class="finale-row-detail">${end.veterans.count}</span><b>${end.veterans.points}</b></li>` : "";
+  return `<div class="result-card-body finale-points">
+    <div class="finale-main">
+      <div class="result-eyebrow">Panjim, 2026 to 2050</div>
+      <h2 class="result-title">${esc(finaleTitle(view.name))}</h2>
+      <div class="finale-total"><b>${points.total}</b><span>points</span></div>
+      <ul class="finale-rows">${storms}${bio}${vets}</ul>
+      <p class="finale-line">${esc(VETERANS_LINE)}</p>
+      <div class="finale-clear"><span><b>${view.totalStars}</b> of ${most} stars</span><span class="result-clear ${view.cleared ? "cleared" : "not-cleared"}">${view.cleared ? "Panjim cleared" : "Not cleared yet"}</span></div>
+      <p class="result-clear-rule"><span class="result-rule">Game rule</span> In this game you clear Panjim with at least one star in every storm and ${countWord(CLEAR_TOTAL_STARS)} of the ${countWord(most)} stars in all.</p>
+    </div>
+    <aside class="finale-rank" aria-live="polite">${rankHtml(rank, view.name)}</aside>
+  </div>`;
+}
+
+/** The finale card as an element; `setRank` fills its rank box when the board answers. */
+export function finalePointsCard(view: FinaleView, rank: RankState): { body: HTMLElement; setRank: (rank: RankState) => void; setName: (name: string | null) => void } {
+  const body = el(finaleHtml(view, rank));
+  let current = view.name;
+  let state = rank;
+  const paint = (): void => {
+    body.querySelector(".finale-main .result-title")!.textContent = finaleTitle(current);
+    body.querySelector(".finale-rank")!.innerHTML = rankHtml(state, current);
+  };
+  return {
+    body,
+    setRank: (next) => {
+      state = next;
+      paint();
+    },
+    // Section 35.5: a name added or changed on the feedback form.
+    setName: (name) => {
+      current = name;
+      paint();
+    }
+  };
+}
+
 export class ResultCards {
   readonly el: HTMLElement;
   private readonly cardEl: HTMLElement;
@@ -317,6 +455,7 @@ export class ResultCards {
       const render = (): void => {
         const spec = cards[index];
         this.cardEl.replaceChildren(spec.body);
+        this.cardEl.classList.toggle("wide", spec.wide === true);
         const label = spec.body.querySelector(".result-title")?.textContent ?? "Result";
         this.cardEl.setAttribute("aria-label", label);
         const actions = document.createElement("div");
@@ -347,6 +486,13 @@ export class ResultCards {
         go.textContent = spec.button;
         go.addEventListener("click", () => advance());
         actions.appendChild(go);
+        if (spec.note) {
+          const note = document.createElement("p");
+          note.className = "result-note";
+          note.setAttribute("role", "status");
+          note.textContent = spec.note;
+          actions.prepend(note);
+        }
         this.cardEl.appendChild(actions);
         if (spec.link) {
           const link = document.createElement("button");
@@ -359,7 +505,9 @@ export class ResultCards {
         this.cardEl.classList.remove("entering");
         void this.cardEl.offsetWidth;
         this.cardEl.classList.add("entering");
-        go.focus();
+        const first = spec.focus ? spec.body.querySelector<HTMLElement>(spec.focus) : null;
+        if (first) first.focus();
+        else go.focus();
       };
       const advance = (): void => {
         if (index < cards.length - 1) {
@@ -390,13 +538,18 @@ export class ResultCards {
             const target = event.target as HTMLElement | null;
             event.stopImmediatePropagation();
             if (target && target.closest("button") && this.el.contains(target)) return;
+            // Section 35.5: in a form's field Enter types (a new line in a text box) or does nothing; it never submits.
+            if (target && target.closest("input, textarea, select") && this.el.contains(target)) {
+              if (target.tagName !== "TEXTAREA") event.preventDefault();
+              return;
+            }
             event.preventDefault();
             advance();
             return;
           }
           if (event.key === "Tab") {
             // Focus stays in the card.
-            const focusable = [...this.cardEl.querySelectorAll<HTMLElement>("button, [href], [tabindex]:not([tabindex='-1'])")];
+            const focusable = [...this.cardEl.querySelectorAll<HTMLElement>("button, [href], input, textarea, select, [tabindex]:not([tabindex='-1'])")];
             if (focusable.length === 0) return;
             const first = focusable[0];
             const last = focusable[focusable.length - 1];

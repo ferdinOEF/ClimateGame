@@ -75,7 +75,7 @@ async function open(browser: Browser, url: string, w: number, h: number, context
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(`${w}x${h}: ${m.text()}`);
   });
-  await page.goto(`${url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForTimeout(1200);
   return page;

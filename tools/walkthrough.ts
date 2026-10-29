@@ -279,7 +279,7 @@ async function main(): Promise<void> {
       // backwards for a script whose job is to survey all nine maps.
       try {
         // No menu button leads to the level select (Section 16.3): it is reached by its own address.
-        await page.goto(`${baseUrl.replace(/#.*$/, "")}/?qa=1#/levels`, { waitUntil: "domcontentloaded" });
+        await page.goto(`${baseUrl.replace(/#.*$/, "")}/?qa=1&noname=1#/levels`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".level-grid", { timeout: 15000 });
 
         // Nothing should be padlocked while the campaign is open for

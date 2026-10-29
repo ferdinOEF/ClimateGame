@@ -2369,3 +2369,35 @@ deuteranopia copies; not asked for).
 - Kala Academy in the three storms (`tools/section34cKala.ts`, `5df0a6c`; `kala-before.md` `5df0a6c`, `kala-after.md` `d9cd1ca`): no defences, dry in 2030 and 2040 and flooded in 2050 before (5,11, 3.94 m) and after (5,10, 10.21 m); best plan, dry in all three before and after. 2030 does not reach it; 2040 and 2050 unchanged.
 
 **Revert:** `git revert -m 1 ec57748`.
+
+# Section 35: points, one running board, and a feedback form (Play Panjim)
+
+Branch `section-35-points-board-feedback` from master `f847aa9` (safety copy `backup/pre-section-35`; the tag
+`pre-section-35` exists locally, the git proxy refused tag pushes), one commit a step (35.1 to 35.7). **Not merged**:
+the owner merges in a later message.
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit`, `npm run test`, `npm run build` | Clean: vitest 102 files, 877 passed (6 skipped); build clean (it also makes `api/_lib/server.mjs`). New: `tests/resiliencePoints.test.ts` (every source on the Panaji board, a retry counted once, `pointsForRun` equal to the live tally, illegal lists refused), `tests/section35.test.ts` (card 1's chips, the finale card and its rank box, the HUD box, Help), `tests/nameFilter.test.ts`, `tests/nameCard.test.ts`, `tests/server.test.ts` (every handler on pg-mem: post, rank, rename with a bad token, a second post, the limit, a bad name, an unfinished run, offline, the server's points equal the client's with a retry), `tests/apiBundle.test.ts`, `tests/feedbackForm.test.ts`. Updated: `hudPanels`, `section28`, `section34`, `section34c`. |
+| Preview equals resolution | Passes (`tests/preview.test.ts`, `tests/section23.test.ts`); nothing in the hazard model changed. |
+| Bots, 20 seeds (35.6, `tools/panjimBots/points35.ts`; `docs/qa/section35/points.md`) | Stars identical to the bots' own runs on every seed (the tool stops otherwise). With the final values: the largest source in a best play run 37% (target 40%); mixed beats seawalls only by at least 238% on every seed (target 15%); the lowest best run is 2.02 times the highest random run. |
+| One browser pass (`tools/section35Shots.ts`, production build through `vite preview`, `?qa=1`, 1366x768, `/api` answered in the page by the real handlers on pg-mem) | 27 checks, all pass, zero console errors: the name card's top 10 and focus, Enter is Play, the start popup after it; card 1's chips; the HUD Points box after 2030 and the card still 300 px; the finale "Panjim held, test_oef." with its rank box; the board post sends builds and never a score, and **the server's replay counted 2500, the finale showed 2500**; the run saved finished without its name; the form, only the answered items posted, no rename when the name did not change; "Thank you."; localStorage and sessionStorage hold nothing new (no name, run id or token); after a reload the name field is empty. |
+| The branch preview on Vercel (`climate-game-2tzhv4i6y-ferdin-5189s-projects.vercel.app`, from a Vercel Sandbox with a share link: this machine's egress blocks `*.vercel.app` and Neon) | `GET /api/board` 200, season "Festival 2026" (the tables made on first use); `POST /api/board` as **test_oef**: 200 in 6.2 s cold, rank 1, **4510 points, the same as `pointsForRun` here**; a second post 409; the top 10 shows test_oef, 4510, 7 stars, Festival 2026; `POST /api/feedback` saved. Test rows to delete (below). |
+| Independent reviewer (whole diff) | 1 BLOCKER, 3 MAJOR, all fixed: the client gave up on a board post after 6 s while the server's replay takes about 5 (now 30 s for posts, 20 s for reads; the same short wait also read a board answer as offline while the 3D scene loaded, found in the browser pass); a named run the board could not take showed a place as if posted (now "Not on the board yet", and the form can post it); a board row's time could tie it to its run (now dated to the day; points remain in both tables, see ARCHITECTURE); a rename typed while the finale's post was in flight was dropped (the form waits for it). MINOR fixed: skip years logged and replayed; a salt when `RATE_SALT` is unset; the run claimed before it is written; NFKC and look alike letters in the name filter, no stacks of accents; feedback only for a counted run; beacons as text/plain; the finale's line while a name added on the form goes up ("Putting this run on the board."). MINOR carried: each early stop beacon is a replay of about 4 s of server CPU (60 an hour per IP); two cold instances making the tables at once can answer one request offline. |
+
+Screenshots (`docs/qa/section35/`, 1366x768): `1-name-card`, `2-hud-points`, `3-result-card-1`, `4-finale-named`,
+`5-feedback-form`, `6-thank-you`. Looked at: the form fits the window without scrolling (706 of 706 px); in the pass
+the card's 220 ms fade takes seconds of software GL frames, so the tool waits before each shot.
+
+**Skipped on the owner's instruction** (the section touches none of them): the Maya, layout, label, help and Tutorial
+browser runs, the walkthrough and the full browser check. The QA tools now open Play Panjim with `noname=1` (honoured
+only with the test hooks on), so they keep their old route past the name card.
+
+**The test rows on the shared database** (Neon's SQL editor):
+
+```sql
+DELETE FROM board WHERE name = 'test_oef';
+DELETE FROM feedback WHERE run_id = '35353535-3535-4535-8535-353535353535';
+```
+
+(and, if wanted, `DELETE FROM runs WHERE id = '35353535-3535-4535-8535-353535353535';`).

@@ -38,7 +38,7 @@ async function scenario(page: Page, name: string): Promise<boolean> {
 }
 
 async function startPanaji(page: Page): Promise<void> {
-  await page.goto(`${BASE}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-cta", { timeout: 90000 });
   await page.locator(".brief-cta").first().click();
   await page.waitForTimeout(3000);
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
       const menuButtons = await page.locator(".menu-screen button, .menu-screen a").allInnerTexts();
       check(menuButtons.some((t) => /tutorial/i.test(t)) && menuButtons.some((t) => /play panjim/i.test(t)), "menu offers Tutorial and Play Panjim", menuButtons.map((t) => t.trim()).filter(Boolean).join(" | "));
       check(!(await page.locator("input[type=email]").count()), "no email field on the menu (email requirement hidden)");
-      await page.goto(`${BASE}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${BASE}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(4000);
       check((await page.locator("canvas").count()) > 0, "Tutorial route renders the board");
       await page.goBack();
@@ -90,7 +90,7 @@ async function main(): Promise<void> {
       // A fresh tab straight onto the level: nothing clicked yet, so no sound may exist.
       const fresh = await context.newPage();
       watch(fresh, "audio");
-      await fresh.goto(`${BASE}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await fresh.goto(`${BASE}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await fresh.waitForSelector(".brief-cta", { timeout: 90000 });
       await fresh.waitForTimeout(1500);
       const audioBefore = (await fresh.evaluate("window.__audioForTest ? window.__audioForTest() : null")) as { unlocked: boolean; context: boolean } | null;
@@ -138,7 +138,7 @@ async function main(): Promise<void> {
       const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
       const page = await context.newPage();
       watch(page, "keyboard");
-      await page.goto(`${BASE}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${BASE}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".brief-cta", { timeout: 90000 });
       await page.locator(".brief-cta").first().focus();
       await page.keyboard.press("Enter");
@@ -187,7 +187,7 @@ async function main(): Promise<void> {
       await page.goto(qaUrl(`${BASE}/`), { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".menu-screen", { timeout: 30000 });
       await axe(page, "menu");
-      await page.goto(`${BASE}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${BASE}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(4000);
       await axe(page, "Tutorial");
       await startPanaji(page);

@@ -10,8 +10,9 @@ import { generatePrep, openingJobs, prepProgress, regionPlace, regionPlaces, row
 import { generatePhaseObjective, type PhaseObjective } from "./phaseObjectives";
 import { discTiles, localityTiles, nearestLocality, stretchTiles } from "./stretch";
 import { forecastCone, type ForecastCone } from "./forecastCone";
-import { resolveStorm, type StormRecord } from "./stormRecord";
+import { resolveStorm, type StormArgs, type StormRecord } from "./stormRecord";
 import type { HouseStars } from "./zones";
+import { endPoints, livingCoast, placesSaved, standingDefences, stormPoints, DEMOLISH, REPAIR, SKIP, type BuildEntry, type EndPoints, type PointsConfig, type StormPoints } from "./resiliencePoints";
 
 /**
  * The Panjim 2050 run: 25 years of Panjim, one build a year (Section 8).
@@ -96,6 +97,8 @@ export interface ActionRunOptions {
   localities?: readonly { name: string; q: number; r: number }[];
   /** False skips choosing each phase's objective with the model (the bots: objectives never change an outcome). Default true. */
   generateObjectives?: boolean;
+  /** Section 35.1: count points as each storm resolves (Play Panjim). Absent: no points (the Tutorial). */
+  points?: PointsConfig;
 }
 
 /** The readiness gauge: what the next storm would do to the board as it stands. */
@@ -226,6 +229,18 @@ export class ActionRun {
   readonly objectivesComplete = new Set<string>();
   /** Every action and every new year counts one: Maya speaks at most once per moment. */
   moment = 0;
+  /** Section 35.1: each resolved storm's points, by id (with its record: a retry drops them). Empty without `points`. */
+  readonly stormPoints = new Map<string, StormPoints>();
+  /** Section 35.1: the end of 2050's points (biodiversity and veterans), once the last storm resolved. */
+  endPoints: EndPoints | null = null;
+  /**
+   * Section 35.1: every action that ended a year, as played (a retry drops the undone ones): what the server replays
+   * to count the points itself (`replayBuilds`).
+   */
+  readonly buildLog: BuildEntry[] = [];
+  private readonly pointsConfig: PointsConfig | null;
+  /** The board's biodiversity at the start of the run. */
+  private readonly bioStart: number;
   // ECONOMY_DISABLED_V1: coin mechanics reserved for a future version
   readonly economyEnabled: boolean;
   /** Coin waiting in the jar (coins on only). */
@@ -260,6 +275,8 @@ export class ActionRun {
     this.houseRule = options.houseRule;
     this.prepConfig = options.prep;
     this.generateObjectives = options.generateObjectives ?? true;
+    this.pointsConfig = options.points ?? null;
+    this.bioStart = state.biodiversity;
     this.landmarkList = options.landmarks ?? [];
     this.localityList = options.localities ?? [];
     this.openingTiles = regionTiles(state, options.prep?.opening?.region, this.landmarkList, this.localityList);
@@ -297,6 +314,11 @@ export class ActionRun {
     else if (saved.snapshot.prep) this.prep = JSON.parse(JSON.stringify(saved.snapshot.prep)) as PrepObjective[];
     for (const [id, later] of [...this.phaseSnapshots]) if (later.snapshot.turn > at) this.phaseSnapshots.delete(id);
     for (const id of [...this.stormRecords.keys()]) if (!this.landed.has(id)) this.stormRecords.delete(id);
+    // Section 35.1: the undone storms' points and actions go with them; the storm counts once, as played again.
+    for (const id of [...this.stormPoints.keys()]) if (!this.landed.has(id)) this.stormPoints.delete(id);
+    this.endPoints = null;
+    const firstUndone = this.config.startYear + at;
+    while (this.buildLog.length > 0 && this.buildLog[this.buildLog.length - 1].year >= firstUndone) this.buildLog.pop();
     this.aheadCache = null;
     this.moment++;
     return true;
@@ -813,6 +835,11 @@ export class ActionRun {
     return Math.max(0, this.state.income) * this.incomeScale;
   }
 
+  /** Section 35.1: an action that ends this year, for the build log. */
+  private logAction(tile: string, element: string): void {
+    this.buildLog.push({ year: this.year, tile, element });
+  }
+
   /** Builds `elementId` at `coord`. It ends the year: a storm due this year resolves straight after it. */
   build(coord: AxialCoord, elementId: string): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
@@ -831,6 +858,7 @@ export class ActionRun {
     if (helps) for (const row of rows) row.credited = [...new Set([...(row.credited ?? []), key])];
     if (helpsAhead) for (const row of aheadRows) row.credited = [...new Set([...(row.credited ?? []), key])];
     this.noteBuild(elementId);
+    this.logAction(key, elementId);
     this.moment++;
     const rowMiss = rows.length > 0 && !helps ? rows[0].place : undefined;
     return { ok: true, events: [...this.settle(), ...this.endYear()], ...(rowMiss ? { rowMiss } : {}) };
@@ -847,6 +875,7 @@ export class ActionRun {
     if (!this.state.elements.has(key)) return refuse("Nothing to demolish.");
     if (!this.canDemolish(coord)) return refuse("The city's homes cannot be demolished.");
     this.state.elements.delete(key);
+    this.logAction(key, DEMOLISH);
     this.moment++;
     return { ok: true, events: [...this.settle(), ...this.endYear()] };
   }
@@ -903,6 +932,7 @@ export class ActionRun {
     if (this.economyEnabled && this.state.coin < coin) return refuse("Not enough Coin.");
     this.state.coin -= coin;
     inst.degradeAmount = 0;
+    this.logAction(axialKey(coord), REPAIR);
     this.moment++;
     return { ok: true, events: [...this.settle(), ...this.endYear()] };
   }
@@ -914,6 +944,7 @@ export class ActionRun {
   skipYear(): ActionOutcome {
     if (this.finished) return refuse("The run has reached 2050.");
     if (this.canBuildAnywhere()) return refuse(SKIP_REFUSED);
+    this.logAction("0,0", SKIP);
     return { ok: true, events: this.endYear() };
   }
 
@@ -950,6 +981,25 @@ export class ActionRun {
     return events;
   }
 
+  /**
+   * Section 35.1: a storm's points, from its record, as it resolves (the objective already judged); after the last
+   * storm, the end of 2050's too (the year's build is in: it is the board at the end of 2050).
+   */
+  private countPoints(challenge: ScheduledChallenge, record: StormRecord, before: GameState, args: StormArgs): void {
+    const config = this.pointsConfig!;
+    const facts = {
+      homesSaved: record.outcome.housesSaved,
+      places: placesSaved(record, this.areas.get(challenge.id) ?? [], config.iconicPlaces, this.state),
+      objectiveDone: this.objectivesComplete.has(challenge.id),
+      coast: livingCoast(before, this.state, args, record.outcome.housesDamaged),
+      standing: standingDefences(this.state)
+    };
+    this.stormPoints.set(challenge.id, stormPoints(challenge, facts, config.values));
+    if (this.schedule[this.schedule.length - 1]?.id !== challenge.id) return;
+    const after = this.schedule.map((c) => this.stormPoints.get(c.id)?.standing ?? []);
+    this.endPoints = endPoints(this.state.biodiversity - this.bioStart, after, config.values);
+  }
+
   /** A storm resolves against the board. */
   protected land(challenge: ScheduledChallenge): RunEvent[] {
     const events: RunEvent[] = [];
@@ -958,7 +1008,7 @@ export class ActionRun {
     if (!this.zones || !this.climate) {
       events.push({ type: "challenge", challenge, outcome: null });
     } else {
-      const record = resolveStorm(this.state, {
+      const args = {
         zones: this.zones,
         kind: challenge.kind,
         intensity: this.intensityOf(challenge),
@@ -969,9 +1019,12 @@ export class ActionRun {
         landfall: this.landfallOf(challenge),
         sheltered: shelterOf(challenge),
         wind: challenge.wind
-      });
+      };
+      const before = this.pointsConfig ? this.state.clone() : null;
+      const record = resolveStorm(this.state, args);
       this.outcomes.set(challenge.id, record.outcome);
       this.stormRecords.set(challenge.id, record);
+      if (before) this.countPoints(challenge, record, before, args);
       events.push({ type: "challenge", challenge, outcome: record.outcome });
     }
     // The next storm is announced: new Get ready jobs for it.

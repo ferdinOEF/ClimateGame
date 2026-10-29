@@ -33,7 +33,7 @@ async function run(hurry: boolean, shoot: boolean): Promise<{ ms: number; proble
   const errors: string[] = [];
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
   const problems: string[] = [];
   const shot = async (name: string): Promise<void> => {
@@ -77,7 +77,7 @@ console.log(`TIME [${W}x${H}] with Speed up: ${(fast.ms / 60000).toFixed(1)} min
 // Try again on the last card restarts the Tutorial, nothing saved.
 {
   const page = await browser.newPage({ viewport: { width: W, height: H } });
-  await page.goto(`${server.url}/?qa=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
   const problems: string[] = [];
   // Play to the last card, but press Try again there instead of Play Panjim (the tool's own Play Panjim then finds no

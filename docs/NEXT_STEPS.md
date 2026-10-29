@@ -12,6 +12,18 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After Section 35 (from docs/QA_REPORT.md)
+
+- Merge Section 35 when the owner says so (`git merge --no-ff`), then confirm Vercel's production deployment.
+- Delete the preview's test rows (SQL in QA_REPORT, Section 35).
+- Run `npm run db:migrate` once from a machine with the project's env (`vercel env pull .env.local`); the functions
+  already made the tables on first use.
+- Points are in both `runs` and `board`; if the export must not tie a name to a run, drop `runs.points` (owner).
+- Each early stop beacon replays a run on the server (about 4 s of CPU); if cost matters, store builds only and count
+  points later.
+- The ☰ button overlaps ? while the start popup or the name card is up (Section 33b's rule lifts ☰ above the popup);
+  unchanged here.
+
 ## After Section 34c (from docs/QA_REPORT.md)
 
 - **The Mandovi Riverfront zone.** The owner's redraw (the bank from Campal to

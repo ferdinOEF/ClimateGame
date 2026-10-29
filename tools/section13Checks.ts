@@ -79,7 +79,7 @@ const count = (page: Page, selector: string): Promise<number> => page.evaluate(`
 const risk = async (page: Page): Promise<number> => Number((await text(page, ".outlook-risk-count")) || "-1");
 
 async function open(page: Page, url: string): Promise<void> {
-  await page.goto(`${url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card", { timeout: 120000 });
   await page.waitForTimeout(1500);
   await page.locator(".brief-cta", { hasText: /Begin|Start/i }).first().click();

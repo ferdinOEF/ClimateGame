@@ -11,7 +11,7 @@ const W = Number(w), H = Number(h);
 const server = await startDevServer(Number(process.env.PORT ?? 5473));
 const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
 const page = await browser.newPage({ viewport: { width: W, height: H } });
-await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
 await page.waitForSelector(".brief-card", { timeout: 120000 });
 await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 180000 });
 await page.waitForTimeout(1500);

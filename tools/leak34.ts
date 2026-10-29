@@ -75,7 +75,7 @@ async function playRun(p: Page): Promise<void> {
   await p.waitForFunction(`[...document.querySelectorAll("button")].some((b) => /Play again/.test(b.textContent) && b.getClientRects().length)`, undefined, { timeout: 120000 }).catch(() => undefined);
 }
 
-await page.goto(`${URL0}/?qa=1#/play/l01-first-rains`, { waitUntil: "load" });
+await page.goto(`${URL0}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "load" });
 await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function" && !!document.querySelector(".brief-cta")`, undefined, { timeout: 120000 });
 await page.locator(".brief-cta").first().click();
 await page.waitForTimeout(2000);

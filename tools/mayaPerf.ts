@@ -47,7 +47,7 @@ async function main(): Promise<void> {
   });
   try {
     const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
-    await page.goto(`${server.url}/?qa=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-card", { timeout: 120000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(4000);
