@@ -43,6 +43,7 @@ import { BuildPopover, type PopoverOption } from "@ui/buildPopover";
 import { HazardTestPanel } from "@ui/hazardTestPanel";
 import { closeSources } from "@ui/sourcesScreen";
 import { audioStateForTest, playSound } from "@ui/audioHooks";
+import { preloadSamples } from "@ui/sampleBank";
 import { ObjectivesPanel } from "@ui/objectivesPanel";
 import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
@@ -1115,6 +1116,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           addBriefFeature: (el) => objectivesPanel.addBriefFeature(el)
         })
       : null;
+  // Section 36: the recorded sounds load in the background once the player has clicked (Panjim and the Tutorial).
+  if (panjim) preloadSamples();
   if (panjim)
     hud.useYearClock(
       panjim.run.economyEnabled,

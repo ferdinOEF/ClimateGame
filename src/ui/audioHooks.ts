@@ -106,9 +106,32 @@ export function audioOut(): { ctx: AudioContext; out: GainNode } | null {
   return { ctx, out: master };
 }
 
+/** Waiting for the first click (Section 36: the sample bank and the music start on it). */
+const unlockWaiters: (() => void)[] = [];
+
 /** Called on the first click or key press anywhere: from then on sound may play. */
 export function unlockAudio(): void {
   unlocked = true;
+  for (const run of unlockWaiters.splice(0)) {
+    try {
+      run();
+    } catch {
+      // Sound is decoration.
+    }
+  }
+}
+
+/** Runs `run` once sound may play: now if the player has already clicked, else on the first click or key press. */
+export function onAudioUnlock(run: () => void): void {
+  if (!unlocked) {
+    unlockWaiters.push(run);
+    return;
+  }
+  try {
+    run();
+  } catch {
+    // Sound is decoration.
+  }
 }
 
 if (typeof document !== "undefined") {
