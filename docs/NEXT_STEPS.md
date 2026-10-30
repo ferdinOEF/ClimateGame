@@ -14,8 +14,7 @@ actually done and noted in the Log (date + one line), not just assumed.
 
 ## After Section 39 (from docs/QA_REPORT.md)
 
-- Merge `section-39-first-minute` when the owner says so (`git merge --no-ff`), then confirm Vercel's production
-  deployment. No schema change.
+- Done: merged as `02ea44f` on the owner's word; Vercel's production deployment of it is Ready. No schema change.
 - Owner's answers (30 October), all settled, no change: How to play keeps growing on large screens (1.43 at
   1920x1080); ☰ stays under How to play's overlay; the guided start needs Maya (hidden, muted or minimised, it does not
   run); no action on the email gate's Restart case (`VITE_REQUIRE_EMAIL` is off).

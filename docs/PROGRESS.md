@@ -1,4 +1,4 @@
-## Section 39 — the first minute — ON BRANCH (`section-39-first-minute`, not merged)
+## Section 39 — the first minute — MERGED (`02ea44f`)
 
 Branch `section-39-first-minute` from master `0679fb9` (safety copy: `backup/pre-section-39`, same point). QA in
 docs/QA_REPORT.md. Mocks: 1-main-screen-quote, 2-how-to-play, 3 to 7 guide steps (owner, at 1366x768).

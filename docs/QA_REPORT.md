@@ -2731,3 +2731,11 @@ identifier, a class, a data key or id, a file name, a comment or a test name.
 its overlay; the guide needs Maya (accepted); no action on the email gate case; old QA tools are fixed only when a
 later section touches them; `DEFAULT_TAG=Preview` has been set on Vercel Preview since 29 October (docs/DEPLOY.md);
 the 2050 last card stays without "Try again from 2046". No code changed.
+
+**Section 39 merge and Vercel.** Merged with `git merge --no-ff` on the owner's word: `02ea44f` (tsc clean on the merge;
+`npm run test` 113 files, 955 pass, 6 skipped; `npm run build` clean). Vercel's production deployment of `02ea44f`
+(`dpl_BYnkt7TYWoWcGq4pkKEgf6i5LVCP`) is Ready and carries the `climate-game-psi.vercel.app` alias, checked through the
+Vercel connector; the build took about 4.5 minutes (most of it installing dependencies). Production was not loaded from
+here: this machine's egress blocks *.vercel.app, and the connector's fetch could not reach the deployment this time.
+PR #37 was closed with a comment, not merged with its button (GitHub marks it merged, as the merge commit holds its
+head). No schema change, so no migration.
