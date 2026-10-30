@@ -21,6 +21,8 @@ export interface ChallengeDef {
   kind: ChallengeKind;
   /** The year the storm comes, at its end. */
   year: number;
+  /** Section 39.3: where it comes, under its year on How to play's timeline ("Miramar beach"). */
+  where?: string;
   /** Strength on the level's scale (the hazard model's input). Fixed: no baseline, no jitter. */
   strength: number;
   /** Cyclone and compound: the open-sea tile it comes ashore at, "q,r" (core/hazardModel.ts). */

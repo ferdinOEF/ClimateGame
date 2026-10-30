@@ -90,6 +90,8 @@ export const LABEL_OBSTACLES = [
   ".map-note",
   ".field-guide-card",
   ".brief-card",
+  // Section 39.3: How to play, in the start popup's place.
+  ".howto-card",
   ".replay-card",
   ".tutorial-coach",
   ".forecast-label",

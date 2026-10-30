@@ -134,6 +134,8 @@ export const HUD_OBSTACLES = [
   ".field-guide-card",
   ".result-cards",
   ".brief-card",
+  // Section 39.3: How to play, in the start popup's place.
+  ".howto-card",
   ".replay-card",
   // Section 16 B6: a note beside a tile (Section 30.11: broken or cracked with age).
   ".map-note.beside",

@@ -41,7 +41,9 @@ const PAIRS: [string, string, boolean?][] = [
   ["ink-2", "gold-soft"],
   ["warn-ink", "gold-soft"],
   // A badge or chip in --good with light text ("Built", "Stood").
-  ["panel-raised", "good"]
+  ["panel-raised", "good"],
+  // Section 39.3: How to play's "Game rules" chip.
+  ["ink-2", "panel-edge"]
 ];
 const ALLOWED = new Set(PAIRS.map(([t, b]) => `${t}|${b}`));
 

@@ -4,6 +4,7 @@ import type { LevelDef } from "@levels/levels";
 import { boardDescription, type GameMap } from "@levels/levelMap";
 import { numberWord } from "./screens/runWords";
 import { fullFigureUrl } from "./panjim/mayaArt";
+import { fitHowToPlay, howToPlayCard } from "./panjim/howToPlay";
 
 /**
  * The live objective checklist, plus the level's opening brief.
@@ -118,24 +119,37 @@ export class ObjectivesPanel {
       goals.insertAdjacentElement("afterend", goal);
     }
 
-    card.querySelector(".brief-cta")!.addEventListener("click", () => this.hideBrief());
-    // Maya stands beside the brief, whole, with her pack: a sibling of the
-    // card (which scrolls), in a box that is only as big as the card.
+    // Section 39.3 (owner decision): Play Panjim shows How to play in the popup's place; its "Let's Play!" is the
+    // popup's Begin (class `brief-cta`, the same handler below). The Tutorial keeps its own brief.
+    const howTo = level.timeModel === "years" && !level.tutorial ? howToPlayCard(level) : null;
+    const shown = howTo ?? card;
+    shown.querySelector(".brief-cta")!.addEventListener("click", () => this.hideBrief());
     const stage = document.createElement("div");
-    stage.className = "brief-stage";
-    stage.innerHTML = `<img class="maya-full-figure" src="${fullFigureUrl({ pack: true })}" width="102" height="250" alt="" draggable="false">`;
-    stage.appendChild(card);
+    if (howTo) {
+      stage.className = "howto-stage";
+      stage.appendChild(howTo);
+      this.stopFit = fitHowToPlay(howTo);
+      this.briefBackdrop.classList.add("howto-backdrop", "howto-showing");
+    } else {
+      // Maya stands beside the brief, whole, with her pack: a sibling of the
+      // card (which scrolls), in a box that is only as big as the card.
+      stage.className = "brief-stage";
+      stage.innerHTML = `<img class="maya-full-figure" src="${fullFigureUrl({ pack: true })}" width="102" height="250" alt="" draggable="false">`;
+      stage.appendChild(card);
+    }
     this.briefBackdrop.appendChild(stage);
     container.appendChild(this.briefBackdrop);
     // Section 34: the start popup takes focus on its main button and keeps Tab inside it while it is open.
-    trapFocus(card, () => this.briefOpen && !this.firstCard);
+    trapFocus(shown, () => this.briefOpen && !this.firstCard);
     window.requestAnimationFrame(() => {
-      if (this.briefOpen && !this.firstCard && !card.contains(document.activeElement)) card.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
+      if (this.briefOpen && !this.firstCard && !shown.contains(document.activeElement)) shown.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
     });
     this.stage = stage;
   }
 
   private readonly stage: HTMLElement;
+  /** Section 39.3: stops How to play following the window's size (null on the Tutorial's brief). */
+  private stopFit: (() => void) | null = null;
   /** Section 35.3: a card shown in the popup's place before it (Play Panjim's name card), while it is up. */
   private firstCard: HTMLElement | null = null;
 
@@ -146,11 +160,13 @@ export class ObjectivesPanel {
   showFirst(el: HTMLElement): () => void {
     this.firstCard = el;
     this.stage.hidden = true;
+    this.briefBackdrop.classList.remove("howto-showing");
     this.briefBackdrop.appendChild(el);
     return () => {
       el.remove();
       this.firstCard = null;
       this.stage.hidden = false;
+      this.briefBackdrop.classList.toggle("howto-showing", this.stage.classList.contains("howto-stage"));
       this.briefBackdrop.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
     };
   }
@@ -174,6 +190,8 @@ export class ObjectivesPanel {
 
   private hideBrief(): void {
     this.briefBackdrop.hidden = true;
+    this.stopFit?.();
+    this.stopFit = null;
   }
 
   /**
