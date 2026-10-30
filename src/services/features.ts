@@ -27,8 +27,8 @@ export const REQUIRE_EMAIL = parseFlag(import.meta.env.VITE_REQUIRE_EMAIL);
  * Challenge, Leaderboard, the stats tiles and star row, and the footer
  * (settings, sign-in link, where-progress-is-saved note).
  *
- * Off by default. With it off the menu offers two things, "Tutorial" and
- * "Play Panjim", and the leaderboard, daily-challenge and settings screens
+ * Off by default. With it off the menu offers "Play Panjim" (and "Tutorial" only with
+ * `SHOW_TUTORIAL_BUTTON`), and the leaderboard, daily-challenge and settings screens
  * cannot be reached at all: no button leads to them, and a pasted
  * `#/leaderboard`, `#/settings` or `#/play/daily-...` link lands on the menu.
  * Scores are still saved on the device (and still posted in the background
@@ -36,6 +36,15 @@ export const REQUIRE_EMAIL = parseFlag(import.meta.env.VITE_REQUIRE_EMAIL);
  * codebase, and `VITE_SHOW_MENU_EXTRAS=true` at build time brings it back.
  */
 export const SHOW_MENU_EXTRAS = parseFlag(import.meta.env.VITE_SHOW_MENU_EXTRAS);
+
+/**
+ * Whether the main menu shows the "Tutorial" button (Section 39.2, owner decision).
+ *
+ * Off: the menu offers one button, "Play Panjim". The Tutorial level, its code and its route
+ * (`#/play/l00-tutorial`) all stay, so the walkthrough and a pasted link still reach it; only the button is hidden.
+ * `VITE_SHOW_TUTORIAL_BUTTON=true` at build time brings it back.
+ */
+export const SHOW_TUTORIAL_BUTTON = flagOr(import.meta.env.VITE_SHOW_TUTORIAL_BUTTON, false);
 
 /**
  * Whether the landing page shows the partner credits: the cream "Brought to you by" plate with the OneEarth

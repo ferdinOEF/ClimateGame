@@ -14,8 +14,8 @@ describe("the partner credits on the landing page", () => {
     expect(SHOW_PARTNER_CREDITS).toBe(false);
   });
 
-  it("draw the plate only behind the switch, and the Facts & sources link otherwise", () => {
-    expect(menu).toMatch(/if \(SHOW_PARTNER_CREDITS\) \{\s*const credits = creditsStrip\(\);\s*root\.appendChild\(credits\);\s*keepCreditsClear\(screen, credits\);\s*\} else root\.appendChild\(sourcesLink\(\)\);/);
+  it("draw the plate only behind the switch, and the Facts & sources link (in the quote band, Section 39.2) otherwise", () => {
+    expect(menu).toMatch(/if \(SHOW_PARTNER_CREDITS\) \{\s*const credits = creditsStrip\(\);\s*root\.appendChild\(credits\);\s*keepCreditsClear\(screen, credits\);\s*\} else band\.appendChild\(sourcesLink\(\)\);/);
     expect(menu).toContain('el("button", { className: "menu-sources-link", text: "Facts & sources", on: { click: () => openSources() } })');
   });
 

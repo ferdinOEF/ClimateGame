@@ -1,13 +1,14 @@
 import { LEVELS, dailyChallengeLevel, type LevelDef } from "@levels/levels";
 import { currentLevelId, levelsCompleted, type PlayerProgress } from "@levels/progression";
 import { PANAJI_LEVEL_ID } from "./runWords";
+import { SHOW_TUTORIAL_BUTTON } from "@services/features";
 
 /**
  * What the main menu offers, decided without a DOM so the tests can check it
  * in Node. `renderMenuScreen` draws exactly this.
  */
 
-/** The menu's first button always starts this level, whatever the player's progress. */
+/** The level the "Tutorial" button starts, whatever the player's progress (the button shows with `SHOW_TUTORIAL_BUTTON`). */
 export const TUTORIAL_LEVEL_ID = "l00-tutorial";
 
 export type MenuButtonId = "tutorial" | "resume" | "panjim" | "levels" | "daily" | "leaderboard";
@@ -31,17 +32,17 @@ export interface MenuModel {
 /**
  * The buttons, in order.
  *
- * With the extras off (the default build) there are two: "Tutorial" and
- * "Play Panjim" (Section 16.3, owner decision), which starts the Panaji game
- * straight away, its start popup open; the level select is still reachable
+ * With the extras off (the default build) there is one, "Play Panjim"
+ * (Section 39.2, owner decision), the primary button, which starts the Panaji
+ * game; the "Tutorial" button comes first only with `showTutorial`
+ * (`SHOW_TUTORIAL_BUTTON`, off by default). The level select is still reachable
  * at its own address (#/levels), but no button leads there. With the extras
  * on, the old menu comes back around them: the
  * Play/Continue/Play again button, the Daily Challenge, the Leaderboard, and
- * the stats and footer. "Tutorial" stays first either way, so the first button
- * always means the same thing.
+ * the stats and footer. "Tutorial", when shown, stays first either way.
  */
-export function menuModel(progress: PlayerProgress, showExtras: boolean): MenuModel {
-  const buttons: MenuButtonSpec[] = [{ id: "tutorial", label: "Tutorial", primary: true, levelId: TUTORIAL_LEVEL_ID }];
+export function menuModel(progress: PlayerProgress, showExtras: boolean, showTutorial: boolean = SHOW_TUTORIAL_BUTTON): MenuModel {
+  const buttons: MenuButtonSpec[] = showTutorial ? [{ id: "tutorial", label: "Tutorial", primary: true, levelId: TUTORIAL_LEVEL_ID }] : [];
 
   if (showExtras) {
     const resumeId = currentLevelId(progress);
@@ -58,7 +59,7 @@ export function menuModel(progress: PlayerProgress, showExtras: boolean): MenuMo
     }
   }
 
-  buttons.push({ id: "panjim", label: "Play Panjim", primary: false, levelId: PANAJI_LEVEL_ID });
+  buttons.push({ id: "panjim", label: "Play Panjim", primary: !showTutorial, levelId: PANAJI_LEVEL_ID });
 
   if (showExtras) {
     const daily = dailyChallengeLevel();

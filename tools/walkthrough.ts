@@ -129,11 +129,10 @@ async function main(): Promise<void> {
     stage = "registration";
     const forbidden = /e-?mail|sign[ -]?in|signed in|account/i;
     const menuText = (await page.locator(".menu-screen").textContent()) ?? "";
-    // By class, not by label. The primary button is "Tutorial" and starts
-    // l00-tutorial in every build (see src/ui/screens/menuModel.ts), but the
-    // copy has changed before, and the class is what marks it as the one to
-    // press.
-    await page.locator(".menu-actions .btn-primary").first().click();
+    // Section 39.2: the menu shows only Play Panjim (the Tutorial button is
+    // hidden by SHOW_TUTORIAL_BUTTON), so the Tutorial is reached by its route.
+    if ((await page.locator(".menu-actions button").count()) !== 1) problems.push("[menu] expected one button, Play Panjim");
+    await page.evaluate(() => { location.hash = "#/play/l00-tutorial"; });
     await page.waitForSelector(".brief-card, .setup-screen", { timeout: 15000 });
     if ((await page.locator(".setup-screen").count()) > 0) {
       console.log("registration gate appeared (build has VITE_REQUIRE_EMAIL=true)");
