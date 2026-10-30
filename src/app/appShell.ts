@@ -143,6 +143,8 @@ export class AppShell {
    */
   private enter(route: Route, mode: HistoryMode = "push"): void {
     closeSources();
+    // Section 39.4: only the level a Restart asked for counts as restarted.
+    if (route.name !== "playing") this.restarting = false;
     // The registration gate has to hold here too, not only on the menu
     // button. Otherwise a pasted `#/play/...` link walks straight past it.
     // With the email requirement off (the default, see features.ts) there is
@@ -371,6 +373,9 @@ export class AppShell {
    * being shown it again on a Back press reads as the game having lost the
    * answer — so the level REPLACES it in history rather than stacking on top.
    */
+  /** Section 39.4: the next level started is a Restart (☰ Start again, the last card's Play again). */
+  private restarting = false;
+
   private startLevel(level: LevelDef, mode: HistoryMode = "push"): void {
     if (this.session) {
       this.session.dispose();
@@ -382,15 +387,22 @@ export class AppShell {
     this.syncHistory(this.route, mode);
     this.paint();
 
+    // Section 39.4: a run started by Restart has no guided start.
+    const restarted = this.restarting;
+    this.restarting = false;
     this.session = startGameSession({
       container: this.gameLayer,
       level,
+      restarted,
       onFinished: (result) => this.finishRun(level, result),
       // The in-game Back control and Escape both land here, and both defer to
       // the browser so they cannot disagree with its own Back button.
       onExit: () => this.goBack(),
       // ☰ → Start again (Section 16 B3): the same level afresh, in place of this run.
-      onRestart: () => this.requestLevel(level.id, "replace"),
+      onRestart: () => {
+        this.restarting = true;
+        this.requestLevel(level.id, "replace");
+      },
       // Section 30.12 (festival mode): left alone for 3 minutes, the game goes back to the menu for the next visitor.
       onIdle: () => this.go({ name: "menu" }, "replace")
     });
@@ -452,8 +464,9 @@ export class AppShell {
       submission.catch(() => undefined);
     }
     if (result.then === "again") {
-      // Section 37.4: Play again starts a new run: its name card opens empty.
+      // Section 37.4: Play again starts a new run: its name card opens empty. Section 39.4: a Restart, no guided start.
       playAgain();
+      this.restarting = true;
       this.requestLevel(level.id, "replace");
       return;
     }
