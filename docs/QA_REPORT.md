@@ -2726,3 +2726,8 @@ identifier, a class, a data key or id, a file name, a comment or a test name.
   threat lines keep a spaced `&mdash;` (older; documented).
 
 **Not run:** Safari and Firefox; the full browser check; a production load (nothing merged); the bots (no mechanics).
+
+**Owner's answers (30 October), recorded before the merge:** How to play keeps growing on large screens; ☰ stays under
+its overlay; the guide needs Maya (accepted); no action on the email gate case; old QA tools are fixed only when a
+later section touches them; `DEFAULT_TAG=Preview` has been set on Vercel Preview since 29 October (docs/DEPLOY.md);
+the 2050 last card stays without "Try again from 2046". No code changed.

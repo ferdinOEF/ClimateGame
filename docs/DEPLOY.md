@@ -20,6 +20,8 @@ database. The Firebase notes further down describe older, unused code (kept, off
      Production, so play on a preview deployment is never on the board. A tag in the address wins over it. The value
      must be 2 to 30 letters, digits or underscores: one of another shape is ignored, and posts are then real
      players'; check it with a preview run (its name card shows no chip for the default, so look at `npm run tag -- list`).
+     **Set:** `DEFAULT_TAG=Preview` is on Vercel's Preview environment since 29 October 2026 (owner, Section 39 answers);
+     Production has none.
 3. **The tables.** Apply `db/schema.sql` once (it is safe to run again: every statement creates, adds or drops only
    what is missing or no longer wanted):
 

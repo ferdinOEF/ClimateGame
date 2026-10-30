@@ -16,23 +16,19 @@ actually done and noted in the Log (date + one line), not just assumed.
 
 - Merge `section-39-first-minute` when the owner says so (`git merge --no-ff`), then confirm Vercel's production
   deployment. No schema change.
-- How to play scales with the window (1.43 at 1920x1080); the owner may prefer it fixed at 1286 x 708 above 1366x768.
-- ☰ sits under How to play's overlay (as mock 2 draws it), so Leave is not reachable there; Esc does nothing; the idle
-  reset still returns to the menu.
-- The guided start needs Maya: with Maya hidden (`VITE_SHOW_MAYA=false`), muted or minimised it does not run (and
-  muting or minimising her mid guide ends it).
-- With `VITE_REQUIRE_EMAIL` on, a Restart through the registration sheet would run the guide again (off by default).
-- Help's two threat lines keep their spaced `&mdash;` (older than this section; helpModal.ts is the old levels' help).
+- Owner's answers (30 October), all settled, no change: How to play keeps growing on large screens (1.43 at
+  1920x1080); ☰ stays under How to play's overlay; the guided start needs Maya (hidden, muted or minimised, it does not
+  run); no action on the email gate's Restart case (`VITE_REQUIRE_EMAIL` is off).
 - The QA tools open Panjim with `noguide=1` (tools/qaUrl.ts and the tools' own URLs); tools that read the old start
-  popup's forecast or title no longer find them.
+  popup's forecast or title no longer find them. Owner: fix a tool only when a later section touches it.
+- Help's two threat lines keep their spaced `&mdash;` (older than this section; helpModal.ts is the old levels' help).
 - The full browser check (walkthrough, labels, axe, four sizes) was not run; test:maya and test:layout were.
 
 ## After Section 38 (from docs/QA_REPORT.md)
 
 - Done: merged as `b1fe260`; production's first request applied the schema (`npm run db:migrate` would change
-  nothing). Still for the owner: set `DEFAULT_TAG=Preview` on Vercel's Preview environment only.
-- The 2050 storm has no "Try again from 2046" any more: the last card has View map, Restart and Exit, as the brief
-  draws it. Owner to confirm, or the retry can come back as a fourth footer button.
+  nothing). `DEFAULT_TAG=Preview` is set on Vercel's Preview environment (since 29 October; docs/DEPLOY.md).
+- Settled (owner, 30 October): the 2050 last card stays without "Try again from 2046" (View map, Restart, Exit).
 - The last card is 1100 x 680 at 1366x768 (the brief said about 660); nothing scrolls or clips at 1366x768 or
   1920x1080. Below 900 px wide the two columns stack and the card scrolls.
 - A named run the board could not take at the card's opening cannot be posted from the card (no name field for a

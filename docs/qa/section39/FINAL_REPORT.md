@@ -48,6 +48,9 @@ Branch `section-39-first-minute` (from master `0679fb9`; safety copy `backup/pre
 
 ## Open points
 
+The owner answered these on 30 October; all are settled with no change, and `DEFAULT_TAG=Preview` has been set on
+Vercel Preview since 29 October (docs/DEPLOY.md). Kept below as they were raised.
+
 - How to play scales up on large screens (1.43 at 1920x1080). Say if it should stay at 1286 x 708.
 - ☰ sits under How to play's overlay, as mock 2 draws it, so Leave cannot be reached there. Esc does nothing there;
   the idle reset still works.
@@ -56,5 +59,5 @@ Branch `section-39-first-minute` (from master `0679fb9`; safety copy `backup/pre
   off by default.
 - Help's two threat lines in the old levels' help keep a spaced dash. They are older than this section.
 - QA tools that read the old start popup's forecast or title no longer find it. The gate tools use `noguide=1`.
-- Still open from before: `DEFAULT_TAG=Preview` on Vercel Preview, the 2050 retry button, real GPU timing, and Safari
+- Still open from before: real GPU timing, and Safari
   and Firefox.
