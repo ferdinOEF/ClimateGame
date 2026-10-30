@@ -83,7 +83,7 @@ describe("the name lives in memory for this run only", () => {
     const shell = readFileSync("src/app/appShell.ts", "utf8");
     const menu = shell.slice(shell.indexOf('case "menu":'), shell.indexOf("renderMenuScreen("));
     expect(menu).toContain("clearPlayerName();");
-    expect(shell).toMatch(/if \(result\.then === "again"\) \{\s*\/\/[^\n]*\n\s*playAgain\(\);\s*this\.requestLevel\(level\.id, "replace"\);/);
+    expect(shell).toMatch(/if \(result\.then === "again"\) \{\s*\/\/[^\n]*\n\s*playAgain\(\);\s*this\.restarting = true;\s*this\.requestLevel\(level\.id, "replace"\);/);
   });
 
   it("Section 37.4: Play again opens the name card empty; Try again from a year keeps the run's name", () => {

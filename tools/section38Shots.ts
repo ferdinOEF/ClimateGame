@@ -134,7 +134,7 @@ const browser = await chromium.launch({ args: glArgs(), ...(executablePath ? { e
 try {
   // 1 to 4: a run without a name to its last card.
   {
-    const { page, sent, stop } = await open(browser, `${server.url}/?qa=1&noname=1#/play/l01-first-rains`);
+    const { page, sent, stop } = await open(browser, `${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`);
     await toLastCard(page, null);
     const fit = await cardFit(page);
     check(!fit.clipped && fit.off.length === 0 && fit.missing.length === 0, `38.2: the last card (${fit.w}x${fit.h}) with every element on screen and nothing clipped${fit.off.length ? `; off: ${fit.off.join(", ")}` : ""}${fit.missing.length ? `; missing: ${fit.missing.join(", ")}` : ""}`);
@@ -219,7 +219,7 @@ try {
   if (ONLY === "") {
     // 5. A fresh run, Exit without a Submit: the nudge, once.
     {
-      const { page, sent, stop } = await open(browser, `${server.url}/?qa=1&noname=1#/play/l01-first-rains`);
+      const { page, sent, stop } = await open(browser, `${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`);
       await toLastCard(page, null);
       await page.locator('.last-action[data-action="map"]').click();
       await page.waitForTimeout(5000);
@@ -242,7 +242,7 @@ try {
 
     // 6. The 2030 storm's card 1.
     {
-      const { page, stop } = await open(browser, `${server.url}/?qa=1&noname=1#/play/l01-first-rains`);
+      const { page, stop } = await open(browser, `${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`);
       await page.waitForFunction(`typeof window.__panjimForTest === "object" && window.__panjimForTest !== null`, undefined, { timeout: 120000 });
       await page.waitForSelector(".brief-cta", { state: "visible", timeout: 60000 });
       await page.waitForTimeout(800);

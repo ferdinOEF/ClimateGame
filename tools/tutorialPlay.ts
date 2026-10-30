@@ -71,7 +71,7 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   const hurry = options.hurry !== false;
 
   // 1. The opening card.
-  await page.waitForSelector(".brief-card", { timeout: 30000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 30000 });
   await page.waitForTimeout(800);
   const brief = (await page.locator(".brief-card").textContent()) ?? "";
   if (!brief.includes("Each build is one year.")) problems.push(`[tutorial-brief] the card does not open with the line: "${brief.slice(0, 120)}"`);
@@ -169,7 +169,7 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   await page.locator(".result-cards .result-next").first().click();
   await page.waitForTimeout(900);
   const final = ((await page.locator(".result-cards").textContent()) ?? "").replace(/\s+/g, " ");
-  if (!final.includes("You tried 7 of 7 defences")) problems.push(`[tutorial-final] the last card does not say "You tried 7 of 7 defences": ${final.slice(0, 120)}`);
+  if (!final.includes("You tried 7 of 7 defenses")) problems.push(`[tutorial-final] the last card does not say "You tried 7 of 7 defenses": ${final.slice(0, 120)}`);
   for (const want of ["Play Panjim", "Try again", "Back to the menu"]) if (!final.includes(want)) problems.push(`[tutorial-final] no "${want}"`);
   if ((await page.locator(".result-cards .tutorial-final-list li").count()) !== 7) problems.push("[tutorial-final] not seven defences on the last card");
   await options.onCard?.(2);

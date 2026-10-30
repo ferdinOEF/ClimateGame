@@ -93,13 +93,13 @@ const HELP_CONTENT = `
       <div class="help-roster-group">
         <div class="help-roster-terrain">Beach</div>
         <div class="help-roster-item"><span>Dune</span><span>Cheap. Soaks up part of a surge; weakens but is not destroyed.</span></div>
-        <div class="help-roster-item"><span>Pandanus</span><span>The cheapest defence. Softens a surge a little.</span></div>
+        <div class="help-roster-item"><span>Pandanus</span><span>The cheapest defense. Softens a surge a little.</span></div>
         <div class="help-roster-item"><span>Seawall</span><span>Strong at once. Fails all at once if a storm is too big for it.</span></div>
       </div>
 
       <div class="help-roster-group">
         <div class="help-roster-terrain">Estuary</div>
-        <div class="help-roster-item"><span>Mangrove</span><span>The strongest living defence here. Adds food and biodiversity.</span></div>
+        <div class="help-roster-item"><span>Mangrove</span><span>The strongest living defense here. Adds food and biodiversity.</span></div>
         <div class="help-roster-item"><span>Khazan</span><span>Bunds and a sluice. Holds floodwater and adds food.</span></div>
       </div>
 
@@ -131,20 +131,20 @@ const HELP_CONTENT = `
       <div class="help-meter"><span>Resilience</span><span>Your settlement's overall defense. Runs out, the era ends.</span></div>
       <div class="help-meter"><span>Food</span><span>Produced by Mangrove and Khazan, consumed by every House.</span></div>
       <div class="help-meter"><span>Population</span><span>Grows with Houses. Falls if people go hungry or unprotected.</span></div>
-      <div class="help-meter"><span>Biodiversity</span><span>Rises with living defences, falls with built ones.</span></div>
+      <div class="help-meter"><span>Biodiversity</span><span>Rises with living defenses, falls with built ones.</span></div>
       <div class="help-meter"><span>Trust</span><span>Your people's confidence in you. Damaged buildings cost you here.</span></div>
     </section>
 
     <section class="help-section">
       <h3>Two Threats</h3>
-      <div class="help-threat"><strong>Cyclone</strong> &mdash; comes in off the sea and hits the coast first. Beach defences matter most here.</div>
-      <div class="help-threat"><strong>Flood</strong> &mdash; comes down the river toward the estuary. River and estuary defences hold it back here.</div>
+      <div class="help-threat"><strong>Cyclone</strong> &mdash; comes in off the sea and hits the coast first. Beach defenses matter most here.</div>
+      <div class="help-threat"><strong>Flood</strong> &mdash; comes down the river toward the estuary. River and estuary defenses hold it back here.</div>
     </section>
 
     <section class="help-section">
       <h3>A Few Tips</h3>
       <ul class="help-tips">
-        <li>Living defences take time to grow. Plant early.</li>
+        <li>Living defenses take time to grow. Plant early.</li>
         <li>Don't put all your defense on one stretch of coast.</li>
         <li>Watch your Food &mdash; a hungry population costs you before you notice.</li>
       </ul>

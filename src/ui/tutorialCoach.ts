@@ -98,11 +98,11 @@ const STEPS: TutorialStep[] = [
   {
     title: "Plant a mangrove",
     body:
-      "Click the olive green shallows, the estuary, and build a Mangrove. In this game it is the strongest living defence, and it adds food and wildlife.",
+      "Click the olive green shallows, the estuary, and build a Mangrove. In this game it is the strongest living defense, and it adds food and wildlife.",
     done: (state) => standing(state, "mangrove") > 0
   },
   {
-    title: "Living defences need time",
+    title: "Living defenses need time",
     body:
       "A mangrove takes four turns to reach full strength. Build it early and it is ready when you need it; build it the turn before a storm and it is a sapling in a surge.",
     cta: "Next"
@@ -116,18 +116,18 @@ const STEPS: TutorialStep[] = [
   {
     title: "Something is coming",
     body:
-      "Watch the storm countdown in the corner. When it runs out the surge arrives, sweeps in from the sea, and every defence in its path takes the energy out of it. Keep building until then.",
+      "Watch the storm countdown in the corner. When it runs out the surge arrives, sweeps in from the sea, and every defense in its path takes the energy out of it. Keep building until then.",
     cta: "Ready"
   },
   {
     title: "Hold the coast",
-    body: "Ride out one storm. Your defences will do the work. Watch where the water gets through and where it does not.",
+    body: "Ride out one storm. Your defenses will do the work. Watch where the water gets through and where it does not.",
     done: (state) => state.hazardsSurvived > 0
   },
   {
     title: "That is the whole game",
     body:
-      "In this game, living defences grow slowly, give back, and weaken gently. Built ones work at once, work harder, and fail all at once. Everything from here is choosing between them.",
+      "In this game, living defenses grow slowly, give back, and weaken gently. Built ones work at once, work harder, and fail all at once. Everything from here is choosing between them.",
     cta: "Finish"
   }
 ];

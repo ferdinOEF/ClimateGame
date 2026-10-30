@@ -9,9 +9,24 @@
     "title": "First job",
     "text": "Hello! I am Maya. Before the {storm}, our first job is to {objective}. The steps are in the card, top right."
   },
+  "guide": {
+    "_comment": "Section 39.4: the guided start's bubbles, once per Play Panjim run (core/guide.ts). {year} is the first storm's year, {n} the builds before it, {name} the card to pick.",
+    "step1": "Hello! I am Maya. The cyclone reaches Miramar in {year}. A dune on the beach breaks its waves before they reach the school.",
+    "step1Bold": "Click the glowing tile.",
+    "step1b": "These are the defenses that fit this tile. Each build is one year.",
+    "step2": "Your dune is standing. Now pandanus: it binds the sand and shields homes from the wind.",
+    "step2Bold": "Click the next glowing tile.",
+    "step2b": "Pandanus is good for nature too: watch Biodiversity go up.",
+    "pickBold": "Pick {name}.",
+    "step3": "That is how it works. The cyclone comes in {n} builds.",
+    "step3Bold": "Over to you: finish the card top right, or build where Panjim needs it.",
+    "clickHere": "Click here",
+    "pick": "Pick {name}",
+    "built": "\u2713 {name}"
+  },
   "tutorial": {
-    "start": "Seven defences, one a year. A cyclone comes after 4 builds, then a river flood. The glowing card and tiles show what to try.",
-    "cards": "Each card is a defence and what it does. The glowing one is this year's to try."
+    "start": "Seven defenses, one a year. A cyclone comes after 4 builds, then a river flood. The glowing card and tiles show what to try.",
+    "cards": "Each card is a defense and what it does. The glowing one is this year's to try."
   },
   "tips": [
     {
@@ -61,10 +76,10 @@
     "held": "The {defence} at {place} held {count} homes.",
     "absorbed": "The {defence} absorbed the {hazard} at {place}.",
     "allSaved": "Every home in the storm's path is still standing. Panjim is proud of you!",
-    "someLost": "We lost {lost} homes at {place}. A few more defences there next time and they will stand.",
+    "someLost": "We lost {lost} homes at {place}. A few more defenses there next time and they will stand.",
     "noDefence": "Nothing stood between the {hazard} and {place}. Next time, plant something there first.",
     "saved": "Without your {defence}, {count} more homes would have been hit.",
-    "notYet": "The {hazard} reached {place} before the defences there could make a difference. More of them there will hold it."
+    "notYet": "The {hazard} reached {place} before the defenses there could make a difference. More of them there will hold it."
   },
   "zonePlaces": {
     "z1": "Miramar",

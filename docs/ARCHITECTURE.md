@@ -23,6 +23,7 @@ src/
     resultFlow.ts     the cards after a storm (Section 38.1)
     lastCard.ts       the last card's rows, questions and texts (Section 38.2)
     nudge.ts          the nudge, once (Section 38.3)
+    guide.ts          the guided start's step machine and words (Section 39.4)
   render/     Three.js scene and mesh managers
     heatOverlay.ts    the warning heat: one instanced layer, one shader
     townGeometry.ts   the seven building kinds and the garden
@@ -462,6 +463,29 @@ takes the post's tag, else `DEFAULT_TAG`, else null. `runs`, `board` and `feedba
 board post is inserted with its tag outside the one row per name rule and answered `{ tagged: true }` (the client's
 `RankState` "tagged": "Test session: not on the board."); `boardRows` and `rowsNamed` read `WHERE tag IS NULL`, so
 the top 10, every rank and the name rule see real players only. Nothing is deleted. `tools/tag.ts` lists the tags.
+
+## The first minute (Section 39)
+
+**The flow (owner decision).** Main screen, Play Panjim, the name card, How to play, "Let's Play!", the game. The
+menu draws one button, Play Panjim (`menuModel`'s `showTutorial`, `SHOW_TUTORIAL_BUTTON` off by default); the Tutorial
+level and its route (`#/play/l00-tutorial`) stay. Under the menu, the quote band (`menuScreen.ts quoteBand`, the
+words from `src/data/menuQuote.json`, "Facts & sources" in its corner); the menu's height leaves room for it
+(`--menu-quote-h`, measured), so the card never sits under it.
+
+**How to play (39.3).** `ui/panjim/howToPlay.ts` draws one card (1286 x 708 at 1366x768, scaled to the window by
+`--howto-scale`) from the level and the element data (`howToPlayModel`: years, builds, the storms with their `where`
+from levels.json and the turns between them, the leaf chips). `ObjectivesPanel` shows it in the start popup's
+backdrop in place of Panjim's brief; its "Let's Play!" is the popup's Begin (class `brief-cta`, `hideBrief`), so
+everything that waited for the popup waits for it. The Tutorial keeps its brief.
+
+**The guided start (39.4).** `core/guide.ts` is the step machine (1, 1b, 2, 2b, 3, done) on the 2026 objective's
+first dune and pandanus picks; `app/guidedStart.ts` feeds it the build menu (open on a tile, or closed) and the
+builds, draws its step (`ui/panjim/guideOverlay.ts`: the dim with its cut, the rings, the tags, the built chip, all
+`pointer-events: none` at z 9, under the HUD card, Maya and the build menu) and puts up Maya's line (`MayaLine.bold`,
+`steps`, `sticky`, `onDismiss`). It starts from `ObjectivesPanel.onBriefClosed` when `guideShouldRun` (Play Panjim,
+not `restarted`, the first year, no builds) and Maya can speak; `appShell` sets `restarted` for ☰ Start again and
+Play again. While it runs Maya's own lines wait (`uiBlocked`), the facts after a build are kept and said when it
+ends, her bubble does not tuck for the menu, Esc leaves a step's line up, and muting or minimising her ends it.
 
 ## Sound: the sample bank, the music and the storm's hand over (Section 36)
 

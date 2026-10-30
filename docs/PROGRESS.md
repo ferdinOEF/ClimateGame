@@ -1,3 +1,27 @@
+## Section 39 — the first minute — ON BRANCH (`section-39-first-minute`, not merged)
+
+Branch `section-39-first-minute` from master `0679fb9` (safety copy: `backup/pre-section-39`, same point). QA in
+docs/QA_REPORT.md. Mocks: 1-main-screen-quote, 2-how-to-play, 3 to 7 guide steps (owner, at 1366x768).
+- 39.1 "defense": every player facing defence/defences in src strings, JSON values and index.html is now
+  defense/defenses (the menu's eyebrow "A COAST DEFENSE GAME SET IN GOA"). Identifiers, file names, classes, data keys,
+  ids and test ids keep their spelling (defenceCards.ts too); a source's own title, address and summary keep the
+  source's spelling.
+- 39.2 The main screen: one button, Play Panjim, the primary; the Tutorial button is hidden by `SHOW_TUTORIAL_BUTTON`
+  (features.ts; the level and `#/play/l00-tutorial` stay, the walkthrough uses the route). The quote band along the
+  bottom (150 px at 1366x768, the owner's Murakami quote word for word from `src/data/menuQuote.json`, Facts & sources
+  in its corner). CLAUDE.md's menu rule follows the owner decision.
+- 39.3 How to play in place of Play Panjim's start popup (`ui/panjim/howToPlay.ts`): the flow is main screen, Play
+  Panjim, the name card, How to play, "Let's Play!", the game. One card from the level and element data (years,
+  builds, storms with their `where` in levels.json, the turns between them, the leaf chips); "Let's Play!" is Begin
+  (class `brief-cta`, the same handler), focused; Esc does nothing; scaled to the window. The Tutorial keeps its brief.
+- 39.4 The guided start (`core/guide.ts`, `app/guidedStart.ts`, `ui/panjim/guideOverlay.ts`): once per Play Panjim
+  run after "Let's Play!" (not after Restart or a retry, never in the Tutorial), the objective's dune pick then its
+  first pandanus pick, with the dim, the double ring, "Click here", the gold ring and "Pick Dune", the "✓ Dune" chip,
+  Maya's steps (bold line, "Step 1 of 2", "Skip the help") and step 3's dashed objective outline and Got it. Soft: input
+  is never blocked; a wrong build or Skip goes to step 3. Facts after a build wait for it. `__guideForTest` in QA
+  builds; `noguide=1` leaves it out (the QA tools use it).
+- 39.5 Docs, tools/section39Shots.ts (25 checks), test:maya and test:layout, the reviewer's fixes.
+
 ## Section 38 — the last result card with the feedback on it — MERGED (`b1fe260`)
 
 Branch `section-38-last-card` from master `49333a1` (safety copy: `backup/pre-section-38`, same point). QA in

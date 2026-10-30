@@ -163,7 +163,7 @@ describe("no saved progress (Section 28.2)", () => {
       const progress = second.getProgress();
       expect(progress.levels).toEqual({});
       expect(progress.achievements).toEqual([]);
-      expect(menuModel(progress, false).buttons.map((b) => b.label)).toEqual(["Tutorial", "Play Panjim"]);
+      expect(menuModel(progress, false).buttons.map((b) => b.label)).toEqual(["Play Panjim"]);
     } finally {
       vi.unstubAllGlobals();
       vi.resetModules();

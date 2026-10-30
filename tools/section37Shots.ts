@@ -78,7 +78,7 @@ const server = await startDevServer(5238, 120000);
 const executablePath = fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined;
 const browser = await chromium.launch({ args: glArgs(), ...(executablePath ? { executablePath } : {}) });
 try {
-  const { page, stop } = await open(browser, `${server.url}/?qa=1&noname=1#/play/l01-first-rains`);
+  const { page, stop } = await open(browser, `${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`);
   await page.waitForSelector(".brief-cta", { state: "visible", timeout: 60000 });
   await page.waitForTimeout(1200);
   await page.locator(".brief-cta").click();

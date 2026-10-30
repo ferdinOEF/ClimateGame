@@ -105,7 +105,7 @@ export function natureReason(change: number, target: number, byKind: ReadonlyMap
     const worst = kinds.filter(([, v]) => v < 0).sort((a, b) => a[1] - b[1])[0];
     return worst ? `${PLURAL[worst[0]]} cost nature` : "Nature is down";
   }
-  if (change < target) return kinds.some(([, v]) => v > 0) ? `Short of the +${target} three stars need` : "No nature based defences yet";
+  if (change < target) return kinds.some(([, v]) => v > 0) ? `Short of the +${target} three stars need` : "No nature based defenses yet";
   const best = kinds.filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])[0];
   return best ? `${PLURAL[best[0]]} bring nature back` : "Nature is up";
 }

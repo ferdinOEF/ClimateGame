@@ -40,8 +40,8 @@ async function main(): Promise<void> {
     page.on("console", (m) => {
       if (m.type() === "error") errors.push(m.text());
     });
-    await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".brief-card", { timeout: 120000 });
+    await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(3000);
     for (const state of STATES) {

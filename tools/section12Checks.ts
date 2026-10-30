@@ -77,8 +77,8 @@ const text = (page: Page, selector: string): Promise<string> => page.evaluate(`(
 const outline = (page: Page): Promise<number> => page.evaluate("window.__areaOutlineForTest.tileCount") as Promise<number>;
 
 async function open(page: Page, url: string): Promise<void> {
-  await page.goto(`${url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.goto(`${url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForTimeout(1500);
 }
 

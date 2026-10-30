@@ -14,12 +14,14 @@ import { menuModel, type MenuButtonSpec } from "./menuModel";
 import { openSources } from "@ui/sourcesScreen";
 import { menuTagline } from "./runWords";
 import { SHOW_PARTNER_CREDITS } from "@services/features";
+import menuQuote from "@data/menuQuote.json";
 
 /**
  * The title screen — the first thing a player sees.
  *
- * By default it offers two things, "Tutorial" and "Play Panjim", under the
- * title. The rest of the old menu (Play/Continue, the Daily Challenge, the
+ * By default it offers one thing, "Play Panjim", under the title (Section 39.2;
+ * "Tutorial" comes back with `SHOW_TUTORIAL_BUTTON`), and the quote band along
+ * the bottom. The rest of the old menu (Play/Continue, the Daily Challenge, the
  * Leaderboard, the stats tiles and the footer) is behind `SHOW_MENU_EXTRAS`;
  * which buttons appear is decided in `menuModel.ts`.
  */
@@ -32,7 +34,7 @@ export interface MenuActions {
   onSignIn: () => void;
   /** Whether account features exist in this build (`REQUIRE_EMAIL`). Off, the sign-in link and "Signed in as" note are not drawn. */
   showAccount: boolean;
-  /** `SHOW_MENU_EXTRAS`. Off, only "Tutorial" and "Play Panjim" are drawn. */
+  /** `SHOW_MENU_EXTRAS`. Off, only "Play Panjim" (and "Tutorial" with `SHOW_TUTORIAL_BUTTON`) is drawn. */
   showExtras: boolean;
 }
 
@@ -87,7 +89,7 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
           el("div", {
             className: "menu-hero",
             children: [
-              el("div", { className: "menu-eyebrow", text: "A coast defence game set in Goa" }),
+              el("div", { className: "menu-eyebrow", text: "A coast defense game set in Goa" }),
               el("h1", { className: "menu-title", text: "Riptide Rising" }),
               el("p", { className: "menu-tagline", text: menuTagline() })
             ]
@@ -113,15 +115,60 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
   root.appendChild(menuArt());
   root.appendChild(screen);
   // Section 34b.7: the map credit after the buttons in the tab order (Tab then Enter on a fresh menu starts the
-  // Tutorial); it is placed by CSS, so where it shows is unchanged.
+  // game); it is placed by CSS, so where it shows is unchanged.
   root.appendChild(menuArtCredit());
+  // Section 39.2: the quote band along the bottom, after the screen in the flow (the screen's height leaves room for
+  // it, so the card never sits under it).
+  const band = quoteBand();
   // The partner credits are behind `SHOW_PARTNER_CREDITS` (Section 17b, off by default); without them the way to
-  // the Sources screen is a quiet text link in the bottom corner.
+  // the Sources screen is a quiet text link in the band's bottom right corner.
   if (SHOW_PARTNER_CREDITS) {
     const credits = creditsStrip();
     root.appendChild(credits);
     keepCreditsClear(screen, credits);
-  } else root.appendChild(sourcesLink());
+  } else band.appendChild(sourcesLink());
+  root.appendChild(band);
+  keepRoomForBand(root, band);
+}
+
+/** The menu's height leaves room for the band (`--menu-quote-h`): the band grows with its text in a narrow window. */
+function keepRoomForBand(root: HTMLElement, band: HTMLElement): void {
+  const measure = (): void => {
+    if (band.isConnected) root.style.setProperty("--menu-quote-h", `${Math.ceil(band.getBoundingClientRect().height)}px`);
+  };
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(() => {
+      if (!band.isConnected) observer.disconnect();
+      else measure();
+    });
+    observer.observe(band);
+  }
+  measure();
+}
+
+/**
+ * Section 39.2 (owner decision): the quote band, full width along the foot of the main screen. The words come from
+ * src/data/menuQuote.json, word for word with their own punctuation (the owner confirmed they may be used publicly).
+ */
+function quoteBand(): HTMLElement {
+  return el("footer", {
+    className: "menu-quote",
+    children: [
+      el("span", {
+        className: "menu-quote-mark",
+        attrs: { "aria-hidden": "true" },
+        // An opening quote mark, drawn: Zilla Slab's own is two straight strokes.
+        html: '<svg viewBox="0 0 24 24" width="44" height="44"><path fill="currentColor" transform="rotate(180 12 12)" d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>'
+      }),
+      el("figure", {
+        className: "menu-quote-figure",
+        children: [
+          el("blockquote", { className: "menu-quote-text", children: [el("p", { text: menuQuote.text })] }),
+          el("figcaption", { className: "menu-quote-cite", text: `${menuQuote.author}, ${menuQuote.source}` })
+        ]
+      })
+    ]
+  });
 }
 
 /** "Facts & sources", a small text link in the menu's bottom corner (Section 17b): the Sources screen as before. */

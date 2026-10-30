@@ -65,7 +65,7 @@ async function main(): Promise<void> {
     const page = await context.newPage();
     // The video's clock starts with the page.
     const pageStart = Date.now();
-    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-cta", { timeout: 90000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(3000);

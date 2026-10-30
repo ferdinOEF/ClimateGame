@@ -41,7 +41,9 @@ const PAIRS: [string, string, boolean?][] = [
   ["ink-2", "gold-soft"],
   ["warn-ink", "gold-soft"],
   // A badge or chip in --good with light text ("Built", "Stood").
-  ["panel-raised", "good"]
+  ["panel-raised", "good"],
+  // Section 39.3: How to play's "Game rules" chip.
+  ["ink-2", "panel-edge"]
 ];
 const ALLOWED = new Set(PAIRS.map(([t, b]) => `${t}|${b}`));
 
@@ -175,9 +177,9 @@ describe("Section 33.5: every interface colour comes from the tokens", () => {
         const [, prop, value] = m;
         if (!COLOUR_PROPS.test(prop)) continue;
         expect(value.replace(/var\([^)]*\)/g, ""), `${file}: ${prop}: ${value}`).not.toMatch(LITERAL);
-        // Every variable a colour uses is a token; the others are Maya's sizes and the arrival edge's colour (set per
-        // storm by hud.ts, its fallback a token).
-        for (const v of value.matchAll(/var\(--([a-z0-9-]+)/g)) expect(DEFINED.has(v[1]) || /^maya-|^arrival-flash-color$/.test(v[1]), `${file}: ${prop} uses --${v[1]}`).toBe(true);
+        // Every variable a colour uses is a token; the others are Maya's sizes, the arrival edge's colour (set per
+        // storm by hud.ts, its fallback a token) and the guided start's spotlight position (Section 39.4).
+        for (const v of value.matchAll(/var\(--([a-z0-9-]+)/g)) expect(DEFINED.has(v[1]) || /^maya-|^arrival-flash-color$|^guide-[xyr]$/.test(v[1]), `${file}: ${prop} uses --${v[1]}`).toBe(true);
       }
       expect(css).not.toMatch(/--rr-/);
     });

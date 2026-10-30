@@ -1285,7 +1285,7 @@ export class PanjimController {
       if (homes === 0) {
         if (gone) why = "Taken down before this storm";
         else if (broken) why = "Broken before this storm";
-        else if (!targets.includes(storm)) why = `A ${targets.includes("flood") ? "flood" : "cyclone"} defence; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
+        else if (!targets.includes(storm)) why = `A ${targets.includes("flood") ? "flood" : "cyclone"} defense; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
         else if (none.get(step.id) === "safe") why = "Its homes were already safe when you built it";
         else why = "Too far from the homes in this storm's path";
       }
@@ -2403,7 +2403,7 @@ export class PanjimController {
         tip: "Dunes and pandanus shield the homes behind the beach from a cyclone.",
         explains: "A khazan holds floodwater, so nearby homes stay drier.",
         warning: "Taleigao is exposed! Strengthen it before the flood.",
-        worried: "We lost 6 homes at Taleigao. A few more defences there next time and they will stand.",
+        worried: "We lost 6 homes at Taleigao. A few more defenses there next time and they will stand.",
         celebrates: "The mangroves at Taleigao held 40 homes."
       };
       this.maya.dismiss();

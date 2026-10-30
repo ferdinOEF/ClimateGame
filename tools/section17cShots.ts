@@ -27,7 +27,7 @@ async function open(route: string): Promise<Page> {
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(qaUrl(`${server.url}/${route}`), { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 180000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 180000 });
   await page.waitForFunction(`typeof window.__panjimForTest === "object" && window.__panjimForTest !== null`, undefined, { timeout: 180000 });
   await wait(1500);
   return page;

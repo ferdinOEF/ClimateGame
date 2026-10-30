@@ -95,7 +95,8 @@ describe("34b.2: Maya's bubble, and tips one a year", () => {
     const armHide = maya.slice(maya.indexOf("  private armHide("), maya.indexOf("  private shield("));
     expect(armHide).toContain("if (!line.hint) return;");
     expect(maya).toContain("if (line.hint && !this.holdLines) this.armHide(line);");
-    expect(maya).toContain("this.dismissEl.hidden = !!line.hint;");
+    // Section 39.4: a guided step (sticky) has no Got it either.
+    expect(maya).toContain("this.dismissEl.hidden = !!line.hint || !!line.sticky;");
     // The storm's calls, the calm and the replay are the passing lines.
     const controller = readFileSync("src/app/panjimController.ts", "utf8");
     expect(controller.match(/hint: true/g)).toHaveLength(3);
@@ -366,10 +367,10 @@ describe("34b.5: the result cards tell the whole story", () => {
 
   it("a row of the other storm's kind carries the Tutorial's note", () => {
     const flood = card(defencesCard(result(), null, targets, "flood")).text;
-    expect(flood).toContain("Pandanus 0 A cyclone defence; this was a river flood");
+    expect(flood).toContain("Pandanus 0 A cyclone defense; this was a river flood");
     expect(flood).not.toMatch(/Mangrove 6 A /);
-    expect(otherKindNote(targets("khazan"), "cyclone")).toBe("A flood defence; this was a cyclone");
-    expect(otherKindNote(targets("small_dam"), "cyclone")).toBe("A flood defence; this was a cyclone");
+    expect(otherKindNote(targets("khazan"), "cyclone")).toBe("A flood defense; this was a cyclone");
+    expect(otherKindNote(targets("small_dam"), "cyclone")).toBe("A flood defense; this was a cyclone");
     // The 2050 storm is both: no row is the wrong kind.
     expect(otherKindNote(targets("khazan"), "compound")).toBeNull();
   });
@@ -467,7 +468,8 @@ describe("34b.8: Esc only closes what is open", () => {
     const session = readFileSync("src/app/gameSession.ts", "utf8");
     const at = session.indexOf("if (modals.escape() !== \"none\") return;");
     const handler = session.slice(at, session.indexOf("{ signal: keydownAbort.signal }", at));
-    expect(handler).toContain("if (panjim.maya.speaking) panjim.maya.dismiss();");
+    // Section 39.4: a guided step's line (sticky) stays; it has Skip the help.
+    expect(handler).toContain("if (panjim.maya.speaking && !panjim.maya.currentLine?.sticky) panjim.maya.dismiss();");
     expect(handler).not.toContain("askLeave(");
     // ☰'s Leave still asks.
     expect(session).toContain("requestLeave: () => askLeave(true),");
@@ -694,7 +696,8 @@ describe("owner, 28 October: Maya's bubble steps aside for an open build menu or
     expect(maya).toContain("if (this.current || this.muted || this.minimised || this.tucked) return false;");
     expect(maya).toContain("if (this.minimised || this.tucked || !this.current) return;");
     const session = readFileSync("src/app/gameSession.ts", "utf8");
-    expect(session).toContain('panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:"));');
+    // Section 39.4: nor while the guided start runs (its lines are about the menu).
+    expect(session).toContain('panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:") && !guide?.active);');
     // The Tutorial's coaching lines are about the open menu: they speak over it (review, MAJOR).
     expect(readFileSync("src/app/panjimController.ts", "utf8")).toContain("    this.maya.setTucked(false);\n    this.maya.next();");
     expect(session).not.toContain("if (panjim?.maya.speaking) panjim.maya.dismiss();\n    openTilePopover(coord);");

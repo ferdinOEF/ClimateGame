@@ -48,6 +48,19 @@
   --hud-shadow: rgba(20, 45, 42, 0.22);
   /* Section 35.2: the Points box's border (the same calm and storm; a border, never text or a background). */
   --gold: #b8892b;
+  /* Section 39.2: the main screen's quote band (the same calm and storm). */
+  --quote-band: rgba(20, 45, 42, 0.92);
+  --quote-ink: #f6edd9;
+  --quote-cite: #d9e7e2;
+  /* Section 39.3: How to play's icon circles and its dimmed map; Section 39.4: the guided start's dim. */
+  --icon-cyclone: #b3392a;
+  --icon-flood: #1f5a75;
+  --icon-wind: #5d6f6a;
+  --icon-nature-soft: #e3f0e6;
+  --icon-both: #7d1f1c;
+  --icon-alert: #f2c230;
+  --howto-dim: rgba(16, 32, 29, 0.55);
+  --guide-dim: rgba(16, 32, 28, 0.5);
 
   /*
    * Fixed: not Harbour Morning. Colours that belong to the map, the storm and the forecast cone (CLAUDE.md: they do

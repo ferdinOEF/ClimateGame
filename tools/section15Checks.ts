@@ -135,7 +135,7 @@ try {
 
     // --- Help (from inside the Tutorial, where the ? button is) -------------
     await page.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".brief-card", { timeout: 60000 });
+    await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
     await page.waitForTimeout(800);
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(800);

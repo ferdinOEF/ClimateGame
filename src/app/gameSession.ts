@@ -27,6 +27,8 @@ import { KhazanPeople } from "@render/khazanPeople";
 import { ObjectivePulse } from "@render/objectivePulse";
 import { nextPulseTile } from "@core/keyboardTiles";
 import { IdleReset, watchIdle } from "./idleReset";
+import { GuidedStart } from "./guidedStart";
+import { guideShouldRun, guideTiles } from "@core/guide";
 import { CARD_LINES, CARD_NAME, TUTORIAL_CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
@@ -52,7 +54,7 @@ import { TutorialCoach } from "@ui/tutorialCoach";
 import { MapLabelLayer, labelsForMap } from "@ui/mapLabels";
 import { RiskIntroFx, type ScreenPolygon } from "@ui/riskIntroFx";
 import { MapAttribution } from "@ui/attribution";
-import { qaHooksOn } from "@services/features";
+import { qaHooksOn, SHOW_MAYA } from "@services/features";
 import { TILE_NOTES } from "@ui/panjim/defenceCards";
 import { MapLayerControl } from "@ui/mapLayerControl";
 import { HeatOverlay } from "@render/heatOverlay";
@@ -128,6 +130,8 @@ export interface GameSessionOptions {
   onRestart?: () => void;
   /** Section 30.12: 3 minutes with no input (not in a storm): back to the menu. Absent: leaves as onExit. */
   onIdle?: () => void;
+  /** Section 39.4: started by Restart (☰ Start again, the last card's Play again): no guided start. */
+  restarted?: boolean;
 }
 
 export interface GameSessionHandle {
@@ -840,6 +844,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * to make the next move.
    */
   const objectivesPanel = new ObjectivesPanel(container, level, levelMap);
+  /** Section 39.4: the guided start, from "Let's Play!" until its last bubble's Got it (null when it is not running). */
+  let guide: GuidedStart | null = null;
+  /** The tile the build menu was last opened on, for the guide. */
+  let guideMenuKey: string | null = null;
+  /** The facts of builds made while the guide ran: Maya says them when it ends. */
+  const guideFacts: string[] = [];
   // Section 35.3: Play Panjim (never the Tutorial) opens on the name card, before its start popup. The name is kept in
   // memory for this run only (services/playerName.ts).
   // `noname=1` (the QA tools, with the test hooks on only) opens on the start popup as before.
@@ -1048,7 +1058,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
           landmarks: levelMap.landmarks,
           localities: levelMap.localities,
           monuments: levelMap.monuments.map((m) => ({ name: m.name, q: m.q, r: m.r, kind: m.kind })),
-          uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen,
+          // Section 39.4: Maya's own lines (her first line, the facts after a build) wait while the guided start runs.
+          uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen || Boolean(guide?.active),
           playerName: () => getPlayerName(),
           setPlayerName: (name) => setPlayerName(name),
           requestLeave: () => askLeave(true),
@@ -1276,6 +1287,48 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    */
   // Maya says the fact (nuggetPopup.ts). Not in the Tutorial (Section 15): her coaching lines are its one voice.
   const nuggetPopup = panjim?.nuggets ?? null;
+
+  /** A tile's centre and radius on screen, in container pixels (projected as `riskHexes` does); null behind the camera. */
+  const projectTile = (coord: AxialCoord): { x: number; y: number; r: number } | null => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    const box = container.getBoundingClientRect();
+    const centre = axialToWorld(coord, 1.0);
+    const y = terrain.heightAt(coord) + 0.06;
+    const v = new THREE.Vector3(centre.x, y, centre.z).project(camera);
+    if (v.z > 1) return null;
+    const x = ((v.x + 1) / 2) * rect.width + rect.left - box.left;
+    const sy = ((-v.y + 1) / 2) * rect.height + rect.top - box.top;
+    // The radius from a point one tile radius away, across the screen.
+    const w = new THREE.Vector3(centre.x + 1.0, y, centre.z).project(camera);
+    const r = Math.hypot(((w.x - v.x) / 2) * rect.width, ((w.y - v.y) / 2) * rect.height);
+    return { x, y: sy, r };
+  };
+  /**
+   * Section 39.4 (owner decision): the guided start, once per Play Panjim run, right after "Let's Play!" in the first
+   * year with no builds; never after Restart or a retry, never in the Tutorial, and not without Maya (she gives it).
+   * `noguide=1` (the QA tools, with the test hooks on only) leaves it out.
+   */
+  objectivesPanel.onBriefClosed = () => {
+    // Muted (M) or minimised, she cannot give it: her first line waits as before.
+    if (!panjim || disposed || guide || !SHOW_MAYA || panjim.maya.isMuted || panjim.maya.isMinimised) return;
+    if (qaHooks && new URLSearchParams(window.location.search).has("noguide")) return;
+    const run = panjim.run;
+    if (!guideShouldRun({ tutorial: panjim.tutorial, restarted: options.restarted === true, turnNumber: run.turnNumber, builds: run.buildLog.length })) return;
+    const tiles = guideTiles(run.objective?.picks ?? []);
+    if (!tiles) return;
+    guide = new GuidedStart(tiles[0], tiles[1], {
+      container,
+      maya: panjim.maya,
+      projectTile,
+      storm: () => {
+        const next = run.nextChallenge();
+        return { year: next?.year ?? run.year, builds: next ? run.buildsUntil(next) : 0 };
+      },
+      onEnd: () => {
+        for (const id of guideFacts.splice(0)) nuggetPopup?.show(id);
+      }
+    });
+  };
   /**
    * STEP_PROMPT_hazard_mechanics_fixes.md Bug 3: the same category of tool
    * as `devAutoBuild`/`?coinboost`/`?resilienceboost` — testing-only, not
@@ -2587,7 +2640,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
         note:
           panjim && def.kind === "building" && built.degradeAmount >= 1
-            ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only."
+            ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defenses only."
             : panjim && def.kind === "building"
               ? TILE_NOTES.home
             : panjim && isCracked(def, built, state.turn)
@@ -2653,8 +2706,13 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         controller.buildCards(coord),
         (id) => {
           if (!controller.build(coord, id)) return;
-          // The Tutorial's Maya has her own lines for each build (Section 15): no fact pops over them.
-          if (!controller.stormComing && !controller.tutorial) nuggetPopup?.show(id);
+          guide?.built(key, id);
+          // The Tutorial's Maya has her own lines for each build (Section 15): no fact pops over them. Section 39.4: while
+          // the guided start runs, the fact waits for it to end.
+          if (!controller.stormComing && !controller.tutorial) {
+            if (guide?.active) guideFacts.push(id);
+            else nuggetPopup?.show(id);
+          }
           playBuildSound(id);
         },
         // The year chip first (never covered), then the rest of the HUD.
@@ -2672,6 +2730,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         }
       );
       controller.cardsOpened(coord);
+      guideMenuKey = key;
       return;
     }
 
@@ -2974,7 +3033,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // Section 34b.8: on Panjim and the Tutorial, with nothing else open, Esc closes Maya's line if she is speaking,
       // and otherwise does nothing (at a festival a stray key landed on "Leave Panjim?"; Leave is in ☰ only).
       if (panjim) {
-        if (panjim.maya.speaking) panjim.maya.dismiss();
+        // Section 39.4: not a guided step's line (it has Skip the help instead).
+        if (panjim.maya.speaking && !panjim.maya.currentLine?.sticky) panjim.maya.dismiss();
         return;
       }
       // The old levels: with nothing open, Esc is the "get me out of here" key.
@@ -3082,7 +3142,12 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     riskIntro.frame(nowMs);
     // Section 34b (owner, 28 October): Maya's bubble steps aside while a build menu or tile card is open, except for
     // the Tutorial's coaching lines, which are about that very menu (the cards, the glowing one) and stand clear of it.
-    panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:"));
+    // Section 39.4: nor for the guided start's lines, which are about the menu too.
+    panjim?.maya.setTucked(buildPopover.isOpen && !panjim.maya.currentLine?.id.startsWith("tutorial:") && !guide?.active);
+    if (guide?.active) {
+      guide.menu(buildPopover.isOpen && container.querySelector(".build-popover .build-card") ? guideMenuKey : null);
+      guide.frame();
+    }
     // Section 34b.3: a camera move held while a build menu or tile card was open, made as it closes; Section 37.5: and
     // while the pointer was moving on the board, once it has been still for 1.5 s (or left the board).
     if (pendingCameraMove && !buildPopover.isOpen && !pointerChoosing(nowMs) && !stormDirector?.playing) {
@@ -3184,6 +3249,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     __areaOutlineForTest: areaOutline,
     // Panjim 2050 only: the live controller and its screenshot scenarios.
     __panjimForTest: panjim,
+    // Section 39.4: the guided start's step ("none" when it is not running) and its Skip.
+    __guideForTest: { step: () => (guide?.active ? guide.step : "none"), skip: () => guide?.skip() },
     __audioForTest: audioStateForTest,
     __stormForTest: {
       /** Holds the storm at a storm time (null lets it run). */
@@ -3460,6 +3527,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     leaveConfirm?.dispose();
     mapPins.dispose();
     areaOutline.dispose();
+    guide?.dispose();
+    objectivesPanel.dispose();
     panjim?.dispose();
     stormReport.dispose();
     mapLabels.dispose();

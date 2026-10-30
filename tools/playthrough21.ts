@@ -96,7 +96,7 @@ async function textAndLayout(page: Page, where: string): Promise<void> {
 }
 
 const ready = async (page: Page): Promise<void> => {
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 180000 });
   await page.waitForTimeout(1200);
 };
@@ -197,7 +197,7 @@ async function playStyle(style: string): Promise<void> {
       /* blocked */
     }
   });
-  await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await ready(page);
   await begin(page);
   let ruins = 0;
@@ -343,7 +343,7 @@ if (named.get("landing") !== "0") {
   check((await year(page)) === 2026, "after a reload the run starts at 2026");
   // Two tabs: each its own run.
   const second = await newPage(context);
-  await second.page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await second.page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await ready(second.page);
   await begin(second.page, "Begin");
   const t2 = (await second.page.evaluate("window.__panjimForTest.firstBuildable('dune')")) as { q: number; r: number };

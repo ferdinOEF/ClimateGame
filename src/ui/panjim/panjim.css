@@ -1392,6 +1392,56 @@
   margin: 2px 0 max(5px, calc(8px * var(--maya-scale)));
 }
 
+/* Section 39.4: the guided start's bold instruction, and its footer (two dots, "Step 1 of 2", "Skip the help"). */
+.maya-bold {
+  margin: 0 0 max(5px, calc(8px * var(--maya-scale)));
+  font-weight: 700;
+}
+
+.maya-bold[hidden],
+.maya-steps[hidden] {
+  display: none;
+}
+
+.maya-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding-top: max(5px, calc(7px * var(--maya-scale)));
+  border-top: 1.5px dashed var(--stitch);
+  font-size: max(12px, calc(12.5px * var(--maya-scale)));
+  color: var(--ink-2);
+}
+
+.maya-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.maya-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--panel-shadow);
+}
+
+.maya-dots i.on {
+  background: var(--accent-ink);
+}
+
+.maya-skip {
+  margin-left: auto;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 /* A discovery's footer: the running count, "Game rule" for a rule of this game, a Source button. Quiet, but never under 12 px. */
 .maya-fact {
   display: flex;
@@ -3625,18 +3675,18 @@
  * Section 33b.2: ☰ lives in the HUD card, under the popup's overlay with the rest of the card; while the popup is
  * open the card stops being a layer of its own and ☰ alone stands where it stood before, top right, over the overlay.
  */
-.has-panjim-clock:has(.brief-backdrop:not([hidden])) .panjim-clock {
+.has-panjim-clock:has(.brief-backdrop:not([hidden]):not(.howto-showing)) .panjim-clock {
   z-index: auto;
 }
 
-.has-panjim-clock:has(.brief-backdrop:not([hidden])) .panjim-clock .hud-panel-settings {
+.has-panjim-clock:has(.brief-backdrop:not([hidden]):not(.howto-showing)) .panjim-clock .hud-panel-settings {
   position: fixed;
   top: calc(12px + env(safe-area-inset-top));
   right: calc(12px + env(safe-area-inset-right));
   z-index: 56;
 }
 
-.has-panjim-clock:has(.brief-backdrop:not([hidden])) .panjim-clock .hud-panel-settings .hud-panel-body {
+.has-panjim-clock:has(.brief-backdrop:not([hidden]):not(.howto-showing)) .panjim-clock .hud-panel-settings .hud-panel-body {
   left: auto;
   right: 0;
 }
@@ -4650,4 +4700,588 @@
   font-weight: 700;
   font-size: inherit;
   cursor: pointer;
+}
+
+/* ---- Section 39.3: How to play, in place of Play Panjim's start popup (mock 2) ---------------------------------- */
+/*
+ * One card drawn at 1286 x 708 (1366x768 less a 40 x 30 px margin) and scaled to the window (--howto-scale, set by
+ * howToPlay.ts), so it fits without scrolling at 1280x720 and grows on larger screens.
+ */
+.brief-backdrop.howto-backdrop {
+  background: var(--howto-dim);
+  padding: 0;
+  overflow: hidden;
+}
+
+.howto-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.howto-stage[hidden] {
+  display: none;
+}
+
+.howto-card {
+  flex: none;
+  box-sizing: border-box;
+  width: 1286px;
+  height: 708px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 20px;
+  box-shadow: 0 6px 0 var(--panel-shadow);
+  overflow: hidden;
+  transform: scale(var(--howto-scale, 1));
+  transform-origin: center;
+  text-align: left;
+}
+
+.howto-band {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: var(--band);
+  color: var(--band-ink);
+  font: 700 12px/1.3 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.howto-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 24px 18px;
+}
+
+.howto-title {
+  margin: 0 0 2px;
+  font: 700 28px/1.2 var(--font-head);
+  color: var(--ink);
+}
+
+.howto-title .result-rule {
+  display: inline-block;
+  vertical-align: middle;
+  margin: -4px 0 0 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--panel-edge);
+  color: var(--ink-2);
+  font: 600 12px/1.3 var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.howto-row {
+  display: grid;
+  gap: 16px;
+}
+
+.howto-row-1 {
+  grid-template-columns: 540px 1fr;
+  height: 158px;
+}
+
+.howto-row-3 {
+  grid-template-columns: 915px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.howto-box {
+  box-sizing: border-box;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px 12px;
+  border: 1.5px solid var(--panel-edge);
+  border-radius: 14px;
+  background: var(--panel-raised);
+}
+
+.howto-box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.howto-box-head h3 {
+  margin: 0;
+  font: 700 11.5px/1.3 var(--font-body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.howto-box-note {
+  font: 600 12.5px/1.3 var(--font-body);
+  color: var(--ink-2);
+}
+
+/* Each year: three pictures with chevrons between them. */
+.howto-steps {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.howto-step {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.howto-step-art {
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.howto-step figcaption {
+  font: 600 13px/1.3 var(--font-body);
+  color: var(--ink);
+}
+
+.howto-chevron {
+  color: var(--panel-shadow);
+}
+
+.howto-hex-glow {
+  fill: none;
+  stroke: var(--cta);
+  stroke-width: 3;
+  opacity: 0.5;
+}
+
+.howto-hex {
+  fill: var(--gold-soft);
+  stroke: var(--cta);
+  stroke-width: 2.5;
+}
+
+.howto-pointer {
+  fill: var(--ink);
+  stroke: var(--panel-raised);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.howto-mini-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 2px solid var(--accent-ink);
+  border-radius: 10px;
+  background: var(--button);
+}
+
+.howto-mini-icon {
+  line-height: 0;
+}
+
+.howto-mini-icon svg {
+  border-radius: 7px;
+}
+
+.howto-mini-name {
+  font: 700 15px/1 var(--font-head);
+  color: var(--ink);
+}
+
+.howto-years {
+  gap: 6px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.howto-year-from {
+  font-size: 20px;
+  color: var(--ink-3);
+}
+
+.howto-year-to {
+  font-size: 26px;
+}
+
+/* Read the map: two pictures, each with its words beside it. */
+.howto-pictures {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 16px;
+}
+
+.howto-picture {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.howto-picture img {
+  display: block;
+  width: 150px;
+  height: 104px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px var(--panel-raised), 0 2px 6px var(--hud-shadow);
+}
+
+.howto-picture figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 140px;
+  font: 400 12.5px/1.35 var(--font-body);
+  color: var(--ink-2);
+}
+
+.howto-picture figcaption b {
+  font: 700 15px/1.2 var(--font-head);
+  color: var(--ink);
+}
+
+/* Know these icons: three tiles and the wide Biodiversity one. */
+.howto-icons {
+  height: 190px;
+}
+
+.howto-tiles {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1.9fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.howto-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  border: 1.5px solid var(--panel-edge);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.howto-tile > b {
+  font: 700 19px/1.2 var(--font-head);
+  color: var(--ink);
+  margin-top: 4px;
+}
+
+.howto-tile > span:last-child {
+  font: 400 12.5px/1.35 var(--font-body);
+  color: var(--ink-2);
+}
+
+.howto-icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--panel-raised);
+  flex: none;
+}
+
+.howto-icon-cyclone { background: var(--icon-cyclone); }
+.howto-icon-flood { background: var(--icon-flood); }
+.howto-icon-wind { background: var(--icon-wind); }
+.howto-icon-nature { background: var(--good); }
+
+.howto-tile-nature {
+  flex-direction: row;
+  gap: 18px;
+  padding: 10px 20px;
+  background: var(--icon-nature-soft);
+  border-color: var(--button-border);
+  text-align: left;
+}
+
+.howto-nature-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.howto-nature-head b {
+  font: 700 19px/1.2 var(--font-head);
+  color: var(--ink);
+}
+
+.howto-chips {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.howto-nature-text p {
+  margin: 4px 0 0;
+  font: 400 12.5px/1.45 var(--font-body);
+  color: var(--ink-2);
+}
+
+.howto-nature-text p b {
+  color: var(--ink);
+}
+
+/* Three storms: the timeline from the start to each storm, the gaps in turns. */
+.howto-timeline {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0 12px;
+  display: grid;
+  grid-template-columns: 0.6fr 1fr 1fr 1fr;
+  align-items: start;
+  position: relative;
+  align-content: center;
+}
+
+.howto-timeline::before {
+  content: "";
+  position: absolute;
+  left: 52px;
+  right: 110px;
+  top: calc(50% - 26px);
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panel-shadow);
+}
+
+.howto-storm {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.howto-start {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.howto-start-dot {
+  width: 14px;
+  height: 14px;
+  margin: 15px 0 21px;
+  border-radius: 50%;
+  background: var(--accent-ink);
+}
+
+.howto-gap {
+  position: absolute;
+  top: -26px;
+  right: calc(50% + 40px);
+  width: 140px;
+  text-align: center;
+  font: 600 12.5px/1.3 var(--font-body);
+  color: var(--ink-2);
+}
+
+.howto-storm-icon {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--panel-raised);
+}
+
+.howto-storm-cyclone .howto-storm-icon {
+  background: var(--icon-cyclone);
+}
+
+.howto-storm-flood .howto-storm-icon {
+  background: var(--icon-flood);
+}
+
+.howto-storm-compound .howto-storm-icon {
+  background: var(--icon-both);
+}
+
+/* The red danger glow: two rings round every storm. */
+.howto-storm-icon {
+  box-shadow:
+    0 0 0 3px var(--panel-raised),
+    0 0 0 6px color-mix(in srgb, var(--icon-cyclone) 35%, transparent),
+    0 0 14px 8px color-mix(in srgb, var(--icon-cyclone) 22%, transparent);
+}
+
+.howto-alert {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+}
+
+.howto-alert-fill {
+  fill: var(--icon-alert);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+.howto-alert-mark {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.howto-storm-year {
+  font: 700 16px/1.25 var(--font-head);
+  color: var(--ink);
+}
+
+.howto-storm-where {
+  font: 400 12.5px/1.35 var(--font-body);
+  color: var(--ink-2);
+}
+
+/* Let's Play!: the game's orange, 300 x 64. */
+.howto-cta-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brief-cta.howto-cta {
+  width: 300px;
+  height: 64px;
+  padding: 0;
+  font: 800 22px/1 var(--font-body);
+  letter-spacing: 0;
+}
+
+/* ---- Section 39.4: the guided start (mocks 3 to 7) ---------------------------------------------------------------- */
+/*
+ * Over the board and its labels, under the HUD card (10), Maya (12) and the build menu (20); it never takes a click
+ * (the guide is soft). The dim has a soft circle cut round the glowing tile.
+ */
+.guide-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+}
+
+.guide-layer [hidden] {
+  display: none;
+}
+
+.guide-dim {
+  position: absolute;
+  inset: 0;
+  background: var(--guide-dim);
+  -webkit-mask-image: radial-gradient(circle at var(--guide-x, 50%) var(--guide-y, 50%), transparent calc(var(--guide-r, 60px) * 0.62), var(--ink) var(--guide-r, 60px));
+  mask-image: radial-gradient(circle at var(--guide-x, 50%) var(--guide-y, 50%), transparent calc(var(--guide-r, 60px) * 0.62), var(--ink) var(--guide-r, 60px));
+}
+
+.guide-dim.no-hole {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* A double ring round the tile. */
+.guide-ring {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3px solid var(--panel-raised);
+  box-shadow: 0 0 12px 2px color-mix(in srgb, var(--cta) 70%, transparent), inset 0 0 10px color-mix(in srgb, var(--cta) 50%, transparent);
+  animation: guide-ring 1.6s ease-in-out infinite;
+}
+
+.guide-ring::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--panel-raised) 75%, transparent);
+}
+
+@keyframes guide-ring {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+/* "Click here" and "Pick Dune": orange tags, their arrow pointing right at the tile or the card. */
+.guide-tag {
+  position: absolute;
+  transform: translate(-100%, -50%);
+  margin-left: -10px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  background: var(--cta);
+  color: var(--cta-ink);
+  box-shadow: 0 3px 0 var(--cta-shadow);
+  font: 700 15px/1.2 var(--font-body);
+  white-space: nowrap;
+}
+
+.guide-tag::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  margin-top: -9px;
+  border-style: solid;
+  border-width: 9px 0 9px 10px;
+  border-color: transparent transparent transparent var(--cta);
+}
+
+/* "✓ Dune" on the built dune. */
+.guide-chip {
+  position: absolute;
+  transform: translate(-50%, -170%);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--good);
+  color: var(--panel-raised);
+  font: 700 12px/1.3 var(--font-body);
+  white-space: nowrap;
+}
+
+/* The card to pick: a gold ring (an outline: the objective card's own pulse animates its shadow). */
+.build-popover .build-card.guide-pick {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+/* While the guide runs the bottom banner is hidden; at step 3 a dashed orange outline marks the objective's rows. */
+.has-panjim-clock.guide-running .empty-prompt {
+  display: none;
+}
+
+.has-panjim-clock.guide-step-3 .clock-objective {
+  outline: 2px dashed var(--cta);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-ring {
+    animation: none;
+  }
 }

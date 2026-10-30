@@ -121,7 +121,7 @@ async function main(): Promise<void> {
 
       // --- Play Panjim: straight to the game view, its start popup open -----
       await page.locator(".menu-actions button", { hasText: "Play Panjim" }).click();
-      await page.waitForSelector(".brief-card", { timeout: 120000 });
+      await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
       await page.waitForTimeout(1500);
       const first = (await page.evaluate(`({
         url: location.hash,
@@ -191,7 +191,7 @@ async function main(): Promise<void> {
         await page.goto(qaUrl(server.url), { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".menu-screen", { timeout: 120000 });
         await page.locator(".menu-actions button", { hasText: "Play Panjim" }).click();
-        await page.waitForSelector(".brief-card", { timeout: 120000 });
+        await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
         await page.waitForTimeout(1500);
         const ctas = (await page.locator(".brief-cta").allTextContents()).map((t) => t.trim());
         check(JSON.stringify(ctas) === JSON.stringify(["Begin"]), `after a run Play Panjim offers Begin only (Section 28.2) ${ctas.join(", ")}`);

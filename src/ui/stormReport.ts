@@ -92,7 +92,7 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
 
   if (data.buildingsDamaged > 0 && living > 0) {
     return {
-      headline: "Your living defences helped, but the belt is too thin",
+      headline: "Your living defenses helped, but the belt is too thin",
       body:
         `Roots took ${percent(living)} out of this wave. The rest came through the gaps. ` +
         "In this game, a deeper belt absorbs more, and a grown one far more than a young one."
@@ -103,7 +103,7 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
     return {
       headline: "The living coast did most of the work",
       body:
-        `Your living defences absorbed ${percent(living)} of this surge, ` +
+        `Your living defenses absorbed ${percent(living)} of this surge, ` +
         "and in this game they are still standing for the next one."
     };
   }
@@ -112,7 +112,7 @@ function takeaway(data: StormReportData): { headline: string; body: string } {
     return {
       headline: "Concrete held this one",
       body:
-        `Built defences took ${percent(engineered)} out of the wave. ` +
+        `Built defenses took ${percent(engineered)} out of the wave. ` +
         "Watch what happens when a storm arrives bigger than the wall was built for."
     };
   }
@@ -208,7 +208,7 @@ export class StormReport {
       costs.push(`${data.buildingsDamaged} building${data.buildingsDamaged === 1 ? "" : "s"} damaged`);
     }
     if (data.defencesLost > 0) {
-      costs.push(`${data.defencesLost} defence${data.defencesLost === 1 ? "" : "s"} destroyed`);
+      costs.push(`${data.defencesLost} defense${data.defencesLost === 1 ? "" : "s"} destroyed`);
     }
     if (data.defencesOverwhelmed > 0) {
       costs.push(`${data.defencesOverwhelmed} overwhelmed but still standing`);

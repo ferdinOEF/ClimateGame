@@ -18024,6 +18024,7 @@ var levels_default = [
           name: "Cyclone",
           kind: "cyclone",
           year: 2030,
+          where: "Miramar beach",
           strength: 1.2,
           landfall: "-5,18",
           wind: { perStrengthM: 1, inlandKeep: 0.8 }
@@ -18033,6 +18034,7 @@ var levels_default = [
           name: "Monsoon flood",
           kind: "flood",
           year: 2040,
+          where: "down the Mandovi",
           strength: 2.35
         },
         {
@@ -18040,6 +18042,7 @@ var levels_default = [
           name: "Cyclone and flood",
           kind: "compound",
           year: 2050,
+          where: "cyclone and flood, Campal",
           strength: 3,
           landfall: "2,12",
           wind: { perStrengthM: 0.6, inlandKeep: 0.8, compoundShare: 1.1 },

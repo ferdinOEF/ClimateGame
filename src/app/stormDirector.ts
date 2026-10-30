@@ -227,7 +227,7 @@ export class StormDirector {
     return [
       { t: 4, name: "Storm and rain", line: "The storm is closing in and the rain has started upstream. Two fronts at once." },
       { t: landfall + 2, name: "Pincer", line: "The surge is pushing against the swollen river. Here the water cannot drain, so the river mouth backs up!" },
-      { t: field.duration - 11, name: "Recede", line: "Both fronts are easing. Count the homes your defences held." }
+      { t: field.duration - 11, name: "Recede", line: "Both fronts are easing. Count the homes your defenses held." }
     ];
   }
 

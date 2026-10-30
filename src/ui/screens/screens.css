@@ -1474,3 +1474,77 @@
     display: block;
   }
 }
+
+/* --- Section 39.2: the quote band along the foot of the main screen ---- */
+/*
+  Full width, 150 px tall at 1366x768 and taller when its text wraps. It sits
+  after the menu in the flow; the menu's height leaves room for it
+  (--menu-quote-h, measured in menuScreen.ts), so the card never sits under it.
+  "Facts & sources" is in its bottom right corner.
+*/
+.menu-screen {
+  min-height: calc(100% - var(--menu-quote-h, 150px));
+}
+
+.menu-quote {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  padding: 20px 160px 20px 48px;
+  background: var(--quote-band);
+  border-top: 3px solid var(--cta);
+  text-align: left;
+}
+
+.menu-quote-mark {
+  flex: none;
+  align-self: flex-start;
+  display: flex;
+  color: var(--cta);
+}
+
+.menu-quote-figure {
+  margin: 0;
+  max-width: 1080px;
+}
+
+.menu-quote-text {
+  margin: 0;
+}
+
+.menu-quote-text p {
+  margin: 0;
+  font-family: var(--font-head);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--quote-ink);
+}
+
+.menu-quote-cite {
+  margin-top: 10px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--quote-cite);
+}
+
+.menu-quote .menu-sources-link {
+  right: 24px;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 899px) {
+  .menu-quote {
+    gap: 16px;
+    padding: 16px 20px 44px;
+  }
+  .menu-quote-mark svg {
+    width: 32px;
+    height: 32px;
+  }
+}

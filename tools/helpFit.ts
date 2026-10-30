@@ -12,8 +12,8 @@ const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-b
 let failures = 0;
 for (const [w, h] of sizes) {
   const page = await browser.newPage({ viewport: { width: w, height: h } });
-  await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.locator(".brief-cta", { hasText: "Begin" }).first().click();
   await page.waitForTimeout(2500);
   await page.locator(".help-button").click();

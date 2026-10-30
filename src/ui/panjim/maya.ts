@@ -65,6 +65,14 @@ export interface MayaLine {
    * waits behind a warning but goes ahead of ordinary tips.
    */
   fact?: { id: string; credit?: string; progress: () => string };
+  /** Section 39.4: a second line in bold, under the text ("Click the glowing tile."). */
+  bold?: string;
+  /** Section 39.4: the guided start's footer: dots, "Step 1 of 2" and "Skip the help". */
+  steps?: { at: number; of: number; onSkip: () => void };
+  /** Section 39.4: no Got it and no timer; it stays until it is replaced (the guided start's steps). */
+  sticky?: boolean;
+  /** Section 39.4: runs when the line closes (Got it, a build, a storm, a newer line). */
+  onDismiss?: () => void;
 }
 
 /** Her HUD figure: head to boots, filling her box (whose size, in whole pixels, is set from MAYA_SCALE and the screen's tier). */
@@ -134,6 +142,8 @@ export const HUD_OBSTACLES = [
   ".field-guide-card",
   ".result-cards",
   ".brief-card",
+  // Section 39.3: How to play, in the start popup's place.
+  ".howto-card",
   ".replay-card",
   // Section 16 B6: a note beside a tile (Section 30.11: broken or cracked with age).
   ".map-note.beside",
@@ -151,6 +161,8 @@ export class Maya {
   private readonly ruleEl: HTMLElement;
   private readonly sourceEl: HTMLButtonElement;
   private readonly dismissEl: HTMLButtonElement;
+  private readonly boldEl: HTMLElement;
+  private readonly stepsEl: HTMLElement;
   private readonly badge: HTMLButtonElement;
   private readonly queue: MayaLine[] = [];
   /** Lines already spoken this session, by id. */
@@ -204,12 +216,18 @@ export class Maya {
       <div class="maya-bubble side-right" role="status" aria-live="polite" hidden>
         <span class="maya-name">Maya</span>
         <p class="maya-text"></p>
+        <p class="maya-bold" hidden></p>
         <div class="maya-fact" hidden>
           <span class="maya-count"></span>
           <span class="maya-rule" hidden>Game rule</span>
           <button type="button" class="maya-source" hidden>Source</button>
         </div>
         <button type="button" class="maya-dismiss">Got it</button>
+        <div class="maya-steps" hidden>
+          <span class="maya-dots" aria-hidden="true"></span>
+          <span class="maya-step"></span>
+          <button type="button" class="maya-skip">Skip the help</button>
+        </div>
       </div>
       <button type="button" class="maya-badge" aria-label="Show Maya" hidden>
         <img class="maya-badge-face" src="${headUrl()}" width="44" height="44" alt="" draggable="false">
@@ -217,6 +235,12 @@ export class Maya {
     this.figure = this.el.querySelector(".maya-figure-wrap")!;
     this.bubble = this.el.querySelector(".maya-bubble")!;
     this.textEl = this.el.querySelector(".maya-text")!;
+    this.boldEl = this.el.querySelector(".maya-bold")!;
+    this.stepsEl = this.el.querySelector(".maya-steps")!;
+    this.el.querySelector(".maya-skip")!.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.current?.steps?.onSkip();
+    });
     this.factEl = this.el.querySelector(".maya-fact")!;
     this.countEl = this.el.querySelector(".maya-count")!;
     this.ruleEl = this.el.querySelector(".maya-rule")!;
@@ -413,19 +437,33 @@ export class Maya {
     this.current = line;
     this.spoken.add(line.id);
     this.textEl.textContent = line.text;
+    this.boldEl.textContent = line.bold ?? "";
+    this.boldEl.hidden = !line.bold;
+    this.renderSteps(line);
     this.bubble.hidden = false;
     this.el.classList.add("talking");
     this.el.classList.toggle("has-pending", this.queue.length > 0);
     this.setState(line.state);
     line.onShow?.();
     this.renderFact(line);
-    // Section 34b.2: Got it on every line but a passing one; only a passing line closes on a timer.
-    this.dismissEl.hidden = !!line.hint;
+    // Section 34b.2: Got it on every line but a passing one; only a passing line closes on a timer. Section 39.4: a
+    // guided step (sticky) has no Got it either, and no timer.
+    this.dismissEl.hidden = !!line.hint || !!line.sticky;
     window.clearTimeout(this.hideTimer);
     this.holding = false;
     if (line.hint && !this.holdLines) this.armHide(line);
     this.onSpoken?.(line);
     this.layout();
+  }
+
+  /** Section 39.4: the guided start's footer (a dot per step, the step's own filled), or nothing. */
+  private renderSteps(line: MayaLine): void {
+    const steps = line.steps;
+    this.stepsEl.hidden = !steps;
+    if (!steps) return;
+    const dots = this.stepsEl.querySelector(".maya-dots")!;
+    dots.innerHTML = Array.from({ length: steps.of }, (_, i) => `<i class="${i + 1 === steps.at ? "on" : ""}"></i>`).join("");
+    this.stepsEl.querySelector(".maya-step")!.textContent = `Step ${steps.at} of ${steps.of}`;
   }
 
   /** The footer under a discovery or a rule: its count, "Game rule", a Source button. Nothing for an ordinary line. */
@@ -474,6 +512,7 @@ export class Maya {
     window.clearTimeout(this.hideTimer);
     if (!this.current) return;
     if (byItself) this.shield();
+    const closed = this.current;
     this.current = null;
     this.bubble.hidden = true;
     this.el.classList.remove("talking");
@@ -484,6 +523,7 @@ export class Maya {
     this.pendingSpot = null;
     this.bubble.classList.remove("moved");
     this.layoutDirty = true;
+    closed.onDismiss?.();
   }
 
   /** Silences her lines (M). The heat and everything else carry on. */
@@ -579,7 +619,7 @@ export class Maya {
       this.bubble.classList.toggle("compact", keptCompact);
     };
     // Heights by width for this line (and look), so a re-layout does not force a reflow per candidate.
-    const cacheKey = `${this.textEl.textContent ?? ""}|${this.factEl.hidden}|${this.sourceEl.hidden}|${this.ruleEl.hidden}`;
+    const cacheKey = `${this.textEl.textContent ?? ""}|${this.boldEl.textContent ?? ""}|${this.stepsEl.hidden}|${this.dismissEl.hidden}|${this.factEl.hidden}|${this.sourceEl.hidden}|${this.ruleEl.hidden}`;
     if (this.heightCacheKey !== cacheKey) {
       this.heightCache.clear();
       this.heightCacheKey = cacheKey;

@@ -43,13 +43,13 @@ const tiedWith = (id: string): string[] => NUDGE_ORDER.filter((other) => other !
 function mangroveLine(): string {
   const n = bio("mangrove");
   const ties = tiedWith("mangrove");
-  const best = n === mostBio ? (ties.length ? `, the most of any defence, as ${ties.join(" and ")} does` : ", the most of any defence") : "";
+  const best = n === mostBio ? (ties.length ? `, the most of any defense, as ${ties.join(" and ")} does` : ", the most of any defense") : "";
   return `In this game: helps in both kinds of storm and adds ${n} biodiversity${best}.`;
 }
 
 function seawallLine(): string {
   const n = -bio("seawall");
-  const most = bio("seawall") === leastBio ? "the most of any defence" : "";
+  const most = bio("seawall") === leastBio ? "the most of any defense" : "";
   return `In this game: the strongest barrier against a cyclone's surge; it costs ${n} biodiversity${most ? `, ${most}` : ""}, pushes water to its ends and breaks in its ${breaksIn("seawall")} cyclone or once ${def("seawall")?.cracksAtAge} years old.`;
 }
 
@@ -68,7 +68,7 @@ const STEPS: Omit<TutorialStep, "name" | "icon">[] = [
     protects: ["Cyclone waves", "Wind"],
     how: ["Screw pine.", "It holds the sand, and a row of it shelters what is behind from the wind."],
     sources: ["pandanus-windbreak"],
-    inGame: "In this game: the only defence that shields homes from a cyclone's wind.",
+    inGame: "In this game: the only defense that shields homes from a cyclone's wind.",
     maya: "Now pandanus on the beach: it breaks the wind.",
     bestAt: "The only shelter from a cyclone's wind."
   },

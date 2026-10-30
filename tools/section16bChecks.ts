@@ -49,7 +49,7 @@ async function shot(page: Page, name: string): Promise<void> {
 }
 
 async function begin(page: Page): Promise<void> {
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForFunction(`!document.getElementById("boot-splash")`, undefined, { timeout: 120000 }).catch(() => undefined);
   await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 120000 });
   await wait(1200);
@@ -156,7 +156,7 @@ if (flags.has("--zoom")) {
   const menuButtons = (await page.evaluate(`Array.from(document.querySelectorAll("button")).filter((b) => b.offsetParent).map((b) => b.textContent.trim())`)) as string[];
   check(menuButtons.includes("Tutorial") && menuButtons.includes("Play Panjim"), `the menu offers Tutorial and Play Panjim (${menuButtons.join(", ")})`);
   await page.getByText("Play Panjim", { exact: true }).click();
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForFunction(`!document.getElementById("boot-splash") && typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 180000 });
   await wait(1500);
   check(/#\/play\//.test(page.url()), `Play Panjim goes straight to the game view (${page.url().replace(server.url, "")})`);
@@ -278,7 +278,7 @@ if (flags.has("--final")) {
   const link = (await page.evaluate(`document.querySelector(".result-link")?.textContent ?? ""`)) as string;
   check(link === "Back to the menu", `the final card's quieter link: "${link}"`);
   await page.locator(".result-next").click();
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await wait(2000);
   check(/#\/play\//.test(page.url()), `Play again lands on the game view (${page.url().replace(server.url, "")})`);
   check((await page.evaluate(`!!document.querySelector(".brief-backdrop:not([hidden])")`)) as boolean, "Play again shows the start popup");

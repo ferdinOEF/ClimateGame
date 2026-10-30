@@ -71,8 +71,8 @@ export function replaySteps(record: StormRecord, defences: ReadonlyMap<string, s
   const defended = [...defences.values()].some((id) => defendsAgainst(id, hazards));
   if (defended && without > hit.length) {
     steps.push({
-      text: `With no defences at all: ${homes(without)} hit`,
-      maya: `Without any of your defences, ${homes(without)} would have been hit. You saved ${homes(without - hit.length)}.`,
+      text: `With no defenses at all: ${homes(without)} hit`,
+      maya: `Without any of your defenses, ${homes(without)} would have been hit. You saved ${homes(without - hit.length)}.`,
       hit: [...record.undefended.outcome.damagedHouses],
       dry: [],
       highlight: []
