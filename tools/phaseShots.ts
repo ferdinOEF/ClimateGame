@@ -96,8 +96,8 @@ async function main(): Promise<void> {
     await page.waitForSelector(".menu-screen", { timeout: 20000 });
     await shot(page, "menu");
 
-    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".brief-card", { timeout: 60000 });
+    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
     await shot(page, "brief");
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(4500);

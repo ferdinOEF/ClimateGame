@@ -75,7 +75,7 @@ async function main(): Promise<void> {
           if (msg.type() === "error" || msg.type() === "warning") errors.push(`${quality}/${hazard.name} [${msg.type()}]: ${msg.text()}`);
         });
         page.on("requestfailed", (req) => errors.push(`${quality}/${hazard.name} request failed: ${req.url()}`));
-        await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+        await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-cta", { timeout: 90000 });
         await page.locator(".brief-cta").first().click();
         await page.waitForTimeout(3000);
@@ -91,7 +91,7 @@ async function main(): Promise<void> {
     const context = await browser.newContext({ viewport: VIEWPORT });
     const page = await context.newPage();
     page.on("pageerror", (err) => errors.push(`leak: ${err}`));
-    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-cta", { timeout: 90000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(3000);

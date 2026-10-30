@@ -73,7 +73,7 @@ async function main(): Promise<void> {
 
     // ---- the Tutorial ---------------------------------------------------
     await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".brief-card", { timeout: 60000 });
+    await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(1500);
     // Section 15: the Tutorial plays the Panjim game, with Maya coaching it and the same HUD.
@@ -87,8 +87,8 @@ async function main(): Promise<void> {
     check(played && problems.length === 0, `Tutorial: plays start to finish and leads on to Panaji${problems.length ? `: ${problems.join("; ")}` : ""}`);
 
     // ---- Panaji ---------------------------------------------------------
-    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".brief-card", { timeout: 60000 });
+    await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(3500);
     const jobs = await page.locator(".get-ready-row").count();

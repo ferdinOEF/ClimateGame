@@ -29,8 +29,10 @@ const coordOf = (key: string): AxialCoord => {
 export class GuidedStart {
   private readonly machine: GuideMachine;
   private readonly overlay: GuideOverlay;
-  /** The line for the step now, until Maya has shown it (she may be busy for a frame, or tucked). */
+  /** The line for the step now; a step's line comes back if it was closed (Esc) while the step lasts. */
   private line: MayaLine | null = null;
+  /** Step 1 says hello only the first time (a return to it from its menu does not). */
+  private greeted = false;
   private shownStep: GuideStep | null = null;
   private ended = false;
 
@@ -66,16 +68,22 @@ export class GuidedStart {
     this.sync();
   }
 
-  /** "Skip the help". */
+  /** "Skip the help": step 3, its Got it focused (the Skip button it was pressed on is gone). */
   skip(): void {
     if (this.ended) return;
     this.machine.skip();
     this.sync();
+    this.deps.container.querySelector<HTMLElement>(".maya-bubble:not([hidden]) .maya-dismiss:not([hidden])")?.focus({ preventScroll: true });
   }
 
   /** Every frame: the spotlight, rings and tags follow their tile; Maya's line goes up once she can say it. */
   frame(): void {
     if (this.ended) return;
+    // The guide lives in her bubble: muted (M) or minimised, she cannot give it, so it ends.
+    if (this.deps.maya.isMuted || this.deps.maya.isMinimised) {
+      this.end();
+      return;
+    }
     const step = this.machine.step;
     const target = this.machine.target;
     const name = target ? (CARD_NAME[target.elementId] ?? target.elementId) : "";
@@ -117,6 +125,10 @@ export class GuidedStart {
     const target = this.machine.target;
     const storm = this.deps.storm();
     const words = guideLine(step, { year: storm.year, builds: storm.builds, name: target ? (CARD_NAME[target.elementId] ?? target.elementId) : "" });
+    if (step === "1") {
+      if (this.greeted) words.text = words.text.replace(/^Hello! I am Maya\. /, "");
+      this.greeted = true;
+    }
     maya.withdraw((queued) => queued.id.startsWith("guide:") || queued.id === MAYA.opening.id);
     const current = maya.currentLine;
     if (current && (current.id.startsWith("guide:") || current.id === MAYA.opening.id)) maya.dismiss();
@@ -141,19 +153,17 @@ export class GuidedStart {
     const line = this.line;
     if (!line) return;
     const maya = this.deps.maya;
-    if (maya.currentLine === line) {
-      this.line = null;
-      return;
-    }
+    if (maya.currentLine === line) return;
     if (maya.speaking) {
       // Something of hers is up (a line said before the guide began): the guide's goes first.
       if (!maya.currentLine?.id.startsWith("guide:")) maya.dismiss();
     }
     if (!maya.queued.includes(line)) maya.say(line);
-    if (maya.next((queued) => queued === line)) this.line = null;
+    maya.next((queued) => queued === line);
   }
 
   private finish(): void {
+    this.line = null;
     this.machine.gotIt();
     this.sync();
   }

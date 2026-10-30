@@ -96,7 +96,7 @@ async function axe(page: Page, label: string): Promise<void> {
 }
 
 async function ready(page: Page): Promise<void> {
-  await page.waitForSelector(".brief-card", { timeout: 180000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 180000 });
   await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 180000 });
   await wait(1500);
 }

@@ -238,20 +238,20 @@ async function main(): Promise<void> {
     await shot(page, "after-browser-back");
 
     // ---- 3c. Play Panjim (Section 16.3) --------------------------------
-    // The menu offers exactly Tutorial and Play Panjim; Play Panjim opens the
-    // Panaji game view with its start popup, never the level select.
+    // Section 39.2: the menu offers exactly Play Panjim; Play Panjim opens the
+    // Panaji game view with How to play (noname=1 skips the name card), never the level select.
     stage = "play-panjim";
     await page.goto(qaUrl(baseUrl), { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".menu-screen", { timeout: 15000 });
     const menuButtons = (await page.locator(".menu-actions button").allTextContents()).map((t) => t.trim());
-    if (JSON.stringify(menuButtons) !== JSON.stringify(["Tutorial", "Play Panjim"])) problems.push(`[play-panjim] the menu offers ${JSON.stringify(menuButtons)}, not Tutorial and Play Panjim`);
+    if (JSON.stringify(menuButtons) !== JSON.stringify(["Play Panjim"])) problems.push(`[play-panjim] the menu offers ${JSON.stringify(menuButtons)}, not Play Panjim alone`);
     await clickByText(page, "Play Panjim");
-    await page.waitForSelector(".brief-card", { timeout: 15000 });
+    await page.waitForSelector(".brief-card, .howto-card", { timeout: 15000 });
     if ((await page.locator(".level-grid").count()) > 0) problems.push("[play-panjim] Play Panjim showed the level select");
     if (!page.url().endsWith("#/play/l01-first-rains")) problems.push(`[play-panjim] Play Panjim went to ${page.url()}`);
     const briefCtas = (await page.locator(".brief-cta").allTextContents()).map((t) => t.trim());
-    if (!briefCtas.includes("Begin")) problems.push(`[play-panjim] the start popup offers ${JSON.stringify(briefCtas)}, not Begin`);
-    console.log(`Play Panjim: ${page.url()}, start popup offers ${briefCtas.join(" | ")}`);
+    if (!briefCtas.includes("Let's Play!")) problems.push(`[play-panjim] How to play offers ${JSON.stringify(briefCtas)}, not Let's Play!`);
+    console.log(`Play Panjim: ${page.url()}, How to play offers ${briefCtas.join(" | ")}`);
     await shot(page, "play-panjim");
 
     // ---- 4. every campaign map --------------------------------------
@@ -297,9 +297,10 @@ async function main(): Promise<void> {
 
         // Section 34: 60 s, not 15: under software GL on a laptop the Panjim board takes longer than 15 s to draw.
         await page.waitForSelector("canvas", { timeout: 60000 });
-        await page.waitForSelector(".brief-card", { timeout: 60000 });
-        const place = (await page.locator(".brief-title").textContent())?.trim();
-        await clickByText(page, "Begin");
+        await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
+        // Section 39.3: Panjim opens on How to play (no title); the Tutorial on its brief.
+        const place = (await page.locator(".brief-title:visible").count()) ? (await page.locator(".brief-title:visible").textContent())?.trim() : "How to play";
+        await page.locator(".brief-cta:visible").first().click();
         await page.waitForTimeout(1100);
 
         const board = await page.evaluate(() => {

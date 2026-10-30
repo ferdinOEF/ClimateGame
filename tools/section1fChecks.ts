@@ -45,8 +45,8 @@ async function open(browser: Browser, url: string, w: number, h: number): Promis
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(`${w}x${h}: ${m.text()}`);
   });
-  await page.goto(`${url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.goto(`${url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForTimeout(1500);
   await page.locator(".brief-cta").first().click();
   await page.waitForTimeout(3500);
@@ -236,7 +236,7 @@ async function main(): Promise<void> {
       if (m.type() === "error") errors.push(`tutorial: ${m.text()}`);
     });
     await tut.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
-    await tut.waitForSelector(".brief-card", { timeout: 120000 });
+    await tut.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
     await tut.locator(".brief-cta").first().click();
     await tut.waitForTimeout(2500);
     check((await tut.locator(".tutorial-coach").count()) === 1, "the Tutorial loads with its coach");

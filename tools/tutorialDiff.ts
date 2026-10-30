@@ -63,7 +63,7 @@ async function walk(browser: Browser, port: number, label: string): Promise<Step
     steps.push({ name, text: await visible(page) });
   };
   await page.goto(`http://localhost:${port}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForTimeout(3000);
   await snap("1-brief");
   await page.locator(".brief-cta").first().click();

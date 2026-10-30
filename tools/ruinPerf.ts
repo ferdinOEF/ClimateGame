@@ -44,7 +44,7 @@ try {
     page.on("console", (msg) => {
       if (msg.type() === "error") errors.push(`${quality} [error]: ${msg.text()}`);
     });
-    await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-cta", { timeout: 120000 });
     await page.locator(".brief-cta").first().click();
     await page.waitForTimeout(3000);

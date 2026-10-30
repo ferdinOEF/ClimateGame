@@ -56,8 +56,8 @@ async function open(browser: Browser, url: string, reducedMotion: boolean): Prom
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
   });
-  await page.goto(`${url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.goto(`${url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.locator(".brief-cta").first().click();
   await page.waitForTimeout(3000);
   await page.evaluate("window.__panjimForTest.maya.holdLines = true; window.__panjimForTest.maya.withdraw(function () { return true; }); window.__panjimForTest.maya.dismiss()");
@@ -245,7 +245,7 @@ async function main(): Promise<void> {
       if (m.type() === "error") errors.push(`tutorial: ${m.text()}`);
     });
     await tut.goto(`${server.url}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
-    await tut.waitForSelector(".brief-card", { timeout: 120000 });
+    await tut.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
     await tut.locator(".brief-cta").first().click();
     await tut.waitForTimeout(2500);
     check((await tut.locator(".maya").count()) === 1 && (await tut.locator(".panjim-clock").count()) === 1, "the Tutorial loads (Section 15: the Panjim HUD, Maya coaching)");

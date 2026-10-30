@@ -75,7 +75,7 @@ const boxes = (): Promise<unknown> =>
       .filter((b) => b.width > 0 && b.height > 0 && b.width * b.height < 0.5 * innerWidth * innerHeight)
   );
 
-await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
 if (!(await stepUntil(`!!document.querySelector(".brief-card") && !!window.__panjimForTest`))) throw new Error("the game did not load");
 await steps(40);
 // A DOM click: with the clock held, Playwright's own click waits for animation frames that never come.

@@ -12,10 +12,25 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After Section 39 (from docs/QA_REPORT.md)
+
+- Merge `section-39-first-minute` when the owner says so (`git merge --no-ff`), then confirm Vercel's production
+  deployment. No schema change.
+- How to play scales with the window (1.43 at 1920x1080); the owner may prefer it fixed at 1286 x 708 above 1366x768.
+- ☰ sits under How to play's overlay (as mock 2 draws it), so Leave is not reachable there; Esc does nothing; the idle
+  reset still returns to the menu.
+- The guided start needs Maya: with Maya hidden (`VITE_SHOW_MAYA=false`), muted or minimised it does not run (and
+  muting or minimising her mid guide ends it).
+- With `VITE_REQUIRE_EMAIL` on, a Restart through the registration sheet would run the guide again (off by default).
+- Help's two threat lines keep their spaced `&mdash;` (older than this section; helpModal.ts is the old levels' help).
+- The QA tools open Panjim with `noguide=1` (tools/qaUrl.ts and the tools' own URLs); tools that read the old start
+  popup's forecast or title no longer find them.
+- The full browser check (walkthrough, labels, axe, four sizes) was not run; test:maya and test:layout were.
+
 ## After Section 38 (from docs/QA_REPORT.md)
 
-- Merge `section-38-last-card` when the owner says so (`git merge --no-ff`), then run `npm run db:migrate` once
-  (docs/DEPLOY.md, Section 38.4) and set `DEFAULT_TAG=Preview` on Vercel's Preview environment only.
+- Done: merged as `b1fe260`; production's first request applied the schema (`npm run db:migrate` would change
+  nothing). Still for the owner: set `DEFAULT_TAG=Preview` on Vercel's Preview environment only.
 - The 2050 storm has no "Try again from 2046" any more: the last card has View map, Restart and Exit, as the brief
   draws it. Owner to confirm, or the retry can come back as a fourth footer button.
 - The last card is 1100 x 680 at 1366x768 (the brief said about 660); nothing scrolls or clips at 1366x768 or

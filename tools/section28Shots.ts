@@ -99,7 +99,7 @@ const T = "window.__panjimForTest";
 
 async function openLevel(id: string): Promise<void> {
   await page.goto(`${server.url}/?qa=1&noname=1#/play/${id}`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForFunction(`!!${T}`, undefined, { timeout: 180000 });
   await page.waitForTimeout(1500);
 }
@@ -210,7 +210,7 @@ await shot("final-card");
 await axe("the final card");
 // "Play again": a new run from 2026.
 await page.locator(".result-cards:not([hidden]) .result-next").click();
-await page.waitForSelector(".brief-card", { timeout: 120000 });
+await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
 await page.waitForFunction(`!!${T} && ${T}.run.turnNumber === 1`, undefined, { timeout: 180000 });
 check((await page.evaluate(`${T}.run.year`)) === 2026, "Play again starts a new run in 2026");
 
@@ -225,7 +225,7 @@ for (const a of actions.slice(0, 3)) {
 await settle(async () => "next");
 check((await page.evaluate(`${T}.run.year`)) === 2029, "three builds in: 2029");
 await page.reload({ waitUntil: "domcontentloaded" });
-await page.waitForSelector(".brief-card", { timeout: 120000 });
+await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
 await page.waitForFunction(`!!${T}`, undefined, { timeout: 180000 });
 await page.waitForTimeout(2500);
 const ctasAfter = (await page.evaluate(`[...document.querySelectorAll(".brief-cta")].map((b) => b.textContent.trim())`)) as string[];
@@ -238,7 +238,7 @@ const menu = (await page.evaluate(`[...document.querySelectorAll(".menu-actions 
 check(menu.length === 2 && /Tutorial/.test(menu[0]) && /Play Panjim/.test(menu[1]), `after a reload the menu: ${menu.join(" | ")}`);
 await axe("the menu");
 await page.locator(".menu-actions button", { hasText: "Play Panjim" }).click();
-await page.waitForSelector(".brief-card", { timeout: 120000 });
+await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
 await page.waitForFunction(`!!${T}`, undefined, { timeout: 180000 });
 check((await page.evaluate(`${T}.run.year`)) === 2026 && (await page.evaluate(`${T}.run.turnNumber`)) === 1, "Play Panjim from the menu starts at 2026, the first build");
 
@@ -259,7 +259,7 @@ await page.waitForTimeout(600);
 await shot("tutorial-card");
 await axe("the Tutorial's result card");
 await page.locator(".result-cards:not([hidden]) .result-retry").click();
-await page.waitForSelector(".brief-card", { timeout: 120000 });
+await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
 await page.waitForFunction(`!!${T} && ${T}.tutorial && ${T}.run.turnNumber === 1 && ${T}.run.landed.size === 0`, undefined, { timeout: 180000 });
 check(true, "Try again starts the Tutorial over: its start popup, the first build, no storm landed");
 await page.waitForTimeout(1200);

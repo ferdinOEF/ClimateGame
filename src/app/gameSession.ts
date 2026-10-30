@@ -1309,7 +1309,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * `noguide=1` (the QA tools, with the test hooks on only) leaves it out.
    */
   objectivesPanel.onBriefClosed = () => {
-    if (!panjim || disposed || guide || !SHOW_MAYA) return;
+    // Muted (M) or minimised, she cannot give it: her first line waits as before.
+    if (!panjim || disposed || guide || !SHOW_MAYA || panjim.maya.isMuted || panjim.maya.isMinimised) return;
     if (qaHooks && new URLSearchParams(window.location.search).has("noguide")) return;
     const run = panjim.run;
     if (!guideShouldRun({ tutorial: panjim.tutorial, restarted: options.restarted === true, turnNumber: run.turnNumber, builds: run.buildLog.length })) return;
@@ -3032,7 +3033,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
       // Section 34b.8: on Panjim and the Tutorial, with nothing else open, Esc closes Maya's line if she is speaking,
       // and otherwise does nothing (at a festival a stray key landed on "Leave Panjim?"; Leave is in ☰ only).
       if (panjim) {
-        if (panjim.maya.speaking) panjim.maya.dismiss();
+        // Section 39.4: not a guided step's line (it has Skip the help instead).
+        if (panjim.maya.speaking && !panjim.maya.currentLine?.sticky) panjim.maya.dismiss();
         return;
       }
       // The old levels: with nothing open, Esc is the "get me out of here" key.
@@ -3526,6 +3528,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     mapPins.dispose();
     areaOutline.dispose();
     guide?.dispose();
+    objectivesPanel.dispose();
     panjim?.dispose();
     stormReport.dispose();
     mapLabels.dispose();

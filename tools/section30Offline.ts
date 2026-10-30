@@ -25,7 +25,7 @@ console.log("fonts", await page.evaluate(async () => {
   const loaded = await Promise.all(faces.map((f) => document.fonts.load(f).then((list) => list.length > 0).catch(() => false)));
   return faces.map((f, i) => `${f}: ${loaded[i]}`).join(", ");
 }));
-await page.goto("http://localhost:4179/?qa=1&noname=1#/play/l01-first-rains");
+await page.goto("http://localhost:4179/?qa=1&noname=1&noguide=1#/play/l01-first-rains");
 await page.waitForTimeout(20000);
 console.log("offline game canvas", await page.evaluate(() => !!document.querySelector("canvas")), "brief", await page.evaluate(() => document.querySelector(".brief-title")?.textContent));
 console.log("errors", errs);

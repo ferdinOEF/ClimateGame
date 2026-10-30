@@ -93,7 +93,7 @@ async function main(): Promise<void> {
         await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l00-tutorial`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(6000);
       } else {
-        await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+        await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
         await page.waitForSelector(".brief-cta", { timeout: 90000 });
         await page.locator(".brief-cta").first().click();
         await page.waitForTimeout(3500);

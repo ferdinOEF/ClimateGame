@@ -35,7 +35,7 @@ const ONLY = args.get("only")?.split(",") ?? null;
 
 async function open(page: Page, url: string): Promise<void> {
   await page.goto(qaUrl(url), { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForTimeout(1200);
 }
 
@@ -78,7 +78,7 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
 
   // --- Panaji: the header, its level thumbnail, and the Help pictures -------
-  await open(page, `${server.url}/?qa=1&noname=1#/play/l01-first-rains`);
+  await open(page, `${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`);
   await begin(page);
   // The Help page's cone: the board as the first phase opens, the cone on it.
   let show = await hideHud(page);

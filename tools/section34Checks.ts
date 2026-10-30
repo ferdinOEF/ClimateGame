@@ -44,7 +44,7 @@ async function openGame(): Promise<Page> {
     if (m.type() === "error" || m.type() === "warning") errors.push(`${m.type()}: ${m.text()}`);
   });
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
-  await page.goto(`${URL0}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${URL0}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 120000 });
   await page.waitForTimeout(1500);
   return page;

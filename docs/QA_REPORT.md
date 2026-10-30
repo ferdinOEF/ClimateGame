@@ -2669,3 +2669,60 @@ Ready: it answered 200 with the real board (two rows, "Festival 2026"), and that
 the function's `ensureSchema` had applied db/schema.sql, the `tag` columns and the feedback ALTERs included, to the
 shared database. `npm run db:migrate` from a machine with the project's env would now change nothing; `DEFAULT_TAG`
 on Preview is still for the owner to set.
+
+
+## Section 39 — the first minute (branch `section-39-first-minute`, not merged)
+
+From master `0679fb9`; safety copy `backup/pre-section-39` (same point). One commit per step, each pushed.
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | Clean. |
+| `npm run test` | 113 files, 955 pass, 6 skipped (was 111 files, 936 pass). New: tests/guide.test.ts, tests/howToPlay.test.ts; tests/menu.test.ts rewritten. |
+| `npm run build` | Clean (and `npm run build:api`: `ChallengeDef.where` reaches the server bundle). |
+| tools/section39Shots.ts at 1366x768 | 25 of 25 PASS, no console errors, nothing posted (`/api` stubbed, `?tag=FestTesters`). |
+| tools/section39Shots.ts `only=screens` at 1920x1080 and 1280x720 | ALL PASS: the menu card clears the band (bottom 576 / top 930; 359 / 570); How to play 1840 x 1013 and 1199 x 660, nothing scrolls. |
+| `npm run test:layout` | 144 layouts, 0 failed (with `noguide=1`). |
+| `npm run test:maya` | Every check PASS, zero console errors (with `noguide=1`). |
+| Bots | Not run (no mechanics changed). |
+| Full browser check | Not run (not asked): walkthrough, test:labels, axe, the four sizes. |
+| Independent review | 0 BLOCKER, 2 MAJOR (fixed), 4 MINOR (2 fixed, 2 documented), 3 NIT (2 fixed, 1 documented). Below. |
+
+**Screenshots** (`docs/qa/section39/`): `1-main-screen` at 1366x768, 1920x1080 and 1280x720; `2-name-card`;
+`3-how-to-play` at the three sizes; `4-guide-step1`, `5-guide-step1b`, `6-guide-step2`, `7-guide-step2b`,
+`8-guide-step3` at 1366x768. Looked at: they match the mocks; two things fixed from the first shots (the gold ring on
+the Dune card was hidden under its Objective pulse, now an outline; the bubble's footer wrapped, now one line).
+
+**The browser pass checks:** the menu offers Play Panjim alone; the card clears the band; Facts & sources is in the
+band and the page does not scroll; the name card comes first; How to play fits (1286 x 708 at 40,30), focus on Let's
+Play!, Esc does nothing; Enter starts the game; step 1 (her line, Click the glowing tile, Step 1 of 2; the banner
+hidden); Esc with no menu keeps the step's bubble; step 1b (Pick Dune, the gold ring and its tag); Esc on the menu
+goes back to step 1 without the hello; the dune built: step 2 (the chip, Step 2 of 2); step 2b (Pick Pandanus); the
+pandanus built: step 3 (3 builds, Got it; the dim lifts, the objective outlined); Got it ends it and the dune's fact
+follows; a second run: Skip the help gives step 3 with Got it focused; a third: M ends the guide and its dim; the
+Tutorial by its route keeps its brief and Begin and has no guide.
+
+**39.1: lines kept as "defence"** (a source quoted or named word for word): `src/data/facts.json`, the source
+"Sand Dune Processes and Management for Flood and Coastal Defence: Summary (FD1302)" (its title, its address and its
+note "...an important natural coastal flood defence..."); `src/data/maps/panaji.json` and the DEM licence, "Airbus
+Defence and Space GmbH" (a company's name; generated data). Everything else that still says defence is an
+identifier, a class, a data key or id, a file name, a comment or a test name.
+
+**Review findings and what was done:**
+- MAJOR: a player who muted Maya (M) before Let's Play! got a guide with no bubble, so no Skip and no Got it: the dim,
+  the hidden banner and the held facts stayed for the run. Fixed: the guide does not start while she is muted or
+  minimised, and muting or minimising her mid guide ends it (checked in the browser pass).
+- MAJOR: the walkthrough and the Maya and label tools expected the old menu and start popup. Fixed: the walkthrough
+  expects Play Panjim alone and Let's Play!, clicks `.brief-cta`; the tools wait for `.brief-card, .howto-card` and
+  open Panjim with `noguide=1` (tools/qaUrl.ts adds it).
+- MINOR: Esc with no menu open closed a step's bubble for good. Fixed: Esc leaves a guided step's line up, and the
+  step's line comes back if it is closed any other way.
+- MINOR: How to play's resize listener outlived a session left from it (idle reset). Fixed: `ObjectivesPanel.dispose`.
+- MINOR: with `VITE_REQUIRE_EMAIL` on, a Restart through the registration sheet would run the guide. Documented (off
+  by default).
+- MINOR: with the menu extras on and the Tutorial button hidden, Play Panjim is primary and the resume button is
+  dropped for fresh progress. Tested (menu.test.ts); as intended.
+- NIT: a return to step 1 said hello again. Fixed. NIT: Skip lost keyboard focus. Fixed (Got it focused). NIT: Help's
+  threat lines keep a spaced `&mdash;` (older; documented).
+
+**Not run:** Safari and Firefox; the full browser check; a production load (nothing merged); the bots (no mechanics).

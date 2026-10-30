@@ -71,7 +71,7 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   const hurry = options.hurry !== false;
 
   // 1. The opening card.
-  await page.waitForSelector(".brief-card", { timeout: 30000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 30000 });
   await page.waitForTimeout(800);
   const brief = (await page.locator(".brief-card").textContent()) ?? "";
   if (!brief.includes("Each build is one year.")) problems.push(`[tutorial-brief] the card does not open with the line: "${brief.slice(0, 120)}"`);

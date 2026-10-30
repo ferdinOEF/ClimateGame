@@ -188,6 +188,12 @@ export class ObjectivesPanel {
     return !this.briefBackdrop.hidden;
   }
 
+  /** Section 39.3: stops How to play following the window's size when the session ends with it still open. */
+  dispose(): void {
+    this.stopFit?.();
+    this.stopFit = null;
+  }
+
   /** Section 39.4: told once the brief closes (Panjim's "Let's Play!"): the guided start begins. */
   onBriefClosed: (() => void) | null = null;
 

@@ -16,7 +16,7 @@ const errors: string[] = [];
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 page.on("pageerror", (e) => errors.push(e.message));
 await page.goto(qaUrl(`${server.url}/${process.env.ROUTE ?? "#/play/l01-first-rains"}`), { waitUntil: "domcontentloaded" });
-await page.waitForSelector(".brief-card", { timeout: 120000 });
+await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
 await page.waitForTimeout(1500);
 if (!process.env.NOBEGIN) {
   await page.locator(".brief-cta").first().click();

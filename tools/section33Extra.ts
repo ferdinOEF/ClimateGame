@@ -33,8 +33,8 @@ async function newPage(): Promise<Page> {
 // ---- in Panjim: ☰, Larger text with the build menu, the Field Guide, Leave Panjim? ------------------------------
 {
   const page = await newPage();
-  await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
   await page.waitForTimeout(1500);
   await page.locator(".brief-cta").first().click();

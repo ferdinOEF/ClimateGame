@@ -121,8 +121,8 @@ async function main(): Promise<void> {
         failures.push(`${res.w}x${res.h}: page error: ${e.message}`);
         console.log(`FAIL  ${res.w}x${res.h} page error: ${e.message}\n${e.stack ?? ""}`);
       });
-      await page.goto(`http://localhost:${PORT}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-      await page.waitForSelector(".brief-card", { timeout: 60000 });
+      await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+      await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
       await page.locator(".brief-cta").first().click();
       await page.waitForTimeout(2500);
       // Measure layout, not reading time: her lines stay up until replaced.

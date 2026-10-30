@@ -43,7 +43,7 @@ async function run(level: string, calm: boolean): Promise<void> {
     }
   }, calm);
   await page.goto(`${server.url}/?qa=1&noname=1#/play/${level}`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".brief-card", { timeout: 120000 });
+  await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
   await page.waitForFunction(`!!window.__panjimForTest`, undefined, { timeout: 180000 });
   await page.waitForTimeout(1500);
   await page.locator(".brief-cta").first().click();

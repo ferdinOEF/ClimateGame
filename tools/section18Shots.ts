@@ -63,8 +63,8 @@ await page.addInitScript(() => {
     /* blocked */
   }
 });
-await page.goto(`${server.url}/?qa=1&noname=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
-await page.waitForSelector(".brief-card", { timeout: 120000 });
+await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
 await page.waitForFunction(`typeof window.__panjimScenarioForTest === "function"`, undefined, { timeout: 180000 });
 await wait(2500);
 await shot(page, "first-frame");
