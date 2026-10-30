@@ -117,11 +117,11 @@ export function describeObjective(objective: Objective): string {
     case "build_element":
       return `Have ${objective.count} ${elementName(objective.elementId)}${objective.count === 1 ? "" : "s"} standing`;
     case "build_category":
-      return `Have ${objective.count} ${CATEGORY_LABEL[objective.category]} defence${objective.count === 1 ? "" : "s"} standing`;
+      return `Have ${objective.count} ${CATEGORY_LABEL[objective.category]} defense${objective.count === 1 ? "" : "s"} standing`;
     case "reach_turn":
       return `Survive to turn ${objective.turn}`;
     case "no_defenses_lost":
-      return "Lose no defences";
+      return "Lose no defenses";
     case "perfect_defense":
       return `Weather ${objective.count} hazard${objective.count === 1 ? "" : "s"} without a scratch`;
     case "coin_at_least":

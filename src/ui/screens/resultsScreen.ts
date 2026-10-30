@@ -147,8 +147,8 @@ function unmetSummary(ctx: ResultsContext): string {
   // the score. Re-deriving here would need the game state, which is gone
   // by now — so keep this to a nudge rather than a false specific.
   return ctx.result.stats.defensesDestroyed > 0
-    ? `${ctx.result.stats.defensesDestroyed} defence${ctx.result.stats.defensesDestroyed === 1 ? "" : "s"} were lost along the way.`
-    : "Try a deeper belt of defences before the next storm lands.";
+    ? `${ctx.result.stats.defensesDestroyed} defense${ctx.result.stats.defensesDestroyed === 1 ? "" : "s"} were lost along the way.`
+    : "Try a deeper belt of defenses before the next storm lands.";
 }
 
 /** Tells a 1- or 2-star player exactly what the next star costs. Nothing pulls a replay like a number that is nearly reached. */

@@ -69,8 +69,8 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
   const panelH = 420;
   const scale = Math.min(panelW / (maxX - minX), panelH / (maxZ - minZ));
   const halves = [
-    { x0: 20, label: "With your defences", outcome: input.record.outcome, field: input.record.field, defended: true },
-    { x0: 620, label: "With no defences", outcome: input.record.undefended.outcome, field: input.record.undefended.field, defended: false }
+    { x0: 20, label: "With your defenses", outcome: input.record.outcome, field: input.record.field, defended: true },
+    { x0: 620, label: "With no defenses", outcome: input.record.undefended.outcome, field: input.record.undefended.field, defended: false }
   ];
   const defences = new Set(input.defences);
   for (const half of halves) {
@@ -133,7 +133,7 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
   ctx.fillText(input.title, 28, 72);
   ctx.fillStyle = themeColor("--ink-3", "#4d615e");
   ctx.font = '15px "Work Sans", system-ui, sans-serif';
-  ctx.fillText("Same storm, same board: only the defences differ.   ● not hit   ✕ hit   ■ defence", 28, 608);
+  ctx.fillText("Same storm, same board: only the defenses differ.   ● not hit   ✕ hit   ■ defense", 28, 608);
   return canvas;
 }
 

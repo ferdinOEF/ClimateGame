@@ -169,7 +169,7 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   await page.locator(".result-cards .result-next").first().click();
   await page.waitForTimeout(900);
   const final = ((await page.locator(".result-cards").textContent()) ?? "").replace(/\s+/g, " ");
-  if (!final.includes("You tried 7 of 7 defences")) problems.push(`[tutorial-final] the last card does not say "You tried 7 of 7 defences": ${final.slice(0, 120)}`);
+  if (!final.includes("You tried 7 of 7 defenses")) problems.push(`[tutorial-final] the last card does not say "You tried 7 of 7 defenses": ${final.slice(0, 120)}`);
   for (const want of ["Play Panjim", "Try again", "Back to the menu"]) if (!final.includes(want)) problems.push(`[tutorial-final] no "${want}"`);
   if ((await page.locator(".result-cards .tutorial-final-list li").count()) !== 7) problems.push("[tutorial-final] not seven defences on the last card");
   await options.onCard?.(2);

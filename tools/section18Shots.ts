@@ -95,7 +95,7 @@ await page.evaluate(`document.querySelector(".field-guide-button").click()`);
 await wait(900);
 const guide = (await page.evaluate(`document.querySelector(".field-guide-card").innerText`)) as string;
 check(/Humpback Dolphin/.test(guide) && /500 metres of the coast/.test(guide) && /Source: Mongabay India, 2018/.test(guide), "the Field Guide's dolphin page carries its cited fact");
-check(!/(mangrove|dune|khazan|defence)s? (bring|draw|attract)/i.test(guide), "the Field Guide never says a defence brings dolphins");
+check(!/(mangrove|dune|khazan|defen[cs]e)s? (bring|draw|attract)/i.test(guide), "the Field Guide never says a defence brings dolphins");
 await shot(page, "field-guide-dolphin");
 await axe(page, "the Field Guide");
 

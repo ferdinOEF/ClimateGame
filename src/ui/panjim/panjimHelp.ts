@@ -127,15 +127,15 @@ export function panjimHelpHtml(input: PanjimHelpInput): string {
       <div>
         <h3>The heat ${RULE}</h3>
         <p>${heatLead(input.heatLeadYears ?? HEAT_LEAD_YEARS)}, striped red tiles mark the homes it would take, by water or wind.</p>
-        <p>Show risk (R): the homes the next storm would hit today, counting the defences you have built.</p>
+        <p>Show risk (R): the homes the next storm would hit today, counting the defenses you have built.</p>
       </div>
     </section>
 
     <section class="panjim-help-item">
-      ${picture("help-cards.jpg", "The build cards for a beach tile: each defence's name and what it does")}
+      ${picture("help-cards.jpg", "The build cards for a beach tile: each defense's name and what it does")}
       <div>
         <h3>The cards ${RULE}</h3>
-        <p>Each card is one defence. Nature based ones come first. In this game each has a pro and a con, and engineered ones age: the Field Guide gives them. A river tile takes only a small dam; mangroves grow on wetland.</p>
+        <p>Each card is one defense. Nature based ones come first. In this game each has a pro and a con, and engineered ones age: the Field Guide gives them. A river tile takes only a small dam; mangroves grow on wetland.</p>
       </div>
     </section>
 

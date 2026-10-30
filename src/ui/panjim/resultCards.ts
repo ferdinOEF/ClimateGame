@@ -118,7 +118,7 @@ export function placeWord(place: { stood: boolean; building?: boolean }): string
 export function otherKindNote(targets: readonly string[], storm: string): string | null {
   if (storm !== "cyclone" && storm !== "flood") return null;
   if (targets.includes(storm) || targets.length === 0) return null;
-  return `A ${targets.includes("flood") ? "flood" : "cyclone"} defence; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
+  return `A ${targets.includes("flood") ? "flood" : "cyclone"} defense; this was a ${storm === "flood" ? "river flood" : "cyclone"}`;
 }
 
 /** Section 34b.12 (owner decision 8): card 1's second button, saying where it goes. */
@@ -210,7 +210,7 @@ export function defencesCard(result: PhaseResult, mayaLine: CardLine, targets: (
     )
     .join("");
   const rows = result.defences.length || broken
-    ? `<p class="result-sub">Homes that would have been lost without each defence. Defences cover for each other, so the rows need not add up to the homes saved.</p>
+    ? `<p class="result-sub">Homes that would have been lost without each defense. Defenses cover for each other, so the rows need not add up to the homes saved.</p>
        <ul class="result-rows">${result.defences
          .map((d) => {
            const why = otherKindNote(targets(d.elementId), storm);
@@ -273,7 +273,7 @@ export function tutorialResultCard(result: PhaseResult, rows: readonly TutorialD
     ${starsHtml(result.stars)}
     ${homesHtml(result.homesSaved, result.homesTotal, result.homesLostBefore)}
     ${list}
-    ${last ? "" : `<p class="result-sub">Next, a river flood. Its defences go on the estuary and the river.</p>`}
+    ${last ? "" : `<p class="result-sub">Next, a river flood. Its defenses go on the estuary and the river.</p>`}
   </div>`);
 }
 
@@ -285,7 +285,7 @@ export function tutorialFinalCard(tried: ReadonlySet<string>, steps: readonly { 
   const n = steps.filter((s) => tried.has(s.id)).length;
   return el(`<div class="result-card-body tutorial-final">
     <div class="result-eyebrow">Tutorial</div>
-    <h2 class="result-title">You tried ${n} of ${steps.length} defences</h2>
+    <h2 class="result-title">You tried ${n} of ${steps.length} defenses</h2>
     <div class="result-sub">In this game:</div>
     <ul class="tutorial-final-list">${steps
       .map(

@@ -93,7 +93,7 @@ export class FieldGuide {
         <div class="field-guide-head"><b>Field Guide</b><span class="field-guide-count"></span><button type="button" class="field-guide-close" aria-label="Close">×</button></div>
         <p class="field-guide-hint">Tap the creatures you see on the board. Free: no time passes.</p>
         <div class="field-guide-grid"></div>
-        <div class="field-guide-defences-head"><b>Defences</b><span class="result-rule">Game rules</span></div>
+        <div class="field-guide-defences-head"><b>Defenses</b><span class="result-rule">Game rules</span></div>
         <ul class="field-guide-defences"></ul>
         <div class="field-guide-notes-head"><b>Maya's notes</b><span class="field-guide-notes-count"></span></div>
         <ul class="field-guide-notes"></ul>
@@ -225,7 +225,7 @@ export class FieldGuide {
     // Section 34b (owner decision): where the wind reaches, from the same rule the Sources screen lists.
     const windReach = factById("wind-reach")?.text;
     const wind = windReach ? [{ id: "wind", name: "The wind", text: `In this game ${windReach.charAt(0).toLowerCase()}${windReach.slice(1)}` }] : [];
-    const rules: { id: string; name: string; text: string; source?: string }[] = [...defenceRules(), { id: "broken", name: "Broken defences", text: BROKEN_RULE }, ...wind, ...together];
+    const rules: { id: string; name: string; text: string; source?: string }[] = [...defenceRules(), { id: "broken", name: "Broken defenses", text: BROKEN_RULE }, ...wind, ...together];
     for (const rule of rules) {
       const item = document.createElement("li");
       item.className = "field-guide-defence";

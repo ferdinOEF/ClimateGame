@@ -10,8 +10,8 @@
     "text": "Hello! I am Maya. Before the {storm}, our first job is to {objective}. The steps are in the card, top right."
   },
   "tutorial": {
-    "start": "Seven defences, one a year. A cyclone comes after 4 builds, then a river flood. The glowing card and tiles show what to try.",
-    "cards": "Each card is a defence and what it does. The glowing one is this year's to try."
+    "start": "Seven defenses, one a year. A cyclone comes after 4 builds, then a river flood. The glowing card and tiles show what to try.",
+    "cards": "Each card is a defense and what it does. The glowing one is this year's to try."
   },
   "tips": [
     {
@@ -61,10 +61,10 @@
     "held": "The {defence} at {place} held {count} homes.",
     "absorbed": "The {defence} absorbed the {hazard} at {place}.",
     "allSaved": "Every home in the storm's path is still standing. Panjim is proud of you!",
-    "someLost": "We lost {lost} homes at {place}. A few more defences there next time and they will stand.",
+    "someLost": "We lost {lost} homes at {place}. A few more defenses there next time and they will stand.",
     "noDefence": "Nothing stood between the {hazard} and {place}. Next time, plant something there first.",
     "saved": "Without your {defence}, {count} more homes would have been hit.",
-    "notYet": "The {hazard} reached {place} before the defences there could make a difference. More of them there will hold it."
+    "notYet": "The {hazard} reached {place} before the defenses there could make a difference. More of them there will hold it."
   },
   "zonePlaces": {
     "z1": "Miramar",

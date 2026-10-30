@@ -366,10 +366,10 @@ describe("34b.5: the result cards tell the whole story", () => {
 
   it("a row of the other storm's kind carries the Tutorial's note", () => {
     const flood = card(defencesCard(result(), null, targets, "flood")).text;
-    expect(flood).toContain("Pandanus 0 A cyclone defence; this was a river flood");
+    expect(flood).toContain("Pandanus 0 A cyclone defense; this was a river flood");
     expect(flood).not.toMatch(/Mangrove 6 A /);
-    expect(otherKindNote(targets("khazan"), "cyclone")).toBe("A flood defence; this was a cyclone");
-    expect(otherKindNote(targets("small_dam"), "cyclone")).toBe("A flood defence; this was a cyclone");
+    expect(otherKindNote(targets("khazan"), "cyclone")).toBe("A flood defense; this was a cyclone");
+    expect(otherKindNote(targets("small_dam"), "cyclone")).toBe("A flood defense; this was a cyclone");
     // The 2050 storm is both: no row is the wrong kind.
     expect(otherKindNote(targets("khazan"), "compound")).toBeNull();
   });

@@ -2587,7 +2587,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         // Section 22.4 (owner decision): a ruined home stays ruined; no Repair on it, and the note says why.
         note:
           panjim && def.kind === "building" && built.degradeAmount >= 1
-            ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defences only."
+            ? "Ruined in a storm. In this game a ruined home stays ruined for the rest of the run: repair works on defenses only."
             : panjim && def.kind === "building"
               ? TILE_NOTES.home
             : panjim && isCracked(def, built, state.turn)

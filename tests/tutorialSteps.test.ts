@@ -53,8 +53,8 @@ describe("the Tutorial's captions (Section 31.3)", () => {
   it("has no dots or hyphens between words in any of its strings, Maya's Tutorial lines and the Tutorial's tooltip (Section 17b)", () => {
     const strings = [...tutorialStepStrings(), ...Object.values(maya.tutorial), tooltips.biodiversityCounterTutorial];
     // The result cards' lines (Section 31.4), as the controller writes them.
-    for (const storm of ["cyclone", "river flood"]) for (const kind of ["flood", "cyclone"]) strings.push(`A ${kind} defence; this was a ${storm}`);
-    strings.push("Broken before this storm", "Taken down before this storm", "Too far from the homes in this storm's path", "You tried 3 of 7", "Pandanus will not help in the river flood, but you can still try it.", "Its homes were already safe when you built it", "Each number is the homes it took out of this storm's way when you built it.", "Next, a river flood. Its defences go on the estuary and the river.", "You tried 7 of 7 defences", "Try every defence", "Every defence tried", "Watch what each one does in the storm.", "It hurries the storm");
+    for (const storm of ["cyclone", "river flood"]) for (const kind of ["flood", "cyclone"]) strings.push(`A ${kind} defense; this was a ${storm}`);
+    strings.push("Broken before this storm", "Taken down before this storm", "Too far from the homes in this storm's path", "You tried 3 of 7", "Pandanus will not help in the river flood, but you can still try it.", "Its homes were already safe when you built it", "Each number is the homes it took out of this storm's way when you built it.", "Next, a river flood. Its defenses go on the estuary and the river.", "You tried 7 of 7 defenses", "Try every defense", "Every defense tried", "Watch what each one does in the storm.", "It hurries the storm");
     for (const s of strings) {
       expect(punctuationProblems(s), s).toEqual([]);
       expect(s, s).not.toMatch(/·|\s[-–—]\s|\be\.g\.|\betc\.|\b\w+-\w+\b/);

@@ -25,11 +25,11 @@ export class TutorialPanel {
   constructor() {
     this.el = document.createElement("section");
     this.el.className = "tutorial-panel";
-    this.el.setAttribute("aria-label", "Try every defence");
+    this.el.setAttribute("aria-label", "Try every defense");
     this.el.innerHTML = `
       <div class="tutorial-caption" aria-live="polite"></div>
       <div class="tutorial-checklist">
-        <div class="tutorial-checklist-head"><span>Try every defence</span><b class="tutorial-count"></b></div>
+        <div class="tutorial-checklist-head"><span>Try every defense</span><b class="tutorial-count"></b></div>
         <ul class="tutorial-checks"></ul>
       </div>`;
     this.caption = this.el.querySelector(".tutorial-caption")!;
@@ -109,7 +109,7 @@ export class TutorialPanel {
       // No suggestion: every defence tried, or the seven years are up (Section 31: never "every" when it was not).
       const all = this.tried >= NUDGE_ORDER.length;
       done.innerHTML = `<b></b><p>Watch what each one does in the storm.</p>`;
-      (done.querySelector("b") as HTMLElement).textContent = all ? "Every defence tried" : `You tried ${this.tried} of ${NUDGE_ORDER.length}`;
+      (done.querySelector("b") as HTMLElement).textContent = all ? "Every defense tried" : `You tried ${this.tried} of ${NUDGE_ORDER.length}`;
       this.caption.appendChild(done);
       return;
     }

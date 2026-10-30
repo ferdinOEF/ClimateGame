@@ -93,7 +93,7 @@ export function aftermathLine(kind: ChallengeKind, outcome: ChallengeOutcome, st
     return `${hit.housesDamaged} house${hit.housesDamaged === 1 ? "" : "s"} at ${place(hit.zoneId, zones)} took water. Repair them to get their income back.`;
   }
   const worn = outcome.zones.find((zone) => zone.overwhelmed.length > 0);
-  if (worn) return `The defences at ${place(worn.zoneId, zones)} bent but stayed. They'll want a repair.`;
+  if (worn) return `The defenses at ${place(worn.zoneId, zones)} bent but stayed. They'll want a repair.`;
   return `It got through ${place(outcome.zones[outcome.zones.length - 1]?.zoneId ?? "z4", zones)}, but slowed all the way.`;
 }
 

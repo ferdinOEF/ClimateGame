@@ -263,7 +263,7 @@ describe("stars from homes saved and biodiversity (Section 25.2)", () => {
     expect(natureReason(-10, 6, new Map([["seawall", -10]]))).toBe("Seawalls cost nature");
     expect(natureReason(-3, 6, new Map([["seawall", -5], ["mangrove", 3], ["breakwater", -2]]))).toBe("Seawalls cost nature");
     expect(natureReason(3, 6, new Map([["mangrove", 3]]))).toBe("Short of the +6 three stars need");
-    expect(natureReason(0, 6, new Map())).toBe("No nature based defences yet");
+    expect(natureReason(0, 6, new Map())).toBe("No nature based defenses yet");
     expect(natureReason(9, 6, new Map([["mangrove", 6], ["dune", 2], ["seawall", -5], ["sandy_vegetation", 6]]))).toBe("Mangroves bring nature back");
   });
 

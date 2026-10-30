@@ -48,7 +48,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "unbroken",
     name: "Unbroken",
-    description: "Clear a level without losing a single defence.",
+    description: "Clear a level without losing a single defense.",
     icon: "🛡️",
     test: (c) => c.completed && c.stats.defensesDestroyed === 0
   },
@@ -62,7 +62,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "root-keeper",
     name: "Root Keeper",
-    description: "Clear a level with only nature based defences standing.",
+    description: "Clear a level with only nature based defenses standing.",
     icon: "🌿",
     test: (c) =>
       c.completed &&
@@ -72,7 +72,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "concrete-heart",
     name: "Concrete Heart",
-    description: "Clear a level leaning on engineered defences alone.",
+    description: "Clear a level leaning on engineered defenses alone.",
     icon: "🧱",
     test: (c) =>
       c.completed &&

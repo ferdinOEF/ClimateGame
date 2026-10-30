@@ -87,7 +87,7 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
           el("div", {
             className: "menu-hero",
             children: [
-              el("div", { className: "menu-eyebrow", text: "A coast defence game set in Goa" }),
+              el("div", { className: "menu-eyebrow", text: "A coast defense game set in Goa" }),
               el("h1", { className: "menu-title", text: "Riptide Rising" }),
               el("p", { className: "menu-tagline", text: menuTagline() })
             ]

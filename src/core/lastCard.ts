@@ -44,7 +44,7 @@ export function homesLine(saved: number, total: number): string {
 export const QUESTIONS = [
   "How much did the game improve your understanding of the risk cyclones and floods pose to Goa's coast?",
   "How much did watching mangroves, dunes and khazans stop the surge in the game improve your understanding of how they protect the coast?",
-  "How much more confident are you that Panjim can be protected if the right defences are built?",
+  "How much more confident are you that Panjim can be protected if the right defenses are built?",
   "How much has the game made you want to talk about what you learnt, or to visit or help protect a mangrove or khazan?"
 ] as const;
 export const QUESTION_KEYS = ["q1", "q2", "q3", "q4"] as const;
