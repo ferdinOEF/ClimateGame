@@ -19,7 +19,7 @@ export interface HowToPlayStorm {
   kind: ChallengeKind;
   /** "Cyclone", "Flood" or "Both". */
   label: string;
-  /** "Miramar beach", from the level's storm. */
+  /** The place alone ("Miramar beach"), from the level's storm. */
   where: string;
   /** Builds from the one before (the start, or the storm before) to this storm: "5 turns". */
   turns: number;
@@ -216,11 +216,11 @@ function screenThree(m: HowToPlayModel): string {
       <div class="howto-points">
         <div class="howto-point howto-point-homes" role="group" aria-label="Save homes">
           <span class="howto-point-icon">${svg(HOUSE, 46)}</span>
-          <div class="howto-point-text"><b>Save homes</b><p>Every home still standing after a storm scores.</p><span class="howto-point-chip">${m.homePoints} points a home</span></div>
+          <div class="howto-point-text"><b>Save homes</b><p>Every home in a storm's path that still stands scores.</p><span class="howto-point-chip">${m.homePoints} points a home</span></div>
         </div>
         <div class="howto-point howto-point-nature" role="group" aria-label="Increase biodiversity">
           <span class="howto-point-icon">${svg(LEAF, 46)}</span>
-          <div class="howto-point-text"><b>Increase biodiversity</b><p>Nature based defenses like mangroves and khazans add Biodiversity Points. Dams and seawalls (concrete and metal) reduce them.</p><span class="howto-point-chip">${m.bioPoints} points for each Biodiversity Point you add</span></div>
+          <div class="howto-point-text"><b>Increase biodiversity</b><p>Nature based defenses like mangroves and khazans add Biodiversity Points. Dams and seawalls (concrete and metal) reduce them.</p><span class="howto-point-chip">${m.bioPoints} points for each Biodiversity Point you add, counted in ${m.endYear}</span></div>
         </div>
       </div>
     </section>`;

@@ -2848,3 +2848,26 @@ bytes. `top` has no cap; the same answer goes to a post, a rename and `GET /api/
 **Not run:** Safari and Firefox; the full browser check; the bots; test:layout and test:labels; a production load
 (nothing merged). One run of the unit tests made while the frame tool was drawing had two tests fail in one file; the
 same commit passed in full when run alone.
+
+**Step 40.7: the owner's answers.** One commit on the same branch, not merged.
+1. The eyebrow as plain text: keep. 2. Leave Panjim?'s plain title: keep. 3. The replay card and the idle warning:
+keep the new colours. 4. The plum dim: keep. 5. No cap on `top`. 9. The Tutorial's brief: leave it. No change for
+these.
+6. Darkened both. The homes saved bar's fill is `--good`, the dark teal of the bars on "What protected your homes":
+4.9:1 on its pink track (the teal was 1.7:1). An empty feedback star's outline and edge are `--strip`: 3.4:1 on its
+button (the pale edge was 1.6:1). Both pairs, and the rows' bars on their track (3.4:1), are in tests/theme.test.ts
+as marks at 3:1.
+7. How to play 3: "Every home in a storm's path that still stands scores." and "5 points for each Biodiversity Point
+you add, counted in 2050" (the 2050 is the level's end year).
+8. How to play 1: the chip under each storm is the place alone, the level's own `where` (levels.json): "Miramar
+beach", "Ribandar to Taleigao", "Campal". The line above each stays.
+10. CLAUDE.md: Maya is locked in the bottom left corner (Section 34c.2).
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit`, `npm run test`, `npm run build` | Clean; 113 files, 981 pass, 6 skipped; clean. The first test run failed one test, the server bundle check, because `where` had changed and the bundle had not been rebuilt; after `npm run build` (which rebuilds it) the whole suite passed. |
+| tools/section40Shots.ts `only=howto,result` at 1366x768 | 24 of 24 checks pass, no console errors. The 2030 scenario saves no home, so its bar is empty in the shot; the check reads the fill as the dark teal. |
+
+Retaken: `3-how-to-play-1`, `5-how-to-play-3`, `7-result-2030` (and `7b`, `4`, which the same run shoots) at 1366x768.
+The 1920x1080 copies of those three and the last card's shots are from before this step. Not run again: the frame
+comparison (no rule outside the static screens' roots changed), test:maya, Safari and Firefox.

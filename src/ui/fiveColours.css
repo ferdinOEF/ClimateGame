@@ -139,7 +139,10 @@
   color: var(--star);
 }
 
-/* Homes saved: a teal fill on a soft pink track with a pink edge. */
+/*
+ * Homes saved: a soft pink track with a pink edge; the fill is the dark teal of the bars on "What protected your
+ * homes" (Section 40.7, owner: the teal was 1.7 to 1 on the track).
+ */
 .result-cards .result-bar {
   box-sizing: border-box;
   background: var(--warn-soft);
@@ -147,7 +150,7 @@
 }
 
 .result-cards .result-bar span {
-  background: var(--teal);
+  background: var(--good);
 }
 
 /* "What protected your homes": each row's bar in the dark teal, which reads on its pale track (the teal did not). */
@@ -257,12 +260,15 @@
   background: var(--strip);
 }
 
-/* A star button: empty, light with an outline star; chosen, gold with a dark star and edge. */
+/*
+ * A star button: empty, light with an outline star; chosen, gold with a dark star and edge. Section 40.7 (owner): the
+ * empty one's star and edge are the purple, 3.4 to 1 on its ground (the pale edge was 1.6 to 1).
+ */
 .result-cards .fb-star {
-  border: 1.5px solid var(--panel-shadow);
+  border: 1.5px solid var(--strip);
   background: var(--panel);
   line-height: 25px;
-  -webkit-text-stroke: 1.2px var(--panel-shadow);
+  -webkit-text-stroke: 1.2px var(--strip);
 }
 
 .result-cards .fb-star.on {

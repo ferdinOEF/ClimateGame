@@ -221,7 +221,7 @@ try {
     const card = ".result-cards:not([hidden])";
     check((await colour(page, `${card} .result-eyebrow`)) === rgb("#e696a6") && (await colour(page, `${card} .result-eyebrow`, "color")) === rgb("#2a2038"), "the card's band is pink with dark ink");
     check((await colour(page, `${card} .result-stars`)) === rgb("#2a2038") && (await colour(page, `${card} .result-stars`, "color")) === rgb("#d2ad68"), "the stars are gold on a dark pill");
-    check((await colour(page, `${card} .result-bar span`)) === rgb("#4fc8b7") && (await colour(page, `${card} .result-bar`)) === rgb("#fae3e8"), "the homes saved bar: teal on the soft pink track");
+    check((await colour(page, `${card} .result-bar span`)) === rgb("#1f6f64") && (await colour(page, `${card} .result-bar`)) === rgb("#fae3e8"), "the homes saved bar: the dark teal on the soft pink track (Section 40.7)");
     check((await colour(page, `${card} .result-points`)) === rgb("#f5ead3"), "Points this storm sits in the soft gold box");
     check((await colour(page, `${card} .result-next`)) === rgb("#4fc8b7") && (await colour(page, `${card} .result-retry`)) === "rgba(0, 0, 0, 0)", "the main button is teal; Try again is the quiet style");
     const fits = await js<boolean>(page, `(() => { const c = document.querySelector(".result-cards:not([hidden]) .result-card"); const r = c.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && c.scrollHeight <= c.clientHeight + 1; })()`);
@@ -300,7 +300,7 @@ try {
       await shot(page, "8b-last-card-board-top", 400);
       // A chosen feedback star.
       await page.click('.fb-row .fb-star[data-value="4"]');
-      check((await colour(page, ".fb-row .fb-star.on")) === rgb("#d2ad68") && (await colour(page, ".fb-row .fb-star:not(.on)")) === rgb("#f7f5f9"), "a chosen star button is gold, an empty one light");
+      check((await colour(page, ".fb-row .fb-star.on")) === rgb("#d2ad68") && (await colour(page, ".fb-row .fb-star:not(.on)")) === rgb("#f7f5f9") && (await colour(page, ".fb-row .fb-star:not(.on)", "borderTopColor")) === rgb("#a075ae"), "a chosen star button is gold, an empty one light with a purple edge (Section 40.7)");
       // The nudge, from a footer button.
       await page.click('.last-action[data-action="exit"]');
       await page.waitForSelector(".result-nudge", { timeout: 10000 });

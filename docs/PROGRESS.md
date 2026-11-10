@@ -21,6 +21,13 @@ pictures (P1 to P6) were not attached, so the screens are drawn from the brief's
 - 40.5 The last card's board box lists the board from 1st place down to the player (the server's `around` also
   returns `top`; `RankView.top`), three rows high, scrolled to the player's row, focusable, with "Scroll up to see
   1st place" under it when there are more than three rows. The rows below the player are gone. No schema change.
+- 40.7 The owner's answers: the homes saved bar's fill is the dark teal of the rows' bars and an empty feedback
+  star's outline and edge are the purple (both 3:1 or better on their grounds, both pairs in the theme test); How to
+  play 3 says "Every home in a storm's path that still stands scores." and "5 points for each Biodiversity Point you
+  add, counted in 2050" (the year from the level); How to play 1's chips are the place alone (`where` in levels.json:
+  "Miramar beach", "Ribandar to Taleigao", "Campal"); CLAUDE.md says Maya is bottom left. Kept as built: the eyebrow
+  and the Leave title as plain text, the replay card and the idle warning in the new colours, the plum dim, no cap
+  on `top`, the Tutorial's brief in the game's colours.
 - 40.6 tools/section40Shots.ts (the browser pass), tools/section40Frames.ts (two frozen in game frames on master and
   on the branch: identical), tools/letsPlay.ts (Next, Next, Let's Play! for the QA tools), tools/boardReplySize.ts,
   the reviewer's fixes, the docs.

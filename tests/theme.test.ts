@@ -93,6 +93,16 @@ const FIVE_PAIRS: [string, string, boolean?][] = [
   ["ink-2", "blue-soft"],
   ["ink-2", "purple-soft"]
 ];
+/**
+ * Section 40.7 (owner): marks that are not text but carry meaning, each at 3:1 or better on its ground: the homes
+ * saved bar's fill on its track, the bars on "What protected your homes" on theirs, and an empty feedback star's
+ * outline and edge on its button.
+ */
+const FIVE_MARKS: [string, string][] = [
+  ["good", "warn-soft"],
+  ["good", "panel-shadow"],
+  ["strip", "panel"]
+];
 const FIVE_ALLOWED = new Set(FIVE_PAIRS.map(([t, b]) => `${t}|${b}`));
 /** The variables only the block has. */
 const FIVE_ONLY = Object.keys(FIVE).filter((key) => !(key in CALM));
@@ -178,6 +188,22 @@ describe("Section 40: the five colours on the static screens", () => {
       const ratio = contrast(FIVE[text], FIVE[bg]);
       expect(ratio, `five colours: --${text} on --${bg} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(large ? 3 : 4.5);
     }
+  });
+
+  it("Section 40.7: the homes bar's fill and the empty feedback star reach 3:1 on their grounds, as the sheet draws them", () => {
+    for (const [mark, ground] of FIVE_MARKS) {
+      const ratio = contrast(FIVE[mark], FIVE[ground]);
+      expect(ratio, `five colours: the mark --${mark} on --${ground} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3);
+    }
+    const five = fs.readFileSync("src/ui/fiveColours.css", "utf8");
+    // The homes saved bar and the rows' bars share the dark teal.
+    expect(five).toMatch(/\.result-cards \.result-bar \{[^}]*background: var\(--warn-soft\);[^}]*\}\s*\.result-cards \.result-bar span \{\s*background: var\(--good\);/);
+    expect(five).toMatch(/\.result-cards \.result-row-bar span \{\s*background: var\(--good\);/);
+    // The empty star: its edge and its outline star in the purple, on the light button.
+    expect(five).toMatch(/\.result-cards \.fb-star \{\s*border: 1\.5px solid var\(--strip\);\s*background: var\(--panel\);[^}]*-webkit-text-stroke: 1\.2px var\(--strip\);/);
+    // The pairs they replace were too faint.
+    expect(contrast(FIVE.teal, FIVE["warn-soft"])).toBeLessThan(3);
+    expect(contrast(FIVE["panel-shadow"], FIVE.panel)).toBeLessThan(3);
   });
 
   it("purple carries no small text: it is the text of no pair", () => {

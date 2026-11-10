@@ -18034,7 +18034,7 @@ var levels_default = [
           name: "Monsoon flood",
           kind: "flood",
           year: 2040,
-          where: "down the Mandovi",
+          where: "Ribandar to Taleigao",
           strength: 2.35
         },
         {
@@ -18042,7 +18042,7 @@ var levels_default = [
           name: "Cyclone and flood",
           kind: "compound",
           year: 2050,
-          where: "cyclone and flood, Campal",
+          where: "Campal",
           strength: 3,
           landfall: "2,12",
           wind: { perStrengthM: 0.6, inlandKeep: 0.8, compoundShare: 1.1 },

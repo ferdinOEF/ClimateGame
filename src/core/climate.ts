@@ -21,7 +21,7 @@ export interface ChallengeDef {
   kind: ChallengeKind;
   /** The year the storm comes, at its end. */
   year: number;
-  /** Section 39.3: where it comes, under its year on How to play's timeline ("Miramar beach"). */
+  /** Section 39.3: where it comes, on its card in How to play; Section 40.7 (owner): the place alone ("Miramar beach"). */
   where?: string;
   /** Strength on the level's scale (the hazard model's input). Fixed: no baseline, no jitter. */
   strength: number;

@@ -26,7 +26,9 @@ describe("How to play's numbers", () => {
 
   it("lists the three storms with their years, kinds, places and the turns between them", () => {
     expect(m.storms.map((s) => `${s.year} ${s.label}`)).toEqual(["2030 Cyclone", "2040 Flood", "2050 Both"]);
-    expect(m.storms.map((s) => s.where)).toEqual(["Miramar beach", "down the Mandovi", "cyclone and flood, Campal"]);
+    // Section 40.7 (owner): the place alone, from the level's own storms.
+    expect(m.storms.map((s) => s.where)).toEqual(["Miramar beach", "Ribandar to Taleigao", "Campal"]);
+    expect(m.storms.map((s) => s.where)).toEqual([...panjim.climate!.challenges].sort((a, b) => a.year - b.year).map((c) => c.where));
     expect(m.storms.map((s) => s.turns)).toEqual([5, 10, 10]);
     // The turns add up to the run's builds: the last storm comes at the end of the last year.
     expect(m.storms.reduce((n, s) => n + s.turns, 0)).toBe(m.builds);
@@ -167,6 +169,9 @@ describe("Section 40.3: How to play in three screens", () => {
       "A cyclone and a flood at the same time"
     ]);
     expect([...one.matchAll(/class="howto-storm howto-storm-([a-z]+)"/g)].map((x) => x[1])).toEqual(["cyclone", "flood", "compound"]);
+    // Section 40.7 (owner): the chip under each storm is the place alone; the line above it stays.
+    expect([...one.matchAll(/<span class="howto-storm-where">([^<]+)<\/span>/g)].map((x) => x[1])).toEqual(["Miramar beach", "Ribandar to Taleigao", "Campal"]);
+    for (const chip of one.matchAll(/<span class="howto-storm-where">([^<]+)<\/span>/g)) expect(chip[1]).not.toMatch(/cyclone|flood|Mandovi|down/i);
   });
 
   it("screen 2: the year's three steps, the legend and the seven defenses with their chips, all from the data", () => {
@@ -202,12 +207,18 @@ describe("Section 40.3: How to play in three screens", () => {
       "Wind: comes with every cyclone"
     ]);
     expect(three).toContain("<h3>Get points</h3>");
-    expect(three).toContain(`<b>Save homes</b><p>Every home still standing after a storm scores.</p><span class="howto-point-chip">${POINT_VALUES.home} points a home</span>`);
+    // Section 40.7 (owner): the two lines say the rule; the year is the level's end year, not typed in.
+    expect(three).toContain(`<b>Save homes</b><p>Every home in a storm's path that still stands scores.</p><span class="howto-point-chip">${POINT_VALUES.home} points a home</span>`);
     expect(three).toContain(
-      `<b>Increase biodiversity</b><p>Nature based defenses like mangroves and khazans add Biodiversity Points. Dams and seawalls (concrete and metal) reduce them.</p><span class="howto-point-chip">${POINT_VALUES.biodiversity} points for each Biodiversity Point you add</span>`
+      `<b>Increase biodiversity</b><p>Nature based defenses like mangroves and khazans add Biodiversity Points. Dams and seawalls (concrete and metal) reduce them.</p><span class="howto-point-chip">${POINT_VALUES.biodiversity} points for each Biodiversity Point you add, counted in ${panjim.timeline!.endYear}</span>`
     );
     expect(three).toContain("10 points a home");
-    expect(three).toContain("5 points for each Biodiversity Point you add");
+    expect(three).toContain("5 points for each Biodiversity Point you add, counted in 2050");
+    expect(three).not.toContain("Every home still standing after a storm scores.");
+    // Another level's end year would show: the year comes from the model.
+    const other = howToPlayHtml({ ...m, endYear: 2060 });
+    expect(other).toContain("you add, counted in 2060");
+    expect(readFileSync("src/ui/panjim/howToPlay.ts", "utf8")).toContain("you add, counted in ${m.endYear}</span>");
   });
 
   it("keeps the player text rules: no middle dot, no spaced dash, no hyphen joining words, and defense", () => {
