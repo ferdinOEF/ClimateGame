@@ -44,7 +44,7 @@
     "small_dam": "holds back river water and earns Coin, until a flood is too big for it.",
     "sand_mining": "earns Coin fast, but in this game it lowers biodiversity and makes floods worse.",
     "yacht": "a luxury. It does nothing for the city.",
-    "breakwater": "a rock barrier offshore that breaks a cyclone's waves before they reach the beach."
+    "breakwater": "a rock barrier just off the shore that breaks a cyclone's waves before they reach the beach."
   },
   "buildWhatPanjim": {
     "dune": "a sand bank that soaks up a cyclone's surge on the beach.",
@@ -57,7 +57,7 @@
     "small_dam": "holds back river water, until a flood is too big for it.",
     "sand_mining": "digs sand from the river. In this game it lowers biodiversity and makes floods worse.",
     "yacht": "a luxury. It does nothing for the city.",
-    "breakwater": "a rock barrier offshore that breaks a cyclone's waves before they reach the beach."
+    "breakwater": "a rock barrier just off the shore that breaks a cyclone's waves before they reach the beach."
   },
   "builtInfo": "What is built here, and what it adds to the city.",
   "expand": "Opens the full panel again."

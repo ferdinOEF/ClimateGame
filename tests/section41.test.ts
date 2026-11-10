@@ -19,6 +19,16 @@ import { playedRun } from "../tools/panjimBots/bots";
 import { postBoard, type Ctx } from "../server/handlers";
 import { memoryDb } from "./helpers/memoryDb";
 import { sessionRun } from "./helpers/sessionRun";
+import { readFileSync } from "node:fs";
+import mayaData from "../src/data/maya.json";
+import { MayaDirector } from "../src/app/mayaDirector";
+import type { Maya, MayaLine } from "../src/ui/panjim/maya";
+import { CARD_LINES, defenceRules, riverRule, SHORE_RULE, TILE_NOTES, TUTORIAL_CARD_LINES } from "../src/ui/panjim/defenceCards";
+import { STEP_BY_ID } from "../src/ui/panjim/tutorialSteps";
+import { discoveryFacts, factById, isShown } from "../src/core/facts";
+import { punctuationProblems } from "./helpers/uiStrings";
+
+const MAYA = mayaData;
 
 /**
  * Section 41 (owner decisions after the playtest of 10 November 2026): shore defenses, Campal in 2050, and a perfect
@@ -417,5 +427,110 @@ describe("41.3: storm numbers, Campal's water edge, nature standing at the start
       expect(reply.status).toBe(200);
       expect(reply.body.points).toBe(client.total);
     }, 240_000);
+  });
+});
+
+describe("41.4: wording for the shore rule and the standing nature", () => {
+  const read = (file: string): string => readFileSync(file, "utf8");
+  /** Maya, as far as the director needs her: what she was asked to say, in order. */
+  function sayer(): { maya: Maya; said: MayaLine[] } {
+    const said: MayaLine[] = [];
+    const maya = { say: (l: MayaLine) => said.push(l), withdraw: () => undefined, dismiss: () => undefined, queued: said } as unknown as Maya;
+    return { maya, said };
+  }
+
+  it("Maya says the standing nature's line once at the start of Play Panjim, after her first line, and only where nature stands", () => {
+    expect(MAYA.standing.text).toBe("Panjim already has mangroves and khazan land at Merces and Taleigao. Keep them standing.");
+    const run = sessionRun(LEVEL_BY_ID.get(PANJIM_LEVEL_ID)!);
+    const { maya, said } = sayer();
+    new MayaDirector(maya, { run, blocked: () => false, exposure: () => null, project: () => null, focus: () => undefined, landmarks: [] });
+    expect(said.map((l) => l.id)).toEqual(["first-job", "standing-nature"]);
+    expect(said[1]).toMatchObject({ text: MAYA.standing.text, state: "explains" });
+    // Not urgent and not forced: it waits its turn, so it is never said over the guided start (while that runs, the
+    // director is blocked and her own lines wait in the queue).
+    expect(said[1].urgent).toBeUndefined();
+    expect(said[1].force).toBeUndefined();
+    const session = read("src/app/gameSession.ts");
+    expect(session).toContain("uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen || Boolean(guide?.active),");
+    // The guided start takes back her first line and its own steps, nothing else: this one stays queued for the hand over.
+    expect(read("src/app/guidedStart.ts")).toContain('maya.withdraw((queued) => queued.id.startsWith("guide:") || queued.id === MAYA.opening.id);');
+    // A board with nothing standing (the same level without them): no such line. The Tutorial's director is quiet.
+    const bare = sessionRun({ ...LEVEL_BY_ID.get(PANJIM_LEVEL_ID)!, standingDefences: [] });
+    const other = sayer();
+    new MayaDirector(other.maya, { run: bare, blocked: () => false, exposure: () => null, project: () => null, focus: () => undefined, landmarks: [] });
+    expect(other.said.map((l) => l.id)).toEqual(["first-job"]);
+    const quiet = sayer();
+    new MayaDirector(quiet.maya, { run, blocked: () => false, exposure: () => null, project: () => null, focus: () => undefined, landmarks: [], quiet: true });
+    expect(quiet.said).toEqual([]);
+  });
+
+  it("her warning before the 2050 storm ends with the sea and the river at Campal", () => {
+    expect(MAYA.warning.seaAndRiver).toBe("At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back.");
+    expect(MAYA.warning.seaAndRiver.split(/\s+/).length).toBeLessThanOrEqual(25);
+    const run = { yearsUntil: () => 2, nextChallenge: () => ({ id: "c3-compound", kind: "compound", turn: 25 }), state: { elements: new Map() }, prep: [], zones: null, objective: null };
+    const exposure = { kind: "compound", intensity: new Map([["6,10", 2]]), exposure: new Map(), housesAtRisk: ["6,10"] };
+    const { maya, said } = sayer();
+    const director = new MayaDirector(maya, { run, blocked: () => false, exposure: () => exposure, project: () => null, focus: () => undefined, landmarks: [{ name: "Campal", q: 6, r: 10 }] } as never);
+    director.consider();
+    const warning = said.find((l) => l.id === "warn:c3-compound")!;
+    expect(warning.text.endsWith(` ${MAYA.warning.wind} ${MAYA.warning.seaAndRiver}`)).toBe(true);
+    // A cyclone's or a flood's warning has neither.
+    const cyclone = sayer();
+    const before = new MayaDirector(cyclone.maya, { run: { ...run, nextChallenge: () => ({ id: "c1-cyclone", kind: "cyclone", turn: 5 }) }, blocked: () => false, exposure: () => ({ ...exposure, kind: "cyclone" }), project: () => null, focus: () => undefined, landmarks: [] } as never);
+    before.consider();
+    expect(cyclone.said.find((l) => l.id === "warn:c1-cyclone")!.text).not.toContain("Campal the sea");
+  });
+
+  it("the seawall's card: the strongest wall, the 2050 rule second, and the line it had third; the Tutorial's has no 2050", () => {
+    expect(CARD_LINES.seawall).toEqual(["The strongest wall against cyclone surge.", "In the 2050 storm it holds back the river too.", "Costs nature, and cracks with age."]);
+    expect(TUTORIAL_CARD_LINES.seawall).toEqual(["The strongest wall against cyclone surge.", "Costs nature."]);
+    // The card draws every line after the first (the build popover), and the controller hands them all over.
+    expect(read("src/app/panjimController.ts")).toContain("detail: lines[def.id]?.[1], more: lines[def.id]?.slice(2),");
+    expect(read("src/ui/buildPopover.ts")).toContain("for (const text of [card.detail, ...(card.more ?? [])]) {");
+    // The year on the card is the level's own storm that brings both.
+    const compound = LEVEL_BY_ID.get(PANJIM_LEVEL_ID)!.climate!.challenges.find((c) => c.kind === "compound")!;
+    expect(CARD_LINES.seawall[1]).toContain(`${compound.year} storm`);
+  });
+
+  it("a breakwater is just off the shore everywhere, never out at sea", () => {
+    expect(CARD_LINES.breakwater[0]).toBe("Breaks cyclone waves just off the shore.");
+    expect(defenceRules().find((r) => r.id === "breakwater")!.text).toContain("breaks a cyclone's waves just off the shore but");
+    expect(MAYA.results.byDefence.breakwater.text).toBe("Breakwaters broke the waves just off the shore, before they reached the beach.");
+    expect(factById("breakwater-offshore")!.text).toBe("A breakwater just off the shore takes the force out of a cyclone's waves. It breaks at 10 years old.");
+    const step = STEP_BY_ID.get("breakwater")!;
+    expect(step.how[0]).toBe("A barrier just off the shore.");
+    expect(step.maya).toBe("A breakwater goes just off the shore. Try the glowing water.");
+    expect(step.bestAt).toBe("Breaks cyclone waves just off the shore.");
+    for (const file of ["src/ui/panjim/defenceCards.ts", "src/data/maya.json", "src/data/facts.json", "src/ui/panjim/tutorialSteps.ts", "src/data/tooltips.json"]) {
+      // The one "out at sea" left is the shore rule's own "They cannot be built out at sea."
+      expect(read(file).replace("They cannot be built out at sea.", "").match(/out at sea|out in the sea|breakwater at sea|barrier offshore/gi), file).toBeNull();
+    }
+  });
+
+  it("the Field Guide and the facts give both rules as game rules", () => {
+    expect(SHORE_RULE).toBe("In this game, seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it. They cannot be built out at sea.");
+    expect(riverRule(2050)).toBe("In this game, in the 2050 storm a seawall also holds back the river that the sea pushes back.");
+    const guide = read("src/ui/panjim/fieldGuide.ts");
+    expect(guide).toContain('{ id: "shore", name: "At the shore", text: SHORE_RULE }');
+    expect(guide).toContain('{ id: "river", name: "The sea and the river", text: riverRule(this.compoundYear) }');
+    expect(read("src/app/panjimController.ts")).toContain('this.fieldGuide.compoundYear = this.run.schedule.find((c) => c.kind === "compound")?.year ?? null;');
+    // The facts (Maya says them on a build; the Sources screen lists them as game rules): her bubble labels them
+    // "Game rule", so they do not open with "In this game", run to 20 words at most and name no year.
+    const shore = factById("shore-rule")!;
+    const river = factById("seawall-river")!;
+    expect(shore).toMatchObject({ kind: "gameRule", text: "Seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it.", elements: ["seawall", "breakwater"] });
+    expect(river).toMatchObject({ kind: "gameRule", text: "When a cyclone and a flood come together, a seawall also holds back the river that the sea pushes back.", elements: ["seawall"] });
+    expect(SHORE_RULE.startsWith(`In this game, ${shore.text.charAt(0).toLowerCase()}${shore.text.slice(1)}`)).toBe(true);
+    for (const fact of [shore, river]) expect(isShown(fact), fact.id).toBe(true);
+    expect(discoveryFacts("seawall").map((f) => f.id)).toEqual(["seawall-holds", "seawall-river", "seawall-fails", "seawall-no-wildlife", "shore-rule"]);
+    expect(discoveryFacts("breakwater").map((f) => f.id)).toEqual(["breakwater-offshore", "shore-rule"]);
+  });
+
+  it("the new words keep the text rules: no middle dot, no spaced dash, no hyphen joining words, defense spelt so", () => {
+    const texts = [MAYA.standing.text, MAYA.warning.seaAndRiver, ...CARD_LINES.seawall, ...CARD_LINES.breakwater, SHORE_RULE, riverRule(2050), factById("shore-rule")!.text, factById("seawall-river")!.text, factById("breakwater-offshore")!.text, TILE_NOTES.riverMouth, ...STEP_BY_ID.get("breakwater")!.how, STEP_BY_ID.get("breakwater")!.maya, STEP_BY_ID.get("breakwater")!.bestAt];
+    for (const text of texts) {
+      expect(punctuationProblems(text), text).toEqual([]);
+      expect(text, text).not.toMatch(/defence|fund|grant|money|\bcost of\b/i);
+    }
   });
 });

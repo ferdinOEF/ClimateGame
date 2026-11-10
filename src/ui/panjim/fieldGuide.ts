@@ -2,7 +2,7 @@ import guideData from "@data/fieldGuide.json";
 import { playSound } from "@ui/audioHooks";
 import { noteIdsFor, notesProgress } from "@core/mayaLines";
 import { factById } from "@core/facts";
-import { BROKEN_RULE, defenceRules } from "@ui/panjim/defenceCards";
+import { BROKEN_RULE, defenceRules, riverRule, SHORE_RULE } from "@ui/panjim/defenceCards";
 import { COMBO_INFO, COMBO_SOURCE, comboNote } from "@core/combos";
 
 /**
@@ -163,6 +163,12 @@ export class FieldGuide {
     return notesProgress(this.notes.map((note) => note.id), this.countable, plus);
   }
 
+  /**
+   * Section 41.4: the year of the level's storm that brings both a cyclone and a flood (Panjim's 2050), set by the
+   * level; null where there is none (the Tutorial), and then the river rule is not listed.
+   */
+  compoundYear: number | null = null;
+
   /** The notes this level can give (set by the level; every note there is until then). */
   countable: ReadonlySet<string> = noteIdsFor({ opening: false, excluded: new Set() });
 
@@ -225,7 +231,9 @@ export class FieldGuide {
     // Section 34b (owner decision): where the wind reaches, from the same rule the Sources screen lists.
     const windReach = factById("wind-reach")?.text;
     const wind = windReach ? [{ id: "wind", name: "The wind", text: `In this game ${windReach.charAt(0).toLowerCase()}${windReach.slice(1)}` }] : [];
-    const rules: { id: string; name: string; text: string; source?: string }[] = [...defenceRules(), { id: "broken", name: "Broken defenses", text: BROKEN_RULE }, ...wind, ...together];
+    // Section 41.4 (owner's words): where seawalls and breakwaters stand, and what a seawall does in the storm that brings both.
+    const shore = [{ id: "shore", name: "At the shore", text: SHORE_RULE }, ...(this.compoundYear === null ? [] : [{ id: "river", name: "The sea and the river", text: riverRule(this.compoundYear) }])];
+    const rules: { id: string; name: string; text: string; source?: string }[] = [...defenceRules(), ...shore, { id: "broken", name: "Broken defenses", text: BROKEN_RULE }, ...wind, ...together];
     for (const rule of rules) {
       const item = document.createElement("li");
       item.className = "field-guide-defence";

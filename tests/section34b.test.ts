@@ -88,7 +88,7 @@ describe("34b.2: Maya's bubble, and tips one a year", () => {
   }
   const fact = (id: string): MayaLine => ({ id, text: id, state: "tip", fact: { id, progress: () => "" } });
   const challenge = { id: "c2030", kind: "cyclone", turn: 5 };
-  const runAt = (year: number, moment: number) => ({ year, moment, prep: [], nextChallenge: () => challenge, buildsUntil: () => 5 });
+  const runAt = (year: number, moment: number) => ({ year, moment, prep: [], nextChallenge: () => challenge, buildsUntil: () => 5, state: { elements: new Map() } });
 
   it("a line with Got it has no hide timer; only a passing line closes by itself", () => {
     const maya = readFileSync("src/ui/panjim/maya.ts", "utf8");
@@ -545,7 +545,8 @@ describe("34b.13: a word about the wind before 2050 and after", () => {
   it("Maya's 2050 warning says the cyclone brings wind onto Campal, and that only pandanus shelters homes from it (a game rule)", () => {
     expect(MAYA.warning.wind).toBe("The cyclone brings wind onto Campal. In this game only pandanus shelters homes from the wind.");
     const director = readFileSync("src/app/mayaDirector.ts", "utf8");
-    expect(director).toContain("(next.kind === \"compound\" ? ` ${MAYA.warning.wind}` : \"\")");
+    // Section 41.4: the sea and the river at Campal follow the wind in the same warning.
+    expect(director).toContain("(next.kind === \"compound\" ? ` ${MAYA.warning.wind} ${MAYA.warning.seaAndRiver}` : \"\")");
   });
 
   it("card 2 after 2050 says so when most of the homes lost stood in the wind at Campal, and only then", () => {

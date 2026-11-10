@@ -67,6 +67,8 @@ export interface BuildCard {
   line: string;
   /** Section 30.3: one other thing it does (a real world fact with a source, or for the seawall a game rule). */
   detail?: string;
+  /** Section 41.4: any lines after the second (the seawall's third), drawn like the second. */
+  more?: readonly string[];
   /** Section 30.4: its change to biodiversity, shown in a small leaf chip. */
   biodiversity?: number;
   /** Inline SVG markup. */
@@ -292,10 +294,12 @@ export class BuildPopover {
       btn.innerHTML = `<span class="build-card-icon" aria-hidden="true">${card.icon}</span><span class="build-card-text"><span class="build-card-title"><span class="build-card-name"></span></span><span class="build-card-line"></span></span>`;
       (btn.querySelector(".build-card-name") as HTMLElement).textContent = card.name;
       (btn.querySelector(".build-card-line") as HTMLElement).textContent = card.line;
-      if (card.detail) {
+      // Section 41.4: a card may carry more lines after its second (the seawall's third), each drawn like the second.
+      for (const text of [card.detail, ...(card.more ?? [])]) {
+        if (!text) continue;
         const detail = document.createElement("span");
         detail.className = "build-card-detail";
-        detail.textContent = card.detail;
+        detail.textContent = text;
         btn.querySelector(".build-card-text")!.appendChild(detail);
       }
       if (card.biodiversity !== undefined) btn.querySelector(".build-card-title")!.appendChild(leafChip(card.biodiversity));

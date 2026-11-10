@@ -12,11 +12,14 @@
   ],
   "seawall": [
     "seawall-holds",
+    "seawall-river",
     "seawall-fails",
-    "seawall-no-wildlife"
+    "seawall-no-wildlife",
+    "shore-rule"
   ],
   "breakwater": [
-    "breakwater-offshore"
+    "breakwater-offshore",
+    "shore-rule"
   ],
   "khazan": [
     "khazan-what",

@@ -474,6 +474,7 @@ export class PanjimController {
     // Her count and the Field Guide's are one number (Section 13), out of the notes this level can give:
     // her first-job line or her hello (whichever she opened with), her tips, and the discoveries of what can be built.
     this.fieldGuide.countable = noteIdsFor({ opening: this.run.prep.some((job) => this.isOpeningJob(job)), excluded: host.state.excludedElements });
+    this.fieldGuide.compoundYear = this.run.schedule.find((c) => c.kind === "compound")?.year ?? null;
     this.nuggets.progressText = (factId) => this.fieldGuide.notesProgress(factId);
     // The HUD kept almost out of the way (hudPanels.ts): the instrument cluster, coin jar and Field Guide
     // button go into one panel and the toggles into another, each shut to a small button. The elements
@@ -1800,7 +1801,7 @@ export class PanjimController {
     const here = this.host.state.buildableAt(coord).map((def) => def).sort((a, b) => order(a.id) - order(b.id));
     // Section 30.3: two lines (the Tutorial's never mention a second storm or ageing); Section 30.4: the leaf chip.
     const lines = this.tutorial ? TUTORIAL_CARD_LINES : CARD_LINES;
-    const cards: BuildCard[] = here.map((def) => ({ id: def.id, name: CARD_NAME[def.id] ?? def.name, line: lines[def.id]?.[0] ?? "", detail: lines[def.id]?.[1], biodiversity: cardBiodiversity(def.id), icon: CARD_ICON[def.id] ?? "" }));
+    const cards: BuildCard[] = here.map((def) => ({ id: def.id, name: CARD_NAME[def.id] ?? def.name, line: lines[def.id]?.[0] ?? "", detail: lines[def.id]?.[1], more: lines[def.id]?.slice(2), biodiversity: cardBiodiversity(def.id), icon: CARD_ICON[def.id] ?? "" }));
     for (const id of DEFENCE_ORDER) {
       if (here.some((def) => def.id === id)) continue;
       cards.push({ id, name: CARD_NAME[id], line: lines[id][0], icon: CARD_ICON[id], notHere: true });
