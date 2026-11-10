@@ -131,16 +131,17 @@ export function retryLabel(year: number): string {
  * Places, Objective, Living coast). Separate chips, no dots between them.
  */
 export function stormPointsHtml(points: StormPoints, chips = true): string {
-  const sources: [string, number][] = [
-    ["Homes", points.homes.points],
-    ["Places", points.places.points],
-    ["Objective", points.objective.points],
-    ["Living coast", points.livingCoast.points]
+  // Section 40.4: each chip names its source, for the small square before it (homes, places, objective, coast).
+  const sources: [string, number, string][] = [
+    ["Homes", points.homes.points, "homes"],
+    ["Places", points.places.points, "places"],
+    ["Objective", points.objective.points, "objective"],
+    ["Living coast", points.livingCoast.points, "coast"]
   ];
   const shown = chips ? sources.filter(([, n]) => n > 0) : [];
   return `<div class="result-points" role="group" aria-label="Points this storm: ${points.total}">
     <div class="result-points-head"><span>Points this storm</span><b>${points.total}</b></div>
-    ${shown.length ? `<ul class="result-points-chips">${shown.map(([label, n]) => `<li class="result-points-chip">${label} <b>+${n}</b></li>`).join("")}</ul>` : ""}
+    ${shown.length ? `<ul class="result-points-chips">${shown.map(([label, n, source]) => `<li class="result-points-chip" data-source="${source}">${label} <b>+${n}</b></li>`).join("")}</ul>` : ""}
   </div>`;
 }
 

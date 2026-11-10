@@ -64,9 +64,10 @@ export function lastCardLeftHtml(view: LastCardView, rank: RankState): string {
     <div class="last-rule" role="presentation"></div>
     <div class="last-run-head"><span class="result-eyebrow-text">Panjim, 2026 to 2050</span><span class="last-total" aria-label="${view.points.total} points in all"><b>${view.points.total}</b> points</span></div>
     <ul class="finale-rows last-rows">${rows
-      .map((row) => {
+      .map((row, i) => {
         const stars = row.stars === null ? `<span class="finale-row-stars"></span>` : `<span class="finale-row-stars" role="img" aria-label="${row.stars} of 3 stars">${"★".repeat(row.stars)}<span class="result-stars-empty">${"★".repeat(3 - row.stars)}</span></span>`;
-        return `<li><span class="finale-row-label">${esc(row.label)}</span>${stars}<b>${row.points}</b></li>`;
+        // Section 40.4: each row says which it is, for the small square before it (a storm, or the nature row).
+        return `<li class="${row.stars === null ? "last-row-nature" : `last-row-storm-${i + 1}`}"><span class="finale-row-label">${esc(row.label)}</span>${stars}<b>${row.points}</b></li>`;
       })
       .join("")}</ul>
     <div class="finale-clear"><span><b>${view.totalStars}</b> of ${most} stars</span><span class="result-clear ${view.cleared ? "cleared" : "not-cleared"}">${view.cleared ? "Panjim cleared" : "Not cleared yet"}</span></div>

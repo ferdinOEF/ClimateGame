@@ -245,12 +245,17 @@ try {
     await letsPlay(page);
     await page.waitForTimeout(2500);
     if (ONLY.has("leave")) {
+      // Leave is in ☰ only (Section 34b.8): open the menu and press it, once the year's opening has played.
       await page.evaluate("window.__panjimForTest.maya.dismiss()");
-      await page.keyboard.press("Escape");
+      for (let i = 0; i < 8 && (await page.locator(".leave-confirm-backdrop:not([hidden])").count()) === 0; i++) {
+        await page.waitForTimeout(1500);
+        if ((await page.locator(".hud-menu-leave:visible").count()) === 0) await page.locator(".panjim-clock .hud-panel-settings .hud-panel-button").click();
+        await page.locator(".hud-menu-leave").first().click();
+      }
       await page.waitForSelector(".leave-confirm-backdrop:not([hidden])", { timeout: 10000 });
       await page.waitForTimeout(400);
       const leave = ".leave-confirm-backdrop:not([hidden])";
-      check((await textOf(page, `${leave} .leave-confirm-title`)) === "Leave Panjim?" && (await js<string>(page, "document.activeElement?.textContent ?? ''")) === "Stay", "Leave Panjim? opens on Esc with Stay focused");
+      check((await textOf(page, `${leave} .leave-confirm-title`)) === "Leave Panjim?" && (await js<string>(page, "document.activeElement?.textContent ?? ''")) === "Stay", "Leave Panjim? opens from ☰ with Stay focused");
       check((await colour(page, `${leave} .leave-confirm`)) === rgb("#f7f5f9") && (await colour(page, `${leave} .leave-confirm`, "borderTopColor")) === rgb("#e696a6") && (await js<string>(page, `getComputedStyle(document.querySelector(".leave-confirm-backdrop .leave-confirm")).borderTopWidth`)) === "8px", "a light card with an 8 px pink bar along its top");
       check((await colour(page, `${leave} .leave-confirm-stay`)) === rgb("#4fc8b7") && (await colour(page, `${leave} .leave-confirm-leave`)) === "rgba(0, 0, 0, 0)", "Stay is the teal button, Leave the quiet one");
       await shot(page, "9-leave-panjim", 600);
@@ -279,7 +284,7 @@ try {
       check(box.listH >= box.rowH * 3 - 1 && box.listH < box.rowH * 4, `the list is three rows high (${Math.round(box.listH)} px, rows ${Math.round(box.rowH)} px)`);
       check(box.tab === "0" && box.label === "The board from 1st place down to you", `it can take focus (${box.label})`);
       check(box.hint === "Scroll up to see 1st place", `the line under it: "${box.hint}"`);
-      check(box.head === "15th on the board", `the head line is as before: "${box.head}"`);
+      check(box.head === "450 points short of the top 10", `the head line is as before: "${box.head}"`);
       const last = ".result-cards:not([hidden])";
       check((await colour(page, ".last-rank")) === rgb("#4a3358") && (await colour(page, ".last-rank li.me")) === rgb("#d2ad68") && (await colour(page, ".last-rank li.me", "color")) === rgb("#2a2038"), "the board box is plum, the player's row gold with dark ink");
       check((await colour(page, `${last} .result-eyebrow`)) === rgb("#e696a6"), "the last card's band is pink");

@@ -105,3 +105,192 @@
 .name-card .name-card-top-rows:focus-visible {
   outline-color: var(--star);
 }
+
+/* ---- 40.4 The result cards, the last card, the nudge ---------------------------------------------------------- */
+
+/* Every card's band (the storm's eyebrow; the last card's too): pink with dark ink. */
+.result-cards .result-eyebrow,
+.result-cards .result-card-body > .result-title:first-child {
+  background: var(--storm-band);
+  color: var(--storm-band-ink);
+}
+
+/* Stars: gold on a dark pill; an empty star is the outline star in the same gold. */
+.result-cards .result-stars {
+  display: block;
+  width: fit-content;
+  padding: 1px 10px 3px 14px;
+  border-radius: 99px;
+  background: var(--star-pill);
+  color: var(--star);
+  -webkit-text-stroke: 0;
+}
+
+.result-cards .result-stars-empty {
+  color: transparent;
+  -webkit-text-stroke: 1.2px var(--star);
+}
+
+.result-cards .last-rows .finale-row-stars:not(:empty) {
+  padding: 0 8px 1px;
+  border-radius: 99px;
+  background: var(--star-pill);
+  color: var(--star);
+}
+
+/* Homes saved: a teal fill on a soft pink track with a pink edge. */
+.result-cards .result-bar {
+  box-sizing: border-box;
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+}
+
+.result-cards .result-bar span {
+  background: var(--teal);
+}
+
+/* "Points this storm": a soft gold box with a gold edge; its chips each start with their source's square. */
+.result-cards .result-points {
+  background: var(--gold-soft);
+  border: 2px solid var(--gold);
+}
+
+.result-cards .result-points-head b {
+  color: var(--ink);
+}
+
+.result-cards .result-points-chip {
+  background: var(--panel-raised);
+}
+
+.result-cards .result-points-chip::before,
+.result-cards .last-rows .finale-row-label::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 7px;
+  border-radius: 2px;
+  background: var(--teal);
+}
+
+.result-cards .result-points-chip[data-source="places"]::before { background: var(--button-border); }
+.result-cards .result-points-chip[data-source="objective"]::before { background: var(--strip); }
+.result-cards .result-points-chip[data-source="coast"]::before { background: var(--gold); }
+
+/* The last card's rows: pink 2030, blue 2040, purple 2050, teal for the nature row. */
+.result-cards .last-rows .last-row-storm-1 .finale-row-label::before { background: var(--warn); }
+.result-cards .last-rows .last-row-storm-2 .finale-row-label::before { background: var(--button-border); }
+.result-cards .last-rows .last-row-storm-3 .finale-row-label::before { background: var(--strip); }
+.result-cards .last-rows .last-row-nature .finale-row-label::before { background: var(--teal); }
+
+/* The run's total: the same soft gold box. */
+.result-cards .last-total {
+  padding: 0 10px 1px;
+  border-radius: 10px;
+  background: var(--gold-soft);
+  border: 2px solid var(--gold);
+}
+
+/* "Panjim cleared". */
+.result-cards .result-clear.cleared {
+  background: var(--teal-soft);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--teal);
+}
+
+/* The board box: the plum band; the player's own row gold. */
+.result-cards .finale-rank {
+  background: var(--band);
+  color: var(--band-ink);
+}
+
+.result-cards .finale-rank-note {
+  color: var(--band-ink-2);
+}
+
+.result-cards .finale-rank-rows li.me {
+  background: var(--star);
+  color: var(--ink);
+}
+
+/* The feedback column: a white ground, a purple strip before its title. */
+.result-cards .last-right {
+  margin: -8px -12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--panel-raised);
+}
+
+.result-cards .fb-title::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 22px;
+  margin-right: 8px;
+  border-radius: 3px;
+  vertical-align: -4px;
+  background: var(--strip);
+}
+
+/* A star button: empty, light with an outline star; chosen, gold with a dark star and edge. */
+.result-cards .fb-star {
+  border: 1.5px solid var(--panel-shadow);
+  background: var(--panel);
+  line-height: 25px;
+  -webkit-text-stroke: 1.2px var(--panel-shadow);
+}
+
+.result-cards .fb-star.on {
+  border-color: var(--ink);
+  background: var(--star);
+  color: var(--ink);
+  -webkit-text-stroke: 0;
+}
+
+.result-cards .fb-age-box input {
+  accent-color: var(--band);
+}
+
+/* Second buttons (View map, Restart, Previous card, the nudge's second): a thinner blue edge. */
+.result-cards .result-back,
+.result-cards .last-action,
+.result-cards .result-nudge-anyway {
+  border-width: 1.5px;
+}
+
+/* The quiet ones (Exit, Try again from a year): clear, with a pale edge. */
+.result-cards .result-retry,
+.result-cards .last-action[data-action="exit"] {
+  background: none;
+  border: 1.5px solid var(--panel-shadow);
+}
+
+.result-cards .result-retry:hover,
+.result-cards .last-action[data-action="exit"]:hover {
+  background: var(--button);
+  border-color: var(--button-on-border);
+}
+
+/* ---- 40.4 Leave Panjim? (and Start again?, the same card) ---------------------------------------------------- */
+
+/* A light card with a pink bar along its top; the title is plain text on it. */
+.leave-confirm-backdrop .leave-confirm {
+  border-top: 8px solid var(--storm-band);
+}
+
+.leave-confirm-backdrop .leave-confirm-title {
+  background: none;
+  color: var(--ink);
+}
+
+/* The button that leaves is the quiet one; the one that keeps the player in the game stays the main action. */
+.leave-confirm-backdrop .leave-confirm-leave {
+  background: none;
+  border: 1.5px solid var(--panel-shadow);
+}
+
+.leave-confirm-backdrop .leave-confirm-leave:hover {
+  background: var(--button);
+  border-color: var(--button-on-border);
+}
