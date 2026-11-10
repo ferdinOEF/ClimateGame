@@ -86,7 +86,12 @@ const FIVE_PAIRS: [string, string, boolean?][] = [
   ["storm-band-ink", "icon-flood"],
   ["cta-ink", "teal"],
   // The main screen's page, under the board render.
-  ["ink", "screen-ground"]
+  ["ink", "screen-ground"],
+  // Pairs two rules make between them: a pink leaf chip, and the icon tiles' lines on their soft grounds.
+  ["ink", "warn"],
+  ["ink-2", "warn-soft"],
+  ["ink-2", "blue-soft"],
+  ["ink-2", "purple-soft"]
 ];
 const FIVE_ALLOWED = new Set(FIVE_PAIRS.map(([t, b]) => `${t}|${b}`));
 /** The variables only the block has. */
@@ -180,6 +185,33 @@ describe("Section 40: the five colours on the static screens", () => {
     expect(contrast(FIVE.strip, FIVE.panel)).toBeLessThan(4.5);
     expect(contrast(FIVE.strip, FIVE.band)).toBeLessThan(4.5);
     for (const [text, bg] of FIVE_PAIRS) expect(["strip", "icon-wind", "icon-both"], `${text} on ${bg}`).not.toContain(text);
+  });
+
+  it("the block's own variables are used only in rules that sit under a static screen's root", () => {
+    // Outside the block they are undefined: a rule in the game's interface that named one would draw nothing.
+    const UNDER = /^\.(screen-layer\.five-colours|screen\.menu-screen|menu-quote|menu-bar|name-card|howto-|brief-cta\.howto-cta|result-cards|leave-confirm-backdrop|replay-card|idle-warning)/;
+    const uses = new RegExp(`var\\(--(${FIVE_ONLY.join("|")})\\)`);
+    let found = 0;
+    for (const file of SHEETS) {
+      const css = fs.readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        if (!uses.test(m[2])) continue;
+        found++;
+        expect(file, `${file}: ${m[1].trim()}`).not.toBe("src/ui/hud.css");
+        for (const selector of m[1].split(",")) expect(selector.trim(), `${file}: ${selector.trim()} uses one of the block's own variables`).toMatch(UNDER);
+      }
+    }
+    expect(found).toBeGreaterThan(20);
+  });
+
+  it("purple is the text colour of no rule but a drawn mark's (an arrow, a chevron, the quote mark)", () => {
+    for (const file of SHEETS) {
+      const css = fs.readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        if (!/(?:^|[;\s])color:\s*var\(--(strip|icon-wind|icon-both)\)/.test(m[2])) continue;
+        expect(m[1].trim(), `${file}: ${m[1].trim()} sets purple text`).toMatch(/^\.(howto-arrow|howto-chevron|menu-quote \.menu-quote-mark)$/);
+      }
+    }
   });
 
   it("a rule that uses one of the block's own variables for text or for a background uses an allowed pair", () => {

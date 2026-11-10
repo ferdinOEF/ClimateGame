@@ -3,8 +3,9 @@
  * screens' roots; most of each screen follows them with no rule here, because its rules already name the variables.
  * This sheet holds only what the block alone cannot say: where a screen takes a different variable than it had, and
  * the few marks the brief adds (the five bars, the strip under a heading, the rank chips). Imported last, after
- * harbour.css. Every rule starts at a static screen's root, so nothing here reaches the game's interface, and no rule
- * names a colour of its own (tests/theme.test.ts).
+ * harbour.css. Every rule starts at a static screen's root (the five bars' own classes aside: they exist only on the
+ * main screen), so nothing here reaches the game's interface, and no rule names a colour of its own
+ * (tests/theme.test.ts, which also checks that the block's own variables are used only under those roots).
  */
 
 /* ---- 40.2 The main screen ------------------------------------------------------------------------------------ */
@@ -147,6 +148,11 @@
 
 .result-cards .result-bar span {
   background: var(--teal);
+}
+
+/* "What protected your homes": each row's bar in the dark teal, which reads on its pale track (the teal did not). */
+.result-cards .result-row-bar span {
+  background: var(--good);
 }
 
 /* "Points this storm": a soft gold box with a gold edge; its chips each start with their source's square. */

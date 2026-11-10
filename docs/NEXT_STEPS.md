@@ -12,6 +12,26 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After Section 40 (from docs/QA_REPORT.md)
+
+- Not merged: the owner looks at the preview first. Merge with `git merge --no-ff` on the owner's word, then confirm
+  Vercel's production deployment. No schema change, so no migration.
+- Owner to answer (the numbered list in QA_REPORT, Section 40): the eyebrow and the Leave title without their bands;
+  the replay card and the idle warning in the new colours over the game; a cap on the board's `top` rows (13 KB for
+  150 rows, 88 KB for 1000, before compression); the two low contrast marks the brief chose (the homes bar's teal on
+  its pink track, the empty feedback star); the twice said lines on two storm cards.
+- The mock pictures were not attached to the brief: compare the preview with P1 to P6.
+- The Tutorial is in two palettes now: its result cards and its Leave card take the five colours, its own brief keeps
+  the game's. It is hidden from the menu; say if its brief should follow.
+- The QA tools that start Play Panjim must press Next twice (tools/letsPlay.ts). Done for the standing commands
+  (walkthrough, test:labels, test:layout, test:maya, verify:maya) and the Section 40 tools; the older
+  tools/section*Shots.ts and the rest still click `.brief-cta` at once and stop at How to play. Fix one when a
+  section touches it (owner, 30 October).
+- CLAUDE.md still says Maya is locked in the bottom right corner; she has been bottom left since Section 34c.2 (the
+  code, tests/mayaLocked.test.ts and ARCHITECTURE agree). Not touched here: one line for the owner to confirm.
+- The full browser check (walkthrough, labels, axe, four sizes) was not run; Safari and Firefox were not tried (the
+  scrollbar's colours and the star pill's `width: fit-content` are the things to look at there).
+
 ## After Section 39 (from docs/QA_REPORT.md)
 
 - Done: merged as `02ea44f` on the owner's word; Vercel's production deployment of it is Ready. No schema change.

@@ -22,6 +22,7 @@ import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import { glArgs, startDevServer } from "./devServer";
 import { playTutorial } from "./tutorialPlay";
+import { letsPlay } from "./letsPlay";
 
 const PORT = 5195;
 const failures: string[] = [];
@@ -89,7 +90,7 @@ async function main(): Promise<void> {
     // ---- Panaji ---------------------------------------------------------
     await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
-    await page.locator(".brief-cta").first().click();
+    await letsPlay(page);
     await page.waitForTimeout(3500);
     const jobs = await page.locator(".get-ready-row").count();
     check(jobs >= 1 && (await page.locator(".get-ready").isVisible()), `Panaji: Get ready shows ${jobs} rows`);

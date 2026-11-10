@@ -1,3 +1,30 @@
+## Section 40 — the five colours, How to play in three screens, the scrolling board box — branch `section-40-five-colours`, not merged
+
+Branch from master `bc1bec7` (safety copy: `backup/pre-section-40`, same point). QA in docs/QA_REPORT.md. The mock
+pictures (P1 to P6) were not attached, so the screens are drawn from the brief's words.
+- 40.1 One block of variables in `src/ui/theme.css`, after `:root.storm`, on the static screens' root elements: teal
+  #4fc8b7, pink #e696a6, gold #d2ad68, blue #76adbc, purple #a075ae, ink #2a2038, plum #4a3358. `:root` and
+  `:root.storm` hold every value they had (tests/theme.test.ts pins both blocks), so the game's interface keeps its
+  colours. The same contrast check runs on the block, with its own pairs.
+- 40.2 The main screen (the blue page under the board render, the eyebrow as plain text, five small bars under the
+  title, the teal Play Panjim, the plum quote band with a purple mark), Facts & sources, the name card (a purple strip
+  under its heading; the Top 10 on plum with gold points and gold chips for ranks 1 to 3). The colour rules that the
+  block alone cannot say are in the new `src/ui/fiveColours.css`.
+- 40.3 How to play is three screens in the one card (same size, same scale rule): "Three disasters are coming", "Each
+  year" and "Know these icons", with Back and Next; "Let's Play!" is on the third and is still Begin (`brief-cta`,
+  `hideBrief`). "Read the map" and its two pictures are off the card (the files stay). The seven defenses, their
+  chips and the two point numbers come from the build cards, the element data and `POINT_VALUES`.
+- 40.4 The result cards (pink band, gold stars on a dark pill, the teal homes bar, the soft gold points box with a
+  square before each source), the last card (the rows' squares, the plum board box with the player's row in gold, the
+  white feedback column, star buttons, quiet Exit), the nudge, and Leave Panjim? (a pink bar along its top, the
+  leaving button quiet).
+- 40.5 The last card's board box lists the board from 1st place down to the player (the server's `around` also
+  returns `top`; `RankView.top`), three rows high, scrolled to the player's row, focusable, with "Scroll up to see
+  1st place" under it when there are more than three rows. The rows below the player are gone. No schema change.
+- 40.6 tools/section40Shots.ts (the browser pass), tools/section40Frames.ts (two frozen in game frames on master and
+  on the branch: identical), tools/letsPlay.ts (Next, Next, Let's Play! for the QA tools), tools/boardReplySize.ts,
+  the reviewer's fixes, the docs.
+
 ## Section 39 — the first minute — MERGED (`02ea44f`)
 
 Branch `section-39-first-minute` from master `0679fb9` (safety copy: `backup/pre-section-39`, same point). QA in

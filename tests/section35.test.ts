@@ -116,7 +116,8 @@ describe("the last card's points (Section 38.2, where the finale card was)", () 
     it("the list takes focus and says what it is; with more than three rows a line says where 1st place is", () => {
       expect([BOARD_LIST_LABEL, BOARD_SCROLL_HINT, BOARD_ROWS_SHOWN]).toEqual(["The board from 1st place down to you", "Scroll up to see 1st place", 3]);
       const long = rankHtml({ status: "ready", rank: { ...rank, top } }, "@maya_goa");
-      expect(long).toContain('<ol class="finale-rank-rows" tabindex="0" aria-label="The board from 1st place down to you">');
+      // Not a live region of its own: the box reads out its head line and note, never a long board row by row.
+      expect(long).toContain('<ol class="finale-rank-rows" tabindex="0" aria-label="The board from 1st place down to you" aria-live="off">');
       expect(long).toContain('<p class="finale-rank-hint">Scroll up to see 1st place</p>');
       // Three rows or fewer (two above and the player's): no line.
       const short = rankHtml({ status: "ready", rank: { ...rank, top: rank.above } }, "@maya_goa");

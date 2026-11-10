@@ -230,7 +230,7 @@ function screenThree(m: HowToPlayModel): string {
 export function howToPlayHtml(m: HowToPlayModel): string {
   const marks = Array.from({ length: HOWTO_SCREENS }, (_, i) => `<i${i === 0 ? ' class="on"' : ""}></i>`).join("");
   return `
-    <div class="howto-band"><span>How to play</span><span class="howto-progress"><span class="howto-count" aria-live="polite">1 of ${HOWTO_SCREENS}</span><span class="howto-marks" aria-hidden="true">${marks}</span></span></div>
+    <div class="howto-band"><span>How to play</span><span class="howto-progress"><span class="howto-count">1 of ${HOWTO_SCREENS}</span><span class="howto-said" aria-live="polite"></span><span class="howto-marks" aria-hidden="true">${marks}</span></span></div>
     ${screenOne(m)}
     ${screenTwo(m)}
     ${screenThree(m)}
@@ -247,6 +247,8 @@ export function showHowToScreen(card: HTMLElement, screen: number, focus = true)
   card.dataset.screen = String(n);
   for (const el of card.querySelectorAll<HTMLElement>(".howto-screen")) el.hidden = el.dataset.screen !== String(n);
   card.querySelector(".howto-count")!.textContent = `${n} of ${HOWTO_SCREENS}`;
+  // Read out (the focus stays on the same Next button from screen 1 to 2, so nothing else would say the screen changed).
+  card.querySelector(".howto-said")!.textContent = `${n} of ${HOWTO_SCREENS}, ${HOWTO_HEADINGS[n - 1]}`;
   card.querySelectorAll(".howto-marks i").forEach((mark, i) => mark.classList.toggle("on", i === n - 1));
   const foot = howToFoot(n);
   const next = card.querySelector<HTMLButtonElement>(".howto-next")!;
@@ -272,6 +274,10 @@ export function howToPlayCard(level: LevelDef): HTMLElement {
   const move = (to: "next" | "back"): void => showHowToScreen(card, howToStep(Number(card.dataset.screen ?? 1), to));
   card.querySelector(".howto-next")!.addEventListener("click", () => move("next"));
   card.querySelector(".howto-back")!.addEventListener("click", () => move("back"));
+  // A held Enter (from the name field, say) presses one button, not Next, Next and "Let's Play!" in a row.
+  card.addEventListener("keydown", (event) => {
+    if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault();
+  });
   showHowToScreen(card, 1, false);
   return card;
 }

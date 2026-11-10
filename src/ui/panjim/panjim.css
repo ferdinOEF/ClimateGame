@@ -4795,6 +4795,16 @@
   color: var(--band-ink-2);
 }
 
+/* Heard, not seen: the screen's number and heading, read out as it opens. */
+.howto-said {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .howto-marks {
   display: inline-flex;
   align-items: center;

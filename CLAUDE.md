@@ -38,6 +38,12 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
   never from a button (`tests/menu.test.ts`).
   No email field (the account/email code stays behind `VITE_REQUIRE_EMAIL`, off
   by default; see `src/services/features.ts`). Run length is not hard-coded.
+- **Two sets of colours** (Section 40, owner decision). The static screens (the main screen, Facts & sources, the
+  name card, How to play, the result cards with the last card and the nudge, Leave Panjim?, the replay card, the idle
+  warning) take their colours from Section 40's block in `src/ui/theme.css`, which sits on those screens' root
+  elements; the game takes its from `:root` and `:root.storm`, which do not change (`tests/theme.test.ts`). A static
+  screen's own colour rules go in `src/ui/fiveColours.css`, every one under a root. How to play is three screens
+  (Next, Next, "Let's Play!"); a QA tool starts Play Panjim with `tools/letsPlay.ts`.
 - **Scientific honesty.** Only verified, cited real-world facts. Game mechanics
   are labelled as game rules ("In this game, …"), never as science. No invented
   people, no unsourced statistics. `tests/facts.test.ts` and

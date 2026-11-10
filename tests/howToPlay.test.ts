@@ -112,7 +112,11 @@ describe("Section 40.3: How to play in three screens", () => {
     });
     expect([...HOWTO_HEADINGS]).toEqual(["Three disasters are coming", "Each year", "Know these icons"]);
     // The band: where the player is, and three marks.
-    expect(html).toContain('<span class="howto-count" aria-live="polite">1 of 3</span>');
+    expect(html).toContain('<span class="howto-count">1 of 3</span><span class="howto-said" aria-live="polite"></span>');
+    // Each screen's number and heading are read out as it opens; a held Enter presses one button only.
+    const source = readFileSync("src/ui/panjim/howToPlay.ts", "utf8");
+    expect(source).toContain('card.querySelector(".howto-said")!.textContent = `${n} of ${HOWTO_SCREENS}, ${HOWTO_HEADINGS[n - 1]}`;');
+    expect(source).toContain('if (event.repeat && (event.key === "Enter" || event.key === " ")) event.preventDefault();');
     expect((html.match(/<i( class="on")?><\/i>/g) ?? []).length).toBe(3);
   });
 

@@ -345,7 +345,8 @@ export const BOARD_ROWS_SHOWN = 3;
 /**
  * The rank box on the last card (Section 38.2; the finale's before): the place on the board, the gap to the row above,
  * and (Section 40.5) the board from 1st place down to the run, the run's own row last. The rows below it are not drawn.
- * A reply without `top` (an older one) draws the two rows above it as before.
+ * A reply without `top` (an older one) draws the two rows above it as before. The box is a live region (the head line
+ * and the note are read out as the board answers); the list is not, or a long board would be read out row by row.
  */
 export function rankHtml(state: RankState, name: string | null): string {
   if (state.status === "loading") return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">Checking the board.</p>`;
@@ -373,7 +374,7 @@ export function rankHtml(state: RankState, name: string | null): string {
   const mine: BoardRowView = { rank, name, points, season: "" };
   return `<div class="finale-rank-head">${esc(head)}</div>
     <p class="finale-rank-note">${esc(gap)}</p>
-    <ol class="finale-rank-rows" tabindex="0" aria-label="${BOARD_LIST_LABEL}">${listed.map((r) => row(r)).join("")}${row(mine, true)}</ol>${listed.length + 1 > BOARD_ROWS_SHOWN ? `<p class="finale-rank-hint">${BOARD_SCROLL_HINT}</p>` : ""}`;
+    <ol class="finale-rank-rows" tabindex="0" aria-label="${BOARD_LIST_LABEL}" aria-live="off">${listed.map((r) => row(r)).join("")}${row(mine, true)}</ol>${listed.length + 1 > BOARD_ROWS_SHOWN ? `<p class="finale-rank-hint">${BOARD_SCROLL_HINT}</p>` : ""}`;
 }
 
 
