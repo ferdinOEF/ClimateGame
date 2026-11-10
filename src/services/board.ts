@@ -42,12 +42,13 @@ export interface BoardRowView {
 /**
  * Section 35.2: where a run stands on the board. `rank` is the place its points get (a tie shares the higher place);
  * `above` and `below` the rows just above and below it (at most two each); `tenth` the 10th row's points (null with
- * fewer than ten rows).
+ * fewer than ten rows). Section 40.5: `top` is every row above it, from 1st place down (absent in a reply from before).
  */
 export interface RankView {
   rank: number;
   points: number;
   tenth: number | null;
+  top?: BoardRowView[];
   above: BoardRowView[];
   below: BoardRowView[];
   /** Section 37.3: the name's better run stays on the board; `points` and `rank` are that row's. */

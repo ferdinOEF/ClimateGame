@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ordinal, rankHtml, stormPointsHtml } from "../src/ui/panjim/resultCards";
+import { BOARD_LIST_LABEL, BOARD_ROWS_SHOWN, BOARD_SCROLL_HINT, ordinal, rankHtml, stormPointsHtml } from "../src/ui/panjim/resultCards";
 import { lastCardHtml, type LastCardView } from "../src/ui/panjim/lastCard";
 import { stormPoints, endPoints, POINT_VALUES } from "../src/core/resiliencePoints";
 import { POINTS_HELP } from "../src/ui/panjim/panjimHelp";
@@ -83,14 +83,82 @@ describe("the last card's points (Section 38.2, where the finale card was)", () 
     below: [{ rank: 5, name: "Zoe", points: 3900, season: "Festival 2026" }]
   };
 
-  it("its rank box: the place, the gap to the rank above, the rows round it with the player's highlighted", () => {
+  it("its rank box: the place, the gap to the rank above, the rows above it and the player's own, highlighted", () => {
     const html = rankHtml({ status: "ready", rank }, "@maya_goa");
     const t = text(html);
     expect(t).toContain("4th on the board");
     expect(t).toContain("100 points behind 3rd");
-    expect(t).toMatch(/2 Ana 4300 3 Rui 4100 4 @maya_goa 4000 5 Zoe 3900/);
+    // Section 40.5: a reply without `top` (an older one) draws the two rows above as before; none below the player.
+    expect(t).toMatch(/2 Ana 4300 3 Rui 4100 4 @maya_goa 4000$/);
+    expect(t).not.toContain("Zoe");
     expect(html.match(/class="me"/g)?.length).toBe(1);
     expect(html).toContain('aria-current="true"');
+  });
+
+  describe("Section 40.5: the board from 1st place down to the player", () => {
+    const top = [
+      { rank: 1, name: "Ash", points: 4600, season: "Festival 2026" },
+      { rank: 1, name: "Bea", points: 4600, season: "Festival 2026" },
+      ...rank.above
+    ];
+    const rowsOf = (html: string): string[] => [...html.matchAll(/<li class="(me)?"[^>]*>([\s\S]*?)<\/li>/g)].map((m) => `${m[1] ? "me:" : ""}${text(m[2])}`);
+
+    it("draws `top`, then the player's own row last and marked; no row below it", () => {
+      const html = rankHtml({ status: "ready", rank: { ...rank, top } }, "@maya_goa");
+      expect(rowsOf(html)).toEqual(["1 Ash 4600", "1 Bea 4600", "2 Ana 4300", "3 Rui 4100", "me:4 @maya_goa 4000"]);
+      expect(html).toMatch(/<li class="me" aria-current="true">[\s\S]*<\/li><\/ol>/);
+      expect(html).not.toContain("Zoe");
+      // The head line and the gap to the row above are as before.
+      expect(text(html)).toContain("4th on the board");
+      expect(text(html)).toContain("100 points behind 3rd");
+    });
+
+    it("the list takes focus and says what it is; with more than three rows a line says where 1st place is", () => {
+      expect([BOARD_LIST_LABEL, BOARD_SCROLL_HINT, BOARD_ROWS_SHOWN]).toEqual(["The board from 1st place down to you", "Scroll up to see 1st place", 3]);
+      const long = rankHtml({ status: "ready", rank: { ...rank, top } }, "@maya_goa");
+      expect(long).toContain('<ol class="finale-rank-rows" tabindex="0" aria-label="The board from 1st place down to you">');
+      expect(long).toContain('<p class="finale-rank-hint">Scroll up to see 1st place</p>');
+      // Three rows or fewer (two above and the player's): no line.
+      const short = rankHtml({ status: "ready", rank: { ...rank, top: rank.above } }, "@maya_goa");
+      expect(rowsOf(short)).toHaveLength(3);
+      expect(short).not.toContain("finale-rank-hint");
+      // Three above and the player's makes four: the line shows.
+      expect(rankHtml({ status: "ready", rank: { ...rank, top: top.slice(1) } }, "@maya_goa")).toContain("finale-rank-hint");
+    });
+
+    it("1st place: the player's row alone, Top of the board", () => {
+      const html = rankHtml({ status: "ready", rank: { rank: 1, points: 5000, tenth: null, top: [], above: [], below: rank.above } }, "@maya_goa");
+      expect(rowsOf(html)).toEqual(["me:1 @maya_goa 5000"]);
+      expect(text(html)).toContain("Top of the board");
+      expect(html).not.toContain("finale-rank-hint");
+    });
+
+    it("the other states are as before: offline, no name, a test session, not posted", () => {
+      const withTop = { ...rank, top };
+      expect(text(rankHtml({ status: "offline" }, "Sam"))).toBe("Board offline The board can't be reached right now. Your points are above.");
+      expect(text(rankHtml({ status: "ready", rank: withTop }, null))).toBe("The board With a name, this run would be 4th on the board. Add one on the right.");
+      expect(text(rankHtml({ status: "tagged" }, "Sam"))).toBe("The board Test session: not on the board.");
+      expect(text(rankHtml({ status: "unposted", rank: withTop }, "Sam"))).toBe("Not on the board yet The board could not take this run just now. With these points it would be 4th.");
+      for (const state of [{ status: "offline" } as const, { status: "tagged" } as const, { status: "unposted", rank: withTop } as const]) expect(rankHtml(state, "Sam")).not.toContain("finale-rank-rows");
+      expect(rankHtml({ status: "ready", rank: withTop }, null)).not.toContain("finale-rank-rows");
+    });
+
+    it("the list is three rows high, scrolls, and opens at the player's row", () => {
+      const sheet = css.slice(css.indexOf(".last-rank .finale-rank-rows {"), css.indexOf(".last-rank .finale-rank-hint {"));
+      expect(sheet).toMatch(/max-height: calc\(3 \* 22px \+ 2 \* 3px\);\s*overflow-y: auto;/);
+      expect(sheet).toMatch(/\.last-rank \.finale-rank-rows li \{[^}]*min-height: 22px;/);
+      const five = readFileSync("src/ui/fiveColours.css", "utf8");
+      expect(five).toMatch(/\.result-cards \.finale-rank-rows \{\s*scrollbar-color: var\(--star\) var\(--band-rule\);/);
+      expect(five).toMatch(/\.result-cards \.finale-rank-note,\s*\.result-cards \.finale-rank-hint \{\s*color: var\(--band-ink-2\);/);
+      const card = readFileSync("src/ui/panjim/lastCard.ts", "utf8");
+      expect(card).toContain("if (list) list.scrollTop = list.scrollHeight;");
+      expect(card).toMatch(/setRank\(rank: RankState\): void \{[\s\S]*?this\.showPlayerRow\(\);/);
+    });
+
+    it("has no dots, spaced dashes or hyphens between words", () => {
+      expect(punctuationProblems(text(rankHtml({ status: "ready", rank: { ...rank, top } }, "Sam")))).toEqual([]);
+      expect(punctuationProblems(BOARD_LIST_LABEL)).toEqual([]);
+    });
   });
 
   it("outside the top 10: how far short of it", () => {

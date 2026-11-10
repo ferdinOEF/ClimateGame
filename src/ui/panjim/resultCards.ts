@@ -337,7 +337,16 @@ export type RankState =
   /** Section 38.4b: a test session's run, stored with its tag and never on the board. */
   | { status: "tagged" };
 
-/** The rank box on the last card (Section 38.2; the finale's before): the place on the board, the gap to the row above, and the rows round the run. */
+/** Section 40.5: the board box's list. It shows three rows and scrolls; with more, a line under it says where 1st place is. */
+export const BOARD_LIST_LABEL = "The board from 1st place down to you";
+export const BOARD_SCROLL_HINT = "Scroll up to see 1st place";
+export const BOARD_ROWS_SHOWN = 3;
+
+/**
+ * The rank box on the last card (Section 38.2; the finale's before): the place on the board, the gap to the row above,
+ * and (Section 40.5) the board from 1st place down to the run, the run's own row last. The rows below it are not drawn.
+ * A reply without `top` (an older one) draws the two rows above it as before.
+ */
 export function rankHtml(state: RankState, name: string | null): string {
   if (state.status === "loading") return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">Checking the board.</p>`;
   if (state.status === "offline") return `<div class="finale-rank-head">Board offline</div><p class="finale-rank-note">The board can't be reached right now. Your points are above.</p>`;
@@ -346,12 +355,13 @@ export function rankHtml(state: RankState, name: string | null): string {
   if (state.status === "unposted") {
     return `<div class="finale-rank-head">Not on the board yet</div><p class="finale-rank-note">The board could not take this run just now. With these points it would be ${ordinal(state.rank.rank)}.</p>`;
   }
-  const { rank, points, tenth, above, below } = state.rank;
+  const { rank, points, tenth, above } = state.rank;
+  const listed = state.rank.top ?? above;
   if (!name) {
     return `<div class="finale-rank-head">The board</div><p class="finale-rank-note">With a name, this run would be ${ordinal(rank)} on the board. Add one on the right.</p>`;
   }
   const head = rank <= 10 || tenth === null ? `${ordinal(rank)} on the board` : `${tenth - points} points short of the top 10`;
-  const nearest = above[above.length - 1];
+  const nearest = listed[listed.length - 1];
   // Section 37.3: one row a name; a run that did not beat its name's best leaves that row on the board.
   const gap = state.rank.kept
     ? `Your best run under this name stays on the board, with ${points} points.`
@@ -363,7 +373,7 @@ export function rankHtml(state: RankState, name: string | null): string {
   const mine: BoardRowView = { rank, name, points, season: "" };
   return `<div class="finale-rank-head">${esc(head)}</div>
     <p class="finale-rank-note">${esc(gap)}</p>
-    <ol class="finale-rank-rows">${above.map((r) => row(r)).join("")}${row(mine, true)}${below.map((r) => row(r)).join("")}</ol>`;
+    <ol class="finale-rank-rows" tabindex="0" aria-label="${BOARD_LIST_LABEL}">${listed.map((r) => row(r)).join("")}${row(mine, true)}</ol>${listed.length + 1 > BOARD_ROWS_SHOWN ? `<p class="finale-rank-hint">${BOARD_SCROLL_HINT}</p>` : ""}`;
 }
 
 

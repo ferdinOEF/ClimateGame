@@ -205,13 +205,31 @@
   color: var(--band-ink);
 }
 
-.result-cards .finale-rank-note {
+.result-cards .finale-rank-note,
+.result-cards .finale-rank-hint {
   color: var(--band-ink-2);
 }
 
 .result-cards .finale-rank-rows li.me {
   background: var(--star);
   color: var(--ink);
+}
+
+/* 40.5: the list scrolls: a gold thumb on the band's rule, and a gold ring when it has focus. */
+.result-cards .finale-rank-rows {
+  scrollbar-color: var(--star) var(--band-rule);
+}
+
+.result-cards .finale-rank-rows::-webkit-scrollbar-thumb {
+  background: var(--star);
+}
+
+.result-cards .finale-rank-rows::-webkit-scrollbar-track {
+  background: var(--band-rule);
+}
+
+.result-cards .finale-rank-rows:focus-visible {
+  outline-color: var(--star);
 }
 
 /* The feedback column: a white ground, a purple strip before its title. */

@@ -147,6 +147,29 @@ export class LastCard {
     holder.innerHTML = lastCardHtml(view, rank);
     this.body = holder.firstElementChild as HTMLElement;
     this.wire();
+    this.watchBoard();
+  }
+
+  /**
+   * Section 40.5: the board box's list opens scrolled to the player's own row (the last one). The box is filled before
+   * the card is on screen, filled again when the board answers, and the card comes back after View map, so the list
+   * is scrolled each time it gets a size.
+   */
+  private watchBoard(): void {
+    if (typeof ResizeObserver !== "function") return;
+    let shown = false;
+    new ResizeObserver(() => {
+      const list = this.body.querySelector<HTMLElement>(".last-rank .finale-rank-rows");
+      const has = !!list && list.clientHeight > 0;
+      if (has && !shown) this.showPlayerRow();
+      shown = has;
+    }).observe(this.body.querySelector(".last-rank")!);
+  }
+
+  /** Scrolls the board box's list to its end, where the player's row is. */
+  private showPlayerRow(): void {
+    const list = this.body.querySelector<HTMLElement>(".last-rank .finale-rank-rows");
+    if (list) list.scrollTop = list.scrollHeight;
   }
 
   /** Whether Submit feedback has been pressed (and taken). */
@@ -170,6 +193,7 @@ export class LastCard {
   setRank(rank: RankState): void {
     this.rankState = rank;
     this.body.querySelector(".last-rank")!.innerHTML = rankHtml(rank, this.name);
+    this.showPlayerRow();
   }
 
   /** A name added on the card and taken by the board. */

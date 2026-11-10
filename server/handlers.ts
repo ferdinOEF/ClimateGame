@@ -187,14 +187,30 @@ const out = (rows: readonly BoardRow[], r: BoardRow): BoardRowOut => ({ rank: de
 /**
  * The place `points` gets on the board (dense: a tie shares the place), the rows just above and below it (two each),
  * and the 10th row's points. `own`: the run's own row, which is the player's, not a neighbour.
+ *
+ * Section 40.5: `top` is every row above that place, from 1st place down, in board order and in `above`'s shape (the
+ * last card's board box scrolls from 1st place to the player). It reads the same rows as the rest: untagged ones only,
+ * and never the run's own (its points are not above itself).
  */
-async function around(sql: Sql, points: number, own: string | null): Promise<{ rank: number; above: BoardRowOut[]; below: BoardRowOut[]; tenth: number | null }> {
+async function around(sql: Sql, points: number, own: string | null): Promise<{ rank: number; top: BoardRowOut[]; above: BoardRowOut[]; below: BoardRowOut[]; tenth: number | null }> {
   const rows = await boardRows(sql);
   const rank = denseRank(points, rows);
-  const above = rows.filter((r) => r.points > points).slice(-2).map((r) => out(rows, r));
+  // One pass: `rows` is by points, most first, so a row's dense rank is the count of distinct totals down to it.
+  const top: BoardRowOut[] = [];
+  let place = 0;
+  let last: number | null = null;
+  for (const r of rows) {
+    if (r.points <= points) break;
+    if (r.points !== last) {
+      place++;
+      last = r.points;
+    }
+    top.push({ rank: place, name: r.name, points: r.points, stars: r.stars, season: r.season });
+  }
+  const above = top.slice(-2);
   const below = rows.filter((r) => r.points <= points && r.id !== own).slice(0, 2).map((r) => out(rows, r));
   const tenth = rows.length >= 10 ? rows[9].points : null;
-  return { rank, above, below, tenth };
+  return { rank, top, above, below, tenth };
 }
 
 /** GET /api/board: the top 10 and the season; with `?points=N`, the place N would get and the rows round it. */

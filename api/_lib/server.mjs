@@ -18772,10 +18772,21 @@ var out = (rows, r) => ({ rank: denseRank(r.points, rows), name: r.name, points:
 async function around(sql, points, own) {
   const rows = await boardRows(sql);
   const rank = denseRank(points, rows);
-  const above = rows.filter((r) => r.points > points).slice(-2).map((r) => out(rows, r));
+  const top = [];
+  let place = 0;
+  let last = null;
+  for (const r of rows) {
+    if (r.points <= points) break;
+    if (r.points !== last) {
+      place++;
+      last = r.points;
+    }
+    top.push({ rank: place, name: r.name, points: r.points, stars: r.stars, season: r.season });
+  }
+  const above = top.slice(-2);
   const below = rows.filter((r) => r.points <= points && r.id !== own).slice(0, 2).map((r) => out(rows, r));
   const tenth = rows.length >= 10 ? rows[9].points : null;
-  return { rank, above, below, tenth };
+  return { rank, top, above, below, tenth };
 }
 async function getBoard(ctx, query) {
   if (!ctx.sql) return OFFLINE;

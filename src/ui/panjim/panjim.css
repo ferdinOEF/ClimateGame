@@ -4435,6 +4435,33 @@
 .last-rank .finale-rank-note {
   margin: 2px 0 6px;
 }
+/*
+ * Section 40.5: the board from 1st place down to the player, three rows high (22 px rows, 3 px apart). It scrolls,
+ * opens at the player's row (lastCard.ts) and takes focus, so the arrow keys scroll it.
+ */
+.last-rank .finale-rank-rows {
+  max-height: calc(3 * 22px + 2 * 3px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.last-rank .finale-rank-rows li {
+  flex: none;
+  box-sizing: border-box;
+  min-height: 22px;
+  align-items: center;
+}
+.last-rank .finale-rank-rows::-webkit-scrollbar {
+  width: 8px;
+}
+.last-rank .finale-rank-rows::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+}
+.last-rank .finale-rank-hint {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.3;
+}
 
 /* The right column, lighter in weight. */
 .last-right {
