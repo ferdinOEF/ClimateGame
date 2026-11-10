@@ -2871,3 +2871,14 @@ beach", "Ribandar to Taleigao", "Campal". The line above each stays.
 Retaken: `3-how-to-play-1`, `5-how-to-play-3`, `7-result-2030` (and `7b`, `4`, which the same run shoots) at 1366x768.
 The 1920x1080 copies of those three and the last card's shots are from before this step. Not run again: the frame
 comparison (no rule outside the static screens' roots changed), test:maya, Safari and Firefox.
+
+**Section 40 merge and Vercel.** Merged with `git merge --no-ff` on the owner's word: `7caf56c` (master had not
+moved from `bc1bec7`, so the merge's tree is the branch tip's, `e4f7253`). On the merge commit: `tsc --noEmit` clean;
+`npm run test` 113 files, 981 pass, 6 skipped; `npm run build` clean. Vercel's production deployment of `7caf56c`
+(`dpl_Ynb4B42dKQQaMugRvWwJKxMA5qj1`) is Ready and carries the `climate-game-psi.vercel.app` alias, checked through
+the Vercel connector; it built in about a minute. Production was loaded from this laptop by plain requests, not played:
+the page, its stylesheet and its script answer, the stylesheet holds the five colours' block (`five-colours`,
+#4fc8b7, #e696a6, #a075ae) beside `:root`'s own values, and the script holds "Three disasters are coming", "Scroll
+up to see 1st place", "Ribandar to Taleigao" and "that still stands scores", and no longer "Read the map". Not done:
+a play through on the live site, the full browser check, Safari and Firefox. No PR was opened for this section. No
+schema change, so no migration.

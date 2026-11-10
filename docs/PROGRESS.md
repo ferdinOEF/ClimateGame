@@ -1,6 +1,6 @@
-## Section 40 — the five colours, How to play in three screens, the scrolling board box — branch `section-40-five-colours`, not merged
+## Section 40 — the five colours, How to play in three screens, the scrolling board box — MERGED (`7caf56c`)
 
-Branch from master `bc1bec7` (safety copy: `backup/pre-section-40`, same point). QA in docs/QA_REPORT.md. The mock
+Branch `section-40-five-colours` from master `bc1bec7` (safety copy: `backup/pre-section-40`, same point). QA in docs/QA_REPORT.md. The mock
 pictures (P1 to P6) were not attached, so the screens are drawn from the brief's words.
 - 40.1 One block of variables in `src/ui/theme.css`, after `:root.storm`, on the static screens' root elements: teal
   #4fc8b7, pink #e696a6, gold #d2ad68, blue #76adbc, purple #a075ae, ink #2a2038, plum #4a3358. `:root` and
