@@ -185,6 +185,75 @@ resolver, `computeExposure`, `resolveStorm`, `forecastCone`, the objective,
 the bots), so the preview still equals the resolution
 (`tests/section23.test.ts`).
 
+### 3c. Shore defences, the river in the 2050 storm, nature standing at the start (Section 41)
+
+Owner decisions of 10 November 2026, after a playtest, so that Campal can be defended in 2050 and a perfect plan saves
+every home. All game rules. Zones, landfalls, the 2040 flood (2.35), the 2050 storm's strength (3.0) and the map files
+are untouched.
+
+**Where seawalls and breakwaters stand (41.1).** One rule on every map, in one place: `GameState.isFirstSea(coord)`.
+"The first sea tile" is a `coast` tile with at least one neighbour that is `beach` or `land`; a river tile never is,
+and a sea tile that touches only wetland is not. `ElementDef.placement` says where a defence fits and
+`GameState.placementFits` reads it:
+- `"firstSea"` (the breakwater): a first sea tile only;
+- `"shoreline"` (the seawall): its shore tiles as before (beach, land or wetland with a sea neighbour), or a first
+  sea tile (its `validTerrainIds` gained `coast`);
+- `"upstream"` (the small dam): unchanged.
+Everything that offers or weighs a build asks `buildableAt` / `canBuild` (the menu, the objectives, the bots, the best
+plan search, the server's replay), so nothing else knows the rule. Panjim has 83 first sea tiles (230 tiles took a
+breakwater before); the Tutorial's map has 11. A sea tile beyond the first takes nothing and says so
+(`TILE_NOTES.sea`).
+
+**A seawall holds back the river in the storm that brings both (41.2).** `answersHazard(def, hazard, kind)` in
+core/hazardModel.ts is the one place that says which defence works against which water: a defence's own
+`targetsHazards`, and in a `compound` storm a defence marked `holdsRiverInCompound` (elements.json: the seawall) also
+against the flood. `defenceMetres` and `ownMetres` take the storm's kind and ask it, so in `pass` the flood side of
+the 2050 storm counts every standing seawall with exactly the metres it has against the cyclone (maturity, wear, the
+storm count, cracks and breaks are the same code). A flood on its own is unchanged. Nothing else was added to the
+water: the heat, the build cards' numbers, "What protected your homes" and the storm record all read `computeWater`.
+The zone's `defence` number (`resolveChallenge`) and the two narrative helpers that name a zone's main defence
+(`mayaLines.zoneHero`, core/aftermath.ts) ask `answersHazard` too; `ZoneOutcome.storm` carries the kind to them.
+One consequence, kept: Section 25.1's "two dunes side by side protect as much as one seawall" holds against the sea;
+in the 2050 storm a seawall does more where the river reaches (tests/section25.test.ts measures both).
+
+**The level's numbers and Campal's water edge (41.3).** levels.json: the first cyclone 1.15 (from 1.2), the 2050
+storm's wind `compoundShare` 0.9 (from 1.1). `houses.openLand` lists land the town plan leaves without a home
+(`townLayout(map, seed, openLand)`: a garden, the rest of the plan exactly as without it): Campal's four water edge
+tiles (6,9), (8,7), (4,11), (3,12). They are ordinary land and, having a sea neighbour, take a seawall. Both callers
+of the town plan (the session and `boardSetup`) pass the level's list, so the board and its picture agree.
+
+**Nature standing at the start (41.3).** A level's `standingDefences` (levels.json; Panjim: khazans at 26,6 and
+16,15, a mangrove at 7,21) are added to `boardSetup`'s starting elements with `fromStart`, and
+`GameState.applyStartingElements` puts the flag on the instance (`ElementInstance.fromStart`). What the flag does,
+and the only places that read it:
+- `GameState.maturityFraction`: 1 from the first turn, growth on or off;
+- core/resiliencePoints.ts: `livingCoast` and `standingDefences` skip it (no living coast points, no veteran);
+- core/phaseObjectives.ts: a row never credits it or counts it in its baseline;
+- app/mayaDirector.ts: where any stands, Maya says so once at the start (below).
+Everything else treats it as any defence of its kind: the water, the combos, the cards, removal (`ActionRun.demolish`,
+a year, logged as any removal; a build on the tile afterwards is the player's own). It is on the board when
+`ActionRun` is constructed, so `bioStart` (the stars' and the points' zero) includes it, and it is never in
+`buildLog`. The snapshot is JSON of the instances, so a retry brings it back with its flag. The server's replay
+(`PANJIM_POINTS_MODEL`, levels/panjimRun.ts) builds its board with the same `boardSetup`, so client and server
+points agree (tests/section41.test.ts plays a run that removes one and posts it through the real handler).
+**Runs stored before this section are not marked**: `runs` and `board` have no rules or build version column (only
+`created_at`, and `board.season`); nothing replays a stored run, so none is re-scored, but a row's points cannot be
+told apart by rule set except by its date.
+
+**The guided start (41.5).** At 1.15 the model's 2026 objective is two pandanus and no dune, and `guideTiles` needs a
+dune pick and a pandanus pick. `guideDune(run)` (core/guide.ts) gives the dune where the objective has none: of the
+tiles the objective's rows pulse, not one of its picks, the one where a dune takes the most homes out of the storm's
+risk (`homesSavedBy`). On Panjim that is -4,18 (5 homes), then the first pandanus pick -3,17; the second pick still
+counts, so the objective is done and all 8 homes are saved by the third build. The guide's words are unchanged.
+
+**Words (41.4).** Maya's line about the standing nature is queued by the director's constructor after her first
+line (`MAYA.standing`); while the guided start runs the director is blocked, and the guide withdraws only its own
+lines and her first, so the line is said when it hands over. Her 2050 warning is her warning, then the wind
+sentence, then `MAYA.warning.seaAndRiver`, in one bubble. A build card may carry lines after its second
+(`BuildCard.more`): the seawall has three. The Field Guide lists `SHORE_RULE` and `riverRule(year)` (the year is the
+level's compound storm's; none in the Tutorial); facts.json has both as game rules in its own form (no "In this
+game" opener, 20 words at most, no year: tests/facts.test.ts).
+
 ## The interface's look: tokens and the storm class (Section 33, Harbour Morning)
 
 Every interface colour is a CSS variable in `src/ui/theme.css`, imported once

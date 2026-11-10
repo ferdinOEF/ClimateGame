@@ -4,23 +4,24 @@ import path from "node:path";
 import { assess, replay, trialBoard, type PlanAction } from "../tools/bestPlan/plan";
 
 /**
- * Section 24: the best plan the solver found (docs/qa/section34b/best_plan.json; since Section 34c.3 its copy in
- * docs/qa/section34c/best_plan.json, the same actions with Kala Academy on the bank: one home fewer in 2050,
- * from `npm run bestplan` on Section 34b's rules: seawalls on the shore line, small dams upstream), replayed through the game's own run with nothing
- * but its actions, gives the stars and homes the plan file says, storm by storm.
- * If the rules or the map change, this fails until the plan is searched again.
+ * Section 24: the best plan the solver found, replayed through the game's own run with nothing but its actions, gives
+ * the stars and homes the plan file says, storm by storm. If the rules or the map change, this fails until the plan is
+ * searched again.
+ *
+ * Section 41.5: the plan is docs/qa/section41/best_plan.json, from `npm run bestplan -- beam=20 keep=16 jobs=4
+ * out=docs/qa/section41 seed=tools/bestPlan/seed41.json` on Section 41's rules (seawalls and breakwaters at the shore,
+ * a seawall holding the river in 2050, the first cyclone at 1.15, the 2050 wind share 0.9, Campal's water edge open,
+ * two khazans and a mangrove standing from the start). It loses no home in any storm.
  */
 interface PlanFile {
   goal1: { stars: number; lost: number; nineOfNine: boolean; storms: { id: string; stars: number; saved: number; total: number }[]; actions: { action: string; elementId: string; q: number; r: number }[] };
   goal2: { sameAsGoal1: boolean; stars: number; lost: number; everyHomeSaved: boolean; storms: { id: string; stars: number; saved: number; total: number }[]; actions: { action: string; elementId: string; q: number; r: number }[] };
 }
-const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../docs/qa/section34c/best_plan.json"), "utf8")) as PlanFile;
+const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../docs/qa/section41/best_plan.json"), "utf8")) as PlanFile;
 const actionsOf = (rows: PlanFile["goal1"]["actions"]): PlanAction[] =>
   rows.map((r) => (r.action === "repair" ? { type: "repair", q: r.q, r: r.r } : { type: "build", q: r.q, r: r.r, elementId: r.elementId }));
 
-// Section 41.1: the plan of Section 34c builds breakwaters out at sea, which the shore rule refuses. Parked until the
-// plan is searched again on Section 41's rules (step 41.5), which points this file at the new plan and takes the skip off.
-describe.skip("the best plan, replayed headless", () => {
+describe("the best plan, replayed headless", () => {
   for (const goal of ["goal1", "goal2"] as const) {
     it(`${goal}: 25 actions, the same stars and homes saved in every storm`, () => {
       const p = plan[goal];
@@ -41,6 +42,25 @@ describe.skip("the best plan, replayed headless", () => {
     expect(plan.goal1.nineOfNine).toBe(plan.goal1.stars === 9);
     expect(plan.goal2.everyHomeSaved).toBe(plan.goal2.lost === 0);
   });
+
+  // Section 41.5 (owner's target): a perfect plan saves every home in all three storms.
+  for (const goal of ["goal1", "goal2"] as const) {
+    it(`${goal}: the committed plan, replayed through the game's own run, loses no home in any storm and takes 9 of 9 stars`, () => {
+      const run = replay(actionsOf(plan[goal].actions));
+      expect(run.finished).toBe(true);
+      expect(run.schedule).toHaveLength(3);
+      for (const c of run.schedule) {
+        const o = run.outcomes.get(c.id)!;
+        expect(o.housesDamaged, c.id).toBe(0);
+        expect(o.housesSaved, c.id).toBe(o.housesTotal);
+        expect(o.housesTotal, c.id).toBeGreaterThan(0);
+        expect(o.stars, c.id).toBe(3);
+      }
+      // Its builds are the player's own 25: none is one of the three defenses standing from the start.
+      expect(run.buildLog).toHaveLength(25);
+      expect([...run.state.elements.values()].filter((inst) => inst.fromStart)).toHaveLength(3);
+    });
+  }
 
   it("scores a board exactly as the run then goes: the solver's assessment before the last build equals the real run after it", () => {
     const actions = actionsOf(plan.goal1.actions);

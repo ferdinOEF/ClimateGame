@@ -1,0 +1,29 @@
+[
+ [
+  { "type": "build", "elementId": "sandy_vegetation", "q": -3, "r": 17 },
+  { "type": "build", "elementId": "sandy_vegetation", "q": -5, "r": 20 },
+  { "type": "build", "elementId": "mangrove", "q": 16, "r": 17 },
+  { "type": "build", "elementId": "khazan", "q": 8, "r": 18 },
+  { "type": "build", "elementId": "mangrove", "q": 10, "r": 20 },
+  { "type": "build", "elementId": "khazan", "q": 12, "r": 16 },
+  { "type": "build", "elementId": "mangrove", "q": 20, "r": 13 },
+  { "type": "build", "elementId": "khazan", "q": 22, "r": 8 },
+  { "type": "build", "elementId": "khazan", "q": 23, "r": 7 },
+  { "type": "build", "elementId": "mangrove", "q": 20, "r": 10 },
+  { "type": "build", "elementId": "mangrove", "q": 7, "r": 23 },
+  { "type": "build", "elementId": "mangrove", "q": 11, "r": 13 },
+  { "type": "build", "elementId": "mangrove", "q": 14, "r": 14 },
+  { "type": "build", "elementId": "khazan", "q": 14, "r": 11 },
+  { "type": "build", "elementId": "khazan", "q": 19, "r": 11 },
+  { "type": "build", "elementId": "seawall", "q": 2, "r": 12 },
+  { "type": "build", "elementId": "sandy_vegetation", "q": 1, "r": 13 },
+  { "type": "build", "elementId": "mangrove", "q": 24, "r": 6 },
+  { "type": "build", "elementId": "mangrove", "q": 15, "r": 8 },
+  { "type": "build", "elementId": "breakwater", "q": 3, "r": 11 },
+  { "type": "build", "elementId": "sandy_vegetation", "q": 2, "r": 13 },
+  { "type": "build", "elementId": "small_dam", "q": 23, "r": 0 },
+  { "type": "build", "elementId": "breakwater", "q": 6, "r": 0 },
+  { "type": "build", "elementId": "mangrove", "q": 25, "r": 6 },
+  { "type": "build", "elementId": "small_dam", "q": 22, "r": 1 }
+ ]
+]

@@ -89,8 +89,21 @@ export class MayaDirector {
     } else this.say(MAYA.greeting, "greeting");
     // Section 41.4 (owner's words): where the board starts with nature already standing (Panjim's khazans and its
     // mangrove, Section 41.3), she says so once a run, after her first line. Never over the guided start: while it
-    // runs her own lines wait (`blocked`), and this one is still in her queue when it hands over.
-    if ([...ctx.run.state.elements.values()].some((inst) => inst.fromStart)) this.maya.say({ id: MAYA.standing.id, text: MAYA.standing.text, state: "explains" });
+    // runs her own lines wait (`blocked`), and this one is still in her queue when it hands over (`guideEnded`).
+    // It is about this game's board (the three standing defences), so her bubble tags it "Game rule".
+    if ([...ctx.run.state.elements.values()].some((inst) => inst.fromStart)) this.maya.say({ id: MAYA.standing.id, text: MAYA.standing.text, state: "explains", rule: true });
+  }
+
+  /**
+   * Section 41.4: the guided start has handed over (or, where none runs, her first line has been said). The standing
+   * nature's line, if it is still waiting, is the next thing she says: it goes to the front of her queue, ahead of the
+   * facts of the first builds (a fact would otherwise go first, one a year, and this line would wait behind them).
+   */
+  guideEnded(): void {
+    const waiting = this.maya.queued.find((queued) => queued.id === MAYA.standing.id);
+    if (!waiting) return;
+    this.maya.withdraw((queued) => queued === waiting);
+    this.maya.say({ ...waiting, urgent: true });
   }
 
   private say(note: Note, state: MayaState, extra: Partial<MayaLine> = {}): void {
@@ -201,6 +214,9 @@ export class MayaDirector {
         this.shownTips.add(line.id);
         this.tipYear = year;
       }
+      // Section 41.4: where no guided start runs, the standing nature's line follows her first line: it goes to the
+      // front of her queue now, so the facts of the first builds do not hold it back for years.
+      if (line.id === MAYA.opening.id || line.id === MAYA.greeting.id) this.guideEnded();
     }
   }
 

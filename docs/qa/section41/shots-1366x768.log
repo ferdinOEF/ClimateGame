@@ -1,0 +1,49 @@
+(node:3872) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS Play Panjim, the name card, Next, Next, Let's Play!: the guided start runs (step 1)
+PASS the three standing defenses are on the board from the first turn (khazan* khazan* mangrove*)
+PASS each has its model on the board
+shot 1-guided-start-dune
+PASS the guided dune is built at -4,18, the tile in front of the school where a dune saves the most homes
+PASS the guided pandanus is the objective's first pick, -3,17
+PASS Maya never says the standing nature's line over the guided start
+PASS after the guided start hands over, Maya says: "Panjim already has mangroves and khazan land at Merces and Taleigao. Keep them standing."
+PASS her bubble is on screen (190 x 155)
+shot 2-maya-standing-line
+shot 3a-standing-khazan-merces
+shot 3b-standing-khazan-merces-east
+shot 3c-standing-mangrove-taleigao
+PASS a standing khazan's card offers the normal remove action ("Demolish (uses this year's build)")
+shot 3d-standing-khazan-card
+PASS a first sea tile beside Campal (6,8) offers ["seawall","breakwater"]
+PASS the seawall's card has its three lines (["The strongest wall against cyclone surge.","In the 2050 storm it holds back the river too.","Costs nature, and cracks with age."])
+PASS the breakwater's card: "Breaks cyclone waves just off the shore."
+PASS the menu with the three line card is on screen
+shot 4-first-sea-tile-campal
+PASS a sea tile beyond the first (6,7) offers no card and says "Nothing can be built out here."
+shot 5-deep-sea-tile
+PASS the four tiles on Campal's water edge hold no home and take a seawall (open:seawall open:seawall open:seawall open:seawall)
+PASS the water edge tile 6,9 offers ["seawall"]
+shot 6-campal-water-edge
+shot 6b-campal-water-edge-close
+PASS 2030: the storm's card says "8 of 8 homes saved"
+shot 7-result-2030
+PASS 2040: the storm's card says "56 of 56 homes saved"
+PASS 2041: a seawall stands on the water at Campal, on the first sea tile 2,12 (coast:seawall:true)
+shot 8-seawall-on-the-water-campal
+PASS 2050: the last card says "58 of 58 homes saved"
+PASS and 9 of 9 stars
+shot 10-last-card
+PASS "What protected your homes" names the seawall (mangrove: Mangrove26 | seawall: Seawall9 | sandy_vegetation: Pandanus7 | breakwater: Breakwater2 | small_dam: Small dam0)
+shot 11-what-protected-2050
+PASS the run plays on (past-storm)
+PASS the run plays on (past-storm)
+PASS the run plays on (heat-2)
+PASS Maya's warning before the 2050 storm ends with the sea and the river at Campal ("The striped red tiles show where the storm will hit. Build around Merces now: homes there can still be saved. The cyclone brings wind onto Campal. In this game only pandanus shelters homes from the wind. At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back.")
+PASS her warning's bubble is on screen and clear of the HUD card (190 x 283, 55 words)
+shot 9-maya-2050-warning
+PASS no console errors
+PASS every post carried the test tag (POST /api/run tag=FestTesters)
+posts answered by the stub (none left the machine): POST /api/run tag=FestTesters
+ALL PASS
+exit 0

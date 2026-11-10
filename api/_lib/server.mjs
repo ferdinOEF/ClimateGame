@@ -18746,7 +18746,8 @@ function runFacts(replay) {
     points: points.total,
     stars,
     natureShare: built.length > 0 ? Math.round(nature / built.length * 1e3) / 1e3 : null,
-    biodiversityEnd: run.finished ? Math.round(run.state.biodiversity * 10) / 10 : null
+    // Since the start of the run, as before: the board's own start is no longer 0 (Section 41.3, the standing nature).
+    biodiversityEnd: run.finished ? Math.round((run.state.biodiversity - (run.houseStars?.bioStart ?? 0)) * 10) / 10 : null
   };
 }
 var isoOrNull = (v) => {

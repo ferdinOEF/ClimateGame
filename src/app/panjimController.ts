@@ -1178,7 +1178,7 @@ export class PanjimController {
     const bioThree = stormStars?.bioThree;
     const nature =
       bioThree !== undefined
-        ? { target: bioThree, since: this.run.config.startYear, at: stormStars?.bioAtEnd ? `at the end of ${challenge.year}` : undefined, byKind: biodiversityByKind(this.host.state.elements.values()) }
+        ? { target: bioThree, since: this.run.config.startYear, at: stormStars?.bioAtEnd ? `at the end of ${challenge.year}` : undefined, byKind: biodiversityByKind([...this.host.state.elements.values()].filter((inst) => !inst.fromStart)) }
         : undefined;
     const phase = phaseResult(challenge, record, this.run.areas.get(challenge.id) ?? [], this.places(), this.run.phaseBuilds.get(challenge.id) ?? [], nature);
     // Section 34b.5: the cards name each defence as its build card does ("Small dam"); a place that is not a building

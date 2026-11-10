@@ -7,6 +7,7 @@
   "standing": {
     "_comment": "Section 41.4 (owner's words): said once at the start of Play Panjim, where the board starts with nature already standing (levels.json standingDefences), after the guided start hands over.",
     "id": "standing-nature",
+    "rule": true,
     "text": "Panjim already has mangroves and khazan land at Merces and Taleigao. Keep them standing."
   },
   "opening": {

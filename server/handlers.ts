@@ -90,7 +90,8 @@ function runFacts(replay: Replay): { finished: boolean; yearReached: number; poi
     points: points.total,
     stars,
     natureShare: built.length > 0 ? Math.round((nature / built.length) * 1000) / 1000 : null,
-    biodiversityEnd: run.finished ? Math.round(run.state.biodiversity * 10) / 10 : null
+    // Since the start of the run, as before: the board's own start is no longer 0 (Section 41.3, the standing nature).
+    biodiversityEnd: run.finished ? Math.round((run.state.biodiversity - (run.houseStars?.bioStart ?? 0)) * 10) / 10 : null
   };
 }
 

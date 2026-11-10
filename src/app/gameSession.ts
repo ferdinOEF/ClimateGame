@@ -28,13 +28,13 @@ import { ObjectivePulse } from "@render/objectivePulse";
 import { nextPulseTile } from "@core/keyboardTiles";
 import { IdleReset, watchIdle } from "./idleReset";
 import { GuidedStart } from "./guidedStart";
-import { guideShouldRun, guideTiles } from "@core/guide";
+import { guideDune, guideShouldRun, guideTiles } from "@core/guide";
 import { CARD_LINES, CARD_NAME, TUTORIAL_CARD_LINES, cardBiodiversity } from "@ui/panjim/defenceCards";
 import { ForecastOutline } from "@render/forecastOutline";
 import { ForecastConeOverlay } from "@render/forecastConeOverlay";
 import { GameState, type StartingElementSeed } from "@core/gameState";
 import { ELEMENT_BY_ID, type ElementDef } from "@core/elements";
-import { crackedNote, isCracked } from "@core/hazardModel";
+import { answersHazard, crackedNote, isCracked } from "@core/hazardModel";
 import { axialKey, axialToWorld, neighbor, worldToAxial, type AxialCoord } from "@core/hex";
 import { TERRAIN_BY_ID } from "@core/terrain";
 import { releaseOverlayPlaceholder } from "@render/mapOverlayShader";
@@ -1314,7 +1314,10 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     if (qaHooks && new URLSearchParams(window.location.search).has("noguide")) return;
     const run = panjim.run;
     if (!guideShouldRun({ tutorial: panjim.tutorial, restarted: options.restarted === true, turnNumber: run.turnNumber, builds: run.buildLog.length })) return;
-    const tiles = guideTiles(run.objective?.picks ?? []);
+    // Section 41.5: where the objective has no dune pick (two pandanus since the cyclone is 1.15), the dune goes where
+    // one saves the most homes in the objective's place.
+    const picks = run.objective?.picks ?? [];
+    const tiles = guideTiles(picks, picks.some((pick) => pick.elementId === "dune") ? null : guideDune(run));
     if (!tiles) return;
     guide = new GuidedStart(tiles[0], tiles[1], {
       container,
@@ -1325,6 +1328,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
         return { year: next?.year ?? run.year, builds: next ? run.buildsUntil(next) : 0 };
       },
       onEnd: () => {
+        // Section 41.4: first her line about the nature already standing, then the facts kept from the two builds.
+        panjim.mayaDirector.guideEnded();
         for (const id of guideFacts.splice(0)) nuggetPopup?.show(id);
       }
     });
@@ -2428,8 +2433,9 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
     }
     // The defences answer one at a time: a ring and their creatures, in turn.
     const defenders = keys.filter((key) => {
-      const inst = state.elements.get(key);
-      return inst && (ELEMENT_BY_ID.get(inst.elementId)?.targetsHazards ?? []).includes(zone.hazard);
+      const def = ELEMENT_BY_ID.get(state.elements.get(key)?.elementId ?? "");
+      // Section 41.2: the one rule for what answers this water (a seawall and the river in the storm that brings both).
+      return !!def && answersHazard(def, zone.hazard, zone.storm);
     });
     const gap = Math.min(220, (durationMs * 0.8) / Math.max(1, defenders.length));
     defenders.forEach((key, i) => {
@@ -2668,7 +2674,8 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
             return;
           }
           const removed = state.elements.get(key);
-          if (panjim.demolish(coord) && removed) runTracker.recordRemoval(removed.elementId);
+          // Section 41.3: a defence that stood before the run was never counted as built, so its removal is not counted either.
+          if (panjim.demolish(coord) && removed && !removed.fromStart) runTracker.recordRemoval(removed.elementId);
           buildPopover.hide();
         }
       });

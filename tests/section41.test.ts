@@ -22,13 +22,18 @@ import { sessionRun } from "./helpers/sessionRun";
 import { readFileSync } from "node:fs";
 import mayaData from "../src/data/maya.json";
 import { MayaDirector } from "../src/app/mayaDirector";
-import type { Maya, MayaLine } from "../src/ui/panjim/maya";
+import { insertLine, type Maya, type MayaLine } from "../src/ui/panjim/maya";
 import { CARD_LINES, defenceRules, riverRule, SHORE_RULE, TILE_NOTES, TUTORIAL_CARD_LINES } from "../src/ui/panjim/defenceCards";
 import { STEP_BY_ID } from "../src/ui/panjim/tutorialSteps";
 import { discoveryFacts, factById, isShown } from "../src/core/facts";
 import { punctuationProblems } from "./helpers/uiStrings";
+import { guideDune, guideTiles } from "../src/core/guide";
+import { resolveStorm } from "../src/core/stormRecord";
+import { testedDefences } from "../src/core/stormScript";
+import { prepProgress } from "../src/core/prep";
 
 const MAYA = mayaData;
+const read = (file: string): string => readFileSync(file, "utf8");
 
 /**
  * Section 41 (owner decisions after the playtest of 10 November 2026): shore defenses, Campal in 2050, and a perfect
@@ -214,6 +219,38 @@ describe("41.2: in the 2050 storm a seawall holds back the river too", () => {
       expect([...walled.flood], axialKey(coord)).toEqual([...bare.flood]);
       expect([...walled.depth], axialKey(coord)).toEqual([...bare.depth]);
     }
+  });
+
+  it("the storm's play follows: a seawall in a zone the river floods is shown answering the 2050 storm", () => {
+    const argsFor = (state: GameState) => ({ zones: run.zones!, kind: compound.kind, intensity: run.intensityOf(compound), strengthUnit: run.climate!.intensityPerStrength, combos: computeCombos(state).bonus, houseStars: run.houseStarsFor(compound), houseRule: run.houseRule, landfall: run.landfallOf(compound), sheltered: shelterOf(compound), wind: compound.wind });
+    const resolve = (coord: { q: number; r: number } | null) => {
+      const state = withSeawall(run, compound, coord);
+      state.turn = compound.turn - 1;
+      return resolveStorm(state, argsFor(state));
+    };
+    // The zones where the river is the deeper water in this storm, and a tile there that takes a seawall.
+    const floodZones = new Set(resolve(null).outcome.zones.filter((zone) => zone.hazard === "flood").map((zone) => zone.zoneId));
+    const zoneOf = (key: string): string | null => run.zones!.zoneOf(key) ?? null;
+    let shown = 0;
+    for (const tile of run.state.placed.values()) {
+      const key = axialKey(tile.coord);
+      if (!floodZones.has(zoneOf(key) ?? "") || !run.state.canBuild(tile.coord, "seawall")) continue;
+      const record = resolve(tile.coord);
+      // Still a zone the river floods with the wall in it, and the water reached the wall or the tile beside it.
+      if (record.outcome.zones.find((zone) => zone.zoneId === zoneOf(key))?.hazard !== "flood") continue;
+      const tested = testedDefences(record, new Map([[key, "seawall"]]), zoneOf);
+      seawall.holdsRiverInCompound = false;
+      try {
+        // With the rule off it would not be shown answering the river: the play asks the same rule as the water.
+        if (tested.has(key)) {
+          shown++;
+          expect(testedDefences(record, new Map([[key, "seawall"]]), zoneOf).has(key), key).toBe(false);
+        }
+      } finally {
+        seawall.holdsRiverInCompound = true;
+      }
+    }
+    expect(shown).toBeGreaterThan(0);
   });
 
   it("the preview follows: the homes at risk in 2050 (the heat, the build cards) fall by the same rule", () => {
@@ -430,8 +467,102 @@ describe("41.3: storm numbers, Campal's water edge, nature standing at the start
   });
 });
 
+describe("41.5: Campal can be defended in 2050", () => {
+  const run = newPanjimRun({ objectives: false, points: false });
+  const storm = run.schedule.find((c) => c.kind === "compound")!;
+  const CAMPAL = { q: 6, r: 10 };
+  const fromCampal = (key: string): number => axialDistance({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, CAMPAL);
+  /** The board the year before the storm: whatever goes down now is young when it lands (no seawall cracked). */
+  const yearBefore = (): GameState => {
+    const state = run.state.clone();
+    state.turn = storm.turn - 2;
+    return state;
+  };
+
+  it("with everything a player could build within 12 tiles of Campal, no home there is lost in 2050", () => {
+    // Pandanus on the sand (the only shelter from the wind); a seawall wherever else one fits (the first sea tiles and
+    // the shore land, the four open tiles on the water edge among them); a mangrove on the wetland; a small dam on the
+    // narrow river. Before Section 41 four homes there were lost whatever was built: seawalls answered the sea alone,
+    // fitted only on sand near Campal, and those homes took more wind than pandanus can shelter.
+    const state = yearBefore();
+    let built = 0;
+    for (const tile of state.placed.values()) {
+      if (axialDistance(tile.coord, CAMPAL) > 12) continue;
+      const id = ["sandy_vegetation", "seawall", "mangrove", "khazan", "small_dam"].find((e) => state.canBuild(tile.coord, e));
+      if (id && state.build(tile.coord, id, false)) built++;
+    }
+    expect(built).toBeGreaterThan(50);
+    const before = previewLost(run, yearBefore(), storm).filter((key) => fromCampal(key) <= 12);
+    expect(before.length).toBeGreaterThan(10);
+    expect(previewLost(run, state, storm).filter((key) => fromCampal(key) <= 12)).toEqual([]);
+  });
+
+  it("with only the five seawalls on the sand nearest Campal, the Campal homes are still lost: that sand is on the Miramar side", () => {
+    const sand = [...run.state.placed.values()]
+      .filter((t) => t.terrainId === "beach" && run.state.canBuild(t.coord, "seawall"))
+      .sort((a, b) => axialDistance(a.coord, CAMPAL) - axialDistance(b.coord, CAMPAL) || a.coord.q - b.coord.q)
+      .slice(0, 5);
+    expect(sand.map((t) => axialKey(t.coord))).toEqual(["2,13", "1,13", "0,14", "-1,15", "-2,16"]);
+    const state = yearBefore();
+    for (const tile of sand) expect(state.build(tile.coord, "seawall", false)).toBe(true);
+    const near = (keys: readonly string[]): string[] => keys.filter((key) => fromCampal(key) <= 6).sort();
+    const bare = near(previewLost(run, yearBefore(), storm));
+    expect(bare.length).toBeGreaterThanOrEqual(8);
+    expect(near(previewLost(run, state, storm))).toEqual(bare);
+  });
+
+  it("seawalls on the water at Campal do save homes there: the first sea tiles by the Mandovi", () => {
+    const state = yearBefore();
+    for (const key of ["7,7", "6,8", "5,9", "4,10"]) expect(state.build({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) }, "seawall", false), key).toBe(true);
+    const near = (keys: readonly string[]): string[] => keys.filter((key) => fromCampal(key) <= 6);
+    expect(near(previewLost(run, state, storm)).length).toBeLessThan(near(previewLost(run, yearBefore(), storm)).length);
+  });
+});
+
+describe("41.5: the guided start still runs (the 2026 objective is two pandanus since the cyclone is 1.15)", () => {
+  const level = LEVEL_BY_ID.get(PANJIM_LEVEL_ID)!;
+
+  it("the opening objective asks for two pandanus in front of the school and no dune; they save all 8 homes", () => {
+    const run = sessionRun(level);
+    expect(run.prep.map((row) => row.label)).toEqual(["Plant 2 pandanus in front of Sharada Mandir School"]);
+    expect(run.objective!.picks.map((p) => `${p.elementId}@${p.key}`)).toEqual(["sandy_vegetation@-3,17", "sandy_vegetation@-5,20"]);
+    expect(run.objective).toMatchObject({ lostBefore: 8, lostAfter: 0 });
+    // Without a dune pick the guide had nothing to walk through.
+    expect(guideTiles(run.objective!.picks)).toBeNull();
+  });
+
+  it("the guide's dune goes where a dune saves the most homes in the objective's place, never on a pandanus pick; then the first pandanus pick", () => {
+    const run = sessionRun(level);
+    const next = run.nextChallenge()!;
+    const dune = guideDune(run)!;
+    expect(dune).toEqual({ key: "-4,18", elementId: "dune" });
+    expect(run.prep[0].tiles).toContain(dune.key);
+    expect(run.objective!.picks.map((p) => p.key)).not.toContain(dune.key);
+    expect(run.homesSavedBy(next, { q: -4, r: 18 }, "dune")).toBeGreaterThanOrEqual(1);
+    expect(guideTiles(run.objective!.picks, dune)).toEqual([dune, { key: "-3,17", elementId: "sandy_vegetation" }]);
+    // An objective with a dune pick of its own keeps it: the fallback is not used.
+    const withDune = [{ key: "-5,21", elementId: "sandy_vegetation" }, { key: "-6,22", elementId: "dune" }];
+    expect(guideTiles(withDune, dune)).toEqual([{ key: "-6,22", elementId: "dune" }, { key: "-5,21", elementId: "sandy_vegetation" }]);
+    expect(read("src/app/gameSession.ts")).toContain('const tiles = guideTiles(picks, picks.some((pick) => pick.elementId === "dune") ? null : guideDune(run));');
+  });
+
+  it("after the guided dune and pandanus, the objective's last pick still counts: the objective is done and every home is saved by the third build", () => {
+    const run = sessionRun(level);
+    const next = run.nextChallenge()!;
+    const [dune, pandanus] = guideTiles(run.objective!.picks, guideDune(run))!;
+    const at = (key: string): { q: number; r: number } => ({ q: Number(key.split(",")[0]), r: Number(key.split(",")[1]) });
+    expect(run.build(at(dune.key), "dune").ok).toBe(true);
+    const second = run.build(at(pandanus.key), "sandy_vegetation");
+    expect(second).toMatchObject({ ok: true });
+    expect(second.rowMiss).toBeUndefined();
+    const third = run.build({ q: -5, r: 20 }, "sandy_vegetation");
+    expect(third.rowMiss).toBeUndefined();
+    expect(prepProgress(run.prep[0], run.state, run.zones!)).toMatchObject({ current: 2, target: 2, done: true });
+    expect(run.exposureFor(next)!.housesAtRisk).toEqual([]);
+  });
+});
+
 describe("41.4: wording for the shore rule and the standing nature", () => {
-  const read = (file: string): string => readFileSync(file, "utf8");
   /** Maya, as far as the director needs her: what she was asked to say, in order. */
   function sayer(): { maya: Maya; said: MayaLine[] } {
     const said: MayaLine[] = [];
@@ -445,7 +576,8 @@ describe("41.4: wording for the shore rule and the standing nature", () => {
     const { maya, said } = sayer();
     new MayaDirector(maya, { run, blocked: () => false, exposure: () => null, project: () => null, focus: () => undefined, landmarks: [] });
     expect(said.map((l) => l.id)).toEqual(["first-job", "standing-nature"]);
-    expect(said[1]).toMatchObject({ text: MAYA.standing.text, state: "explains" });
+    // Tagged "Game rule" in her bubble: it is about this game's board, and no source for the real places is on record.
+    expect(said[1]).toMatchObject({ text: MAYA.standing.text, state: "explains", rule: true });
     // Not urgent and not forced: it waits its turn, so it is never said over the guided start (while that runs, the
     // director is blocked and her own lines wait in the queue).
     expect(said[1].urgent).toBeUndefined();
@@ -454,6 +586,62 @@ describe("41.4: wording for the shore rule and the standing nature", () => {
     expect(session).toContain("uiBlocked: () => buildPopover.isOpen || objectivesPanel.briefOpen || Boolean(guide?.active),");
     // The guided start takes back her first line and its own steps, nothing else: this one stays queued for the hand over.
     expect(read("src/app/guidedStart.ts")).toContain('maya.withdraw((queued) => queued.id.startsWith("guide:") || queued.id === MAYA.opening.id);');
+    // When the guided start hands over, the line goes to the front of her queue, ahead of the facts kept from the two
+    // guided builds (a fact would otherwise go first and this line would wait for the next build). Once only.
+    const handOver = sayer();
+    const queue: MayaLine[] = [];
+    const queued = { ...handOver.maya, say: (l: MayaLine) => insertLine(queue, l), queued: queue, withdraw: (p: (l: MayaLine) => boolean) => { for (let i = queue.length - 1; i >= 0; i--) if (p(queue[i])) queue.splice(i, 1); } } as unknown as Maya;
+    const director = new MayaDirector(queued, { run, blocked: () => false, exposure: () => null, project: () => null, focus: () => undefined, landmarks: [] });
+    // The guided start takes her first line back; a fact from a guided build is waiting.
+    queue.splice(queue.findIndex((l) => l.id === "first-job"), 1);
+    insertLine(queue, { id: "fact:dune", text: "A fact.", state: "tip", fact: { id: "dune", progress: () => "1 of 2" } });
+    expect(queue.map((l) => l.id)).toEqual(["fact:dune", "standing-nature"]);
+    director.guideEnded();
+    expect(queue.map((l) => l.id)).toEqual(["standing-nature", "fact:dune"]);
+    expect(queue[0]).toMatchObject({ text: MAYA.standing.text, urgent: true });
+    // Already said (no longer waiting): nothing is queued again.
+    queue.shift();
+    director.guideEnded();
+    expect(queue.map((l) => l.id)).toEqual(["fact:dune"]);
+    expect(session).toContain("panjim.mayaDirector.guideEnded();");
+    // Where no guided start runs (a Restart, Maya muted as the brief closed), the line follows her first line and is
+    // not held back by the facts of the first builds: first line, then this one, then the fact.
+    const order: string[] = [];
+    const waiting: MayaLine[] = [];
+    let current: MayaLine | null = null;
+    const plain = {
+      isMuted: false,
+      speaking: false,
+      get currentLine() {
+        return current;
+      },
+      say: (l: MayaLine) => insertLine(waiting, l),
+      get queued() {
+        return waiting;
+      },
+      withdraw: (p: (l: MayaLine) => boolean) => {
+        for (let i = waiting.length - 1; i >= 0; i--) if (p(waiting[i])) waiting.splice(i, 1);
+      },
+      dismiss: () => undefined,
+      next: (pick?: (l: MayaLine) => boolean) => {
+        const at = pick ? waiting.findIndex(pick) : 0;
+        if (at < 0) return false;
+        current = waiting.splice(at, 1)[0];
+        order.push(current.id);
+        return true;
+      }
+    } as unknown as Maya;
+    const clock = { moment: 1, year: 2026, prep: [], nextChallenge: () => null, state: { elements: new Map([["7,21", { fromStart: true }]]) } };
+    const noGuide = new MayaDirector(plain, { run: clock, blocked: () => false } as never);
+    noGuide.pump();
+    expect(order).toEqual(["hello"]);
+    insertLine(waiting, { id: "fact:dune", text: "A fact.", state: "tip", fact: { id: "dune", progress: () => "1 of 2" } });
+    clock.moment = 3;
+    noGuide.pump();
+    clock.moment = 5;
+    clock.year = 2027;
+    noGuide.pump();
+    expect(order).toEqual(["hello", "standing-nature", "fact:dune"]);
     // A board with nothing standing (the same level without them): no such line. The Tutorial's director is quiet.
     const bare = sessionRun({ ...LEVEL_BY_ID.get(PANJIM_LEVEL_ID)!, standingDefences: [] });
     const other = sayer();
