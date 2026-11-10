@@ -146,8 +146,11 @@ describe("Buildings & economy (v2.4: Beachside Resort widened, House added on La
     // forever, no matter how the player played. Breakwater closes that
     // content gap; Yacht is still Coast's only cosmetic/non-defense option.
     // Seawall joined it (an earlier balance pass); Section 34b.9 (owner decision 2d) moved the seawall to the shore
-    // line, land beside the sea, so open sea offers the breakwater and Yacht.
-    expect(coastOptions.sort()).toEqual(["breakwater", "yacht"]);
+    // line. Section 41.1 (owner decision): seawalls and breakwaters stand at the shore, on the first sea tile (a sea
+    // tile beside sand or land) and never out at sea, so open sea offers the Yacht alone.
+    expect(coastOptions.sort()).toEqual(["yacht"]);
+    const shoreState = new GameState([{ coord: { q: 0, r: 0 }, terrainId: "coast" }, { coord: { q: 1, r: 0 }, terrainId: "beach" }]);
+    expect(shoreState.buildableAt({ q: 0, r: 0 }).map((d) => d.id).sort()).toEqual(["breakwater", "seawall", "yacht"]);
 
     for (const terrainId of ["beach", "land", "river", "estuary"]) {
       const state = new GameState([{ coord: { q: 0, r: 0 }, terrainId }]);

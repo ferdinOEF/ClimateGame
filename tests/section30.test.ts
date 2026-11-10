@@ -87,7 +87,9 @@ describe("30.2 a river tile takes only a small dam", () => {
     const r = newRun("s30-2b", BOT_LEVEL);
     while (!r.finished) {
       for (const job of r.prep) if (job.elementId === "mangrove") for (const key of job.tiles ?? []) expect(r.state.placed.get(key)?.terrainId, `${job.challengeId} ${key}`).not.toBe("river");
-      const t = [...r.state.placed.values()].find((tile) => r.state.buildableAt(tile.coord).length > 0 && tile.coord.r < 4)!;
+      // Far from the objectives' places while such tiles last (Section 41.1 left fewer sea tiles that take a build), then anywhere.
+      const free = [...r.state.placed.values()].filter((tile) => r.state.buildableAt(tile.coord).length > 0);
+      const t = free.find((tile) => tile.coord.r < 4) ?? free[0];
       r.build(t.coord, r.state.buildableAt(t.coord)[0].id);
     }
   });

@@ -142,7 +142,8 @@ var elements_default = [
     validTerrainIds: [
       "beach",
       "land",
-      "estuary"
+      "estuary",
+      "coast"
     ],
     placement: "shoreline",
     buildCost: 80,
@@ -315,6 +316,7 @@ var elements_default = [
     validTerrainIds: [
       "coast"
     ],
+    placement: "firstSea",
     buildCost: 85,
     maintenanceCostPerTurn: 5,
     maintenanceNeglectPenaltyPerTurn: 0.08,
@@ -3246,8 +3248,27 @@ var GameState = class _GameState {
     }
     return results;
   }
-  /** Section 34b.9: a seawall on the shore line (a sea neighbour), a small dam on the narrow upstream river (no sea neighbour, at most two river neighbours). */
+  /**
+   * Section 41.1 (owner decision), a game rule: "the first sea tile" is a sea tile with at least one neighbour that is
+   * beach or land. A river tile never counts, and a sea tile that touches only wetland does not count. The one place
+   * the rule lives: seawalls and breakwaters both ask it (`placementFits`).
+   */
+  isFirstSea(coord) {
+    if (this.placed.get(axialKey(coord))?.terrainId !== "coast") return false;
+    for (let dir = 0; dir < 6; dir++) {
+      const terrain = this.placed.get(axialKey(neighbor(coord, dir)))?.terrainId;
+      if (terrain === "beach" || terrain === "land") return true;
+    }
+    return false;
+  }
+  /**
+   * Where a defence with a `placement` fits (`ElementDef.placement`). Section 34b.9: a seawall on the shore line (a sea
+   * neighbour), a small dam on the narrow upstream river (no sea neighbour, at most two river neighbours). Section
+   * 41.1: a seawall also on a first sea tile, a breakwater on a first sea tile only.
+   */
   placementFits(coord, placement) {
+    if (placement === "firstSea") return this.isFirstSea(coord);
+    if (placement === "shoreline" && this.placed.get(axialKey(coord))?.terrainId === "coast") return this.isFirstSea(coord);
     let sea = 0;
     let river = 0;
     for (let dir = 0; dir < 6; dir++) {

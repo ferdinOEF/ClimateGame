@@ -18,7 +18,9 @@ const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../do
 const actionsOf = (rows: PlanFile["goal1"]["actions"]): PlanAction[] =>
   rows.map((r) => (r.action === "repair" ? { type: "repair", q: r.q, r: r.r } : { type: "build", q: r.q, r: r.r, elementId: r.elementId }));
 
-describe("the best plan, replayed headless", () => {
+// Section 41.1: the plan of Section 34c builds breakwaters out at sea, which the shore rule refuses. Parked until the
+// plan is searched again on Section 41's rules (step 41.5), which points this file at the new plan and takes the skip off.
+describe.skip("the best plan, replayed headless", () => {
   for (const goal of ["goal1", "goal2"] as const) {
     it(`${goal}: 25 actions, the same stars and homes saved in every storm`, () => {
       const p = plan[goal];

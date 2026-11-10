@@ -479,16 +479,18 @@ describe("34b.8: Esc only closes what is open", () => {
 describe("34b.9: seawalls on the shore, small dams on the upstream river", () => {
   const strip = (cells: [number, number, string][]): GameState => new GameState(cells.map(([q, r, terrainId]) => ({ coord: { q, r }, terrainId })), [], 100000);
 
-  it("a seawall needs land (beach, shore or wetland edge) with a sea neighbour; never the sea", () => {
-    const board = strip([[0, 0, "coast"], [1, 0, "beach"], [2, 0, "beach"], [1, -1, "land"], [0, 1, "estuary"], [3, 0, "land"]]);
+  it("a seawall needs land (beach, shore or wetland edge) with a sea neighbour, or the first sea tile (Section 41.1)", () => {
+    const board = strip([[0, 0, "coast"], [1, 0, "beach"], [2, 0, "beach"], [1, -1, "land"], [0, 1, "estuary"], [3, 0, "land"], [-1, 0, "coast"]]);
     expect(board.canBuild({ q: 1, r: 0 }, "seawall")).toBe(true);
     expect(board.canBuild({ q: 1, r: -1 }, "seawall")).toBe(true);
     expect(board.canBuild({ q: 0, r: 1 }, "seawall")).toBe(true);
-    expect(board.canBuild({ q: 0, r: 0 }, "seawall")).toBe(false);
+    // Section 41.1: the first sea tile (sand or land beside it) takes a seawall or a breakwater; the sea beyond it neither.
+    expect(board.canBuild({ q: 0, r: 0 }, "seawall")).toBe(true);
+    expect(board.canBuild({ q: 0, r: 0 }, "breakwater")).toBe(true);
+    expect(board.canBuild({ q: -1, r: 0 }, "seawall")).toBe(false);
+    expect(board.canBuild({ q: -1, r: 0 }, "breakwater")).toBe(false);
     expect(board.canBuild({ q: 2, r: 0 }, "seawall")).toBe(false);
     expect(board.canBuild({ q: 3, r: 0 }, "seawall")).toBe(false);
-    // The breakwater keeps the sea.
-    expect(board.canBuild({ q: 0, r: 0 }, "breakwater")).toBe(true);
   });
 
   it("a small dam needs a river tile with no sea neighbour and at most two river neighbours", () => {

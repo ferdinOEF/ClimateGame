@@ -33,7 +33,7 @@ describe("Section 37.7: text", () => {
       "By keyboard: Tab to the board (after the HUD), the arrow keys move between tiles, O jumps to the objective's tiles, Enter opens one, Up and Down pick a card. S: sound on or off. M: Maya's tips on or off. R: show risk."
     );
     expect(keysLine(false)).not.toContain("M: Maya");
-    expect(TILE_NOTES.riverMouth).toBe("Open water at the river mouth. In this game a breakwater goes on the sea, up to four tiles from the shore, and a small dam on the narrow river upstream.");
+    expect(TILE_NOTES.riverMouth).toBe("Open water at the river mouth. In this game a seawall or a breakwater goes on the first water tile beside the shore, and a small dam on the narrow river upstream.");
     for (const text of [keysLine(true), TILE_NOTES.riverMouth, sideBySideNote()]) expect(punctuationProblems(text), text).toEqual([]);
   });
 });
