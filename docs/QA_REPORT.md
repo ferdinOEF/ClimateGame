@@ -3163,3 +3163,13 @@ defenses close up), `3d-standing-khazan-card`, `4-first-sea-tile-campal`, `5-dee
 **Not run:** the full browser check (walkthrough, labels, axe, four sizes); test:layout and test:labels (the brief);
 1920x1080 shots; Safari and Firefox; a production load (nothing merged). The bots' "before" was not run again: the
 last recorded numbers are on the same rules as master.
+
+**Section 41's preview.** Vercel built every step's commit; the preview of `72ef883` (41.5,
+`dpl_4e2QspvoEUcH1EZGa6ASrKuQRX3Z`) is Ready, checked through the Vercel connector. The branch's address is
+`climate-game-git-section-41-shore-8b5312-ferdin-5189s-projects.vercel.app` (Vercel shortens a long branch name and
+adds a hash, so it is not `climate-game-git-section-41-shore-defenses-...`). Loaded from this laptop by plain
+requests, not played: the page and its script answer, the script holds "just off the shore", "Panjim already has
+mangroves and khazan land", "In the 2050 storm it holds back the river too", `holdsRiverInCompound` and
+`standingDefences`, and no longer "Breaks cyclone waves out at sea"; `GET /api/board` answers 200. Nothing was
+posted to it. Play it with `?tag=FestTesters` (the Preview environment also tags every post `Preview`). Master
+is untouched at `2c861a1`. The second worktree used for the long runs is removed.

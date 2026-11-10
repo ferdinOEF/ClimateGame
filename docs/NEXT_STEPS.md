@@ -14,8 +14,10 @@ actually done and noted in the Log (date + one line), not just assumed.
 
 ## After Section 41 (from docs/QA_REPORT.md)
 
-- Not merged: the owner looks at the preview first. Merge with `git merge --no-ff` on the owner's word, then confirm
-  Vercel's production deployment. No schema change, so no migration.
+- Not merged: the owner looks at the preview first
+  (`climate-game-git-section-41-shore-8b5312-ferdin-5189s-projects.vercel.app`, with `?tag=FestTesters`). Merge with
+  `git merge --no-ff` on the owner's word, then confirm Vercel's production deployment. No schema change, so no
+  migration.
 - **The live board mixes two rule sets after the merge.** `runs` and `board` have no rules or build version column
   (only `created_at` and `board.season`). Nothing replays a stored run, so none is re-scored; a row from before the
   merge keeps the points of the old rules beside rows scored on the new ones. The ways to keep them apart without a
