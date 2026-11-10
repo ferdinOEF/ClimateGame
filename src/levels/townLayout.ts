@@ -158,9 +158,14 @@ function pick(weights: Partial<Record<BuildingKind, number>>, roll: number): Bui
 
 /**
  * The town plan for `map`. `seed` is the level's seed. Monument tiles are
- * left out entirely (they are neither buildings nor gardens).
+ * left out entirely (they are neither buildings nor gardens). `openLand` is
+ * land the level keeps free of buildings whatever the plan would put there
+ * (levels.json `houses.openLand`, Section 41.3: Campal's water edge is
+ * promenade, gardens, grounds and jetties): each is a garden, and the rest of
+ * the plan is worked out exactly as without it.
  */
-export function townLayout(map: GameMap, seed: string): TownLayout {
+export function townLayout(map: GameMap, seed: string, openLand: readonly (readonly [number, number])[] = []): TownLayout {
+  const open = new Set(openLand.map(([q, r]) => `${q},${r}`));
   const terrain = new Map(map.tiles.map((tile) => [axialKey(tile.coord), tile.terrainId]));
   const monuments = new Set(map.monuments.map((m) => `${m.q},${m.r}`));
   const roads = new Set(map.roads.map(([q, r]) => `${q},${r}`).filter((key) => terrain.get(key) === "land" && !monuments.has(key)));
@@ -219,7 +224,7 @@ export function townLayout(map: GameMap, seed: string): TownLayout {
   // In a fixed order, so the neighbour check for colours is deterministic.
   plots.sort((a, b) => a.coord.r - b.coord.r || a.coord.q - b.coord.q);
   for (const plot of plots) {
-    if (plot.roll >= plot.density + offset) {
+    if (plot.roll >= plot.density + offset || open.has(plot.key)) {
       gardens.add(plot.key);
       continue;
     }

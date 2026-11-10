@@ -37,18 +37,22 @@ function behind(a: string, b: string): string[] {
  * tiles: this is the protection rule, not where each may be built.)
  */
 export function pairRatios(storm: (typeof run.schedule)[number], terrain: string, pairId: string, singleId: string, count = 8): number[] {
-  const bare = depths(run.state, storm);
+  // Section 41.3: the rule is measured with nothing else standing: the level's standing khazans and mangrove are left
+  // off (a khazan next to one of them would pair with it, and the single dam would add to it).
+  const base = run.state.clone();
+  for (const [key, inst] of [...base.elements]) if (inst.fromStart) base.elements.delete(key);
+  const bare = depths(base, storm);
   const ratios: number[] = [];
   for (const [key, tile] of run.state.placed) {
     if (ratios.length >= count) break;
-    if (tile.terrainId !== terrain || run.state.elements.has(key) || run.state.isScenery(key) || !bare.has(key)) continue;
-    const partner = neighbors(tile.coord).map(axialKey).find((n) => n > key && run.state.placed.get(n)?.terrainId === terrain && !run.state.elements.has(n) && bare.has(n));
+    if (tile.terrainId !== terrain || base.elements.has(key) || base.isScenery(key) || !bare.has(key)) continue;
+    const partner = neighbors(tile.coord).map(axialKey).find((n) => n > key && base.placed.get(n)?.terrainId === terrain && !base.elements.has(n) && bare.has(n));
     if (!partner) continue;
     const tiles = behind(key, partner).filter((k) => (bare.get(k) ?? 0) > 0);
     if (tiles.length < 3) continue;
-    const one = run.state.clone();
+    const one = base.clone();
     place(one, key, singleId);
-    const two = run.state.clone();
+    const two = base.clone();
     place(two, key, pairId);
     place(two, partner, pairId);
     const d1 = depths(one, storm);

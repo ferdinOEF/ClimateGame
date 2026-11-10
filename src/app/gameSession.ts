@@ -539,7 +539,7 @@ export function startGameSession(options: GameSessionOptions): GameSessionHandle
    * `state.elements` entirely, so no meter, objective, hazard or achievement
    * can see them (see `GameState.reserved`).
    */
-  const town = level.houses?.fillLand ? townLayout(levelMap, level.id) : null;
+  const town = level.houses?.fillLand ? townLayout(levelMap, level.id, level.houses.openLand) : null;
   /** The tallest of the nearest Houses to a coord, as drawn (for sizing a monument against its street). */
   const neighbourBuilding = (coord: AxialCoord): { w: number; d: number; h: number } | null => {
     if (!town) return null;

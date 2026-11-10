@@ -105,7 +105,8 @@ export function standingDefences(state: GameState): string[] {
   const out: string[] = [];
   for (const [key, inst] of state.elements) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (!def || def.kind !== "defense" || inst.broken || state.isScenery(key)) continue;
+    // Section 41.3: a defence that stood before the run (`fromStart`) is no veteran: the player did not build it.
+    if (!def || def.kind !== "defense" || inst.broken || inst.fromStart || state.isScenery(key)) continue;
     out.push(defenceId(key, inst.elementId, inst.builtOnTurn));
   }
   return out.sort();
@@ -120,7 +121,8 @@ export function livingCoast(before: GameState, after: GameState, args: StormArgs
   let standing = 0;
   let protecting = 0;
   for (const [key, inst] of after.elements) {
-    if (!LIVING_COAST.includes(inst.elementId) || inst.broken || after.isScenery(key)) continue;
+    // Section 41.3: one that stood before the run (`fromStart`) earns nothing, standing or protecting.
+    if (!LIVING_COAST.includes(inst.elementId) || inst.broken || inst.fromStart || after.isScenery(key)) continue;
     const was = before.elements.get(key);
     standing++;
     // Built after the storm (never: a storm resolves straight after its year's build) or a different defence then.

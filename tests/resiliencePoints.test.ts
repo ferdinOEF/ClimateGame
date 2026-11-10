@@ -94,7 +94,8 @@ describe("on the Panaji board", () => {
     const c = board.schedule[0];
     const args = { zones: board.zones!, kind: c.kind, intensity: board.intensityOf(c), strengthUnit: board.climate!.intensityPerStrength, houseStars: board.houseStarsFor(c), houseRule: board.houseRule, landfall: board.landfallOf(c), sheltered: shelterOf(c), wind: c.wind, combos: computeCombos(board.state).bonus };
     const lost = housesLostWithout(board.state, args, null).housesDamaged;
-    const coast = [...board.state.elements.keys()].filter((key) => LIVING_COAST.includes(board.state.elements.get(key)!.elementId));
+    // Section 41.3: the khazans and the mangrove standing from the start earn nothing: only the player's own count.
+    const coast = [...board.state.elements.keys()].filter((key) => LIVING_COAST.includes(board.state.elements.get(key)!.elementId) && !board.state.elements.get(key)!.fromStart);
     const protecting = coast.filter((key) => {
       const copy = board.state.clone();
       copy.elements.delete(key);

@@ -108,7 +108,7 @@ describe("objectives chosen by the model", () => {
 
   // Section 16.4 (owner decision): the first objective is "Protect Sharada Mandir School", its rows from the
   // model on the tiles round the school only, with the school pinned.
-  it("phase 1: Protect Sharada Mandir School, every pick round the school, the school pinned, all 9 homes saved", () => {
+  it("phase 1: Protect Sharada Mandir School, every pick round the school, the school pinned, all 8 homes saved", () => {
     const r = run();
     const school = MAP.landmarks.find((l) => l.name === "Sharada Mandir School")!;
     expect(r.objective!.rows.every((row) => row.heading === "Protect Sharada Mandir School")).toBe(true);
@@ -118,8 +118,8 @@ describe("objectives chosen by the model", () => {
     }
     for (const row of r.objective!.rows) expect(row.pins).toEqual([{ name: "Sharada Mandir School", q: school.q, r: school.r }]);
     // Section 19: 8, not 9: the Caranzalem home at -7,24 went with the owner's edit to beach. Section 26.3: 9 again,
-    // the stronger wind takes -2,18 beside the school.
-    expect(r.objective!.lostBefore).toBe(9);
+    // the stronger wind takes -2,18 beside the school. Section 41.3: 8, the cyclone is 1.15 (from 1.2) and leaves -2,18.
+    expect(r.objective!.lostBefore).toBe(8);
     // Section 17.2 (owner decision): the objective suggests nature-based defences only. Section 19: with the home
     // at -7,24 gone (beach now), the defences in front of the school save all of them. Section 26.3: with the wind
     // stronger the picks include pandanus (the only wind shelter), and a mangrove at the river's edge (Section 25.1).

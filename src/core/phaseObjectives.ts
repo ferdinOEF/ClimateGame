@@ -324,12 +324,14 @@ function rowsOf(input: PhaseObjectiveInput, picks: ObjectivePick[], candidates: 
     const places = new Set(group.places);
     const tiles = [...new Set([...candidates.filter((c) => c.elementId === group.elementId && places.has(placeOf(input, c.key))).map((c) => c.key), ...group.picks.map((p) => p.key)])].sort();
     const [verb, one, many] = NOUN[group.elementId] ?? ["Build", group.elementId, group.elementId];
-    const baseline = tiles.filter((key) => input.state.elements.get(key)?.elementId === group.elementId).length;
+    // Section 41.3: a defence that stood before the run is never the player's build: no row counts it.
+    const built = (key: string): boolean => input.state.elements.get(key)?.elementId === group.elementId && !input.state.elements.get(key)?.fromStart;
+    const baseline = tiles.filter(built).length;
     // Section 34b.4: the tiles that count are the whole place the row names. Its defences already standing there that
     // take a home out of this storm's risk (Get ahead's, an earlier phase's) count from the start.
     const placeTiles = [...input.state.placed.keys()].filter((key) => (!input.stretch?.only || input.stretch.tiles.has(key)) && places.has(placeOf(input, key))).sort();
     const credited = placeTiles.filter((key) => {
-      if (input.state.elements.get(key)?.elementId !== group.elementId) return false;
+      if (!built(key)) return false;
       lostNow ??= homesLost(input.state, input.storm, input.landfallZoneTiles).size;
       const without = input.state.clone();
       without.elements.delete(key);

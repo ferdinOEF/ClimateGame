@@ -42,12 +42,22 @@ export interface ElementInstance {
   broken?: boolean;
   /** Section 25.1: storms of the kind it answers that reached it and it came through (`ElementDef.survivesStorms`). */
   stormsSurvived?: number;
+  /**
+   * Section 41.3 (owner decision), a game rule: it stood on the board before the run began (a level's
+   * `standingDefences`); the player did not build it. Mature and at full strength from the first turn; it protects,
+   * ages and can be removed like any other of its kind, and it counts in the board's starting biodiversity. It earns
+   * no living coast points, is no veteran, and is never credited to an objective's row. A build on its tile after it
+   * is removed is the player's own.
+   */
+  fromStart?: boolean;
 }
 
 /** A world-init element the player owns from turn one — pre-built, not purchased (Section 4/8's "small coastal claim + 10 pre-built Houses" starting state). */
 export interface StartingElementSeed {
   coord: AxialCoord;
   elementId: string;
+  /** Section 41.3: a defence that stands from the first turn (`ElementInstance.fromStart`). */
+  fromStart?: boolean;
 }
 
 const STARTING_COIN = 50;
@@ -191,7 +201,7 @@ export class GameState {
       const key = axialKey(seed.coord);
       if (!this.placed.has(key)) continue;
       this.claimed.add(key);
-      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0 });
+      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0, ...(seed.fromStart ? { fromStart: true } : {}) });
     }
   }
 
@@ -259,7 +269,8 @@ export class GameState {
   /** 0 at the moment of building, rising linearly to 1 at the element's maturity time. */
   maturityFraction(inst: ElementInstance, def: ElementDef): number {
     // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
-    if (!this.growthEnabled) return 1;
+    // Section 41.3: a defence that stood before the run is mature from the first turn, growth on or off.
+    if (!this.growthEnabled || inst.fromStart) return 1;
     const span = (this.maturityField === "matureQuarters" ? def.matureQuarters : def.matureTurns) ?? def.matureTurns;
     return span > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / span)) : 1;
   }

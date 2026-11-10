@@ -72,7 +72,8 @@ describe("Maya's Aftermath line", () => {
 
     // A cyclone met by seawalls on every tile it wets: nothing lost.
     const map = mapById("panaji")!;
-    const state = new GameState(map.tiles, boardSetup(BOT_LEVEL, map).startingElements, 100000);
+    // Section 41.3: seawalls alone, so the level's standing khazans and mangrove are left off (the mangrove at Taleigao would be the zone's hero).
+    const state = new GameState(map.tiles, boardSetup(BOT_LEVEL, map).startingElements.filter((seed) => !seed.fromStart), 100000);
     state.maturityField = "matureQuarters";
     for (const m of map.monuments) state.reserved.add(`${m.q},${m.r}`);
     const zones = new ZoneIndex(map.zones);

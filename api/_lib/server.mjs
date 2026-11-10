@@ -1605,10 +1605,11 @@ function rowsOf(input, picks, candidates) {
     const places = new Set(group.places);
     const tiles = [.../* @__PURE__ */ new Set([...candidates.filter((c) => c.elementId === group.elementId && places.has(placeOf(input, c.key))).map((c) => c.key), ...group.picks.map((p) => p.key)])].sort();
     const [verb, one, many] = NOUN[group.elementId] ?? ["Build", group.elementId, group.elementId];
-    const baseline = tiles.filter((key) => input.state.elements.get(key)?.elementId === group.elementId).length;
+    const built = (key) => input.state.elements.get(key)?.elementId === group.elementId && !input.state.elements.get(key)?.fromStart;
+    const baseline = tiles.filter(built).length;
     const placeTiles = [...input.state.placed.keys()].filter((key) => (!input.stretch?.only || input.stretch.tiles.has(key)) && places.has(placeOf(input, key))).sort();
     const credited = placeTiles.filter((key) => {
-      if (input.state.elements.get(key)?.elementId !== group.elementId) return false;
+      if (!built(key)) return false;
       lostNow ??= homesLost(input.state, input.storm, input.landfallZoneTiles).size;
       const without = input.state.clone();
       without.elements.delete(key);
@@ -2175,7 +2176,7 @@ function standingDefences(state) {
   const out2 = [];
   for (const [key, inst] of state.elements) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (!def || def.kind !== "defense" || inst.broken || state.isScenery(key)) continue;
+    if (!def || def.kind !== "defense" || inst.broken || inst.fromStart || state.isScenery(key)) continue;
     out2.push(defenceId(key, inst.elementId, inst.builtOnTurn));
   }
   return out2.sort();
@@ -2184,7 +2185,7 @@ function livingCoast(before, after, args, housesDamaged) {
   let standing = 0;
   let protecting = 0;
   for (const [key, inst] of after.elements) {
-    if (!LIVING_COAST.includes(inst.elementId) || inst.broken || after.isScenery(key)) continue;
+    if (!LIVING_COAST.includes(inst.elementId) || inst.broken || inst.fromStart || after.isScenery(key)) continue;
     const was = before.elements.get(key);
     standing++;
     if (!was || was.elementId !== inst.elementId || was.builtOnTurn !== inst.builtOnTurn) continue;
@@ -3153,7 +3154,7 @@ var GameState = class _GameState {
       const key = axialKey(seed.coord);
       if (!this.placed.has(key)) continue;
       this.claimed.add(key);
-      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0 });
+      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0, ...seed.fromStart ? { fromStart: true } : {} });
     }
   }
   /**
@@ -3216,7 +3217,7 @@ var GameState = class _GameState {
   }
   /** 0 at the moment of building, rising linearly to 1 at the element's maturity time. */
   maturityFraction(inst, def) {
-    if (!this.growthEnabled) return 1;
+    if (!this.growthEnabled || inst.fromStart) return 1;
     const span = (this.maturityField === "matureQuarters" ? def.matureQuarters : def.matureTurns) ?? def.matureTurns;
     return span > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / span)) : 1;
   }
@@ -3506,7 +3507,8 @@ function pick(weights, roll) {
   }
   return entries[entries.length - 1][0];
 }
-function townLayout(map, seed) {
+function townLayout(map, seed, openLand = []) {
+  const open = new Set(openLand.map(([q, r]) => `${q},${r}`));
   const terrain = new Map(map.tiles.map((tile) => [axialKey(tile.coord), tile.terrainId]));
   const monuments = new Set(map.monuments.map((m) => `${m.q},${m.r}`));
   const roads = new Set(map.roads.map(([q, r]) => `${q},${r}`).filter((key) => terrain.get(key) === "land" && !monuments.has(key)));
@@ -3553,7 +3555,7 @@ function townLayout(map, seed) {
   const gardens = /* @__PURE__ */ new Set();
   plots.sort((a, b) => a.coord.r - b.coord.r || a.coord.q - b.coord.q);
   for (const plot of plots) {
-    if (plot.roll >= plot.density + offset) {
+    if (plot.roll >= plot.density + offset || open.has(plot.key)) {
       gardens.add(plot.key);
       continue;
     }
@@ -3647,9 +3649,14 @@ var MONEY_ONLY = ["beachside_resort", "yacht"];
 function boardSetup(level, map) {
   const fill = level.houses;
   const setup = { startingElements: [], effectScale: /* @__PURE__ */ new Map(), excluded: /* @__PURE__ */ new Set(), unbuildable: /* @__PURE__ */ new Set() };
-  if (!fill) return setup;
+  const tiles = new Set(map.tiles.map((tile) => axialKey(tile.coord)));
+  const standing = (level.standingDefences ?? []).filter((d) => tiles.has(`${d.q},${d.r}`)).map((d) => ({ coord: { q: d.q, r: d.r }, elementId: d.elementId, fromStart: true }));
+  if (!fill) {
+    setup.startingElements.push(...standing);
+    return setup;
+  }
   if (fill.fillLand) {
-    const town = townLayout(map, level.id);
+    const town = townLayout(map, level.id, fill.openLand);
     for (const tile of map.tiles) {
       if (town.buildings.has(axialKey(tile.coord))) setup.startingElements.push({ coord: tile.coord, elementId: "house" });
     }
@@ -3657,6 +3664,7 @@ function boardSetup(level, map) {
   const scenery = new Set(map.unplayable.map(([q, r]) => `${q},${r}`));
   const counted = setup.startingElements.filter((seed) => !scenery.has(axialKey(seed.coord))).length;
   setup.effectScale.set("house", fill.houseEconomyHouses / Math.max(1, counted));
+  setup.startingElements.push(...standing);
   for (const id of fill.excludeFromBuild) setup.excluded.add(id);
   if (level.economy && !level.economy.enabled) for (const id of MONEY_ONLY) setup.excluded.add(id);
   if (fill.coastBuildRange !== void 0) {
@@ -18052,7 +18060,7 @@ var levels_default = [
           kind: "cyclone",
           year: 2030,
           where: "Miramar beach",
-          strength: 1.2,
+          strength: 1.15,
           landfall: "-5,18",
           wind: { perStrengthM: 1, inlandKeep: 0.8 }
         },
@@ -18072,7 +18080,7 @@ var levels_default = [
           where: "Campal",
           strength: 3,
           landfall: "2,12",
-          wind: { perStrengthM: 0.6, inlandKeep: 0.8, compoundShare: 1.1 },
+          wind: { perStrengthM: 0.6, inlandKeep: 0.8, compoundShare: 0.9 },
           bioThree: 40,
           biodiversityAtEnd: true,
           shelteredPlace: "the sheltered middle of Taleigao",
@@ -18222,10 +18230,16 @@ var levels_default = [
         "house"
       ],
       coastBuildRange: 4,
+      openLand: [[6, 9], [8, 7], [4, 11], [3, 12]],
       rule: {
         resilience: 45
       }
     },
+    standingDefences: [
+      { elementId: "khazan", q: 26, r: 6, place: "Merces" },
+      { elementId: "khazan", q: 16, r: 15, place: "Merces" },
+      { elementId: "mangrove", q: 7, r: 21, place: "Taleigao" }
+    ],
     objectives: [
       {
         type: "survive_hazards",

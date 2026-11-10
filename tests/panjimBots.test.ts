@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOT_LEVEL, SEEDS, newRun, replaySmartWithout, runBot, runSmartOnly, savedShare, smartRun, type BotResult } from "../tools/panjimBots/bots";
+import type { LevelDef } from "../src/levels/levels";
 
 /**
  * The bots on the real rules (Section 10: 25 builds, one a year). Each
@@ -14,8 +15,18 @@ const far = SEEDS.map((seed) => runBot("far", seed));
 const mean = (runs: BotResult[]): number => runs.reduce((s, r) => s + savedShare(r), 0) / runs.length;
 
 describe("Panjim bots, 25 builds", () => {
-  it("building only far from the risk saves nothing", () => {
-    for (const run of far) expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.02);
+  // Section 41.3 (owner decision): two khazans and a mangrove stand on the board from the first turn and protect as
+  // built ones do. A player who builds only far from the risk saves what they save and no more: the same share on
+  // every seed (20%: 14 of 56 homes in 2040, 4 of 24 in 2050), and nothing at all on the same board without them.
+  it("building only far from the risk saves nothing beyond what the nature standing at the start saves", () => {
+    const bare: LevelDef = { ...BOT_LEVEL, standingDefences: [] };
+    for (const seed of SEEDS.slice(0, 5)) expect(savedShare(runBot("far", seed, bare)), seed).toBeLessThanOrEqual(0.02);
+    for (const run of far) {
+      expect(savedShare(run), run.seed).toBe(savedShare(far[0]));
+      expect(run.houses[0].saved, run.seed).toBe(0);
+    }
+    expect(savedShare(far[0])).toBeGreaterThan(0.1);
+    expect(savedShare(far[0])).toBeLessThan(0.3);
   });
 
   // Section 19: with the east edge out of Panjim (owner decision) fewer homes are in the storms' paths.
@@ -24,10 +35,12 @@ describe("Panjim bots, 25 builds", () => {
   // standing when it hit, and the 2050 storm is 3.0: Casual saves 54-76% (mean 62%): the band is 50-80%.
   // Section 25.1: dunes and khazans pair up (two side by side hold like a seawall or a small dam), so a player building
   // by eye beside the red homes saves a little more: one seed of twenty reaches 81%. The ceiling is 85%.
-  it("building by eye on what the forecast shows saves more than half the homes (Casual 50-85%)", () => {
+  // Section 41 (owner decisions: a milder first cyclone, seawalls that hold the river in 2050, nature standing at the
+  // start, so that a perfect plan saves every home): Casual saves 68-85% (mean 74%). The band is 60-92%.
+  it("building by eye on what the forecast shows saves more than half the homes (Casual 60-92%)", () => {
     for (const run of casual) {
-      expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.5);
-      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.85);
+      expect(savedShare(run), run.seed).toBeGreaterThanOrEqual(0.6);
+      expect(savedShare(run), run.seed).toBeLessThanOrEqual(0.92);
     }
   });
 
@@ -62,7 +75,10 @@ describe("Panjim bots, 25 builds", () => {
         let margin = 0;
         for (const [i, seed] of seeds.entries()) {
           const without = savedShare(replaySmartWithout(id, seed, runs[i].log));
-          expect(without, `${id} ${seed}`).toBeLessThanOrEqual(savedShare(smart[i]) + 1e-9);
+          // Section 41: a seawall may cost a home at its end (Section 25.1's rule: it pushes water onto the land beside
+          // each end, and at Campal's shore the 2050 wind does the rest). On one seed of six Smart's late seawall there
+          // does: one home (under 0.01 of the run). Every other defence is never better left out.
+          expect(without, `${id} ${seed}`).toBeLessThanOrEqual(savedShare(smart[i]) + (id === "seawall" ? 0.01 : 1e-9));
           margin += savedShare(smart[i]) - without;
         }
         // Section 30: since mangroves left the river tiles (30.2), Smart opens 2030 with seawalls and breakwaters, and
