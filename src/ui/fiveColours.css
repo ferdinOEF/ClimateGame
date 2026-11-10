@@ -1,0 +1,107 @@
+/*
+ * Section 40 (owner decision): the five colours on the static screens. The values are theme.css's block on those
+ * screens' roots; most of each screen follows them with no rule here, because its rules already name the variables.
+ * This sheet holds only what the block alone cannot say: where a screen takes a different variable than it had, and
+ * the few marks the brief adds (the five bars, the strip under a heading, the rank chips). Imported last, after
+ * harbour.css. Every rule starts at a static screen's root, so nothing here reaches the game's interface, and no rule
+ * names a colour of its own (tests/theme.test.ts).
+ */
+
+/* ---- 40.2 The main screen ------------------------------------------------------------------------------------ */
+
+/* The page under the board render: the blue ground. */
+.screen-layer.five-colours {
+  background: var(--screen-ground);
+  color: var(--ink);
+}
+
+.screen-layer.five-colours .menu-cloud-note {
+  color: var(--ink);
+}
+
+/* The card's eyebrow is quiet text on the card, no longer a band. */
+.screen.menu-screen .menu-card .menu-eyebrow {
+  background: none;
+  color: var(--ink-2);
+}
+
+/* The five colours as five small bars under the title: decoration, hidden from screen readers. */
+.menu-bars {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.menu-bar {
+  width: 44px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.menu-bar-teal { background: var(--teal); }
+.menu-bar-pink { background: var(--warn); }
+.menu-bar-gold { background: var(--gold); }
+.menu-bar-blue { background: var(--button-border); }
+.menu-bar-purple { background: var(--strip); }
+
+/* The quote band's mark. */
+.menu-quote .menu-quote-mark {
+  color: var(--strip);
+}
+
+/* ---- 40.2 The name card -------------------------------------------------------------------------------------- */
+
+/* A short strip under the heading. */
+.name-card .name-card-title::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 3px;
+  background: var(--strip);
+}
+
+/* The Top 10, in all its states (loading, offline, empty, the rows): the plum band. */
+.name-card .name-card-top {
+  background: var(--band);
+  color: var(--band-ink);
+}
+
+.name-card .name-card-top-note,
+.name-card .name-card-season {
+  color: var(--band-ink-2);
+}
+
+.name-card .name-card-top-rows li + li {
+  padding-top: 3px;
+  border-top: 1px solid var(--band-rule);
+}
+
+.name-card .name-card-top-rows b {
+  color: var(--star);
+}
+
+/* Ranks 4 to 10 are quiet; 1 to 3 sit in a round gold chip. */
+.name-card .name-card-rank {
+  color: var(--band-ink-2);
+}
+
+.name-card .name-card-rank.top {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--star);
+  color: var(--ink);
+}
+
+/* The list can take focus (it scrolls on a short window): on the band the ring is gold. */
+.name-card .name-card-top-rows:focus-visible {
+  outline-color: var(--star);
+}

@@ -23,7 +23,7 @@ export function topTenHtml(state: TopState): string {
   return `<h3 class="name-card-top-title">Top 10</h3>
     <ol class="name-card-top-rows" tabindex="0" aria-label="Top 10">${state.rows
       .slice(0, 10)
-      .map((r) => `<li><span class="name-card-rank">${r.rank}</span><span class="name-card-name">${esc(r.name)}</span><b>${r.points}</b><span class="name-card-season">${esc(r.season)}</span></li>`)
+      .map((r) => `<li><span class="name-card-rank${r.rank <= 3 ? " top" : ""}">${r.rank}</span><span class="name-card-name">${esc(r.name)}</span><b>${r.points}</b><span class="name-card-season">${esc(r.season)}</span></li>`)
       .join("")}</ol>`;
 }
 

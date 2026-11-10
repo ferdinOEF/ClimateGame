@@ -7,7 +7,7 @@ import crypto from "node:crypto";
  * interface uses meets WCAG AA, calm and storm: 4.5:1, or 3:1 for text 24 px and larger.
  */
 const THEME = fs.readFileSync("src/ui/theme.css", "utf8");
-const SHEETS = ["src/ui/hud.css", "src/ui/panjim/panjim.css", "src/ui/screens/screens.css", "src/ui/harbour.css"];
+const SHEETS = ["src/ui/hud.css", "src/ui/panjim/panjim.css", "src/ui/screens/screens.css", "src/ui/harbour.css", "src/ui/fiveColours.css"];
 
 function block(selector: string): Record<string, string> {
   const start = THEME.indexOf(`${selector} {`);
@@ -89,7 +89,9 @@ const FIVE_PAIRS: [string, string, boolean?][] = [
   ["ink", "icon-flood"],
   ["ink", "warn"],
   ["ink", "button-border"],
-  ["cta-ink", "teal"]
+  ["cta-ink", "teal"],
+  // The main screen's page, under the board render.
+  ["ink", "screen-ground"]
 ];
 const FIVE_ALLOWED = new Set(FIVE_PAIRS.map(([t, b]) => `${t}|${b}`));
 /** The variables only the block has. */
