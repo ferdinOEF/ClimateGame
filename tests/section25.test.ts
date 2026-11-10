@@ -19,11 +19,27 @@ import { run, cyclone, flood, compound, landfallTiles, depths, place, pairRatios
 
 describe("two of a kind side by side", () => {
   it("two dunes protect the tiles behind them within 10% of one seawall (the 2030 cyclone and the 2050 storm)", () => {
-    for (const storm of [cyclone, compound]) {
-      const ratios = pairRatios(storm, "beach", "dune", "seawall", 20);
-      expect(ratios.length, storm.id).toBeGreaterThanOrEqual(5);
-      for (const r of ratios) expect(Math.abs(r - 1), `${storm.id}: ${r.toFixed(3)}`).toBeLessThanOrEqual(0.1);
+    // The pair stands in for what a seawall does against the sea. Section 41.2 (owner decision): in the 2050 storm a
+    // seawall also holds back the river the sea pushes back, which a pair of dunes does not; that rule is set aside
+    // here so the pairing rule is measured as Section 25.1 made it (the next test measures the seawall with it on).
+    const seawall = ELEMENT_BY_ID.get("seawall")!;
+    seawall.holdsRiverInCompound = false;
+    try {
+      for (const storm of [cyclone, compound]) {
+        const ratios = pairRatios(storm, "beach", "dune", "seawall", 20);
+        expect(ratios.length, storm.id).toBeGreaterThanOrEqual(5);
+        for (const r of ratios) expect(Math.abs(r - 1), `${storm.id}: ${r.toFixed(3)}`).toBeLessThanOrEqual(0.1);
+      }
+    } finally {
+      seawall.holdsRiverInCompound = true;
     }
+  });
+
+  it("in the 2050 storm a seawall does more than the pair where the river reaches: it holds that back too (Section 41.2)", () => {
+    const ratios = pairRatios(compound, "beach", "dune", "seawall", 20);
+    expect(ratios.length).toBeGreaterThanOrEqual(5);
+    for (const r of ratios) expect(r, r.toFixed(3)).toBeLessThanOrEqual(1.1);
+    expect(Math.min(...ratios)).toBeLessThan(0.9);
   });
 
   it("two khazans protect the tiles behind them within 10% of one small dam (the 2040 flood and the 2050 storm)", () => {

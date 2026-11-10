@@ -162,7 +162,8 @@ var elements_default = [
     failureMode: "Section 25.1 (owner decision), a game rule: comes through the first cyclone it faces and breaks in the second (the 2030 cyclone and the 2050 storm both count), giving no protection in that one; a broken wall is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts). Pushes endPushM more surge onto the land beside each end of a wall. Section 26.1: once it is 10 years old it is cracked, and it breaks in the next cyclone, even its first.",
     survivesStorms: 1,
     endPushM: 0.3,
-    cracksAtAge: 10
+    cracksAtAge: 10,
+    holdsRiverInCompound: true
   },
   {
     id: "mangrove",
@@ -595,22 +596,26 @@ function landfallSite(board, challenge) {
   });
   return best;
 }
-function defenceMetres(state, key, hazard, config = HAZARD_MODEL) {
+function answersHazard(def, hazard, kind) {
+  if (def.targetsHazards?.includes(hazard)) return true;
+  return kind === "compound" && hazard === "flood" && def.holdsRiverInCompound === true && !!def.targetsHazards?.includes("cyclone");
+}
+function defenceMetres(state, key, hazard, config = HAZARD_MODEL, kind) {
   const inst = state.elements.get(key);
   if (!inst || inst.broken) return 0;
   const def = ELEMENT_BY_ID.get(inst.elementId);
   if (!def) return 0;
   const value = def.effects.resilience ?? 0;
   if (value === 0) return 0;
-  if (value > 0 && !def.targetsHazards?.includes(hazard)) return 0;
+  if (value > 0 && !answersHazard(def, hazard, kind)) return 0;
   const scale = value > 0 ? state.maturityFraction(inst, def) * Math.max(0, 1 - inst.degradeAmount) : 1;
   return value * scale * config.defence.metresPerResilience;
 }
-function ownMetres(state, hazard, skip, weaken, combos, config) {
+function ownMetres(state, hazard, skip, weaken, combos, config, kind) {
   const own = /* @__PURE__ */ new Map();
   for (const key of state.elements.keys()) {
     if (skip.has(key)) continue;
-    let m = defenceMetres(state, key, hazard, config);
+    let m = defenceMetres(state, key, hazard, config, kind);
     if (m > 0 && combos?.has(key)) m += (combos.get(key) ?? 0) * config.defence.comboMetresPerPoint;
     if (m === 0) continue;
     own.set(key, m * (weaken.get(key) ?? 1));
@@ -819,7 +824,7 @@ function pass(state, board, storm, combos, skip, weaken, config) {
   if (hasSurge) {
     surgeLevel = (config.surge.baseM + config.surge.perStrengthM * storm.strength) * (storm.kind === "compound" ? c.surgeShare : 1);
     const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall))];
-    const own = ownMetres(state, "cyclone", skip, weaken, combos, config);
+    const own = ownMetres(state, "cyclone", skip, weaken, combos, config, storm.kind);
     const reached = spread(board, /* @__PURE__ */ new Map([[site, surgeLevel]]), surgeLoss(config, storm.strength), pathDrag(board, own, config, kindOf));
     surge = protect(reached, areaProtection(board, own, config, kindOf));
     pushAtWallEnds(state, board, reached, surge, own);
@@ -842,7 +847,7 @@ function pass(state, board, storm, combos, skip, weaken, config) {
         if (lift > 0) sources.set(key, Math.max(sources.get(key) ?? 0, reach + lift));
       }
     }
-    const own = ownMetres(state, "flood", skip, weaken, combos, config);
+    const own = ownMetres(state, "flood", skip, weaken, combos, config, storm.kind);
     flood = protect(spread(board, sources, floodLoss(config), pathDrag(board, own, config, kindOf)), areaProtection(board, own, config, kindOf));
   }
   const surgeDepth = depthOf(board, surge);
@@ -1144,11 +1149,12 @@ function resolveChallenge(state, zones, kind, intensity, strengthUnit, combos, h
       floodShare = Math.max(floodShare, field.flood.get(key) ?? 0);
     }
     let defence = 0;
-    for (const key of keys) if (!failedSet.has(key)) defence += Math.max(0, defenceMetres(state, key, surgeShare >= floodShare ? "cyclone" : "flood"));
+    for (const key of keys) if (!failedSet.has(key)) defence += Math.max(0, defenceMetres(state, key, surgeShare >= floodShare ? "cyclone" : "flood", HAZARD_MODEL, kind));
     const toUnits = scale / HAZARD_MODEL.houseLossDepthM;
     const hit = inZone.filter((key) => lostSet.has(key)).length;
     outcomes.push({
       zoneId,
+      storm: kind,
       hazard: surgeShare >= floodShare ? "cyclone" : "flood",
       incoming: incoming * toUnits,
       defence: defence * toUnits,

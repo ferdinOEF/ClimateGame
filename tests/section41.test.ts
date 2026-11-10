@@ -3,7 +3,12 @@ import { GameState } from "../src/core/gameState";
 import { ELEMENT_BY_ID } from "../src/core/elements";
 import { axialDistance, axialKey } from "../src/core/hex";
 import { newPanjimRun } from "../src/levels/panjimRun";
+import { answersHazard, computeWater, defenceMetres, LANDFALL_ZONE, type WaterField } from "../src/core/hazardModel";
+import { computeCombos } from "../src/core/combos";
+import { shelterOf, type ScheduledChallenge } from "../src/core/climate";
+import type { ActionRun } from "../src/core/actionRun";
 import { tutorialRun } from "../tools/tutorial/sim";
+import { previewLost } from "../tools/bestPlan/plan";
 
 /**
  * Section 41 (owner decisions after the playtest of 10 November 2026): shore defenses, Campal in 2050, and a perfect
@@ -99,5 +104,108 @@ describe("41.1: seawalls and breakwaters at the shore", () => {
     expect(firstSea).toHaveLength(11);
     expect(keysWhere(state, (c) => state.canBuild(c, "breakwater")).sort()).toEqual([...firstSea].sort());
     for (const key of firstSea) expect(state.canBuild(state.placed.get(key)!.coord, "seawall"), key).toBe(true);
+  });
+});
+
+/** The water of `challenge` on `state`, asked exactly as the run asks it when the storm lands. */
+function waterOf(run: ActionRun, state: GameState, challenge: ScheduledChallenge): WaterField {
+  return computeWater(
+    state,
+    { kind: challenge.kind, strength: challenge.strength, landfall: run.landfallOf(challenge), sheltered: shelterOf(challenge), wind: challenge.wind, turn: challenge.turn - 1 },
+    { combos: computeCombos(state).bonus, landfallZoneTiles: run.zones!.keys(LANDFALL_ZONE) }
+  );
+}
+
+/** The board a year before `challenge`, with a seawall just built at `coord` (young: not cracked when the storm comes). */
+function withSeawall(run: ActionRun, challenge: ScheduledChallenge, coord: { q: number; r: number } | null): GameState {
+  const state = run.state.clone();
+  state.turn = challenge.turn - 2;
+  if (coord) expect(state.build(coord, "seawall", false), "the seawall goes down").toBe(true);
+  return state;
+}
+
+describe("41.2: in the 2050 storm a seawall holds back the river too", () => {
+  const run = newPanjimRun({ objectives: false, points: false });
+  const flood = run.schedule.find((c) => c.kind === "flood")!;
+  const compound = run.schedule.find((c) => c.kind === "compound")!;
+  // A first sea tile on the Mandovi side of Campal, and the water edge land beside it.
+  const WALL = { q: 6, r: 8 };
+  const BESIDE = "6,9";
+  const seawall = ELEMENT_BY_ID.get("seawall")!;
+
+  it("the rule is the seawall's alone, and only in the storm that brings both", () => {
+    expect(seawall.holdsRiverInCompound).toBe(true);
+    for (const def of ELEMENT_BY_ID.values()) if (def.id !== "seawall") expect(def.holdsRiverInCompound, def.id).toBeUndefined();
+    expect(answersHazard(seawall, "cyclone", "cyclone")).toBe(true);
+    expect(answersHazard(seawall, "cyclone", "compound")).toBe(true);
+    expect(answersHazard(seawall, "flood", "compound")).toBe(true);
+    expect(answersHazard(seawall, "flood", "flood")).toBe(false);
+    expect(answersHazard(seawall, "flood")).toBe(false);
+    // A breakwater answers the cyclone only, in every storm.
+    expect(answersHazard(ELEMENT_BY_ID.get("breakwater")!, "flood", "compound")).toBe(false);
+  });
+
+  it("against the river it has the metres it has against the cyclone", () => {
+    const state = withSeawall(run, compound, WALL);
+    const key = axialKey(WALL);
+    const againstSea = defenceMetres(state, key, "cyclone", undefined, "compound");
+    expect(againstSea).toBeGreaterThan(0);
+    expect(defenceMetres(state, key, "flood", undefined, "compound")).toBe(againstSea);
+    expect(defenceMetres(state, key, "flood", undefined, "flood")).toBe(0);
+    // A broken wall holds back neither.
+    state.elements.get(key)!.broken = true;
+    expect(defenceMetres(state, key, "flood", undefined, "compound")).toBe(0);
+  });
+
+  it("in the compound storm a seawall lowers the flood depth beside it", () => {
+    const bare = waterOf(run, withSeawall(run, compound, null), compound);
+    const walled = waterOf(run, withSeawall(run, compound, WALL), compound);
+    expect(bare.flood.get(BESIDE) ?? 0).toBeGreaterThan(1);
+    expect(walled.flood.get(BESIDE) ?? 0).toBeLessThan((bare.flood.get(BESIDE) ?? 0) - 1);
+    // And that is this rule, not only the lower surge at the river mouth: with the rule off the river stands higher there.
+    seawall.holdsRiverInCompound = false;
+    try {
+      const without = waterOf(run, withSeawall(run, compound, WALL), compound);
+      expect(walled.flood.get(BESIDE) ?? 0).toBeLessThan((without.flood.get(BESIDE) ?? 0) - 1);
+      // The surge is the same either way: the rule adds to the flood side only.
+      expect([...walled.surge]).toEqual([...without.surge]);
+    } finally {
+      seawall.holdsRiverInCompound = true;
+    }
+  });
+
+  it("a seawall cracked with age holds back neither water in the 2050 storm", () => {
+    const old = run.state.clone();
+    old.turn = compound.turn - 1 - seawall.cracksAtAge!;
+    expect(old.build(WALL, "seawall", false)).toBe(true);
+    const bare = waterOf(run, withSeawall(run, compound, null), compound);
+    const cracked = waterOf(run, old, compound);
+    expect(cracked.failed).toContain(axialKey(WALL));
+    expect(cracked.flood.get(BESIDE)).toBe(bare.flood.get(BESIDE));
+    expect(cracked.surge.get(BESIDE)).toBe(bare.surge.get(BESIDE));
+  });
+
+  it("in a flood on its own (2040) a seawall changes nothing, wherever it stands", () => {
+    const bare = waterOf(run, withSeawall(run, flood, null), flood);
+    const tiles = [...run.state.placed.values()].filter((t) => run.state.canBuild(t.coord, "seawall")).map((t) => t.coord);
+    expect(tiles.length).toBeGreaterThan(83);
+    for (const coord of tiles) {
+      const walled = waterOf(run, withSeawall(run, flood, coord), flood);
+      expect([...walled.flood], axialKey(coord)).toEqual([...bare.flood]);
+      expect([...walled.depth], axialKey(coord)).toEqual([...bare.depth]);
+    }
+  });
+
+  it("the preview follows: the homes at risk in 2050 (the heat, the build cards) fall by the same rule", () => {
+    const bare = previewLost(run, withSeawall(run, compound, null), compound);
+    const walled = previewLost(run, withSeawall(run, compound, WALL), compound);
+    expect(walled.length).toBeLessThan(bare.length);
+    seawall.holdsRiverInCompound = false;
+    try {
+      // With the rule off the same wall takes fewer homes out of the storm's risk.
+      expect(previewLost(run, withSeawall(run, compound, WALL), compound).length).toBeGreaterThan(walled.length);
+    } finally {
+      seawall.holdsRiverInCompound = true;
+    }
   });
 });

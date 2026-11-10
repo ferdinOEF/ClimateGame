@@ -84,6 +84,13 @@ export interface ElementDef {
   pairsLike?: string;
   /** Section 25.1, a game rule: extra surge, game metres, on the land beside each end of a wall of these (seawall). */
   endPushM?: number;
+  /**
+   * Section 41.2 (owner decision of 10 November 2026), a game rule: in the storm that brings both a cyclone and a
+   * flood (Panjim's 2050 storm), this defence also holds back the flood, the river the sea pushes back, with the
+   * metres it has against the cyclone. In a flood on its own it does nothing. The seawall. Read only by
+   * `answersHazard` (core/hazardModel.ts).
+   */
+  holdsRiverInCompound?: boolean;
   /** Section 25.1, a game rule: never worn by a storm, so it never needs a repair (khazan). */
   neverWears?: boolean;
   /** Section 26.1, a game rule: breaks at this age in years, storm or none (breakwater: 10). Replaces any other failure rule. */

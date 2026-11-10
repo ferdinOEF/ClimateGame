@@ -122,7 +122,8 @@
     "failureMode": "Section 25.1 (owner decision), a game rule: comes through the first cyclone it faces and breaks in the second (the 2030 cyclone and the 2050 storm both count), giving no protection in that one; a broken wall is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts). Pushes endPushM more surge onto the land beside each end of a wall. Section 26.1: once it is 10 years old it is cracked, and it breaks in the next cyclone, even its first.",
     "survivesStorms": 1,
     "endPushM": 0.3,
-    "cracksAtAge": 10
+    "cracksAtAge": 10,
+    "holdsRiverInCompound": true
   },
   {
     "id": "mangrove",

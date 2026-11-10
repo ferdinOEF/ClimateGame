@@ -5,6 +5,7 @@ import type { GameState } from "./gameState";
 import { axialDistance as hexDistance, type AxialCoord } from "./hex";
 import type { ChallengeKind } from "./climate";
 import type { ChallengeOutcome, ZoneIndex } from "./zones";
+import { answersHazard } from "./hazardModel";
 
 /**
  * What Maya says, worked out from the game's own numbers. Pure, so every
@@ -168,13 +169,13 @@ const PLURAL: Record<string, string> = {
 };
 
 /** The element type doing most of a zone's defending against `hazard`, and how many of it stand there. */
-function zoneHero(state: GameState, zones: ZoneIndex, zoneId: string, hazard: string): { id: string; count: number } | null {
+function zoneHero(state: GameState, zones: ZoneIndex, zoneId: string, hazard: string, storm?: ChallengeKind): { id: string; count: number } | null {
   const tally = new Map<string, { value: number; count: number }>();
   for (const key of zones.keys(zoneId)) {
     const inst = state.elements.get(key);
     const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
     const value = def?.effects.resilience ?? 0;
-    if (!def || value <= 0 || !def.targetsHazards?.includes(hazard)) continue;
+    if (!def || value <= 0 || !answersHazard(def, hazard, storm)) continue;
     const entry = tally.get(def.id) ?? { value: 0, count: 0 };
     entry.value += value;
     entry.count += 1;
@@ -213,14 +214,14 @@ export function mayaAftermath(
     }
   } else {
     // The zone where defences saved the most homes.
-    let best: { zoneId: string; hazard: string; saved: number; absorbed: number } | null = null;
+    let best: { zoneId: string; hazard: string; storm?: ChallengeKind; saved: number; absorbed: number } | null = null;
     for (const zone of outcome.zones) {
       if (zone.absorbed <= 0) continue;
       const saved = zone.housesInZone - zone.housesDamaged;
-      if (!best || saved > best.saved || (saved === best.saved && zone.absorbed > best.absorbed)) best = { zoneId: zone.zoneId, hazard: zone.hazard, saved, absorbed: zone.absorbed };
+      if (!best || saved > best.saved || (saved === best.saved && zone.absorbed > best.absorbed)) best = { zoneId: zone.zoneId, hazard: zone.hazard, storm: zone.storm, saved, absorbed: zone.absorbed };
     }
     if (best) {
-      const hero = zoneHero(state, zones, best.zoneId, best.hazard);
+      const hero = zoneHero(state, zones, best.zoneId, best.hazard, best.storm);
       const place = SHORT_PLACE[best.zoneId] ?? zones.name(best.zoneId);
       if (hero) {
         const defence = hero.count === 1 ? SINGULAR[hero.id] ?? hero.id : PLURAL[hero.id] ?? hero.id;
@@ -238,7 +239,7 @@ export function mayaAftermath(
   }
   const worst = [...outcome.zones].sort((a, b) => b.housesDamaged - a.housesDamaged)[0];
   const worstPlace = SHORT_PLACE[worst.zoneId] ?? zones.name(worst.zoneId);
-  const defended = zoneHero(state, zones, worst.zoneId, worst.hazard) !== null;
+  const defended = zoneHero(state, zones, worst.zoneId, worst.hazard, worst.storm) !== null;
   const lossText = heroText
     ? fill(MAYA.aftermath.someLost, { lost: worst.housesDamaged, place: worstPlace })
     : defended

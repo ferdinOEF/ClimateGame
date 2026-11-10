@@ -1,6 +1,6 @@
 import MODEL_DATA from "@data/hazardModel.json";
 import { axialDistance, axialKey, axialToWorld, neighbor } from "./hex";
-import { ELEMENT_BY_ID } from "./elements";
+import { ELEMENT_BY_ID, type ElementDef } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind, WindOverride } from "./climate";
 
@@ -34,7 +34,9 @@ import type { ChallengeKind, WindOverride } from "./climate";
  *
  * Defences take height off water entering their own tile, and some off water
  * entering the tiles next to them, scaled by how mature and how worn they
- * are. Engineered structures fail when the water on them is too deep, and
+ * are. Each answers its own hazards; in the compound storm a seawall also
+ * holds back the river the sea pushes back (Section 41.2, `answersHazard`).
+ * Engineered structures fail when the water on them is too deep, and
  * then do nothing; nature defences in water too deep for them still help,
  * less, and are worn.
  *
@@ -375,8 +377,26 @@ export interface WaterField {
   floodLevel: number;
 }
 
-/** A defence's protection now, in game metres, against `hazard`: resilience × metres-per-point × maturity × wear. Negative for things that weaken the shore. */
-export function defenceMetres(state: GameState, key: string, hazard: WaterHazard, config: HazardModelConfig = HAZARD_MODEL): number {
+/**
+ * Whether a defence of this kind works against `hazard` in a storm of `kind`: the hazards it answers
+ * (`targetsHazards`), and Section 41.2's rule (owner decision of 10 November 2026, a game rule): in the storm that
+ * brings both a cyclone and a flood, a defence marked `holdsRiverInCompound` (the seawall) also works against the
+ * flood, the river the sea pushes back. In a flood on its own it still does nothing. The one place that rule lives:
+ * the water (`defenceMetres`, and so `computeWater` and everything that reads it) and the words about a zone's
+ * defences both ask here.
+ */
+export function answersHazard(def: Pick<ElementDef, "targetsHazards" | "holdsRiverInCompound">, hazard: string, kind?: ChallengeKind): boolean {
+  if (def.targetsHazards?.includes(hazard)) return true;
+  return kind === "compound" && hazard === "flood" && def.holdsRiverInCompound === true && !!def.targetsHazards?.includes("cyclone");
+}
+
+/**
+ * A defence's protection now, in game metres, against `hazard`: resilience × metres-per-point × maturity × wear.
+ * Negative for things that weaken the shore. `kind` is the storm it is asked for (`answersHazard`): the metres are
+ * the same against either hazard, so a seawall holds back the river in the 2050 storm with exactly the metres it has
+ * against the cyclone (its age, cracks and breaks count the same).
+ */
+export function defenceMetres(state: GameState, key: string, hazard: WaterHazard, config: HazardModelConfig = HAZARD_MODEL, kind?: ChallengeKind): number {
   const inst = state.elements.get(key);
   // Section 25.1: a broken seawall or dam protects nothing.
   if (!inst || inst.broken) return 0;
@@ -384,17 +404,20 @@ export function defenceMetres(state: GameState, key: string, hazard: WaterHazard
   if (!def) return 0;
   const value = def.effects.resilience ?? 0;
   if (value === 0) return 0;
-  if (value > 0 && !def.targetsHazards?.includes(hazard)) return 0;
+  if (value > 0 && !answersHazard(def, hazard, kind)) return 0;
   const scale = value > 0 ? state.maturityFraction(inst, def) * Math.max(0, 1 - inst.degradeAmount) : 1;
   return value * scale * config.defence.metresPerResilience;
 }
 
-/** Each defence's own protection now against `hazard`, game metres (combo bonus included, failures skipped, overwhelmed weakened). */
-export function ownMetres(state: GameState, hazard: WaterHazard, skip: ReadonlySet<string>, weaken: ReadonlyMap<string, number>, combos: ReadonlyMap<string, number> | undefined, config: HazardModelConfig): Map<string, number> {
+/**
+ * Each defence's own protection now against `hazard` in a storm of `kind`, game metres (combo bonus included,
+ * failures skipped, overwhelmed weakened).
+ */
+export function ownMetres(state: GameState, hazard: WaterHazard, skip: ReadonlySet<string>, weaken: ReadonlyMap<string, number>, combos: ReadonlyMap<string, number> | undefined, config: HazardModelConfig, kind?: ChallengeKind): Map<string, number> {
   const own = new Map<string, number>();
   for (const key of state.elements.keys()) {
     if (skip.has(key)) continue;
-    let m = defenceMetres(state, key, hazard, config);
+    let m = defenceMetres(state, key, hazard, config, kind);
     if (m > 0 && combos?.has(key)) m += (combos.get(key) ?? 0) * config.defence.comboMetresPerPoint;
     if (m === 0) continue;
     own.set(key, m * (weaken.get(key) ?? 1));
@@ -667,7 +690,7 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
   if (hasSurge) {
     surgeLevel = (config.surge.baseM + config.surge.perStrengthM * storm.strength) * (storm.kind === "compound" ? c.surgeShare : 1);
     const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall!))];
-    const own = ownMetres(state, "cyclone", skip, weaken, combos, config);
+    const own = ownMetres(state, "cyclone", skip, weaken, combos, config, storm.kind);
     const reached = spread(board, new Map([[site, surgeLevel]]), surgeLoss(config, storm.strength), pathDrag(board, own, config, kindOf));
     surge = protect(reached, areaProtection(board, own, config, kindOf));
     pushAtWallEnds(state, board, reached, surge, own);
@@ -692,7 +715,9 @@ function pass(state: GameState, board: WaterBoard, storm: StormInput, combos: Re
         if (lift > 0) sources.set(key, Math.max(sources.get(key) ?? 0, reach + lift));
       }
     }
-    const own = ownMetres(state, "flood", skip, weaken, combos, config);
+    // Section 41.2: in the storm that brings both, every standing seawall counts here too (`answersHazard`), with the
+    // metres it has against the cyclone; in a flood on its own (`storm.kind` "flood") it does not.
+    const own = ownMetres(state, "flood", skip, weaken, combos, config, storm.kind);
     flood = protect(spread(board, sources, floodLoss(config), pathDrag(board, own, config, kindOf)), areaProtection(board, own, config, kindOf));
   }
   const surgeDepth = depthOf(board, surge);
