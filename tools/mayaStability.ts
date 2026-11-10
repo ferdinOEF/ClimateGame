@@ -28,6 +28,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 import { glArgs, startDevServer } from "./devServer";
+import { letsPlay } from "./letsPlay";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT = path.resolve(ROOT, process.argv[2] ?? "docs/qa/section1e");
@@ -58,7 +59,8 @@ async function open(browser: Browser, url: string, reducedMotion: boolean): Prom
   });
   await page.goto(`${url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
-  await page.locator(".brief-cta").first().click();
+  // Section 40.3: How to play is three screens; Next, Next, then Let's Play!.
+  await letsPlay(page);
   await page.waitForTimeout(3000);
   await page.evaluate("window.__panjimForTest.maya.holdLines = true; window.__panjimForTest.maya.withdraw(function () { return true; }); window.__panjimForTest.maya.dismiss()");
   return page;

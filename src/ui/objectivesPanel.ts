@@ -4,7 +4,7 @@ import type { LevelDef } from "@levels/levels";
 import { boardDescription, type GameMap } from "@levels/levelMap";
 import { numberWord } from "./screens/runWords";
 import { fullFigureUrl } from "./panjim/mayaArt";
-import { fitHowToPlay, howToPlayCard } from "./panjim/howToPlay";
+import { fitHowToPlay, howToPlayCard, openHowToPlay } from "./panjim/howToPlay";
 
 /**
  * The live objective checklist, plus the level's opening brief.
@@ -142,9 +142,19 @@ export class ObjectivesPanel {
     // Section 34: the start popup takes focus on its main button and keeps Tab inside it while it is open.
     trapFocus(shown, () => this.briefOpen && !this.firstCard);
     window.requestAnimationFrame(() => {
-      if (this.briefOpen && !this.firstCard && !shown.contains(document.activeElement)) shown.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
+      if (this.briefOpen && !this.firstCard && !shown.contains(document.activeElement)) this.focusBrief();
     });
     this.stage = stage;
+    this.howTo = howTo;
+  }
+
+  /** Section 40.3: How to play, when this level shows it (it opens at its first screen, its main button focused). */
+  private readonly howTo: HTMLElement | null;
+
+  /** Focus to the start card's main button: How to play's first screen, or the brief's Begin. */
+  private focusBrief(): void {
+    if (this.howTo) openHowToPlay(this.howTo);
+    else this.briefBackdrop.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
   }
 
   private readonly stage: HTMLElement;
@@ -167,7 +177,7 @@ export class ObjectivesPanel {
       this.firstCard = null;
       this.stage.hidden = false;
       this.briefBackdrop.classList.toggle("howto-showing", this.stage.classList.contains("howto-stage"));
-      this.briefBackdrop.querySelector<HTMLElement>(".brief-cta")?.focus({ preventScroll: true });
+      this.focusBrief();
     };
   }
 

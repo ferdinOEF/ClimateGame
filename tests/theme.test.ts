@@ -81,14 +81,9 @@ const FIVE_PAIRS: [string, string, boolean?][] = [
   ["ink", "star"],
   // Points on the Top 10 and the board box: gold on the plum band.
   ["star", "band"],
-  // How to play's quote and the Top 10's notes on the band.
-  ["quote-ink", "band"],
-  ["quote-cite", "band"],
-  // A storm card's top in How to play: --ink on the cyclone's pink and the flood's blue.
-  ["ink", "icon-cyclone"],
-  ["ink", "icon-flood"],
-  ["ink", "warn"],
-  ["ink", "button-border"],
+  // A storm card's top in How to play: the dark ink on the cyclone's pink and the flood's blue.
+  ["storm-band-ink", "icon-cyclone"],
+  ["storm-band-ink", "icon-flood"],
   ["cta-ink", "teal"],
   // The main screen's page, under the board render.
   ["ink", "screen-ground"]
