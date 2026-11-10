@@ -2739,3 +2739,135 @@ Vercel connector; the build took about 4.5 minutes (most of it installing depend
 here: this machine's egress blocks *.vercel.app, and the connector's fetch could not reach the deployment this time.
 PR #37 was closed with a comment, not merged with its button (GitHub marks it merged, as the merge commit holds its
 head). No schema change, so no migration.
+
+## Section 40 — the five colours, How to play in three screens, the scrolling board box (branch `section-40-five-colours`, not merged)
+
+From master `bc1bec7`; safety copy `backup/pre-section-40` (same point). One commit per step, each pushed. The mock
+pictures were not attached to the brief. This pass ran on the owner's Windows laptop, not the build container.
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | Clean. |
+| `npm run test` | 113 files, 980 pass, 6 skipped (was 113 files, 955 pass). New or rewritten: tests/theme.test.ts (Section 40's describe), tests/howToPlay.test.ts, tests/section35.test.ts (the board box), tests/server.test.ts (`top`). |
+| `npm run build` | Clean (and `npm run build:api`: `top` is in the server bundle). |
+| tools/section40Shots.ts at 1366x768 | 59 of 59 checks pass, no console errors. `/api` stubbed; the only post is the last card's own board post, answered by the stub. |
+| tools/section40Shots.ts at 1920x1080 (no first build) | 56 of 56 checks pass. |
+| By hand in that pass | Main screen, Play Panjim, the name card, Next, Next, "Let's Play!", the guided start's step 1, the glowing tile, Dune: built, step 2. |
+| tools/section40Frames.ts (the game did not change) | calm: 0 of 1,049,088 pixels differ; build menu open: 0 of 1,049,088. Master shot twice and the branch three times: all five the same file. Below. |
+| `npm run test:maya` | 38 checks, all pass, zero console errors (drawn on the laptop's GPU). |
+| Bots, test:layout, test:labels | Not run (the brief: mechanics and points untouched; no layout or labels run). |
+| Full browser check | Not run (not asked). |
+| Independent review | 0 BLOCKER, 1 MAJOR (fixed), 10 MINOR (5 fixed, 5 for the owner or recorded), 6 NIT (1 fixed). Below. |
+
+**The roots the block sits on:** `.screen-layer.five-colours`, `.screen.menu-screen`, `.menu-quote`, `.menu-art-credit`, `.sources-backdrop`, `.brief-backdrop.howto-backdrop`, `.name-card`, `.howto-card`, `.result-cards`, `.leave-confirm-backdrop`, `.replay-card`, `.idle-warning`.
+
+**The game did not change (tools/section40Frames.ts).** Two frames at 1366x768 with `noname=1&noguide=1`: Play
+Panjim's first year with the HUD card and Maya's line, and the build menu open on the objective's tile. The clock is
+Playwright's fake one, stepped the same number of times on both checkouts and held while the game loads;
+`Math.random` returns one fixed value; CSS animations end at once. Master (`bc1bec7`, a second worktree) and the
+branch give the same PNG, byte for byte, in every run (two of master, three of the branch): 0 of 1,049,088 pixels
+differ in each frame (`docs/qa/section40/frames/`). Two things on the way, said plainly: tools/pixelDiff.ts shoots
+the menu and the Tutorial, and the menu is meant to change, so this tool was written instead; and with a seeded
+random sequence the same code gave three different skies in five runs (the clouds are placed while the files load,
+in an order that follows how fast they arrive, and their shadows fall on the sea), which is why the random value is
+fixed. The frames were drawn on the laptop's GPU (`GPU=1`); software GL took 11 minutes a shoot and was not used for
+the final pairs.
+
+**Screenshots** (`docs/qa/section40/`, 1366x768 and 1920x1080): `1-main-screen`, `1b-facts-and-sources`,
+`2-name-card`, `3-how-to-play-1`, `4-how-to-play-2`, `5-how-to-play-3`, `6-first-build` (1366x768), `7-result-2030`,
+`7b-result-2030-detail`, `8-last-card`, `8b-last-card-board-top`, `8c-nudge`, `9-leave-panjim`. Looked at; fixed from
+the first shots: screen 3's two rows were out of balance (the icon tiles are taller now).
+
+**The browser pass checks:** the menu offers Play Panjim alone, the card clears the band, five bars of 44 x 6 px
+hidden from screen readers, the blue page, the teal button, the purple mark; Facts & sources in plum and light; the
+name card first, its Top 10 on plum with gold points and three gold chips, the HUD card behind it in its own colour;
+How to play fits (1286 x 708 at 40,30 at 1366x768), each screen's heading, count and focus, nothing scrolls or runs
+past its box, Esc does nothing, Enter is Next, Tab goes Back then the main button, Back twice returns to screen 1;
+Next, Next, Let's Play! starts the game and the guide, and the build menu keeps its colour; the 2030 card's band,
+stars, bar, points box and buttons, and its detail card; Leave Panjim? from ☰ with Stay focused, its pink bar, Esc
+closes it; the last card's box lists 15 rows from 1st place to the player, none below, opens at the player's row,
+is three rows high, takes focus, the arrow keys reach 1st place, the line under it; the feedback column, a chosen
+star, the nudge.
+
+**The board's answer with `top` (tools/boardReplySize.ts, the real handler on pg-mem, the run in last place):** 150
+rows: 13.3 KB (1.5 KB gzipped, 1.0 KB Brotli). 1000 rows: 88.1 KB (8.9 KB gzipped, 4.6 KB Brotli). Without `top`: 260
+bytes. `top` has no cap; the same answer goes to a post, a rename and `GET /api/board?points=N`.
+
+**Where a static screen and the game share an element:**
+- The shell's screen layer draws the page under the main screen and is every shell screen's: it carries the class
+  `five-colours` only while the menu is up.
+- Play Panjim's start backdrop is the Tutorial's too: the block sits on `.brief-backdrop.howto-backdrop` (Play Panjim
+  only), so the name card, How to play and their dims change and the Tutorial's brief does not.
+- Facts & sources is the same screen from the menu and from Maya's "Source" in the game: the five colours in both.
+- The Leave card is also "Start again?" (☰) and "Leave the Tutorial?": the five colours in all three.
+- The result cards are the Tutorial's too. Maya on a result card is her name and one line of text inside the card,
+  which take the card's colours; her figure and her bubble are outside the cards and unchanged.
+- The Coming up card's forecast: its map and legend swatches are `--fixed-*` and unchanged; the legend's strip takes
+  the card's ground and ink.
+- The replay card and the idle warning are cards of their own over the board: the five colours.
+- Shared button classes (`.btn`, `.btn-primary`, `.brief-cta`, `.result-next`) and the focus outline are harbour.css's
+  and untouched: they read the variables, so they are teal and plum inside a root and as before outside.
+- "Back to your result" (View map) and the title moment before the last card are on the game's screen: unchanged.
+- How to play no longer uses the build cards' `.leaf-chip`: it has its own chip, so the game's chip is untouched.
+
+**Review findings and what was done:**
+- MAJOR: the standing QA commands (walkthrough, test:labels, test:layout, verify:maya) clicked `.brief-cta` at once
+  and would stop at How to play. Fixed: they call tools/letsPlay.ts. Not run here (the full browser check was not
+  asked); test:maya, which this section uses, was run.
+- MINOR, fixed: the board box sits in a live region and a long board would be read out row by row: the list is
+  `aria-live="off"`. The bars on "What protected your homes" nearly vanished (teal on the pale track, 1.2:1): they
+  are the dark teal now. A screen change in How to play was announced only as "2 of 3": its heading is read out too.
+  A held Enter ran through all three screens: a repeated key press is ignored. The theme test did not check that the
+  block's own variables stay under the block's roots, nor purple as text in the sheets: both are checked.
+- MINOR, the owner's call (the brief's own choices): the homes bar's teal on its pink track is 1.7:1 and the empty
+  feedback star's outline on its ground is 1.6:1 (the numbers and labels still say everything); two storm cards say
+  nearly the same thing twice (the fixed line and the level's `where`).
+- MINOR, recorded: the Tutorial is in two palettes; the Coming up card's legend strip follows the card.
+- NIT, fixed: the sheet's comment about its selectors. NIT, left: `--icon-alert` and `--icon-nature-soft` are in the
+  block (the brief's list) and unused; the ResizeObserver on the board box is never disconnected (one a run, gone
+  with the card); `width: fit-content` on the star pill (Safari before 16 draws it full width); `top` has no cap;
+  the list is a Tab stop even with three rows or fewer (the brief).
+
+**Questions for the owner:**
+1. The main screen's eyebrow was a band; the brief says `--ink-2`. It is plain text on the card now, with its dashed
+   line kept under it. Right?
+2. Leave Panjim?'s title was a band too; with the pink bar along the top it is a plain title with its dashed line.
+   Right?
+3. The replay card and the idle warning sit over the game in the new colours (they are cards of their own). Keep, or
+   back to the game's colours?
+4. The dim behind the name card, the result cards and Leave is the block's plum tint over the board. Keep?
+5. A cap on `top`? 150 rows is 13 KB before compression, 1000 rows 88 KB.
+6. The homes bar and the empty feedback star are low in contrast as the brief gives them. Keep, or darken the fill
+   and the outline?
+7. "Every home still standing after a storm scores" and "5 points for each Biodiversity Point you add" are the
+   brief's words. The rule counts homes in the storm's path, and biodiversity once, at the end of 2050, on the rise
+   above the start. Keep the short words?
+8. The Tutorial's brief keeps the game's colours while its result cards changed. Leave, or bring its brief over?
+9. CLAUDE.md says Maya is bottom right; she is bottom left since Section 34c.2. Correct the line?
+
+**Not run:** Safari and Firefox; the full browser check; the bots; test:layout and test:labels; a production load
+(nothing merged). One run of the unit tests made while the frame tool was drawing had two tests fail in one file; the
+same commit passed in full when run alone.
+
+**Step 40.7: the owner's answers.** One commit on the same branch, not merged.
+1. The eyebrow as plain text: keep. 2. Leave Panjim?'s plain title: keep. 3. The replay card and the idle warning:
+keep the new colours. 4. The plum dim: keep. 5. No cap on `top`. 9. The Tutorial's brief: leave it. No change for
+these.
+6. Darkened both. The homes saved bar's fill is `--good`, the dark teal of the bars on "What protected your homes":
+4.9:1 on its pink track (the teal was 1.7:1). An empty feedback star's outline and edge are `--strip`: 3.4:1 on its
+button (the pale edge was 1.6:1). Both pairs, and the rows' bars on their track (3.4:1), are in tests/theme.test.ts
+as marks at 3:1.
+7. How to play 3: "Every home in a storm's path that still stands scores." and "5 points for each Biodiversity Point
+you add, counted in 2050" (the 2050 is the level's end year).
+8. How to play 1: the chip under each storm is the place alone, the level's own `where` (levels.json): "Miramar
+beach", "Ribandar to Taleigao", "Campal". The line above each stays.
+10. CLAUDE.md: Maya is locked in the bottom left corner (Section 34c.2).
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit`, `npm run test`, `npm run build` | Clean; 113 files, 981 pass, 6 skipped; clean. The first test run failed one test, the server bundle check, because `where` had changed and the bundle had not been rebuilt; after `npm run build` (which rebuilds it) the whole suite passed. |
+| tools/section40Shots.ts `only=howto,result` at 1366x768 | 24 of 24 checks pass, no console errors. The 2030 scenario saves no home, so its bar is empty in the shot; the check reads the fill as the dark teal. |
+
+Retaken: `3-how-to-play-1`, `5-how-to-play-3`, `7-result-2030` (and `7b`, `4`, which the same run shoots) at 1366x768.
+The 1920x1080 copies of those three and the last card's shots are from before this step. Not run again: the frame
+comparison (no rule outside the static screens' roots changed), test:maya, Safari and Firefox.

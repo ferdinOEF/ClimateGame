@@ -91,6 +91,8 @@ export function renderMenuScreen(root: HTMLElement, progress: PlayerProgress, ac
             children: [
               el("div", { className: "menu-eyebrow", text: "A coast defense game set in Goa" }),
               el("h1", { className: "menu-title", text: "Riptide Rising" }),
+              // Section 40.2: the five colours as five small bars under the title (decoration).
+              el("div", { className: "menu-bars", attrs: { "aria-hidden": "true" }, children: ["teal", "pink", "gold", "blue", "purple"].map((c) => el("span", { className: `menu-bar menu-bar-${c}` })) }),
               el("p", { className: "menu-tagline", text: menuTagline() })
             ]
           }),

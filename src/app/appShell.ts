@@ -227,6 +227,8 @@ export class AppShell {
 
   private paint(): void {
     clear(this.screenLayer);
+    // Section 40: the main screen takes the five colours (theme.css); the layer's other screens keep :root's.
+    this.screenLayer.classList.toggle("five-colours", this.route.name === "menu");
     const progress = getProgress();
 
     switch (this.route.name) {

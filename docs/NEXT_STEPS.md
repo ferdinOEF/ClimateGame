@@ -12,6 +12,24 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After Section 40 (from docs/QA_REPORT.md)
+
+- Not merged: the owner looks at the preview first. Merge with `git merge --no-ff` on the owner's word, then confirm
+  Vercel's production deployment. No schema change, so no migration.
+- The owner answered Section 40's questions (Step 40.7, in QA_REPORT): all settled. Kept as built: the eyebrow and
+  the Leave title as plain text, the replay card and the idle warning in the new colours, the plum dim, no cap on the
+  board's `top` rows, the Tutorial's brief in the game's colours. Changed: the homes bar and the empty feedback star
+  (darker), two lines on How to play 3, the storm chips on How to play 1 (the place alone), CLAUDE.md's Maya line.
+- The mock pictures were not attached to the brief: compare the preview with P1 to P6.
+- The Tutorial is in two palettes: its result cards and its Leave card take the five colours, its own brief keeps
+  the game's (owner: leave it).
+- The QA tools that start Play Panjim must press Next twice (tools/letsPlay.ts). Done for the standing commands
+  (walkthrough, test:labels, test:layout, test:maya, verify:maya) and the Section 40 tools; the older
+  tools/section*Shots.ts and the rest still click `.brief-cta` at once and stop at How to play. Fix one when a
+  section touches it (owner, 30 October).
+- The full browser check (walkthrough, labels, axe, four sizes) was not run; Safari and Firefox were not tried (the
+  scrollbar's colours and the star pill's `width: fit-content` are the things to look at there).
+
 ## After Section 39 (from docs/QA_REPORT.md)
 
 - Done: merged as `02ea44f` on the owner's word; Vercel's production deployment of it is Ready. No schema change.

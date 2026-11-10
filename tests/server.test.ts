@@ -185,6 +185,21 @@ describe("with a database", () => {
     expect(below.map((r) => r.points)).toEqual([1500, 1400]);
     expect(above[1].rank).toBe((place.body.rank as number) - 1);
     expect(typeof place.body.tenth).toBe("number");
+    // Section 40.5: `top` is every row above that place, from 1st place down, in board order and in `above`'s shape.
+    const all = await db.query<{ name: string; points: number }>("SELECT name, points FROM board WHERE tag IS NULL AND points > 1550 ORDER BY points DESC, created_at ASC");
+    const upper = place.body.top as { rank: number; name: string; points: number; stars: number; season: string }[];
+    expect(upper.map((r) => r.points)).toEqual(all.map((r) => r.points));
+    expect(upper.length).toBeGreaterThan(2);
+    expect(upper[0].rank).toBe(1);
+    expect(upper.map((r) => r.points)).toEqual([...upper.map((r) => r.points)].sort((a, b) => b - a));
+    expect(upper.slice(-2)).toEqual(above);
+    expect(Object.keys(upper[0]).sort()).toEqual(["name", "points", "rank", "season", "stars"]);
+    expect(upper.every((r) => r.points > 1550)).toBe(true);
+    // The ranks are the board's own (dense), the last of them one above the place.
+    expect(upper[upper.length - 1].rank).toBe((place.body.rank as number) - 1);
+    // Above everyone: nothing is above 1st place.
+    const first = await getBoard(await context(db), { points: "999999" });
+    expect(first.body).toMatchObject({ rank: 1, top: [], above: [] });
     expect((await getBoard(await context(db), { points: "-4" })).status).toBe(400);
   });
 
@@ -278,6 +293,9 @@ describe("Section 37.3: one row per name, dense ranks", () => {
     const worse = await postBoard(await context(db), { runId: RUN_F, name: "MIRA", builds: low });
     expect(worse.status).toBe(200);
     expect(worse.body).toMatchObject({ kept: true, editToken: "", points: highPoints, rank: 1 });
+    // Section 40.5: 1st place has no row above it, and a run's own row is never in `top`.
+    expect(better.body.top).toEqual([]);
+    expect(worse.body.top).toEqual([]);
     rows = await db.query<{ name: string; points: number }>("SELECT name, points FROM board");
     expect(rows).toEqual([{ name: "mira", points: highPoints }]);
     expect(await db.query("SELECT id FROM runs WHERE id IN ($1, $2, $3)", [RUN_D, RUN_E, RUN_F])).toHaveLength(3);
@@ -320,6 +338,13 @@ describe("Section 37.3: one row per name, dense ranks", () => {
       [3, "Dev"]
     ]);
     expect((place.body.below as { rank: number; name: string }[]).map((r) => [r.rank, r.name])).toEqual([[4, "mira"]]);
+    // Section 40.5: `top` from 1st place down, a tie sharing its rank, a name's second row never shown.
+    expect((place.body.top as { rank: number; name: string }[]).map((r) => [r.rank, r.name])).toEqual([
+      [1, "Ash"],
+      [1, "Bea"],
+      [2, "Cal"],
+      [3, "Dev"]
+    ]);
     // A tie with a row shares its rank.
     expect((await getBoard(await context(db), { points: String(top - 100) })).body.rank).toBe(2);
   });
@@ -394,6 +419,9 @@ describe("Section 38.4b: test tags", () => {
     const place = await getBoard(await context(db), { points: "1" });
     expect(place.body.rank).toBe(2);
     expect((place.body.above as { name: string }[]).map((r) => r.name)).toEqual(["ana"]);
+    // Section 40.5: `top` never holds a tagged row (the tester's "Ana" has more than 1 point too).
+    expect((place.body.top as { name: string }[]).map((r) => r.name)).toEqual(["ana"]);
+    expect(await db.query("SELECT name FROM board WHERE tag IS NOT NULL AND points > 1")).toHaveLength(1);
   }, SLOW);
 
   it("a tagged row can never be renamed or ranked through the rename endpoint", async () => {

@@ -32,6 +32,7 @@ src/
   ui/         HUD, popovers, modals
     theme.css         the interface's colour tokens, calm and storm (Section 33)
     harbour.css       the shapes panels and buttons share (Section 33)
+    fiveColours.css   the static screens' own colour rules (Section 40)
     screens/          full-screen shell surfaces    (new)
   levels/     campaign definitions, map registry, progression
     levelMap.ts       which board each level plays on
@@ -411,6 +412,16 @@ the table and keeps the best row a name (so rows from before the rule, or from t
 and ranks densely: equal points share a rank and the next follows (1, 1, 2). The finale's "4th on the board, N
 points behind 3rd" uses the same ranks.
 
+**The board from 1st place down to the player (Section 40.5).** A place's answer (`around` in server/handlers.ts: a
+post, a rename, `GET /api/board?points=N`) also carries `top`: every row above the run's place, from 1st place down,
+in board order and in `above`'s shape (`above` is its last two; `below` and `tenth` are as before). It reads the same
+rows as every board answer, so never a tagged row, and never the run's own. The last card's board box
+(`rankHtml`) draws `top` and then the player's own row, last and gold; a reply without `top` draws `above`. The list
+is three rows high and scrolls, takes focus (the arrow keys scroll it), and `LastCard` scrolls it to the player's row
+each time it gets a size (as the board answers, and when the card comes back from View map). With more than three
+rows a line under it says "Scroll up to see 1st place". `top` has no cap: tools/boardReplySize.ts measures the answer
+(13 KB for 150 rows, 88 KB for 1000, before compression).
+
 **Board names (Section 37.9).** A name's board key is `boardNameKey` (`core/nameFilter.ts`): trimmed, runs of spaces
 made one, Unicode NFKC (fullwidth letters become plain ones) and case ignored; the name is shown as typed after the
 trim and the collapse. One board row per key; the server matches keys in JS, not SQL. A rename (`PATCH /api/board`)
@@ -478,6 +489,17 @@ from levels.json and the turns between them, the leaf chips). `ObjectivesPanel` 
 backdrop in place of Panjim's brief; its "Let's Play!" is the popup's Begin (class `brief-cta`, `hideBrief`), so
 everything that waited for the popup waits for it. The Tutorial keeps its brief.
 
+**How to play in three screens (40.3, owner decision).** The same card shows one of three screens at a time
+(`howToPlayHtml`, pure, so the tests read it in Node): "Three disasters are coming" (the start year and a card a
+storm, with the turns between them), "Each year" (the year's three steps, then the seven defenses in `DEFENCE_ORDER`
+with their build card icons, names, first lines and leaf chips) and "Know these icons" (the three icons, then the two
+ways to get points with `POINT_VALUES.home` and `POINT_VALUES.biodiversity`). `howToStep` and `howToFoot` are the
+foot row's rules: Back on every screen but the first, Next, and "Let's Play!" on the third. `showHowToScreen` hides
+the other screens, moves the band's marks, reads the screen's number and heading out and focuses the main button;
+`openHowToPlay` (screen 1) is called by `ObjectivesPanel.focusBrief` on the popup's first frame and when the name
+card closes. "Read the map" is gone (its two pictures stay in public/art). A QA tool starts the game with
+`tools/letsPlay.ts` (Next until "Let's Play!" shows, then it).
+
 **The guided start (39.4).** `core/guide.ts` is the step machine (1, 1b, 2, 2b, 3, done) on the 2026 objective's
 first dune and pandanus picks; `app/guidedStart.ts` feeds it the build menu (open on a tile, or closed) and the
 builds, draws its step (`ui/panjim/guideOverlay.ts`: the dim with its cut, the rings, the tags, the built chip, all
@@ -486,6 +508,36 @@ builds, draws its step (`ui/panjim/guideOverlay.ts`: the dim with its cut, the r
 not `restarted`, the first year, no builds) and Maya can speak; `appShell` sets `restarted` for ☰ Start again and
 Play again. While it runs Maya's own lines wait (`uiBlocked`), the facts after a build are kept and said when it
 ends, her bubble does not tuck for the menu, Esc leaves a step's line up, and muting or minimising her ends it.
+
+## The five colours on the static screens (Section 40)
+
+**Two sets of values, one set of names (owner decision).** The game's interface draws from `:root` and
+`:root.storm` in `src/ui/theme.css`, which Section 40 did not touch (tests/theme.test.ts pins both blocks by their
+hash). The static screens draw from one more block in the same file, after `:root.storm`, whose selector is the list
+of those screens' root elements: `.screen-layer.five-colours`, `.screen.menu-screen`, `.menu-quote`, `.menu-art-credit`, `.sources-backdrop`, `.brief-backdrop.howto-backdrop`, `.name-card`, `.howto-card`, `.result-cards`, `.leave-confirm-backdrop`, `.replay-card`, `.idle-warning`. It gives the same variable names new values (teal #4fc8b7, pink #e696a6,
+gold #d2ad68, blue #76adbc, purple #a075ae, ink #2a2038, plum #4a3358) and adds twelve of its own (`--screen-ground`,
+`--storm-band`, `--storm-band-ink`, `--star-pill`, `--star`, `--strip`, `--teal`, `--teal-soft`, `--blue-soft`,
+`--purple-soft`, `--band-rule`, `--band-ink-2`). Everything inside a root takes the block's values and everything
+outside keeps `:root`'s, so most of each screen changed with no rule of its own. The values are the same calm and
+storm (no storm copy). Purple carries no small text.
+
+- **Where a screen's ground is drawn outside its root.** The shell's `.screen-layer` is shared by every shell screen
+  and draws the page under the main screen: `AppShell.paint` gives it the class `five-colours` only while the menu is
+  up. Play Panjim's start backdrop (`.brief-backdrop`) is shared with the Tutorial's brief and draws the dim behind
+  the name card and How to play: the block sits on `.brief-backdrop.howto-backdrop`, the class only Play Panjim's
+  backdrop carries. The other roots draw their own dim.
+- **`src/ui/fiveColours.css`**, imported last, holds what the block alone cannot say: where a screen takes a
+  different variable than it had (the result cards' band in `--storm-band`, the stars on `--star-pill`, the board box
+  on `--band`), and the marks the brief adds (the five bars, the strip under the name card's heading, the rank chips,
+  the squares before the points rows). Every rule starts at a static screen's root. tests/theme.test.ts checks that it
+  names no colour of its own, that the block's own variables are used only under those roots (outside they are
+  undefined), and the contrast of every pair.
+- **What is shared with the game and what happens to it.** Facts & sources is one screen whether it opens from the
+  menu or from Maya's "Source": it takes the five colours in both. The Leave card is also "Start again?" and "Leave
+  the Tutorial?": all three. The result cards are the Tutorial's too. The replay card and the idle reset's warning
+  are cards of their own over the board: they take the five colours. The HUD card, Maya and her bubble, the build
+  menu, tooltips, labels, the guided start and "Back to your result" are outside every root and unchanged
+  (tools/section40Frames.ts: two frozen in game frames, identical on master and on the branch).
 
 ## Sound: the sample bank, the music and the storm's hand over (Section 36)
 

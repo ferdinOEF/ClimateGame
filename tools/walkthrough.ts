@@ -25,6 +25,7 @@ import fs from "node:fs";
 import { startDevServer } from "./devServer";
 import { playTutorial } from "./tutorialPlay";
 import { qaUrl } from "./qaUrl";
+import { letsPlay } from "./letsPlay";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT_DIR = path.join(ROOT, "tools", "screenshots", "walkthrough");
@@ -176,7 +177,8 @@ async function main(): Promise<void> {
     });
     stage = "tutorial-next";
     // "Play Panjim" opened Panaji's own card: Begin, so the board's ☰ menu is reachable.
-    if (await page.locator(".brief-cta:visible").count()) await page.locator(".brief-cta:visible").first().click();
+    // Section 40.3: How to play is three screens; Next, Next, then Let's Play!.
+    if (await page.locator(".howto-card:visible, .brief-cta:visible").count()) await letsPlay(page);
     await page.waitForTimeout(600);
     // Section 16 review: no state from the Tutorial's run carries over (the game layer is shared), so Panjim's
     // first-build hint is up before its first build.
@@ -300,7 +302,7 @@ async function main(): Promise<void> {
         await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
         // Section 39.3: Panjim opens on How to play (no title); the Tutorial on its brief.
         const place = (await page.locator(".brief-title:visible").count()) ? (await page.locator(".brief-title:visible").textContent())?.trim() : "How to play";
-        await page.locator(".brief-cta:visible").first().click();
+        await letsPlay(page);
         await page.waitForTimeout(1100);
 
         const board = await page.evaluate(() => {

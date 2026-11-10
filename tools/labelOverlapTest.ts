@@ -21,6 +21,7 @@ import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 import { glArgs, startDevServer } from "./devServer";
+import { letsPlay } from "./letsPlay";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const PORT = Number(process.env.LABELS_PORT ?? 5198);
@@ -166,7 +167,7 @@ async function main(): Promise<void> {
       page.on("console", (m) => { if (m.type() === "error") errors.push(`${tag}: ${m.text()}`); });
       await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
-      await page.locator(".brief-cta").first().click();
+      await letsPlay(page);
       await page.waitForTimeout(2000);
       await page.evaluate("window.__panjimForTest && (window.__panjimForTest.maya.holdLines = true)");
       await page.evaluate("window.__labelsForTest && (window.__labelsForTest.collectDebug = true)");

@@ -1,0 +1,326 @@
+/*
+ * Section 40 (owner decision): the five colours on the static screens. The values are theme.css's block on those
+ * screens' roots; most of each screen follows them with no rule here, because its rules already name the variables.
+ * This sheet holds only what the block alone cannot say: where a screen takes a different variable than it had, and
+ * the few marks the brief adds (the five bars, the strip under a heading, the rank chips). Imported last, after
+ * harbour.css. Every rule starts at a static screen's root (the five bars' own classes aside: they exist only on the
+ * main screen), so nothing here reaches the game's interface, and no rule names a colour of its own
+ * (tests/theme.test.ts, which also checks that the block's own variables are used only under those roots).
+ */
+
+/* ---- 40.2 The main screen ------------------------------------------------------------------------------------ */
+
+/* The page under the board render: the blue ground. */
+.screen-layer.five-colours {
+  background: var(--screen-ground);
+  color: var(--ink);
+}
+
+.screen-layer.five-colours .menu-cloud-note {
+  color: var(--ink);
+}
+
+/* The card's eyebrow is quiet text on the card, no longer a band. */
+.screen.menu-screen .menu-card .menu-eyebrow {
+  background: none;
+  color: var(--ink-2);
+}
+
+/* The five colours as five small bars under the title: decoration, hidden from screen readers. */
+.menu-bars {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.menu-bar {
+  width: 44px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.menu-bar-teal { background: var(--teal); }
+.menu-bar-pink { background: var(--warn); }
+.menu-bar-gold { background: var(--gold); }
+.menu-bar-blue { background: var(--button-border); }
+.menu-bar-purple { background: var(--strip); }
+
+/* The quote band's mark. */
+.menu-quote .menu-quote-mark {
+  color: var(--strip);
+}
+
+/* ---- 40.2 The name card -------------------------------------------------------------------------------------- */
+
+/* A short strip under the heading. */
+.name-card .name-card-title::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 3px;
+  background: var(--strip);
+}
+
+/* The Top 10, in all its states (loading, offline, empty, the rows): the plum band. */
+.name-card .name-card-top {
+  background: var(--band);
+  color: var(--band-ink);
+}
+
+.name-card .name-card-top-note,
+.name-card .name-card-season {
+  color: var(--band-ink-2);
+}
+
+.name-card .name-card-top-rows li + li {
+  padding-top: 3px;
+  border-top: 1px solid var(--band-rule);
+}
+
+.name-card .name-card-top-rows b {
+  color: var(--star);
+}
+
+/* Ranks 4 to 10 are quiet; 1 to 3 sit in a round gold chip. */
+.name-card .name-card-rank {
+  color: var(--band-ink-2);
+}
+
+.name-card .name-card-rank.top {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--star);
+  color: var(--ink);
+}
+
+/* The list can take focus (it scrolls on a short window): on the band the ring is gold. */
+.name-card .name-card-top-rows:focus-visible {
+  outline-color: var(--star);
+}
+
+/* ---- 40.4 The result cards, the last card, the nudge ---------------------------------------------------------- */
+
+/* Every card's band (the storm's eyebrow; the last card's too): pink with dark ink. */
+.result-cards .result-eyebrow,
+.result-cards .result-card-body > .result-title:first-child {
+  background: var(--storm-band);
+  color: var(--storm-band-ink);
+}
+
+/* Stars: gold on a dark pill; an empty star is the outline star in the same gold. */
+.result-cards .result-stars {
+  display: block;
+  width: fit-content;
+  padding: 1px 10px 3px 14px;
+  border-radius: 99px;
+  background: var(--star-pill);
+  color: var(--star);
+  -webkit-text-stroke: 0;
+}
+
+.result-cards .result-stars-empty {
+  color: transparent;
+  -webkit-text-stroke: 1.2px var(--star);
+}
+
+.result-cards .last-rows .finale-row-stars:not(:empty) {
+  padding: 0 8px 1px;
+  border-radius: 99px;
+  background: var(--star-pill);
+  color: var(--star);
+}
+
+/*
+ * Homes saved: a soft pink track with a pink edge; the fill is the dark teal of the bars on "What protected your
+ * homes" (Section 40.7, owner: the teal was 1.7 to 1 on the track).
+ */
+.result-cards .result-bar {
+  box-sizing: border-box;
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+}
+
+.result-cards .result-bar span {
+  background: var(--good);
+}
+
+/* "What protected your homes": each row's bar in the dark teal, which reads on its pale track (the teal did not). */
+.result-cards .result-row-bar span {
+  background: var(--good);
+}
+
+/* "Points this storm": a soft gold box with a gold edge; its chips each start with their source's square. */
+.result-cards .result-points {
+  background: var(--gold-soft);
+  border: 2px solid var(--gold);
+}
+
+.result-cards .result-points-head b {
+  color: var(--ink);
+}
+
+.result-cards .result-points-chip {
+  background: var(--panel-raised);
+}
+
+.result-cards .result-points-chip::before,
+.result-cards .last-rows .finale-row-label::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 7px;
+  border-radius: 2px;
+  background: var(--teal);
+}
+
+.result-cards .result-points-chip[data-source="places"]::before { background: var(--button-border); }
+.result-cards .result-points-chip[data-source="objective"]::before { background: var(--strip); }
+.result-cards .result-points-chip[data-source="coast"]::before { background: var(--gold); }
+
+/* The last card's rows: pink 2030, blue 2040, purple 2050, teal for the nature row. */
+.result-cards .last-rows .last-row-storm-1 .finale-row-label::before { background: var(--warn); }
+.result-cards .last-rows .last-row-storm-2 .finale-row-label::before { background: var(--button-border); }
+.result-cards .last-rows .last-row-storm-3 .finale-row-label::before { background: var(--strip); }
+.result-cards .last-rows .last-row-nature .finale-row-label::before { background: var(--teal); }
+
+/* The run's total: the same soft gold box. */
+.result-cards .last-total {
+  padding: 0 10px 1px;
+  border-radius: 10px;
+  background: var(--gold-soft);
+  border: 2px solid var(--gold);
+}
+
+/* "Panjim cleared". */
+.result-cards .result-clear.cleared {
+  background: var(--teal-soft);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--teal);
+}
+
+/* The board box: the plum band; the player's own row gold. */
+.result-cards .finale-rank {
+  background: var(--band);
+  color: var(--band-ink);
+}
+
+.result-cards .finale-rank-note,
+.result-cards .finale-rank-hint {
+  color: var(--band-ink-2);
+}
+
+.result-cards .finale-rank-rows li.me {
+  background: var(--star);
+  color: var(--ink);
+}
+
+/* 40.5: the list scrolls: a gold thumb on the band's rule, and a gold ring when it has focus. */
+.result-cards .finale-rank-rows {
+  scrollbar-color: var(--star) var(--band-rule);
+}
+
+.result-cards .finale-rank-rows::-webkit-scrollbar-thumb {
+  background: var(--star);
+}
+
+.result-cards .finale-rank-rows::-webkit-scrollbar-track {
+  background: var(--band-rule);
+}
+
+.result-cards .finale-rank-rows:focus-visible {
+  outline-color: var(--star);
+}
+
+/* The feedback column: a white ground, a purple strip before its title. */
+.result-cards .last-right {
+  margin: -8px -12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--panel-raised);
+}
+
+.result-cards .fb-title::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 22px;
+  margin-right: 8px;
+  border-radius: 3px;
+  vertical-align: -4px;
+  background: var(--strip);
+}
+
+/*
+ * A star button: empty, light with an outline star; chosen, gold with a dark star and edge. Section 40.7 (owner): the
+ * empty one's star and edge are the purple, 3.4 to 1 on its ground (the pale edge was 1.6 to 1).
+ */
+.result-cards .fb-star {
+  border: 1.5px solid var(--strip);
+  background: var(--panel);
+  line-height: 25px;
+  -webkit-text-stroke: 1.2px var(--strip);
+}
+
+.result-cards .fb-star.on {
+  border-color: var(--ink);
+  background: var(--star);
+  color: var(--ink);
+  -webkit-text-stroke: 0;
+}
+
+.result-cards .fb-age-box input {
+  accent-color: var(--band);
+}
+
+/* Second buttons (View map, Restart, Previous card, the nudge's second): a thinner blue edge. */
+.result-cards .result-back,
+.result-cards .last-action,
+.result-cards .result-nudge-anyway {
+  border-width: 1.5px;
+}
+
+/* The quiet ones (Exit, Try again from a year): clear, with a pale edge. */
+.result-cards .result-retry,
+.result-cards .last-action[data-action="exit"] {
+  background: none;
+  border: 1.5px solid var(--panel-shadow);
+}
+
+.result-cards .result-retry:hover,
+.result-cards .last-action[data-action="exit"]:hover {
+  background: var(--button);
+  border-color: var(--button-on-border);
+}
+
+/* ---- 40.4 Leave Panjim? (and Start again?, the same card) ---------------------------------------------------- */
+
+/* A light card with a pink bar along its top; the title is plain text on it. */
+.leave-confirm-backdrop .leave-confirm {
+  border-top: 8px solid var(--storm-band);
+}
+
+.leave-confirm-backdrop .leave-confirm-title {
+  background: none;
+  color: var(--ink);
+}
+
+/* The button that leaves is the quiet one; the one that keeps the player in the game stays the main action. */
+.leave-confirm-backdrop .leave-confirm-leave {
+  background: none;
+  border: 1.5px solid var(--panel-shadow);
+}
+
+.leave-confirm-backdrop .leave-confirm-leave:hover {
+  background: var(--button);
+  border-color: var(--button-on-border);
+}

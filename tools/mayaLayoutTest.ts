@@ -15,6 +15,7 @@
 import { chromium, type Page } from "playwright";
 import fs from "node:fs";
 import { glArgs, startDevServer } from "./devServer";
+import { letsPlay } from "./letsPlay";
 
 const PORT = 5197;
 const ALL_RESOLUTIONS = [
@@ -123,7 +124,7 @@ async function main(): Promise<void> {
       });
       await page.goto(`http://localhost:${PORT}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
       await page.waitForSelector(".brief-card, .howto-card", { timeout: 60000 });
-      await page.locator(".brief-cta").first().click();
+      await letsPlay(page);
       await page.waitForTimeout(2500);
       // Measure layout, not reading time: her lines stay up until replaced.
       await page.evaluate("window.__panjimForTest.maya.holdLines = true");

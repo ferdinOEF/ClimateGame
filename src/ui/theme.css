@@ -135,6 +135,84 @@
 }
 
 /*
+ * Section 40 (owner decision): the five colours, on the static screens only. Teal #4fc8b7, pink #e696a6, gold
+ * #d2ad68, blue #76adbc and purple #a075ae, with ink #2a2038 and plum #4a3358 so text stays readable. Purple never
+ * carries small text (it fails contrast with light and with dark text): strips, icon circles and marks only.
+ *
+ * The block sits on the static screens' own root elements, so everything inside them takes these values and
+ * everything outside (the game's interface, drawn from :root) keeps the ones above. The roots: the main screen (the
+ * shell's layer while the menu is up, its screen, quote band and art credit), Facts & sources, Play Panjim's start
+ * backdrop (the name card and How to play, with their dims), the result cards (the last card and the nudge are
+ * inside), Leave Panjim?, the replay card and the idle reset's warning. The values are the same calm and storm.
+ * tests/theme.test.ts checks their contrast.
+ */
+.screen-layer.five-colours,
+.screen.menu-screen,
+.menu-quote,
+.menu-art-credit,
+.sources-backdrop,
+.brief-backdrop.howto-backdrop,
+.name-card,
+.howto-card,
+.result-cards,
+.leave-confirm-backdrop,
+.replay-card,
+.idle-warning {
+  --panel: #f7f5f9;
+  --panel-edge: #ddd6e4;
+  --panel-raised: #ffffff;
+  --panel-shadow: #c9c0d2;
+  --band: #4a3358;
+  --band-ink: #f7f5f9;
+  --ink: #2a2038;
+  --ink-2: #544a63;
+  --ink-soft: #544a63;
+  --ink-3: #5f556d;
+  --accent-ink: #4a3358;
+  --button: #dcebef;
+  --button-border: #76adbc;
+  --button-on: #b9d7df;
+  --button-on-border: #4a3358;
+  --cta: #4fc8b7;
+  --cta-shadow: #35a595;
+  --cta-ink: #2a2038;
+  --warn: #e696a6;
+  --warn-soft: #fae3e8;
+  --warn-ink: #5a1f2e;
+  --gold-soft: #f5ead3;
+  --gold: #d2ad68;
+  --good: #1f6f64;
+  --stitch: rgba(42, 32, 56, 0.3);
+  --cta-stitch: rgba(42, 32, 56, 0.45);
+  --mesh: #efeaf3;
+  --mesh-dot: #ddd6e4;
+  --overlay: rgba(42, 32, 56, 0.4);
+  --quote-band: rgba(74, 51, 88, 0.94);
+  --quote-ink: #f7f5f9;
+  --quote-cite: #d9cfe0;
+  --icon-cyclone: #e696a6;
+  --icon-flood: #76adbc;
+  --icon-wind: #a075ae;
+  --icon-nature-soft: #d9f3ef;
+  --icon-both: #a075ae;
+  --icon-alert: #d2ad68;
+  --howto-dim: rgba(42, 32, 56, 0.55);
+  /* New in Section 40, used only inside this block's screens. */
+  --screen-ground: #76adbc;
+  --storm-band: #e696a6;
+  --storm-band-ink: #2a2038;
+  --star-pill: #2a2038;
+  --star: #d2ad68;
+  --strip: #a075ae;
+  --teal-soft: #d9f3ef;
+  --teal: #4fc8b7;
+  --blue-soft: #dcebef;
+  --purple-soft: #e8dcec;
+  --band-rule: #604873;
+  --band-ink-2: #d9cfe0;
+}
+
+/*
  * Section 33.2: calm to storm and back fades over 600 ms. The tokens that change are registered as colours, so the
  * variables themselves animate and every panel follows; nothing moves. At once with Calm motion on (`storm-instant`,
  * set by the controller) or the system's reduced motion.
