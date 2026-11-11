@@ -97,7 +97,9 @@ describe("the result cards' numbers", () => {
     const inArea = placesInArea(PLACES, area).map((p) => p.name);
     for (const name of inArea) expect(result.places.map((p) => p.name)).toContain(name);
     for (const p of result.places) if (!inArea.includes(p.name)) expect(p.stood, p.name).toBe(false);
-    for (const row of result.defences) expect(run.phaseBuilds.get(challenge.id)).toContain(row.elementId);
+    // Section 41.6: the "Standing nature" row (the defences standing from the first turn) comes after the player's.
+    for (const row of result.defences.filter((d) => !d.standing)) expect(run.phaseBuilds.get(challenge.id)).toContain(row.elementId);
+    expect(result.defences.findIndex((d) => d.standing)).toBe(result.defences.some((d) => d.standing) ? result.defences.length - 1 : -1);
     // The next phase's area is recorded at its start, 2031.
     expect(run.areas.has("c2-flood")).toBe(true);
   });

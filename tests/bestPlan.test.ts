@@ -23,7 +23,7 @@ const actionsOf = (rows: PlanFile["goal1"]["actions"]): PlanAction[] =>
 
 describe("the best plan, replayed headless", () => {
   for (const goal of ["goal1", "goal2"] as const) {
-    it(`${goal}: 25 actions, the same stars and homes saved in every storm`, () => {
+    it(`${goal}: 25 actions, the same stars and homes lost in every storm`, () => {
       const p = plan[goal];
       expect(p.actions).toHaveLength(25);
       const run = replay(actionsOf(p.actions));
@@ -32,7 +32,10 @@ describe("the best plan, replayed headless", () => {
         const o = run.outcomes.get(c.id)!;
         return { id: c.id, stars: o.stars, saved: o.housesSaved, total: o.housesTotal };
       });
-      expect(got).toEqual(p.storms.map(({ id, stars, saved, total }) => ({ id, stars, saved, total })));
+      // Section 41.6.1 (owner decision 4): a storm's path is counted with the standing nature in place, so the plan
+      // file's totals (Section 41's count) are larger than the replay's; its stars and its homes lost are the same.
+      // Step 41.6.2 searches the plan again and pins the new file in full.
+      expect(got.map(({ id, stars, saved, total }) => ({ id, stars, lost: total - saved }))).toEqual(p.storms.map(({ id, stars, saved, total }) => ({ id, stars, lost: total - saved })));
       expect(got.reduce((s, x) => s + x.stars, 0)).toBe(p.stars);
       expect(got.reduce((s, x) => s + x.total - x.saved, 0)).toBe(p.lost);
     });

@@ -35,7 +35,7 @@ export interface StormRecord {
   kind: ChallengeKind;
   outcome: ChallengeOutcome;
   field: DepthField;
-  /** The same storm on the same board with every defence against it removed. */
+  /** The same storm on the same board with every defence the player built against it removed (Section 41.6: the standing nature stays). */
   undefended: { outcome: ChallengeOutcome; field: DepthField; depth?: Map<string, number>; wind?: Map<string, number> };
   /** Per kind of defence, most houses saved first. Kinds that saved none are left out. */
   savedBy: DefenceSave[];
@@ -60,7 +60,18 @@ export interface StormRecord {
    * says "Shared the work" for them, not 0.
    */
   sharedWork?: string[];
+  /**
+   * Section 41.6 (owner decision 4): the nature that stood from the first turn (`fromStart`), kept apart from the
+   * player's own. `keys`: those standing (not broken) when the storm came that answer it; `homes`: the homes the
+   * same storm takes beyond those it took with all of them removed and everything else equal. Absent where none
+   * answered the storm. Every other figure here (`undefended`, `savedBy`, `withoutEach`, `sharedWork`) counts only
+   * the player's own defences, and the standing nature is never taken away in them.
+   */
+  standing?: { keys: string[]; homes: number };
 }
+
+/** Section 41.6: what "Standing nature" is called on the cards (its row after the player's rows). */
+export const STANDING_NATURE = { id: "standing_nature", name: "Standing nature" } as const;
 
 export interface StormArgs {
   zones: ZoneIndex;
@@ -146,13 +157,17 @@ function resolveWithField(state: GameState, args: StormArgs): { outcome: Challen
 
 /**
  * The same storm re-run on a copy of `before` (the board just before it hit)
- * with every defence of kind `removed` taken away and everything else equal:
- * the houses it takes. With `removed` null nothing is taken away, and the
- * result is the storm's own (tests/phaseResult.test.ts). Deterministic.
+ * with every defence of kind `removed` the player built taken away and
+ * everything else equal: the houses it takes. Section 41.6: the nature that
+ * stood from the first turn (`fromStart`) is never taken away with a kind; it
+ * is taken away on its own with `removed` = `STANDING_NATURE.id`. With
+ * `removed` null nothing is taken away, and the result is the storm's own
+ * (tests/phaseResult.test.ts). Deterministic.
  */
 export function housesLostWithout(before: GameState, args: StormArgs, removed: string | null): ChallengeOutcome {
   const copy = before.clone();
-  if (removed) for (const [key, inst] of [...copy.elements]) if (inst.elementId === removed) copy.elements.delete(key);
+  const drop = (inst: { elementId: string; fromStart?: boolean }): boolean => (removed === STANDING_NATURE.id ? !!inst.fromStart : inst.elementId === removed && !inst.fromStart);
+  if (removed) for (const [key, inst] of [...copy.elements]) if (drop(inst)) copy.elements.delete(key);
   // A copy's combo bonuses are its own: removing one kind breaks the combos it was part of.
   const combos = args.combos ? computeCombos(copy).bonus : undefined;
   return resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, combos, args.houseStars, args.houseRule, undefined, args.landfall, args.sheltered, args.wind);
@@ -166,9 +181,10 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   const before = state.clone();
   const { outcome, field, depth, wind } = resolveWithField(state, args);
   const hazards = hazardsOf(args.kind);
+  // Section 41.6: the nature that stood from the first turn is never taken away here (its own figure is below).
   const without = (keep: (elementId: string) => boolean): GameState => {
     const copy = before.clone();
-    for (const [key, inst] of [...copy.elements]) if (!keep(inst.elementId)) copy.elements.delete(key);
+    for (const [key, inst] of [...copy.elements]) if (!inst.fromStart && !keep(inst.elementId)) copy.elements.delete(key);
     return copy;
   };
   // A copy's combo bonuses are its own: removing one kind breaks the combos it was part of.
@@ -177,7 +193,7 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   const undefended = resolveWithField(bare, argsFor(bare));
   // Section 25.1: a broken seawall or dam stands on the board but protects nothing: never counted, never "held".
   const counts = new Map<string, number>();
-  for (const inst of before.elements.values()) if (!inst.broken && defendsAgainst(inst.elementId, hazards)) counts.set(inst.elementId, (counts.get(inst.elementId) ?? 0) + 1);
+  for (const inst of before.elements.values()) if (!inst.broken && !inst.fromStart && defendsAgainst(inst.elementId, hazards)) counts.set(inst.elementId, (counts.get(inst.elementId) ?? 0) + 1);
   const savedBy: DefenceSave[] = [];
   for (const [elementId, count] of counts) {
     const houses = housesLostWithout(before, args, elementId).housesDamaged - outcome.housesDamaged;
@@ -186,7 +202,7 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   savedBy.sort((a, b) => b.houses - a.houses || (a.elementId < b.elementId ? -1 : 1));
   const withoutEach = new Map<string, number>();
   for (const inst of before.elements.values()) {
-    if (inst.broken || withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
+    if (inst.broken || inst.fromStart || withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
     withoutEach.set(inst.elementId, Math.max(0, housesLostWithout(before, args, inst.elementId).housesDamaged - outcome.housesDamaged));
   }
   const sharedWork: string[] = [];
@@ -205,8 +221,11 @@ export function resolveStorm(state: GameState, args: StormArgs): StormRecord {
   }
   const defences = new Map<string, string>();
   for (const [key, inst] of before.elements) if (!inst.broken && defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
+  // Section 41.6: the standing nature's own figure, for its "Standing nature" row after the player's rows.
+  const standingKeys = [...before.elements].filter(([, inst]) => inst.fromStart && !inst.broken && defendsAgainst(inst.elementId, hazards)).map(([key]) => key);
+  const standing = standingKeys.length > 0 ? { keys: standingKeys, homes: Math.max(0, housesLostWithout(before, args, STANDING_NATURE.id).housesDamaged - outcome.housesDamaged) } : undefined;
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
   const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : undefined);
   const landfallKey = args.kind === "flood" ? null : (board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null);
-  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field, depth: undefended.depth, wind: undefended.wind }, savedBy, defences, landfallKey, depth, wind, withoutEach, sharedWork };
+  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field, depth: undefended.depth, wind: undefended.wind }, savedBy, defences, landfallKey, depth, wind, withoutEach, sharedWork, ...(standing ? { standing } : {}) };
 }

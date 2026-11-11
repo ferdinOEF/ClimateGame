@@ -1,3 +1,18 @@
+## Section 41.6 — the owner's answers, a tagless board, full QA, every home saveable — branch `section-41-6-answers-qa`, not merged
+
+Branch from master `ad727b0` (Section 41 merged and live; safety copy: `backup/pre-section-41.6`, same point). The
+owner's answers of 11 November 2026 to Section 41's eleven questions. QA in docs/QA_REPORT.md ("Section 41.6"); the
+model's notes in docs/ARCHITECTURE.md ("3d").
+- 41.6.1 The owner's answers. A storm's path is counted with the three standing defenses in place: the homes they
+  alone keep are not in the path, not saved and earn no points; removing one puts its homes back in the path. Words
+  that credit "your" defenses count only the player's own; "What protected your homes" has a "Standing nature" row
+  after the player's rows. Maya says the sea and the river at Campal once, as the 2050 phase begins (2041), and her
+  2050 warning keeps the rest. The shore rule's words in the Field Guide and the fact are the owner's. The "nature"
+  and "smart" bots weigh the objective's glowing tiles too. One board, tagless: the season element is gone from the
+  name card's Top 10 (the last card's board box never had one), no reply carries the stored label, and
+  docs/DEPLOY.md says `BOARD_SEASON` may be removed. Kept: the guided dune, the "Game rule" tag on the standing
+  line, the 83 first sea tiles, dunes and the river, the seawall's end rule, the points. No schema change.
+
 ## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home — MERGED (`fc42c47`)
 
 Branch `section-41-shore-defenses` from master `2c861a1` (safety copy: `backup/pre-section-41`, same point). The owner's decisions after the

@@ -1204,7 +1204,8 @@ export class PanjimController {
       ...(pushed.length ? { pushNote: `In this game a seawall pushes water round its ends: it reached ${joinNames(pushed)}.` } : {})
     };
     const next = this.run.nextChallenge();
-    const top = result.defences.find((d) => d.homes > 0);
+    // Section 41.6: Maya's line names the player's own defence; the "Standing nature" row is never hers to credit.
+    const top = result.defences.find((d) => d.homes > 0 && !d.standing);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
     if (this.tutorial) {
       // Section 31.4: a card for each storm, every defence built listed (why where it saved none); after the flood,

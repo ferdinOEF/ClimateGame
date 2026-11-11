@@ -224,7 +224,8 @@ export const CITY_ZONE = "city";
  * pass a clone.
  *
  * The houses "in the storm's path" (the KPI's total) are those the same storm
- * would flood on the same board with no defences at all: the houses the
+ * would flood on the same board with none of the player's defences (the
+ * nature that stood from the first turn stays, Section 41.6): the houses the
  * player could have saved. Zones are kept for reporting (the staging and the
  * Aftermath walk them in order); houses outside every zone report as
  * `CITY_ZONE`.
@@ -261,11 +262,13 @@ export function resolveChallenge(
     const inst = state.elements.get(key);
     return !!inst && !state.isScenery(key) && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building";
   };
-  // What the storm would do with no defences at all: the path, and the yardstick for protection.
+  // What the storm would do with none of the player's defences: the path, and the yardstick for protection.
+  // Section 41.6 (owner decision 4): the path is counted with the nature that stood from the first turn in place
+  // (`fromStart`), so the homes it alone keeps are not in the path, not saved and earn nothing.
   const bare = state.clone();
   for (const [key, inst] of [...bare.elements]) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (def && (def.effects.resilience ?? 0) > 0) bare.elements.delete(key);
+    if (def && (def.effects.resilience ?? 0) > 0 && !inst.fromStart) bare.elements.delete(key);
   }
   const field = computeWater(state, storm, options);
   // A board with no defences is its own undefended comparison: one water pass, not two.

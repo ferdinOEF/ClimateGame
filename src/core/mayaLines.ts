@@ -175,7 +175,8 @@ function zoneHero(state: GameState, zones: ZoneIndex, zoneId: string, hazard: st
     const inst = state.elements.get(key);
     const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
     const value = def?.effects.resilience ?? 0;
-    if (!def || value <= 0 || !answersHazard(def, hazard, storm)) continue;
+    // Section 41.6: her lines credit the player's own defences, never the nature that stood from the first turn.
+    if (!def || value <= 0 || inst?.fromStart || !answersHazard(def, hazard, storm)) continue;
     const entry = tally.get(def.id) ?? { value: 0, count: 0 };
     entry.value += value;
     entry.count += 1;

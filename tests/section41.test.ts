@@ -378,8 +378,10 @@ describe("41.3: storm numbers, Campal's water edge, nature standing at the start
     expect(points.livingCoast.standing).toBe(1);
     expect(points.standing.filter((id) => id.includes("khazan") || id.startsWith("7,21|"))).toEqual([]);
     expect(points.standing).toContain("24,6|mangrove|0");
-    // The standing khazans did protect in that flood: taken away, the same storm on the same board takes more homes.
-    expect(run.stormRecords.get(flood.id)!.withoutEach.get("khazan") ?? 0).toBeGreaterThan(0);
+    // The standing nature did protect in that flood: taken away, the same storm on the same board takes more homes.
+    // Section 41.6: that is its own figure ("Standing nature"), never folded into the player's khazan row.
+    expect(run.stormRecords.get(flood.id)!.standing!.homes).toBeGreaterThan(0);
+    expect(run.stormRecords.get(flood.id)!.withoutEach.has("khazan")).toBe(false);
   });
 
   it("the player may remove one at the usual cost of a year, and a build on its tile afterwards is the player's own", () => {
@@ -652,7 +654,7 @@ describe("41.4: wording for the shore rule and the standing nature", () => {
     expect(quiet.said).toEqual([]);
   });
 
-  it("her warning before the 2050 storm ends with the sea and the river at Campal", () => {
+  it("Section 41.6: her warning before the 2050 storm keeps the wind and no longer has the sea and the river at Campal", () => {
     expect(MAYA.warning.seaAndRiver).toBe("At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back.");
     expect(MAYA.warning.seaAndRiver.split(/\s+/).length).toBeLessThanOrEqual(25);
     const run = { yearsUntil: () => 2, nextChallenge: () => ({ id: "c3-compound", kind: "compound", turn: 25 }), state: { elements: new Map() }, prep: [], zones: null, objective: null };
@@ -661,7 +663,9 @@ describe("41.4: wording for the shore rule and the standing nature", () => {
     const director = new MayaDirector(maya, { run, blocked: () => false, exposure: () => exposure, project: () => null, focus: () => undefined, landmarks: [{ name: "Campal", q: 6, r: 10 }] } as never);
     director.consider();
     const warning = said.find((l) => l.id === "warn:c3-compound")!;
-    expect(warning.text.endsWith(` ${MAYA.warning.wind} ${MAYA.warning.seaAndRiver}`)).toBe(true);
+    // Section 41.6 (owner decision 3): the Campal sentence is said as the 2050 phase begins (tests/section41_6.test.ts).
+    expect(warning.text.endsWith(` ${MAYA.warning.wind}`)).toBe(true);
+    expect(warning.text).not.toContain(MAYA.warning.seaAndRiver);
     // A cyclone's or a flood's warning has neither.
     const cyclone = sayer();
     const before = new MayaDirector(cyclone.maya, { run: { ...run, nextChallenge: () => ({ id: "c1-cyclone", kind: "cyclone", turn: 5 }) }, blocked: () => false, exposure: () => ({ ...exposure, kind: "cyclone" }), project: () => null, focus: () => undefined, landmarks: [] } as never);
@@ -690,13 +694,14 @@ describe("41.4: wording for the shore rule and the standing nature", () => {
     expect(step.maya).toBe("A breakwater goes just off the shore. Try the glowing water.");
     expect(step.bestAt).toBe("Breaks cyclone waves just off the shore.");
     for (const file of ["src/ui/panjim/defenceCards.ts", "src/data/maya.json", "src/data/facts.json", "src/ui/panjim/tutorialSteps.ts", "src/data/tooltips.json"]) {
-      // The one "out at sea" left is the shore rule's own "They cannot be built out at sea."
-      expect(read(file).replace("They cannot be built out at sea.", "").match(/out at sea|out in the sea|breakwater at sea|barrier offshore/gi), file).toBeNull();
+      // The one "out at sea" left is the shore rule's own "Neither can be built out at sea." (Section 41.6's words)
+      expect(read(file).replace("Neither can be built out at sea.", "").match(/out at sea|out in the sea|breakwater at sea|barrier offshore/gi), file).toBeNull();
     }
   });
 
   it("the Field Guide and the facts give both rules as game rules", () => {
-    expect(SHORE_RULE).toBe("In this game, seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it. They cannot be built out at sea.");
+    // Section 41.6 (owner decision 6): the owner's words for both.
+    expect(SHORE_RULE).toBe("In this game, seawalls stand on the shore or on the first water tile beside it. Breakwaters go only on that first water tile. Neither can be built out at sea.");
     expect(riverRule(2050)).toBe("In this game, in the 2050 storm a seawall also holds back the river that the sea pushes back.");
     const guide = read("src/ui/panjim/fieldGuide.ts");
     expect(guide).toContain('{ id: "shore", name: "At the shore", text: SHORE_RULE }');
@@ -706,9 +711,11 @@ describe("41.4: wording for the shore rule and the standing nature", () => {
     // "Game rule", so they do not open with "In this game", run to 20 words at most and name no year.
     const shore = factById("shore-rule")!;
     const river = factById("seawall-river")!;
-    expect(shore).toMatchObject({ kind: "gameRule", text: "Seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it.", elements: ["seawall", "breakwater"] });
+    expect(shore).toMatchObject({ kind: "gameRule", text: "Seawalls stand on the shore or the first water tile; breakwaters only on that water tile.", elements: ["seawall", "breakwater"] });
     expect(river).toMatchObject({ kind: "gameRule", text: "When a cyclone and a flood come together, a seawall also holds back the river that the sea pushes back.", elements: ["seawall"] });
-    expect(SHORE_RULE.startsWith(`In this game, ${shore.text.charAt(0).toLowerCase()}${shore.text.slice(1)}`)).toBe(true);
+    // The Field Guide's sentence is the game rule in full ("In this game"); the fact says the same rule shorter.
+    expect(SHORE_RULE.startsWith("In this game, seawalls stand on the shore or on the first water tile")).toBe(true);
+    expect(shore.text.startsWith("Seawalls stand on the shore or the first water tile")).toBe(true);
     for (const fact of [shore, river]) expect(isShown(fact), fact.id).toBe(true);
     expect(discoveryFacts("seawall").map((f) => f.id)).toEqual(["seawall-holds", "seawall-river", "seawall-fails", "seawall-no-wildlife", "shore-rule"]);
     expect(discoveryFacts("breakwater").map((f) => f.id)).toEqual(["breakwater-offshore", "shore-rule"]);

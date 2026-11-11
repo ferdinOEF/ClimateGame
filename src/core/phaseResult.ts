@@ -1,7 +1,7 @@
 import { ELEMENT_BY_ID } from "./elements";
 import { damageAt, floodsHouse } from "./hazardModel";
 import type { ScheduledChallenge } from "./climate";
-import type { StormRecord } from "./stormRecord";
+import { STANDING_NATURE, type StormRecord } from "./stormRecord";
 
 /**
  * What the result cards show after a storm (Section 9), from the storm's own
@@ -38,6 +38,8 @@ export interface DefenceResult {
   homes: number;
   /** Section 30.11 bug 13: none alone, because another defence covered for it: it shared the work. */
   shared?: boolean;
+  /** Section 41.6: the "Standing nature" row (the defences that stood from the first turn), always after the player's rows. */
+  standing?: boolean;
 }
 
 export interface PhaseResult {
@@ -168,9 +170,12 @@ export function phaseResult(challenge: ScheduledChallenge, record: StormRecord, 
   // Every kind built in the phase that still stood when the storm came was re-run without; one that was gone by then did nothing.
   const saved = record.withoutEach;
   const kinds = [...new Set(builtKinds)].filter((id) => (ELEMENT_BY_ID.get(id)?.effects.resilience ?? 0) > 0);
-  const defences = kinds
+  const defences: DefenceResult[] = kinds
     .map((elementId) => ({ elementId, name: ELEMENT_BY_ID.get(elementId)?.name ?? elementId, homes: saved.get(elementId) ?? 0, ...(record.sharedWork?.includes(elementId) ? { shared: true } : {}) }))
     .sort((a, b) => b.homes - a.homes || (a.name < b.name ? -1 : 1));
+  // Section 41.6 (owner decision 4): the nature that stood from the first turn has its own row, after the player's,
+  // where any of it answered the storm. The player's rows above count only what the player built.
+  if (record.standing) defences.push({ elementId: STANDING_NATURE.id, name: STANDING_NATURE.name, homes: record.standing.homes, standing: true });
   return {
     challengeId: challenge.id,
     eyebrow: `${challenge.name} in ${challenge.year}`,

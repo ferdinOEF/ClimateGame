@@ -546,7 +546,8 @@ describe("34b.13: a word about the wind before 2050 and after", () => {
     expect(MAYA.warning.wind).toBe("The cyclone brings wind onto Campal. In this game only pandanus shelters homes from the wind.");
     const director = readFileSync("src/app/mayaDirector.ts", "utf8");
     // Section 41.4: the sea and the river at Campal follow the wind in the same warning.
-    expect(director).toContain("(next.kind === \"compound\" ? ` ${MAYA.warning.wind} ${MAYA.warning.seaAndRiver}` : \"\")");
+    // Section 41.6 (owner decision 3): the sea and the river at Campal moved to the start of the 2050 phase.
+    expect(director).toContain("(next.kind === \"compound\" ? ` ${MAYA.warning.wind}` : \"\")");
   });
 
   it("card 2 after 2050 says so when most of the homes lost stood in the wind at Campal, and only then", () => {

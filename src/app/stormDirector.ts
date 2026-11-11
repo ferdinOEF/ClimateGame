@@ -208,7 +208,9 @@ export class StormDirector {
     const field = record.field;
     const landfall = field.landfall ?? STORM_TIMING.cyclone.landfall;
     // Only what the resolution supports: khazans on the flood's path; mangroves that really saved homes.
-    const hasKhazans = [...defences.values()].includes("khazan");
+    // Section 41.6: "Your khazans" means the player's own: the khazans that stood from the first turn are not theirs.
+    const standing = new Set(record.standing?.keys ?? []);
+    const hasKhazans = [...defences].some(([key, id]) => id === "khazan" && !standing.has(key));
     const hasMangroves = record.savedBy.some((save) => save.elementId === "mangrove");
     if (record.kind === "cyclone") {
       return [

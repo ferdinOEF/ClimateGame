@@ -156,9 +156,9 @@ export class MayaDirector {
         this.warned.add(next.id);
         this.maya.say({
           id: `warn:${next.id}`,
-          // Section 34b.13: before the 2050 storm (cyclone and flood), a word about its wind. Section 41.4 (owner's
-          // words): and about the sea and the river at Campal, which seawalls and breakwaters at the shore hold back.
-          text: warningLine(helpful ? "exposedHelp" : "exposed", place, next.kind) + (next.kind === "compound" ? ` ${MAYA.warning.wind} ${MAYA.warning.seaAndRiver}` : ""),
+          // Section 34b.13: before the 2050 storm (cyclone and flood), a word about its wind. (Section 41.6, owner
+          // decision 3: the sea and the river at Campal are said as the 2050 phase begins, `phaseStart`, not here.)
+          text: warningLine(helpful ? "exposedHelp" : "exposed", place, next.kind) + (next.kind === "compound" ? ` ${MAYA.warning.wind}` : ""),
           state: "warning",
           urgent: true
         });
@@ -234,8 +234,17 @@ export class MayaDirector {
       this.maya.withdraw((queued) => isTip(queued));
       this.maya.dismiss();
     }
-    this.maya.say({ id: `phase:${next.id}:${run.moment}`, text: phaseLine(retry, run.year, run.buildsUntil(next), next.kind), state: "explains", urgent: true, force: true });
+    // Section 41.6 (owner decision 3): as the phase of the storm that brings the sea and the river together begins
+    // (on Panjim the first year after the 2040 flood), she says the sea and the river at Campal, once a run, in the
+    // same bubble as the phase's first line, so it comes with the phase's first build.
+    const campal = next.kind === "compound" && !this.seaAndRiverSaid;
+    if (campal) this.seaAndRiverSaid = true;
+    const text = phaseLine(retry, run.year, run.buildsUntil(next), next.kind) + (campal ? ` ${MAYA.warning.seaAndRiver}` : "");
+    this.maya.say({ id: `phase:${next.id}:${run.moment}`, text, state: "explains", urgent: true, force: true });
   }
+
+  /** Section 41.6: the sea and the river at Campal have been said this run (`phaseStart`). */
+  private seaAndRiverSaid = false;
 
   /** A note reopened from the Field Guide: said at once, whatever the moment. */
   replay(note: Note): void {

@@ -65,10 +65,17 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
 - **Panjim's storms and its start** (Section 41). The 2030 cyclone is 1.15, the 2040 flood 2.35, the 2050 storm 3.0
   with a wind share of 0.9 (`src/data/levels.json`). Two khazans at Merces (26,6 and 16,15) and a mangrove at
   Taleigao (7,21) stand from the first turn (`standingDefences`): they protect as built ones do and are in the
-  starting biodiversity, earn no living coast or veteran points, and may be removed at the cost of a year. Campal's
+  starting biodiversity, earn no living coast or veteran points, and may be removed at the cost of a year. A storm's
+  path is counted with them in place (Section 41.6, owner decision of 11 November 2026): the homes they alone keep
+  are not at risk, not saved and earn nothing; words that credit "your" defenses count only the player's own; they
+  have their own row, "Standing nature", last on "What protected your homes". Campal's
   four water edge tiles (6,9), (8,7), (4,11), (3,12) hold no home (`houses.openLand`). The committed best plan
   (`docs/qa/section41/best_plan.json`) loses no home in any storm and `tests/bestPlan.test.ts` pins it: after any
   change to a rule or the map, search it again (`npm run bestplan`).
+- **One board, tagless** (Section 41.6, owner decision: the festival is over). No season or festival label anywhere a
+  player sees (the name card's Top 10, the last card's board box, their offline and empty states); no reply from
+  `/api/board` carries the stored label. One board: old and new rows together, no reset. Test tags
+  (`?tag=FestTesters`) are a different thing and stay.
 - **Desktop browsers first** (Chrome, Edge, Firefox, Safari; mouse, wheel,
   keyboard; 1080p to 4K; test at 1920x1080 at least). Never make desktop worse
   to help phones.

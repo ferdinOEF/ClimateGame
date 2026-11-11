@@ -131,7 +131,9 @@ describe("with a database", () => {
     expect(cheat.body.rank).toBe(1);
     expect(typeof cheat.body.editToken).toBe("string");
     const [board] = await db.query<Record<string, unknown>>("SELECT * FROM board");
+    // Section 41.6: the stored label (BOARD_SEASON, the column needs one) is kept in the row, never sent back.
     expect(board).toMatchObject({ name: "Ana", points: expected, season: "Festival 2026" });
+    expect(cheat.body).not.toHaveProperty("season");
     expect(board).not.toHaveProperty("run_id");
 
     expect((await postBoard(await context(db), { runId: RUN_B, name: "fuck", builds: guided })).body).toEqual({ error: "name refused" });
@@ -158,7 +160,7 @@ describe("with a database", () => {
     expect(reply.body.points).toBe(retried.points);
   }, SLOW);
 
-  it("GET /api/board: the top 10 with the season, and a place for N points with the rows round it", async () => {
+  it("GET /api/board: the top 10, and a place for N points with the rows round it (Section 41.6: no season label)", async () => {
     // Fill the board past ten rows.
     for (let i = 0; i < 12; i++) {
       await db.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [
@@ -176,7 +178,9 @@ describe("with a database", () => {
     expect(rows).toHaveLength(10);
     expect(rows.map((r) => r.points)).toEqual([...rows.map((r) => r.points)].sort((a, b) => b - a));
     expect(rows[0].rank).toBe(1);
-    expect(top.body.season).toBe("Festival 2026");
+    expect(top.body).not.toHaveProperty("season");
+    // A row's `season` is always empty: kept only so a page cached from before 41.6 still draws its Top 10.
+    expect(rows.every((r) => r.season === "")).toBe(true);
     const place = await getBoard(await context(db), { points: "1550" });
     expect(place.body.rank).toBe(1 + (await db.query("SELECT * FROM board WHERE points > 1550")).length);
     const above = place.body.above as { points: number; rank: number }[];
@@ -194,6 +198,8 @@ describe("with a database", () => {
     expect(upper.map((r) => r.points)).toEqual([...upper.map((r) => r.points)].sort((a, b) => b - a));
     expect(upper.slice(-2)).toEqual(above);
     expect(Object.keys(upper[0]).sort()).toEqual(["name", "points", "rank", "season", "stars"]);
+    expect(upper.every((r) => r.season === "")).toBe(true);
+    expect(place.body).not.toHaveProperty("season");
     expect(upper.every((r) => r.points > 1550)).toBe(true);
     // The ranks are the board's own (dense), the last of them one above the place.
     expect(upper[upper.length - 1].rank).toBe((place.body.rank as number) - 1);
@@ -415,7 +421,7 @@ describe("Section 38.4b: test tags", () => {
     const rows = await db.query<{ name: string; tag: string | null }>("SELECT name, tag FROM board ORDER BY tag NULLS FIRST");
     expect(rows).toEqual([{ name: "ana", tag: null }, { name: "Ana", tag: "FestTesters" }]);
     const again = await getBoard(await context(db), {});
-    expect((again.body.rows as { name: string; rank: number }[])).toEqual([{ rank: 1, name: "ana", points: real.body.points, stars: expect.any(Number), season: "Festival 2026" }]);
+    expect((again.body.rows as { name: string; rank: number }[])).toEqual([{ rank: 1, name: "ana", points: real.body.points, stars: expect.any(Number), season: "" }]);
     const place = await getBoard(await context(db), { points: "1" });
     expect(place.body.rank).toBe(2);
     expect((place.body.above as { name: string }[]).map((r) => r.name)).toEqual(["ana"]);

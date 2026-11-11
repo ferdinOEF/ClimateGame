@@ -164,7 +164,7 @@
     {
       "id": "shore-rule",
       "kind": "gameRule",
-      "text": "Seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it.",
+      "text": "Seawalls stand on the shore or the first water tile; breakwaters only on that water tile.",
       "elements": [
         "seawall",
         "breakwater"

@@ -85,7 +85,8 @@ export function computeExposure(
     const hazards = hazardsOf(kind);
     for (const [key, inst] of [...copy.elements]) {
       const def = ELEMENT_BY_ID.get(inst.elementId);
-      if (def && (def.effects.resilience ?? 0) > 0 && def.targetsHazards?.some((hazard) => hazards.includes(hazard as HazardId))) copy.elements.delete(key);
+      // Section 41.6: the nature that stood from the first turn stays (the storm's path is counted with it in place).
+      if (def && (def.effects.resilience ?? 0) > 0 && !inst.fromStart && def.targetsHazards?.some((hazard) => hazards.includes(hazard as HazardId))) copy.elements.delete(key);
     }
   }
   const tileIntensity = new Map<string, number>();

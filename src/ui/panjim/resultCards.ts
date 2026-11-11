@@ -371,7 +371,7 @@ export function rankHtml(state: RankState, name: string | null): string {
       : "Top of the board";
   const row = (r: BoardRowView, me = false): string =>
     `<li class="${me ? "me" : ""}"${me ? ' aria-current="true"' : ""}><span class="finale-rank-place">${r.rank}</span><span class="finale-rank-name">${esc(r.name)}</span><b>${r.points}</b></li>`;
-  const mine: BoardRowView = { rank, name, points, season: "" };
+  const mine: BoardRowView = { rank, name, points };
   return `<div class="finale-rank-head">${esc(head)}</div>
     <p class="finale-rank-note">${esc(gap)}</p>
     <ol class="finale-rank-rows" tabindex="0" aria-label="${BOARD_LIST_LABEL}" aria-live="off">${listed.map((r) => row(r)).join("")}${row(mine, true)}</ol>${listed.length + 1 > BOARD_ROWS_SHOWN ? `<p class="finale-rank-hint">${BOARD_SCROLL_HINT}</p>` : ""}`;

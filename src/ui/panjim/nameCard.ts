@@ -9,13 +9,13 @@ import { tagChipText } from "@services/testTag";
  * when it can't be reached. Tab goes field, Play, Play without a name, then the list; Enter in the field is Play; Esc
  * does nothing here (the start popup's layer holds it).
  */
-export type TopState = { status: "loading" } | { status: "offline" } | { status: "ready"; rows: BoardRow[]; season: string };
+export type TopState = { status: "loading" } | { status: "offline" } | { status: "ready"; rows: BoardRow[] };
 
 const esc = (text: string): string => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 export const BOARD_OFFLINE = "The board can't be reached right now. You can still play, and your points show at the end.";
 
-/** The right side: the top 10 (rank, name, points, season), or why it is not there. */
+/** The right side: the top 10 (rank, name, points; Section 41.6: no season or festival label), or why it is not there. */
 export function topTenHtml(state: TopState): string {
   if (state.status === "loading") return `<h3 class="name-card-top-title">Top 10</h3><p class="name-card-top-note">Loading the board.</p>`;
   if (state.status === "offline") return `<h3 class="name-card-top-title">Board offline</h3><p class="name-card-top-note">${BOARD_OFFLINE}</p>`;
@@ -23,7 +23,7 @@ export function topTenHtml(state: TopState): string {
   return `<h3 class="name-card-top-title">Top 10</h3>
     <ol class="name-card-top-rows" tabindex="0" aria-label="Top 10">${state.rows
       .slice(0, 10)
-      .map((r) => `<li><span class="name-card-rank${r.rank <= 3 ? " top" : ""}">${r.rank}</span><span class="name-card-name">${esc(r.name)}</span><b>${r.points}</b><span class="name-card-season">${esc(r.season)}</span></li>`)
+      .map((r) => `<li><span class="name-card-rank${r.rank <= 3 ? " top" : ""}">${r.rank}</span><span class="name-card-name">${esc(r.name)}</span><b>${r.points}</b></li>`)
       .join("")}</ol>`;
 }
 
@@ -56,7 +56,7 @@ export class NameCard {
   /** Resolves with the checked name, or null for Play without a name. */
   readonly result: Promise<string | null>;
 
-  constructor(initial: string | null, top: Promise<{ rows: BoardRow[]; season: string } | null>, tag: string | null = null) {
+  constructor(initial: string | null, top: Promise<{ rows: BoardRow[] } | null>, tag: string | null = null) {
     const holder = document.createElement("div");
     holder.innerHTML = nameCardHtml(initial, tag);
     this.el = holder.firstElementChild as HTMLElement;
@@ -64,7 +64,7 @@ export class NameCard {
     this.error = this.el.querySelector(".name-card-error")!;
     const topEl = this.el.querySelector<HTMLElement>(".name-card-top")!;
     void top.then((board) => {
-      if (this.open) topEl.innerHTML = topTenHtml(board ? { status: "ready", rows: board.rows, season: board.season } : { status: "offline" });
+      if (this.open) topEl.innerHTML = topTenHtml(board ? { status: "ready", rows: board.rows } : { status: "offline" });
     });
     trapFocus(this.el, () => this.open);
     this.field.addEventListener("input", () => {

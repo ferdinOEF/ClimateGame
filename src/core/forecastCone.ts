@@ -70,12 +70,15 @@ export const SEA_WEDGE = { halfAngleDeg: 35, reachHex: 8 };
 
 const WATER = new Set(["coast"]);
 
-/** A board with every defence removed: the worst a player can face. */
+/**
+ * A board with every defence the player built removed: the worst a player can face. Section 41.6: the nature that
+ * stood from the first turn stays, as in the storm's path (core/zones.ts).
+ */
 function bare(state: GameState): GameState {
   const copy = state.clone();
   for (const [key, inst] of [...copy.elements]) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (def && (def.effects.resilience ?? 0) > 0) copy.elements.delete(key);
+    if (def && (def.effects.resilience ?? 0) > 0 && !inst.fromStart) copy.elements.delete(key);
   }
   return copy;
 }

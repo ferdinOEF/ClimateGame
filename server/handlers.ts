@@ -159,7 +159,12 @@ interface BoardRowOut {
   name: string;
   points: number;
   stars: number;
-  season: string;
+  /**
+   * Section 41.6 (owner decision 10): the board has no season or festival label any more, so a reply never carries the
+   * stored label. The field stays, always empty, for a page still running a build from before (the service worker
+   * keeps one offline), whose Top 10 reads it on every row and would otherwise not draw.
+   */
+  season: "";
 }
 
 interface BoardRow {
@@ -167,7 +172,6 @@ interface BoardRow {
   name: string;
   points: number;
   stars: number;
-  season: string;
   createdAt: number;
 }
 
@@ -177,13 +181,13 @@ interface BoardRow {
  * Section 38.4b: untagged rows only; a tagged row (a test session) is never shown or counted in a rank.
  */
 async function boardRows(sql: Sql): Promise<BoardRow[]> {
-  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>(
-    "SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL ORDER BY points DESC, created_at ASC"
+  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; created_at: Date | string }>(
+    "SELECT id, name, points, stars, created_at FROM board WHERE tag IS NULL ORDER BY points DESC, created_at ASC"
   );
-  return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })));
+  return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), createdAt: new Date(r.created_at).getTime() })));
 }
 
-const out = (rows: readonly BoardRow[], r: BoardRow): BoardRowOut => ({ rank: denseRank(r.points, rows), name: r.name, points: r.points, stars: r.stars, season: r.season });
+const out = (rows: readonly BoardRow[], r: BoardRow): BoardRowOut => ({ rank: denseRank(r.points, rows), name: r.name, points: r.points, stars: r.stars, season: "" });
 
 /**
  * The place `points` gets on the board (dense: a tie shares the place), the rows just above and below it (two each),
@@ -206,7 +210,7 @@ async function around(sql: Sql, points: number, own: string | null): Promise<{ r
       place++;
       last = r.points;
     }
-    top.push({ rank: place, name: r.name, points: r.points, stars: r.stars, season: r.season });
+    top.push({ rank: place, name: r.name, points: r.points, stars: r.stars, season: "" });
   }
   const above = top.slice(-2);
   const below = rows.filter((r) => r.points <= points && r.id !== own).slice(0, 2).map((r) => out(rows, r));
@@ -214,17 +218,19 @@ async function around(sql: Sql, points: number, own: string | null): Promise<{ r
   return { rank, top, above, below, tenth };
 }
 
-/** GET /api/board: the top 10 and the season; with `?points=N`, the place N would get and the rows round it. */
+/**
+ * GET /api/board: the top 10; with `?points=N`, the place N would get and the rows round it. Section 41.6 (owner
+ * decision 10): one board, no season or festival label: `BOARD_SEASON` is not read here.
+ */
 export async function getBoard(ctx: Ctx, query: Record<string, string | undefined>): Promise<Reply> {
   if (!ctx.sql) return OFFLINE;
-  const season = seasonOf(ctx.env);
   if (query.points !== undefined) {
     const points = Number(query.points);
     if (!Number.isFinite(points) || points < 0 || points > 1_000_000) return fail(400, "bad points");
-    return ok({ ...(await around(ctx.sql, Math.round(points), null)), points: Math.round(points), season });
+    return ok({ ...(await around(ctx.sql, Math.round(points), null)), points: Math.round(points) });
   }
   const rows = await boardRows(ctx.sql);
-  return ok({ rows: rows.slice(0, 10).map((r) => out(rows, r)), season });
+  return ok({ rows: rows.slice(0, 10).map((r) => out(rows, r)) });
 }
 
 /**
@@ -244,14 +250,15 @@ async function oneRowFor(sql: Sql, name: string): Promise<BoardRow | null> {
  * untagged rows only, so a tester never blocks a real player's name and a real player is never shadowed by a tester.
  */
 async function rowsNamed(sql: Sql, name: string): Promise<BoardRow[]> {
-  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; season: string; created_at: Date | string }>("SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL");
+  const rows = await sql.query<{ id: string; name: string; points: number; stars: number; created_at: Date | string }>("SELECT id, name, points, stars, created_at FROM board WHERE tag IS NULL");
   const key = nameKey(name);
-  return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
+  return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
 }
 
 /**
  * POST /api/board: `{ runId, name, builds }` for a finished run. The server replays the builds and stores the points it
- * gets, with the season; one post per run at most. Section 37.3: one row per name, its best run: a name already on
+ * gets; one post per run at most. Section 41.6: the row's `season` column (NOT NULL, no default: db/schema.sql) still
+ * takes `seasonOf` as it is written, but no reply and no screen shows it. Section 37.3: one row per name, its best run: a name already on
  * the board keeps its row unless this run has more points (then the row takes this run's points, stars and date).
  * Returns the place and the row's edit token (kept by the client in memory for this run only; the rename endpoint
  * stays, unused since Section 38.2); a run that did not beat its name's row gets the row's place and no token
@@ -276,6 +283,7 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
   const claimed = await ctx.sql.query("UPDATE runs SET on_board = true WHERE id = $1 AND on_board = false RETURNING id", [runId]);
   if (claimed.length === 0) return fail(409, "already on the board");
   await saveRun(ctx, runId, builds, facts, body);
+  // Stored only (the column needs a value; a default would be a schema change): never sent back (Section 41.6).
   const season = seasonOf(ctx.env);
   const stars = facts.stars.reduce((a, b) => a + b, 0);
   const tag = tagOf(body, ctx.env);
@@ -284,13 +292,13 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
     const day = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
     // Its edit token holds a ":" so it can never pass the rename endpoint's check: a tagged row is never ranked.
     await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, `tagged:${randomBytes(24).toString("base64url")}`, day, tag]);
-    return ok({ tagged: true, points: facts.points, editToken: "", season, name: name.name });
+    return ok({ tagged: true, points: facts.points, editToken: "", name: name.name });
   }
   const known = await oneRowFor(ctx.sql, name.name);
   if (known && known.points >= facts.points) {
     // The name's row stands: this run did not beat it.
     const place = await around(ctx.sql, known.points, known.id);
-    return ok({ ...place, points: known.points, editToken: "", season, name: known.name, kept: true });
+    return ok({ ...place, points: known.points, editToken: "", name: known.name, kept: true });
   }
   const editToken = randomBytes(24).toString("base64url");
   // The row's date only (the day, not the time), so its time can never tie it to a run's or a form's.
@@ -305,14 +313,14 @@ export async function postBoard(ctx: Ctx, body: Record<string, unknown>): Promis
     );
     if (updated.length === 0) {
       const kept = (await oneRowFor(ctx.sql, name.name)) ?? known;
-      return ok({ ...(await around(ctx.sql, kept.points, kept.id)), points: kept.points, editToken: "", season, name: kept.name, kept: true });
+      return ok({ ...(await around(ctx.sql, kept.points, kept.id)), points: kept.points, editToken: "", name: kept.name, kept: true });
     }
   } else {
     id = randomUUID();
     await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [id, season, name.name, facts.points, stars, editToken, day]);
   }
   const place = await around(ctx.sql, facts.points, id);
-  return ok({ ...place, points: facts.points, editToken, season, name: name.name });
+  return ok({ ...place, points: facts.points, editToken, name: name.name });
 }
 
 /** PATCH /api/board: `{ editToken, name }` renames that row (the filter applied); 409 "name taken" when another run holds the name. */

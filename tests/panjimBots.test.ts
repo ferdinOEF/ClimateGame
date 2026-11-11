@@ -18,15 +18,15 @@ describe("Panjim bots, 25 builds", () => {
   // Section 41.3 (owner decision): two khazans and a mangrove stand on the board from the first turn and protect as
   // built ones do. A player who builds only far from the risk saves what they save and no more: the same share on
   // every seed (20%: 14 of 56 homes in 2040, 4 of 24 in 2050), and nothing at all on the same board without them.
-  it("building only far from the risk saves nothing beyond what the nature standing at the start saves", () => {
+  // Section 41.6 (owner decision 4): a storm's path is counted with the nature standing from the start in place, so
+  // the homes it alone keeps are not saved by the player: building only far from the risk saves nothing at all.
+  it("building only far from the risk saves nothing (the nature standing at the start is in the storm's path count)", () => {
     const bare: LevelDef = { ...BOT_LEVEL, standingDefences: [] };
     for (const seed of SEEDS.slice(0, 5)) expect(savedShare(runBot("far", seed, bare)), seed).toBeLessThanOrEqual(0.02);
     for (const run of far) {
-      expect(savedShare(run), run.seed).toBe(savedShare(far[0]));
-      expect(run.houses[0].saved, run.seed).toBe(0);
+      expect(savedShare(run), run.seed).toBe(0);
+      for (const storm of run.houses) expect(storm.saved, run.seed).toBe(0);
     }
-    expect(savedShare(far[0])).toBeGreaterThan(0.1);
-    expect(savedShare(far[0])).toBeLessThan(0.3);
   });
 
   // Section 19: with the east edge out of Panjim (owner decision) fewer homes are in the storms' paths.

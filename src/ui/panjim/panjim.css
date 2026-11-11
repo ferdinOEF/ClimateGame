@@ -4302,14 +4302,13 @@
 .name-card-top-rows li {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
-  grid-template-areas: "rank name points" ". season season";
+  grid-template-areas: "rank name points";
   column-gap: 6px;
   font-size: 13px;
 }
 .name-card-rank { grid-area: rank; font-weight: 700; }
 .name-card-name { grid-area: name; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .name-card-top-rows b { grid-area: points; font-family: var(--font-head); }
-.name-card-season { grid-area: season; font-size: 11px; color: var(--ink-3); }
 
 @media (max-width: 760px) {
   .name-card { grid-template-columns: minmax(0, 1fr); }
