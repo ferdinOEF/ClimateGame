@@ -45,10 +45,13 @@ describe("30.1 the creek corner east of Merces leaves the game", () => {
       const t = run.state.placed.get(key)!;
       expect(!t.scenery && !t.dry, key).toBe(true);
     }
-    for (const key of ["24,6", "25,6", "26,6"]) {
+    // Section 41.3 (owner decision): a khazan stands at 26,6 from the first turn; the other two take a mangrove or a khazan.
+    for (const key of ["24,6", "25,6"]) {
       const [q, r] = key.split(",").map(Number);
       expect(run.state.buildableAt({ q, r }).map((d) => d.id), key).toEqual(["mangrove", "khazan"]);
     }
+    expect(run.state.elements.get("26,6")).toMatchObject({ elementId: "khazan", fromStart: true });
+    expect(run.state.buildableAt({ q: 26, r: 6 })).toEqual([]);
     // 25,7 is the home (24,7 is land with none): the floods take it on the bare board, and the defences in front of
     // it keep it: two in 2040, three in 2050 (the compound storm comes in deeper).
     const flood = run.schedule[1];
@@ -56,7 +59,8 @@ describe("30.1 the creek corner east of Merces leaves the game", () => {
     expect(run.exposureFor(flood)!.housesAtRisk).toContain("25,7");
     expect(run.exposureFor(storm)!.housesAtRisk).toContain("25,7");
     const guarded = newRun("s30-1-guard", BOT_LEVEL);
-    for (const [q, r, id] of [[25, 6, "khazan"], [26, 6, "khazan"]] as const) expect(guarded.build({ q, r }, id).ok).toBe(true);
+    // The second khazan beside the one standing at 26,6.
+    expect(guarded.build({ q: 25, r: 6 }, "khazan").ok).toBe(true);
     expect(guarded.exposureFor(flood)!.housesAtRisk).not.toContain("25,7");
     expect(guarded.build({ q: 24, r: 6 }, "mangrove").ok).toBe(true);
     expect(guarded.exposureFor(storm)!.housesAtRisk).not.toContain("25,7");
@@ -87,7 +91,9 @@ describe("30.2 a river tile takes only a small dam", () => {
     const r = newRun("s30-2b", BOT_LEVEL);
     while (!r.finished) {
       for (const job of r.prep) if (job.elementId === "mangrove") for (const key of job.tiles ?? []) expect(r.state.placed.get(key)?.terrainId, `${job.challengeId} ${key}`).not.toBe("river");
-      const t = [...r.state.placed.values()].find((tile) => r.state.buildableAt(tile.coord).length > 0 && tile.coord.r < 4)!;
+      // Far from the objectives' places while such tiles last (Section 41.1 left fewer sea tiles that take a build), then anywhere.
+      const free = [...r.state.placed.values()].filter((tile) => r.state.buildableAt(tile.coord).length > 0);
+      const t = free.find((tile) => tile.coord.r < 4) ?? free[0];
       r.build(t.coord, r.state.buildableAt(t.coord)[0].id);
     }
   });

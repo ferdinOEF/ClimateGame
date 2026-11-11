@@ -4,6 +4,12 @@
     "title": "Hello",
     "text": "Hello! I am Maya. Let us keep Panjim dry."
   },
+  "standing": {
+    "_comment": "Section 41.4 (owner's words): said once at the start of Play Panjim, where the board starts with nature already standing (levels.json standingDefences), after the guided start hands over.",
+    "id": "standing-nature",
+    "rule": true,
+    "text": "Panjim already has mangroves and khazan land at Merces and Taleigao. Keep them standing."
+  },
   "opening": {
     "id": "first-job",
     "title": "First job",
@@ -70,7 +76,8 @@
     "fixed": "{place} looks safe now. Well done!",
     "exposedHelp": "The striped red tiles show where the {storm} will hit. Build around {place} now: homes there can still be saved.",
     "lastCallHelp": "Last call! {count} homes are still in danger. Build around {place}: homes there can still be saved.",
-    "wind": "The cyclone brings wind onto Campal. In this game only pandanus shelters homes from the wind."
+    "wind": "The cyclone brings wind onto Campal. In this game only pandanus shelters homes from the wind.",
+    "seaAndRiver": "At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back."
   },
   "aftermath": {
     "held": "The {defence} at {place} held {count} homes.",
@@ -108,7 +115,7 @@
         "rule": true
       },
       "breakwater": {
-        "text": "Breakwaters broke the waves out at sea, before they reached the beach.",
+        "text": "Breakwaters broke the waves just off the shore, before they reached the beach.",
         "rule": true
       },
       "mangrove": {

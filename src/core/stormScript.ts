@@ -1,7 +1,10 @@
 import { axialKey, neighbor } from "./hex";
 import { arrivalTime, hitTime, type DepthField } from "./hazard";
 import type { ChallengeOutcome } from "./zones";
-import { defendsAgainst, type StormRecord } from "./stormRecord";
+import type { StormRecord } from "./stormRecord";
+import { ELEMENT_BY_ID } from "./elements";
+import { answersHazard } from "./hazardModel";
+import type { ChallengeKind } from "./climate";
 import { landmarkDamage } from "./landmarkDamage";
 
 /**
@@ -82,17 +85,24 @@ function defenceResult(outcome: ChallengeOutcome, key: string): DefenceResult {
  */
 export function testedDefences(record: StormRecord, defences: ReadonlyMap<string, string>, zoneOf: (key: string) => string | null): Map<string, string> {
   const hazardsByZone = new Map<string, Set<string>>();
+  // Section 41.2: what answers a zone's water depends on the kind of storm (`answersHazard`, the one rule).
+  let storm: ChallengeKind | undefined;
   for (const zone of record.outcome.zones) {
     const set = hazardsByZone.get(zone.zoneId) ?? new Set<string>();
     set.add(zone.hazard);
     hazardsByZone.set(zone.zoneId, set);
+    storm ??= zone.storm;
   }
+  const answers = (elementId: string, hazards: ReadonlySet<string>): boolean => {
+    const def = ELEMENT_BY_ID.get(elementId);
+    return !!def && (def.effects.resilience ?? 0) > 0 && [...hazards].some((hazard) => answersHazard(def, hazard, storm));
+  };
   const tested = new Map<string, string>();
   for (const [key, elementId] of defences) {
     const zoneId = zoneOf(key);
     const hazards = zoneId ? hazardsByZone.get(zoneId) : undefined;
     // It answers the storm only if the water reached it or the tile beside it.
-    if (hazards && defendsAgainst(elementId, [...hazards] as ("cyclone" | "flood")[]) && contactTime(record.field, key) !== null) tested.set(key, elementId);
+    if (hazards && answers(elementId, hazards) && contactTime(record.field, key) !== null) tested.set(key, elementId);
   }
   return tested;
 }

@@ -1,9 +1,15 @@
 import { MAYA, fill } from "./mayaLines";
+import type { ActionRun } from "./actionRun";
 
 /**
  * Section 39.4 (owner decision): the guided start. Once per Play Panjim run, right after "Let's Play!", in the first
  * year with no builds yet (never after Restart or a retry, never in the Tutorial), Maya walks the player through two
  * builds by hand: the 2026 objective's dune pick, then its first pandanus pick.
+ *
+ * Section 41.5: since the first cyclone is 1.15 (Section 41.3) the model's 2026 objective is two pandanus and no dune.
+ * The guide keeps its two builds and its words: where the objective has no dune pick, the dune goes on the tile of
+ * the objective's own place where a dune takes the most homes out of the storm's risk (`guideDune`), never on one of
+ * its pandanus picks, so the objective can still be done with the builds that are left.
  *
  * A soft guide: it never blocks input. A click elsewhere still works and the guide waits; a build other than the guided
  * one, or "Skip the help", jumps it to its last bubble (step 3), whose Got it ends it.
@@ -24,11 +30,34 @@ export interface GuideTile {
   elementId: string;
 }
 
-/** The two guided builds from the objective's picks: its first dune pick, then its first pandanus pick. */
-export function guideTiles(picks: readonly GuideTile[]): [GuideTile, GuideTile] | null {
-  const dune = picks.find((p) => p.elementId === "dune");
-  const pandanus = picks.find((p) => p.elementId === "sandy_vegetation");
-  return dune && pandanus ? [{ key: dune.key, elementId: dune.elementId }, { key: pandanus.key, elementId: pandanus.elementId }] : null;
+/**
+ * The two guided builds from the objective's picks: its first dune pick, then its first pandanus pick. `fallbackDune`
+ * (Section 41.5, `guideDune`) stands in where the objective has no dune pick. Null without both: no guide.
+ */
+export function guideTiles(picks: readonly GuideTile[], fallbackDune: GuideTile | null = null): [GuideTile, GuideTile] | null {
+  const dune = picks.find((p) => p.elementId === "dune") ?? fallbackDune;
+  const pandanus = picks.find((p) => p.elementId === "sandy_vegetation" && p.key !== dune?.key);
+  return dune && pandanus ? [{ key: dune.key, elementId: "dune" }, { key: pandanus.key, elementId: pandanus.elementId }] : null;
+}
+
+/**
+ * Section 41.5: the guided dune where the objective asks for none: of the tiles the next storm's objective rows pulse
+ * (the place they name), not one of the objective's own picks, the one where a dune takes the most homes out of that
+ * storm's risk, by the same model as the build cards and Homes at risk (`ActionRun.homesSavedBy`); ties go to the
+ * first tile in key order. Null when no dune there saves a home.
+ */
+export function guideDune(run: Pick<ActionRun, "prep" | "objective" | "nextChallenge" | "homesSavedBy">): GuideTile | null {
+  const next = run.nextChallenge();
+  if (!next) return null;
+  const picks = new Set((run.objective?.picks ?? []).map((p) => p.key));
+  const tiles = [...new Set(run.prep.filter((row) => row.challengeId === next.id).flatMap((row) => row.tiles ?? []))].filter((key) => !picks.has(key)).sort();
+  let best: { key: string; saves: number } | null = null;
+  for (const key of tiles) {
+    const [q, r] = key.split(",").map(Number);
+    const saves = run.homesSavedBy(next, { q, r }, "dune") ?? 0;
+    if (saves > 0 && (!best || saves > best.saves)) best = { key, saves };
+  }
+  return best ? { key: best.key, elementId: "dune" } : null;
 }
 
 /** Whether the guide runs: Play Panjim (never the Tutorial), a fresh run (not a Restart), its first year, no builds yet. */

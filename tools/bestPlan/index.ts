@@ -29,7 +29,8 @@
  * first builds join the beam beside the search's own plans, scored the same
  * way, so the search ends no worse than the seed and can still beat it.
  *
- * Usage: npm run bestplan -- [beam=16] [keep=16] [jobs=4] [out=docs/qa/section26] [seed=file.json]
+ * Usage: npm run bestplan -- [beam=16] [keep=16] [jobs=4] [out=docs/qa/section41] [seed=file.json]
+ * Section 41: `npm run bestplan -- beam=20 keep=16 jobs=4 out=docs/qa/section41 seed=tools/bestPlan/seed41.json`.
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -71,7 +72,7 @@ if (childJob !== undefined) {
 const beamWidth = num("beam", 16);
 const keep = num("keep", 16);
 const jobs = num("jobs", Math.max(1, Math.min(4, os.cpus().length)));
-const outDir = path.resolve(args.get("out") ?? "docs/qa/section26");
+const outDir = path.resolve(args.get("out") ?? "docs/qa/section41");
 const seeds = args.has("seed") ? (JSON.parse(fs.readFileSync(args.get("seed")!, "utf8")) as PlanAction[][]) : [];
 const started = Date.now();
 const opening = newRun("best-plan", BOT_LEVEL);

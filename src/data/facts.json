@@ -156,9 +156,26 @@
     {
       "id": "breakwater-offshore",
       "kind": "gameRule",
-      "text": "A breakwater at sea takes the force out of a cyclone's waves. It breaks at 10 years old.",
+      "text": "A breakwater just off the shore takes the force out of a cyclone's waves. It breaks at 10 years old.",
       "elements": [
         "breakwater"
+      ]
+    },
+    {
+      "id": "shore-rule",
+      "kind": "gameRule",
+      "text": "Seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it.",
+      "elements": [
+        "seawall",
+        "breakwater"
+      ]
+    },
+    {
+      "id": "seawall-river",
+      "kind": "gameRule",
+      "text": "When a cyclone and a flood come together, a seawall also holds back the river that the sea pushes back.",
+      "elements": [
+        "seawall"
       ]
     },
     {

@@ -57,6 +57,8 @@ export const FRONTS: Record<ChallengeKind, Front[]> = {
 
 export interface ZoneOutcome {
   zoneId: string;
+  /** The kind of storm this was (Section 41.2: what works against a zone's water depends on it, `answersHazard`). */
+  storm?: ChallengeKind;
   hazard: HazardId;
   incoming: number;
   defence: number;
@@ -335,11 +337,12 @@ export function resolveChallenge(
       floodShare = Math.max(floodShare, field.flood.get(key) ?? 0);
     }
     let defence = 0;
-    for (const key of keys) if (!failedSet.has(key)) defence += Math.max(0, defenceMetres(state, key, surgeShare >= floodShare ? "cyclone" : "flood"));
+    for (const key of keys) if (!failedSet.has(key)) defence += Math.max(0, defenceMetres(state, key, surgeShare >= floodShare ? "cyclone" : "flood", HAZARD_MODEL, kind));
     const toUnits = scale / HAZARD_MODEL.houseLossDepthM;
     const hit = inZone.filter((key) => lostSet.has(key)).length;
     outcomes.push({
       zoneId,
+      storm: kind,
       hazard: surgeShare >= floodShare ? "cyclone" : "flood",
       incoming: incoming * toUnits,
       defence: defence * toUnits,

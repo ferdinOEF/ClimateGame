@@ -56,6 +56,19 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
   (Section 34c.2, owner decision; Section 33b had the bottom right; `tests/mayaLocked.test.ts`); her
   colours come from `MAYA_PALETTE`; whenever a HUD element moves, update `HUD_OBSTACLES` (in `maya.ts`) and her
   layout rules.
+- **Shore defenses** (Section 41, owner decisions of 10 November 2026; game rules). Seawalls and breakwaters stand at
+  the shore, never out at sea. "The first sea tile" is a sea tile with a beach or land neighbour (a river tile never;
+  a sea tile that touches only wetland never). A breakwater fits only there; a seawall fits its shore tiles and
+  there. One rule, `GameState.isFirstSea` (Panjim has 83 such tiles; `tests/section41.test.ts`). In the 2050 storm
+  (cyclone and flood together) a seawall also holds back the river, with the metres it has against the cyclone; in a
+  flood on its own it does nothing (`answersHazard`, `src/core/hazardModel.ts`, the one place).
+- **Panjim's storms and its start** (Section 41). The 2030 cyclone is 1.15, the 2040 flood 2.35, the 2050 storm 3.0
+  with a wind share of 0.9 (`src/data/levels.json`). Two khazans at Merces (26,6 and 16,15) and a mangrove at
+  Taleigao (7,21) stand from the first turn (`standingDefences`): they protect as built ones do and are in the
+  starting biodiversity, earn no living coast or veteran points, and may be removed at the cost of a year. Campal's
+  four water edge tiles (6,9), (8,7), (4,11), (3,12) hold no home (`houses.openLand`). The committed best plan
+  (`docs/qa/section41/best_plan.json`) loses no home in any storm and `tests/bestPlan.test.ts` pins it: after any
+  change to a rule or the map, search it again (`npm run bestplan`).
 - **Desktop browsers first** (Chrome, Edge, Firefox, Safari; mouse, wheel,
   keyboard; 1080p to 4K; test at 1920x1080 at least). Never make desktop worse
   to help phones.

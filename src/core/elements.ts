@@ -21,12 +21,16 @@ export interface ElementDef {
   targetsHazards?: string[];
   validTerrainIds: string[];
   /**
-   * Section 34b.9 (owner decision 2d): where on its terrain it may stand. "shoreline": a land tile (beach, shore or
-   * wetland edge) with at least one sea neighbour, never the sea itself (a seawall). "upstream": a river tile with no
-   * sea neighbour and at most two river neighbours, the narrow upstream channel, never the estuary (a small dam: a
-   * bandhara is a check dam on a small stream).
+   * Where on its terrain it may stand (Section 34b.9, owner decision 2d; the shore rule is Section 41.1's, owner
+   * decision of 10 November 2026). Seawalls and breakwaters stand at the shore, never out at sea.
+   * "shoreline" (a seawall): a beach, land or wetland tile with at least one sea neighbour, or a first sea tile.
+   * "firstSea" (a breakwater): a first sea tile only.
+   * "The first sea tile" (`GameState.isFirstSea`): a sea (`coast`) tile with at least one neighbour that is beach or
+   * land. A river tile is never one, and a sea tile that touches only wetland is not one.
+   * "upstream" (a small dam: a bandhara is a check dam on a small stream): a river tile with no sea neighbour and at
+   * most two river neighbours, the narrow upstream channel, never the estuary.
    */
-  placement?: "shoreline" | "upstream";
+  placement?: "shoreline" | "firstSea" | "upstream";
   buildCost: number;
   maintenanceCostPerTurn?: number;
   maintenanceNeglectPenaltyPerTurn?: number;
@@ -80,6 +84,13 @@ export interface ElementDef {
   pairsLike?: string;
   /** Section 25.1, a game rule: extra surge, game metres, on the land beside each end of a wall of these (seawall). */
   endPushM?: number;
+  /**
+   * Section 41.2 (owner decision of 10 November 2026), a game rule: in the storm that brings both a cyclone and a
+   * flood (Panjim's 2050 storm), this defence also holds back the flood, the river the sea pushes back, with the
+   * metres it has against the cyclone. In a flood on its own it does nothing. The seawall. Read only by
+   * `answersHazard` (core/hazardModel.ts).
+   */
+  holdsRiverInCompound?: boolean;
   /** Section 25.1, a game rule: never worn by a storm, so it never needs a repair (khazan). */
   neverWears?: boolean;
   /** Section 26.1, a game rule: breaks at this age in years, storm or none (breakwater: 10). Replaces any other failure rule. */

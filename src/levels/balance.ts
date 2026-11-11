@@ -23,6 +23,11 @@ export interface HouseFill {
   excludeFromBuild: string[];
   /** Coast tiles further than this many hexes from any non-coast tile are open sea and cannot be built on. */
   coastBuildRange?: number;
+  /**
+   * Land the town plan leaves without a home, as a garden (Section 41.3, owner decision: Campal's riverfront is
+   * promenade, gardens, grounds and jetties, not houses). Ordinary land: it follows the normal build rules.
+   */
+  openLand?: [number, number][];
   /** How a house stands up to a storm, house by house (core/zones.ts `HouseRule`). */
   rule?: HouseRule;
 }
@@ -45,9 +50,18 @@ export interface BoardSetup {
 export function boardSetup(level: LevelDef, map: GameMap): BoardSetup {
   const fill = level.houses;
   const setup: BoardSetup = { startingElements: [], effectScale: new Map(), excluded: new Set(), unbuildable: new Set() };
-  if (!fill) return setup;
+  // Section 41.3: the defences that stand on the board from the first turn (levels.json `standingDefences`), after the
+  // homes. Only where the map has the tile.
+  const tiles = new Set(map.tiles.map((tile) => axialKey(tile.coord)));
+  const standing: StartingElementSeed[] = (level.standingDefences ?? [])
+    .filter((d) => tiles.has(`${d.q},${d.r}`))
+    .map((d) => ({ coord: { q: d.q, r: d.r }, elementId: d.elementId, fromStart: true }));
+  if (!fill) {
+    setup.startingElements.push(...standing);
+    return setup;
+  }
   if (fill.fillLand) {
-    const town = townLayout(map, level.id);
+    const town = townLayout(map, level.id, fill.openLand);
     for (const tile of map.tiles) {
       if (town.buildings.has(axialKey(tile.coord))) setup.startingElements.push({ coord: tile.coord, elementId: "house" });
     }
@@ -56,6 +70,7 @@ export function boardSetup(level: LevelDef, map: GameMap): BoardSetup {
   const scenery = new Set(map.unplayable.map(([q, r]) => `${q},${r}`));
   const counted = setup.startingElements.filter((seed) => !scenery.has(axialKey(seed.coord))).length;
   setup.effectScale.set("house", fill.houseEconomyHouses / Math.max(1, counted));
+  setup.startingElements.push(...standing);
   for (const id of fill.excludeFromBuild) setup.excluded.add(id);
   // With the economy off, the things that only earn money have no place in the build menu (Section 12).
   if (level.economy && !level.economy.enabled) for (const id of MONEY_ONLY) setup.excluded.add(id);

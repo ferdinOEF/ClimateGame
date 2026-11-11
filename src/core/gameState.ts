@@ -42,12 +42,22 @@ export interface ElementInstance {
   broken?: boolean;
   /** Section 25.1: storms of the kind it answers that reached it and it came through (`ElementDef.survivesStorms`). */
   stormsSurvived?: number;
+  /**
+   * Section 41.3 (owner decision), a game rule: it stood on the board before the run began (a level's
+   * `standingDefences`); the player did not build it. Mature and at full strength from the first turn; it protects,
+   * ages and can be removed like any other of its kind, and it counts in the board's starting biodiversity. It earns
+   * no living coast points, is no veteran, and is never credited to an objective's row. A build on its tile after it
+   * is removed is the player's own.
+   */
+  fromStart?: boolean;
 }
 
 /** A world-init element the player owns from turn one — pre-built, not purchased (Section 4/8's "small coastal claim + 10 pre-built Houses" starting state). */
 export interface StartingElementSeed {
   coord: AxialCoord;
   elementId: string;
+  /** Section 41.3: a defence that stands from the first turn (`ElementInstance.fromStart`). */
+  fromStart?: boolean;
 }
 
 const STARTING_COIN = 50;
@@ -191,7 +201,7 @@ export class GameState {
       const key = axialKey(seed.coord);
       if (!this.placed.has(key)) continue;
       this.claimed.add(key);
-      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0 });
+      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0, ...(seed.fromStart ? { fromStart: true } : {}) });
     }
   }
 
@@ -259,7 +269,8 @@ export class GameState {
   /** 0 at the moment of building, rising linearly to 1 at the element's maturity time. */
   maturityFraction(inst: ElementInstance, def: ElementDef): number {
     // GROWTH_DISABLED_V1: growth and maturity reserved for a future version
-    if (!this.growthEnabled) return 1;
+    // Section 41.3: a defence that stood before the run is mature from the first turn, growth on or off.
+    if (!this.growthEnabled || inst.fromStart) return 1;
     const span = (this.maturityField === "matureQuarters" ? def.matureQuarters : def.matureTurns) ?? def.matureTurns;
     return span > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / span)) : 1;
   }
@@ -303,8 +314,29 @@ export class GameState {
     return results;
   }
 
-  /** Section 34b.9: a seawall on the shore line (a sea neighbour), a small dam on the narrow upstream river (no sea neighbour, at most two river neighbours). */
-  placementFits(coord: AxialCoord, placement: "shoreline" | "upstream"): boolean {
+  /**
+   * Section 41.1 (owner decision), a game rule: "the first sea tile" is a sea tile with at least one neighbour that is
+   * beach or land. A river tile never counts, and a sea tile that touches only wetland does not count. The one place
+   * the rule lives: seawalls and breakwaters both ask it (`placementFits`).
+   */
+  isFirstSea(coord: AxialCoord): boolean {
+    if (this.placed.get(axialKey(coord))?.terrainId !== "coast") return false;
+    for (let dir = 0; dir < 6; dir++) {
+      const terrain = this.placed.get(axialKey(neighbor(coord, dir)))?.terrainId;
+      if (terrain === "beach" || terrain === "land") return true;
+    }
+    return false;
+  }
+
+  /**
+   * Where a defence with a `placement` fits (`ElementDef.placement`). Section 34b.9: a seawall on the shore line (a sea
+   * neighbour), a small dam on the narrow upstream river (no sea neighbour, at most two river neighbours). Section
+   * 41.1: a seawall also on a first sea tile, a breakwater on a first sea tile only.
+   */
+  placementFits(coord: AxialCoord, placement: "shoreline" | "firstSea" | "upstream"): boolean {
+    if (placement === "firstSea") return this.isFirstSea(coord);
+    // On the sea itself a seawall stands only on a first sea tile.
+    if (placement === "shoreline" && this.placed.get(axialKey(coord))?.terrainId === "coast") return this.isFirstSea(coord);
     let sea = 0;
     let river = 0;
     for (let dir = 0; dir < 6; dir++) {

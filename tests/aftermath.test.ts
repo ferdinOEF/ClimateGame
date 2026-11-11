@@ -13,7 +13,8 @@ import { mapById } from "../src/levels/levelMap";
 function panaji(): { state: GameState; zones: ZoneIndex; landfallTiles: string[] } {
   const map = mapById("panaji")!;
   const level = LEVEL_BY_ID.get("l01-first-rains")!;
-  const state = new GameState(map.tiles, boardSetup(level, map).startingElements, 100000);
+  // Section 41.3: these lines are measured one kind of defence at a time, so the level's standing khazans and mangrove are left off.
+  const state = new GameState(map.tiles, boardSetup(level, map).startingElements.filter((seed) => !seed.fromStart), 100000);
   state.maturityField = "matureQuarters";
   for (const m of map.monuments) state.reserved.add(`${m.q},${m.r}`);
   const zones = new ZoneIndex(map.zones);
@@ -43,15 +44,20 @@ describe("aftermath line", () => {
     expect(aftermathLine("cyclone", outcome, state, zones, [])).toBe(`The seawalls at Miramar took it: ${outcome.housesSaved} houses stayed standing.`);
   });
 
-  it("credits the main defence when it took some but not all of a storm", () => {
+  it("credits the defence of the zone that held when the storm took homes elsewhere", () => {
     // Section 11: since the owner's edits turned the Campal wetland into land, mangroves no longer meet
     // this cyclone; dunes against a stronger one take some but not all of it (Section 25.1: dunes side by
     // side pair up, so it takes a storm of strength 3 to get past them).
+    // Section 41.3: the homes this storm took at Miramar were the ones on Campal's water edge (4,11 and 3,12), which
+    // are open land now. So Miramar's dunes hold every home in their zone ("took it") while the storm takes homes
+    // in Taleigao and the town; a little stronger and the dunes are overwhelmed all at once, so no storm leaves
+    // Miramar with "most of it" on this board.
     const { state, zones } = defended("dune", 3);
     const outcome = storm(state, zones, 60);
     expect(outcome.housesDamaged).toBeGreaterThan(0);
     expect(outcome.housesSaved).toBeGreaterThan(0);
-    expect(aftermathLine("cyclone", outcome, state, zones, [])).toBe(`The dunes at Miramar took most of it: ${outcome.housesSaved} houses stayed standing.`);
+    expect(outcome.zones.find((zone) => zone.zoneId === "z1")).toMatchObject({ held: true, housesDamaged: 0 });
+    expect(aftermathLine("cyclone", outcome, state, zones, [])).toBe(`The dunes at Miramar took it: ${outcome.housesSaved} houses stayed standing.`);
   });
 
   it("says plainly when the first zone was bare", () => {

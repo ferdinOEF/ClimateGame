@@ -75,11 +75,11 @@ const STEPS: Omit<TutorialStep, "name" | "icon">[] = [
   {
     id: "breakwater",
     protects: ["Cyclone waves"],
-    how: ["A barrier out in the sea.", "It breaks the waves before they reach the shore."],
+    how: ["A barrier just off the shore.", "It breaks the waves before they reach the shore."],
     sources: ["card-breakwater"],
     inGame: `In this game: little help in a river flood, costs ${-bio("breakwater")} biodiversity, breaks at ${def("breakwater")?.breaksAtAge} years old.`,
-    maya: "A breakwater goes out in the sea. Try the glowing water.",
-    bestAt: "Breaks cyclone waves out at sea."
+    maya: "A breakwater goes just off the shore. Try the glowing water.",
+    bestAt: "Breaks cyclone waves just off the shore."
   },
   {
     id: "seawall",

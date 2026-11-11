@@ -142,7 +142,8 @@ var elements_default = [
     validTerrainIds: [
       "beach",
       "land",
-      "estuary"
+      "estuary",
+      "coast"
     ],
     placement: "shoreline",
     buildCost: 80,
@@ -161,7 +162,8 @@ var elements_default = [
     failureMode: "Section 25.1 (owner decision), a game rule: comes through the first cyclone it faces and breaks in the second (the 2030 cyclone and the 2050 storm both count), giving no protection in that one; a broken wall is drawn broken and its tile takes a new build. Replaces the depth failure rule in the Panjim hazard model (failureThreshold is kept for the old levels' resolver, core/hazard.ts). Pushes endPushM more surge onto the land beside each end of a wall. Section 26.1: once it is 10 years old it is cracked, and it breaks in the next cyclone, even its first.",
     survivesStorms: 1,
     endPushM: 0.3,
-    cracksAtAge: 10
+    cracksAtAge: 10,
+    holdsRiverInCompound: true
   },
   {
     id: "mangrove",
@@ -315,6 +317,7 @@ var elements_default = [
     validTerrainIds: [
       "coast"
     ],
+    placement: "firstSea",
     buildCost: 85,
     maintenanceCostPerTurn: 5,
     maintenanceNeglectPenaltyPerTurn: 0.08,
@@ -593,22 +596,26 @@ function landfallSite(board, challenge) {
   });
   return best;
 }
-function defenceMetres(state, key, hazard, config = HAZARD_MODEL) {
+function answersHazard(def, hazard, kind) {
+  if (def.targetsHazards?.includes(hazard)) return true;
+  return kind === "compound" && hazard === "flood" && def.holdsRiverInCompound === true && !!def.targetsHazards?.includes("cyclone");
+}
+function defenceMetres(state, key, hazard, config = HAZARD_MODEL, kind) {
   const inst = state.elements.get(key);
   if (!inst || inst.broken) return 0;
   const def = ELEMENT_BY_ID.get(inst.elementId);
   if (!def) return 0;
   const value = def.effects.resilience ?? 0;
   if (value === 0) return 0;
-  if (value > 0 && !def.targetsHazards?.includes(hazard)) return 0;
+  if (value > 0 && !answersHazard(def, hazard, kind)) return 0;
   const scale = value > 0 ? state.maturityFraction(inst, def) * Math.max(0, 1 - inst.degradeAmount) : 1;
   return value * scale * config.defence.metresPerResilience;
 }
-function ownMetres(state, hazard, skip, weaken, combos, config) {
+function ownMetres(state, hazard, skip, weaken, combos, config, kind) {
   const own = /* @__PURE__ */ new Map();
   for (const key of state.elements.keys()) {
     if (skip.has(key)) continue;
-    let m = defenceMetres(state, key, hazard, config);
+    let m = defenceMetres(state, key, hazard, config, kind);
     if (m > 0 && combos?.has(key)) m += (combos.get(key) ?? 0) * config.defence.comboMetresPerPoint;
     if (m === 0) continue;
     own.set(key, m * (weaken.get(key) ?? 1));
@@ -817,7 +824,7 @@ function pass(state, board, storm, combos, skip, weaken, config) {
   if (hasSurge) {
     surgeLevel = (config.surge.baseM + config.surge.perStrengthM * storm.strength) * (storm.kind === "compound" ? c.surgeShare : 1);
     const site = board.sites[Math.max(0, Math.min(board.sites.length - 1, storm.landfall))];
-    const own = ownMetres(state, "cyclone", skip, weaken, combos, config);
+    const own = ownMetres(state, "cyclone", skip, weaken, combos, config, storm.kind);
     const reached = spread(board, /* @__PURE__ */ new Map([[site, surgeLevel]]), surgeLoss(config, storm.strength), pathDrag(board, own, config, kindOf));
     surge = protect(reached, areaProtection(board, own, config, kindOf));
     pushAtWallEnds(state, board, reached, surge, own);
@@ -840,7 +847,7 @@ function pass(state, board, storm, combos, skip, weaken, config) {
         if (lift > 0) sources.set(key, Math.max(sources.get(key) ?? 0, reach + lift));
       }
     }
-    const own = ownMetres(state, "flood", skip, weaken, combos, config);
+    const own = ownMetres(state, "flood", skip, weaken, combos, config, storm.kind);
     flood = protect(spread(board, sources, floodLoss(config), pathDrag(board, own, config, kindOf)), areaProtection(board, own, config, kindOf));
   }
   const surgeDepth = depthOf(board, surge);
@@ -1142,11 +1149,12 @@ function resolveChallenge(state, zones, kind, intensity, strengthUnit, combos, h
       floodShare = Math.max(floodShare, field.flood.get(key) ?? 0);
     }
     let defence = 0;
-    for (const key of keys) if (!failedSet.has(key)) defence += Math.max(0, defenceMetres(state, key, surgeShare >= floodShare ? "cyclone" : "flood"));
+    for (const key of keys) if (!failedSet.has(key)) defence += Math.max(0, defenceMetres(state, key, surgeShare >= floodShare ? "cyclone" : "flood", HAZARD_MODEL, kind));
     const toUnits = scale / HAZARD_MODEL.houseLossDepthM;
     const hit = inZone.filter((key) => lostSet.has(key)).length;
     outcomes.push({
       zoneId,
+      storm: kind,
       hazard: surgeShare >= floodShare ? "cyclone" : "flood",
       incoming: incoming * toUnits,
       defence: defence * toUnits,
@@ -1597,10 +1605,11 @@ function rowsOf(input, picks, candidates) {
     const places = new Set(group.places);
     const tiles = [.../* @__PURE__ */ new Set([...candidates.filter((c) => c.elementId === group.elementId && places.has(placeOf(input, c.key))).map((c) => c.key), ...group.picks.map((p) => p.key)])].sort();
     const [verb, one, many] = NOUN[group.elementId] ?? ["Build", group.elementId, group.elementId];
-    const baseline = tiles.filter((key) => input.state.elements.get(key)?.elementId === group.elementId).length;
+    const built = (key) => input.state.elements.get(key)?.elementId === group.elementId && !input.state.elements.get(key)?.fromStart;
+    const baseline = tiles.filter(built).length;
     const placeTiles = [...input.state.placed.keys()].filter((key) => (!input.stretch?.only || input.stretch.tiles.has(key)) && places.has(placeOf(input, key))).sort();
     const credited = placeTiles.filter((key) => {
-      if (input.state.elements.get(key)?.elementId !== group.elementId) return false;
+      if (!built(key)) return false;
       lostNow ??= homesLost(input.state, input.storm, input.landfallZoneTiles).size;
       const without = input.state.clone();
       without.elements.delete(key);
@@ -2167,7 +2176,7 @@ function standingDefences(state) {
   const out2 = [];
   for (const [key, inst] of state.elements) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (!def || def.kind !== "defense" || inst.broken || state.isScenery(key)) continue;
+    if (!def || def.kind !== "defense" || inst.broken || inst.fromStart || state.isScenery(key)) continue;
     out2.push(defenceId(key, inst.elementId, inst.builtOnTurn));
   }
   return out2.sort();
@@ -2176,7 +2185,7 @@ function livingCoast(before, after, args, housesDamaged) {
   let standing = 0;
   let protecting = 0;
   for (const [key, inst] of after.elements) {
-    if (!LIVING_COAST.includes(inst.elementId) || inst.broken || after.isScenery(key)) continue;
+    if (!LIVING_COAST.includes(inst.elementId) || inst.broken || inst.fromStart || after.isScenery(key)) continue;
     const was = before.elements.get(key);
     standing++;
     if (!was || was.elementId !== inst.elementId || was.builtOnTurn !== inst.builtOnTurn) continue;
@@ -3145,7 +3154,7 @@ var GameState = class _GameState {
       const key = axialKey(seed.coord);
       if (!this.placed.has(key)) continue;
       this.claimed.add(key);
-      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0 });
+      this.elements.set(key, { elementId: seed.elementId, builtOnTurn: 0, degradeAmount: 0, floodBufferFilled: 0, ...seed.fromStart ? { fromStart: true } : {} });
     }
   }
   /**
@@ -3208,7 +3217,7 @@ var GameState = class _GameState {
   }
   /** 0 at the moment of building, rising linearly to 1 at the element's maturity time. */
   maturityFraction(inst, def) {
-    if (!this.growthEnabled) return 1;
+    if (!this.growthEnabled || inst.fromStart) return 1;
     const span = (this.maturityField === "matureQuarters" ? def.matureQuarters : def.matureTurns) ?? def.matureTurns;
     return span > 0 ? Math.min(1, Math.max(0, (this.turn - inst.builtOnTurn) / span)) : 1;
   }
@@ -3246,8 +3255,27 @@ var GameState = class _GameState {
     }
     return results;
   }
-  /** Section 34b.9: a seawall on the shore line (a sea neighbour), a small dam on the narrow upstream river (no sea neighbour, at most two river neighbours). */
+  /**
+   * Section 41.1 (owner decision), a game rule: "the first sea tile" is a sea tile with at least one neighbour that is
+   * beach or land. A river tile never counts, and a sea tile that touches only wetland does not count. The one place
+   * the rule lives: seawalls and breakwaters both ask it (`placementFits`).
+   */
+  isFirstSea(coord) {
+    if (this.placed.get(axialKey(coord))?.terrainId !== "coast") return false;
+    for (let dir = 0; dir < 6; dir++) {
+      const terrain = this.placed.get(axialKey(neighbor(coord, dir)))?.terrainId;
+      if (terrain === "beach" || terrain === "land") return true;
+    }
+    return false;
+  }
+  /**
+   * Where a defence with a `placement` fits (`ElementDef.placement`). Section 34b.9: a seawall on the shore line (a sea
+   * neighbour), a small dam on the narrow upstream river (no sea neighbour, at most two river neighbours). Section
+   * 41.1: a seawall also on a first sea tile, a breakwater on a first sea tile only.
+   */
   placementFits(coord, placement) {
+    if (placement === "firstSea") return this.isFirstSea(coord);
+    if (placement === "shoreline" && this.placed.get(axialKey(coord))?.terrainId === "coast") return this.isFirstSea(coord);
     let sea = 0;
     let river = 0;
     for (let dir = 0; dir < 6; dir++) {
@@ -3479,7 +3507,8 @@ function pick(weights, roll) {
   }
   return entries[entries.length - 1][0];
 }
-function townLayout(map, seed) {
+function townLayout(map, seed, openLand = []) {
+  const open = new Set(openLand.map(([q, r]) => `${q},${r}`));
   const terrain = new Map(map.tiles.map((tile) => [axialKey(tile.coord), tile.terrainId]));
   const monuments = new Set(map.monuments.map((m) => `${m.q},${m.r}`));
   const roads = new Set(map.roads.map(([q, r]) => `${q},${r}`).filter((key) => terrain.get(key) === "land" && !monuments.has(key)));
@@ -3526,7 +3555,7 @@ function townLayout(map, seed) {
   const gardens = /* @__PURE__ */ new Set();
   plots.sort((a, b) => a.coord.r - b.coord.r || a.coord.q - b.coord.q);
   for (const plot of plots) {
-    if (plot.roll >= plot.density + offset) {
+    if (plot.roll >= plot.density + offset || open.has(plot.key)) {
       gardens.add(plot.key);
       continue;
     }
@@ -3620,9 +3649,14 @@ var MONEY_ONLY = ["beachside_resort", "yacht"];
 function boardSetup(level, map) {
   const fill = level.houses;
   const setup = { startingElements: [], effectScale: /* @__PURE__ */ new Map(), excluded: /* @__PURE__ */ new Set(), unbuildable: /* @__PURE__ */ new Set() };
-  if (!fill) return setup;
+  const tiles = new Set(map.tiles.map((tile) => axialKey(tile.coord)));
+  const standing = (level.standingDefences ?? []).filter((d) => tiles.has(`${d.q},${d.r}`)).map((d) => ({ coord: { q: d.q, r: d.r }, elementId: d.elementId, fromStart: true }));
+  if (!fill) {
+    setup.startingElements.push(...standing);
+    return setup;
+  }
   if (fill.fillLand) {
-    const town = townLayout(map, level.id);
+    const town = townLayout(map, level.id, fill.openLand);
     for (const tile of map.tiles) {
       if (town.buildings.has(axialKey(tile.coord))) setup.startingElements.push({ coord: tile.coord, elementId: "house" });
     }
@@ -3630,6 +3664,7 @@ function boardSetup(level, map) {
   const scenery = new Set(map.unplayable.map(([q, r]) => `${q},${r}`));
   const counted = setup.startingElements.filter((seed) => !scenery.has(axialKey(seed.coord))).length;
   setup.effectScale.set("house", fill.houseEconomyHouses / Math.max(1, counted));
+  setup.startingElements.push(...standing);
   for (const id of fill.excludeFromBuild) setup.excluded.add(id);
   if (level.economy && !level.economy.enabled) for (const id of MONEY_ONLY) setup.excluded.add(id);
   if (fill.coastBuildRange !== void 0) {
@@ -18025,7 +18060,7 @@ var levels_default = [
           kind: "cyclone",
           year: 2030,
           where: "Miramar beach",
-          strength: 1.2,
+          strength: 1.15,
           landfall: "-5,18",
           wind: { perStrengthM: 1, inlandKeep: 0.8 }
         },
@@ -18045,7 +18080,7 @@ var levels_default = [
           where: "Campal",
           strength: 3,
           landfall: "2,12",
-          wind: { perStrengthM: 0.6, inlandKeep: 0.8, compoundShare: 1.1 },
+          wind: { perStrengthM: 0.6, inlandKeep: 0.8, compoundShare: 0.9 },
           bioThree: 40,
           biodiversityAtEnd: true,
           shelteredPlace: "the sheltered middle of Taleigao",
@@ -18195,10 +18230,16 @@ var levels_default = [
         "house"
       ],
       coastBuildRange: 4,
+      openLand: [[6, 9], [8, 7], [4, 11], [3, 12]],
       rule: {
         resilience: 45
       }
     },
+    standingDefences: [
+      { elementId: "khazan", q: 26, r: 6, place: "Merces" },
+      { elementId: "khazan", q: 16, r: 15, place: "Merces" },
+      { elementId: "mangrove", q: 7, r: 21, place: "Taleigao" }
+    ],
     objectives: [
       {
         type: "survive_hazards",
@@ -18705,7 +18746,8 @@ function runFacts(replay) {
     points: points.total,
     stars,
     natureShare: built.length > 0 ? Math.round(nature / built.length * 1e3) / 1e3 : null,
-    biodiversityEnd: run.finished ? Math.round(run.state.biodiversity * 10) / 10 : null
+    // Since the start of the run, as before: the board's own start is no longer 0 (Section 41.3, the standing nature).
+    biodiversityEnd: run.finished ? Math.round((run.state.biodiversity - (run.houseStars?.bioStart ?? 0)) * 10) / 10 : null
   };
 }
 var isoOrNull = (v) => {

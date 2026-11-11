@@ -135,7 +135,7 @@ describe("a discovery never jumps ahead of a hazard warning", () => {
         return true;
       }
     } as unknown as Maya;
-    const run = { moment: 4, prep: [], nextChallenge: () => null };
+    const run = { moment: 4, prep: [], nextChallenge: () => null, state: { elements: new Map() } };
     const director = new MayaDirector(maya, { run, blocked: () => false } as never);
     maya.say(line("fact-1", { fact }));
     maya.say(line("warn", { urgent: true, state: "warning" }));

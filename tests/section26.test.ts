@@ -247,23 +247,29 @@ describe("a stronger wind, so pandanus matters (Section 26.3)", () => {
     for (const c of tutorial.climate!.challenges) expect(c.wind, c.id).toBeUndefined();
   });
 
-  it("takes a home by the wind alone in the 2030 cyclone on the opening board, and pandanus within 2 tiles saves it", async () => {
-    const { damageAt, floodsHouse, LANDFALL_ZONE } = await import("../src/core/hazardModel");
+  // Section 41.3 (owner decisions of 10 November 2026): the first cyclone is 1.15 and the 2050 storm's wind share 0.9,
+  // and the four homes on Campal's water edge are gone, so no home takes more wind than pandanus can shelter. On the
+  // opening board the water takes every home the wind would, so none falls to the wind alone until the water is held.
+  it("the wind is enough on its own to take homes in the 2030 cyclone and the 2050 storm, and pandanus within 2 tiles brings every one of them under the line", async () => {
+    const { floodsHouse, LANDFALL_ZONE } = await import("../src/core/hazardModel");
     const { shelterOf } = await import("../src/core/climate");
     const lz = probe.zones!.keys(LANDFALL_ZONE);
-    const storm = { kind: cyclone.kind, strength: cyclone.strength, landfall: probe.landfallOf(cyclone), sheltered: shelterOf(cyclone), wind: cyclone.wind, turn: cyclone.turn - 1 };
-    const windTaken = (s: typeof probe.state) => {
-      const f = computeWater(s, storm, { landfallZoneTiles: lz });
-      return [...s.elements].filter(([k, i]) => i.elementId === "house" && !s.isScenery(k) && floodsHouse(damageAt(f, k)) && !floodsHouse(f.depth.get(k) ?? 0)).map(([k]) => k);
-    };
-    const taken = windTaken(probe.state);
-    expect(taken.length).toBeGreaterThanOrEqual(1);
-    const s = probe.state.clone();
-    for (const key of taken) {
-      const [q, r] = key.split(",").map(Number);
-      for (const n of neighbors({ q, r })) for (const m of [n, ...neighbors(n)]) if (s.canBuild(m, "sandy_vegetation")) s.build(m, "sandy_vegetation", false);
+    for (const c of [cyclone, compound]) {
+      const storm = { kind: c.kind, strength: c.strength, landfall: probe.landfallOf(c), sheltered: shelterOf(c), wind: c.wind, turn: c.turn - 1 };
+      // The homes the wind takes whatever holds the water back: its damage alone is over the house loss line.
+      const windTakes = (s: typeof probe.state): string[] => {
+        const f = computeWater(s, storm, { landfallZoneTiles: lz });
+        return [...s.elements].filter(([k, i]) => i.elementId === "house" && !s.isScenery(k) && floodsHouse(f.wind.get(k) ?? 0)).map(([k]) => k);
+      };
+      const taken = windTakes(probe.state);
+      expect(taken.length, c.id).toBeGreaterThanOrEqual(2);
+      const s = probe.state.clone();
+      for (const key of taken) {
+        const [q, r] = key.split(",").map(Number);
+        for (const n of neighbors({ q, r })) for (const m of [n, ...neighbors(n)]) if (s.canBuild(m, "sandy_vegetation")) s.build(m, "sandy_vegetation", false);
+      }
+      expect(windTakes(s), c.id).toEqual([]);
     }
-    expect(windTaken(s)).toEqual([]);
   });
 
   it("says on the result card what the wind took, with the pandanus rule", async () => {

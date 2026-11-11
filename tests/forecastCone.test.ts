@@ -80,7 +80,10 @@ describe("the forecast cone", () => {
     const own = run.ownAreaFor(run.schedule[1].id)!;
     expect(own.title).toBe("Protect Taleigao, Merces and St Cruz");
     expect(own.tiles.has(keys[keys.length - 1])).toBe(true);
-    expect(flood.area).toContain(keys[keys.length - 1]);
+    // The line ends at a home the flood takes with nothing built at all (so it stays put as the player builds).
+    // Section 41.3: on the opening board the mangrove standing at Taleigao already keeps that home, so it is in the
+    // storm's undefended path and not in the area still at risk.
+    expect(run.exposureFor(run.schedule[1], true)!.housesAtRisk).toContain(keys[keys.length - 1]);
     const compound = run.forecastCone(run.schedule[2])!;
     expect(compound.tracks.map((t) => t.kind).sort()).toEqual(["cyclone", "flood"]);
     expect(compound.meet.length).toBeGreaterThan(0);
@@ -98,7 +101,8 @@ describe("the forecast cone", () => {
   // in front of the school saves every one of them, since all the surge comes ashore there.
   // Section 19: -7,24 is beach now (owner edit), so it has no home to lose: 8.
   // Section 26.3: the stronger wind also takes -2,18, beside the school.
-const FIRST_CYCLONE = ["-2,18", "-3,19", "-5,22", "-6,23", "0,19", "0,20", "1,19", "2,18", "2,19"];
+// Section 41.3: at 1.15 (from 1.2) the cyclone no longer takes -2,18 beside the school: eight homes.
+const FIRST_CYCLONE = ["-3,19", "-5,22", "-6,23", "0,19", "0,20", "1,19", "2,18", "2,19"];
   it("keeps the first cyclone at the school: undefended, it takes the home beside it and the low land either side of its beach, and nothing at Kala Academy", () => {
     const run = newRun("cone", BOT_LEVEL);
     const cyclone = run.schedule[0];

@@ -96,6 +96,14 @@ export interface LevelDef {
   houseStars?: HouseStars;
   /** Houses pre-built on the land, and how they count (levels/balance.ts). */
   houses?: HouseFill;
+  /**
+   * Section 41.3 (owner decision of 10 November 2026): defences that stand on the board from the first turn (Panjim's
+   * khazans at Merces and its mangrove at Taleigao). They are at full strength at once, protect exactly as a built
+   * one does and are part of the board's starting biodiversity; they earn no living coast or veteran points and are
+   * not in the build log; the player may remove one at the usual cost of a year (`ElementInstance.fromStart`).
+   * `place` is for readers of the data only.
+   */
+  standingDefences?: { elementId: string; q: number; r: number; place?: string }[];
   objectives: Objective[];
   starThresholds: [number, number, number];
 }

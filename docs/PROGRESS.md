@@ -1,3 +1,31 @@
+## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home — branch `section-41-shore-defenses`, not merged
+
+Branch from master `2c861a1` (safety copy: `backup/pre-section-41`, same point). The owner's decisions after the
+playtest of 10 November 2026: rule changes to the hazard model and the map. QA in docs/QA_REPORT.md; the model's
+notes in docs/ARCHITECTURE.md ("3c").
+- 41.1 Seawalls and breakwaters stand at the shore. "The first sea tile" is a sea tile with a beach or land neighbour
+  (`GameState.isFirstSea`, the one rule on every map): a breakwater fits only there (`placement: "firstSea"`), a
+  seawall fits its shore tiles as before and there. Panjim: 83 first sea tiles (230 tiles took a breakwater before);
+  the Tutorial: 11 (22 before). The river mouth's note says the new rule.
+- 41.2 In the 2050 storm (cyclone and flood together) every standing seawall also holds back the river, with the
+  metres it has against the cyclone. One rule, `answersHazard` in core/hazardModel.ts (the seawall is marked
+  `holdsRiverInCompound` in elements.json). The 2040 flood is unchanged.
+- 41.3 The 2030 cyclone is 1.15 (from 1.2); the 2050 storm's wind share 0.9 (from 1.1). The four tiles on Campal's
+  water edge hold no home (`houses.openLand`: gardens in the town plan, ordinary land that takes a seawall): 332
+  homes in play (336). Two khazans at Merces and a mangrove at Taleigao stand from the first turn
+  (`standingDefences`, `ElementInstance.fromStart`): mature, protecting as built ones do, in the starting
+  biodiversity, with no living coast or veteran points, never credited to an objective's row, removable at the cost
+  of a year. The server's replay starts from the same board. No schema change; stored runs carry no rules version.
+- 41.4 Words: Maya's line at the start about the nature already standing, and the sea and the river at Campal in
+  her 2050 warning; the seawall's card (the 2050 rule second, the line it had third); a breakwater "just off the
+  shore" everywhere; the shore rule and the river rule in the Field Guide and the facts.
+- 41.5 The best plan searched again at full width (beam 20): 8 of 8, 56 of 56 and 58 of 58 homes, 9 of 9 stars, no
+  home lost (docs/qa/section41/best_plan.md; tests/bestPlan.test.ts pins it). Campal's tests. The bots (200 seeds a
+  style), the points and the fuzz. tools/section41Shots.ts (the browser pass). Found on the way and fixed: at 1.15
+  the 2026 objective is two pandanus and no dune, so the guided start had nothing to walk through; `guideDune` puts
+  its dune where one saves the most homes in front of the school, and its words are unchanged. The reviewer's fixes.
+  Docs, CLAUDE.md's fixed rules.
+
 ## Section 40 — the five colours, How to play in three screens, the scrolling board box — MERGED (`7caf56c`)
 
 Branch `section-40-five-colours` from master `bc1bec7` (safety copy: `backup/pre-section-40`, same point). QA in docs/QA_REPORT.md. The mock

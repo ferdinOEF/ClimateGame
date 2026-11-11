@@ -12,6 +12,47 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After Section 41 (from docs/QA_REPORT.md)
+
+- Not merged: the owner looks at the preview first
+  (`climate-game-git-section-41-shore-8b5312-ferdin-5189s-projects.vercel.app`, with `?tag=FestTesters`). Merge with
+  `git merge --no-ff` on the owner's word, then confirm Vercel's production deployment. No schema change, so no
+  migration.
+- **The live board mixes two rule sets after the merge.** `runs` and `board` have no rules or build version column
+  (only `created_at` and `board.season`). Nothing replays a stored run, so none is re-scored; a row from before the
+  merge keeps the points of the old rules beside rows scored on the new ones. The ways to keep them apart without a
+  column: a new `BOARD_SEASON` value on Vercel at the merge (the board shows one season's label; the rank reads every
+  untagged row, so this labels and does not separate), or the merge's date. A column is the owner's call.
+- **The guided start.** At 1.15 the 2026 objective is two pandanus and no dune. The guide still walks a dune then a
+  pandanus (`guideDune`: the dune goes on -4,18, where it takes 5 homes out of the storm's risk; the objective is
+  still done by the third build). The owner may prefer the guide to follow the objective's own two picks, which
+  needs new words for its steps.
+- **Maya's 2050 warning is one long bubble** (her warning, the wind and now the sea and the river: about 60 words).
+  It fits at 1366x768. It comes two years before the storm, and a seawall built then is young enough; said at the
+  start of the 2050 phase (2041) it would give more builds to act on.
+- **Homes the standing nature saves count as homes saved** (cards, stars, 10 points each): a run that builds only
+  away from the storms saves 20% of the homes and scores 180 points. The owner may want a storm's path counted from
+  the board with the standing nature in place.
+- **Section 25.1's pair rule in 2050.** Two dunes side by side still hold the sea like one seawall; in the 2050
+  storm a seawall now does more where the river reaches (41.2). If a pair should hold the river too, that is a rule
+  for the owner.
+- **The bots' shortlist.** The "nature" and "smart" styles weigh only the three tiles of each kind nearest the red
+  homes; at 1.15 the tile that saves six homes in 2030 (-3,17, the objective's first pick) is not among them, so
+  "nature" saves 38% in 2030 (99% before) and "smart" 91%. The objective card names the tile (guided: 100%). Let the
+  bots weigh the objective's glowing tiles too, if the styles are to stay a fair measure.
+- **A seawall's end can cost a home.** Section 25.1's wall end rule puts 0.3 of water on the land beside each end;
+  beside Campal's shore the 2050 wind does the rest. Smart's late seawall on the water edge (3,12) cost one home on
+  one seed of six. The best plan's seawall (2,12) has pandanus and a breakwater at its ends.
+- The points tool (tools/panjimBots/points35.ts) would now choose 200 for an iconic place (the game counts 150). On
+  the game's own values every Section 35.6 target is still met; the worst best run is 1.64 times the best random run
+  (2.02 before). Nothing was tuned.
+- The forecast's flood line for 2040 ends at a home the standing mangrove already keeps (it is drawn from the board
+  with nothing built, so that it stays put).
+- facts.json holds the two new rules in its own form (no "In this game" opener, 20 words at most, no year): the
+  owner's full sentences are in the Field Guide.
+- Not run: the full browser check (walkthrough, labels, axe, four sizes), test:layout, test:labels, Safari and
+  Firefox, 1920x1080 shots. A seawall on a sea tile is drawn with the seawall's own model: look at it on the preview.
+
 ## After Section 40 (from docs/QA_REPORT.md)
 
 - Done: merged as `7caf56c` on the owner's word (`git merge --no-ff`); Vercel's production deployment of it is Ready

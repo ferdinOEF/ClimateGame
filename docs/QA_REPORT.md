@@ -2882,3 +2882,294 @@ the page, its stylesheet and its script answer, the stylesheet holds the five co
 up to see 1st place", "Ribandar to Taleigao" and "that still stands scores", and no longer "Read the map". Not done:
 a play through on the live site, the full browser check, Safari and Firefox. No PR was opened for this section. No
 schema change, so no migration.
+
+## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home (branch `section-41-shore-defenses`, not merged)
+
+From master `2c861a1`; safety copy `backup/pre-section-41` (same point). One commit a step, each pushed. The owner's
+decisions after the playtest of 10 November 2026: rule changes to the hazard model and the map, so the bots, the fuzz
+and the best plan search ran in full. This pass ran on the owner's Windows laptop. Nothing touched the live board:
+the browser pass ran on the dev server with `/api` stubbed and `?tag=FestTesters` on every page.
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit` | Clean. |
+| `npm run test` | 114 files, 1024 pass, 6 skipped (master: 113 files, 981 pass, 6 skipped). New: tests/section41.test.ts (40 tests). Rewritten: tests/bestPlan.test.ts (the new plan; no home lost). |
+| `npm run build` | Clean (and `npm run build:api`: the server bundle holds the new rules and the standing board). |
+| Preview equals resolution | Passes (tests/preview.test.ts, tests/exposure.test.ts, tests/liveRisk.test.ts), and the fuzz below. |
+| The best plan, full width (`npm run bestplan -- beam=20 keep=16 jobs=4 out=docs/qa/section41 seed=tools/bestPlan/seed41.json`) | **0 homes lost**: 8 of 8 (2030), 56 of 56 (2040), 58 of 58 (2050); 9 of 9 stars; 1334 s. Goal 1 and goal 2 are the same plan. Below. |
+| Bots, 200 seeds a style (`tools/panjimBots/tune21.ts seeds=200`, and `styles=guided`) | Below, against the last recorded numbers. Smart, guided, nature and best clear 100%. |
+| `npm run bots`, 20 seeds | Homes saved over a run, Section 30's record -> now: Casual 68% (59 to 74) -> 74% (68 to 85); Greedy 30% -> 46%; Smart 82% (79 to 85) -> 92% (85 to 97); Far 0% -> 20%. `docs/qa/section41/bots-20-seeds.md`. tests/panjimBots.test.ts: Casual's band is 60 to 92% now (it was 50 to 85%). |
+| Points, 20 seeds (`tools/panjimBots/points35.ts`) | The best plan 4375 (4215); guided 4382 median (4595); random 1385 median, 2090 best (820, 1630). Below. |
+| The fuzz (`tools/fuzz34.ts runs=900 level=both`) | 1,800 runs (900 a level, Play Panjim and the Tutorial), 37,756 actions, 5,892 storms, 1,392 retries: **0 failures** on every invariant (preview equals resolution 5,560 checks; the heat equals Homes at risk 37,756; ruins equal homes lost; the objective equals the board; stars equal the thresholds; a retry restores the board; nothing on unplayable tiles; the sheltered centre untouched; wind only near the beach). 3,369 s. `docs/qa/section41/fuzz.txt`. |
+| `npm run test:maya` | 38 checks, all pass, zero console errors (the laptop's GPU; `docs/qa/section41/test-maya.txt`). |
+| tools/section41Shots.ts at 1366x768 | 29 of 29 checks pass, zero console errors, on the final code (`docs/qa/section41/shots-1366x768.log`). The first run had two failures, both dealt with (the review, below). |
+| Independent review | 0 BLOCKER, 2 MAJOR (both dealt with), 10 MINOR (6 fixed, 4 for the owner or recorded), 9 NIT (1 fixed). Below. |
+| Full browser check, test:layout, test:labels | Not run (not asked; the brief: no layout or labels run). |
+
+**The rules, and where each lives.**
+- 41.1 "The first sea tile": `GameState.isFirstSea` (src/core/gameState.ts). A breakwater's `placement` is
+  `"firstSea"`; a seawall's is `"shoreline"` with `coast` among its terrains (src/data/elements.json). Panjim: 83
+  first sea tiles, 17 of them within 6 tiles of Campal; a breakwater fitted 230 tiles before. Everything that offers
+  a build asks `buildableAt`, so the menu, the objectives, the bots, the search and the server follow.
+- 41.2 `answersHazard` (src/core/hazardModel.ts): in a compound storm a defence marked `holdsRiverInCompound` (the
+  seawall) also works against the flood. `defenceMetres` asks it, so `pass` counts every standing seawall on the
+  flood side with the metres it has against the cyclone. A flood on its own: unchanged, checked on every tile a
+  seawall fits (tests/section41.test.ts).
+- 41.3 levels.json: `c1-cyclone` 1.15, `c3-compound` wind `compoundShare` 0.9, `houses.openLand`,
+  `standingDefences`. The 2050 landfall (2,12) and strength (3.0), the 2040 flood (2.35), the zones and the map
+  files are untouched (`git diff origin/master -- src/data/maps src/core/zones.ts` shows only `ZoneOutcome.storm`
+  and the one call that passes the storm's kind).
+
+**The best plan (docs/qa/section41/best_plan.md), replayed by tests/bestPlan.test.ts through the game's own run.**
+The full width search ends on the seed's own builds (its last five in another order): no plan in the beam does
+better, and none needs to.
+
+| # | Year | Defense | Tile | Place |
+|---|---|---|---|---|
+| 1 | 2026 | Pandanus | -3,17 | near Miramar |
+| 2 | 2027 | Pandanus | -5,20 | near Miramar |
+| 3 | 2028 | Mangrove | 16,17 | near Merces |
+| 4 | 2029 | Khazan | 8,18 | near Altinho |
+| 5 | 2030 | Mangrove | 10,20 | near St Cruz |
+| 6 | 2031 | Khazan | 12,16 | near Patto |
+| 7 | 2032 | Mangrove | 20,13 | near Merces |
+| 8 | 2033 | Khazan | 22,8 | near Merces |
+| 9 | 2034 | Khazan | 23,7 | near Atal Setu |
+| 10 | 2035 | Mangrove | 20,10 | near Merces |
+| 11 | 2036 | Mangrove | 7,23 | near Taleigao |
+| 12 | 2037 | Mangrove | 11,13 | near Patto |
+| 13 | 2038 | Mangrove | 14,14 | near Patto |
+| 14 | 2039 | Khazan | 14,11 | near Patto |
+| 15 | 2040 | Khazan | 19,11 | near Merces |
+| 16 | 2041 | Seawall | 2,12 | near Campal (a first sea tile) |
+| 17 | 2042 | Pandanus | 1,13 | near Miramar |
+| 18 | 2043 | Mangrove | 24,6 | near Atal Setu |
+| 19 | 2044 | Mangrove | 15,8 | near São Tomé |
+| 20 | 2045 | Breakwater | 3,11 | near Campal (a first sea tile) |
+| 21 | 2046 | Mangrove | 25,6 | near Atal Setu |
+| 22 | 2047 | Pandanus | 2,13 | near Santa Inez |
+| 23 | 2048 | Breakwater | 6,0 | the north shore |
+| 24 | 2049 | Small dam | 23,0 | near Atal Setu |
+| 25 | 2050 | Small dam | 22,1 | near Atal Setu |
+
+| Storm | Stars | Homes saved | Homes lost | Biodiversity since the start |
+|---|---|---|---|---|
+| Cyclone 2030 | 3 | 8 of 8 | 0 | +14 |
+| Monsoon flood 2040 | 3 | 56 of 56 | 0 | +39 |
+| Cyclone and flood 2050 | 3 | 58 of 58 | 0 | +43 |
+| Whole run | 9 of 9 | | 0 | |
+
+**Campal (tests/section41.test.ts).** With everything a player could build within 12 tiles of Campal (pandanus on
+the sand, a seawall wherever else one fits, a mangrove on the wetland, a small dam on the narrow river; 96 builds, a
+year before the storm) no home within 12 tiles is lost in 2050 (19 are at risk there on the opening board). With
+only the five seawalls on the sand nearest Campal (2,13 1,13 0,14 -1,15 -2,16) the homes within 6 tiles are lost
+exactly as with nothing built: that sand is on the Miramar side. No home takes more wind than pandanus can shelter
+(the most is 1.11 against a line of 0.6; halved, 0.56).
+
+**The bots, 200 seeds a style: homes saved, mean, a storm (last recorded -> Section 41).** "Last recorded": Section
+34b's `bots-after-wind.md` (far, random, nature, seawalls, best) and Section 34c's `bots-after.md` (smart, guided);
+the rules did not change between them and this section. After: docs/qa/section41/bots-after.md and
+bots-after-guided.md.
+
+| Style | 2030 cyclone | 2040 flood | 2050 cyclone and flood | Whole run | Stars of 9 | Clears |
+|---|---|---|---|---|---|---|
+| far (builds away from the storms) | 0% -> 0% | 0% -> 25% | 0% -> 17% | 0% -> 20% | 0.0 -> 0.0 | 0% -> 0% |
+| random | 5% -> 11% | 17% -> 53% | 25% -> 50% | 17% -> 49% | 0.5 -> 2.2 | 0% -> 1% |
+| seawalls (and breakwaters) only | 56% -> 75% | 0% -> 25% | 67% -> 76% | 20% -> 44% | 2.0 -> 2.0 | 0% -> 0% |
+| nature only | 99% -> **38%** | 81% -> 89% | 68% -> 80% | 76% -> 82% | 7.0 -> 6.0 | 100% -> 100% |
+| smart | 99% -> 91% | 82% -> 94% | 83% -> 91% | 83% -> 93% | 6.4 -> 6.5 | 99% -> 100% |
+| guided (follows the objective card) | 100% -> 100% | 84% -> 98% | 82% -> 84% | 84% -> 91% | 6.6 -> 7.4 | 100% -> 100% |
+| best (bot: every candidate weighed, homes only) | 100% -> 100% | 93% -> 96% | 90% -> 100% | 92% -> 98% | 7.3 -> 6.8 | 100% -> 100% |
+
+- **far** saves what the three standing defenses save (14 of 56 homes in 2040, 4 of 24 in 2050), the same on every
+  seed, and nothing on the same board without them (tests/panjimBots.test.ts). It takes no star.
+- **nature in 2030, 99% -> 38%: the bot, not the game.** The style weighs only the three tiles of each kind nearest
+  the red homes. At 1.2 the home at -2,18 was at risk, which put the sand beside it (-3,17 and -4,18) on that
+  shortlist. At 1.15 that home is safe, the two tiles drop off the list, and the bot plants at -5,21, -5,20 and
+  -6,22 (3 of 8 homes on 19 seeds of 20) and then finds nothing more worth a build. One pandanus at -3,17 takes 6
+  of the 8 homes out of risk, and with -5,20 all 8: those are the two picks the objective card names, and the guided
+  style saves 100% in 2030 on every seed. With the cyclone put back to 1.2 in the process only (everything else as
+  Section 41), the nature style saves 9 of 9 on every seed tried. Smart has the same blind spot on the seeds where
+  it opens without a breakwater (its 2030: p10 38%, mean 91%).
+- **best's stars, 7.3 -> 6.8** with more homes saved: the best bot counts homes only. In 2030 two builds now save
+  all 8 homes; its other three go down by eye and are often seawalls, which cost biodiversity, and a storm's second
+  and third star ask for biodiversity at or above the start.
+- **2050 for guided** (84%) is its hardest storm still; no style but the plan saves every home in all three.
+- A seawall's end can cost a home (Section 25.1's rule): on one seed of six Smart's late seawall on Campal's water
+  edge (3,12) cost one home in 2050 (53 of 55 with it left out, 52 with it). The test allows the seawall that much.
+
+**Points, 20 seeds, the game's own values (`POINT_VALUES`; nothing tuned).** docs/qa/section41/points.md.
+
+| Player | Section 35 (median; best) | Section 41 (median; best) |
+|---|---|---|
+| The best plan | 4215 | **4375** (homes 1220, places 750, objective 300, living coast 1640, biodiversity 215, veterans 250) |
+| guided | 4595; 4800 | 4382; 4695 |
+| best (bot) | 3705; 3855 | 3520; 3740 |
+| smart | 3550; 3995 | 3365; 3760 |
+| nature | 3765; 4130 | 3400; 3645 |
+| seawalls | 910; 910 | 1000; 1000 |
+| random | 820; 1630 | 1385; 2090 |
+| far | 0; 0 | 180; 180 |
+
+The guided player, the bots and the nature style score a little less with more homes saved: fewer iconic places are
+at risk from the milder first cyclone (a place counts when the storm would have damaged it with no defences), and the
+three standing defenses earn no living coast points. Random play scores more (the standing nature saves homes for it,
+and every breakwater it builds is at the shore now). The points tool's own search would now choose 200 for an iconic
+place where the game counts 150; nothing was changed. On the game's values every target of Section 35.6 is still met: the largest source in a best play run is 37% (living coast; at most 40%), mixed play beats seawalls only by at least 184% on every seed, and the worst best run is 1.64 times the best random run (2.02 before).
+
+**The Tutorial: what moved.** Its map has 11 first sea tiles. A breakwater fits those 11 (22 sea tiles before); a
+seawall fits 22 tiles (its 11 shore tiles and the 11 first sea tiles; 11 before). The tiles that glow for each of the
+seven nudges are the same as before, in the same order, and following the nudges on their best tiles gives the same
+result: 3 stars and 22 of 22 homes in the cyclone, 3 stars and 26 of 26 in the flood. Following them on the weakest
+glowing tile each year gives 21 of 22 and 22 of 25 (20 of 22 and 21 of 24 before). Its scripted builds needed no
+change; its breakwater step says "just off the shore" (its card, Maya's line and "A barrier just off the shore.").
+
+**How runs stored before this section are kept apart from new ones.** They are not. `runs` and `board`
+(db/schema.sql) have no rules or build version column: a row has `created_at`, and a board row has `season`
+(`BOARD_SEASON`). Nothing replays a stored run (the server replays a build list only as it is posted), so no stored
+run is re-scored by this section. After the merge the board's ranks read old and new rows together. No column was
+added (the brief). What can be done without one is in docs/NEXT_STEPS.md.
+
+**The guided start (found on the way).** At 1.15 two pandanus (-3,17 and -5,20) save all 8 homes of 2030, so the
+model's 2026 objective is "Plant 2 pandanus in front of Sharada Mandir School" with no dune pick, and Section 39's
+guided start (a dune pick, then a pandanus pick) had nothing to walk through: it would not have run at all. Fixed
+without a new word: `guideDune` gives the dune where the objective has none, on the tile of the objective's own place
+where a dune takes the most homes out of the storm's risk and that is not one of its picks. On Panjim: the dune at
+-4,18 (5 homes), then pandanus at -3,17; the objective's second pick still counts, the objective is done and all 8
+homes are saved by the third build (tests/section41.test.ts; the browser pass builds both by hand).
+
+**Maya's two lines.** The standing nature's line is queued after her first line. While the guided start runs her
+own lines wait; when it hands over, the line goes to the front of her queue (`MayaDirector.guideEnded`), ahead of
+the facts kept from the two builds (the first browser run showed a fact going first and the line waiting for the
+next build). Her 2050 warning is one bubble: her warning, the wind and the sea and the river at Campal.
+
+**Every player text changed (old -> new).**
+1. Seawall card, line 2 (new): "In the 2050 storm it holds back the river too." Its old line 2, "Costs nature, and
+   cracks with age.", is now line 3: nothing had to go (the three line card fits beside two other cards on a sand
+   tile at 1366x768). The Tutorial's seawall card is unchanged ("Costs nature.").
+2. Breakwater card: "Breaks cyclone waves out at sea." -> "Breaks cyclone waves just off the shore." (also How to
+   play 2, which shows the card's first line).
+3. Field Guide, the breakwater's rule: "...breaks a cyclone's waves out at sea but..." -> "...breaks a cyclone's
+   waves just off the shore but...".
+4. Field Guide, new rule "At the shore": "In this game, seawalls and breakwaters stand at the shore: on the sand, or
+   on the first water tile beside it. They cannot be built out at sea."
+5. Field Guide, new rule "The sea and the river" (Play Panjim only): "In this game, in the 2050 storm a seawall also
+   holds back the river that the sea pushes back."
+6. Fact (Maya on a breakwater build; Facts & sources): "A breakwater at sea takes the force out of a cyclone's waves.
+   It breaks at 10 years old." -> "A breakwater just off the shore takes the force out of a cyclone's waves. It
+   breaks at 10 years old."
+7. Fact, new (game rule; a seawall or a breakwater build): "Seawalls and breakwaters stand at the shore: on the sand,
+   or on the first water tile beside it."
+8. Fact, new (game rule; a seawall build): "When a cyclone and a flood come together, a seawall also holds back the
+   river that the sea pushes back."
+9. Maya, new, once at the start of Play Panjim: "Panjim already has mangroves and khazan land at Merces and
+   Taleigao. Keep them standing."
+10. Maya's warning before the 2050 storm, added at its end: "At Campal the sea and the river rise together. Seawalls
+    and breakwaters along the shore can hold them back."
+11. Maya on the 2050 result card when breakwaters saved the most: "Breakwaters broke the waves out at sea, before
+    they reached the beach." -> "Breakwaters broke the waves just off the shore, before they reached the beach."
+12. The river mouth's note: "...In this game a breakwater goes on the sea, up to four tiles from the shore, and a
+    small dam on the narrow river upstream." -> "...In this game a seawall or a breakwater goes on the first water
+    tile beside the shore, and a small dam on the narrow river upstream."
+13. The Tutorial's breakwater step: "A barrier out in the sea." -> "A barrier just off the shore."; Maya: "A
+    breakwater goes out in the sea. Try the glowing water." -> "A breakwater goes just off the shore. Try the
+    glowing water."; "Breaks cyclone waves out at sea." -> "Breaks cyclone waves just off the shore."
+14. The old levels' build tooltip: "a rock barrier offshore that breaks..." -> "a rock barrier just off the shore
+    that breaks...".
+Not changed, checked: the seawall's "shore" lines (its Tutorial caption "A hard wall along the shore." and "Try a
+seawall on a glowing tile by the sea." are still true); the 2030 storm's strength is shown only as its one mark,
+which 1.15 keeps; no count of homes is typed anywhere in the game's text (every count is read from the board: 332
+homes in play, 336 before); the level's brief ("the near sea") is still true.
+
+**The browser pass (tools/section41Shots.ts, 1366x768, the dev server, `/api` stubbed, `?qa=1&tag=FestTesters`).**
+Screenshots in `docs/qa/section41/`: `1-guided-start-dune`, `2-maya-standing-line`, `3a` to `3c` (the three standing
+defenses close up), `3d-standing-khazan-card`, `4-first-sea-tile-campal`, `5-deep-sea-tile`, `6-campal-water-edge`,
+`6b-campal-water-edge-close`, `7-result-2030`, `8-seawall-on-the-water-campal`, `9-maya-2050-warning`,
+`10-last-card`, `11-what-protected-2050`. Looked at. What it checks:
+- By hand: Play Panjim, the name card, Next, Next, "Let's Play!"; the guided start runs; the three standing defenses
+  are on the board with their models; the guided dune is built at -4,18 and the pandanus at -3,17; Maya never says
+  the standing nature's line over the guide; when it hands over she says it, tagged "Game rule", in a bubble on
+  screen (190 x 134 px). A standing khazan's card offers "Demolish (uses this year's build)".
+- A first sea tile beside Campal (6,8) offers Seawall and Breakwater, the seawall's card with its three lines and the
+  menu on screen; a sea tile beyond it (6,7) offers no card and says "Nothing can be built out here."; the four
+  tiles on Campal's water edge hold no home and each takes a seawall.
+- The committed best plan built through the game, one build a year: the 2030 card says 8 of 8 homes saved, the 2040
+  card 56 of 56, the last card 58 of 58 and 9 of 9 stars (4375 points on the HUD); the seawall of 2041 stands on the
+  water at Campal (2,12, a first sea tile); "What protected your homes" after 2050 names it: Mangrove 26, Seawall 9,
+  Pandanus 7, Breakwater 2, Small dam 0.
+- Maya's warning two years before the 2050 storm, on a run that built away from the storms: her warning, the wind,
+  then "At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back."
+  One bubble of 60 words, 190 x 283 px, on screen and clear of the HUD card. On the best plan no home is at risk by
+  2048, so she gives no warning there (she never warns when nothing is at risk).
+- Every post carried the test tag and was answered by the stub. Zero console errors.
+
+**Review findings and what was done.** 0 BLOCKER, 2 MAJOR, 10 MINOR, 9 NIT.
+- MAJOR: the first browser log had two failures. (1) After the guided start Maya's standing line waited behind the
+  fact of a guided build until the next build. Fixed: `MayaDirector.guideEnded` puts it first at the hand over; the
+  pass was run again and passes. (2) The 2050 warning was checked on the best plan, where nothing is at risk and
+  she says nothing. The check now runs on a board with homes at risk.
+- MAJOR: "Panjim already has mangroves and khazan land at Merces and Taleigao." reads as a fact about the real
+  places, and no source for it is on record (CLAUDE.md: only verified, cited real world facts). The words are the
+  owner's and are unchanged; the line now carries the bubble's "Game rule" tag, since it is true of this game's
+  board. Question 2 below.
+- MINOR, fixed: two more places asked a defence's own hazards and not the storm's (which defences are shown
+  answering a zone's water in the storm's play: core/stormScript.ts `testedDefences`, and the old staging in
+  gameSession.ts): both ask `answersHazard` now, with a test. Where no guided start runs (a Restart, Maya muted) the
+  standing line went behind each build's fact for years: it follows her first line now. `runs.biodiversity_end` was
+  the board's absolute biodiversity, 7 higher than before for the same play: the server stores it since the start
+  again. Removing a standing defence lowered the run's count of the player's own builds: it does not now. The
+  result card's nature line counted the standing three as the player's nature: it reads the player's own. The river
+  mouth's note says "the first sea tile" (the player is on a water tile there).
+- MINOR, for the owner (questions below) or recorded: the first sea tile rule counts land that is out of the game
+  (22 of the 83 tiles lie beside the north bank or the south edge; the plan's 2048 breakwater at 6,0 is one); the
+  shore rule's sentence says "on the sand" where a seawall also fits shore land and wetland; "Your khazans are
+  holding water." and "You saved N" count the standing nature's work as the player's; a khazan built in a phase gets
+  a row on "What protected your homes" that carries the standing khazans' homes too, and with none built their
+  homes appear on no row; the seawall's tolerance in the bots test; the board mixes two rule sets after the merge,
+  and a tab left open on the old build would have a run with a breakwater out at sea refused by the new server
+  ("bad builds"); the old levels' badges and index read every defence on the board.
+- NIT, fixed: the guided dune is looked for only where the objective has no dune pick. NIT, left: "2050" is typed on
+  the seawall's card (a test holds it to the level's year); the landfall sites use their own, older copy of "sea
+  beside sand or land" (another purpose; hazardModel.ts); a level's standing defences are not checked against
+  terrain or a home on the tile; `standingDefences()` (the player's, for veterans) and `LevelDef.standingDefences`
+  share a name; three tests switch the seawall's rule off and on again inside one file; the old levels' help still
+  says "Sits offshore"; the "took most of it" line of the unused `aftermathLine` has no test on this board.
+
+**Questions for the owner.**
+1. The guided start: at 1.15 the 2026 objective is two pandanus and no dune. The guide still walks a dune (at -4,18,
+   where it saves 5 homes) and then the objective's first pandanus, with its words unchanged. Keep, or should the
+   guide follow the objective's own two picks (that needs new words for its steps)?
+2. "Panjim already has mangroves and khazan land at Merces and Taleigao." carries the "Game rule" tag because no
+   source is on record. Give a source and it can stand as a fact, or keep the tag?
+3. Maya's 2050 warning is one bubble of about 60 words, two years before the storm. Keep, or say the Campal sentence
+   as the 2050 phase begins (2041), when there are ten builds left to act on it?
+4. The homes the standing nature saves count as homes saved, on the cards, in the stars and at 10 points each (a
+   run that builds nothing useful: 20% of homes, 180 points), and the storm's words credit "your" defenses. Keep, or
+   count a storm's path from the board with the standing nature in place?
+5. The first sea tile counts land that is out of the game: 22 of the 83 tiles, the north bank's among them, and the
+   best plan's breakwater at 6,0. Keep (the brief's 83), or only land that is in play (61 tiles; the plan would
+   need another search)?
+6. "In this game, seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it."
+   A seawall also fits shore land and wetland beside the sea (Campal's four tiles are land), and a breakwater never
+   goes on sand. Keep the short words?
+7. Section 25.1: two dunes side by side hold the sea like one seawall. In the 2050 storm a seawall now also holds
+   the river, and a pair of dunes does not. Right?
+8. A seawall's end still pushes water onto the land beside it (Section 25.1), and beside Campal's shore the 2050
+   wind does the rest: Smart's seawall on the water edge cost a home on one seed of six. Keep the rule there?
+9. The bots: let "nature" and "smart" weigh the objective's glowing tiles, so their 2030 is a fair measure again?
+10. The board after the merge: a new `BOARD_SEASON`, a rules column, or leave old and new rows together?
+11. The points tool would now choose 200 for an iconic place (150 in the game). Leave the points as they are?
+
+**Not run:** the full browser check (walkthrough, labels, axe, four sizes); test:layout and test:labels (the brief);
+1920x1080 shots; Safari and Firefox; a production load (nothing merged). The bots' "before" was not run again: the
+last recorded numbers are on the same rules as master.
+
+**Section 41's preview.** Vercel built every step's commit; the preview of `72ef883` (41.5,
+`dpl_4e2QspvoEUcH1EZGa6ASrKuQRX3Z`) is Ready, checked through the Vercel connector. The branch's address is
+`climate-game-git-section-41-shore-8b5312-ferdin-5189s-projects.vercel.app` (Vercel shortens a long branch name and
+adds a hash, so it is not `climate-game-git-section-41-shore-defenses-...`). Loaded from this laptop by plain
+requests, not played: the page and its script answer, the script holds "just off the shore", "Panjim already has
+mangroves and khazan land", "In the 2050 storm it holds back the river too", `holdsRiverInCompound` and
+`standingDefences`, and no longer "Breaks cyclone waves out at sea"; `GET /api/board` answers 200. Nothing was
+posted to it. Play it with `?tag=FestTesters` (the Preview environment also tags every post `Preview`). Master
+is untouched at `2c861a1`. The second worktree used for the long runs is removed.

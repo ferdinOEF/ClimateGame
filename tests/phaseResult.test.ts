@@ -86,13 +86,17 @@ describe("the result cards' numbers", () => {
     const challenge = run.schedule[0];
     const area = run.areas.get(challenge.id)!;
     // Section 12: the wind tips 8,7 at the river mouth too. Section 19: 8, the home at -7,24 is beach now.
-    // Section 26.3: 9, the stronger wind takes -2,18 beside the school.
-    expect(area.length).toBe(9);
+    // Section 26.3: 9, the stronger wind takes -2,18 beside the school. Section 41.3: 8, the cyclone is 1.15 and leaves it.
+    expect(area.length).toBe(8);
     play(run, true);
     const result = phaseResult(challenge, run.stormRecords.get(challenge.id)!, area, PLACES, run.phaseBuilds.get(challenge.id) ?? []);
     // Section 17b (owner decision): no dots or hyphens between words in player-facing text.
     expect(result.eyebrow).toBe("Cyclone in 2030");
-    expect(result.places.map((p) => p.name)).toEqual(placesInArea(PLACES, area).map((p) => p.name));
+    // Every place in or next to the area is listed; any other listed is one the storm damaged (Section 16 B4).
+    // Section 41.3: with -2,18 out of the area (the cyclone is 1.15), the place beside it is listed that second way.
+    const inArea = placesInArea(PLACES, area).map((p) => p.name);
+    for (const name of inArea) expect(result.places.map((p) => p.name)).toContain(name);
+    for (const p of result.places) if (!inArea.includes(p.name)) expect(p.stood, p.name).toBe(false);
     for (const row of result.defences) expect(run.phaseBuilds.get(challenge.id)).toContain(row.elementId);
     // The next phase's area is recorded at its start, 2031.
     expect(run.areas.has("c2-flood")).toBe(true);

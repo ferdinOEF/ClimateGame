@@ -127,7 +127,7 @@
           "kind": "cyclone",
           "year": 2030,
           "where": "Miramar beach",
-          "strength": 1.2,
+          "strength": 1.15,
           "landfall": "-5,18",
           "wind": { "perStrengthM": 1.0, "inlandKeep": 0.8 }
         },
@@ -147,7 +147,7 @@
           "where": "Campal",
           "strength": 3.0,
           "landfall": "2,12",
-          "wind": { "perStrengthM": 0.6, "inlandKeep": 0.8, "compoundShare": 1.1 },
+          "wind": { "perStrengthM": 0.6, "inlandKeep": 0.8, "compoundShare": 0.9 },
           "bioThree": 40,
           "biodiversityAtEnd": true,
           "shelteredPlace": "the sheltered middle of Taleigao",
@@ -176,10 +176,16 @@
         "house"
       ],
       "coastBuildRange": 4,
+      "openLand": [[6, 9], [8, 7], [4, 11], [3, 12]],
       "rule": {
         "resilience": 45
       }
     },
+    "standingDefences": [
+      { "elementId": "khazan", "q": 26, "r": 6, "place": "Merces" },
+      { "elementId": "khazan", "q": 16, "r": 15, "place": "Merces" },
+      { "elementId": "mangrove", "q": 7, "r": 21, "place": "Taleigao" }
+    ],
     "objectives": [
       {
         "type": "survive_hazards",

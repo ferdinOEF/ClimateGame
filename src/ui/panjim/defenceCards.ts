@@ -32,21 +32,24 @@ export const CARD_NAME: Record<string, string> = {
  * wording and its leads stay in facts.json as the hidden `card-dune`. The mangrove's "best for biodiversity" reads
  * "great": in this game pandanus ties it (+3 each). No pairing lines on the cards (the rule stays in the game).
  */
-export const CARD_LINES: Record<string, readonly [string, string]> = {
+export const CARD_LINES: Record<string, readonly [string, string, ...string[]]> = {
   dune: ["Shields homes from cyclone waves and surge.", "Good for nature: it adds to biodiversity."],
   sandy_vegetation: ["Shields homes from cyclone waves and wind.", "Binds the sand; its leaves are woven into mats."],
   mangrove: ["Slows cyclone surge and waves, and river floods too.", "Can be a nursery for fish and crabs; great for biodiversity."],
   // Section 34: players could not say what a khazan is; its source (khazan-what) says both halves of the second line.
   khazan: ["Holds back river floods.", "Wetland walled off from the tide; farmers and fishers share it."],
-  seawall: ["The strongest wall against cyclone surge.", "Costs nature, and cracks with age."],
-  breakwater: ["Breaks cyclone waves out at sea.", "Calm water behind it for boats."],
+  // Section 41.4 (owner's words): the 2050 rule is the seawall's new second line; the line it had follows as a third.
+  seawall: ["The strongest wall against cyclone surge.", "In the 2050 storm it holds back the river too.", "Costs nature, and cracks with age."],
+  // Section 41.4 (owner's words): "just off the shore": it stands on the first water tile (Section 41.1).
+  breakwater: ["Breaks cyclone waves just off the shore.", "Calm water behind it for boats."],
   small_dam: ["Holds back river floods.", "Stores water for the dry season."]
 };
 
 /**
- * Section 30.11 bug 4: the Tutorial's one storm. Its cards never mention a second storm, both storms or ageing.
+ * Section 30.11 bug 4: the Tutorial's one storm. Its cards never mention a second storm, both storms or ageing
+ * (Section 41.4: nor the 2050 storm, which the Tutorial does not have).
  */
-export const TUTORIAL_CARD_LINES: Record<string, readonly [string, string]> = {
+export const TUTORIAL_CARD_LINES: Record<string, readonly [string, string, ...string[]]> = {
   ...CARD_LINES,
   mangrove: ["Slows a cyclone's surge and waves, and a river flood too.", CARD_LINES.mangrove[1]],
   seawall: [CARD_LINES.seawall[0], "Costs nature."],
@@ -87,10 +90,19 @@ export function defenceRules(): { id: string; name: string; text: string }[] {
     mangrove: `In this game a mangrove has one strength from the year it is planted, ${nature("mangrove")} and helps in both kinds of storm. It grows only on wetland. A river tile takes only a small dam.`,
     khazan: `In this game a khazan holds back river floods. It is never worn here, so it needs no repair (a 2020 report says real bunds breach when they are not kept up), and it ${nature("khazan")}; it does little against a cyclone's surge.`,
     seawall: `In this game a seawall is the strongest defense from the year it is built, but it ${nature("seawall")}. It comes through the first cyclone it faces and breaks in the second (every storm that brings a cyclone counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("seawall")?.cracksAtAge} years old it is cracked and breaks in the next cyclone, even its first. It pushes extra water onto the land at each end of the wall.`,
-    breakwater: `In this game a breakwater breaks a cyclone's waves out at sea but is almost no help in a river flood, and it ${nature("breakwater")}. It breaks when it is ${ELEMENT_BY_ID.get("breakwater")?.breaksAtAge} years old, storm or none, and must be built again.`,
+    breakwater: `In this game a breakwater breaks a cyclone's waves just off the shore but is almost no help in a river flood, and it ${nature("breakwater")}. It breaks when it is ${ELEMENT_BY_ID.get("breakwater")?.breaksAtAge} years old, storm or none, and must be built again.`,
     small_dam: `In this game a small dam is strong in a river flood and little help in a cyclone (Goa's real bandharas store water for the dry season; one had to be opened urgently in the 2019 floods). It comes through the first flood it faces and breaks in the second (every storm that brings a river flood counts, the storm that brings both included); once it is ${ELEMENT_BY_ID.get("small_dam")?.cracksAtAge} years old it is cracked and breaks in the next flood, even its first. It ${nature("small_dam")}.`
   };
   return DEFENCE_ORDER.map((id) => ({ id, name: CARD_NAME[id], text: rules[id] }));
+}
+
+/**
+ * Section 41.4 (owner's words), game rules for the Field Guide. The shore rule is Section 41.1's (`GameState.isFirstSea`);
+ * the river rule Section 41.2's (`answersHazard`), said with the year of the level's storm that brings both.
+ */
+export const SHORE_RULE = "In this game, seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it. They cannot be built out at sea.";
+export function riverRule(year: number): string {
+  return `In this game, in the ${year} storm a seawall also holds back the river that the sea pushes back.`;
 }
 
 /** Section 25.1: what happens to a broken seawall or dam, a game rule. */
@@ -113,7 +125,7 @@ export const TILE_NOTES = {
   home: "Homes stand here. In this game nothing can be built on a home.",
   oneBuild: "In this game a tile holds one build; demolish to build another here.",
   sea: "Nothing can be built out here.",
-  /** Section 37.7: a river tile at the river's mouth (beside the sea), where no build fits; the real placement rules. */
-  riverMouth: "Open water at the river mouth. In this game a breakwater goes on the sea, up to four tiles from the shore, and a small dam on the narrow river upstream.",
+  /** Section 37.7: a river tile at the river's mouth (beside the sea), where no build fits; the real placement rules (Section 41.1: the shore rule). */
+  riverMouth: "Open water at the river mouth. In this game a seawall or a breakwater goes on the first sea tile beside the shore, and a small dam on the narrow river upstream.",
   nothing: "Nothing can be built on this tile."
 } as const;

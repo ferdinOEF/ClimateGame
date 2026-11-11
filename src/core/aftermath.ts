@@ -2,6 +2,7 @@ import { ELEMENT_BY_ID } from "./elements";
 import type { GameState } from "./gameState";
 import type { ChallengeKind } from "./climate";
 import { CITY_ZONE, type ChallengeOutcome, type ZoneIndex } from "./zones";
+import { answersHazard } from "./hazardModel";
 
 /**
  * The one line under an Aftermath's stars: specific to what just happened,
@@ -30,12 +31,12 @@ function keysOf(state: GameState, zones: ZoneIndex, zoneId: string): string[] {
 }
 
 /** The element type doing most of the defending in a zone, as a plural noun ("dunes", "mangroves"). */
-function mainDefence(state: GameState, zones: ZoneIndex, zoneId: string, hazard: string): string | null {
+function mainDefence(state: GameState, zones: ZoneIndex, zoneId: string, hazard: string, storm?: ChallengeKind): string | null {
   const tally = new Map<string, number>();
   for (const key of keysOf(state, zones, zoneId)) {
     const inst = state.elements.get(key);
     const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
-    if (!def?.targetsHazards?.includes(hazard) || (def.effects.resilience ?? 0) <= 0) continue;
+    if (!def || !answersHazard(def, hazard, storm) || (def.effects.resilience ?? 0) <= 0) continue;
     tally.set(def.id, (tally.get(def.id) ?? 0) + (def.effects.resilience ?? 0));
   }
   let best: string | null = null;
@@ -81,7 +82,7 @@ export function aftermathLine(kind: ChallengeKind, outcome: ChallengeOutcome, st
   const strongest = [...outcome.zones].sort((a, b) => b.absorbed - a.absorbed)[0];
   const holder = held ?? (outcome.protection >= 0.5 && strongest && strongest.absorbed > 0 ? strongest : null);
   if (holder) {
-    const what = mainDefence(state, zones, holder.zoneId, holder.hazard);
+    const what = mainDefence(state, zones, holder.zoneId, holder.hazard, kind);
     const spared = outcome.housesSaved;
     const took = holder.held ? "took it" : "took most of it";
     return what
@@ -117,7 +118,7 @@ export function topDefenceLine(outcome: ChallengeOutcome, state: GameState, zone
       const inst = state.elements.get(key);
       const def = inst ? ELEMENT_BY_ID.get(inst.elementId) : undefined;
       const value = def?.effects.resilience ?? 0;
-      if (!def || value <= 0 || !def.targetsHazards?.includes(zone.hazard)) continue;
+      if (!def || value <= 0 || !answersHazard(def, zone.hazard, zone.storm)) continue;
       byType.set(def.id, (byType.get(def.id) ?? 0) + value);
     }
     return byType.size > 0 ? [{ zone, byType }] : [];
