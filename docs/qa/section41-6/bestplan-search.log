@@ -1,0 +1,90 @@
+
+> riptide-rising@1.0.0 bestplan
+> tsx tools/bestPlan/index.ts beam=20 keep=16 jobs=4 out=docs/qa/section41-6 seed=tools/bestPlan/seed41.json
+
+Best plan for Play Panjim: beam 20, 16 children kept a plan by each goal, 4 child processes. Storms after builds 5, 15, 25.
+opening board: 0/9 stars, 70 homes lost [0★ 0/8, 0★ 0/42, 0★ 0/20]
+year 1/25 (2026), 7 s: goal 1 best 2/9 stars, 64 homes lost [2★ 6/8, 0★ 0/42, 0★ 1/21]; goal 2 best 1/9 stars, 62 homes lost [0★ 0/8, 0★ 4/42, 1★ 8/24]
+year 2/25 (2027), 66 s: goal 1 best 3/9 stars, 56 homes lost [2★ 6/8, 0★ 4/42, 1★ 9/25]; goal 2 best 1/9 stars, 55 homes lost [0★ 0/8, 0★ 11/42, 1★ 11/27]
+year 3/25 (2028), 129 s: goal 1 best 4/9 stars, 54 homes lost [3★ 8/8, 0★ 4/42, 1★ 11/27]; goal 2 best 2/9 stars, 48 homes lost [0★ 0/8, 1★ 17/42, 1★ 15/30]
+year 4/25 (2029), 186 s: goal 1 best 4/9 stars, 42 homes lost [2★ 6/8, 1★ 17/42, 1★ 16/31]; goal 2 best 4/9 stars, 42 homes lost [2★ 6/8, 1★ 17/42, 1★ 16/31]
+year 5/25 (2030) (storm 1 resolves), 240 s: goal 1 best 6/9 stars, 41 homes lost [3★ 8/8, 1★ 13/42, 2★ 18/30]; goal 2 best 5/9 stars, 37 homes lost [2★ 6/8, 1★ 21/42, 2★ 19/33]
+year 6/25 (2031), 283 s: goal 1 best 6/9 stars, 34 homes lost [2★ 6/8, 2★ 25/42, 2★ 21/36]; goal 2 best 6/9 stars, 34 homes lost [2★ 6/8, 2★ 25/42, 2★ 21/36]
+year 7/25 (2032), 331 s: goal 1 best 7/9 stars, 32 homes lost [3★ 8/8, 2★ 25/42, 2★ 23/38]; goal 2 best 6/9 stars, 31 homes lost [2★ 6/8, 2★ 29/42, 2★ 24/40]
+year 8/25 (2033), 379 s: goal 1 best 7/9 stars, 29 homes lost [3★ 8/8, 2★ 29/42, 2★ 26/42]; goal 2 best 6/9 stars, 27 homes lost [2★ 6/8, 2★ 33/42, 2★ 28/44]
+year 9/25 (2034), 434 s: goal 1 best 8/9 stars, 25 homes lost [3★ 8/8, 3★ 36/42, 2★ 30/49]; goal 2 best 7/9 stars, 24 homes lost [2★ 6/8, 3★ 36/42, 2★ 31/47]
+year 10/25 (2035), 495 s: goal 1 best 8/9 stars, 22 homes lost [3★ 8/8, 3★ 38/42, 2★ 32/50]; goal 2 best 7/9 stars, 21 homes lost [2★ 6/8, 3★ 38/42, 2★ 33/48]
+year 11/25 (2036), 549 s: goal 1 best 8/9 stars, 20 homes lost [3★ 8/8, 3★ 39/42, 2★ 34/51]; goal 2 best 7/9 stars, 19 homes lost [2★ 6/8, 3★ 39/42, 2★ 35/49]
+year 12/25 (2037), 604 s: goal 1 best 8/9 stars, 18 homes lost [3★ 8/8, 3★ 39/42, 2★ 36/51]; goal 2 best 7/9 stars, 17 homes lost [2★ 6/8, 3★ 40/42, 2★ 37/50]
+year 13/25 (2038), 651 s: goal 1 best 8/9 stars, 16 homes lost [3★ 8/8, 3★ 40/42, 2★ 38/52]; goal 2 best 7/9 stars, 15 homes lost [2★ 6/8, 3★ 42/42, 2★ 39/52]
+year 14/25 (2039), 698 s: goal 1 best 8/9 stars, 14 homes lost [3★ 8/8, 3★ 42/42, 2★ 40/54]; goal 2 best 8/9 stars, 14 homes lost [3★ 8/8, 3★ 42/42, 2★ 40/54]
+year 15/25 (2040) (storm 2 resolves), 741 s: goal 1 best 8/9 stars, 13 homes lost [3★ 8/8, 3★ 42/42, 2★ 41/54]; goal 2 best 8/9 stars, 13 homes lost [3★ 8/8, 3★ 42/42, 2★ 41/54]
+year 16/25 (2041), 779 s: goal 1 best 8/9 stars, 8 homes lost [3★ 8/8, 3★ 42/42, 2★ 46/54]; goal 2 best 8/9 stars, 8 homes lost [3★ 8/8, 3★ 42/42, 2★ 46/54]
+year 17/25 (2042), 811 s: goal 1 best 8/9 stars, 4 homes lost [3★ 8/8, 3★ 42/42, 2★ 50/54]; goal 2 best 8/9 stars, 4 homes lost [3★ 8/8, 3★ 42/42, 2★ 50/54]
+year 18/25 (2043), 838 s: goal 1 best 9/9 stars, 3 homes lost [3★ 8/8, 3★ 42/42, 3★ 51/54]; goal 2 best 8/9 stars, 1 homes lost [3★ 8/8, 3★ 42/42, 2★ 53/54]
+year 19/25 (2044), 866 s: goal 1 best 9/9 stars, 2 homes lost [3★ 8/8, 3★ 42/42, 3★ 52/54]; goal 2 best 8/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 2★ 54/54]
+year 20/25 (2045), 895 s: goal 1 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]; goal 2 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]
+year 21/25 (2046), 923 s: goal 1 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]; goal 2 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]
+year 22/25 (2047), 951 s: goal 1 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]; goal 2 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]
+year 23/25 (2048), 980 s: goal 1 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]; goal 2 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]
+year 24/25 (2049), 1008 s: goal 1 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]; goal 2 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]
+year 25/25 (2050) (storm 3 resolves), 1036 s: goal 1 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]; goal 2 best 9/9 stars, 0 homes lost [3★ 8/8, 3★ 42/42, 3★ 54/54]
+
+search took 1036 s (17.3 min)
+# The best plan found for Play Panjim
+
+Found by `npm run bestplan` (tools/bestPlan): a beam search over the game's own run code and hazard model, 20 plans kept a year, every build and repair the game allows weighed by running the game's own resolver for every storm to come; 1036 s with 4 child processes. In this game the storms are fixed, so the run is deterministic. A beam search is not proof of the optimum: the plan below is the best it found.
+
+## Goal 1: 9 of 9 stars — reached
+
+| # | Year | Defence | Tile (q,r) | Place | Changes stars, homes or end biodiversity |
+|---|---|---|---|---|---|
+| 1 | 2026 | Pandanus | -3,17 | near Miramar | yes |
+| 2 | 2027 | Pandanus | -5,20 | near Miramar | yes |
+| 3 | 2028 | Mangrove | 16,17 | near Merces | yes |
+| 4 | 2029 | Khazan | 8,18 | near Altinho | yes |
+| 5 | 2030 | Mangrove | 10,20 | near St Cruz | yes |
+| 6 | 2031 | Khazan | 12,16 | near Patto | yes |
+| 7 | 2032 | Mangrove | 20,12 | near Merces | yes |
+| 8 | 2033 | Khazan | 21,9 | near Merces | yes |
+| 9 | 2034 | Mangrove | 23,7 | near Atal Setu | yes |
+| 10 | 2035 | Mangrove | 14,14 | near Patto | yes |
+| 11 | 2036 | Mangrove | 7,23 | near Taleigao | yes |
+| 12 | 2037 | Mangrove | 11,13 | near Patto | yes |
+| 13 | 2038 | Mangrove | 19,11 | near Merces | yes |
+| 14 | 2039 | Khazan | 14,11 | near Patto | yes |
+| 15 | 2040 | Khazan | 20,13 | near Merces | yes |
+| 16 | 2041 | Seawall | 2,12 | near Campal | yes |
+| 17 | 2042 | Pandanus | 1,13 | near Miramar | yes |
+| 18 | 2043 | Breakwater | 3,11 | near Campal | yes |
+| 19 | 2044 | Pandanus | 2,13 | near Santa Inez | yes |
+| 20 | 2045 | Mangrove | 14,7 | near São Tomé | yes |
+| 21 | 2046 | Mangrove | 24,6 | near Atal Setu | yes |
+| 22 | 2047 | Breakwater | 6,0 | near Campal | yes |
+| 23 | 2048 | Mangrove | 25,6 | near Atal Setu | yes |
+| 24 | 2049 | Small Dam | 23,0 | near Atal Setu | yes |
+| 25 | 2050 | Breakwater | 0,1 | near Campal | yes |
+
+| Storm | Year | Stars | Homes saved (of homes standing in its path) | Homes lost | Biodiversity since the start |
+|---|---|---|---|---|---|
+| Cyclone | 2030 | 3 | 8 of 8 | 0 | +14 |
+| Monsoon flood | 2040 | 3 | 42 of 42 | 0 | +40 |
+| Cyclone and flood | 2050 | 3 | 54 of 54 | 0 | +43 |
+| **Whole run** | | **9 of 9** | | **0** | |
+
+## Goal 2: the most homes saved — every home saved
+
+The same plan as goal 1.
+
+| Storm | Year | Stars | Homes saved (of homes standing in its path) | Homes lost | Biodiversity since the start |
+|---|---|---|---|---|---|
+| Cyclone | 2030 | 3 | 8 of 8 | 0 | +14 |
+| Monsoon flood | 2040 | 3 | 42 of 42 | 0 | +40 |
+| Cyclone and flood | 2050 | 3 | 54 of 54 | 0 | +43 |
+| **Whole run** | | **9 of 9** | | **0** | |
+
+
+real	17m34.026s
+user	0m0.075s
+sys	0m0.135s
+SEARCH_EXIT=0

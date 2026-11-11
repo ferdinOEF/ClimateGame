@@ -12,6 +12,11 @@ model's notes in docs/ARCHITECTURE.md ("3d").
   name card's Top 10 (the last card's board box never had one), no reply carries the stored label, and
   docs/DEPLOY.md says `BOARD_SEASON` may be removed. Kept: the guided dune, the "Game rule" tag on the standing
   line, the 83 first sea tiles, dunes and the river, the seawall's end rule, the points. No schema change.
+- 41.6.2 Every home saveable. The Section 41 plan, replayed under 41.6.1's count, still loses no home (8 of 8, 42 of
+  42, 54 of 54, 9 of 9 stars). The search at Section 41's width (`npm run bestplan -- beam=20 keep=16 jobs=4
+  out=docs/qa/section41-6 seed=tools/bestPlan/seed41.json`, 1,036 s) reaches the same: 0 homes lost in each storm,
+  9 of 9 stars, a plan that differs in 13 of 25 builds. No lever used, no number changed. Saved as
+  tools/bestPlan/seed41_6.json and docs/qa/section41-6/best_plan.md; tests/bestPlan.test.ts replays it.
 
 ## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home — MERGED (`fc42c47`)
 

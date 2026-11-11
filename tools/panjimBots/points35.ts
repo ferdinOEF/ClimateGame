@@ -1,6 +1,6 @@
 /**
  * Section 35.6: tunes Play Panjim's point values on the bots (20 seeds) and the best plan (tools/bestPlan's, as
- * pinned for this board: docs/qa/section41/best_plan.json since Section 41, or `plan=`).
+ * pinned for this board: docs/qa/section41-6/best_plan.json since Section 41.6.2, or `plan=`).
  *
  * Each bot's run is played once; its build log is then replayed through `newPanjimRun` with points on, which gives
  * the facts every source counts (homes saved, places saved, objectives done, living coast standing and protecting,
@@ -13,7 +13,7 @@
  *      (Smart limited to seawalls and breakwaters) by at least 15% on every seed;
  *   3. random play and best play are far enough apart to rank people.
  *
- * Usage: npx tsx tools/panjimBots/points35.ts [jobs=4] [seeds=20] [out=docs/qa/section35/points.md] [plan=docs/qa/section41/best_plan.json]
+ * Usage: npx tsx tools/panjimBots/points35.ts [jobs=4] [seeds=20] [out=docs/qa/section35/points.md] [plan=docs/qa/section41-6/best_plan.json]
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -124,7 +124,7 @@ const results = await Promise.all(
 const facts = results.flat();
 
 // The best plan (tools/bestPlan), as pinned for this board.
-const PLAN_PATH = args.get("plan") ?? "docs/qa/section41/best_plan.json";
+const PLAN_PATH = args.get("plan") ?? "docs/qa/section41-6/best_plan.json";
 const planFile = JSON.parse(fs.readFileSync(PLAN_PATH, "utf8")) as { goal1: { actions: { action: string; elementId: string; q: number; r: number }[]; storms: { stars: number }[] } };
 const planActions: PlanAction[] = planFile.goal1.actions.map((r) => (r.action === "repair" ? { type: "repair", q: r.q, r: r.r } : { type: "build", q: r.q, r: r.r, elementId: r.elementId }));
 const planRun = replayPlan(planActions);

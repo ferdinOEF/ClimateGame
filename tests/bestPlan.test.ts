@@ -8,22 +8,26 @@ import { assess, replay, trialBoard, type PlanAction } from "../tools/bestPlan/p
  * the stars and homes the plan file says, storm by storm. If the rules or the map change, this fails until the plan is
  * searched again.
  *
- * Section 41.5: the plan is docs/qa/section41/best_plan.json, from `npm run bestplan -- beam=20 keep=16 jobs=4
- * out=docs/qa/section41 seed=tools/bestPlan/seed41.json` on Section 41's rules (seawalls and breakwaters at the shore,
- * a seawall holding the river in 2050, the first cyclone at 1.15, the 2050 wind share 0.9, Campal's water edge open,
- * two khazans and a mangrove standing from the start). It loses no home in any storm.
+ * Section 41.5: the plan was docs/qa/section41/best_plan.json, on Section 41's rules (seawalls and breakwaters at the
+ * shore, a seawall holding the river in 2050, the first cyclone at 1.15, the 2050 wind share 0.9, Campal's water edge
+ * open, two khazans and a mangrove standing from the start).
+ *
+ * Section 41.6.2: a storm's path is counted with the standing nature in place (41.6.1). The plan is
+ * docs/qa/section41-6/best_plan.json, from `npm run bestplan -- beam=20 keep=16 jobs=4 out=docs/qa/section41-6
+ * seed=tools/bestPlan/seed41.json` (Section 41's width, no lever needed; saved as tools/bestPlan/seed41_6.json). It
+ * loses no home in any storm: 8 of 8, 42 of 42, 54 of 54, 9 of 9 stars.
  */
 interface PlanFile {
   goal1: { stars: number; lost: number; nineOfNine: boolean; storms: { id: string; stars: number; saved: number; total: number }[]; actions: { action: string; elementId: string; q: number; r: number }[] };
   goal2: { sameAsGoal1: boolean; stars: number; lost: number; everyHomeSaved: boolean; storms: { id: string; stars: number; saved: number; total: number }[]; actions: { action: string; elementId: string; q: number; r: number }[] };
 }
-const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../docs/qa/section41/best_plan.json"), "utf8")) as PlanFile;
+const plan = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../docs/qa/section41-6/best_plan.json"), "utf8")) as PlanFile;
 const actionsOf = (rows: PlanFile["goal1"]["actions"]): PlanAction[] =>
   rows.map((r) => (r.action === "repair" ? { type: "repair", q: r.q, r: r.r } : { type: "build", q: r.q, r: r.r, elementId: r.elementId }));
 
 describe("the best plan, replayed headless", () => {
   for (const goal of ["goal1", "goal2"] as const) {
-    it(`${goal}: 25 actions, the same stars and homes lost in every storm`, () => {
+    it(`${goal}: 25 actions, the same stars and homes saved in every storm`, () => {
       const p = plan[goal];
       expect(p.actions).toHaveLength(25);
       const run = replay(actionsOf(p.actions));
@@ -32,10 +36,7 @@ describe("the best plan, replayed headless", () => {
         const o = run.outcomes.get(c.id)!;
         return { id: c.id, stars: o.stars, saved: o.housesSaved, total: o.housesTotal };
       });
-      // Section 41.6.1 (owner decision 4): a storm's path is counted with the standing nature in place, so the plan
-      // file's totals (Section 41's count) are larger than the replay's; its stars and its homes lost are the same.
-      // Step 41.6.2 searches the plan again and pins the new file in full.
-      expect(got.map(({ id, stars, saved, total }) => ({ id, stars, lost: total - saved }))).toEqual(p.storms.map(({ id, stars, saved, total }) => ({ id, stars, lost: total - saved })));
+      expect(got).toEqual(p.storms.map(({ id, stars, saved, total }) => ({ id, stars, saved, total })));
       expect(got.reduce((s, x) => s + x.stars, 0)).toBe(p.stars);
       expect(got.reduce((s, x) => s + x.total - x.saved, 0)).toBe(p.lost);
     });
@@ -46,7 +47,7 @@ describe("the best plan, replayed headless", () => {
     expect(plan.goal2.everyHomeSaved).toBe(plan.goal2.lost === 0);
   });
 
-  // Section 41.5 (owner's target): a perfect plan saves every home in all three storms.
+  // Section 41.5 and 41.6.2 (owner's target): a perfect plan saves every home in all three storms.
   for (const goal of ["goal1", "goal2"] as const) {
     it(`${goal}: the committed plan, replayed through the game's own run, loses no home in any storm and takes 9 of 9 stars`, () => {
       const run = replay(actionsOf(plan[goal].actions));
@@ -64,6 +65,13 @@ describe("the best plan, replayed headless", () => {
       expect([...run.state.elements.values()].filter((inst) => inst.fromStart)).toHaveLength(3);
     });
   }
+
+  it("Section 41.6.2: the committed plan is the search's own, saved as its seed, and counts the paths with the standing nature in place", () => {
+    const seed = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "../tools/bestPlan/seed41_6.json"), "utf8")) as PlanAction[][];
+    expect(seed).toHaveLength(1);
+    expect(seed[0]).toEqual(actionsOf(plan.goal1.actions));
+    expect(plan.goal1.storms.map((s) => `${s.saved} of ${s.total}`)).toEqual(["8 of 8", "42 of 42", "54 of 54"]);
+  });
 
   it("scores a board exactly as the run then goes: the solver's assessment before the last build equals the real run after it", () => {
     const actions = actionsOf(plan.goal1.actions);

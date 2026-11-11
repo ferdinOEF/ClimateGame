@@ -70,7 +70,7 @@ changing anything. `docs/QA_REPORT.md` holds the latest QA evidence.
   are not at risk, not saved and earn nothing; words that credit "your" defenses count only the player's own; they
   have their own row, "Standing nature", last on "What protected your homes". Campal's
   four water edge tiles (6,9), (8,7), (4,11), (3,12) hold no home (`houses.openLand`). The committed best plan
-  (`docs/qa/section41/best_plan.json`) loses no home in any storm and `tests/bestPlan.test.ts` pins it: after any
+  (`docs/qa/section41-6/best_plan.json`, Section 41.6.2; its seed `tools/bestPlan/seed41_6.json`) loses no home in any storm and `tests/bestPlan.test.ts` pins it: after any
   change to a rule or the map, search it again (`npm run bestplan`).
 - **One board, tagless** (Section 41.6, owner decision: the festival is over). No season or festival label anywhere a
   player sees (the name card's Top 10, the last card's board box, their offline and empty states); no reply from
