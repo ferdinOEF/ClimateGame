@@ -14,11 +14,11 @@ actually done and noted in the Log (date + one line), not just assumed.
 
 ## After Section 41 (from docs/QA_REPORT.md)
 
-- Not merged: the owner looks at the preview first
-  (`climate-game-git-section-41-shore-8b5312-ferdin-5189s-projects.vercel.app`, with `?tag=FestTesters`). Merge with
-  `git merge --no-ff` on the owner's word, then confirm Vercel's production deployment. No schema change, so no
-  migration.
-- **The live board mixes two rule sets after the merge.** `runs` and `board` have no rules or build version column
+- Done: merged as `fc42c47` on the owner's word (`git merge --no-ff`); Vercel's production deployment of it is Ready
+  and the live site serves it. No schema change, so no migration. Undo with `git revert -m 1 fc42c47`.
+- Nobody has played Section 41 by hand, on the preview or on the live site. The owner's eleven questions
+  (docs/QA_REPORT.md, Section 41) are all still open; the items below are their background.
+- **The live board mixes two rule sets since the merge** (11 November 2026; `BOARD_SEASON` was not changed). `runs` and `board` have no rules or build version column
   (only `created_at` and `board.season`). Nothing replays a stored run, so none is re-scored; a row from before the
   merge keeps the points of the old rules beside rows scored on the new ones. The ways to keep them apart without a
   column: a new `BOARD_SEASON` value on Vercel at the merge (the board shows one season's label; the rank reads every

@@ -3173,3 +3173,18 @@ mangroves and khazan land", "In the 2050 storm it holds back the river too", `ho
 `standingDefences`, and no longer "Breaks cyclone waves out at sea"; `GET /api/board` answers 200. Nothing was
 posted to it. Play it with `?tag=FestTesters` (the Preview environment also tags every post `Preview`). Master
 is untouched at `2c861a1`. The second worktree used for the long runs is removed.
+
+**Section 41 merge and Vercel.** Merged with `git merge --no-ff` on the owner's word (11 November 2026): `fc42c47`.
+Master had not moved from `2c861a1`, so the merge's tree is the branch tip's (`46a140f`; the two tree ids are equal).
+Before the merge, on that tree: `tsc --noEmit` clean; `npm run build:api` clean; `npm run test` 114 files, 1024 pass,
+6 skipped; `npm run build` clean. The branch's last preview (`46a140f`, `dpl_8ixaavCzwqu4GWYZw2kozU5iYLRW`) was Ready.
+Vercel's production deployment of `fc42c47` (`dpl_3QJp3hrDBmRGWt3A9zT49kqehyP9`) is Ready and carries the
+`climate-game-psi.vercel.app` alias, checked through the Vercel connector; it built in about 75 seconds. Production
+was loaded from this laptop by plain requests, not played: the page and its script answer, the script holds "just
+off the shore", "Panjim already has mangroves and khazan land", "In the 2050 storm it holds back the river too",
+`holdsRiverInCompound` and `standingDefences`, and no longer "Breaks cyclone waves out at sea"; `GET /api/board`
+answers 200. Nothing was posted to the live board. Not done: a play through by hand, on the preview or on the live
+site; the full browser check; 1920x1080 shots; Safari and Firefox. The eleven questions above are all still open,
+and the merge settles none of them: the board now reads rows scored on the old rules beside rows scored on the new
+ones (question 10; `BOARD_SEASON` was not changed). No PR was opened for this section. No schema change, so no
+migration. Undo with `git revert -m 1 fc42c47`.

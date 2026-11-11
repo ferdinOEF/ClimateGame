@@ -1,6 +1,6 @@
-## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home — branch `section-41-shore-defenses`, not merged
+## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home — MERGED (`fc42c47`)
 
-Branch from master `2c861a1` (safety copy: `backup/pre-section-41`, same point). The owner's decisions after the
+Branch `section-41-shore-defenses` from master `2c861a1` (safety copy: `backup/pre-section-41`, same point). The owner's decisions after the
 playtest of 10 November 2026: rule changes to the hazard model and the map. QA in docs/QA_REPORT.md; the model's
 notes in docs/ARCHITECTURE.md ("3c").
 - 41.1 Seawalls and breakwaters stand at the shore. "The first sea tile" is a sea tile with a beach or land neighbour
