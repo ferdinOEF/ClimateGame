@@ -3381,3 +3381,15 @@ top right while the name card is up (from before).
 
 **Not run:** Firefox (above); Safari by hand; the grayscale and deuteranopia copies; nobody has played the preview by
 hand (the runs were played by the tool through the game's own screens).
+
+**Section 41.6's preview.** The branch's address is `climate-game-git-section-41-6-answers-qa-ferdin-5189s-projects.vercel.app`
+(read through the Vercel connector; this branch name is short enough that Vercel kept it whole). The preview of
+`2adcc89` (41.6.4, `dpl_3W7SYs2MgNEUuKACXwckzHN9Gdid`) is Ready. Its script holds "Without your defenses", "Standing
+nature", the owner's two shore rule sentences and "Count the homes that stayed dry", and none of "name-card-season",
+"Festival 2026", "Season 1", "With no defenses at all". Its `GET /api/board` (the shared database, read only) answers
+200 with rows whose `season` is "" and no top level label. `npm run walkthrough -- --url=<preview>` (every page with
+`tag=FestTesters` through tools/qaUrl.ts): **0 problems** (the dev server's `/api` 404s do not happen on a deployment).
+Run A of tools/qa41/full416.ts on the preview at 1920x1080 (every `/api` call answered on this machine, so nothing was
+written): all pass, 0, 0, 0 homes lost, 9 of 9 stars, HUD 4,105 equal to the server's replay, zero console errors.
+Logs: docs/qa/section41-6/logs/preview-*.log; shots in docs/qa/section41-6/preview/. Nobody has played the preview by
+hand. master is untouched at `ad727b0`.

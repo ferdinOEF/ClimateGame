@@ -1,0 +1,28 @@
+PASS name card: the Top 10 has 10 rows, no season element, no festival or season word ("Top 10 1Board Ana 156002Board Rui 254503Board Zoe 353004Board Kiran 451505Board ...")
+shot name-card-1920x1080.jpg
+PASS How to play: 3 screens (Next, Next), then "Let's Play!"
+PASS "Skip the help", then Got it: the guided start ends with nothing built
+PASS run A: after the guided start hands over, Maya says the standing nature line
+shot runA-2030-card1-1920x1080.jpg
+shot runA-2030-what-protected-1920x1080.jpg
+shot runA-2030-card2-1920x1080.jpg
+shot runA-2040-card1-1920x1080.jpg
+shot runA-2040-what-protected-1920x1080.jpg
+shot runA-2040-card2-1920x1080.jpg
+shot runA-2050-card1-1920x1080.jpg
+shot runA-2050-what-protected-1920x1080.jpg
+run A: HUD points 4105; server's (its replay of the build list) 4105
+PASS run A: homes lost 0, 0, 0; stars 3, 3, 3
+PASS run A: the last card says 9 of 9 stars
+PASS run A: the points on the HUD (4105) equal the server's (4105)
+PASS run A 2050: "Standing nature" is the last row (mangrove: Mangrove26 | seawall: Seawall8 | sandy_vegetation: Pandanus7 | breakwater: Breakwater2 | small_dam: Small dam0 | standing_nature: Standing nature1)
+PASS run A: the board box runs from 1st place ("1Board Ana 15600") down to the player ("11qa41_A4105"), scrolled to the player's row, "Scroll up to see 1st place", no season or festival label
+shot runA-2050-board-box-top-1920x1080.jpg
+PASS run A: Maya's standing nature line said once (2026)
+PASS run A: the Campal sentence said once, as the 2050 phase begins (2041: "On to 2041. 10 builds before the storm. At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back.")
+PASS run A: the 2050 warning (not said: no home at risk) keeps the wind and has no Campal sentence
+RESULT A: lost 0/0/0, saved 8 of 8, 42 of 42, 54 of 54, stars 3+3+3, HUD 4105, server 4105
+PASS every player text read against the rules (41 texts)
+PASS no console errors
+PASS every post carried the test tag (1: POST /api/board tag=FestTesters)
+ALL PASS
