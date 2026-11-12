@@ -254,6 +254,46 @@ sentence, then `MAYA.warning.seaAndRiver`, in one bubble. A build card may carry
 level's compound storm's; none in the Tutorial); facts.json has both as game rules in its own form (no "In this
 game" opener, 20 words at most, no year: tests/facts.test.ts).
 
+### 3d. The owner's answers to Section 41 (Section 41.6)
+
+Owner decisions of 11 November 2026, all game rules except the board.
+
+**The storm's path counts the standing nature (answer 4).** Everywhere a storm's path, its undefended comparison or the
+"worst a player can face" is worked out, a board is stripped of defences; the defences that stood from the first turn
+(`ElementInstance.fromStart`) now stay on it: `resolveChallenge`'s `bare` (core/zones.ts: the path, `housesTotal`,
+`housesSaved`, the stars and the homes points), `computeExposure`'s `withoutDefences` (the HUD's green shields and the
+storm's reach) and `forecastCone`'s `bare`. So the homes the standing nature alone keeps are not in the path, not
+saved and earn nothing; removing one (a year, as before) puts the homes it kept back in the path. The storm record
+(core/stormRecord.ts) keeps the standing nature apart: `undefended`, `savedBy`, `withoutEach` and `sharedWork` take
+away only the player's own defences (`housesLostWithout` never removes a `fromStart` one with its kind), and
+`StormRecord.standing` (`keys`, `homes`) is the standing nature's own figure: the homes the storm takes beyond those
+it took with all of them removed. `phaseResult` adds it as the last row of "What protected your homes", "Standing
+nature" (`STANDING_NATURE`). The words that credit the player read only their own: "Without your ...", "You saved N"
+(core/stormReplay.ts), "Your khazans are holding water" (app/stormDirector.ts), Maya's card line (never the standing
+row) and her zone tally (core/mayaLines.ts). The iconic places' points read `record.undefended`, so a place only the
+standing nature keeps earns nothing either.
+
+**Maya's Campal sentence (answer 3).** `MAYA.warning.seaAndRiver` is said once a run, in the same bubble as the first
+line of the phase of the storm that brings both (`MayaDirector.phaseStart`; on Panjim 2041, the first year after the
+2040 flood); her 2050 warning keeps her warning and the wind.
+
+**The shore rule's words (answer 6).** `SHORE_RULE` and the `shore-rule` fact are the owner's sentences; the rule
+itself (`GameState.isFirstSea`, 83 first sea tiles, answer 5) is unchanged.
+
+**One board, tagless (answer 10).** The name card's Top 10 has no season element (its CSS went with it) and the last
+card's board box never had one; no reply from `/api/board` carries the stored label (a row's `season` is always
+`""`, kept only so a page still running an older build draws its Top 10). The board's `season` column is NOT NULL
+with no default, so a row still stores `seasonOf(env)` as it is written (`BOARD_SEASON`, else "Season 1"): no
+schema change, no row changed, the ranking unchanged (every untagged row). Test tags are unchanged.
+
+**The bots (answer 9).** The "nature" and "smart" styles generate the objective (as the game does) and `bestDefence`
+weighs, beside its shortlist, every defence they may build on the tiles the objective's rows glow on for that storm
+(`glowingTiles`, tools/panjimBots/bots.ts).
+
+Kept as they were (answers 1, 2, 5, 7, 8, 11): the guided dune at -4,18 then the pandanus; the "Game rule" tag on
+Maya's standing nature line; the 83 first sea tiles; a pair of dunes does not hold the river; the seawall's end rule;
+the points.
+
 ## The interface's look: tokens and the storm class (Section 33, Harbour Morning)
 
 Every interface colour is a CSS variable in `src/ui/theme.css`, imported once

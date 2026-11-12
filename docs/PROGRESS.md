@@ -1,3 +1,36 @@
+## Section 41.6 — the owner's answers, a tagless board, full QA, every home saveable — branch `section-41-6-answers-qa`, not merged
+
+Branch from master `ad727b0` (Section 41 merged and live; safety copy: `backup/pre-section-41.6`, same point). The
+owner's answers of 11 November 2026 to Section 41's eleven questions. QA in docs/QA_REPORT.md ("Section 41.6"); the
+model's notes in docs/ARCHITECTURE.md ("3d").
+- 41.6.1 The owner's answers. A storm's path is counted with the three standing defenses in place: the homes they
+  alone keep are not in the path, not saved and earn no points; removing one puts its homes back in the path. Words
+  that credit "your" defenses count only the player's own; "What protected your homes" has a "Standing nature" row
+  after the player's rows. Maya says the sea and the river at Campal once, as the 2050 phase begins (2041), and her
+  2050 warning keeps the rest. The shore rule's words in the Field Guide and the fact are the owner's. The "nature"
+  and "smart" bots weigh the objective's glowing tiles too. One board, tagless: the season element is gone from the
+  name card's Top 10 (the last card's board box never had one), no reply carries the stored label, and
+  docs/DEPLOY.md says `BOARD_SEASON` may be removed. Kept: the guided dune, the "Game rule" tag on the standing
+  line, the 83 first sea tiles, dunes and the river, the seawall's end rule, the points. No schema change.
+- 41.6.2 Every home saveable. The Section 41 plan, replayed under 41.6.1's count, still loses no home (8 of 8, 42 of
+  42, 54 of 54, 9 of 9 stars). The search at Section 41's width (`npm run bestplan -- beam=20 keep=16 jobs=4
+  out=docs/qa/section41-6 seed=tools/bestPlan/seed41.json`, 1,036 s) reaches the same: 0 homes lost in each storm,
+  9 of 9 stars, a plan that differs in 13 of 25 builds. No lever used, no number changed. Saved as
+  tools/bestPlan/seed41_6.json and docs/qa/section41-6/best_plan.md; tests/bestPlan.test.ts replays it.
+- 41.6.3 The mechanics tested against the game's own model (tools/qa41/mechanics416.ts, 24 checks, all pass:
+  placement, the 2050 river rule, Campal, the wind, the standing defenses, each failure rule, server equals client, a
+  breakwater out at sea refused). The fuzz: 1,800 runs, 0 failures. Bots (200 seeds a style and 20), points: every
+  Section 35.6 target holds; the moves are the standing nature's homes leaving the paths, and nature and smart
+  weighing the glowing tiles. QA tools fixed: `smartRun` weighs the glowing tiles too, `test:help` and the Tutorial
+  player start Play Panjim the Section 40 way, `qaUrl` adds the test tag.
+- 41.6.4 The full browser check (owner's "full QA"): test:labels 73 of 73, test:layout 144 of 144, test:maya, test:help
+  at four sizes, axe at four sizes with no serious or critical issue, the walkthrough and verify:maya (their remaining
+  failures are on master too), WebKit; three runs played through the game's screens at 1366x768 and 1920x1080 (the
+  perfect plan 0, 0, 0 lost and 9 of 9 stars; a seawall player at Campal; a careless player who removes a standing
+  khazan), HUD points equal to the server's. The reviewer: 0 BLOCKER, 3 MAJOR fixed (the replay's caption now says
+  "Without your defenses", smart's margin run weighs the glowing tiles, a real test of the player's own khazan), the
+  telemetry's row count and the 2050 storm's "your defenses" line fixed. Firefox could not be started here.
+
 ## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home — MERGED (`fc42c47`)
 
 Branch `section-41-shore-defenses` from master `2c861a1` (safety copy: `backup/pre-section-41`, same point). The owner's decisions after the

@@ -41,6 +41,7 @@ export const PERSONAS: Persona[] = ["casual", "greedy", "smart", "far"];
  *   far       building nothing that matters (every build away from every storm);
  *   random    every build a defence on a random free tile anywhere;
  *   nature    Smart, building only nature based defences (dune, pandanus, mangrove, khazan);
+ *             Section 41.6 (owner decision 9): nature and smart also weigh the tiles the objective card glows on;
  *   seawalls  Smart, building only seawalls and breakwaters;
  *   smart     sensible play (Smart as it is);
  *   best      greedy with the exact hazard model: every build weighs every candidate, never by eye;
@@ -131,7 +132,8 @@ export function newRun(seed: string, level: LevelDef, objectives = false): Actio
     growth: level.growth,
     landmarks: MAP.landmarks,
     localities: MAP.localities,
-    // Objectives never change an outcome; choosing them costs time the bots do not need (but the guided player reads them).
+    // Objectives never change an outcome; choosing them costs time the bots do not need (but the guided player reads them,
+    // and Section 41.6: the nature and smart players weigh the tiles they glow on).
     generateObjectives: objectives
   });
 }
@@ -158,7 +160,7 @@ class Player {
   firstActionMs = -1;
   firstRewardMs = -1;
   constructor(readonly persona: Persona, readonly seed: string, readonly level: LevelDef = BOT_LEVEL) {
-    this.run = newRun(seed, level, persona === "guided");
+    this.run = newRun(seed, level, persona === "guided" || GLOW_STYLES.has(persona));
     this.rng = new Rng(hashSeed(`${persona}:${seed}`));
   }
 
@@ -422,7 +424,7 @@ function lossesWith(p: Player, challenge: ScheduledChallenge, extra: { key: stri
  * shortlist it weighs (a random handful; Infinity weighs them all). Null when
  * nothing saves a house or takes water off one.
  */
-function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infinity, skip: string | null = null, only: string | readonly string[] | null = null, perKindMax = 3, exact = false): { coord: AxialCoord; elementId: string; saves: number } | null {
+function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infinity, skip: string | null = null, only: string | readonly string[] | null = null, perKindMax = 3, exact = false, glow = false): { coord: AxialCoord; elementId: string; saves: number } | null {
   const allowed = only === null ? null : typeof only === "string" ? [only] : only;
   const seen = visibleRisk(p, challenge, exact);
   if (seen.risk.length === 0) return null;
@@ -454,6 +456,19 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infin
     shortlist = [];
     while (shortlist.length < attention && pool.length > 0) shortlist.push(pool.splice(Math.floor(p.rng.next() * pool.length), 1)[0]);
   }
+  // Section 41.6 (owner decision 9): a player reading the objective card weighs the tiles it glows on too (its rows'
+  // tiles for this storm), every defence it may build that fits there, whatever the shortlist above holds.
+  if (glow) {
+    const listed = new Set(shortlist.map((c) => `${c.key}|${c.elementId}`));
+    for (const key of glowingTiles(p, challenge)) {
+      for (const elementId of DEFENCES) {
+        if (elementId === skip || (allowed && !allowed.includes(elementId)) || !answers(elementId, challenge.kind)) continue;
+        if (listed.has(`${key}|${elementId}`) || !p.state.canBuild(coordOf(key), elementId)) continue;
+        listed.add(`${key}|${elementId}`);
+        shortlist.push({ key, elementId, score: 0 });
+      }
+    }
+  }
   const base = lossesWith(p, challenge, null);
   let best: { coord: AxialCoord; elementId: string; saves: number; gain: number } | null = null;
   for (const c of shortlist) {
@@ -464,6 +479,14 @@ function bestDefence(p: Player, challenge: ScheduledChallenge, attention = Infin
     if (gain > 0.5 && (!best || gain > best.gain)) best = { coord: coordOf(c.key), elementId: c.elementId, saves, gain };
   }
   return best;
+}
+
+/** Section 41.6: the styles that weigh the objective card's glowing tiles (owner decision 9). */
+const GLOW_STYLES: ReadonlySet<Persona> = new Set<Persona>(["nature", "smart"]);
+
+/** The tiles the objective card glows on for `challenge`: its rows' tiles (the same `prep` rows the game pulses). */
+function glowingTiles(p: Player, challenge: ScheduledChallenge): string[] {
+  return [...new Set((p.run.prep ?? []).filter((row) => row.challengeId === challenge.id).flatMap((row) => row.tiles ?? []))].sort();
 }
 
 /** One build a year: `build` makes the year's build, or, when it finds nothing worth building, the player builds away from the storms. */
@@ -591,7 +614,7 @@ export const SMART_SLIP = Number(process.env.SMART_SLIP ?? 0.4);
 export const SMART_ATTENTION = { min: Number(process.env.SMART_MIN ?? 4), max: Number(process.env.SMART_MAX ?? 12) };
 
 /** Smart, with an optional element left out (the per-element margin test) or the only one it builds. */
-function smartPlayer(skip: string | null, only: string | null = null, first?: (p: Player) => boolean): (p: Player) => void {
+function smartPlayer(skip: string | null, only: string | null = null, first?: (p: Player) => boolean, glow = false): (p: Player) => void {
   return (p) => {
     const attention = SMART_ATTENTION.min + Math.floor(p.rng.next() * (SMART_ATTENTION.max - SMART_ATTENTION.min + 1));
     const slip = SMART_SLIP * p.rng.next();
@@ -604,7 +627,7 @@ function smartPlayer(skip: string | null, only: string | null = null, first?: (p
         const guess = byEye(p, next);
         if (guess && p.build(guess.coord, guess.id)) return true;
       }
-      const pick = bestDefence(p, next, attention, skip, only);
+      const pick = bestDefence(p, next, attention, skip, only, 3, false, glow);
       if (pick && p.build(pick.coord, pick.elementId)) return true;
       // Nothing it weighed would save more: the rest of the year's builds go by eye, like anyone's.
       if (!only && !skip) {
@@ -652,7 +675,7 @@ const HARD = ["seawall", "breakwater"];
  * Smart limited to some kinds of defence (Section 21.2's "nature only" and "seawalls only"): its own attention
  * and slips, its by-eye builds limited to the same kinds; when none of them answers, the year goes away.
  */
-function limitedPlayer(allowed: readonly string[]): (p: Player) => void {
+function limitedPlayer(allowed: readonly string[], glow = false): (p: Player) => void {
   return (p) => {
     const attention = SMART_ATTENTION.min + Math.floor(p.rng.next() * (SMART_ATTENTION.max - SMART_ATTENTION.min + 1));
     const slip = SMART_SLIP * p.rng.next();
@@ -663,7 +686,7 @@ function limitedPlayer(allowed: readonly string[]): (p: Player) => void {
         const guess = byEye(p, next, allowed);
         if (guess && p.build(guess.coord, guess.id)) return true;
       }
-      const pick = bestDefence(p, next, attention, null, allowed);
+      const pick = bestDefence(p, next, attention, null, allowed, 3, false, glow);
       if (pick && p.build(pick.coord, pick.elementId)) return true;
       const guess = byEye(p, next, allowed);
       return !!guess && p.build(guess.coord, guess.id);
@@ -698,10 +721,10 @@ export function runBestOnly(elementId: string, seed: string): BotResult {
 const PLAY: Record<Persona, (p: Player) => void> = {
   casual: playCasual,
   greedy: playGreedy,
-  smart: smartPlayer(null),
+  smart: smartPlayer(null, null, undefined, true),
   far: playFar,
   random: playRandom,
-  nature: limitedPlayer(NATURE),
+  nature: limitedPlayer(NATURE, true),
   seawalls: limitedPlayer(HARD),
   best: playBest,
   guided: smartPlayer(null, null, objectiveFirst)
@@ -710,7 +733,8 @@ const PLAY: Record<Persona, (p: Player) => void> = {
 /** Smart's run on `seed`: its result and every action it took, for replays. */
 export function smartRun(seed: string): { result: BotResult; log: LoggedAction[] } {
   const player = new Player("smart", seed);
-  smartPlayer(null)(player);
+  // Section 41.6 (owner decision 9): the same smart as the style (`PLAY.smart`), weighing the objective's glowing tiles.
+  smartPlayer(null, null, undefined, true)(player);
   return { result: player.result(), log: player.log };
 }
 
@@ -744,7 +768,7 @@ export function replaySmartWithout(elementId: string, seed: string, log: readonl
 /** Smart building only one kind of defence, for "no single defence dominates". */
 export function runSmartOnly(elementId: string, seed: string): BotResult {
   const player = new Player("smart", seed);
-  smartPlayer(null, elementId)(player);
+  smartPlayer(null, elementId, undefined, true)(player);
   return player.result();
 }
 

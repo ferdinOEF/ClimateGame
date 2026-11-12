@@ -1092,7 +1092,7 @@ function resolveChallenge(state, zones, kind, intensity, strengthUnit, combos, h
   const bare2 = state.clone();
   for (const [key, inst] of [...bare2.elements]) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (def && (def.effects.resilience ?? 0) > 0) bare2.elements.delete(key);
+    if (def && (def.effects.resilience ?? 0) > 0 && !inst.fromStart) bare2.elements.delete(key);
   }
   const field = computeWater(state, storm, options);
   const undefended = bare2.elements.size === state.elements.size ? field : computeWater(bare2, storm, options);
@@ -1258,7 +1258,7 @@ function computeExposure(state, zones, kind, intensity, strengthUnit, options = 
     const hazards = hazardsOf(kind);
     for (const [key, inst] of [...copy.elements]) {
       const def = ELEMENT_BY_ID.get(inst.elementId);
-      if (def && (def.effects.resilience ?? 0) > 0 && def.targetsHazards?.some((hazard) => hazards.includes(hazard))) copy.elements.delete(key);
+      if (def && (def.effects.resilience ?? 0) > 0 && !inst.fromStart && def.targetsHazards?.some((hazard) => hazards.includes(hazard))) copy.elements.delete(key);
     }
   }
   const tileIntensity = /* @__PURE__ */ new Map();
@@ -1725,7 +1725,7 @@ function bare(state) {
   const copy = state.clone();
   for (const [key, inst] of [...copy.elements]) {
     const def = ELEMENT_BY_ID.get(inst.elementId);
-    if (def && (def.effects.resilience ?? 0) > 0) copy.elements.delete(key);
+    if (def && (def.effects.resilience ?? 0) > 0 && !inst.fromStart) copy.elements.delete(key);
   }
   return copy;
 }
@@ -2031,6 +2031,7 @@ function buildDepthField(input) {
 }
 
 // src/core/stormRecord.ts
+var STANDING_NATURE = { id: "standing_nature", name: "Standing nature" };
 function isBuilding(state, key) {
   const inst = state.elements.get(key);
   return !!inst && !state.isScenery(key) && ELEMENT_BY_ID.get(inst.elementId)?.kind === "building" && inst.degradeAmount < 1;
@@ -2085,8 +2086,9 @@ function resolveWithField(state, args) {
 }
 function housesLostWithout(before, args, removed) {
   const copy = before.clone();
+  const drop = (inst) => removed === STANDING_NATURE.id ? !!inst.fromStart : inst.elementId === removed && !inst.fromStart;
   if (removed) {
-    for (const [key, inst] of [...copy.elements]) if (inst.elementId === removed) copy.elements.delete(key);
+    for (const [key, inst] of [...copy.elements]) if (drop(inst)) copy.elements.delete(key);
   }
   const combos = args.combos ? computeCombos(copy).bonus : void 0;
   return resolveChallenge(copy, args.zones, args.kind, args.intensity, args.strengthUnit, combos, args.houseStars, args.houseRule, void 0, args.landfall, args.sheltered, args.wind);
@@ -2097,14 +2099,14 @@ function resolveStorm(state, args) {
   const hazards = hazardsOf(args.kind);
   const without = (keep) => {
     const copy = before.clone();
-    for (const [key, inst] of [...copy.elements]) if (!keep(inst.elementId)) copy.elements.delete(key);
+    for (const [key, inst] of [...copy.elements]) if (!inst.fromStart && !keep(inst.elementId)) copy.elements.delete(key);
     return copy;
   };
   const argsFor = (copy) => ({ ...args, combos: args.combos ? computeCombos(copy).bonus : void 0 });
   const bare2 = without((id) => !defendsAgainst(id, hazards));
   const undefended = resolveWithField(bare2, argsFor(bare2));
   const counts = /* @__PURE__ */ new Map();
-  for (const inst of before.elements.values()) if (!inst.broken && defendsAgainst(inst.elementId, hazards)) counts.set(inst.elementId, (counts.get(inst.elementId) ?? 0) + 1);
+  for (const inst of before.elements.values()) if (!inst.broken && !inst.fromStart && defendsAgainst(inst.elementId, hazards)) counts.set(inst.elementId, (counts.get(inst.elementId) ?? 0) + 1);
   const savedBy = [];
   for (const [elementId, count] of counts) {
     const houses = housesLostWithout(before, args, elementId).housesDamaged - outcome.housesDamaged;
@@ -2113,7 +2115,7 @@ function resolveStorm(state, args) {
   savedBy.sort((a, b) => b.houses - a.houses || (a.elementId < b.elementId ? -1 : 1));
   const withoutEach = /* @__PURE__ */ new Map();
   for (const inst of before.elements.values()) {
-    if (inst.broken || withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
+    if (inst.broken || inst.fromStart || withoutEach.has(inst.elementId) || (ELEMENT_BY_ID.get(inst.elementId)?.effects.resilience ?? 0) <= 0) continue;
     withoutEach.set(inst.elementId, Math.max(0, housesLostWithout(before, args, inst.elementId).housesDamaged - outcome.housesDamaged));
   }
   const sharedWork = [];
@@ -2132,10 +2134,12 @@ function resolveStorm(state, args) {
   }
   const defences = /* @__PURE__ */ new Map();
   for (const [key, inst] of before.elements) if (!inst.broken && defendsAgainst(inst.elementId, hazards)) defences.set(key, inst.elementId);
+  const standingKeys = [...before.elements].filter(([, inst]) => inst.fromStart && !inst.broken && defendsAgainst(inst.elementId, hazards)).map(([key]) => key);
+  const standing = standingKeys.length > 0 ? { keys: standingKeys, homes: Math.max(0, housesLostWithout(before, args, STANDING_NATURE.id).housesDamaged - outcome.housesDamaged) } : void 0;
   const landfallTiles = args.zones.keys(LANDFALL_ZONE);
   const board = waterBoard(before, landfallTiles.length > 0 ? landfallTiles : void 0);
   const landfallKey = args.kind === "flood" ? null : board.sites[args.landfall ?? siteAt(board, 0.5)] ?? null;
-  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field, depth: undefended.depth, wind: undefended.wind }, savedBy, defences, landfallKey, depth, wind, withoutEach, sharedWork };
+  return { kind: args.kind, outcome, field, undefended: { outcome: undefended.outcome, field: undefended.field, depth: undefended.depth, wind: undefended.wind }, savedBy, defences, landfallKey, depth, wind, withoutEach, sharedWork, ...standing ? { standing } : {} };
 }
 
 // src/core/phaseResult.ts
@@ -18806,11 +18810,11 @@ async function postRun(ctx, body) {
 }
 async function boardRows(sql) {
   const rows = await sql.query(
-    "SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL ORDER BY points DESC, created_at ASC"
+    "SELECT id, name, points, stars, created_at FROM board WHERE tag IS NULL ORDER BY points DESC, created_at ASC"
   );
-  return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })));
+  return bestPerName(rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), createdAt: new Date(r.created_at).getTime() })));
 }
-var out = (rows, r) => ({ rank: denseRank(r.points, rows), name: r.name, points: r.points, stars: r.stars, season: r.season });
+var out = (rows, r) => ({ rank: denseRank(r.points, rows), name: r.name, points: r.points, stars: r.stars, season: "" });
 async function around(sql, points, own) {
   const rows = await boardRows(sql);
   const rank = denseRank(points, rows);
@@ -18823,7 +18827,7 @@ async function around(sql, points, own) {
       place++;
       last = r.points;
     }
-    top.push({ rank: place, name: r.name, points: r.points, stars: r.stars, season: r.season });
+    top.push({ rank: place, name: r.name, points: r.points, stars: r.stars, season: "" });
   }
   const above = top.slice(-2);
   const below = rows.filter((r) => r.points <= points && r.id !== own).slice(0, 2).map((r) => out(rows, r));
@@ -18832,14 +18836,13 @@ async function around(sql, points, own) {
 }
 async function getBoard(ctx, query) {
   if (!ctx.sql) return OFFLINE;
-  const season = seasonOf(ctx.env);
   if (query.points !== void 0) {
     const points = Number(query.points);
     if (!Number.isFinite(points) || points < 0 || points > 1e6) return fail(400, "bad points");
-    return ok({ ...await around(ctx.sql, Math.round(points), null), points: Math.round(points), season });
+    return ok({ ...await around(ctx.sql, Math.round(points), null), points: Math.round(points) });
   }
   const rows = await boardRows(ctx.sql);
-  return ok({ rows: rows.slice(0, 10).map((r) => out(rows, r)), season });
+  return ok({ rows: rows.slice(0, 10).map((r) => out(rows, r)) });
 }
 async function oneRowFor(sql, name) {
   const same = await rowsNamed(sql, name);
@@ -18848,9 +18851,9 @@ async function oneRowFor(sql, name) {
   return best ?? null;
 }
 async function rowsNamed(sql, name) {
-  const rows = await sql.query("SELECT id, name, points, stars, season, created_at FROM board WHERE tag IS NULL");
+  const rows = await sql.query("SELECT id, name, points, stars, created_at FROM board WHERE tag IS NULL");
   const key = nameKey(name);
-  return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), season: r.season, createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
+  return rows.map((r) => ({ id: r.id, name: r.name, points: Number(r.points), stars: Number(r.stars), createdAt: new Date(r.created_at).getTime() })).filter((r) => nameKey(r.name) === key);
 }
 async function postBoard(ctx, body) {
   if (!ctx.sql) return OFFLINE;
@@ -18874,12 +18877,12 @@ async function postBoard(ctx, body) {
   if (tag) {
     const day2 = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
     await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at, tag) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", [randomUUID(), season, name.name, facts.points, stars, `tagged:${randomBytes(24).toString("base64url")}`, day2, tag]);
-    return ok({ tagged: true, points: facts.points, editToken: "", season, name: name.name });
+    return ok({ tagged: true, points: facts.points, editToken: "", name: name.name });
   }
   const known = await oneRowFor(ctx.sql, name.name);
   if (known && known.points >= facts.points) {
     const place2 = await around(ctx.sql, known.points, known.id);
-    return ok({ ...place2, points: known.points, editToken: "", season, name: known.name, kept: true });
+    return ok({ ...place2, points: known.points, editToken: "", name: known.name, kept: true });
   }
   const editToken = randomBytes(24).toString("base64url");
   const day = `${ctx.now.toISOString().slice(0, 10)}T00:00:00.000Z`;
@@ -18892,14 +18895,14 @@ async function postBoard(ctx, body) {
     );
     if (updated.length === 0) {
       const kept = await oneRowFor(ctx.sql, name.name) ?? known;
-      return ok({ ...await around(ctx.sql, kept.points, kept.id), points: kept.points, editToken: "", season, name: kept.name, kept: true });
+      return ok({ ...await around(ctx.sql, kept.points, kept.id), points: kept.points, editToken: "", name: kept.name, kept: true });
     }
   } else {
     id = randomUUID();
     await ctx.sql.query("INSERT INTO board (id, season, name, points, stars, edit_token, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", [id, season, name.name, facts.points, stars, editToken, day]);
   }
   const place = await around(ctx.sql, facts.points, id);
-  return ok({ ...place, points: facts.points, editToken, season, name: name.name });
+  return ok({ ...place, points: facts.points, editToken, name: name.name });
 }
 async function patchBoard(ctx, body) {
   if (!ctx.sql) return OFFLINE;

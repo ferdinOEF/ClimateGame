@@ -7,10 +7,14 @@
  * Section 35.3: it also adds `noname=1`, so Play Panjim opens on its start popup as before (the name card skipped,
  * honoured only with the test hooks on); a tool that shoots the name card leaves it out. Section 39: and `noguide=1`, so
  * Play Panjim starts after How to play without the guided start (a tool that shoots the guide leaves it out).
+ *
+ * Section 41.6.4: and `tag=FestTesters`, the test tag (Section 38.4b), so a tool pointed at a deployment (the
+ * walkthrough's `--url=`) never posts a run or a board row as a real player's.
  */
 export function qaUrl(url: string): string {
-  if (/[?&]qa=1(?:[&#]|$)/.test(url)) return url;
-  const flags = "qa=1&noname=1&noguide=1";
+  // A URL with the hooks on already still gets the test tag.
+  if (/[?&]qa=1(?:[&#]|$)/.test(url)) return /[?&]tag=/.test(url) ? url : url.replace(/([?&]qa=1)(?=[&#]|$)/, "$1&tag=FestTesters");
+  const flags = "qa=1&tag=FestTesters&noname=1&noguide=1";
   const at = url.indexOf("#");
   const base = at < 0 ? url : url.slice(0, at);
   const hash = at < 0 ? "" : url.slice(at);

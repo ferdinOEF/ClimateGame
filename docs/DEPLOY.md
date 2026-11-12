@@ -10,9 +10,13 @@ database. The Firebase notes further down describe older, unused code (kept, off
    pooled connection string). Preview and Production share this one database; test rows are cleaned by hand.
 2. **Environment variables** (Vercel, Project, Settings, Environment Variables, for Production and Preview):
    - `DATABASE_URL`: the Neon connection string (`POSTGRES_URL` is read when `DATABASE_URL` is not set).
-   - `BOARD_SEASON`: the label stored on every board row as it is posted, e.g. `Festival 2026`. Unset, it is
-     `Season 1`. Changing it starts no new board: the board is one running table, and the label is shown beside each
-     name.
+   - `BOARD_SEASON` (no longer needed): the label stored in a board row's `season` column as it is posted. Section
+     41.6 (owner decision, 11 November 2026: the festival is over): the board is one board, tagless. The label was
+     removed from every screen on the day Section 41.6 is merged (the name card's Top 10, the last card's board box
+     and their offline and empty states), and no reply from `/api/board` carries it. The owner may remove
+     `BOARD_SEASON` on Vercel; new rows then store `Season 1` (the column is NOT NULL with no default, and a default
+     would be a schema change). Nothing resets, no row is changed, and the ranking still reads every untagged row.
+     Test tags (`?tag=FestTesters`, `DEFAULT_TAG`) are a different thing and are unchanged.
    - `RATE_SALT`: any long random string. Each caller's IP is stored only as a SHA-256 of this salt and the IP, for
      the hourly limits, and deleted after a day. Change it and every limit starts again.
    - `DEFAULT_TAG` (Section 38.4b): the test tag every post gets when the page sends none. Set it to `Preview` on
@@ -88,7 +92,7 @@ column in `runs.csv`, `feedback.csv` and `board.csv`; nothing is dropped, so fil
 | Endpoint | Does | Limit per IP per hour |
 |---|---|---|
 | `POST /api/run` | A Play Panjim run's reach and completion (at the last card; by `sendBeacon` when it stops early). No name. Every post may carry a `tag` (Section 38.4b). | 400 |
-| `GET /api/board` | The top 10 and the season; `?points=N` the place N would get and the rows round it. | none |
+| `GET /api/board` | The top 10; `?points=N` the place N would get and the rows round it. No season or festival label (Section 41.6). | none |
 | `POST /api/board` | `{ runId, name, builds }` for a finished run: the server replays the builds, counts the points and stores them; one row per run. Returns the place and an edit token. With a `tag`, the row is stored tagged and the answer is `{ tagged: true }`, no rank. | 120 |
 | `PATCH /api/board` | `{ editToken, name }`: renames that row (the feedback form). | 120 |
 | `POST /api/feedback` | `{ runId, answers }`: `q1` to `q4` (1 to 5), `remember` (cut at 140), `age` (`u17`, `18_30`, `31_plus`), `nudge` (`none`, `shown_answered`, `shown_left`), `cardSeconds`; a known key with a bad value is refused, an unknown key ignored, an empty form is a valid post; one form a run. No name. | 120 |

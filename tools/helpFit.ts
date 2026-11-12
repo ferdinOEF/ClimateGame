@@ -1,10 +1,15 @@
 /**
  * Section 21.1: How to play at each desktop size, measured: does the card scroll, and by how much.
  * Usage: npx tsx tools/helpFit.ts [WxH ...]  (default 1280x600 1366x768 1920x1080 2560x1440)
+ * HELP_OUT=<folder> puts the screenshots there (default docs/qa/section21).
+ *
+ * Section 41.6.3: How to play is three screens since Section 40 ("Let's Play!" on the third), so the tool starts the
+ * game with tools/letsPlay.ts (it clicked "Begin" at once and stopped there); every page carries the test tag.
  */
 import { chromium } from "playwright";
 import fs from "node:fs";
 import { glArgs, startDevServer } from "./devServer";
+import { letsPlay } from "./letsPlay";
 
 const sizes = (process.argv.slice(2).length ? process.argv.slice(2) : ["1280x600", "1366x768", "1920x1080", "2560x1440"]).map((s) => s.split("x").map(Number));
 const server = await startDevServer(Number(process.env.PORT ?? 5493));
@@ -12,9 +17,9 @@ const browser = await chromium.launch({ executablePath: fs.existsSync("/opt/pw-b
 let failures = 0;
 for (const [w, h] of sizes) {
   const page = await browser.newPage({ viewport: { width: w, height: h } });
-  await page.goto(`${server.url}/?qa=1&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${server.url}/?qa=1&tag=FestTesters&noname=1&noguide=1#/play/l01-first-rains`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector(".brief-card, .howto-card", { timeout: 120000 });
-  await page.locator(".brief-cta", { hasText: "Begin" }).first().click();
+  await letsPlay(page);
   await page.waitForTimeout(2500);
   await page.locator(".help-button").click();
   await page.waitForSelector(".panjim-help");
@@ -24,7 +29,7 @@ for (const [w, h] of sizes) {
   const ok = m.scrolls.length === 0;
   if (!ok) failures++;
   console.log(`${ok ? "PASS" : "FAIL"} [${w}x${h}] How to play fits (card ${m.top} to ${m.bottom})${ok ? "" : `: scrolls ${m.scrolls.join("; ")}`}`);
-  await page.screenshot({ path: `docs/qa/section21/help-${w}x${h}.jpg`, type: "jpeg", quality: 72 });
+  await page.screenshot({ path: `${process.env.HELP_OUT ?? "docs/qa/section21"}/help-${w}x${h}.jpg`, type: "jpeg", quality: 72 });
   await page.close();
 }
 await browser.close();

@@ -3188,3 +3188,208 @@ site; the full browser check; 1920x1080 shots; Safari and Firefox. The eleven qu
 and the merge settles none of them: the board now reads rows scored on the old rules beside rows scored on the new
 ones (question 10; `BOARD_SEASON` was not changed). No PR was opened for this section. No schema change, so no
 migration. Undo with `git revert -m 1 fc42c47`.
+
+## Section 41.6 — the owner's answers, a tagless board, full QA, every home saveable (branch `section-41-6-answers-qa`, not merged)
+
+From master `ad727b0` (Section 41 merged and live); safety copy `backup/pre-section-41.6` (same point). One commit a step,
+each pushed: `c32db29` 41.6.1, `1b237c6` 41.6.2, then 41.6.3 (mechanics tested) and 41.6.4 (full QA). The owner's answers
+of 11 November 2026. This is the owner's "full QA": every check in CLAUDE.md, plus the mechanics against the model and
+three played runs. It ran on the owner's Windows laptop. Nothing touched the live board: every page opened with
+`?tag=FestTesters` (and `qa=1`), and every `/api` call of the browser runs was answered on this machine by the server's
+own handlers on an in memory database (tools/qa41/full416.ts). No schema change. master is untouched at `ad727b0`.
+
+### 41.6.1 The owner's answers (`c32db29`)
+
+| # | Answer | What was done |
+|---|---|---|
+| 1 | Guided start: keep the dune at -4,18, then the pandanus | Unchanged. |
+| 2 | Keep the "Game rule" tag on the standing nature line | Unchanged. |
+| 3 | The Campal sentence once, as the 2050 phase begins | `MayaDirector.phaseStart`: said once a run, in the same bubble as "On to 2041. 10 builds before the storm."; the 2050 warning keeps her warning and the wind. |
+| 4 | Each storm's path counted with the standing defenses in place | `resolveChallenge`'s bare board, `computeExposure`'s `withoutDefences` and the forecast's bare board keep `fromStart` defences. The storm record keeps them apart (`StormRecord.standing`); the player's rows, "You saved N", "Without your ...", "Your khazans are holding water" and Maya's card line count only the player's own; "Standing nature" is the last row of "What protected your homes". |
+| 5 | Keep the 83 first sea tiles | Unchanged. |
+| 6 | The Field Guide's and the fact's words | `SHORE_RULE` and the `shore-rule` fact are the owner's sentences. |
+| 7 | A pair of dunes does not hold the river | Unchanged. |
+| 8 | Keep the seawall end rule | Unchanged. |
+| 9 | Nature and smart bots weigh the objective's glowing tiles | `bestDefence(..., glow)`: every defence they may build on the objective's row tiles is weighed beside the shortlist; both styles generate the objective, as the game does. |
+| 10 | One board, tagless | The name card's Top 10 has no season element (its CSS went too); the last card's board box never had one; no `/api/board` reply carries the stored label (rows send `season: ""` so a page still running an older, cached build draws its Top 10). The `season` column is NOT NULL with no default, so a new row still stores `seasonOf(env)` (a default is a schema change); nothing a player sees reads it. No row changed, no reset, ranking unchanged. docs/DEPLOY.md: `BOARD_SEASON` may be removed. |
+| 11 | Points stay | Unchanged. |
+
+### 41.6.2 Every home saveable (`1b237c6`)
+
+The committed Section 41 plan, replayed under 41.6.1's count, still loses no home (8 of 8, 42 of 42, 54 of 54; 9 of 9
+stars). The search at Section 41's width (`npm run bestplan -- beam=20 keep=16 jobs=4 out=docs/qa/section41-6
+seed=tools/bestPlan/seed41.json`, 1,036 s) reaches the same: **0 homes lost in 2030, 2040 and 2050, 9 of 9 stars**, a plan
+that differs in 13 of 25 builds. **No lever was used**: no number, rule or player text changed. Saved as
+tools/bestPlan/seed41_6.json and docs/qa/section41-6/best_plan.md; tests/bestPlan.test.ts replays it through the game's own
+run (8 tests). Points at the game's values: 4,105.
+
+| # | Year | Defense | Tile | | # | Year | Defense | Tile |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 2026 | Pandanus | -3,17 | | 14 | 2039 | Khazan | 14,11 |
+| 2 | 2027 | Pandanus | -5,20 | | 15 | 2040 | Khazan | 20,13 |
+| 3 | 2028 | Mangrove | 16,17 | | 16 | 2041 | Seawall | 2,12 (first sea tile, Campal) |
+| 4 | 2029 | Khazan | 8,18 | | 17 | 2042 | Pandanus | 1,13 |
+| 5 | 2030 | Mangrove | 10,20 | | 18 | 2043 | Breakwater | 3,11 (first sea tile, Campal) |
+| 6 | 2031 | Khazan | 12,16 | | 19 | 2044 | Pandanus | 2,13 |
+| 7 | 2032 | Mangrove | 20,12 | | 20 | 2045 | Mangrove | 14,7 |
+| 8 | 2033 | Khazan | 21,9 | | 21 | 2046 | Mangrove | 24,6 |
+| 9 | 2034 | Mangrove | 23,7 | | 22 | 2047 | Breakwater | 6,0 (first sea tile, north shore) |
+| 10 | 2035 | Mangrove | 14,14 | | 23 | 2048 | Mangrove | 25,6 |
+| 11 | 2036 | Mangrove | 7,23 | | 24 | 2049 | Small dam | 23,0 |
+| 12 | 2037 | Mangrove | 11,13 | | 25 | 2050 | Breakwater | 0,1 (first sea tile) |
+| 13 | 2038 | Mangrove | 19,11 | | | | | |
+
+### 41.6.3 The mechanics, against the game's own model (tools/qa41/mechanics416.ts, docs/qa/section41-6/mechanics.txt)
+
+| Check | Result |
+|---|---|
+| 1 Placement | PASS. 83 first sea tiles; a breakwater fits exactly those 83; a seawall fits 114 (31 shore tiles: 19 sand, 12 land; and the 83); 163 deeper sea tiles and 166 river tiles take nothing of the kind; a sand tile with a seawall offers nothing more. |
+| 2 The 2050 river rule | PASS. 29 of 33 seawall tiles within 8 of Campal lower the river's water beside them in the 2050 storm (summed over the tiles within 2: 2.8 m to 92.5 m); the other 4 (-2,10 -1,10 0,10 -2,16) stand where no river water reaches (nothing to lower). In the 2040 flood none changes any tile's water. |
+| 3 Campal | PASS. The four water edge tiles are land, with no home; the perfect plan loses no Campal home; with only the five sand seawalls Campal loses 10 homes, as with nothing built. |
+| 4 Wind | PASS. Worst 3,13 in 2050: 1.111 m; with pandanus 0.555, under the 0.6 line. |
+| 5 Standing defenses | PASS. Mature on turn 1; paths 8, 42, 54 (8, 56, 58 with none standing); removing 26,6 / 16,15 / 7,21 costs 2026 and puts the 2040 path to 44 / 48 / 49; a run built away from the storms saves 0, 0, 0 (Standing nature rows 0, 14, 4); no living coast or veteran points; not among the 25 builds. |
+| 6 Failure rules (on a first sea tile and the narrow river) | PASS. Seawall: through its first cyclone, breaks in its second, cracked at 10, a flood not counted; breakwater broken at 10, not at 9; small dam the same in floods; khazan never worn (standing ones and one 20 years old). |
+| 7 Server equals client | PASS. Perfect plan 4,105 = 4,105 (stars 3,3,3); a random run 1,210 = 1,210; a run that removes the standing khazan 3,395 = 3,395; same stars and homes. A list with a breakwater out at sea: refused by the client ("Can't build that here.") and the server (400 "bad builds"). |
+| 8 Fuzz (`tools/fuzz34.ts runs=900 jobs=5 level=both`) | **0 failures**: 1,800 runs, 37,756 actions, 5,892 storms, 1,392 retries; preview equals resolution 5,560 checks; heat equals Homes at risk 37,756. 1,732 s. |
+| 9 Bots, points | Below. |
+
+**Bots, 200 seeds a style (`tune21.ts seeds=200`; Section 41 -> 41.6; homes saved, mean).** Flagged: any move over 5
+points.
+
+| Style | 2030 | 2040 | 2050 | Whole run | Stars of 9 | Clears |
+|---|---|---|---|---|---|---|
+| far | 0 -> 0 | **25 -> 0** | **17 -> 0** | **20 -> 0** | 0.0 -> 0.0 | 0 -> 0 |
+| random | 11 -> 11 | **53 -> 37** | **50 -> 43** | **49 -> 37** | 2.2 -> 1.7 | 1 -> 1% |
+| nature | **38 -> 100** | 89 -> 90 | 80 -> 80 | 82 -> 85 | 6.0 -> 8.0 | 100 -> 100% |
+| seawalls | 75 -> 75 | **25 -> 0** | 76 -> 71 | **44 -> 29** | 2.0 -> 2.0 | 0 -> 0 |
+| smart | **91 -> 100** | 94 -> 98 | 91 -> 93 | 93 -> 95 | 6.5 -> 6.5 | 100 -> 100% |
+| guided | 100 -> 100 | 98 -> 96 | 84 -> 82 | 91 -> 89 | 7.4 -> 7.2 | 100 -> 100% |
+| best | 100 -> 100 | 96 -> 95 | 100 -> 100 | 98 -> 98 | 6.8 -> 6.8 | 100 -> 100% |
+
+Why they moved, all as the owner's answers mean: the homes the standing nature alone keeps are no longer in a storm's
+path, so a style that saved them only through the standing nature (far, random, seawalls, which build nothing that holds
+a river flood) no longer gets them (seawalls in 2040: 14 of 56 before, 0 of 42 now). Nature and smart in 2030: they now
+weigh the objective's glowing tiles (answer 9), where -3,17 saves 6 of the 8 homes. No style dropped a clear.
+
+**Bots, 20 seeds (`npm run bots`, docs/qa/section41-6/bots-20-seeds.txt), homes over a run (Section 41 -> now):** Casual
+74% -> 68% (60 to 77); Greedy 46% -> 33% (16 to 58), flagged; Smart 92% -> 95% (89 to 98); Far 20% -> 0%.
+
+**Points, 20 seeds, the game's own values (`points35.ts`, docs/qa/section41-6/points.md), median (best):** best plan
+4,375 -> **4,105**; guided 4,382 (4,695) -> 4,163 (4,475); best bot 3,520 -> 3,340; smart 3,365 -> 3,295; nature 3,400 ->
+3,550; seawalls 1,000 -> 820; random 1,385 (2,090) -> 1,185 (1,910); far 180 -> **0**. Every Section 35.6 target still
+holds: the largest source in a best play run is 38% (living coast; at most 40%); mixed over seawalls only at least 271% on
+every seed; the worst best run is 1.70 times the best random run. Nothing tuned (the tool's own search would choose 200
+for a place; the game counts 150).
+
+### 41.6.4 The full browser check and three played runs
+
+| Check | Result |
+|---|---|
+| `tsc --noEmit`, `npm run build:api`, `npm run test`, `npm run build` | Clean. 115 test files, 1,036 pass, 6 skipped (master: 114 files, 1,024 pass). New: tests/section41_6.test.ts (11 tests). |
+| `npm run test:labels` (four sizes) | 73 views, 0 failed. |
+| `npm run test:layout` (four sizes) | 144 layouts, 0 failed. |
+| `npm run test:maya` | All pass, zero console errors (docs/qa/section1e restored afterwards). |
+| `npm run test:help` (four sizes; tool fixed) | How to play fits at 1280x600, 1366x768, 1920x1080, 2560x1440. |
+| axe-core, four sizes: menu, name card, How to play, the game, a result card, the last card | **No serious or critical** at any size; zero console errors. |
+| `npm run walkthrough` | The Tutorial plays through (22 of 22, 26 of 26 homes; "You tried 7 of 7"). Two problems, both on master too (below): the 404 of `/api` on the dev server when a level is left, and (before the tool's fix) the stale Play Panjim check. After the fix only the two 404s remain (logs/walkthrough-after-fix.log). |
+| `npm run verify:maya` | Preview equals resolution in the browser (cyclone 8 at risk, 8 lost; flood 42, 42); street map at 21%. Four FAILs, every one also on master `ad727b0` (run beside it): the stale Play Panjim check (tool fixed), "Tutorial: the Get ready card shows its objective" (the Tutorial shows its own panel), and the "Larger text" toggle has no tooltip (Tutorial and Panaji). |
+| Played runs A, B, C (tools/qa41/full416.ts) at 1366x768 and 1920x1080 | Every check passes at both sizes, zero console errors, every post tagged (below). |
+| WebKit (Playwright 26.5) | Walkthrough: plays through; only the dev server's `/api` 404s. `test:layout`: 143 of 144; "1366x768 resized to 80%: her bubble is not showing" (WebKit only). |
+| Firefox | **Not run**: Windows refuses to start Playwright's firefox.exe from AppData (`spawn UNKNOWN`); changing that is a security setting. |
+| Grayscale and deuteranopia copies of the key shot | Not made. |
+| The Vercel preview | Recorded below ("Section 41.6's preview"), after the push of 41.6.4. |
+
+**The three runs** (each from the menu: Play Panjim, the name card with a `qa41_` name, How to play's three screens, the
+guided start, 25 builds through the tile menus, the last card; the mouse moved so the idle reset never fired). Shots in
+docs/qa/section41-6/ (`runA-*`, `runB-*`, `runC-*`, `name-card-*`), each result card and the last card at both sizes.
+
+| Run | 2030 | 2040 | 2050 | Stars | Points (HUD = server) |
+|---|---|---|---|---|---|
+| A, the perfect plan (guide skipped with its own "Skip the help": its dune is not in the plan) | 8 of 8, 0 lost | 42 of 42, 0 lost | 54 of 54, 0 lost | 9 of 9 | 4,105 = 4,105 |
+| B, seawalls on the first water tiles at Campal (6,8 5,9 4,10 7,7 3,11 5,7) and pandanus on the sand (2,13 1,13 0,14 -1,15) in 2041 to 2050 | 8 of 8 | 42 of 42 | 51 of 54, 3 lost (-14,28 2,15 4,15) | 8 of 9 | 4,190 = 4,190 |
+| C, careless: guided start, then away from the storms; the standing khazan at 26,6 removed in 2031 | 6 of 8 (the guided dune and pandanus) | 0 of 44 | 1 of 20 | 1 of 9 | 500 = 500 |
+
+What the runs checked, all passing: the name card's Top 10 (10 rows, stored with "Festival 2026" in the in memory board)
+shows no season element and no festival or season word; How to play is three screens; the guided start by its own clicks
+(dune -4,18, pandanus -3,17); Maya's standing line once, after the guide; the Campal sentence once, in 2041, with "On to
+2041. 10 builds before the storm."; the 2050 warning (2049 in B and C; none in A, where nothing is at risk) has the wind
+and no Campal sentence; a first sea tile beside Campal (6,8) offers Seawall and Breakwater, the tile beyond (6,7) "Nothing
+can be built out here."; the seawalls stand on the water (all six still standing after 2050); "What protected your homes"
+names them (B 2050: Seawall 11, Pandanus 9, Standing nature 4) with "Standing nature" last in every storm; in B the model's
+homes at risk a year before 2050 are exactly the three the storm took; in C the standing khazan's card offers "Demolish
+(uses this year's build)", removing it moves the year 2031 to 2032 and the 2040 path from 42 to 44 homes, and in 2040
+(nothing of the player's answering the flood) 0 homes saved, 0 home points, the player's rows credit nothing, "Standing
+nature 12"; A's last card board box runs from 1st place to the player's row, scrolled to it, "Scroll up to see 1st
+place", no label; HUD points equal the server's in all three. 127 player texts read against the rules (no "·", no spaced
+dash, no hyphen joining words, "defense", no festival or season, nothing about money): none broken.
+
+**What a player may find confusing.** (1) In C's 2040 card 1 says "0 of 44 homes saved" while "What protected your homes"
+shows "Standing nature 12": the twelve are outside the 44 by the owner's rule, and nothing on the card says so. (2) Where
+the standing nature answers a storm but saved nothing (a cyclone), its row reads 0 with an empty bar. (3) A seawall built
+away from the storms gets a 0 row with "A cyclone defense; this was a river flood". (4) The ? and ☰ buttons still overlap
+top right while the name card is up (from before).
+
+### Review (independent subagent, the diff and the tools)
+
+0 BLOCKER, 3 MAJOR (all fixed), 4 MINOR (3 fixed or answered, 1 for the owner), 5 NIT (2 fixed, 3 recorded).
+- MAJOR, fixed: the replay's caption "With no defenses at all: N hit" was false after 41.6.1 (the comparison keeps the
+  standing nature): now "Without your defenses: N hit", and the storm card's QA picture says the same; tested.
+- MAJOR, fixed: `smartRun` (the smart of `npm run bots` and its per element margins) did not weigh the glowing tiles:
+  it does now; the 20 seed run was made again (Smart 95%).
+- MAJOR, fixed: the test of "the player's own khazan is credited alone" built no khazan. It now builds the player's
+  khazan where it saves the most from the 2040 flood and checks its row equals what that one khazan did (the same run
+  without it), so a change that took the standing khazans away with it would fail.
+- MINOR: three tests read source text (recorded); check 5b of the mechanics tool could pass without checking (fixed);
+  the "Standing nature" row can read 0 (the owner's wording, "where any of it answered"; for the owner); the telemetry's
+  row count included the standing row (fixed: the player's rows only, as before).
+- NIT: `qaUrl` added no tag where `qa=1` was already given (fixed); the 2050 storm's "Count the homes your defenses
+  held." said "your" where the player's own did nothing (fixed: "Count the homes that stayed dry." then); a standing
+  defence on the path still gets the heat view's shield on its own tile (left: it marks the defence, not homes); rows
+  posted between the Section 41 merge (11 November, 19:47) and this section's deploy counted the standing nature's homes
+  (up to about 18 homes at 10 points) and stay on the one board; the Campal sentence (the owner's words) names
+  breakwaters beside the river and carries no "Game rule" tag.
+
+### Bugs found, worst first
+
+1. Fixed here (review MAJOR): the replay caption above. Would not have blocked the merge after the fix.
+2. On master too, not blocking: the walkthrough fails on any console error, and the dev server has no `/api`, so the
+   run report sent when a level is left answers 404 (`[in-level-leave]`, `[browser-back]`). To reproduce: `npm run
+   walkthrough`. Suspected: tools/walkthrough.ts (no `/api` stub, unlike the section tools), not the game.
+3. On master too, not blocking: `verify:maya` "Tutorial: the Get ready card shows its objective" (tools/verifyMaya.ts:82;
+   the Tutorial shows `.tutorial-panel`) and "every HUD control has a tooltip (missing: text-toggle)" (the "Larger text"
+   toggle, src/app/panjimController.ts:399-401, has no tooltip). Screenshot: none needed (DOM checks).
+4. WebKit only, not blocking: `test:layout` "1366x768 resized to 80%: her bubble is not showing" (one layout of 144).
+   Look at it in Safari by hand.
+5. QA tools fixed, not game bugs: `test:help` clicked "Begin" at once (How to play has three screens since Section 40);
+   tools/tutorialPlay.ts waited for a brief titled "Panjim" after the Tutorial (How to play since Section 39);
+   tools/qaUrl.ts gave no test tag.
+
+### Two answers, no change made
+
+- **Turning off the 3 minute idle reset** would touch: `IdleReset` and `watchIdle` (src/app/idleReset.ts, `IDLE_RESET_MS`
+  and the 30 s warning); its wiring and the "Still there?" note in src/app/gameSession.ts (about line 370) and their CSS
+  (`.idle-warning` in src/ui/harbour.css and src/ui/theme.css, and the theme test's list); `onIdle` in
+  src/app/appShell.ts (back to the menu, which clears the run's name); the run that stops early is reported by
+  `beaconRun` (panjimController's stop path), so without the reset an abandoned run is reported only when the page closes;
+  tests/idleReset.test.ts pins 180 s and 30 s. Every QA tool moves the mouse to avoid it and would not need to. The
+  simplest switch is a flag beside `SHOW_MAYA` in src/services/features.ts that skips `watchIdle`.
+- **The high rate limits** (`LIMITS` in server/handlers.ts: board 120, rename 120, feedback 120, run 400 an hour, per
+  salted IP): nothing in the game depends on the numbers (over a limit the reply is 429 and the game carries on as
+  offline). They were raised for festival laptops sharing one IP (Section 35.8). tests/server.test.ts pins them (and one
+  test fills 120 posts). Lowering them affects only places where many players share an IP (a school or a venue's wifi),
+  and testers posting from one IP to the Preview, which shares the database and the `rate_limits` table with production.
+
+**Not run:** Firefox (above); Safari by hand; the grayscale and deuteranopia copies; nobody has played the preview by
+hand (the runs were played by the tool through the game's own screens).
+
+**Section 41.6's preview.** The branch's address is `climate-game-git-section-41-6-answers-qa-ferdin-5189s-projects.vercel.app`
+(read through the Vercel connector; this branch name is short enough that Vercel kept it whole). The preview of
+`2adcc89` (41.6.4, `dpl_3W7SYs2MgNEUuKACXwckzHN9Gdid`) is Ready. Its script holds "Without your defenses", "Standing
+nature", the owner's two shore rule sentences and "Count the homes that stayed dry", and none of "name-card-season",
+"Festival 2026", "Season 1", "With no defenses at all". Its `GET /api/board` (the shared database, read only) answers
+200 with rows whose `season` is "" and no top level label. `npm run walkthrough -- --url=<preview>` (every page with
+`tag=FestTesters` through tools/qaUrl.ts): **0 problems** (the dev server's `/api` 404s do not happen on a deployment).
+Run A of tools/qa41/full416.ts on the preview at 1920x1080 (every `/api` call answered on this machine, so nothing was
+written): all pass, 0, 0, 0 homes lost, 9 of 9 stars, HUD 4,105 equal to the server's replay, zero console errors.
+Logs: docs/qa/section41-6/logs/preview-*.log; shots in docs/qa/section41-6/preview/. Nobody has played the preview by
+hand. master is untouched at `ad727b0`.

@@ -6,7 +6,7 @@ import { punctuationProblems } from "./helpers/uiStrings";
 
 /** Section 35.3: the name card at the start of Play Panjim. */
 const text = (html: string): string => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-const rows = Array.from({ length: 12 }, (_, i) => ({ rank: i + 1, name: i === 0 ? "<b>@goa</b>" : `Player ${i + 1}`, points: 5000 - i * 100, stars: 7, season: "Festival 2026" }));
+const rows = Array.from({ length: 12 }, (_, i) => ({ rank: i + 1, name: i === 0 ? "<b>@goa</b>" : `Player ${i + 1}`, points: 5000 - i * 100, stars: 7 }));
 
 describe("the name card", () => {
   it("says what the board is, asks for a name, and offers Play and Play without a name", () => {
@@ -34,7 +34,7 @@ describe("the name card", () => {
     // A form: Enter in its one field submits it, and Play is its submit button.
     expect(html).toMatch(/<form class="name-card-main"/);
     expect(html).toContain('<button type="submit" class="name-card-play');
-    expect(topTenHtml({ status: "ready", rows, season: "Festival 2026" })).toContain('tabindex="0"');
+    expect(topTenHtml({ status: "ready", rows })).toContain('tabindex="0"');
   });
 
   it("Section 35.8: Play full width in the main style, Play without a name a plain underlined text button under it, 44 px", () => {
@@ -53,13 +53,21 @@ describe("the name card", () => {
     expect(nameCardHtml('@a"b')).toContain('value="@a&quot;b"');
   });
 
-  it("shows the top 10: rank, name, points and season", () => {
-    const html = topTenHtml({ status: "ready", rows, season: "Festival 2026" });
+  it("shows the top 10: rank, name and points (Section 41.6: no season or festival label, not even an empty element)", () => {
+    const html = topTenHtml({ status: "ready", rows });
     expect(html.match(/<li>/g)?.length).toBe(10);
     expect(text(html)).toContain("Top 10");
-    expect(text(html)).toContain("2 Player 2 4900 Festival 2026");
+    expect(text(html)).toContain("2 Player 2 4900 3 Player 3 4800");
     expect(html).toContain("&lt;b&gt;@goa&lt;/b&gt;");
-    expect(text(topTenHtml({ status: "ready", rows: [], season: "Festival 2026" }))).toContain("No one is on the board yet.");
+    expect(text(topTenHtml({ status: "ready", rows: [] }))).toContain("No one is on the board yet.");
+    // A row from a server still sending a label (or a page cached from before) shows none.
+    const labelled = rows.map((r) => ({ ...r, season: "Festival 2026" }));
+    for (const state of [{ status: "ready" as const, rows: labelled }, { status: "ready" as const, rows: [] }, { status: "offline" as const }, { status: "loading" as const }]) {
+      const out = topTenHtml(state);
+      expect(out).not.toMatch(/season|festival|Season 1/i);
+    }
+    const css = readFileSync("src/ui/panjim/panjim.css", "utf8") + readFileSync("src/ui/fiveColours.css", "utf8");
+    expect(css).not.toContain("name-card-season");
   });
 
   it("offline: Board offline, and the game plays the same", () => {

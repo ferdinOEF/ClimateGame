@@ -66,12 +66,15 @@ export function replaySteps(record: StormRecord, defences: ReadonlyMap<string, s
     dry,
     highlight: []
   });
+  // Section 41.6: "your defenses" are the player's own; `undefended` keeps the nature that stood from the first turn.
   const without = record.undefended.outcome.housesDamaged;
   const hazards = hazardsOf(record.kind);
-  const defended = [...defences.values()].some((id) => defendsAgainst(id, hazards));
+  const standing = new Set(record.standing?.keys ?? []);
+  const defended = [...defences].some(([key, id]) => !standing.has(key) && defendsAgainst(id, hazards));
   if (defended && without > hit.length) {
     steps.push({
-      text: `With no defenses at all: ${homes(without)} hit`,
+      // Section 41.6 (review): `undefended` keeps the nature standing from the first turn, so it is "without yours".
+      text: `Without your defenses: ${homes(without)} hit`,
       maya: `Without any of your defenses, ${homes(without)} would have been hit. You saved ${homes(without - hit.length)}.`,
       hit: [...record.undefended.outcome.damagedHouses],
       dry: [],
@@ -79,7 +82,7 @@ export function replaySteps(record: StormRecord, defences: ReadonlyMap<string, s
     });
   }
   for (const save of record.savedBy.slice(0, maxDefences)) {
-    const tiles = [...defences].filter(([, id]) => id === save.elementId).map(([key]) => key);
+    const tiles = [...defences].filter(([key, id]) => id === save.elementId && !standing.has(key)).map(([key]) => key);
     steps.push({
       text: `${cap(plural(save.elementId))} ×${save.count}: ${homes(save.houses)} saved`,
       maya: `Without your ${plural(save.elementId)}, ${homes(save.houses)} more would have been hit.`,

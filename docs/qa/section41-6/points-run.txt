@@ -1,0 +1,116 @@
+# Section 35.6: the points, tuned on the bots
+
+`npx tsx tools/panjimBots/points35.ts jobs=5`, 20 seeds (`bot-seed-1` to `bot-seed-20`), 576 s. Each
+bot's run was replayed with points on; the stars matched the bots' own runs on every seed (the tool stops if not).
+The best plan is tools/bestPlan's for this board (`docs/qa/section41-6/best_plan.json`, goal 1). "Smart" is the
+mixed run (the defences it builds, a mean per run: mangrove 7.7, khazan 5.3, small_dam 3.9, sandy_vegetation 3.0, seawall 2.6, breakwater 1.5, dune 0.9); "seawalls" is Smart limited to seawalls and
+breakwaters (seawall 21.0, breakwater 4.0).
+
+## The starting values
+
+{"home":10,"place":250,"objective":300,"coastStanding":20,"coastProtecting":30,"biodiversity":5,"veteran":50}
+
+largest single source in a best play run 44% (Places; target at most 40%); mixed over seawalls at least 191% on every seed (target 15%); the worst best run is 1.71 times the best random run (target above 1): **not every target met**.
+
+| Player | Median | Spread (min to max) | Best | Median stars of 9 | Best run: Homes | Places | Objective | Living coast | Biodiversity | Veterans |
+|---|---|---|---|---|---|---|---|---|---|---|
+| random | 1315 | 850 to 2310 | 2310 | 2 | 410 | 1000 | 0 | 750 | 0 | 150 |
+| far | 0 | 0 to 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| nature | 3800 | 3260 to 4165 | 4165 | 8 | 830 | 750 | 300 | 1710 | 325 | 250 |
+| seawalls | 1220 | 1160 to 1220 | 1220 | 2 | 220 | 1000 | 0 | 0 | 0 | 0 |
+| smart | 3853 | 3545 to 4550 | 4550 | 7 | 960 | 1750 | 300 | 1260 | 130 | 150 |
+| guided | 4300 | 3805 to 4915 | 4915 | 7 | 890 | 1500 | 900 | 1290 | 185 | 150 |
+| best | 4040 | 3945 to 4265 | 4265 | 7 | 1000 | 1750 | 0 | 1210 | 105 | 200 |
+| bestPlan | 4605 | 4605 to 4605 | 4605 | 9 | 1040 | 1250 | 300 | 1550 | 215 | 250 |
+
+## The final values
+
+{"home":10,"place":200,"objective":300,"coastStanding":20,"coastProtecting":30,"biodiversity":5,"veteran":50}
+
+largest single source in a best play run 39% (Places; target at most 40%); mixed over seawalls at least 223% on every seed (target 15%); the worst best run is 1.70 times the best random run (target above 1): **every target met**. Chosen as the values
+nearest the starting ones (by ratio) that meet every target, keeping their order of importance
+(objective ≥ place ≥ veteran ≥ coastProtecting ≥ coastStanding ≥ home ≥ biodiversity), from 1068 candidates.
+
+| Player | Median | Spread (min to max) | Best | Median stars of 9 | Best run: Homes | Places | Objective | Living coast | Biodiversity | Veterans |
+|---|---|---|---|---|---|---|---|---|---|---|
+| random | 1215 | 850 to 2110 | 2110 | 2 | 410 | 800 | 0 | 750 | 0 | 150 |
+| far | 0 | 0 to 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| nature | 3675 | 3260 to 4015 | 4015 | 8 | 830 | 600 | 300 | 1710 | 325 | 250 |
+| seawalls | 1020 | 960 to 1020 | 1020 | 2 | 220 | 800 | 0 | 0 | 0 | 0 |
+| smart | 3555 | 3280 to 4200 | 4200 | 7 | 960 | 1400 | 300 | 1260 | 130 | 150 |
+| guided | 4230 | 3755 to 4625 | 4625 | 7 | 900 | 600 | 900 | 1770 | 255 | 200 |
+| best | 3690 | 3595 to 3915 | 3915 | 7 | 1000 | 1400 | 0 | 1210 | 105 | 200 |
+| bestPlan | 4355 | 4355 to 4355 | 4355 | 9 | 1040 | 1000 | 300 | 1550 | 215 | 250 |
+
+### Mixed against seawalls only, seed by seed (final values)
+
+| Seed | Smart (mixed) | Seawalls only | Mixed over seawalls | Random | Best |
+|---|---|---|---|---|---|
+| bot-seed-1 | 3535 | 1020 | 247% | 1590 | 3600 |
+| bot-seed-2 | 3510 | 1020 | 244% | 850 | 3695 |
+| bot-seed-3 | 3700 | 1020 | 263% | 880 | 3685 |
+| bot-seed-4 | 3350 | 1020 | 228% | 1030 | 3655 |
+| bot-seed-5 | 3760 | 1020 | 269% | 1120 | 3835 |
+| bot-seed-6 | 4145 | 1020 | 306% | 1900 | 3615 |
+| bot-seed-7 | 4200 | 1020 | 312% | 910 | 3670 |
+| bot-seed-8 | 3620 | 990 | 266% | 1410 | 3595 |
+| bot-seed-9 | 3520 | 1020 | 245% | 1370 | 3735 |
+| bot-seed-10 | 3295 | 1020 | 223% | 910 | 3795 |
+| bot-seed-11 | 3515 | 1020 | 245% | 1400 | 3720 |
+| bot-seed-12 | 3280 | 990 | 231% | 1870 | 3670 |
+| bot-seed-13 | 3380 | 990 | 241% | 1240 | 3825 |
+| bot-seed-14 | 3575 | 1020 | 250% | 1090 | 3660 |
+| bot-seed-15 | 3585 | 1020 | 251% | 880 | 3775 |
+| bot-seed-16 | 3830 | 1020 | 275% | 1190 | 3660 |
+| bot-seed-17 | 3745 | 960 | 290% | 1920 | 3710 |
+| bot-seed-18 | 4140 | 1020 | 306% | 1180 | 3735 |
+| bot-seed-19 | 3445 | 990 | 248% | 1410 | 3600 |
+| bot-seed-20 | 3480 | 1020 | 241% | 2110 | 3915 |
+
+## The game's values, as played (`POINT_VALUES`, src/core/resiliencePoints.ts)
+
+{"home":10,"place":150,"objective":300,"coastStanding":20,"coastProtecting":30,"biodiversity":5,"veteran":50}
+
+largest single source in a best play run 38% (Living coast; target at most 40%); mixed over seawalls at least 271% on every seed (target 15%); the worst best run is 1.70 times the best random run (target above 1): **every target met**. These are the values the game
+counts with (Section 35.6); the search above is this tool's own and changes nothing.
+
+| Player | Median | Spread (min to max) | Best | Median stars of 9 | Best run: Homes | Places | Objective | Living coast | Biodiversity | Veterans |
+|---|---|---|---|---|---|---|---|---|---|---|
+| random | 1185 | 850 to 1910 | 1910 | 2 | 410 | 600 | 0 | 750 | 0 | 150 |
+| far | 0 | 0 to 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| nature | 3550 | 3260 to 3865 | 3865 | 8 | 830 | 450 | 300 | 1710 | 325 | 250 |
+| seawalls | 820 | 760 to 820 | 820 | 2 | 220 | 600 | 0 | 0 | 0 | 0 |
+| smart | 3295 | 2980 to 3850 | 3850 | 7 | 960 | 1050 | 300 | 1260 | 130 | 150 |
+| guided | 4163 | 3705 to 4475 | 4475 | 7 | 900 | 450 | 900 | 1770 | 255 | 200 |
+| best | 3340 | 3245 to 3565 | 3565 | 7 | 1000 | 1050 | 0 | 1210 | 105 | 200 |
+| bestPlan | 4105 | 4105 to 4105 | 4105 | 9 | 1040 | 750 | 300 | 1550 | 215 | 250 |
+
+### Mixed against seawalls only, seed by seed (the game's values)
+
+| Seed | Smart (mixed) | Seawalls only | Mixed over seawalls | Random | Best |
+|---|---|---|---|---|---|
+| bot-seed-1 | 3185 | 820 | 288% | 1540 | 3250 |
+| bot-seed-2 | 3260 | 820 | 298% | 850 | 3345 |
+| bot-seed-3 | 3400 | 820 | 315% | 880 | 3335 |
+| bot-seed-4 | 3100 | 820 | 278% | 1030 | 3305 |
+| bot-seed-5 | 3460 | 820 | 322% | 1120 | 3485 |
+| bot-seed-6 | 3795 | 820 | 363% | 1700 | 3265 |
+| bot-seed-7 | 3850 | 820 | 370% | 910 | 3320 |
+| bot-seed-8 | 3370 | 790 | 327% | 1360 | 3245 |
+| bot-seed-9 | 3170 | 820 | 287% | 1270 | 3385 |
+| bot-seed-10 | 3045 | 820 | 271% | 860 | 3445 |
+| bot-seed-11 | 3265 | 820 | 298% | 1250 | 3370 |
+| bot-seed-12 | 2980 | 790 | 277% | 1770 | 3320 |
+| bot-seed-13 | 3080 | 790 | 290% | 1190 | 3475 |
+| bot-seed-14 | 3325 | 820 | 305% | 1090 | 3310 |
+| bot-seed-15 | 3335 | 820 | 307% | 880 | 3425 |
+| bot-seed-16 | 3530 | 820 | 330% | 1040 | 3310 |
+| bot-seed-17 | 3495 | 760 | 360% | 1720 | 3360 |
+| bot-seed-18 | 3790 | 820 | 362% | 1180 | 3385 |
+| bot-seed-19 | 3195 | 790 | 304% | 1310 | 3250 |
+| bot-seed-20 | 3230 | 820 | 294% | 1910 | 3565 |
+
+
+real	9m40.663s
+user	0m0.105s
+sys	0m0.198s

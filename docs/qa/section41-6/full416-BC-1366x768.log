@@ -1,0 +1,56 @@
+PASS name card: the Top 10 has 10 rows, no season element, no festival or season word ("Top 10 1Board Ana 156002Board Rui 254503Board Zoe 353004Board Kiran 451505Board ...")
+PASS How to play: 3 screens (Next, Next), then "Let's Play!"
+PASS the guided start by its own clicks: dune at -4,18, pandanus at -3,17 (dune sandy_vegetation)
+PASS run B: after the guided start hands over, Maya says the standing nature line
+shot runB-2030-card1-1366x768.jpg
+shot runB-2030-what-protected-1366x768.jpg
+shot runB-2030-card2-1366x768.jpg
+shot runB-2040-card1-1366x768.jpg
+shot runB-2040-what-protected-1366x768.jpg
+shot runB-2040-card2-1366x768.jpg
+PASS run B: the 2050 phase begins (2041)
+PASS a first sea tile beside Campal (6,8) offers ["seawall","breakwater"]
+shot runB-first-sea-tile-menu-1366x768.jpg
+PASS the tile beyond it (6,7): 0 cards, "Nothing can be built out here."
+shot runB-deep-sea-tile-1366x768.jpg
+run B 2041 to 2050: seawalls on 6,8 5,9 4,10 7,7 3,11 5,7; pandanus on 2,13 1,13 0,14 -1,15
+shot runB-seawall-on-the-water-1366x768.jpg
+shot runB-2050-card1-1366x768.jpg
+shot runB-2050-what-protected-1366x768.jpg
+run B: HUD points 4190; server's (its replay of the build list) 4190
+run B 2050: model's homes at risk the year before (with nine of the ten builds): 0; lost in the storm: 3 (-14,28 2,15 4,15)
+PASS run B: "What protected your homes" names the seawalls (seawall: Seawall11 | sandy_vegetation: Pandanus9 | standing_nature: Standing nature4)
+PASS run B: the Standing nature row is last
+PASS run B: HUD points 4190 equal the server's 4190
+run B: the seawalls after 2050: 6,8:coast:seawall 5,9:coast:seawall 4,10:coast:seawall 7,7:coast:seawall 3,11:coast:seawall 5,7:coast:seawall
+PASS run B: Maya's standing nature line said once (2028)
+PASS run B: the Campal sentence said once, as the 2050 phase begins (2041: "On to 2041. 10 builds before the storm. At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back.")
+PASS run B: the 2050 warning (2049) keeps the wind and has no Campal sentence
+PASS name card: the Top 10 has 10 rows, no season element, no festival or season word ("Top 10 1Board Ana 156002Board Rui 254503Board Zoe 353004Board Kiran 451505Board ...")
+PASS How to play: 3 screens (Next, Next), then "Let's Play!"
+PASS the guided start by its own clicks: dune at -4,18, pandanus at -3,17 (dune sandy_vegetation)
+PASS run C: after the guided start hands over, Maya says the standing nature line
+shot runC-2030-card1-1366x768.jpg
+shot runC-2030-what-protected-1366x768.jpg
+shot runC-2030-card2-1366x768.jpg
+PASS run C 2031: the standing khazan's card offers "Demolish (uses this year's build)"
+shot runC-2031-standing-khazan-card-1366x768.jpg
+PASS run C: removing the standing khazan cost 2031 (year 2031 -> 2032); the 2040 path 42 -> 44 homes
+shot runC-2040-card1-1366x768.jpg
+shot runC-2040-what-protected-1366x768.jpg
+shot runC-2040-card2-1366x768.jpg
+PASS run C 2040: the player's own rows credit no home; Standing nature last (seawall: Seawall0A cyclone defense; this was a river flood | standing_nature: Standing nature12)
+shot runC-2050-card1-1366x768.jpg
+shot runC-2050-what-protected-1366x768.jpg
+run C: HUD points 500; server's (its replay of the build list) 500
+FAIL run C: homes saved 6, 0, 1 of 8, 44, 20, home points 60, 0, 10 (the standing nature earns nothing)
+PASS run C: HUD points 500 equal the server's 500
+PASS run C: Maya's standing nature line said once (2028)
+PASS run C: the Campal sentence said once, as the 2050 phase begins (2041: "On to 2041. 10 builds before the storm. At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back.")
+PASS run C: the 2050 warning (2049) keeps the wind and has no Campal sentence
+RESULT B: lost 0/0/3, saved 8 of 8, 42 of 42, 51 of 54, stars 3+3+2, HUD 4190, server 4190
+RESULT C: lost 2/44/19, saved 6 of 8, 0 of 44, 1 of 20, stars 1+0+0, HUD 500, server 500
+PASS every player text read against the rules (87 texts)
+PASS no console errors
+PASS every post carried the test tag (2: POST /api/board tag=FestTesters)
+1 FAILED

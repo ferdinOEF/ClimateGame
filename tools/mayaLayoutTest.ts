@@ -12,7 +12,10 @@
  * Fails (exit code 1) on the first overlap, with the offending pair.
  * `npm run test:layout`.
  */
-import { chromium, type Page } from "playwright";
+import { chromium, firefox, webkit, type Page } from "playwright";
+
+/** Section 41.6.4: PW_BROWSER=firefox or webkit runs the same layout test in Playwright's Firefox or WebKit (default Chromium). */
+const ENGINE = process.env.PW_BROWSER ?? "chromium";
 import fs from "node:fs";
 import { glArgs, startDevServer } from "./devServer";
 import { letsPlay } from "./letsPlay";
@@ -111,10 +114,15 @@ async function assertClear(page: Page, label: string, expectBubble: boolean): Pr
 async function main(): Promise<void> {
   const server = await startDevServer(PORT);
   try {
-    const browser = await chromium.launch({
-      executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
-      args: glArgs()
-    });
+    const browser =
+      ENGINE === "firefox"
+        ? await firefox.launch()
+        : ENGINE === "webkit"
+          ? await webkit.launch()
+          : await chromium.launch({
+              executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
+              args: glArgs()
+            });
     for (const res of RESOLUTIONS) {
       const page = await (await browser.newContext({ viewport: { width: res.w, height: res.h } })).newPage();
       // A page error stops the game's frame loop, and with it Maya's layout: fail on any.

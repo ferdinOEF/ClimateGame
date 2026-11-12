@@ -1,0 +1,28 @@
+PASS axe 1280x600 menu: no serious or critical
+PASS axe 1280x600 name card: no serious or critical
+PASS axe 1280x600 How to play: no serious or critical
+PASS axe 1280x600 the game, the guided start up: no serious or critical
+PASS axe 1280x600 a result card: no serious or critical
+PASS axe 1280x600 the last card: no serious or critical
+PASS axe 1366x768 menu: no serious or critical
+PASS axe 1366x768 name card: no serious or critical
+PASS axe 1366x768 How to play: no serious or critical
+PASS axe 1366x768 the game, the guided start up: no serious or critical
+PASS axe 1366x768 a result card: no serious or critical
+PASS axe 1366x768 the last card: no serious or critical
+PASS axe 1920x1080 menu: no serious or critical
+PASS axe 1920x1080 name card: no serious or critical
+PASS axe 1920x1080 How to play: no serious or critical
+PASS axe 1920x1080 the game, the guided start up: no serious or critical
+PASS axe 1920x1080 a result card: no serious or critical
+PASS axe 1920x1080 the last card: no serious or critical
+PASS axe 2560x1440 menu: no serious or critical
+PASS axe 2560x1440 name card: no serious or critical
+PASS axe 2560x1440 How to play: no serious or critical
+PASS axe 2560x1440 the game, the guided start up: no serious or critical
+PASS axe 2560x1440 a result card: no serious or critical
+PASS axe 2560x1440 the last card: no serious or critical
+PASS every player text read against the rules (0 texts)
+PASS no console errors
+PASS every post carried the test tag (4: POST /api/board tag=FestTesters)
+ALL PASS

@@ -97,10 +97,11 @@ export function defenceRules(): { id: string; name: string; text: string }[] {
 }
 
 /**
- * Section 41.4 (owner's words), game rules for the Field Guide. The shore rule is Section 41.1's (`GameState.isFirstSea`);
- * the river rule Section 41.2's (`answersHazard`), said with the year of the level's storm that brings both.
+ * Section 41.4 (owner's words), game rules for the Field Guide. The shore rule is Section 41.1's (`GameState.isFirstSea`;
+ * its words are Section 41.6's, owner decision 6); the river rule Section 41.2's (`answersHazard`), said with the year
+ * of the level's storm that brings both.
  */
-export const SHORE_RULE = "In this game, seawalls and breakwaters stand at the shore: on the sand, or on the first water tile beside it. They cannot be built out at sea.";
+export const SHORE_RULE = "In this game, seawalls stand on the shore or on the first water tile beside it. Breakwaters go only on that first water tile. Neither can be built out at sea.";
 export function riverRule(year: number): string {
   return `In this game, in the ${year} storm a seawall also holds back the river that the sea pushes back.`;
 }

@@ -28,7 +28,11 @@ export function tagOf(body: Record<string, unknown>, env: ServerEnv): string | n
   return TAG_PATTERN.test(fallback) ? fallback : null;
 }
 
-/** The board's season, stored on every row at post time. Nothing resets: it is a label, not a new board. */
+/**
+ * The label stored in a board row's `season` column at post time (the column is NOT NULL with no default). Section 41.6
+ * (owner decision 10): one board, tagless: the label is never shown or sent to a player; the owner may remove
+ * `BOARD_SEASON` on Vercel, and new rows then store "Season 1". Nothing resets and no row is changed.
+ */
 export function seasonOf(env: ServerEnv): string {
   return env.BOARD_SEASON?.trim() || "Season 1";
 }

@@ -70,8 +70,7 @@
   color: var(--band-ink);
 }
 
-.name-card .name-card-top-note,
-.name-card .name-card-season {
+.name-card .name-card-top-note {
   color: var(--band-ink-2);
 }
 

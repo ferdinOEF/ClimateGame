@@ -1204,7 +1204,8 @@ export class PanjimController {
       ...(pushed.length ? { pushNote: `In this game a seawall pushes water round its ends: it reached ${joinNames(pushed)}.` } : {})
     };
     const next = this.run.nextChallenge();
-    const top = result.defences.find((d) => d.homes > 0);
+    // Section 41.6: Maya's line names the player's own defence; the "Standing nature" row is never hers to credit.
+    const top = result.defences.find((d) => d.homes > 0 && !d.standing);
     const results = MAYA_DATA.results as { byDefence: Record<string, { text: string; rule: boolean }>; comingUp: Record<string, { text: string; rule: boolean }> };
     if (this.tutorial) {
       // Section 31.4: a card for each storm, every defence built listed (why where it saved none); after the flood,
@@ -1231,7 +1232,7 @@ export class PanjimController {
     if (plan.cards.length === 0) {
       // Section 38.2: after the 2050 storm there is one card, the last card (`finale`), which shows this result.
       this.lastStorm = { result, points, defences };
-      this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });
+      this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.filter((d) => !d.standing).length });
       this.stormHues(false);
       return;
     }
@@ -1246,7 +1247,8 @@ export class PanjimController {
         button: plan.outlookButton
       });
     }
-    this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });
+    // Section 41.6 (review): the player's own rows, as before 41.6 (the "Standing nature" row is not counted), so the series does not shift.
+    this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.filter((d) => !d.standing).length });
     this.stormHues(false);
     if ((await this.resultCards.show(cards)) === "alt") this.retryRequested = challenge.id;
   }

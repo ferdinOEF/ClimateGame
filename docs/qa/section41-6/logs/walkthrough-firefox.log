@@ -1,0 +1,15 @@
+
+> riptide-rising@1.0.0 walkthrough
+> tsx tools/walkthrough.ts
+
+(node:4932) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Target: http://localhost:5184 (local dev server)
+
+
+1 problem(s):
+ - [fatal] browserType.launch: spawn UNKNOWN
+
+real	0m24.989s
+user	0m0.198s
+sys	0m0.198s

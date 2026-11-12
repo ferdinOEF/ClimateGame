@@ -31,12 +31,11 @@ async function callWithStatus<T>(path: string, init?: RequestInit, timeoutMs = T
   }
 }
 
-/** One row of the board as the finale shows it. */
+/** One row of the board as the finale shows it. Section 41.6: the board has no season or festival label; none is read. */
 export interface BoardRowView {
   rank: number;
   name: string;
   points: number;
-  season: string;
 }
 
 /**
@@ -60,14 +59,14 @@ export interface BoardRow extends BoardRowView {
   stars: number;
 }
 
-/** GET /api/board: the top 10 and the season. Null when the board can't be reached. */
-export function fetchTop(): Promise<{ rows: BoardRow[]; season: string } | null> {
-  return call<{ rows: BoardRow[]; season: string }>("/api/board");
+/** GET /api/board: the top 10. Null when the board can't be reached. */
+export function fetchTop(): Promise<{ rows: BoardRow[] } | null> {
+  return call<{ rows: BoardRow[] }>("/api/board");
 }
 
 /** GET /api/board?points=N: the place N points would get, and the rows round it. */
-export function fetchRank(points: number): Promise<(RankView & { season: string }) | null> {
-  return call<RankView & { season: string }>(`/api/board?points=${Math.max(0, Math.round(points))}`);
+export function fetchRank(points: number): Promise<RankView | null> {
+  return call<RankView>(`/api/board?points=${Math.max(0, Math.round(points))}`);
 }
 
 /** Section 35.4: what the server is told about a run (no name, IP or device): its build list and its timing. */
@@ -98,7 +97,7 @@ export function beaconRun(report: RunReport): void {
 }
 
 /** What the server answers a board post: the run's place, the rows round it, and the row's edit token. */
-export type BoardPost = RankView & { editToken: string; season: string; name: string; /** Section 38.4b: a test session's post, stored with its tag and never ranked. */ tagged?: boolean };
+export type BoardPost = RankView & { editToken: string; name: string; /** Section 38.4b: a test session's post, stored with its tag and never ranked. */ tagged?: boolean };
 
 /**
  * POST /api/board for a finished run with a name. The server replays the builds and counts the points itself, and
