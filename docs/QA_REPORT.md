@@ -3393,3 +3393,14 @@ Run A of tools/qa41/full416.ts on the preview at 1920x1080 (every `/api` call an
 written): all pass, 0, 0, 0 homes lost, 9 of 9 stars, HUD 4,105 equal to the server's replay, zero console errors.
 Logs: docs/qa/section41-6/logs/preview-*.log; shots in docs/qa/section41-6/preview/. Nobody has played the preview by
 hand. master is untouched at `ad727b0`.
+
+**Section 41.6 merge and Vercel.** Merged with `git merge --no-ff` on the owner's word (12 November 2026): `02bb185`.
+Master had not moved from `ad727b0`, so the merge's tree is the branch tip's (`7a88898`; the two tree ids are equal),
+the tree that passed the gate (`tsc --noEmit`, `build:api`, `npm run test` 115 files, 1,036 pass, 6 skipped,
+`npm run build`). Vercel's production deployment of `02bb185` (`dpl_FEtXtkCXfSm1Wotx1f8zYg361bXG`) is Ready, checked
+through the Vercel connector. Production was loaded from this laptop by plain requests, not played: the page answers
+200; its script holds "Without your defenses", "Standing nature", "Breakwaters go only on that first water tile" and
+"Count the homes that stayed dry", and none of "name-card-season", "Festival 2026", "Season 1" or "With no defenses at
+all"; `GET /api/board` answers 10 rows, each with `season` "", and no top level label. Nothing was posted. Not done:
+a play through on the live site, Firefox, Safari by hand. No schema change, so no migration. `BOARD_SEASON` is still
+set on Vercel and may be removed (docs/DEPLOY.md). Undo with `git revert -m 1 02bb185`.

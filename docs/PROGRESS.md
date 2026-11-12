@@ -1,4 +1,4 @@
-## Section 41.6 — the owner's answers, a tagless board, full QA, every home saveable — branch `section-41-6-answers-qa`, not merged
+## Section 41.6 — the owner's answers, a tagless board, full QA, every home saveable — MERGED (`02bb185`)
 
 Branch from master `ad727b0` (Section 41 merged and live; safety copy: `backup/pre-section-41.6`, same point). The
 owner's answers of 11 November 2026 to Section 41's eleven questions. QA in docs/QA_REPORT.md ("Section 41.6"); the

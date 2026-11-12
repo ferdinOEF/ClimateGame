@@ -14,8 +14,8 @@ actually done and noted in the Log (date + one line), not just assumed.
 
 ## After Section 41.6 (from docs/QA_REPORT.md)
 
-- Not merged: branch `section-41-6-answers-qa`, the owner looks first. Merge with `git merge --no-ff` on the owner's
-  word, then confirm Vercel's production deployment. No schema change, so no migration. master stays at `ad727b0`.
+- Done: merged as `02bb185` on the owner's word (`git merge --no-ff`); Vercel's production deployment of it is Ready
+  and the live site serves it. No schema change, so no migration. Undo with `git revert -m 1 02bb185`.
 - The perfect plan needs no lever: docs/qa/section41-6/best_plan.json loses no home in 2030, 2040 or 2050 (9 of 9 stars,
   4,105 points). Nothing in levels.json changed.
 - For the owner: card 1 can say "0 of 44 homes saved" while "What protected your homes" shows "Standing nature 12"
