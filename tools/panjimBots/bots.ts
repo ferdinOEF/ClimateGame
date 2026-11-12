@@ -733,7 +733,8 @@ const PLAY: Record<Persona, (p: Player) => void> = {
 /** Smart's run on `seed`: its result and every action it took, for replays. */
 export function smartRun(seed: string): { result: BotResult; log: LoggedAction[] } {
   const player = new Player("smart", seed);
-  smartPlayer(null)(player);
+  // Section 41.6 (owner decision 9): the same smart as the style (`PLAY.smart`), weighing the objective's glowing tiles.
+  smartPlayer(null, null, undefined, true)(player);
   return { result: player.result(), log: player.log };
 }
 
@@ -767,7 +768,7 @@ export function replaySmartWithout(elementId: string, seed: string, log: readonl
 /** Smart building only one kind of defence, for "no single defence dominates". */
 export function runSmartOnly(elementId: string, seed: string): BotResult {
   const player = new Player("smart", seed);
-  smartPlayer(null, elementId)(player);
+  smartPlayer(null, elementId, undefined, true)(player);
   return player.result();
 }
 

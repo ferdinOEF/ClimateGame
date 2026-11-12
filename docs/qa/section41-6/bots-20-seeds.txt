@@ -1,0 +1,129 @@
+
+> riptide-rising@1.0.0 bots
+> tsx tools/panjimBots/index.ts
+
+## Archetypes
+
+20 seeds: bot-seed-1, bot-seed-2, bot-seed-3, bot-seed-4, bot-seed-5, bot-seed-6, bot-seed-7, bot-seed-8, bot-seed-9, bot-seed-10, bot-seed-11, bot-seed-12, bot-seed-13, bot-seed-14, bot-seed-15, bot-seed-16, bot-seed-17, bot-seed-18, bot-seed-19, bot-seed-20
+
+A run is **won** when the level ends on three stars (the storms' stars averaged and rounded: at most one storm short of three stars, none below two). **2★ every storm** is the softer reading: every storm at two stars or more.
+
+| Archetype | Won | 2★ every storm | Houses saved (all storms) | min | median | max | Stars per storm (mean) | Index (mean) |
+|---|---|---|---|---|---|---|---|---|
+| casual | 0/20 (0%) | 2/20 | 68% | 60% | 69% | 77% | 1.1 / 2.1 / 1.8 | 60 |
+| greedy | 0/20 (0%) | 0/20 | 33% | 16% | 34% | 58% | 0.1 / 0.6 / 1.0 | 45 |
+| smart | 3/20 (15%) | 11/20 | 95% | 89% | 95% | 98% | 1.7 / 3.0 / 2.0 | 70 |
+| far | 0/20 (0%) | 0/20 | 0% | 0% | 0% | 0% | 0.0 / 0.0 / 0.0 | 29 |
+
+Greedy beats Casual on 0 of 20 seeds.
+
+## How often the wind decides a home (Section 12)
+
+Homes lost whose water alone stayed under the house-loss line: the wind tipped them. Mean per run, and as a share of the homes lost in that storm.
+
+| Archetype | 2030 cyclone | 2040 flood | 2050 compound |
+|---|---|---|---|
+| casual | 0.6 (18%) | 0.0 (0%) | 2.1 (11%) |
+| greedy | 0.5 (6%) | 0.0 (0%) | 0.3 (2%) |
+| smart | 0.0 (0%) | 0.0 (0%) | 1.1 (24%) |
+| far | 0.0 (0%) | 0.0 (0%) | 0.0 (0%) |
+
+## Every run
+
+| Archetype | Seed | Storm 1 saved | Storm 2 saved | Storm 3 saved | All | Stars | Won | Builds | Resilience | Biodiversity | Population | Food |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| casual | bot-seed-1 | 7/8 | 30/42 | 30/45 | 71% | 122 | no | 25 | 75 | 33 | 47 | 53 |
+| casual | bot-seed-2 | 3/8 | 38/42 | 36/50 | 77% | 132 | no | 25 | 67 | 42 | 48 | 49 |
+| casual | bot-seed-3 | 3/8 | 30/42 | 25/46 | 60% | 121 | no | 25 | 54 | 38 | 46 | 54 |
+| casual | bot-seed-4 | 7/8 | 30/42 | 30/43 | 72% | 222 | no | 25 | 76 | 50 | 47 | 49 |
+| casual | bot-seed-5 | 7/8 | 30/42 | 25/43 | 67% | 122 | no | 25 | 72 | 28 | 47 | 50 |
+| casual | bot-seed-6 | 7/8 | 32/42 | 29/47 | 70% | 122 | no | 25 | 75 | 17 | 47 | 47 |
+| casual | bot-seed-7 | 7/8 | 34/42 | 25/47 | 68% | 121 | no | 25 | 74 | 13 | 47 | 50 |
+| casual | bot-seed-8 | 3/8 | 32/42 | 29/48 | 65% | 122 | no | 25 | 58 | 52 | 46 | 50 |
+| casual | bot-seed-9 | 7/8 | 34/42 | 26/46 | 70% | 122 | no | 25 | 75 | 40 | 47 | 50 |
+| casual | bot-seed-10 | 3/8 | 31/42 | 31/44 | 69% | 122 | no | 25 | 61 | 52 | 47 | 53 |
+| casual | bot-seed-11 | 3/8 | 33/42 | 33/47 | 71% | 122 | no | 25 | 62 | 40 | 47 | 47 |
+| casual | bot-seed-12 | 3/8 | 32/42 | 24/45 | 62% | 121 | no | 25 | 56 | 43 | 46 | 47 |
+| casual | bot-seed-13 | 3/8 | 31/42 | 23/44 | 61% | 121 | no | 25 | 55 | 62 | 46 | 53 |
+| casual | bot-seed-14 | 6/8 | 38/42 | 29/49 | 74% | 132 | no | 25 | 75 | 28 | 47 | 49 |
+| casual | bot-seed-15 | 1/8 | 33/42 | 23/45 | 60% | 021 | no | 25 | 47 | 42 | 46 | 51 |
+| casual | bot-seed-16 | 3/8 | 35/42 | 27/48 | 66% | 122 | no | 25 | 59 | 20 | 47 | 47 |
+| casual | bot-seed-17 | 7/8 | 35/42 | 27/47 | 71% | 222 | no | 25 | 76 | 43 | 47 | 50 |
+| casual | bot-seed-18 | 7/8 | 35/42 | 29/47 | 73% | 122 | no | 25 | 78 | 32 | 47 | 49 |
+| casual | bot-seed-19 | 3/8 | 31/42 | 27/45 | 64% | 122 | no | 25 | 57 | 40 | 46 | 47 |
+| casual | bot-seed-20 | 3/8 | 32/42 | 30/48 | 66% | 122 | no | 25 | 59 | 33 | 47 | 47 |
+| greedy | bot-seed-1 | 3/8 | 19/42 | 23/38 | 51% | 112 | no | 25 | 48 | 40 | 46 | 42 |
+| greedy | bot-seed-2 | 0/8 | 13/42 | 18/29 | 39% | 012 | no | 25 | 31 | 35 | 45 | 54 |
+| greedy | bot-seed-3 | 0/8 | 20/42 | 16/37 | 41% | 011 | no | 25 | 30 | 37 | 45 | 58 |
+| greedy | bot-seed-4 | 2/8 | 2/42 | 8/24 | 16% | 001 | no | 25 | 21 | 0 | 44 | 26 |
+| greedy | bot-seed-5 | 1/8 | 10/42 | 16/31 | 33% | 001 | no | 25 | 29 | 48 | 44 | 55 |
+| greedy | bot-seed-6 | 0/8 | 15/40 | 8/30 | 29% | 010 | no | 25 | 21 | 0 | 44 | 43 |
+| greedy | bot-seed-7 | 0/8 | 14/42 | 26/34 | 48% | 011 | no | 25 | 37 | 2 | 45 | 36 |
+| greedy | bot-seed-8 | 1/8 | 3/42 | 10/24 | 19% | 001 | no | 25 | 20 | 0 | 44 | 23 |
+| greedy | bot-seed-9 | 0/8 | 9/42 | 8/23 | 23% | 001 | no | 25 | 19 | 0 | 44 | 46 |
+| greedy | bot-seed-10 | 0/8 | 10/42 | 17/29 | 34% | 001 | no | 25 | 27 | 0 | 45 | 46 |
+| greedy | bot-seed-11 | 0/8 | 21/40 | 11/36 | 38% | 011 | no | 25 | 28 | 27 | 45 | 55 |
+| greedy | bot-seed-12 | 0/8 | 9/42 | 10/29 | 24% | 001 | no | 25 | 19 | 8 | 44 | 50 |
+| greedy | bot-seed-13 | 1/8 | 29/42 | 25/45 | 58% | 022 | no | 25 | 46 | 25 | 46 | 45 |
+| greedy | bot-seed-14 | 0/8 | 18/42 | 21/34 | 46% | 012 | no | 25 | 35 | 20 | 45 | 57 |
+| greedy | bot-seed-15 | 1/8 | 9/40 | 5/23 | 21% | 000 | no | 25 | 19 | 0 | 44 | 52 |
+| greedy | bot-seed-16 | 0/8 | 17/42 | 4/34 | 25% | 010 | no | 25 | 17 | 0 | 44 | 41 |
+| greedy | bot-seed-17 | 1/8 | 8/42 | 4/27 | 17% | 000 | no | 25 | 15 | 0 | 43 | 32 |
+| greedy | bot-seed-18 | 0/8 | 11/38 | 14/28 | 34% | 001 | no | 25 | 26 | 0 | 45 | 37 |
+| greedy | bot-seed-19 | 0/8 | 16/42 | 17/32 | 40% | 011 | no | 25 | 30 | 12 | 45 | 49 |
+| greedy | bot-seed-20 | 0/8 | 5/42 | 11/25 | 21% | 001 | no | 25 | 19 | 0 | 44 | 28 |
+| smart | bot-seed-1 | 8/8 | 39/40 | 45/51 | 93% | 132 | no | 25 | 95 | 33 | 49 | 48 |
+| smart | bot-seed-2 | 8/8 | 40/40 | 49/52 | 97% | 132 | no | 25 | 98 | 52 | 50 | 53 |
+| smart | bot-seed-3 | 8/8 | 39/40 | 45/51 | 93% | 232 | no | 25 | 95 | 65 | 49 | 54 |
+| smart | bot-seed-4 | 8/8 | 41/42 | 43/53 | 89% | 232 | no | 25 | 93 | 48 | 49 | 51 |
+| smart | bot-seed-5 | 8/8 | 40/40 | 49/52 | 97% | 232 | no | 25 | 98 | 62 | 50 | 56 |
+| smart | bot-seed-6 | 8/8 | 40/40 | 46/52 | 94% | 332 | yes | 25 | 96 | 67 | 49 | 57 |
+| smart | bot-seed-7 | 8/8 | 39/40 | 49/51 | 97% | 232 | no | 25 | 98 | 55 | 50 | 56 |
+| smart | bot-seed-8 | 8/8 | 40/40 | 45/52 | 93% | 132 | no | 25 | 96 | 55 | 49 | 60 |
+| smart | bot-seed-9 | 8/8 | 40/40 | 47/52 | 95% | 132 | no | 25 | 97 | 25 | 49 | 45 |
+| smart | bot-seed-10 | 8/8 | 40/40 | 47/52 | 95% | 132 | no | 25 | 97 | 40 | 49 | 51 |
+| smart | bot-seed-11 | 8/8 | 40/40 | 48/52 | 96% | 132 | no | 25 | 97 | 57 | 49 | 53 |
+| smart | bot-seed-12 | 8/8 | 36/40 | 42/48 | 90% | 132 | no | 25 | 93 | 28 | 49 | 51 |
+| smart | bot-seed-13 | 8/8 | 40/40 | 49/52 | 97% | 132 | no | 25 | 98 | 12 | 50 | 50 |
+| smart | bot-seed-14 | 8/8 | 40/40 | 46/52 | 94% | 132 | no | 25 | 96 | 60 | 49 | 57 |
+| smart | bot-seed-15 | 8/8 | 40/40 | 49/52 | 97% | 232 | no | 25 | 98 | 63 | 50 | 59 |
+| smart | bot-seed-16 | 8/8 | 39/40 | 48/51 | 96% | 232 | no | 25 | 97 | 58 | 49 | 53 |
+| smart | bot-seed-17 | 8/8 | 40/40 | 50/52 | 98% | 332 | yes | 25 | 99 | 73 | 50 | 53 |
+| smart | bot-seed-18 | 8/8 | 40/40 | 49/52 | 97% | 332 | yes | 25 | 98 | 65 | 50 | 56 |
+| smart | bot-seed-19 | 8/8 | 36/40 | 46/48 | 94% | 232 | no | 25 | 95 | 63 | 49 | 54 |
+| smart | bot-seed-20 | 8/8 | 39/40 | 46/52 | 93% | 232 | no | 25 | 95 | 65 | 49 | 54 |
+| far | bot-seed-1 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-2 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-3 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-4 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-5 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-6 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-7 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-8 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-9 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-10 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-11 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-12 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-13 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-14 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-15 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-16 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-17 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-18 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-19 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+| far | bot-seed-20 | 0/8 | 0/42 | 0/20 | 0% | 000 | no | 25 | 0 | 0 | 43 | 20 |
+
+## What each builds (mean per run)
+
+Away: builds made where no storm's water reaches (they protect nothing, so they are not counted as defences).
+
+| Archetype | dune | sandy_vegetation | seawall | breakwater | mangrove | khazan | small_dam | away |
+|---|---|---|---|---|---|---|---|---|
+| casual | 1.9 | 2.0 | 2.8 | 0.3 | 5.3 | 5.7 | 7.2 | 0.0 |
+| greedy | 0.8 | 1.3 | 5.2 | 3.1 | 4.5 | 3.8 | 6.4 | 0.0 |
+| smart | 0.9 | 3.0 | 2.6 | 1.5 | 7.7 | 5.3 | 3.9 | 0.0 |
+| far | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 25.0 |
+
+real	2m56.821s
+user	0m0.337s
+sys	0m0.493s

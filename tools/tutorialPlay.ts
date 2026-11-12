@@ -176,7 +176,9 @@ export async function playTutorial(page: Page, options: TutorialPlayOptions): Pr
   await shot("tutorial-final");
   await page.locator(".result-cards .result-next").first().click();
   try {
-    await page.waitForFunction(() => location.hash.includes("l01-first-rains") && document.querySelector(".brief-title")?.textContent === "Panjim", undefined, { timeout: 30000 });
+    // Section 39.3 and 40.3: Play Panjim opens How to play (three screens, "Let's Play!" on the third), not a brief
+    // titled "Panjim" (Section 41.6.4: the check still waited for that title, so it failed on a correct start).
+    await page.waitForFunction(() => location.hash.includes("l01-first-rains") && (!!document.querySelector(".howto-card") || document.querySelector(".brief-title")?.textContent === "Panjim"), undefined, { timeout: 30000 });
   } catch {
     problems.push(`[tutorial-next] "Play Panjim" did not open Panaji (at ${page.url()})`);
     return false;

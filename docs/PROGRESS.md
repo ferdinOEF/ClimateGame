@@ -17,6 +17,12 @@ model's notes in docs/ARCHITECTURE.md ("3d").
   out=docs/qa/section41-6 seed=tools/bestPlan/seed41.json`, 1,036 s) reaches the same: 0 homes lost in each storm,
   9 of 9 stars, a plan that differs in 13 of 25 builds. No lever used, no number changed. Saved as
   tools/bestPlan/seed41_6.json and docs/qa/section41-6/best_plan.md; tests/bestPlan.test.ts replays it.
+- 41.6.3 The mechanics tested against the game's own model (tools/qa41/mechanics416.ts, 24 checks, all pass:
+  placement, the 2050 river rule, Campal, the wind, the standing defenses, each failure rule, server equals client, a
+  breakwater out at sea refused). The fuzz: 1,800 runs, 0 failures. Bots (200 seeds a style and 20), points: every
+  Section 35.6 target holds; the moves are the standing nature's homes leaving the paths, and nature and smart
+  weighing the glowing tiles. QA tools fixed: `smartRun` weighs the glowing tiles too, `test:help` and the Tutorial
+  player start Play Panjim the Section 40 way, `qaUrl` adds the test tag.
 
 ## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home — MERGED (`fc42c47`)
 
