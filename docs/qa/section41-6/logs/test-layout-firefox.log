@@ -1,0 +1,20 @@
+
+> riptide-rising@1.0.0 test:layout
+> tsx tools/mayaLayoutTest.ts
+
+(node:5080) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+browserType.launch: spawn UNKNOWN
+Call log:
+[2m  - <launching> C:\Users\ferdi\AppData\Local\ms-playwright\firefox-1538\firefox\firefox.exe -no-remote -headless -profile C:\Users\ferdi\AppData\Local\Temp\playwright_firefoxdev_profile-zvTJzF -juggler-pipe -silent[22m
+
+    at main (C:\Users\ferdi\OneDrive\Ferdin\Earth Foundation\Projects\POG\panjim-digital-twin\code\tools\mayaLayoutTest.ts:119:25) {
+  log: [
+    '  - <launching> C:\\Users\\ferdi\\AppData\\Local\\ms-playwright\\firefox-1538\\firefox\\firefox.exe -no-remote -headless -profile C:\\Users\\ferdi\\AppData\\Local\\Temp\\playwright_firefoxdev_profile-zvTJzF -juggler-pipe -silent'
+  ],
+  name: 'Error'
+}
+
+real	0m22.782s
+user	0m0.182s
+sys	0m0.138s

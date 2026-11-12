@@ -73,7 +73,8 @@ export function replaySteps(record: StormRecord, defences: ReadonlyMap<string, s
   const defended = [...defences].some(([key, id]) => !standing.has(key) && defendsAgainst(id, hazards));
   if (defended && without > hit.length) {
     steps.push({
-      text: `With no defenses at all: ${homes(without)} hit`,
+      // Section 41.6 (review): `undefended` keeps the nature standing from the first turn, so it is "without yours".
+      text: `Without your defenses: ${homes(without)} hit`,
       maya: `Without any of your defenses, ${homes(without)} would have been hit. You saved ${homes(without - hit.length)}.`,
       hit: [...record.undefended.outcome.damagedHouses],
       dry: [],

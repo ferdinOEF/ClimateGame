@@ -1,0 +1,30 @@
+2026  Hello! I am Maya. The cyclone reaches Miramar in 2030. A dune on the beach breaks its waves before they reach the school.
+2026  These are the defenses that fit this tile. Each build is one year.
+2027  Your dune is standing. Now pandanus: it binds the sand and shields homes from the wind.
+2027  Pandanus is good for nature too: watch Biodiversity go up.
+2028  That is how it works. The cyclone comes in 3 builds.
+2028  Panjim already has mangroves and khazan land at Merces and Taleigao. Keep them standing.
+2029  The striped red tiles show where the cyclone will hit. Build around Miramar now: homes there can still be saved.
+2030  Last call! 2 homes are still in danger. Build around Miramar: homes there can still be saved.
+2031  2 homes were hit, and 6 homes got wet but stood.
+2031  On to 2031. 10 builds before the flood.
+2032  Research in England and Wales found sand dunes can be an important natural barrier against coastal flooding.
+2033  Pandanus softens a surge a little, on sand where mangroves can't grow.
+2034  A seawall lowers biodiversity: nothing in the game lives on it.
+2035  A seawall breaks in its second cyclone, or its next once 10 years old, and pushes water round its ends.
+2036  Seawalls stand on the shore or the first water tile; breakwaters only on that water tile.
+2037  When a cyclone and a flood come together, a seawall also holds back the river that the sea pushes back.
+2038  A seawall stops most of a surge while it holds, and it's strong from the day it's built.
+2039  The striped red tiles show where the flood will hit. Build around Merces now: homes there can still be saved.
+2040  Last call! 44 homes are still in danger. Build around Merces: homes there can still be saved.
+2041  44 homes were hit, and 9 homes got wet but stood.
+2041  On to 2041. 10 builds before the storm. At Campal the sea and the river rise together. Seawalls and breakwaters along the shore can hold them back.
+2042  I keep a short list for the next storm in the card, top right. Every item is optional.
+2043  Mangroves slow the water before it reaches the houses, in a cyclone or a flood. Plant them on the wetland edge.
+2044  A seawall holds back a cyclone's surge until it breaks: in its second cyclone, or its next once 10 years old.
+2045  A khazan holds floodwater, so nearby homes stay drier.
+2048  Dunes and pandanus shield the homes behind the beach from a cyclone.
+2049  The striped red tiles show where the storm will hit. Build around Merces now: homes there can still be saved. The cyclone brings wind onto Campal. In this game only pandanus shelters homes from the wind.
+2050  Last call! 19 homes are still in danger. Build around Merces: homes there can still be saved.
+2050  The water has gone down and the sun is out again.
+2050  19 homes were hit, and 4 homes got wet but stood.

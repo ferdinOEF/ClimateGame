@@ -1232,7 +1232,7 @@ export class PanjimController {
     if (plan.cards.length === 0) {
       // Section 38.2: after the 2050 storm there is one card, the last card (`finale`), which shows this result.
       this.lastStorm = { result, points, defences };
-      this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });
+      this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.filter((d) => !d.standing).length });
       this.stormHues(false);
       return;
     }
@@ -1247,7 +1247,8 @@ export class PanjimController {
         button: plan.outlookButton
       });
     }
-    this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.length });
+    // Section 41.6 (review): the player's own rows, as before 41.6 (the "Standing nature" row is not counted), so the series does not shift.
+    this.host.telemetry.emit("checkpoint", { results: challenge.id, stars: result.stars, places: result.places.length, rows: result.defences.filter((d) => !d.standing).length });
     this.stormHues(false);
     if ((await this.resultCards.show(cards)) === "alt") this.retryRequested = challenge.id;
   }

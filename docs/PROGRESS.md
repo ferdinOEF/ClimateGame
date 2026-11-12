@@ -23,6 +23,13 @@ model's notes in docs/ARCHITECTURE.md ("3d").
   Section 35.6 target holds; the moves are the standing nature's homes leaving the paths, and nature and smart
   weighing the glowing tiles. QA tools fixed: `smartRun` weighs the glowing tiles too, `test:help` and the Tutorial
   player start Play Panjim the Section 40 way, `qaUrl` adds the test tag.
+- 41.6.4 The full browser check (owner's "full QA"): test:labels 73 of 73, test:layout 144 of 144, test:maya, test:help
+  at four sizes, axe at four sizes with no serious or critical issue, the walkthrough and verify:maya (their remaining
+  failures are on master too), WebKit; three runs played through the game's screens at 1366x768 and 1920x1080 (the
+  perfect plan 0, 0, 0 lost and 9 of 9 stars; a seawall player at Campal; a careless player who removes a standing
+  khazan), HUD points equal to the server's. The reviewer: 0 BLOCKER, 3 MAJOR fixed (the replay's caption now says
+  "Without your defenses", smart's margin run weighs the glowing tiles, a real test of the player's own khazan), the
+  telemetry's row count and the 2050 storm's "your defenses" line fixed. Firefox could not be started here.
 
 ## Section 41 — shore defenses, Campal in 2050, and a perfect build that saves every home — MERGED (`fc42c47`)
 

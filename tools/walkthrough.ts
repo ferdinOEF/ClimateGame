@@ -19,7 +19,10 @@
  *
  * `npm run walkthrough`. Screenshots land in tools/screenshots/walkthrough/.
  */
-import { chromium, type Page } from "playwright";
+import { chromium, firefox, webkit, type Page } from "playwright";
+
+/** Section 41.6.4: PW_BROWSER=firefox or webkit runs the same walkthrough in Playwright's Firefox or WebKit (default Chromium). */
+const ENGINE = process.env.PW_BROWSER ?? "chromium";
 import path from "node:path";
 import fs from "node:fs";
 import { startDevServer } from "./devServer";
@@ -96,10 +99,15 @@ async function main(): Promise<void> {
 
   try {
     // The container's Chromium when it has one (the bundled headless shell may not match this Playwright).
-    const browser = await chromium.launch({
-      executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
-      args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
-    });
+    const browser =
+      ENGINE === "firefox"
+        ? await firefox.launch()
+        : ENGINE === "webkit"
+          ? await webkit.launch()
+          : await chromium.launch({
+              executablePath: fs.existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined,
+              args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"]
+            });
     const page = await browser.newPage({ viewport: { width: 1360, height: 860 } });
 
     // Collected per-stage so a failure says WHERE it happened. A bare list of

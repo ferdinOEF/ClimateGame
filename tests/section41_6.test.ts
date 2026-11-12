@@ -63,6 +63,36 @@ describe("41.6 answer 4: each storm's path is counted with the standing nature i
   });
 
   it("the player's own khazan is credited alone, and the standing khazans never with it", () => {
+    // Two runs alike but for one build: a khazan of the player's on the 2040 flood's path, or a breakwater away from it.
+    const play = (first: "khazan" | "breakwater"): ReturnType<typeof newPanjimRun> => {
+      const run = newPanjimRun({ objectives: false });
+      const flood = run.schedule[1];
+      // The khazan tile where one saves the most homes from the flood, by the build cards' own number.
+      const best = [...run.state.placed.values()]
+        .filter((t) => run.state.canBuild(t.coord, "khazan"))
+        .map((t) => ({ coord: t.coord, saves: run.homesSavedBy(flood, t.coord, "khazan") ?? 0 }))
+        .sort((a, b) => b.saves - a.saves || a.coord.q - b.coord.q || a.coord.r - b.coord.r)[0];
+      const away = () => [...run.state.placed.values()].find((t) => run.state.canBuild(t.coord, "breakwater"))!.coord;
+      expect(run.build(first === "khazan" ? best.coord : away(), first).ok).toBe(true);
+      while (!run.landed.has(flood.id)) expect(run.build(away(), "breakwater").ok).toBe(true);
+      return run;
+    };
+    const withKhazan = play("khazan");
+    const without = play("breakwater");
+    const flood = withKhazan.schedule[1].id;
+    const record = withKhazan.stormRecords.get(flood)!;
+    const own = record.withoutEach.get("khazan") ?? 0;
+    expect(own).toBeGreaterThan(0);
+    // Exactly what the player's one khazan did: the same run without it loses that many more homes. Had the standing
+    // khazans been taken away with it, the figure would be larger.
+    expect(own).toBe(without.outcomes.get(flood)!.housesDamaged - withKhazan.outcomes.get(flood)!.housesDamaged);
+    expect(record.savedBy.find((s) => s.elementId === "khazan")).toMatchObject({ count: 1, houses: own });
+    // The standing nature's own figure is worked out with the player's khazan in place, and is not folded into it.
+    expect(record.standing!.keys).toEqual(expect.arrayContaining(["26,6", "16,15"]));
+    expect(record.standing!.homes).toBeGreaterThan(0);
+  });
+
+  it("the replay's comparison is \"Without your defenses\": the standing nature stays in it", () => {
     const run = newPanjimRun({ objectives: false });
     expect(run.build({ q: 24, r: 6 }, "mangrove").ok).toBe(true);
     const flood = run.schedule[1];
@@ -71,15 +101,17 @@ describe("41.6 answer 4: each storm's path is counted with the standing nature i
       expect(run.build(tile.coord, "breakwater").ok).toBe(true);
     }
     const record = run.stormRecords.get(flood.id)!;
-    expect(record.withoutEach.has("khazan")).toBe(false);
-    expect(record.savedBy.some((s) => s.elementId === "khazan")).toBe(false);
-    expect(record.standing!.keys).toEqual(expect.arrayContaining(["26,6", "16,15"]));
+    const steps = replaySteps(record, record.defences).map((s) => s.text).join(" | ");
+    expect(steps).not.toMatch(/no defenses at all/i);
+    if (record.undefended.outcome.housesDamaged > record.outcome.housesDamaged) expect(steps).toContain(`Without your defenses: ${record.undefended.outcome.housesDamaged} homes hit`);
+    expect(read("src/ui/panjim/stormCard.ts")).toContain('label: "Without your defenses"');
   });
 
   it("the storm's words credit only the player's own: \"Your khazans\" needs a khazan the player built, and Maya's card line never names the standing row", () => {
     const director = read("src/app/stormDirector.ts");
     expect(director).toContain('const hasKhazans = [...defences].some(([key, id]) => id === "khazan" && !standing.has(key));');
     expect(read("src/app/panjimController.ts")).toContain("const top = result.defences.find((d) => d.homes > 0 && !d.standing);");
+    expect(director).toContain('record.savedBy.length > 0 ? "Both fronts are easing. Count the homes your defenses held." : "Both fronts are easing. Count the homes that stayed dry."');
   });
 });
 

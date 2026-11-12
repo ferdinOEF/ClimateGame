@@ -12,6 +12,28 @@ play before adding or expanding content.
 Don't start the next item until the current one's "Verify" step is
 actually done and noted in the Log (date + one line), not just assumed.
 
+## After Section 41.6 (from docs/QA_REPORT.md)
+
+- Not merged: branch `section-41-6-answers-qa`, the owner looks first. Merge with `git merge --no-ff` on the owner's
+  word, then confirm Vercel's production deployment. No schema change, so no migration. master stays at `ad727b0`.
+- The perfect plan needs no lever: docs/qa/section41-6/best_plan.json loses no home in 2030, 2040 or 2050 (9 of 9 stars,
+  4,105 points). Nothing in levels.json changed.
+- For the owner: card 1 can say "0 of 44 homes saved" while "What protected your homes" shows "Standing nature 12"
+  (the twelve are outside the path by answer 4, and nothing on the card says so); and where the standing nature answers
+  a storm but saves nothing, its row reads 0. A line on the card, or no row at 0?
+- For the owner: rows posted to the board between the Section 41 merge (11 November 2026, 19:47) and this section's
+  deploy counted the standing nature's homes as saved (up to about 18 homes, 10 points each, plus any place). One board,
+  no reset: they stay as scored.
+- For the owner: the Campal sentence (the owner's words) names breakwaters beside the river ("Seawalls and breakwaters
+  along the shore can hold them back."), while the river rule gives that to seawalls only, and it has no "Game rule" tag.
+- On master too, not from 41.6: the walkthrough fails on the dev server's `/api` 404 when a level is left (the tool
+  stubs no API); `verify:maya` still checks a Get ready card in the Tutorial (it shows its own panel) and finds the
+  "Larger text" toggle without a tooltip (src/app/panjimController.ts:399-401).
+- WebKit: `test:layout` misses Maya's bubble at 1366x768 resized to 80% (one layout of 144). Look in Safari by hand.
+- Not run: Firefox (Windows will not start Playwright's firefox.exe here), Safari by hand, the grayscale and
+  deuteranopia copies, a play through by hand.
+- `BOARD_SEASON` on Vercel may now be removed (docs/DEPLOY.md); new rows then store "Season 1" in a column no player sees.
+
 ## After Section 41 (from docs/QA_REPORT.md)
 
 - Done: merged as `fc42c47` on the owner's word (`git merge --no-ff`); Vercel's production deployment of it is Ready

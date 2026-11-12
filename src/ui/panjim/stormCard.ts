@@ -70,7 +70,7 @@ export function drawStormCard(input: StormCardInput): HTMLCanvasElement {
   const scale = Math.min(panelW / (maxX - minX), panelH / (maxZ - minZ));
   const halves = [
     { x0: 20, label: "With your defenses", outcome: input.record.outcome, field: input.record.field, defended: true },
-    { x0: 620, label: "With no defenses", outcome: input.record.undefended.outcome, field: input.record.undefended.field, defended: false }
+    { x0: 620, label: "Without your defenses", outcome: input.record.undefended.outcome, field: input.record.undefended.field, defended: false }
   ];
   const defences = new Set(input.defences);
   for (const half of halves) {

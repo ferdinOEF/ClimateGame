@@ -1,0 +1,57 @@
+
+> riptide-rising@1.0.0 test:maya
+> tsx tools/mayaStability.ts
+
+(node:20356) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS  idle: her figure's box never moved in 58 frames over 10.5s (12,926 54x142)
+PASS  idle: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  idle: her box is on whole pixels
+      per second: layouts 0, figure style writes 0, class writes 0, hop restarts 0, observer hits 61.13; frames that changed 57 of 57 (4 strongly)
+PASS  greeting: her figure's box never moved in 45 frames over 10.4s (12,926 54x142)
+PASS  greeting: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  greeting: her box is on whole pixels
+      per second: layouts 7.97, figure style writes 0, class writes 0, hop restarts 0, observer hits 60.12; frames that changed 44 of 44 (8 strongly)
+PASS  tip: her figure's box never moved in 55 frames over 10.5s (12,926 54x142)
+PASS  tip: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  tip: her box is on whole pixels
+      per second: layouts 9.94, figure style writes 0, class writes 0, hop restarts 0, observer hits 60.7; frames that changed 54 of 54 (6 strongly)
+PASS  explains: her figure's box never moved in 48 frames over 10.8s (12,926 54x142)
+PASS  explains: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  explains: her box is on whole pixels
+      per second: layouts 8.44, figure style writes 0, class writes 0, hop restarts 0, observer hits 57.85; frames that changed 47 of 47 (19 strongly)
+PASS  warning: her figure's box never moved in 48 frames over 10.8s (12,926 54x142)
+PASS  warning: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  warning: her box is on whole pixels
+      per second: layouts 8.67, figure style writes 0, class writes 0, hop restarts 0, observer hits 57.25; frames that changed 47 of 47 (47 strongly)
+PASS  worried: her figure's box never moved in 53 frames over 10.8s (12,926 54x142)
+PASS  worried: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  worried: her box is on whole pixels
+      per second: layouts 9, figure style writes 0, class writes 0, hop restarts 0, observer hits 58.35; frames that changed 52 of 52 (5 strongly)
+PASS  celebrates: her figure's box never moved in 36 frames over 11.5s (12,926 54x142)
+PASS  celebrates: she stands at her home (12px from the left, 12px from the bottom; Section 34c.2)
+PASS  celebrates: her box is on whole pixels
+      per second: layouts 6.26, figure style writes 0, class writes 0, hop restarts 0, observer hits 52.11; frames that changed 35 of 35 (35 strongly)
+PASS  idle for 3 seconds on a still page: her figure's rectangle is stable (12 frames)
+PASS  reduced motion, idle: her box never moved
+PASS  reduced motion, idle: no pixel of her changes between 35 photographs (0 did)
+PASS  reduced motion, greeting: her box never moved
+PASS  reduced motion, greeting: no pixel of her changes between 33 photographs (0 did)
+PASS  reduced motion, tip: her box never moved
+PASS  reduced motion, tip: no pixel of her changes between 33 photographs (0 did)
+PASS  reduced motion, explains: her box never moved
+PASS  reduced motion, explains: no pixel of her changes between 34 photographs (0 did)
+PASS  reduced motion, warning: her box never moved
+PASS  reduced motion, warning: no pixel of her changes between 34 photographs (0 did)
+PASS  reduced motion, worried: her box never moved
+PASS  reduced motion, worried: no pixel of her changes between 35 photographs (0 did)
+PASS  reduced motion, celebrates: her box never moved
+PASS  reduced motion, celebrates: no pixel of her changes between 35 photographs (0 did)
+PASS  the Tutorial loads (Section 15: the Panjim HUD, Maya coaching)
+PASS  zero console errors
+
+Done.
+
+real	4m34.702s
+user	0m0.182s
+sys	0m0.199s
